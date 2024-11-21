@@ -149,42 +149,112 @@ class BackgroundService {
     });
   }
 
-  private async processZipFile(blob: Blob) {
-    if (!this.githubService) {
-      throw new Error('GitHub service not initialized. Please set your GitHub token.');
+/**
+   * Safely converts a string to base64, handling Unicode characters
+   */
+private toBase64(str: string): string {
+  // Convert string to UTF-8 bytes
+  const utf8Bytes = new TextEncoder().encode(str);
+  
+  // Convert bytes to binary string
+  let binaryString = '';
+  utf8Bytes.forEach(byte => {
+    binaryString += String.fromCharCode(byte);
+  });
+  
+  // Use btoa on the binary string
+  return btoa(binaryString);
+}
+
+private async processZipFile(blob: Blob) {
+  if (!this.githubService) {
+    throw new Error('GitHub service not initialized. Please set your GitHub token.');
+  }
+
+  console.log('🗜️ Processing ZIP file...');
+  const files = await ZipProcessor.processZipBlob(blob);
+  console.log('📂 Raw ZIP contents:', Array.from(files.keys()));
+  
+  const { repoOwner, repoName, branch } = await chrome.storage.sync.get([
+    'repoOwner',
+    'repoName',
+    'branch'
+  ]);
+  
+  if (!repoOwner || !repoName) {
+    throw new Error('Repository details not configured');
+  }
+
+  console.log('📋 Repository details:', { repoOwner, repoName, branch });
+
+  // Filter and process files
+  const processedFiles = new Map<string, string>();
+  
+  for (const [path, content] of files.entries()) {
+    // Skip directory entries
+    if (path.endsWith('/')) {
+      console.log(`📁 Skipping directory entry: ${path}`);
+      continue;
     }
 
-    console.log('🗜️ Processing ZIP file...');
-    const files = await ZipProcessor.processZipBlob(blob);
-    console.log('📂 ZIP contents:', Array.from(files.keys()));
+    // Remove the 'project/' prefix
+    const normalizedPath = path.startsWith('project/') ? path.slice(8) : path;
     
-    const { repoOwner, repoName, branch } = await chrome.storage.sync.get([
-      'repoOwner',
-      'repoName',
-      'branch'
-    ]);
-    
-    if (!repoOwner || !repoName) {
-      throw new Error('Repository details not configured');
+    // Skip empty files
+    if (!content.trim()) {
+      console.log(`⚠️ Skipping empty file: ${normalizedPath}`);
+      continue;
     }
 
-    console.log('📋 Repository details:', { repoOwner, repoName, branch });
+    processedFiles.set(normalizedPath, content);
+  }
 
-    for (const [filename, content] of files.entries()) {
-      console.log(`📄 Processing file: ${filename}`);
+  console.log('📦 Processed files to upload:', Array.from(processedFiles.keys()));
+
+  // Upload files to GitHub
+  for (const [filename, content] of processedFiles.entries()) {
+    try {
+      console.log(`📄 Uploading file: ${filename}`);
       
-      await this.githubService.pushFile({
-        owner: repoOwner,
-        repo: repoName,
-        path: filename,
-        content: btoa(content),
-        branch: branch || 'main',
-        message: `Add ${filename} from bolt.new`
-      });
-      
-      console.log(`✅ File pushed: ${filename}`);
+      try {
+        // Use Unicode-safe base64 encoding
+        const base64Content = this.toBase64(content);
+        
+        await this.githubService.pushFile({
+          owner: repoOwner,
+          repo: repoName,
+          path: filename,
+          content: base64Content,
+          branch: branch || 'main',
+          message: `Add ${filename} from bolt.new`
+        });
+        
+        console.log(`✅ Successfully uploaded: ${filename}`);
+      } catch (error) {
+        if (error instanceof Error) {
+          console.error(`❌ Error encoding/uploading ${filename}:`, error.message);
+          console.log('📝 File content preview:', content.slice(0, 100) + '...');
+        }
+        throw error;
+      }
+    } catch (error) {
+      console.error(`❌ Failed to upload ${filename}:`, error);
+      throw new Error(`Failed to push file: ${error instanceof Error ? error.message : 'Unknown error'}`);
     }
   }
+
+  console.log('🎉 All files processed and uploaded successfully');
+
+  // Show success notification
+  if (chrome.notifications) {
+    chrome.notifications.create({
+      type: 'basic',
+      iconUrl: 'icon48.png',
+      title: 'Upload Complete',
+      message: `Successfully uploaded ${processedFiles.size} files to GitHub`
+    });
+  }
+}
 }
 
 // Initialize background service
