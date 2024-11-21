@@ -46,10 +46,75 @@ export function injectUploadFeatures() {
     }
   };
 
-  // Function to show settings notification
+  // Function to show confirmation dialog
+  const showGitHubConfirmation = (): Promise<boolean> => {
+    return new Promise((resolve) => {
+      const overlay = document.createElement('div');
+      overlay.style.zIndex = '9999';
+      overlay.style.backgroundColor = 'rgba(0, 0, 0, 0.5)';
+      overlay.className = [
+        'fixed',
+        'inset-0',
+        'flex',
+        'items-center',
+        'justify-center'
+      ].join(' ');
+
+      const dialog = document.createElement('div');
+      dialog.style.zIndex = '10000';
+      dialog.style.width = '320px'; // Set fixed width
+      dialog.style.backgroundColor = '#0f172a'; // Match bg-slate-900
+      dialog.className = [
+        'p-6',
+        'rounded-lg',
+        'shadow-xl',
+        'mx-4',
+        'space-y-4',
+        'border',
+        'border-slate-700',
+        'relative'
+      ].join(' ');
+
+      dialog.innerHTML = `
+        <h3 class="text-lg font-semibold text-white">Confirm GitHub Upload</h3>
+        <p class="text-slate-300 text-sm">Are you sure you want to upload this project to GitHub?</p>
+        <div class="flex justify-end gap-3 mt-6">
+          <button class="px-4 py-2 text-sm rounded-md bg-slate-800 text-slate-300 hover:bg-slate-700" id="cancel-upload">
+            Cancel
+          </button>
+          <button class="px-4 py-2 text-sm rounded-md bg-blue-600 text-white hover:bg-blue-700" id="confirm-upload">
+            Upload
+          </button>
+        </div>
+      `;
+
+      overlay.appendChild(dialog);
+      document.body.appendChild(overlay);
+
+      // Handle clicks
+      overlay.addEventListener('click', (e) => {
+        if (e.target === overlay) {
+          document.body.removeChild(overlay);
+          resolve(false);
+        }
+      });
+
+      dialog.querySelector('#cancel-upload')?.addEventListener('click', () => {
+        document.body.removeChild(overlay);
+        resolve(false);
+      });
+
+      dialog.querySelector('#confirm-upload')?.addEventListener('click', () => {
+        document.body.removeChild(overlay);
+        resolve(true);
+      });
+    });
+  };
+
+  // Also update the notification z-index
   const showSettingsNotification = () => {
-    // Create notification element
     const notification = document.createElement('div');
+    notification.style.zIndex = '10000';
     notification.className = [
       'fixed',
       'top-4',
@@ -59,7 +124,6 @@ export function injectUploadFeatures() {
       'text-white',
       'rounded-md',
       'shadow-lg',
-      'z-50',
       'flex',
       'items-center',
       'gap-2',
@@ -74,7 +138,7 @@ export function injectUploadFeatures() {
       </svg>
       <span>
         Please configure your GitHub settings first. 
-        <button class="underline ml-1 hover:text-white/80">Open Settings</button>
+        <button class="text-white font-medium hover:text-white/90 underline underline-offset-2">Open Settings</button>
       </span>
     `;
 
@@ -87,7 +151,7 @@ export function injectUploadFeatures() {
 
     // Add close button
     const closeButton = document.createElement('button');
-    closeButton.className = 'ml-2 hover:text-white/80';
+    closeButton.className = 'ml-2 text-white hover:text-white/90 font-medium text-lg leading-none';
     closeButton.innerHTML = '×';
     closeButton.addEventListener('click', () => {
       document.body.removeChild(notification);
@@ -138,13 +202,15 @@ export function injectUploadFeatures() {
 
   // Insert GitHub button
   const insertButton = async () => {
-    const buttonContainer = document.querySelector('div.flex.grow-1.basis-60 div.flex.gap-2');
-    if (!buttonContainer) {
-      debug('❌ Button container not found');
+    // Check if button already exists first
+    if (document.querySelector('[data-github-upload]')) {
+      debug('GitHub button already exists, skipping insertion');
       return;
     }
 
-    if (document.querySelector('[data-github-upload]')) {
+    const buttonContainer = document.querySelector('div.flex.grow-1.basis-60 div.flex.gap-2');
+    if (!buttonContainer) {
+      debug('❌ Button container not found');
       return;
     }
 
@@ -152,6 +218,7 @@ export function injectUploadFeatures() {
 
     const button = document.createElement('button');
     button.setAttribute('data-github-upload', 'true');
+    button.setAttribute('data-testid', 'github-upload-button'); // Add a testid for easier querying
     button.className = [
       'rounded-md',
       'items-center',
@@ -186,6 +253,13 @@ export function injectUploadFeatures() {
         return;
       }
 
+      // Show confirmation dialog
+      const confirmed = await showGitHubConfirmation();
+      if (!confirmed) {
+        debug('GitHub upload cancelled by user');
+        return;
+      }
+
       isGitHubUpload = true;
       const downloadBtn = buttonContainer.querySelector('button:first-child') as HTMLButtonElement;
       if (downloadBtn) {
@@ -199,10 +273,13 @@ export function injectUploadFeatures() {
 
     updateButtonState(button);
 
-    const deployButton = buttonContainer.querySelector('button:last-child');
-    if (deployButton) {
-      deployButton.before(button);
-      debug('GitHub button inserted successfully');
+    // Only insert if a button doesn't already exist in this container
+    if (!buttonContainer.querySelector('[data-github-upload]')) {
+      const deployButton = buttonContainer.querySelector('button:last-child');
+      if (deployButton) {
+        deployButton.before(button);
+        debug('GitHub button inserted successfully');
+      }
     }
   };
 
@@ -278,17 +355,41 @@ export function injectUploadFeatures() {
   // Initial button injection
   insertButton();
 
-  // Watch for DOM changes
+  // Watch for DOM changes with a debounced check
+  let timeoutId: number | undefined;
   const observer = new MutationObserver(() => {
-    if (!document.querySelector('[data-github-upload]')) {
-      insertButton();
+    // Clear any existing timeout
+    if (timeoutId) {
+      clearTimeout(timeoutId);
     }
+
+    // Set a new timeout
+    timeoutId = window.setTimeout(() => {
+      const button = document.querySelector('[data-github-upload]');
+      const buttonContainer = document.querySelector('div.flex.grow-1.basis-60 div.flex.gap-2');
+      
+      // Only insert if there's no button but there is a container
+      if (!button && buttonContainer) {
+        insertButton();
+      }
+    }, 100); // Debounce for 100ms
   });
 
   observer.observe(document.body, {
     childList: true,
     subtree: true
   });
+
+  // Cleanup function for the observer and timeout
+  const cleanup = () => {
+    if (timeoutId) {
+      clearTimeout(timeoutId);
+    }
+    observer.disconnect();
+  };
+
+  // Cleanup on page unload
+  window.addEventListener('unload', cleanup);
 
   debug('Content script initialization complete');
 }
