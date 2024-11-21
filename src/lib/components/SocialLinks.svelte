@@ -28,9 +28,10 @@
   </Button>
   <Button
     variant="outline"
-    class="border-slate-800 hover:bg-slate-800 text-slate-200"
+    class="border-slate-800 hover:bg-slate-800 text-slate-200 flex items-center gap-2"
     on:click={() => openLink(COFFEE_LINK)}
   >
-    <span class="whitespace-nowrap"><Coffee class="w-4 h-4" />Buy me a coffee</span>
+    <Coffee class="w-4 h-4" />
+    <span class="whitespace-nowrap">Buy me a coffee</span>
   </Button>
 </div>
