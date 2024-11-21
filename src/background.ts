@@ -32,8 +32,10 @@ class BackgroundService {
         try {
           // Inject content script to get the blob data
           const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
+          console.log('👀 Active tab found:', tab);          
           if (!tab.id) throw new Error('No active tab found');
 
+          console.log('📡 Injecting content script...');          
           // Inject the content script to handle the blob URL
           await chrome.scripting.executeScript({
             target: { tabId: tab.id },
@@ -42,6 +44,8 @@ class BackgroundService {
                 const response = await fetch(blobUrl);
                 const blob = await response.blob();
                 const reader = new FileReader();
+
+                console.log('📡 Injected content script, waiting for blob data...');
                 
                 return new Promise((resolve, reject) => {
                   reader.onload = () => {
@@ -59,10 +63,14 @@ class BackgroundService {
             args: [downloadItem.url]
           });
 
+          console.log('📡 Content script injected, waiting for blob data...');
+
           // Listen for the blob data
           chrome.runtime.onMessage.addListener(async (message) => {
             if (message.type === 'BLOB_DATA') {
+              console.log('📨 Received blob data from content script');
               const blob = this.base64ToBlob(message.data);
+              console.log('🔄 Converted base64 to blob, size:', blob.size, 'bytes');
               await this.handleDownload(downloadItem, blob);
             }
           });
@@ -95,14 +103,21 @@ class BackgroundService {
 
   private async handleDownload(downloadItem: chrome.downloads.DownloadItem, blob: Blob) {
     try {
-      console.log('📥 Processing ZIP content');
+      console.log('📥 Processing ZIP content', {
+        filename: downloadItem.filename,
+        blobSize: blob.size,
+        downloadId: downloadItem.id
+      });
       
       // Process the ZIP file
       await this.processZipFile(blob);
       
       // Cancel the original download
       await chrome.downloads.cancel(downloadItem.id);
-      console.log('❌ Cancelled original download');
+      console.log('✅ Download handled successfully:', {
+        originalFilename: downloadItem.filename,
+        downloadId: downloadItem.id
+      });
     } catch (error) {
       throw new Error(`Failed to handle download: ${error instanceof Error ? error.message : 'Unknown error'}`);
     }
