@@ -1,4 +1,5 @@
 import { GitHubService } from './lib/github';
+import { injectUploadFeatures } from './services/buttonInjector';
 import { processZipFile } from './services/zipHandler';
 
 class BackgroundService {
@@ -38,90 +39,19 @@ class BackgroundService {
     chrome.tabs.onRemoved.addListener((tabId) => {
       this.activeUploadTabs.delete(tabId);
     });
-    // Listen for tab updates
     chrome.tabs.onUpdated.addListener(async (tabId, changeInfo, tab) => {
       if (changeInfo.status === 'complete' && tab.url?.includes('bolt.new')) {
-        console.log('📄 Bolt.new page detected, injecting interceptor...');
-
+        console.log('📄 Bolt.new page detected, injecting features...');
+    
         try {
           await chrome.scripting.executeScript({
             target: { tabId },
-            func: () => {
-              const debug = (msg: string) => {
-                console.log(`[Content Script] ${msg}`);
-                chrome.runtime.sendMessage({ type: 'DEBUG', message: msg });
-              };
-
-              debug('Content script starting initialization');
-
-              // Function to handle blob URL
-              const handleBlobUrl = async (blobUrl: string) => {
-                debug(`Processing blob URL: ${blobUrl}`);
-                try {
-                  const response = await fetch(blobUrl);
-                  if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
-
-                  const blob = await response.blob();
-                  debug(`Fetched blob, size: ${blob.size} bytes`);
-
-                  const reader = new FileReader();
-                  reader.onload = () => {
-                    const base64data = reader.result?.toString().split(',')[1];
-                    if (base64data) {
-                      debug('Converting blob to base64 and sending to background');
-                      chrome.runtime.sendMessage({
-                        type: 'ZIP_DATA',
-                        data: base64data
-                      }, (response) => {
-                        debug(`Background script response: ${JSON.stringify(response)}`);
-                      });
-                    }
-                  };
-                  reader.onerror = () => debug(`FileReader error: ${reader.error}`);
-                  reader.readAsDataURL(blob);
-                } catch (error) {
-                  debug(`Error processing blob: ${error}`);
-                }
-              };
-
-              // Intercept the download click
-              document.addEventListener('click', async (e) => {
-                const target = e.target as HTMLElement;
-                debug(`Click detected on element: ${target.tagName}`);
-
-                if (target instanceof HTMLElement) {
-                  debug(`Element attributes: ${Array.from(target.attributes)
-                    .map(attr => `${attr.name}="${attr.value}"`)
-                    .join(', ')}`);
-                }
-
-                // Find the closest download link or button
-                const downloadElement = target.closest('a[download], button[download]');
-                if (downloadElement) {
-                  debug('Download element found!');
-                  // Uncomment to prevent the default download behavior
-                  // e.preventDefault();
-                  // e.stopPropagation();
-
-                  // Look for visible or hidden download links
-                  const downloadLinks = document.querySelectorAll('a[download][href^="blob:"]');
-                  debug(`Found ${downloadLinks.length} download links`);
-
-                  for (const link of Array.from(downloadLinks)) {
-                    const blobUrl = (link as HTMLAnchorElement).href;
-                    debug(`Found blob URL: ${blobUrl}`);
-                    await handleBlobUrl(blobUrl);
-                  }
-                }
-              }, true);
-
-              debug('Content script initialization complete');
-            }
+            func: injectUploadFeatures
           });
-
-          console.log('✅ Interceptor injected into tab:', tabId);
+    
+          console.log('✅ Features injected into tab:', tabId);
         } catch (error) {
-          console.error('❌ Error injecting interceptor:', error);
+          console.error('❌ Error injecting features:', error);
         }
       }
     });
