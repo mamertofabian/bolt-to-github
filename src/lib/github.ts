@@ -30,7 +30,7 @@ export class GitHubService {
         if (!Array.isArray(data)) {
           sha = data.sha;
         }
-      } catch (error) {
+      } catch (error: unknown) {
         // File doesn't exist, which is fine
       }
 
@@ -44,8 +44,9 @@ export class GitHubService {
         branch,
         sha
       });
-    } catch (error) {
-      throw new Error(`Failed to push file: ${error.message}`);
+    } catch (error: unknown) {
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
+      throw new Error(`Failed to push file: ${errorMessage}`);
     }
   }
 }

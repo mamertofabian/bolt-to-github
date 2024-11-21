@@ -1,16 +1,17 @@
-import './polyfills';
-import JSZip from 'jszip';
-import { Octokit } from '@octokit/rest';
+import { ZipProcessor } from './lib/zip';
+import { GitHubService } from './lib/github';
 
 class BackgroundService {
-  private octokit: Octokit = new Octokit();
+  private githubService: GitHubService | null = null;
   
   constructor() {
     console.log('🚀 Background service initializing...');
     // Initialize with GitHub token from storage
     chrome.storage.sync.get(['githubToken'], (result) => {
       console.log('📦 Retrieved GitHub token from storage:', result.githubToken ? '✅ Token found' : '❌ No token');
-      this.octokit = new Octokit({ auth: result.githubToken });
+      if (result.githubToken) {
+        this.githubService = new GitHubService(result.githubToken);
+      }
     });
 
     this.initializeListeners();
@@ -35,8 +36,9 @@ class BackgroundService {
           // Cancel the original download
           chrome.downloads.cancel(downloadItem.id);
           console.log('❌ Cancelled original download');
-        } catch (error) {
-          console.error('❌ Error processing download:', error);
+        } catch (error: unknown) {
+          const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
+          console.error('❌ Error processing download:', errorMessage);
         }
       }
     });
@@ -44,9 +46,12 @@ class BackgroundService {
 
   private async processZipFile(blob: Blob) {
     try {
+      if (!this.githubService) {
+        throw new Error('GitHub service not initialized. Please set your GitHub token.');
+      }
+
       console.log('🗜️ Processing ZIP file...');
-      const zip = new JSZip();
-      const contents = await zip.loadAsync(blob);
+      const files = await ZipProcessor.processZipBlob(blob);
       console.log('📂 ZIP contents loaded successfully');
       
       // Get repository details from storage
@@ -58,71 +63,22 @@ class BackgroundService {
       console.log('📋 Repository details:', { repoOwner, repoName, branch });
 
       // Process each file in the ZIP
-      for (const [filename, file] of Object.entries(contents.files)) {
-        if (!file.dir) {
-          console.log(`📄 Processing file: ${filename}`);
-          const content = await file.async('text');
-          
-          // Push to GitHub
-          await this.pushToGitHub({
-            owner: repoOwner,
-            repo: repoName,
-            path: filename,
-            content: Buffer.from(content).toString('base64'),
-            branch,
-            message: `Add ${filename} from bolt.new`
-          });
-        }
-      }
-    } catch (error) {
-      console.error('Error processing ZIP:', error);
-    }
-  }
-
-  private async pushToGitHub({
-    owner,
-    repo,
-    path,
-    content,
-    branch,
-    message
-  }: {
-    owner: string;
-    repo: string;
-    path: string;
-    content: string;
-    branch: string;
-    message: string;
-  }) {
-    try {
-      // Check if file exists
-      let sha: string | undefined;
-      try {
-        const { data } = await this.octokit.repos.getContent({
-          owner,
-          repo,
-          path,
-          ref: branch
+      for (const [filename, content] of files.entries()) {
+        console.log(`📄 Processing file: ${filename}`);
+        
+        // Push to GitHub using the GitHub service
+        await this.githubService.pushFile({
+          owner: repoOwner,
+          repo: repoName,
+          path: filename,
+          content: btoa(content),
+          branch,
+          message: `Add ${filename} from bolt.new`
         });
-        if (!Array.isArray(data)) {
-          sha = data.sha;
-        }
-      } catch (error) {
-        // File doesn't exist, which is fine
       }
-
-      // Create or update file
-      await this.octokit.repos.createOrUpdateFileContents({
-        owner,
-        repo,
-        path,
-        message,
-        content,
-        branch,
-        sha
-      });
-    } catch (error) {
-      console.error('Error pushing to GitHub:', error);
+    } catch (error: unknown) {
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
+      console.error('Error processing ZIP:', errorMessage);
     }
   }
 }

@@ -21,9 +21,6 @@ export default defineConfig(({ mode }) => {
       hmr: {
         port: 5173
       }
-    },
-    optimizeDeps: {
-      include: ['jszip']
     }
   };
 });
