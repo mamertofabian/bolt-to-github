@@ -1,16 +1,34 @@
 <script lang="ts">
   import { AlertTriangle } from "lucide-svelte";
   import { Alert, AlertDescription, AlertTitle } from "$lib/components/ui/alert";
+  import { createEventDispatcher } from "svelte";
 
   export let isSettingsValid: boolean;
+  
+  const dispatch = createEventDispatcher<{
+    switchTab: string;
+  }>();
+  
+  function handleMissingConfigClick() {
+    if (!isSettingsValid) {
+      dispatch('switchTab', 'settings');
+    }
+  }
 </script>
 
 {#if !isSettingsValid}
-  <Alert variant="destructive" class="mb-4 border-red-900 bg-red-850">
+  <Alert 
+    variant="destructive" 
+    class="mb-4 border-red-900 bg-red-950 cursor-pointer hover:bg-red-900/50 transition-colors"
+    on:click={handleMissingConfigClick}
+    on:keydown={(e) => e.key === 'Enter' && handleMissingConfigClick()}
+    role="button"
+    tabindex={0}
+  >
     <AlertTriangle class="h-4 w-4" />
     <AlertTitle>Missing Configuration</AlertTitle>
     <AlertDescription class="text-slate-300">
-      Please configure your GitHub settings before using the extension.
+      Click here to configure your GitHub settings
     </AlertDescription>
   </Alert>
 {:else}

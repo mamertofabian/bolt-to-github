@@ -14,6 +14,7 @@
   import StatusAlert from "$lib/components/StatusAlert.svelte";
   import UploadProgress from "$lib/components/UploadProgress.svelte";
   import GitHubSettings from "$lib/components/GitHubSettings.svelte";
+  import NotBoltSite from "$lib/components/NotBoltSite.svelte";
 
   let githubToken = "";
   let repoOwner = "";
@@ -25,6 +26,8 @@
   let uploadMessage = "";
   let isSettingsValid = false;
   let activeTab: string = "home";
+  let currentUrl: string = '';
+  let isBoltSite: boolean = false;
 
   const AUTHOR = "AI-Driven Coder";
   const COMPANY = "Codefrost";
@@ -59,6 +62,12 @@
         uploadMessage = message.message || "";
       }
     });
+
+    const tabs = await chrome.tabs.query({ active: true, currentWindow: true });
+    if (tabs[0]?.url) {
+      currentUrl = tabs[0].url;
+      isBoltSite = currentUrl.includes('bolt.new');
+    }
   });
 
   function checkSettingsValidity() {
@@ -83,9 +92,18 @@
       console.error(error);
     }
   }
+
+  function handleTabChange(value: string) {
+    activeTab = value;
+  }
+
+  function handleSwitchTab(event: CustomEvent<string>) {
+    handleTabChange(event.detail);
+  }
 </script>
 <main class="w-[400px] p-4 bg-slate-950 text-slate-50">
-  <Tabs value={activeTab} onValueChange={(value) => (activeTab = value)} class="w-full">
+  {#if isBoltSite}
+  <Tabs value={activeTab} onValueChange={handleTabChange} class="w-full">
     <Header />
 
     <TabsContent value="home">
@@ -97,17 +115,17 @@
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <StatusAlert {isSettingsValid} />
+          <StatusAlert 
+            {isSettingsValid} 
+            on:switchTab={handleSwitchTab}
+          />
 
           <div class="mt-6 space-y-4">
             <SocialLinks {GITHUB_LINK} {YOUTUBE_LINK} {COFFEE_LINK} />
           </div>
         </CardContent>
-        <CardFooter class="text-xs text-slate-400 text-center">
-          Created by <a href={AUTHOR_SITE} target="_blank" class="text-slate-200 hover:text-slate-50">{AUTHOR}</a>
-        </CardFooter>
-        <CardFooter class="text-xs text-slate-400 text-center">
-          Powered by <a href={COMPANY_SITE} target="_blank" class="text-slate-200 hover:text-slate-50">{COMPANY}</a>
+        <CardFooter class="text-sm text-slate-400 justify-center">
+          Created by <a href={AUTHOR_SITE} target="_blank" class="text-slate-200 hover:text-slate-50">{AUTHOR}</a> of <a href={COMPANY_SITE} target="_blank" class="text-slate-200 hover:text-slate-50">{COMPANY}</a>
         </CardFooter>
       </Card>
 
@@ -136,7 +154,17 @@
         </CardContent>
       </Card>
     </TabsContent>
-  </Tabs>
+    </Tabs>
+  {:else}
+  <Card class="border-slate-800 bg-slate-900">
+    <CardContent>
+      <NotBoltSite {currentUrl} />
+    </CardContent>
+    <CardFooter class="text-sm text-slate-400 justify-center">
+      Created by <a href={AUTHOR_SITE} target="_blank" class="text-slate-200 hover:text-slate-50">{AUTHOR}</a> of <a href={COMPANY_SITE} target="_blank" class="text-slate-200 hover:text-slate-50">{COMPANY}</a>
+    </CardFooter>
+  </Card>
+  {/if}
 </main>
 
 <style>
