@@ -1,7 +1,10 @@
+console.log('🚀 Upload status content script loading...');
+
 class UploadStatusUI {
   private container: HTMLElement;
 
   constructor() {
+    console.log('🏗️ Initializing upload status UI...');
     this.container = this.createNotificationUI();
     this.initializeMessageListener();
     this.announceReady();
@@ -43,18 +46,23 @@ class UploadStatusUI {
 
     document.head.appendChild(style);
     document.body.appendChild(container);
-
+    console.log('📦 Notification UI created');
     return container;
   }
 
   private updateNotificationUI(status: string, progress: number, message: string) {
+    console.log('🔄 Updating notification:', { status, progress, message });
+    
     const notification = this.container.querySelector('.bolt-notification');
     const statusText = this.container.querySelector('.status-text');
     const progressBar = this.container.querySelector('.progress-bar');
     const progressPercent = this.container.querySelector('.progress-percent');
     const statusMessage = this.container.querySelector('.status-message');
 
-    if (!notification || !statusText || !progressBar || !progressPercent || !statusMessage) return;
+    if (!notification || !statusText || !progressBar || !progressPercent || !statusMessage) {
+      console.error('❌ Could not find UI elements');
+      return;
+    }
 
     // Show notification
     notification.classList.remove('hidden');
@@ -92,7 +100,9 @@ class UploadStatusUI {
   }
 
   private initializeMessageListener() {
+    console.log('👂 Initializing message listener...');
     chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
+      console.log('📨 Received message:', message);
       if (message.type === 'UPLOAD_STATUS') {
         this.updateNotificationUI(
           message.status,
@@ -101,22 +111,21 @@ class UploadStatusUI {
         );
         sendResponse({ received: true });
       }
-      return true; // Keep the message channel open for async response
+      return true;
     });
   }
 
   private async announceReady() {
-    // Announce that the content script is ready
     try {
-      await chrome.runtime.sendMessage({
-        type: 'CONTENT_SCRIPT_READY'
-      });
-      console.log('✅ Content script ready and registered with background service');
+      await chrome.runtime.sendMessage({ type: 'CONTENT_SCRIPT_READY' });
+      console.log('✅ Content script registered with background service');
     } catch (error) {
-      console.error('Failed to register content script:', error);
+      console.error('❌ Failed to register content script:', error);
     }
   }
 }
 
 // Initialize the UI
+console.log('🎬 Creating upload status UI instance...');
 const uploadStatus = new UploadStatusUI();
+console.log('✨ Upload status UI initialized');
