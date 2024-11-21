@@ -30,7 +30,7 @@ class BackgroundService {
     // Listen for download events from bolt.new
     chrome.downloads.onCreated.addListener(async (downloadItem) => {
       console.log('⬇️ Download detected:', downloadItem.url);
-      if (downloadItem.url.includes('bolt.new') && downloadItem.filename.endsWith('.zip')) {
+      if (downloadItem.url.includes('bolt.new')) {
         console.log('🎯 Bolt.new ZIP file detected, intercepting download...');
         try {
           await this.handleDownload(downloadItem);
@@ -77,18 +77,24 @@ class BackgroundService {
       ]);
       console.log('📋 Repository details:', { repoOwner, repoName, branch });
 
-      // Process each file in the ZIP
+      // Filter and process only files within the project folder
       for (const [filename, content] of files.entries()) {
-        console.log(`📄 Processing file: ${filename}`);
-        
-        await this.githubService.pushFile({
-          owner: repoOwner,
-          repo: repoName,
-          path: filename,
-          content: btoa(content),
-          branch,
-          message: `Add ${filename} from bolt.new`
-        });
+        // Only process files that are within the project folder
+        if (filename.startsWith('project/')) {
+          console.log(`📄 Processing file: ${filename}`);
+          
+          // Remove the 'project/' prefix from the filename
+          const githubPath = filename.replace(/^project\//, '');
+          
+          await this.githubService.pushFile({
+            owner: repoOwner,
+            repo: repoName,
+            path: githubPath,
+            content: btoa(content),
+            branch,
+            message: `Add ${githubPath} from bolt.new`
+          });
+        }
       }
     } catch (error) {
       throw new Error(`Failed to process ZIP: ${error instanceof Error ? error.message : 'Unknown error'}`);
