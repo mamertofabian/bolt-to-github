@@ -14,7 +14,8 @@ class UploadStatusUI {
     const container = document.createElement('div');
     container.id = 'bolt-upload-status';
     container.innerHTML = `
-      <div class="bolt-notification hidden fixed top-4 right-4 w-80 bg-gray-800/100 rounded-lg shadow-lg border border-gray-700 p-4 z-50">
+      <div class="bolt-notification hidden fixed top-4 right-4 w-80 bg-gray-800/100 rounded-lg shadow-lg border border-gray-700 p-4 z-50"
+         style="margin-top: 40px; margin-right: 10px; z-index: 10;">
         <div class="flex items-center justify-between mb-2">
           <span class="font-medium status-text text-gray-100">Uploading to GitHub...</span>
           <div class="flex items-center gap-2">
@@ -99,15 +100,15 @@ class UploadStatusUI {
 
     // Update status text and color
     if (status === 'uploading') {
-      statusText.textContent = 'Uploading to GitHub...';
+      statusText.textContent = 'Pushing to GitHub...';
       statusText.className = 'font-medium status-text text-gray-100';
       progressBar.className = 'progress-bar bg-blue-500 h-2.5 rounded-full transition-all duration-300';
     } else if (status === 'success') {
-      statusText.textContent = 'Upload Complete!';
+      statusText.textContent = 'Push Complete!';
       statusText.className = 'font-medium status-text text-green-400';
       progressBar.className = 'progress-bar bg-green-500 h-2.5 rounded-full transition-all duration-300';
     } else if (status === 'error') {
-      statusText.textContent = 'Upload Failed';
+      statusText.textContent = 'Push Failed';
       statusText.className = 'font-medium status-text text-red-400';
       progressBar.className = 'progress-bar bg-red-500 h-2.5 rounded-full transition-all duration-300';
     }

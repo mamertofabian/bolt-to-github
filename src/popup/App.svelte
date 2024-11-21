@@ -67,7 +67,7 @@
   }
 </script>
 
-<main class="p-4 max-w-md mx-auto">
+<main class="p-4 mx-auto">
   <h1 class="text-xl font-bold mb-4">Bolt File Processor Settings</h1>
   
   <!-- Settings Form -->
