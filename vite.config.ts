@@ -31,12 +31,6 @@ export default defineConfig(({ mode }) => {
         buffer: 'buffer/',
       },
     },
-    optimizeDeps: {
-      include: ['@octokit/rest'],
-      esbuildOptions: {
-        target: 'es2020'
-      }
-    },
     define: {
       global: 'globalThis',
       'process.env.NODE_ENV': JSON.stringify(mode),

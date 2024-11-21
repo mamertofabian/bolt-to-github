@@ -1,22 +1,34 @@
-import { Octokit } from '@octokit/rest';
-
-const createOctokit = (token: string) => {
-  try {
-    return new Octokit({ 
-      auth: token,
-      userAgent: 'bolt-zip-to-github-extension/1.0.0'
-    });
-  } catch (error) {
-    console.error('Failed to create Octokit instance:', error);
-    throw error;
-  }
-};
+interface GitHubFileResponse {
+  sha?: string;
+  content?: string;
+}
 
 export class GitHubService {
-  private octokit: Octokit;
+  private baseUrl = 'https://api.github.com';
+  private token: string;
 
   constructor(token: string) {
-    this.octokit = createOctokit(token);
+    this.token = token;
+  }
+
+  private async request(endpoint: string, options: RequestInit = {}) {
+    const url = `${this.baseUrl}${endpoint}`;
+    const response = await fetch(url, {
+      ...options,
+      headers: {
+        'Accept': 'application/vnd.github.v3+json',
+        'Authorization': `Bearer ${this.token}`,
+        'Content-Type': 'application/json',
+        ...options.headers,
+      },
+    });
+
+    if (!response.ok) {
+      const error = await response.text();
+      throw new Error(`GitHub API Error: ${response.status} ${error}`);
+    }
+
+    return response.json();
   }
 
   async pushFile(params: {
@@ -30,34 +42,33 @@ export class GitHubService {
     const { owner, repo, path, content, branch, message } = params;
     
     try {
-      // Check if file exists
+      // Try to get existing file
       let sha: string | undefined;
       try {
-        const { data } = await this.octokit.repos.getContent({
-          owner,
-          repo,
-          path,
-          ref: branch
-        });
-        
-        if ('sha' in data) {
-          sha = data.sha;
-        }
+        const response: GitHubFileResponse = await this.request(
+          `/repos/${owner}/${repo}/contents/${path}?ref=${branch}`
+        );
+        sha = response.sha;
       } catch (error) {
         // File doesn't exist, which is fine
         console.log('File does not exist yet, will create new');
       }
 
       // Create or update file
-      return await this.octokit.repos.createOrUpdateFileContents({
-        owner,
-        repo,
-        path,
+      const body = {
         message,
         content,
         branch,
         ...(sha ? { sha } : {})
-      });
+      };
+
+      return await this.request(
+        `/repos/${owner}/${repo}/contents/${path}`,
+        {
+          method: 'PUT',
+          body: JSON.stringify(body)
+        }
+      );
     } catch (error) {
       console.error('GitHub API Error:', error);
       throw new Error(`Failed to push file: ${error instanceof Error ? error.message : 'Unknown error'}`);
