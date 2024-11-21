@@ -148,7 +148,7 @@ class BackgroundService {
             const blob = new Blob([bytes], { type: 'application/zip' });
 
             if (!this.githubService) {
-                throw new Error('GitHub service is not initialized');
+              throw new Error('GitHub service is not initialized');
             }
             await processZipFile(blob, this.githubService, this.activeUploadTabs);
             console.log('✅ ZIP processing complete');
