@@ -42,10 +42,13 @@
   let isSettingsValid = false;
   let activeTab = "home";
 
-  const AUTHOR = "Your Name";
-  const GITHUB_LINK = "https://github.com/yourusername";
-  const YOUTUBE_LINK = "https://youtube.com/@yourchannel";
-  const COFFEE_LINK = "https://www.buymeacoffee.com/yourusername";
+  const AUTHOR = "AI-Driven Coder";
+  const COMPANY = "Codefrost";
+  const AUTHOR_SITE = "https://aidrivencoder.com";
+  const COMPANY_SITE = "https://codefrost.dev";
+  const GITHUB_LINK = "https://github.com/aidrivencoder";
+  const YOUTUBE_LINK = "https://youtube.com/@aidrivencoder";
+  const COFFEE_LINK = "https://www.buymeacoffee.com/aidrivencoder";
 
   onMount(async () => {
     // Load settings
@@ -154,7 +157,6 @@
                 on:click={() => openLink(GITHUB_LINK)}
               >
                 <GithubIcon class="w-4 h-4" />
-                GitHub
               </Button>
               <Button
                 variant="outline"
@@ -162,7 +164,6 @@
                 on:click={() => openLink(YOUTUBE_LINK)}
               >
                 <YoutubeIcon class="w-4 h-4" />
-                YouTube
               </Button>
               <Button
                 variant="outline"
@@ -175,8 +176,8 @@
             </div>
           </div>
         </CardContent>
-        <CardFooter class="text-sm text-gray-500 justify-center">
-          Created by {AUTHOR}
+        <CardFooter class="text-sm text-gray-500 text-center">
+          Created by <a href={AUTHOR_SITE} target="_blank">{AUTHOR}</a> Powered by <a href={COMPANY_SITE} target="_blank">{COMPANY}</a>
         </CardFooter>
       </Card>
 
