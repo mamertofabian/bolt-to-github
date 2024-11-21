@@ -1,10 +1,22 @@
 import { Octokit } from '@octokit/rest';
 
+const createOctokit = (token: string) => {
+  try {
+    return new Octokit({ 
+      auth: token,
+      userAgent: 'bolt-zip-to-github-extension/1.0.0'
+    });
+  } catch (error) {
+    console.error('Failed to create Octokit instance:', error);
+    throw error;
+  }
+};
+
 export class GitHubService {
   private octokit: Octokit;
 
   constructor(token: string) {
-    this.octokit = new Octokit({ auth: token });
+    this.octokit = createOctokit(token);
   }
 
   async pushFile(params: {
@@ -27,11 +39,13 @@ export class GitHubService {
           path,
           ref: branch
         });
-        if (!Array.isArray(data)) {
+        
+        if ('sha' in data) {
           sha = data.sha;
         }
-      } catch (error: unknown) {
+      } catch (error) {
         // File doesn't exist, which is fine
+        console.log('File does not exist yet, will create new');
       }
 
       // Create or update file
@@ -42,11 +56,11 @@ export class GitHubService {
         message,
         content,
         branch,
-        sha
+        ...(sha ? { sha } : {})
       });
-    } catch (error: unknown) {
-      const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
-      throw new Error(`Failed to push file: ${errorMessage}`);
+    } catch (error) {
+      console.error('GitHub API Error:', error);
+      throw new Error(`Failed to push file: ${error instanceof Error ? error.message : 'Unknown error'}`);
     }
   }
 }

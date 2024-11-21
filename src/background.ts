@@ -1,10 +1,5 @@
-// Declare global for TypeScript
-declare const global: any;
-
-// Polyfill global for service worker context
-if (typeof global === 'undefined' && typeof self !== 'undefined') {
-  (self as any).global = self;
-}
+// Import the polyfill first
+import "./utils/gb-polyfill";
 
 import { ZipProcessor } from './lib/zip';
 import { GitHubService } from './lib/github';
@@ -14,16 +9,21 @@ class BackgroundService {
   
   constructor() {
     console.log('🚀 Background service initializing...');
-    // Initialize with GitHub token from storage
-    chrome.storage.sync.get(['githubToken'], (result) => {
+    this.initializeGitHubService();
+    this.initializeListeners();
+    console.log('👂 Listeners initialized');
+  }
+
+  private async initializeGitHubService() {
+    try {
+      const result = await chrome.storage.sync.get(['githubToken']);
       console.log('📦 Retrieved GitHub token from storage:', result.githubToken ? '✅ Token found' : '❌ No token');
       if (result.githubToken) {
         this.githubService = new GitHubService(result.githubToken);
       }
-    });
-
-    this.initializeListeners();
-    console.log('👂 Listeners initialized');
+    } catch (error) {
+      console.error('Failed to initialize GitHub service:', error);
+    }
   }
 
   private initializeListeners() {
@@ -33,23 +33,30 @@ class BackgroundService {
       if (downloadItem.url.includes('bolt.new') && downloadItem.filename.endsWith('.zip')) {
         console.log('🎯 Bolt.new ZIP file detected, intercepting download...');
         try {
-          // Intercept the download
-          const response = await fetch(downloadItem.url);
-          const blob = await response.blob();
-          console.log('📥 Successfully fetched ZIP content');
-          
-          // Process the ZIP file
-          await this.processZipFile(blob);
-          
-          // Cancel the original download
-          chrome.downloads.cancel(downloadItem.id);
-          console.log('❌ Cancelled original download');
-        } catch (error: unknown) {
-          const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
-          console.error('❌ Error processing download:', errorMessage);
+          await this.handleDownload(downloadItem);
+        } catch (error) {
+          console.error('❌ Error processing download:', error);
         }
       }
     });
+  }
+
+  private async handleDownload(downloadItem: chrome.downloads.DownloadItem) {
+    try {
+      // Intercept the download
+      const response = await fetch(downloadItem.url);
+      const blob = await response.blob();
+      console.log('📥 Successfully fetched ZIP content');
+      
+      // Process the ZIP file
+      await this.processZipFile(blob);
+      
+      // Cancel the original download
+      await chrome.downloads.cancel(downloadItem.id);
+      console.log('❌ Cancelled original download');
+    } catch (error) {
+      throw new Error(`Failed to handle download: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    }
   }
 
   private async processZipFile(blob: Blob) {
@@ -74,7 +81,6 @@ class BackgroundService {
       for (const [filename, content] of files.entries()) {
         console.log(`📄 Processing file: ${filename}`);
         
-        // Push to GitHub using the GitHub service
         await this.githubService.pushFile({
           owner: repoOwner,
           repo: repoName,
@@ -84,9 +90,8 @@ class BackgroundService {
           message: `Add ${filename} from bolt.new`
         });
       }
-    } catch (error: unknown) {
-      const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
-      console.error('Error processing ZIP:', errorMessage);
+    } catch (error) {
+      throw new Error(`Failed to process ZIP: ${error instanceof Error ? error.message : 'Unknown error'}`);
     }
   }
 }
