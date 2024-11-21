@@ -1,3 +1,11 @@
+// Declare global for TypeScript
+declare const global: any;
+
+// Polyfill global for service worker context
+if (typeof global === 'undefined' && typeof self !== 'undefined') {
+  (self as any).global = self;
+}
+
 import { ZipProcessor } from './lib/zip';
 import { GitHubService } from './lib/github';
 
