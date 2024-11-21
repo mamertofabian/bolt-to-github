@@ -3,11 +3,11 @@
   "name": "Bolt Zip to GitHub",
   "version": "1.0",
   "permissions": [
-    "webRequest",
     "downloads",
     "storage",
     "scripting",
-    "activeTab"
+    "activeTab",
+    "tabs"
   ],
   "host_permissions": [
     "https://bolt.new/*",
@@ -19,5 +19,11 @@
   },
   "action": {
     "default_popup": "src/popup/index.html"
-  }
+  },
+  "content_scripts": [
+    {
+      "matches": ["https://bolt.new/*"],
+      "js": ["src/content/upload-status.ts"]
+    }
+  ]
 }

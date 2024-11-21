@@ -18,6 +18,7 @@ export default defineConfig(({ mode }) => {
       rollupOptions: {
         input: {
           background: resolve(__dirname, 'src/background.ts'),
+          uploadStatus: resolve(__dirname, 'src/content/upload-status.ts'),
         },
         output: {
           format: 'esm',
