@@ -4,7 +4,6 @@
     Card,
     CardContent,
     CardDescription,
-    CardFooter,
     CardHeader,
     CardTitle,
   } from "$lib/components/ui/card";
@@ -15,6 +14,8 @@
   import UploadProgress from "$lib/components/UploadProgress.svelte";
   import GitHubSettings from "$lib/components/GitHubSettings.svelte";
   import NotBoltSite from "$lib/components/NotBoltSite.svelte";
+  import { COFFEE_LINK, GITHUB_LINK, YOUTUBE_LINK } from "$lib/constants";
+  import Footer from "$lib/components/Footer.svelte";
 
   let githubToken = "";
   let repoOwner = "";
@@ -28,14 +29,6 @@
   let activeTab = "home";
   let currentUrl: string = '';
   let isBoltSite: boolean = false;
-
-  const AUTHOR = "AI-Driven Coder";
-  const COMPANY = "Codefrost";
-  const AUTHOR_SITE = "https://aidrivencoder.com";
-  const COMPANY_SITE = "https://codefrost.dev";
-  const GITHUB_LINK = "https://github.com/aidrivencoder";
-  const YOUTUBE_LINK = "https://youtube.com/@aidrivencoder";
-  const COFFEE_LINK = "https://www.buymeacoffee.com/aidrivencoder";
   
   onMount(async () => {
     // Add dark mode to the document
@@ -121,9 +114,7 @@
             <SocialLinks {GITHUB_LINK} {YOUTUBE_LINK} {COFFEE_LINK} />
           </div>
         </CardContent>
-        <CardFooter class="text-sm text-slate-400 justify-center">
-          Created by <a href={AUTHOR_SITE} target="_blank" class="text-slate-200 hover:text-slate-50">{AUTHOR}</a> of <a href={COMPANY_SITE} target="_blank" class="text-slate-200 hover:text-slate-50">{COMPANY}</a>
-        </CardFooter>
+        <Footer />
       </Card>
 
       <UploadProgress {uploadStatus} {uploadProgress} {uploadMessage} />
@@ -157,9 +148,7 @@
     <CardContent>
       <NotBoltSite {currentUrl} />
     </CardContent>
-    <CardFooter class="text-sm text-slate-400 justify-center">
-      Created by <a href={AUTHOR_SITE} target="_blank" class="text-slate-200 hover:text-slate-50">{AUTHOR}</a> of <a href={COMPANY_SITE} target="_blank" class="text-slate-200 hover:text-slate-50">{COMPANY}</a>
-    </CardFooter>
+    <Footer />
   </Card>
   {/if}
 </main>

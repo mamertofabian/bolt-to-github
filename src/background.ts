@@ -2,6 +2,13 @@ import { GitHubService } from './lib/github';
 import { injectUploadFeatures } from './services/buttonInjector';
 import { processZipFile } from './services/zipHandler';
 
+interface GitHubSettings {
+  githubToken: string;
+  repoOwner: string;
+  repoName: string;
+  branch: string;
+}
+
 class BackgroundService {
   private githubService: GitHubService | null = null;
   private activeUploadTabs: Set<number> = new Set();
@@ -10,19 +17,56 @@ class BackgroundService {
     console.log('🚀 Background service initializing...');
     this.initializeGitHubService();
     this.initializeListeners();
+    this.initializeStorageListener();
     console.log('👂 Listeners initialized');
   }
 
   private async initializeGitHubService() {
     try {
-      const result = await chrome.storage.sync.get(['githubToken']);
-      console.log('📦 Retrieved GitHub token from storage:', result.githubToken ? '✅ Token found' : '❌ No token');
-      if (result.githubToken) {
+      const result = await chrome.storage.sync.get([
+        'githubToken',
+        'repoOwner',
+        'repoName',
+        'branch'
+      ]);
+      
+      console.log('📦 Retrieved GitHub settings from storage');
+      
+      if (this.isValidSettings(result)) {
+        console.log('✅ Valid settings found, initializing GitHub service');
         this.githubService = new GitHubService(result.githubToken);
+      } else {
+        console.log('❌ Invalid or incomplete settings');
+        this.githubService = null;
       }
     } catch (error) {
       console.error('Failed to initialize GitHub service:', error);
+      this.githubService = null;
     }
+  }
+
+  private isValidSettings(settings: Partial<GitHubSettings>): settings is GitHubSettings {
+    return Boolean(
+      settings.githubToken &&
+      settings.repoOwner &&
+      settings.repoName &&
+      settings.branch
+    );
+  }
+
+  private initializeStorageListener() {
+    // Listen for changes to the storage
+    chrome.storage.onChanged.addListener((changes, namespace) => {
+      if (namespace === 'sync') {
+        const settingsChanged = ['githubToken', 'repoOwner', 'repoName', 'branch']
+          .some(key => key in changes);
+
+        if (settingsChanged) {
+          console.log('🔄 GitHub settings changed, reinitializing service...');
+          this.initializeGitHubService();
+        }
+      }
+    });
   }
 
   private initializeListeners() {
@@ -79,7 +123,7 @@ class BackgroundService {
             const blob = new Blob([bytes], { type: 'application/zip' });
 
             if (!this.githubService) {
-              throw new Error('GitHub service is not initialized');
+              throw new Error('GitHub service is not initialized. Please check your GitHub settings.');
             }
             await processZipFile(blob, this.githubService, this.activeUploadTabs);
             console.log('✅ ZIP processing complete');
