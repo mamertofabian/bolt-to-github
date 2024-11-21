@@ -6,6 +6,9 @@ export function injectUploadFeatures() {
 
   debug('Content script starting initialization');
 
+  // Flag to track GitHub upload
+  let isGitHubUpload = false;
+
   // Function to handle blob URL
   const handleBlobUrl = async (blobUrl: string) => {
     debug(`Processing blob URL: ${blobUrl}`);
@@ -76,10 +79,15 @@ export function injectUploadFeatures() {
 
     button.addEventListener('click', () => {
       debug('GitHub button clicked');
+      isGitHubUpload = true;
       const downloadBtn = buttonContainer.querySelector('button:first-child') as HTMLButtonElement;
       if (downloadBtn) {
         downloadBtn.click();
       }
+      // Reset the flag after a short delay
+      setTimeout(() => {
+        isGitHubUpload = false;
+      }, 1000);
     });
 
     const deployButton = buttonContainer.querySelector('button:last-child');
@@ -113,9 +121,26 @@ export function injectUploadFeatures() {
         const blobUrl = (link as HTMLAnchorElement).href;
         debug(`Found blob URL: ${blobUrl}`);
         await handleBlobUrl(blobUrl);
+
+        // If this is triggered by GitHub button, prevent the download
+        if (isGitHubUpload) {
+          debug('Preventing browser download for GitHub upload');
+          e.preventDefault();
+          e.stopPropagation();
+        }
       }
     }
   }, true); // Using capture phase
+
+  // Additional event listener to catch the actual download
+  document.addEventListener('click', (e) => {
+    const target = e.target as HTMLElement;
+    if (target.matches('a[download][href^="blob:"]') && isGitHubUpload) {
+      debug('Preventing direct download link click during GitHub upload');
+      e.preventDefault();
+      e.stopPropagation();
+    }
+  }, true);
 
   // Initial button injection
   insertButton();
