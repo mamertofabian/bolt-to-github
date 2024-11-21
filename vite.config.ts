@@ -1,7 +1,7 @@
 import { defineConfig } from 'vite';
 import { svelte } from '@sveltejs/vite-plugin-svelte';
 import { crx } from '@crxjs/vite-plugin';
-import manifest from './manifest.json';
+import manifest from './manifest.json' assert { type: 'json' };
 
 export default defineConfig({
   plugins: [
@@ -9,14 +9,8 @@ export default defineConfig({
     crx({ manifest }),
   ],
   build: {
-    rollupOptions: {
-      input: {
-        background: 'src/background.ts',
-        popup: 'src/popup/index.html',
-      },
-      output: {
-        entryFileNames: '[name].js',
-      },
-    },
-  },
+    target: 'esnext',
+    emptyOutDir: true,
+    minify: false,
+  }
 });

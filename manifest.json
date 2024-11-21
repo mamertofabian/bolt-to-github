@@ -12,9 +12,10 @@
       "https://bolt.new/*"
     ],
     "background": {
-      "service_worker": "background.ts"
+      "service_worker": "src/background.ts",
+      "type": "module"
     },
     "action": {
-      "default_popup": "popup.html"
+      "default_popup": "src/popup/index.html"
     }
-  }
+}

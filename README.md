@@ -1,4 +1,4 @@
-# Bolt File Processor - Chrome Extension
+# Bolt Zip to GitHub - Chrome Extension
 
 A Chrome extension that automatically captures ZIP file downloads from bolt.new, extracts them, and pushes the contents to a specified GitHub repository. Built with Svelte, TypeScript, and TailwindCSS.
 
