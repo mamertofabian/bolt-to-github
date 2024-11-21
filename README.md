@@ -9,7 +9,10 @@ A Chrome extension that automatically captures ZIP file downloads from bolt.new,
 - 🔄 Direct GitHub repository integration
 - 🔒 Secure credential storage
 - ⚡ Real-time processing status updates
-- 🎨 Clean, responsive UI with TailwindCSS
+- 🎨 Clean, responsive UI with shadcn-svelte components
+- 📱 Modern, accessible interface
+- 🔄 Upload progress tracking
+- 🎯 Custom upload status alerts
 
 ## Prerequisites
 
@@ -23,7 +26,7 @@ A Chrome extension that automatically captures ZIP file downloads from bolt.new,
 1. Clone the repository:
 
 ```bash
-git clone https://github.com/yourusername/bolt-zip-to-github.git
+git clone https://github.com/mamertofabian/bolt-zip-to-github.git
 cd bolt-zip-to-github
 ```
 
@@ -79,21 +82,41 @@ npm run build
 
 ```
 .
-├── manifest.json          # Chrome extension manifest
-├── package.json          # Project dependencies and scripts
+├── assets/                # Extension icons and assets
+│   └── icons/            # Extension icons in various sizes
 ├── src/
 │   ├── background.ts     # Extension background service
-│   ├── lib/             # Utility functions and services
+│   ├── content/          # Content scripts
+│   │   ├── upload-status.ts
+│   │   └── UploadStatus.svelte
+│   ├── lib/             # Core library and utilities
+│   │   ├── common.ts    # Common utilities
+│   │   ├── constants.ts # Application constants
 │   │   ├── github.ts    # GitHub API integration
-│   │   └── zip.ts       # ZIP file processing
+│   │   ├── utils.ts     # Utility functions
+│   │   ├── zip.ts       # ZIP file processing
+│   │   └── components/  # Reusable UI components
+│   │       ├── ui/      # shadcn-svelte UI components
+│   │       ├── Footer.svelte
+│   │       ├── GitHubSettings.svelte
+│   │       ├── Header.svelte
+│   │       ├── NotBoltSite.svelte
+│   │       ├── SocialLinks.svelte
+│   │       ├── StatusAlert.svelte
+│   │       └── UploadProgress.svelte
 │   ├── popup/           # Extension popup UI
 │   │   ├── App.svelte   # Main popup component
 │   │   ├── index.html   # Popup HTML template
 │   │   └── main.ts      # Popup entry point
+│   ├── services/        # Service modules
+│   │   ├── buttonInjector.ts
+│   │   └── zipHandler.ts
 │   ├── styles/          # Global styles
 │   └── types/           # TypeScript type definitions
-├── tailwind.config.js    # TailwindCSS configuration
-├── tsconfig.json         # TypeScript configuration
+├── manifest.json         # Chrome extension manifest
+├── package.json         # Project dependencies and scripts
+├── tailwind.config.js   # TailwindCSS configuration
+├── tsconfig.json        # TypeScript configuration
 └── vite.config.ts       # Vite build configuration
 ```
 
@@ -103,8 +126,8 @@ npm run build
 - [TypeScript](https://www.typescriptlang.org/) - Type safety
 - [Vite](https://vitejs.dev/) - Build tool
 - [TailwindCSS](https://tailwindcss.com/) - Styling
+- [shadcn-svelte](https://www.shadcn-svelte.com/) - UI components
 - [JSZip](https://stuk.github.io/jszip/) - ZIP file processing
-- [Octokit](https://github.com/octokit/rest.js/) - GitHub API client
 
 ## Security
 
@@ -148,9 +171,17 @@ This extension requires the following permissions:
 
 MIT License - see LICENSE file for details
 
-## Support
+## Support & Sponsorship
 
+### Report Issues
 For bugs or feature requests, please open an issue on the GitHub repository.
+
+### Support the Project
+If you find this extension helpful, you can support its development:
+
+[![Buy Me A Coffee](https://www.buymeacoffee.com/assets/img/custom_images/orange_img.png)](https://www.buymeacoffee.com/aidrivencoder)
+
+Your support helps maintain and improve this extension!
 
 ## FAQ
 
@@ -168,13 +199,11 @@ A: Currently, the extension processes all files in the ZIP. File filtering may b
 ### Common Issues
 
 1. **Extension not intercepting downloads**
-
    - Ensure you're on bolt.new
    - Check if the file is a ZIP
    - Verify permissions are enabled
 
 2. **GitHub push fails**
-
    - Verify your token has repo permissions
    - Check repository name and owner
    - Ensure branch exists
@@ -188,7 +217,6 @@ A: Currently, the extension processes all files in the ZIP. File filtering may b
 - [ ] File filtering options
 - [ ] Multiple repository support
 - [ ] Custom commit messages
-- [ ] Progress indicators
 - [ ] File preview before push
 - [ ] Custom file path mapping
 
@@ -197,3 +225,4 @@ A: Currently, the extension processes all files in the ZIP. File filtering may b
 - [Chrome Extension Documentation](https://developer.chrome.com/docs/extensions/)
 - [Svelte Documentation](https://svelte.dev/docs)
 - [GitHub API Documentation](https://docs.github.com/en/rest)
+- [shadcn-svelte](https://www.shadcn-svelte.com/)
