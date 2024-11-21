@@ -23,8 +23,8 @@ A Chrome extension that automatically captures ZIP file downloads from bolt.new,
 1. Clone the repository:
 
 ```bash
-git clone https://github.com/yourusername/bolt-file-processor.git
-cd bolt-file-processor
+git clone https://github.com/yourusername/bolt-zip-to-github.git
+cd bolt-zip-to-github
 ```
 
 2. Install dependencies:
