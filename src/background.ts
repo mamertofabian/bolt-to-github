@@ -1,8 +1,11 @@
+// Polyfill global for JSZip
+(self as any).global = self;
+
 import JSZip from 'jszip';
 import { Octokit } from '@octokit/rest';
 
 class BackgroundService {
-  private octokit: Octokit;
+  private octokit: Octokit = new Octokit();
   
   constructor() {
     console.log('🚀 Background service initializing...');
