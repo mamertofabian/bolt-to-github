@@ -1,0 +1,20 @@
+{
+    "manifest_version": 3,
+    "name": "Bolt Zip to GitHub",
+    "version": "1.0",
+    "permissions": [
+      "webRequest",
+      "downloads",
+      "storage",
+      "scripting"
+    ],
+    "host_permissions": [
+      "https://bolt.new/*"
+    ],
+    "background": {
+      "service_worker": "background.ts"
+    },
+    "action": {
+      "default_popup": "popup.html"
+    }
+  }
