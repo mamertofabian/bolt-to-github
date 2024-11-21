@@ -2,6 +2,8 @@ import { ZipProcessor } from './lib/zip';
 import { GitHubService } from './lib/github';
 
 class BackgroundService {
+  // Store active downloads to handle them when blob data arrives
+  private activeDownloads: Map<string, chrome.downloads.DownloadItem> = new Map();
   private githubService: GitHubService | null = null;
   
   constructor() {
@@ -10,7 +12,6 @@ class BackgroundService {
     this.initializeListeners();
     console.log('👂 Listeners initialized');
   }
-
   private async initializeGitHubService() {
     try {
       const result = await chrome.storage.sync.get(['githubToken']);
@@ -29,28 +30,40 @@ class BackgroundService {
       console.log('⬇️ Download detected:', downloadItem.url);
       if (downloadItem.url.includes('bolt.new')) {
         console.log('🎯 Bolt.new ZIP file detected, intercepting download...');
+        
+        // Store the download item with a unique identifier (download ID)
+        this.activeDownloads.set(downloadItem.id.toString(), downloadItem);
+        
         try {
-          // Inject content script to get the blob data
           const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
           console.log('👀 Active tab found:', tab);          
           if (!tab.id) throw new Error('No active tab found');
 
           console.log('📡 Injecting content script...');          
-          // Inject the content script to handle the blob URL
-          await chrome.scripting.executeScript({
+          
+          const results = await chrome.scripting.executeScript({
             target: { tabId: tab.id },
-            func: async (blobUrl) => {
+            func: async (blobUrl, downloadId) => {
               try {
-                const response = await fetch(blobUrl);
+                console.log('Content script executing, fetching:', blobUrl);
+                const response = await fetch(blobUrl.toString());
                 const blob = await response.blob();
                 const reader = new FileReader();
 
-                console.log('📡 Injected content script, waiting for blob data...');
-                
                 return new Promise((resolve, reject) => {
                   reader.onload = () => {
                     const base64Data = reader.result?.toString().split(',')[1];
-                    resolve(base64Data);
+                    if (!base64Data) {
+                      reject(new Error('Failed to read blob data'));
+                      return;
+                    }
+                    // Send message with download ID
+                    chrome.runtime.sendMessage({
+                      type: 'BLOB_DATA',
+                      downloadId: downloadId,
+                      data: base64Data
+                    });
+                    resolve('Blob data sent to background script');
                   };
                   reader.onerror = () => reject(reader.error);
                   reader.readAsDataURL(blob);
@@ -60,23 +73,58 @@ class BackgroundService {
                 throw error;
               }
             },
-            args: [downloadItem.url]
+            args: [downloadItem.url, downloadItem.id]
           });
 
-          console.log('📡 Content script injected, waiting for blob data...');
-
-          // Listen for the blob data
-          chrome.runtime.onMessage.addListener(async (message) => {
-            if (message.type === 'BLOB_DATA') {
-              console.log('📨 Received blob data from content script');
-              const blob = this.base64ToBlob(message.data);
-              console.log('🔄 Converted base64 to blob, size:', blob.size, 'bytes');
-              await this.handleDownload(downloadItem, blob);
-            }
-          });
+          console.log('📡 Content script executed with results:', results);
 
         } catch (error) {
           console.error('❌ Error processing download:', error);
+          // Clean up failed download
+          this.activeDownloads.delete(downloadItem.id.toString());
+        }
+      }
+    });
+
+    // Message listener for blob data
+    chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
+      if (message.type === 'BLOB_DATA' && message.downloadId) {
+        console.log('📨 Received blob data from content script for download:', message.downloadId);
+        
+        // Retrieve the download item
+        const downloadItem = this.activeDownloads.get(message.downloadId.toString());
+        
+        if (!downloadItem) {
+          console.error('❌ No matching download found for ID:', message.downloadId);
+          sendResponse({ success: false, error: 'Download not found' });
+          return true;
+        }
+
+        try {
+          const blob = this.base64ToBlob(message.data);
+          console.log('🔄 Converted base64 to blob, size:', blob.size, 'bytes');
+          
+          // Handle the download
+          this.handleDownload(downloadItem, blob)
+            .then(() => {
+              sendResponse({ success: true });
+              // Clean up completed download
+              this.activeDownloads.delete(message.downloadId.toString());
+            })
+            .catch(error => {
+              console.error('Error handling download:', error);
+              sendResponse({ success: false, error: error.message });
+              // Clean up failed download
+              this.activeDownloads.delete(message.downloadId.toString());
+            });
+          
+          return true; // Keep the message channel open
+        } catch (error) {
+          console.error('Error processing blob data:', error);
+          sendResponse({ success: false, error: error instanceof Error ? error.message : 'Unknown error' });
+          // Clean up failed download
+          this.activeDownloads.delete(message.downloadId.toString());
+          return true;
         }
       }
     });

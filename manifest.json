@@ -7,10 +7,12 @@
     "downloads",
     "storage",
     "scripting",
-    "activeTab",
-    "tabs"
+    "activeTab"
   ],
-  "host_permissions": ["https://bolt.new/*"],
+  "host_permissions": [
+    "https://bolt.new/*",
+    "blob:https://bolt.new/*"
+  ],
   "background": {
     "service_worker": "src/background.ts",
     "type": "module"
