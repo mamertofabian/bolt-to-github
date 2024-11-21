@@ -25,7 +25,7 @@
   let uploadStatus = "idle";
   let uploadMessage = "";
   let isSettingsValid = false;
-  let activeTab: string = "home";
+  let activeTab = "home";
   let currentUrl: string = '';
   let isBoltSite: boolean = false;
 
@@ -36,7 +36,7 @@
   const GITHUB_LINK = "https://github.com/aidrivencoder";
   const YOUTUBE_LINK = "https://youtube.com/@aidrivencoder";
   const COFFEE_LINK = "https://www.buymeacoffee.com/aidrivencoder";
-
+  
   onMount(async () => {
     // Add dark mode to the document
     document.documentElement.classList.add('dark');
@@ -93,17 +93,14 @@
     }
   }
 
-  function handleTabChange(value: string) {
-    activeTab = value;
-  }
-
   function handleSwitchTab(event: CustomEvent<string>) {
-    handleTabChange(event.detail);
+    activeTab = event.detail;
   }
 </script>
+
 <main class="w-[400px] p-4 bg-slate-950 text-slate-50">
   {#if isBoltSite}
-  <Tabs value={activeTab} onValueChange={handleTabChange} class="w-full">
+  <Tabs bind:value={activeTab} class="w-full">
     <Header />
 
     <TabsContent value="home">
