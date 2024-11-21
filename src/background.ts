@@ -1,6 +1,3 @@
-// Import the polyfill first
-import "./utils/gb-polyfill";
-
 import { ZipProcessor } from './lib/zip';
 import { GitHubService } from './lib/github';
 
@@ -33,7 +30,43 @@ class BackgroundService {
       if (downloadItem.url.includes('bolt.new')) {
         console.log('🎯 Bolt.new ZIP file detected, intercepting download...');
         try {
-          await this.handleDownload(downloadItem);
+          // Inject content script to get the blob data
+          const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
+          if (!tab.id) throw new Error('No active tab found');
+
+          // Inject the content script to handle the blob URL
+          await chrome.scripting.executeScript({
+            target: { tabId: tab.id },
+            func: async (blobUrl) => {
+              try {
+                const response = await fetch(blobUrl);
+                const blob = await response.blob();
+                const reader = new FileReader();
+                
+                return new Promise((resolve, reject) => {
+                  reader.onload = () => {
+                    const base64Data = reader.result?.toString().split(',')[1];
+                    resolve(base64Data);
+                  };
+                  reader.onerror = () => reject(reader.error);
+                  reader.readAsDataURL(blob);
+                });
+              } catch (error) {
+                console.error('Error in content script:', error);
+                throw error;
+              }
+            },
+            args: [downloadItem.url]
+          });
+
+          // Listen for the blob data
+          chrome.runtime.onMessage.addListener(async (message) => {
+            if (message.type === 'BLOB_DATA') {
+              const blob = this.base64ToBlob(message.data);
+              await this.handleDownload(downloadItem, blob);
+            }
+          });
+
         } catch (error) {
           console.error('❌ Error processing download:', error);
         }
@@ -41,12 +74,28 @@ class BackgroundService {
     });
   }
 
-  private async handleDownload(downloadItem: chrome.downloads.DownloadItem) {
+  private base64ToBlob(base64Data: string): Blob {
+    const byteCharacters = atob(base64Data);
+    const byteArrays = [];
+    
+    for (let offset = 0; offset < byteCharacters.length; offset += 512) {
+      const slice = byteCharacters.slice(offset, offset + 512);
+      const byteNumbers = new Array(slice.length);
+      
+      for (let i = 0; i < slice.length; i++) {
+        byteNumbers[i] = slice.charCodeAt(i);
+      }
+      
+      const byteArray = new Uint8Array(byteNumbers);
+      byteArrays.push(byteArray);
+    }
+    
+    return new Blob(byteArrays, { type: 'application/zip' });
+  }
+
+  private async handleDownload(downloadItem: chrome.downloads.DownloadItem, blob: Blob) {
     try {
-      // Intercept the download
-      const response = await fetch(downloadItem.url);
-      const blob = await response.blob();
-      console.log('📥 Successfully fetched ZIP content');
+      console.log('📥 Processing ZIP content');
       
       // Process the ZIP file
       await this.processZipFile(blob);
@@ -77,24 +126,18 @@ class BackgroundService {
       ]);
       console.log('📋 Repository details:', { repoOwner, repoName, branch });
 
-      // Filter and process only files within the project folder
+      // Process each file in the ZIP
       for (const [filename, content] of files.entries()) {
-        // Only process files that are within the project folder
-        if (filename.startsWith('project/')) {
-          console.log(`📄 Processing file: ${filename}`);
-          
-          // Remove the 'project/' prefix from the filename
-          const githubPath = filename.replace(/^project\//, '');
-          
-          await this.githubService.pushFile({
-            owner: repoOwner,
-            repo: repoName,
-            path: githubPath,
-            content: btoa(content),
-            branch,
-            message: `Add ${githubPath} from bolt.new`
-          });
-        }
+        console.log(`📄 Processing file: ${filename}`);
+        
+        await this.githubService.pushFile({
+          owner: repoOwner,
+          repo: repoName,
+          path: filename,
+          content: btoa(content),
+          branch,
+          message: `Add ${filename} from bolt.new`
+        });
       }
     } catch (error) {
       throw new Error(`Failed to process ZIP: ${error instanceof Error ? error.message : 'Unknown error'}`);
