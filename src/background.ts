@@ -1,6 +1,4 @@
-// Polyfill global for JSZip
-(self as any).global = self;
-
+import './polyfills';
 import JSZip from 'jszip';
 import { Octokit } from '@octokit/rest';
 

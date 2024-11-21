@@ -13,13 +13,7 @@ export default defineConfig(({ mode }) => {
       outDir: 'dist',
       emptyOutDir: true,
       minify: mode === 'production',
-      sourcemap: mode === 'development',
-      rollupOptions: {
-        output: {
-          format: 'es',
-          dir: 'dist'
-        }
-      }
+      sourcemap: mode === 'development'
     },
     server: {
       port: 5173,
@@ -27,6 +21,9 @@ export default defineConfig(({ mode }) => {
       hmr: {
         port: 5173
       }
+    },
+    optimizeDeps: {
+      include: ['jszip']
     }
   };
 });
