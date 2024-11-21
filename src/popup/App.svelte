@@ -35,6 +35,9 @@
   const COFFEE_LINK = "https://www.buymeacoffee.com/aidrivencoder";
 
   onMount(async () => {
+    // Add dark mode to the document
+    document.documentElement.classList.add('dark');
+
     const result = await chrome.storage.sync.get([
       "githubToken",
       "repoOwner",
@@ -81,15 +84,15 @@
     }
   }
 </script>
-<main class="w-[400px] p-4">
-  <Tabs value={activeTab} onValueChange={(value) => activeTab = value} class="w-full">
+<main class="w-[400px] p-4 bg-slate-950 text-slate-50">
+  <Tabs value={activeTab} onValueChange={(value) => (activeTab = value)} class="w-full">
     <Header />
 
     <TabsContent value="home">
-      <Card>
+      <Card class="border-slate-800 bg-slate-900">
         <CardHeader>
           <CardTitle>Bolt ZIP to GitHub</CardTitle>
-          <CardDescription>
+          <CardDescription class="text-slate-400">
             Upload and sync your Bolt projects directly to GitHub
           </CardDescription>
         </CardHeader>
@@ -100,8 +103,11 @@
             <SocialLinks {GITHUB_LINK} {YOUTUBE_LINK} {COFFEE_LINK} />
           </div>
         </CardContent>
-        <CardFooter class="text-sm text-gray-500 text-center">
-          Created by <a href={AUTHOR_SITE} target="_blank">{AUTHOR}</a> Powered by <a href={COMPANY_SITE} target="_blank">{COMPANY}</a>
+        <CardFooter class="text-xs text-slate-400 text-center">
+          Created by <a href={AUTHOR_SITE} target="_blank" class="text-slate-200 hover:text-slate-50">{AUTHOR}</a>
+        </CardFooter>
+        <CardFooter class="text-xs text-slate-400 text-center">
+          Powered by <a href={COMPANY_SITE} target="_blank" class="text-slate-200 hover:text-slate-50">{COMPANY}</a>
         </CardFooter>
       </Card>
 
@@ -109,10 +115,10 @@
     </TabsContent>
 
     <TabsContent value="settings">
-      <Card>
+      <Card class="border-slate-800 bg-slate-900">
         <CardHeader>
           <CardTitle>GitHub Settings</CardTitle>
-          <CardDescription>
+          <CardDescription class="text-slate-400">
             Configure your GitHub repository settings
           </CardDescription>
         </CardHeader>
