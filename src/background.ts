@@ -39,6 +39,7 @@ class BackgroundService {
     chrome.tabs.onRemoved.addListener((tabId) => {
       this.activeUploadTabs.delete(tabId);
     });
+    
     chrome.tabs.onUpdated.addListener(async (tabId, changeInfo, tab) => {
       if (changeInfo.status === 'complete' && tab.url?.includes('bolt.new')) {
         console.log('📄 Bolt.new page detected, injecting features...');

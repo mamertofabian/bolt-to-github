@@ -1,4 +1,4 @@
-export const injectUploadFeatures = () => {
+export function injectUploadFeatures() {
   const debug = (msg: string) => {
     console.log(`[Content Script] ${msg}`);
     chrome.runtime.sendMessage({ type: 'DEBUG', message: msg });
@@ -6,7 +6,7 @@ export const injectUploadFeatures = () => {
 
   debug('Starting GitHub upload features injection');
 
-  // Function to handle blob URL (reused from original code)
+  // Function to handle blob URL
   const handleBlobUrl = async (blobUrl: string) => {
     debug(`Processing blob URL: ${blobUrl}`);
     try {
@@ -33,6 +33,18 @@ export const injectUploadFeatures = () => {
       reader.readAsDataURL(blob);
     } catch (error) {
       debug(`Error processing blob: ${error}`);
+    }
+  };
+
+  // Function to process download elements
+  const processDownloadElements = () => {
+    const downloadLinks = document.querySelectorAll('a[download][href^="blob:"]');
+    debug(`Found ${downloadLinks.length} download links`);
+
+    for (const link of Array.from(downloadLinks)) {
+      const blobUrl = (link as HTMLAnchorElement).href;
+      debug(`Found blob URL: ${blobUrl}`);
+      handleBlobUrl(blobUrl);
     }
   };
 
@@ -75,9 +87,30 @@ export const injectUploadFeatures = () => {
     `;
 
     button.addEventListener('click', async () => {
+      debug('GitHub button clicked');
       const downloadBtn = buttonContainer.querySelector('button:first-child') as HTMLButtonElement;
       if (downloadBtn) {
         downloadBtn.click();
+        
+        // Try multiple times to find the download link
+        const maxAttempts = 10;
+        let attempts = 0;
+        
+        const checkForLink = () => {
+          if (attempts >= maxAttempts) return;
+          attempts++;
+          
+          const downloadLinks = document.querySelectorAll('a[download][href^="blob:"]');
+          if (downloadLinks.length > 0) {
+            processDownloadElements();
+          } else {
+            // Try again in 100ms
+            setTimeout(checkForLink, 100);
+          }
+        };
+
+        // Start checking
+        setTimeout(checkForLink, 100);
       }
     });
 
@@ -88,33 +121,32 @@ export const injectUploadFeatures = () => {
     }
   };
 
-  // Set up global click interceptor (from original code)
+  // Set up global click interceptor
   document.addEventListener('click', async (e) => {
     const target = e.target as HTMLElement;
-    debug(`Click detected on element: ${target.tagName}`);
-
-    if (target instanceof HTMLElement) {
-      debug(`Element attributes: ${Array.from(target.attributes)
-        .map(attr => `${attr.name}="${attr.value}"`)
-        .join(', ')}`);
-    }
-
-    // Find the closest download link or button
     const downloadElement = target.closest('a[download], button[download]');
     if (downloadElement) {
       debug('Download element found!');
       
-      // Wait a brief moment for any dynamic links to be created
-      setTimeout(async () => {
+      // Try multiple times to find the download link
+      const maxAttempts = 10;
+      let attempts = 0;
+      
+      const checkForLink = () => {
+        if (attempts >= maxAttempts) return;
+        attempts++;
+        
         const downloadLinks = document.querySelectorAll('a[download][href^="blob:"]');
-        debug(`Found ${downloadLinks.length} download links`);
-
-        for (const link of Array.from(downloadLinks)) {
-          const blobUrl = (link as HTMLAnchorElement).href;
-          debug(`Found blob URL: ${blobUrl}`);
-          await handleBlobUrl(blobUrl);
+        if (downloadLinks.length > 0) {
+          processDownloadElements();
+        } else {
+          // Try again in 100ms
+          setTimeout(checkForLink, 100);
         }
-      }, 100);
+      };
+
+      // Start checking
+      setTimeout(checkForLink, 100);
     }
   }, true);
 
@@ -122,9 +154,16 @@ export const injectUploadFeatures = () => {
   insertButton();
 
   // Watch for DOM changes
-  const observer = new MutationObserver(() => {
+  const observer = new MutationObserver((mutations) => {
+    // Check if we need to insert the button
     if (!document.querySelector('[data-github-upload]')) {
       insertButton();
+    }
+
+    // Check for any new download links
+    const downloadLinks = document.querySelectorAll('a[download][href^="blob:"]');
+    if (downloadLinks.length > 0) {
+      processDownloadElements();
     }
   });
 
@@ -132,10 +171,4 @@ export const injectUploadFeatures = () => {
     childList: true,
     subtree: true
   });
-
-  return () => {
-    observer.disconnect();
-    const button = document.querySelector('[data-github-upload]');
-    if (button) button.remove();
-  };
-};
+}
