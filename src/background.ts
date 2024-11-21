@@ -5,30 +5,37 @@ class BackgroundService {
   private octokit: Octokit;
   
   constructor() {
+    console.log('🚀 Background service initializing...');
     // Initialize with GitHub token from storage
     chrome.storage.sync.get(['githubToken'], (result) => {
+      console.log('📦 Retrieved GitHub token from storage:', result.githubToken ? '✅ Token found' : '❌ No token');
       this.octokit = new Octokit({ auth: result.githubToken });
     });
 
     this.initializeListeners();
+    console.log('👂 Listeners initialized');
   }
 
   private initializeListeners() {
     // Listen for download events from bolt.new
     chrome.downloads.onCreated.addListener(async (downloadItem) => {
+      console.log('⬇️ Download detected:', downloadItem.url);
       if (downloadItem.url.includes('bolt.new') && downloadItem.filename.endsWith('.zip')) {
+        console.log('🎯 Bolt.new ZIP file detected, intercepting download...');
         try {
           // Intercept the download
           const response = await fetch(downloadItem.url);
           const blob = await response.blob();
+          console.log('📥 Successfully fetched ZIP content');
           
           // Process the ZIP file
           await this.processZipFile(blob);
           
           // Cancel the original download
           chrome.downloads.cancel(downloadItem.id);
+          console.log('❌ Cancelled original download');
         } catch (error) {
-          console.error('Error processing download:', error);
+          console.error('❌ Error processing download:', error);
         }
       }
     });
@@ -36,8 +43,10 @@ class BackgroundService {
 
   private async processZipFile(blob: Blob) {
     try {
+      console.log('🗜️ Processing ZIP file...');
       const zip = new JSZip();
       const contents = await zip.loadAsync(blob);
+      console.log('📂 ZIP contents loaded successfully');
       
       // Get repository details from storage
       const { repoOwner, repoName, branch } = await chrome.storage.sync.get([
@@ -45,10 +54,12 @@ class BackgroundService {
         'repoName',
         'branch'
       ]);
+      console.log('📋 Repository details:', { repoOwner, repoName, branch });
 
       // Process each file in the ZIP
       for (const [filename, file] of Object.entries(contents.files)) {
         if (!file.dir) {
+          console.log(`📄 Processing file: ${filename}`);
           const content = await file.async('text');
           
           // Push to GitHub
