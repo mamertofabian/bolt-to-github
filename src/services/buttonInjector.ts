@@ -97,9 +97,13 @@ export function injectUploadFeatures() {
     }
   };
 
+  // Track the source of the click
+  let clickSource: HTMLElement | null = null;
+
   // Set up global click interceptor with capture phase
   document.addEventListener('click', async (e) => {
     const target = e.target as HTMLElement;
+    clickSource = target;
     debug(`Click detected on element: ${target.tagName}`);
 
     if (target instanceof HTMLElement) {
@@ -108,37 +112,47 @@ export function injectUploadFeatures() {
         .join(', ')}`);
     }
 
+    // Check if this is coming from the GitHub button
+    const isFromGitHubButton = target.closest('[data-github-upload]') !== null;
+    
     // Find the closest download link or button
     const downloadElement = target.closest('a[download], button[download]');
     if (downloadElement) {
       debug('Download element found!');
+      debug(`Click source: ${isFromGitHubButton ? 'GitHub Button' : 'Download Button'}`);
 
-      // Look for visible or hidden download links
-      const downloadLinks = document.querySelectorAll('a[download][href^="blob:"]');
-      debug(`Found ${downloadLinks.length} download links`);
+      // Only handle blobs for GitHub upload
+      if (isFromGitHubButton || isGitHubUpload) {
+        // Look for visible or hidden download links
+        const downloadLinks = document.querySelectorAll('a[download][href^="blob:"]');
+        debug(`Found ${downloadLinks.length} download links`);
 
-      for (const link of Array.from(downloadLinks)) {
-        const blobUrl = (link as HTMLAnchorElement).href;
-        debug(`Found blob URL: ${blobUrl}`);
-        await handleBlobUrl(blobUrl);
-
-        // If this is triggered by GitHub button, prevent the download
-        if (isGitHubUpload) {
-          debug('Preventing browser download for GitHub upload');
-          e.preventDefault();
-          e.stopPropagation();
+        for (const link of Array.from(downloadLinks)) {
+          const blobUrl = (link as HTMLAnchorElement).href;
+          debug(`Found blob URL: ${blobUrl}`);
+          await handleBlobUrl(blobUrl);
         }
+
+        // Prevent download only for GitHub upload
+        debug('Preventing browser download for GitHub upload');
+        e.preventDefault();
+        e.stopPropagation();
+      } else {
+        debug('Regular download, not intercepting');
       }
     }
-  }, true); // Using capture phase
+  }, true);
 
   // Additional event listener to catch the actual download
   document.addEventListener('click', (e) => {
     const target = e.target as HTMLElement;
-    if (target.matches('a[download][href^="blob:"]') && isGitHubUpload) {
-      debug('Preventing direct download link click during GitHub upload');
-      e.preventDefault();
-      e.stopPropagation();
+    if (target.matches('a[download][href^="blob:"]')) {
+      const isFromGitHubButton = clickSource?.closest('[data-github-upload]') !== null;
+      if (isFromGitHubButton || isGitHubUpload) {
+        debug('Preventing direct download link click during GitHub upload');
+        e.preventDefault();
+        e.stopPropagation();
+      }
     }
   }, true);
 
