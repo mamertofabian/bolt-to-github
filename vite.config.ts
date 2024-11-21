@@ -35,6 +35,7 @@ export default defineConfig(({ mode }) => {
     },
     resolve: {
       alias: {
+        '$lib': resolve(__dirname, './src/lib'),
         buffer: 'buffer/',
       },
     },

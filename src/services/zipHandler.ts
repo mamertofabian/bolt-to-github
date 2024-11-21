@@ -1,5 +1,5 @@
 import type { GitHubService } from "../lib/github";
-import { toBase64 } from "../lib/utils";
+import { toBase64 } from "../lib/common";
 import { ZipProcessor } from "../lib/zip";
 
 const updateStatus = async (status: 'uploading' | 'success' | 'error' | 'idle', progress: number = 0, message: string = '',
