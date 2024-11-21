@@ -11,7 +11,7 @@
   ],
   "host_permissions": [
     "https://bolt.new/*",
-    "blob:https://bolt.new/*"
+    "https://api.github.com/*"
   ],
   "background": {
     "service_worker": "src/background.ts",

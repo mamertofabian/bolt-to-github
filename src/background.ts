@@ -2,8 +2,6 @@ import { ZipProcessor } from './lib/zip';
 import { GitHubService } from './lib/github';
 
 class BackgroundService {
-  // Store active downloads to handle them when blob data arrives
-  private activeDownloads: Map<string, chrome.downloads.DownloadItem> = new Map();
   private githubService: GitHubService | null = null;
   
   constructor() {
@@ -12,6 +10,7 @@ class BackgroundService {
     this.initializeListeners();
     console.log('👂 Listeners initialized');
   }
+
   private async initializeGitHubService() {
     try {
       const result = await chrome.storage.sync.get(['githubToken']);
@@ -25,185 +24,165 @@ class BackgroundService {
   }
 
   private initializeListeners() {
-    // Listen for download events from bolt.new
-    chrome.downloads.onCreated.addListener(async (downloadItem) => {
-      console.log('⬇️ Download detected:', downloadItem.url);
-      if (downloadItem.url.includes('bolt.new')) {
-        console.log('🎯 Bolt.new ZIP file detected, intercepting download...');
-        
-        // Store the download item with a unique identifier (download ID)
-        this.activeDownloads.set(downloadItem.id.toString(), downloadItem);
+    // Listen for tab updates
+    chrome.tabs.onUpdated.addListener(async (tabId, changeInfo, tab) => {
+      if (changeInfo.status === 'complete' && tab.url?.includes('bolt.new')) {
+        console.log('📄 Bolt.new page detected, injecting interceptor...');
         
         try {
-          const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
-          console.log('👀 Active tab found:', tab);          
-          if (!tab.id) throw new Error('No active tab found');
+          await chrome.scripting.executeScript({
+            target: { tabId },
+            func: () => {
+              const debug = (msg: string) => {
+                console.log(`[Content Script] ${msg}`);
+                chrome.runtime.sendMessage({ type: 'DEBUG', message: msg });
+              };
 
-          console.log('📡 Injecting content script...');          
-          
-          const results = await chrome.scripting.executeScript({
-            target: { tabId: tab.id },
-            func: async (blobUrl, downloadId) => {
-              try {
-                console.log('Content script executing, fetching:', blobUrl);
-                const response = await fetch(blobUrl.toString());
-                const blob = await response.blob();
-                const reader = new FileReader();
+              debug('Content script starting initialization');
 
-                return new Promise((resolve, reject) => {
+              // Function to handle blob URL
+              const handleBlobUrl = async (blobUrl: string) => {
+                debug(`Processing blob URL: ${blobUrl}`);
+                try {
+                  const response = await fetch(blobUrl);
+                  if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+                  
+                  const blob = await response.blob();
+                  debug(`Fetched blob, size: ${blob.size} bytes`);
+                  
+                  const reader = new FileReader();
                   reader.onload = () => {
-                    const base64Data = reader.result?.toString().split(',')[1];
-                    if (!base64Data) {
-                      reject(new Error('Failed to read blob data'));
-                      return;
+                    const base64data = reader.result?.toString().split(',')[1];
+                    if (base64data) {
+                      debug('Converting blob to base64 and sending to background');
+                      chrome.runtime.sendMessage({
+                        type: 'ZIP_DATA',
+                        data: base64data
+                      }, (response) => {
+                        debug(`Background script response: ${JSON.stringify(response)}`);
+                      });
                     }
-                    // Send message with download ID
-                    chrome.runtime.sendMessage({
-                      type: 'BLOB_DATA',
-                      downloadId: downloadId,
-                      data: base64Data
-                    });
-                    resolve('Blob data sent to background script');
                   };
-                  reader.onerror = () => reject(reader.error);
+                  reader.onerror = () => debug(`FileReader error: ${reader.error}`);
                   reader.readAsDataURL(blob);
-                });
-              } catch (error) {
-                console.error('Error in content script:', error);
-                throw error;
-              }
-            },
-            args: [downloadItem.url, downloadItem.id]
+                } catch (error) {
+                  debug(`Error processing blob: ${error}`);
+                }
+              };
+
+              // Intercept the download click
+              document.addEventListener('click', async (e) => {
+                const target = e.target as HTMLElement;
+                debug(`Click detected on element: ${target.tagName}`);
+                
+                if (target instanceof HTMLElement) {
+                  debug(`Element attributes: ${Array.from(target.attributes)
+                    .map(attr => `${attr.name}="${attr.value}"`)
+                    .join(', ')}`);
+                }
+
+                // Find the closest download link or button
+                const downloadElement = target.closest('a[download], button[download]');
+                if (downloadElement) {
+                  debug('Download element found!');
+                  e.preventDefault();
+                  e.stopPropagation();
+
+                  // Look for visible or hidden download links
+                  const downloadLinks = document.querySelectorAll('a[download][href^="blob:"]');
+                  debug(`Found ${downloadLinks.length} download links`);
+
+                  for (const link of Array.from(downloadLinks)) {
+                    const blobUrl = (link as HTMLAnchorElement).href;
+                    debug(`Found blob URL: ${blobUrl}`);
+                    await handleBlobUrl(blobUrl);
+                  }
+                }
+              }, true);
+
+              debug('Content script initialization complete');
+            }
           });
-
-          console.log('📡 Content script executed with results:', results);
-
+          
+          console.log('✅ Interceptor injected into tab:', tabId);
         } catch (error) {
-          console.error('❌ Error processing download:', error);
-          // Clean up failed download
-          this.activeDownloads.delete(downloadItem.id.toString());
+          console.error('❌ Error injecting interceptor:', error);
         }
       }
     });
 
-    // Message listener for blob data
+    // Handle the ZIP data
     chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
-      if (message.type === 'BLOB_DATA' && message.downloadId) {
-        console.log('📨 Received blob data from content script for download:', message.downloadId);
+      if (message.type === 'DEBUG') {
+        console.log(`[Content Debug] ${message.message}`);
+        sendResponse({ received: true });
+        return true;
+      }
+      
+      if (message.type === 'ZIP_DATA' && message.data) {
+        console.log('📦 Received ZIP data, processing...');
         
-        // Retrieve the download item
-        const downloadItem = this.activeDownloads.get(message.downloadId.toString());
+        (async () => {
+          try {
+            // Convert base64 to blob
+            const binaryStr = atob(message.data);
+            const bytes = new Uint8Array(binaryStr.length);
+            for (let i = 0; i < binaryStr.length; i++) {
+              bytes[i] = binaryStr.charCodeAt(i);
+            }
+            const blob = new Blob([bytes], { type: 'application/zip' });
+            
+            // Process the ZIP file
+            await this.processZipFile(blob);
+            console.log('✅ ZIP processing complete');
+            
+            // Send success response back to content script
+            sendResponse({ success: true });
+          } catch (error) {
+            console.error('❌ Error processing ZIP:', error);
+            sendResponse({ success: false, error: error instanceof Error ? error.message : 'Unknown error' });
+          }
+        })();
         
-        if (!downloadItem) {
-          console.error('❌ No matching download found for ID:', message.downloadId);
-          sendResponse({ success: false, error: 'Download not found' });
-          return true;
-        }
-
-        try {
-          const blob = this.base64ToBlob(message.data);
-          console.log('🔄 Converted base64 to blob, size:', blob.size, 'bytes');
-          
-          // Handle the download
-          this.handleDownload(downloadItem, blob)
-            .then(() => {
-              sendResponse({ success: true });
-              // Clean up completed download
-              this.activeDownloads.delete(message.downloadId.toString());
-            })
-            .catch(error => {
-              console.error('Error handling download:', error);
-              sendResponse({ success: false, error: error.message });
-              // Clean up failed download
-              this.activeDownloads.delete(message.downloadId.toString());
-            });
-          
-          return true; // Keep the message channel open
-        } catch (error) {
-          console.error('Error processing blob data:', error);
-          sendResponse({ success: false, error: error instanceof Error ? error.message : 'Unknown error' });
-          // Clean up failed download
-          this.activeDownloads.delete(message.downloadId.toString());
-          return true;
-        }
+        return true; // Keep the message channel open
       }
     });
-  }
-
-  private base64ToBlob(base64Data: string): Blob {
-    const byteCharacters = atob(base64Data);
-    const byteArrays = [];
-    
-    for (let offset = 0; offset < byteCharacters.length; offset += 512) {
-      const slice = byteCharacters.slice(offset, offset + 512);
-      const byteNumbers = new Array(slice.length);
-      
-      for (let i = 0; i < slice.length; i++) {
-        byteNumbers[i] = slice.charCodeAt(i);
-      }
-      
-      const byteArray = new Uint8Array(byteNumbers);
-      byteArrays.push(byteArray);
-    }
-    
-    return new Blob(byteArrays, { type: 'application/zip' });
-  }
-
-  private async handleDownload(downloadItem: chrome.downloads.DownloadItem, blob: Blob) {
-    try {
-      console.log('📥 Processing ZIP content', {
-        filename: downloadItem.filename,
-        blobSize: blob.size,
-        downloadId: downloadItem.id
-      });
-      
-      // Process the ZIP file
-      await this.processZipFile(blob);
-      
-      // Cancel the original download
-      await chrome.downloads.cancel(downloadItem.id);
-      console.log('✅ Download handled successfully:', {
-        originalFilename: downloadItem.filename,
-        downloadId: downloadItem.id
-      });
-    } catch (error) {
-      throw new Error(`Failed to handle download: ${error instanceof Error ? error.message : 'Unknown error'}`);
-    }
   }
 
   private async processZipFile(blob: Blob) {
-    try {
-      if (!this.githubService) {
-        throw new Error('GitHub service not initialized. Please set your GitHub token.');
-      }
+    if (!this.githubService) {
+      throw new Error('GitHub service not initialized. Please set your GitHub token.');
+    }
 
-      console.log('🗜️ Processing ZIP file...');
-      const files = await ZipProcessor.processZipBlob(blob);
-      console.log('📂 ZIP contents loaded successfully');
+    console.log('🗜️ Processing ZIP file...');
+    const files = await ZipProcessor.processZipBlob(blob);
+    console.log('📂 ZIP contents:', Array.from(files.keys()));
+    
+    const { repoOwner, repoName, branch } = await chrome.storage.sync.get([
+      'repoOwner',
+      'repoName',
+      'branch'
+    ]);
+    
+    if (!repoOwner || !repoName) {
+      throw new Error('Repository details not configured');
+    }
+
+    console.log('📋 Repository details:', { repoOwner, repoName, branch });
+
+    for (const [filename, content] of files.entries()) {
+      console.log(`📄 Processing file: ${filename}`);
       
-      // Get repository details from storage
-      const { repoOwner, repoName, branch } = await chrome.storage.sync.get([
-        'repoOwner',
-        'repoName',
-        'branch'
-      ]);
-      console.log('📋 Repository details:', { repoOwner, repoName, branch });
-
-      // Process each file in the ZIP
-      for (const [filename, content] of files.entries()) {
-        console.log(`📄 Processing file: ${filename}`);
-        
-        await this.githubService.pushFile({
-          owner: repoOwner,
-          repo: repoName,
-          path: filename,
-          content: btoa(content),
-          branch,
-          message: `Add ${filename} from bolt.new`
-        });
-      }
-    } catch (error) {
-      throw new Error(`Failed to process ZIP: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      await this.githubService.pushFile({
+        owner: repoOwner,
+        repo: repoName,
+        path: filename,
+        content: btoa(content),
+        branch: branch || 'main',
+        message: `Add ${filename} from bolt.new`
+      });
+      
+      console.log(`✅ File pushed: ${filename}`);
     }
   }
 }
