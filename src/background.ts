@@ -153,16 +153,11 @@ class BackgroundService {
    * Safely converts a string to base64, handling Unicode characters
    */
 private toBase64(str: string): string {
-  // Convert string to UTF-8 bytes
   const utf8Bytes = new TextEncoder().encode(str);
-  
-  // Convert bytes to binary string
   let binaryString = '';
   utf8Bytes.forEach(byte => {
     binaryString += String.fromCharCode(byte);
   });
-  
-  // Use btoa on the binary string
   return btoa(binaryString);
 }
 
@@ -185,74 +180,87 @@ private async processZipFile(blob: Blob) {
     throw new Error('Repository details not configured');
   }
 
-  console.log('📋 Repository details:', { repoOwner, repoName, branch });
+  const targetBranch = branch || 'main';
+  console.log('📋 Repository details:', { repoOwner, repoName, targetBranch });
 
-  // Filter and process files
+  // Process files
   const processedFiles = new Map<string, string>();
-  
   for (const [path, content] of files.entries()) {
-    // Skip directory entries
-    if (path.endsWith('/')) {
-      console.log(`📁 Skipping directory entry: ${path}`);
+    if (path.endsWith('/') || !content.trim()) {
+      console.log(`📁 Skipping entry: ${path}`);
       continue;
     }
 
-    // Remove the 'project/' prefix
     const normalizedPath = path.startsWith('project/') ? path.slice(8) : path;
-    
-    // Skip empty files
-    if (!content.trim()) {
-      console.log(`⚠️ Skipping empty file: ${normalizedPath}`);
-      continue;
-    }
-
     processedFiles.set(normalizedPath, content);
   }
 
   console.log('📦 Processed files to upload:', Array.from(processedFiles.keys()));
 
-  // Upload files to GitHub
-  for (const [filename, content] of processedFiles.entries()) {
-    try {
-      console.log(`📄 Uploading file: ${filename}`);
-      
-      try {
-        // Use Unicode-safe base64 encoding
-        const base64Content = this.toBase64(content);
-        
-        await this.githubService.pushFile({
-          owner: repoOwner,
-          repo: repoName,
-          path: filename,
-          content: base64Content,
-          branch: branch || 'main',
-          message: `Add ${filename} from bolt.new`
+  try {
+    // Get the current commit SHA
+    const baseRef = await this.githubService.request('GET', `/repos/${repoOwner}/${repoName}/git/refs/heads/${targetBranch}`);
+    const baseSha = baseRef.object.sha;
+    
+    // Get the base tree
+    const baseCommit = await this.githubService.request('GET', `/repos/${repoOwner}/${repoName}/git/commits/${baseSha}`);
+    const baseTreeSha = baseCommit.tree.sha;
+
+    console.log('🌳 Creating tree based on:', { baseSha, baseTreeSha });
+
+    // Create blobs for all files
+    const treeItems = await Promise.all(
+      Array.from(processedFiles.entries()).map(async ([path, content]) => {
+        const blobData = await this.githubService!.request('POST', `/repos/${repoOwner}/${repoName}/git/blobs`, {
+          content: this.toBase64(content),
+          encoding: 'base64'
         });
-        
-        console.log(`✅ Successfully uploaded: ${filename}`);
-      } catch (error) {
-        if (error instanceof Error) {
-          console.error(`❌ Error encoding/uploading ${filename}:`, error.message);
-          console.log('📝 File content preview:', content.slice(0, 100) + '...');
-        }
-        throw error;
-      }
-    } catch (error) {
-      console.error(`❌ Failed to upload ${filename}:`, error);
-      throw new Error(`Failed to push file: ${error instanceof Error ? error.message : 'Unknown error'}`);
-    }
-  }
 
-  console.log('🎉 All files processed and uploaded successfully');
+        return {
+          path,
+          mode: '100644', // Regular file
+          type: 'blob',
+          sha: blobData.sha
+        };
+      })
+    );
 
-  // Show success notification
-  if (chrome.notifications) {
-    chrome.notifications.create({
-      type: 'basic',
-      iconUrl: 'icon48.png',
-      title: 'Upload Complete',
-      message: `Successfully uploaded ${processedFiles.size} files to GitHub`
+    console.log(`🗂️ Created ${treeItems.length} blobs`);
+
+    // Create a new tree
+    const newTree = await this.githubService.request('POST', `/repos/${repoOwner}/${repoName}/git/trees`, {
+      base_tree: baseTreeSha,
+      tree: treeItems
     });
+
+    // Create a new commit
+    const newCommit = await this.githubService.request('POST', `/repos/${repoOwner}/${repoName}/git/commits`, {
+      message: `Add/update files from bolt.new\n\nUploaded ${treeItems.length} files`,
+      tree: newTree.sha,
+      parents: [baseSha]
+    });
+
+    // Update the reference
+    await this.githubService.request('PATCH', `/repos/${repoOwner}/${repoName}/git/refs/heads/${targetBranch}`, {
+      sha: newCommit.sha,
+      force: false
+    });
+
+    console.log('🎉 Successfully uploaded all files in a single commit');
+
+    // Show success notification
+    if (chrome.notifications) {
+      chrome.notifications.create({
+        type: 'basic',
+        iconUrl: 'icon48.png',
+        title: 'Upload Complete',
+        message: `Successfully uploaded ${processedFiles.size} files to GitHub in a single commit`
+      });
+    }
+
+  } catch (error) {
+    console.error('❌ Error uploading files:', error);
+    throw new Error(`Failed to upload files: ${error instanceof Error ? error.message : 'Unknown error'}`);
   }
 }
 }

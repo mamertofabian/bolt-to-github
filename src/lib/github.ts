@@ -11,9 +11,11 @@ export class GitHubService {
     this.token = token;
   }
 
-  private async request(endpoint: string, options: RequestInit = {}) {
+  async request(method: string, endpoint: string, body?: any, options: RequestInit = {}) {
     const url = `${this.baseUrl}${endpoint}`;
+
     const response = await fetch(url, {
+      method,
       ...options,
       headers: {
         'Accept': 'application/vnd.github.v3+json',
@@ -21,10 +23,11 @@ export class GitHubService {
         'Content-Type': 'application/json',
         ...options.headers,
       },
+      body: body ? JSON.stringify(body) : undefined,
     });
 
     if (!response.ok) {
-      const error = await response.text();
+      const error = await response.json();
       throw new Error(`GitHub API Error: ${response.status} ${error}`);
     }
 
@@ -45,7 +48,7 @@ export class GitHubService {
       // Try to get existing file
       let sha: string | undefined;
       try {
-        const response: GitHubFileResponse = await this.request(
+        const response: GitHubFileResponse = await this.request('GET', 
           `/repos/${owner}/${repo}/contents/${path}?ref=${branch}`
         );
         sha = response.sha;
@@ -63,11 +66,9 @@ export class GitHubService {
       };
 
       return await this.request(
+        'PUT',
         `/repos/${owner}/${repo}/contents/${path}`,
-        {
-          method: 'PUT',
-          body: JSON.stringify(body)
-        }
+        body
       );
     } catch (error) {
       console.error('GitHub API Error:', error);
