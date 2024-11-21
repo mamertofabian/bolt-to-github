@@ -3,11 +3,17 @@ import { svelte } from '@sveltejs/vite-plugin-svelte';
 import { crx } from '@crxjs/vite-plugin';
 import manifest from './manifest.json' assert { type: 'json' };
 import { resolve } from 'path';
+import preprocess from 'svelte-preprocess';
 
 export default defineConfig(({ mode }) => {
   return {
     plugins: [
-      svelte(),
+      svelte({
+        preprocess: preprocess(),
+        compilerOptions: {
+          dev: mode === 'development'
+        }
+      }),
       crx({ manifest }),
     ],
     build: {
