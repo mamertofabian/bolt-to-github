@@ -8,6 +8,100 @@ export function injectUploadFeatures() {
 
   // Flag to track GitHub upload
   let isGitHubUpload = false;
+  let isSettingsValid = false;
+
+  // Check GitHub settings validity
+  const checkGitHubSettings = async () => {
+    const settings = await chrome.storage.sync.get([
+      'githubToken',
+      'repoOwner',
+      'repoName',
+      'branch'
+    ]);
+    
+    isSettingsValid = Boolean(
+      settings.githubToken &&
+      settings.repoOwner &&
+      settings.repoName &&
+      settings.branch
+    );
+    
+    // Update button state if it exists
+    const button = document.querySelector('[data-github-upload]') as HTMLButtonElement;
+    if (button) {
+      updateButtonState(button);
+    }
+    
+    return isSettingsValid;
+  };
+
+  // Function to update button appearance based on settings validity
+  const updateButtonState = (button: HTMLButtonElement) => {
+    if (isSettingsValid) {
+      button.classList.remove('opacity-60');
+      button.title = 'Upload to GitHub';
+    } else {
+      button.classList.add('opacity-60');
+      button.title = 'GitHub settings not configured. Click to configure.';
+    }
+  };
+
+  // Function to show settings notification
+  const showSettingsNotification = () => {
+    // Create notification element
+    const notification = document.createElement('div');
+    notification.className = [
+      'fixed',
+      'top-4',
+      'right-4',
+      'p-4',
+      'bg-red-500',
+      'text-white',
+      'rounded-md',
+      'shadow-lg',
+      'z-50',
+      'flex',
+      'items-center',
+      'gap-2',
+      'text-sm'
+    ].join(' ');
+    
+    notification.innerHTML = `
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+        <circle cx="12" cy="12" r="10"></circle>
+        <line x1="12" y1="8" x2="12" y2="12"></line>
+        <line x1="12" y1="16" x2="12.01" y2="16"></line>
+      </svg>
+      <span>
+        Please configure your GitHub settings first. 
+        <button class="underline ml-1 hover:text-white/80">Open Settings</button>
+      </span>
+    `;
+
+    // Add click handler for settings button
+    const settingsButton = notification.querySelector('button');
+    settingsButton?.addEventListener('click', () => {
+      chrome.runtime.sendMessage({ type: 'OPEN_SETTINGS' });
+      document.body.removeChild(notification);
+    });
+
+    // Add close button
+    const closeButton = document.createElement('button');
+    closeButton.className = 'ml-2 hover:text-white/80';
+    closeButton.innerHTML = '×';
+    closeButton.addEventListener('click', () => {
+      document.body.removeChild(notification);
+    });
+    notification.appendChild(closeButton);
+
+    // Add to body and remove after 5 seconds
+    document.body.appendChild(notification);
+    setTimeout(() => {
+      if (document.body.contains(notification)) {
+        document.body.removeChild(notification);
+      }
+    }, 5000);
+  };
 
   // Function to handle blob URL
   const handleBlobUrl = async (blobUrl: string) => {
@@ -29,6 +123,9 @@ export function injectUploadFeatures() {
             data: base64data
           }, (response) => {
             debug(`Background script response: ${JSON.stringify(response)}`);
+            if (response?.error) {
+              showSettingsNotification();
+            }
           });
         }
       };
@@ -40,7 +137,7 @@ export function injectUploadFeatures() {
   };
 
   // Insert GitHub button
-  const insertButton = () => {
+  const insertButton = async () => {
     const buttonContainer = document.querySelector('div.flex.grow-1.basis-60 div.flex.gap-2');
     if (!buttonContainer) {
       debug('❌ Button container not found');
@@ -50,6 +147,8 @@ export function injectUploadFeatures() {
     if (document.querySelector('[data-github-upload]')) {
       return;
     }
+
+    await checkGitHubSettings();
 
     const button = document.createElement('button');
     button.setAttribute('data-github-upload', 'true');
@@ -61,13 +160,13 @@ export function injectUploadFeatures() {
       'px-3',
       'py-1.25',
       'disabled:cursor-not-allowed',
-      'disabled:opacity-60',
       'text-xs',
       'bg-bolt-elements-button-secondary-background',
       'text-bolt-elements-button-secondary-text',
       'enabled:hover:bg-bolt-elements-button-secondary-backgroundHover',
       'flex',
-      'gap-1.7'
+      'gap-1.7',
+      'transition-opacity'
     ].join(' ');
 
     button.innerHTML = `
@@ -77,8 +176,16 @@ export function injectUploadFeatures() {
       GitHub
     `;
 
-    button.addEventListener('click', () => {
+    button.addEventListener('click', async () => {
       debug('GitHub button clicked');
+      
+      // Check settings before proceeding
+      const valid = await checkGitHubSettings();
+      if (!valid) {
+        showSettingsNotification();
+        return;
+      }
+
       isGitHubUpload = true;
       const downloadBtn = buttonContainer.querySelector('button:first-child') as HTMLButtonElement;
       if (downloadBtn) {
@@ -89,6 +196,8 @@ export function injectUploadFeatures() {
         isGitHubUpload = false;
       }, 1000);
     });
+
+    updateButtonState(button);
 
     const deployButton = buttonContainer.querySelector('button:last-child');
     if (deployButton) {
@@ -155,6 +264,16 @@ export function injectUploadFeatures() {
       }
     }
   }, true);
+
+  // Listen for storage changes to update button state
+  chrome.storage.onChanged.addListener((changes) => {
+    const settingsChanged = ['githubToken', 'repoOwner', 'repoName', 'branch']
+      .some(key => key in changes);
+    
+    if (settingsChanged) {
+      checkGitHubSettings();
+    }
+  });
 
   // Initial button injection
   insertButton();

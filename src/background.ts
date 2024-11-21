@@ -70,39 +70,21 @@ class BackgroundService {
   }
 
   private initializeListeners() {
-    // Listen for content script ready messages
+    // Listen for content script ready messages and other types of messages
     chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
       if (message.type === 'CONTENT_SCRIPT_READY' && sender.tab?.id) {
         console.log('📝 Content script ready in tab:', sender.tab.id);
         this.activeUploadTabs.add(sender.tab.id);
         sendResponse({ received: true });
       }
-    });
 
-    // Clean up when tabs are closed
-    chrome.tabs.onRemoved.addListener((tabId) => {
-      this.activeUploadTabs.delete(tabId);
-    });
-    
-    chrome.tabs.onUpdated.addListener(async (tabId, changeInfo, tab) => {
-      if (changeInfo.status === 'complete' && tab.url?.includes('bolt.new')) {
-        console.log('📄 Bolt.new page detected, injecting features...');
-    
-        try {
-          await chrome.scripting.executeScript({
-            target: { tabId },
-            func: injectUploadFeatures
-          });
-    
-          console.log('✅ Features injected into tab:', tabId);
-        } catch (error) {
-          console.error('❌ Error injecting features:', error);
-        }
+      // Handle settings popup open request
+      if (message.type === 'OPEN_SETTINGS') {
+        console.log('📝 Opening settings popup');
+        chrome.action.openPopup();
+        sendResponse({ received: true });
       }
-    });
 
-    // Handle the ZIP data
-    chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
       if (message.type === 'DEBUG') {
         console.log(`[Content Debug] ${message.message}`);
         sendResponse({ received: true });
@@ -137,6 +119,28 @@ class BackgroundService {
         })();
 
         return true; // Keep the message channel open
+      }
+    });
+
+    // Clean up when tabs are closed
+    chrome.tabs.onRemoved.addListener((tabId) => {
+      this.activeUploadTabs.delete(tabId);
+    });
+    
+    chrome.tabs.onUpdated.addListener(async (tabId, changeInfo, tab) => {
+      if (changeInfo.status === 'complete' && tab.url?.includes('bolt.new')) {
+        console.log('📄 Bolt.new page detected, injecting features...');
+    
+        try {
+          await chrome.scripting.executeScript({
+            target: { tabId },
+            func: injectUploadFeatures
+          });
+    
+          console.log('✅ Features injected into tab:', tabId);
+        } catch (error) {
+          console.error('❌ Error injecting features:', error);
+        }
       }
     });
   }
