@@ -7,6 +7,7 @@
   let status: StatusType = 'uploading';
   let progress = 0;
   let statusMessage = '';
+  let messageListener: ((message: any, sender: any, sendResponse: any) => boolean) | null = null;
 
   onMount(() => {
     console.log('🏗️ Initializing upload status UI...');
@@ -15,7 +16,10 @@
 
     // Clean up listener on component destruction
     return () => {
-      chrome.runtime.onMessage.removeListener(handleMessage);
+      if (messageListener) {
+        chrome.runtime.onMessage.removeListener(messageListener);
+        messageListener = null;
+      }
     };
   });
 
@@ -28,13 +32,21 @@
         message.message || ''
       );
       sendResponse({ received: true });
+      return true;
     }
-    return true;
+    return false;
   }
 
   function initializeMessageListener() {
     console.log('👂 Initializing message listener...');
-    chrome.runtime.onMessage.addListener(handleMessage);
+    // Remove existing listener if any
+    if (messageListener) {
+      chrome.runtime.onMessage.removeListener(messageListener);
+    }
+    
+    // Create new listener
+    messageListener = handleMessage;
+    chrome.runtime.onMessage.addListener(messageListener);
   }
 
   async function announceReady() {
@@ -49,21 +61,36 @@
   function updateNotificationUI(newStatus: StatusType, newProgress: number, message: string) {
     console.log('🔄 Updating notification:', { newStatus, newProgress, message });
     
-    status = newStatus;
-    progress = newProgress;
-    statusMessage = message;
-    notificationVisible = true;
+    // Update state in a single tick to ensure smooth UI updates
+    Promise.resolve().then(() => {
+      status = newStatus;
+      progress = newProgress;
+      statusMessage = message;
+      notificationVisible = true;
 
-    // Hide notification after success or error
-    if (newStatus === 'success' || newStatus === 'error') {
-      setTimeout(() => {
-        notificationVisible = false;
-      }, 5000);
-    }
+      // Reset progress to 0 when hiding the notification
+      if (newStatus === 'success' || newStatus === 'error') {
+        setTimeout(() => {
+          notificationVisible = false;
+          // Reset state after animation completes
+          setTimeout(() => {
+            progress = 0;
+            statusMessage = '';
+            status = 'uploading';
+          }, 300); // Match the CSS transition duration
+        }, 5000);
+      }
+    });
   }
 
   function closeNotification() {
     notificationVisible = false;
+    // Reset state after animation completes
+    setTimeout(() => {
+      progress = 0;
+      statusMessage = '';
+      status = 'uploading';
+    }, 300); // Match the CSS transition duration
   }
 </script>
 
