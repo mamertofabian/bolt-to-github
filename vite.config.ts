@@ -5,6 +5,24 @@ import manifest from './manifest.json' assert { type: 'json' };
 import { resolve } from 'path';
 import preprocess from 'svelte-preprocess';
 
+// Update manifest with asset paths
+const manifestWithAssets = {
+  ...manifest,
+  icons: {
+    "16": "assets/icons/icon16.png",
+    "48": "assets/icons/icon48.png",
+    "128": "assets/icons/icon128.png"
+  },
+  action: {
+    ...manifest.action,
+    default_icon: {
+      "16": "assets/icons/icon16.png",
+      "48": "assets/icons/icon48.png",
+      "128": "assets/icons/icon128.png"
+    }
+  }
+};
+
 export default defineConfig(({ mode }) => {
   return {
     plugins: [
@@ -14,7 +32,7 @@ export default defineConfig(({ mode }) => {
           dev: mode === 'development'
         }
       }),
-      crx({ manifest }),
+      crx({ manifest: manifestWithAssets }),
     ],
     build: {
       outDir: 'dist',
@@ -30,6 +48,12 @@ export default defineConfig(({ mode }) => {
           format: 'esm',
           entryFileNames: '[name].js',
           chunkFileNames: 'assets/[name]-[hash].js',
+          assetFileNames: (assetInfo) => {
+            if (assetInfo.name?.includes('assets/')) {
+              return '[name][extname]';
+            }
+            return 'assets/[name]-[hash][extname]';
+          },
         }
       }
     },
@@ -49,6 +73,7 @@ export default defineConfig(({ mode }) => {
       hmr: {
         port: 5173
       }
-    }
+    },
+    publicDir: 'assets'
   };
 });
