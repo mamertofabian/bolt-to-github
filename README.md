@@ -82,8 +82,8 @@ If you want to modify the extension or contribute to its development:
 
 2. Clone and install:
    ```bash
-   git clone https://github.com/mamertofabian/bolt-zip-to-github.git
-   cd bolt-zip-to-github
+   git clone https://github.com/mamertofabian/bolt-to-github.git
+   cd bolt-to-github
    npm install
    ```
 
