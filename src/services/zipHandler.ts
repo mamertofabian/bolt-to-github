@@ -68,6 +68,10 @@ export const processZipFile = async (blob: Blob, githubService: GitHubService, a
         const targetBranch = branch || 'main';
         console.log('📋 Repository details:', { repoOwner, repoName, targetBranch });
 
+        // Ensure repository exists
+        await updateStatus('uploading', 15, 'Checking repository...', activeTabs);
+        await githubService.ensureRepoExists(repoOwner, repoName);
+
         // Process files
         const processedFiles = new Map<string, string>();
         for (const [path, content] of files.entries()) {
