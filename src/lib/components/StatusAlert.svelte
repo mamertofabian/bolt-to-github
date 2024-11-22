@@ -32,11 +32,11 @@
   >
     <Alert
       variant="destructive"
-      class="mb-4 border-red-900 bg-red-950 hover:bg-red-900/50 transition-colors"
+      class="mb-4 border-red-900 bg-red-900/20 hover:bg-red-900/30 transition-colors"
     >
-      <AlertTriangle class="h-4 w-4" />
-      <AlertTitle>Missing Configuration</AlertTitle>
-      <AlertDescription class="text-slate-300">
+      <AlertTriangle class="h-4 w-4 text-red-400" />
+      <AlertTitle class="text-red-200">Missing Configuration</AlertTitle>
+      <AlertDescription class="text-red-100">
         Click here to configure your GitHub settings
       </AlertDescription>
     </Alert>

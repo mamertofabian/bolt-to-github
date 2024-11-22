@@ -28,7 +28,7 @@
   </Button>
   <Button
     variant="outline"
-    class="border-slate-800 hover:bg-slate-800 text-slate-200 flex items-center gap-2"
+    class="border-yellow-600/50 hover:bg-yellow-600/10 text-yellow-600 flex items-center gap-2"
     on:click={() => openLink(COFFEE_LINK)}
   >
     <Coffee class="w-4 h-4" />
