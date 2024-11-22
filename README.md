@@ -1,5 +1,23 @@
 # Bolt to GitHub - Chrome Extension
 
+<div align="center">
+  <a href="https://aidrivencoder.com">
+    <img src="assets/icons/icon128.png" alt="AI-Driven Coder" width="128">
+  </a>
+  <h3>A project by <a href="https://aidrivencoder.com">AI-Driven Coder</a></h3>
+  <p>
+    <!-- <a href="https://chrome.google.com/webstore/detail/[your-extension-id]">
+      <img src="https://img.shields.io/chrome-web-store/v/[your-extension-id]" alt="Chrome Web Store">
+    </a> -->
+    <a href="https://github.com/mamertofabian/bolt-to-github/blob/main/LICENSE">
+      <img src="https://img.shields.io/github/license/mamertofabian/bolt-to-github" alt="License">
+    </a>
+    <a href="https://youtube.com/@aidrivencoder">
+      <img src="https://img.shields.io/badge/YouTube-Subscribe-red" alt="YouTube">
+    </a>
+  </p>
+</div>
+
 A Chrome extension that automatically captures ZIP file downloads from bolt.new, extracts them, and pushes the contents to a specified GitHub repository. Built with Svelte, TypeScript, and TailwindCSS.
 
 ## Features
@@ -14,69 +32,75 @@ A Chrome extension that automatically captures ZIP file downloads from bolt.new,
 - 🔄 Upload progress tracking
 - 🎯 Custom upload status alerts
 
-## Prerequisites
+## Supported Browsers
 
-- Node.js (v16 or later)
-- npm or yarn
-- Chrome browser
-- GitHub account with a personal access token
+- Chrome
+- Brave
 
 ## Installation
 
-1. Clone the repository:
+### 👉 For Users
+Get started in just 3 simple steps:
 
-```bash
-git clone https://github.com/mamertofabian/bolt-to-github.git
-cd bolt-to-github
-```
+1. **Install from Chrome Web Store**
+   - Visit our [Chrome Web Store page](https://chrome.google.com/webstore/detail/[your-extension-id])
+   - Click "Add to Chrome"
+   - Click "Add extension" when prompted
 
-2. Install dependencies:
-
-```bash
-npm install
-```
-
-3. Build the extension:
-
-```bash
-npm run build
-```
-
-4. Load the extension in Chrome:
-   - Open Chrome and navigate to `chrome://extensions/`
-   - Enable "Developer mode" in the top right
-   - Click "Load unpacked"
-   - Select the `dist` directory from your project folder
-
-## Development
-
-Start the development server with hot reload:
-
-```bash
-npm run watch
-```
-
-Run type checking:
-
-```bash
-npm run check
-```
-
-Build for production:
-
-```bash
-npm run build
-```
-
-## Configuration
-
-1. Click the extension icon in Chrome
-2. Enter your GitHub credentials:
-   - Personal Access Token (needs repo permissions)
+2. **Configure the Extension**
+   - Make sure you are on bolt.new
+   - Click the extension icon in your Chrome toolbar
+   - Enter your GitHub token (needs repo permissions)
    - Repository Owner
    - Repository Name
    - Branch Name (defaults to 'main')
-3. Click "Save Settings"
+   - Save your settings and you're ready to go!
+
+3. **Load your Bolt.new Project**
+   - Click on the GitHub button in the Bolt.new project page at the top right
+   - Confirm the popup that appears
+   - Done!
+
+### 🚨 New to GitHub?
+
+Follow these steps to get started:
+
+1. [Create a GitHub account](https://github.com/join)
+2. [Generate a personal access token](https://github.com/settings/tokens/new?scopes=repo&description=Bolt%20to%20GitHub) (needs repo permissions)
+3. [Create a new repository](https://github.com/new)
+
+Need help? Watch our [Quick Start Video Tutorial](https://youtube.com/@aidrivencoder)
+
+### 🛠️ For Developers (Contributing)
+If you want to modify the extension or contribute to its development:
+
+1. Set up your development environment:
+   ```bash
+   # Make sure you have Node.js v16 or later installed
+   node --version
+   ```
+
+2. Clone and install:
+   ```bash
+   git clone https://github.com/mamertofabian/bolt-zip-to-github.git
+   cd bolt-zip-to-github
+   npm install
+   ```
+
+3. Build for development:
+   ```bash
+   npm run watch   # For development with hot reload
+   # OR
+   npm run build  # For production build
+   ```
+
+4. Load in Chrome:
+   - Open Chrome and go to `chrome://extensions/`
+   - Enable "Developer mode" (top right)
+   - Click "Load unpacked"
+   - Select the `dist` directory from your project folder
+
+See our [Contributing Guide](#contributing) for more details.
 
 ## Project Structure
 
@@ -127,13 +151,35 @@ npm run build
 - [Vite](https://vitejs.dev/) - Build tool
 - [TailwindCSS](https://tailwindcss.com/) - Styling
 - [shadcn-svelte](https://www.shadcn-svelte.com/) - UI components
-- [JSZip](https://stuk.github.io/jszip/) - ZIP file processing
+- [fflate](https://github.com/101arrowz/fflate) - Zip file processing
 
 ## Security
 
 - GitHub tokens are stored securely using Chrome's storage API
 - All communication with GitHub uses HTTPS
 - ZIP file processing happens entirely in the browser
+
+## Support & Resources
+
+### Documentation & Tutorials
+- 📺 [Watch our video tutorials](https://youtube.com/@aidrivencoder)
+- 📖 [Read the documentation](https://github.com/mamertofabian/bolt-to-github)
+- 💡 [Get development tips](https://aidrivencoder.com)
+
+### Professional Support
+- 📊 [Book a consultation](https://calendly.com/mamerto/30min)
+- 📧 [Email support](mailto:mamerto@codefrost.com)
+- 💻 [Custom development inquiries](https://codefrost.com)
+
+### Report Issues
+For bugs or feature requests, please [open an issue](https://github.com/mamertofabian/bolt-to-github/issues) on the GitHub repository.
+
+### Support the Project
+If you find this extension helpful, you can support its development:
+
+[![Buy Me A Coffee](https://www.buymeacoffee.com/assets/img/custom_images/orange_img.png)](https://www.buymeacoffee.com/aidrivencoder)
+
+Your support helps maintain and improve this extension!
 
 ## Contributing
 
@@ -158,18 +204,9 @@ git push origin feature/my-new-feature
 
 5. Create a Pull Request
 
-## Permissions
-
-This extension requires the following permissions:
-
-- `webRequest`: To intercept downloads
-- `downloads`: To manage downloads
-- `storage`: To store settings
-- `scripting`: To interact with bolt.new
-
 ## License
 
-MIT License - see LICENSE file for details
+MIT License - see [LICENSE](LICENSE) file for details
 
 ## Support & Sponsorship
 
@@ -182,6 +219,15 @@ If you find this extension helpful, you can support its development:
 [![Buy Me A Coffee](https://www.buymeacoffee.com/assets/img/custom_images/orange_img.png)](https://www.buymeacoffee.com/aidrivencoder)
 
 Your support helps maintain and improve this extension!
+
+## Permissions
+
+This extension requires the following permissions:
+
+- `webRequest`: To intercept downloads
+- `downloads`: To manage downloads
+- `storage`: To store settings
+- `scripting`: To interact with bolt.new
 
 ## FAQ
 
@@ -226,3 +272,18 @@ A: Currently, the extension processes all files in the ZIP. File filtering may b
 - [Svelte Documentation](https://svelte.dev/docs)
 - [GitHub API Documentation](https://docs.github.com/en/rest)
 - [shadcn-svelte](https://www.shadcn-svelte.com/)
+
+---
+
+<div align="center">
+  <p>
+    Created by <a href="https://aidrivencoder.com">AI-Driven Coder</a> | 
+    Powered by <a href="https://codefrost.com">Codefrost</a> |
+    Maintained by <a href="https://github.com/mamertofabian">Mamerto Fabian</a>
+  </p>
+  <p>
+    <a href="https://youtube.com/@aidrivencoder">YouTube</a> •
+    <a href="https://aidrivencoder.com">Website</a> •
+    <a href="https://github.com/aidrivencoder">GitHub</a>
+  </p>
+</div>
