@@ -208,18 +208,6 @@ git push origin feature/my-new-feature
 
 MIT License - see [LICENSE](LICENSE) file for details
 
-## Support & Sponsorship
-
-### Report Issues
-For bugs or feature requests, please open an issue on the GitHub repository.
-
-### Support the Project
-If you find this extension helpful, you can support its development:
-
-[![Buy Me A Coffee](https://www.buymeacoffee.com/assets/img/custom_images/orange_img.png)](https://www.buymeacoffee.com/aidrivencoder)
-
-Your support helps maintain and improve this extension!
-
 ## Permissions
 
 This extension requires the following permissions:
@@ -260,11 +248,8 @@ A: Currently, the extension processes all files in the ZIP. File filtering may b
 
 ## Future Enhancements
 
-- [ ] File filtering options
 - [ ] Multiple repository support
 - [ ] Custom commit messages
-- [ ] File preview before push
-- [ ] Custom file path mapping
 
 ## Acknowledgments
 
