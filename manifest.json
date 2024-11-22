@@ -16,8 +16,7 @@
     "tabs"
   ],
   "host_permissions": [
-    "https://bolt.new/*",
-    "https://api.github.com/*"
+    "https://api.github.com/repos/*"
   ],
   "background": {
     "service_worker": "src/background.ts",
