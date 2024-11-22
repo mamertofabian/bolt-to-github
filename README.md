@@ -43,7 +43,7 @@ A Chrome extension that automatically captures ZIP file downloads from bolt.new,
 Get started in just 3 simple steps:
 
 1. **Install from Chrome Web Store**
-   - Visit our [Chrome Web Store page](https://chrome.google.com/webstore/detail/[your-extension-id])
+   - Visit our [Chrome Web Store page](https://chrome.google.com/webstore/detail/pikdepbilbnnpgdkdaaoeekgflljmame)
    - Click "Add to Chrome"
    - Click "Add extension" when prompted
 
