@@ -3,6 +3,7 @@
 
 node_modules/
 /dist/
+dist*.zip
 /.svelte-kit/
 .DS_Store
 *.log

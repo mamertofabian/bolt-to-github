@@ -6,9 +6,9 @@
   </a>
   <h3>A project by <a href="https://aidrivencoder.com">AI-Driven Coder</a></h3>
   <p>
-    <!-- <a href="https://chrome.google.com/webstore/detail/[your-extension-id]">
-      <img src="https://img.shields.io/chrome-web-store/v/[your-extension-id]" alt="Chrome Web Store">
-    </a> -->
+    <a href="https://chrome.google.com/webstore/detail/pikdepbilbnnpgdkdaaoeekgflljmame">
+      <img src="https://img.shields.io/chrome-web-store/v/pikdepbilbnnpgdkdaaoeekgflljmame" alt="Chrome Web Store">
+    </a>
     <a href="https://github.com/mamertofabian/bolt-to-github/blob/main/LICENSE">
       <img src="https://img.shields.io/github/license/mamertofabian/bolt-to-github" alt="License">
     </a>

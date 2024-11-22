@@ -91,7 +91,7 @@
   }
 </script>
 
-<main class="w-[400px] p-4 bg-slate-950 text-slate-50">
+<main class="w-[400px] min-h-[400px] p-4 bg-slate-950 text-slate-50">
   {#if isBoltSite}
   <Tabs bind:value={activeTab} class="w-full">
     <Header />
