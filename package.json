@@ -1,5 +1,5 @@
 {
-  "name": "bolt-zip-to-github",
+  "name": "bolt-to-github",
   "version": "1.0.0",
   "type": "module",
   "scripts": {

@@ -101,7 +101,7 @@
         <CardHeader>
           <CardTitle class="flex items-center gap-2">
             <img src="/assets/icons/icon48.png" alt="Bolt ZIP" class="w-5 h-5" />
-            Bolt ZIP to GitHub
+            Bolt to GitHub
           </CardTitle>
           <CardDescription class="text-slate-400">
             Upload and sync your Bolt projects directly to GitHub

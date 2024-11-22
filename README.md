@@ -1,4 +1,4 @@
-# Bolt Zip to GitHub - Chrome Extension
+# Bolt to GitHub - Chrome Extension
 
 A Chrome extension that automatically captures ZIP file downloads from bolt.new, extracts them, and pushes the contents to a specified GitHub repository. Built with Svelte, TypeScript, and TailwindCSS.
 
@@ -26,8 +26,8 @@ A Chrome extension that automatically captures ZIP file downloads from bolt.new,
 1. Clone the repository:
 
 ```bash
-git clone https://github.com/mamertofabian/bolt-zip-to-github.git
-cd bolt-zip-to-github
+git clone https://github.com/mamertofabian/bolt-to-github.git
+cd bolt-to-github
 ```
 
 2. Install dependencies:
