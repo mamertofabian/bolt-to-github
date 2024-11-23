@@ -40,6 +40,9 @@ A Chrome extension that automatically captures ZIP file downloads from bolt.new,
 ## Installation
 
 ### 👉 For Users
+
+**Note: The extension is still under review in the Chrome Web Store. Currently, the only way to install it is by building it locally.**
+
 Get started in just 3 simple steps:
 
 1. **Install from Chrome Web Store**
