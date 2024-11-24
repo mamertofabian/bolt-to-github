@@ -74,17 +74,6 @@
             </li>
             <li>
               <a
-                href={CREATE_REPO_URL}
-                target="_blank"
-                rel="noopener noreferrer"
-                class="text-blue-400 hover:underline inline-flex items-center gap-1"
-              >
-                Create a new repository
-                <ExternalLink size={12} />
-              </a>
-            </li>
-            <li>
-              <a
                 href={CREATE_TOKEN_URL}
                 target="_blank"
                 rel="noopener noreferrer"

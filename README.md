@@ -74,7 +74,6 @@ Follow these steps to get started:
 
 1. [Create a GitHub account](https://github.com/join)
 2. [Generate a personal access token](https://github.com/settings/tokens/new?scopes=repo&description=Bolt%20to%20GitHub) (needs repo permissions)
-3. [Create a new repository](https://github.com/new)
 
 Need help? Watch our [Quick Start Video Tutorial](https://youtu.be/7C03DNw9ZHI)
 
