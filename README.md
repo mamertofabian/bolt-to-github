@@ -6,9 +6,6 @@
   </a>
   <h3>A project by <a href="https://aidrivencoder.com">AI-Driven Coder</a></h3>
   <p>
-    <a href="https://chrome.google.com/webstore/detail/pikdepbilbnnpgdkdaaoeekgflljmame">
-      <img src="https://img.shields.io/chrome-web-store/v/pikdepbilbnnpgdkdaaoeekgflljmame" alt="Chrome Web Store">
-    </a>
     <a href="https://github.com/mamertofabian/bolt-to-github/blob/main/LICENSE">
       <img src="https://img.shields.io/github/license/mamertofabian/bolt-to-github" alt="License">
     </a>
@@ -19,6 +16,8 @@
 </div>
 
 A Chrome extension that automatically captures ZIP file downloads from bolt.new, extracts them, and pushes the contents to a specified GitHub repository. Built with Svelte, TypeScript, and TailwindCSS.
+
+> **⚠️ Important Notice**: This extension is currently under review in the Chrome Web Store. At this time, the only way to use the extension is to build it locally following the development instructions below. We'll update this README once the extension is available in the Chrome Web Store.
 
 ## Features
 
@@ -39,30 +38,35 @@ A Chrome extension that automatically captures ZIP file downloads from bolt.new,
 
 ## Installation
 
-### 👉 For Users
+### 🛠️ Current Installation Method (Local Build)
+While the extension is under Chrome Web Store review, follow these steps to install it locally:
 
-**Note: The extension is still under review in the Chrome Web Store. Currently, the only way to install it is by building it locally.**
+1. Set up your development environment:
+   ```bash
+   # Make sure you have Node.js v16 or later installed
+   node --version
+   ```
 
-Get started in just 3 simple steps:
+2. Clone and install:
+   ```bash
+   git clone https://github.com/mamertofabian/bolt-to-github.git
+   cd bolt-to-github
+   npm install
+   ```
 
-1. **Install from Chrome Web Store**
-   - Visit our [Chrome Web Store page](https://chrome.google.com/webstore/detail/pikdepbilbnnpgdkdaaoeekgflljmame)
-   - Click "Add to Chrome"
-   - Click "Add extension" when prompted
+3. Build the extension:
+   ```bash
+   npm run build  # For production build
+   ```
 
-2. **Configure the Extension**
-   - Make sure you are on bolt.new
-   - Click the extension icon in your Chrome toolbar
-   - Enter your GitHub token (needs repo permissions)
-   - Repository Owner
-   - Repository Name
-   - Branch Name (defaults to 'main')
-   - Save your settings and you're ready to go!
+4. Load in Chrome:
+   - Open Chrome and go to `chrome://extensions/`
+   - Enable "Developer mode" (top right)
+   - Click "Load unpacked"
+   - Select the `dist` directory from your project folder
 
-3. **Load your Bolt.new Project**
-   - Click on the GitHub button in the Bolt.new project page at the top right
-   - Confirm the popup that appears
-   - Done!
+### 🔄 Post-Approval Installation (Coming Soon)
+Once approved, you'll be able to install directly from the Chrome Web Store. We'll update this section with the store link and simplified installation steps after approval.
 
 ### 🚨 New to GitHub?
 
