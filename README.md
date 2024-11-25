@@ -254,7 +254,7 @@ A: Currently, the extension processes all files in the ZIP. File filtering may b
 
 ## Future Enhancements
 
-- [ ] Multiple repository support
+- ✅ Multiple repository support
 - [ ] Custom commit messages
 
 ## Acknowledgments
