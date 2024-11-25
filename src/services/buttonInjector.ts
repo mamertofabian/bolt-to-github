@@ -20,11 +20,12 @@ export function injectUploadFeatures() {
 
     const projectId = await chrome.storage.sync.get('projectId');
     console.log('📦 Project ID:', projectId);
-    const projectSettings = settings.projectSettings[projectId.projectId];
+    const projectSettings = settings.projectSettings?.[projectId.projectId];
     
     isSettingsValid = Boolean(
       settings.githubToken &&
       settings.repoOwner &&
+      settings.projectSettings &&
       projectSettings
     );
     

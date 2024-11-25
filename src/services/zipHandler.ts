@@ -67,6 +67,10 @@ export const processZipFile = async (blob: Blob, githubService: GitHubService,
             "projectSettings"
         ]);
 
+        if (!projectSettings?.[currentProjectId]) {
+            throw new Error('Project settings not found for this project');
+        }
+
         const repoName = projectSettings[currentProjectId].repoName;
         const branch = projectSettings[currentProjectId].branch;
 

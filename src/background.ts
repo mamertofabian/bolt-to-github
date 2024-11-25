@@ -23,8 +23,6 @@ class BackgroundService {
         'projectSettings'
       ]);
       
-      console.log('📦 Retrieved GitHub settings from storage', result);
-      
       if (this.isValidSettings(result)) {
         console.log('✅ Valid settings found, initializing GitHub service');
         this.githubService = new GitHubService(result.githubToken);
