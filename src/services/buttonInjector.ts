@@ -1,6 +1,6 @@
 export function injectUploadFeatures() {
   const debug = (msg: string) => {
-    console.log(`[Content Script] ${msg}`);
+    // console.log(`[Content Script] ${msg}`);
     chrome.runtime.sendMessage({ type: 'DEBUG', message: msg });
   };
 
@@ -11,19 +11,22 @@ export function injectUploadFeatures() {
   let isSettingsValid = false;
 
   // Check GitHub settings validity
-  const checkGitHubSettings = async () => {
+  const getGitHubSettings = async () => {
     const settings = await chrome.storage.sync.get([
       'githubToken',
       'repoOwner',
-      'repoName',
-      'branch'
+      'projectSettings'
     ]);
+
+    const projectId = await chrome.storage.sync.get('projectId');
+    console.log('📦 Project ID:', projectId);
+    const projectSettings = settings.projectSettings?.[projectId.projectId];
     
     isSettingsValid = Boolean(
       settings.githubToken &&
       settings.repoOwner &&
-      settings.repoName &&
-      settings.branch
+      settings.projectSettings &&
+      projectSettings
     );
     
     // Update button state if it exists
@@ -32,7 +35,7 @@ export function injectUploadFeatures() {
       updateButtonState(button);
     }
     
-    return isSettingsValid;
+    return { isSettingsValid, projectSettings };
   };
 
   // Function to update button appearance based on settings validity
@@ -47,7 +50,7 @@ export function injectUploadFeatures() {
   };
 
   // Function to show confirmation dialog
-  const showGitHubConfirmation = (): Promise<boolean> => {
+  const showGitHubConfirmation = (projectSettings: Record<string, { repoName: string; branch: string }>): Promise<boolean> => {
     return new Promise((resolve) => {
       const overlay = document.createElement('div');
       overlay.style.zIndex = '9999';
@@ -77,7 +80,9 @@ export function injectUploadFeatures() {
 
       dialog.innerHTML = `
         <h3 class="text-lg font-semibold text-white">Confirm GitHub Upload</h3>
-        <p class="text-slate-300 text-sm">Are you sure you want to upload this project to GitHub?</p>
+        <p class="text-slate-300 text-sm">Are you sure you want to upload this project to GitHub? <br />
+          <span class="font-mono">${projectSettings.repoName} / ${projectSettings.branch}</span>
+        </p>
         <div class="flex justify-end gap-3 mt-6">
           <button class="px-4 py-2 text-sm rounded-md bg-slate-800 text-slate-300 hover:bg-slate-700" id="cancel-upload">
             Cancel
@@ -214,7 +219,7 @@ export function injectUploadFeatures() {
       return;
     }
 
-    await checkGitHubSettings();
+    await getGitHubSettings();
 
     const button = document.createElement('button');
     button.setAttribute('data-github-upload', 'true');
@@ -247,14 +252,14 @@ export function injectUploadFeatures() {
       debug('GitHub button clicked');
       
       // Check settings before proceeding
-      const valid = await checkGitHubSettings();
-      if (!valid) {
+      const settings = await getGitHubSettings();
+      if (!settings.isSettingsValid) {
         showSettingsNotification();
         return;
       }
 
       // Show confirmation dialog
-      const confirmed = await showGitHubConfirmation();
+      const confirmed = await showGitHubConfirmation(settings.projectSettings);
       if (!confirmed) {
         debug('GitHub upload cancelled by user');
         return;
@@ -348,7 +353,7 @@ export function injectUploadFeatures() {
       .some(key => key in changes);
     
     if (settingsChanged) {
-      checkGitHubSettings();
+      getGitHubSettings();
     }
   });
 

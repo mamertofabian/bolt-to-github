@@ -42,10 +42,16 @@ const updateStatus = async (status: 'uploading' | 'success' | 'error' | 'idle', 
     }
 }
 
-export const processZipFile = async (blob: Blob, githubService: GitHubService, activeTabs: Set<number>) => {
+export const processZipFile = async (blob: Blob, githubService: GitHubService, 
+    activeTabs: Set<number>, currentProjectId: string | null) => {
     if (!githubService) {
         await updateStatus('error', 0, 'GitHub service not initialized. Please set your GitHub token.', activeTabs);
         throw new Error('GitHub service not initialized. Please set your GitHub token.');
+    }
+
+    if (!currentProjectId) {
+        await updateStatus('error', 0, 'Project ID not found. Make sure you are on a Bolt project page.', activeTabs);
+        throw new Error('Project ID not found. Make sure you are on a Bolt project page.');
     }
 
     try {
@@ -56,11 +62,17 @@ export const processZipFile = async (blob: Blob, githubService: GitHubService, a
 
         await updateStatus('uploading', 10, 'Preparing files...', activeTabs);
 
-        const { repoOwner, repoName, branch } = await chrome.storage.sync.get([
-            'repoOwner',
-            'repoName',
-            'branch'
+        const { repoOwner, projectSettings } = await chrome.storage.sync.get([
+            "repoOwner",
+            "projectSettings"
         ]);
+
+        if (!projectSettings?.[currentProjectId]) {
+            throw new Error('Project settings not found for this project');
+        }
+
+        const repoName = projectSettings[currentProjectId].repoName;
+        const branch = projectSettings[currentProjectId].branch;
 
         if (!repoOwner || !repoName) {
             throw new Error('Repository details not configured');
