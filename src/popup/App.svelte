@@ -16,11 +16,13 @@
   import NotBoltSite from "$lib/components/NotBoltSite.svelte";
   import { COFFEE_LINK, GITHUB_LINK, YOUTUBE_LINK } from "$lib/constants";
   import Footer from "$lib/components/Footer.svelte";
+  import type { GitHubSettingsInterface } from "$lib/types";
 
   let githubToken = "";
   let repoOwner = "";
   let repoName = "";
   let branch = "main";
+  let projectSettings: Record<string, { repoName: string; branch: string }> = {};
   let status = "";
   let uploadProgress = 0;
   let uploadStatus = "idle";
@@ -29,22 +31,49 @@
   let activeTab = "home";
   let currentUrl: string = '';
   let isBoltSite: boolean = false;
-  
+  let githubSettings: GitHubSettingsInterface;
+  let parsedProjectId: string | null = null;
+  const version = chrome.runtime.getManifest().version;
+
   onMount(async () => {
     // Add dark mode to the document
     document.documentElement.classList.add('dark');
 
-    const result = await chrome.storage.sync.get([
+    githubSettings = await chrome.storage.sync.get([
       "githubToken",
       "repoOwner",
-      "repoName",
-      "branch",
-    ]);
+      "projectSettings"
+    ]) as GitHubSettingsInterface;
 
-    githubToken = result.githubToken || "";
-    repoOwner = result.repoOwner || "";
-    repoName = result.repoName || "";
-    branch = result.branch || "main";
+    githubToken = githubSettings.githubToken || "";
+    repoOwner = githubSettings.repoOwner || "";
+    projectSettings = githubSettings.projectSettings || {};
+
+    const tabs = await chrome.tabs.query({ active: true, currentWindow: true });
+    console.log(`📄 App: ${tabs[0]?.url}`);
+    if (tabs[0]?.url) {
+      currentUrl = tabs[0].url;
+      isBoltSite = currentUrl.includes('bolt.new');
+      
+      if (isBoltSite) {
+        const match = currentUrl.match(/bolt\.new\/~\/([^\/]+)/);
+        parsedProjectId = match?.[1] || null;
+        console.log(`📄 App: ${parsedProjectId}`);
+        // Get projectId from storage
+        const projectId = await chrome.storage.sync.get('projectId');
+        console.log('📦 Project ID:', projectId);
+
+        if (match && parsedProjectId && projectId.projectId === parsedProjectId) {
+          if (projectSettings[parsedProjectId]) {
+            repoName = projectSettings[parsedProjectId].repoName;
+            branch = projectSettings[parsedProjectId].branch;
+          } else {
+            // Use project ID as default repo name for new projects
+            repoName = parsedProjectId;
+          }
+        }
+      }
+    }
 
     checkSettingsValidity();
 
@@ -55,12 +84,6 @@
         uploadMessage = message.message || "";
       }
     });
-
-    const tabs = await chrome.tabs.query({ active: true, currentWindow: true });
-    if (tabs[0]?.url) {
-      currentUrl = tabs[0].url;
-      isBoltSite = currentUrl.includes('bolt.new');
-    }
   });
 
   function checkSettingsValidity() {
@@ -69,12 +92,18 @@
 
   async function saveSettings() {
     try {
-      await chrome.storage.sync.set({
+      const settings: any = {
         githubToken,
         repoOwner,
-        repoName,
-        branch,
-      });
+        projectSettings
+      };
+
+      if (parsedProjectId) {
+        projectSettings[parsedProjectId] = { repoName, branch };
+        settings.projectSettings = projectSettings;
+      }
+
+      await chrome.storage.sync.set(settings);
       status = "Settings saved successfully!";
       checkSettingsValidity();
       setTimeout(() => {
@@ -101,7 +130,7 @@
         <CardHeader>
           <CardTitle class="flex items-center gap-2">
             <img src="/assets/icons/icon48.png" alt="Bolt to GitHub" class="w-5 h-5" />
-            Bolt to GitHub
+            Bolt to GitHub <span class="text-xs text-slate-400">v{version}</span>
           </CardTitle>
           <CardDescription class="text-slate-400">
             Upload and sync your Bolt projects directly to GitHub
@@ -110,6 +139,9 @@
         <CardContent>
           <StatusAlert 
             {isSettingsValid} 
+            projectId={parsedProjectId}
+            {repoName}
+            {branch}
             on:switchTab={handleSwitchTab}
           />
 
@@ -137,6 +169,7 @@
             bind:repoOwner
             bind:repoName
             bind:branch
+            projectId={parsedProjectId}
             {status}
             {isSettingsValid}
             onSave={saveSettings}

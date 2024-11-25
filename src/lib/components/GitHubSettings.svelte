@@ -20,16 +20,23 @@
   export let isSettingsValid: boolean;
   export let onSave: () => void;
   export let onInput: () => void;
+  export let projectId: string | null = null;
+  export let projectSettings: Record<string, { repoName: string; branch: string }> = {};
 
   const GITHUB_SIGNUP_URL = "https://github.com/signup";
   const CREATE_TOKEN_URL =
     "https://github.com/settings/tokens/new?scopes=repo&description=Bolt%20to%20GitHub";
   const CREATE_REPO_URL = "https://github.com/new";
 
-  let showNewUserGuide = true;
+  let showNewUserGuide = false;
 
   function toggleNewUserGuide() {
     showNewUserGuide = !showNewUserGuide;
+  }
+
+  $: if (projectId && projectSettings[projectId]) {
+    repoName = projectSettings[projectId].repoName;
+    branch = projectSettings[projectId].branch;
   }
 </script>
 
@@ -147,9 +154,13 @@
     <div class="space-y-2">
       <Label for="repoName" class="text-slate-200">
         Repository Name
-        <span class="text-sm text-slate-400 ml-2"
-          >(Where to store your code)</span
-        >
+        <span class="text-sm text-slate-400 ml-2">
+          {#if projectId}
+            (Project-specific repository)
+          {:else}
+            (Default repository)
+          {/if}
+        </span>
       </Label>
       <Input
         type="text"

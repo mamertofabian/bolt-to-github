@@ -1,13 +1,7 @@
+import type { GitHubSettingsInterface } from '$lib/types';
 import { GitHubService } from './lib/github';
 import { injectUploadFeatures } from './services/buttonInjector';
 import { processZipFile } from './services/zipHandler';
-
-interface GitHubSettings {
-  githubToken: string;
-  repoOwner: string;
-  repoName: string;
-  branch: string;
-}
 
 class BackgroundService {
   private githubService: GitHubService | null = null;
@@ -26,11 +20,10 @@ class BackgroundService {
       const result = await chrome.storage.sync.get([
         'githubToken',
         'repoOwner',
-        'repoName',
-        'branch'
+        'projectSettings'
       ]);
       
-      console.log('📦 Retrieved GitHub settings from storage');
+      console.log('📦 Retrieved GitHub settings from storage', result);
       
       if (this.isValidSettings(result)) {
         console.log('✅ Valid settings found, initializing GitHub service');
@@ -45,12 +38,10 @@ class BackgroundService {
     }
   }
 
-  private isValidSettings(settings: Partial<GitHubSettings>): settings is GitHubSettings {
+  private isValidSettings(settings: Partial<GitHubSettingsInterface>): settings is GitHubSettingsInterface {
     return Boolean(
       settings.githubToken &&
-      settings.repoOwner &&
-      settings.repoName &&
-      settings.branch
+      settings.repoOwner
     );
   }
 
@@ -86,7 +77,7 @@ class BackgroundService {
       }
 
       if (message.type === 'DEBUG') {
-        console.log(`[Content Debug] ${message.message}`);
+        // console.log(`[Content Debug] ${message.message}`);
         sendResponse({ received: true });
         return true;
       }
@@ -96,6 +87,17 @@ class BackgroundService {
 
         (async () => {
           try {
+            const projectId = await chrome.storage.sync.get('projectId');
+            console.log('📦 Project ID:', projectId);
+
+            if (!projectId?.projectId) {
+              throw new Error('Project ID is not set. Please check your Bolt.new settings.');
+            }
+
+            if (!this.githubService) {
+              throw new Error('GitHub service is not initialized. Please check your GitHub settings.');
+            }
+
             // Convert base64 to blob
             const binaryStr = atob(message.data);
             const bytes = new Uint8Array(binaryStr.length);
@@ -104,10 +106,7 @@ class BackgroundService {
             }
             const blob = new Blob([bytes], { type: 'application/zip' });
 
-            if (!this.githubService) {
-              throw new Error('GitHub service is not initialized. Please check your GitHub settings.');
-            }
-            await processZipFile(blob, this.githubService, this.activeUploadTabs);
+            await processZipFile(blob, this.githubService, this.activeUploadTabs, projectId.projectId);
             console.log('✅ ZIP processing complete');
 
             // Send success response back to content script
@@ -128,18 +127,23 @@ class BackgroundService {
     });
     
     chrome.tabs.onUpdated.addListener(async (tabId, changeInfo, tab) => {
-      if (changeInfo.status === 'complete' && tab.url?.includes('bolt.new/~/')) {
-        console.log('📄 Bolt.new page detected, injecting features...');
-    
-        try {
-          await chrome.scripting.executeScript({
-            target: { tabId },
-            func: injectUploadFeatures
-          });
-    
-          console.log('✅ Features injected into tab:', tabId);
-        } catch (error) {
-          console.error('❌ Error injecting features:', error);
+      if (tab.url?.includes('bolt.new/~/')) {
+        const parsedProjectId = tab.url?.match(/bolt\.new\/~\/([^\/]+)/)?.[1] || null;
+        await chrome.storage.sync.set({ projectId: parsedProjectId });
+
+        if (changeInfo.status === 'complete') {
+          console.log(`📄 Bolt.new page detected, injecting features... ${parsedProjectId}`);
+      
+          try {
+            await chrome.scripting.executeScript({
+              target: { tabId },
+              func: injectUploadFeatures
+            });
+      
+            console.log('✅ Features injected into tab:', tabId);
+          } catch (error) {
+            console.error('❌ Error injecting features:', error);
+          }
         }
       }
     });

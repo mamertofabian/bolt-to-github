@@ -8,25 +8,30 @@
   import { createEventDispatcher } from "svelte";
 
   export let isSettingsValid: boolean;
+  export let projectId: string | null;
+  export let repoName: string;
+  export let branch: string;
 
   const dispatch = createEventDispatcher<{
     switchTab: string;
   }>();
 
-  function handleMissingConfigClick(event: MouseEvent | KeyboardEvent) {
+  function handleConfigClick(event: MouseEvent | KeyboardEvent) {
     event.stopPropagation();
     if (!isSettingsValid) {
       dispatch("switchTab", "settings");
     }
   }
+
+  $: console.log(`📄 StatusAlert: ${projectId}`);
 </script>
 
-{#if !isSettingsValid}
+{#if !isSettingsValid || !projectId}
   <div
     class="cursor-pointer"
-    on:click|stopPropagation={handleMissingConfigClick}
+    on:click|stopPropagation={handleConfigClick}
     on:keydown|stopPropagation={(e) =>
-      e.key === "Enter" && handleMissingConfigClick(e)}
+      e.key === "Enter" && handleConfigClick(e)}
     role="button"
     tabindex={0}
   >
@@ -46,6 +51,21 @@
     <AlertTitle>Ready to Use</AlertTitle>
     <AlertDescription class="text-slate-300">
       Your GitHub configuration is set up and ready to go!
+      <div 
+        class="mt-2 grid grid-cols-[auto_1fr] gap-x-2 bg-slate-900/50 p-2 rounded-sm cursor-pointer hover:bg-slate-900/70 transition-colors group"
+        on:click={() => dispatch("switchTab", "settings")}
+        on:keydown={(e) => e.key === "Enter" && dispatch("switchTab", "settings")}
+        role="button"
+        tabindex={0}
+      >
+        <span>Project ID:</span>
+        <span class="font-mono">{projectId}</span>
+        <span>Repository:</span>
+        <span class="font-mono">{repoName}</span>
+        <span>Branch:</span>
+        <span class="font-mono">{branch}</span>
+        <span class="col-span-2 text-sm text-slate-400 mt-1">Click to edit settings</span>
+      </div>
     </AlertDescription>
   </Alert>
 {/if}
