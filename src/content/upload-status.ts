@@ -27,9 +27,6 @@ function initializeUI() {
   });
 }
 
-// Initialize UI
-initializeUI();
-
 // Cleanup on navigation
 window.addEventListener('unload', () => {
   if (app) {
@@ -42,3 +39,9 @@ window.addEventListener('unload', () => {
 chrome.runtime.onConnect.addListener(() => {
   initializeUI();
 });
+
+// Export initialization function for the loader
+export const onExecute = ({ perf }: { perf: { injectTime: number; loadTime: number } }) => {
+  console.log('🚀 Upload status initializing...', perf);
+  initializeUI();
+};

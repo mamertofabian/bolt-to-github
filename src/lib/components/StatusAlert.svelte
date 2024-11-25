@@ -9,6 +9,7 @@
 
   export let isSettingsValid: boolean;
   export let projectId: string | null;
+  export let gitHubUsername: string;
   export let repoName: string;
   export let branch: string;
 
@@ -21,6 +22,11 @@
     if (!isSettingsValid) {
       dispatch("switchTab", "settings");
     }
+  }
+
+  function openGitHub(event: MouseEvent | KeyboardEvent) {
+    event.stopPropagation();
+    chrome.tabs.create({ url: `https://github.com/${gitHubUsername}/${repoName}` });
   }
 
   $: console.log(`📄 StatusAlert: ${projectId}`);
@@ -64,8 +70,13 @@
         <span class="font-mono">{repoName}</span>
         <span>Branch:</span>
         <span class="font-mono">{branch}</span>
-        <span class="col-span-2 text-sm text-slate-400 mt-1">Click to edit settings</span>
       </div>
+      <button
+        class="col-span-2 text-sm mt-2 border border-slate-700 rounded px-2 py-1 text-slate-400 hover:bg-slate-800 hover:text-slate-300 transition-colors"
+        on:click|stopPropagation={openGitHub}
+      >
+        Open GitHub repository
+      </button>
     </AlertDescription>
   </Alert>
 {/if}

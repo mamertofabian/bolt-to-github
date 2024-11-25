@@ -121,7 +121,7 @@
 </script>
 
 <main class="w-[400px] min-h-[400px] p-4 bg-slate-950 text-slate-50">
-  {#if isBoltSite}
+  {#if isBoltSite && parsedProjectId}
   <Tabs bind:value={activeTab} class="w-full">
     <Header />
 
@@ -140,6 +140,7 @@
           <StatusAlert 
             {isSettingsValid} 
             projectId={parsedProjectId}
+            gitHubUsername={repoOwner}
             {repoName}
             {branch}
             on:switchTab={handleSwitchTab}
@@ -182,7 +183,7 @@
   {:else}
   <Card class="border-slate-800 bg-slate-900">
     <CardContent>
-      <NotBoltSite {currentUrl} />
+      <NotBoltSite {currentUrl} noProjectLoaded={!parsedProjectId} />
     </CardContent>
     <Footer />
   </Card>
