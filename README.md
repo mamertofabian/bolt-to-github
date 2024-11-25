@@ -39,9 +39,19 @@ A Chrome extension that automatically captures ZIP file downloads from bolt.new,
 - 🔄 Upload progress tracking
 - 🎯 Custom upload status alerts
 
+### ⚠️ Important Notes
+
+#### Current Limitations
+- **Single Repository Configuration**: The extension currently supports one repository configuration at a time. When working with different projects, make sure to update your repository settings for each project to avoid mixing up codebases.
+
+#### Best Practices
+1. Always verify your repository settings before syncing a new project
+2. Double-check the repository name and branch when switching between projects
+3. Consider using different branches for different projects until multi-repo support is released
+
 ### Latest Version (GitHub)
 Current development version (v1.0.1) includes additional features:
-- [New] Multiple repository support
+- [New] ✨ Multi-repository support
 - [New] Follow `.gitignore` rules for file uploads
 - [Enhanced] Repo settings displayed in popup
 
@@ -85,7 +95,7 @@ Get started in just 3 simple steps:
    - Click "Add extension" when prompted
 
 2. **Configure the Extension**
-   - Make sure you are on bolt.new
+   - Make sure you have a Bolt.new project loaded
    - Click the extension icon in your Chrome toolbar
    - Enter your GitHub token (needs repo permissions)
    - Repository Owner
