@@ -10,6 +10,7 @@
   },
   "dependencies": {
     "fflate": "^0.8.2",
+    "ignore": "^6.0.2",
     "lucide-svelte": "^0.460.1"
   },
   "devDependencies": {

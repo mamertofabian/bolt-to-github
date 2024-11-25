@@ -1,6 +1,7 @@
 import type { GitHubService } from "../lib/github";
 import { toBase64 } from "../lib/common";
 import { ZipProcessor } from "../lib/zip";
+import ignore from 'ignore';
 
 const updateStatus = async (status: 'uploading' | 'success' | 'error' | 'idle', progress: number = 0, message: string = '',
     activeTabs: Set<number>) => {
@@ -74,6 +75,14 @@ export const processZipFile = async (blob: Blob, githubService: GitHubService, a
 
         // Process files
         const processedFiles = new Map<string, string>();
+        const ig = ignore();
+        
+        // Check for .gitignore and initialize ignore patterns
+        const gitignoreContent = files.get('.gitignore') || files.get('project/.gitignore');
+        if (gitignoreContent) {
+            ig.add(gitignoreContent.split('\n'));
+        }
+
         for (const [path, content] of files.entries()) {
             if (path.endsWith('/') || !content.trim()) {
                 console.log(`📁 Skipping entry: ${path}`);
@@ -81,6 +90,13 @@ export const processZipFile = async (blob: Blob, githubService: GitHubService, a
             }
 
             const normalizedPath = path.startsWith('project/') ? path.slice(8) : path;
+            
+            // Skip if file matches gitignore patterns
+            if (ig.ignores(normalizedPath)) {
+                console.log(`🚫 Ignoring file: ${normalizedPath}`);
+                continue;
+            }
+
             processedFiles.set(normalizedPath, content);
         }
 
