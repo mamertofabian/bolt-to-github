@@ -27,7 +27,7 @@ A Chrome extension that automatically captures ZIP file downloads from bolt.new,
   <img src="https://img.shields.io/badge/Install%20from-Chrome%20Web%20Store-blue?style=for-the-badge&logo=google-chrome&logoColor=white" alt="Install from Chrome Web Store" height="40">
 </a>
 
-### Latest stable version (v1.0.0) includes the following features:
+### Latest stable version (v1.0.1) includes the following features:
 
 - 🚀 Automatic ZIP file interception from bolt.new
 - 📦 In-browser ZIP file extraction
@@ -38,22 +38,16 @@ A Chrome extension that automatically captures ZIP file downloads from bolt.new,
 - 📱 Modern, accessible interface
 - 🔄 Upload progress tracking
 - 🎯 Custom upload status alerts
-
-### ⚠️ Important Notes
-
-#### Current Limitations
-- **Single Repository Configuration**: The extension currently supports one repository configuration at a time. When working with different projects, make sure to update your repository settings for each project to avoid mixing up codebases.
+- ✨ Multi-repository support
+- 🔄 Follow `.gitignore` rules for file uploads
+- 🔄 Repo settings displayed in popup
 
 #### Best Practices
 1. Always verify your repository settings before syncing a new project
 2. Double-check the repository name and branch when switching between projects
-3. Consider using different branches for different projects until multi-repo support is released
 
 ### Latest Version (GitHub)
-Current development version (v1.0.1) includes additional features:
-- [New] ✨ Multi-repository support
-- [New] Follow `.gitignore` rules for file uploads
-- [Enhanced] Repo settings displayed in popup
+Current development version (v1.0.1) matches the Chrome Web Store version
 
 To try the latest version with new features:
 1. Clone and install:
@@ -294,7 +288,6 @@ A: Currently, the extension processes all files in the ZIP. File filtering may b
 
 ## Future Enhancements
 
-- [✔️] Multiple repository support
 - [ ] Custom commit messages
 
 ## Acknowledgments
