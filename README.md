@@ -205,6 +205,7 @@ See our [Contributing Guide](#contributing) for more details.
 - 📺 [Watch our video tutorials](https://youtube.com/@aidrivencoder)
 - 📖 [Read the documentation](https://github.com/mamertofabian/bolt-to-github)
 - 💡 [Get development tips](https://aidrivencoder.com)
+- 💬 [Discord Community](https://discord.gg/JtjYHBBnGU)
 
 ### Professional Support
 - 📊 [Book a consultation](https://calendly.com/mamerto/30min)
