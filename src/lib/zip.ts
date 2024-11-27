@@ -1,4 +1,4 @@
-import { unzip } from 'fflate';
+import { unzipSync } from 'fflate';
 
 export class ZipProcessor {
   static async processZipBlob(blob: Blob): Promise<Map<string, string>> {
@@ -9,16 +9,8 @@ export class ZipProcessor {
       const arrayBuffer = await blob.arrayBuffer();
       const uint8Array = new Uint8Array(arrayBuffer);
       
-      // Use promisified version of unzip
-      const unzipped = await new Promise<{ [key: string]: Uint8Array }>((resolve, reject) => {
-        unzip(uint8Array, (err, result) => {
-          if (err) {
-            reject(new Error(`Failed to unzip: ${err.message}`));
-          } else {
-            resolve(result);
-          }
-        });
-      });
+      // Use synchronous version instead of Promise-based unzip
+      const unzipped = unzipSync(uint8Array);
       
       // Process each file
       for (const [filename, content] of Object.entries(unzipped)) {

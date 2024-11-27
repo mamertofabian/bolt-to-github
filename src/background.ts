@@ -75,7 +75,7 @@ class BackgroundService {
       }
 
       if (message.type === 'DEBUG') {
-        // console.log(`[Content Debug] ${message.message}`);
+        console.log(`[Content Debug] ${message.message}`);
         sendResponse({ received: true });
         return true;
       }

@@ -82,7 +82,7 @@ export class GitHubService {
     if (!exists) {
       await this.createRepo({
         name: repo,
-        private: true,
+        private: false,  // Make public by default so bolt.new can load the repo
         auto_init: true,
         description: 'Repository created by Bolt to GitHub extension'
       });

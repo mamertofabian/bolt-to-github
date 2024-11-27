@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "Bolt to GitHub",
-  "version": "1.0.1",
+  "version": "1.0.2",
   "description": "Automatically process your Bolt project zip files and upload them to your GitHub repository.",
   "icons": {
     "16": "assets/icons/icon16.png",

@@ -1,6 +1,6 @@
 export function injectUploadFeatures() {
   const debug = (msg: string) => {
-    // console.log(`[Content Script] ${msg}`);
+    console.log(`[Content Script] ${msg}`);
     chrome.runtime.sendMessage({ type: 'DEBUG', message: msg });
   };
 
@@ -18,9 +18,18 @@ export function injectUploadFeatures() {
       'projectSettings'
     ]);
 
+    console.log('🔍 Settings (buttonInjector):', settings);
+
     const projectId = await chrome.storage.sync.get('projectId');
-    console.log('📦 Project ID:', projectId);
-    const projectSettings = settings.projectSettings?.[projectId.projectId];
+    let projectSettings = settings.projectSettings?.[projectId.projectId];
+
+    console.log('🔍 Project Settings (buttonInjector):', projectSettings);
+
+    if (!projectSettings && projectId.projectId && settings.repoOwner && settings.githubToken) {
+      projectSettings = { repoName: projectId.projectId, branch: 'main' };
+      console.log('🔍 Valid settings found, but no project settings. Automatically saving new project settings', projectSettings);
+      await chrome.storage.sync.set({ [`projectSettings.${projectId.projectId}`]: projectSettings });
+    }
     
     isSettingsValid = Boolean(
       settings.githubToken &&
@@ -34,6 +43,8 @@ export function injectUploadFeatures() {
     if (button) {
       updateButtonState(button);
     }
+
+    console.log('🔍 Project Settings:', projectSettings, 'isSettingsValid:', isSettingsValid);
     
     return { isSettingsValid, projectSettings };
   };
@@ -253,6 +264,7 @@ export function injectUploadFeatures() {
       
       // Check settings before proceeding
       const settings = await getGitHubSettings();
+      console.log('🔍 Check settings before proceeding:', settings);
       if (!settings.isSettingsValid) {
         showSettingsNotification();
         return;
