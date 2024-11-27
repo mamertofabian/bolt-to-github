@@ -39,8 +39,10 @@ A Chrome extension that automatically captures ZIP file downloads from bolt.new,
 - 🔄 Upload progress tracking
 - 🎯 Custom upload status alerts
 - ✨ Multi-repository support
-- 🔄 Follow `.gitignore` rules for file uploads
-- 🔄 Repo settings displayed in popup
+- 📄 Follow `.gitignore` rules for file uploads
+- ⚙️ Repo settings displayed in popup
+- ✉️ Custom commit messages
+- 💾 Automatically save new project settings
 
 #### Best Practices
 1. Always verify your repository settings before syncing a new project
@@ -289,7 +291,7 @@ A: Currently, the extension processes all files in the ZIP. File filtering may b
 
 ## Future Enhancements
 
-- [ ] Custom commit messages
+ - Let me know if you have any ideas for additional features or improvements by opening an issue on GitHub.
 
 ## Acknowledgments
 

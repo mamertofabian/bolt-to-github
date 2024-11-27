@@ -6,6 +6,7 @@ import { processZipFile } from './services/zipHandler';
 class BackgroundService {
   private githubService: GitHubService | null = null;
   private activeUploadTabs: Set<number> = new Set();
+  private pendingCommitMessage: string = 'Commit from Bolt to GitHub';
 
   constructor() {
     console.log('🚀 Background service initializing...');
@@ -80,6 +81,13 @@ class BackgroundService {
         return true;
       }
 
+      if (message.type === 'SET_COMMIT_MESSAGE') {
+        console.log('📝 Setting commit message:', message.message);
+        this.pendingCommitMessage = message.message;
+        sendResponse({ received: true });
+        return true;
+      }
+
       if (message.type === 'ZIP_DATA' && message.data) {
         console.log('📦 Received ZIP data, processing...');
 
@@ -104,10 +112,14 @@ class BackgroundService {
             }
             const blob = new Blob([bytes], { type: 'application/zip' });
 
-            await processZipFile(blob, this.githubService, this.activeUploadTabs, projectId.projectId);
+            // Pass the commit message to processZipFile
+            await processZipFile(blob, this.githubService, this.activeUploadTabs, 
+              projectId.projectId, this.pendingCommitMessage);
+            
+            // Reset the commit message after use
+            this.pendingCommitMessage = 'Commit from Bolt to GitHub';
+            
             console.log('✅ ZIP processing complete');
-
-            // Send success response back to content script
             sendResponse({ success: true });
           } catch (error) {
             console.error('❌ Error processing ZIP:', error);

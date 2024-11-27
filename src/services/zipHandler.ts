@@ -43,7 +43,7 @@ const updateStatus = async (status: 'uploading' | 'success' | 'error' | 'idle', 
 }
 
 export const processZipFile = async (blob: Blob, githubService: GitHubService, 
-    activeTabs: Set<number>, currentProjectId: string | null) => {
+    activeTabs: Set<number>, currentProjectId: string | null, commitMessage: string) => {
     if (!githubService) {
         await updateStatus('error', 0, 'GitHub service not initialized. Please set your GitHub token.', activeTabs);
         throw new Error('GitHub service not initialized. Please set your GitHub token.');
@@ -159,7 +159,7 @@ export const processZipFile = async (blob: Blob, githubService: GitHubService,
 
         // Create a new commit
         const newCommit = await githubService.request('POST', `/repos/${repoOwner}/${repoName}/git/commits`, {
-            message: `Add/update files from bolt.new\n\nUploaded ${treeItems.length} files`,
+            message: commitMessage,
             tree: newTree.sha,
             parents: [baseSha]
         });

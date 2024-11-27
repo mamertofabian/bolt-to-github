@@ -61,7 +61,7 @@ export function injectUploadFeatures() {
   };
 
   // Function to show confirmation dialog
-  const showGitHubConfirmation = (projectSettings: Record<string, { repoName: string; branch: string }>): Promise<boolean> => {
+  const showGitHubConfirmation = (projectSettings: Record<string, { repoName: string; branch: string }>): Promise<{ confirmed: boolean; commitMessage?: string }> => {
     return new Promise((resolve) => {
       const overlay = document.createElement('div');
       overlay.style.zIndex = '9999';
@@ -94,6 +94,15 @@ export function injectUploadFeatures() {
         <p class="text-slate-300 text-sm">Are you sure you want to upload this project to GitHub? <br />
           <span class="font-mono">${projectSettings.repoName} / ${projectSettings.branch}</span>
         </p>
+        <div class="mt-4">
+          <label for="commit-message" class="block text-sm text-slate-300 mb-2">Commit message (optional)</label>
+          <input 
+            type="text" 
+            id="commit-message" 
+            placeholder="Commit from Bolt to GitHub"
+            class="w-full px-3 py-2 text-sm rounded-md bg-slate-800 text-white border border-slate-700 focus:border-blue-500 focus:outline-none"
+          >
+        </div>
         <div class="flex justify-end gap-3 mt-6">
           <button class="px-4 py-2 text-sm rounded-md bg-slate-800 text-slate-300 hover:bg-slate-700" id="cancel-upload">
             Cancel
@@ -111,18 +120,19 @@ export function injectUploadFeatures() {
       overlay.addEventListener('click', (e) => {
         if (e.target === overlay) {
           document.body.removeChild(overlay);
-          resolve(false);
+          resolve({ confirmed: false });
         }
       });
 
       dialog.querySelector('#cancel-upload')?.addEventListener('click', () => {
         document.body.removeChild(overlay);
-        resolve(false);
+        resolve({ confirmed: false });
       });
 
       dialog.querySelector('#confirm-upload')?.addEventListener('click', () => {
+        const commitMessage = (dialog.querySelector('#commit-message') as HTMLInputElement)?.value || 'Commit from Bolt to GitHub';
         document.body.removeChild(overlay);
-        resolve(true);
+        resolve({ confirmed: true, commitMessage });
       });
     });
   };
@@ -271,13 +281,16 @@ export function injectUploadFeatures() {
       }
 
       // Show confirmation dialog
-      const confirmed = await showGitHubConfirmation(settings.projectSettings);
+      const { confirmed, commitMessage } = await showGitHubConfirmation(settings.projectSettings);
       if (!confirmed) {
         debug('GitHub upload cancelled by user');
         return;
       }
 
       isGitHubUpload = true;
+      // Send commit message to background
+      chrome.runtime.sendMessage({ type: 'SET_COMMIT_MESSAGE', message: commitMessage });
+      
       const downloadBtn = buttonContainer.querySelector('button:first-child') as HTMLButtonElement;
       if (downloadBtn) {
         downloadBtn.click();
