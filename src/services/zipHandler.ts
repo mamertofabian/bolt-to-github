@@ -1,4 +1,4 @@
-import type { GitHubService } from "../lib/github";
+import type { GitHubService } from "./GitHubService";
 import { toBase64 } from "../lib/common";
 import { ZipProcessor } from "../lib/zip";
 import ignore from 'ignore';

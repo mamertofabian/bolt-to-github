@@ -41,12 +41,15 @@ export default defineConfig(({ mode }) => {
       sourcemap: mode === 'development',
       rollupOptions: {
         input: {
-          background: resolve(__dirname, 'src/background.ts'),
-          uploadStatus: resolve(__dirname, 'src/content/upload-status.ts'),
+          background: resolve(__dirname, 'src/background/index.ts'),
+          content: resolve(__dirname, 'src/content/index.ts'),
         },
         output: {
           format: 'esm',
-          entryFileNames: '[name].js',
+          entryFileNames: (chunkInfo) => {
+            const folder = chunkInfo.name.includes('background') ? 'background' : 'content';
+            return `${folder}/[name].js`;
+          },
           chunkFileNames: 'assets/[name]-[hash].js',
           assetFileNames: (assetInfo) => {
             if (assetInfo.name?.includes('assets/')) {

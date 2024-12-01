@@ -19,7 +19,7 @@
     "https://api.github.com/*"
   ],
   "background": {
-    "service_worker": "src/background.ts",
+    "service_worker": "src/background/index.ts",
     "type": "module"
   },
   "action": {
@@ -33,7 +33,8 @@
   "content_scripts": [
     {
       "matches": ["https://bolt.new/*"],
-      "js": ["src/content/upload-status.ts"]
+      "js": ["src/content/index.ts"],
+      "run_at": "document_start"
     }
   ]
 }
