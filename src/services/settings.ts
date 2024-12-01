@@ -1,8 +1,8 @@
-import type { ProjectSettings } from "$lib/types";
+import type { GitHubSettingsInterface, ProjectSettings } from "$lib/types";
 
 export interface SettingsCheckResult {
     isSettingsValid: boolean;
-    projectSettings?: ProjectSettings;
+    gitHubSettings?: GitHubSettingsInterface;
   }
     
   export class SettingsService {
@@ -36,11 +36,33 @@ export interface SettingsCheckResult {
   
         return { 
           isSettingsValid, 
-          projectSettings: projectSettings || undefined 
+          gitHubSettings: {
+            githubToken: settings.githubToken,
+            repoOwner: settings.repoOwner,
+            projectSettings: projectSettings || undefined
+          }
         };
       } catch (error) {
         console.error('Error checking GitHub settings:', error);
         return { isSettingsValid: false };
       }
     }
+
+    static async getProjectId(): Promise<string | null> {
+      try {
+          const { projectId } = await chrome.storage.sync.get('projectId');
+          return projectId || null;
+      } catch (error) {
+          console.error('Failed to get project ID:', error);
+          return null;
+      }
   }
+
+  static async setProjectId(projectId: string): Promise<void> {
+      try {
+          await chrome.storage.sync.set({ projectId });
+      } catch (error) {
+          console.error('Failed to set project ID:', error);
+      }
+  }
+}

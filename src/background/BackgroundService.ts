@@ -1,6 +1,6 @@
 import { processZipFile } from '../services/ZipHandler';
 import { GitHubService } from '../services/GitHubService';
-import type { Message, MessageType, Port, ProcessingStatus } from '../lib/types';
+import type { Message, MessageType, Port, ProcessingStatus, UploadStatusState } from '../lib/types';
 import { StateManager } from './StateManager';
 
 export class BackgroundService {
@@ -33,9 +33,9 @@ export class BackgroundService {
     try {
       const settings = await this.stateManager.getGitHubSettings();
       
-      if (settings) {
-        console.log('✅ Valid settings found, initializing GitHub service');
-        this.githubService = new GitHubService(settings.githubToken);
+      if (settings && settings.gitHubSettings) {
+        console.log('✅ Valid settings found, initializing GitHub service', settings);
+        this.githubService = new GitHubService(settings.gitHubSettings.githubToken);
       } else {
         console.log('❌ Invalid or incomplete settings');
         this.githubService = null;
@@ -108,6 +108,7 @@ export class BackgroundService {
           break;
 
         case 'SET_COMMIT_MESSAGE':
+          console.log('Setting commit message:', message.message);
           if (message.message) {
             this.pendingCommitMessage = message.message;
             this.sendResponse(port, { type: 'UPLOAD_STATUS', status: { status: 'idle', message: 'Commit message updated' }});
@@ -134,6 +135,7 @@ export class BackgroundService {
   }
 
   private async handleZipData(tabId: number, base64Data: string): Promise<void> {
+    console.log('🔄 Handling ZIP data for tab:', tabId);
     const port = this.ports.get(tabId);
     if (!port) return;
 
@@ -147,30 +149,34 @@ export class BackgroundService {
         throw new Error('Project ID is not set. Please check your Bolt.new settings.');
       }
 
-      // Convert base64 to blob
-      const binaryStr = atob(base64Data);
-      const bytes = new Uint8Array(binaryStr.length);
-      for (let i = 0; i < binaryStr.length; i++) {
-        bytes[i] = binaryStr.charCodeAt(i);
+      try {
+        // Convert base64 to blob
+        const binaryStr = atob(base64Data);
+        const bytes = new Uint8Array(binaryStr.length);
+        for (let i = 0; i < binaryStr.length; i++) {
+          bytes[i] = binaryStr.charCodeAt(i);
+        }
+        const blob = new Blob([bytes], { type: 'application/zip' });
+
+        // Process the ZIP file
+        await processZipFile(
+          blob, 
+          this.githubService, 
+          new Set([tabId]), 
+          projectId, 
+          this.pendingCommitMessage
+        );
+
+        // Reset commit message after successful upload
+        this.pendingCommitMessage = 'Commit from Bolt to GitHub';
+        
+        this.sendResponse(port, { 
+          type: 'UPLOAD_STATUS', 
+          status: { status: 'success', message: 'Upload completed successfully' }
+        });
+      } catch (decodeError) {
+        throw new Error(`Failed to decode ZIP data: ${decodeError}`);
       }
-      const blob = new Blob([bytes], { type: 'application/zip' });
-
-      // Process the ZIP file
-      await processZipFile(
-        blob, 
-        this.githubService, 
-        new Set([tabId]), 
-        projectId, 
-        this.pendingCommitMessage
-      );
-
-      // Reset commit message after successful upload
-      this.pendingCommitMessage = 'Commit from Bolt to GitHub';
-      
-      this.sendResponse(port, { 
-        type: 'UPLOAD_STATUS', 
-        status: { status: 'success', message: 'Upload completed successfully' }
-      });
     } catch (error) {
       console.error('Error processing ZIP:', error);
       this.sendResponse(port, { 
@@ -183,7 +189,7 @@ export class BackgroundService {
     }
   }
 
-  private sendResponse(port: Port, message: { type: MessageType; status?: ProcessingStatus }): void {
+  private sendResponse(port: Port, message: { type: MessageType; status?: UploadStatusState }): void {
     try {
       port.postMessage(message);
     } catch (error) {

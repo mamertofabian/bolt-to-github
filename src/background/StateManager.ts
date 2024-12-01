@@ -17,22 +17,12 @@ export class StateManager {
         return SettingsService.getGitHubSettings();
     }
 
-    async getProjectId(): Promise<string | null> {
-        try {
-            const { projectId } = await chrome.storage.sync.get('projectId');
-            return projectId || null;
-        } catch (error) {
-            console.error('Failed to get project ID:', error);
-            return null;
-        }
+    async getProjectId() {
+        return SettingsService.getProjectId();
     }
 
-    async setProjectId(projectId: string): Promise<void> {
-        try {
-            await chrome.storage.sync.set({ projectId });
-        } catch (error) {
-            console.error('Failed to set project ID:', error);
-        }
+    async setProjectId(projectId: string) {
+        return SettingsService.setProjectId(projectId);
     }
 
     private isValidSettings(settings: Partial<GitHubSettingsInterface>): settings is GitHubSettingsInterface {

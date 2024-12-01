@@ -12,6 +12,7 @@ export class MessageHandler {
   }
 
   public sendMessage(type: MessageType, data?: any) {
+    console.log('Sending message:', { type, data });
     try {
       this.port.postMessage({ type, data });
     } catch (error) {
@@ -20,7 +21,7 @@ export class MessageHandler {
   }
 
   public sendZipData(data: string) {
-    this.sendMessage('ZIP_DATA', { data });
+    this.sendMessage('ZIP_DATA', data);
   }
 
   public sendDebugMessage(message: string) {
@@ -28,6 +29,7 @@ export class MessageHandler {
   }
 
   public sendCommitMessage(message: string) {
+    console.log('Sending commit message:', message);
     this.sendMessage('SET_COMMIT_MESSAGE', { message });
   }
 }

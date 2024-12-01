@@ -49,8 +49,10 @@ export class UIManager {
   }
 
   private initializeUploadStatus() {
+    console.log('Initializing upload status');
     // Clean up existing instance if any
     if (this.uploadStatusComponent) {
+      console.log('Destroying existing upload status component');
       this.uploadStatusComponent.$destroy();
       this.uploadStatusComponent = null;
     }
@@ -58,6 +60,7 @@ export class UIManager {
     // Remove existing container if any
     const existingContainer = document.getElementById('bolt-upload-status-container');
     if (existingContainer) {
+      console.log('Removing existing upload status container');
       existingContainer.remove();
     }
 
@@ -67,10 +70,13 @@ export class UIManager {
     
     // Wait for document.body to be available
     if (document.body) {
+      console.log('Appending upload status container to body');
       document.body.appendChild(target);
     } else {
       // If body isn't available, wait for it
+      console.log('Waiting for body to be available');
       document.addEventListener('DOMContentLoaded', () => {
+        console.log('Appending upload status container to body');
         document.body?.appendChild(target);
       });
     }
@@ -81,6 +87,7 @@ export class UIManager {
   }
 
   private async initializeUploadButton() {
+    console.log('Initializing upload button');
     const buttonContainer = document.querySelector('div.flex.grow-1.basis-60 div.flex.gap-2');
     if (!buttonContainer || document.querySelector('[data-github-upload]')) {
       return;
@@ -98,6 +105,7 @@ export class UIManager {
   }
 
   private createGitHubButton(): HTMLButtonElement {
+    console.log('Creating GitHub button');
     const button = document.createElement('button');
     button.setAttribute('data-github-upload', 'true');
     button.setAttribute('data-testid', 'github-upload-button');
@@ -133,13 +141,15 @@ export class UIManager {
   }
 
   private async handleGitHubButtonClick() {
+    console.log('Handling GitHub button click');
     const settings = await SettingsService.getGitHubSettings();
     if (!settings.isSettingsValid) {
       this.showSettingsNotification();
       return;
     }
 
-    const { confirmed, commitMessage } = await this.showGitHubConfirmation(settings.projectSettings || {});
+    const { confirmed, commitMessage } = await this.showGitHubConfirmation(settings.gitHubSettings?.projectSettings || {});
+    console.log('GitHub confirmation:', { confirmed, commitMessage });
     if (!confirmed) return;
 
     this.isGitHubUpload = true;
