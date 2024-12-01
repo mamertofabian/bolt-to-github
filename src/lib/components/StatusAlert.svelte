@@ -26,7 +26,7 @@
 
   function openGitHub(event: MouseEvent | KeyboardEvent) {
     event.stopPropagation();
-    chrome.tabs.create({ url: `https://github.com/${gitHubUsername}/${repoName}` });
+    chrome.tabs.create({ url: `https://github.com/${gitHubUsername}/${repoName}/tree/${branch}` });
   }
 
   $: console.log(`📄 StatusAlert: ${projectId}`);

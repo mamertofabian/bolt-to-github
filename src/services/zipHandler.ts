@@ -42,6 +42,32 @@ const updateStatus = async (status: 'uploading' | 'success' | 'error' | 'idle', 
     }
 }
 
+const ensureBranchExists = async (
+    githubService: GitHubService,
+    repoOwner: string,
+    repoName: string,
+    targetBranch: string,
+    activeTabs: Set<number>
+) => {
+    // Check if branch exists
+    let branchExists = true;
+    try {
+        await githubService.request('GET', `/repos/${repoOwner}/${repoName}/branches/${targetBranch}`);
+    } catch (error) {
+        branchExists = false;
+    }
+
+    // If branch doesn't exist, create it from default branch
+    if (!branchExists) {
+        await updateStatus('uploading', 18, `Creating branch ${targetBranch}...`, activeTabs);
+        const defaultBranch = await githubService.request('GET', `/repos/${repoOwner}/${repoName}/git/refs/heads/main`);
+        await githubService.request('POST', `/repos/${repoOwner}/${repoName}/git/refs`, {
+            ref: `refs/heads/${targetBranch}`,
+            sha: defaultBranch.object.sha
+        });
+    }
+}
+
 export const processZipFile = async (blob: Blob, githubService: GitHubService, 
     activeTabs: Set<number>, currentProjectId: string | null, commitMessage: string) => {
     if (!githubService) {
@@ -84,6 +110,9 @@ export const processZipFile = async (blob: Blob, githubService: GitHubService,
         // Ensure repository exists
         await updateStatus('uploading', 15, 'Checking repository...', activeTabs);
         await githubService.ensureRepoExists(repoOwner, repoName);
+
+        // Ensure branch exists
+        await ensureBranchExists(githubService, repoOwner, repoName, targetBranch, activeTabs);
 
         // Process files
         const processedFiles = new Map<string, string>();
