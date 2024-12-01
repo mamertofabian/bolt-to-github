@@ -64,7 +64,16 @@ export class UIManager {
     // Create new container and component
     const target = document.createElement('div');
     target.id = 'bolt-upload-status-container';
-    document.body.appendChild(target);
+    
+    // Wait for document.body to be available
+    if (document.body) {
+      document.body.appendChild(target);
+    } else {
+      // If body isn't available, wait for it
+      document.addEventListener('DOMContentLoaded', () => {
+        document.body?.appendChild(target);
+      });
+    }
 
     this.uploadStatusComponent = new UploadStatus({
       target
