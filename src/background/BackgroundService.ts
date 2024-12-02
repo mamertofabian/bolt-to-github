@@ -1,7 +1,7 @@
 import { GitHubService } from '../services/GitHubService';
 import type { Message, MessageType, Port, UploadStatusState } from '../lib/types';
 import { StateManager } from './StateManager';
-import { ZipHandler } from '../services/ZipHandler';
+import { ZipHandler } from '../services/zipHandler';
 
 export class BackgroundService {
   private stateManager: StateManager;
