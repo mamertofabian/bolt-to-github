@@ -175,7 +175,7 @@
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <ProjectsList {projectSettings} {repoOwner} {githubToken} />
+          <ProjectsList {projectSettings} {repoOwner} {githubToken} isBoltNewTab={isBoltSite} />
         </CardContent>
       </Card>
     </TabsContent>

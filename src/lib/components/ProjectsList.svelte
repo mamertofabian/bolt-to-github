@@ -1,24 +1,29 @@
 <script lang="ts">
   import { onMount } from 'svelte';
   import { Button } from "$lib/components/ui/button";
-  import { Github, Import, Zap, Search, X } from "lucide-svelte";
+  import { Github, Import, Zap, X } from "lucide-svelte";
   import { GitHubService } from '../../services/GitHubService';
 
   export let projectSettings: Record<string, { repoName: string; branch: string }>;
   export let repoOwner: string;
   export let githubToken: string;
+  export let isBoltNewTab: boolean = true; 
 
   const githubService = new GitHubService(githubToken);
   let commitCounts: Record<string, number> = {};
 
-  let showSearch = false;
   let searchQuery = '';
   let filteredProjects: [string, { repoName: string; branch: string }][] = [];
 
   $: {
-    filteredProjects = Object.entries(projectSettings).filter(([_, settings]) => 
-      settings.repoName.toLowerCase().includes(searchQuery.toLowerCase())
-    );
+    filteredProjects = Object.entries(projectSettings)
+      .filter(([projectId, settings]) => {
+        // First check if the repo exists in GitHub (non-zero commit count)
+        const hasGitHubRepo = commitCounts[projectId] > 0;
+        // Then apply search filter
+        const matchesSearch = settings.repoName.toLowerCase().includes(searchQuery.toLowerCase());
+        return hasGitHubRepo && matchesSearch;
+      });
   }
 
   onMount(async () => {
@@ -49,15 +54,17 @@
   {#if Object.keys(projectSettings).length === 0}
     <div class="flex flex-col items-center justify-center p-4 text-center space-y-6">
       <div class="space-y-2">
-        <p class="text-sm text-slate-400">No projects found. Create a new project to get started.</p>
+        <p class="text-sm text-slate-400 text-orange-400">No projects found. Create or load an existing project to get started.</p>
       </div>
-      <Button
-        variant="outline"
-        class="border-slate-800 hover:bg-slate-800 text-slate-200"
-        on:click={() => window.open('https://bolt.new', '_blank')}
-      >
-        Go to bolt.new
-      </Button>
+      {#if !isBoltNewTab}
+        <Button
+          variant="outline"
+          class="border-slate-800 hover:bg-slate-800 text-slate-200"
+          on:click={() => window.open('https://bolt.new', '_blank')}
+        >
+          Go to bolt.new
+        </Button>
+      {/if}
     </div>
   {:else}
     <div class="flex items-center gap-2 mb-4">
