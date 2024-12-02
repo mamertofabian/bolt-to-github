@@ -54,7 +54,7 @@ export class UIManager {
   public showNotification(options: NotificationOptions): void {
     // Cleanup existing notification if any
     this.notificationComponent?.$destroy();
-    
+
     // Create container for notification
     const container = document.createElement('div');
     container.id = 'bolt-to-github-notification-container';
@@ -101,7 +101,7 @@ export class UIManager {
     // Create new container and component
     const target = document.createElement('div');
     target.id = 'bolt-to-github-upload-status-container';
-    
+
     // Wait for document.body to be available
     if (document.body) {
       console.log('Appending upload status container to body');
@@ -123,7 +123,13 @@ export class UIManager {
   private async initializeUploadButton() {
     console.log('🔊 Initializing upload button');
     const buttonContainer = document.querySelector('div.flex.grow-1.basis-60 div.flex.gap-2');
-    if (!buttonContainer || document.querySelector('[data-github-upload]')) {
+    console.log('Button container found:', !!buttonContainer);
+
+    const existingButton = document.querySelector('[data-github-upload]');
+    console.log('Existing GitHub button found:', !!existingButton);
+
+    if (!buttonContainer || existingButton) {
+      console.log('Exiting initializeUploadButton early');
       return;
     }
 
@@ -136,6 +142,8 @@ export class UIManager {
     if (deployButton) {
       deployButton.before(button);
     }
+
+    console.log('Upload button initialized');
   }
 
   private createGitHubButton(): HTMLButtonElement {
@@ -171,6 +179,8 @@ export class UIManager {
       await this.handleGitHubButtonClick();
     });
 
+    console.log('GitHub button created');
+
     return button;
   }
 
@@ -183,12 +193,12 @@ export class UIManager {
     }
 
     const { confirmed, commitMessage } = await this.showGitHubConfirmation(settings.gitHubSettings?.projectSettings || {});
-    console.log('GitHub confirmation:', { confirmed, commitMessage });
+    // console.log('GitHub confirmation:', { confirmed, commitMessage });
     if (!confirmed) return;
 
     this.isGitHubUpload = true;
     this.messageHandler.sendCommitMessage(commitMessage || 'Commit from Bolt to GitHub');
-    
+
     // Trigger download
     const downloadBtn = document.querySelector('div.flex.grow-1.basis-60 div.flex.gap-2 button:first-child') as HTMLButtonElement;
     if (downloadBtn) {
@@ -295,7 +305,7 @@ export class UIManager {
       'gap-2',
       'text-sm'
     ].join(' ');
-    
+
     notification.innerHTML = `
       <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor">
         <circle cx="12" cy="12" r="10"></circle>
@@ -341,7 +351,7 @@ export class UIManager {
     }
 
     // console.log('🔊 Setting upload status:', status);
-    this.uploadStatusComponent?.$set({status});
+    this.uploadStatusComponent?.$set({ status });
   }
 
   public updateButtonState(isValid: boolean) {
@@ -362,7 +372,7 @@ export class UIManager {
         const downloadElement = target.closest('a[download], button[download]');
         if (downloadElement) {
           const isFromGitHubButton = target.closest('[data-github-upload]') !== null;
-          
+
           if (isFromGitHubButton || this.isGitHubUpload) {
             e.preventDefault();
             e.stopPropagation();
@@ -388,7 +398,7 @@ export class UIManager {
 
       const blob = await response.blob();
       const base64data = await this.blobToBase64(blob);
-      
+
       if (base64data) {
         this.messageHandler.sendZipData(base64data);
       }
@@ -411,21 +421,34 @@ export class UIManager {
 
   private setupMutationObserver() {
     let timeoutId: number;
-    
-    // Create the observer
+    let retryCount = 0;
+    const maxRetries = 3;
+
+    const attemptInitialization = () => {
+      const button = document.querySelector('[data-github-upload]');
+      const buttonContainer = document.querySelector('div.flex.grow-1.basis-60 div.flex.gap-2');
+
+      if (!button && buttonContainer) {
+        this.initializeUploadButton();
+        retryCount = 0; // Reset count on success
+      } else if (!buttonContainer && retryCount < maxRetries) {
+        retryCount++;
+        timeoutId = window.setTimeout(attemptInitialization, 1000); // 1 second between retries
+      } else if (retryCount >= maxRetries) {
+        this.showNotification({
+          type: 'error',
+          message: 'Failed to initialize GitHub upload button. Please try to refresh the page. If the issue persists, please submit an issue on GitHub.',
+          duration: 7000
+        });
+        retryCount = 0; // Reset for future attempts
+      }
+    };
+
     this.observer = new MutationObserver(() => {
       if (timeoutId) {
         clearTimeout(timeoutId);
       }
-
-      timeoutId = window.setTimeout(() => {
-        const button = document.querySelector('[data-github-upload]');
-        const buttonContainer = document.querySelector('div.flex.grow-1.basis-60 div.flex.gap-2');
-        
-        if (!button && buttonContainer) {
-          this.initializeUploadButton();
-        }
-      }, 100);
+      timeoutId = window.setTimeout(attemptInitialization, 500);
     });
 
     // Wait for document.body to be available
@@ -457,7 +480,7 @@ export class UIManager {
     }
     this.uploadButton?.remove();
     this.uploadButton = null;
-    
+
     // Clean up notification container if it exists
     const notificationContainer = document.getElementById('bolt-to-github-notification-container');
     notificationContainer?.remove();

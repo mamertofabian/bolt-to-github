@@ -172,5 +172,4 @@ export class ContentManager {
       this.uiManager?.reinitialize();
       this.messageHandler?.sendMessage('CONTENT_SCRIPT_READY');
   }
-  }
-  
+}

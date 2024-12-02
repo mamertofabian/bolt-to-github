@@ -12,7 +12,7 @@ export class MessageHandler {
   }
 
   public sendMessage(type: MessageType, data?: any) {
-    console.log('Sending message:', { type, data });
+    // console.log('Sending message:', { type, data });
     try {
       this.port.postMessage({ type, data });
     } catch (error) {

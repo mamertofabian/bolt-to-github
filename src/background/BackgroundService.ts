@@ -141,6 +141,10 @@ export class BackgroundService {
           console.log(`[Content Debug] ${message.message}`);
           break;
 
+        case 'CONTENT_SCRIPT_READY':
+          console.log('Content script is ready');
+          break;
+
         default:
           console.warn('Unknown message type:', message.type);
       }
