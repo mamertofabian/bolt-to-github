@@ -12,10 +12,10 @@
   import SocialLinks from "$lib/components/SocialLinks.svelte";
   import StatusAlert from "$lib/components/StatusAlert.svelte";
   import GitHubSettings from "$lib/components/GitHubSettings.svelte";
-  import NotBoltSite from "$lib/components/NotBoltSite.svelte";
   import { COFFEE_LINK, GITHUB_LINK, YOUTUBE_LINK } from "$lib/constants";
   import Footer from "$lib/components/Footer.svelte";
   import type { GitHubSettingsInterface } from "$lib/types";
+  import ProjectsList from "$lib/components/ProjectsList.svelte";
 
   let githubToken: string = "";
   let repoOwner = "";
@@ -159,6 +159,20 @@
       </Card>
     </TabsContent>
 
+    <TabsContent value="projects">
+      <Card class="border-slate-800 bg-slate-900">
+        <CardHeader>
+          <CardTitle>Projects</CardTitle>
+          <CardDescription class="text-slate-400">
+            Manage your Bolt projects and their GitHub repositories
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <ProjectsList {projectSettings} {repoOwner} />
+        </CardContent>
+      </Card>
+    </TabsContent>
+
     <TabsContent value="settings">
       <Card class="border-slate-800 bg-slate-900">
         <CardHeader>
@@ -186,8 +200,17 @@
     </Tabs>
   {:else}
   <Card class="border-slate-800 bg-slate-900">
+    <CardHeader>
+      <CardTitle class="flex items-center gap-2">
+        <img src="/assets/icons/icon48.png" alt="Bolt to GitHub" class="w-5 h-5" />
+        Bolt to GitHub <span class="text-xs text-slate-400">v{version}</span>
+      </CardTitle>
+      <CardDescription class="text-slate-400">
+        Upload and sync your Bolt projects directly to GitHub
+      </CardDescription>
+    </CardHeader>
     <CardContent>
-      <NotBoltSite {currentUrl} noProjectLoaded={!parsedProjectId} />
+      <ProjectsList {projectSettings} {repoOwner} />
     </CardContent>
     <Footer />
   </Card>

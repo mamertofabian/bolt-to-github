@@ -64,6 +64,7 @@
         role="button"
         tabindex={0}
       >
+        <div class="col-span-2 text-sm text-slate-400 mb-1">Currently loaded project:</div>
         <span>Project ID:</span>
         <span class="font-mono">{projectId}</span>
         <span>Repository:</span>

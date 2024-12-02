@@ -1,15 +1,19 @@
 <script lang="ts">
-    import { Home, Settings } from "lucide-svelte";
+    import { Home, Settings, FolderGit2 } from "lucide-svelte";
     import { TabsList, TabsTrigger } from "$lib/components/ui/tabs";
   </script>
   
-  <TabsList class="grid w-full grid-cols-2">
-    <TabsTrigger value="home" class="flex items-center gap-2">
-      <Home class="w-4 h-4" />
+  <TabsList class="grid w-full grid-cols-3">
+    <TabsTrigger value="home" class="gap-2">
+      <Home class="h-4 w-4" />
       Home
     </TabsTrigger>
-    <TabsTrigger value="settings" class="flex items-center gap-2">
-      <Settings class="w-4 h-4" />
+    <TabsTrigger value="projects" class="gap-2">
+      <FolderGit2 class="h-4 w-4" />
+      Projects
+    </TabsTrigger>
+    <TabsTrigger value="settings" class="gap-2">
+      <Settings class="h-4 w-4" />
       Settings
     </TabsTrigger>
   </TabsList>
