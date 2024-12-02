@@ -2,12 +2,20 @@ import type { ProcessingStatus, UploadStatusState } from '$lib/types';
 import { SettingsService } from '../services/settings';
 import type { MessageHandler } from './MessageHandler';
 import UploadStatus from './UploadStatus.svelte';
+import Notification from './Notification.svelte';
+
+interface NotificationOptions {
+  type: 'info' | 'error' | 'success';
+  message: string;
+  duration?: number;
+}
 
 export class UIManager {
   private static instance: UIManager | null = null;
   private uploadStatusComponent: UploadStatus | null = null;
   private uploadButton: HTMLElement | null = null;
   private observer: MutationObserver | null = null;
+  private notificationComponent: Notification | null = null;
   private isGitHubUpload = false;
   private messageHandler: MessageHandler;
 
@@ -43,6 +51,31 @@ export class UIManager {
     }
   }
 
+  public showNotification(options: NotificationOptions): void {
+    // Cleanup existing notification if any
+    this.notificationComponent?.$destroy();
+    
+    // Create container for notification
+    const container = document.createElement('div');
+    container.id = 'bolt-to-github-notification-container';
+    document.body.appendChild(container);
+
+    // Create new notification component
+    this.notificationComponent = new Notification({
+      target: container,
+      props: {
+        type: options.type,
+        message: options.message,
+        duration: options.duration || 5000,
+        onClose: () => {
+          this.notificationComponent?.$destroy();
+          this.notificationComponent = null;
+          container.remove();
+        }
+      }
+    });
+  }
+
   private async initializeUI() {
     console.log('🔊 Initializing UI');
     await this.initializeUploadButton();
@@ -59,7 +92,7 @@ export class UIManager {
     }
 
     // Remove existing container if any
-    const existingContainer = document.getElementById('bolt-upload-status-container');
+    const existingContainer = document.getElementById('bolt-to-github-upload-status-container');
     if (existingContainer) {
       console.log('Removing existing upload status container');
       existingContainer.remove();
@@ -67,7 +100,7 @@ export class UIManager {
 
     // Create new container and component
     const target = document.createElement('div');
-    target.id = 'bolt-upload-status-container';
+    target.id = 'bolt-to-github-upload-status-container';
     
     // Wait for document.body to be available
     if (document.body) {
@@ -418,8 +451,16 @@ export class UIManager {
       this.uploadStatusComponent.$destroy();
       this.uploadStatusComponent = null;
     }
+    if (this.notificationComponent) {
+      this.notificationComponent.$destroy();
+      this.notificationComponent = null;
+    }
     this.uploadButton?.remove();
     this.uploadButton = null;
+    
+    // Clean up notification container if it exists
+    const notificationContainer = document.getElementById('bolt-to-github-notification-container');
+    notificationContainer?.remove();
   }
 
   public reinitialize() {

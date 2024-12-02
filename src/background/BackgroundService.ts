@@ -126,10 +126,9 @@ export class BackgroundService {
           break;
 
         case 'SET_COMMIT_MESSAGE':
-          console.log('Setting commit message:', message.message);
-          if (message.message) {
-            this.pendingCommitMessage = message.message;
-            this.sendResponse(port, { type: 'UPLOAD_STATUS', status: { status: 'idle', message: 'Commit message updated' }});
+          console.log('Setting commit message:', message.data.message);
+          if (message.data && message.data.message) {
+            this.pendingCommitMessage = message.data.message;
           }
           break;
 

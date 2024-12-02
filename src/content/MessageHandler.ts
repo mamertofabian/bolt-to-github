@@ -29,7 +29,6 @@ export class MessageHandler {
   }
 
   public sendCommitMessage(message: string) {
-    console.log('Sending commit message:', message);
     this.sendMessage('SET_COMMIT_MESSAGE', { message });
   }
 }
