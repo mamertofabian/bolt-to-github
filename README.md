@@ -49,7 +49,7 @@ A Chrome extension that automatically captures ZIP file downloads from bolt.new,
 2. Double-check the repository name and branch when switching between projects
 
 ### Latest Version (GitHub)
-Current development version (v1.0.3) includes the following features:
+Current development version (v1.1.0) includes the following features:
 - 📋 Projects tab with quick access to all your Bolt projects:
   - View all pushed projects in one place
   - Open projects directly in Bolt
