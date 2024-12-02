@@ -11,6 +11,7 @@
     ChevronUp,
     ChevronDown,
   } from "lucide-svelte";
+  import { onMount } from 'svelte';
 
   export let githubToken: string;
   export let repoOwner: string;
@@ -22,16 +23,23 @@
   export let onInput: () => void;
   export let projectId: string | null = null;
   export let projectSettings: Record<string, { repoName: string; branch: string }> = {};
+  export let buttonDisabled: boolean = false;
 
   const GITHUB_SIGNUP_URL = "https://github.com/signup";
   const CREATE_TOKEN_URL =
     "https://github.com/settings/tokens/new?scopes=repo&description=Bolt%20to%20GitHub";
-  const CREATE_REPO_URL = "https://github.com/new";
 
-  let showNewUserGuide = false;
+  let showNewUserGuide = true;
+
+  onMount(() => {
+    chrome.storage.local.get(['showNewUserGuide'], (result) => {
+      showNewUserGuide = result.showNewUserGuide ?? true;
+    });
+  });
 
   function toggleNewUserGuide() {
     showNewUserGuide = !showNewUserGuide;
+    chrome.storage.local.set({ showNewUserGuide });
   }
 
   $: if (projectId && projectSettings[projectId]) {
@@ -190,19 +198,9 @@
     <Button
       type="submit"
       class="w-full bg-blue-600 hover:bg-blue-700 text-white"
-      disabled={!isSettingsValid}
+      disabled={!isSettingsValid || buttonDisabled}
     >
-      Save Settings
+      {status ? status : "Save Settings"}
     </Button>
   </form>
-
-  {#if status}
-    <p
-      class="mt-4 text-center"
-      class:text-green-400={status.includes("success")}
-      class:text-red-400={status.includes("Error")}
-    >
-      {status}
-    </p>
-  {/if}
 </div>

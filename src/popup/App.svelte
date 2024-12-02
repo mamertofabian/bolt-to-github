@@ -11,14 +11,13 @@
   import Header from "$lib/components/Header.svelte";
   import SocialLinks from "$lib/components/SocialLinks.svelte";
   import StatusAlert from "$lib/components/StatusAlert.svelte";
-  import UploadProgress from "$lib/components/UploadProgress.svelte";
   import GitHubSettings from "$lib/components/GitHubSettings.svelte";
-  import NotBoltSite from "$lib/components/NotBoltSite.svelte";
   import { COFFEE_LINK, GITHUB_LINK, YOUTUBE_LINK } from "$lib/constants";
   import Footer from "$lib/components/Footer.svelte";
   import type { GitHubSettingsInterface } from "$lib/types";
+  import ProjectsList from "$lib/components/ProjectsList.svelte";
 
-  let githubToken = "";
+  let githubToken: string = "";
   let repoOwner = "";
   let repoName = "";
   let branch = "main";
@@ -34,6 +33,7 @@
   let githubSettings: GitHubSettingsInterface;
   let parsedProjectId: string | null = null;
   const version = chrome.runtime.getManifest().version;
+  let hasStatus = false;
 
   onMount(async () => {
     // Add dark mode to the document
@@ -94,9 +94,9 @@
 
   async function saveSettings() {
     try {
-      const settings: any = {
-        githubToken,
-        repoOwner,
+      const settings = {
+        githubToken: githubToken || "",
+        repoOwner: repoOwner || "",
         projectSettings
       };
 
@@ -107,12 +107,15 @@
 
       await chrome.storage.sync.set(settings);
       status = "Settings saved successfully!";
+      hasStatus = true;
       checkSettingsValidity();
       setTimeout(() => {
         status = "";
+        hasStatus = false;
       }, 3000);
     } catch (error) {
       status = "Error saving settings";
+      hasStatus = true;
       console.error(error);
     }
   }
@@ -122,7 +125,7 @@
   }
 </script>
 
-<main class="w-[400px] min-h-[400px] p-4 bg-slate-950 text-slate-50">
+<main class="w-[400px] p-3 bg-slate-950 text-slate-50">
   {#if isBoltSite && parsedProjectId}
   <Tabs bind:value={activeTab} class="w-full">
     <Header />
@@ -135,10 +138,17 @@
             Bolt to GitHub <span class="text-xs text-slate-400">v{version}</span>
           </CardTitle>
           <CardDescription class="text-slate-400">
-            Upload and sync your Bolt projects directly to GitHub
+            Upload and sync your Bolt projects to GitHub
           </CardDescription>
         </CardHeader>
         <CardContent>
+          <button
+            class="w-full mb-3 px-4 py-2 bg-slate-700 hover:bg-slate-600 rounded-md text-slate-200 transition-colors"
+            on:click={() => activeTab = "projects"}
+          >
+            View All Projects
+          </button>
+
           <StatusAlert 
             {isSettingsValid} 
             projectId={parsedProjectId}
@@ -154,8 +164,20 @@
         </CardContent>
         <Footer />
       </Card>
+    </TabsContent>
 
-      <UploadProgress {uploadStatus} {uploadProgress} {uploadMessage} />
+    <TabsContent value="projects">
+      <Card class="border-slate-800 bg-slate-900">
+        <CardHeader>
+          <CardTitle>Projects</CardTitle>
+          <CardDescription class="text-slate-400">
+            Manage your Bolt projects and their GitHub repositories
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <ProjectsList {projectSettings} {repoOwner} {githubToken} currentlyLoadedProjectId={parsedProjectId} isBoltSite={isBoltSite} />
+        </CardContent>
+      </Card>
     </TabsContent>
 
     <TabsContent value="settings">
@@ -175,6 +197,7 @@
             projectId={parsedProjectId}
             {status}
             {isSettingsValid}
+            buttonDisabled={hasStatus}
             onSave={saveSettings}
             onInput={checkSettingsValidity}
           />
@@ -184,8 +207,17 @@
     </Tabs>
   {:else}
   <Card class="border-slate-800 bg-slate-900">
+    <CardHeader>
+      <CardTitle class="flex items-center gap-2">
+        <img src="/assets/icons/icon48.png" alt="Bolt to GitHub" class="w-5 h-5" />
+        Bolt to GitHub <span class="text-xs text-slate-400">v{version}</span>
+      </CardTitle>
+      <CardDescription class="text-slate-400">
+        Upload and sync your Bolt projects to GitHub
+      </CardDescription>
+    </CardHeader>
     <CardContent>
-      <NotBoltSite {currentUrl} noProjectLoaded={!parsedProjectId} />
+      <ProjectsList {projectSettings} {repoOwner} {githubToken} currentlyLoadedProjectId={parsedProjectId} isBoltSite={isBoltSite} />
     </CardContent>
     <Footer />
   </Card>

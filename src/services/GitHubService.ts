@@ -133,4 +133,29 @@ export class GitHubService {
       throw new Error(`Failed to push file: ${error instanceof Error ? error.message : 'Unknown error'}`);
     }
   }
+
+  async getCommitCount(owner: string, repo: string, branch: string): Promise<number> {
+    try {
+      const commits = await this.request('GET', `/repos/${owner}/${repo}/commits`, null, {
+        headers: {
+          'per_page': '1'  // We only need the count from headers
+        }
+      });
+      
+      // GitHub returns the total count in the Link header
+      const linkHeader = commits.headers?.get('link');
+      if (linkHeader) {
+        const match = linkHeader.match(/page=(\d+)>; rel="last"/);
+        if (match) {
+          return parseInt(match[1], 10);
+        }
+      }
+      
+      // If no pagination, count the commits manually
+      return commits.length;
+    } catch (error) {
+      console.error('Failed to fetch commit count:', error);
+      return 0;
+    }
+  }
 }

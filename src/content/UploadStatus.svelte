@@ -1,129 +1,80 @@
 <script lang="ts">
-  import { onMount } from 'svelte';
+  import { onDestroy } from 'svelte';
+  import type { UploadStatusState } from '../lib/types';
 
-  type StatusType = 'idle' | 'uploading' | 'success' | 'error';
+  // Props with default state
+  export let status: UploadStatusState = {
+    status: 'idle',
+    message: '',
+    progress: 0
+  };
   
   let notificationVisible = false;
-  let status: StatusType = 'idle';
-  let progress = 0;
-  let statusMessage = '';
-  let messageListener: ((message: any, sender: any, sendResponse: any) => boolean) | null = null;
+  
+  // Watch for status changes and update UI accordingly
+  $: updateNotificationUI(status);
 
-  onMount(() => {
-    console.log('🏗️ Initializing upload status UI...');
-    initializeMessageListener();
-    announceReady();
-
-    // Clean up listener on component destruction
-    return () => {
-      if (messageListener) {
-        chrome.runtime.onMessage.removeListener(messageListener);
-        messageListener = null;
-      }
-    };
-  });
-
-  function handleMessage(message: any, sender: any, sendResponse: (response: { received: boolean }) => void) {
-    console.log('📨 Received message:', message);
-    if (message.type === 'UPLOAD_STATUS') {
-      updateNotificationUI(
-        message.status as StatusType,
-        message.progress || 0,
-        message.message || ''
-      );
-      sendResponse({ received: true });
-      return true;
+  function updateNotificationUI(newStatus: UploadStatusState) {
+    if (newStatus.status === 'success') {
+      console.log('🔄 Success status received, setting notification to auto-hide'); 
     }
-    return false;
-  }
 
-  function initializeMessageListener() {
-    console.log('👂 Initializing message listener...');
-    // Remove existing listener if any
-    if (messageListener) {
-      chrome.runtime.onMessage.removeListener(messageListener);
-    }
+    // console.log('🔄 Updating notification:', newStatus);
     
-    // Create new listener
-    messageListener = handleMessage;
-    chrome.runtime.onMessage.addListener(messageListener);
-  }
-
-  async function announceReady() {
-    try {
-      await chrome.runtime.sendMessage({ type: 'CONTENT_SCRIPT_READY' });
-      console.log('✅ Content script registered with background service');
-    } catch (error) {
-      console.error('❌ Failed to register content script:', error);
-    }
-  }
-
-  function updateNotificationUI(newStatus: StatusType, newProgress: number, message: string) {
-    console.log('🔄 Updating notification:', { newStatus, newProgress, message });
-    
-    // Only show notification for non-idle states
-    if (newStatus === 'idle') {
+    if (newStatus.status === 'idle') {
       notificationVisible = false;
-      setTimeout(() => {
-        status = 'idle';
-        progress = 0;
-        statusMessage = '';
-      }, 300); // Match the CSS transition duration
       return;
     }
 
-    // Update state in a single tick to ensure smooth UI updates
-    Promise.resolve().then(() => {
-      status = newStatus;
-      progress = newProgress;
-      statusMessage = message;
-      notificationVisible = true;
+    // Update visibility
+    notificationVisible = true;
 
-      // Reset state and hide notification after success or error
-      if (newStatus === 'success' || newStatus === 'error') {
-        setTimeout(() => {
-          notificationVisible = false;
-          // Reset state after animation completes
-          setTimeout(() => {
-            status = 'idle';
-            progress = 0;
-            statusMessage = '';
-          }, 300); // Match the CSS transition duration
-        }, 5000);
-      }
-    });
+    // Auto-hide for success/error states
+    if (newStatus.status === 'success' || newStatus.status === 'error') {
+      setTimeout(() => {
+        notificationVisible = false;
+      }, 5000);
+    }
   }
 
   function closeNotification() {
+    console.log('🔄 Closing notification');
     notificationVisible = false;
     // Reset state after animation completes
     setTimeout(() => {
-      status = 'idle';
-      progress = 0;
-      statusMessage = '';
+      status = { status: 'idle' };
     }, 300); // Match the CSS transition duration
   }
+
+  // Clean up timers on destroy
+  onDestroy(() => {
+    console.log('🧹 Cleaning up upload status component');
+  });
 </script>
 
 <div id="bolt-upload-status">
-  {#if status !== 'idle'}
+  {#if status.status !== 'idle'}
     <div
-      class="bolt-notification fixed top-4 right-4 w-80 bg-gray-800/100 rounded-lg shadow-lg border border-gray-700 p-4 z-50 transition-all duration-300"
+      class="bolt-notification fixed top-4 right-4 w-80 bg-gray-800/100 rounded-lg shadow-lg border border-gray-700 p-4 transition-all duration-300"
       class:hidden={!notificationVisible}
-      style="margin-top: 40px; margin-right: 10px; z-index: 10;"
+      style="margin-top: 40px; margin-right: 10px;"
     >
       <div class="flex items-center justify-between mb-2">
-        <span class="font-medium status-text" class:text-gray-100={status === 'uploading'} class:text-green-400={status === 'success'} class:text-red-400={status === 'error'}>
-          {#if status === 'uploading'}
+        <span class="font-medium status-text" 
+          class:text-gray-100={status.status === 'uploading'} 
+          class:text-green-400={status.status === 'success'} 
+          class:text-red-400={status.status === 'error'}
+        >
+          {#if status.status === 'uploading'}
             Pushing to GitHub...
-          {:else if status === 'success'}
+          {:else if status.status === 'success'}
             Push Complete!
-          {:else if status === 'error'}
+          {:else if status.status === 'error'}
             Push Failed
           {/if}
         </span>
         <div class="flex items-center gap-2">
-          <span class="text-sm text-gray-300">{progress}%</span>
+          <span class="text-sm text-gray-300">{status.progress || 0}%</span>
           <button
             class="close-button text-gray-400 hover:text-gray-200 transition-colors p-0.5 rounded hover:bg-white/10"
             on:click={closeNotification}
@@ -138,14 +89,14 @@
       <div class="w-full bg-gray-700 rounded-full h-2.5 mb-2">
         <div
           class="h-2.5 rounded-full transition-all duration-300"
-          class:bg-blue-500={status === 'uploading'}
-          class:bg-green-500={status === 'success'}
-          class:bg-red-500={status === 'error'}
-          style="width: {progress}%"
+          class:bg-blue-500={status.status === 'uploading'}
+          class:bg-green-500={status.status === 'success'}
+          class:bg-red-500={status.status === 'error'}
+          style="width: {status.progress || 0}%"
         ></div>
       </div>
       
-      <p class="text-sm text-gray-300">{statusMessage}</p>
+      <p class="text-sm text-gray-300">{status.message || ''}</p>
     </div>
   {/if}
 </div>

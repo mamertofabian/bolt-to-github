@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "Bolt to GitHub",
-  "version": "1.0.2",
+  "version": "1.0.3",
   "description": "Automatically process your Bolt project zip files and upload them to your GitHub repository.",
   "icons": {
     "16": "assets/icons/icon16.png",
@@ -19,7 +19,7 @@
     "https://api.github.com/*"
   ],
   "background": {
-    "service_worker": "src/background.ts",
+    "service_worker": "src/background/index.ts",
     "type": "module"
   },
   "action": {
@@ -33,7 +33,8 @@
   "content_scripts": [
     {
       "matches": ["https://bolt.new/*"],
-      "js": ["src/content/upload-status.ts"]
+      "js": ["src/content/index.ts"],
+      "run_at": "document_start"
     }
   ]
 }
