@@ -27,7 +27,7 @@ A Chrome extension that automatically captures ZIP file downloads from bolt.new,
   <img src="https://img.shields.io/badge/Install%20from-Chrome%20Web%20Store-blue?style=for-the-badge&logo=google-chrome&logoColor=white" alt="Install from Chrome Web Store" height="40">
 </a>
 
-### Latest stable version (v1.0.1) includes the following features:
+### Latest stable version (v1.0.2) includes the following features:
 
 - 🚀 Automatic ZIP file interception from bolt.new
 - 📦 In-browser ZIP file extraction
@@ -49,7 +49,12 @@ A Chrome extension that automatically captures ZIP file downloads from bolt.new,
 2. Double-check the repository name and branch when switching between projects
 
 ### Latest Version (GitHub)
-Current development version (v1.0.1) matches the Chrome Web Store version
+Current development version (v1.0.3) includes the following features:
+- 📋 Projects tab with quick access to all your Bolt projects:
+  - View all pushed projects in one place
+  - Open projects directly in Bolt
+  - Access GitHub repositories
+  - Import existing GitHub repos into Bolt
 
 To try the latest version with new features:
 1. Clone and install:
@@ -314,3 +319,14 @@ A: Currently, the extension processes all files in the ZIP. File filtering may b
     <a href="https://github.com/aidrivencoder">GitHub</a>
   </p>
 </div>
+
+## Project Features
+
+### Projects Management
+The extension includes a dedicated Projects tab that helps you:
+- Keep track of all your Bolt projects pushed to GitHub
+- Quick-access buttons to:
+  - Open projects directly in Bolt
+  - View repositories on GitHub
+  - Import repositories back into Bolt
+- View branch information and project details at a glance
