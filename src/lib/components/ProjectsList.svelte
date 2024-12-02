@@ -1,7 +1,7 @@
 <script lang="ts">
   import { onMount } from 'svelte';
   import { Button } from "$lib/components/ui/button";
-  import { Github, Import, Zap } from "lucide-svelte";
+  import { Github, Import, Zap, Search, X } from "lucide-svelte";
   import { GitHubService } from '../../services/GitHubService';
 
   export let projectSettings: Record<string, { repoName: string; branch: string }>;
@@ -10,6 +10,16 @@
 
   const githubService = new GitHubService(githubToken);
   let commitCounts: Record<string, number> = {};
+
+  let showSearch = false;
+  let searchQuery = '';
+  let filteredProjects: [string, { repoName: string; branch: string }][] = [];
+
+  $: {
+    filteredProjects = Object.entries(projectSettings).filter(([_, settings]) => 
+      settings.repoName.toLowerCase().includes(searchQuery.toLowerCase())
+    );
+  }
 
   onMount(async () => {
     // Fetch commit counts for all projects
@@ -50,7 +60,28 @@
       </Button>
     </div>
   {:else}
-    {#each Object.entries(projectSettings) as [projectId, settings]}
+    <div class="flex items-center gap-2 mb-4">
+      <div class="flex-1 relative">
+        <input
+          type="text"
+          bind:value={searchQuery}
+          placeholder="Search projects..."
+          class="w-full bg-transparent border border-slate-800 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-slate-700"
+        />
+        {#if searchQuery}
+          <Button
+            variant="ghost"
+            size="icon"
+            class="absolute right-1 top-1/2 -translate-y-1/2 h-7 w-7"
+            on:click={() => searchQuery = ''}
+          >
+            <X class="h-4 w-4" />
+          </Button>
+        {/if}
+      </div>
+    </div>
+
+    {#each filteredProjects as [projectId, settings]}
       <div class="border border-slate-800 rounded-lg p-3 hover:bg-slate-800/50 transition-colors group">
         <div class="flex items-center justify-between">
           <div class="space-y-0.5">
