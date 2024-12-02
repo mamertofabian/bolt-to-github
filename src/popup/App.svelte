@@ -33,6 +33,7 @@
   let githubSettings: GitHubSettingsInterface;
   let parsedProjectId: string | null = null;
   const version = chrome.runtime.getManifest().version;
+  let hasStatus = false;
 
   onMount(async () => {
     // Add dark mode to the document
@@ -106,12 +107,15 @@
 
       await chrome.storage.sync.set(settings);
       status = "Settings saved successfully!";
+      hasStatus = true;
       checkSettingsValidity();
       setTimeout(() => {
         status = "";
+        hasStatus = false;
       }, 3000);
     } catch (error) {
       status = "Error saving settings";
+      hasStatus = true;
       console.error(error);
     }
   }
@@ -172,6 +176,7 @@
             projectId={parsedProjectId}
             {status}
             {isSettingsValid}
+            buttonDisabled={hasStatus}
             onSave={saveSettings}
             onInput={checkSettingsValidity}
           />

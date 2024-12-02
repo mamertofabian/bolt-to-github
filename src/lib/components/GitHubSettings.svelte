@@ -22,6 +22,7 @@
   export let onInput: () => void;
   export let projectId: string | null = null;
   export let projectSettings: Record<string, { repoName: string; branch: string }> = {};
+  export let buttonDisabled: boolean = false;
 
   const GITHUB_SIGNUP_URL = "https://github.com/signup";
   const CREATE_TOKEN_URL =
@@ -190,19 +191,9 @@
     <Button
       type="submit"
       class="w-full bg-blue-600 hover:bg-blue-700 text-white"
-      disabled={!isSettingsValid}
+      disabled={!isSettingsValid || buttonDisabled}
     >
-      Save Settings
+      {status ? status : "Save Settings"}
     </Button>
   </form>
-
-  {#if status}
-    <p
-      class="mt-4 text-center"
-      class:text-green-400={status.includes("success")}
-      class:text-red-400={status.includes("Error")}
-    >
-      {status}
-    </p>
-  {/if}
 </div>
