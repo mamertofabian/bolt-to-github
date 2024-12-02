@@ -27,9 +27,8 @@
   const GITHUB_SIGNUP_URL = "https://github.com/signup";
   const CREATE_TOKEN_URL =
     "https://github.com/settings/tokens/new?scopes=repo&description=Bolt%20to%20GitHub";
-  const CREATE_REPO_URL = "https://github.com/new";
 
-  let showNewUserGuide = false;
+  let showNewUserGuide = true;
 
   function toggleNewUserGuide() {
     showNewUserGuide = !showNewUserGuide;

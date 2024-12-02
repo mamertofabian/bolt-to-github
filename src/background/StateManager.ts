@@ -24,11 +24,4 @@ export class StateManager {
     async setProjectId(projectId: string) {
         return SettingsService.setProjectId(projectId);
     }
-
-    private isValidSettings(settings: Partial<GitHubSettingsInterface>): settings is GitHubSettingsInterface {
-        return Boolean(
-            settings.githubToken &&
-            settings.repoOwner
-        );
-    }
 }
