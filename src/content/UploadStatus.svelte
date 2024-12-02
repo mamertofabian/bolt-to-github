@@ -15,7 +15,11 @@
   $: updateNotificationUI(status);
 
   function updateNotificationUI(newStatus: UploadStatusState) {
-    console.log('🔄 Updating notification:', newStatus);
+    if (newStatus.status === 'success') {
+      console.log('🔄 Success status received, setting notification to auto-hide'); 
+    }
+
+    // console.log('🔄 Updating notification:', newStatus);
     
     if (newStatus.status === 'idle') {
       notificationVisible = false;
@@ -34,6 +38,7 @@
   }
 
   function closeNotification() {
+    console.log('🔄 Closing notification');
     notificationVisible = false;
     // Reset state after animation completes
     setTimeout(() => {
