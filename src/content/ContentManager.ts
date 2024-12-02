@@ -1,3 +1,4 @@
+import type { Message } from "$lib/types";
 import { MessageHandler } from "./MessageHandler";
 import { UIManager } from "./UIManager";
 
@@ -48,16 +49,16 @@ export class ContentManager {
         });
       }
     
-      private handleBackgroundMessage(message: any) {
+      private handleBackgroundMessage(message: Message) {
         console.log('🔊 Received message from background:', message);
         switch (message.type) {
-          case 'UPLOAD_STATUS_UPDATE':
+          case 'UPLOAD_STATUS':
             console.log('🔊 Received upload status update:', message.status);
-            this.uiManager.updateUploadStatus(message.status);
+            this.uiManager.updateUploadStatus(message.status!);
             break;
           case 'GITHUB_SETTINGS_CHANGED':
-            console.log('🔊 Received GitHub settings changed:', message.isValid);
-            this.uiManager.updateButtonState(message.isValid);
+            console.log('🔊 Received GitHub settings changed:', message.data.isValid);
+            this.uiManager.updateButtonState(message.data.isValid);
             break;
           // Add other message handlers as needed
         }

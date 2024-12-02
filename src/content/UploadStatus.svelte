@@ -9,7 +9,7 @@
     progress: 0
   };
   
-  let notificationVisible = true;  // TODO: Set to false
+  let notificationVisible = false;
   
   // Watch for status changes and update UI accordingly
   $: updateNotificationUI(status);
@@ -18,7 +18,7 @@
     console.log('🔄 Updating notification:', newStatus);
     
     if (newStatus.status === 'idle') {
-      notificationVisible = true;  // TODO: Set to false
+      notificationVisible = false;
       return;
     }
 
@@ -50,17 +50,17 @@
 <div id="bolt-upload-status">
   {#if status.status !== 'idle'}
     <div
-      class="bolt-notification fixed top-4 right-4 w-80 bg-gray-800/100 rounded-lg shadow-lg border border-gray-700 p-4 z-50 transition-all duration-300"
+      class="bolt-notification fixed top-4 right-4 w-80 bg-gray-800/100 rounded-lg shadow-lg border border-gray-700 p-4 transition-all duration-300"
       class:hidden={!notificationVisible}
-      style="margin-top: 40px; margin-right: 10px; z-index: 10;"
+      style="margin-top: 40px; margin-right: 10px;"
     >
       <div class="flex items-center justify-between mb-2">
         <span class="font-medium status-text" 
-          class:text-gray-100={status.status === 'processing'} 
+          class:text-gray-100={status.status === 'uploading'} 
           class:text-green-400={status.status === 'success'} 
           class:text-red-400={status.status === 'error'}
         >
-          {#if status.status === 'processing'}
+          {#if status.status === 'uploading'}
             Pushing to GitHub...
           {:else if status.status === 'success'}
             Push Complete!
@@ -84,7 +84,7 @@
       <div class="w-full bg-gray-700 rounded-full h-2.5 mb-2">
         <div
           class="h-2.5 rounded-full transition-all duration-300"
-          class:bg-blue-500={status.status === 'processing'}
+          class:bg-blue-500={status.status === 'uploading'}
           class:bg-green-500={status.status === 'success'}
           class:bg-red-500={status.status === 'error'}
           style="width: {status.progress || 0}%"

@@ -7,11 +7,13 @@ export type MessageType =
     | 'UPLOAD_STATUS' 
     | 'SET_COMMIT_MESSAGE' 
     | 'DEBUG'
-    | 'CONTENT_SCRIPT_READY';
+    | 'CONTENT_SCRIPT_READY'
+    | 'GITHUB_SETTINGS_CHANGED';
   
 export interface Message {
   type: MessageType;
   data?: any;
+  status?: UploadStatusState;
   message?: string;
 }
 
@@ -28,7 +30,7 @@ export interface GitHubSettingsInterface {
     projectSettings?: ProjectSettings;
 }
 
-export type ProcessingStatus = 'idle' | 'processing' | 'uploading' | 'success' | 'error';
+export type ProcessingStatus = 'idle' | 'uploading' | 'success' | 'error';
 
 export interface UploadStatusState {
   status: ProcessingStatus;

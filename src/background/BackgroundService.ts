@@ -192,7 +192,7 @@ export class BackgroundService {
         
         this.sendResponse(port, { 
           type: 'UPLOAD_STATUS', 
-          status: { status: 'success', message: 'Upload completed successfully' }
+          status: { status: 'success', message: 'Upload completed successfully', progress: 100 }
         });
       } catch (decodeError) {
         throw new Error(`Failed to decode ZIP data: ${decodeError}`);

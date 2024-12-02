@@ -1,4 +1,4 @@
-import type { ProcessingStatus } from '$lib/types';
+import type { ProcessingStatus, UploadStatusState } from '$lib/types';
 import { SettingsService } from '../services/settings';
 import type { MessageHandler } from './MessageHandler';
 import UploadStatus from './UploadStatus.svelte';
@@ -86,7 +86,7 @@ export class UIManager {
       target
     });
   }
-  
+
   private async initializeUploadButton() {
     console.log('🔊 Initializing upload button');
     const buttonContainer = document.querySelector('div.flex.grow-1.basis-60 div.flex.gap-2');
@@ -300,11 +300,15 @@ export class UIManager {
     }, 5000);
   };
 
-  public updateUploadStatus(status: ProcessingStatus) {
+  public updateUploadStatus(status: UploadStatusState) {
+    console.log('🔊 Updating upload status:', status);
     if (!this.uploadStatusComponent) {
+      console.log('🔊 Upload status component not found, initializing');
       this.initializeUploadStatus();
     }
-    this.uploadStatusComponent?.$set({status: {status: 'processing'}});  // TODO: Fix this to include message and progress
+
+    console.log('🔊 Setting upload status:', status);
+    this.uploadStatusComponent?.$set({status});
   }
 
   public updateButtonState(isValid: boolean) {
