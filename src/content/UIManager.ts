@@ -1,4 +1,4 @@
-import type { ProcessingStatus, UploadStatusState } from '$lib/types';
+import type { UploadStatusState } from '$lib/types';
 import { SettingsService } from '../services/settings';
 import type { MessageHandler } from './MessageHandler';
 import UploadStatus from './UploadStatus.svelte';
@@ -311,7 +311,7 @@ export class UIManager {
     // Add click handler for settings button
     const settingsButton = notification.querySelector('button');
     settingsButton?.addEventListener('click', () => {
-      chrome.runtime.sendMessage({ type: 'OPEN_SETTINGS' });
+      this.messageHandler.sendMessage('OPEN_SETTINGS');
       document.body.removeChild(notification);
     });
 

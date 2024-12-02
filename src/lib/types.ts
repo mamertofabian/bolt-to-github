@@ -8,7 +8,8 @@ export type MessageType =
     | 'SET_COMMIT_MESSAGE' 
     | 'DEBUG'
     | 'CONTENT_SCRIPT_READY'
-    | 'GITHUB_SETTINGS_CHANGED';
+    | 'GITHUB_SETTINGS_CHANGED'
+    | 'OPEN_SETTINGS';
   
 export interface Message {
   type: MessageType;

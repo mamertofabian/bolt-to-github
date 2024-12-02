@@ -132,6 +132,11 @@ export class BackgroundService {
           }
           break;
 
+        case 'OPEN_SETTINGS':
+          console.log('Opening settings popup');
+          chrome.action.openPopup();
+          break;
+
         case 'DEBUG':
           console.log(`[Content Debug] ${message.message}`);
           break;
