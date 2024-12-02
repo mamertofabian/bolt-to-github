@@ -11,6 +11,7 @@
     ChevronUp,
     ChevronDown,
   } from "lucide-svelte";
+  import { onMount } from 'svelte';
 
   export let githubToken: string;
   export let repoOwner: string;
@@ -30,8 +31,15 @@
 
   let showNewUserGuide = true;
 
+  onMount(() => {
+    chrome.storage.local.get(['showNewUserGuide'], (result) => {
+      showNewUserGuide = result.showNewUserGuide ?? true;
+    });
+  });
+
   function toggleNewUserGuide() {
     showNewUserGuide = !showNewUserGuide;
+    chrome.storage.local.set({ showNewUserGuide });
   }
 
   $: if (projectId && projectSettings[projectId]) {

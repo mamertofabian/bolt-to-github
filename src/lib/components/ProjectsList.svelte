@@ -7,7 +7,8 @@
   export let projectSettings: Record<string, { repoName: string; branch: string }>;
   export let repoOwner: string;
   export let githubToken: string;
-  export let isBoltNewTab: boolean = true; 
+  export let isBoltSite: boolean = true;
+  export let currentlyLoadedProjectId: string | null = null;
 
   const githubService = new GitHubService(githubToken);
   let commitCounts: Record<string, number> = {};
@@ -18,11 +19,9 @@
   $: {
     filteredProjects = Object.entries(projectSettings)
       .filter(([projectId, settings]) => {
-        // First check if the repo exists in GitHub (non-zero commit count)
-        const hasGitHubRepo = commitCounts[projectId] > 0;
-        // Then apply search filter
+        // Only apply search filter
         const matchesSearch = settings.repoName.toLowerCase().includes(searchQuery.toLowerCase());
-        return hasGitHubRepo && matchesSearch;
+        return matchesSearch;
       });
   }
 
@@ -56,7 +55,7 @@
       <div class="space-y-2">
         <p class="text-sm text-slate-400 text-orange-400">No projects found. Create or load an existing project to get started.</p>
       </div>
-      {#if !isBoltNewTab}
+      {#if !isBoltSite}
         <Button
           variant="outline"
           class="border-slate-800 hover:bg-slate-800 text-slate-200"
@@ -89,24 +88,31 @@
     </div>
 
     {#each filteredProjects as [projectId, settings]}
-      <div class="border border-slate-800 rounded-lg p-3 hover:bg-slate-800/50 transition-colors group">
+      <div class="border border-slate-800 rounded-lg p-3 hover:bg-slate-800/50 transition-colors group {currentlyLoadedProjectId === projectId ? 'bg-slate-800/30 border-slate-700' : ''}">
         <div class="flex items-center justify-between">
           <div class="space-y-0.5">
-            <h3 class="font-medium">{settings.repoName} ({settings.branch})</h3>
+            <h3 class="font-medium">
+              {settings.repoName} ({settings.branch})
+              {#if currentlyLoadedProjectId === projectId}
+                <span class="text-xs text-emerald-500 ml-2">(Current)</span>
+              {/if}
+            </h3>
             <div class="flex gap-2 text-xs text-slate-400">
               <p>Bolt ID: {projectId} ({commitCounts[projectId] ?? '...'} commits)</p>
             </div>
           </div>
           <div class="flex gap-1">
-            <Button
-              variant="ghost"
-              size="icon"
-              title="Open in Bolt"
-              class="h-8 w-8 opacity-70 group-hover:opacity-100"
-              on:click={() => openBoltProject(projectId)}
-            >
-              <Zap class="h-5 w-5" />
-            </Button>
+            {#if currentlyLoadedProjectId !== projectId}
+              <Button
+                variant="ghost"
+                size="icon"
+                title="Open in Bolt"
+                class="h-8 w-8 opacity-70 group-hover:opacity-100"
+                on:click={() => openBoltProject(projectId)}
+              >
+                <Zap class="h-5 w-5" />
+              </Button>
+            {/if}
             <Button
               variant="ghost"
               size="icon"

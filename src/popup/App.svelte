@@ -175,7 +175,7 @@
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <ProjectsList {projectSettings} {repoOwner} {githubToken} isBoltNewTab={isBoltSite} />
+          <ProjectsList {projectSettings} {repoOwner} {githubToken} currentlyLoadedProjectId={parsedProjectId} isBoltSite={isBoltSite} />
         </CardContent>
       </Card>
     </TabsContent>
@@ -217,7 +217,7 @@
       </CardDescription>
     </CardHeader>
     <CardContent>
-      <ProjectsList {projectSettings} {repoOwner} {githubToken} />
+      <ProjectsList {projectSettings} {repoOwner} {githubToken} currentlyLoadedProjectId={parsedProjectId} isBoltSite={isBoltSite} />
     </CardContent>
     <Footer />
   </Card>
