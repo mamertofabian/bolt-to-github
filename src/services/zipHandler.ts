@@ -2,221 +2,230 @@ import type { GitHubService } from "./GitHubService";
 import { toBase64 } from "../lib/common";
 import { ZipProcessor } from "../lib/zip";
 import ignore from 'ignore';
+import type { ProcessingStatus, UploadStatusState } from "$lib/types";
 
-const updateStatus = async (status: 'uploading' | 'success' | 'error' | 'idle', progress: number = 0, message: string = '',
-    activeTabs: Set<number>) => {
-    console.log('📊 Updating status:', { status, progress, message });
+export class ZipHandler {
+    constructor(private githubService: GitHubService,
+        private sendStatus: (status: UploadStatusState) => void
+    ) {}
 
-    try {
-        // Send status to active tabs
-        const statusUpdate = {
-            type: 'UPLOAD_STATUS',
-            status,
-            progress,
-            message
-        };
+    private updateStatus = async (status: ProcessingStatus, progress: number = 0, message: string = '') => {
+        console.log('📊 Updating status:', { status, progress, message });
+        this.sendStatus({ status, progress, message });
+    }
 
-        // Send to all active upload tabs
-        for (const tabId of activeTabs) {
-            try {
-                await chrome.tabs.sendMessage(tabId, statusUpdate).catch(() => {
-                    // If sending fails, remove the tab from active tabs
-                    activeTabs.delete(tabId);
-                });
-            } catch (error) {
-                console.log(`Failed to send to tab ${tabId}:`, error);
-            }
-        }
-
-        // Also send to popup if it's open
+    private ensureBranchExists = async (repoOwner: string, repoName: string, targetBranch: string) => {
+        // Check if branch exists
+        let branchExists = true;
         try {
-            await chrome.runtime.sendMessage(statusUpdate);
-        } catch (error: unknown) {
-            // Ignore errors when popup is closed
-            if (error instanceof Error && !error.message.includes('Receiving end does not exist')) {
-                console.error('Error sending to popup:', error);
+            await this.githubService.request('GET', `/repos/${repoOwner}/${repoName}/branches/${targetBranch}`);
+        } catch (error) {
+            branchExists = false;
+        }
+
+        // If branch doesn't exist, create it from default branch
+        if (!branchExists) {
+            await this.updateStatus('uploading', 18, `Creating branch ${targetBranch}...`);
+            const defaultBranch = await this.githubService.request('GET', `/repos/${repoOwner}/${repoName}/git/refs/heads/main`);
+            await this.githubService.request('POST', `/repos/${repoOwner}/${repoName}/git/refs`, {
+                ref: `refs/heads/${targetBranch}`,
+                sha: defaultBranch.object.sha
+            });
+        }
+    }
+
+    public processZipFile = async (blob: Blob, currentProjectId: string | null, commitMessage: string) => {
+        if (!this.githubService) {
+            await this.updateStatus('error', 0, 'GitHub service not initialized. Please set your GitHub token.');
+            throw new Error('GitHub service not initialized. Please set your GitHub token.');
+        }
+    
+        if (!currentProjectId) {
+            await this.updateStatus('error', 0, 'Project ID not found. Make sure you are on a Bolt project page.');
+            throw new Error('Project ID not found. Make sure you are on a Bolt project page.');
+        }
+    
+        try {
+            await this.updateStatus('uploading', 0, 'Processing ZIP file...');
+    
+            console.log('🗜️ Processing ZIP file...');
+            const files = await ZipProcessor.processZipBlob(blob);
+    
+            await this.updateStatus('uploading', 10, 'Preparing files...');
+    
+            const { repoOwner, projectSettings } = await chrome.storage.sync.get([
+                "repoOwner",
+                "projectSettings"
+            ]);
+    
+            if (!projectSettings?.[currentProjectId]) {
+                throw new Error('Project settings not found for this project');
             }
+    
+            const repoName = projectSettings[currentProjectId].repoName;
+            const branch = projectSettings[currentProjectId].branch;
+    
+            if (!repoOwner || !repoName) {
+                throw new Error('Repository details not configured');
+            }
+    
+            const targetBranch = branch || 'main';
+            console.log('📋 Repository details:', { repoOwner, repoName, targetBranch });
+    
+            await this.updateStatus('uploading', 15, 'Checking repository...');
+            await this.githubService.ensureRepoExists(repoOwner, repoName);
+            
+            await this.ensureBranchExists(repoOwner, repoName, targetBranch);
+    
+            const processedFiles = await this.processFilesWithGitignore(files);
+    
+            await this.updateStatus('uploading', 20, 'Getting repository information...');
+
+            await this.uploadToGitHub(processedFiles, repoOwner, repoName, targetBranch, commitMessage);
+
+            await this.updateStatus('success', 100, `Successfully uploaded ${processedFiles.size} files to GitHub`);
+
+            // Clear the status after a delay
+            setTimeout(() => {
+                this.updateStatus('idle', 0, '');
+            }, 5000);
+        } catch (error) {
+            console.error('❌ Error uploading files:', error);
+            await this.updateStatus(
+                'error',
+                0,
+                `Failed to upload files: ${error instanceof Error ? error.message : 'Unknown error'}`
+            );
+            throw error;
         }
-    } catch (error: unknown) {
-        console.error('Error in updateStatus:', error);
-    }
-}
-
-const ensureBranchExists = async (
-    githubService: GitHubService,
-    repoOwner: string,
-    repoName: string,
-    targetBranch: string,
-    activeTabs: Set<number>
-) => {
-    // Check if branch exists
-    let branchExists = true;
-    try {
-        await githubService.request('GET', `/repos/${repoOwner}/${repoName}/branches/${targetBranch}`);
-    } catch (error) {
-        branchExists = false;
     }
 
-    // If branch doesn't exist, create it from default branch
-    if (!branchExists) {
-        await updateStatus('uploading', 18, `Creating branch ${targetBranch}...`, activeTabs);
-        const defaultBranch = await githubService.request('GET', `/repos/${repoOwner}/${repoName}/git/refs/heads/main`);
-        await githubService.request('POST', `/repos/${repoOwner}/${repoName}/git/refs`, {
-            ref: `refs/heads/${targetBranch}`,
-            sha: defaultBranch.object.sha
-        });
-    }
-}
-
-export const processZipFile = async (blob: Blob, githubService: GitHubService, 
-    activeTabs: Set<number>, currentProjectId: string | null, commitMessage: string) => {
-    if (!githubService) {
-        await updateStatus('error', 0, 'GitHub service not initialized. Please set your GitHub token.', activeTabs);
-        throw new Error('GitHub service not initialized. Please set your GitHub token.');
-    }
-
-    if (!currentProjectId) {
-        await updateStatus('error', 0, 'Project ID not found. Make sure you are on a Bolt project page.', activeTabs);
-        throw new Error('Project ID not found. Make sure you are on a Bolt project page.');
-    }
-
-    try {
-        await updateStatus('uploading', 0, 'Processing ZIP file...', activeTabs);
-
-        console.log('🗜️ Processing ZIP file...');
-        const files = await ZipProcessor.processZipBlob(blob);
-
-        await updateStatus('uploading', 10, 'Preparing files...', activeTabs);
-
-        const { repoOwner, projectSettings } = await chrome.storage.sync.get([
-            "repoOwner",
-            "projectSettings"
-        ]);
-
-        if (!projectSettings?.[currentProjectId]) {
-            throw new Error('Project settings not found for this project');
-        }
-
-        const repoName = projectSettings[currentProjectId].repoName;
-        const branch = projectSettings[currentProjectId].branch;
-
-        if (!repoOwner || !repoName) {
-            throw new Error('Repository details not configured');
-        }
-
-        const targetBranch = branch || 'main';
-        console.log('📋 Repository details:', { repoOwner, repoName, targetBranch });
-
-        // Ensure repository exists
-        await updateStatus('uploading', 15, 'Checking repository...', activeTabs);
-        await githubService.ensureRepoExists(repoOwner, repoName);
-
-        // Ensure branch exists
-        await ensureBranchExists(githubService, repoOwner, repoName, targetBranch, activeTabs);
-
-        // Process files
+    private async processFilesWithGitignore(files: Map<string, string>): Promise<Map<string, string>> {
         const processedFiles = new Map<string, string>();
         const ig = ignore();
         
         // Check for .gitignore and initialize ignore patterns
         const gitignoreContent = files.get('.gitignore') || files.get('project/.gitignore');
         if (gitignoreContent) {
-            ig.add(gitignoreContent.split('\n'));
+          ig.add(gitignoreContent.split('\n'));
         }
-
+    
         for (const [path, content] of files.entries()) {
-            if (path.endsWith('/') || !content.trim()) {
-                console.log(`📁 Skipping entry: ${path}`);
-                continue;
-            }
-
-            const normalizedPath = path.startsWith('project/') ? path.slice(8) : path;
-            
-            // Skip if file matches gitignore patterns
-            if (ig.ignores(normalizedPath)) {
-                console.log(`🚫 Ignoring file: ${normalizedPath}`);
-                continue;
-            }
-
-            processedFiles.set(normalizedPath, content);
+          if (path.endsWith('/') || !content.trim()) {
+            console.log(`📁 Skipping entry: ${path}`);
+            continue;
+          }
+    
+          const normalizedPath = path.startsWith('project/') ? path.slice(8) : path;
+          
+          if (ig.ignores(normalizedPath)) {
+            console.log(`🚫 Ignoring file: ${normalizedPath}`);
+            continue;
+          }
+    
+          processedFiles.set(normalizedPath, content);
         }
+    
+        return processedFiles;
+    }
 
-        await updateStatus('uploading', 20, 'Getting repository information...', activeTabs);
-
+    private async uploadToGitHub(
+        processedFiles: Map<string, string>,
+        repoOwner: string,
+        repoName: string,
+        targetBranch: string,
+        commitMessage: string
+      ) {
         // Get the current commit SHA
-        const baseRef = await githubService.request('GET', `/repos/${repoOwner}/${repoName}/git/refs/heads/${targetBranch}`);
-        const baseSha = baseRef.object.sha;
-
-        const baseCommit = await githubService.request('GET', `/repos/${repoOwner}/${repoName}/git/commits/${baseSha}`);
-        const baseTreeSha = baseCommit.tree.sha;
-
-        await updateStatus('uploading', 30, 'Creating file blobs...', activeTabs);
-
-        // Create blobs for all files
-        const totalFiles = processedFiles.size;
-        let completedFiles = 0;
-
-        const treeItems = await Promise.all(
-            Array.from(processedFiles.entries()).map(async ([path, content]) => {
-                const blobData = await githubService.request('POST', `/repos/${repoOwner}/${repoName}/git/blobs`, {
-                    content: toBase64(content),
-                    encoding: 'base64'
-                });
-
-                completedFiles++;
-                const progress = 30 + Math.floor((completedFiles / totalFiles) * 30);
-                await updateStatus('uploading', progress, `Creating blob ${completedFiles}/${totalFiles}...`, activeTabs);
-
-                return {
-                    path,
-                    mode: '100644',
-                    type: 'blob',
-                    sha: blobData.sha
-                };
-            })
+        const baseRef = await this.githubService.request(
+          'GET',
+          `/repos/${repoOwner}/${repoName}/git/refs/heads/${targetBranch}`
         );
-
-        await updateStatus('uploading', 70, 'Creating tree...', activeTabs);
-
+        const baseSha = baseRef.object.sha;
+    
+        const baseCommit = await this.githubService.request(
+          'GET',
+          `/repos/${repoOwner}/${repoName}/git/commits/${baseSha}`
+        );
+        const baseTreeSha = baseCommit.tree.sha;
+    
+        await this.updateStatus('uploading', 30, 'Creating file blobs...');
+    
+        // Create blobs for all files
+        const treeItems = await this.createBlobs(processedFiles, repoOwner, repoName);
+    
+        await this.updateStatus('uploading', 70, 'Creating tree...');
+    
         // Create a new tree
-        const newTree = await githubService.request('POST', `/repos/${repoOwner}/${repoName}/git/trees`, {
+        const newTree = await this.githubService.request(
+          'POST',
+          `/repos/${repoOwner}/${repoName}/git/trees`,
+          {
             base_tree: baseTreeSha,
             tree: treeItems
-        });
-
-        await updateStatus('uploading', 80, 'Creating commit...', activeTabs);
-
+          }
+        );
+    
+        await this.updateStatus('uploading', 80, 'Creating commit...');
+    
         // Create a new commit
-        const newCommit = await githubService.request('POST', `/repos/${repoOwner}/${repoName}/git/commits`, {
+        const newCommit = await this.githubService.request(
+          'POST',
+          `/repos/${repoOwner}/${repoName}/git/commits`,
+          {
             message: commitMessage,
             tree: newTree.sha,
             parents: [baseSha]
-        });
-
-        await updateStatus('uploading', 90, 'Updating branch...', activeTabs);
-
+          }
+        );
+    
+        await this.updateStatus('uploading', 90, 'Updating branch...');
+    
         // Update the reference
-        await githubService.request('PATCH', `/repos/${repoOwner}/${repoName}/git/refs/heads/${targetBranch}`, {
+        await this.githubService.request(
+          'PATCH',
+          `/repos/${repoOwner}/${repoName}/git/refs/heads/${targetBranch}`,
+          {
             sha: newCommit.sha,
             force: false
-        });
-
-        await updateStatus('success', 100, `Successfully uploaded ${processedFiles.size} files to GitHub`, activeTabs);
-
-        // Clear the status after a delay
-        setTimeout(() => {
-            updateStatus('idle', 0, '', activeTabs);
-        }, 5000);
-
-    } catch (error) {
-        console.error('❌ Error uploading files:', error);
-        await updateStatus(
-            'error',
-            0,
-            `Failed to upload files: ${error instanceof Error ? error.message : 'Unknown error'}`,
-            activeTabs
+          }
         );
-        throw error;
+    }
+
+    private async createBlobs(
+        files: Map<string, string>,
+        repoOwner: string,
+        repoName: string
+      ) {
+        const totalFiles = files.size;
+        let completedFiles = 0;
+    
+        return Promise.all(
+          Array.from(files.entries()).map(async ([path, content]) => {
+            const blobData = await this.githubService.request(
+              'POST',
+              `/repos/${repoOwner}/${repoName}/git/blobs`,
+              {
+                content: toBase64(content),
+                encoding: 'base64'
+              }
+            );
+    
+            completedFiles++;
+            const progress = 30 + Math.floor((completedFiles / totalFiles) * 30);
+            await this.updateStatus(
+              'uploading',
+              progress,
+              `Creating blob ${completedFiles}/${totalFiles}...`
+            );
+    
+            return {
+              path,
+              mode: '100644',
+              type: 'blob',
+              sha: blobData.sha
+            };
+          })
+        );
     }
 }
-

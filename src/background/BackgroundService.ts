@@ -1,10 +1,11 @@
-import { processZipFile } from '../services/ZipHandler';
 import { GitHubService } from '../services/GitHubService';
-import type { Message, MessageType, Port, ProcessingStatus, UploadStatusState } from '../lib/types';
+import type { Message, MessageType, Port, UploadStatusState } from '../lib/types';
 import { StateManager } from './StateManager';
+import { ZipHandler } from '../services/ZipHandler';
 
 export class BackgroundService {
   private stateManager: StateManager;
+  private zipHandler: ZipHandler | null;
   private ports: Map<number, Port>;
   private githubService: GitHubService | null;
   private pendingCommitMessage: string;
@@ -14,8 +15,8 @@ export class BackgroundService {
     this.stateManager = StateManager.getInstance();
     this.ports = new Map();
     this.githubService = null;
+    this.zipHandler = null;
     this.pendingCommitMessage = 'Commit from Bolt to GitHub';
-    
     this.initialize();
   }
 
@@ -23,13 +24,14 @@ export class BackgroundService {
     // this.initializeStorageListener();
 
   private async initialize(): Promise<void> {
-    await this.initializeGitHubService();
+    const githubService = await this.initializeGitHubService();
+    this.setupZipHandler(githubService!);
     this.setupConnectionHandlers();
     this.setupStorageListener();
     console.log('👂 Background service initialized');
   }
 
-  private async initializeGitHubService() {
+  private async initializeGitHubService(): Promise<GitHubService | null> {
     try {
       const settings = await this.stateManager.getGitHubSettings();
       
@@ -43,6 +45,22 @@ export class BackgroundService {
     } catch (error) {
       console.error('Failed to initialize GitHub service:', error);
       this.githubService = null;
+    }
+    return this.githubService;
+  }
+
+  private setupZipHandler(githubService: GitHubService) {
+    this.zipHandler = new ZipHandler(
+      githubService, (status) => this.broadcastStatus(status)
+    );
+  }
+
+  private broadcastStatus(status: UploadStatusState) {
+    for (const [tabId, port] of this.ports) {
+      this.sendResponse(port, {
+        type: 'UPLOAD_STATUS',
+        status
+      });
     }
   }
 
@@ -144,9 +162,13 @@ export class BackgroundService {
         throw new Error('GitHub service is not initialized. Please check your GitHub settings.');
       }
 
+      if (!this.zipHandler) {
+        throw new Error('Zip handler is not initialized.');
+      }
+
       const projectId = await this.stateManager.getProjectId();
       if (!projectId) {
-        throw new Error('Project ID is not set. Please check your Bolt.new settings.');
+        throw new Error('Project ID is not set.');
       }
 
       try {
@@ -159,10 +181,8 @@ export class BackgroundService {
         const blob = new Blob([bytes], { type: 'application/zip' });
 
         // Process the ZIP file
-        await processZipFile(
+        await this.zipHandler.processZipFile(
           blob, 
-          this.githubService, 
-          new Set([tabId]), 
           projectId, 
           this.pendingCommitMessage
         );

@@ -28,7 +28,7 @@ export interface GitHubSettingsInterface {
     projectSettings?: ProjectSettings;
 }
 
-export type ProcessingStatus = 'idle' | 'processing' | 'success' | 'error';
+export type ProcessingStatus = 'idle' | 'processing' | 'uploading' | 'success' | 'error';
 
 export interface UploadStatusState {
   status: ProcessingStatus;
