@@ -15,6 +15,7 @@ export class ContentManager {
   
     private initializeConnection(): chrome.runtime.Port {
         const port = chrome.runtime.connect({ name: 'bolt-content' });
+        console.log('🔊 Connected to background service with port:', port);
         this.messageHandler = new MessageHandler(port);
         
         port.onMessage.addListener((message) => {
@@ -48,11 +49,14 @@ export class ContentManager {
       }
     
       private handleBackgroundMessage(message: any) {
+        console.log('🔊 Received message from background:', message);
         switch (message.type) {
           case 'UPLOAD_STATUS_UPDATE':
+            console.log('🔊 Received upload status update:', message.status);
             this.uiManager.updateUploadStatus(message.status);
             break;
           case 'GITHUB_SETTINGS_CHANGED':
+            console.log('🔊 Received GitHub settings changed:', message.isValid);
             this.uiManager.updateButtonState(message.isValid);
             break;
           // Add other message handlers as needed
@@ -60,6 +64,7 @@ export class ContentManager {
       }
     
       public reinitialize() {
+        console.log('🔊 Reinitializing content script');
         this.uiManager.reinitialize();
         this.messageHandler?.sendMessage('CONTENT_SCRIPT_READY');
       }

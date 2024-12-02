@@ -9,7 +9,7 @@
     progress: 0
   };
   
-  let notificationVisible = false;
+  let notificationVisible = true;  // TODO: Set to false
   
   // Watch for status changes and update UI accordingly
   $: updateNotificationUI(status);
@@ -18,7 +18,7 @@
     console.log('🔄 Updating notification:', newStatus);
     
     if (newStatus.status === 'idle') {
-      notificationVisible = false;
+      notificationVisible = true;  // TODO: Set to false
       return;
     }
 

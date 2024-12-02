@@ -44,12 +44,13 @@ export class UIManager {
   }
 
   private async initializeUI() {
+    console.log('🔊 Initializing UI');
     await this.initializeUploadButton();
     this.initializeUploadStatus();
   }
 
   private initializeUploadStatus() {
-    console.log('Initializing upload status');
+    console.log('🔊 Initializing upload status');
     // Clean up existing instance if any
     if (this.uploadStatusComponent) {
       console.log('Destroying existing upload status component');
@@ -85,9 +86,9 @@ export class UIManager {
       target
     });
   }
-
+  
   private async initializeUploadButton() {
-    console.log('Initializing upload button');
+    console.log('🔊 Initializing upload button');
     const buttonContainer = document.querySelector('div.flex.grow-1.basis-60 div.flex.gap-2');
     if (!buttonContainer || document.querySelector('[data-github-upload]')) {
       return;
@@ -418,6 +419,7 @@ export class UIManager {
   }
 
   public reinitialize() {
+    console.log('🔊 Reinitializing UI manager');
     this.cleanup();
     this.initializeUI();
   }

@@ -11,7 +11,6 @@
   import Header from "$lib/components/Header.svelte";
   import SocialLinks from "$lib/components/SocialLinks.svelte";
   import StatusAlert from "$lib/components/StatusAlert.svelte";
-  import UploadProgress from "$lib/components/UploadProgress.svelte";
   import GitHubSettings from "$lib/components/GitHubSettings.svelte";
   import NotBoltSite from "$lib/components/NotBoltSite.svelte";
   import { COFFEE_LINK, GITHUB_LINK, YOUTUBE_LINK } from "$lib/constants";
@@ -154,8 +153,6 @@
         </CardContent>
         <Footer />
       </Card>
-
-      <UploadProgress {uploadStatus} {uploadProgress} {uploadMessage} />
     </TabsContent>
 
     <TabsContent value="settings">
