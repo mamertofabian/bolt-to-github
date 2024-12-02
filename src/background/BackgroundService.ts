@@ -9,6 +9,7 @@ export class BackgroundService {
   private ports: Map<number, Port>;
   private githubService: GitHubService | null;
   private pendingCommitMessage: string;
+  private storageListener: ((changes: { [key: string]: chrome.storage.StorageChange }, namespace: string) => void) | null = null;
 
   constructor() {
     console.log('🚀 Background service initializing...');
@@ -35,7 +36,9 @@ export class BackgroundService {
     try {
       const settings = await this.stateManager.getGitHubSettings();
       
-      if (settings && settings.gitHubSettings) {
+      if (settings && settings.gitHubSettings 
+        && settings.gitHubSettings.githubToken 
+        && settings.gitHubSettings.repoOwner) {
         console.log('✅ Valid settings found, initializing GitHub service', settings);
         this.githubService = new GitHubService(settings.gitHubSettings.githubToken);
       } else {
@@ -102,17 +105,30 @@ export class BackgroundService {
   }
 
   private setupStorageListener(): void {
-    chrome.storage.onChanged.addListener((changes, namespace) => {
+    // Remove any existing listener
+    if (this.storageListener) {
+      chrome.storage.onChanged.removeListener(this.storageListener);
+    }
+
+    // Create new listener and store reference
+    this.storageListener = async (changes, namespace) => {
       if (namespace === 'sync') {
         const settingsChanged = ['githubToken', 'repoOwner', 'repoName', 'branch']
           .some(key => key in changes);
 
         if (settingsChanged) {
-          console.log('🔄 GitHub settings changed, reinitializing service...');
-          this.initializeGitHubService();
+          console.log('🔄 GitHub settings changed, reinitializing GitHub service...');
+          const githubService = await this.initializeGitHubService();
+          if (githubService) {
+            console.log('🔄 GitHub service reinitialized, reinitializing ZipHandler...');
+            this.setupZipHandler(githubService);
+          }
         }
       }
-    });
+    };
+
+    // Add the listener
+    chrome.storage.onChanged.addListener(this.storageListener);
   }
 
   private async handlePortMessage(tabId: number, message: Message): Promise<void> {
@@ -203,7 +219,20 @@ export class BackgroundService {
           status: { status: 'success', message: 'Upload completed successfully', progress: 100 }
         });
       } catch (decodeError) {
-        throw new Error(`Failed to decode ZIP data: ${decodeError}`);
+        const errorMessage = decodeError instanceof Error ? decodeError.message : String(decodeError);
+        const isGitHubError = errorMessage.includes('GitHub API Error');
+        
+        if (isGitHubError) {
+          throw new Error(
+            `GitHub authentication failed. Please check your GitHub token in the extension settings and try again. \n\n` +
+            `If the issue persists, please open a GitHub issue.`
+          );
+        } else {
+          throw new Error(
+            `Failed to process ZIP data. Please try reloading the page. ` +
+            `If the issue persists, please open a GitHub issue.`
+          );
+        }
       }
     } catch (error) {
       console.error('Error processing ZIP:', error);
@@ -222,6 +251,13 @@ export class BackgroundService {
       port.postMessage(message);
     } catch (error) {
       console.error('Error sending response:', error);
+    }
+  }
+
+  public destroy(): void {
+    if (this.storageListener) {
+      chrome.storage.onChanged.removeListener(this.storageListener);
+      this.storageListener = null;
     }
   }
 }

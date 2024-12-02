@@ -17,7 +17,7 @@
   import Footer from "$lib/components/Footer.svelte";
   import type { GitHubSettingsInterface } from "$lib/types";
 
-  let githubToken = "";
+  let githubToken: string = "";
   let repoOwner = "";
   let repoName = "";
   let branch = "main";
@@ -94,9 +94,9 @@
 
   async function saveSettings() {
     try {
-      const settings: any = {
-        githubToken,
-        repoOwner,
+      const settings = {
+        githubToken: githubToken || "",
+        repoOwner: repoOwner || "",
         projectSettings
       };
 
