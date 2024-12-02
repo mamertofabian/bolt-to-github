@@ -125,7 +125,7 @@
   }
 </script>
 
-<main class="w-[400px] min-h-[400px] p-4 bg-slate-950 text-slate-50">
+<main class="w-[400px] p-3 bg-slate-950 text-slate-50">
   {#if isBoltSite && parsedProjectId}
   <Tabs bind:value={activeTab} class="w-full">
     <Header />
@@ -138,10 +138,17 @@
             Bolt to GitHub <span class="text-xs text-slate-400">v{version}</span>
           </CardTitle>
           <CardDescription class="text-slate-400">
-            Upload and sync your Bolt projects directly to GitHub
+            Upload and sync your Bolt projects to GitHub
           </CardDescription>
         </CardHeader>
         <CardContent>
+          <button
+            class="w-full mb-3 px-4 py-2 bg-slate-800 hover:bg-slate-700 rounded-md text-slate-200 transition-colors"
+            on:click={() => activeTab = "projects"}
+          >
+            View All Projects
+          </button>
+
           <StatusAlert 
             {isSettingsValid} 
             projectId={parsedProjectId}
@@ -168,7 +175,7 @@
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <ProjectsList {projectSettings} {repoOwner} />
+          <ProjectsList {projectSettings} {repoOwner} {githubToken} />
         </CardContent>
       </Card>
     </TabsContent>
@@ -206,11 +213,11 @@
         Bolt to GitHub <span class="text-xs text-slate-400">v{version}</span>
       </CardTitle>
       <CardDescription class="text-slate-400">
-        Upload and sync your Bolt projects directly to GitHub
+        Upload and sync your Bolt projects to GitHub
       </CardDescription>
     </CardHeader>
     <CardContent>
-      <ProjectsList {projectSettings} {repoOwner} />
+      <ProjectsList {projectSettings} {repoOwner} {githubToken} />
     </CardContent>
     <Footer />
   </Card>

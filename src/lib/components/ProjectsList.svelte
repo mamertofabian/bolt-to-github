@@ -1,9 +1,26 @@
 <script lang="ts">
+  import { onMount } from 'svelte';
   import { Button } from "$lib/components/ui/button";
   import { Github, Import, Zap } from "lucide-svelte";
+  import { GitHubService } from '../../services/GitHubService';
 
   export let projectSettings: Record<string, { repoName: string; branch: string }>;
   export let repoOwner: string;
+  export let githubToken: string;
+
+  const githubService = new GitHubService(githubToken);
+  let commitCounts: Record<string, number> = {};
+
+  onMount(async () => {
+    // Fetch commit counts for all projects
+    for (const [projectId, settings] of Object.entries(projectSettings)) {
+      commitCounts[projectId] = await githubService.getCommitCount(
+        repoOwner,
+        settings.repoName,
+        settings.branch
+      );
+    }
+  });
 
   function openBoltProject(projectId: string) {
     window.open(`https://bolt.new/~/${projectId}`, '_blank');
@@ -38,7 +55,9 @@
         <div class="flex items-center justify-between">
           <div class="space-y-0.5">
             <h3 class="font-medium">{settings.repoName} ({settings.branch})</h3>
-            <p class="text-xs text-slate-400">Bolt ID: {projectId}</p>
+            <div class="flex gap-2 text-xs text-slate-400">
+              <p>Bolt ID: {projectId} ({commitCounts[projectId] ?? '...'} commits)</p>
+            </div>
           </div>
           <div class="flex gap-1">
             <Button
