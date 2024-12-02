@@ -205,10 +205,10 @@ export class BackgroundService {
         const blob = new Blob([bytes], { type: 'application/zip' });
 
         // Process the ZIP file
-        await this.zipHandler.processZipFile(
-          blob, 
-          projectId, 
-          this.pendingCommitMessage
+        await this.withTimeout(
+            this.zipHandler.processZipFile(blob, projectId, this.pendingCommitMessage),
+            2 * 60 * 1000, // 2 minutes timeout
+            'Processing ZIP file timed out'
         );
 
         // Reset commit message after successful upload
@@ -244,6 +244,13 @@ export class BackgroundService {
         }
       });
     }
+  }
+
+  private async withTimeout<T>(promise: Promise<T>, ms: number, timeoutMessage: string): Promise<T> {
+    const timeout = new Promise<never>((_, reject) =>
+        setTimeout(() => reject(new Error(timeoutMessage)), ms)
+    );
+    return Promise.race([promise, timeout]);
   }
 
   private sendResponse(port: Port, message: { type: MessageType; status?: UploadStatusState }): void {

@@ -58,7 +58,11 @@ export class ContentManager {
     }
 
     private setupPortListeners(): void {
-      if (!this.port) return;
+      if (!this.port) {
+        console.error('Port is not initialized');
+        this.handleDisconnection();
+        return;
+      };
 
       this.port.onMessage.addListener((message: Message) => {
           try {
@@ -177,9 +181,14 @@ export class ContentManager {
 
   public reinitialize(): void {
       console.log('🔊 Reinitializing content script');
-      this.cleanup();
-      this.initializeConnection();
-      this.uiManager?.reinitialize();
-      this.messageHandler?.sendMessage('CONTENT_SCRIPT_READY');
+      try { 
+        this.cleanup();
+        this.initializeConnection();
+        this.uiManager?.reinitialize();
+        this.messageHandler?.sendMessage('CONTENT_SCRIPT_READY');
+      } catch (error) {
+        console.error('Error reinitializing content script:', error);
+        this.handleInitializationError(error);
+      }
   }
 }

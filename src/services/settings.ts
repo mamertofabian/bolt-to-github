@@ -20,7 +20,7 @@ export interface SettingsCheckResult {
         let projectSettings = settings.projectSettings?.[projectId.projectId];
   
         // Auto-create project settings if needed
-        if (!projectSettings && projectId.projectId && settings.repoOwner && settings.githubToken) {
+        if (!projectSettings && projectId?.projectId && settings.repoOwner && settings.githubToken) {
           projectSettings = { repoName: projectId.projectId, branch: 'main' };
           await chrome.storage.sync.set({ 
             [`projectSettings.${projectId.projectId}`]: projectSettings 

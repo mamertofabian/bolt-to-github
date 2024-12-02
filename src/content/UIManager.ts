@@ -214,6 +214,8 @@ export class UIManager {
     const downloadBtn = document.querySelector('div.flex.grow-1.basis-60 div.flex.gap-2 button:first-child') as HTMLButtonElement;
     if (downloadBtn) {
       downloadBtn.click();
+    } else {
+      throw new Error('Download button not found. The page structure may have changed.');
     }
   }
 

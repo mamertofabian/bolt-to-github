@@ -35,6 +35,13 @@ export class ZipHandler {
     }
 
     public processZipFile = async (blob: Blob, currentProjectId: string | null, commitMessage: string) => {
+        // Add size validation (50MB limit)
+        const MAX_FILE_SIZE = 50 * 1024 * 1024; // 50MB in bytes
+        if (blob.size > MAX_FILE_SIZE) {
+            await this.updateStatus('error', 0, `File too large. Maximum size is ${MAX_FILE_SIZE / 1024 / 1024}MB`);
+            throw new Error(`File too large. Maximum size is ${MAX_FILE_SIZE / 1024 / 1024}MB`);
+        }
+
         if (!this.githubService) {
             await this.updateStatus('error', 0, 'GitHub service not initialized. Please set your GitHub token.');
             throw new Error('GitHub service not initialized. Please set your GitHub token.');
