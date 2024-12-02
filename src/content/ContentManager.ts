@@ -12,17 +12,27 @@ export class ContentManager {
     private readonly RECONNECT_DELAY = 1000;
   
     constructor() {
-      try {
-        this.initializeConnection();
-        this.messageHandler = new MessageHandler(this.port!);
-        this.uiManager = UIManager.getInstance(this.messageHandler);
-        this.setupEventListeners();
-      } catch (error) {
-        console.error('Error initializing ContentManager:', error);
-        this.handleInitializationError(error);
-      }
+        if (!this.shouldInitialize()) {
+            console.log('Not initializing ContentManager - URL does not match bolt.new pattern');
+            return;
+        }
+
+        try {
+            this.initializeConnection();
+            this.messageHandler = new MessageHandler(this.port!);
+            this.uiManager = UIManager.getInstance(this.messageHandler);
+            this.setupEventListeners();
+        } catch (error) {
+            console.error('Error initializing ContentManager:', error);
+            this.handleInitializationError(error);
+        }
     }
 
+    private shouldInitialize(): boolean {
+        const currentUrl = window.location.href;
+        const match = currentUrl.match(/bolt\.new\/~\/([^\/]+)/);
+        return !!match;
+    }
   
     private initializeConnection() {
       try {
