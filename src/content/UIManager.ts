@@ -301,13 +301,13 @@ export class UIManager {
   };
 
   public updateUploadStatus(status: UploadStatusState) {
-    console.log('🔊 Updating upload status:', status);
+    // console.log('🔊 Updating upload status:', status);
     if (!this.uploadStatusComponent) {
       console.log('🔊 Upload status component not found, initializing');
       this.initializeUploadStatus();
     }
 
-    console.log('🔊 Setting upload status:', status);
+    // console.log('🔊 Setting upload status:', status);
     this.uploadStatusComponent?.$set({status});
   }
 

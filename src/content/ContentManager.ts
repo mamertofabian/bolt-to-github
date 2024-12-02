@@ -50,10 +50,10 @@ export class ContentManager {
       }
     
       private handleBackgroundMessage(message: Message) {
-        console.log('🔊 Received message from background:', message);
+        // console.log('🔊 Received message from background:', message);
         switch (message.type) {
           case 'UPLOAD_STATUS':
-            console.log('🔊 Received upload status update:', message.status);
+            // console.log('🔊 Received upload status update:', message.status);
             this.uiManager.updateUploadStatus(message.status!);
             break;
           case 'GITHUB_SETTINGS_CHANGED':
