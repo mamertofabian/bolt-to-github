@@ -212,13 +212,15 @@ export class UIManager {
 
       this.isGitHubUpload = true;
       this.messageHandler.sendCommitMessage(commitMessage || 'Commit from Bolt to GitHub');
+
+      this.findAndClickDownloadButton();  // This will close the dropdown
     } catch (error) {
         console.error('Error during GitHub upload:', error);
         throw new Error('Failed to trigger download. The page structure may have changed.');
     }
   }
-  async findAndClickDownloadButton() {
-    // Find the Export button
+
+  private findAndClickExportButton() {
     const exportButton = Array.from(document.querySelectorAll('button[aria-haspopup="menu"]'))
       .find(btn => 
         btn.textContent?.includes('Export') && 
@@ -229,7 +231,7 @@ export class UIManager {
         throw new Error('Export button not found');
     }
     console.log('Found export button:', exportButton);
-
+    
     // Dispatch keydown event to open dropdown
     const keydownEvent = new KeyboardEvent('keydown', { 
         key: 'Enter',
@@ -238,6 +240,10 @@ export class UIManager {
     });
     exportButton.dispatchEvent(keydownEvent);
     console.log('Dispatched keydown to export button');
+  }
+
+  async findAndClickDownloadButton() {
+    this.findAndClickExportButton();
 
       // Wait a bit for the dropdown content to render
     await new Promise(resolve => setTimeout(resolve, 200));
