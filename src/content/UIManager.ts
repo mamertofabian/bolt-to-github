@@ -195,27 +195,63 @@ export class UIManager {
     const { confirmed, commitMessage } = await this.showGitHubConfirmation(settings.gitHubSettings?.projectSettings || {});
     if (!confirmed) return;
 
-    // Update button state to processing
-    if (this.uploadButton) {
-      this.uploadButton.innerHTML = `
-        <svg class="animate-spin" width="16" height="16" viewBox="0 0 24 24">
-          <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4" fill="none"></circle>
-          <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-        </svg>
-        Pushing to GitHub...
-      `;
-      (this.uploadButton as HTMLButtonElement).disabled = true;
-    }
+    try {
+      // Find the Export button using Radix attributes
+      const exportButton = document.querySelector('button[aria-haspopup="menu"]') as HTMLButtonElement;
+      if (!exportButton) {
+          throw new Error('Export button not found');
+      }
+      console.log('Found export button:', exportButton);
 
-    this.isGitHubUpload = true;
-    this.messageHandler.sendCommitMessage(commitMessage || 'Commit from Bolt to GitHub');
+      // Dispatch keydown event to open dropdown
+        const keydownEvent = new KeyboardEvent('keydown', { 
+            key: 'Enter',
+            bubbles: true,
+            cancelable: true 
+        });
+        exportButton.dispatchEvent(keydownEvent);
+        console.log('Dispatched keydown to export button');
 
-    // Trigger download
-    const downloadBtn = document.querySelector('div.flex.grow-1.basis-60 div.flex.gap-2 button:first-child') as HTMLButtonElement;
-    if (downloadBtn) {
-      downloadBtn.click();
-    } else {
-      throw new Error('Download button not found. The page structure may have changed.');
+        // Wait a bit for the dropdown content to render
+        await new Promise(resolve => setTimeout(resolve, 200));
+
+        // Find the dropdown content
+        const dropdownContent = document.querySelector('[role="menu"], [data-radix-menu-content]');
+        if (!dropdownContent) {
+            throw new Error('Dropdown content not found');
+        }
+
+        // Find download button
+        const downloadButton = Array.from(dropdownContent.querySelectorAll('button')).find(button => {
+            const hasIcon = button.querySelector('.i-ph\\:download-simple');
+            const hasText = button.textContent?.toLowerCase().includes('download');
+            return hasIcon || hasText;
+        });
+
+        if (!downloadButton) {
+            throw new Error('Download button not found in dropdown');
+        }
+
+        console.log('Found download button, clicking...');
+        downloadButton.click();
+
+      // Update button state to processing
+      if (this.uploadButton) {
+        this.uploadButton.innerHTML = `
+          <svg class="animate-spin" width="16" height="16" viewBox="0 0 24 24">
+            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4" fill="none"></circle>
+            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+          </svg>
+          Pushing to GitHub...
+        `;
+        (this.uploadButton as HTMLButtonElement).disabled = true;
+      }
+
+      this.isGitHubUpload = true;
+      this.messageHandler.sendCommitMessage(commitMessage || 'Commit from Bolt to GitHub');
+    } catch (error) {
+        console.error('Error during GitHub upload:', error);
+        throw new Error('Failed to trigger download. The page structure may have changed.');
     }
   }
 
