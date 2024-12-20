@@ -27,7 +27,7 @@ A Chrome extension that automatically captures ZIP file downloads from bolt.new,
   <img src="https://img.shields.io/badge/Install%20from-Chrome%20Web%20Store-blue?style=for-the-badge&logo=google-chrome&logoColor=white" alt="Install from Chrome Web Store" height="40">
 </a>
 
-### Latest stable version (v1.1.0) includes the following features:
+### Latest stable version (v1.1.1) includes the following features:
 
 - 🚀 Automatic ZIP file interception from bolt.new
 - 📦 In-browser ZIP file extraction
