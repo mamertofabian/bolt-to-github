@@ -196,44 +196,7 @@ export class UIManager {
     if (!confirmed) return;
 
     try {
-      // Find the Export button using Radix attributes
-      const exportButton = document.querySelector('button[aria-haspopup="menu"]') as HTMLButtonElement;
-      if (!exportButton) {
-          throw new Error('Export button not found');
-      }
-      console.log('Found export button:', exportButton);
-
-      // Dispatch keydown event to open dropdown
-        const keydownEvent = new KeyboardEvent('keydown', { 
-            key: 'Enter',
-            bubbles: true,
-            cancelable: true 
-        });
-        exportButton.dispatchEvent(keydownEvent);
-        console.log('Dispatched keydown to export button');
-
-        // Wait a bit for the dropdown content to render
-        await new Promise(resolve => setTimeout(resolve, 200));
-
-        // Find the dropdown content
-        const dropdownContent = document.querySelector('[role="menu"], [data-radix-menu-content]');
-        if (!dropdownContent) {
-            throw new Error('Dropdown content not found');
-        }
-
-        // Find download button
-        const downloadButton = Array.from(dropdownContent.querySelectorAll('button')).find(button => {
-            const hasIcon = button.querySelector('.i-ph\\:download-simple');
-            const hasText = button.textContent?.toLowerCase().includes('download');
-            return hasIcon || hasText;
-        });
-
-        if (!downloadButton) {
-            throw new Error('Download button not found in dropdown');
-        }
-
-        console.log('Found download button, clicking...');
-        downloadButton.click();
+      await this.findAndClickDownloadButton();
 
       // Update button state to processing
       if (this.uploadButton) {
@@ -253,6 +216,51 @@ export class UIManager {
         console.error('Error during GitHub upload:', error);
         throw new Error('Failed to trigger download. The page structure may have changed.');
     }
+  }
+  async findAndClickDownloadButton() {
+    // Find the Export button
+    const exportButton = Array.from(document.querySelectorAll('button[aria-haspopup="menu"]'))
+      .find(btn => 
+        btn.textContent?.includes('Export') && 
+        btn.querySelector('.i-ph\\:export')
+      ) as HTMLButtonElement;
+    
+    if (!exportButton) {
+        throw new Error('Export button not found');
+    }
+    console.log('Found export button:', exportButton);
+
+    // Dispatch keydown event to open dropdown
+    const keydownEvent = new KeyboardEvent('keydown', { 
+        key: 'Enter',
+        bubbles: true,
+        cancelable: true 
+    });
+    exportButton.dispatchEvent(keydownEvent);
+    console.log('Dispatched keydown to export button');
+
+      // Wait a bit for the dropdown content to render
+    await new Promise(resolve => setTimeout(resolve, 200));
+
+      // Find the dropdown content
+    const dropdownContent = document.querySelector('[role="menu"], [data-radix-menu-content]');
+    if (!dropdownContent) {
+        throw new Error('Dropdown content not found');
+    }
+
+      // Find download button
+    const downloadButton = Array.from(dropdownContent.querySelectorAll('button')).find(button => {
+        const hasIcon = button.querySelector('.i-ph\\:download-simple');
+        const hasText = button.textContent?.toLowerCase().includes('download');
+        return hasIcon || hasText;
+    });
+
+    if (!downloadButton) {
+        throw new Error('Download button not found in dropdown');
+    }
+
+    console.log('Found download button, clicking...');
+    downloadButton.click();
   }
 
   // Function to show confirmation dialog
