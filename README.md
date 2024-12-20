@@ -20,6 +20,12 @@
 
 A Chrome extension that automatically captures ZIP file downloads from bolt.new, extracts them, and pushes the contents to a specified GitHub repository. Built with Svelte, TypeScript, and TailwindCSS.
 
+> **⚠️ Important Notice for v1.1.0 Users**
+> 
+> The GitHub button is currently not working in v1.1.0 due to Bolt's recent addition of an Export dropdown button, which affects the Download button functionality used by this extension.
+> 
+> ✨ A fix is already implemented in v1.1.1 and is currently under review in the Chrome Web Store. The update should be published within a few days.
+
 ## 📦 Installation Options
 
 ### Stable Version (Chrome Web Store)
