@@ -10,8 +10,11 @@
     ExternalLink,
     ChevronUp,
     ChevronDown,
+    Check,
+    X,
   } from "lucide-svelte";
   import { onMount } from 'svelte';
+  import { GitHubService } from "../../services/GitHubService";
 
   export let githubToken: string;
   export let repoOwner: string;
@@ -30,6 +33,10 @@
     "https://github.com/settings/tokens/new?scopes=repo&description=Bolt%20to%20GitHub";
 
   let showNewUserGuide = true;
+  let isValidatingToken = false;
+  let isTokenValid: boolean | null = null;
+  let tokenValidationTimeout: number;
+  let validationError: string | null = null;
 
   onMount(() => {
     chrome.storage.local.get(['showNewUserGuide'], (result) => {
@@ -40,6 +47,52 @@
   function toggleNewUserGuide() {
     showNewUserGuide = !showNewUserGuide;
     chrome.storage.local.set({ showNewUserGuide });
+  }
+
+  async function validateSettings() {
+    if (!githubToken) {
+      isTokenValid = null;
+      validationError = null;
+      return;
+    }
+
+    try {
+      isValidatingToken = true;
+      validationError = null;
+      const githubService = new GitHubService(githubToken);
+      const result = await githubService.validateTokenAndUser(repoOwner);
+      isTokenValid = result.isValid;
+      validationError = result.error || null;
+    } catch (error) {
+      console.error('Error validating settings:', error);
+      isTokenValid = false;
+      validationError = 'Validation failed';
+    } finally {
+      isValidatingToken = false;
+    }
+  }
+
+  function handleTokenInput() {
+    onInput();
+    isTokenValid = null;
+    validationError = null;
+    
+    // Clear existing timeout
+    if (tokenValidationTimeout) {
+      clearTimeout(tokenValidationTimeout);
+    }
+    
+    // Debounce validation to avoid too many API calls
+    tokenValidationTimeout = setTimeout(() => {
+      validateSettings();
+    }, 500) as unknown as number;
+  }
+
+  function handleOwnerInput() {
+    onInput();
+    if (githubToken) {
+      handleTokenInput(); // This will trigger validation of both token and username
+    }
   }
 
   $: if (projectId && projectSettings[projectId]) {
@@ -131,17 +184,32 @@
     <div class="space-y-2">
       <Label for="githubToken" class="text-slate-200">
         GitHub Token
-        <span class="text-sm text-slate-400 ml-2">(Required for uploading)</span
-        >
+        <span class="text-sm text-slate-400 ml-2">(Required for uploading)</span>
       </Label>
-      <Input
-        type="password"
-        id="githubToken"
-        bind:value={githubToken}
-        on:input={onInput}
-        placeholder="ghp_***********************************"
-        class="bg-slate-800 border-slate-700 text-slate-200 placeholder:text-slate-500"
-      />
+      <div class="relative">
+        <Input
+          type="password"
+          id="githubToken"
+          bind:value={githubToken}
+          on:input={handleTokenInput}
+          placeholder="ghp_***********************************"
+          class="bg-slate-800 border-slate-700 text-slate-200 placeholder:text-slate-500 pr-10"
+        />
+        {#if githubToken}
+          <div class="absolute right-3 top-1/2 -translate-y-1/2">
+            {#if isValidatingToken}
+              <div class="animate-spin h-4 w-4 border-2 border-slate-400 border-t-transparent rounded-full" />
+            {:else if isTokenValid === true}
+              <Check class="h-4 w-4 text-green-500" />
+            {:else if isTokenValid === false}
+              <X class="h-4 w-4 text-red-500" />
+            {/if}
+          </div>
+        {/if}
+      </div>
+      {#if validationError}
+        <p class="text-sm text-red-400 mt-1">{validationError}</p>
+      {/if}
     </div>
 
     <div class="space-y-2">
@@ -153,7 +221,7 @@
         type="text"
         id="repoOwner"
         bind:value={repoOwner}
-        on:input={onInput}
+        on:input={handleOwnerInput}
         placeholder="username or organization"
         class="bg-slate-800 border-slate-700 text-slate-200 placeholder:text-slate-500"
       />
@@ -198,9 +266,13 @@
     <Button
       type="submit"
       class="w-full bg-blue-600 hover:bg-blue-700 text-white"
-      disabled={!isSettingsValid || buttonDisabled}
+      disabled={!isSettingsValid || buttonDisabled || isValidatingToken || isTokenValid === false}
     >
-      {status ? status : "Save Settings"}
+      {#if isValidatingToken}
+        Validating...
+      {:else}
+        {status ? status : "Save Settings"}
+      {/if}
     </Button>
   </form>
 </div>

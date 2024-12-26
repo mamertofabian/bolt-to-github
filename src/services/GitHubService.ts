@@ -18,6 +18,58 @@ export class GitHubService {
     this.token = token;
   }
 
+  async validateToken(): Promise<boolean> {
+    try {
+      await this.request('GET', '/user');
+      return true;
+    } catch (error) {
+      console.error('Token validation failed:', error);
+      return false;
+    }
+  }
+
+  async validateTokenAndUser(username: string): Promise<{ isValid: boolean; error?: string }> {
+    try {
+      // First validate token and get authenticated user
+      try {
+        const authUser = await this.request('GET', '/user');
+        if (!authUser.login) {
+          return { isValid: false, error: 'Invalid GitHub token' };
+        }
+
+        // If username matches authenticated user, we're good
+        if (authUser.login.toLowerCase() === username.toLowerCase()) {
+          return { isValid: true };
+        }
+
+        // If username doesn't match, check if it's an organization the user has access to
+        try {
+          // Check if the target is an organization
+          const targetUser = await this.request('GET', `/users/${username}`);
+          if (targetUser.type === 'Organization') {
+            // Check if user has access to the organization
+            const orgs = await this.request('GET', '/user/orgs');
+            const hasOrgAccess = orgs.some((org: any) => org.login.toLowerCase() === username.toLowerCase());
+            if (hasOrgAccess) {
+              return { isValid: true };
+            }
+            return { isValid: false, error: 'Token does not have access to this organization' };
+          }
+          
+          // If target is a user but not the authenticated user, token can't act as them
+          return { isValid: false, error: 'Token can only be used with your GitHub username or organizations you have access to' };
+        } catch (error) {
+          return { isValid: false, error: 'Invalid GitHub username or organization' };
+        }
+      } catch (error) {
+        return { isValid: false, error: 'Invalid GitHub token' };
+      }
+    } catch (error) {
+      console.error('Validation failed:', error);
+      return { isValid: false, error: 'Validation failed' };
+    }
+  }
+
   async request(method: string, endpoint: string, body?: any, options: RequestInit = {}) {
     const url = `${this.baseUrl}${endpoint}`;
 

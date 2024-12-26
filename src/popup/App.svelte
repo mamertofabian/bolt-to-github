@@ -16,6 +16,7 @@
   import Footer from "$lib/components/Footer.svelte";
   import type { GitHubSettingsInterface } from "$lib/types";
   import ProjectsList from "$lib/components/ProjectsList.svelte";
+  import { GitHubService } from "../services/GitHubService";
 
   let githubToken: string = "";
   let repoOwner = "";
@@ -34,6 +35,33 @@
   let parsedProjectId: string | null = null;
   const version = chrome.runtime.getManifest().version;
   let hasStatus = false;
+  let isValidatingToken = false;
+  let isTokenValid: boolean | null = null;
+  let validationError: string | null = null;
+
+  async function validateGitHubToken(token: string, username: string): Promise<boolean> {
+    if (!token) {
+      isTokenValid = false;
+      validationError = 'GitHub token is required';
+      return false;
+    }
+    
+    try {
+      isValidatingToken = true;
+      const githubService = new GitHubService(token);
+      const result = await githubService.validateTokenAndUser(username);
+      isTokenValid = result.isValid;
+      validationError = result.error || null;
+      return result.isValid;
+    } catch (error) {
+      console.error('Error validating settings:', error);
+      isTokenValid = false;
+      validationError = 'Validation failed';
+      return false;
+    } finally {
+      isValidatingToken = false;
+    }
+  }
 
   onMount(async () => {
     // Add dark mode to the document
@@ -48,6 +76,11 @@
     githubToken = githubSettings.githubToken || "";
     repoOwner = githubSettings.repoOwner || "";
     projectSettings = githubSettings.projectSettings || {};
+
+    // Validate existing token and username if they exist
+    if (githubToken && repoOwner) {
+      await validateGitHubToken(githubToken, repoOwner);
+    }
 
     const tabs = await chrome.tabs.query({ active: true, currentWindow: true });
     console.log(`📄 App: ${tabs[0]?.url}`);
@@ -89,11 +122,24 @@
   });
 
   function checkSettingsValidity() {
-    isSettingsValid = Boolean(githubToken && repoOwner && repoName && branch);
+    // Only consider settings valid if we have all required fields AND the validation passed
+    isSettingsValid = Boolean(githubToken && repoOwner && repoName && branch) && !isValidatingToken && isTokenValid === true;
   }
 
   async function saveSettings() {
     try {
+      // Validate token and username before saving
+      const isValid = await validateGitHubToken(githubToken, repoOwner);
+      if (!isValid) {
+        status = validationError || "Validation failed";
+        hasStatus = true;
+        setTimeout(() => {
+          status = "";
+          hasStatus = false;
+        }, 3000);
+        return;
+      }
+
       const settings = {
         githubToken: githubToken || "",
         repoOwner: repoOwner || "",
