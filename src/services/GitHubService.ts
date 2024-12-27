@@ -210,4 +210,35 @@ export class GitHubService {
       return 0;
     }
   }
+
+  async listPublicRepos(username: string): Promise<Array<{
+    name: string;
+    description: string | null;
+    html_url: string;
+    created_at: string;
+    updated_at: string;
+    language: string | null;
+  }>> {
+    try {
+      const repos = await this.request('GET', `/users/${username}/repos`, null, {
+        headers: {
+          'per_page': '100'  // Get up to 100 repos per page
+        }
+      });
+      
+      return repos
+        .filter((repo: any) => !repo.private)
+        .map((repo: any) => ({
+          name: repo.name,
+          description: repo.description,
+          html_url: repo.html_url,
+          created_at: repo.created_at,
+          updated_at: repo.updated_at,
+          language: repo.language
+        }));
+    } catch (error) {
+      console.error('Failed to fetch public repositories:', error);
+      throw new Error(`Failed to fetch public repositories: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    }
+  }
 }

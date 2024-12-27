@@ -266,12 +266,14 @@
     <Button
       type="submit"
       class="w-full bg-blue-600 hover:bg-blue-700 text-white"
-      disabled={!isSettingsValid || buttonDisabled || isValidatingToken || isTokenValid === false}
+      disabled={buttonDisabled || isValidatingToken || !githubToken || !repoOwner || !repoName || !branch || isTokenValid === false}
     >
       {#if isValidatingToken}
         Validating...
+      {:else if buttonDisabled}
+        {status}
       {:else}
-        {status ? status : "Save Settings"}
+        Save Settings
       {/if}
     </Button>
   </form>

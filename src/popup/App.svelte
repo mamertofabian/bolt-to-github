@@ -17,6 +17,7 @@
   import type { GitHubSettingsInterface } from "$lib/types";
   import ProjectsList from "$lib/components/ProjectsList.svelte";
   import { GitHubService } from "../services/GitHubService";
+    import { Button } from "$lib/components/ui/button";
 
   let githubToken: string = "";
   let repoOwner = "";
@@ -62,6 +63,8 @@
       isValidatingToken = false;
     }
   }
+
+  $: console.log('repoOwner', repoOwner);
 
   onMount(async () => {
     // Add dark mode to the document
@@ -172,86 +175,6 @@
 </script>
 
 <main class="w-[400px] p-3 bg-slate-950 text-slate-50">
-  {#if isBoltSite && parsedProjectId}
-  <Tabs bind:value={activeTab} class="w-full">
-    <Header />
-
-    <TabsContent value="home">
-      <Card class="border-slate-800 bg-slate-900">
-        <CardHeader>
-          <CardTitle class="flex items-center gap-2">
-            <img src="/assets/icons/icon48.png" alt="Bolt to GitHub" class="w-5 h-5" />
-            Bolt to GitHub <span class="text-xs text-slate-400">v{version}</span>
-          </CardTitle>
-          <CardDescription class="text-slate-400">
-            Upload and sync your Bolt projects to GitHub
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <button
-            class="w-full mb-3 px-4 py-2 bg-slate-700 hover:bg-slate-600 rounded-md text-slate-200 transition-colors"
-            on:click={() => activeTab = "projects"}
-          >
-            View All Projects
-          </button>
-
-          <StatusAlert 
-            {isSettingsValid} 
-            projectId={parsedProjectId}
-            gitHubUsername={repoOwner}
-            {repoName}
-            {branch}
-            on:switchTab={handleSwitchTab}
-          />
-
-          <div class="mt-6 space-y-4">
-            <SocialLinks {GITHUB_LINK} {YOUTUBE_LINK} {COFFEE_LINK} />
-          </div>
-        </CardContent>
-        <Footer />
-      </Card>
-    </TabsContent>
-
-    <TabsContent value="projects">
-      <Card class="border-slate-800 bg-slate-900">
-        <CardHeader>
-          <CardTitle>Projects</CardTitle>
-          <CardDescription class="text-slate-400">
-            Manage your Bolt projects and their GitHub repositories
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <ProjectsList {projectSettings} {repoOwner} {githubToken} currentlyLoadedProjectId={parsedProjectId} isBoltSite={isBoltSite} />
-        </CardContent>
-      </Card>
-    </TabsContent>
-
-    <TabsContent value="settings">
-      <Card class="border-slate-800 bg-slate-900">
-        <CardHeader>
-          <CardTitle>GitHub Settings</CardTitle>
-          <CardDescription class="text-slate-400">
-            Configure your GitHub repository settings
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <GitHubSettings
-            bind:githubToken
-            bind:repoOwner
-            bind:repoName
-            bind:branch
-            projectId={parsedProjectId}
-            {status}
-            {isSettingsValid}
-            buttonDisabled={hasStatus}
-            onSave={saveSettings}
-            onInput={checkSettingsValidity}
-          />
-        </CardContent>
-      </Card>
-    </TabsContent>
-    </Tabs>
-  {:else}
   <Card class="border-slate-800 bg-slate-900">
     <CardHeader>
       <CardTitle class="flex items-center gap-2">
@@ -263,11 +186,82 @@
       </CardDescription>
     </CardHeader>
     <CardContent>
-      <ProjectsList {projectSettings} {repoOwner} {githubToken} currentlyLoadedProjectId={parsedProjectId} isBoltSite={isBoltSite} />
+      {#if isBoltSite && parsedProjectId}
+        <Tabs bind:value={activeTab} class="w-full">
+          <Header />
+
+          <TabsContent value="home">
+            <button
+              class="w-full mb-3 px-4 py-2 bg-slate-700 hover:bg-slate-600 rounded-md text-slate-200 transition-colors"
+              on:click={() => activeTab = "projects"}
+            >
+              View All Projects
+            </button>
+
+            <StatusAlert 
+              {isSettingsValid} 
+              projectId={parsedProjectId}
+              gitHubUsername={repoOwner}
+              {repoName}
+              {branch}
+              on:switchTab={handleSwitchTab}
+            />
+
+            <div class="mt-6 space-y-4">
+              <SocialLinks {GITHUB_LINK} {YOUTUBE_LINK} {COFFEE_LINK} />
+            </div>
+          </TabsContent>
+
+          <TabsContent value="projects">
+            <ProjectsList {projectSettings} {repoOwner} {githubToken} currentlyLoadedProjectId={parsedProjectId} isBoltSite={isBoltSite} />
+          </TabsContent>
+
+          <TabsContent value="settings">
+            <Card class="border-slate-800 bg-slate-900">
+              <CardHeader>
+                <CardTitle>GitHub Settings</CardTitle>
+                <CardDescription class="text-slate-400">
+                  Configure your GitHub repository settings
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <GitHubSettings
+                  bind:githubToken
+                  bind:repoOwner
+                  bind:repoName
+                  bind:branch
+                  projectId={parsedProjectId}
+                  {status}
+                  {isSettingsValid}
+                  buttonDisabled={hasStatus}
+                  onSave={saveSettings}
+                  onInput={checkSettingsValidity}
+                />
+              </CardContent>
+            </Card>
+          </TabsContent>
+        </Tabs>
+      {:else if repoOwner}
+        <ProjectsList {projectSettings} {repoOwner} {githubToken} currentlyLoadedProjectId={parsedProjectId} isBoltSite={isBoltSite} />
+      {:else}
+        <div class="flex flex-col items-center justify-center p-4 text-center space-y-6">
+          <div class="space-y-2">
+            <p class="text-sm text-slate-400 text-orange-400">No projects found. Create or load an existing project to get started.</p>
+            {#if !isBoltSite}
+              <Button
+                variant="outline"
+                class="border-slate-800 hover:bg-slate-800 text-slate-200"
+                on:click={() => window.open('https://bolt.new', '_blank')}
+              >
+                Go to bolt.new
+              </Button>
+            {/if}
+          </div>
+        </div>
+      {/if}
     </CardContent>
     <Footer />
   </Card>
-  {/if}
 </main>
 
 <style>
