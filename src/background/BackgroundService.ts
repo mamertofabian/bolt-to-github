@@ -223,9 +223,12 @@ export class BackgroundService {
         const isGitHubError = errorMessage.includes('GitHub API Error');
         
         if (isGitHubError) {
+          // Extract the original GitHub error message if available
+          const originalMessage = (decodeError as any).originalMessage || 
+            'GitHub authentication or API error occurred';
+          
           throw new Error(
-            `GitHub authentication failed. Please check your GitHub token in the extension settings and try again. \n\n` +
-            `If the issue persists, please open a GitHub issue.`
+            `GitHub Error: ${originalMessage}`
           );
         } else {
           throw new Error(

@@ -73,24 +73,49 @@ export class GitHubService {
   async request(method: string, endpoint: string, body?: any, options: RequestInit = {}) {
     const url = `${this.baseUrl}${endpoint}`;
 
-    const response = await fetch(url, {
-      method,
-      ...options,
-      headers: {
-        'Accept': 'application/vnd.github.v3+json',
-        'Authorization': `Bearer ${this.token}`,
-        'Content-Type': 'application/json',
-        ...options.headers,
-      },
-      body: body ? JSON.stringify(body) : undefined,
-    });
+    try {
+      const response = await fetch(url, {
+        method,
+        ...options,
+        headers: {
+          'Accept': 'application/vnd.github.v3+json',
+          'Authorization': `Bearer ${this.token}`,
+          'Content-Type': 'application/json',
+          ...options.headers,
+        },
+        body: body ? JSON.stringify(body) : undefined,
+      });
 
-    if (!response.ok) {
-      const error = await response.json();
-      throw new Error(`GitHub API Error: ${response.status} ${error.message || JSON.stringify(error)}`);
+      if (!response.ok) {
+        let errorDetails;
+        try {
+          errorDetails = await response.json();
+        } catch {
+          // If parsing JSON fails, use the status text
+          errorDetails = { message: response.statusText };
+        }
+
+        // Construct a more informative error message
+        const errorMessage = errorDetails.message || 
+                             errorDetails.error || 
+                             'Unknown GitHub API error';
+        
+        const fullErrorMessage = `GitHub API Error (${response.status}): ${errorMessage}`;
+        
+        // Create a custom error with additional properties
+        const apiError = new Error(fullErrorMessage) as any;
+        apiError.status = response.status;
+        apiError.originalMessage = errorMessage;
+        apiError.githubErrorResponse = errorDetails;
+        
+        throw apiError;
+      }
+
+      return await response.json();
+    } catch (error) {
+      // Re-throw the error to maintain the original error details
+      throw error;
     }
-
-    return response.json();
   }
 
   async repoExists(owner: string, repo: string): Promise<boolean> {
@@ -142,6 +167,45 @@ export class GitHubService {
       // Wait a bit for GitHub to initialize the repository
       await new Promise(resolve => setTimeout(resolve, 2000));
     }
+  }
+
+  async isRepoEmpty(owner: string, repo: string): Promise<boolean> {
+    try {
+      const commits = await this.request('GET', `/repos/${owner}/${repo}/commits`);
+      return commits.length === 0;
+    } catch (error) {
+      console.log('error', error);
+      if (error instanceof Error && error.message.includes('409')) {
+        // 409 is returned for empty repositories
+        return true;
+      }
+      throw error;
+    }
+  }
+
+  async initializeEmptyRepo(owner: string, repo: string, branch: string): Promise<void> {
+    // Create a more informative README.md to initialize the repository
+    const readmeContent = `# ${repo}
+
+## Repository Initialization Notice
+
+This repository was automatically initialized by the Bolt to GitHub extension.
+
+**Auto-Generated Repository**
+- Created to ensure a valid Git repository structure
+- Serves as an initial commit point for your project
+
+If you did not intend to create this repository or have any questions, 
+please check your Bolt to GitHub extension settings.`;
+
+    await this.pushFile({
+      owner,
+      repo,
+      path: 'README.md',
+      content: btoa(readmeContent),
+      branch,
+      message: 'Initialize repository with auto-generated README'
+    });
   }
 
   async pushFile(params: {

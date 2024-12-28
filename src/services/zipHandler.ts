@@ -82,6 +82,13 @@ export class ZipHandler {
             await this.updateStatus('uploading', 15, 'Checking repository...');
             await this.githubService.ensureRepoExists(repoOwner, repoName);
             
+            // Check if repo is empty and needs initialization
+            const isEmpty = await this.githubService.isRepoEmpty(repoOwner, repoName);
+            if (isEmpty) {
+                await this.updateStatus('uploading', 18, 'Initializing empty repository...');
+                await this.githubService.initializeEmptyRepo(repoOwner, repoName, targetBranch);
+            }
+            
             await this.ensureBranchExists(repoOwner, repoName, targetBranch);
     
             const processedFiles = await this.processFilesWithGitignore(files);
