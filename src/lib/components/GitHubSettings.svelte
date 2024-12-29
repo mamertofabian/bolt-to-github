@@ -12,6 +12,8 @@
     ChevronDown,
     Check,
     X,
+    Search,
+    Loader2,
   } from "lucide-svelte";
   import { onMount } from 'svelte';
   import { GitHubService } from "../../services/GitHubService";
@@ -37,11 +39,108 @@
   let isTokenValid: boolean | null = null;
   let tokenValidationTimeout: number;
   let validationError: string | null = null;
+  let repositories: Array<{
+    name: string;
+    description: string | null;
+    html_url: string;
+    private: boolean;
+    created_at: string;
+    updated_at: string;
+    language: string | null;
+  }> = [];
+  let isLoadingRepos = false;
+  let showRepoDropdown = false;
+  let repoSearchQuery = "";
+  let repoInputFocused = false;
+  let repoExists = false;
+  let selectedIndex = -1;
 
-  onMount(() => {
+  $: filteredRepos = repositories
+    .filter(repo => 
+      repo.name.toLowerCase().includes(repoSearchQuery.toLowerCase()) ||
+      (repo.description && repo.description.toLowerCase().includes(repoSearchQuery.toLowerCase()))
+    )
+    .slice(0, 10);
+
+  $: if (repoName) {
+    repoExists = repositories.some(repo => repo.name.toLowerCase() === repoName.toLowerCase());
+  }
+
+  async function loadRepositories() {
+    if (!githubToken || !repoOwner || !isTokenValid) return;
+    
+    try {
+      isLoadingRepos = true;
+      const githubService = new GitHubService(githubToken);
+      repositories = await githubService.listUserRepositories(repoOwner);
+    } catch (error) {
+      console.error('Error loading repositories:', error);
+      repositories = [];
+    } finally {
+      isLoadingRepos = false;
+    }
+  }
+
+  function handleRepoInput() {
+    repoSearchQuery = repoName;
+    onInput();
+  }
+
+  function selectRepo(repo: typeof repositories[0]) {
+    repoName = repo.name;
+    showRepoDropdown = false;
+    repoSearchQuery = repo.name;
+    onInput();
+  }
+
+  function handleRepoKeydown(event: KeyboardEvent) {
+    if (!showRepoDropdown) return;
+
+    switch (event.key) {
+      case 'ArrowDown':
+        event.preventDefault();
+        selectedIndex = Math.min(selectedIndex + 1, filteredRepos.length - 1);
+        break;
+      case 'ArrowUp':
+        event.preventDefault();
+        selectedIndex = Math.max(selectedIndex - 1, -1);
+        break;
+      case 'Enter':
+        event.preventDefault();
+        if (selectedIndex >= 0 && filteredRepos[selectedIndex]) {
+          selectRepo(filteredRepos[selectedIndex]);
+        }
+        break;
+      case 'Escape':
+        event.preventDefault();
+        showRepoDropdown = false;
+        break;
+    }
+  }
+
+  function handleRepoFocus() {
+    repoInputFocused = true;
+    showRepoDropdown = true;
+    repoSearchQuery = repoName;
+  }
+
+  function handleRepoBlur() {
+    repoInputFocused = false;
+    // Delay hiding dropdown to allow click events to register
+    setTimeout(() => {
+      showRepoDropdown = false;
+    }, 200);
+  }
+
+  onMount(async () => {
     chrome.storage.local.get(['showNewUserGuide'], (result) => {
       showNewUserGuide = result.showNewUserGuide ?? true;
     });
+
+    // If we have initial valid settings, validate and load repos
+    if (githubToken && repoOwner) {
+      await validateSettings();
+    }
   });
 
   function toggleNewUserGuide() {
@@ -63,6 +162,11 @@
       const result = await githubService.validateTokenAndUser(repoOwner);
       isTokenValid = result.isValid;
       validationError = result.error || null;
+      
+      // Load repositories after successful validation
+      if (result.isValid) {
+        await loadRepositories();
+      }
     } catch (error) {
       console.error('Error validating settings:', error);
       isTokenValid = false;
@@ -238,14 +342,75 @@
           {/if}
         </span>
       </Label>
-      <Input
-        type="text"
-        id="repoName"
-        bind:value={repoName}
-        on:input={onInput}
-        placeholder="repository-name"
-        class="bg-slate-800 border-slate-700 text-slate-200 placeholder:text-slate-500"
-      />
+      <div class="relative">
+        <div class="relative">
+          <Input
+            type="text"
+            id="repoName"
+            bind:value={repoName}
+            on:input={handleRepoInput}
+            on:focus={handleRepoFocus}
+            on:blur={handleRepoBlur}
+            on:keydown={handleRepoKeydown}
+            placeholder="Search or enter repository name"
+            class="bg-slate-800 border-slate-700 text-slate-200 placeholder:text-slate-500 pr-10"
+            autocomplete="off"
+          />
+          <div class="absolute right-3 top-1/2 -translate-y-1/2">
+            {#if isLoadingRepos}
+              <Loader2 class="h-4 w-4 text-slate-400 animate-spin" />
+            {:else}
+              <Search class="h-4 w-4 text-slate-400" />
+            {/if}
+          </div>
+        </div>
+        {#if showRepoDropdown && (filteredRepos.length > 0 || !repoExists)}
+          <div class="absolute z-50 w-full mt-1 bg-slate-800 border border-slate-700 rounded-md shadow-lg">
+            <ul class="py-1 max-h-60 overflow-auto">
+              {#each filteredRepos as repo, i}
+                <li>
+                  <button
+                    class="w-full px-3 py-2 text-left hover:bg-slate-700 text-slate-200 {selectedIndex === i ? 'bg-slate-700' : ''}"
+                    on:click={() => selectRepo(repo)}
+                  >
+                    <div class="flex items-center justify-between">
+                      <span class="font-medium">{repo.name}</span>
+                      {#if repo.private}
+                        <span class="text-xs text-slate-400">Private</span>
+                      {/if}
+                    </div>
+                    {#if repo.description}
+                      <p class="text-sm text-slate-400 truncate">{repo.description}</p>
+                    {/if}
+                  </button>
+                </li>
+              {/each}
+              {#if !repoExists}
+                <li class="px-3 py-2 text-sm text-slate-400">
+                  {#if repoName.length > 0}
+                    <p class="text-orange-400">💡If the repository "{repoName}" doesn't exist, it will be created automatically.</p>
+                    <p class="text-emerald-400">✨ If it's a private repository, you can still enter it manually even if it's not visible in the list.</p>
+                  {:else}
+                    <p>Enter a repository name (new or private) or select from your public  repositories</p>
+                  {/if}
+                </li>
+              {/if}
+            </ul>
+          </div>
+        {/if}
+      </div>
+      {#if repoExists}
+        <p class="text-sm text-blue-400">
+          ℹ️ Using existing repository
+        </p>
+      {:else if repoName}
+        <p class="text-sm text-emerald-400">
+          ✨ A new repository will be created if it doesn't exist yet.
+        </p>
+        <p class="text-sm text-orange-400">
+          ⚠️ You can push to private repositories, but loading it into Bolt will fail.
+        </p>
+      {/if}
     </div>
 
     <div class="space-y-2">
@@ -262,6 +427,9 @@
         class="bg-slate-800 border-slate-700 text-slate-200 placeholder:text-slate-500"
       />
     </div>
+    <p class="text-sm text-slate-400">
+      💡 If the branch doesn't exist, it will be created automatically from the default branch.
+    </p>
 
     <Button
       type="submit"
