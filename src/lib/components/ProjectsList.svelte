@@ -22,7 +22,7 @@
   }> = [];
 
   let searchQuery = '';
-  let showPublicRepos = true;
+  let showPublicRepos = false;
   let filteredProjects: Array<{
     projectId?: string;
     repoName: string;
