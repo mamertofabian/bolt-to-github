@@ -187,16 +187,15 @@ export class GitHubService {
     // Create a more informative README.md to initialize the repository
     const readmeContent = `# ${repo}
 
+## Feel free to delete this file and replace it with your own content.
+
 ## Repository Initialization Notice
 
 This repository was automatically initialized by the Bolt to GitHub extension.
 
 **Auto-Generated Repository**
 - Created to ensure a valid Git repository structure
-- Serves as an initial commit point for your project
-
-If you did not intend to create this repository or have any questions, 
-please check your Bolt to GitHub extension settings.`;
+- Serves as an initial commit point for your project`;
 
     await this.pushFile({
       owner,
@@ -303,6 +302,47 @@ please check your Bolt to GitHub extension settings.`;
     } catch (error) {
       console.error('Failed to fetch public repositories:', error);
       throw new Error(`Failed to fetch public repositories: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    }
+  }
+
+  async listUserRepositories(username: string): Promise<Array<{
+    name: string;
+    description: string | null;
+    html_url: string;
+    private: boolean;
+    created_at: string;
+    updated_at: string;
+    language: string | null;
+  }>> {
+    try {
+      // First try user's repositories
+      try {
+        const repos = await this.request('GET', `/users/${username}/repos?per_page=100&sort=updated`);
+        return repos.map((repo: any) => ({
+          name: repo.name,
+          description: repo.description,
+          html_url: repo.html_url,
+          private: repo.private,
+          created_at: repo.created_at,
+          updated_at: repo.updated_at,
+          language: repo.language
+        }));
+      } catch (error) {
+        // If user endpoint fails, try organization endpoint
+        const repos = await this.request('GET', `/orgs/${username}/repos?per_page=100&sort=updated`);
+        return repos.map((repo: any) => ({
+          name: repo.name,
+          description: repo.description,
+          html_url: repo.html_url,
+          private: repo.private,
+          created_at: repo.created_at,
+          updated_at: repo.updated_at,
+          language: repo.language
+        }));
+      }
+    } catch (error) {
+      console.error('Failed to fetch repositories:', error);
+      throw new Error(`Failed to fetch repositories: ${error instanceof Error ? error.message : 'Unknown error'}`);
     }
   }
 }
