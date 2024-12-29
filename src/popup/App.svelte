@@ -39,6 +39,7 @@
   let isValidatingToken = false;
   let isTokenValid: boolean | null = null;
   let validationError: string | null = null;
+  let hasInitialSettings = false;
 
   async function validateGitHubToken(token: string, username: string): Promise<boolean> {
     if (!token) {
@@ -79,6 +80,7 @@
     githubToken = githubSettings.githubToken || "";
     repoOwner = githubSettings.repoOwner || "";
     projectSettings = githubSettings.projectSettings || {};
+    hasInitialSettings = Boolean(githubSettings.githubToken && githubSettings.repoOwner);
 
     // Validate existing token and username if they exist
     if (githubToken && repoOwner) {
@@ -155,6 +157,7 @@
       }
 
       await chrome.storage.sync.set(settings);
+      hasInitialSettings = true;
       status = "Settings saved successfully!";
       hasStatus = true;
       checkSettingsValidity();
@@ -241,12 +244,11 @@
             </Card>
           </TabsContent>
         </Tabs>
-      {:else if repoOwner}
+      {:else if hasInitialSettings && repoOwner && githubToken}
         <ProjectsList {projectSettings} {repoOwner} {githubToken} currentlyLoadedProjectId={parsedProjectId} isBoltSite={isBoltSite} />
       {:else}
         <div class="flex flex-col items-center justify-center p-4 text-center space-y-6">
           <div class="space-y-2">
-            <p class="text-sm text-slate-400 text-orange-400">No projects found. Create or load an existing project to get started.</p>
             {#if !isBoltSite}
               <Button
                 variant="outline"
@@ -256,6 +258,18 @@
                 Go to bolt.new
               </Button>
             {/if}
+            <p class="text-sm text-green-400">💡 No Bolt projects found. Create or load an existing Bolt project to get started.</p>
+            <p class="text-sm text-green-400 pb-4">🌟 You can also load any of your public GitHub repositories by providing your GitHub token and repository owner.</p>
+            <GitHubSettings
+              isOnboarding={true}
+              bind:githubToken
+              bind:repoOwner
+              {status}
+              {isSettingsValid}
+              buttonDisabled={hasStatus}
+              onSave={saveSettings}
+              onInput={checkSettingsValidity}
+            />
           </div>
         </div>
       {/if}

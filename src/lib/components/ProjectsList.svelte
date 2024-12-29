@@ -122,9 +122,7 @@
   {#if filteredProjects.length === 0}
     <div class="flex flex-col items-center justify-center p-4 text-center space-y-6">
       <div class="space-y-2">
-        <p class="text-sm text-slate-400 text-orange-400">No projects found. Create or load an existing project to get started.</p>
-      </div>
-      {#if !isBoltSite}
+        {#if !isBoltSite}
         <Button
           variant="outline"
           class="border-slate-800 hover:bg-slate-800 text-slate-200"
@@ -133,6 +131,9 @@
           Go to bolt.new
         </Button>
       {/if}
+        <p class="text-sm text-green-400">💡 No Bolt projects found. Create or load an existing Bolt project to get started.</p>
+        <p class="text-sm text-green-400">🌟 You can also load any of your public GitHub repositories.</p>
+      </div>
     </div>
   {:else}
     {#each filteredProjects as project}

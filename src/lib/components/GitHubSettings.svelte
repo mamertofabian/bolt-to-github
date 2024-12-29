@@ -18,10 +18,11 @@
   import { onMount } from 'svelte';
   import { GitHubService } from "../../services/GitHubService";
 
+  export let isOnboarding: boolean = false;
   export let githubToken: string;
   export let repoOwner: string;
-  export let repoName: string;
-  export let branch: string;
+  export let repoName: string = '';
+  export let branch: string = 'main';
   export let status: string;
   export let isSettingsValid: boolean;
   export let onSave: () => void;
@@ -199,7 +200,7 @@
     }
   }
 
-  $: if (projectId && projectSettings[projectId]) {
+  $: if (!isOnboarding && projectId && projectSettings[projectId]) {
     repoName = projectSettings[projectId].repoName;
     branch = projectSettings[projectId].branch;
   }
@@ -331,117 +332,119 @@
       />
     </div>
 
-    <div class="space-y-2">
-      <Label for="repoName" class="text-slate-200">
-        Repository Name
-        <span class="text-sm text-slate-400 ml-2">
-          {#if projectId}
-            (Project-specific repository)
-          {:else}
-            (Default repository)
-          {/if}
-        </span>
-      </Label>
-      <div class="relative">
-        <div class="relative">
-          <Input
-            type="text"
-            id="repoName"
-            bind:value={repoName}
-            on:input={handleRepoInput}
-            on:focus={handleRepoFocus}
-            on:blur={handleRepoBlur}
-            on:keydown={handleRepoKeydown}
-            placeholder="Search or enter repository name"
-            class="bg-slate-800 border-slate-700 text-slate-200 placeholder:text-slate-500 pr-10"
-            autocomplete="off"
-          />
-          <div class="absolute right-3 top-1/2 -translate-y-1/2">
-            {#if isLoadingRepos}
-              <Loader2 class="h-4 w-4 text-slate-400 animate-spin" />
+    {#if !isOnboarding}
+      <div class="space-y-2">
+        <Label for="repoName" class="text-slate-200">
+          Repository Name
+          <span class="text-sm text-slate-400 ml-2">
+            {#if projectId}
+              (Project-specific repository)
             {:else}
-              <Search class="h-4 w-4 text-slate-400" />
+              (Default repository)
             {/if}
-          </div>
-        </div>
-        {#if showRepoDropdown && (filteredRepos.length > 0 || !repoExists)}
-          <div class="absolute z-50 w-full mt-1 bg-slate-800 border border-slate-700 rounded-md shadow-lg">
-            <ul class="py-1 max-h-60 overflow-auto">
-              {#each filteredRepos as repo, i}
-                <li>
-                  <button
-                    class="w-full px-3 py-2 text-left hover:bg-slate-700 text-slate-200 {selectedIndex === i ? 'bg-slate-700' : ''}"
-                    on:click={() => selectRepo(repo)}
-                  >
-                    <div class="flex items-center justify-between">
-                      <span class="font-medium">{repo.name}</span>
-                      {#if repo.private}
-                        <span class="text-xs text-slate-400">Private</span>
-                      {/if}
-                    </div>
-                    {#if repo.description}
-                      <p class="text-sm text-slate-400 truncate">{repo.description}</p>
-                    {/if}
-                  </button>
-                </li>
-              {/each}
-              {#if !repoExists}
-                <li class="px-3 py-2 text-sm text-slate-400">
-                  {#if repoName.length > 0}
-                    <p class="text-orange-400">💡If the repository "{repoName}" doesn't exist, it will be created automatically.</p>
-                    <p class="text-emerald-400">✨ If it's a private repository, you can still enter it manually even if it's not visible in the list.</p>
-                  {:else}
-                    <p>Enter a repository name (new or private) or select from your public  repositories</p>
-                  {/if}
-                </li>
+          </span>
+        </Label>
+        <div class="relative">
+          <div class="relative">
+            <Input
+              type="text"
+              id="repoName"
+              bind:value={repoName}
+              on:input={handleRepoInput}
+              on:focus={handleRepoFocus}
+              on:blur={handleRepoBlur}
+              on:keydown={handleRepoKeydown}
+              placeholder="Search or enter repository name"
+              class="bg-slate-800 border-slate-700 text-slate-200 placeholder:text-slate-500 pr-10"
+              autocomplete="off"
+            />
+            <div class="absolute right-3 top-1/2 -translate-y-1/2">
+              {#if isLoadingRepos}
+                <Loader2 class="h-4 w-4 text-slate-400 animate-spin" />
+              {:else}
+                <Search class="h-4 w-4 text-slate-400" />
               {/if}
-            </ul>
+            </div>
           </div>
+          {#if showRepoDropdown && (filteredRepos.length > 0 || !repoExists)}
+            <div class="absolute z-50 w-full mt-1 bg-slate-800 border border-slate-700 rounded-md shadow-lg">
+              <ul class="py-1 max-h-60 overflow-auto">
+                {#each filteredRepos as repo, i}
+                  <li>
+                    <button
+                      class="w-full px-3 py-2 text-left hover:bg-slate-700 text-slate-200 {selectedIndex === i ? 'bg-slate-700' : ''}"
+                      on:click={() => selectRepo(repo)}
+                    >
+                      <div class="flex items-center justify-between">
+                        <span class="font-medium">{repo.name}</span>
+                        {#if repo.private}
+                          <span class="text-xs text-slate-400">Private</span>
+                        {/if}
+                      </div>
+                      {#if repo.description}
+                        <p class="text-sm text-slate-400 truncate">{repo.description}</p>
+                      {/if}
+                    </button>
+                  </li>
+                {/each}
+                {#if !repoExists}
+                  <li class="px-3 py-2 text-sm text-slate-400">
+                    {#if repoName.length > 0}
+                      <p class="text-orange-400">💡If the repository "{repoName}" doesn't exist, it will be created automatically.</p>
+                      <p class="text-emerald-400">✨ If it's a private repository, you can still enter it manually even if it's not visible in the list.</p>
+                    {:else}
+                      <p>Enter a repository name (new or private) or select from your public repositories</p>
+                    {/if}
+                  </li>
+                {/if}
+              </ul>
+            </div>
+          {/if}
+        </div>
+        {#if repoExists}
+          <p class="text-sm text-blue-400">
+            ℹ️ Using existing repository
+          </p>
+        {:else if repoName}
+          <p class="text-sm text-emerald-400">
+            ✨ A new repository will be created if it doesn't exist yet.
+          </p>
+          <p class="text-sm text-orange-400">
+            ⚠️ You can push to private repositories, but loading it into Bolt will fail.
+          </p>
         {/if}
       </div>
-      {#if repoExists}
-        <p class="text-sm text-blue-400">
-          ℹ️ Using existing repository
-        </p>
-      {:else if repoName}
-        <p class="text-sm text-emerald-400">
-          ✨ A new repository will be created if it doesn't exist yet.
-        </p>
-        <p class="text-sm text-orange-400">
-          ⚠️ You can push to private repositories, but loading it into Bolt will fail.
-        </p>
-      {/if}
-    </div>
 
-    <div class="space-y-2">
-      <Label for="branch" class="text-slate-200">
-        Branch
-        <span class="text-sm text-slate-400 ml-2">(Usually "main")</span>
-      </Label>
-      <Input
-        type="text"
-        id="branch"
-        bind:value={branch}
-        on:input={onInput}
-        placeholder="main"
-        class="bg-slate-800 border-slate-700 text-slate-200 placeholder:text-slate-500"
-      />
-    </div>
-    <p class="text-sm text-slate-400">
-      💡 If the branch doesn't exist, it will be created automatically from the default branch.
-    </p>
+      <div class="space-y-2">
+        <Label for="branch" class="text-slate-200">
+          Branch
+          <span class="text-sm text-slate-400 ml-2">(Usually "main")</span>
+        </Label>
+        <Input
+          type="text"
+          id="branch"
+          bind:value={branch}
+          on:input={onInput}
+          placeholder="main"
+          class="bg-slate-800 border-slate-700 text-slate-200 placeholder:text-slate-500"
+        />
+      </div>
+      <p class="text-sm text-slate-400">
+        💡 If the branch doesn't exist, it will be created automatically from the default branch.
+      </p>
+    {/if}
 
     <Button
       type="submit"
       class="w-full bg-blue-600 hover:bg-blue-700 text-white"
-      disabled={buttonDisabled || isValidatingToken || !githubToken || !repoOwner || !repoName || !branch || isTokenValid === false}
+      disabled={buttonDisabled || isValidatingToken || !githubToken || !repoOwner || (!isOnboarding && (!repoName || !branch)) || isTokenValid === false}
     >
       {#if isValidatingToken}
         Validating...
       {:else if buttonDisabled}
         {status}
       {:else}
-        Save Settings
+        {isOnboarding ? 'Get Started' : 'Save Settings'}
       {/if}
     </Button>
   </form>
