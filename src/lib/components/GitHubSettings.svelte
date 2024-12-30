@@ -390,7 +390,7 @@
                 {#if !repoExists}
                   <li class="px-3 py-2 text-sm text-slate-400">
                     {#if repoName.length > 0}
-                      <p class="text-orange-400">💡If the repository "{repoName}" doesn't exist, it will be created automatically.</p>
+                      <p class="text-orange-400">💡If the repository "{repoName}" doesn't exist, it will be created automatically (as a public repository).</p>
                       <p class="text-emerald-400">✨ If it's a private repository, you can still enter it manually even if it's not visible in the list.</p>
                     {:else}
                       <p>Enter a repository name (new or private) or select from your public repositories</p>
