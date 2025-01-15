@@ -11,7 +11,7 @@
     import {
         GITHUB_SIGNUP_URL,
         CREATE_TOKEN_URL,
-    } from "src/services/GitHubService";
+    } from "../../../services/GitHubService";
     import { onMount } from "svelte";
 
     let showNewUserGuide = true;
