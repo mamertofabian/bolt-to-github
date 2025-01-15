@@ -1,3 +1,7 @@
+export const GITHUB_SIGNUP_URL = "https://github.com/signup";
+export const CREATE_TOKEN_URL =
+  "https://github.com/settings/tokens/new?scopes=repo&description=Bolt%20to%20GitHub&default_expires_at=none";
+
 interface GitHubFileResponse {
   sha?: string;
   content?: string;

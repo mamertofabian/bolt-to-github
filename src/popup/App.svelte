@@ -235,7 +235,6 @@
                   bind:branch
                   projectId={parsedProjectId}
                   {status}
-                  {isSettingsValid}
                   buttonDisabled={hasStatus}
                   onSave={saveSettings}
                   onInput={checkSettingsValidity}
@@ -265,7 +264,6 @@
               bind:githubToken
               bind:repoOwner
               {status}
-              {isSettingsValid}
               buttonDisabled={hasStatus}
               onSave={saveSettings}
               onInput={checkSettingsValidity}
