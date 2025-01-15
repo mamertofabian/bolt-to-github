@@ -17,7 +17,8 @@
   import type { GitHubSettingsInterface } from "$lib/types";
   import ProjectsList from "$lib/components/ProjectsList.svelte";
   import { GitHubService } from "../services/GitHubService";
-    import { Button } from "$lib/components/ui/button";
+  import { Button } from "$lib/components/ui/button";
+  import Help from "$lib/components/Help.svelte";
 
   let githubToken: string = "";
   let repoOwner = "";
@@ -241,6 +242,10 @@
                 />
               </CardContent>
             </Card>
+          </TabsContent>
+
+          <TabsContent value="help">
+            <Help />
           </TabsContent>
         </Tabs>
       {:else if hasInitialSettings && repoOwner && githubToken}
