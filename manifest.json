@@ -8,15 +8,8 @@
     "48": "assets/icons/icon48.png",
     "128": "assets/icons/icon128.png"
   },
-  "permissions": [
-    "storage",
-    "activeTab",
-    "tabs"
-  ],
-  "host_permissions": [
-    "https://bolt.new/*",
-    "https://api.github.com/*"
-  ],
+  "permissions": ["storage", "activeTab", "tabs"],
+  "host_permissions": ["https://bolt.new/*", "https://api.github.com/*"],
   "background": {
     "service_worker": "src/background/index.ts",
     "type": "module"

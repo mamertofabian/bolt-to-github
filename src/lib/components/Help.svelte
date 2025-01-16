@@ -1,5 +1,11 @@
 <script lang="ts">
-  import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "$lib/components/ui/card";
+  import {
+    Card,
+    CardContent,
+    CardDescription,
+    CardHeader,
+    CardTitle,
+  } from '$lib/components/ui/card';
 </script>
 
 <Card class="border-slate-800 bg-slate-900">
@@ -18,15 +24,14 @@
       <p class="text-sm text-slate-400">
         2. Configure your GitHub settings with your personal access token
       </p>
-      <p class="text-sm text-slate-400">
-        3. Set your repository details and branch name
-      </p>
+      <p class="text-sm text-slate-400">3. Set your repository details and branch name</p>
     </div>
 
     <div class="space-y-2">
       <h3 class="text-lg font-semibold text-slate-200">Important Note</h3>
       <p class="text-sm text-slate-400">
-        ⚠️ This extension cannot function if Bolt encounters an error. Please ensure your Bolt project is working correctly before attempting to use this extension.
+        ⚠️ This extension cannot function if Bolt encounters an error. Please ensure your Bolt
+        project is working correctly before attempting to use this extension.
       </p>
     </div>
 

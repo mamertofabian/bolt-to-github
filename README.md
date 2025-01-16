@@ -23,6 +23,7 @@ A Chrome extension that automatically captures ZIP file downloads from bolt.new,
 ## 📦 Installation Options
 
 ### Stable Version (Chrome Web Store)
+
 <a href="https://chrome.google.com/webstore/detail/pikdepbilbnnpgdkdaaoeekgflljmame">
   <img src="https://img.shields.io/badge/Install%20from-Chrome%20Web%20Store-blue?style=for-the-badge&logo=google-chrome&logoColor=white" alt="Install from Chrome Web Store" height="40">
 </a>
@@ -50,12 +51,16 @@ A Chrome extension that automatically captures ZIP file downloads from bolt.new,
   - Import existing GitHub repos into Bolt
 
 #### Best Practices
+
 1. Always verify your repository settings before syncing a new project
 2. Double-check the repository name and branch when switching between projects
 
 ### Latest Version (GitHub)
+
 To try the latest development version:
+
 1. Clone and install:
+
    ```bash
    git clone https://github.com/mamertofabian/bolt-to-github.git
    cd bolt-to-github
@@ -63,6 +68,7 @@ To try the latest development version:
    ```
 
 2. Build the extension:
+
    ```bash
    npm run build
    ```
@@ -89,11 +95,13 @@ To try the latest development version:
 Get started in just 3 simple steps:
 
 1. **Install from Chrome Web Store**
+
    - Visit our [Chrome Web Store page](https://chrome.google.com/webstore/detail/pikdepbilbnnpgdkdaaoeekgflljmame)
    - Click "Add to Chrome"
    - Click "Add extension" when prompted
 
 2. **Configure the Extension**
+
    - Make sure you have a Bolt.new project loaded
    - Click the extension icon in your Chrome toolbar
    - Enter your GitHub token (needs repo permissions)
@@ -117,15 +125,18 @@ Follow these steps to get started:
 Need help? Watch our [Quick Start Video Tutorial](https://youtu.be/7C03DNw9ZHI)
 
 ### 🛠️ For Developers (Contributing)
+
 If you want to modify the extension or contribute to its development:
 
 1. Set up your development environment:
+
    ```bash
    # Make sure you have Node.js v16 or later installed
    node --version
    ```
 
 2. Clone and install:
+
    ```bash
    git clone https://github.com/mamertofabian/bolt-to-github.git
    cd bolt-to-github
@@ -133,6 +144,7 @@ If you want to modify the extension or contribute to its development:
    ```
 
 3. Build for development:
+
    ```bash
    npm run watch   # For development with hot reload
    # OR
@@ -207,20 +219,24 @@ See our [Contributing Guide](#contributing) for more details.
 ## Support & Resources
 
 ### Documentation & Tutorials
+
 - 📺 [Watch our video tutorials](https://youtube.com/@aidrivencoder)
 - 📖 [Read the documentation](https://github.com/mamertofabian/bolt-to-github)
 - 💡 [Get development tips](https://aidrivencoder.com)
 - 💬 [Discord Community](https://discord.gg/JtjYHBBnGU)
 
 ### Professional Support
+
 - 📊 [Book a consultation](https://calendly.com/mamerto/30min)
 - 📧 [Email support](mailto:mamerto@codefrost.com)
 - 💻 [Custom development inquiries](https://codefrost.com)
 
 ### Report Issues
+
 For bugs or feature requests, please [open an issue](https://github.com/mamertofabian/bolt-to-github/issues) on the GitHub repository.
 
 ### Support the Project
+
 If you find this extension helpful, you can support its development:
 
 [![Buy Me A Coffee](https://www.buymeacoffee.com/assets/img/custom_images/orange_img.png)](https://www.buymeacoffee.com/aidrivencoder)
@@ -279,11 +295,13 @@ A: Currently, the extension processes all files in the ZIP. File filtering may b
 ### Common Issues
 
 1. **Extension not intercepting downloads**
+
    - Ensure you're on bolt.new
    - Check if the file is a ZIP
    - Verify permissions are enabled
 
 2. **GitHub push fails**
+
    - Verify your token has repo permissions
    - Check repository name and owner
    - Ensure branch exists
@@ -294,7 +312,7 @@ A: Currently, the extension processes all files in the ZIP. File filtering may b
 
 ## Future Enhancements
 
- - Let me know if you have any ideas for additional features or improvements by opening an issue on GitHub.
+- Let me know if you have any ideas for additional features or improvements by opening an issue on GitHub.
 
 ## Acknowledgments
 
@@ -321,7 +339,9 @@ A: Currently, the extension processes all files in the ZIP. File filtering may b
 ## Project Features
 
 ### Projects Management
+
 The extension includes a dedicated Projects tab that helps you:
+
 - Keep track of all your Bolt projects pushed to GitHub
 - Quick-access buttons to:
   - Open projects directly in Bolt

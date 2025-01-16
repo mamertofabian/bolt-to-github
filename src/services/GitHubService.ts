@@ -1,6 +1,6 @@
-export const GITHUB_SIGNUP_URL = "https://github.com/signup";
+export const GITHUB_SIGNUP_URL = 'https://github.com/signup';
 export const CREATE_TOKEN_URL =
-  "https://github.com/settings/tokens/new?scopes=repo&description=Bolt%20to%20GitHub&default_expires_at=none";
+  'https://github.com/settings/tokens/new?scopes=repo&description=Bolt%20to%20GitHub&default_expires_at=none';
 
 interface GitHubFileResponse {
   sha?: string;
@@ -53,15 +53,21 @@ export class GitHubService {
           if (targetUser.type === 'Organization') {
             // Check if user has access to the organization
             const orgs = await this.request('GET', '/user/orgs');
-            const hasOrgAccess = orgs.some((org: any) => org.login.toLowerCase() === username.toLowerCase());
+            const hasOrgAccess = orgs.some(
+              (org: any) => org.login.toLowerCase() === username.toLowerCase()
+            );
             if (hasOrgAccess) {
               return { isValid: true };
             }
             return { isValid: false, error: 'Token does not have access to this organization' };
           }
-          
+
           // If target is a user but not the authenticated user, token can't act as them
-          return { isValid: false, error: 'Token can only be used with your GitHub username or organizations you have access to' };
+          return {
+            isValid: false,
+            error:
+              'Token can only be used with your GitHub username or organizations you have access to',
+          };
         } catch (error) {
           return { isValid: false, error: 'Invalid GitHub username or organization' };
         }
@@ -82,8 +88,8 @@ export class GitHubService {
         method,
         ...options,
         headers: {
-          'Accept': 'application/vnd.github.v3+json',
-          'Authorization': `Bearer ${this.token}`,
+          Accept: 'application/vnd.github.v3+json',
+          Authorization: `Bearer ${this.token}`,
           'Content-Type': 'application/json',
           ...options.headers,
         },
@@ -100,18 +106,17 @@ export class GitHubService {
         }
 
         // Construct a more informative error message
-        const errorMessage = errorDetails.message || 
-                             errorDetails.error || 
-                             'Unknown GitHub API error';
-        
+        const errorMessage =
+          errorDetails.message || errorDetails.error || 'Unknown GitHub API error';
+
         const fullErrorMessage = `GitHub API Error (${response.status}): ${errorMessage}`;
-        
+
         // Create a custom error with additional properties
         const apiError = new Error(fullErrorMessage) as any;
         apiError.status = response.status;
         apiError.originalMessage = errorMessage;
         apiError.githubErrorResponse = errorDetails;
-        
+
         throw apiError;
       }
 
@@ -140,21 +145,23 @@ export class GitHubService {
       try {
         return await this.request('POST', '/user/repos', {
           ...options,
-          auto_init: true // Initialize with README to create main branch
+          auto_init: true, // Initialize with README to create main branch
         });
       } catch (error) {
         if (error instanceof Error && error.message.includes('404')) {
           // If user endpoint fails, try organization endpoint
           return await this.request('POST', `/orgs/${options.name}/repos`, {
             ...options,
-            auto_init: true
+            auto_init: true,
           });
         }
         throw error;
       }
     } catch (error) {
       console.error('Failed to create repository:', error);
-      throw new Error(`Failed to create repository: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      throw new Error(
+        `Failed to create repository: ${error instanceof Error ? error.message : 'Unknown error'}`
+      );
     }
   }
 
@@ -163,13 +170,13 @@ export class GitHubService {
     if (!exists) {
       await this.createRepo({
         name: repo,
-        private: false,  // Make public by default so bolt.new can load the repo
+        private: false, // Make public by default so bolt.new can load the repo
         auto_init: true,
-        description: 'Repository created by Bolt to GitHub extension'
+        description: 'Repository created by Bolt to GitHub extension',
       });
-      
+
       // Wait a bit for GitHub to initialize the repository
-      await new Promise(resolve => setTimeout(resolve, 2000));
+      await new Promise((resolve) => setTimeout(resolve, 2000));
     }
   }
 
@@ -207,7 +214,7 @@ This repository was automatically initialized by the Bolt to GitHub extension.
       path: 'README.md',
       content: btoa(readmeContent),
       branch,
-      message: 'Initialize repository with auto-generated README'
+      message: 'Initialize repository with auto-generated README',
     });
   }
 
@@ -220,12 +227,13 @@ This repository was automatically initialized by the Bolt to GitHub extension.
     message: string;
   }) {
     const { owner, repo, path, content, branch, message } = params;
-    
+
     try {
       // Try to get existing file
       let sha: string | undefined;
       try {
-        const response: GitHubFileResponse = await this.request('GET', 
+        const response: GitHubFileResponse = await this.request(
+          'GET',
           `/repos/${owner}/${repo}/contents/${path}?ref=${branch}`
         );
         sha = response.sha;
@@ -239,17 +247,15 @@ This repository was automatically initialized by the Bolt to GitHub extension.
         message,
         content,
         branch,
-        ...(sha ? { sha } : {})
+        ...(sha ? { sha } : {}),
       };
 
-      return await this.request(
-        'PUT',
-        `/repos/${owner}/${repo}/contents/${path}`,
-        body
-      );
+      return await this.request('PUT', `/repos/${owner}/${repo}/contents/${path}`, body);
     } catch (error) {
       console.error('GitHub API Error:', error);
-      throw new Error(`Failed to push file: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      throw new Error(
+        `Failed to push file: ${error instanceof Error ? error.message : 'Unknown error'}`
+      );
     }
   }
 
@@ -257,10 +263,10 @@ This repository was automatically initialized by the Bolt to GitHub extension.
     try {
       const commits = await this.request('GET', `/repos/${owner}/${repo}/commits`, null, {
         headers: {
-          'per_page': '1'  // We only need the count from headers
-        }
+          per_page: '1', // We only need the count from headers
+        },
       });
-      
+
       // GitHub returns the total count in the Link header
       const linkHeader = commits.headers?.get('link');
       if (linkHeader) {
@@ -269,7 +275,7 @@ This repository was automatically initialized by the Bolt to GitHub extension.
           return parseInt(match[1], 10);
         }
       }
-      
+
       // If no pagination, count the commits manually
       return commits.length;
     } catch (error) {
@@ -278,21 +284,23 @@ This repository was automatically initialized by the Bolt to GitHub extension.
     }
   }
 
-  async listPublicRepos(username: string): Promise<Array<{
-    name: string;
-    description: string | null;
-    html_url: string;
-    created_at: string;
-    updated_at: string;
-    language: string | null;
-  }>> {
+  async listPublicRepos(username: string): Promise<
+    Array<{
+      name: string;
+      description: string | null;
+      html_url: string;
+      created_at: string;
+      updated_at: string;
+      language: string | null;
+    }>
+  > {
     try {
       const repos = await this.request('GET', `/users/${username}/repos`, null, {
         headers: {
-          'per_page': '100'  // Get up to 100 repos per page
-        }
+          per_page: '100', // Get up to 100 repos per page
+        },
       });
-      
+
       return repos
         .filter((repo: any) => !repo.private)
         .map((repo: any) => ({
@@ -301,27 +309,34 @@ This repository was automatically initialized by the Bolt to GitHub extension.
           html_url: repo.html_url,
           created_at: repo.created_at,
           updated_at: repo.updated_at,
-          language: repo.language
+          language: repo.language,
         }));
     } catch (error) {
       console.error('Failed to fetch public repositories:', error);
-      throw new Error(`Failed to fetch public repositories: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      throw new Error(
+        `Failed to fetch public repositories: ${error instanceof Error ? error.message : 'Unknown error'}`
+      );
     }
   }
 
-  async listUserRepositories(username: string): Promise<Array<{
-    name: string;
-    description: string | null;
-    html_url: string;
-    private: boolean;
-    created_at: string;
-    updated_at: string;
-    language: string | null;
-  }>> {
+  async listUserRepositories(username: string): Promise<
+    Array<{
+      name: string;
+      description: string | null;
+      html_url: string;
+      private: boolean;
+      created_at: string;
+      updated_at: string;
+      language: string | null;
+    }>
+  > {
     try {
       // First try user's repositories
       try {
-        const repos = await this.request('GET', `/users/${username}/repos?per_page=100&sort=updated`);
+        const repos = await this.request(
+          'GET',
+          `/users/${username}/repos?per_page=100&sort=updated`
+        );
         return repos.map((repo: any) => ({
           name: repo.name,
           description: repo.description,
@@ -329,11 +344,14 @@ This repository was automatically initialized by the Bolt to GitHub extension.
           private: repo.private,
           created_at: repo.created_at,
           updated_at: repo.updated_at,
-          language: repo.language
+          language: repo.language,
         }));
       } catch (error) {
         // If user endpoint fails, try organization endpoint
-        const repos = await this.request('GET', `/orgs/${username}/repos?per_page=100&sort=updated`);
+        const repos = await this.request(
+          'GET',
+          `/orgs/${username}/repos?per_page=100&sort=updated`
+        );
         return repos.map((repo: any) => ({
           name: repo.name,
           description: repo.description,
@@ -341,12 +359,14 @@ This repository was automatically initialized by the Bolt to GitHub extension.
           private: repo.private,
           created_at: repo.created_at,
           updated_at: repo.updated_at,
-          language: repo.language
+          language: repo.language,
         }));
       }
     } catch (error) {
       console.error('Failed to fetch repositories:', error);
-      throw new Error(`Failed to fetch repositories: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      throw new Error(
+        `Failed to fetch repositories: ${error instanceof Error ? error.message : 'Unknown error'}`
+      );
     }
   }
 }

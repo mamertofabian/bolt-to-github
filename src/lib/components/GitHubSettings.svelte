@@ -1,16 +1,11 @@
 <script lang="ts">
-  import { Button } from "$lib/components/ui/button";
-  import { Input } from "$lib/components/ui/input";
-  import { Label } from "$lib/components/ui/label";
-  import {
-    Check,
-    X,
-    Search,
-    Loader2,
-  } from "lucide-svelte";
+  import { Button } from '$lib/components/ui/button';
+  import { Input } from '$lib/components/ui/input';
+  import { Label } from '$lib/components/ui/label';
+  import { Check, X, Search, Loader2 } from 'lucide-svelte';
   import { onMount } from 'svelte';
-  import { GitHubService } from "../../services/GitHubService";
-  import NewUserGuide from "./github/NewUserGuide.svelte";
+  import { GitHubService } from '../../services/GitHubService';
+  import NewUserGuide from './github/NewUserGuide.svelte';
 
   export let isOnboarding: boolean = false;
   export let githubToken: string;
@@ -23,7 +18,7 @@
   export let projectId: string | null = null;
   export let projectSettings: Record<string, { repoName: string; branch: string }> = {};
   export let buttonDisabled: boolean = false;
-  
+
   let isValidatingToken = false;
   let isTokenValid: boolean | null = null;
   let tokenValidationTimeout: number;
@@ -39,25 +34,26 @@
   }> = [];
   let isLoadingRepos = false;
   let showRepoDropdown = false;
-  let repoSearchQuery = "";
+  let repoSearchQuery = '';
   let repoInputFocused = false;
   let repoExists = false;
   let selectedIndex = -1;
 
   $: filteredRepos = repositories
-    .filter(repo => 
-      repo.name.toLowerCase().includes(repoSearchQuery.toLowerCase()) ||
-      (repo.description && repo.description.toLowerCase().includes(repoSearchQuery.toLowerCase()))
+    .filter(
+      (repo) =>
+        repo.name.toLowerCase().includes(repoSearchQuery.toLowerCase()) ||
+        (repo.description && repo.description.toLowerCase().includes(repoSearchQuery.toLowerCase()))
     )
     .slice(0, 10);
 
   $: if (repoName) {
-    repoExists = repositories.some(repo => repo.name.toLowerCase() === repoName.toLowerCase());
+    repoExists = repositories.some((repo) => repo.name.toLowerCase() === repoName.toLowerCase());
   }
 
   async function loadRepositories() {
     if (!githubToken || !repoOwner || !isTokenValid) return;
-    
+
     try {
       isLoadingRepos = true;
       const githubService = new GitHubService(githubToken);
@@ -75,7 +71,7 @@
     onInput();
   }
 
-  function selectRepo(repo: typeof repositories[0]) {
+  function selectRepo(repo: (typeof repositories)[0]) {
     repoName = repo.name;
     showRepoDropdown = false;
     repoSearchQuery = repo.name;
@@ -142,7 +138,7 @@
       const result = await githubService.validateTokenAndUser(repoOwner);
       isTokenValid = result.isValid;
       validationError = result.error || null;
-      
+
       // Load repositories after successful validation
       if (result.isValid) {
         await loadRepositories();
@@ -160,12 +156,12 @@
     onInput();
     isTokenValid = null;
     validationError = null;
-    
+
     // Clear existing timeout
     if (tokenValidationTimeout) {
       clearTimeout(tokenValidationTimeout);
     }
-    
+
     // Debounce validation to avoid too many API calls
     tokenValidationTimeout = setTimeout(() => {
       validateSettings();
@@ -208,7 +204,9 @@
         {#if githubToken}
           <div class="absolute right-3 top-1/2 -translate-y-1/2">
             {#if isValidatingToken}
-              <div class="animate-spin h-4 w-4 border-2 border-slate-400 border-t-transparent rounded-full" />
+              <div
+                class="animate-spin h-4 w-4 border-2 border-slate-400 border-t-transparent rounded-full"
+              />
             {:else if isTokenValid === true}
               <Check class="h-4 w-4 text-green-500" />
             {:else if isTokenValid === false}
@@ -272,12 +270,17 @@
             </div>
           </div>
           {#if showRepoDropdown && (filteredRepos.length > 0 || !repoExists)}
-            <div class="absolute z-50 w-full mt-1 bg-slate-800 border border-slate-700 rounded-md shadow-lg">
+            <div
+              class="absolute z-50 w-full mt-1 bg-slate-800 border border-slate-700 rounded-md shadow-lg"
+            >
               <ul class="py-1 max-h-60 overflow-auto">
                 {#each filteredRepos as repo, i}
                   <li>
                     <button
-                      class="w-full px-3 py-2 text-left hover:bg-slate-700 text-slate-200 {selectedIndex === i ? 'bg-slate-700' : ''}"
+                      class="w-full px-3 py-2 text-left hover:bg-slate-700 text-slate-200 {selectedIndex ===
+                      i
+                        ? 'bg-slate-700'
+                        : ''}"
                       on:click={() => selectRepo(repo)}
                     >
                       <div class="flex items-center justify-between">
@@ -295,10 +298,19 @@
                 {#if !repoExists}
                   <li class="px-3 py-2 text-sm text-slate-400">
                     {#if repoName.length > 0}
-                      <p class="text-orange-400">💡If the repository "{repoName}" doesn't exist, it will be created automatically (as a public repository).</p>
-                      <p class="text-emerald-400">✨ If it's a private repository, you can still enter it manually even if it's not visible in the list.</p>
+                      <p class="text-orange-400">
+                        💡If the repository "{repoName}" doesn't exist, it will be created
+                        automatically (as a public repository).
+                      </p>
+                      <p class="text-emerald-400">
+                        ✨ If it's a private repository, you can still enter it manually even if
+                        it's not visible in the list.
+                      </p>
                     {:else}
-                      <p>Enter a repository name (new or private) or select from your public repositories</p>
+                      <p>
+                        Enter a repository name (new or private) or select from your public
+                        repositories
+                      </p>
                     {/if}
                   </li>
                 {/if}
@@ -307,9 +319,7 @@
           {/if}
         </div>
         {#if repoExists}
-          <p class="text-sm text-blue-400">
-            ℹ️ Using existing repository
-          </p>
+          <p class="text-sm text-blue-400">ℹ️ Using existing repository</p>
         {:else if repoName}
           <p class="text-sm text-emerald-400">
             ✨ A new repository will be created if it doesn't exist yet.
@@ -342,7 +352,12 @@
     <Button
       type="submit"
       class="w-full bg-blue-600 hover:bg-blue-700 text-white"
-      disabled={buttonDisabled || isValidatingToken || !githubToken || !repoOwner || (!isOnboarding && (!repoName || !branch)) || isTokenValid === false}
+      disabled={buttonDisabled ||
+        isValidatingToken ||
+        !githubToken ||
+        !repoOwner ||
+        (!isOnboarding && (!repoName || !branch)) ||
+        isTokenValid === false}
     >
       {#if isValidatingToken}
         Validating...

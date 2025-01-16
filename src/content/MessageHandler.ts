@@ -1,4 +1,4 @@
-import type { MessageType } from "$lib/types";
+import type { MessageType } from '$lib/types';
 
 export class MessageHandler {
   private port: chrome.runtime.Port;

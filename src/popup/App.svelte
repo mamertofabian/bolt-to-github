@@ -1,36 +1,36 @@
 <script lang="ts">
-  import { onMount } from "svelte";
+  import { onMount } from 'svelte';
   import {
     Card,
     CardContent,
     CardDescription,
     CardHeader,
     CardTitle,
-  } from "$lib/components/ui/card";
-  import { Tabs, TabsContent } from "$lib/components/ui/tabs";
-  import Header from "$lib/components/Header.svelte";
-  import SocialLinks from "$lib/components/SocialLinks.svelte";
-  import StatusAlert from "$lib/components/StatusAlert.svelte";
-  import GitHubSettings from "$lib/components/GitHubSettings.svelte";
-  import { COFFEE_LINK, GITHUB_LINK, YOUTUBE_LINK } from "$lib/constants";
-  import Footer from "$lib/components/Footer.svelte";
-  import type { GitHubSettingsInterface } from "$lib/types";
-  import ProjectsList from "$lib/components/ProjectsList.svelte";
-  import { GitHubService } from "../services/GitHubService";
-  import { Button } from "$lib/components/ui/button";
-  import Help from "$lib/components/Help.svelte";
+  } from '$lib/components/ui/card';
+  import { Tabs, TabsContent } from '$lib/components/ui/tabs';
+  import Header from '$lib/components/Header.svelte';
+  import SocialLinks from '$lib/components/SocialLinks.svelte';
+  import StatusAlert from '$lib/components/StatusAlert.svelte';
+  import GitHubSettings from '$lib/components/GitHubSettings.svelte';
+  import { COFFEE_LINK, GITHUB_LINK, YOUTUBE_LINK } from '$lib/constants';
+  import Footer from '$lib/components/Footer.svelte';
+  import type { GitHubSettingsInterface } from '$lib/types';
+  import ProjectsList from '$lib/components/ProjectsList.svelte';
+  import { GitHubService } from '../services/GitHubService';
+  import { Button } from '$lib/components/ui/button';
+  import Help from '$lib/components/Help.svelte';
 
-  let githubToken: string = "";
-  let repoOwner = "";
-  let repoName = "";
-  let branch = "main";
+  let githubToken: string = '';
+  let repoOwner = '';
+  let repoName = '';
+  let branch = 'main';
   let projectSettings: Record<string, { repoName: string; branch: string }> = {};
-  let status = "";
+  let status = '';
   let uploadProgress = 0;
-  let uploadStatus = "idle";
-  let uploadMessage = "";
+  let uploadStatus = 'idle';
+  let uploadMessage = '';
   let isSettingsValid = false;
-  let activeTab = "home";
+  let activeTab = 'home';
   let currentUrl: string = '';
   let isBoltSite: boolean = false;
   let githubSettings: GitHubSettingsInterface;
@@ -48,7 +48,7 @@
       validationError = 'GitHub token is required';
       return false;
     }
-    
+
     try {
       isValidatingToken = true;
       const githubService = new GitHubService(token);
@@ -72,14 +72,14 @@
     // Add dark mode to the document
     document.documentElement.classList.add('dark');
 
-    githubSettings = await chrome.storage.sync.get([
-      "githubToken",
-      "repoOwner",
-      "projectSettings"
-    ]) as GitHubSettingsInterface;
+    githubSettings = (await chrome.storage.sync.get([
+      'githubToken',
+      'repoOwner',
+      'projectSettings',
+    ])) as GitHubSettingsInterface;
 
-    githubToken = githubSettings.githubToken || "";
-    repoOwner = githubSettings.repoOwner || "";
+    githubToken = githubSettings.githubToken || '';
+    repoOwner = githubSettings.repoOwner || '';
     projectSettings = githubSettings.projectSettings || {};
     hasInitialSettings = Boolean(githubSettings.githubToken && githubSettings.repoOwner);
 
@@ -93,7 +93,7 @@
     if (tabs[0]?.url) {
       currentUrl = tabs[0].url;
       isBoltSite = currentUrl.includes('bolt.new');
-      
+
       if (isBoltSite) {
         const match = currentUrl.match(/bolt\.new\/~\/([^\/]+)/);
         parsedProjectId = match?.[1] || null;
@@ -103,7 +103,10 @@
 
         if (match && parsedProjectId && projectId.projectId === parsedProjectId) {
           if (projectSettings[parsedProjectId]) {
-            console.log('📄 App: projectSettings[parsedProjectId]', projectSettings[parsedProjectId]);
+            console.log(
+              '📄 App: projectSettings[parsedProjectId]',
+              projectSettings[parsedProjectId]
+            );
             repoName = projectSettings[parsedProjectId].repoName;
             branch = projectSettings[parsedProjectId].branch;
           } else {
@@ -119,17 +122,20 @@
     checkSettingsValidity();
 
     chrome.runtime.onMessage.addListener((message) => {
-      if (message.type === "UPLOAD_STATUS") {
+      if (message.type === 'UPLOAD_STATUS') {
         uploadStatus = message.status;
         uploadProgress = message.progress || 0;
-        uploadMessage = message.message || "";
+        uploadMessage = message.message || '';
       }
     });
   });
 
   function checkSettingsValidity() {
     // Only consider settings valid if we have all required fields AND the validation passed
-    isSettingsValid = Boolean(githubToken && repoOwner && repoName && branch) && !isValidatingToken && isTokenValid === true;
+    isSettingsValid =
+      Boolean(githubToken && repoOwner && repoName && branch) &&
+      !isValidatingToken &&
+      isTokenValid === true;
   }
 
   async function saveSettings() {
@@ -137,19 +143,19 @@
       // Validate token and username before saving
       const isValid = await validateGitHubToken(githubToken, repoOwner);
       if (!isValid) {
-        status = validationError || "Validation failed";
+        status = validationError || 'Validation failed';
         hasStatus = true;
         setTimeout(() => {
-          status = "";
+          status = '';
           hasStatus = false;
         }, 3000);
         return;
       }
 
       const settings = {
-        githubToken: githubToken || "",
-        repoOwner: repoOwner || "",
-        projectSettings
+        githubToken: githubToken || '',
+        repoOwner: repoOwner || '',
+        projectSettings,
       };
 
       if (parsedProjectId) {
@@ -159,15 +165,15 @@
 
       await chrome.storage.sync.set(settings);
       hasInitialSettings = true;
-      status = "Settings saved successfully!";
+      status = 'Settings saved successfully!';
       hasStatus = true;
       checkSettingsValidity();
       setTimeout(() => {
-        status = "";
+        status = '';
         hasStatus = false;
       }, 3000);
     } catch (error) {
-      status = "Error saving settings";
+      status = 'Error saving settings';
       hasStatus = true;
       console.error(error);
     }
@@ -197,13 +203,13 @@
           <TabsContent value="home">
             <button
               class="w-full mb-3 px-4 py-2 bg-slate-700 hover:bg-slate-600 rounded-md text-slate-200 transition-colors"
-              on:click={() => activeTab = "projects"}
+              on:click={() => (activeTab = 'projects')}
             >
               View All Projects
             </button>
 
-            <StatusAlert 
-              {isSettingsValid} 
+            <StatusAlert
+              {isSettingsValid}
               projectId={parsedProjectId}
               gitHubUsername={repoOwner}
               {repoName}
@@ -217,7 +223,13 @@
           </TabsContent>
 
           <TabsContent value="projects">
-            <ProjectsList {projectSettings} {repoOwner} {githubToken} currentlyLoadedProjectId={parsedProjectId} isBoltSite={isBoltSite} />
+            <ProjectsList
+              {projectSettings}
+              {repoOwner}
+              {githubToken}
+              currentlyLoadedProjectId={parsedProjectId}
+              {isBoltSite}
+            />
           </TabsContent>
 
           <TabsContent value="settings">
@@ -249,7 +261,13 @@
           </TabsContent>
         </Tabs>
       {:else if hasInitialSettings && repoOwner && githubToken}
-        <ProjectsList {projectSettings} {repoOwner} {githubToken} currentlyLoadedProjectId={parsedProjectId} isBoltSite={isBoltSite} />
+        <ProjectsList
+          {projectSettings}
+          {repoOwner}
+          {githubToken}
+          currentlyLoadedProjectId={parsedProjectId}
+          {isBoltSite}
+        />
       {:else}
         <div class="flex flex-col items-center justify-center p-4 text-center space-y-6">
           <div class="space-y-2">
@@ -262,8 +280,13 @@
                 Go to bolt.new
               </Button>
             {/if}
-            <p class="text-sm text-green-400">💡 No Bolt projects found. Create or load an existing Bolt project to get started.</p>
-            <p class="text-sm text-green-400 pb-4">🌟 You can also load any of your public GitHub repositories by providing your GitHub token and repository owner.</p>
+            <p class="text-sm text-green-400">
+              💡 No Bolt projects found. Create or load an existing Bolt project to get started.
+            </p>
+            <p class="text-sm text-green-400 pb-4">
+              🌟 You can also load any of your public GitHub repositories by providing your GitHub
+              token and repository owner.
+            </p>
             <GitHubSettings
               isOnboarding={true}
               bind:githubToken

@@ -1,7 +1,7 @@
 <script lang="ts">
   import { onMount } from 'svelte';
-  import { Button } from "$lib/components/ui/button";
-  import { Github, Import, Zap, X } from "lucide-svelte";
+  import { Button } from '$lib/components/ui/button';
+  import { Github, Import, Zap, X } from 'lucide-svelte';
   import { GitHubService } from '../../services/GitHubService';
 
   export let projectSettings: Record<string, { repoName: string; branch: string }>;
@@ -46,20 +46,23 @@
       projectId,
       repoName: settings.repoName,
       branch: settings.branch,
-      isPublicOnly: false
+      isPublicOnly: false,
     }));
 
-    const publicOnlyRepos = showPublicRepos ? publicRepos
-      .filter(repo => !Object.values(projectSettings).some(s => s.repoName === repo.name))
-      .map(repo => ({
-        repoName: repo.name,
-        isPublicOnly: true,
-        description: repo.description,
-        language: repo.language
-      })) : [];
+    const publicOnlyRepos = showPublicRepos
+      ? publicRepos
+          .filter((repo) => !Object.values(projectSettings).some((s) => s.repoName === repo.name))
+          .map((repo) => ({
+            repoName: repo.name,
+            isPublicOnly: true,
+            description: repo.description,
+            language: repo.language,
+          }))
+      : [];
 
-    filteredProjects = [...existingProjects, ...publicOnlyRepos]
-      .filter(project => project.repoName.toLowerCase().includes(searchQuery.toLowerCase()));
+    filteredProjects = [...existingProjects, ...publicOnlyRepos].filter((project) =>
+      project.repoName.toLowerCase().includes(searchQuery.toLowerCase())
+    );
   }
 
   onMount(async () => {
@@ -103,7 +106,7 @@
           variant="ghost"
           size="icon"
           class="absolute right-1 top-1/2 -translate-y-1/2 h-7 w-7"
-          on:click={() => searchQuery = ''}
+          on:click={() => (searchQuery = '')}
         >
           <X class="h-4 w-4" />
         </Button>
@@ -123,25 +126,35 @@
     <div class="flex flex-col items-center justify-center p-4 text-center space-y-6">
       <div class="space-y-2">
         {#if !isBoltSite}
-        <Button
-          variant="outline"
-          class="border-slate-800 hover:bg-slate-800 text-slate-200"
-          on:click={() => window.open('https://bolt.new', '_blank')}
-        >
-          Go to bolt.new
-        </Button>
-      {/if}
-        <p class="text-sm text-green-400">💡 No Bolt projects found. Create or load an existing Bolt project to get started.</p>
-        <p class="text-sm text-green-400">🌟 You can also load any of your public GitHub repositories.</p>
+          <Button
+            variant="outline"
+            class="border-slate-800 hover:bg-slate-800 text-slate-200"
+            on:click={() => window.open('https://bolt.new', '_blank')}
+          >
+            Go to bolt.new
+          </Button>
+        {/if}
+        <p class="text-sm text-green-400">
+          💡 No Bolt projects found. Create or load an existing Bolt project to get started.
+        </p>
+        <p class="text-sm text-green-400">
+          🌟 You can also load any of your public GitHub repositories.
+        </p>
       </div>
     </div>
   {:else}
     {#each filteredProjects as project}
-      <div class="border border-slate-800 rounded-lg p-3 hover:bg-slate-800/50 transition-colors group {project.projectId === currentlyLoadedProjectId ? 'bg-slate-800/30 border-slate-700' : ''}">
+      <div
+        class="border border-slate-800 rounded-lg p-3 hover:bg-slate-800/50 transition-colors group {project.projectId ===
+        currentlyLoadedProjectId
+          ? 'bg-slate-800/30 border-slate-700'
+          : ''}"
+      >
         <div class="flex items-center justify-between">
           <div class="space-y-0.5">
             <h3 class="font-medium">
-              {project.repoName} {project.branch ? `(${project.branch})` : ''}
+              {project.repoName}
+              {project.branch ? `(${project.branch})` : ''}
               {#if project.projectId === currentlyLoadedProjectId}
                 <span class="text-xs text-emerald-500 ml-2">(Current)</span>
               {/if}
@@ -151,7 +164,9 @@
             </h3>
             <div class="flex flex-col gap-1 text-xs text-slate-400">
               {#if project.projectId}
-                <p>Bolt ID: {project.projectId} ({commitCounts[project.projectId] ?? '...'} commits)</p>
+                <p>
+                  Bolt ID: {project.projectId} ({commitCounts[project.projectId] ?? '...'} commits)
+                </p>
               {/if}
               {#if project.description}
                 <p>{project.description}</p>
@@ -198,4 +213,4 @@
       </div>
     {/each}
   {/if}
-</div> 
+</div>

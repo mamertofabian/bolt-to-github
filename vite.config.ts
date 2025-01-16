@@ -9,18 +9,18 @@ import preprocess from 'svelte-preprocess';
 const manifestWithAssets = {
   ...manifest,
   icons: {
-    "16": "assets/icons/icon16.png",
-    "48": "assets/icons/icon48.png",
-    "128": "assets/icons/icon128.png"
+    '16': 'assets/icons/icon16.png',
+    '48': 'assets/icons/icon48.png',
+    '128': 'assets/icons/icon128.png',
   },
   action: {
     ...manifest.action,
     default_icon: {
-      "16": "assets/icons/icon16.png",
-      "48": "assets/icons/icon48.png",
-      "128": "assets/icons/icon128.png"
-    }
-  }
+      '16': 'assets/icons/icon16.png',
+      '48': 'assets/icons/icon48.png',
+      '128': 'assets/icons/icon128.png',
+    },
+  },
 };
 
 export default defineConfig(({ mode }) => {
@@ -29,8 +29,8 @@ export default defineConfig(({ mode }) => {
       svelte({
         preprocess: preprocess(),
         compilerOptions: {
-          dev: mode === 'development'
-        }
+          dev: mode === 'development',
+        },
       }),
       crx({ manifest: manifestWithAssets }),
     ],
@@ -57,12 +57,12 @@ export default defineConfig(({ mode }) => {
             }
             return 'assets/[name]-[hash][extname]';
           },
-        }
-      }
+        },
+      },
     },
     resolve: {
       alias: {
-        '$lib': resolve(__dirname, './src/lib'),
+        $lib: resolve(__dirname, './src/lib'),
         buffer: 'buffer/',
       },
     },
@@ -74,9 +74,9 @@ export default defineConfig(({ mode }) => {
       port: 5173,
       strictPort: true,
       hmr: {
-        port: 5173
-      }
+        port: 5173,
+      },
     },
-    publicDir: 'assets'
+    publicDir: 'assets',
   };
 });

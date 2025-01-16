@@ -1,16 +1,16 @@
 export interface Port extends chrome.runtime.Port {
-    sender?: chrome.runtime.MessageSender;
+  sender?: chrome.runtime.MessageSender;
 }
-  
-export type MessageType = 
-    | 'ZIP_DATA' 
-    | 'UPLOAD_STATUS' 
-    | 'SET_COMMIT_MESSAGE' 
-    | 'DEBUG'
-    | 'CONTENT_SCRIPT_READY'
-    | 'GITHUB_SETTINGS_CHANGED'
-    | 'OPEN_SETTINGS';
-  
+
+export type MessageType =
+  | 'ZIP_DATA'
+  | 'UPLOAD_STATUS'
+  | 'SET_COMMIT_MESSAGE'
+  | 'DEBUG'
+  | 'CONTENT_SCRIPT_READY'
+  | 'GITHUB_SETTINGS_CHANGED'
+  | 'OPEN_SETTINGS';
+
 export interface Message {
   type: MessageType;
   data?: any;
@@ -26,9 +26,9 @@ export interface ProjectSetting {
 export type ProjectSettings = Record<string, ProjectSetting>;
 
 export interface GitHubSettingsInterface {
-    githubToken: string;
-    repoOwner: string;
-    projectSettings?: ProjectSettings;
+  githubToken: string;
+  repoOwner: string;
+  projectSettings?: ProjectSettings;
 }
 
 export type ProcessingStatus = 'idle' | 'uploading' | 'success' | 'error';
