@@ -277,9 +277,9 @@ export class ZipHandler {
         sha: blobData.sha,
       });
 
-      // Add a delay between requests to avoid rate limiting
-      if (completedFiles < totalFiles) {
-        await this.sleep(1000); // 1 second delay between requests
+      // Add a delay every 5 files to avoid rate limiting
+      if (completedFiles < totalFiles && completedFiles % 5 === 0) {
+        await this.sleep(1000); // 1 second delay every 5 files
       }
     }
 
