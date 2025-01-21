@@ -15,10 +15,107 @@ export class GitHubTokenValidator extends BaseGitHubService {
     return this.token.startsWith('ghp_');
   }
 
+  isFineGrainedToken(): boolean {
+    return this.token.startsWith('github_pat_');
+  }
+
+  private async delay(ms: number): Promise<void> {
+    return new Promise(resolve => setTimeout(resolve, ms));
+  }
+
+  async verifyFineGrainedPermissions(): Promise<{ isValid: boolean; error?: string }> {
+    if (!this.isFineGrainedToken()) {
+      return { isValid: false, error: 'Not a fine-grained token' };
+    }
+
+    try {
+      // Create a temporary test repo
+      const timestamp = Date.now();
+      const repoName = `test-repo-${timestamp}`;
+      
+      // Test repository creation (All repositories access + Admin Write)
+      try {
+        await this.request('POST', '/user/repos', {
+          name: repoName,
+          private: true,
+          auto_init: true
+        });
+        await this.delay(1000); // Wait for repo creation
+      } catch (error) {
+        return { 
+          isValid: false, 
+          error: 'Token lacks repository creation permission' 
+        };
+      }
+
+      // Get authenticated user
+      const user = await this.request('GET', '/user');
+      const username = user.login;
+
+      // Test visibility change (Admin Write)
+      try {
+        await this.request('PATCH', `/repos/${username}/${repoName}`, {
+          private: false
+        });
+        await this.delay(1000);
+      } catch (error) {
+        // Cleanup repo before returning
+        await this.request('DELETE', `/repos/${username}/${repoName}`);
+        return { 
+          isValid: false, 
+          error: 'Token lacks repository administration permission' 
+        };
+      }
+
+      // Test content write
+      try {
+        const content = btoa('test'); // Convert to base64
+        const response = await this.request('PUT', `/repos/${username}/${repoName}/contents/test.txt`, {
+          message: 'Add test file',
+          content: content
+        });
+        await this.delay(1000);
+
+        // Test content delete
+        await this.request('DELETE', `/repos/${username}/${repoName}/contents/test.txt`, {
+          message: 'Remove test file',
+          sha: response.content.sha
+        });
+        await this.delay(1000);
+      } catch (error) {
+        // Cleanup repo before returning
+        await this.request('DELETE', `/repos/${username}/${repoName}`);
+        return { 
+          isValid: false, 
+          error: 'Token lacks repository contents read/write permission' 
+        };
+      }
+
+      // Cleanup: Delete the test repository
+      await this.request('DELETE', `/repos/${username}/${repoName}`);
+      
+      return { isValid: true };
+    } catch (error) {
+      console.error('Permission verification failed:', error);
+      return { 
+        isValid: false, 
+        error: `Permission verification failed: ${error instanceof Error ? error.message : 'Unknown error'}` 
+      };
+    }
+  }
+
   async validateTokenAndUser(username: string): Promise<{ isValid: boolean; error?: string }> {
     try {
       try {
         const authUser = await this.request('GET', '/user');
+
+        // For fine-grained tokens, verify required permissions
+        if (this.isFineGrainedToken()) {
+          const permissionCheck = await this.verifyFineGrainedPermissions();
+          if (!permissionCheck.isValid) {
+            return permissionCheck;
+          }
+        }
         if (!authUser.login) {
           return { isValid: false, error: 'Invalid GitHub token' };
         }
