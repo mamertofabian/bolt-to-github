@@ -4,6 +4,9 @@ export const CREATE_TOKEN_URL =
 export const CREATE_FINE_GRAINED_TOKEN_URL =
   'https://github.com/settings/personal-access-tokens/new?scopes=repository:read,repository:write&description=Bolt%20to%20GitHub%20Fine-Grained%20Token';
 
+import { BaseGitHubService } from './BaseGitHubService';
+import { GitHubTokenValidator } from './GitHubTokenValidator';
+
 interface GitHubFileResponse {
   sha?: string;
   content?: string;
@@ -16,119 +19,26 @@ interface RepoCreateOptions {
   description?: string;
 }
 
-export class GitHubService {
-  private baseUrl = 'https://api.github.com';
-  private token: string;
+export class GitHubService extends BaseGitHubService {
+  private tokenValidator: GitHubTokenValidator;
 
   constructor(token: string) {
-    this.token = token;
+    super(token);
+    this.tokenValidator = new GitHubTokenValidator(token);
   }
 
   async validateToken(): Promise<boolean> {
-    try {
-      await this.request('GET', '/user');
-      return true;
-    } catch (error) {
-      console.error('Token validation failed:', error);
-      return false;
-    }
+    return this.tokenValidator.validateToken();
   }
 
   async isClassicToken(): Promise<boolean> {
-    // Classic tokens start with 'ghp_'
-    // Fine-grained tokens start with 'github_pat_'
-    return this.token.startsWith('ghp_');
+    return this.tokenValidator.isClassicToken();
   }
 
   async validateTokenAndUser(username: string): Promise<{ isValid: boolean; error?: string }> {
-    try {
-      // First validate token and get authenticated user
-      try {
-        const authUser = await this.request('GET', '/user');
-        if (!authUser.login) {
-          return { isValid: false, error: 'Invalid GitHub token' };
-        }
-
-        // If username matches authenticated user, we're good
-        if (authUser.login.toLowerCase() === username.toLowerCase()) {
-          return { isValid: true };
-        }
-
-        // If username doesn't match, check if it's an organization the user has access to
-        try {
-          // Check if the target is an organization
-          const targetUser = await this.request('GET', `/users/${username}`);
-          if (targetUser.type === 'Organization') {
-            // Check if user has access to the organization
-            const orgs = await this.request('GET', '/user/orgs');
-            const hasOrgAccess = orgs.some(
-              (org: any) => org.login.toLowerCase() === username.toLowerCase()
-            );
-            if (hasOrgAccess) {
-              return { isValid: true };
-            }
-            return { isValid: false, error: 'Token does not have access to this organization' };
-          }
-
-          // If target is a user but not the authenticated user, token can't act as them
-          return {
-            isValid: false,
-            error:
-              'Token can only be used with your GitHub username or organizations you have access to',
-          };
-        } catch (error) {
-          return { isValid: false, error: 'Invalid GitHub username or organization' };
-        }
-      } catch (error) {
-        return { isValid: false, error: 'Invalid GitHub token' };
-      }
-    } catch (error) {
-      console.error('Validation failed:', error);
-      return { isValid: false, error: 'Validation failed' };
-    }
+    return this.tokenValidator.validateTokenAndUser(username);
   }
 
-  async request(method: string, endpoint: string, body?: any, options: RequestInit = {}) {
-    const url = `${this.baseUrl}${endpoint}`;
-
-    const response = await fetch(url, {
-      method,
-      ...options,
-      headers: {
-        Accept: 'application/vnd.github.v3+json',
-        Authorization: `Bearer ${this.token}`,
-        'Content-Type': 'application/json',
-        ...options.headers,
-      },
-      body: body ? JSON.stringify(body) : undefined,
-    });
-
-    if (!response.ok) {
-      let errorDetails;
-      try {
-        errorDetails = await response.json();
-      } catch {
-        // If parsing JSON fails, use the status text
-        errorDetails = { message: response.statusText };
-      }
-
-      // Construct a more informative error message
-      const errorMessage =
-        errorDetails.message || errorDetails.error || 'Unknown GitHub API error';
-
-      const fullErrorMessage = `GitHub API Error (${response.status}): ${errorMessage}`;
-
-      // Create a custom error with additional properties
-      const apiError = new Error(fullErrorMessage) as any;
-      apiError.status = response.status;
-      apiError.originalMessage = errorMessage;
-      apiError.githubErrorResponse = errorDetails;
-
-      throw apiError;
-    }
-
-    return await response.json();
-  }
 
   async repoExists(owner: string, repo: string): Promise<boolean> {
     try {
