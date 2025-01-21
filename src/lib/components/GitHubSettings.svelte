@@ -228,6 +228,16 @@
       {:else if tokenType}
         <p class="text-sm mt-1 {tokenType === 'classic' ? 'text-orange-400' : 'text-emerald-400'}">
           {tokenType === 'classic' ? '⚠️ Classic' : '✨ Fine-grained'} token detected
+          {#if tokenType === 'classic'}
+            <a
+              href={CREATE_FINE_GRAINED_TOKEN_URL}
+              target="_blank"
+              rel="noopener noreferrer"
+              class="text-blue-400 hover:text-blue-300 ml-1"
+            >
+              Create a fine-grained token instead
+            </a>
+          {/if}
         </p>
       {/if}
     </div>
