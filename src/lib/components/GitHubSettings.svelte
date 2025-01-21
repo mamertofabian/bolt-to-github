@@ -23,6 +23,7 @@
   let isTokenValid: boolean | null = null;
   let tokenValidationTimeout: number;
   let validationError: string | null = null;
+  let tokenType: 'classic' | 'fine-grained' | null = null;
   let repositories: Array<{
     name: string;
     description: string | null;
@@ -139,6 +140,12 @@
       isTokenValid = result.isValid;
       validationError = result.error || null;
 
+      if (result.isValid) {
+        // Check token type
+        const isClassic = await githubService.isClassicToken();
+        tokenType = isClassic ? 'classic' : 'fine-grained';
+      }
+
       // Load repositories after successful validation
       if (result.isValid) {
         await loadRepositories();
@@ -156,6 +163,7 @@
     onInput();
     isTokenValid = null;
     validationError = null;
+    tokenType = null;
 
     // Clear existing timeout
     if (tokenValidationTimeout) {
@@ -217,6 +225,10 @@
       </div>
       {#if validationError}
         <p class="text-sm text-red-400 mt-1">{validationError}</p>
+      {:else if tokenType}
+        <p class="text-sm mt-1 {tokenType === 'classic' ? 'text-orange-400' : 'text-emerald-400'}">
+          {tokenType === 'classic' ? '⚠️ Classic' : '✨ Fine-grained'} token detected
+        </p>
       {/if}
     </div>
 
