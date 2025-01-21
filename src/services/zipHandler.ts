@@ -159,6 +159,35 @@ export class ZipHandler {
     const gitignoreContent = files.get('.gitignore') || files.get('project/.gitignore');
     if (gitignoreContent) {
       ig.add(gitignoreContent.split('\n'));
+    } else {
+      // Default ignore patterns for common directories when no .gitignore exists
+      ig.add([
+        'node_modules/',
+        'dist/',
+        'build/',
+        '.DS_Store',
+        'coverage/',
+        '.env',
+        '.env.local',
+        '.env.*.local',
+        '*.log',
+        'npm-debug.log*',
+        'yarn-debug.log*',
+        'yarn-error.log*',
+        '.idea/',
+        '.vscode/',
+        '*.suo',
+        '*.ntvs*',
+        '*.njsproj',
+        '*.sln',
+        '*.sw?',
+        '.next/',
+        'out/',
+        '.nuxt/',
+        '.cache/',
+        '.temp/',
+        'tmp/'
+      ]);
     }
 
     for (const [path, content] of files.entries()) {
