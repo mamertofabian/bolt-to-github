@@ -32,6 +32,27 @@ export class GitHubService {
     }
   }
 
+  async isClassicToken(): Promise<boolean> {
+    try {
+      // Get the token's metadata from the authentication endpoint
+      const response = await this.request('GET', '/applications/token', null, {
+        headers: {
+          Accept: 'application/vnd.github.v3+json',
+          Authorization: `Basic ${btoa(`${this.token}:`)}`
+        }
+      });
+
+      // Fine-grained tokens will have a 'fine_grained' property set to true
+      // Classic tokens won't have this property
+      return !response.fine_grained;
+    } catch (error) {
+      // If we can't determine the token type, assume it's a classic token
+      // as they were the original type
+      console.warn('Could not determine token type:', error);
+      return true;
+    }
+  }
+
   async validateTokenAndUser(username: string): Promise<{ isValid: boolean; error?: string }> {
     try {
       // First validate token and get authenticated user
