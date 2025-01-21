@@ -243,36 +243,46 @@ export class ZipHandler {
     );
   }
 
+  private sleep(ms: number): Promise<void> {
+    return new Promise(resolve => setTimeout(resolve, ms));
+  }
+
   private async createBlobs(files: Map<string, string>, repoOwner: string, repoName: string) {
     const totalFiles = files.size;
     let completedFiles = 0;
 
-    return Promise.all(
-      Array.from(files.entries()).map(async ([path, content]) => {
-        const blobData = await this.githubService.request(
-          'POST',
-          `/repos/${repoOwner}/${repoName}/git/blobs`,
-          {
-            content: toBase64(content),
-            encoding: 'base64',
-          }
-        );
+    const results = [];
+    for (const [path, content] of files.entries()) {
+      const blobData = await this.githubService.request(
+        'POST',
+        `/repos/${repoOwner}/${repoName}/git/blobs`,
+        {
+          content: toBase64(content),
+          encoding: 'base64',
+        }
+      );
 
-        completedFiles++;
-        const progress = 30 + Math.floor((completedFiles / totalFiles) * 30);
-        await this.updateStatus(
-          'uploading',
-          progress,
-          `Creating blob ${completedFiles}/${totalFiles}...`
-        );
+      completedFiles++;
+      const progress = 30 + Math.floor((completedFiles / totalFiles) * 30);
+      await this.updateStatus(
+        'uploading',
+        progress,
+        `Creating blob ${completedFiles}/${totalFiles}...`
+      );
 
-        return {
-          path,
-          mode: '100644',
-          type: 'blob',
-          sha: blobData.sha,
-        };
-      })
-    );
+      results.push({
+        path,
+        mode: '100644',
+        type: 'blob',
+        sha: blobData.sha,
+      });
+
+      // Add a delay between requests to avoid rate limiting
+      if (completedFiles < totalFiles) {
+        await this.sleep(1000); // 1 second delay between requests
+      }
+    }
+
+    return results;
   }
 }
