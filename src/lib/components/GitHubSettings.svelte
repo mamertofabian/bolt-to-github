@@ -4,7 +4,7 @@
   import { Label } from '$lib/components/ui/label';
   import { Check, X, Search, Loader2 } from 'lucide-svelte';
   import { onMount } from 'svelte';
-  import { GitHubService } from '../../services/GitHubService';
+  import { CREATE_FINE_GRAINED_TOKEN_URL, GitHubService } from '../../services/GitHubService';
   import NewUserGuide from './github/NewUserGuide.svelte';
 
   export let isOnboarding: boolean = false;
