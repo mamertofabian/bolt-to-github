@@ -83,48 +83,43 @@ export class GitHubService {
   async request(method: string, endpoint: string, body?: any, options: RequestInit = {}) {
     const url = `${this.baseUrl}${endpoint}`;
 
-    try {
-      const response = await fetch(url, {
-        method,
-        ...options,
-        headers: {
-          Accept: 'application/vnd.github.v3+json',
-          Authorization: `Bearer ${this.token}`,
-          'Content-Type': 'application/json',
-          ...options.headers,
-        },
-        body: body ? JSON.stringify(body) : undefined,
-      });
+    const response = await fetch(url, {
+      method,
+      ...options,
+      headers: {
+        Accept: 'application/vnd.github.v3+json',
+        Authorization: `Bearer ${this.token}`,
+        'Content-Type': 'application/json',
+        ...options.headers,
+      },
+      body: body ? JSON.stringify(body) : undefined,
+    });
 
-      if (!response.ok) {
-        let errorDetails;
-        try {
-          errorDetails = await response.json();
-        } catch {
-          // If parsing JSON fails, use the status text
-          errorDetails = { message: response.statusText };
-        }
-
-        // Construct a more informative error message
-        const errorMessage =
-          errorDetails.message || errorDetails.error || 'Unknown GitHub API error';
-
-        const fullErrorMessage = `GitHub API Error (${response.status}): ${errorMessage}`;
-
-        // Create a custom error with additional properties
-        const apiError = new Error(fullErrorMessage) as any;
-        apiError.status = response.status;
-        apiError.originalMessage = errorMessage;
-        apiError.githubErrorResponse = errorDetails;
-
-        throw apiError;
+    if (!response.ok) {
+      let errorDetails;
+      try {
+        errorDetails = await response.json();
+      } catch {
+        // If parsing JSON fails, use the status text
+        errorDetails = { message: response.statusText };
       }
 
-      return await response.json();
-    } catch (error) {
-      // Re-throw the error to maintain the original error details
-      throw error;
+      // Construct a more informative error message
+      const errorMessage =
+        errorDetails.message || errorDetails.error || 'Unknown GitHub API error';
+
+      const fullErrorMessage = `GitHub API Error (${response.status}): ${errorMessage}`;
+
+      // Create a custom error with additional properties
+      const apiError = new Error(fullErrorMessage) as any;
+      apiError.status = response.status;
+      apiError.originalMessage = errorMessage;
+      apiError.githubErrorResponse = errorDetails;
+
+      throw apiError;
     }
+
+    return await response.json();
   }
 
   async repoExists(owner: string, repo: string): Promise<boolean> {
