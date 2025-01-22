@@ -3,8 +3,6 @@ import { toBase64 } from '../lib/common';
 import { ZipProcessor } from '../lib/zip';
 import ignore from 'ignore';
 import type { ProcessingStatus, UploadStatusState } from '$lib/types';
-import { Queue } from '$lib/Queue';
-import { RateLimitHandler } from './RateLimitHandler';
 
 export class ZipHandler {
   constructor(
@@ -281,79 +279,36 @@ export class ZipHandler {
   private async createBlobs(files: Map<string, string>, repoOwner: string, repoName: string) {
     const totalFiles = files.size;
     let completedFiles = 0;
-    const rateLimitHandler = new RateLimitHandler();
-    const queue = new Queue(3); // Allow up to 3 concurrent blob creations
-    const results: Array<{ path: string; mode: string; type: string; sha: string }> = [];
 
-    // Convert files Map to array for easier processing
-    const fileEntries = Array.from(files.entries());
-    
-    // Process files in chunks to optimize performance while avoiding rate limits
-    const chunkSize = 5;
-    for (let i = 0; i < fileEntries.length; i += chunkSize) {
-      const chunk = fileEntries.slice(i, i + chunkSize);
-      
-      // Process each chunk of files
-      const chunkPromises = chunk.map(([path, content]) =>
-        queue.add(async () => {
-          try {
-            await rateLimitHandler.beforeRequest();
-            const blobData = await this.githubService.request(
-              'POST',
-              `/repos/${repoOwner}/${repoName}/git/blobs`,
-              {
-                content: toBase64(content),
-                encoding: 'base64',
-              }
-            );
-
-            completedFiles++;
-            const progress = 30 + Math.floor((completedFiles / totalFiles) * 30);
-            await this.updateStatus(
-              'uploading',
-              progress,
-              `Creating blob ${completedFiles}/${totalFiles}...`
-            );
-
-            return {
-              path,
-              mode: '100644',
-              type: 'blob',
-              sha: blobData.sha,
-            };
-          } catch (error) {
-            if (error instanceof Response && error.status === 403) {
-              await rateLimitHandler.handleRateLimit(error);
-              // Retry the blob creation after handling rate limit
-              return queue.add(async () => {
-                const retryBlobData = await this.githubService.request(
-                  'POST',
-                  `/repos/${repoOwner}/${repoName}/git/blobs`,
-                  {
-                    content: toBase64(content),
-                    encoding: 'base64',
-                  }
-                );
-                return {
-                  path,
-                  mode: '100644',
-                  type: 'blob',
-                  sha: retryBlobData.sha,
-                };
-              });
-            }
-            throw error;
-          }
-        })
+    const results = [];
+    for (const [path, content] of files.entries()) {
+      const blobData = await this.githubService.request(
+        'POST',
+        `/repos/${repoOwner}/${repoName}/git/blobs`,
+        {
+          content: toBase64(content),
+          encoding: 'base64',
+        }
       );
 
-      // Wait for current chunk to complete before processing next chunk
-      const chunkResults = await Promise.all(chunkPromises);
-      results.push(...chunkResults);
+      completedFiles++;
+      const progress = 30 + Math.floor((completedFiles / totalFiles) * 30);
+      await this.updateStatus(
+        'uploading',
+        progress,
+        `Creating blob ${completedFiles}/${totalFiles}...`
+      );
 
-      // Add a small delay between chunks to avoid rate limiting
-      if (i + chunkSize < fileEntries.length) {
-        await rateLimitHandler.sleep(500); // 500ms delay between chunks
+      results.push({
+        path,
+        mode: '100644',
+        type: 'blob',
+        sha: blobData.sha,
+      });
+
+      // Add a delay every 5 files to avoid rate limiting
+      if (completedFiles < totalFiles && completedFiles % 5 === 0) {
+        await this.sleep(1000); // 1 second delay every 5 files
       }
     }
 
