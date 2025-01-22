@@ -11,7 +11,7 @@ interface TempRepoMetadata {
 export class BackgroundTempRepoManager {
   private static STORAGE_KEY = 'bolt_temp_repos';
   private static CLEANUP_INTERVAL = 30 * 1000; // 30 seconds
-  private static MAX_AGE = 2 * 60 * 1000; // 2 minutes
+  private static MAX_AGE = 60 * 1000; // 60 seconds
 
   constructor(
     private githubService: GitHubService,
