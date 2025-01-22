@@ -179,20 +179,8 @@ export class BackgroundService {
           console.log('✅ Private repo import completed');
           break;
         case 'DELETE_TEMP_REPO':
-          if (message.data && message.data.owner && message.data.repo) {
-            try {
-              await this.githubService?.deleteRepo(message.data.owner, message.data.repo);
-              // Remove from storage
-              const result = await chrome.storage.local.get(STORAGE_KEY);
-              const tempRepos = result[STORAGE_KEY] || [];
-              const updatedRepos = tempRepos.filter(
-                (repo: any) => repo.tempRepo !== message.data.repo
-              );
-              await chrome.storage.local.set({ [STORAGE_KEY]: updatedRepos });
-            } catch (error) {
-              console.error('Failed to delete temporary repo:', error);
-            }
-          }
+          await this.tempRepoManager?.cleanupTempRepos(true);
+          console.log('✅ Temp repo cleaned up');
           break;
 
         case 'DEBUG':

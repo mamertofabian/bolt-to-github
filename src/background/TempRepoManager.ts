@@ -13,6 +13,7 @@ interface TempRepoMetadata {
 export class BackgroundTempRepoManager {
   private static CLEANUP_INTERVAL = 30 * 1000; // 30 seconds
   private static MAX_AGE = 60 * 1000; // 60 seconds
+  private cleanupInterval: NodeJS.Timeout | null = null;
 
   constructor(
     private githubService: GitHubService,
@@ -109,13 +110,13 @@ export class BackgroundTempRepoManager {
     return result[STORAGE_KEY] || [];
   }
 
-  async cleanupTempRepos(): Promise<void> {
+  async cleanupTempRepos(forceCleanUp?: boolean): Promise<void> {
     const tempRepos = await this.getTempRepos();
     const now = Date.now();
     const remaining = [];
 
     for (const repo of tempRepos) {
-      if (now - repo.createdAt > BackgroundTempRepoManager.MAX_AGE) {
+      if (forceCleanUp || now - repo.createdAt > BackgroundTempRepoManager.MAX_AGE) {
         try {
           await this.githubService.deleteRepo(repo.owner, repo.tempRepo);
         } catch (error) {
@@ -129,9 +130,18 @@ export class BackgroundTempRepoManager {
     await chrome.storage.local.set({
       [STORAGE_KEY]: remaining,
     });
+
+    this.stopCleanupInterval();
   }
 
   private startCleanupInterval(): void {
-    setInterval(() => this.cleanupTempRepos(), BackgroundTempRepoManager.CLEANUP_INTERVAL);
+    this.cleanupInterval = setInterval(() => this.cleanupTempRepos(), BackgroundTempRepoManager.CLEANUP_INTERVAL);
+  }
+
+  private stopCleanupInterval(): void {
+    if (this.cleanupInterval) {
+      clearInterval(this.cleanupInterval);
+      this.cleanupInterval = null;
+    }
   }
 }

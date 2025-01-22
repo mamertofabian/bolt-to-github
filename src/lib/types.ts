@@ -10,7 +10,8 @@ export type MessageType =
   | 'CONTENT_SCRIPT_READY'
   | 'GITHUB_SETTINGS_CHANGED'
   | 'OPEN_SETTINGS'
-  | 'IMPORT_PRIVATE_REPO';
+  | 'IMPORT_PRIVATE_REPO'
+  | 'DELETE_TEMP_REPO';
 
 export interface Message {
   type: MessageType;
