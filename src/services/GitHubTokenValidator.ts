@@ -142,7 +142,13 @@ export class GitHubTokenValidator extends BaseGitHubService {
 
   async validateTokenAndUser(username: string): Promise<{ isValid: boolean; error?: string }> {
     try {
-      // For fine-grained tokens, verify permissions first
+      // Validate user access first (quick check)
+      const validation = await this.validateClassicToken(username);
+      if (!validation.isValid) {
+        return validation;
+      }
+ 
+      // If user access is valid and it's a fine-grained token, verify permissions
       if (this.isFineGrainedToken()) {
         console.log('Validating fine-grained token permissions...');
         const permissionCheck = await this.verifyFineGrainedPermissions();
@@ -150,10 +156,8 @@ export class GitHubTokenValidator extends BaseGitHubService {
           return permissionCheck;
         }
       }
-
-      // Then validate user access for both token types
-      const validation = await this.validateClassicToken(username);
-      return validation;
+ 
+      return { isValid: true };
     } catch (error) {
       console.error('Validation failed:', error);
       return { isValid: false, error: 'Validation failed' };
