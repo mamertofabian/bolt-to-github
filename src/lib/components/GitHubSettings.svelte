@@ -205,7 +205,7 @@
     
     try {
       const githubService = new GitHubService(githubToken);
-      const result = await githubService.verifyFineGrainedPermissions();
+      const result = await githubService.verifyFineGrainedPermissions(repoOwner);
       
       if (result.isValid) {
         permissionStatus = {

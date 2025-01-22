@@ -23,7 +23,7 @@ export class GitHubTokenValidator extends BaseGitHubService {
     return new Promise(resolve => setTimeout(resolve, ms));
   }
 
-  async verifyFineGrainedPermissions(): Promise<{ isValid: boolean; error?: string }> {
+  async verifyFineGrainedPermissions(username: string): Promise<{ isValid: boolean; error?: string }> {
     if (!this.isFineGrainedToken()) {
       return { isValid: false, error: 'Not a fine-grained token' };
     }
@@ -47,10 +47,6 @@ export class GitHubTokenValidator extends BaseGitHubService {
           error: 'Token lacks repository creation permission' 
         };
       }
-
-      // Get authenticated user
-      const user = await this.request('GET', '/user');
-      const username = user.login;
 
       // Test visibility change (Admin Write)
       try {
