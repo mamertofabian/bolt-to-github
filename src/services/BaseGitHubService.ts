@@ -44,6 +44,19 @@ export abstract class BaseGitHubService {
       throw apiError;
     }
 
-    return await response.json();
+    // Return null for 204 No Content responses
+    if (response.status === 204) {
+      return null;
+    }
+
+    // Only try to parse JSON if there's actual content
+    const contentLength = response.headers.get('content-length');
+    const hasContent = contentLength === null || parseInt(contentLength) > 0;
+
+    if (hasContent) {
+      return await response.json();
+    }
+
+    return null;
   }
 }
