@@ -49,6 +49,7 @@
   let port: chrome.runtime.Port;
   let hasDeletedTempRepo = false;
   let hasUsedTempRepoName = false;
+  let projectStatusRef: ProjectStatus;
 
   interface TempRepoMetadata {
     originalRepo: string;
@@ -86,7 +87,7 @@
   onMount(async () => {
     // Add dark mode to the document
     document.documentElement.classList.add('dark');
-    
+
     // Connect to background service
     port = chrome.runtime.connect({ name: 'popup' });
 
@@ -150,7 +151,7 @@
     // Check for temp repos
     const result = await chrome.storage.local.get(STORAGE_KEY);
     const tempRepos: TempRepoMetadata[] = result[STORAGE_KEY] || [];
-    
+
     if (tempRepos.length > 0 && parsedProjectId) {
       // Get the most recent temp repo
       tempRepoData = tempRepos[tempRepos.length - 1];
@@ -164,11 +165,11 @@
         type: 'DELETE_TEMP_REPO',
         data: {
           owner: tempRepoData.owner,
-          repo: tempRepoData.tempRepo
-        }
+          repo: tempRepoData.tempRepo,
+        },
       });
       hasDeletedTempRepo = true;
-      
+
       // Only close modal if both actions are completed
       if (hasDeletedTempRepo && hasUsedTempRepoName) {
         showTempRepoModal = false;
@@ -180,8 +181,9 @@
     if (tempRepoData) {
       repoName = tempRepoData.originalRepo;
       await saveSettings();
+      await projectStatusRef.getProjectStatus();
       hasUsedTempRepoName = true;
-      
+
       // Only close modal if both actions are completed
       if (hasDeletedTempRepo && hasUsedTempRepoName) {
         showTempRepoModal = false;
@@ -271,6 +273,7 @@
               <StatusAlert on:switchTab={handleSwitchTab} />
             {:else}
               <ProjectStatus
+                bind:this={projectStatusRef}
                 projectId={parsedProjectId}
                 gitHubUsername={repoOwner}
                 {repoName}
@@ -369,10 +372,10 @@
   </Card>
   <Modal show={showTempRepoModal} title="Private Repository Import">
     <div class="space-y-4">
-      <p class="text-slate-300">
-        It looks like you just imported a private GitHub repository. Please complete both actions below:
+      <p class="text-amber-300 font-medium">
+        It looks like you just imported a private GitHub repository. Would you like to:
       </p>
-      
+
       <div class="space-y-2">
         {#if !hasDeletedTempRepo}
           <div class="space-y-2">
@@ -386,7 +389,9 @@
             </Button>
           </div>
         {:else}
-          <div class="text-sm text-green-400 p-2 border border-green-800 bg-green-900/20 rounded-md">
+          <div
+            class="text-sm text-green-400 p-2 border border-green-800 bg-green-900/20 rounded-md"
+          >
             ✓ Temporary repository has been deleted
           </div>
         {/if}
@@ -403,7 +408,9 @@
             </Button>
           </div>
         {:else}
-          <div class="text-sm text-green-400 p-2 border border-green-800 bg-green-900/20 rounded-md">
+          <div
+            class="text-sm text-green-400 p-2 border border-green-800 bg-green-900/20 rounded-md"
+          >
             ✓ Repository name has been configured
           </div>
         {/if}
@@ -411,14 +418,15 @@
         <Button
           variant="ghost"
           class="w-full text-slate-400 hover:text-slate-300"
-          on:click={() => showTempRepoModal = false}
+          on:click={() => (showTempRepoModal = false)}
         >
           Dismiss
         </Button>
       </div>
-      
+
       <p class="text-sm text-slate-400">
-        Note: The temporary repository will be automatically deleted in 1 minute if not deleted manually.
+        Note: The temporary repository will be automatically deleted in 1 minute if not deleted
+        manually.
       </p>
     </div>
   </Modal>

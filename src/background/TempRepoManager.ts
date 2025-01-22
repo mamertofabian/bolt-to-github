@@ -135,7 +135,10 @@ export class BackgroundTempRepoManager {
   }
 
   private startCleanupInterval(): void {
-    this.cleanupInterval = setInterval(() => this.cleanupTempRepos(), BackgroundTempRepoManager.CLEANUP_INTERVAL);
+    this.cleanupInterval = setInterval(
+      () => this.cleanupTempRepos(),
+      BackgroundTempRepoManager.CLEANUP_INTERVAL
+    );
   }
 
   private stopCleanupInterval(): void {

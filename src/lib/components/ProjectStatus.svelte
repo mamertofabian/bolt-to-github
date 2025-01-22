@@ -23,7 +23,7 @@
     message: string;
   } | null = null;
 
-  onMount(async () => {
+  export const getProjectStatus = async () => {
     try {
       const githubService = new GitHubService(token);
 
@@ -61,11 +61,13 @@
       // Reset loading states on error
       Object.keys(isLoading).forEach((key) => (isLoading[key as keyof typeof isLoading] = false));
     }
+  };
+
+  onMount(async () => {
+    await getProjectStatus();
   });
 
-  const dispatch = createEventDispatcher<{
-    switchTab: string;
-  }>();
+  const dispatch = createEventDispatcher();
 
   function openGitHub(event: MouseEvent | KeyboardEvent) {
     event.stopPropagation();
