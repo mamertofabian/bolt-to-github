@@ -68,7 +68,7 @@
     try {
       isLoadingRepos = true;
       const githubService = new GitHubService(githubToken);
-      repositories = await githubService.listUserRepositories(repoOwner);
+      repositories = await githubService.listRepos();
     } catch (error) {
       console.error('Error loading repositories:', error);
       repositories = [];

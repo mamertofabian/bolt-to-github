@@ -204,10 +204,11 @@ This repository was automatically initialized by the Bolt to GitHub extension.
     }
   }
 
-  async listPublicRepos(username: string): Promise<
+  async listRepos(): Promise<
     Array<{
       name: string;
       description: string | null;
+      private: boolean;
       html_url: string;
       created_at: string;
       updated_at: string;
@@ -215,73 +216,18 @@ This repository was automatically initialized by the Bolt to GitHub extension.
     }>
   > {
     try {
-      const repos = await this.request('GET', `/users/${username}/repos`, null, {
-        headers: {
-          per_page: '100', // Get up to 100 repos per page
-        },
-      });
+      const repos = await this.request('GET', `/user/repos?per_page=100&sort=updated`);
 
       return repos
-        .filter((repo: any) => !repo.private)
         .map((repo: any) => ({
           name: repo.name,
           description: repo.description,
-          html_url: repo.html_url,
-          created_at: repo.created_at,
-          updated_at: repo.updated_at,
-          language: repo.language,
-        }));
-    } catch (error) {
-      console.error('Failed to fetch public repositories:', error);
-      throw new Error(
-        `Failed to fetch public repositories: ${error instanceof Error ? error.message : 'Unknown error'}`
-      );
-    }
-  }
-
-  async listUserRepositories(username: string): Promise<
-    Array<{
-      name: string;
-      description: string | null;
-      html_url: string;
-      private: boolean;
-      created_at: string;
-      updated_at: string;
-      language: string | null;
-    }>
-  > {
-    try {
-      // First try user's repositories
-      try {
-        const repos = await this.request(
-          'GET',
-          `/users/${username}/repos?per_page=100&sort=updated`
-        );
-        return repos.map((repo: any) => ({
-          name: repo.name,
-          description: repo.description,
-          html_url: repo.html_url,
           private: repo.private,
-          created_at: repo.created_at,
-          updated_at: repo.updated_at,
-          language: repo.language,
-        }));
-      } catch (error) {
-        // If user endpoint fails, try organization endpoint
-        const repos = await this.request(
-          'GET',
-          `/orgs/${username}/repos?per_page=100&sort=updated`
-        );
-        return repos.map((repo: any) => ({
-          name: repo.name,
-          description: repo.description,
           html_url: repo.html_url,
-          private: repo.private,
           created_at: repo.created_at,
           updated_at: repo.updated_at,
           language: repo.language,
         }));
-      }
     } catch (error) {
       console.error('Failed to fetch repositories:', error);
       throw new Error(

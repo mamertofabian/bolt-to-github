@@ -1,7 +1,7 @@
 <script lang="ts">
   import { onMount } from 'svelte';
   import { Button } from '$lib/components/ui/button';
-  import { Github, Import, Zap, X } from 'lucide-svelte';
+  import { Github, Import, Zap, X, RefreshCw } from 'lucide-svelte';
   import { GitHubService } from '../../services/GitHubService';
 
   export let projectSettings: Record<string, { repoName: string; branch: string }>;
@@ -9,12 +9,15 @@
   export let githubToken: string;
   export let isBoltSite: boolean = true;
   export let currentlyLoadedProjectId: string | null = null;
+  
+  let loadingRepos = false;
 
   const githubService = new GitHubService(githubToken);
   let commitCounts: Record<string, number> = {};
-  let publicRepos: Array<{
+  let allRepos: Array<{
     name: string;
     description: string | null;
+    private: boolean;
     html_url: string;
     created_at: string;
     updated_at: string;
@@ -22,22 +25,28 @@
   }> = [];
 
   let searchQuery = '';
-  let showPublicRepos = false;
+  let showRepos = false;
   let filteredProjects: Array<{
     projectId?: string;
     repoName: string;
     branch?: string;
-    isPublicOnly?: boolean;
+    gitHubRepo?: boolean;
     description?: string | null;
+    private?: boolean;
     language?: string | null;
   }> = [];
 
-  async function loadPublicRepos() {
-    console.log('Loading public repos for', repoOwner);
+  async function loadAllRepos() {
+    console.log('Loading repos for', repoOwner);
     try {
-      publicRepos = await githubService.listPublicRepos(repoOwner);
+      loadingRepos = true;
+      allRepos = await githubService.listRepos();
+      // Simulate a delay to show the loading spinner
+      await new Promise((resolve) => setTimeout(resolve, 1000));
+      loadingRepos = false;
     } catch (error) {
-      console.error('Failed to load public repos:', error);
+      loadingRepos = false;
+      console.error('Failed to load repos:', error);
     }
   }
 
@@ -46,28 +55,29 @@
       projectId,
       repoName: settings.repoName,
       branch: settings.branch,
-      isPublicOnly: false,
+      gitHubRepo: false,
     }));
 
-    const publicOnlyRepos = showPublicRepos
-      ? publicRepos
+    const repos = showRepos
+      ? allRepos
           .filter((repo) => !Object.values(projectSettings).some((s) => s.repoName === repo.name))
           .map((repo) => ({
             repoName: repo.name,
-            isPublicOnly: true,
+            gitHubRepo: true,
+            private: repo.private,
             description: repo.description,
             language: repo.language,
           }))
       : [];
 
-    filteredProjects = [...existingProjects, ...publicOnlyRepos].filter((project) =>
+    filteredProjects = [...existingProjects, ...repos].filter((project) =>
       project.repoName.toLowerCase().includes(searchQuery.toLowerCase())
     );
   }
 
   onMount(async () => {
-    // Load public repos
-    await loadPublicRepos();
+    // Load all repos
+    await loadAllRepos();
 
     // Fetch commit counts for projects that have IDs
     for (const [projectId, settings] of Object.entries(projectSettings)) {
@@ -115,11 +125,26 @@
     <label class="flex items-center gap-2 text-sm text-slate-400">
       <input
         type="checkbox"
-        bind:checked={showPublicRepos}
+        bind:checked={showRepos}
         class="w-4 h-4 rounded border-slate-800 bg-transparent"
       />
-      Show Public Repos
+      Show Repos
     </label>
+    {#if showRepos}
+      <Button
+        variant="ghost"
+        class="border-slate-800 hover:bg-slate-800 text-slate-200"
+        title="Refresh Repos"
+        disabled={loadingRepos}
+        on:click={loadAllRepos}
+      >
+        {#if loadingRepos}
+          <RefreshCw class="animate-spin h-5 w-5" />
+        {:else}
+          <RefreshCw class="h-5 w-5" />
+        {/if}
+      </Button>
+    {/if}
   </div>
 
   {#if filteredProjects.length === 0}
@@ -138,7 +163,7 @@
           💡 No Bolt projects found. Create or load an existing Bolt project to get started.
         </p>
         <p class="text-sm text-green-400">
-          🌟 You can also load any of your public GitHub repositories.
+          🌟 You can also load any of your GitHub repositories.
         </p>
       </div>
     </div>
@@ -158,8 +183,10 @@
               {#if project.projectId === currentlyLoadedProjectId}
                 <span class="text-xs text-emerald-500 ml-2">(Current)</span>
               {/if}
-              {#if project.isPublicOnly}
-                <span class="text-xs text-blue-500 ml-2">(Public Repo)</span>
+              {#if project.gitHubRepo}
+                <span class="text-xs {project.private ? 'text-red-500' : 'text-blue-500'} ml-2">
+                  ({project.private ? "Private" : "Public"})
+                </span>
               {/if}
             </h3>
             <div class="flex flex-col gap-1 text-xs text-slate-400">
