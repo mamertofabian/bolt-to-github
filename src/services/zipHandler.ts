@@ -314,6 +314,10 @@ export class ZipHandler {
 
     const queue = new Queue(1); // Using a queue for serial execution
 
+    // Reset rate limit handler counter before starting batch
+    rateLimitHandler.resetRequestCount();
+
+    let fileCount = 0;
     for (const [path, content] of files.entries()) {
       await queue.add(async () => {
         let success = false;
@@ -339,6 +343,12 @@ export class ZipHandler {
 
             success = true;
             rateLimitHandler.resetRetryCount();
+
+            // Reset request counter every 10 files to maintain burst behavior
+            fileCount++;
+            if (fileCount % 10 === 0) {
+              rateLimitHandler.resetRequestCount();
+            }
 
             completedFiles++;
             await this.updateStatus(
