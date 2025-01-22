@@ -7,6 +7,8 @@
     CardHeader,
     CardTitle,
   } from '$lib/components/ui/card';
+  import Modal from '$lib/components/ui/modal/Modal.svelte';
+  import { STORAGE_KEY } from '../background/TempRepoManager';
   import { Tabs, TabsContent } from '$lib/components/ui/tabs';
   import Header from '$lib/components/Header.svelte';
   import SocialLinks from '$lib/components/SocialLinks.svelte';
@@ -42,6 +44,16 @@
   let isTokenValid: boolean | null = null;
   let validationError: string | null = null;
   let hasInitialSettings = false;
+  let showTempRepoModal = false;
+  let tempRepoData: TempRepoMetadata | null = null;
+  let port: chrome.runtime.Port;
+
+  interface TempRepoMetadata {
+    originalRepo: string;
+    tempRepo: string;
+    createdAt: number;
+    owner: string;
+  }
 
   async function validateGitHubToken(token: string, username: string): Promise<boolean> {
     if (!token) {
@@ -72,6 +84,9 @@
   onMount(async () => {
     // Add dark mode to the document
     document.documentElement.classList.add('dark');
+    
+    // Connect to background service
+    port = chrome.runtime.connect({ name: 'popup' });
 
     githubSettings = (await chrome.storage.sync.get([
       'githubToken',
@@ -129,7 +144,38 @@
         uploadMessage = message.message || '';
       }
     });
+
+    // Check for temp repos
+    const result = await chrome.storage.local.get(STORAGE_KEY);
+    const tempRepos: TempRepoMetadata[] = result[STORAGE_KEY] || [];
+    
+    if (tempRepos.length > 0 && parsedProjectId) {
+      // Get the most recent temp repo
+      tempRepoData = tempRepos[tempRepos.length - 1];
+      showTempRepoModal = true;
+    }
   });
+
+  async function handleDeleteTempRepo() {
+    if (tempRepoData) {
+      port.postMessage({
+        type: 'DELETE_TEMP_REPO',
+        data: {
+          owner: tempRepoData.owner,
+          repo: tempRepoData.tempRepo
+        }
+      });
+      showTempRepoModal = false;
+    }
+  }
+
+  async function handleUseTempRepoName() {
+    if (tempRepoData) {
+      repoName = tempRepoData.originalRepo;
+      await saveSettings();
+      showTempRepoModal = false;
+    }
+  }
 
   function checkSettingsValidity() {
     // Only consider settings valid if we have all required fields AND the validation passed
@@ -309,6 +355,43 @@
     </CardContent>
     <Footer />
   </Card>
+  <Modal show={showTempRepoModal} title="Private Repository Import">
+    <div class="space-y-4">
+      <p class="text-slate-300">
+        It looks like you just imported a private GitHub repository. Would you like to:
+      </p>
+      
+      <div class="space-y-2">
+        <Button
+          variant="outline"
+          class="w-full border-slate-700 hover:bg-slate-800"
+          on:click={handleDeleteTempRepo}
+        >
+          Delete the temporary public repository now
+        </Button>
+        
+        <Button
+          variant="outline"
+          class="w-full border-slate-700 hover:bg-slate-800"
+          on:click={handleUseTempRepoName}
+        >
+          Use original repository name ({tempRepoData?.originalRepo})
+        </Button>
+        
+        <Button
+          variant="ghost"
+          class="w-full text-slate-400 hover:text-slate-300"
+          on:click={() => showTempRepoModal = false}
+        >
+          Dismiss
+        </Button>
+      </div>
+      
+      <p class="text-sm text-slate-400">
+        Note: The temporary repository will be automatically deleted in 1 minute.
+      </p>
+    </div>
+  </Modal>
 </main>
 
 <style>
