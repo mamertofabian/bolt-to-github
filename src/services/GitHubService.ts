@@ -1,3 +1,14 @@
+export const GITHUB_SIGNUP_URL = 'https://github.com/signup';
+export const CREATE_TOKEN_URL =
+  'https://github.com/settings/tokens/new?scopes=delete_repo,repo&description=Bolt%20to%20GitHub&default_expires_at=none';
+export const CREATE_FINE_GRAINED_TOKEN_URL =
+  'https://github.com/settings/personal-access-tokens/new';
+
+import { BaseGitHubService, type ProgressCallback } from './BaseGitHubService';
+import { GitHubTokenValidator } from './GitHubTokenValidator';
+import { RateLimitHandler } from './RateLimitHandler';
+import { Queue } from '../lib/Queue';
+
 interface GitHubFileResponse {
   sha?: string;
   content?: string;
@@ -10,112 +21,42 @@ interface RepoCreateOptions {
   description?: string;
 }
 
-export class GitHubService {
-  private baseUrl = 'https://api.github.com';
-  private token: string;
+interface RepoInfo {
+  name: string;
+  description?: string;
+  private?: boolean;
+  exists: boolean;
+}
+
+export class GitHubService extends BaseGitHubService {
+  private tokenValidator: GitHubTokenValidator;
 
   constructor(token: string) {
-    this.token = token;
+    super(token);
+    this.tokenValidator = new GitHubTokenValidator(token);
   }
 
   async validateToken(): Promise<boolean> {
-    try {
-      await this.request('GET', '/user');
-      return true;
-    } catch (error) {
-      console.error('Token validation failed:', error);
-      return false;
-    }
+    return this.tokenValidator.validateToken();
+  }
+
+  async isClassicToken(): Promise<boolean> {
+    return this.tokenValidator.isClassicToken();
+  }
+
+  async isFineGrainedToken(): Promise<boolean> {
+    return this.tokenValidator.isFineGrainedToken();
   }
 
   async validateTokenAndUser(username: string): Promise<{ isValid: boolean; error?: string }> {
-    try {
-      // First validate token and get authenticated user
-      try {
-        const authUser = await this.request('GET', '/user');
-        if (!authUser.login) {
-          return { isValid: false, error: 'Invalid GitHub token' };
-        }
-
-        // If username matches authenticated user, we're good
-        if (authUser.login.toLowerCase() === username.toLowerCase()) {
-          return { isValid: true };
-        }
-
-        // If username doesn't match, check if it's an organization the user has access to
-        try {
-          // Check if the target is an organization
-          const targetUser = await this.request('GET', `/users/${username}`);
-          if (targetUser.type === 'Organization') {
-            // Check if user has access to the organization
-            const orgs = await this.request('GET', '/user/orgs');
-            const hasOrgAccess = orgs.some((org: any) => org.login.toLowerCase() === username.toLowerCase());
-            if (hasOrgAccess) {
-              return { isValid: true };
-            }
-            return { isValid: false, error: 'Token does not have access to this organization' };
-          }
-          
-          // If target is a user but not the authenticated user, token can't act as them
-          return { isValid: false, error: 'Token can only be used with your GitHub username or organizations you have access to' };
-        } catch (error) {
-          return { isValid: false, error: 'Invalid GitHub username or organization' };
-        }
-      } catch (error) {
-        return { isValid: false, error: 'Invalid GitHub token' };
-      }
-    } catch (error) {
-      console.error('Validation failed:', error);
-      return { isValid: false, error: 'Validation failed' };
-    }
+    return this.tokenValidator.validateTokenAndUser(username);
   }
 
-  async request(method: string, endpoint: string, body?: any, options: RequestInit = {}) {
-    const url = `${this.baseUrl}${endpoint}`;
-
-    try {
-      const response = await fetch(url, {
-        method,
-        ...options,
-        headers: {
-          'Accept': 'application/vnd.github.v3+json',
-          'Authorization': `Bearer ${this.token}`,
-          'Content-Type': 'application/json',
-          ...options.headers,
-        },
-        body: body ? JSON.stringify(body) : undefined,
-      });
-
-      if (!response.ok) {
-        let errorDetails;
-        try {
-          errorDetails = await response.json();
-        } catch {
-          // If parsing JSON fails, use the status text
-          errorDetails = { message: response.statusText };
-        }
-
-        // Construct a more informative error message
-        const errorMessage = errorDetails.message || 
-                             errorDetails.error || 
-                             'Unknown GitHub API error';
-        
-        const fullErrorMessage = `GitHub API Error (${response.status}): ${errorMessage}`;
-        
-        // Create a custom error with additional properties
-        const apiError = new Error(fullErrorMessage) as any;
-        apiError.status = response.status;
-        apiError.originalMessage = errorMessage;
-        apiError.githubErrorResponse = errorDetails;
-        
-        throw apiError;
-      }
-
-      return await response.json();
-    } catch (error) {
-      // Re-throw the error to maintain the original error details
-      throw error;
-    }
+  async verifyTokenPermissions(
+    username: string,
+    onProgress?: ProgressCallback
+  ): Promise<{ isValid: boolean; error?: string }> {
+    return this.tokenValidator.verifyTokenPermissions(username, onProgress);
   }
 
   async repoExists(owner: string, repo: string): Promise<boolean> {
@@ -130,27 +71,48 @@ export class GitHubService {
     }
   }
 
-  async createRepo(options: RepoCreateOptions) {
+  async getRepoInfo(owner: string, repo: string): Promise<RepoInfo> {
+    try {
+      const response: RepoInfo = await this.request('GET', `/repos/${owner}/${repo}`);
+      return {
+        name: response.name,
+        description: response.description,
+        private: response.private,
+        exists: true,
+      };
+    } catch (error) {
+      if (error instanceof Error && error.message.includes('404')) {
+        return { name: repo, exists: false };
+      }
+      throw error;
+    }
+  }
+
+  async createRepo(options: RepoCreateOptions & { auto_init?: boolean }) {
+    const { auto_init = true, ...repoOptions } = options;
+
     try {
       // Try creating in user's account first
       try {
         return await this.request('POST', '/user/repos', {
-          ...options,
-          auto_init: true // Initialize with README to create main branch
+          ...repoOptions,
+          auto_init, // Use the provided value or default to true
         });
       } catch (error) {
         if (error instanceof Error && error.message.includes('404')) {
           // If user endpoint fails, try organization endpoint
           return await this.request('POST', `/orgs/${options.name}/repos`, {
-            ...options,
-            auto_init: true
+            ...repoOptions,
+            auto_init,
           });
         }
         throw error;
       }
     } catch (error) {
       console.error('Failed to create repository:', error);
-      throw new Error(`Failed to create repository: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      throw new Error(
+        `Failed to create repository: ${error instanceof Error ? error.message : 'Unknown error'}`
+      );
     }
   }
 
@@ -159,13 +121,13 @@ export class GitHubService {
     if (!exists) {
       await this.createRepo({
         name: repo,
-        private: false,  // Make public by default so bolt.new can load the repo
+        private: true,
         auto_init: true,
-        description: 'Repository created by Bolt to GitHub extension'
+        description: 'Repository created by Bolt to GitHub extension',
       });
-      
+
       // Wait a bit for GitHub to initialize the repository
-      await new Promise(resolve => setTimeout(resolve, 2000));
+      await new Promise((resolve) => setTimeout(resolve, 2000));
     }
   }
 
@@ -203,7 +165,7 @@ This repository was automatically initialized by the Bolt to GitHub extension.
       path: 'README.md',
       content: btoa(readmeContent),
       branch,
-      message: 'Initialize repository with auto-generated README'
+      message: 'Initialize repository with auto-generated README',
     });
   }
 
@@ -214,20 +176,24 @@ This repository was automatically initialized by the Bolt to GitHub extension.
     content: string;
     branch: string;
     message: string;
+    checkExisting?: boolean;
   }) {
-    const { owner, repo, path, content, branch, message } = params;
-    
+    const { owner, repo, path, content, branch, message, checkExisting = true } = params;
+
     try {
-      // Try to get existing file
+      // Try to get existing file if needed
       let sha: string | undefined;
-      try {
-        const response: GitHubFileResponse = await this.request('GET', 
-          `/repos/${owner}/${repo}/contents/${path}?ref=${branch}`
-        );
-        sha = response.sha;
-      } catch (error) {
-        // File doesn't exist, which is fine
-        console.log('File does not exist yet, will create new');
+      if (checkExisting) {
+        try {
+          const response: GitHubFileResponse = await this.request(
+            'GET',
+            `/repos/${owner}/${repo}/contents/${path}?ref=${branch}`
+          );
+          sha = response.sha;
+        } catch (error) {
+          // File doesn't exist, which is fine
+          console.log('File does not exist yet, will create new');
+        }
       }
 
       // Create or update file
@@ -235,17 +201,15 @@ This repository was automatically initialized by the Bolt to GitHub extension.
         message,
         content,
         branch,
-        ...(sha ? { sha } : {})
+        ...(sha ? { sha } : {}),
       };
 
-      return await this.request(
-        'PUT',
-        `/repos/${owner}/${repo}/contents/${path}`,
-        body
-      );
+      return await this.request('PUT', `/repos/${owner}/${repo}/contents/${path}`, body);
     } catch (error) {
       console.error('GitHub API Error:', error);
-      throw new Error(`Failed to push file: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      throw new Error(
+        `Failed to push file: ${error instanceof Error ? error.message : 'Unknown error'}`
+      );
     }
   }
 
@@ -253,10 +217,10 @@ This repository was automatically initialized by the Bolt to GitHub extension.
     try {
       const commits = await this.request('GET', `/repos/${owner}/${repo}/commits`, null, {
         headers: {
-          'per_page': '1'  // We only need the count from headers
-        }
+          per_page: '1', // We only need the count from headers
+        },
       });
-      
+
       // GitHub returns the total count in the Link header
       const linkHeader = commits.headers?.get('link');
       if (linkHeader) {
@@ -265,7 +229,7 @@ This repository was automatically initialized by the Bolt to GitHub extension.
           return parseInt(match[1], 10);
         }
       }
-      
+
       // If no pagination, count the commits manually
       return commits.length;
     } catch (error) {
@@ -274,75 +238,178 @@ This repository was automatically initialized by the Bolt to GitHub extension.
     }
   }
 
-  async listPublicRepos(username: string): Promise<Array<{
-    name: string;
-    description: string | null;
-    html_url: string;
-    created_at: string;
-    updated_at: string;
-    language: string | null;
-  }>> {
+  async createTemporaryPublicRepo(ownerName: string, sourceRepoName: string): Promise<string> {
+    const timestamp = Date.now();
+    const randomStr = Math.random().toString(36).substring(2, 8);
+    const tempRepoName = `temp-${sourceRepoName}-${timestamp}-${randomStr}`;
+
+    // Create repo without auto-init
+    await this.createRepo({
+      name: tempRepoName,
+      private: true,
+      auto_init: false,
+      description: 'Temporary repository for Bolt import - will be deleted automatically',
+    });
+
+    // Initialize with an empty commit to create the default branch
+    await this.pushFile({
+      owner: ownerName,
+      repo: tempRepoName,
+      path: '.gitkeep',
+      content: btoa(''), // Empty file
+      branch: 'main',
+      message: 'Initialize repository',
+      checkExisting: false,
+    });
+
+    return tempRepoName;
+  }
+
+  async cloneRepoContents(
+    sourceOwner: string,
+    sourceRepo: string,
+    targetOwner: string,
+    targetRepo: string,
+    branch: string = 'main',
+    onProgress?: (progress: number) => void
+  ): Promise<void> {
+    const rateLimitHandler = new RateLimitHandler();
+    const queue = new Queue(1); // Using a queue for serial execution
+
     try {
-      const repos = await this.request('GET', `/users/${username}/repos`, null, {
-        headers: {
-          'per_page': '100'  // Get up to 100 repos per page
+      // Check rate limits before starting
+      await rateLimitHandler.beforeRequest();
+      const rateLimit = await this.request('GET', '/rate_limit');
+      const remainingRequests = rateLimit.resources.core.remaining;
+      const resetTime = rateLimit.resources.core.reset;
+
+      if (remainingRequests < 10) {
+        const now = Math.floor(Date.now() / 1000);
+        const waitTime = resetTime - now;
+
+        // If reset is happening soon (within 2 minutes), wait for it
+        if (waitTime <= 120) {
+          console.log(`Waiting ${waitTime} seconds for rate limit reset...`);
+          await rateLimitHandler.sleep(waitTime * 1000);
+          // Recheck rate limit after waiting
+          const newRateLimit = await this.request('GET', '/rate_limit');
+          if (newRateLimit.resources.core.remaining < 10) {
+            throw new Error('Insufficient API rate limit remaining even after waiting for reset');
+          }
+        } else {
+          throw new Error(
+            `Insufficient API rate limit remaining. Reset in ${Math.ceil(waitTime / 60)} minutes`
+          );
         }
-      });
-      
-      return repos
-        .filter((repo: any) => !repo.private)
-        .map((repo: any) => ({
-          name: repo.name,
-          description: repo.description,
-          html_url: repo.html_url,
-          created_at: repo.created_at,
-          updated_at: repo.updated_at,
-          language: repo.language
-        }));
+      }
+
+      // Get all files from source repo
+      const response = await this.request(
+        'GET',
+        `/repos/${sourceOwner}/${sourceRepo}/git/trees/${branch}?recursive=1`
+      );
+
+      const files = response.tree.filter((item: any) => item.type === 'blob');
+      const totalFiles = files.length;
+
+      // Reset rate limit handler counter before starting batch
+      rateLimitHandler.resetRequestCount();
+
+      // Process files serially through queue
+      for (let i = 0; i < files.length; i++) {
+        const file = files[i];
+
+        await queue.add(async () => {
+          let success = false;
+          while (!success) {
+            try {
+              // Get file content
+              await rateLimitHandler.beforeRequest();
+              const content = await this.request(
+                'GET',
+                `/repos/${sourceOwner}/${sourceRepo}/contents/${file.path}?ref=${branch}`
+              );
+
+              // Push file content
+              await rateLimitHandler.beforeRequest();
+              await this.pushFile({
+                owner: targetOwner,
+                repo: targetRepo,
+                path: file.path,
+                content: content.content,
+                branch,
+                message: `Copy ${file.path} from ${sourceRepo}`,
+                checkExisting: false,
+              });
+
+              success = true;
+              rateLimitHandler.resetRetryCount();
+
+              // Reset request counter every 10 files to maintain burst behavior
+              if ((i + 1) % 10 === 0) {
+                rateLimitHandler.resetRequestCount();
+              }
+
+              if (onProgress) {
+                const progress = ((i + 1) / totalFiles) * 100;
+                onProgress(progress);
+              }
+            } catch (error) {
+              if (error instanceof Response && error.status === 403) {
+                await rateLimitHandler.handleRateLimit(error);
+              } else {
+                throw error;
+              }
+            }
+          }
+        });
+      }
     } catch (error) {
-      console.error('Failed to fetch public repositories:', error);
-      throw new Error(`Failed to fetch public repositories: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      console.error('Failed to clone repository contents:', error);
+      throw new Error(
+        `Failed to clone repository contents: ${error instanceof Error ? error.message : 'Unknown error'}`
+      );
     }
   }
 
-  async listUserRepositories(username: string): Promise<Array<{
-    name: string;
-    description: string | null;
-    html_url: string;
-    private: boolean;
-    created_at: string;
-    updated_at: string;
-    language: string | null;
-  }>> {
+  async deleteRepo(owner: string, repo: string): Promise<void> {
+    await this.request('DELETE', `/repos/${owner}/${repo}`);
+  }
+
+  async updateRepoVisibility(owner: string, repo: string, makePrivate: boolean): Promise<void> {
+    await this.request('PATCH', `/repos/${owner}/${repo}`, {
+      private: makePrivate,
+    });
+  }
+
+  async listRepos(): Promise<
+    Array<{
+      name: string;
+      description: string | null;
+      private: boolean;
+      html_url: string;
+      created_at: string;
+      updated_at: string;
+      language: string | null;
+    }>
+  > {
     try {
-      // First try user's repositories
-      try {
-        const repos = await this.request('GET', `/users/${username}/repos?per_page=100&sort=updated`);
-        return repos.map((repo: any) => ({
-          name: repo.name,
-          description: repo.description,
-          html_url: repo.html_url,
-          private: repo.private,
-          created_at: repo.created_at,
-          updated_at: repo.updated_at,
-          language: repo.language
-        }));
-      } catch (error) {
-        // If user endpoint fails, try organization endpoint
-        const repos = await this.request('GET', `/orgs/${username}/repos?per_page=100&sort=updated`);
-        return repos.map((repo: any) => ({
-          name: repo.name,
-          description: repo.description,
-          html_url: repo.html_url,
-          private: repo.private,
-          created_at: repo.created_at,
-          updated_at: repo.updated_at,
-          language: repo.language
-        }));
-      }
+      const repos = await this.request('GET', `/user/repos?per_page=100&sort=updated`);
+
+      return repos.map((repo: any) => ({
+        name: repo.name,
+        description: repo.description,
+        private: repo.private,
+        html_url: repo.html_url,
+        created_at: repo.created_at,
+        updated_at: repo.updated_at,
+        language: repo.language,
+      }));
     } catch (error) {
       console.error('Failed to fetch repositories:', error);
-      throw new Error(`Failed to fetch repositories: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      throw new Error(
+        `Failed to fetch repositories: ${error instanceof Error ? error.message : 'Unknown error'}`
+      );
     }
   }
 }

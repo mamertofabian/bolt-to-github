@@ -1,6 +1,6 @@
 <script lang="ts">
-  import { Coffee, GithubIcon, YoutubeIcon } from "lucide-svelte";
-  import { Button } from "$lib/components/ui/button";
+  import { Coffee, GithubIcon, YoutubeIcon } from 'lucide-svelte';
+  import { Button } from '$lib/components/ui/button';
 
   export let GITHUB_LINK: string;
   export let YOUTUBE_LINK: string;

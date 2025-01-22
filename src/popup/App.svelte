@@ -1,35 +1,39 @@
 <script lang="ts">
-  import { onMount } from "svelte";
+  import { onMount } from 'svelte';
   import {
     Card,
     CardContent,
     CardDescription,
     CardHeader,
     CardTitle,
-  } from "$lib/components/ui/card";
-  import { Tabs, TabsContent } from "$lib/components/ui/tabs";
-  import Header from "$lib/components/Header.svelte";
-  import SocialLinks from "$lib/components/SocialLinks.svelte";
-  import StatusAlert from "$lib/components/StatusAlert.svelte";
-  import GitHubSettings from "$lib/components/GitHubSettings.svelte";
-  import { COFFEE_LINK, GITHUB_LINK, YOUTUBE_LINK } from "$lib/constants";
-  import Footer from "$lib/components/Footer.svelte";
-  import type { GitHubSettingsInterface } from "$lib/types";
-  import ProjectsList from "$lib/components/ProjectsList.svelte";
-  import { GitHubService } from "../services/GitHubService";
-    import { Button } from "$lib/components/ui/button";
+  } from '$lib/components/ui/card';
+  import Modal from '$lib/components/ui/modal/Modal.svelte';
+  import { STORAGE_KEY } from '../background/TempRepoManager';
+  import { Tabs, TabsContent } from '$lib/components/ui/tabs';
+  import Header from '$lib/components/Header.svelte';
+  import SocialLinks from '$lib/components/SocialLinks.svelte';
+  import StatusAlert from '$lib/components/StatusAlert.svelte';
+  import GitHubSettings from '$lib/components/GitHubSettings.svelte';
+  import { COFFEE_LINK, GITHUB_LINK, YOUTUBE_LINK } from '$lib/constants';
+  import Footer from '$lib/components/Footer.svelte';
+  import type { GitHubSettingsInterface } from '$lib/types';
+  import ProjectsList from '$lib/components/ProjectsList.svelte';
+  import { GitHubService } from '../services/GitHubService';
+  import { Button } from '$lib/components/ui/button';
+  import Help from '$lib/components/Help.svelte';
+  import ProjectStatus from '$lib/components/ProjectStatus.svelte';
 
-  let githubToken: string = "";
-  let repoOwner = "";
-  let repoName = "";
-  let branch = "main";
+  let githubToken: string = '';
+  let repoOwner = '';
+  let repoName = '';
+  let branch = 'main';
   let projectSettings: Record<string, { repoName: string; branch: string }> = {};
-  let status = "";
+  let status = '';
   let uploadProgress = 0;
-  let uploadStatus = "idle";
-  let uploadMessage = "";
+  let uploadStatus = 'idle';
+  let uploadMessage = '';
   let isSettingsValid = false;
-  let activeTab = "home";
+  let activeTab = 'home';
   let currentUrl: string = '';
   let isBoltSite: boolean = false;
   let githubSettings: GitHubSettingsInterface;
@@ -40,6 +44,19 @@
   let isTokenValid: boolean | null = null;
   let validationError: string | null = null;
   let hasInitialSettings = false;
+  let showTempRepoModal = false;
+  let tempRepoData: TempRepoMetadata | null = null;
+  let port: chrome.runtime.Port;
+  let hasDeletedTempRepo = false;
+  let hasUsedTempRepoName = false;
+  let projectStatusRef: ProjectStatus;
+
+  interface TempRepoMetadata {
+    originalRepo: string;
+    tempRepo: string;
+    createdAt: number;
+    owner: string;
+  }
 
   async function validateGitHubToken(token: string, username: string): Promise<boolean> {
     if (!token) {
@@ -47,7 +64,7 @@
       validationError = 'GitHub token is required';
       return false;
     }
-    
+
     try {
       isValidatingToken = true;
       const githubService = new GitHubService(token);
@@ -71,14 +88,17 @@
     // Add dark mode to the document
     document.documentElement.classList.add('dark');
 
-    githubSettings = await chrome.storage.sync.get([
-      "githubToken",
-      "repoOwner",
-      "projectSettings"
-    ]) as GitHubSettingsInterface;
+    // Connect to background service
+    port = chrome.runtime.connect({ name: 'popup' });
 
-    githubToken = githubSettings.githubToken || "";
-    repoOwner = githubSettings.repoOwner || "";
+    githubSettings = (await chrome.storage.sync.get([
+      'githubToken',
+      'repoOwner',
+      'projectSettings',
+    ])) as GitHubSettingsInterface;
+
+    githubToken = githubSettings.githubToken || '';
+    repoOwner = githubSettings.repoOwner || '';
     projectSettings = githubSettings.projectSettings || {};
     hasInitialSettings = Boolean(githubSettings.githubToken && githubSettings.repoOwner);
 
@@ -92,9 +112,9 @@
     if (tabs[0]?.url) {
       currentUrl = tabs[0].url;
       isBoltSite = currentUrl.includes('bolt.new');
-      
+
       if (isBoltSite) {
-        const match = currentUrl.match(/bolt\.new\/~\/([^\/]+)/);
+        const match = currentUrl.match(/bolt\.new\/~\/([^/]+)/);
         parsedProjectId = match?.[1] || null;
         console.log(`📄 App: ${parsedProjectId}`);
         // Get projectId from storage
@@ -102,7 +122,10 @@
 
         if (match && parsedProjectId && projectId.projectId === parsedProjectId) {
           if (projectSettings[parsedProjectId]) {
-            console.log('📄 App: projectSettings[parsedProjectId]', projectSettings[parsedProjectId]);
+            console.log(
+              '📄 App: projectSettings[parsedProjectId]',
+              projectSettings[parsedProjectId]
+            );
             repoName = projectSettings[parsedProjectId].repoName;
             branch = projectSettings[parsedProjectId].branch;
           } else {
@@ -118,17 +141,62 @@
     checkSettingsValidity();
 
     chrome.runtime.onMessage.addListener((message) => {
-      if (message.type === "UPLOAD_STATUS") {
+      if (message.type === 'UPLOAD_STATUS') {
         uploadStatus = message.status;
         uploadProgress = message.progress || 0;
-        uploadMessage = message.message || "";
+        uploadMessage = message.message || '';
       }
     });
+
+    // Check for temp repos
+    const result = await chrome.storage.local.get(STORAGE_KEY);
+    const tempRepos: TempRepoMetadata[] = result[STORAGE_KEY] || [];
+
+    if (tempRepos.length > 0 && parsedProjectId) {
+      // Get the most recent temp repo
+      tempRepoData = tempRepos[tempRepos.length - 1];
+      showTempRepoModal = true;
+    }
   });
+
+  async function handleDeleteTempRepo() {
+    if (tempRepoData) {
+      port.postMessage({
+        type: 'DELETE_TEMP_REPO',
+        data: {
+          owner: tempRepoData.owner,
+          repo: tempRepoData.tempRepo,
+        },
+      });
+      hasDeletedTempRepo = true;
+
+      // Only close modal if both actions are completed
+      if (hasDeletedTempRepo && hasUsedTempRepoName) {
+        showTempRepoModal = false;
+      }
+    }
+  }
+
+  async function handleUseTempRepoName() {
+    if (tempRepoData) {
+      repoName = tempRepoData.originalRepo;
+      await saveSettings();
+      await projectStatusRef.getProjectStatus();
+      hasUsedTempRepoName = true;
+
+      // Only close modal if both actions are completed
+      if (hasDeletedTempRepo && hasUsedTempRepoName) {
+        showTempRepoModal = false;
+      }
+    }
+  }
 
   function checkSettingsValidity() {
     // Only consider settings valid if we have all required fields AND the validation passed
-    isSettingsValid = Boolean(githubToken && repoOwner && repoName && branch) && !isValidatingToken && isTokenValid === true;
+    isSettingsValid =
+      Boolean(githubToken && repoOwner && repoName && branch) &&
+      !isValidatingToken &&
+      isTokenValid === true;
   }
 
   async function saveSettings() {
@@ -136,19 +204,19 @@
       // Validate token and username before saving
       const isValid = await validateGitHubToken(githubToken, repoOwner);
       if (!isValid) {
-        status = validationError || "Validation failed";
+        status = validationError || 'Validation failed';
         hasStatus = true;
         setTimeout(() => {
-          status = "";
+          status = '';
           hasStatus = false;
         }, 3000);
         return;
       }
 
       const settings = {
-        githubToken: githubToken || "",
-        repoOwner: repoOwner || "",
-        projectSettings
+        githubToken: githubToken || '',
+        repoOwner: repoOwner || '',
+        projectSettings,
       };
 
       if (parsedProjectId) {
@@ -158,15 +226,15 @@
 
       await chrome.storage.sync.set(settings);
       hasInitialSettings = true;
-      status = "Settings saved successfully!";
+      status = 'Settings saved successfully!';
       hasStatus = true;
       checkSettingsValidity();
       setTimeout(() => {
-        status = "";
+        status = '';
         hasStatus = false;
       }, 3000);
     } catch (error) {
-      status = "Error saving settings";
+      status = 'Error saving settings';
       hasStatus = true;
       console.error(error);
     }
@@ -196,19 +264,24 @@
           <TabsContent value="home">
             <button
               class="w-full mb-3 px-4 py-2 bg-slate-700 hover:bg-slate-600 rounded-md text-slate-200 transition-colors"
-              on:click={() => activeTab = "projects"}
+              on:click={() => (activeTab = 'projects')}
             >
               View All Projects
             </button>
 
-            <StatusAlert 
-              {isSettingsValid} 
-              projectId={parsedProjectId}
-              gitHubUsername={repoOwner}
-              {repoName}
-              {branch}
-              on:switchTab={handleSwitchTab}
-            />
+            {#if !isSettingsValid || !parsedProjectId}
+              <StatusAlert on:switchTab={handleSwitchTab} />
+            {:else}
+              <ProjectStatus
+                bind:this={projectStatusRef}
+                projectId={parsedProjectId}
+                gitHubUsername={repoOwner}
+                {repoName}
+                {branch}
+                token={githubToken}
+                on:switchTab={handleSwitchTab}
+              />
+            {/if}
 
             <div class="mt-6 space-y-4">
               <SocialLinks {GITHUB_LINK} {YOUTUBE_LINK} {COFFEE_LINK} />
@@ -216,7 +289,13 @@
           </TabsContent>
 
           <TabsContent value="projects">
-            <ProjectsList {projectSettings} {repoOwner} {githubToken} currentlyLoadedProjectId={parsedProjectId} isBoltSite={isBoltSite} />
+            <ProjectsList
+              {projectSettings}
+              {repoOwner}
+              {githubToken}
+              currentlyLoadedProjectId={parsedProjectId}
+              {isBoltSite}
+            />
           </TabsContent>
 
           <TabsContent value="settings">
@@ -235,7 +314,6 @@
                   bind:branch
                   projectId={parsedProjectId}
                   {status}
-                  {isSettingsValid}
                   buttonDisabled={hasStatus}
                   onSave={saveSettings}
                   onInput={checkSettingsValidity}
@@ -243,9 +321,19 @@
               </CardContent>
             </Card>
           </TabsContent>
+
+          <TabsContent value="help">
+            <Help />
+          </TabsContent>
         </Tabs>
       {:else if hasInitialSettings && repoOwner && githubToken}
-        <ProjectsList {projectSettings} {repoOwner} {githubToken} currentlyLoadedProjectId={parsedProjectId} isBoltSite={isBoltSite} />
+        <ProjectsList
+          {projectSettings}
+          {repoOwner}
+          {githubToken}
+          currentlyLoadedProjectId={parsedProjectId}
+          {isBoltSite}
+        />
       {:else}
         <div class="flex flex-col items-center justify-center p-4 text-center space-y-6">
           <div class="space-y-2">
@@ -258,14 +346,20 @@
                 Go to bolt.new
               </Button>
             {/if}
-            <p class="text-sm text-green-400">💡 No Bolt projects found. Create or load an existing Bolt project to get started.</p>
-            <p class="text-sm text-green-400 pb-4">🌟 You can also load any of your public GitHub repositories by providing your GitHub token and repository owner.</p>
+            <p class="text-sm text-green-400">
+              💡 No Bolt projects found. Create or load an existing Bolt project to get started.
+            </p>
+            <p class="text-sm text-green-400 pb-4">
+              🌟 You can also load any of your GitHub repositories by providing your GitHub token
+              and repository owner.
+            </p>
             <GitHubSettings
               isOnboarding={true}
               bind:githubToken
+              bind:repoName
+              bind:branch
               bind:repoOwner
               {status}
-              {isSettingsValid}
               buttonDisabled={hasStatus}
               onSave={saveSettings}
               onInput={checkSettingsValidity}
@@ -276,6 +370,66 @@
     </CardContent>
     <Footer />
   </Card>
+  <Modal show={showTempRepoModal} title="Private Repository Import">
+    <div class="space-y-4">
+      <p class="text-amber-300 font-medium">
+        It looks like you just imported a private GitHub repository. Would you like to:
+      </p>
+
+      <div class="space-y-2">
+        {#if !hasDeletedTempRepo}
+          <div class="space-y-2">
+            <p class="text-sm text-slate-400">1. Clean up the temporary repository:</p>
+            <Button
+              variant="outline"
+              class="w-full border-slate-700 hover:bg-slate-800"
+              on:click={handleDeleteTempRepo}
+            >
+              Delete the temporary public repository now
+            </Button>
+          </div>
+        {:else}
+          <div
+            class="text-sm text-green-400 p-2 border border-green-800 bg-green-900/20 rounded-md"
+          >
+            ✓ Temporary repository has been deleted
+          </div>
+        {/if}
+
+        {#if !hasUsedTempRepoName}
+          <div class="space-y-2">
+            <p class="text-sm text-slate-400">2. Configure repository name:</p>
+            <Button
+              variant="outline"
+              class="w-full border-slate-700 hover:bg-slate-800"
+              on:click={handleUseTempRepoName}
+            >
+              Use original repository name ({tempRepoData?.originalRepo})
+            </Button>
+          </div>
+        {:else}
+          <div
+            class="text-sm text-green-400 p-2 border border-green-800 bg-green-900/20 rounded-md"
+          >
+            ✓ Repository name has been configured
+          </div>
+        {/if}
+
+        <Button
+          variant="ghost"
+          class="w-full text-slate-400 hover:text-slate-300"
+          on:click={() => (showTempRepoModal = false)}
+        >
+          Dismiss
+        </Button>
+      </div>
+
+      <p class="text-sm text-slate-400">
+        Note: The temporary repository will be automatically deleted in 1 minute if not deleted
+        manually.
+      </p>
+    </div>
+  </Modal>
 </main>
 
 <style>

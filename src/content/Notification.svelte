@@ -1,21 +1,21 @@
 <script lang="ts">
   import { fade } from 'svelte/transition';
   import { onMount } from 'svelte';
-  
+
   export let type: 'info' | 'error' | 'success' = 'info';
   export let message: string = '';
   export let duration: number = 5000;
   export let onClose: () => void;
-  
+
   let visible = true;
-  
+
   onMount(() => {
     if (duration > 0) {
       const timer = setTimeout(() => {
         visible = false;
         onClose();
       }, duration);
-      
+
       return () => clearTimeout(timer);
     }
   });
@@ -29,20 +29,12 @@
 </script>
 
 {#if visible}
-  <div
-    transition:fade
-    class="notification {getTypeClass()}"
-    role="alert"
-  >
+  <div transition:fade class="notification {getTypeClass()}" role="alert">
     <div class="notification-content">
       <div class="notification-message">
         {message}
       </div>
-      <button
-        on:click={handleClose}
-        class="notification-close"
-        aria-label="Close notification"
-      >
+      <button on:click={handleClose} class="notification-close" aria-label="Close notification">
         ✕
       </button>
     </div>
@@ -59,7 +51,7 @@
     padding: 1rem;
     border-radius: 4px;
     box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
-    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
   }
 
   .notification-content {

@@ -1,45 +1,30 @@
 <script lang="ts">
-  import { Button } from "$lib/components/ui/button";
-  import { Input } from "$lib/components/ui/input";
-  import { Label } from "$lib/components/ui/label";
-  import { TUTORIAL_LINK } from "$lib/constants";
-  import {
-    AlertCircle,
-    Youtube,
-    Github,
-    ExternalLink,
-    ChevronUp,
-    ChevronDown,
-    Check,
-    X,
-    Search,
-    Loader2,
-  } from "lucide-svelte";
+  import { Button } from '$lib/components/ui/button';
+  import { Input } from '$lib/components/ui/input';
+  import { Label } from '$lib/components/ui/label';
+  import { Check, X, Search, Loader2, HelpCircle } from 'lucide-svelte';
   import { onMount } from 'svelte';
-  import { GitHubService } from "../../services/GitHubService";
+  import { CREATE_FINE_GRAINED_TOKEN_URL, GitHubService } from '../../services/GitHubService';
+  import NewUserGuide from './github/NewUserGuide.svelte';
 
   export let isOnboarding: boolean = false;
   export let githubToken: string;
   export let repoOwner: string;
-  export let repoName: string = '';
+  export let repoName: string;
   export let branch: string = 'main';
   export let status: string;
-  export let isSettingsValid: boolean;
   export let onSave: () => void;
   export let onInput: () => void;
   export let projectId: string | null = null;
   export let projectSettings: Record<string, { repoName: string; branch: string }> = {};
   export let buttonDisabled: boolean = false;
 
-  const GITHUB_SIGNUP_URL = "https://github.com/signup";
-  const CREATE_TOKEN_URL =
-    "https://github.com/settings/tokens/new?scopes=repo&description=Bolt%20to%20GitHub";
-
-  let showNewUserGuide = true;
   let isValidatingToken = false;
   let isTokenValid: boolean | null = null;
   let tokenValidationTimeout: number;
   let validationError: string | null = null;
+  let tokenType: 'classic' | 'fine-grained' | null = null;
+  let isRepoNameFromProjectId = false;
   let repositories: Array<{
     name: string;
     description: string | null;
@@ -51,29 +36,45 @@
   }> = [];
   let isLoadingRepos = false;
   let showRepoDropdown = false;
-  let repoSearchQuery = "";
+  let repoSearchQuery = '';
   let repoInputFocused = false;
   let repoExists = false;
   let selectedIndex = -1;
+  let isCheckingPermissions = false;
+  let lastPermissionCheck: number | null = null;
+  let currentCheck: 'repos' | 'admin' | 'code' | null = null;
+  let permissionStatus = {
+    allRepos: undefined as boolean | undefined,
+    admin: undefined as boolean | undefined,
+    contents: undefined as boolean | undefined,
+  };
+  let permissionError: string | null = null;
+  let previousToken: string | null = null;
 
   $: filteredRepos = repositories
-    .filter(repo => 
-      repo.name.toLowerCase().includes(repoSearchQuery.toLowerCase()) ||
-      (repo.description && repo.description.toLowerCase().includes(repoSearchQuery.toLowerCase()))
+    .filter(
+      (repo) =>
+        repo.name.toLowerCase().includes(repoSearchQuery.toLowerCase()) ||
+        (repo.description && repo.description.toLowerCase().includes(repoSearchQuery.toLowerCase()))
     )
     .slice(0, 10);
 
   $: if (repoName) {
-    repoExists = repositories.some(repo => repo.name.toLowerCase() === repoName.toLowerCase());
+    repoExists = repositories.some((repo) => repo.name.toLowerCase() === repoName.toLowerCase());
+  }
+
+  $: if (projectId && !repoName && !isRepoNameFromProjectId) {
+    repoName = projectId;
+    isRepoNameFromProjectId = true;
   }
 
   async function loadRepositories() {
     if (!githubToken || !repoOwner || !isTokenValid) return;
-    
+
     try {
       isLoadingRepos = true;
       const githubService = new GitHubService(githubToken);
-      repositories = await githubService.listUserRepositories(repoOwner);
+      repositories = await githubService.listRepos();
     } catch (error) {
       console.error('Error loading repositories:', error);
       repositories = [];
@@ -87,7 +88,7 @@
     onInput();
   }
 
-  function selectRepo(repo: typeof repositories[0]) {
+  function selectRepo(repo: (typeof repositories)[0]) {
     repoName = repo.name;
     showRepoDropdown = false;
     repoSearchQuery = repo.name;
@@ -134,20 +135,16 @@
   }
 
   onMount(async () => {
-    chrome.storage.local.get(['showNewUserGuide'], (result) => {
-      showNewUserGuide = result.showNewUserGuide ?? true;
-    });
+    // Load last permission check timestamp from storage
+    const storage = await chrome.storage.local.get('lastPermissionCheck');
+    lastPermissionCheck = storage.lastPermissionCheck || null;
+    previousToken = githubToken;
 
     // If we have initial valid settings, validate and load repos
     if (githubToken && repoOwner) {
       await validateSettings();
     }
   });
-
-  function toggleNewUserGuide() {
-    showNewUserGuide = !showNewUserGuide;
-    chrome.storage.local.set({ showNewUserGuide });
-  }
 
   async function validateSettings() {
     if (!githubToken) {
@@ -163,7 +160,13 @@
       const result = await githubService.validateTokenAndUser(repoOwner);
       isTokenValid = result.isValid;
       validationError = result.error || null;
-      
+
+      if (result.isValid) {
+        // Check token type
+        const isClassic = await githubService.isClassicToken();
+        tokenType = isClassic ? 'classic' : 'fine-grained';
+      }
+
       // Load repositories after successful validation
       if (result.isValid) {
         await loadRepositories();
@@ -181,12 +184,13 @@
     onInput();
     isTokenValid = null;
     validationError = null;
-    
+    tokenType = null;
+
     // Clear existing timeout
     if (tokenValidationTimeout) {
       clearTimeout(tokenValidationTimeout);
     }
-    
+
     // Debounce validation to avoid too many API calls
     tokenValidationTimeout = setTimeout(() => {
       validateSettings();
@@ -200,6 +204,82 @@
     }
   }
 
+  async function checkTokenPermissions() {
+    if (!githubToken || isCheckingPermissions) return;
+
+    isCheckingPermissions = true;
+    permissionError = null;
+    permissionStatus = {
+      allRepos: undefined,
+      admin: undefined,
+      contents: undefined,
+    };
+
+    try {
+      const githubService = new GitHubService(githubToken);
+
+      const result = await githubService.verifyTokenPermissions(
+        repoOwner,
+        ({ permission, isValid }) => {
+          currentCheck = permission;
+          // Update the status as each permission is checked
+          switch (permission) {
+            case 'repos':
+              permissionStatus.allRepos = isValid;
+              break;
+            case 'admin':
+              permissionStatus.admin = isValid;
+              break;
+            case 'code':
+              permissionStatus.contents = isValid;
+              break;
+          }
+          // Force Svelte to update the UI
+          permissionStatus = { ...permissionStatus };
+        }
+      );
+
+      if (result.isValid) {
+        lastPermissionCheck = Date.now();
+        await chrome.storage.local.set({ lastPermissionCheck });
+        previousToken = githubToken;
+      } else {
+        // Parse the error message to determine which permission failed
+        permissionStatus = {
+          allRepos: !result.error?.includes('repository creation'),
+          admin: !result.error?.includes('administration'),
+          contents: !result.error?.includes('contents'),
+        };
+        permissionError = result.error || 'Permission verification failed';
+      }
+    } catch (error) {
+      console.error('Permission check failed:', error);
+      permissionError = 'Failed to verify permissions';
+    } finally {
+      isCheckingPermissions = false;
+      currentCheck = null;
+    }
+  }
+
+  const handleSave = async (event: Event) => {
+    event.preventDefault();
+
+    const THIRTY_DAYS = 30 * 24 * 60 * 60 * 1000;
+    const needsCheck =
+      previousToken !== githubToken ||
+      !lastPermissionCheck ||
+      Date.now() - lastPermissionCheck > THIRTY_DAYS;
+
+    if (needsCheck) {
+      await checkTokenPermissions();
+      if (permissionError) {
+        return; // Don't proceed if permissions check failed
+      }
+    }
+
+    onSave();
+  };
+
   $: if (!isOnboarding && projectId && projectSettings[projectId]) {
     repoName = projectSettings[projectId].repoName;
     branch = projectSettings[projectId].branch;
@@ -208,84 +288,10 @@
 
 <div class="space-y-6">
   <!-- Quick Links Section -->
-  <div class="rounded-lg bg-slate-800/50 border border-slate-700">
-    <button
-      on:click={toggleNewUserGuide}
-      class="w-full p-4 flex items-center justify-between text-left"
-    >
-      <h3 class="font-medium text-slate-200 flex items-center gap-2">
-        <AlertCircle size={16} />
-        New to GitHub?
-      </h3>
-      {#if showNewUserGuide}
-        <ChevronUp
-          size={16}
-          class="transition-transform duration-300 text-slate-400"
-        />
-      {:else}
-        <ChevronDown
-          size={16}
-          class="transition-transform duration-300 text-slate-400"
-        />
-      {/if}
-    </button>
-    {#if showNewUserGuide}
-      <div class="px-4 pb-4 space-y-2">
-        <div class="space-y-2 text-sm text-slate-400">
-          <p>Follow these steps to get started:</p>
-          <ol class="list-decimal list-inside space-y-1 ml-2">
-            <li>
-              <a
-                href={GITHUB_SIGNUP_URL}
-                target="_blank"
-                rel="noopener noreferrer"
-                class="text-blue-400 hover:underline inline-flex items-center gap-1"
-              >
-                Create a GitHub account
-                <ExternalLink size={12} />
-              </a>
-            </li>
-            <li>
-              <a
-                href={CREATE_TOKEN_URL}
-                target="_blank"
-                rel="noopener noreferrer"
-                class="text-blue-400 hover:underline inline-flex items-center gap-1"
-              >
-                Generate a GitHub token
-                <ExternalLink size={12} />
-              </a>
-            </li>
-          </ol>
-        </div>
-        <div
-          class="flex items-center gap-2 mt-2 pt-2 border-t border-slate-700"
-        >
-          <a
-            href={TUTORIAL_LINK}
-            target="_blank"
-            rel="noopener noreferrer"
-            class="inline-flex items-center gap-2 text-sm text-red-400 hover:text-red-300"
-          >
-            <Youtube size={16} />
-            Watch Setup Tutorial
-          </a>
-          <a
-            href="https://github.com"
-            target="_blank"
-            rel="noopener noreferrer"
-            class="inline-flex items-center gap-2 text-sm text-slate-400 hover:text-slate-300"
-          >
-            <Github size={16} />
-            Visit GitHub
-          </a>
-        </div>
-      </div>
-    {/if}
-  </div>
+  <NewUserGuide />
 
   <!-- Settings Form -->
-  <form on:submit|preventDefault={onSave} class="space-y-4">
+  <form on:submit|preventDefault={handleSave} class="space-y-4">
     <div class="space-y-2">
       <Label for="githubToken" class="text-slate-200">
         GitHub Token
@@ -303,7 +309,9 @@
         {#if githubToken}
           <div class="absolute right-3 top-1/2 -translate-y-1/2">
             {#if isValidatingToken}
-              <div class="animate-spin h-4 w-4 border-2 border-slate-400 border-t-transparent rounded-full" />
+              <div
+                class="animate-spin h-4 w-4 border-2 border-slate-400 border-t-transparent rounded-full"
+              />
             {:else if isTokenValid === true}
               <Check class="h-4 w-4 text-green-500" />
             {:else if isTokenValid === false}
@@ -314,6 +322,94 @@
       </div>
       {#if validationError}
         <p class="text-sm text-red-400 mt-1">{validationError}</p>
+      {:else if tokenType}
+        <div class="space-y-2">
+          <p class="text-sm text-emerald-400">
+            {tokenType === 'classic' ? '🔑 Classic' : '✨ Fine-grained'} token detected
+          </p>
+          {#if isTokenValid}
+            <div class="flex items-center gap-2">
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                class="text-xs"
+                on:click={checkTokenPermissions}
+                disabled={isCheckingPermissions}
+              >
+                {#if isCheckingPermissions}
+                  <Loader2 class="h-3 w-3 mr-1 animate-spin" />
+                  Checking...
+                {:else}
+                  Verify Permissions
+                {/if}
+              </Button>
+              <div class="flex items-center gap-2">
+                {#if previousToken === githubToken && lastPermissionCheck}
+                  <div class="relative group">
+                    <HelpCircle class="h-3 w-3 text-slate-400" />
+                    <div
+                      class="absolute bottom-full mb-2 left-1/2 -translate-x-1/2 hidden group-hover:block w-64 p-2 text-xs bg-slate-900 border border-slate-700 rounded-md shadow-lg"
+                    >
+                      <p>Last verified: {new Date(lastPermissionCheck).toLocaleString()}</p>
+                      <p class="mt-1 text-slate-400">
+                        Permissions are automatically re-verified when the token changes or after 30
+                        days.
+                      </p>
+                    </div>
+                  </div>
+                {/if}
+                <div class="flex items-center gap-1.5 text-xs">
+                  <span class="flex items-center gap-0.5">
+                    {#if currentCheck === 'repos'}
+                      <Loader2 class="h-3 w-3 animate-spin text-slate-400" />
+                    {:else if permissionStatus.allRepos !== undefined}
+                      {#if permissionStatus.allRepos}
+                        <Check class="h-3 w-3 text-green-500" />
+                      {:else}
+                        <X class="h-3 w-3 text-red-500" />
+                      {/if}
+                    {:else if previousToken === githubToken && lastPermissionCheck}
+                      <Check class="h-3 w-3 text-green-500 opacity-50" />
+                    {/if}
+                    Repos
+                  </span>
+                  <span class="flex items-center gap-0.5">
+                    {#if currentCheck === 'admin'}
+                      <Loader2 class="h-3 w-3 animate-spin text-slate-400" />
+                    {:else if permissionStatus.admin !== undefined}
+                      {#if permissionStatus.admin}
+                        <Check class="h-3 w-3 text-green-500" />
+                      {:else}
+                        <X class="h-3 w-3 text-red-500" />
+                      {/if}
+                    {:else if previousToken === githubToken && lastPermissionCheck}
+                      <Check class="h-3 w-3 text-green-500 opacity-50" />
+                    {/if}
+                    Admin
+                  </span>
+                  <span class="flex items-center gap-0.5">
+                    {#if currentCheck === 'code'}
+                      <Loader2 class="h-3 w-3 animate-spin text-slate-400" />
+                    {:else if permissionStatus.contents !== undefined}
+                      {#if permissionStatus.contents}
+                        <Check class="h-3 w-3 text-green-500" />
+                      {:else}
+                        <X class="h-3 w-3 text-red-500" />
+                      {/if}
+                    {:else if previousToken === githubToken && lastPermissionCheck}
+                      <Check class="h-3 w-3 text-green-500 opacity-50" />
+                    {/if}
+                    Code
+                  </span>
+                </div>
+              </div>
+            </div>
+          {/if}
+        </div>
+        {#if permissionError}
+          <p class="text-sm text-red-400 mt-1">{permissionError}</p>
+        {/if}
       {/if}
     </div>
 
@@ -367,12 +463,17 @@
             </div>
           </div>
           {#if showRepoDropdown && (filteredRepos.length > 0 || !repoExists)}
-            <div class="absolute z-50 w-full mt-1 bg-slate-800 border border-slate-700 rounded-md shadow-lg">
+            <div
+              class="absolute z-50 w-full mt-1 bg-slate-800 border border-slate-700 rounded-md shadow-lg"
+            >
               <ul class="py-1 max-h-60 overflow-auto">
                 {#each filteredRepos as repo, i}
                   <li>
                     <button
-                      class="w-full px-3 py-2 text-left hover:bg-slate-700 text-slate-200 {selectedIndex === i ? 'bg-slate-700' : ''}"
+                      class="w-full px-3 py-2 text-left hover:bg-slate-700 text-slate-200 {selectedIndex ===
+                      i
+                        ? 'bg-slate-700'
+                        : ''}"
                       on:click={() => selectRepo(repo)}
                     >
                       <div class="flex items-center justify-between">
@@ -390,10 +491,14 @@
                 {#if !repoExists}
                   <li class="px-3 py-2 text-sm text-slate-400">
                     {#if repoName.length > 0}
-                      <p class="text-orange-400">💡If the repository "{repoName}" doesn't exist, it will be created automatically (as a public repository).</p>
-                      <p class="text-emerald-400">✨ If it's a private repository, you can still enter it manually even if it's not visible in the list.</p>
+                      <p class="text-orange-400">
+                        💡If the repository "{repoName}" doesn't exist, it will be created
+                        automatically.
+                      </p>
                     {:else}
-                      <p>Enter a repository name (new or private) or select from your public repositories</p>
+                      <p>
+                        Enter a repository name (new) or select from your repositories carefully.
+                      </p>
                     {/if}
                   </li>
                 {/if}
@@ -403,14 +508,11 @@
         </div>
         {#if repoExists}
           <p class="text-sm text-blue-400">
-            ℹ️ Using existing repository
+            ℹ️ Using existing repository. Make sure it is correct.
           </p>
         {:else if repoName}
           <p class="text-sm text-emerald-400">
             ✨ A new repository will be created if it doesn't exist yet.
-          </p>
-          <p class="text-sm text-orange-400">
-            ⚠️ You can push to private repositories, but loading it into Bolt will fail.
           </p>
         {/if}
       </div>
@@ -437,7 +539,12 @@
     <Button
       type="submit"
       class="w-full bg-blue-600 hover:bg-blue-700 text-white"
-      disabled={buttonDisabled || isValidatingToken || !githubToken || !repoOwner || (!isOnboarding && (!repoName || !branch)) || isTokenValid === false}
+      disabled={buttonDisabled ||
+        isValidatingToken ||
+        !githubToken ||
+        !repoOwner ||
+        (!isOnboarding && (!repoName || !branch)) ||
+        isTokenValid === false}
     >
       {#if isValidatingToken}
         Validating...

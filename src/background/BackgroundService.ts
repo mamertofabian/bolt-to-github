@@ -2,14 +2,18 @@ import { GitHubService } from '../services/GitHubService';
 import type { Message, MessageType, Port, UploadStatusState } from '../lib/types';
 import { StateManager } from './StateManager';
 import { ZipHandler } from '../services/zipHandler';
+import { BackgroundTempRepoManager } from './TempRepoManager';
 
 export class BackgroundService {
   private stateManager: StateManager;
   private zipHandler: ZipHandler | null;
   private ports: Map<number, Port>;
   private githubService: GitHubService | null;
+  private tempRepoManager: BackgroundTempRepoManager | null = null;
   private pendingCommitMessage: string;
-  private storageListener: ((changes: { [key: string]: chrome.storage.StorageChange }, namespace: string) => void) | null = null;
+  private storageListener:
+    | ((changes: { [key: string]: chrome.storage.StorageChange }, namespace: string) => void)
+    | null = null;
 
   constructor() {
     console.log('🚀 Background service initializing...');
@@ -21,12 +25,22 @@ export class BackgroundService {
     this.initialize();
   }
 
-    // this.initializeListeners();
-    // this.initializeStorageListener();
+  // this.initializeListeners();
+  // this.initializeStorageListener();
 
   private async initialize(): Promise<void> {
     const githubService = await this.initializeGitHubService();
     this.setupZipHandler(githubService!);
+    if (githubService) {
+      const settings = await this.stateManager.getGitHubSettings();
+      if (settings?.gitHubSettings?.repoOwner) {
+        this.tempRepoManager = new BackgroundTempRepoManager(
+          githubService,
+          settings.gitHubSettings.repoOwner,
+          (status) => this.broadcastStatus(status)
+        );
+      }
+    }
     this.setupConnectionHandlers();
     this.setupStorageListener();
     console.log('👂 Background service initialized');
@@ -35,10 +49,13 @@ export class BackgroundService {
   private async initializeGitHubService(): Promise<GitHubService | null> {
     try {
       const settings = await this.stateManager.getGitHubSettings();
-      
-      if (settings && settings.gitHubSettings 
-        && settings.gitHubSettings.githubToken 
-        && settings.gitHubSettings.repoOwner) {
+
+      if (
+        settings &&
+        settings.gitHubSettings &&
+        settings.gitHubSettings.githubToken &&
+        settings.gitHubSettings.repoOwner
+      ) {
         console.log('✅ Valid settings found, initializing GitHub service', settings);
         this.githubService = new GitHubService(settings.gitHubSettings.githubToken);
       } else {
@@ -53,29 +70,27 @@ export class BackgroundService {
   }
 
   private setupZipHandler(githubService: GitHubService) {
-    this.zipHandler = new ZipHandler(
-      githubService, (status) => this.broadcastStatus(status)
-    );
+    this.zipHandler = new ZipHandler(githubService, (status) => this.broadcastStatus(status));
   }
 
   private broadcastStatus(status: UploadStatusState) {
     for (const [tabId, port] of this.ports) {
       this.sendResponse(port, {
         type: 'UPLOAD_STATUS',
-        status
+        status,
       });
     }
   }
 
   private setupConnectionHandlers(): void {
     chrome.runtime.onConnect.addListener((port: Port) => {
-      const tabId = port.sender?.tab?.id;
-      
-      if (!tabId || port.name !== 'bolt-content') {
+      const tabId = port.sender?.tab?.id ?? -1; // Use -1 for popup
+
+      if (!['bolt-content', 'popup'].includes(port.name)) {
         return;
       }
 
-      console.log('📝 New connection from tab:', tabId);
+      console.log('📝 New connection from:', port.name, 'tabId:', tabId);
       this.ports.set(tabId, port);
 
       port.onDisconnect.addListener(() => {
@@ -84,6 +99,7 @@ export class BackgroundService {
       });
 
       port.onMessage.addListener(async (message: Message) => {
+        console.log('📥 Received port message:', { source: port.name, type: message.type });
         await this.handlePortMessage(tabId, message);
       });
     });
@@ -96,7 +112,7 @@ export class BackgroundService {
     // Handle URL updates for project ID
     chrome.tabs.onUpdated.addListener(async (tabId, changeInfo, tab) => {
       if (tab.url?.includes('bolt.new/~/')) {
-        const projectId = tab.url.match(/bolt\.new\/~\/([^\/]+)/)?.[1] || null;
+        const projectId = tab.url.match(/bolt\.new\/~\/([^/]+)/)?.[1] || null;
         if (projectId) {
           await this.stateManager.setProjectId(projectId);
         }
@@ -113,8 +129,9 @@ export class BackgroundService {
     // Create new listener and store reference
     this.storageListener = async (changes, namespace) => {
       if (namespace === 'sync') {
-        const settingsChanged = ['githubToken', 'repoOwner', 'repoName', 'branch']
-          .some(key => key in changes);
+        const settingsChanged = ['githubToken', 'repoOwner', 'repoName', 'branch'].some(
+          (key) => key in changes
+        );
 
         if (settingsChanged) {
           console.log('🔄 GitHub settings changed, reinitializing GitHub service...');
@@ -153,6 +170,19 @@ export class BackgroundService {
           chrome.action.openPopup();
           break;
 
+        case 'IMPORT_PRIVATE_REPO':
+          console.log('🔄 Processing private repo import:', message.data.repoName);
+          if (!this.tempRepoManager) {
+            throw new Error('Temp repo manager not initialized');
+          }
+          await this.tempRepoManager.handlePrivateRepoImport(message.data.repoName);
+          console.log('✅ Private repo import completed');
+          break;
+        case 'DELETE_TEMP_REPO':
+          await this.tempRepoManager?.cleanupTempRepos(true);
+          console.log('✅ Temp repo cleaned up');
+          break;
+
         case 'DEBUG':
           console.log(`[Content Debug] ${message.message}`);
           break;
@@ -166,12 +196,12 @@ export class BackgroundService {
       }
     } catch (error) {
       console.error(`Error handling message ${message.type}:`, error);
-      this.sendResponse(port, { 
-        type: 'UPLOAD_STATUS', 
-        status: { 
-          status: 'error', 
-          message: error instanceof Error ? error.message : 'Unknown error occurred' 
-        }
+      this.sendResponse(port, {
+        type: 'UPLOAD_STATUS',
+        status: {
+          status: 'error',
+          message: error instanceof Error ? error.message : 'Unknown error occurred',
+        },
       });
     }
   }
@@ -206,57 +236,63 @@ export class BackgroundService {
 
         // Process the ZIP file
         await this.withTimeout(
-            this.zipHandler.processZipFile(blob, projectId, this.pendingCommitMessage),
-            2 * 60 * 1000, // 2 minutes timeout
-            'Processing ZIP file timed out'
+          this.zipHandler.processZipFile(blob, projectId, this.pendingCommitMessage),
+          2 * 60 * 1000, // 2 minutes timeout
+          'Processing ZIP file timed out'
         );
 
         // Reset commit message after successful upload
         this.pendingCommitMessage = 'Commit from Bolt to GitHub';
-        
-        this.sendResponse(port, { 
-          type: 'UPLOAD_STATUS', 
-          status: { status: 'success', message: 'Upload completed successfully', progress: 100 }
+
+        this.sendResponse(port, {
+          type: 'UPLOAD_STATUS',
+          status: { status: 'success', message: 'Upload completed successfully', progress: 100 },
         });
       } catch (decodeError) {
-        const errorMessage = decodeError instanceof Error ? decodeError.message : String(decodeError);
+        const errorMessage =
+          decodeError instanceof Error ? decodeError.message : String(decodeError);
         const isGitHubError = errorMessage.includes('GitHub API Error');
-        
+
         if (isGitHubError) {
           // Extract the original GitHub error message if available
-          const originalMessage = (decodeError as any).originalMessage || 
-            'GitHub authentication or API error occurred';
-          
-          throw new Error(
-            `GitHub Error: ${originalMessage}`
-          );
+          const originalMessage =
+            (decodeError as any).originalMessage || 'GitHub authentication or API error occurred';
+
+          throw new Error(`GitHub Error: ${originalMessage}`);
         } else {
           throw new Error(
             `Failed to process ZIP data. Please try reloading the page. ` +
-            `If the issue persists, please open a GitHub issue.`
+              `If the issue persists, please open a GitHub issue.`
           );
         }
       }
     } catch (error) {
       console.error('Error processing ZIP:', error);
-      this.sendResponse(port, { 
-        type: 'UPLOAD_STATUS', 
-        status: { 
-          status: 'error', 
-          message: error instanceof Error ? error.message : 'Unknown error occurred'
-        }
+      this.sendResponse(port, {
+        type: 'UPLOAD_STATUS',
+        status: {
+          status: 'error',
+          message: error instanceof Error ? error.message : 'Unknown error occurred',
+        },
       });
     }
   }
 
-  private async withTimeout<T>(promise: Promise<T>, ms: number, timeoutMessage: string): Promise<T> {
+  private async withTimeout<T>(
+    promise: Promise<T>,
+    ms: number,
+    timeoutMessage: string
+  ): Promise<T> {
     const timeout = new Promise<never>((_, reject) =>
-        setTimeout(() => reject(new Error(timeoutMessage)), ms)
+      setTimeout(() => reject(new Error(timeoutMessage)), ms)
     );
     return Promise.race([promise, timeout]);
   }
 
-  private sendResponse(port: Port, message: { type: MessageType; status?: UploadStatusState }): void {
+  private sendResponse(
+    port: Port,
+    message: { type: MessageType; status?: UploadStatusState }
+  ): void {
     try {
       port.postMessage(message);
     } catch (error) {

@@ -71,8 +71,8 @@ export class UIManager {
           this.notificationComponent?.$destroy();
           this.notificationComponent = null;
           container.remove();
-        }
-      }
+        },
+      },
     });
   }
 
@@ -116,7 +116,7 @@ export class UIManager {
     }
 
     this.uploadStatusComponent = new UploadStatus({
-      target
+      target,
     });
   }
 
@@ -165,7 +165,7 @@ export class UIManager {
       'enabled:hover:bg-bolt-elements-button-secondary-backgroundHover',
       'flex',
       'gap-1.7',
-      'transition-opacity'
+      'transition-opacity',
     ].join(' ');
 
     button.innerHTML = `
@@ -192,7 +192,9 @@ export class UIManager {
       return;
     }
 
-    const { confirmed, commitMessage } = await this.showGitHubConfirmation(settings.gitHubSettings?.projectSettings || {});
+    const { confirmed, commitMessage } = await this.showGitHubConfirmation(
+      settings.gitHubSettings?.projectSettings || {}
+    );
     if (!confirmed) return;
 
     try {
@@ -213,30 +215,28 @@ export class UIManager {
       this.isGitHubUpload = true;
       this.messageHandler.sendCommitMessage(commitMessage || 'Commit from Bolt to GitHub');
 
-      this.findAndClickDownloadButton();  // This will close the dropdown
+      this.findAndClickDownloadButton(); // This will close the dropdown
     } catch (error) {
-        console.error('Error during GitHub upload:', error);
-        throw new Error('Failed to trigger download. The page structure may have changed.');
+      console.error('Error during GitHub upload:', error);
+      throw new Error('Failed to trigger download. The page structure may have changed.');
     }
   }
 
   private findAndClickExportButton() {
-    const exportButton = Array.from(document.querySelectorAll('button[aria-haspopup="menu"]'))
-      .find(btn => 
-        btn.textContent?.includes('Export') && 
-        btn.querySelector('.i-ph\\:export')
-      ) as HTMLButtonElement;
-    
+    const exportButton = Array.from(document.querySelectorAll('button[aria-haspopup="menu"]')).find(
+      (btn) => btn.textContent?.includes('Export') && btn.querySelector('.i-ph\\:export')
+    ) as HTMLButtonElement;
+
     if (!exportButton) {
-        throw new Error('Export button not found');
+      throw new Error('Export button not found');
     }
     console.log('Found export button:', exportButton);
-    
+
     // Dispatch keydown event to open dropdown
-    const keydownEvent = new KeyboardEvent('keydown', { 
-        key: 'Enter',
-        bubbles: true,
-        cancelable: true 
+    const keydownEvent = new KeyboardEvent('keydown', {
+      key: 'Enter',
+      bubbles: true,
+      cancelable: true,
     });
     exportButton.dispatchEvent(keydownEvent);
     console.log('Dispatched keydown to export button');
@@ -245,24 +245,24 @@ export class UIManager {
   async findAndClickDownloadButton() {
     this.findAndClickExportButton();
 
-      // Wait a bit for the dropdown content to render
-    await new Promise(resolve => setTimeout(resolve, 200));
+    // Wait a bit for the dropdown content to render
+    await new Promise((resolve) => setTimeout(resolve, 200));
 
-      // Find the dropdown content
+    // Find the dropdown content
     const dropdownContent = document.querySelector('[role="menu"], [data-radix-menu-content]');
     if (!dropdownContent) {
-        throw new Error('Dropdown content not found');
+      throw new Error('Dropdown content not found');
     }
 
-      // Find download button
-    const downloadButton = Array.from(dropdownContent.querySelectorAll('button')).find(button => {
-        const hasIcon = button.querySelector('.i-ph\\:download-simple');
-        const hasText = button.textContent?.toLowerCase().includes('download');
-        return hasIcon || hasText;
+    // Find download button
+    const downloadButton = Array.from(dropdownContent.querySelectorAll('button')).find((button) => {
+      const hasIcon = button.querySelector('.i-ph\\:download-simple');
+      const hasText = button.textContent?.toLowerCase().includes('download');
+      return hasIcon || hasText;
     });
 
     if (!downloadButton) {
-        throw new Error('Download button not found in dropdown');
+      throw new Error('Download button not found in dropdown');
     }
 
     console.log('Found download button, clicking...');
@@ -270,18 +270,14 @@ export class UIManager {
   }
 
   // Function to show confirmation dialog
-  private showGitHubConfirmation = (projectSettings: Record<string, { repoName: string; branch: string }>): Promise<{ confirmed: boolean; commitMessage?: string }> => {
+  private showGitHubConfirmation = (
+    projectSettings: Record<string, { repoName: string; branch: string }>
+  ): Promise<{ confirmed: boolean; commitMessage?: string }> => {
     return new Promise((resolve) => {
       const overlay = document.createElement('div');
       overlay.style.zIndex = '9999';
       overlay.style.backgroundColor = 'rgba(0, 0, 0, 0.5)';
-      overlay.className = [
-        'fixed',
-        'inset-0',
-        'flex',
-        'items-center',
-        'justify-center'
-      ].join(' ');
+      overlay.className = ['fixed', 'inset-0', 'flex', 'items-center', 'justify-center'].join(' ');
 
       const dialog = document.createElement('div');
       dialog.style.zIndex = '10000';
@@ -295,7 +291,7 @@ export class UIManager {
         'space-y-4',
         'border',
         'border-slate-700',
-        'relative'
+        'relative',
       ].join(' ');
 
       dialog.innerHTML = `
@@ -339,7 +335,9 @@ export class UIManager {
       });
 
       dialog.querySelector('#confirm-upload')?.addEventListener('click', () => {
-        const commitMessage = (dialog.querySelector('#commit-message') as HTMLInputElement)?.value || 'Commit from Bolt to GitHub';
+        const commitMessage =
+          (dialog.querySelector('#commit-message') as HTMLInputElement)?.value ||
+          'Commit from Bolt to GitHub';
         document.body.removeChild(overlay);
         resolve({ confirmed: true, commitMessage });
       });
@@ -362,7 +360,7 @@ export class UIManager {
       'flex',
       'items-center',
       'gap-2',
-      'text-sm'
+      'text-sm',
     ].join(' ');
 
     notification.innerHTML = `
@@ -435,23 +433,27 @@ export class UIManager {
   private setupClickListeners() {
     let clickSource: HTMLElement | null = null;
 
-    document.addEventListener('click', async (e) => {
-      const target = e.target as HTMLElement;
-      clickSource = target;
+    document.addEventListener(
+      'click',
+      async (e) => {
+        const target = e.target as HTMLElement;
+        clickSource = target;
 
-      if (target instanceof HTMLElement) {
-        const downloadElement = target.closest('a[download], button[download]');
-        if (downloadElement) {
-          const isFromGitHubButton = target.closest('[data-github-upload]') !== null;
+        if (target instanceof HTMLElement) {
+          const downloadElement = target.closest('a[download], button[download]');
+          if (downloadElement) {
+            const isFromGitHubButton = target.closest('[data-github-upload]') !== null;
 
-          if (isFromGitHubButton || this.isGitHubUpload) {
-            e.preventDefault();
-            e.stopPropagation();
-            await this.handleDownloadInterception();
+            if (isFromGitHubButton || this.isGitHubUpload) {
+              e.preventDefault();
+              e.stopPropagation();
+              await this.handleDownloadInterception();
+            }
           }
         }
-      }
-    }, true);
+      },
+      true
+    );
   }
 
   private async handleDownloadInterception() {
@@ -508,8 +510,9 @@ export class UIManager {
       } else if (retryCount >= maxRetries) {
         this.showNotification({
           type: 'error',
-          message: 'Failed to initialize GitHub upload button. Please try to refresh the page. If the issue persists, please submit an issue on GitHub.',
-          duration: 7000
+          message:
+            'Failed to initialize GitHub upload button. Please try to refresh the page. If the issue persists, please submit an issue on GitHub.',
+          duration: 7000,
         });
         retryCount = 0; // Reset for future attempts
       }
@@ -526,14 +529,14 @@ export class UIManager {
     if (document.body) {
       this.observer.observe(document.body, {
         childList: true,
-        subtree: true
+        subtree: true,
       });
     } else {
       // If body isn't available, wait for it
       document.addEventListener('DOMContentLoaded', () => {
         this.observer?.observe(document.body, {
           childList: true,
-          subtree: true
+          subtree: true,
         });
       });
     }
