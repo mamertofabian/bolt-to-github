@@ -43,7 +43,10 @@ export class GitHubService extends BaseGitHubService {
     return this.tokenValidator.validateTokenAndUser(username);
   }
 
-  async verifyFineGrainedPermissions(username: string, onProgress?: ProgressCallback): Promise<{ isValid: boolean; error?: string }> {
+  async verifyFineGrainedPermissions(
+    username: string,
+    onProgress?: ProgressCallback
+  ): Promise<{ isValid: boolean; error?: string }> {
     return this.tokenValidator.verifyFineGrainedPermissions(username, onProgress);
   }
 
@@ -218,14 +221,26 @@ This repository was automatically initialized by the Bolt to GitHub extension.
     return tempRepoName;
   }
 
-  async cloneRepoContents(sourceOwner: string, sourceRepo: string, targetOwner: string, targetRepo: string, branch: string = 'main'): Promise<void> {
+  async cloneRepoContents(
+    sourceOwner: string,
+    sourceRepo: string,
+    targetOwner: string,
+    targetRepo: string,
+    branch: string = 'main'
+  ): Promise<void> {
     // Get all files from source repo
-    const response = await this.request('GET', `/repos/${sourceOwner}/${sourceRepo}/git/trees/${branch}?recursive=1`);
+    const response = await this.request(
+      'GET',
+      `/repos/${sourceOwner}/${sourceRepo}/git/trees/${branch}?recursive=1`
+    );
     const files = response.tree.filter((item: any) => item.type === 'blob');
 
     // Copy each file to target repo
     for (const file of files) {
-      const content = await this.request('GET', `/repos/${sourceOwner}/${sourceRepo}/contents/${file.path}?ref=${branch}`);
+      const content = await this.request(
+        'GET',
+        `/repos/${sourceOwner}/${sourceRepo}/contents/${file.path}?ref=${branch}`
+      );
       await this.pushFile({
         owner: targetOwner,
         repo: targetRepo,
@@ -261,16 +276,15 @@ This repository was automatically initialized by the Bolt to GitHub extension.
     try {
       const repos = await this.request('GET', `/user/repos?per_page=100&sort=updated`);
 
-      return repos
-        .map((repo: any) => ({
-          name: repo.name,
-          description: repo.description,
-          private: repo.private,
-          html_url: repo.html_url,
-          created_at: repo.created_at,
-          updated_at: repo.updated_at,
-          language: repo.language,
-        }));
+      return repos.map((repo: any) => ({
+        name: repo.name,
+        description: repo.description,
+        private: repo.private,
+        html_url: repo.html_url,
+        created_at: repo.created_at,
+        updated_at: repo.updated_at,
+        language: repo.language,
+      }));
     } catch (error) {
       console.error('Failed to fetch repositories:', error);
       throw new Error(

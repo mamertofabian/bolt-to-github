@@ -186,7 +186,7 @@ export class ZipHandler {
         '.nuxt/',
         '.cache/',
         '.temp/',
-        'tmp/'
+        'tmp/',
       ]);
     }
 
@@ -273,7 +273,7 @@ export class ZipHandler {
   }
 
   private sleep(ms: number): Promise<void> {
-    return new Promise(resolve => setTimeout(resolve, ms));
+    return new Promise((resolve) => setTimeout(resolve, ms));
   }
 
   private async createBlobs(files: Map<string, string>, repoOwner: string, repoName: string) {

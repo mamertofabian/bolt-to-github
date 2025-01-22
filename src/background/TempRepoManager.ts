@@ -27,7 +27,7 @@ export class BackgroundTempRepoManager {
       this.broadcastStatus({
         status: 'uploading',
         message: 'Creating temporary repository...',
-        progress: 10
+        progress: 10,
       });
 
       tempRepoName = await this.githubService.createTemporaryPublicRepo(sourceRepo);
@@ -36,7 +36,7 @@ export class BackgroundTempRepoManager {
       this.broadcastStatus({
         status: 'uploading',
         message: 'Copying repository contents...',
-        progress: 30
+        progress: 30,
       });
 
       await this.githubService.cloneRepoContents(this.owner, sourceRepo, this.owner, tempRepoName);
@@ -44,7 +44,7 @@ export class BackgroundTempRepoManager {
       this.broadcastStatus({
         status: 'uploading',
         message: 'Making repository public...',
-        progress: 70
+        progress: 70,
       });
 
       // Make repo public only after content is copied
@@ -53,7 +53,7 @@ export class BackgroundTempRepoManager {
       this.broadcastStatus({
         status: 'uploading',
         message: 'Opening Bolt...',
-        progress: 90
+        progress: 90,
       });
 
       // Open Bolt in new window
@@ -61,21 +61,20 @@ export class BackgroundTempRepoManager {
         url: `https://bolt.new/~/github.com/${this.owner}/${tempRepoName}`,
         type: 'popup',
         width: 1200,
-        height: 800
+        height: 800,
       });
 
       this.broadcastStatus({
         status: 'success',
         message: 'Repository imported successfully',
-        progress: 100
+        progress: 100,
       });
-
     } catch (error) {
       console.error('Failed to import private repository:', error);
       this.broadcastStatus({
         status: 'error',
         message: error instanceof Error ? error.message : 'Failed to import repository',
-        progress: 100
+        progress: 100,
       });
     }
   }
@@ -86,10 +85,10 @@ export class BackgroundTempRepoManager {
       originalRepo,
       tempRepo,
       createdAt: Date.now(),
-      owner: this.owner
+      owner: this.owner,
     });
     await chrome.storage.local.set({
-      [BackgroundTempRepoManager.STORAGE_KEY]: tempRepos
+      [BackgroundTempRepoManager.STORAGE_KEY]: tempRepos,
     });
   }
 
@@ -116,7 +115,7 @@ export class BackgroundTempRepoManager {
     }
 
     await chrome.storage.local.set({
-      [BackgroundTempRepoManager.STORAGE_KEY]: remaining
+      [BackgroundTempRepoManager.STORAGE_KEY]: remaining,
     });
   }
 

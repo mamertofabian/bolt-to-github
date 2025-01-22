@@ -20,7 +20,7 @@ export class GitHubTokenValidator extends BaseGitHubService {
   }
 
   private async delay(ms: number): Promise<void> {
-    return new Promise(resolve => setTimeout(resolve, ms));
+    return new Promise((resolve) => setTimeout(resolve, ms));
   }
 
   async verifyFineGrainedPermissions(
@@ -35,28 +35,28 @@ export class GitHubTokenValidator extends BaseGitHubService {
       // Create a temporary test repo
       const timestamp = Date.now();
       const repoName = `test-repo-${timestamp}`;
-      
+
       // Test repository creation (All repositories access)
       try {
         await this.request('POST', '/user/repos', {
           name: repoName,
           private: true,
-          auto_init: true
+          auto_init: true,
         });
         await this.delay(2000);
         onProgress?.({ permission: 'repos', isValid: true });
       } catch (error) {
         onProgress?.({ permission: 'repos', isValid: false });
-        return { 
-          isValid: false, 
-          error: 'Token lacks repository creation permission' 
+        return {
+          isValid: false,
+          error: 'Token lacks repository creation permission',
         };
       }
 
       // Test visibility change (Admin Write)
       try {
         await this.request('PATCH', `/repos/${username}/${repoName}`, {
-          private: false
+          private: false,
         });
         await this.delay(2000);
         onProgress?.({ permission: 'admin', isValid: true });
@@ -68,21 +68,21 @@ export class GitHubTokenValidator extends BaseGitHubService {
         } catch (cleanupError) {
           console.error('Failed to cleanup repository after admin check:', cleanupError);
         }
-        return { 
-          isValid: false, 
-          error: 'Token lacks repository administration permission' 
+        return {
+          isValid: false,
+          error: 'Token lacks repository administration permission',
         };
       }
 
       try {
         // Test contents read by listing contents
         await this.request('GET', `/repos/${username}/${repoName}/contents`);
-        
+
         // Test contents write with a small .gitkeep file
         const content = btoa(''); // empty file in base64
         await this.request('PUT', `/repos/${username}/${repoName}/contents/.gitkeep`, {
           message: 'Test write permission',
-          content: content
+          content: content,
         });
         onProgress?.({ permission: 'code', isValid: true });
       } catch (error) {
@@ -93,9 +93,9 @@ export class GitHubTokenValidator extends BaseGitHubService {
         } catch (cleanupError) {
           console.error('Failed to cleanup repository after contents check:', cleanupError);
         }
-        return { 
-          isValid: false, 
-          error: 'Token lacks repository contents read/write permission' 
+        return {
+          isValid: false,
+          error: 'Token lacks repository contents read/write permission',
         };
       }
 
@@ -104,28 +104,30 @@ export class GitHubTokenValidator extends BaseGitHubService {
         await this.request('DELETE', `/repos/${username}/${repoName}`, undefined, {
           // Add accept header to handle empty response
           headers: {
-            accept: 'application/vnd.github+json'
-          }
+            accept: 'application/vnd.github+json',
+          },
         });
       } catch (error) {
         console.error('Failed to cleanup test repository:', error);
         // Don't return error here as permissions were already verified
       }
-      
+
       return { isValid: true };
     } catch (error) {
       console.error('Permission verification failed:', error);
-      return { 
-        isValid: false, 
-        error: `Permission verification failed: ${error instanceof Error ? error.message : String(error)}` 
+      return {
+        isValid: false,
+        error: `Permission verification failed: ${error instanceof Error ? error.message : String(error)}`,
       };
     }
   }
 
-  private async validateClassicToken(username: string): Promise<{ isValid: boolean; error?: string }> {
+  private async validateClassicToken(
+    username: string
+  ): Promise<{ isValid: boolean; error?: string }> {
     try {
       const authUser = await this.request('GET', '/user');
-      
+
       if (!authUser.login) {
         return { isValid: false, error: 'Invalid GitHub token' };
       }
@@ -148,7 +150,8 @@ export class GitHubTokenValidator extends BaseGitHubService {
 
       return {
         isValid: false,
-        error: 'Token can only be used with your GitHub username or organizations you have access to',
+        error:
+          'Token can only be used with your GitHub username or organizations you have access to',
       };
     } catch (error) {
       if (error instanceof Error && error.message.includes('404')) {

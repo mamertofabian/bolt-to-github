@@ -9,7 +9,7 @@
   export let githubToken: string;
   export let isBoltSite: boolean = true;
   export let currentlyLoadedProjectId: string | null = null;
-  
+
   let loadingRepos = false;
 
   const githubService = new GitHubService(githubToken);
@@ -97,18 +97,19 @@
     window.open(`https://github.com/${repoOwner}/${repoName}`, '_blank');
   }
 
-
   async function importFromGitHub(repoOwner: string, repoName: string, isPrivate: boolean) {
     if (!isPrivate) {
       window.open(`https://bolt.new/~/github.com/${repoOwner}/${repoName}`, '_blank');
       return;
     }
 
-    if (!confirm(
-      'Warning: This will temporarily create a public copy of your private repository to enable import.\n\n' +
-      'The temporary repository will be automatically deleted after import.\n\n' +
-      'Do you want to continue?'
-    )) {
+    if (
+      !confirm(
+        'Warning: This will temporarily create a public copy of your private repository to enable import.\n\n' +
+          'The temporary repository will be automatically deleted after import.\n\n' +
+          'Do you want to continue?'
+      )
+    ) {
       return;
     }
 
@@ -116,9 +117,9 @@
       const port = chrome.runtime.connect({ name: 'bolt-content' });
       port.postMessage({
         type: 'IMPORT_PRIVATE_REPO',
-        data: { repoName }
+        data: { repoName },
       });
-      
+
       port.onMessage.addListener((message) => {
         if (message.type === 'UPLOAD_STATUS') {
           // Handle status updates if needed
@@ -192,9 +193,7 @@
         <p class="text-sm text-green-400">
           💡 No Bolt projects found. Create or load an existing Bolt project to get started.
         </p>
-        <p class="text-sm text-green-400">
-          🌟 You can also load any of your GitHub repositories.
-        </p>
+        <p class="text-sm text-green-400">🌟 You can also load any of your GitHub repositories.</p>
       </div>
     </div>
   {:else}
@@ -215,7 +214,7 @@
               {/if}
               {#if project.gitHubRepo}
                 <span class="text-xs {project.private ? 'text-red-500' : 'text-blue-500'} ml-2">
-                  ({project.private ? "Private" : "Public"})
+                  ({project.private ? 'Private' : 'Public'})
                 </span>
               {/if}
             </h3>
@@ -260,7 +259,8 @@
                 size="icon"
                 title="Import from GitHub to Bolt"
                 class="h-8 w-8 opacity-70 group-hover:opacity-100"
-                on:click={() => importFromGitHub(repoOwner, project.repoName, project.private ?? false)}
+                on:click={() =>
+                  importFromGitHub(repoOwner, project.repoName, project.private ?? false)}
               >
                 <Import class="h-5 w-5" />
               </Button>

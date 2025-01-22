@@ -10,7 +10,7 @@ export abstract class BaseGitHubService {
 
   constructor(protected token: string) {}
 
-  protected async request(method: string, endpoint: string, body?: any, options: RequestInit = {}) {
+  async request(method: string, endpoint: string, body?: any, options: RequestInit = {}) {
     const url = `${this.baseUrl}${endpoint}`;
 
     const response = await fetch(url, {

@@ -95,7 +95,7 @@
       isBoltSite = currentUrl.includes('bolt.new');
 
       if (isBoltSite) {
-        const match = currentUrl.match(/bolt\.new\/~\/([^\/]+)/);
+        const match = currentUrl.match(/bolt\.new\/~\/([^/]+)/);
         parsedProjectId = match?.[1] || null;
         console.log(`📄 App: ${parsedProjectId}`);
         // Get projectId from storage

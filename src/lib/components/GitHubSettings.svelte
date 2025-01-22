@@ -45,7 +45,7 @@
   let permissionStatus = {
     allRepos: undefined as boolean | undefined,
     admin: undefined as boolean | undefined,
-    contents: undefined as boolean | undefined
+    contents: undefined as boolean | undefined,
   };
   let permissionError: string | null = null;
   let previousToken: string | null = null;
@@ -133,7 +133,7 @@
     const storage = await chrome.storage.local.get('lastPermissionCheck');
     lastPermissionCheck = storage.lastPermissionCheck || null;
     previousToken = githubToken;
-    
+
     // If we have initial valid settings, validate and load repos
     if (githubToken && repoOwner) {
       await validateSettings();
@@ -206,12 +206,12 @@
     permissionStatus = {
       allRepos: undefined,
       admin: undefined,
-      contents: undefined
+      contents: undefined,
     };
-    
+
     try {
       const githubService = new GitHubService(githubToken);
-      
+
       const result = await githubService.verifyFineGrainedPermissions(
         repoOwner,
         ({ permission, isValid }) => {
@@ -232,7 +232,7 @@
           permissionStatus = { ...permissionStatus };
         }
       );
-      
+
       if (result.isValid) {
         lastPermissionCheck = Date.now();
         await chrome.storage.local.set({ lastPermissionCheck });
@@ -242,7 +242,7 @@
         permissionStatus = {
           allRepos: !result.error?.includes('repository creation'),
           admin: !result.error?.includes('administration'),
-          contents: !result.error?.includes('contents')
+          contents: !result.error?.includes('contents'),
         };
         permissionError = result.error || 'Permission verification failed';
       }
@@ -257,12 +257,12 @@
 
   const handleSave = async (event: Event) => {
     event.preventDefault();
-    
+
     if (tokenType === 'fine-grained') {
       const THIRTY_DAYS = 30 * 24 * 60 * 60 * 1000;
-      const needsCheck = 
-        previousToken !== githubToken || 
-        !lastPermissionCheck || 
+      const needsCheck =
+        previousToken !== githubToken ||
+        !lastPermissionCheck ||
         Date.now() - lastPermissionCheck > THIRTY_DAYS;
 
       if (needsCheck) {
@@ -272,7 +272,7 @@
         }
       }
     }
-    
+
     onSave();
   };
 
@@ -355,9 +355,14 @@
                 {#if previousToken === githubToken && lastPermissionCheck}
                   <div class="relative group">
                     <HelpCircle class="h-3 w-3 text-slate-400" />
-                    <div class="absolute bottom-full mb-2 left-1/2 -translate-x-1/2 hidden group-hover:block w-64 p-2 text-xs bg-slate-900 border border-slate-700 rounded-md shadow-lg">
+                    <div
+                      class="absolute bottom-full mb-2 left-1/2 -translate-x-1/2 hidden group-hover:block w-64 p-2 text-xs bg-slate-900 border border-slate-700 rounded-md shadow-lg"
+                    >
                       <p>Last verified: {new Date(lastPermissionCheck).toLocaleString()}</p>
-                      <p class="mt-1 text-slate-400">Permissions are automatically re-verified when the token changes or after 30 days.</p>
+                      <p class="mt-1 text-slate-400">
+                        Permissions are automatically re-verified when the token changes or after 30
+                        days.
+                      </p>
                     </div>
                   </div>
                 {/if}
