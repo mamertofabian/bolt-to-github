@@ -24,6 +24,7 @@
   let tokenValidationTimeout: number;
   let validationError: string | null = null;
   let tokenType: 'classic' | 'fine-grained' | null = null;
+  let isRepoNameFromProjectId = false;
   let repositories: Array<{
     name: string;
     description: string | null;
@@ -62,8 +63,9 @@
     repoExists = repositories.some((repo) => repo.name.toLowerCase() === repoName.toLowerCase());
   }
 
-  $: if (projectId && !repoName) {
+  $: if (projectId && !repoName && !isRepoNameFromProjectId) {
     repoName = projectId;
+    isRepoNameFromProjectId = true;
   }
 
   async function loadRepositories() {
@@ -493,16 +495,11 @@
                     {#if repoName.length > 0}
                       <p class="text-orange-400">
                         💡If the repository "{repoName}" doesn't exist, it will be created
-                        automatically (as a public repository).
-                      </p>
-                      <p class="text-emerald-400">
-                        ✨ If it's a private repository, you can still enter it manually even if
-                        it's not visible in the list.
+                        automatically.
                       </p>
                     {:else}
                       <p>
-                        Enter a repository name (new or private) or select from your public
-                        repositories
+                        Enter a repository name (new) or select from your repositories carefully.
                       </p>
                     {/if}
                   </li>
@@ -512,13 +509,12 @@
           {/if}
         </div>
         {#if repoExists}
-          <p class="text-sm text-blue-400">ℹ️ Using existing repository</p>
+          <p class="text-sm text-blue-400">
+            ℹ️ Using existing repository. Make sure it is correct.
+          </p>
         {:else if repoName}
           <p class="text-sm text-emerald-400">
             ✨ A new repository will be created if it doesn't exist yet.
-          </p>
-          <p class="text-sm text-orange-400">
-            ⚠️ You can push to private repositories, but loading it into Bolt will fail.
           </p>
         {/if}
       </div>

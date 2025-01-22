@@ -95,7 +95,7 @@ export class GitHubService extends BaseGitHubService {
     if (!exists) {
       await this.createRepo({
         name: repo,
-        private: false, // Make public by default so bolt.new can load the repo
+        private: true,
         auto_init: true,
         description: 'Repository created by Bolt to GitHub extension',
       });
