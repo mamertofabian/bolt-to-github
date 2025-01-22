@@ -204,7 +204,50 @@ This repository was automatically initialized by the Bolt to GitHub extension.
     }
   }
 
-  async listRepos(): Promise<
+  async createTemporaryPublicRepo(sourceRepoName: string): Promise<string> {
+    const timestamp = Date.now();
+    const randomStr = Math.random().toString(36).substring(2, 8);
+    const tempRepoName = `temp-${sourceRepoName}-${timestamp}-${randomStr}`;
+
+    await this.createRepo({
+      name: tempRepoName,
+      private: false,
+      description: 'Temporary repository for Bolt import - will be deleted automatically',
+    });
+
+    return tempRepoName;
+  }
+
+  async cloneRepoContents(sourceOwner: string, sourceRepo: string, targetOwner: string, targetRepo: string, branch: string = 'main'): Promise<void> {
+    // Get all files from source repo
+    const response = await this.request('GET', `/repos/${sourceOwner}/${sourceRepo}/git/trees/${branch}?recursive=1`);
+    const files = response.tree.filter((item: any) => item.type === 'blob');
+
+    // Copy each file to target repo
+    for (const file of files) {
+      const content = await this.request('GET', `/repos/${sourceOwner}/${sourceRepo}/contents/${file.path}?ref=${branch}`);
+      await this.pushFile({
+        owner: targetOwner,
+        repo: targetRepo,
+        path: file.path,
+        content: content.content,
+        branch,
+        message: `Copy ${file.path} from ${sourceRepo}`,
+      });
+    }
+  }
+
+  async deleteRepo(owner: string, repo: string): Promise<void> {
+    await this.request('DELETE', `/repos/${owner}/${repo}`);
+  }
+
+  async updateRepoVisibility(owner: string, repo: string, makePrivate: boolean): Promise<void> {
+    await this.request('PATCH', `/repos/${owner}/${repo}`, {
+      private: makePrivate,
+    });
+  }
+
+  listRepos(): Promise<
     Array<{
       name: string;
       description: string | null;

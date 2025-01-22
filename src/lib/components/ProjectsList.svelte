@@ -97,8 +97,36 @@
     window.open(`https://github.com/${repoOwner}/${repoName}`, '_blank');
   }
 
-  function importFromGitHub(repoOwner: string, repoName: string) {
-    window.open(`https://bolt.new/~/github.com/${repoOwner}/${repoName}`, '_blank');
+  import { TempRepoManager } from '../../services/TempRepoManager';
+  
+  const tempRepoManager = new TempRepoManager(githubService, repoOwner);
+
+  async function importFromGitHub(repoOwner: string, repoName: string, isPrivate: boolean) {
+    if (!isPrivate) {
+      window.open(`https://bolt.new/~/github.com/${repoOwner}/${repoName}`, '_blank');
+      return;
+    }
+
+    if (!confirm(
+      'Warning: This will temporarily create a public copy of your private repository to enable import.\n\n' +
+      'The temporary repository will be automatically deleted after import.\n\n' +
+      'Do you want to continue?'
+    )) {
+      return;
+    }
+
+    try {
+      const tempRepoName = await tempRepoManager.createTemporaryPublicRepo(repoName);
+      await githubService.cloneRepoContents(repoOwner, repoName, repoOwner, tempRepoName);
+      
+      // Open Bolt with the temporary repo
+      window.open(`https://bolt.new/~/github.com/${repoOwner}/${tempRepoName}`, '_blank');
+      
+      // Cleanup will happen automatically via TempRepoManager
+    } catch (error) {
+      console.error('Failed to import private repository:', error);
+      alert('Failed to import private repository. Please try again later.');
+    }
   }
 </script>
 
@@ -230,7 +258,7 @@
                 size="icon"
                 title="Import from GitHub to Bolt"
                 class="h-8 w-8 opacity-70 group-hover:opacity-100"
-                on:click={() => importFromGitHub(repoOwner, project.repoName)}
+                on:click={() => importFromGitHub(repoOwner, project.repoName, project.private ?? false)}
               >
                 <Import class="h-5 w-5" />
               </Button>
