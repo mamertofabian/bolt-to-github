@@ -2,7 +2,7 @@
   import { Button } from '$lib/components/ui/button';
   import { Input } from '$lib/components/ui/input';
   import { Label } from '$lib/components/ui/label';
-  import { Check, X, Search, Loader2 } from 'lucide-svelte';
+  import { Check, X, Search, Loader2, HelpCircle } from 'lucide-svelte';
   import { onMount } from 'svelte';
   import { CREATE_FINE_GRAINED_TOKEN_URL, GitHubService } from '../../services/GitHubService';
   import NewUserGuide from './github/NewUserGuide.svelte';
@@ -351,43 +351,60 @@
                   Verify Permissions
                 {/if}
               </Button>
-              <div class="flex items-center gap-1.5 text-xs">
-                <span class="flex items-center gap-0.5">
-                  {#if currentCheck === 'repos'}
-                    <Loader2 class="h-3 w-3 animate-spin text-slate-400" />
-                  {:else if permissionStatus.allRepos !== undefined}
-                    {#if permissionStatus.allRepos}
-                      <Check class="h-3 w-3 text-green-500" />
-                    {:else}
-                      <X class="h-3 w-3 text-red-500" />
+              <div class="flex items-center gap-2">
+                <div class="flex items-center gap-1.5 text-xs">
+                  <span class="flex items-center gap-0.5">
+                    {#if currentCheck === 'repos'}
+                      <Loader2 class="h-3 w-3 animate-spin text-slate-400" />
+                    {:else if permissionStatus.allRepos !== undefined}
+                      {#if permissionStatus.allRepos}
+                        <Check class="h-3 w-3 text-green-500" />
+                      {:else}
+                        <X class="h-3 w-3 text-red-500" />
+                      {/if}
+                    {:else if previousToken === githubToken && lastPermissionCheck}
+                      <Check class="h-3 w-3 text-green-500 opacity-50" />
                     {/if}
-                  {/if}
-                  Repos
-                </span>
-                <span class="flex items-center gap-0.5">
-                  {#if currentCheck === 'admin'}
-                    <Loader2 class="h-3 w-3 animate-spin text-slate-400" />
-                  {:else if permissionStatus.admin !== undefined}
-                    {#if permissionStatus.admin}
-                      <Check class="h-3 w-3 text-green-500" />
-                    {:else}
-                      <X class="h-3 w-3 text-red-500" />
+                    Repos
+                  </span>
+                  <span class="flex items-center gap-0.5">
+                    {#if currentCheck === 'admin'}
+                      <Loader2 class="h-3 w-3 animate-spin text-slate-400" />
+                    {:else if permissionStatus.admin !== undefined}
+                      {#if permissionStatus.admin}
+                        <Check class="h-3 w-3 text-green-500" />
+                      {:else}
+                        <X class="h-3 w-3 text-red-500" />
+                      {/if}
+                    {:else if previousToken === githubToken && lastPermissionCheck}
+                      <Check class="h-3 w-3 text-green-500 opacity-50" />
                     {/if}
-                  {/if}
-                  Admin
-                </span>
-                <span class="flex items-center gap-0.5">
-                  {#if currentCheck === 'code'}
-                    <Loader2 class="h-3 w-3 animate-spin text-slate-400" />
-                  {:else if permissionStatus.contents !== undefined}
-                    {#if permissionStatus.contents}
-                      <Check class="h-3 w-3 text-green-500" />
-                    {:else}
-                      <X class="h-3 w-3 text-red-500" />
+                    Admin
+                  </span>
+                  <span class="flex items-center gap-0.5">
+                    {#if currentCheck === 'code'}
+                      <Loader2 class="h-3 w-3 animate-spin text-slate-400" />
+                    {:else if permissionStatus.contents !== undefined}
+                      {#if permissionStatus.contents}
+                        <Check class="h-3 w-3 text-green-500" />
+                      {:else}
+                        <X class="h-3 w-3 text-red-500" />
+                      {/if}
+                    {:else if previousToken === githubToken && lastPermissionCheck}
+                      <Check class="h-3 w-3 text-green-500 opacity-50" />
                     {/if}
-                  {/if}
-                  Code
-                </span>
+                    Code
+                  </span>
+                </div>
+                {#if previousToken === githubToken && lastPermissionCheck}
+                  <div class="relative group">
+                    <HelpCircle class="h-3 w-3 text-slate-400" />
+                    <div class="absolute bottom-full mb-2 left-1/2 -translate-x-1/2 hidden group-hover:block w-64 p-2 text-xs bg-slate-900 border border-slate-700 rounded-md shadow-lg">
+                      <p>Last verified: {new Date(lastPermissionCheck).toLocaleString()}</p>
+                      <p class="mt-1 text-slate-400">Permissions are automatically re-verified when the token changes or after 30 days.</p>
+                    </div>
+                  </div>
+                {/if}
               </div>
             </div>
           {/if}
