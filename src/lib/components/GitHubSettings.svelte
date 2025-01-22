@@ -212,11 +212,10 @@
     try {
       const githubService = new GitHubService(githubToken);
       
-      // Check repository creation permission
-      currentCheck = 'repos';
       const result = await githubService.verifyFineGrainedPermissions(
         repoOwner,
         ({ permission, isValid }) => {
+          currentCheck = permission;
           // Update the status as each permission is checked
           switch (permission) {
             case 'repos':

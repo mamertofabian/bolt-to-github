@@ -53,6 +53,7 @@ export class GitHubTokenValidator extends BaseGitHubService {
         await this.delay(2000);
         onProgress?.({ permission: 'repos', isValid: true });
       } catch (error) {
+        onProgress?.({ permission: 'repos', isValid: false });
         return { 
           isValid: false, 
           error: 'Token lacks repository creation permission' 
@@ -67,8 +68,13 @@ export class GitHubTokenValidator extends BaseGitHubService {
         await this.delay(2000);
         onProgress?.({ permission: 'admin', isValid: true });
       } catch (error) {
+        onProgress?.({ permission: 'admin', isValid: false });
         // Cleanup repo before returning
-        await this.request('DELETE', `/repos/${username}/${repoName}`);
+        try {
+          await this.request('DELETE', `/repos/${username}/${repoName}`);
+        } catch (cleanupError) {
+          console.error('Failed to cleanup repository after admin check:', cleanupError);
+        }
         return { 
           isValid: false, 
           error: 'Token lacks repository administration permission' 
@@ -87,8 +93,13 @@ export class GitHubTokenValidator extends BaseGitHubService {
         });
         onProgress?.({ permission: 'code', isValid: true });
       } catch (error) {
+        onProgress?.({ permission: 'code', isValid: false });
         // Cleanup repo before returning
-        await this.request('DELETE', `/repos/${username}/${repoName}`);
+        try {
+          await this.request('DELETE', `/repos/${username}/${repoName}`);
+        } catch (cleanupError) {
+          console.error('Failed to cleanup repository after contents check:', cleanupError);
+        }
         return { 
           isValid: false, 
           error: 'Token lacks repository contents read/write permission' 
@@ -97,7 +108,12 @@ export class GitHubTokenValidator extends BaseGitHubService {
 
       // Cleanup: Delete the test repository
       try {
-        await this.request('DELETE', `/repos/${username}/${repoName}`);
+        await this.request('DELETE', `/repos/${username}/${repoName}`, undefined, {
+          // Add accept header to handle empty response
+          headers: {
+            accept: 'application/vnd.github+json'
+          }
+        });
       } catch (error) {
         console.error('Failed to cleanup test repository:', error);
         // Don't return error here as permissions were already verified
