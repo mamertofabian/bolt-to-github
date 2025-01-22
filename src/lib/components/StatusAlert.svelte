@@ -8,6 +8,26 @@
   export let gitHubUsername: string;
   export let repoName: string;
   export let branch: string;
+  export let githubService: GitHubService;
+
+  let repoExists: boolean = false;
+  let isPrivate: boolean = false;
+  let commitCount: number = 0;
+  let latestCommit: string = '';
+  
+  onMount(async () => {
+    try {
+      repoExists = await githubService.repoExists(gitHubUsername, repoName);
+      if (repoExists) {
+        isPrivate = (await githubService.listRepos()).find(r => r.name === repoName)?.private ?? false;
+        commitCount = await githubService.getCommitCount(gitHubUsername, repoName, branch);
+        const commits = await githubService.request('GET', `/repos/${gitHubUsername}/${repoName}/commits?per_page=1`);
+        latestCommit = commits[0]?.commit?.committer?.date || '';
+      }
+    } catch (error) {
+      console.log('Error fetching repo details:', error);
+    }
+  });
 
   const dispatch = createEventDispatcher<{
     switchTab: string;
@@ -59,13 +79,17 @@
         role="button"
         tabindex={0}
       >
-        <div class="col-span-2 text-sm text-slate-400 mb-1">Currently loaded project:</div>
-        <span>Project ID:</span>
-        <span class="font-mono">{projectId}</span>
-        <span>Repository:</span>
-        <span class="font-mono">{repoName}</span>
-        <span>Branch:</span>
-        <span class="font-mono">{branch}</span>
+        <div class="col-span-2 text-sm text-slate-400 mb-1">Project Configuration:</div>
+        <span class="text-slate-400">Status:</span>
+        <span class="font-mono text-green-400">{repoExists ? 'Exists' : 'Will be created'}</span>
+        <span class="text-slate-400">Visibility:</span>
+        <span class="font-mono">{repoExists ? (isPrivate ? 'Private' : 'Public') : 'N/A'}</span>
+        <span class="text-slate-400">Commits:</span>
+        <span class="font-mono">{repoExists ? commitCount : '0'}</span>
+        <span class="text-slate-400">Latest Commit:</span>
+        <span class="font-mono">
+          {latestCommit ? new Date(latestCommit).toLocaleDateString() : 'N/A'}
+        </span>
       </div>
       <button
         class="col-span-2 text-sm mt-2 border border-slate-700 rounded px-2 py-1 text-slate-400 hover:bg-slate-800 hover:text-slate-300 transition-colors"
