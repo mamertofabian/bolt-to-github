@@ -106,7 +106,7 @@
     if (
       !confirm(
         'Warning: This will temporarily create a public copy of your private repository to enable import.\n\n' +
-          'The temporary repository will be automatically deleted after 2 minutes.\n\n' +
+          'The temporary repository will be automatically deleted after 1 minute.\n\n' +
           'Do you want to continue?'
       )
     ) {

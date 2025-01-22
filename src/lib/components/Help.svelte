@@ -146,7 +146,7 @@
             <ol class="ml-4 mt-2 list-decimal">
               <li>A temporary public clone is created</li>
               <li>Bolt starts importing from this clone</li>
-              <li>The temporary repository is automatically deleted after 2 minutes</li>
+              <li>The temporary repository is automatically deleted after 1 minute</li>
             </ol>
             <div class="mt-3 p-2 bg-amber-900/30 rounded border border-amber-700/30">
               <p class="text-amber-400 font-medium">Important:</p>
