@@ -10,7 +10,7 @@
   export let isOnboarding: boolean = false;
   export let githubToken: string;
   export let repoOwner: string;
-  export let repoName: string = '';
+  export let repoName: string;
   export let branch: string = 'main';
   export let status: string;
   export let onSave: () => void;
@@ -60,6 +60,10 @@
 
   $: if (repoName) {
     repoExists = repositories.some((repo) => repo.name.toLowerCase() === repoName.toLowerCase());
+  }
+
+  $: if (projectId && !repoName) {
+    repoName = projectId;
   }
 
   async function loadRepositories() {

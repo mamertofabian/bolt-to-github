@@ -13,7 +13,7 @@
     repoStatus: true,
     visibility: true,
     commits: true,
-    latestCommit: true
+    latestCommit: true,
   };
 
   let repoExists: boolean | null = null;
@@ -27,7 +27,7 @@
   onMount(async () => {
     try {
       const githubService = new GitHubService(token);
-      
+
       // Check repo existence
       repoExists = await githubService.repoExists(gitHubUsername, repoName);
       isLoading.repoStatus = false;
@@ -50,8 +50,9 @@
         if (commits[0]?.commit) {
           latestCommit = {
             date: commits[0].commit.committer.date,
-            message: commits[0].commit.message.split('\n')[0].slice(0, 50) + 
-                    (commits[0].commit.message.length > 50 ? '...' : '')
+            message:
+              commits[0].commit.message.split('\n')[0].slice(0, 50) +
+              (commits[0].commit.message.length > 50 ? '...' : ''),
           };
         }
         isLoading.latestCommit = false;
@@ -63,7 +64,7 @@
     } catch (error) {
       console.log('Error fetching repo details:', error);
       // Reset loading states on error
-      Object.keys(isLoading).forEach(key => isLoading[key as keyof typeof isLoading] = false);
+      Object.keys(isLoading).forEach((key) => (isLoading[key as keyof typeof isLoading] = false));
     }
   });
 
@@ -123,13 +124,11 @@
       <span class="font-mono">
         {#if isLoading.latestCommit}
           <span class="text-slate-500">Loading...</span>
+        {:else if latestCommit}
+          <div>{new Date(latestCommit.date).toLocaleString()}</div>
+          <div class="text-xs text-slate-400 mt-1">{latestCommit.message}</div>
         {:else}
-          {#if latestCommit}
-            <div>{new Date(latestCommit.date).toLocaleString()}</div>
-            <div class="text-xs text-slate-400 mt-1">{latestCommit.message}</div>
-          {:else}
-            N/A
-          {/if}
+          N/A
         {/if}
       </span>
     </div>
@@ -138,7 +137,11 @@
       on:click|stopPropagation={openGitHub}
       disabled={isLoading.repoStatus || !repoExists}
     >
-      Open GitHub repository
+      {isLoading.repoStatus
+        ? 'Loading...'
+        : repoExists
+          ? 'Open GitHub repository'
+          : 'Repo to be created'}
     </button>
   </AlertDescription>
 </Alert>
