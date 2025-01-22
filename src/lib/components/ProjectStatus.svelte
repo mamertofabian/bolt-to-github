@@ -136,6 +136,7 @@
     <button
       class="col-span-2 text-sm mt-2 border border-slate-700 rounded px-2 py-1 text-slate-400 hover:bg-slate-800 hover:text-slate-300 transition-colors"
       on:click|stopPropagation={openGitHub}
+      disabled={isLoading.repoStatus || !repoExists}
     >
       Open GitHub repository
     </button>
