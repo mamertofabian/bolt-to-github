@@ -52,11 +52,11 @@ export class GitHubService extends BaseGitHubService {
     return this.tokenValidator.validateTokenAndUser(username);
   }
 
-  async verifyFineGrainedPermissions(
+  async verifyTokenPermissions(
     username: string,
     onProgress?: ProgressCallback
   ): Promise<{ isValid: boolean; error?: string }> {
-    return this.tokenValidator.verifyFineGrainedPermissions(username, onProgress);
+    return this.tokenValidator.verifyTokenPermissions(username, onProgress);
   }
 
   async repoExists(owner: string, repo: string): Promise<boolean> {

@@ -23,14 +23,10 @@ export class GitHubTokenValidator extends BaseGitHubService {
     return new Promise((resolve) => setTimeout(resolve, ms));
   }
 
-  async verifyFineGrainedPermissions(
+  async verifyTokenPermissions(
     username: string,
     onProgress?: ProgressCallback
   ): Promise<{ isValid: boolean; error?: string }> {
-    if (!this.isFineGrainedToken()) {
-      return { isValid: false, error: 'Not a fine-grained token' };
-    }
-
     try {
       // Create a temporary test repo
       const timestamp = Date.now();

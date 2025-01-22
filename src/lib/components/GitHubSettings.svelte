@@ -204,7 +204,7 @@
     }
   }
 
-  async function checkFineGrainedPermissions() {
+  async function checkTokenPermissions() {
     if (!githubToken || isCheckingPermissions) return;
 
     isCheckingPermissions = true;
@@ -218,7 +218,7 @@
     try {
       const githubService = new GitHubService(githubToken);
 
-      const result = await githubService.verifyFineGrainedPermissions(
+      const result = await githubService.verifyTokenPermissions(
         repoOwner,
         ({ permission, isValid }) => {
           currentCheck = permission;
@@ -264,18 +264,16 @@
   const handleSave = async (event: Event) => {
     event.preventDefault();
 
-    if (tokenType === 'fine-grained') {
-      const THIRTY_DAYS = 30 * 24 * 60 * 60 * 1000;
-      const needsCheck =
-        previousToken !== githubToken ||
-        !lastPermissionCheck ||
-        Date.now() - lastPermissionCheck > THIRTY_DAYS;
+    const THIRTY_DAYS = 30 * 24 * 60 * 60 * 1000;
+    const needsCheck =
+      previousToken !== githubToken ||
+      !lastPermissionCheck ||
+      Date.now() - lastPermissionCheck > THIRTY_DAYS;
 
-      if (needsCheck) {
-        await checkFineGrainedPermissions();
-        if (permissionError) {
-          return; // Don't proceed if permissions check failed
-        }
+    if (needsCheck) {
+      await checkTokenPermissions();
+      if (permissionError) {
+        return; // Don't proceed if permissions check failed
       }
     }
 
@@ -329,14 +327,14 @@
           <p class="text-sm text-emerald-400">
             {tokenType === 'classic' ? '🔑 Classic' : '✨ Fine-grained'} token detected
           </p>
-          {#if tokenType === 'fine-grained' && isTokenValid}
+          {#if isTokenValid}
             <div class="flex items-center gap-2">
               <Button
                 type="button"
                 variant="outline"
                 size="sm"
                 class="text-xs"
-                on:click={checkFineGrainedPermissions}
+                on:click={checkTokenPermissions}
                 disabled={isCheckingPermissions}
               >
                 {#if isCheckingPermissions}
