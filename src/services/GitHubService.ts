@@ -256,8 +256,25 @@ This repository was automatically initialized by the Bolt to GitHub extension.
       // Check rate limits before starting
       await rateLimitHandler.beforeRequest();
       const rateLimit = await this.request('GET', '/rate_limit');
-      if (rateLimit.resources.core.remaining < 10) {
-        throw new Error('Insufficient API rate limit remaining');
+      const remainingRequests = rateLimit.resources.core.remaining;
+      const resetTime = rateLimit.resources.core.reset;
+
+      if (remainingRequests < 10) {
+        const now = Math.floor(Date.now() / 1000);
+        const waitTime = resetTime - now;
+        
+        // If reset is happening soon (within 2 minutes), wait for it
+        if (waitTime <= 120) {
+          console.log(`Waiting ${waitTime} seconds for rate limit reset...`);
+          await rateLimitHandler.sleep(waitTime * 1000);
+          // Recheck rate limit after waiting
+          const newRateLimit = await this.request('GET', '/rate_limit');
+          if (newRateLimit.resources.core.remaining < 10) {
+            throw new Error('Insufficient API rate limit remaining even after waiting for reset');
+          }
+        } else {
+          throw new Error(`Insufficient API rate limit remaining. Reset in ${Math.ceil(waitTime / 60)} minutes`);
+        }
       }
 
       // Get all files from source repo
