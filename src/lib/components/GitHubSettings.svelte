@@ -352,6 +352,15 @@
                 {/if}
               </Button>
               <div class="flex items-center gap-2">
+                {#if previousToken === githubToken && lastPermissionCheck}
+                  <div class="relative group">
+                    <HelpCircle class="h-3 w-3 text-slate-400" />
+                    <div class="absolute bottom-full mb-2 left-1/2 -translate-x-1/2 hidden group-hover:block w-64 p-2 text-xs bg-slate-900 border border-slate-700 rounded-md shadow-lg">
+                      <p>Last verified: {new Date(lastPermissionCheck).toLocaleString()}</p>
+                      <p class="mt-1 text-slate-400">Permissions are automatically re-verified when the token changes or after 30 days.</p>
+                    </div>
+                  </div>
+                {/if}
                 <div class="flex items-center gap-1.5 text-xs">
                   <span class="flex items-center gap-0.5">
                     {#if currentCheck === 'repos'}
@@ -396,15 +405,6 @@
                     Code
                   </span>
                 </div>
-                {#if previousToken === githubToken && lastPermissionCheck}
-                  <div class="relative group">
-                    <HelpCircle class="h-3 w-3 text-slate-400" />
-                    <div class="absolute bottom-full mb-2 left-1/2 -translate-x-1/2 hidden group-hover:block w-64 p-2 text-xs bg-slate-900 border border-slate-700 rounded-md shadow-lg">
-                      <p>Last verified: {new Date(lastPermissionCheck).toLocaleString()}</p>
-                      <p class="mt-1 text-slate-400">Permissions are automatically re-verified when the token changes or after 30 days.</p>
-                    </div>
-                  </div>
-                {/if}
               </div>
             </div>
           {/if}
