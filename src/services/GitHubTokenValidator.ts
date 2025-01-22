@@ -33,14 +33,14 @@ export class GitHubTokenValidator extends BaseGitHubService {
       const timestamp = Date.now();
       const repoName = `test-repo-${timestamp}`;
       
-      // Test repository creation (All repositories access + Admin Write)
+      // Test repository creation (All repositories access)
       try {
         await this.request('POST', '/user/repos', {
           name: repoName,
           private: true,
           auto_init: true
         });
-        await this.delay(5000); // Increased delay to 5 seconds for GitHub initialization
+        await this.delay(1000); // Reduced delay since we're doing simpler operations
       } catch (error) {
         return { 
           isValid: false, 
@@ -48,12 +48,10 @@ export class GitHubTokenValidator extends BaseGitHubService {
         };
       }
 
-      // Test visibility change (Admin Write)
       try {
-        await this.request('PATCH', `/repos/${username}/${repoName}`, {
-          private: false
-        });
-        await this.delay(1000);
+        // Test administration access by getting repository settings
+        await this.request('GET', `/repos/${username}/${repoName}/settings`);
+        await this.delay(500);
       } catch (error) {
         // Cleanup repo before returning
         await this.request('DELETE', `/repos/${username}/${repoName}`);
@@ -63,21 +61,16 @@ export class GitHubTokenValidator extends BaseGitHubService {
         };
       }
 
-      // Test content write
       try {
-        const content = btoa('test'); // Convert to base64
-        const response = await this.request('PUT', `/repos/${username}/${repoName}/contents/test.txt`, {
-          message: 'Add test file',
+        // Test contents read by listing contents
+        await this.request('GET', `/repos/${username}/${repoName}/contents`);
+        
+        // Test contents write with a small .gitkeep file
+        const content = btoa(''); // empty file in base64
+        await this.request('PUT', `/repos/${username}/${repoName}/contents/.gitkeep`, {
+          message: 'Test write permission',
           content: content
         });
-        await this.delay(1000);
-
-        // Test content delete
-        await this.request('DELETE', `/repos/${username}/${repoName}/contents/test.txt`, {
-          message: 'Remove test file',
-          sha: response.content.sha
-        });
-        await this.delay(1000);
       } catch (error) {
         // Cleanup repo before returning
         await this.request('DELETE', `/repos/${username}/${repoName}`);
@@ -88,14 +81,19 @@ export class GitHubTokenValidator extends BaseGitHubService {
       }
 
       // Cleanup: Delete the test repository
-      await this.request('DELETE', `/repos/${username}/${repoName}`);
+      try {
+        await this.request('DELETE', `/repos/${username}/${repoName}`);
+      } catch (error) {
+        console.error('Failed to cleanup test repository:', error);
+        // Don't return error here as permissions were already verified
+      }
       
       return { isValid: true };
     } catch (error) {
       console.error('Permission verification failed:', error);
       return { 
         isValid: false, 
-        error: `Permission verification failed: ${error instanceof Error ? error.message : 'Unknown error'}` 
+        error: `Permission verification failed: ${error instanceof Error ? error.message : String(error)}` 
       };
     }
   }
