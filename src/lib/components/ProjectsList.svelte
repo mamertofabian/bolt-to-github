@@ -113,10 +113,17 @@
     }
 
     try {
-      // Send message to background service
-      chrome.runtime.sendMessage({
+      const port = chrome.runtime.connect({ name: 'bolt-content' });
+      port.postMessage({
         type: 'IMPORT_PRIVATE_REPO',
         data: { repoName }
+      });
+      
+      port.onMessage.addListener((message) => {
+        if (message.type === 'UPLOAD_STATUS') {
+          // Handle status updates if needed
+          console.log('Import status:', message.status);
+        }
       });
     } catch (error) {
       console.error('Failed to import private repository:', error);
