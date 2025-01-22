@@ -1,6 +1,6 @@
 export const GITHUB_SIGNUP_URL = 'https://github.com/signup';
 export const CREATE_TOKEN_URL =
-  'https://github.com/settings/tokens/new?scopes=repo&description=Bolt%20to%20GitHub&default_expires_at=none';
+  'https://github.com/settings/tokens/new?scopes=delete_repo,repo&description=Bolt%20to%20GitHub&default_expires_at=none';
 export const CREATE_FINE_GRAINED_TOKEN_URL =
   'https://github.com/settings/personal-access-tokens/new';
 
