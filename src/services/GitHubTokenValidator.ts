@@ -104,49 +104,56 @@ export class GitHubTokenValidator extends BaseGitHubService {
     }
   }
 
-  async validateTokenAndUser(username: string): Promise<{ isValid: boolean; error?: string }> {
+  private async validateClassicToken(username: string): Promise<{ isValid: boolean; error?: string }> {
     try {
-      try {
-        const authUser = await this.request('GET', '/user');
-
-        // For fine-grained tokens, verify required permissions
-        if (this.isFineGrainedToken()) {
-          const permissionCheck = await this.verifyFineGrainedPermissions();
-          if (!permissionCheck.isValid) {
-            return permissionCheck;
-          }
-        }
-        if (!authUser.login) {
-          return { isValid: false, error: 'Invalid GitHub token' };
-        }
-
-        if (authUser.login.toLowerCase() === username.toLowerCase()) {
-          return { isValid: true };
-        }
-
-        try {
-          const targetUser = await this.request('GET', `/users/${username}`);
-          if (targetUser.type === 'Organization') {
-            const orgs = await this.request('GET', '/user/orgs');
-            const hasOrgAccess = orgs.some(
-              (org: any) => org.login.toLowerCase() === username.toLowerCase()
-            );
-            if (hasOrgAccess) {
-              return { isValid: true };
-            }
-            return { isValid: false, error: 'Token does not have access to this organization' };
-          }
-
-          return {
-            isValid: false,
-            error: 'Token can only be used with your GitHub username or organizations you have access to',
-          };
-        } catch (error) {
-          return { isValid: false, error: 'Invalid GitHub username or organization' };
-        }
-      } catch (error) {
+      const authUser = await this.request('GET', '/user');
+      
+      if (!authUser.login) {
         return { isValid: false, error: 'Invalid GitHub token' };
       }
+
+      if (authUser.login.toLowerCase() === username.toLowerCase()) {
+        return { isValid: true };
+      }
+
+      const targetUser = await this.request('GET', `/users/${username}`);
+      if (targetUser.type === 'Organization') {
+        const orgs = await this.request('GET', '/user/orgs');
+        const hasOrgAccess = orgs.some(
+          (org: any) => org.login.toLowerCase() === username.toLowerCase()
+        );
+        if (hasOrgAccess) {
+          return { isValid: true };
+        }
+        return { isValid: false, error: 'Token does not have access to this organization' };
+      }
+
+      return {
+        isValid: false,
+        error: 'Token can only be used with your GitHub username or organizations you have access to',
+      };
+    } catch (error) {
+      if (error instanceof Error && error.message.includes('404')) {
+        return { isValid: false, error: 'Invalid GitHub username or organization' };
+      }
+      return { isValid: false, error: 'Invalid GitHub token' };
+    }
+  }
+
+  async validateTokenAndUser(username: string): Promise<{ isValid: boolean; error?: string }> {
+    try {
+      // For fine-grained tokens, verify permissions first
+      if (this.isFineGrainedToken()) {
+        console.log('Validating fine-grained token permissions...');
+        const permissionCheck = await this.verifyFineGrainedPermissions();
+        if (!permissionCheck.isValid) {
+          return permissionCheck;
+        }
+      }
+
+      // Then validate user access for both token types
+      const validation = await this.validateClassicToken(username);
+      return validation;
     } catch (error) {
       console.error('Validation failed:', error);
       return { isValid: false, error: 'Validation failed' };
