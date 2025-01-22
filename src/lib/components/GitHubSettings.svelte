@@ -297,19 +297,21 @@
       {#if validationError}
         <p class="text-sm text-red-400 mt-1">{validationError}</p>
       {:else if tokenType}
-        <div class="flex items-center gap-2">
+        <div class="space-y-2">
           <p class="text-sm {tokenType === 'classic' ? 'text-orange-400' : 'text-emerald-400'}">
             {tokenType === 'classic' ? '⚠️ Classic' : '✨ Fine-grained'} token detected
           </p>
           {#if tokenType === 'classic'}
-            <a
-              href={CREATE_FINE_GRAINED_TOKEN_URL}
-              target="_blank"
-              rel="noopener noreferrer"
-              class="text-sm text-blue-400 hover:text-blue-300"
-            >
-              Create a fine-grained token instead
-            </a>
+            <p>
+              <a
+                href={CREATE_FINE_GRAINED_TOKEN_URL}
+                target="_blank"
+                rel="noopener noreferrer"
+                class="text-sm text-blue-400 hover:text-blue-300"
+              >
+                Create a fine-grained token instead
+              </a>
+            </p>
           {:else if isTokenValid}
             <div class="flex items-center gap-2">
               <Button
@@ -327,41 +329,41 @@
                   Verify Permissions
                 {/if}
               </Button>
-              {#if !isCheckingPermissions}
-                <div class="flex items-center gap-1.5 text-xs">
-                  <span class="flex items-center gap-0.5">
-                    {#if permissionStatus.allRepos !== undefined}
-                      {#if permissionStatus.allRepos}
-                        <Check class="h-3 w-3 text-green-500" />
-                      {:else}
-                        <X class="h-3 w-3 text-red-500" />
-                      {/if}
-                    {/if}
-                    Repos
-                  </span>
-                  <span class="flex items-center gap-0.5">
-                    {#if permissionStatus.admin !== undefined}
-                      {#if permissionStatus.admin}
-                        <Check class="h-3 w-3 text-green-500" />
-                      {:else}
-                        <X class="h-3 w-3 text-red-500" />
-                      {/if}
-                    {/if}
-                    Admin
-                  </span>
-                  <span class="flex items-center gap-0.5">
-                    {#if permissionStatus.contents !== undefined}
-                      {#if permissionStatus.contents}
-                        <Check class="h-3 w-3 text-green-500" />
-                      {:else}
-                        <X class="h-3 w-3 text-red-500" />
-                      {/if}
-                    {/if}
-                    Code
-                  </span>
-                </div>
-              {/if}
             </div>
+            {#if !isCheckingPermissions}
+              <div class="flex items-center gap-1.5 text-xs">
+                <span class="flex items-center gap-0.5">
+                  {#if permissionStatus.allRepos !== undefined}
+                    {#if permissionStatus.allRepos}
+                      <Check class="h-3 w-3 text-green-500" />
+                    {:else}
+                      <X class="h-3 w-3 text-red-500" />
+                    {/if}
+                  {/if}
+                  Repos
+                </span>
+                <span class="flex items-center gap-0.5">
+                  {#if permissionStatus.admin !== undefined}
+                    {#if permissionStatus.admin}
+                      <Check class="h-3 w-3 text-green-500" />
+                    {:else}
+                      <X class="h-3 w-3 text-red-500" />
+                    {/if}
+                  {/if}
+                  Admin
+                </span>
+                <span class="flex items-center gap-0.5">
+                  {#if permissionStatus.contents !== undefined}
+                    {#if permissionStatus.contents}
+                      <Check class="h-3 w-3 text-green-500" />
+                    {:else}
+                      <X class="h-3 w-3 text-red-500" />
+                    {/if}
+                  {/if}
+                  Code
+                </span>
+              </div>
+            {/if}
           {/if}
         </div>
         {#if permissionError}
