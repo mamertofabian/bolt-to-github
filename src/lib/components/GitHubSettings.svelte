@@ -329,41 +329,41 @@
                   Verify Permissions
                 {/if}
               </Button>
+              {#if !isCheckingPermissions}
+                <div class="flex items-center gap-1.5 text-xs">
+                  <span class="flex items-center gap-0.5">
+                    {#if permissionStatus.allRepos !== undefined}
+                      {#if permissionStatus.allRepos}
+                        <Check class="h-3 w-3 text-green-500" />
+                      {:else}
+                        <X class="h-3 w-3 text-red-500" />
+                      {/if}
+                    {/if}
+                    Repos
+                  </span>
+                  <span class="flex items-center gap-0.5">
+                    {#if permissionStatus.admin !== undefined}
+                      {#if permissionStatus.admin}
+                        <Check class="h-3 w-3 text-green-500" />
+                      {:else}
+                        <X class="h-3 w-3 text-red-500" />
+                      {/if}
+                    {/if}
+                    Admin
+                  </span>
+                  <span class="flex items-center gap-0.5">
+                    {#if permissionStatus.contents !== undefined}
+                      {#if permissionStatus.contents}
+                        <Check class="h-3 w-3 text-green-500" />
+                      {:else}
+                        <X class="h-3 w-3 text-red-500" />
+                      {/if}
+                    {/if}
+                    Code
+                  </span>
+                </div>
+              {/if}
             </div>
-            {#if !isCheckingPermissions}
-              <div class="flex items-center gap-1.5 text-xs">
-                <span class="flex items-center gap-0.5">
-                  {#if permissionStatus.allRepos !== undefined}
-                    {#if permissionStatus.allRepos}
-                      <Check class="h-3 w-3 text-green-500" />
-                    {:else}
-                      <X class="h-3 w-3 text-red-500" />
-                    {/if}
-                  {/if}
-                  Repos
-                </span>
-                <span class="flex items-center gap-0.5">
-                  {#if permissionStatus.admin !== undefined}
-                    {#if permissionStatus.admin}
-                      <Check class="h-3 w-3 text-green-500" />
-                    {:else}
-                      <X class="h-3 w-3 text-red-500" />
-                    {/if}
-                  {/if}
-                  Admin
-                </span>
-                <span class="flex items-center gap-0.5">
-                  {#if permissionStatus.contents !== undefined}
-                    {#if permissionStatus.contents}
-                      <Check class="h-3 w-3 text-green-500" />
-                    {:else}
-                      <X class="h-3 w-3 text-red-500" />
-                    {/if}
-                  {/if}
-                  Code
-                </span>
-              </div>
-            {/if}
           {/if}
         </div>
         {#if permissionError}

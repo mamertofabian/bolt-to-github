@@ -40,7 +40,7 @@ export class GitHubTokenValidator extends BaseGitHubService {
           private: true,
           auto_init: true
         });
-        await this.delay(1000); // Reduced delay since we're doing simpler operations
+        await this.delay(2000);
       } catch (error) {
         return { 
           isValid: false, 
@@ -53,7 +53,7 @@ export class GitHubTokenValidator extends BaseGitHubService {
         await this.request('PATCH', `/repos/${username}/${repoName}`, {
           private: false
         });
-        await this.delay(1000);
+        await this.delay(2000);
       } catch (error) {
         // Cleanup repo before returning
         await this.request('DELETE', `/repos/${username}/${repoName}`);
