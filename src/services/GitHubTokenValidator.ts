@@ -48,10 +48,12 @@ export class GitHubTokenValidator extends BaseGitHubService {
         };
       }
 
+      // Test visibility change (Admin Write)
       try {
-        // Test administration access by getting repository settings
-        await this.request('GET', `/repos/${username}/${repoName}/settings`);
-        await this.delay(500);
+        await this.request('PATCH', `/repos/${username}/${repoName}`, {
+          private: false
+        });
+        await this.delay(1000);
       } catch (error) {
         // Cleanup repo before returning
         await this.request('DELETE', `/repos/${username}/${repoName}`);
