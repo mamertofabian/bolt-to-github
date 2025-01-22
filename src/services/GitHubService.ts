@@ -262,7 +262,7 @@ This repository was automatically initialized by the Bolt to GitHub extension.
       if (remainingRequests < 10) {
         const now = Math.floor(Date.now() / 1000);
         const waitTime = resetTime - now;
-        
+
         // If reset is happening soon (within 2 minutes), wait for it
         if (waitTime <= 120) {
           console.log(`Waiting ${waitTime} seconds for rate limit reset...`);
@@ -273,7 +273,9 @@ This repository was automatically initialized by the Bolt to GitHub extension.
             throw new Error('Insufficient API rate limit remaining even after waiting for reset');
           }
         } else {
-          throw new Error(`Insufficient API rate limit remaining. Reset in ${Math.ceil(waitTime / 60)} minutes`);
+          throw new Error(
+            `Insufficient API rate limit remaining. Reset in ${Math.ceil(waitTime / 60)} minutes`
+          );
         }
       }
 
@@ -282,14 +284,14 @@ This repository was automatically initialized by the Bolt to GitHub extension.
         'GET',
         `/repos/${sourceOwner}/${sourceRepo}/git/trees/${branch}?recursive=1`
       );
-      
+
       const files = response.tree.filter((item: any) => item.type === 'blob');
       const totalFiles = files.length;
 
       // Process files serially through queue
       for (let i = 0; i < files.length; i++) {
         const file = files[i];
-        
+
         await queue.add(async () => {
           let success = false;
           while (!success) {
@@ -308,7 +310,7 @@ This repository was automatically initialized by the Bolt to GitHub extension.
                 content: content.content,
                 branch,
                 message: `Copy ${file.path} from ${sourceRepo}`,
-                checkExisting: false
+                checkExisting: false,
               });
 
               success = true;

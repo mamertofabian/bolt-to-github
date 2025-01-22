@@ -21,7 +21,7 @@ export class RateLimitHandler {
       const backoffTime = Math.min(1000 * Math.pow(2, this.retryCount), 60000);
       await this.sleep(backoffTime);
     }
-    
+
     this.retryCount++;
     if (this.retryCount >= this.MAX_RETRIES) {
       throw new Error('Maximum retry attempts exceeded');
@@ -31,11 +31,11 @@ export class RateLimitHandler {
   async beforeRequest(): Promise<void> {
     const now = Date.now();
     const timeSinceLastRequest = now - this.lastRequestTime;
-    
+
     if (timeSinceLastRequest < this.MIN_REQUEST_INTERVAL) {
       await this.sleep(this.MIN_REQUEST_INTERVAL - timeSinceLastRequest);
     }
-    
+
     this.lastRequestTime = Date.now();
   }
 
@@ -44,6 +44,6 @@ export class RateLimitHandler {
   }
 
   sleep(ms: number): Promise<void> {
-    return new Promise(resolve => setTimeout(resolve, ms));
+    return new Promise((resolve) => setTimeout(resolve, ms));
   }
 }

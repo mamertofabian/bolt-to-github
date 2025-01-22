@@ -289,8 +289,8 @@
               💡 No Bolt projects found. Create or load an existing Bolt project to get started.
             </p>
             <p class="text-sm text-green-400 pb-4">
-              🌟 You can also load any of your GitHub repositories by providing your GitHub
-              token and repository owner.
+              🌟 You can also load any of your GitHub repositories by providing your GitHub token
+              and repository owner.
             </p>
             <GitHubSettings
               isOnboarding={true}

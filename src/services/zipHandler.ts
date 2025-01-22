@@ -3,6 +3,8 @@ import { toBase64 } from '../lib/common';
 import { ZipProcessor } from '../lib/zip';
 import ignore from 'ignore';
 import type { ProcessingStatus, UploadStatusState } from '$lib/types';
+import { RateLimitHandler } from './RateLimitHandler';
+import { Queue } from '../lib/Queue';
 
 export class ZipHandler {
   constructor(
@@ -276,40 +278,85 @@ export class ZipHandler {
     return new Promise((resolve) => setTimeout(resolve, ms));
   }
 
-  private async createBlobs(files: Map<string, string>, repoOwner: string, repoName: string) {
+  private async createBlobs(
+    files: Map<string, string>,
+    repoOwner: string,
+    repoName: string
+  ): Promise<Array<{ path: string; mode: string; type: string; sha: string }>> {
+    const results: Array<{ path: string; mode: string; type: string; sha: string }> = [];
     const totalFiles = files.size;
     let completedFiles = 0;
 
-    const results = [];
-    for (const [path, content] of files.entries()) {
-      const blobData = await this.githubService.request(
-        'POST',
-        `/repos/${repoOwner}/${repoName}/git/blobs`,
-        {
-          content: toBase64(content),
-          encoding: 'base64',
+    const rateLimitHandler = new RateLimitHandler();
+    const rateLimit = await this.githubService.request('GET', '/rate_limit');
+    const remainingRequests = rateLimit.resources.core.remaining;
+    const resetTime = rateLimit.resources.core.reset;
+
+    if (remainingRequests < 10) {
+      const now = Math.floor(Date.now() / 1000);
+      const waitTime = resetTime - now;
+
+      // If reset is happening soon (within 2 minutes), wait for it
+      if (waitTime <= 120) {
+        console.log(`Waiting ${waitTime} seconds for rate limit reset...`);
+        await rateLimitHandler.sleep(waitTime * 1000);
+        // Recheck rate limit after waiting
+        const newRateLimit = await this.githubService.request('GET', '/rate_limit');
+        if (newRateLimit.resources.core.remaining < 10) {
+          throw new Error('Insufficient API rate limit remaining even after waiting for reset');
         }
-      );
-
-      completedFiles++;
-      const progress = 30 + Math.floor((completedFiles / totalFiles) * 30);
-      await this.updateStatus(
-        'uploading',
-        progress,
-        `Creating blob ${completedFiles}/${totalFiles}...`
-      );
-
-      results.push({
-        path,
-        mode: '100644',
-        type: 'blob',
-        sha: blobData.sha,
-      });
-
-      // Add a delay every 5 files to avoid rate limiting
-      if (completedFiles < totalFiles && completedFiles % 5 === 0) {
-        await this.sleep(1000); // 1 second delay every 5 files
+      } else {
+        throw new Error(
+          `Insufficient API rate limit remaining. Reset in ${Math.ceil(waitTime / 60)} minutes`
+        );
       }
+    }
+
+    const queue = new Queue(1); // Using a queue for serial execution
+
+    for (const [path, content] of files.entries()) {
+      await queue.add(async () => {
+        let success = false;
+        while (!success) {
+          try {
+            await rateLimitHandler.beforeRequest();
+
+            const blobData = await this.githubService.request(
+              'POST',
+              `/repos/${repoOwner}/${repoName}/git/blobs`,
+              {
+                content: toBase64(content),
+                encoding: 'base64',
+              }
+            );
+
+            results.push({
+              path,
+              mode: '100644',
+              type: 'blob',
+              sha: blobData.sha,
+            });
+
+            success = true;
+            rateLimitHandler.resetRetryCount();
+
+            completedFiles++;
+            await this.updateStatus(
+              'uploading',
+              20 + Math.floor((completedFiles / totalFiles) * 60),
+              `Uploading files (${completedFiles}/${totalFiles})...`
+            );
+          } catch (error) {
+            if (error instanceof Response && error.status === 403) {
+              await rateLimitHandler.handleRateLimit(error);
+              // Retry the current file by decrementing the loop counter
+              completedFiles--;
+            } else {
+              throw error;
+            }
+          }
+        }
+      });
     }
 
     return results;
