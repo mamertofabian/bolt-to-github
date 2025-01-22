@@ -35,10 +35,17 @@ export class GitHubService extends BaseGitHubService {
     return this.tokenValidator.isClassicToken();
   }
 
+  async isFineGrainedToken(): Promise<boolean> {
+    return this.tokenValidator.isFineGrainedToken();
+  }
+
   async validateTokenAndUser(username: string): Promise<{ isValid: boolean; error?: string }> {
     return this.tokenValidator.validateTokenAndUser(username);
   }
 
+  async verifyFineGrainedPermissions(): Promise<{ isValid: boolean; error?: string }> {
+    return this.tokenValidator.verifyFineGrainedPermissions();
+  }
 
   async repoExists(owner: string, repo: string): Promise<boolean> {
     try {
