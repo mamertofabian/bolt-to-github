@@ -6,6 +6,8 @@ export const CREATE_FINE_GRAINED_TOKEN_URL =
 
 import { BaseGitHubService, type ProgressCallback } from './BaseGitHubService';
 import { GitHubTokenValidator } from './GitHubTokenValidator';
+import { RateLimitHandler } from './RateLimitHandler';
+import { Queue } from '../lib/Queue';
 
 interface GitHubFileResponse {
   sha?: string;
@@ -247,35 +249,73 @@ This repository was automatically initialized by the Bolt to GitHub extension.
     branch: string = 'main',
     onProgress?: (progress: number) => void
   ): Promise<void> {
-    // Get all files from source repo
-    const response = await this.request(
-      'GET',
-      `/repos/${sourceOwner}/${sourceRepo}/git/trees/${branch}?recursive=1`
-    );
-    const files = response.tree.filter((item: any) => item.type === 'blob');
-    const totalFiles = files.length;
+    const rateLimitHandler = new RateLimitHandler();
+    const queue = new Queue(1); // Using a queue for serial execution
 
-    // Copy each file to target repo
-    for (let i = 0; i < files.length; i++) {
-      const file = files[i];
-      const content = await this.request(
-        'GET',
-        `/repos/${sourceOwner}/${sourceRepo}/contents/${file.path}?ref=${branch}`
-      );
-      await this.pushFile({
-        owner: targetOwner,
-        repo: targetRepo,
-        path: file.path,
-        content: content.content,
-        branch,
-        message: `Copy ${file.path} from ${sourceRepo}`,
-        checkExisting: false, // Skip checking for existing files when cloning
-      });
-
-      if (onProgress) {
-        const progress = ((i + 1) / totalFiles) * 100;
-        onProgress(progress);
+    try {
+      // Check rate limits before starting
+      await rateLimitHandler.beforeRequest();
+      const rateLimit = await this.request('GET', '/rate_limit');
+      if (rateLimit.resources.core.remaining < 10) {
+        throw new Error('Insufficient API rate limit remaining');
       }
+
+      // Get all files from source repo
+      const response = await this.request(
+        'GET',
+        `/repos/${sourceOwner}/${sourceRepo}/git/trees/${branch}?recursive=1`
+      );
+      
+      const files = response.tree.filter((item: any) => item.type === 'blob');
+      const totalFiles = files.length;
+
+      // Process files serially through queue
+      for (let i = 0; i < files.length; i++) {
+        const file = files[i];
+        
+        await queue.add(async () => {
+          let success = false;
+          while (!success) {
+            try {
+              await rateLimitHandler.beforeRequest();
+              const content = await this.request(
+                'GET',
+                `/repos/${sourceOwner}/${sourceRepo}/contents/${file.path}?ref=${branch}`
+              );
+
+              await rateLimitHandler.beforeRequest();
+              await this.pushFile({
+                owner: targetOwner,
+                repo: targetRepo,
+                path: file.path,
+                content: content.content,
+                branch,
+                message: `Copy ${file.path} from ${sourceRepo}`,
+                checkExisting: false
+              });
+
+              success = true;
+              rateLimitHandler.resetRetryCount();
+
+              if (onProgress) {
+                const progress = ((i + 1) / totalFiles) * 100;
+                onProgress(progress);
+              }
+            } catch (error) {
+              if (error instanceof Response && error.status === 403) {
+                await rateLimitHandler.handleRateLimit(error);
+              } else {
+                throw error;
+              }
+            }
+          }
+        });
+      }
+    } catch (error) {
+      console.error('Failed to clone repository contents:', error);
+      throw new Error(
+        `Failed to clone repository contents: ${error instanceof Error ? error.message : 'Unknown error'}`
+      );
     }
   }
 
