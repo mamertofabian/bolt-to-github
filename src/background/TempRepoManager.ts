@@ -1,6 +1,8 @@
 import { GitHubService } from '../services/GitHubService';
 import type { UploadStatusState } from '../lib/types';
 
+export const STORAGE_KEY = 'bolt_temp_repos';
+
 interface TempRepoMetadata {
   originalRepo: string;
   tempRepo: string;
@@ -9,7 +11,6 @@ interface TempRepoMetadata {
 }
 
 export class BackgroundTempRepoManager {
-  private static STORAGE_KEY = 'bolt_temp_repos';
   private static CLEANUP_INTERVAL = 30 * 1000; // 30 seconds
   private static MAX_AGE = 60 * 1000; // 60 seconds
 
@@ -99,13 +100,13 @@ export class BackgroundTempRepoManager {
       owner: this.owner,
     });
     await chrome.storage.local.set({
-      [BackgroundTempRepoManager.STORAGE_KEY]: tempRepos,
+      [STORAGE_KEY]: tempRepos,
     });
   }
 
   private async getTempRepos(): Promise<TempRepoMetadata[]> {
-    const result = await chrome.storage.local.get(BackgroundTempRepoManager.STORAGE_KEY);
-    return result[BackgroundTempRepoManager.STORAGE_KEY] || [];
+    const result = await chrome.storage.local.get(STORAGE_KEY);
+    return result[STORAGE_KEY] || [];
   }
 
   async cleanupTempRepos(): Promise<void> {
@@ -126,7 +127,7 @@ export class BackgroundTempRepoManager {
     }
 
     await chrome.storage.local.set({
-      [BackgroundTempRepoManager.STORAGE_KEY]: remaining,
+      [STORAGE_KEY]: remaining,
     });
   }
 
