@@ -273,7 +273,7 @@ This repository was automatically initialized by the Bolt to GitHub extension.
       });
 
       if (onProgress) {
-        const progress = (i + 1) / totalFiles * 100;
+        const progress = ((i + 1) / totalFiles) * 100;
         onProgress(progress);
       }
     }

@@ -10,7 +10,11 @@
     Shield,
     Lock,
   } from 'lucide-svelte';
-  import { GITHUB_SIGNUP_URL, CREATE_TOKEN_URL, CREATE_FINE_GRAINED_TOKEN_URL } from '../../../services/GitHubService';
+  import {
+    GITHUB_SIGNUP_URL,
+    CREATE_TOKEN_URL,
+    CREATE_FINE_GRAINED_TOKEN_URL,
+  } from '../../../services/GitHubService';
   import { onMount } from 'svelte';
 
   let showNewUserGuide = true;
@@ -72,7 +76,9 @@
                   Classic Token
                   <ExternalLink size={12} />
                 </a>
-                <p class="text-xs text-slate-500 ml-5">Best for public repositories. Quick to set up.</p>
+                <p class="text-xs text-slate-500 ml-5">
+                  Best for public repositories. Quick to set up.
+                </p>
               </div>
               <div>
                 <a
@@ -85,7 +91,9 @@
                   Fine-Grained Token
                   <ExternalLink size={12} />
                 </a>
-                <p class="text-xs text-slate-500 ml-5">Required for private repositories. More secure with granular permissions.</p>
+                <p class="text-xs text-slate-500 ml-5">
+                  Required for private repositories. More secure with granular permissions.
+                </p>
               </div>
             </div>
           </li>

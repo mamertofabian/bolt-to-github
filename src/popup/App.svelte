@@ -19,6 +19,7 @@
   import { GitHubService } from '../services/GitHubService';
   import { Button } from '$lib/components/ui/button';
   import Help from '$lib/components/Help.svelte';
+  import ProjectStatus from '$lib/components/ProjectStatus.svelte';
 
   let githubToken: string = '';
   let repoOwner = '';
@@ -208,14 +209,18 @@
               View All Projects
             </button>
 
-            <StatusAlert
-              {isSettingsValid}
-              projectId={parsedProjectId}
-              gitHubUsername={repoOwner}
-              {repoName}
-              {branch}
-              on:switchTab={handleSwitchTab}
-            />
+            {#if !isSettingsValid || !parsedProjectId}
+              <StatusAlert on:switchTab={handleSwitchTab} />
+            {:else}
+              <ProjectStatus
+                projectId={parsedProjectId}
+                gitHubUsername={repoOwner}
+                {repoName}
+                {branch}
+                token={githubToken}
+                on:switchTab={handleSwitchTab}
+              />
+            {/if}
 
             <div class="mt-6 space-y-4">
               <SocialLinks {GITHUB_LINK} {YOUTUBE_LINK} {COFFEE_LINK} />

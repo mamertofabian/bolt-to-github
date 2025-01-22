@@ -117,7 +117,7 @@
       console.log('🔄 Sending message to import private repo:', repoName);
       // Send message directly to background service
       const port = chrome.runtime.connect({ name: 'popup' });
-      
+
       // Set up listener first
       port.onMessage.addListener((message) => {
         if (message.type === 'UPLOAD_STATUS') {
@@ -133,7 +133,6 @@
 
       // Close the popup to prevent UI overlap
       window.close();
-
     } catch (error) {
       console.error('❌ Failed to import private repository:', error);
       alert('Failed to import private repository. Please try again later.');
