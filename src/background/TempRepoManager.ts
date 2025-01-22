@@ -30,8 +30,8 @@ export class BackgroundTempRepoManager {
         progress: 10
       });
 
-      const tempRepoName = await this.githubService.createTemporaryPublicRepo(sourceRepo);
-      this.saveTempRepo(sourceRepo, tempRepoName);
+      tempRepoName = await this.githubService.createTemporaryPublicRepo(sourceRepo);
+      await this.saveTempRepo(sourceRepo, tempRepoName);
 
       this.broadcastStatus({
         status: 'uploading',
@@ -80,29 +80,26 @@ export class BackgroundTempRepoManager {
     }
   }
 
-  private saveTempRepo(originalRepo: string, tempRepo: string): void {
-    const tempRepos = this.getTempRepos();
+  private async saveTempRepo(originalRepo: string, tempRepo: string): Promise<void> {
+    const tempRepos = await this.getTempRepos();
     tempRepos.push({
       originalRepo,
       tempRepo,
       createdAt: Date.now(),
       owner: this.owner
     });
-    localStorage.setItem(BackgroundTempRepoManager.STORAGE_KEY, JSON.stringify(tempRepos));
+    await chrome.storage.local.set({
+      [BackgroundTempRepoManager.STORAGE_KEY]: tempRepos
+    });
   }
 
-  private getTempRepos(): Array<{
-    originalRepo: string;
-    tempRepo: string;
-    createdAt: number;
-    owner: string;
-  }> {
-    const stored = localStorage.getItem(BackgroundTempRepoManager.STORAGE_KEY);
-    return stored ? JSON.parse(stored) : [];
+  private async getTempRepos(): Promise<TempRepoMetadata[]> {
+    const result = await chrome.storage.local.get(BackgroundTempRepoManager.STORAGE_KEY);
+    return result[BackgroundTempRepoManager.STORAGE_KEY] || [];
   }
 
   async cleanupTempRepos(): Promise<void> {
-    const tempRepos = this.getTempRepos();
+    const tempRepos = await this.getTempRepos();
     const now = Date.now();
     const remaining = [];
 
@@ -118,7 +115,9 @@ export class BackgroundTempRepoManager {
       }
     }
 
-    localStorage.setItem(BackgroundTempRepoManager.STORAGE_KEY, JSON.stringify(remaining));
+    await chrome.storage.local.set({
+      [BackgroundTempRepoManager.STORAGE_KEY]: remaining
+    });
   }
 
   private startCleanupInterval(): void {
