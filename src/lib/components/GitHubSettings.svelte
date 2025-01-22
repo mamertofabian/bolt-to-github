@@ -39,6 +39,15 @@
   let repoInputFocused = false;
   let repoExists = false;
   let selectedIndex = -1;
+  let isCheckingPermissions = false;
+  let lastPermissionCheck: number | null = null;
+  let permissionStatus = {
+    allRepos: undefined as boolean | undefined,
+    admin: undefined as boolean | undefined,
+    contents: undefined as boolean | undefined
+  };
+  let permissionError: string | null = null;
+  let previousToken: string | null = null;
 
   $: filteredRepos = repositories
     .filter(
@@ -119,6 +128,11 @@
   }
 
   onMount(async () => {
+    // Load last permission check timestamp from storage
+    const storage = await chrome.storage.local.get('lastPermissionCheck');
+    lastPermissionCheck = storage.lastPermissionCheck || null;
+    previousToken = githubToken;
+    
     // If we have initial valid settings, validate and load repos
     if (githubToken && repoOwner) {
       await validateSettings();
@@ -183,6 +197,63 @@
     }
   }
 
+  async function checkFineGrainedPermissions() {
+    if (!githubToken || isCheckingPermissions) return;
+
+    isCheckingPermissions = true;
+    permissionError = null;
+    
+    try {
+      const githubService = new GitHubService(githubToken);
+      const result = await githubService.verifyFineGrainedPermissions();
+      
+      if (result.isValid) {
+        permissionStatus = {
+          allRepos: true,
+          admin: true,
+          contents: true
+        };
+        lastPermissionCheck = Date.now();
+        await chrome.storage.local.set({ lastPermissionCheck });
+        previousToken = githubToken;
+      } else {
+        // Parse the error message to determine which permission failed
+        permissionStatus = {
+          allRepos: !result.error?.includes('repository creation'),
+          admin: !result.error?.includes('administration'),
+          contents: !result.error?.includes('contents')
+        };
+        permissionError = result.error || 'Permission verification failed';
+      }
+    } catch (error) {
+      console.error('Permission check failed:', error);
+      permissionError = 'Failed to verify permissions';
+    } finally {
+      isCheckingPermissions = false;
+    }
+  }
+
+  const handleSave = async (event: Event) => {
+    event.preventDefault();
+    
+    if (tokenType === 'fine-grained') {
+      const THIRTY_DAYS = 30 * 24 * 60 * 60 * 1000;
+      const needsCheck = 
+        previousToken !== githubToken || 
+        !lastPermissionCheck || 
+        Date.now() - lastPermissionCheck > THIRTY_DAYS;
+
+      if (needsCheck) {
+        await checkFineGrainedPermissions();
+        if (permissionError) {
+          return; // Don't proceed if permissions check failed
+        }
+      }
+    }
+    
+    onSave();
+  };
+
   $: if (!isOnboarding && projectId && projectSettings[projectId]) {
     repoName = projectSettings[projectId].repoName;
     branch = projectSettings[projectId].branch;
@@ -194,7 +265,7 @@
   <NewUserGuide />
 
   <!-- Settings Form -->
-  <form on:submit|preventDefault={onSave} class="space-y-4">
+  <form on:submit|preventDefault={handleSave} class="space-y-4">
     <div class="space-y-2">
       <Label for="githubToken" class="text-slate-200">
         GitHub Token
@@ -239,6 +310,75 @@
             </a>
           {/if}
         </p>
+
+        {#if tokenType === 'fine-grained' && isTokenValid}
+          <div class="mt-2 space-y-2">
+            <div class="flex items-center justify-between">
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                class="text-sm"
+                on:click={checkFineGrainedPermissions}
+                disabled={isCheckingPermissions}
+              >
+                {#if isCheckingPermissions}
+                  <Loader2 class="h-4 w-4 mr-2 animate-spin" />
+                  Checking Permissions...
+                {:else}
+                  Verify Permissions
+                {/if}
+              </Button>
+              {#if lastPermissionCheck}
+                <span class="text-xs text-slate-400">
+                  Last checked: {new Date(lastPermissionCheck).toLocaleDateString()}
+                </span>
+              {/if}
+            </div>
+
+            <div class="grid grid-cols-3 gap-2 text-sm">
+              <div class="p-2 rounded border border-slate-700 bg-slate-800">
+                <div class="flex items-center justify-between">
+                  <span>All Repositories</span>
+                  {#if permissionStatus.allRepos !== undefined}
+                    {#if permissionStatus.allRepos}
+                      <Check class="h-4 w-4 text-green-500" />
+                    {:else}
+                      <X class="h-4 w-4 text-red-500" />
+                    {/if}
+                  {/if}
+                </div>
+              </div>
+              <div class="p-2 rounded border border-slate-700 bg-slate-800">
+                <div class="flex items-center justify-between">
+                  <span>Administration</span>
+                  {#if permissionStatus.admin !== undefined}
+                    {#if permissionStatus.admin}
+                      <Check class="h-4 w-4 text-green-500" />
+                    {:else}
+                      <X class="h-4 w-4 text-red-500" />
+                    {/if}
+                  {/if}
+                </div>
+              </div>
+              <div class="p-2 rounded border border-slate-700 bg-slate-800">
+                <div class="flex items-center justify-between">
+                  <span>Contents</span>
+                  {#if permissionStatus.contents !== undefined}
+                    {#if permissionStatus.contents}
+                      <Check class="h-4 w-4 text-green-500" />
+                    {:else}
+                      <X class="h-4 w-4 text-red-500" />
+                    {/if}
+                  {/if}
+                </div>
+              </div>
+            </div>
+            {#if permissionError}
+              <p class="text-sm text-red-400">{permissionError}</p>
+            {/if}
+          </div>
+        {/if}
       {/if}
     </div>
 
