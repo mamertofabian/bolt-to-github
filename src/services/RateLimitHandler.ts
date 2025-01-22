@@ -43,7 +43,7 @@ export class RateLimitHandler {
     this.retryCount = 0;
   }
 
-  private sleep(ms: number): Promise<void> {
+  sleep(ms: number): Promise<void> {
     return new Promise(resolve => setTimeout(resolve, ms));
   }
 }
