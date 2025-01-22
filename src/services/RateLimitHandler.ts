@@ -1,4 +1,6 @@
 export class RateLimitHandler {
+  private requestCount = 0;
+  private readonly BURST_LIMIT = 10; // Allow 10 requests before rate limiting
   private lastRequestTime = 0;
   private retryCount = 0;
   private readonly MAX_RETRIES = 5;
@@ -29,11 +31,16 @@ export class RateLimitHandler {
   }
 
   async beforeRequest(): Promise<void> {
-    const now = Date.now();
-    const timeSinceLastRequest = now - this.lastRequestTime;
+    this.requestCount++;
+    
+    // Only apply rate limiting after BURST_LIMIT requests
+    if (this.requestCount > this.BURST_LIMIT) {
+      const now = Date.now();
+      const timeSinceLastRequest = now - this.lastRequestTime;
 
-    if (timeSinceLastRequest < this.MIN_REQUEST_INTERVAL) {
-      await this.sleep(this.MIN_REQUEST_INTERVAL - timeSinceLastRequest);
+      if (timeSinceLastRequest < this.MIN_REQUEST_INTERVAL) {
+        await this.sleep(this.MIN_REQUEST_INTERVAL - timeSinceLastRequest);
+      }
     }
 
     this.lastRequestTime = Date.now();
@@ -41,6 +48,10 @@ export class RateLimitHandler {
 
   resetRetryCount(): void {
     this.retryCount = 0;
+  }
+
+  resetRequestCount(): void {
+    this.requestCount = 0;
   }
 
   sleep(ms: number): Promise<void> {
