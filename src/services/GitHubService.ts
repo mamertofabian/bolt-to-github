@@ -288,6 +288,9 @@ This repository was automatically initialized by the Bolt to GitHub extension.
       const files = response.tree.filter((item: any) => item.type === 'blob');
       const totalFiles = files.length;
 
+      // Reset rate limit handler counter before starting batch
+      rateLimitHandler.resetRequestCount();
+
       // Process files serially through queue
       for (let i = 0; i < files.length; i++) {
         const file = files[i];
@@ -296,12 +299,14 @@ This repository was automatically initialized by the Bolt to GitHub extension.
           let success = false;
           while (!success) {
             try {
+              // Get file content
               await rateLimitHandler.beforeRequest();
               const content = await this.request(
                 'GET',
                 `/repos/${sourceOwner}/${sourceRepo}/contents/${file.path}?ref=${branch}`
               );
 
+              // Push file content
               await rateLimitHandler.beforeRequest();
               await this.pushFile({
                 owner: targetOwner,
@@ -315,6 +320,11 @@ This repository was automatically initialized by the Bolt to GitHub extension.
 
               success = true;
               rateLimitHandler.resetRetryCount();
+
+              // Reset request counter every 10 files to maintain burst behavior
+              if ((i + 1) % 10 === 0) {
+                rateLimitHandler.resetRequestCount();
+              }
 
               if (onProgress) {
                 const progress = ((i + 1) / totalFiles) * 100;
