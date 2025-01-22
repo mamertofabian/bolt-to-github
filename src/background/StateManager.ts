@@ -1,5 +1,4 @@
 import { SettingsService } from '../services/settings';
-import type { GitHubSettingsInterface } from '../lib/types';
 
 export class StateManager {
   private static instance: StateManager;

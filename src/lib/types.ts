@@ -9,7 +9,8 @@ export type MessageType =
   | 'DEBUG'
   | 'CONTENT_SCRIPT_READY'
   | 'GITHUB_SETTINGS_CHANGED'
-  | 'OPEN_SETTINGS';
+  | 'OPEN_SETTINGS'
+  | 'IMPORT_PRIVATE_REPO';
 
 export interface Message {
   type: MessageType;

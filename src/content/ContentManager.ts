@@ -30,7 +30,7 @@ export class ContentManager {
 
   private shouldInitialize(): boolean {
     const currentUrl = window.location.href;
-    const match = currentUrl.match(/bolt\.new\/~\/([^\/]+)/);
+    const match = currentUrl.match(/bolt\.new\/~\/([^/]+)/);
     return !!match;
   }
 

@@ -2,6 +2,7 @@ import { GitHubService } from '../services/GitHubService';
 import type { Message, MessageType, Port, UploadStatusState } from '../lib/types';
 import { StateManager } from './StateManager';
 import { ZipHandler } from '../services/zipHandler';
+import { BackgroundTempRepoManager } from './TempRepoManager';
 
 export class BackgroundService {
   private stateManager: StateManager;
@@ -110,7 +111,7 @@ export class BackgroundService {
     // Handle URL updates for project ID
     chrome.tabs.onUpdated.addListener(async (tabId, changeInfo, tab) => {
       if (tab.url?.includes('bolt.new/~/')) {
-        const projectId = tab.url.match(/bolt\.new\/~\/([^\/]+)/)?.[1] || null;
+        const projectId = tab.url.match(/bolt\.new\/~\/([^/]+)/)?.[1] || null;
         if (projectId) {
           await this.stateManager.setProjectId(projectId);
         }
