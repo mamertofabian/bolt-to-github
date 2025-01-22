@@ -10,8 +10,8 @@ interface TempRepoMetadata {
 
 export class BackgroundTempRepoManager {
   private static STORAGE_KEY = 'bolt_temp_repos';
-  private static CLEANUP_INTERVAL = 5 * 60 * 1000; // 5 minutes
-  private static MAX_AGE = 30 * 60 * 1000; // 30 minutes
+  private static CLEANUP_INTERVAL = 30 * 1000;  // 30 seconds
+  private static MAX_AGE = 2 * 60 * 1000; // 2 minutes
 
   constructor(
     private githubService: GitHubService,
@@ -30,7 +30,7 @@ export class BackgroundTempRepoManager {
         progress: 10,
       });
 
-      tempRepoName = await this.githubService.createTemporaryPublicRepo(sourceRepo);
+      tempRepoName = await this.githubService.createTemporaryPublicRepo(this.owner, sourceRepo);
       await this.saveTempRepo(sourceRepo, tempRepoName);
 
       this.broadcastStatus({
@@ -39,7 +39,20 @@ export class BackgroundTempRepoManager {
         progress: 30,
       });
 
-      await this.githubService.cloneRepoContents(this.owner, sourceRepo, this.owner, tempRepoName);
+      await this.githubService.cloneRepoContents(
+        this.owner,
+        sourceRepo,
+        this.owner,
+        tempRepoName,
+        'main',
+        (progress) => {
+          this.broadcastStatus({
+            status: 'uploading',
+            message: 'Copying repository contents...',
+            progress: Math.floor(30 + progress * 0.4), // Adjust progress to fit within 30-70 range
+          });
+        }
+      );
 
       this.broadcastStatus({
         status: 'uploading',
@@ -56,12 +69,10 @@ export class BackgroundTempRepoManager {
         progress: 90,
       });
 
-      // Open Bolt in new window
-      chrome.windows.create({
+      // Open Bolt in new tab
+      chrome.tabs.create({
         url: `https://bolt.new/~/github.com/${this.owner}/${tempRepoName}`,
-        type: 'popup',
-        width: 1200,
-        height: 800,
+        active: true, // Focus the new tab
       });
 
       this.broadcastStatus({

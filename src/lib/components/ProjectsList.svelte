@@ -106,7 +106,7 @@
     if (
       !confirm(
         'Warning: This will temporarily create a public copy of your private repository to enable import.\n\n' +
-          'The temporary repository will be automatically deleted after import.\n\n' +
+          'The temporary repository will be automatically deleted after 2 minutes.\n\n' +
           'Do you want to continue?'
       )
     ) {
@@ -114,20 +114,28 @@
     }
 
     try {
-      const port = chrome.runtime.connect({ name: 'bolt-content' });
+      console.log('🔄 Sending message to import private repo:', repoName);
+      // Send message directly to background service
+      const port = chrome.runtime.connect({ name: 'popup' });
+      
+      // Set up listener first
+      port.onMessage.addListener((message) => {
+        if (message.type === 'UPLOAD_STATUS') {
+          console.log('📥 Import status update:', message.status);
+        }
+      });
+
+      // Then send message
       port.postMessage({
         type: 'IMPORT_PRIVATE_REPO',
         data: { repoName },
       });
 
-      port.onMessage.addListener((message) => {
-        if (message.type === 'UPLOAD_STATUS') {
-          // Handle status updates if needed
-          console.log('Import status:', message.status);
-        }
-      });
+      // Close the popup to prevent UI overlap
+      window.close();
+
     } catch (error) {
-      console.error('Failed to import private repository:', error);
+      console.error('❌ Failed to import private repository:', error);
       alert('Failed to import private repository. Please try again later.');
     }
   }

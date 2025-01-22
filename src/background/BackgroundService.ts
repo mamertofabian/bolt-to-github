@@ -84,13 +84,13 @@ export class BackgroundService {
 
   private setupConnectionHandlers(): void {
     chrome.runtime.onConnect.addListener((port: Port) => {
-      const tabId = port.sender?.tab?.id;
+      const tabId = port.sender?.tab?.id ?? -1; // Use -1 for popup
 
-      if (!tabId || port.name !== 'bolt-content') {
+      if (!['bolt-content', 'popup'].includes(port.name)) {
         return;
       }
 
-      console.log('📝 New connection from tab:', tabId);
+      console.log('📝 New connection from:', port.name, 'tabId:', tabId);
       this.ports.set(tabId, port);
 
       port.onDisconnect.addListener(() => {
@@ -99,6 +99,7 @@ export class BackgroundService {
       });
 
       port.onMessage.addListener(async (message: Message) => {
+        console.log('📥 Received port message:', { source: port.name, type: message.type });
         await this.handlePortMessage(tabId, message);
       });
     });
@@ -170,10 +171,12 @@ export class BackgroundService {
           break;
 
         case 'IMPORT_PRIVATE_REPO':
+          console.log('🔄 Processing private repo import:', message.data.repoName);
           if (!this.tempRepoManager) {
             throw new Error('Temp repo manager not initialized');
           }
           await this.tempRepoManager.handlePrivateRepoImport(message.data.repoName);
+          console.log('✅ Private repo import completed');
           break;
         case 'DEBUG':
           console.log(`[Content Debug] ${message.message}`);

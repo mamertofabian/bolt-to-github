@@ -1,0 +1,100 @@
+# Security
+
+## Sensitive Files
+DO NOT read or modify:
+- .env files
+- **/config/secrets.* 
+- **/*.pem
+- Any file containing API keys, tokens, or credentials
+
+## Security Practices
+- Never commit sensitive files
+- Use environment variables for secrets
+- Keep credentials out of logs and output
+
+# Tech Stack Rules
+
+## Framework & Core Technologies
+- Use Svelte v4.x for components
+- Use TypeScript for all .ts and .svelte files
+- Use Vite v4.x as build tool
+- Chrome Extension manifest v3 standards must be followed
+- ESM modules only (type: "module" in package.json)
+
+## TypeScript Standards
+- Strict mode is required
+- No implicit any types
+- Strict null checks enabled
+- Use type annotations for function parameters and returns
+- Follow the path aliases:
+  - Use $lib/* for imports from src/lib
+- Chrome types must be included
+
+## Component Standards
+- All Svelte components must use TypeScript
+- Follow Svelte best practices for reactivity
+- Keep components focused and single-responsibility
+- Create modular components:
+  - Break down complex UIs into smaller, reusable components
+  - Extract repeated patterns into shared components
+  - Keep component dependencies minimal and explicit
+  - Use composition over inheritance
+  - Maintain clear component interfaces with proper prop types
+- Use Svelte's built-in state management
+- Props must be properly typed
+
+## Styling Standards
+- Use TailwindCSS for styling
+- Follow the custom theme system defined in tailwind.config.js
+- Use CSS variables for theme colors
+- Maintain dark mode compatibility
+- Use container queries appropriately
+- Follow the defined border radius system
+
+## Code Quality
+- Maximum 300 lines of code per file
+- ESLint rules must be followed:
+  - No unused variables (except prefixed with _)
+  - Warn on any usage
+  - Follow svelte-eslint-parser rules
+- Prettier formatting is required:
+  - 2 space indentation
+  - Single quotes
+  - 100 character line length
+  - ES5 trailing commas
+  - Svelte-specific formatting
+
+## Build & Structure
+- Follow the defined Vite build configuration
+- Maintain separate background/content scripts
+- Use proper chunk splitting
+- Keep source maps in development
+- Assets must be in the assets directory
+- Follow the defined output structure
+
+## Dependencies
+- No conflicting Svelte versions
+- Keep dependencies up to date but pin versions
+- Prefer official Svelte integrations
+- Use bits-ui for UI components
+- Use lucide-svelte for icons
+- Maintain compatibility with @crxjs/vite-plugin
+
+## Performance
+- Minimize bundle sizes
+- Use proper code splitting
+- Optimize asset loading
+- Follow Chrome extension best practices for performance
+
+## Testing & Quality Assurance
+- Run svelte-check before commits
+- Ensure type checking passes
+- Fix all ESLint warnings
+- Format code before committing
+- Test in both light and dark modes
+
+## Version Control
+- Follow semantic versioning
+- Keep package-lock.json up to date
+- Document breaking changes
+- Maintain a clean git history

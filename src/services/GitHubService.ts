@@ -62,20 +62,22 @@ export class GitHubService extends BaseGitHubService {
     }
   }
 
-  async createRepo(options: RepoCreateOptions) {
+  async createRepo(options: RepoCreateOptions & { auto_init?: boolean }) {
+    const { auto_init = true, ...repoOptions } = options;
+
     try {
       // Try creating in user's account first
       try {
         return await this.request('POST', '/user/repos', {
-          ...options,
-          auto_init: true, // Initialize with README to create main branch
+          ...repoOptions,
+          auto_init, // Use the provided value or default to true
         });
       } catch (error) {
         if (error instanceof Error && error.message.includes('404')) {
           // If user endpoint fails, try organization endpoint
           return await this.request('POST', `/orgs/${options.name}/repos`, {
-            ...options,
-            auto_init: true,
+            ...repoOptions,
+            auto_init,
           });
         }
         throw error;
@@ -148,21 +150,24 @@ This repository was automatically initialized by the Bolt to GitHub extension.
     content: string;
     branch: string;
     message: string;
+    checkExisting?: boolean;
   }) {
-    const { owner, repo, path, content, branch, message } = params;
+    const { owner, repo, path, content, branch, message, checkExisting = true } = params;
 
     try {
-      // Try to get existing file
+      // Try to get existing file if needed
       let sha: string | undefined;
-      try {
-        const response: GitHubFileResponse = await this.request(
-          'GET',
-          `/repos/${owner}/${repo}/contents/${path}?ref=${branch}`
-        );
-        sha = response.sha;
-      } catch (error) {
-        // File doesn't exist, which is fine
-        console.log('File does not exist yet, will create new');
+      if (checkExisting) {
+        try {
+          const response: GitHubFileResponse = await this.request(
+            'GET',
+            `/repos/${owner}/${repo}/contents/${path}?ref=${branch}`
+          );
+          sha = response.sha;
+        } catch (error) {
+          // File doesn't exist, which is fine
+          console.log('File does not exist yet, will create new');
+        }
       }
 
       // Create or update file
@@ -207,15 +212,28 @@ This repository was automatically initialized by the Bolt to GitHub extension.
     }
   }
 
-  async createTemporaryPublicRepo(sourceRepoName: string): Promise<string> {
+  async createTemporaryPublicRepo(ownerName: string, sourceRepoName: string): Promise<string> {
     const timestamp = Date.now();
     const randomStr = Math.random().toString(36).substring(2, 8);
     const tempRepoName = `temp-${sourceRepoName}-${timestamp}-${randomStr}`;
 
+    // Create repo without auto-init
     await this.createRepo({
       name: tempRepoName,
-      private: true, // Keep it private initially
+      private: true,
+      auto_init: false,
       description: 'Temporary repository for Bolt import - will be deleted automatically',
+    });
+
+    // Initialize with an empty commit to create the default branch
+    await this.pushFile({
+      owner: ownerName,
+      repo: tempRepoName,
+      path: '.gitkeep',
+      content: btoa(''), // Empty file
+      branch: 'main',
+      message: 'Initialize repository',
+      checkExisting: false,
     });
 
     return tempRepoName;
@@ -226,7 +244,8 @@ This repository was automatically initialized by the Bolt to GitHub extension.
     sourceRepo: string,
     targetOwner: string,
     targetRepo: string,
-    branch: string = 'main'
+    branch: string = 'main',
+    onProgress?: (progress: number) => void
   ): Promise<void> {
     // Get all files from source repo
     const response = await this.request(
@@ -234,9 +253,11 @@ This repository was automatically initialized by the Bolt to GitHub extension.
       `/repos/${sourceOwner}/${sourceRepo}/git/trees/${branch}?recursive=1`
     );
     const files = response.tree.filter((item: any) => item.type === 'blob');
+    const totalFiles = files.length;
 
     // Copy each file to target repo
-    for (const file of files) {
+    for (let i = 0; i < files.length; i++) {
+      const file = files[i];
       const content = await this.request(
         'GET',
         `/repos/${sourceOwner}/${sourceRepo}/contents/${file.path}?ref=${branch}`
@@ -248,7 +269,13 @@ This repository was automatically initialized by the Bolt to GitHub extension.
         content: content.content,
         branch,
         message: `Copy ${file.path} from ${sourceRepo}`,
+        checkExisting: false, // Skip checking for existing files when cloning
       });
+
+      if (onProgress) {
+        const progress = (i + 1) / totalFiles * 100;
+        onProgress(progress);
+      }
     }
   }
 
