@@ -40,7 +40,7 @@ export class GitHubTokenValidator extends BaseGitHubService {
           private: true,
           auto_init: true
         });
-        await this.delay(1000); // Wait for repo creation
+        await this.delay(5000); // Increased delay to 5 seconds for GitHub initialization
       } catch (error) {
         return { 
           isValid: false, 
