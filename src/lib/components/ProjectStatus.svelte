@@ -18,7 +18,6 @@
 
   let repoExists: boolean | null = null;
   let isPrivate: boolean | null = null;
-  let commitCount: number | null = null;
   let latestCommit: {
     date: string;
     message: string;
@@ -28,19 +27,15 @@
     try {
       const githubService = new GitHubService(token);
 
-      // Check repo existence
-      repoExists = await githubService.repoExists(gitHubUsername, repoName);
+      // Get repo info
+      const repoInfo = await githubService.getRepoInfo(gitHubUsername, repoName);
+      repoExists = repoInfo.exists;
       isLoading.repoStatus = false;
 
       if (repoExists) {
         // Get visibility
-        const repos = await githubService.listRepos();
-        isPrivate = repos.find((r) => r.name === repoName)?.private ?? null;
+        isPrivate = repoInfo.private ?? null;
         isLoading.visibility = false;
-
-        // Get commit count
-        commitCount = await githubService.getCommitCount(gitHubUsername, repoName, branch);
-        isLoading.commits = false;
 
         // Get latest commit
         const commits = await githubService.request(
@@ -79,9 +74,8 @@
 </script>
 
 <Alert class="border-green-900 bg-green-950">
-  <AlertTitle>Ready to Use</AlertTitle>
+  <AlertTitle>Currently loaded project:</AlertTitle>
   <AlertDescription class="text-slate-300">
-    Your GitHub configuration is set up and ready to go!
     <div
       class="mt-2 grid grid-cols-[auto_1fr] gap-x-2 bg-slate-900/50 p-2 rounded-sm cursor-pointer hover:bg-slate-900/70 transition-colors group"
       on:click={() => dispatch('switchTab', 'settings')}
@@ -89,7 +83,6 @@
       role="button"
       tabindex={0}
     >
-      <div class="col-span-2 text-sm text-slate-400 mb-1">Currently loaded project:</div>
       <span class="text-slate-400">Project ID:</span>
       <span class="font-mono">{projectId}</span>
       <span class="text-slate-400">Repository:</span>
@@ -112,20 +105,12 @@
           {repoExists ? (isPrivate ? 'Private' : 'Public') : 'N/A'}
         {/if}
       </span>
-      <span class="text-slate-400">Commits:</span>
-      <span class="font-mono">
-        {#if isLoading.commits}
-          <span class="text-slate-500">Loading...</span>
-        {:else}
-          {repoExists ? commitCount : 'N/A'}
-        {/if}
-      </span>
       <span class="text-slate-400">Latest Commit:</span>
       <span class="font-mono">
         {#if isLoading.latestCommit}
           <span class="text-slate-500">Loading...</span>
         {:else if latestCommit}
-          <div>{new Date(latestCommit.date).toLocaleString()}</div>
+          <div class="text-xs text-slate-400 mt-1">{new Date(latestCommit.date).toLocaleString()}</div>
           <div class="text-xs text-slate-400 mt-1">{latestCommit.message}</div>
         {:else}
           N/A

@@ -21,6 +21,13 @@ interface RepoCreateOptions {
   description?: string;
 }
 
+interface RepoInfo {
+  name: string;
+  description?: string;
+  private?: boolean;
+  exists: boolean
+}
+
 export class GitHubService extends BaseGitHubService {
   private tokenValidator: GitHubTokenValidator;
 
@@ -59,6 +66,26 @@ export class GitHubService extends BaseGitHubService {
     } catch (error) {
       if (error instanceof Error && error.message.includes('404')) {
         return false;
+      }
+      throw error;
+    }
+  }
+
+async getRepoInfo(owner: string, repo: string): Promise<RepoInfo> {
+    try {
+      const response: RepoInfo = await this.request(
+        'GET',
+        `/repos/${owner}/${repo}`
+      );
+      return {
+        name: response.name,
+        description: response.description,
+        private: response.private,
+        exists: true
+      };
+    } catch (error) {
+      if (error instanceof Error && error.message.includes('404')) {
+        return { name: repo, exists: false };
       }
       throw error;
     }
