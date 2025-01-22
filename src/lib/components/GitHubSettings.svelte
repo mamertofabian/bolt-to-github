@@ -41,6 +41,7 @@
   let selectedIndex = -1;
   let isCheckingPermissions = false;
   let lastPermissionCheck: number | null = null;
+  let currentCheck: 'repos' | 'admin' | 'code' | null = null;
   let permissionStatus = {
     allRepos: undefined as boolean | undefined,
     admin: undefined as boolean | undefined,
@@ -202,17 +203,30 @@
 
     isCheckingPermissions = true;
     permissionError = null;
+    permissionStatus = {
+      allRepos: undefined,
+      admin: undefined,
+      contents: undefined
+    };
     
     try {
       const githubService = new GitHubService(githubToken);
+      
+      // Check repository creation permission
+      currentCheck = 'repos';
       const result = await githubService.verifyFineGrainedPermissions(repoOwner);
       
       if (result.isValid) {
-        permissionStatus = {
-          allRepos: true,
-          admin: true,
-          contents: true
-        };
+        permissionStatus.allRepos = true;
+        
+        // Check admin permission
+        currentCheck = 'admin';
+        permissionStatus.admin = true;
+        
+        // Check contents permission
+        currentCheck = 'code';
+        permissionStatus.contents = true;
+        
         lastPermissionCheck = Date.now();
         await chrome.storage.local.set({ lastPermissionCheck });
         previousToken = githubToken;
@@ -230,6 +244,7 @@
       permissionError = 'Failed to verify permissions';
     } finally {
       isCheckingPermissions = false;
+      currentCheck = null;
     }
   }
 
@@ -329,40 +344,44 @@
                   Verify Permissions
                 {/if}
               </Button>
-              {#if !isCheckingPermissions}
-                <div class="flex items-center gap-1.5 text-xs">
-                  <span class="flex items-center gap-0.5">
-                    {#if permissionStatus.allRepos !== undefined}
-                      {#if permissionStatus.allRepos}
-                        <Check class="h-3 w-3 text-green-500" />
-                      {:else}
-                        <X class="h-3 w-3 text-red-500" />
-                      {/if}
+              <div class="flex items-center gap-1.5 text-xs">
+                <span class="flex items-center gap-0.5">
+                  {#if currentCheck === 'repos'}
+                    <Loader2 class="h-3 w-3 animate-spin text-slate-400" />
+                  {:else if permissionStatus.allRepos !== undefined}
+                    {#if permissionStatus.allRepos}
+                      <Check class="h-3 w-3 text-green-500" />
+                    {:else}
+                      <X class="h-3 w-3 text-red-500" />
                     {/if}
-                    Repos
-                  </span>
-                  <span class="flex items-center gap-0.5">
-                    {#if permissionStatus.admin !== undefined}
-                      {#if permissionStatus.admin}
-                        <Check class="h-3 w-3 text-green-500" />
-                      {:else}
-                        <X class="h-3 w-3 text-red-500" />
-                      {/if}
+                  {/if}
+                  Repos
+                </span>
+                <span class="flex items-center gap-0.5">
+                  {#if currentCheck === 'admin'}
+                    <Loader2 class="h-3 w-3 animate-spin text-slate-400" />
+                  {:else if permissionStatus.admin !== undefined}
+                    {#if permissionStatus.admin}
+                      <Check class="h-3 w-3 text-green-500" />
+                    {:else}
+                      <X class="h-3 w-3 text-red-500" />
                     {/if}
-                    Admin
-                  </span>
-                  <span class="flex items-center gap-0.5">
-                    {#if permissionStatus.contents !== undefined}
-                      {#if permissionStatus.contents}
-                        <Check class="h-3 w-3 text-green-500" />
-                      {:else}
-                        <X class="h-3 w-3 text-red-500" />
-                      {/if}
+                  {/if}
+                  Admin
+                </span>
+                <span class="flex items-center gap-0.5">
+                  {#if currentCheck === 'code'}
+                    <Loader2 class="h-3 w-3 animate-spin text-slate-400" />
+                  {:else if permissionStatus.contents !== undefined}
+                    {#if permissionStatus.contents}
+                      <Check class="h-3 w-3 text-green-500" />
+                    {:else}
+                      <X class="h-3 w-3 text-red-500" />
                     {/if}
-                    Code
-                  </span>
-                </div>
-              {/if}
+                  {/if}
+                  Code
+                </span>
+              </div>
             </div>
           {/if}
         </div>
