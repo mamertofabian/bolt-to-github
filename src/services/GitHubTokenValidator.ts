@@ -1,11 +1,4 @@
-import { BaseGitHubService } from './BaseGitHubService';
-
-export type PermissionCheckProgress = {
-  permission: 'repos' | 'admin' | 'code';
-  isValid: boolean;
-};
-
-export type ProgressCallback = (progress: PermissionCheckProgress) => void;
+import { BaseGitHubService, type ProgressCallback } from './BaseGitHubService';
 
 export class GitHubTokenValidator extends BaseGitHubService {
   async validateToken(): Promise<boolean> {

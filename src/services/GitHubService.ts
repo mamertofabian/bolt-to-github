@@ -4,7 +4,7 @@ export const CREATE_TOKEN_URL =
 export const CREATE_FINE_GRAINED_TOKEN_URL =
   'https://github.com/settings/personal-access-tokens/new?scopes=repository:read,repository:write&description=Bolt%20to%20GitHub%20Fine-Grained%20Token';
 
-import { BaseGitHubService } from './BaseGitHubService';
+import { BaseGitHubService, type ProgressCallback } from './BaseGitHubService';
 import { GitHubTokenValidator } from './GitHubTokenValidator';
 
 interface GitHubFileResponse {
@@ -43,8 +43,8 @@ export class GitHubService extends BaseGitHubService {
     return this.tokenValidator.validateTokenAndUser(username);
   }
 
-  async verifyFineGrainedPermissions(username: string): Promise<{ isValid: boolean; error?: string }> {
-    return this.tokenValidator.verifyFineGrainedPermissions(username);
+  async verifyFineGrainedPermissions(username: string, onProgress?: ProgressCallback): Promise<{ isValid: boolean; error?: string }> {
+    return this.tokenValidator.verifyFineGrainedPermissions(username, onProgress);
   }
 
   async repoExists(owner: string, repo: string): Promise<boolean> {

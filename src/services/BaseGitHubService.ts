@@ -1,3 +1,10 @@
+export type PermissionCheckProgress = {
+  permission: 'repos' | 'admin' | 'code';
+  isValid: boolean;
+};
+
+export type ProgressCallback = (progress: PermissionCheckProgress) => void;
+
 export abstract class BaseGitHubService {
   protected baseUrl = 'https://api.github.com';
 
