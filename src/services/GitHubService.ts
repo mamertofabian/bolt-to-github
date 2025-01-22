@@ -247,7 +247,7 @@ This repository was automatically initialized by the Bolt to GitHub extension.
     });
   }
 
-  listRepos(): Promise<
+  async listRepos(): Promise<
     Array<{
       name: string;
       description: string | null;
