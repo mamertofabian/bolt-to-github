@@ -3,6 +3,8 @@ import { toBase64 } from '../lib/common';
 import { ZipProcessor } from '../lib/zip';
 import ignore from 'ignore';
 import type { ProcessingStatus, UploadStatusState } from '$lib/types';
+import { Queue } from '$lib/Queue';
+import { RateLimitHandler } from './RateLimitHandler';
 
 export class ZipHandler {
   constructor(
