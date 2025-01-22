@@ -9,27 +9,61 @@
   export let branch: string;
   export let token: string;
 
-  let repoExists: boolean = false;
-  let isPrivate: boolean = false;
-  let commitCount: number = 0;
-  let latestCommit: string = '';
+  let isLoading = {
+    repoStatus: true,
+    visibility: true,
+    commits: true,
+    latestCommit: true
+  };
+
+  let repoExists: boolean | null = null;
+  let isPrivate: boolean | null = null;
+  let commitCount: number | null = null;
+  let latestCommit: {
+    date: string;
+    message: string;
+  } | null = null;
 
   onMount(async () => {
     try {
       const githubService = new GitHubService(token);
+      
+      // Check repo existence
       repoExists = await githubService.repoExists(gitHubUsername, repoName);
+      isLoading.repoStatus = false;
+
       if (repoExists) {
-        isPrivate =
-          (await githubService.listRepos()).find((r) => r.name === repoName)?.private ?? false;
+        // Get visibility
+        const repos = await githubService.listRepos();
+        isPrivate = repos.find((r) => r.name === repoName)?.private ?? null;
+        isLoading.visibility = false;
+
+        // Get commit count
         commitCount = await githubService.getCommitCount(gitHubUsername, repoName, branch);
+        isLoading.commits = false;
+
+        // Get latest commit
         const commits = await githubService.request(
           'GET',
           `/repos/${gitHubUsername}/${repoName}/commits?per_page=1`
         );
-        latestCommit = commits[0]?.commit?.committer?.date || '';
+        if (commits[0]?.commit) {
+          latestCommit = {
+            date: commits[0].commit.committer.date,
+            message: commits[0].commit.message.split('\n')[0].slice(0, 50) + 
+                    (commits[0].commit.message.length > 50 ? '...' : '')
+          };
+        }
+        isLoading.latestCommit = false;
+      } else {
+        isLoading.visibility = false;
+        isLoading.commits = false;
+        isLoading.latestCommit = false;
       }
     } catch (error) {
       console.log('Error fetching repo details:', error);
+      // Reset loading states on error
+      Object.keys(isLoading).forEach(key => isLoading[key as keyof typeof isLoading] = false);
     }
   });
 
@@ -62,14 +96,41 @@
       <span class="text-slate-400">Branch:</span>
       <span class="font-mono">{branch}</span>
       <span class="text-slate-400">Status:</span>
-      <span class="font-mono text-green-400">{repoExists ? 'Exists' : 'Will be created'}</span>
+      <span class="font-mono">
+        {#if isLoading.repoStatus}
+          <span class="text-slate-500">Loading...</span>
+        {:else}
+          <span class="text-green-400">{repoExists ? 'Exists' : 'Will be created'}</span>
+        {/if}
+      </span>
       <span class="text-slate-400">Visibility:</span>
-      <span class="font-mono">{repoExists ? (isPrivate ? 'Private' : 'Public') : 'N/A'}</span>
+      <span class="font-mono">
+        {#if isLoading.visibility}
+          <span class="text-slate-500">Loading...</span>
+        {:else}
+          {repoExists ? (isPrivate ? 'Private' : 'Public') : 'N/A'}
+        {/if}
+      </span>
       <span class="text-slate-400">Commits:</span>
-      <span class="font-mono">{repoExists ? commitCount : '0'}</span>
+      <span class="font-mono">
+        {#if isLoading.commits}
+          <span class="text-slate-500">Loading...</span>
+        {:else}
+          {repoExists ? commitCount : 'N/A'}
+        {/if}
+      </span>
       <span class="text-slate-400">Latest Commit:</span>
       <span class="font-mono">
-        {latestCommit ? new Date(latestCommit).toLocaleDateString() : 'N/A'}
+        {#if isLoading.latestCommit}
+          <span class="text-slate-500">Loading...</span>
+        {:else}
+          {#if latestCommit}
+            <div>{new Date(latestCommit.date).toLocaleString()}</div>
+            <div class="text-xs text-slate-400 mt-1">{latestCommit.message}</div>
+          {:else}
+            N/A
+          {/if}
+        {/if}
       </span>
     </div>
     <button
