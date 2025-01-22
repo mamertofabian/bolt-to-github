@@ -73,7 +73,7 @@
           <div class="rounded-md bg-slate-800 p-4">
             <h4 class="mb-2 font-medium text-slate-200">🎯 Classic Personal Access Token</h4>
             <p class="mb-2 text-sm text-slate-400">
-              Best for public repositories only. Quick to set up:
+              Quick to set up, works with both public and private repositories:
             </p>
             <ol class="ml-4 list-decimal text-sm text-slate-400">
               <li>
@@ -83,7 +83,7 @@
                   class="text-blue-400 hover:underline">token creation page</a
                 >
               </li>
-              <li>Optionally customize the token name</li>
+              <li>The required scopes (repo, delete_repo) are pre-configured in the link</li>
               <li>Click "Generate token" at the bottom and copy the token</li>
               <li>Paste the token into the "GitHub Token" field in the "Settings" tab</li>
             </ol>
@@ -92,7 +92,7 @@
           <div class="rounded-md bg-slate-800 p-4">
             <h4 class="mb-2 font-medium text-slate-200">🔐 Fine-Grained Access Token</h4>
             <p class="mb-2 text-sm text-slate-400">
-              Required for private repository access. Setup steps:
+              Alternative option with more granular permission controls:
             </p>
             <ol class="ml-4 list-decimal text-sm text-slate-400">
               <li>
@@ -156,7 +156,9 @@
                 repository. Skip this step only if you want to create a new repository instead.
               </p>
             </div>
-            <p class="mt-2 text-amber-400">Note: Fine-grained token is required for this feature</p>
+            <p class="mt-2 text-amber-400">
+              Note: Either token type will work, as long as it has the correct permissions
+            </p>
           </div>
         </div>
       {/if}

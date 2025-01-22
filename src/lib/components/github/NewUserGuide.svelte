@@ -77,7 +77,7 @@
                   <ExternalLink size={12} />
                 </a>
                 <p class="text-xs text-slate-500 ml-5">
-                  Best for public repositories. Quick to set up.
+                  Quick setup with pre-configured permissions for all repository operations.
                 </p>
               </div>
               <div>
@@ -92,7 +92,7 @@
                   <ExternalLink size={12} />
                 </a>
                 <p class="text-xs text-slate-500 ml-5">
-                  Required for private repositories. More secure with granular permissions.
+                  Advanced option with customizable repository-specific permissions.
                 </p>
               </div>
             </div>

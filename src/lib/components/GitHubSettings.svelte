@@ -324,21 +324,10 @@
         <p class="text-sm text-red-400 mt-1">{validationError}</p>
       {:else if tokenType}
         <div class="space-y-2">
-          <p class="text-sm {tokenType === 'classic' ? 'text-orange-400' : 'text-emerald-400'}">
-            {tokenType === 'classic' ? '⚠️ Classic' : '✨ Fine-grained'} token detected
+          <p class="text-sm text-emerald-400">
+            {tokenType === 'classic' ? '🔑 Classic' : '✨ Fine-grained'} token detected
           </p>
-          {#if tokenType === 'classic'}
-            <p>
-              <a
-                href={CREATE_FINE_GRAINED_TOKEN_URL}
-                target="_blank"
-                rel="noopener noreferrer"
-                class="text-sm text-blue-400 hover:text-blue-300"
-              >
-                Create a fine-grained token instead
-              </a>
-            </p>
-          {:else if isTokenValid}
+          {#if tokenType === 'fine-grained' && isTokenValid}
             <div class="flex items-center gap-2">
               <Button
                 type="button"
