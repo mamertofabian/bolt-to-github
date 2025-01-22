@@ -1,6 +1,13 @@
 import { GitHubService } from '../services/GitHubService';
 import type { UploadStatusState } from '../lib/types';
 
+interface TempRepoMetadata {
+  originalRepo: string;
+  tempRepo: string;
+  createdAt: number;
+  owner: string;
+}
+
 export class BackgroundTempRepoManager {
   private static STORAGE_KEY = 'bolt_temp_repos';
   private static CLEANUP_INTERVAL = 5 * 60 * 1000; // 5 minutes
@@ -15,6 +22,7 @@ export class BackgroundTempRepoManager {
   }
 
   async handlePrivateRepoImport(sourceRepo: string): Promise<void> {
+    let tempRepoName: string | undefined;
     try {
       this.broadcastStatus({
         status: 'uploading',
