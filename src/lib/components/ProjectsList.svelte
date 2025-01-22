@@ -25,7 +25,7 @@
   }> = [];
 
   let searchQuery = '';
-  let showRepos = false;
+  let showRepos = true;
   let filteredProjects: Array<{
     projectId?: string;
     repoName: string;

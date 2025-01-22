@@ -7,8 +7,10 @@
     ExternalLink,
     Youtube,
     Github,
+    Shield,
+    Lock,
   } from 'lucide-svelte';
-  import { GITHUB_SIGNUP_URL, CREATE_TOKEN_URL } from '../../../services/GitHubService';
+  import { GITHUB_SIGNUP_URL, CREATE_TOKEN_URL, CREATE_FINE_GRAINED_TOKEN_URL } from '../../../services/GitHubService';
   import { onMount } from 'svelte';
 
   let showNewUserGuide = true;
@@ -44,7 +46,7 @@
     <div class="px-4 pb-4 space-y-2">
       <div class="space-y-2 text-sm text-slate-400">
         <p>Follow these steps to get started:</p>
-        <ol class="list-decimal list-inside space-y-1 ml-2">
+        <ol class="list-decimal list-inside space-y-3 ml-2">
           <li>
             <a
               href={GITHUB_SIGNUP_URL}
@@ -56,16 +58,36 @@
               <ExternalLink size={12} />
             </a>
           </li>
-          <li>
-            <a
-              href={CREATE_TOKEN_URL}
-              target="_blank"
-              rel="noopener noreferrer"
-              class="text-blue-400 hover:underline inline-flex items-center gap-1"
-            >
-              Generate a GitHub token
-              <ExternalLink size={12} />
-            </a>
+          <li class="space-y-2">
+            Choose a GitHub token type:
+            <div class="ml-4 space-y-2">
+              <div>
+                <a
+                  href={CREATE_TOKEN_URL}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  class="text-blue-400 hover:underline inline-flex items-center gap-1"
+                >
+                  <Shield size={14} />
+                  Classic Token
+                  <ExternalLink size={12} />
+                </a>
+                <p class="text-xs text-slate-500 ml-5">Best for public repositories. Quick to set up.</p>
+              </div>
+              <div>
+                <a
+                  href={CREATE_FINE_GRAINED_TOKEN_URL}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  class="text-blue-400 hover:underline inline-flex items-center gap-1"
+                >
+                  <Lock size={14} />
+                  Fine-Grained Token
+                  <ExternalLink size={12} />
+                </a>
+                <p class="text-xs text-slate-500 ml-5">Required for private repositories. More secure with granular permissions.</p>
+              </div>
+            </div>
           </li>
         </ol>
       </div>
