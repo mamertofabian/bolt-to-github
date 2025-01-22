@@ -97,9 +97,6 @@
     window.open(`https://github.com/${repoOwner}/${repoName}`, '_blank');
   }
 
-  import { TempRepoManager } from '../../services/TempRepoManager';
-  
-  const tempRepoManager = new TempRepoManager(githubService, repoOwner);
 
   async function importFromGitHub(repoOwner: string, repoName: string, isPrivate: boolean) {
     if (!isPrivate) {
@@ -116,13 +113,11 @@
     }
 
     try {
-      const tempRepoName = await tempRepoManager.createTemporaryPublicRepo(repoName);
-      await githubService.cloneRepoContents(repoOwner, repoName, repoOwner, tempRepoName);
-      
-      // Open Bolt with the temporary repo
-      window.open(`https://bolt.new/~/github.com/${repoOwner}/${tempRepoName}`, '_blank');
-      
-      // Cleanup will happen automatically via TempRepoManager
+      // Send message to background service
+      chrome.runtime.sendMessage({
+        type: 'IMPORT_PRIVATE_REPO',
+        data: { repoName }
+      });
     } catch (error) {
       console.error('Failed to import private repository:', error);
       alert('Failed to import private repository. Please try again later.');

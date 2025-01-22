@@ -211,7 +211,7 @@ This repository was automatically initialized by the Bolt to GitHub extension.
 
     await this.createRepo({
       name: tempRepoName,
-      private: false,
+      private: true, // Keep it private initially
       description: 'Temporary repository for Bolt import - will be deleted automatically',
     });
 

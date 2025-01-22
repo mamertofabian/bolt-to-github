@@ -8,6 +8,7 @@ export class BackgroundService {
   private zipHandler: ZipHandler | null;
   private ports: Map<number, Port>;
   private githubService: GitHubService | null;
+  private tempRepoManager: BackgroundTempRepoManager | null = null;
   private pendingCommitMessage: string;
   private storageListener:
     | ((changes: { [key: string]: chrome.storage.StorageChange }, namespace: string) => void)
@@ -29,6 +30,16 @@ export class BackgroundService {
   private async initialize(): Promise<void> {
     const githubService = await this.initializeGitHubService();
     this.setupZipHandler(githubService!);
+    if (githubService) {
+      const settings = await this.stateManager.getGitHubSettings();
+      if (settings?.gitHubSettings?.repoOwner) {
+        this.tempRepoManager = new BackgroundTempRepoManager(
+          githubService,
+          settings.gitHubSettings.repoOwner,
+          (status) => this.broadcastStatus(status)
+        );
+      }
+    }
     this.setupConnectionHandlers();
     this.setupStorageListener();
     console.log('👂 Background service initialized');
@@ -157,6 +168,12 @@ export class BackgroundService {
           chrome.action.openPopup();
           break;
 
+        case 'IMPORT_PRIVATE_REPO':
+          if (!this.tempRepoManager) {
+            throw new Error('Temp repo manager not initialized');
+          }
+          await this.tempRepoManager.handlePrivateRepoImport(message.data.repoName);
+          break;
         case 'DEBUG':
           console.log(`[Content Debug] ${message.message}`);
           break;
