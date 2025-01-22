@@ -1,5 +1,12 @@
 import { BaseGitHubService } from './BaseGitHubService';
 
+export type PermissionCheckProgress = {
+  permission: 'repos' | 'admin' | 'code';
+  isValid: boolean;
+};
+
+export type ProgressCallback = (progress: PermissionCheckProgress) => void;
+
 export class GitHubTokenValidator extends BaseGitHubService {
   async validateToken(): Promise<boolean> {
     try {
@@ -23,7 +30,10 @@ export class GitHubTokenValidator extends BaseGitHubService {
     return new Promise(resolve => setTimeout(resolve, ms));
   }
 
-  async verifyFineGrainedPermissions(username: string): Promise<{ isValid: boolean; error?: string }> {
+  async verifyFineGrainedPermissions(
+    username: string,
+    onProgress?: ProgressCallback
+  ): Promise<{ isValid: boolean; error?: string }> {
     if (!this.isFineGrainedToken()) {
       return { isValid: false, error: 'Not a fine-grained token' };
     }
@@ -41,6 +51,7 @@ export class GitHubTokenValidator extends BaseGitHubService {
           auto_init: true
         });
         await this.delay(2000);
+        onProgress?.({ permission: 'repos', isValid: true });
       } catch (error) {
         return { 
           isValid: false, 
@@ -54,6 +65,7 @@ export class GitHubTokenValidator extends BaseGitHubService {
           private: false
         });
         await this.delay(2000);
+        onProgress?.({ permission: 'admin', isValid: true });
       } catch (error) {
         // Cleanup repo before returning
         await this.request('DELETE', `/repos/${username}/${repoName}`);
@@ -73,6 +85,7 @@ export class GitHubTokenValidator extends BaseGitHubService {
           message: 'Test write permission',
           content: content
         });
+        onProgress?.({ permission: 'code', isValid: true });
       } catch (error) {
         // Cleanup repo before returning
         await this.request('DELETE', `/repos/${username}/${repoName}`);

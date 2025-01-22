@@ -214,19 +214,27 @@
       
       // Check repository creation permission
       currentCheck = 'repos';
-      const result = await githubService.verifyFineGrainedPermissions(repoOwner);
+      const result = await githubService.verifyFineGrainedPermissions(
+        repoOwner,
+        ({ permission, isValid }) => {
+          // Update the status as each permission is checked
+          switch (permission) {
+            case 'repos':
+              permissionStatus.allRepos = isValid;
+              break;
+            case 'admin':
+              permissionStatus.admin = isValid;
+              break;
+            case 'code':
+              permissionStatus.contents = isValid;
+              break;
+          }
+          // Force Svelte to update the UI
+          permissionStatus = { ...permissionStatus };
+        }
+      );
       
       if (result.isValid) {
-        permissionStatus.allRepos = true;
-        
-        // Check admin permission
-        currentCheck = 'admin';
-        permissionStatus.admin = true;
-        
-        // Check contents permission
-        currentCheck = 'code';
-        permissionStatus.contents = true;
-        
         lastPermissionCheck = Date.now();
         await chrome.storage.local.set({ lastPermissionCheck });
         previousToken = githubToken;
