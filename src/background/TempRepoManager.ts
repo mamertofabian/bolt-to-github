@@ -104,7 +104,7 @@ export class BackgroundTempRepoManager {
     });
   }
 
-  private async getTempRepos(): Promise<TempRepoMetadata[]> {
+  async getTempRepos(): Promise<TempRepoMetadata[]> {
     const result = await chrome.storage.local.get(STORAGE_KEY);
     return result[STORAGE_KEY] || [];
   }
