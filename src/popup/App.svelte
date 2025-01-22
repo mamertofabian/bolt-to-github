@@ -47,6 +47,8 @@
   let showTempRepoModal = false;
   let tempRepoData: TempRepoMetadata | null = null;
   let port: chrome.runtime.Port;
+  let hasDeletedTempRepo = false;
+  let hasUsedTempRepoName = false;
 
   interface TempRepoMetadata {
     originalRepo: string;
@@ -165,7 +167,12 @@
           repo: tempRepoData.tempRepo
         }
       });
-      showTempRepoModal = false;
+      hasDeletedTempRepo = true;
+      
+      // Only close modal if both actions are completed
+      if (hasDeletedTempRepo && hasUsedTempRepoName) {
+        showTempRepoModal = false;
+      }
     }
   }
 
@@ -173,7 +180,12 @@
     if (tempRepoData) {
       repoName = tempRepoData.originalRepo;
       await saveSettings();
-      showTempRepoModal = false;
+      hasUsedTempRepoName = true;
+      
+      // Only close modal if both actions are completed
+      if (hasDeletedTempRepo && hasUsedTempRepoName) {
+        showTempRepoModal = false;
+      }
     }
   }
 
@@ -358,26 +370,44 @@
   <Modal show={showTempRepoModal} title="Private Repository Import">
     <div class="space-y-4">
       <p class="text-slate-300">
-        It looks like you just imported a private GitHub repository. Would you like to:
+        It looks like you just imported a private GitHub repository. Please complete both actions below:
       </p>
       
       <div class="space-y-2">
-        <Button
-          variant="outline"
-          class="w-full border-slate-700 hover:bg-slate-800"
-          on:click={handleDeleteTempRepo}
-        >
-          Delete the temporary public repository now
-        </Button>
-        
-        <Button
-          variant="outline"
-          class="w-full border-slate-700 hover:bg-slate-800"
-          on:click={handleUseTempRepoName}
-        >
-          Use original repository name ({tempRepoData?.originalRepo})
-        </Button>
-        
+        {#if !hasDeletedTempRepo}
+          <div class="space-y-2">
+            <p class="text-sm text-slate-400">1. Clean up the temporary repository:</p>
+            <Button
+              variant="outline"
+              class="w-full border-slate-700 hover:bg-slate-800"
+              on:click={handleDeleteTempRepo}
+            >
+              Delete the temporary public repository now
+            </Button>
+          </div>
+        {:else}
+          <div class="text-sm text-green-400 p-2 border border-green-800 bg-green-900/20 rounded-md">
+            ✓ Temporary repository has been deleted
+          </div>
+        {/if}
+
+        {#if !hasUsedTempRepoName}
+          <div class="space-y-2">
+            <p class="text-sm text-slate-400">2. Configure repository name:</p>
+            <Button
+              variant="outline"
+              class="w-full border-slate-700 hover:bg-slate-800"
+              on:click={handleUseTempRepoName}
+            >
+              Use original repository name ({tempRepoData?.originalRepo})
+            </Button>
+          </div>
+        {:else}
+          <div class="text-sm text-green-400 p-2 border border-green-800 bg-green-900/20 rounded-md">
+            ✓ Repository name has been configured
+          </div>
+        {/if}
+
         <Button
           variant="ghost"
           class="w-full text-slate-400 hover:text-slate-300"
@@ -388,7 +418,7 @@
       </div>
       
       <p class="text-sm text-slate-400">
-        Note: The temporary repository will be automatically deleted in 1 minute.
+        Note: The temporary repository will be automatically deleted in 1 minute if not deleted manually.
       </p>
     </div>
   </Modal>
