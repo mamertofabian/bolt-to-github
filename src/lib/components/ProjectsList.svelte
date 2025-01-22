@@ -35,6 +35,8 @@
     private?: boolean;
     language?: string | null;
   }> = [];
+  let importProgress: { repoName: string; status: string; progress?: number } | null = null;
+  let currentTabIsBolt = false;
 
   async function loadAllRepos() {
     console.log('Loading repos for', repoOwner);
@@ -76,6 +78,10 @@
   }
 
   onMount(async () => {
+    // Get current tab URL
+    const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
+    currentTabIsBolt = tab?.url?.includes('bolt.new') ?? false;
+
     // Load all repos
     await loadAllRepos();
 
@@ -115,6 +121,12 @@
 
     try {
       console.log('🔄 Sending message to import private repo:', repoName);
+
+      // Only show progress if we're not on bolt.new
+      if (!currentTabIsBolt) {
+        importProgress = { repoName, status: 'Starting import...' };
+      }
+
       // Send message directly to background service
       const port = chrome.runtime.connect({ name: 'popup' });
 
@@ -125,14 +137,40 @@
         }
       });
 
+      port.onMessage.addListener((message) => {
+        if (message.type === 'UPLOAD_STATUS') {
+          console.log('📥 Import status update:', message.status);
+
+          if (!currentTabIsBolt) {
+            importProgress = {
+              repoName,
+              status: message.status.message || 'Processing...',
+              progress: message.status.progress,
+            };
+            // If the import is complete or failed, clear the progress after a delay
+            if (message.status.status === 'success' || message.status.status === 'error') {
+              setTimeout(() => {
+                importProgress = null;
+                window.close();
+              }, 1500);
+            }
+          } else if (message.status.status === 'success') {
+            // If we're on bolt.new, just close the popup when done
+            window.close();
+          }
+        }
+      });
+
       // Then send message
       port.postMessage({
         type: 'IMPORT_PRIVATE_REPO',
         data: { repoName },
       });
 
-      // Close the popup to prevent UI overlap
-      window.close();
+      // If we're on bolt.new, close the popup immediately
+      if (currentTabIsBolt) {
+        window.close();
+      }
     } catch (error) {
       console.error('❌ Failed to import private repository:', error);
       alert('Failed to import private repository. Please try again later.');
@@ -276,5 +314,21 @@
         </div>
       </div>
     {/each}
+  {/if}
+  {#if importProgress}
+    <div class="fixed inset-0 bg-black/50 flex items-center justify-center">
+      <div class="bg-slate-900 border border-slate-800 rounded-lg p-4 max-w-sm w-full mx-4">
+        <h3 class="font-medium mb-2">Importing {importProgress.repoName}</h3>
+        <p class="text-sm text-slate-400 mb-3">{importProgress.status}</p>
+        {#if importProgress.progress !== undefined}
+          <div class="w-full bg-slate-800 rounded-full h-2">
+            <div
+              class="bg-emerald-500 h-2 rounded-full transition-all duration-300"
+              style="width: {importProgress.progress}%"
+            />
+          </div>
+        {/if}
+      </div>
+    </div>
   {/if}
 </div>

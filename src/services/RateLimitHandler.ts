@@ -32,7 +32,7 @@ export class RateLimitHandler {
 
   async beforeRequest(): Promise<void> {
     this.requestCount++;
-    
+
     // Only apply rate limiting after BURST_LIMIT requests
     if (this.requestCount > this.BURST_LIMIT) {
       const now = Date.now();

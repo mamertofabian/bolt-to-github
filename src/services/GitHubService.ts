@@ -25,7 +25,7 @@ interface RepoInfo {
   name: string;
   description?: string;
   private?: boolean;
-  exists: boolean
+  exists: boolean;
 }
 
 export class GitHubService extends BaseGitHubService {
@@ -71,17 +71,14 @@ export class GitHubService extends BaseGitHubService {
     }
   }
 
-async getRepoInfo(owner: string, repo: string): Promise<RepoInfo> {
+  async getRepoInfo(owner: string, repo: string): Promise<RepoInfo> {
     try {
-      const response: RepoInfo = await this.request(
-        'GET',
-        `/repos/${owner}/${repo}`
-      );
+      const response: RepoInfo = await this.request('GET', `/repos/${owner}/${repo}`);
       return {
         name: response.name,
         description: response.description,
         private: response.private,
-        exists: true
+        exists: true,
       };
     } catch (error) {
       if (error instanceof Error && error.message.includes('404')) {

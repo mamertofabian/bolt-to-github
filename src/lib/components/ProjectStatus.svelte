@@ -110,7 +110,9 @@
         {#if isLoading.latestCommit}
           <span class="text-slate-500">Loading...</span>
         {:else if latestCommit}
-          <div class="text-xs text-slate-400 mt-1">{new Date(latestCommit.date).toLocaleString()}</div>
+          <div class="text-xs text-slate-400 mt-1">
+            {new Date(latestCommit.date).toLocaleString()}
+          </div>
           <div class="text-xs text-slate-400 mt-1">{latestCommit.message}</div>
         {:else}
           N/A
