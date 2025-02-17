@@ -326,11 +326,11 @@
             <Help />
           </TabsContent>
         </Tabs>
-      {:else if hasInitialSettings && repoOwner && githubToken}
+      {:else if hasInitialSettings && repoOwner && gitlabToken}
         <ProjectsList
           {projectSettings}
           {repoOwner}
-          {githubToken}
+          token={gitlabToken}
           currentlyLoadedProjectId={parsedProjectId}
           {isBoltSite}
         />

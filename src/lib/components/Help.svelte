@@ -56,7 +56,7 @@
       {/if}
     </div>
 
-    <!-- GitHub Token Guide Section -->
+    <!-- GitLab Token Guide Section -->
     <div class="border border-slate-800 rounded-lg overflow-hidden">
       <button
         class="w-full p-4 flex items-center justify-between bg-slate-800/50 hover:bg-slate-800/70 transition-colors"
