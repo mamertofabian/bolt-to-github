@@ -27,7 +27,7 @@
     <AlertTriangle class="h-4 w-4 text-red-400" />
     <AlertTitle class="text-red-200">Missing Configuration</AlertTitle>
     <AlertDescription class="text-red-100">
-      Click here to configure your GitHub settings
+      Click here to configure your GitLab settings
     </AlertDescription>
   </Alert>
 </div>
