@@ -209,5 +209,4 @@ export class GitLabService extends BaseGitService {
     );
     return response as GitLabCommitResponse[];
   }
-  }
 }
