@@ -55,7 +55,11 @@ export class GitLabService extends BaseGitService {
     }
 
     const message = errorDetails.message || errorDetails.error || 'Unknown GitLab API error';
-    
+    const apiError = new Error(`GitLab API Error (${response.status}): ${message}`) as any;
+    apiError.status = response.status;
+    apiError.originalMessage = message;
+    apiError.gitlabErrorResponse = errorDetails;
+
     switch (response.status) {
       case 401:
         return new Error('Invalid GitLab token. Please check your settings.');
@@ -73,28 +77,26 @@ export class GitLabService extends BaseGitService {
       case 500:
         return new Error('GitLab server error. Please try again later.');
       default:
-        const apiError = new Error(`GitLab API Error (${response.status}): ${message}`) as any;
-        apiError.status = response.status;
-        apiError.originalMessage = message;
-        apiError.gitlabErrorResponse = errorDetails;
         return apiError;
+    }
   }
 
-  async createProject(
+  public async createProject(
     name: string,
     options: { visibility?: 'private' | 'public'; description?: string; path?: string } = {}
   ): Promise<any> {
-    return this.request('POST', '/projects', {
+    const projectData = {
       name,
       visibility: options.visibility || 'private',
       description: options.description || 'Repository created by Bolt to GitLab extension',
       initialize_with_readme: true,
       auto_devops_enabled: false,
       path: options.path || name.toLowerCase().replace(/\s+/g, '-')
-    });
+    };
+    return this.request('POST', '/projects', projectData);
   }
 
-  async validateTokenAndUser(username: string): Promise<{ isValid: boolean; error?: string }> {
+  public async validateTokenAndUser(username: string): Promise<{ isValid: boolean; error?: string }> {
     try {
       // First verify the token is valid by getting user info
       const user = await this.request('GET', '/user');
@@ -192,14 +194,20 @@ export class GitLabService extends BaseGitService {
     return response as GitLabFileResponse;
   }
 
-  async getCommits(
+  public async getCommits(
     owner: string,
     repo: string,
     options: { branch?: string; path?: string } = {}
   ): Promise<GitLabCommitResponse[]> {
-    return this.request('GET', `/projects/${encodeURIComponent(`${owner}/${repo}`)}/repository/commits`, {
-      ref_name: options.branch || 'main',
-      path: options.path
-    }) as Promise<GitLabCommitResponse[]>;
+    const response = await this.request(
+      'GET',
+      `/projects/${encodeURIComponent(`${owner}/${repo}`)}/repository/commits`,
+      {
+        ref_name: options.branch || 'main',
+        path: options.path
+      }
+    );
+    return response as GitLabCommitResponse[];
+  }
   }
 }
