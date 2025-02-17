@@ -295,7 +295,9 @@
               class="h-8 w-8 opacity-70 group-hover:opacity-100"
               on:click={() => openGitLabRepo(repoOwner, project.repoName)
             >
-              <Github class="h-5 w-5" />
+              <svg width="16" height="16" viewBox="0 0 24 24" class="h-5 w-5">
+                <path fill="currentColor" d="M23.6 9.5L13.3.2c-.4-.4-1.1-.4-1.5 0L8.7 3.3 5.5.2c-.4-.4-1.1-.4-1.5 0l-3.7 3.7c-.4.4-.4 1.1 0 1.5l3.2 3.2-3.2 3.2c-.4.4-.4 1.1 0 1.5l3.7 3.7c.4.4 1.1.4 1.5 0l3.2-3.2 3.2 3.2c.4.4 1.1.4 1.5 0l10.3-10.3c.4-.5.4-1.2 0-1.6zm-15.9 9.9l-3.7-3.7 3.2-3.2 3.7 3.7-3.2 3.2zm5.2-5.2l-3.7-3.7 3.2-3.2 3.7 3.7-3.2 3.2z"/>
+              </svg>
             </Button>
             {#if !project.projectId}
             <Button
