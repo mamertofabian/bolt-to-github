@@ -1,4 +1,4 @@
-import { SettingsService } from '../services/settings';
+import { SettingsService, type SettingsCheckResult } from '../services/settings';
 
 export class StateManager {
   private static instance: StateManager;
@@ -12,8 +12,8 @@ export class StateManager {
     return this.instance;
   }
 
-  async getGitHubSettings() {
-    return SettingsService.getGitHubSettings();
+  async getSettings() {
+    return SettingsService.getSettings();
   }
 
   async getProjectId() {
