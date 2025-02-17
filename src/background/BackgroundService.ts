@@ -1,4 +1,4 @@
-import { GitHubService } from '../services/GitHubService';
+import { GitLabService } from '../services/GitLabService';
 import type { Message, MessageType, Port, UploadStatusState } from '../lib/types';
 import { StateManager } from './StateManager';
 import { ZipHandler } from '../services/zipHandler';
@@ -8,7 +8,7 @@ export class BackgroundService {
   private stateManager: StateManager;
   private zipHandler: ZipHandler | null;
   private ports: Map<number, Port>;
-  private githubService: GitHubService | null;
+  private gitlabService: GitLabService | null;
   private tempRepoManager: BackgroundTempRepoManager | null = null;
   private pendingCommitMessage: string;
   private storageListener:
@@ -19,9 +19,9 @@ export class BackgroundService {
     console.log('🚀 Background service initializing...');
     this.stateManager = StateManager.getInstance();
     this.ports = new Map();
-    this.githubService = null;
+    this.gitlabService = null;
     this.zipHandler = null;
-    this.pendingCommitMessage = 'Commit from Bolt to GitHub';
+    this.pendingCommitMessage = 'Commit from Bolt to GitLab';
     this.initialize();
   }
 
@@ -29,14 +29,14 @@ export class BackgroundService {
   // this.initializeStorageListener();
 
   private async initialize(): Promise<void> {
-    const githubService = await this.initializeGitHubService();
-    this.setupZipHandler(githubService!);
-    if (githubService) {
-      const settings = await this.stateManager.getGitHubSettings();
-      if (settings?.gitHubSettings?.repoOwner) {
+    const gitlabService = await this.initializeGitLabService();
+    this.setupZipHandler(gitlabService!);
+    if (gitlabService) {
+      const settings = await this.stateManager.getSettings();
+      if (settings?.gitLabSettings?.repoOwner) {
         this.tempRepoManager = new BackgroundTempRepoManager(
-          githubService,
-          settings.gitHubSettings.repoOwner,
+          gitlabService,
+          settings.gitLabSettings.repoOwner,
           (status) => this.broadcastStatus(status)
         );
       }
@@ -46,31 +46,31 @@ export class BackgroundService {
     console.log('👂 Background service initialized');
   }
 
-  private async initializeGitHubService(): Promise<GitHubService | null> {
+  private async initializeGitLabService(): Promise<GitLabService | null> {
     try {
-      const settings = await this.stateManager.getGitHubSettings();
+      const settings = await this.stateManager.getSettings();
 
       if (
         settings &&
-        settings.gitHubSettings &&
-        settings.gitHubSettings.githubToken &&
-        settings.gitHubSettings.repoOwner
+        settings.gitLabSettings &&
+        settings.gitLabSettings.gitlabToken &&
+        settings.gitLabSettings.repoOwner
       ) {
-        console.log('✅ Valid settings found, initializing GitHub service', settings);
-        this.githubService = new GitHubService(settings.gitHubSettings.githubToken);
+        console.log('✅ Valid settings found, initializing GitLab service', settings);
+        this.gitlabService = new GitLabService(settings.gitLabSettings.gitlabToken);
       } else {
         console.log('❌ Invalid or incomplete settings');
-        this.githubService = null;
+        this.gitlabService = null;
       }
     } catch (error) {
-      console.error('Failed to initialize GitHub service:', error);
-      this.githubService = null;
+      console.error('Failed to initialize GitLab service:', error);
+      this.gitlabService = null;
     }
-    return this.githubService;
+    return this.gitlabService;
   }
 
-  private setupZipHandler(githubService: GitHubService) {
-    this.zipHandler = new ZipHandler(githubService, (status) => this.broadcastStatus(status));
+  private setupZipHandler(gitlabService: GitLabService) {
+    this.zipHandler = new ZipHandler(gitlabService, (status) => this.broadcastStatus(status));
   }
 
   private broadcastStatus(status: UploadStatusState) {
@@ -212,8 +212,8 @@ export class BackgroundService {
     if (!port) return;
 
     try {
-      if (!this.githubService) {
-        throw new Error('GitHub service is not initialized. Please check your GitHub settings.');
+      if (!this.gitlabService) {
+        throw new Error('GitLab service is not initialized. Please check your GitLab settings.');
       }
 
       if (!this.zipHandler) {
@@ -242,7 +242,7 @@ export class BackgroundService {
         );
 
         // Reset commit message after successful upload
-        this.pendingCommitMessage = 'Commit from Bolt to GitHub';
+        this.pendingCommitMessage = 'Commit from Bolt to GitLab';
 
         this.sendResponse(port, {
           type: 'UPLOAD_STATUS',
@@ -251,14 +251,14 @@ export class BackgroundService {
       } catch (decodeError) {
         const errorMessage =
           decodeError instanceof Error ? decodeError.message : String(decodeError);
-        const isGitHubError = errorMessage.includes('GitHub API Error');
+        const isGitLabError = errorMessage.includes('GitLab API Error');
 
-        if (isGitHubError) {
-          // Extract the original GitHub error message if available
+        if (isGitLabError) {
+          // Extract the original GitLab error message if available
           const originalMessage =
-            (decodeError as any).originalMessage || 'GitHub authentication or API error occurred';
+            (decodeError as any).originalMessage || 'GitLab authentication or API error occurred';
 
-          throw new Error(`GitHub Error: ${originalMessage}`);
+          throw new Error(`GitLab Error: ${originalMessage}`);
         } else {
           throw new Error(
             `Failed to process ZIP data. Please try reloading the page. ` +
