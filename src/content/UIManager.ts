@@ -198,8 +198,6 @@ export class UIManager {
     if (!confirmed) return;
 
     try {
-      await this.findAndClickDownloadButton();
-
       // Update button state to processing
       if (this.uploadButton) {
         this.uploadButton.innerHTML = `
@@ -215,7 +213,7 @@ export class UIManager {
       this.isGitLabUpload = true;
       this.messageHandler.sendCommitMessage(commitMessage || 'Commit from Bolt to GitLab');
 
-      this.findAndClickDownloadButton(); // This will close the dropdown
+      await this.findAndClickDownloadButton();
     } catch (error) {
       console.error('Error during GitLab upload:', error);
       throw new Error('Failed to trigger download. The page structure may have changed.');
@@ -371,7 +369,7 @@ export class UIManager {
       </svg>
       <span>
         Please configure your GitLab settings first. 
-        <button class="text-white font-medium hover:text-white/90 underline underline-offset-2">Open Settings</button>
+        <button class="text-white font-medium hover:text-white/90 underline underline-offset-2" data-testid="open-settings-button">Open Settings</button>
       </span>
     `;
 
