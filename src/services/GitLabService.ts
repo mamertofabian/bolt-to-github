@@ -55,14 +55,29 @@ export class GitLabService extends BaseGitService {
     }
 
     const message = errorDetails.message || errorDetails.error || 'Unknown GitLab API error';
-    const fullErrorMessage = `GitLab API Error (${response.status}): ${message}`;
-
-    const apiError = new Error(fullErrorMessage) as any;
-    apiError.status = response.status;
-    apiError.originalMessage = message;
-    apiError.gitlabErrorResponse = errorDetails;
-
-    return apiError;
+    
+    switch (response.status) {
+      case 401:
+        return new Error('Invalid GitLab token. Please check your settings.');
+      case 403:
+        return new Error('Insufficient permissions for this GitLab operation.');
+      case 404:
+        return new Error('GitLab resource not found.');
+      case 429:
+        const retryAfter = response.headers.get('Retry-After');
+        return new Error(
+          `GitLab API rate limit exceeded. Please try again ${
+            retryAfter ? `after ${retryAfter} seconds` : 'later'
+          }.`
+        );
+      case 500:
+        return new Error('GitLab server error. Please try again later.');
+      default:
+        const apiError = new Error(`GitLab API Error (${response.status}): ${message}`) as any;
+        apiError.status = response.status;
+        apiError.originalMessage = message;
+        apiError.gitlabErrorResponse = errorDetails;
+        return apiError;
   }
 
   async createProject(
