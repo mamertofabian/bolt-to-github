@@ -1,4 +1,4 @@
-import type { GitHubService } from './GitHubService';
+import type { GitLabService } from './GitLabService';
 import { toBase64 } from '../lib/common';
 import { ZipProcessor } from '../lib/zip';
 import ignore from 'ignore';
@@ -8,7 +8,7 @@ import { Queue } from '../lib/Queue';
 
 export class ZipHandler {
   constructor(
-    private githubService: GitHubService,
+    private gitlabService: GitLabService,
     private sendStatus: (status: UploadStatusState) => void
   ) {}
 
@@ -29,9 +29,9 @@ export class ZipHandler {
     // Check if branch exists
     let branchExists = true;
     try {
-      await this.githubService.request(
+      await this.gitlabService.request(
         'GET',
-        `/repos/${repoOwner}/${repoName}/branches/${targetBranch}`
+        `/projects/${encodeURIComponent(`${repoOwner}/${repoName}`)}/repository/branches/${targetBranch}`
       );
     } catch (error) {
       branchExists = false;
@@ -40,14 +40,18 @@ export class ZipHandler {
     // If branch doesn't exist, create it from default branch
     if (!branchExists) {
       await this.updateStatus('uploading', 18, `Creating branch ${targetBranch}...`);
-      const defaultBranch = await this.githubService.request(
+      const defaultBranch = await this.gitlabService.request(
         'GET',
-        `/repos/${repoOwner}/${repoName}/git/refs/heads/main`
+        `/projects/${encodeURIComponent(`${repoOwner}/${repoName}`)}/repository/branches/main`
       );
-      await this.githubService.request('POST', `/repos/${repoOwner}/${repoName}/git/refs`, {
-        ref: `refs/heads/${targetBranch}`,
-        sha: defaultBranch.object.sha,
-      });
+      await this.gitlabService.request(
+        'POST',
+        `/projects/${encodeURIComponent(`${repoOwner}/${repoName}`)}/repository/branches`,
+        {
+          branch: targetBranch,
+          ref: defaultBranch.commit.id,
+        }
+      );
     }
   };
 
@@ -67,13 +71,13 @@ export class ZipHandler {
       throw new Error(`File too large. Maximum size is ${MAX_FILE_SIZE / 1024 / 1024}MB`);
     }
 
-    if (!this.githubService) {
+    if (!this.gitlabService) {
       await this.updateStatus(
         'error',
         0,
-        'GitHub service not initialized. Please set your GitHub token.'
+        'GitLab service not initialized. Please set your GitLab token.'
       );
-      throw new Error('GitHub service not initialized. Please set your GitHub token.');
+      throw new Error('GitLab service not initialized. Please set your GitLab token.');
     }
 
     if (!currentProjectId) {
@@ -113,13 +117,21 @@ export class ZipHandler {
       console.log('📋 Repository details:', { repoOwner, repoName, targetBranch });
 
       await this.updateStatus('uploading', 15, 'Checking repository...');
-      await this.githubService.ensureRepoExists(repoOwner, repoName);
+      await this.gitlabService.ensureProjectExists(repoOwner, repoName);
 
-      // Check if repo is empty and needs initialization
-      const isEmpty = await this.githubService.isRepoEmpty(repoOwner, repoName);
+      // Check if project is empty and needs initialization
+      const isEmpty = await this.gitlabService.isProjectEmpty(repoOwner, repoName);
       if (isEmpty) {
         await this.updateStatus('uploading', 18, 'Initializing empty repository...');
-        await this.githubService.initializeEmptyRepo(repoOwner, repoName, targetBranch);
+        await this.gitlabService.request(
+          'POST',
+          `/projects/${encodeURIComponent(`${repoOwner}/${repoName}`)}/repository/files/README.md`,
+          {
+            branch: targetBranch,
+            content: '# ' + repoName,
+            commit_message: 'Initialize repository'
+          }
+        );
       }
 
       await this.ensureBranchExists(repoOwner, repoName, targetBranch);
@@ -128,12 +140,12 @@ export class ZipHandler {
 
       await this.updateStatus('uploading', 20, 'Getting repository information...');
 
-      await this.uploadToGitHub(processedFiles, repoOwner, repoName, targetBranch, commitMessage);
+      await this.uploadToGitLab(processedFiles, repoOwner, repoName, targetBranch, commitMessage);
 
       await this.updateStatus(
         'success',
         100,
-        `Successfully uploaded ${processedFiles.size} files to GitHub`
+        `Successfully uploaded ${processedFiles.size} files to GitLab`
       );
 
       // Clear the status after a delay
@@ -211,7 +223,7 @@ export class ZipHandler {
     return processedFiles;
   }
 
-  private async uploadToGitHub(
+  private async uploadToGitLab(
     processedFiles: Map<string, string>,
     repoOwner: string,
     repoName: string,
@@ -219,17 +231,11 @@ export class ZipHandler {
     commitMessage: string
   ) {
     // Get the current commit SHA
-    const baseRef = await this.githubService.request(
+    const branch = await this.gitlabService.request(
       'GET',
-      `/repos/${repoOwner}/${repoName}/git/refs/heads/${targetBranch}`
+      `/projects/${encodeURIComponent(`${repoOwner}/${repoName}`)}/repository/branches/${targetBranch}`
     );
-    const baseSha = baseRef.object.sha;
-
-    const baseCommit = await this.githubService.request(
-      'GET',
-      `/repos/${repoOwner}/${repoName}/git/commits/${baseSha}`
-    );
-    const baseTreeSha = baseCommit.tree.sha;
+    const baseSha = branch.commit.id;
 
     await this.updateStatus('uploading', 30, 'Creating file blobs...');
 
@@ -238,40 +244,21 @@ export class ZipHandler {
 
     await this.updateStatus('uploading', 70, 'Creating tree...');
 
-    // Create a new tree
-    const newTree = await this.githubService.request(
-      'POST',
-      `/repos/${repoOwner}/${repoName}/git/trees`,
-      {
-        base_tree: baseTreeSha,
-        tree: treeItems,
-      }
-    );
+    // Create commits for each file
+    for (const item of treeItems) {
+      await this.gitlabService.request(
+        'POST',
+        `/projects/${encodeURIComponent(`${repoOwner}/${repoName}`)}/repository/files/${encodeURIComponent(item.path)}`,
+        {
+          branch: targetBranch,
+          content: item.content,
+          commit_message: commitMessage,
+          encoding: 'base64'
+        }
+      );
+    }
 
-    await this.updateStatus('uploading', 80, 'Creating commit...');
-
-    // Create a new commit
-    const newCommit = await this.githubService.request(
-      'POST',
-      `/repos/${repoOwner}/${repoName}/git/commits`,
-      {
-        message: commitMessage,
-        tree: newTree.sha,
-        parents: [baseSha],
-      }
-    );
-
-    await this.updateStatus('uploading', 90, 'Updating branch...');
-
-    // Update the reference
-    await this.githubService.request(
-      'PATCH',
-      `/repos/${repoOwner}/${repoName}/git/refs/heads/${targetBranch}`,
-      {
-        sha: newCommit.sha,
-        force: false,
-      }
-    );
+    await this.updateStatus('uploading', 90, 'Files uploaded successfully');
   }
 
   private sleep(ms: number): Promise<void> {
@@ -288,9 +275,9 @@ export class ZipHandler {
     let completedFiles = 0;
 
     const rateLimitHandler = new RateLimitHandler();
-    const rateLimit = await this.githubService.request('GET', '/rate_limit');
-    const remainingRequests = rateLimit.resources.core.remaining;
-    const resetTime = rateLimit.resources.core.reset;
+    const rateLimit = await this.gitlabService.request('GET', '/rate_limit');
+    const remainingRequests = parseInt(rateLimit.remaining_requests);
+    const resetTime = parseInt(rateLimit.reset_time);
 
     if (remainingRequests < 10) {
       const now = Math.floor(Date.now() / 1000);
@@ -325,12 +312,14 @@ export class ZipHandler {
           try {
             await rateLimitHandler.beforeRequest();
 
-            const blobData = await this.githubService.request(
+            const blobData = await this.gitlabService.request(
               'POST',
-              `/repos/${repoOwner}/${repoName}/git/blobs`,
+              `/projects/${encodeURIComponent(`${repoOwner}/${repoName}`)}/repository/files/${encodeURIComponent(path)}`,
               {
+                branch: 'main',
                 content: toBase64(content),
                 encoding: 'base64',
+                commit_message: 'Add file via Bolt to GitLab'
               }
             );
 
