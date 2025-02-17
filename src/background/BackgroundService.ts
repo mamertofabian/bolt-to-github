@@ -262,7 +262,7 @@ export class BackgroundService {
         } else {
           throw new Error(
             `Failed to process ZIP data. Please try reloading the page. ` +
-              `If the issue persists, please open a GitHub issue.`
+              `If the issue persists, please open a GitLab issue.`
           );
         }
       }
