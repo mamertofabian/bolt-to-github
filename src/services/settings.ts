@@ -9,19 +9,19 @@ export interface SettingsCheckResult {
 export class SettingsService {
   static async needsGitLabMigration(): Promise<boolean> {
     try {
-      const settings = await chrome.storage.sync.get(['githubToken', 'gitlabToken']);
-      return Boolean(settings.githubToken && !settings.gitlabToken);
+      const settings = await chrome.storage.sync.get(['gitlabToken']);
+      return !settings.gitlabToken;
     } catch (error) {
       console.error('Error checking migration status:', error);
       return false;
     }
   }
 
-  static async clearGitHubSettings(): Promise<void> {
+  static async clearOldSettings(): Promise<void> {
     try {
       await chrome.storage.sync.remove(['githubToken']);
     } catch (error) {
-      console.error('Error clearing GitHub settings:', error);
+      console.error('Error clearing old settings:', error);
     }
   }
   private static async encryptToken(token: string): Promise<string> {
@@ -67,38 +67,44 @@ export class SettingsService {
     }
   }
 
-  static async migrateToGitLab(): Promise<void> {
+  static async initializeGitLabSettings(): Promise<void> {
     try {
-      const settings = await chrome.storage.sync.get(['githubToken', 'repoOwner', 'projectSettings']);
+      const settings = await chrome.storage.sync.get(['repoOwner', 'projectSettings']);
       
-      // Only migrate if GitHub settings exist
-      if (settings.githubToken && settings.repoOwner) {
-        // Clear GitHub token and store encrypted empty GitLab token
-        await chrome.storage.sync.remove(['githubToken']);
-        const encryptedToken = await this.encryptToken('');  // Empty token for security
-        await chrome.storage.sync.set({
-          gitlabToken: encryptedToken,
-          repoOwner: settings.repoOwner,
-          projectSettings: settings.projectSettings || {}
-        });
-      }
+      // Initialize with empty settings
+      const encryptedToken = await this.encryptToken('');  // Empty token for security
+      await chrome.storage.sync.set({
+        gitlabToken: encryptedToken,
+        repoOwner: settings.repoOwner || '',
+        projectSettings: settings.projectSettings || {}
+      });
     } catch (error) {
-      console.error('Error migrating to GitLab settings:', error);
-      throw new Error('Failed to migrate settings to GitLab');
+      console.error('Error initializing GitLab settings:', error);
+      throw new Error('Failed to initialize GitLab settings');
     }
   }
 
-  // Keep GitHub method during transition
-  static async getGitHubSettings(): Promise<SettingsCheckResult> {
+  // Main settings getter
+  static async getSettings(): Promise<SettingsCheckResult> {
     try {
       const [settings, projectId] = await Promise.all([
-        chrome.storage.sync.get(['githubToken', 'repoOwner', 'projectSettings']),
+        chrome.storage.sync.get(['gitlabToken', 'repoOwner', 'projectSettings']),
         chrome.storage.sync.get('projectId'),
       ]);
 
       let projectSettings = settings.projectSettings?.[projectId.projectId];
+      let decryptedToken: string | undefined;
 
-      if (!projectSettings && projectId?.projectId && settings.repoOwner && settings.githubToken) {
+      if (settings.gitlabToken) {
+        try {
+          decryptedToken = await this.decryptToken(settings.gitlabToken);
+        } catch (error) {
+          console.error('Error decrypting GitLab token:', error);
+          return { isSettingsValid: false, gitLabSettings: undefined };
+        }
+      }
+
+      if (!projectSettings && projectId?.projectId && settings.repoOwner && decryptedToken) {
         projectSettings = { repoName: projectId.projectId, branch: 'main' };
         await chrome.storage.sync.set({
           [`projectSettings.${projectId.projectId}`]: projectSettings,
@@ -106,20 +112,20 @@ export class SettingsService {
       }
 
       const isSettingsValid = Boolean(
-        settings.githubToken && settings.repoOwner && settings.projectSettings && projectSettings
+        decryptedToken && settings.repoOwner && settings.projectSettings && projectSettings
       );
 
       return {
         isSettingsValid,
-        gitHubSettings: {
-          githubToken: settings.githubToken,
+        gitLabSettings: isSettingsValid ? {
+          gitlabToken: decryptedToken!,
           repoOwner: settings.repoOwner,
           projectSettings: projectSettings || undefined,
-        },
+        } : undefined,
       };
     } catch (error) {
-      console.error('Error checking GitHub settings:', error);
-      return { isSettingsValid: false, gitLabSettings: undefined, gitHubSettings: undefined };
+      console.error('Error checking GitLab settings:', error);
+      return { isSettingsValid: false, gitLabSettings: undefined };
     }
   }
   static async getGitLabSettings(): Promise<SettingsCheckResult> {
