@@ -1,16 +1,6 @@
 import { BaseGitService, type ProgressCallback } from './BaseGitService';
 
 export class GitLabTokenValidator extends BaseGitService {
-  async validateToken(): Promise<boolean> {
-    try {
-      await this.request('GET', '/user');
-      return true;
-    } catch (error) {
-      console.error('Token validation failed:', error);
-      return false;
-    }
-  }
-
   protected get baseUrl(): string {
     return 'https://gitlab.com/api';
   }
@@ -120,7 +110,7 @@ export class GitLabTokenValidator extends BaseGitService {
     }
   }
 
-  private async validateToken(
+  private async validateTokenInternal(
     username: string
   ): Promise<{ isValid: boolean; error?: string }> {
     try {
@@ -159,7 +149,7 @@ export class GitLabTokenValidator extends BaseGitService {
 
   async validateTokenAndUser(username: string): Promise<{ isValid: boolean; error?: string }> {
     try {
-      return await this.validateToken(username);
+      return await this.validateTokenInternal(username);
     } catch (error) {
       console.error('Validation failed:', error);
       return { isValid: false, error: 'Validation failed' };

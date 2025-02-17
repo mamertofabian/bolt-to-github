@@ -129,16 +129,16 @@ export class BackgroundService {
     // Create new listener and store reference
     this.storageListener = async (changes, namespace) => {
       if (namespace === 'sync') {
-        const settingsChanged = ['githubToken', 'repoOwner', 'repoName', 'branch'].some(
+        const settingsChanged = ['gitlabToken', 'repoOwner', 'repoName', 'branch'].some(
           (key) => key in changes
         );
 
         if (settingsChanged) {
-          console.log('🔄 GitHub settings changed, reinitializing GitHub service...');
-          const githubService = await this.initializeGitHubService();
-          if (githubService) {
-            console.log('🔄 GitHub service reinitialized, reinitializing ZipHandler...');
-            this.setupZipHandler(githubService);
+          console.log('🔄 GitLab settings changed, reinitializing GitLab service...');
+          const gitlabService = await this.initializeGitLabService();
+          if (gitlabService) {
+            console.log('🔄 GitLab service reinitialized, reinitializing ZipHandler...');
+            this.setupZipHandler(gitlabService);
           }
         }
       }
