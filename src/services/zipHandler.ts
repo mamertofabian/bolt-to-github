@@ -245,13 +245,13 @@ export class ZipHandler {
     await this.updateStatus('uploading', 70, 'Creating tree...');
 
     // Create commits for each file
-    for (const item of treeItems) {
+    for (const [path, content] of processedFiles.entries()) {
       await this.gitlabService.request(
         'POST',
-        `/projects/${encodeURIComponent(`${repoOwner}/${repoName}`)}/repository/files/${encodeURIComponent(item.path)}`,
+        `/projects/${encodeURIComponent(`${repoOwner}/${repoName}`)}/repository/files/${encodeURIComponent(path)}`,
         {
           branch: targetBranch,
-          content: item.content,
+          content: toBase64(content),
           commit_message: commitMessage,
           encoding: 'base64'
         }
@@ -288,7 +288,7 @@ export class ZipHandler {
         console.log(`Waiting ${waitTime} seconds for rate limit reset...`);
         await rateLimitHandler.sleep(waitTime * 1000);
         // Recheck rate limit after waiting
-        const newRateLimit = await this.githubService.request('GET', '/rate_limit');
+        const newRateLimit = await this.gitlabService.request('GET', '/rate_limit');
         if (newRateLimit.resources.core.remaining < 10) {
           throw new Error('Insufficient API rate limit remaining even after waiting for reset');
         }
