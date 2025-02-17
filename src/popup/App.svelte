@@ -301,9 +301,9 @@
           <TabsContent value="settings">
             <Card class="border-slate-800 bg-slate-900">
               <CardHeader>
-                <CardTitle>GitHub Settings</CardTitle>
+                <CardTitle>GitLab Settings</CardTitle>
                 <CardDescription class="text-slate-400">
-                  Configure your GitHub repository settings
+                  Configure your GitLab repository settings
                 </CardDescription>
               </CardHeader>
               <CardContent>
@@ -350,7 +350,7 @@
               💡 No Bolt projects found. Create or load an existing Bolt project to get started.
             </p>
             <p class="text-sm text-green-400 pb-4">
-              🌟 You can also load any of your GitHub repositories by providing your GitHub token
+              🌟 You can also load any of your GitLab repositories by providing your GitLab token
               and repository owner.
             </p>
             <GitHubSettings
@@ -373,7 +373,7 @@
   <Modal show={showTempRepoModal} title="Private Repository Import">
     <div class="space-y-4">
       <p class="text-amber-300 font-medium">
-        It looks like you just imported a private GitHub repository. Would you like to:
+        It looks like you just imported a private GitLab repository. Would you like to:
       </p>
 
       <div class="space-y-2">
