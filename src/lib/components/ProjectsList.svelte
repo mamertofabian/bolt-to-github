@@ -1,26 +1,26 @@
 <script lang="ts">
   import { onMount } from 'svelte';
   import { Button } from '$lib/components/ui/button';
-  import { Github, Import, Zap, X, RefreshCw } from 'lucide-svelte';
-  import { GitHubService } from '../../services/GitHubService';
+  import { Import, Zap, X, RefreshCw } from 'lucide-svelte';
+  import { GitLabService } from '../../services/GitLabService';
 
   export let projectSettings: Record<string, { repoName: string; branch: string }>;
   export let repoOwner: string;
-  export let githubToken: string;
+  export let gitlabToken: string;
   export let isBoltSite: boolean = true;
   export let currentlyLoadedProjectId: string | null = null;
 
   let loadingRepos = false;
 
-  const githubService = new GitHubService(githubToken);
+  const gitlabService = new GitLabService(gitlabToken);
   let commitCounts: Record<string, number> = {};
   let allRepos: Array<{
     name: string;
     description: string | null;
-    private: boolean;
-    html_url: string;
+    visibility: string;
+    web_url: string;
     created_at: string;
-    updated_at: string;
+    last_activity_at: string;
     language: string | null;
   }> = [];
 
@@ -30,9 +30,9 @@
     projectId?: string;
     repoName: string;
     branch?: string;
-    gitHubRepo?: boolean;
+    gitLabRepo?: boolean;
     description?: string | null;
-    private?: boolean;
+    visibility?: string;
     language?: string | null;
   }> = [];
   let importProgress: { repoName: string; status: string; progress?: number } | null = null;
@@ -42,7 +42,7 @@
     console.log('Loading repos for', repoOwner);
     try {
       loadingRepos = true;
-      allRepos = await githubService.listRepos();
+      allRepos = await gitlabService.listRepos();
       // Simulate a delay to show the loading spinner
       await new Promise((resolve) => setTimeout(resolve, 1000));
       loadingRepos = false;
@@ -57,15 +57,15 @@
       projectId,
       repoName: settings.repoName,
       branch: settings.branch,
-      gitHubRepo: false,
+      gitLabRepo: false,
     }));
 
     const repos = showRepos
       ? allRepos
           .map((repo) => ({
             repoName: repo.name,
-            gitHubRepo: true,
-            private: repo.private,
+            gitLabRepo: true,
+            visibility: repo.visibility,
             description: repo.description,
             language: repo.language,
           }))
@@ -86,7 +86,7 @@
 
     // Fetch commit counts for projects that have IDs
     for (const [projectId, settings] of Object.entries(projectSettings)) {
-      commitCounts[projectId] = await githubService.getCommitCount(
+      commitCounts[projectId] = await gitlabService.getCommitCount(
         repoOwner,
         settings.repoName,
         settings.branch
@@ -98,13 +98,13 @@
     window.open(`https://bolt.new/~/${projectId}`, '_blank');
   }
 
-  function openGitHubRepo(repoOwner: string, repoName: string) {
-    window.open(`https://github.com/${repoOwner}/${repoName}`, '_blank');
+  function openGitLabRepo(repoOwner: string, repoName: string) {
+    window.open(`https://gitlab.com/${repoOwner}/${repoName}`, '_blank');
   }
 
-  async function importFromGitHub(repoOwner: string, repoName: string, isPrivate: boolean) {
-    if (!isPrivate) {
-      window.open(`https://bolt.new/~/github.com/${repoOwner}/${repoName}`, '_blank');
+  async function importFromGitLab(repoOwner: string, repoName: string, visibility: string) {
+    if (visibility === 'public') {
+      window.open(`https://bolt.new/~/gitlab.com/${repoOwner}/${repoName}`, '_blank');
       return;
     }
 
@@ -237,7 +237,7 @@
         <p class="text-sm text-green-400">
           💡 No Bolt projects found. Create or load an existing Bolt project to get started.
         </p>
-        <p class="text-sm text-green-400">🌟 You can also load any of your GitHub repositories.</p>
+        <p class="text-sm text-green-400">🌟 You can also load any of your GitLab repositories.</p>
       </div>
     </div>
   {:else}
@@ -256,9 +256,9 @@
               {#if project.projectId === currentlyLoadedProjectId}
                 <span class="text-xs text-emerald-500 ml-2">(Current)</span>
               {/if}
-              {#if project.gitHubRepo}
-                <span class="text-xs {project.private ? 'text-red-500' : 'text-blue-500'} ml-2">
-                  ({project.private ? 'Private' : 'Public'})
+              {#if project.gitLabRepo}
+                <span class="text-xs {project.visibility === 'private' ? 'text-red-500' : 'text-blue-500'} ml-2">
+                  ({project.visibility})
                 </span>
               {/if}
             </h3>
@@ -291,9 +291,9 @@
             <Button
               variant="ghost"
               size="icon"
-              title="Open GitHub Repository"
+              title="Open GitLab Repository"
               class="h-8 w-8 opacity-70 group-hover:opacity-100"
-              on:click={() => openGitHubRepo(repoOwner, project.repoName)}
+              on:click={() => openGitLabRepo(repoOwner, project.repoName)
             >
               <Github class="h-5 w-5" />
             </Button>
@@ -301,10 +301,10 @@
             <Button
               variant="ghost"
               size="icon"
-              title="Import from GitHub to Bolt"
+              title="Import from GitLab to Bolt"
               class="h-8 w-8 opacity-70 group-hover:opacity-100"
               on:click={() =>
-                importFromGitHub(repoOwner, project.repoName, project.private ?? false)}
+                importFromGitLab(repoOwner, project.repoName, project.visibility ?? 'public')}
             >
               <Import class="h-5 w-5" />
             </Button>
