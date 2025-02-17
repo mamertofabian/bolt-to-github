@@ -1,6 +1,6 @@
-import { BaseGitHubService, type ProgressCallback } from './BaseGitHubService';
+import { BaseGitService, type ProgressCallback } from './BaseGitService';
 
-export class GitHubTokenValidator extends BaseGitHubService {
+export class GitLabTokenValidator extends BaseGitService {
   async validateToken(): Promise<boolean> {
     try {
       await this.request('GET', '/user');
@@ -11,12 +11,16 @@ export class GitHubTokenValidator extends BaseGitHubService {
     }
   }
 
-  isClassicToken(): boolean {
-    return this.token.startsWith('ghp_');
+  protected get baseUrl(): string {
+    return 'https://gitlab.com/api';
   }
 
-  isFineGrainedToken(): boolean {
-    return this.token.startsWith('github_pat_');
+  protected get apiVersion(): string {
+    return 'v4';
+  }
+
+  protected get acceptHeader(): string {
+    return 'application/json';
   }
 
   private async delay(ms: number): Promise<void> {
@@ -28,16 +32,16 @@ export class GitHubTokenValidator extends BaseGitHubService {
     onProgress?: ProgressCallback
   ): Promise<{ isValid: boolean; error?: string }> {
     try {
-      // Create a temporary test repo
+      // Create a temporary test project
       const timestamp = Date.now();
-      const repoName = `test-repo-${timestamp}`;
+      const projectName = `test-project-${timestamp}`;
 
-      // Test repository creation (All repositories access)
+      // Test project creation (API access)
       try {
-        await this.request('POST', '/user/repos', {
-          name: repoName,
-          private: true,
-          auto_init: true,
+        await this.request('POST', '/projects', {
+          name: projectName,
+          visibility: 'private',
+          initialize_with_readme: true,
         });
         await this.delay(2000);
         onProgress?.({ permission: 'repos', isValid: true });
@@ -45,66 +49,64 @@ export class GitHubTokenValidator extends BaseGitHubService {
         onProgress?.({ permission: 'repos', isValid: false });
         return {
           isValid: false,
-          error: 'Token lacks repository creation permission',
+          error: 'Token lacks project creation permission',
         };
       }
 
+      const projectPath = encodeURIComponent(`${username}/${projectName}`);
+
       // Test visibility change (Admin Write)
       try {
-        await this.request('PATCH', `/repos/${username}/${repoName}`, {
-          private: false,
+        await this.request('PUT', `/projects/${projectPath}`, {
+          visibility: 'public',
         });
         await this.delay(2000);
         onProgress?.({ permission: 'admin', isValid: true });
       } catch (error) {
         onProgress?.({ permission: 'admin', isValid: false });
-        // Cleanup repo before returning
+        // Cleanup project before returning
         try {
-          await this.request('DELETE', `/repos/${username}/${repoName}`);
+          await this.request('DELETE', `/projects/${projectPath}`);
         } catch (cleanupError) {
-          console.error('Failed to cleanup repository after admin check:', cleanupError);
+          console.error('Failed to cleanup project after admin check:', cleanupError);
         }
         return {
           isValid: false,
-          error: 'Token lacks repository administration permission',
+          error: 'Token lacks project administration permission',
         };
       }
 
       try {
-        // Test contents read by listing contents
-        await this.request('GET', `/repos/${username}/${repoName}/contents`);
+        // Test repository read by listing repository tree
+        await this.request('GET', `/projects/${projectPath}/repository/tree`);
 
-        // Test contents write with a small .gitkeep file
+        // Test repository write with a small .gitkeep file
         const content = btoa(''); // empty file in base64
-        await this.request('PUT', `/repos/${username}/${repoName}/contents/.gitkeep`, {
-          message: 'Test write permission',
+        await this.request('POST', `/projects/${projectPath}/repository/files/.gitkeep`, {
+          branch: 'main',
           content: content,
+          commit_message: 'Test write permission',
         });
         onProgress?.({ permission: 'code', isValid: true });
       } catch (error) {
         onProgress?.({ permission: 'code', isValid: false });
-        // Cleanup repo before returning
+        // Cleanup project before returning
         try {
-          await this.request('DELETE', `/repos/${username}/${repoName}`);
+          await this.request('DELETE', `/projects/${projectPath}`);
         } catch (cleanupError) {
-          console.error('Failed to cleanup repository after contents check:', cleanupError);
+          console.error('Failed to cleanup project after repository check:', cleanupError);
         }
         return {
           isValid: false,
-          error: 'Token lacks repository contents read/write permission',
+          error: 'Token lacks repository read/write permission',
         };
       }
 
-      // Cleanup: Delete the test repository
+      // Cleanup: Delete the test project
       try {
-        await this.request('DELETE', `/repos/${username}/${repoName}`, undefined, {
-          // Add accept header to handle empty response
-          headers: {
-            accept: 'application/vnd.github+json',
-          },
-        });
+        await this.request('DELETE', `/projects/${projectPath}`);
       } catch (error) {
-        console.error('Failed to cleanup test repository:', error);
+        console.error('Failed to cleanup test project:', error);
         // Don't return error here as permissions were already verified
       }
 
@@ -118,48 +120,46 @@ export class GitHubTokenValidator extends BaseGitHubService {
     }
   }
 
-  private async validateClassicToken(
+  private async validateToken(
     username: string
   ): Promise<{ isValid: boolean; error?: string }> {
     try {
       const authUser = await this.request('GET', '/user');
 
-      if (!authUser.login) {
-        return { isValid: false, error: 'Invalid GitHub token' };
+      if (!authUser.username) {
+        return { isValid: false, error: 'Invalid GitLab token' };
       }
 
-      if (authUser.login.toLowerCase() === username.toLowerCase()) {
+      if (authUser.username.toLowerCase() === username.toLowerCase()) {
         return { isValid: true };
       }
 
-      const targetUser = await this.request('GET', `/users/${username}`);
-      if (targetUser.type === 'Organization') {
-        const orgs = await this.request('GET', '/user/orgs');
-        const hasOrgAccess = orgs.some(
-          (org: any) => org.login.toLowerCase() === username.toLowerCase()
-        );
-        if (hasOrgAccess) {
-          return { isValid: true };
-        }
-        return { isValid: false, error: 'Token does not have access to this organization' };
+      // Check if user has access to the namespace
+      const namespaces = await this.request('GET', '/namespaces', { search: username });
+      const hasAccess = namespaces.some(
+        (ns: any) => ns.path.toLowerCase() === username.toLowerCase()
+      );
+
+      if (hasAccess) {
+        return { isValid: true };
       }
 
       return {
         isValid: false,
         error:
-          'Token can only be used with your GitHub username or organizations you have access to',
+          'Token can only be used with your GitLab username or namespaces you have access to',
       };
     } catch (error) {
       if (error instanceof Error && error.message.includes('404')) {
-        return { isValid: false, error: 'Invalid GitHub username or organization' };
+        return { isValid: false, error: 'Invalid GitLab username or namespace' };
       }
-      return { isValid: false, error: 'Invalid GitHub token' };
+      return { isValid: false, error: 'Invalid GitLab token' };
     }
   }
 
   async validateTokenAndUser(username: string): Promise<{ isValid: boolean; error?: string }> {
     try {
-      return await this.validateClassicToken(username);
+      return await this.validateToken(username);
     } catch (error) {
       console.error('Validation failed:', error);
       return { isValid: false, error: 'Validation failed' };
