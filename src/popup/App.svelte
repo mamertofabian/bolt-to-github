@@ -194,7 +194,7 @@
   function checkSettingsValidity() {
     // Only consider settings valid if we have all required fields AND the validation passed
     isSettingsValid =
-      Boolean(githubToken && repoOwner && repoName && branch) &&
+      Boolean(gitlabToken && repoOwner && repoName && branch) &&
       !isValidatingToken &&
       isTokenValid === true;
   }
@@ -275,10 +275,10 @@
               <ProjectStatus
                 bind:this={projectStatusRef}
                 projectId={parsedProjectId}
-                gitHubUsername={repoOwner}
+                gitLabUsername={repoOwner}
                 {repoName}
                 {branch}
-                token={githubToken}
+                token={gitlabToken}
                 on:switchTab={handleSwitchTab}
               />
             {/if}
@@ -292,7 +292,7 @@
             <ProjectsList
               {projectSettings}
               {repoOwner}
-              {githubToken}
+              token={gitlabToken}
               currentlyLoadedProjectId={parsedProjectId}
               {isBoltSite}
             />

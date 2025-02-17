@@ -1,8 +1,8 @@
-import type { GitHubSettingsInterface, GitLabSettingsInterface, ProjectSettings } from '$lib/types';
+import type { GitLabSettingsInterface, ProjectSettings } from '$lib/types';
 
 export interface SettingsCheckResult {
   isSettingsValid: boolean;
-  gitHubSettings?: GitHubSettingsInterface;
+
   gitLabSettings?: GitLabSettingsInterface;
 }
 

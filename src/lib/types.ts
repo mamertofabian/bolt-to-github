@@ -33,12 +33,6 @@ export interface GitLabSettingsInterface {
   projectSettings?: ProjectSettings;
 }
 
-export interface GitHubSettingsInterface {
-  githubToken: string;
-  repoOwner: string;
-  projectSettings?: ProjectSettings;
-}
-
 export type ProcessingStatus = 'idle' | 'uploading' | 'success' | 'error';
 
 export type UploadProgress = {
