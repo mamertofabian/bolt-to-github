@@ -1,4 +1,4 @@
-import { GitHubService } from '../services/GitHubService';
+import { GitLabService } from '../services/GitLabService';
 import type { UploadStatusState } from '../lib/types';
 
 export const STORAGE_KEY = 'bolt_temp_repos';
@@ -16,7 +16,7 @@ export class BackgroundTempRepoManager {
   private cleanupInterval: NodeJS.Timeout | null = null;
 
   constructor(
-    private githubService: GitHubService,
+    private gitlabService: GitLabService,
     private owner: string,
     private broadcastStatus: (status: UploadStatusState) => void
   ) {
@@ -32,7 +32,7 @@ export class BackgroundTempRepoManager {
         progress: 10,
       });
 
-      tempRepoName = await this.githubService.createTemporaryPublicRepo(this.owner, sourceRepo);
+      tempRepoName = await this.gitlabService.createTemporaryPublicProject(this.owner, sourceRepo);
       await this.saveTempRepo(sourceRepo, tempRepoName);
 
       this.broadcastStatus({
@@ -41,7 +41,7 @@ export class BackgroundTempRepoManager {
         progress: 30,
       });
 
-      await this.githubService.cloneRepoContents(
+      await this.gitlabService.cloneProjectContents(
         this.owner,
         sourceRepo,
         this.owner,
@@ -63,7 +63,7 @@ export class BackgroundTempRepoManager {
       });
 
       // Make repo public only after content is copied
-      await this.githubService.updateRepoVisibility(this.owner, tempRepoName, false);
+      await this.gitlabService.updateProjectVisibility(this.owner, tempRepoName, 'public');
 
       this.broadcastStatus({
         status: 'uploading',
@@ -73,7 +73,7 @@ export class BackgroundTempRepoManager {
 
       // Open Bolt in new tab
       chrome.tabs.create({
-        url: `https://bolt.new/~/github.com/${this.owner}/${tempRepoName}`,
+        url: `https://bolt.new/~/gitlab.com/${this.owner}/${tempRepoName}`,
         active: true, // Focus the new tab
       });
 
@@ -118,7 +118,7 @@ export class BackgroundTempRepoManager {
     for (const repo of tempRepos) {
       if (forceCleanUp || now - repo.createdAt > BackgroundTempRepoManager.MAX_AGE) {
         try {
-          await this.githubService.deleteRepo(repo.owner, repo.tempRepo);
+          await this.gitlabService.deleteProject(repo.owner, repo.tempRepo);
         } catch (error) {
           console.error(`Failed to delete temporary repo ${repo.tempRepo}:`, error);
         }
