@@ -13,17 +13,17 @@
   import Header from '$lib/components/Header.svelte';
   import SocialLinks from '$lib/components/SocialLinks.svelte';
   import StatusAlert from '$lib/components/StatusAlert.svelte';
-  import GitHubSettings from '$lib/components/GitHubSettings.svelte';
+  import GitLabSettings from '$lib/components/GitLabSettings.svelte';
   import { COFFEE_LINK, GITHUB_LINK, YOUTUBE_LINK } from '$lib/constants';
   import Footer from '$lib/components/Footer.svelte';
-  import type { GitHubSettingsInterface } from '$lib/types';
+  import type { GitLabSettingsInterface } from '$lib/types';
   import ProjectsList from '$lib/components/ProjectsList.svelte';
-  import { GitHubService } from '../services/GitHubService';
+  import { GitLabService } from '../services/GitLabService';
   import { Button } from '$lib/components/ui/button';
   import Help from '$lib/components/Help.svelte';
   import ProjectStatus from '$lib/components/ProjectStatus.svelte';
 
-  let githubToken: string = '';
+  let gitlabToken: string = '';
   let repoOwner = '';
   let repoName = '';
   let branch = 'main';
@@ -36,7 +36,7 @@
   let activeTab = 'home';
   let currentUrl: string = '';
   let isBoltSite: boolean = false;
-  let githubSettings: GitHubSettingsInterface;
+  let gitlabSettings: GitLabSettingsInterface;
   let parsedProjectId: string | null = null;
   const version = chrome.runtime.getManifest().version;
   let hasStatus = false;
@@ -58,17 +58,17 @@
     owner: string;
   }
 
-  async function validateGitHubToken(token: string, username: string): Promise<boolean> {
+  async function validateGitLabToken(token: string, username: string): Promise<boolean> {
     if (!token) {
       isTokenValid = false;
-      validationError = 'GitHub token is required';
+      validationError = 'GitLab token is required';
       return false;
     }
 
     try {
       isValidatingToken = true;
-      const githubService = new GitHubService(token);
-      const result = await githubService.validateTokenAndUser(username);
+      const gitlabService = new GitLabService(token);
+      const result = await gitlabService.validateTokenAndUser(username);
       isTokenValid = result.isValid;
       validationError = result.error || null;
       return result.isValid;
@@ -91,20 +91,20 @@
     // Connect to background service
     port = chrome.runtime.connect({ name: 'popup' });
 
-    githubSettings = (await chrome.storage.sync.get([
-      'githubToken',
+    gitlabSettings = (await chrome.storage.sync.get([
+      'gitlabToken',
       'repoOwner',
       'projectSettings',
-    ])) as GitHubSettingsInterface;
+    ])) as GitLabSettingsInterface;
 
-    githubToken = githubSettings.githubToken || '';
-    repoOwner = githubSettings.repoOwner || '';
-    projectSettings = githubSettings.projectSettings || {};
-    hasInitialSettings = Boolean(githubSettings.githubToken && githubSettings.repoOwner);
+    gitlabToken = gitlabSettings.gitlabToken || '';
+    repoOwner = gitlabSettings.repoOwner || '';
+    projectSettings = gitlabSettings.projectSettings || {};
+    hasInitialSettings = Boolean(gitlabSettings.gitlabToken && gitlabSettings.repoOwner);
 
     // Validate existing token and username if they exist
-    if (githubToken && repoOwner) {
-      await validateGitHubToken(githubToken, repoOwner);
+    if (gitlabToken && repoOwner) {
+      await validateGitLabToken(gitlabToken, repoOwner);
     }
 
     const tabs = await chrome.tabs.query({ active: true, currentWindow: true });
@@ -202,7 +202,7 @@
   async function saveSettings() {
     try {
       // Validate token and username before saving
-      const isValid = await validateGitHubToken(githubToken, repoOwner);
+      const isValid = await validateGitLabToken(gitlabToken, repoOwner);
       if (!isValid) {
         status = validationError || 'Validation failed';
         hasStatus = true;
@@ -214,7 +214,7 @@
       }
 
       const settings = {
-        githubToken: githubToken || '',
+        gitlabToken: gitlabToken || '',
         repoOwner: repoOwner || '',
         projectSettings,
       };
@@ -249,11 +249,11 @@
   <Card class="border-slate-800 bg-slate-900">
     <CardHeader>
       <CardTitle class="flex items-center gap-2">
-        <img src="/assets/icons/icon48.png" alt="Bolt to GitHub" class="w-5 h-5" />
-        Bolt to GitHub <span class="text-xs text-slate-400">v{version}</span>
+        <img src="/assets/icons/icon48.png" alt="Bolt to GitLab" class="w-5 h-5" />
+        Bolt to GitLab <span class="text-xs text-slate-400">v{version}</span>
       </CardTitle>
       <CardDescription class="text-slate-400">
-        Upload and sync your Bolt projects to GitHub
+        Upload and sync your Bolt projects to GitLab
       </CardDescription>
     </CardHeader>
     <CardContent>
@@ -307,8 +307,8 @@
                 </CardDescription>
               </CardHeader>
               <CardContent>
-                <GitHubSettings
-                  bind:githubToken
+                <GitLabSettings
+                  bind:gitlabToken
                   bind:repoOwner
                   bind:repoName
                   bind:branch
