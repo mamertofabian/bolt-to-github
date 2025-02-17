@@ -1,10 +1,10 @@
 <script lang="ts">
   import { createEventDispatcher, onMount } from 'svelte';
   import { Alert, AlertTitle, AlertDescription } from './ui/alert';
-  import { GitHubService } from '../../services/GitHubService';
+  import { GitLabService } from '../../services/GitLabService';
 
   export let projectId: string;
-  export let gitHubUsername: string;
+  export let gitLabUsername: string;
   export let repoName: string;
   export let branch: string;
   export let token: string;
@@ -25,22 +25,22 @@
 
   export const getProjectStatus = async () => {
     try {
-      const githubService = new GitHubService(token);
+      const gitlabService = new GitLabService(token);
 
       // Get repo info
-      const repoInfo = await githubService.getRepoInfo(gitHubUsername, repoName);
+      const repoInfo = await gitlabService.getRepoInfo(gitLabUsername, repoName);
       repoExists = repoInfo.exists;
       isLoading.repoStatus = false;
 
       if (repoExists) {
         // Get visibility
-        isPrivate = repoInfo.private ?? null;
+        isPrivate = repoInfo.visibility === 'private';
         isLoading.visibility = false;
 
         // Get latest commit
-        const commits = await githubService.request(
+        const commits = await gitlabService.request(
           'GET',
-          `/repos/${gitHubUsername}/${repoName}/commits?per_page=1`
+          `/projects/${encodeURIComponent(`${gitLabUsername}/${repoName}`)}/repository/commits?per_page=1`
         );
         if (commits[0]?.commit) {
           latestCommit = {
@@ -69,9 +69,9 @@
 
   const dispatch = createEventDispatcher();
 
-  function openGitHub(event: MouseEvent | KeyboardEvent) {
+  function openGitLab(event: MouseEvent | KeyboardEvent) {
     event.stopPropagation();
-    chrome.tabs.create({ url: `https://github.com/${gitHubUsername}/${repoName}/tree/${branch}` });
+    chrome.tabs.create({ url: `https://gitlab.com/${gitLabUsername}/${repoName}/-/tree/${branch}` });
   }
 </script>
 
@@ -123,13 +123,13 @@
     </div>
     <button
       class="col-span-2 text-sm mt-2 border border-slate-700 rounded px-2 py-1 text-slate-400 hover:bg-slate-800 hover:text-slate-300 transition-colors"
-      on:click|stopPropagation={openGitHub}
+      on:click|stopPropagation={openGitLab}
       disabled={isLoading.repoStatus || !repoExists}
     >
       {isLoading.repoStatus
         ? 'Loading...'
         : repoExists
-          ? 'Open GitHub repository'
+          ? 'Open GitLab repository'
           : 'Repo to be created'}
     </button>
   </AlertDescription>
