@@ -14,7 +14,7 @@
   import SocialLinks from '$lib/components/SocialLinks.svelte';
   import StatusAlert from '$lib/components/StatusAlert.svelte';
   import GitLabSettings from '$lib/components/GitLabSettings.svelte';
-  import { COFFEE_LINK, GITHUB_LINK, YOUTUBE_LINK } from '$lib/constants';
+  import { COFFEE_LINK, GITLAB_LINK, YOUTUBE_LINK } from '$lib/constants';
   import Footer from '$lib/components/Footer.svelte';
   import type { GitLabSettingsInterface } from '$lib/types';
   import ProjectsList from '$lib/components/ProjectsList.svelte';
@@ -284,7 +284,7 @@
             {/if}
 
             <div class="mt-6 space-y-4">
-              <SocialLinks {GITHUB_LINK} {YOUTUBE_LINK} {COFFEE_LINK} />
+              <SocialLinks {GITLAB_LINK} {YOUTUBE_LINK} {COFFEE_LINK} />
             </div>
           </TabsContent>
 
@@ -353,9 +353,9 @@
               🌟 You can also load any of your GitLab repositories by providing your GitLab token
               and repository owner.
             </p>
-            <GitHubSettings
+            <GitLabSettings
               isOnboarding={true}
-              bind:githubToken
+              bind:gitlabToken
               bind:repoName
               bind:branch
               bind:repoOwner
