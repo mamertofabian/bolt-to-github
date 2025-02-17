@@ -56,7 +56,7 @@ export interface GitConfig {
   branch: string;
 }
 
-// Deprecated: Use GitConfig instead
+// Deprecated: Will be removed in future versions
 export interface GithubConfig extends GitConfig {}
 
 // Use this interface for new GitLab integration

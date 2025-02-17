@@ -133,7 +133,7 @@ export class ContentManager {
     this.uiManager?.showNotification({
       type: 'info',
       message:
-        'Bolt to GitHub extension has been updated or reloaded. Please refresh the page to continue.',
+        'Bolt to GitLab extension has been updated or reloaded. Please refresh the page to continue.',
       duration: 10000,
     });
   }
@@ -142,7 +142,7 @@ export class ContentManager {
     this.uiManager?.showNotification({
       type: 'error',
       message:
-        'There was an error connecting to the Bolt to GitHub extension. Please refresh the page or reinstall the extension.',
+        'There was an error connecting to the Bolt to GitLab extension. Please refresh the page or reinstall the extension.',
       duration: 10000,
     });
   }
