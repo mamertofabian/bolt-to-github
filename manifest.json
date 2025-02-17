@@ -1,8 +1,8 @@
 {
   "manifest_version": 3,
-  "name": "Bolt to GitHub",
+  "name": "Bolt to GitLab",
   "version": "1.2.1",
-  "description": "Automatically process your Bolt project zip files and upload them to your GitHub repository.",
+  "description": "Automatically process your Bolt project zip files and upload them to your GitLab repository.",
   "icons": {
     "16": "assets/icons/icon16.png",
     "48": "assets/icons/icon48.png",
