@@ -1,11 +1,47 @@
-import type { GitHubSettingsInterface, ProjectSettings } from '$lib/types';
+import type { GitHubSettingsInterface, GitLabSettingsInterface, ProjectSettings } from '$lib/types';
 
 export interface SettingsCheckResult {
   isSettingsValid: boolean;
   gitHubSettings?: GitHubSettingsInterface;
+  gitLabSettings?: GitLabSettingsInterface;
 }
 
 export class SettingsService {
+  static async needsGitLabMigration(): Promise<boolean> {
+    try {
+      const settings = await chrome.storage.sync.get(['githubToken', 'gitlabToken']);
+      return Boolean(settings.githubToken && !settings.gitlabToken);
+    } catch (error) {
+      console.error('Error checking migration status:', error);
+      return false;
+    }
+  }
+
+  static async clearGitHubSettings(): Promise<void> {
+    try {
+      await chrome.storage.sync.remove(['githubToken']);
+    } catch (error) {
+      console.error('Error clearing GitHub settings:', error);
+    }
+  }
+  static async migrateToGitLab(): Promise<void> {
+    try {
+      const settings = await chrome.storage.sync.get(['githubToken', 'repoOwner', 'projectSettings']);
+      
+      // Only migrate if GitHub settings exist
+      if (settings.githubToken && settings.repoOwner) {
+        await chrome.storage.sync.set({
+          gitlabToken: '',  // Clear for security, user must enter new token
+          repoOwner: settings.repoOwner,
+          projectSettings: settings.projectSettings || {}
+        });
+      }
+    } catch (error) {
+      console.error('Error migrating to GitLab settings:', error);
+    }
+  }
+
+  // Keep GitHub method during transition
   static async getGitHubSettings(): Promise<SettingsCheckResult> {
     try {
       const [settings, projectId] = await Promise.all([
@@ -15,7 +51,6 @@ export class SettingsService {
 
       let projectSettings = settings.projectSettings?.[projectId.projectId];
 
-      // Auto-create project settings if needed
       if (!projectSettings && projectId?.projectId && settings.repoOwner && settings.githubToken) {
         projectSettings = { repoName: projectId.projectId, branch: 'main' };
         await chrome.storage.sync.set({
@@ -37,7 +72,41 @@ export class SettingsService {
       };
     } catch (error) {
       console.error('Error checking GitHub settings:', error);
-      return { isSettingsValid: false };
+      return { isSettingsValid: false, gitLabSettings: undefined, gitHubSettings: undefined };
+    }
+  }
+  static async getGitLabSettings(): Promise<SettingsCheckResult> {
+    try {
+      const [settings, projectId] = await Promise.all([
+        chrome.storage.sync.get(['gitlabToken', 'repoOwner', 'projectSettings']),
+        chrome.storage.sync.get('projectId'),
+      ]);
+
+      let projectSettings = settings.projectSettings?.[projectId.projectId];
+
+      // Auto-create project settings if needed
+      if (!projectSettings && projectId?.projectId && settings.repoOwner && settings.gitlabToken) {
+        projectSettings = { repoName: projectId.projectId, branch: 'main' };
+        await chrome.storage.sync.set({
+          [`projectSettings.${projectId.projectId}`]: projectSettings,
+        });
+      }
+
+      const isSettingsValid = Boolean(
+        settings.gitlabToken && settings.repoOwner && settings.projectSettings && projectSettings
+      );
+
+      return {
+        isSettingsValid,
+        gitLabSettings: {
+          gitlabToken: settings.gitlabToken,
+          repoOwner: settings.repoOwner,
+          projectSettings: projectSettings || undefined,
+        },
+      };
+    } catch (error) {
+      console.error('Error checking GitLab settings:', error);
+      return { isSettingsValid: false, gitLabSettings: undefined };
     }
   }
 

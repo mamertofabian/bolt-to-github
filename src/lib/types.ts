@@ -8,7 +8,7 @@ export type MessageType =
   | 'SET_COMMIT_MESSAGE'
   | 'DEBUG'
   | 'CONTENT_SCRIPT_READY'
-  | 'GITHUB_SETTINGS_CHANGED'
+  | 'GITLAB_SETTINGS_CHANGED'
   | 'OPEN_SETTINGS'
   | 'IMPORT_PRIVATE_REPO'
   | 'DELETE_TEMP_REPO';
@@ -27,6 +27,12 @@ export interface ProjectSetting {
 
 export type ProjectSettings = Record<string, ProjectSetting>;
 
+export interface GitLabSettingsInterface {
+  gitlabToken: string;
+  repoOwner: string;
+  projectSettings?: ProjectSettings;
+}
+
 export interface GitHubSettingsInterface {
   githubToken: string;
   repoOwner: string;
@@ -41,9 +47,15 @@ export interface UploadStatusState {
   progress?: number;
 }
 
-export interface GithubConfig {
+export interface GitConfig {
   token: string;
   owner: string;
   repo: string;
   branch: string;
 }
+
+// Deprecated: Use GitConfig instead
+export interface GithubConfig extends GitConfig {}
+
+// Use this interface for new GitLab integration
+export interface GitlabConfig extends GitConfig {}
