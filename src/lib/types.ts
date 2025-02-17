@@ -41,6 +41,14 @@ export interface GitHubSettingsInterface {
 
 export type ProcessingStatus = 'idle' | 'uploading' | 'success' | 'error';
 
+export type UploadProgress = {
+  status: 'uploading' | 'success' | 'error';
+  progress: number;
+  message: string;
+};
+
+export type ProgressCallback = (progress: UploadProgress) => void;
+
 export interface UploadStatusState {
   status: ProcessingStatus;
   message?: string;
