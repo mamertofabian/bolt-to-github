@@ -19,7 +19,7 @@ export class SettingsService {
 
   static async clearOldSettings(): Promise<void> {
     try {
-      await chrome.storage.sync.remove(['githubToken']); // Remove legacy token during migration
+      await chrome.storage.sync.remove(['githubToken']); // Remove legacy GitLab token during migration
     } catch (error) {
       console.error('Error clearing old settings:', error);
     }
