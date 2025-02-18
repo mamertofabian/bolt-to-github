@@ -103,7 +103,7 @@
       repoOwner = parsed.owner;
       repoName = parsed.name;
       onInput();
-      handleTokenInput(); // Validate with new owner
+      validateSettings(); // Call validateSettings directly instead of handleTokenInput
     }
   }
 
@@ -238,7 +238,10 @@
   function handleOwnerInput() {
     onInput();
     if (gitlabToken) {
-      handleTokenInput(); // This will trigger validation of both token and username
+      handleTokenInput();
+      if (repoName) {
+        gitlabUrl = `https://gitlab.com/${repoOwner}/${repoName}.git`;
+      }
     }
   }
 
@@ -468,6 +471,21 @@
           <p class="text-sm text-red-400 mt-1">{permissionError}</p>
         {/if}
       {/if}
+    </div>
+
+    <div class="space-y-2">
+      <Label for="repoOwner" class="text-slate-200">
+        Repository Owner
+        <span class="text-sm text-slate-400 ml-2">(Your GitLab username)</span>
+      </Label>
+      <Input
+        type="text"
+        id="repoOwner"
+        bind:value={repoOwner}
+        on:input={handleOwnerInput}
+        placeholder="username or organization"
+        class="bg-slate-800 border-slate-700 text-slate-200 placeholder:text-slate-500"
+      />
     </div>
 
     <div class="space-y-2">
