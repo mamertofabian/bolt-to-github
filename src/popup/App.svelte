@@ -191,31 +191,35 @@
     }
   }
 
-  function checkSettingsValidity() {
+  async function checkSettingsValidity() {
     // Only consider settings valid if we have all required fields AND the validation passed
     isSettingsValid =
-      Boolean(gitlabToken && repoOwner && repoName && branch) &&
+      Boolean(gitlabToken && repoOwner) &&
       !isValidatingToken &&
       isTokenValid === true;
+
+    // Ensure settings are saved after validation
+    if (isSettingsValid) {
+      await saveSettings();
+    }
   }
 
   async function saveSettings() {
     try {
+      // Ensure we have the minimum required settings
+      if (!gitlabToken || !repoOwner) {
+        throw new Error('Missing required settings');
+      }
+
       // Validate token and username before saving
       const isValid = await validateGitLabToken(gitlabToken, repoOwner);
       if (!isValid) {
-        status = validationError || 'Validation failed';
-        hasStatus = true;
-        setTimeout(() => {
-          status = '';
-          hasStatus = false;
-        }, 3000);
-        return;
+        throw new Error(validationError || 'Validation failed');
       }
 
       const settings = {
-        gitlabToken: gitlabToken || '',
-        repoOwner: repoOwner || '',
+        gitlabToken: gitlabToken,
+        repoOwner: repoOwner,
         projectSettings,
       };
 
@@ -237,9 +241,10 @@
         hasStatus = false;
       }, 3000);
     } catch (error) {
-      status = 'Error saving settings';
+      console.error('Error saving settings:', error);
+      status = error instanceof Error ? error.message : 'Error saving settings';
       hasStatus = true;
-      console.error(error);
+      isSettingsValid = false;
     }
   }
 

@@ -87,12 +87,7 @@ export class SettingsService {
   // Main settings getter
   static async getSettings(): Promise<SettingsCheckResult> {
     try {
-      const [settings, projectId] = await Promise.all([
-        chrome.storage.sync.get(['gitlabToken', 'repoOwner', 'projectSettings']),
-        chrome.storage.sync.get('projectId'),
-      ]);
-
-      let projectSettings = settings.projectSettings?.[projectId.projectId];
+      const settings = await chrome.storage.sync.get(['gitlabToken', 'repoOwner', 'projectSettings']);
       let decryptedToken: string | undefined;
 
       if (settings.gitlabToken) {
@@ -104,23 +99,14 @@ export class SettingsService {
         }
       }
 
-      if (!projectSettings && projectId?.projectId && settings.repoOwner && decryptedToken) {
-        projectSettings = { repoName: projectId.projectId, branch: 'main' };
-        await chrome.storage.sync.set({
-          [`projectSettings.${projectId.projectId}`]: projectSettings,
-        });
-      }
-
-      const isSettingsValid = Boolean(
-        decryptedToken && settings.repoOwner && settings.projectSettings && projectSettings
-      );
+      const isSettingsValid = Boolean(decryptedToken && settings.repoOwner);
 
       return {
         isSettingsValid,
         gitLabSettings: isSettingsValid ? {
           gitlabToken: decryptedToken!,
           repoOwner: settings.repoOwner,
-          projectSettings: projectSettings || undefined,
+          projectSettings: settings.projectSettings || {},
         } : undefined,
       };
     } catch (error) {
@@ -129,48 +115,8 @@ export class SettingsService {
     }
   }
   static async getGitLabSettings(): Promise<SettingsCheckResult> {
-    try {
-      const [settings, projectId] = await Promise.all([
-        chrome.storage.sync.get(['gitlabToken', 'repoOwner', 'projectSettings']),
-        chrome.storage.sync.get('projectId'),
-      ]);
-
-      let projectSettings = settings.projectSettings?.[projectId.projectId];
-      let decryptedToken: string | undefined;
-
-      if (settings.gitlabToken) {
-        try {
-          decryptedToken = await this.decryptToken(settings.gitlabToken);
-        } catch (error) {
-          console.error('Error decrypting GitLab token:', error);
-          return { isSettingsValid: false, gitLabSettings: undefined };
-        }
-      }
-
-      // Auto-create project settings if needed
-      if (!projectSettings && projectId?.projectId && settings.repoOwner && decryptedToken) {
-        projectSettings = { repoName: projectId.projectId, branch: 'main' };
-        await chrome.storage.sync.set({
-          [`projectSettings.${projectId.projectId}`]: projectSettings,
-        });
-      }
-
-      const isSettingsValid = Boolean(
-        decryptedToken && settings.repoOwner && settings.projectSettings && projectSettings
-      );
-
-      return {
-        isSettingsValid,
-        gitLabSettings: isSettingsValid ? {
-          gitlabToken: decryptedToken!,
-          repoOwner: settings.repoOwner,
-          projectSettings: projectSettings || undefined,
-        } : undefined,
-      };
-    } catch (error) {
-      console.error('Error checking GitLab settings:', error);
-      return { isSettingsValid: false, gitLabSettings: undefined };
-    }
+    // Use the simplified validation from getSettings
+    return this.getSettings();
   }
 
   static async getProjectId(): Promise<string | null> {

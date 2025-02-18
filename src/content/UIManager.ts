@@ -133,7 +133,7 @@ export class UIManager {
       return;
     }
 
-    const settings = await SettingsService.getGitLabSettings();
+    const settings = await SettingsService.getSettings();
     const button = this.createGitLabButton();
     this.updateButtonState(settings.isSettingsValid);
     this.uploadButton = button;
@@ -186,7 +186,9 @@ export class UIManager {
 
   private async handleGitLabButtonClick() {
     console.log('Handling GitLab button click');
-    const settings = await SettingsService.getGitLabSettings();
+    const settings = await SettingsService.getSettings();
+    
+    // Only check basic settings validity
     if (!settings.isSettingsValid) {
       this.showSettingsNotification();
       return;
