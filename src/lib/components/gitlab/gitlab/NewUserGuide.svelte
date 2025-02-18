@@ -1,6 +1,6 @@
 <script lang="ts">
   import { Button } from '$lib/components/ui/button';
-  import { CREATE_TOKEN_URL } from '../../../../services/GitLabService';
+  import { CREATE_TOKEN_URL } from '../../../services/GitLabService';
 </script>
 
 <div class="space-y-4">
