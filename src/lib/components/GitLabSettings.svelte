@@ -166,7 +166,13 @@
     } catch (error) {
       console.error('Error validating settings:', error);
       isTokenValid = false;
-      validationError = 'Validation failed';
+      if (error instanceof Error) {
+        // Extract GitLab API error message if available
+        const gitlabError = error as any;
+        validationError = gitlabError.originalMessage || gitlabError.message || 'GitLab token validation failed';
+      } else {
+        validationError = 'GitLab token validation failed';
+      }
     } finally {
       isValidatingToken = false;
     }
@@ -249,7 +255,13 @@
       }
     } catch (error) {
       console.error('Permission check failed:', error);
-      permissionError = 'Failed to verify permissions';
+      if (error instanceof Error) {
+        // Extract GitLab API error message if available
+        const gitlabError = error as any;
+        permissionError = gitlabError.originalMessage || gitlabError.message || 'Failed to verify GitLab permissions';
+      } else {
+        permissionError = 'Failed to verify GitLab permissions';
+      }
     } finally {
       isCheckingPermissions = false;
       currentCheck = null;
