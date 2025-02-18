@@ -1,4 +1,4 @@
-# Bolt to GitHub - Chrome Extension
+# Bolt to GitLab - Chrome Extension
 
 <div align="center">
   <a href="https://aidrivencoder.com">
@@ -18,7 +18,7 @@
   </p>
 </div>
 
-A Chrome extension that automatically captures ZIP file downloads from bolt.new, extracts them, and pushes the contents to a specified GitHub repository. Built with Svelte, TypeScript, and TailwindCSS.
+A Chrome extension that automatically captures ZIP file downloads from bolt.new, extracts them, and pushes the contents to a specified GitLab repository. Built with Svelte, TypeScript, and TailwindCSS.
 
 ## 📦 Installation Options
 
@@ -32,8 +32,8 @@ A Chrome extension that automatically captures ZIP file downloads from bolt.new,
 
 #### 🔒 New in v1.2.1
 
-- Support for Private GitHub repositories (see demo here: https://youtu.be/d9NqXRoroi0)
-- Enhanced GitHub integration with token validation
+- Support for Private GitLab repositories (see demo here: https://youtu.be/d9NqXRoroi0)
+- Enhanced GitLab integration with token validation
 - Improved repository management and temporary repository handling
 - New user interface components:
   - Help system and New User Guide
@@ -119,23 +119,23 @@ Get started in just 3 simple steps:
 
    - Make sure you have a Bolt.new project loaded
    - Click the extension icon in your Chrome toolbar
-   - Enter your GitHub token (needs repo permissions)
+   - Enter your GitLab token (needs api, read_api, read_repository, write_repository permissions)
    - Repository Owner
    - Repository Name
    - Branch Name (defaults to 'main')
    - Save your settings and you're ready to go!
 
 3. **Load your Bolt.new Project**
-   - Click on the GitHub button in the Bolt.new project page at the top right
+   - Click on the GitLab button in the Bolt.new project page at the top right
    - Confirm the popup that appears
    - Done!
 
-### 🚨 New to GitHub?
+### 🚨 New to GitLab?
 
 Follow these steps to get started:
 
-1. [Create a GitHub account](https://github.com/join)
-2. [Generate a personal access token](https://github.com/settings/tokens/new?scopes=repo&description=Bolt%20to%20GitHub) (needs repo permissions)
+1. [Create a GitLab account](https://gitlab.com/users/sign_up)
+2. [Generate a personal access token](https://gitlab.com/-/profile/personal_access_tokens) (needs api, read_api, read_repository, write_repository permissions)
 
 Need help? Watch our [Quick Start Video Tutorial](https://youtu.be/7C03DNw9ZHI)
 
