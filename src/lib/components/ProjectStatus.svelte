@@ -96,7 +96,7 @@
         {#if isLoading.repoStatus}
           <span class="text-slate-500">Loading...</span>
         {:else}
-          <span class="text-green-400">{repoExists ? 'Exists' : 'Will be created'}</span>
+          <span class="text-green-400">{repoExists ? 'Exists' : 'Not found'}</span>
         {/if}
       </span>
       <span class="text-slate-400">Visibility:</span>
@@ -130,7 +130,7 @@
         ? 'Loading...'
         : repoExists
           ? 'Open GitLab repository'
-          : 'Repo to be created'}
+          : 'Repository not found'}
     </button>
   </AlertDescription>
 </Alert>

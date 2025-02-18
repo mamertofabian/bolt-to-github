@@ -23,15 +23,7 @@ interface GitLabCommitResponse {
   created_at: string;
 }
 
-interface ProjectCreateOptions {
-  name: string;
-  visibility?: 'private' | 'public';
-  description?: string;
-  initialize_with_readme?: boolean;
-  auto_devops_enabled?: boolean;
-  path?: string;
-  namespace_id?: number;
-}
+// Project creation interface removed
 
 import { GitLabTokenValidator } from './GitLabTokenValidator';
 
@@ -173,20 +165,7 @@ export class GitLabService extends BaseGitService {
   }
 
 
-public async createProject(
-    name: string,
-    options: { visibility?: 'private' | 'public'; description?: string; path?: string } = {}
-  ): Promise<any> {
-    const projectData = {
-      name,
-      visibility: options.visibility || 'private',
-      description: options.description || 'Repository created by Bolt to GitLab extension',
-      initialize_with_readme: true,
-      auto_devops_enabled: false,
-      path: options.path || name.toLowerCase().replace(/\s+/g, '-')
-    };
-    return this.request('POST', '/projects', projectData);
-  }
+  // Project creation removed - users must provide existing project URL
 
   public async validateTokenAndUser(username: string): Promise<{ isValid: boolean; error?: string }> {
     try {
@@ -238,15 +217,8 @@ public async createProject(
 
 
   async ensureProjectExists(owner: string, name: string): Promise<void> {
-    try {
-      await this.request('GET', `/projects/${encodeURIComponent(`${owner}/${name}`)}`);
-    } catch (error: any) {
-      if (error.status === 404) {
-        await this.createProject(name);
-      } else {
-        throw error;
-      }
-    }
+    // Only check if project exists, don't create it
+    await this.request('GET', `/projects/${encodeURIComponent(`${owner}/${name}`)}`);
   }
 
   async isProjectEmpty(owner: string, name: string): Promise<boolean> {

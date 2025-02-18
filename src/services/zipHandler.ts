@@ -117,7 +117,11 @@ export class ZipHandler {
       console.log('📋 Repository details:', { repoOwner, repoName, targetBranch });
 
       await this.updateStatus('uploading', 15, 'Checking repository...');
-      await this.gitlabService.ensureProjectExists(repoOwner, repoName);
+      try {
+        await this.gitlabService.ensureProjectExists(repoOwner, repoName);
+      } catch (error) {
+        throw new Error('Repository not found. Please make sure the repository exists and you have access to it.');
+      }
 
       // Check if project is empty and needs initialization
       const isEmpty = await this.gitlabService.isProjectEmpty(repoOwner, repoName);

@@ -26,7 +26,7 @@
   let gitlabToken: string = '';
   let repoOwner = '';
   let repoName = '';
-  let branch = 'main';
+  let branch: string = '';
   let projectSettings: Record<string, { repoName: string; branch: string }> = {};
   let status = '';
   let uploadProgress = 0;
@@ -127,7 +127,7 @@
               projectSettings[parsedProjectId]
             );
             repoName = projectSettings[parsedProjectId].repoName;
-            branch = projectSettings[parsedProjectId].branch;
+            branch = projectSettings[parsedProjectId].branch || 'main';
           } else {
             // Use project ID as default repo name for new projects
             repoName = parsedProjectId;
@@ -220,7 +220,10 @@
       };
 
       if (parsedProjectId) {
-        projectSettings[parsedProjectId] = { repoName, branch };
+        projectSettings[parsedProjectId] = {
+          repoName,
+          branch: branch || 'main' // Set default branch if not specified
+        };
         settings.projectSettings = projectSettings;
       }
 

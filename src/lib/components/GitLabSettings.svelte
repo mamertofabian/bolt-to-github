@@ -2,9 +2,9 @@
   import { Button } from '$lib/components/ui/button';
   import { Input } from '$lib/components/ui/input';
   import { Label } from '$lib/components/ui/label';
-  import { Check, X, Search, Loader2, HelpCircle } from 'lucide-svelte';
+  import { Check, X, Loader2, HelpCircle } from 'lucide-svelte';
   import { onMount } from 'svelte';
-  import { CREATE_TOKEN_URL, GitLabService } from '../../services/GitLabService';
+  import { GitLabService } from '../../services/GitLabService';
   import NewUserGuide from './gitlab/gitlab/NewUserGuide.svelte';
 
   export let isOnboarding: boolean = false;
@@ -23,21 +23,6 @@
   let isTokenValid: boolean | null = null;
   let tokenValidationTimeout: number;
   let validationError: string | null = null;
-  let isRepoNameFromProjectId = false;
-  let repositories: Array<{
-    name: string;
-    description: string | null;
-    web_url: string;
-    visibility: string;
-    created_at: string;
-    last_activity_at: string;
-  }> = [];
-  let isLoadingRepos = false;
-  let showRepoDropdown = false;
-  let repoSearchQuery = '';
-  let repoInputFocused = false;
-  let repoExists = false;
-  let selectedIndex = -1;
   let isCheckingPermissions = false;
   let lastPermissionCheck: number | null = null;
   let currentCheck: 'api' | 'read_api' | 'read_repository' | 'write_repository' | null = null;
@@ -74,103 +59,16 @@
     }
   }
 
-  $: filteredRepos = repositories
-    .filter(
-      (repo) =>
-        repo.name.toLowerCase().includes(repoSearchQuery.toLowerCase()) ||
-        (repo.description && repo.description.toLowerCase().includes(repoSearchQuery.toLowerCase()))
-    )
-    .slice(0, 10);
-
-  $: if (repoName) {
-    repoExists = repositories.some((repo) => repo.name.toLowerCase() === repoName.toLowerCase());
-  }
-
-  $: if (projectId && !repoName && !isRepoNameFromProjectId) {
-    repoName = projectId;
-    isRepoNameFromProjectId = true;
-    // Update URL when project ID sets the repo name
-    if (repoOwner) {
-      gitlabUrl = `https://gitlab.com/${repoOwner}/${repoName}.git`;
-    }
-  }
-
   function handleGitlabUrlInput(event: Event) {
     const url = (event.target as HTMLInputElement).value;
+    gitlabUrl = url;
     const parsed = parseGitLabUrl(url);
     
     if (parsed) {
       repoOwner = parsed.owner;
       repoName = parsed.name;
       onInput();
-      validateSettings(); // Call validateSettings directly instead of handleTokenInput
     }
-  }
-
-  async function loadRepositories() {
-    if (!gitlabToken || !repoOwner || !isTokenValid) return;
-
-    try {
-      isLoadingRepos = true;
-      const gitlabService = new GitLabService(gitlabToken);
-      repositories = await gitlabService.listRepos();
-    } catch (error) {
-      console.error('Error loading repositories:', error);
-      repositories = [];
-    } finally {
-      isLoadingRepos = false;
-    }
-  }
-
-  function handleRepoInput() {
-    repoSearchQuery = repoName;
-    onInput();
-  }
-
-  function selectRepo(repo: (typeof repositories)[0]) {
-    repoName = repo.name;
-    showRepoDropdown = false;
-    repoSearchQuery = repo.name;
-    onInput();
-  }
-
-  function handleRepoKeydown(event: KeyboardEvent) {
-    if (!showRepoDropdown) return;
-
-    switch (event.key) {
-      case 'ArrowDown':
-        event.preventDefault();
-        selectedIndex = Math.min(selectedIndex + 1, filteredRepos.length - 1);
-        break;
-      case 'ArrowUp':
-        event.preventDefault();
-        selectedIndex = Math.max(selectedIndex - 1, -1);
-        break;
-      case 'Enter':
-        event.preventDefault();
-        if (selectedIndex >= 0 && filteredRepos[selectedIndex]) {
-          selectRepo(filteredRepos[selectedIndex]);
-        }
-        break;
-      case 'Escape':
-        event.preventDefault();
-        showRepoDropdown = false;
-        break;
-    }
-  }
-
-  function handleRepoFocus() {
-    repoInputFocused = true;
-    showRepoDropdown = true;
-    repoSearchQuery = repoName;
-  }
-
-  function handleRepoBlur() {
-    repoInputFocused = false;
-    // Delay hiding dropdown to allow click events to register
-    setTimeout(() => {
-      showRepoDropdown = false;
-    }, 200);
   }
 
   onMount(async () => {
@@ -200,10 +98,7 @@
       isTokenValid = result.isValid;
       validationError = result.error || null;
 
-      // Load repositories after successful validation
-      if (result.isValid) {
-        await loadRepositories();
-      }
+      // Token validation successful
     } catch (error) {
       console.error('Error validating settings:', error);
       isTokenValid = false;
@@ -502,13 +397,7 @@
           bind:value={gitlabUrl}
           class="bg-slate-800 border-slate-700 text-slate-200 placeholder:text-slate-500"
         />
-        <div class="absolute right-3 top-1/2 -translate-y-1/2">
-          {#if isLoadingRepos}
-            <Loader2 class="h-4 w-4 text-slate-400 animate-spin" />
-          {:else}
-            <Search class="h-4 w-4 text-slate-400" />
-          {/if}
-        </div>
+
       </div>
     </div>
 
@@ -526,6 +415,11 @@
           placeholder="main"
           class="bg-slate-800 border-slate-700 text-slate-200 placeholder:text-slate-500"
         />
+        {#if !branch}
+          <p class="text-sm text-slate-400">
+            ℹ️ Using default branch: main
+          </p>
+        {/if}
       </div>
     {/if}
 
