@@ -67,7 +67,7 @@
           class:text-red-400={status.status === 'error'}
         >
           {#if status.status === 'uploading'}
-            Pushing to GitHub...
+            Pushing to GitLab...
           {:else if status.status === 'success'}
             Push Complete!
           {:else if status.status === 'error'}

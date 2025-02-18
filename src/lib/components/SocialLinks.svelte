@@ -1,8 +1,8 @@
 <script lang="ts">
-  import { Coffee, GithubIcon, YoutubeIcon } from 'lucide-svelte';
+  import { Coffee, GitlabIcon, YoutubeIcon } from 'lucide-svelte';
   import { Button } from '$lib/components/ui/button';
 
-  export let GITHUB_LINK: string;
+  export let GITLAB_LINK: string;
   export let YOUTUBE_LINK: string;
   export let COFFEE_LINK: string;
 
@@ -15,9 +15,9 @@
   <Button
     variant="outline"
     class="border-slate-800 hover:bg-slate-800 text-slate-200"
-    on:click={() => openLink(GITHUB_LINK)}
+    on:click={() => openLink(GITLAB_LINK)}
   >
-    <GithubIcon class="w-4 h-4" />
+    <GitlabIcon class="w-4 h-4" />
   </Button>
   <Button
     variant="outline"

@@ -8,7 +8,7 @@ export type MessageType =
   | 'SET_COMMIT_MESSAGE'
   | 'DEBUG'
   | 'CONTENT_SCRIPT_READY'
-  | 'GITHUB_SETTINGS_CHANGED'
+  | 'GITLAB_SETTINGS_CHANGED'
   | 'OPEN_SETTINGS'
   | 'IMPORT_PRIVATE_REPO'
   | 'DELETE_TEMP_REPO';
@@ -27,13 +27,21 @@ export interface ProjectSetting {
 
 export type ProjectSettings = Record<string, ProjectSetting>;
 
-export interface GitHubSettingsInterface {
-  githubToken: string;
+export interface GitLabSettingsInterface {
+  gitlabToken: string;
   repoOwner: string;
   projectSettings?: ProjectSettings;
 }
 
 export type ProcessingStatus = 'idle' | 'uploading' | 'success' | 'error';
+
+export type UploadProgress = {
+  status: 'uploading' | 'success' | 'error';
+  progress: number;
+  message: string;
+};
+
+export type ProgressCallback = (progress: UploadProgress) => void;
 
 export interface UploadStatusState {
   status: ProcessingStatus;
@@ -41,9 +49,17 @@ export interface UploadStatusState {
   progress?: number;
 }
 
-export interface GithubConfig {
+export interface GitConfig {
   token: string;
   owner: string;
   repo: string;
   branch: string;
 }
+
+// Deprecated: Will be removed in future versions
+export interface GithubConfig extends GitConfig {
+  /** @deprecated Use GitConfig instead */
+}
+
+// Use this interface for new GitLab integration
+export interface GitlabConfig extends GitConfig {}

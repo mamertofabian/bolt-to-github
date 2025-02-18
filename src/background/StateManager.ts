@@ -1,4 +1,5 @@
 import { SettingsService } from '../services/settings';
+import type { SettingsCheckResult } from '../services/settings';
 
 export class StateManager {
   private static instance: StateManager;
@@ -12,15 +13,15 @@ export class StateManager {
     return this.instance;
   }
 
-  async getGitHubSettings() {
-    return SettingsService.getGitHubSettings();
+  async getSettings(): Promise<SettingsCheckResult> {
+    return SettingsService.getSettings();
   }
 
-  async getProjectId() {
+  async getProjectId(): Promise<string | null> {
     return SettingsService.getProjectId();
   }
 
-  async setProjectId(projectId: string) {
+  async setProjectId(projectId: string): Promise<void> {
     return SettingsService.setProjectId(projectId);
   }
 }

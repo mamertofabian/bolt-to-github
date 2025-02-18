@@ -5,19 +5,21 @@ export type PermissionCheckProgress = {
 
 export type ProgressCallback = (progress: PermissionCheckProgress) => void;
 
-export abstract class BaseGitHubService {
-  protected baseUrl = 'https://api.github.com';
+export abstract class BaseGitService {
+  protected abstract get baseUrl(): string;
+  protected abstract get apiVersion(): string;
+  protected abstract get acceptHeader(): string;
 
   constructor(protected token: string) {}
 
   async request(method: string, endpoint: string, body?: any, options: RequestInit = {}) {
-    const url = `${this.baseUrl}${endpoint}`;
+    const url = `${this.baseUrl}/${this.apiVersion}${endpoint}`;
 
     const response = await fetch(url, {
       method,
       ...options,
       headers: {
-        Accept: 'application/vnd.github.v3+json',
+        Accept: this.acceptHeader,
         Authorization: `Bearer ${this.token}`,
         'Content-Type': 'application/json',
         ...options.headers,
@@ -33,13 +35,13 @@ export abstract class BaseGitHubService {
         errorDetails = { message: response.statusText };
       }
 
-      const errorMessage = errorDetails.message || errorDetails.error || 'Unknown GitHub API error';
-      const fullErrorMessage = `GitHub API Error (${response.status}): ${errorMessage}`;
+      const errorMessage = errorDetails.message || errorDetails.error || 'Unknown GitLab API error';
+      const fullErrorMessage = `GitLab API Error (${response.status}): ${errorMessage}`;
 
       const apiError = new Error(fullErrorMessage) as any;
       apiError.status = response.status;
       apiError.originalMessage = errorMessage;
-      apiError.githubErrorResponse = errorDetails;
+      apiError.gitlabErrorResponse = errorDetails;
 
       throw apiError;
     }

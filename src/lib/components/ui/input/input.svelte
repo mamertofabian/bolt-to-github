@@ -10,7 +10,7 @@
   export let value: $$Props['value'] = undefined;
   export { className as class };
 
-  // Workaround for https://github.com/sveltejs/svelte/issues/9305
+  // Workaround for https://gitlab.com/sveltejs/svelte/-/issues/9305
   // Fixed in Svelte 5, but not backported to 4.x.
   export let readonly: $$Props['readonly'] = undefined;
 </script>
