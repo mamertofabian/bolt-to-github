@@ -51,33 +51,41 @@ export class GitLabTokenValidator extends BaseGitService {
             try {
               const testPath = `.gitlab-write-test-${Date.now()}`;
               
-              // Check if main branch exists
+              // First check if we have access to the project
               try {
-                await this.request('GET', `/projects/${project.id}/repository/branches/main`);
+                await this.request('GET', `/projects/${project.id}`);
               } catch {
-                continue; // Skip projects without main branch
+                continue; // Skip projects we can't access
               }
               
-              // Try to create a temporary file
-              await this.request('POST', `/projects/${project.id}/repository/files/${encodeURIComponent(testPath)}`, {
-                branch: 'main',
-                content: btoa('test'),
-                commit_message: 'Testing write access'
-              });
-              
-              // Clean up the test file
+              // Try to create a temporary file in the default branch
               try {
-                await this.request('DELETE', `/projects/${project.id}/repository/files/${encodeURIComponent(testPath)}`, {
-                  branch: 'main',
-                  commit_message: 'Cleaning up write access test'
+                const defaultBranch = await this.request('GET', `/projects/${project.id}`).then(p => p.default_branch || 'main');
+                await this.request('POST', `/projects/${project.id}/repository/files/${encodeURIComponent(testPath)}`, {
+                  branch: defaultBranch,
+                  content: btoa('test'),
+                  commit_message: 'Testing write access'
                 });
-              } catch (cleanupError) {
-                console.error('Failed to cleanup test file:', cleanupError);
-                // Continue since we verified write access
+                
+                // Clean up the test file
+                try {
+                  await this.request('DELETE', `/projects/${project.id}/repository/files/${encodeURIComponent(testPath)}`, {
+                    branch: defaultBranch,
+                    commit_message: 'Cleaning up write access test'
+                  });
+                } catch (cleanupError) {
+                  console.error('Failed to cleanup test file:', cleanupError);
+                  // Continue since we verified write access
+                }
+                
+                onProgress?.({ permission: 'write_repository', isValid: true });
+                return { isValid: true };
+              } catch (error) {
+                if (error.status === 403) {
+                  continue; // Skip if we don't have write access to this project
+                }
+                throw error; // Re-throw other errors
               }
-              
-              onProgress?.({ permission: 'write_repository', isValid: true });
-              return { isValid: true };
             } catch {
               continue; // Try next project
             }
@@ -87,7 +95,7 @@ export class GitLabTokenValidator extends BaseGitService {
           onProgress?.({ permission: 'write_repository', isValid: false });
           return {
             isValid: false,
-            error: 'Token lacks repository write permission. Please ensure your token has write_repository scope.',
+            error: 'Token lacks repository write permission. Please ensure your token has write_repository scope and you have write access to at least one project.',
           };
         } else {
           onProgress?.({ permission: 'write_repository', isValid: false });
@@ -100,70 +108,7 @@ export class GitLabTokenValidator extends BaseGitService {
         onProgress?.({ permission: 'write_repository', isValid: false });
         return {
           isValid: false,
-          error: 'Token lacks repository write permission',
-        };
-      }
-
-      // Verify write access by attempting to create a temporary file
-      try {
-        // Get user's projects to find one to test write access
-        const projects = await this.request('GET', `/users/${encodeURIComponent(username)}/projects`);
-        if (projects.length > 0) {
-          // Try each project until we find one with write access
-          for (const project of projects) {
-            try {
-              const testPath = `.gitlab-write-test-${Date.now()}`;
-              
-              // Check if main branch exists
-              try {
-                await this.request('GET', `/projects/${project.id}/repository/branches/main`);
-              } catch {
-                continue; // Skip projects without main branch
-              }
-              
-              // Try to create a temporary file
-              await this.request('POST', `/projects/${project.id}/repository/files/${encodeURIComponent(testPath)}`, {
-                branch: 'main',
-                content: btoa('test'),
-                commit_message: 'Testing write access'
-              });
-              
-              // Clean up the test file
-              try {
-                await this.request('DELETE', `/projects/${project.id}/repository/files/${encodeURIComponent(testPath)}`, {
-                  branch: 'main',
-                  commit_message: 'Cleaning up write access test'
-                });
-              } catch (cleanupError) {
-                console.error('Failed to cleanup test file:', cleanupError);
-                // Continue since we verified write access
-              }
-              
-              onProgress?.({ permission: 'write_repository', isValid: true });
-              return { isValid: true };
-            } catch {
-              continue; // Try next project
-            }
-          }
-          
-          // If we get here, no projects had write access
-          onProgress?.({ permission: 'write_repository', isValid: false });
-          return {
-            isValid: false,
-            error: 'Token lacks repository write permission. Please ensure your token has write_repository scope.',
-          };
-        } else {
-          onProgress?.({ permission: 'write_repository', isValid: false });
-          return {
-            isValid: false,
-            error: 'No projects available to verify write access. Please create a project or get write access to an existing one.',
-          };
-        }
-      } catch (error) {
-        onProgress?.({ permission: 'write_repository', isValid: false });
-        return {
-          isValid: false,
-          error: 'Token lacks repository write permission',
+          error: 'Failed to verify write access. Please check your token permissions and project access.',
         };
       }
 
