@@ -12,7 +12,6 @@
   export let repoOwner: string;
   export let repoName: string;
   export let branch: string = 'main';
-  export let status: string;
   export let onSave: () => void;
   export let onInput: () => void;
   export let projectId: string | null = null;
