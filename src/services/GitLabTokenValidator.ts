@@ -2,7 +2,11 @@ import { BaseGitService, type ProgressCallback } from './BaseGitService';
 
 export class GitLabTokenValidator extends BaseGitService {
   protected get baseUrl(): string {
-    return 'https://gitlab.com/api/v4';
+    return 'https://gitlab.com/api';
+  }
+
+  protected get apiVersion(): string {
+    return 'v4';
   }
 
   protected get acceptHeader(): string {
@@ -18,14 +22,14 @@ export class GitLabTokenValidator extends BaseGitService {
     onProgress?: ProgressCallback
   ): Promise<{ isValid: boolean; error?: string }> {
     try {
-      // First verify token scopes
+      // First verify token scopes by checking user info
       try {
         const user = await this.request('GET', '/user');
         if (!user.username) {
           onProgress?.({ permission: 'read_repository', isValid: false });
           return {
             isValid: false,
-            error: 'Invalid GitLab token. Please check your token.',
+            error: 'Invalid GitLab token. Token must have read_api or api scope.',
           };
         }
         onProgress?.({ permission: 'read_repository', isValid: true });
@@ -34,6 +38,69 @@ export class GitLabTokenValidator extends BaseGitService {
         return {
           isValid: false,
           error: 'Token lacks read_api scope. Please ensure your token has read_api or api scope.',
+        };
+      }
+
+      // Verify write access by attempting to create a temporary file
+      try {
+        // Get user's projects to find one to test write access
+        const projects = await this.request('GET', `/users/${encodeURIComponent(username)}/projects`);
+        if (projects.length > 0) {
+          // Try each project until we find one with write access
+          for (const project of projects) {
+            try {
+              const testPath = `.gitlab-write-test-${Date.now()}`;
+              
+              // Check if main branch exists
+              try {
+                await this.request('GET', `/projects/${project.id}/repository/branches/main`);
+              } catch {
+                continue; // Skip projects without main branch
+              }
+              
+              // Try to create a temporary file
+              await this.request('POST', `/projects/${project.id}/repository/files/${encodeURIComponent(testPath)}`, {
+                branch: 'main',
+                content: btoa('test'),
+                commit_message: 'Testing write access'
+              });
+              
+              // Clean up the test file
+              try {
+                await this.request('DELETE', `/projects/${project.id}/repository/files/${encodeURIComponent(testPath)}`, {
+                  branch: 'main',
+                  commit_message: 'Cleaning up write access test'
+                });
+              } catch (cleanupError) {
+                console.error('Failed to cleanup test file:', cleanupError);
+                // Continue since we verified write access
+              }
+              
+              onProgress?.({ permission: 'write_repository', isValid: true });
+              return { isValid: true };
+            } catch {
+              continue; // Try next project
+            }
+          }
+          
+          // If we get here, no projects had write access
+          onProgress?.({ permission: 'write_repository', isValid: false });
+          return {
+            isValid: false,
+            error: 'Token lacks repository write permission. Please ensure your token has write_repository scope.',
+          };
+        } else {
+          onProgress?.({ permission: 'write_repository', isValid: false });
+          return {
+            isValid: false,
+            error: 'No projects available to verify write access. Please create a project or get write access to an existing one.',
+          };
+        }
+      } catch (error) {
+        onProgress?.({ permission: 'write_repository', isValid: false });
+        return {
+          isValid: false,
+          error: 'Token lacks repository write permission',
         };
       }
 
