@@ -34,16 +34,33 @@ export class GitLabTokenValidator extends BaseGitService {
         };
       }
 
-      // Verify write access by checking token scopes
+      // Verify write access by attempting to create a temporary file
       try {
-        const token = await this.request('GET', '/personal_access_tokens');
-        const hasWriteAccess = token.scopes?.includes('write_repository');
-        onProgress?.({ permission: 'write_repository', isValid: hasWriteAccess });
-        
-        if (!hasWriteAccess) {
+        // Get user's projects to find one to test write access
+        const projects = await this.request('GET', `/users/${encodeURIComponent(username)}/projects`);
+        if (projects.length > 0) {
+          const testProject = projects[0];
+          const testPath = `.gitlab-write-test-${Date.now()}`;
+          
+          // Try to create a temporary file
+          await this.request('POST', `/projects/${testProject.id}/repository/files/${encodeURIComponent(testPath)}`, {
+            branch: 'main',
+            content: btoa('test'),
+            commit_message: 'Testing write access'
+          });
+          
+          // Clean up the test file
+          await this.request('DELETE', `/projects/${testProject.id}/repository/files/${encodeURIComponent(testPath)}`, {
+            branch: 'main',
+            commit_message: 'Cleaning up write access test'
+          });
+          
+          onProgress?.({ permission: 'write_repository', isValid: true });
+        } else {
+          onProgress?.({ permission: 'write_repository', isValid: false });
           return {
             isValid: false,
-            error: 'Token lacks repository write permission',
+            error: 'No projects available to verify write access',
           };
         }
       } catch (error) {
