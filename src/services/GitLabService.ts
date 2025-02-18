@@ -219,6 +219,24 @@ public async createProject(
     }
   }
 
+  async listRepos(): Promise<Array<{
+    name: string;
+    description: string | null;
+    web_url: string;
+    visibility: string;
+    created_at: string;
+    last_activity_at: string;
+  }>> {
+    try {
+      const projects = await this.request('GET', '/projects?membership=true');
+      return projects;
+    } catch (error) {
+      console.error('Failed to load repos:', error);
+      throw error;
+    }
+  }
+
+
   async ensureProjectExists(owner: string, name: string): Promise<void> {
     try {
       await this.request('GET', `/projects/${encodeURIComponent(`${owner}/${name}`)}`);
