@@ -114,7 +114,11 @@ export class GitLabTokenValidator extends BaseGitService {
     username: string
   ): Promise<{ isValid: boolean; error?: string }> {
     try {
-      const authUser = await this.request('GET', '/user');
+      const authUser = await this.request('GET', '/user', undefined, {
+        headers: {
+          'PRIVATE-TOKEN': this.token
+        }
+      });
 
       if (!authUser.username) {
         return { isValid: false, error: 'Invalid GitLab token' };
@@ -125,7 +129,12 @@ export class GitLabTokenValidator extends BaseGitService {
       }
 
       // Check if user has access to the namespace
-      const namespaces = await this.request('GET', '/namespaces', { search: username });
+      const namespaces = await this.request('GET', '/namespaces', undefined, {
+        headers: {
+          'PRIVATE-TOKEN': this.token
+        },
+        params: { search: username }
+      });
       const hasAccess = namespaces.some(
         (ns: any) => ns.path.toLowerCase() === username.toLowerCase()
       );
