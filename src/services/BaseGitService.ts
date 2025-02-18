@@ -14,17 +14,25 @@ export abstract class BaseGitService {
 
   async request(method: string, endpoint: string, body?: any, options: RequestInit = {}) {
     const url = `${this.baseUrl}/${this.apiVersion}${endpoint}`;
+    const headers = {
+      Accept: this.acceptHeader,
+      ...(options.headers || {}),
+    } as Record<string, string>;
+
+    // Only add Content-Type for requests with body
+    if (body && method !== 'GET' && method !== 'HEAD') {
+      headers['Content-Type'] = 'application/json';
+    }
+
+    // Don't include body for GET/HEAD requests
+    const requestBody = (method === 'GET' || method === 'HEAD') ? undefined : 
+      body ? JSON.stringify(body) : undefined;
 
     const response = await fetch(url, {
       method,
       ...options,
-      headers: {
-        Accept: this.acceptHeader,
-        Authorization: `Bearer ${this.token}`,
-        'Content-Type': 'application/json',
-        ...options.headers,
-      },
-      body: body ? JSON.stringify(body) : undefined,
+      headers,
+      body: requestBody,
     });
 
     if (!response.ok) {

@@ -1,4 +1,4 @@
-# Bolt to GitHub - Chrome Extension
+# Bolt to GitLab - Chrome Extension
 
 <div align="center">
   <a href="https://aidrivencoder.com">
@@ -9,8 +9,8 @@
     <a href="https://chrome.google.com/webstore/detail/pikdepbilbnnpgdkdaaoeekgflljmame">
       <img src="https://img.shields.io/chrome-web-store/v/pikdepbilbnnpgdkdaaoeekgflljmame" alt="Chrome Web Store">
     </a>
-    <a href="https://github.com/mamertofabian/bolt-to-gitlab/blob/main/LICENSE">
-      <img src="https://img.shields.io/github/license/mamertofabian/bolt-to-gitlab" alt="License">
+    <a href="https://gitlab.com/mamertofabian/bolt-to-gitlab/blob/main/LICENSE">
+      <img src="https://img.shields.io/gitlab/license/mamertofabian/bolt-to-gitlab" alt="License">
     </a>
     <a href="https://youtube.com/@aidrivencoder">
       <img src="https://img.shields.io/badge/YouTube-Subscribe-red" alt="YouTube">
@@ -18,7 +18,7 @@
   </p>
 </div>
 
-A Chrome extension that automatically captures ZIP file downloads from bolt.new, extracts them, and pushes the contents to a specified GitHub repository. Built with Svelte, TypeScript, and TailwindCSS.
+A Chrome extension that automatically captures ZIP file downloads from bolt.new, extracts them, and pushes the contents to a specified GitLab repository. Built with Svelte, TypeScript, and TailwindCSS.
 
 ## 📦 Installation Options
 
@@ -32,8 +32,8 @@ A Chrome extension that automatically captures ZIP file downloads from bolt.new,
 
 #### 🔒 New in v1.2.1
 
-- Support for Private GitHub repositories (see demo here: https://youtu.be/d9NqXRoroi0)
-- Enhanced GitHub integration with token validation
+- Support for Private GitLab repositories (see demo here: https://youtu.be/d9NqXRoroi0)
+- Enhanced GitLab integration with token validation
 - Improved repository management and temporary repository handling
 - New user interface components:
   - Help system and New User Guide
@@ -47,7 +47,7 @@ A Chrome extension that automatically captures ZIP file downloads from bolt.new,
 
 - 🚀 Automatic ZIP file interception from bolt.new
 - 📦 In-browser ZIP file extraction
-- 🔄 Direct GitHub repository integration
+- 🔄 Direct GitLab repository integration
 - 🔒 Secure credential storage
 - ⚡ Real-time processing status updates
 - 🎨 Clean, responsive UI with shadcn-svelte components
@@ -62,22 +62,22 @@ A Chrome extension that automatically captures ZIP file downloads from bolt.new,
 - 📋 Projects tab with quick access to all your Bolt projects:
   - View all pushed projects in one place
   - Open projects directly in Bolt
-  - Access GitHub repositories
-  - Import existing GitHub repos into Bolt
+  - Access GitLab repositories
+  - Import existing GitLab repos into Bolt
 
 #### Best Practices
 
 1. Always verify your repository settings before syncing a new project
 2. Double-check the repository name and branch when switching between projects
 
-### Latest Version (GitHub)
+### Latest Version (GitLab)
 
 To try the latest development version:
 
 1. Clone and install:
 
    ```bash
-  git clone https://github.com/mamertofabian/bolt-to-gitlab.git
+  git clone https://gitlab.com/mamertofabian/bolt-to-gitlab.git
   cd bolt-to-gitlab
    npm install
    ```
@@ -119,23 +119,23 @@ Get started in just 3 simple steps:
 
    - Make sure you have a Bolt.new project loaded
    - Click the extension icon in your Chrome toolbar
-   - Enter your GitHub token (needs repo permissions)
+   - Enter your GitLab token (needs api, read_api, read_repository, write_repository permissions)
    - Repository Owner
    - Repository Name
    - Branch Name (defaults to 'main')
    - Save your settings and you're ready to go!
 
 3. **Load your Bolt.new Project**
-   - Click on the GitHub button in the Bolt.new project page at the top right
+   - Click on the GitLab button in the Bolt.new project page at the top right
    - Confirm the popup that appears
    - Done!
 
-### 🚨 New to GitHub?
+### 🚨 New to GitLab?
 
 Follow these steps to get started:
 
-1. [Create a GitHub account](https://github.com/join)
-2. [Generate a personal access token](https://github.com/settings/tokens/new?scopes=repo&description=Bolt%20to%20GitHub) (needs repo permissions)
+1. [Create a GitLab account](https://gitlab.com/users/sign_up)
+2. [Generate a personal access token](https://gitlab.com/-/profile/personal_access_tokens) (needs api, read_api, read_repository, write_repository permissions)
 
 Need help? Watch our [Quick Start Video Tutorial](https://youtu.be/7C03DNw9ZHI)
 
@@ -153,7 +153,7 @@ If you want to modify the extension or contribute to its development:
 2. Clone and install:
 
    ```bash
-  git clone https://github.com/mamertofabian/bolt-to-gitlab.git
+  git clone https://gitlab.com/mamertofabian/bolt-to-gitlab.git
   cd bolt-to-gitlab
    npm install
    ```
@@ -248,7 +248,7 @@ See our [Contributing Guide](#contributing) for more details.
 
 ### Report Issues
 
-For bugs or feature requests, please [open an issue](https://github.com/mamertofabian/bolt-to-gitlab/issues) on the GitHub repository.
+For bugs or feature requests, please [open an issue](https://gitlab.com/mamertofabian/bolt-to-gitlab/issues) on the GitLab repository.
 
 ### Support the Project
 
@@ -296,13 +296,13 @@ This extension requires the following permissions:
 
 ## FAQ
 
-**Q: Why does the extension need a GitHub token?**  
-A: The token is required to authenticate with GitHub's API for pushing files to your repository.
+**Q: Why does the extension need a GitLab token?**  
+A: The token is required to authenticate with GitLab's API for pushing files to your repository.
 
-**Q: Is my GitHub token secure?**  
-A: Yes, your token is stored securely in Chrome's storage system and is only used for GitHub API calls.
+**Q: Is my GitLab token secure?**  
+A: Yes, your token is stored securely in Chrome's storage system and is only used for GitLab API calls.
 
-**Q: Can I specify which files to push to GitHub?**  
+**Q: Can I specify which files to push to GitLab?**  
 A: Currently, the extension processes all files in the ZIP. File filtering may be added in future versions.
 
 ## Troubleshooting
@@ -315,9 +315,9 @@ A: Currently, the extension processes all files in the ZIP. File filtering may b
    - Check if the file is a ZIP
    - Verify permissions are enabled
 
-2. **GitHub push fails**
+2. **GitLab push fails**
 
-   - Verify your token has repo permissions
+   - Verify your token has required permissions (api, read_api, read_repository, write_repository)
    - Check repository name and owner
    - Ensure branch exists
 
@@ -327,13 +327,13 @@ A: Currently, the extension processes all files in the ZIP. File filtering may b
 
 ## Future Enhancements
 
-- Let me know if you have any ideas for additional features or improvements by opening an issue on GitHub.
+- Let me know if you have any ideas for additional features or improvements by opening an issue on GitLab.
 
 ## Acknowledgments
 
 - [Chrome Extension Documentation](https://developer.chrome.com/docs/extensions/)
 - [Svelte Documentation](https://svelte.dev/docs)
-- [GitHub API Documentation](https://docs.github.com/en/rest)
+- [GitLab API Documentation](https://docs.gitlab.com/api/)
 - [shadcn-svelte](https://www.shadcn-svelte.com/)
 
 ---
@@ -347,7 +347,7 @@ A: Currently, the extension processes all files in the ZIP. File filtering may b
   <p>
     <a href="https://youtube.com/@aidrivencoder">YouTube</a> •
     <a href="https://aidrivencoder.com">Website</a> •
-    <a href="https://github.com/aidrivencoder">GitHub</a>
+    <a href="https://gitlab.com/aidrivencoder">GitLab</a>
   </p>
 </div>
 

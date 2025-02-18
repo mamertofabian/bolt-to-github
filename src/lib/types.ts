@@ -56,10 +56,8 @@ export interface GitConfig {
   branch: string;
 }
 
-// Deprecated: Will be removed in future versions
-export interface GithubConfig extends GitConfig {
-  /** @deprecated Use GitConfig instead */
+// Use this interface for GitLab integration
+export interface GitlabConfig extends GitConfig {
+  /** GitLab-specific configuration */
+  namespace_id?: number;
 }
-
-// Use this interface for new GitLab integration
-export interface GitlabConfig extends GitConfig {}

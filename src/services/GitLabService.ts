@@ -34,6 +34,19 @@ interface ProjectCreateOptions {
 }
 
 export class GitLabService extends BaseGitService {
+  protected getRequestHeaders(): Record<string, string> {
+    return {
+      'PRIVATE-TOKEN': this.token
+    };
+  }
+
+  async request(method: string, endpoint: string, body?: any, options: RequestInit = {}) {
+    return super.request(method, endpoint, body, {
+      ...options,
+      headers: { ...this.getRequestHeaders(), ...options.headers }
+    });
+  }
+
   async createTemporaryPublicProject(owner: string, sourceRepo: string): Promise<string> {
     const tempName = `temp-${Date.now()}`;
     await this.request('POST', '/projects', {
