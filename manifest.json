@@ -9,7 +9,7 @@
     "128": "assets/icons/icon128.png"
   },
   "permissions": ["storage", "activeTab", "tabs"],
-  "host_permissions": ["https://bolt.new/*", "https://api.github.com/*"],
+  "host_permissions": ["https://bolt.new/*", "https://gitlab.com/api/*"],
   "background": {
     "service_worker": "src/background/index.ts",
     "type": "module"

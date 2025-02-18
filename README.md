@@ -9,8 +9,8 @@
     <a href="https://chrome.google.com/webstore/detail/pikdepbilbnnpgdkdaaoeekgflljmame">
       <img src="https://img.shields.io/chrome-web-store/v/pikdepbilbnnpgdkdaaoeekgflljmame" alt="Chrome Web Store">
     </a>
-    <a href="https://github.com/mamertofabian/bolt-to-github/blob/main/LICENSE">
-      <img src="https://img.shields.io/github/license/mamertofabian/bolt-to-github" alt="License">
+    <a href="https://github.com/mamertofabian/bolt-to-gitlab/blob/main/LICENSE">
+      <img src="https://img.shields.io/github/license/mamertofabian/bolt-to-gitlab" alt="License">
     </a>
     <a href="https://youtube.com/@aidrivencoder">
       <img src="https://img.shields.io/badge/YouTube-Subscribe-red" alt="YouTube">
@@ -77,8 +77,8 @@ To try the latest development version:
 1. Clone and install:
 
    ```bash
-   git clone https://github.com/mamertofabian/bolt-to-github.git
-   cd bolt-to-github
+  git clone https://github.com/mamertofabian/bolt-to-gitlab.git
+  cd bolt-to-gitlab
    npm install
    ```
 
@@ -153,8 +153,8 @@ If you want to modify the extension or contribute to its development:
 2. Clone and install:
 
    ```bash
-   git clone https://github.com/mamertofabian/bolt-to-github.git
-   cd bolt-to-github
+  git clone https://github.com/mamertofabian/bolt-to-gitlab.git
+  cd bolt-to-gitlab
    npm install
    ```
 
@@ -236,7 +236,7 @@ See our [Contributing Guide](#contributing) for more details.
 ### Documentation & Tutorials
 
 - 📺 [Watch our video tutorials](https://youtube.com/@aidrivencoder)
-- 📖 [Read the documentation](https://github.com/mamertofabian/bolt-to-github)
+- 📖 [Read the documentation](https://github.com/mamertofabian/bolt-to-gitlab)
 - 💡 [Get development tips](https://aidrivencoder.com)
 - 💬 [Discord Community](https://discord.gg/JtjYHBBnGU)
 
@@ -248,7 +248,7 @@ See our [Contributing Guide](#contributing) for more details.
 
 ### Report Issues
 
-For bugs or feature requests, please [open an issue](https://github.com/mamertofabian/bolt-to-github/issues) on the GitHub repository.
+For bugs or feature requests, please [open an issue](https://github.com/mamertofabian/bolt-to-gitlab/issues) on the GitHub repository.
 
 ### Support the Project
 

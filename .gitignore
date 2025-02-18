@@ -4,7 +4,7 @@
 node_modules/
 /dist/
 dist*.zip
-bolt-to-github*.zip
+bolt-to-gitlab*.zip
 /.svelte-kit/
 .DS_Store
 *.log
