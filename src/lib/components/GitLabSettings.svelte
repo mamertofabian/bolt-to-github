@@ -5,7 +5,7 @@
   import { Check, X, Search, Loader2, HelpCircle } from 'lucide-svelte';
   import { onMount } from 'svelte';
   import { CREATE_TOKEN_URL, GitLabService } from '../../services/GitLabService';
-  import NewUserGuide from './gitlab/NewUserGuide.svelte';
+  import NewUserGuide from './gitlab/gitlab/NewUserGuide.svelte';
 
   export let isOnboarding: boolean = false;
   export let gitlabToken: string;
