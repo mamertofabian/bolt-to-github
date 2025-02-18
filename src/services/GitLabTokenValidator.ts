@@ -29,7 +29,7 @@ export class GitLabTokenValidator extends BaseGitService {
           onProgress?.({ permission: 'read_repository', isValid: false });
           return {
             isValid: false,
-            error: 'Invalid GitLab token. Token must have read_api or api scope.',
+            error: 'Invalid GitLab token. Token must have api scope for both read and write access.',
           };
         }
         onProgress?.({ permission: 'read_repository', isValid: true });
@@ -80,9 +80,11 @@ export class GitLabTokenValidator extends BaseGitService {
                 
                 onProgress?.({ permission: 'write_repository', isValid: true });
                 return { isValid: true };
-              } catch (error) {
-                if (error.status === 403) {
-                  continue; // Skip if we don't have write access to this project
+              } catch (error: any) {
+                // Check for both 403 (permission denied) and branch-related errors
+                if (error.status === 403 || 
+                    (error.gitlabErrorResponse?.message || '').toLowerCase().includes('branch')) {
+                  continue; // Skip if we don't have write access to this project/branch
                 }
                 throw error; // Re-throw other errors
               }
@@ -95,29 +97,32 @@ export class GitLabTokenValidator extends BaseGitService {
           onProgress?.({ permission: 'write_repository', isValid: false });
           return {
             isValid: false,
-            error: 'Token lacks repository write permission. Please ensure your token has write_repository scope and you have write access to at least one project.',
+            error: 'Token lacks repository write permission. Please ensure your token has api scope and you have write access to at least one project.',
           };
         } else {
           onProgress?.({ permission: 'write_repository', isValid: false });
           return {
             isValid: false,
-            error: 'No projects available to verify write access. Please create a project or get write access to an existing one.',
+            error: 'No projects available to verify write access. Please create a project or get write access to an existing one. Your token must have api scope.',
           };
         }
-      } catch (error) {
+      } catch (error: any) {
         onProgress?.({ permission: 'write_repository', isValid: false });
+        // Use the original GitLab error message if available
+        const errorMessage = error.gitlabErrorResponse?.message || error.message || 'Failed to verify write access';
         return {
           isValid: false,
-          error: 'Failed to verify write access. Please check your token permissions and project access.',
+          error: `Failed to verify write access: ${errorMessage}. Please check your token permissions and project access.`,
         };
       }
 
       return { isValid: true };
-    } catch (error) {
+    } catch (error: any) {
       console.error('Permission verification failed:', error);
+      const errorMessage = error.gitlabErrorResponse?.message || error.message || String(error);
       return {
         isValid: false,
-        error: `Permission verification failed: ${error instanceof Error ? error.message : String(error)}`,
+        error: `Permission verification failed: ${errorMessage}`,
       };
     }
   }
@@ -126,11 +131,7 @@ export class GitLabTokenValidator extends BaseGitService {
     username: string
   ): Promise<{ isValid: boolean; error?: string }> {
     try {
-      const authUser = await this.request('GET', '/user', undefined, {
-        headers: {
-          'PRIVATE-TOKEN': this.token
-        }
-      });
+      const authUser = await this.request('GET', '/user');
 
       if (!authUser.username) {
         return { isValid: false, error: 'Invalid GitLab token' };
@@ -141,11 +142,7 @@ export class GitLabTokenValidator extends BaseGitService {
       }
 
       // Check if user has access to the namespace
-      const namespaces = await this.request('GET', `/namespaces?search=${encodeURIComponent(username)}`, undefined, {
-        headers: {
-          'PRIVATE-TOKEN': this.token
-        }
-      });
+      const namespaces = await this.request('GET', `/namespaces?search=${encodeURIComponent(username)}`);
       const hasAccess = namespaces.some(
         (ns: any) => ns.path.toLowerCase() === username.toLowerCase()
       );
@@ -159,8 +156,8 @@ export class GitLabTokenValidator extends BaseGitService {
         error:
           'Token can only be used with your GitLab username or namespaces you have access to',
       };
-    } catch (error) {
-      if (error instanceof Error && error.message.includes('404')) {
+    } catch (error: any) {
+      if (error.status === 404) {
         return { isValid: false, error: 'Invalid GitLab username or namespace' };
       }
       return { isValid: false, error: 'Invalid GitLab token' };
@@ -170,9 +167,10 @@ export class GitLabTokenValidator extends BaseGitService {
   async validateTokenAndUser(username: string): Promise<{ isValid: boolean; error?: string }> {
     try {
       return await this.validateTokenInternal(username);
-    } catch (error) {
+    } catch (error: any) {
       console.error('Validation failed:', error);
-      return { isValid: false, error: 'Validation failed' };
+      const errorMessage = error.gitlabErrorResponse?.message || error.message || String(error);
+      return { isValid: false, error: `Validation failed: ${errorMessage}` };
     }
   }
 }
