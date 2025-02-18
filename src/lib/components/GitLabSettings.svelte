@@ -17,6 +17,7 @@
   export let projectId: string | null = null;
   export let projectSettings: Record<string, { repoName: string; branch: string }> = {};
   export let buttonDisabled: boolean = false;
+  let gitlabUrl: string = '';
 
   let isValidatingToken = false;
   let isTokenValid: boolean | null = null;
@@ -49,6 +50,30 @@
   let permissionError: string | null = null;
   let previousToken: string | null = null;
 
+  function parseGitLabUrl(url: string): { owner: string; name: string } | null {
+    try {
+      const urlObj = new URL(url);
+      if (!urlObj.hostname.includes('gitlab')) {
+        return null;
+      }
+      
+      // Remove .git extension if present
+      const path = urlObj.pathname.replace(/\.git$/, '');
+      const parts = path.split('/').filter(Boolean);
+      
+      if (parts.length < 2) {
+        return null;
+      }
+      
+      return {
+        owner: parts[0],
+        name: parts[1]
+      };
+    } catch {
+      return null;
+    }
+  }
+
   $: filteredRepos = repositories
     .filter(
       (repo) =>
@@ -64,6 +89,22 @@
   $: if (projectId && !repoName && !isRepoNameFromProjectId) {
     repoName = projectId;
     isRepoNameFromProjectId = true;
+    // Update URL when project ID sets the repo name
+    if (repoOwner) {
+      gitlabUrl = `https://gitlab.com/${repoOwner}/${repoName}.git`;
+    }
+  }
+
+  function handleGitlabUrlInput(event: Event) {
+    const url = (event.target as HTMLInputElement).value;
+    const parsed = parseGitLabUrl(url);
+    
+    if (parsed) {
+      repoOwner = parsed.owner;
+      repoName = parsed.name;
+      onInput();
+      handleTokenInput(); // Validate with new owner
+    }
   }
 
   async function loadRepositories() {
@@ -430,109 +471,30 @@
     </div>
 
     <div class="space-y-2">
-      <Label for="repoOwner" class="text-slate-200">
-        Repository Owner
-        <span class="text-sm text-slate-400 ml-2">(Your GitLab username)</span>
+      <Label for="gitlabUrl" class="text-slate-200">
+        GitLab Repository URL
+        <span class="text-sm text-slate-400 ml-2">(e.g., https://gitlab.com/username/repo.git)</span>
       </Label>
-      <Input
-        type="text"
-        id="repoOwner"
-        bind:value={repoOwner}
-        on:input={handleOwnerInput}
-        placeholder="username or organization"
-        class="bg-slate-800 border-slate-700 text-slate-200 placeholder:text-slate-500"
-      />
+      <div class="relative">
+        <Input
+          type="text"
+          id="gitlabUrl"
+          on:input={handleGitlabUrlInput}
+          placeholder="https://gitlab.com/username/repo.git"
+          bind:value={gitlabUrl}
+          class="bg-slate-800 border-slate-700 text-slate-200 placeholder:text-slate-500"
+        />
+        <div class="absolute right-3 top-1/2 -translate-y-1/2">
+          {#if isLoadingRepos}
+            <Loader2 class="h-4 w-4 text-slate-400 animate-spin" />
+          {:else}
+            <Search class="h-4 w-4 text-slate-400" />
+          {/if}
+        </div>
+      </div>
     </div>
 
     {#if !isOnboarding}
-      <div class="space-y-2">
-        <Label for="repoName" class="text-slate-200">
-          Repository Name
-          <span class="text-sm text-slate-400 ml-2">
-            {#if projectId}
-              (Project-specific repository)
-            {:else}
-              (Default repository)
-            {/if}
-          </span>
-        </Label>
-        <div class="relative">
-          <div class="relative">
-            <Input
-              type="text"
-              id="repoName"
-              bind:value={repoName}
-              on:input={handleRepoInput}
-              on:focus={handleRepoFocus}
-              on:blur={handleRepoBlur}
-              on:keydown={handleRepoKeydown}
-              placeholder="Search or enter repository name"
-              class="bg-slate-800 border-slate-700 text-slate-200 placeholder:text-slate-500 pr-10"
-              autocomplete="off"
-            />
-            <div class="absolute right-3 top-1/2 -translate-y-1/2">
-              {#if isLoadingRepos}
-                <Loader2 class="h-4 w-4 text-slate-400 animate-spin" />
-              {:else}
-                <Search class="h-4 w-4 text-slate-400" />
-              {/if}
-            </div>
-          </div>
-          {#if showRepoDropdown && (filteredRepos.length > 0 || !repoExists)}
-            <div
-              class="absolute z-50 w-full mt-1 bg-slate-800 border border-slate-700 rounded-md shadow-lg"
-            >
-              <ul class="py-1 max-h-60 overflow-auto">
-                {#each filteredRepos as repo, i}
-                  <li>
-                    <button
-                      class="w-full px-3 py-2 text-left hover:bg-slate-700 text-slate-200 {selectedIndex ===
-                      i
-                        ? 'bg-slate-700'
-                        : ''}"
-                      on:click={() => selectRepo(repo)}
-                    >
-                      <div class="flex items-center justify-between">
-                        <span class="font-medium">{repo.name}</span>
-                        {#if repo.visibility === 'private'}
-                          <span class="text-xs text-slate-400">Private</span>
-                        {/if}
-                      </div>
-                      {#if repo.description}
-                        <p class="text-sm text-slate-400 truncate">{repo.description}</p>
-                      {/if}
-                    </button>
-                  </li>
-                {/each}
-                {#if !repoExists}
-                  <li class="px-3 py-2 text-sm text-slate-400">
-                    {#if repoName.length > 0}
-                      <p class="text-orange-400">
-                        💡If the repository "{repoName}" doesn't exist, it will be created
-                        automatically.
-                      </p>
-                    {:else}
-                      <p>
-                        Enter a repository name (new) or select from your repositories carefully.
-                      </p>
-                    {/if}
-                  </li>
-                {/if}
-              </ul>
-            </div>
-          {/if}
-        </div>
-        {#if repoExists}
-          <p class="text-sm text-blue-400">
-            ℹ️ Using existing repository. Make sure it is correct.
-          </p>
-        {:else if repoName}
-          <p class="text-sm text-emerald-400">
-            ✨ A new repository will be created if it doesn't exist yet.
-          </p>
-        {/if}
-      </div>
-
       <div class="space-y-2">
         <Label for="branch" class="text-slate-200">
           Branch

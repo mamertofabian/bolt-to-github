@@ -22,82 +22,36 @@ export class GitLabTokenValidator extends BaseGitService {
     onProgress?: ProgressCallback
   ): Promise<{ isValid: boolean; error?: string }> {
     try {
-      // Create a temporary test project
-      const timestamp = Date.now();
-      const projectName = `test-project-${timestamp}`;
-
-      // Test project creation (API access)
+      // Verify read access by listing user's projects
       try {
-        await this.request('POST', '/projects', {
-          name: projectName,
-          visibility: 'private',
-          initialize_with_readme: true,
-        });
-        await this.delay(2000);
-        onProgress?.({ permission: 'repos', isValid: true });
+        await this.request('GET', `/users/${encodeURIComponent(username)}/projects`);
+        onProgress?.({ permission: 'read_repository', isValid: true });
       } catch (error) {
-        onProgress?.({ permission: 'repos', isValid: false });
+        onProgress?.({ permission: 'read_repository', isValid: false });
         return {
           isValid: false,
-          error: 'Token lacks project creation permission',
+          error: 'Token lacks repository read permission',
         };
       }
 
-      const projectPath = encodeURIComponent(`${username}/${projectName}`);
-
-      // Test visibility change (Admin Write)
+      // Verify write access by checking token scopes
       try {
-        await this.request('PUT', `/projects/${projectPath}`, {
-          visibility: 'public',
-        });
-        await this.delay(2000);
-        onProgress?.({ permission: 'admin', isValid: true });
-      } catch (error) {
-        onProgress?.({ permission: 'admin', isValid: false });
-        // Cleanup project before returning
-        try {
-          await this.request('DELETE', `/projects/${projectPath}`);
-        } catch (cleanupError) {
-          console.error('Failed to cleanup project after admin check:', cleanupError);
+        const token = await this.request('GET', '/personal_access_tokens');
+        const hasWriteAccess = token.scopes?.includes('write_repository');
+        onProgress?.({ permission: 'write_repository', isValid: hasWriteAccess });
+        
+        if (!hasWriteAccess) {
+          return {
+            isValid: false,
+            error: 'Token lacks repository write permission',
+          };
         }
+      } catch (error) {
+        onProgress?.({ permission: 'write_repository', isValid: false });
         return {
           isValid: false,
-          error: 'Token lacks project administration permission',
+          error: 'Token lacks repository write permission',
         };
-      }
-
-      try {
-        // Test repository read by listing repository tree
-        await this.request('GET', `/projects/${projectPath}/repository/tree`);
-
-        // Test repository write with a small .gitkeep file
-        const content = btoa(''); // empty file in base64
-        await this.request('POST', `/projects/${projectPath}/repository/files/.gitkeep`, {
-          branch: 'main',
-          content: content,
-          commit_message: 'Test write permission',
-        });
-        onProgress?.({ permission: 'code', isValid: true });
-      } catch (error) {
-        onProgress?.({ permission: 'code', isValid: false });
-        // Cleanup project before returning
-        try {
-          await this.request('DELETE', `/projects/${projectPath}`);
-        } catch (cleanupError) {
-          console.error('Failed to cleanup project after repository check:', cleanupError);
-        }
-        return {
-          isValid: false,
-          error: 'Token lacks repository read/write permission',
-        };
-      }
-
-      // Cleanup: Delete the test project
-      try {
-        await this.request('DELETE', `/projects/${projectPath}`);
-      } catch (error) {
-        console.error('Failed to cleanup test project:', error);
-        // Don't return error here as permissions were already verified
       }
 
       return { isValid: true };

@@ -1,5 +1,5 @@
 export type PermissionCheckProgress = {
-  permission: 'repos' | 'admin' | 'code';
+  permission: 'repos' | 'admin' | 'code' | 'read_repository' | 'write_repository';
   isValid: boolean;
 };
 
