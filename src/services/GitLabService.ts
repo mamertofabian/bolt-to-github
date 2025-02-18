@@ -1,5 +1,5 @@
-import { BaseGitService } from './BaseGitService';
-import type { ProgressCallback, UploadProgress } from '../lib/types';
+import { BaseGitService, type ProgressCallback } from './BaseGitService';
+import type { UploadProgress } from '../lib/types';
 
 export const GITLAB_API_VERSION = 'v4';
 export const GITLAB_BASE_URL = 'https://gitlab.com/api';
@@ -33,7 +33,16 @@ interface ProjectCreateOptions {
   namespace_id?: number;
 }
 
+import { GitLabTokenValidator } from './GitLabTokenValidator';
+
 export class GitLabService extends BaseGitService {
+  private tokenValidator: GitLabTokenValidator;
+
+  constructor(token: string) {
+    super(token);
+    this.tokenValidator = new GitLabTokenValidator(token);
+  }
+
   protected getRequestHeaders(): Record<string, string> {
     return {
       'PRIVATE-TOKEN': this.token
@@ -141,13 +150,14 @@ export class GitLabService extends BaseGitService {
         return new Error('Insufficient permissions for this GitLab operation.');
       case 404:
         return new Error('GitLab resource not found.');
-      case 429:
+      case 429: {
         const retryAfter = response.headers.get('Retry-After');
         return new Error(
           `GitLab API rate limit exceeded. Please try again ${
             retryAfter ? `after ${retryAfter} seconds` : 'later'
           }.`
         );
+      }
       case 500:
         return new Error('GitLab server error. Please try again later.');
       default:
@@ -155,7 +165,15 @@ export class GitLabService extends BaseGitService {
     }
   }
 
-  public async createProject(
+    async verifyTokenPermissions(
+    username: string,
+    onProgress?: ProgressCallback
+  ): Promise<{ isValid: boolean; error?: string }> {
+    return this.tokenValidator.verifyTokenPermissions(username, onProgress);
+  }
+
+
+public async createProject(
     name: string,
     options: { visibility?: 'private' | 'public'; description?: string; path?: string } = {}
   ): Promise<any> {
