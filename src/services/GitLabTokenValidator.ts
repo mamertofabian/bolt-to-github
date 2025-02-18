@@ -129,11 +129,10 @@ export class GitLabTokenValidator extends BaseGitService {
       }
 
       // Check if user has access to the namespace
-      const namespaces = await this.request('GET', '/namespaces', undefined, {
+      const namespaces = await this.request('GET', `/namespaces?search=${encodeURIComponent(username)}`, undefined, {
         headers: {
           'PRIVATE-TOKEN': this.token
-        },
-        params: { search: username }
+        }
       });
       const hasAccess = namespaces.some(
         (ns: any) => ns.path.toLowerCase() === username.toLowerCase()
