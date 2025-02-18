@@ -2,11 +2,7 @@ import { BaseGitService, type ProgressCallback } from './BaseGitService';
 
 export class GitLabTokenValidator extends BaseGitService {
   protected get baseUrl(): string {
-    return 'https://gitlab.com/api';
-  }
-
-  protected get apiVersion(): string {
-    return 'v4';
+    return 'https://gitlab.com/api/v4';
   }
 
   protected get acceptHeader(): string {
@@ -22,15 +18,22 @@ export class GitLabTokenValidator extends BaseGitService {
     onProgress?: ProgressCallback
   ): Promise<{ isValid: boolean; error?: string }> {
     try {
-      // Verify read access by listing user's projects
+      // First verify token scopes
       try {
-        await this.request('GET', `/users/${encodeURIComponent(username)}/projects`);
+        const user = await this.request('GET', '/user');
+        if (!user.username) {
+          onProgress?.({ permission: 'read_repository', isValid: false });
+          return {
+            isValid: false,
+            error: 'Invalid GitLab token. Please check your token.',
+          };
+        }
         onProgress?.({ permission: 'read_repository', isValid: true });
       } catch (error) {
         onProgress?.({ permission: 'read_repository', isValid: false });
         return {
           isValid: false,
-          error: 'Token lacks repository read permission',
+          error: 'Token lacks read_api scope. Please ensure your token has read_api or api scope.',
         };
       }
 
