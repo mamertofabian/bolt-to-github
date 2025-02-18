@@ -43,53 +43,26 @@ export class GitLabTokenValidator extends BaseGitService {
 
       // Verify write access by attempting to create a temporary file
       try {
-        // Get user's projects to find one to test write access
-        const projects = await this.request('GET', `/users/${encodeURIComponent(username)}/projects`);
+        // Get all projects the user has access to
+        const projects = await this.request('GET', '/projects?membership=true');
         if (projects.length > 0) {
           // Try each project until we find one with write access
           for (const project of projects) {
             try {
-              const testPath = `.gitlab-write-test-${Date.now()}`;
+              // Check project access level
+              const members = await this.request('GET', `/projects/${project.id}/members/all`);
+              const currentUser = members.find((m: any) => m.username.toLowerCase() === username.toLowerCase());
               
-              // First check if we have access to the project
-              try {
-                await this.request('GET', `/projects/${project.id}`);
-              } catch {
-                continue; // Skip projects we can't access
-              }
-              
-              // Try to create a temporary file in the default branch
-              try {
-                const defaultBranch = await this.request('GET', `/projects/${project.id}`).then(p => p.default_branch || 'main');
-                await this.request('POST', `/projects/${project.id}/repository/files/${encodeURIComponent(testPath)}`, {
-                  branch: defaultBranch,
-                  content: btoa('test'),
-                  commit_message: 'Testing write access'
-                });
-                
-                // Clean up the test file
-                try {
-                  await this.request('DELETE', `/projects/${project.id}/repository/files/${encodeURIComponent(testPath)}`, {
-                    branch: defaultBranch,
-                    commit_message: 'Cleaning up write access test'
-                  });
-                } catch (cleanupError) {
-                  console.error('Failed to cleanup test file:', cleanupError);
-                  // Continue since we verified write access
-                }
-                
+              // Access levels: 30 = Developer, 40 = Maintainer, 50 = Owner
+              if (currentUser && currentUser.access_level >= 30) {
                 onProgress?.({ permission: 'write_repository', isValid: true });
                 return { isValid: true };
-              } catch (error: any) {
-                // Check for both 403 (permission denied) and branch-related errors
-                if (error.status === 403 || 
-                    (error.gitlabErrorResponse?.message || '').toLowerCase().includes('branch')) {
-                  continue; // Skip if we don't have write access to this project/branch
-                }
-                throw error; // Re-throw other errors
               }
-            } catch {
-              continue; // Try next project
+            } catch (error: any) {
+              if (error.status === 403 || error.status === 404) {
+                continue; // Skip if we can't access this project
+              }
+              throw error; // Re-throw other errors
             }
           }
           
@@ -97,13 +70,13 @@ export class GitLabTokenValidator extends BaseGitService {
           onProgress?.({ permission: 'write_repository', isValid: false });
           return {
             isValid: false,
-            error: 'Token lacks repository write permission. Please ensure your token has api scope and you have write access to at least one project.',
+            error: 'Token lacks repository write permission. Please ensure your token has api scope and you have Developer (30) or higher access level to at least one project.',
           };
         } else {
           onProgress?.({ permission: 'write_repository', isValid: false });
           return {
             isValid: false,
-            error: 'No projects available to verify write access. Please create a project or get write access to an existing one. Your token must have api scope.',
+            error: 'No projects available to verify write access. Please create a project or get Developer (30) or higher access level to an existing one.',
           };
         }
       } catch (error: any) {
@@ -112,7 +85,7 @@ export class GitLabTokenValidator extends BaseGitService {
         const errorMessage = error.gitlabErrorResponse?.message || error.message || 'Failed to verify write access';
         return {
           isValid: false,
-          error: `Failed to verify write access: ${errorMessage}. Please check your token permissions and project access.`,
+          error: `Failed to verify write access: ${errorMessage}. Please ensure your token has api scope and you have Developer (30) or higher access level.`,
         };
       }
 
