@@ -88,25 +88,22 @@ export class GitHubService extends BaseGitHubService {
     }
   }
 
-  async createRepo(options: RepoCreateOptions & { auto_init?: boolean }) {
-    const { auto_init = true, ...repoOptions } = options;
+  async createRepo(options: RepoCreateOptions & { auto_init?: boolean; org?: string }) {
+    const { auto_init = true, org, ...repoOptions } = options;
 
     try {
-      // Try creating in user's account first
-      try {
+      // If org is specified, create in organization
+      if (org) {
+        return await this.request('POST', `/orgs/${org}/repos`, {
+          ...repoOptions,
+          auto_init,
+        });
+      } else {
+        // Otherwise create in user's account
         return await this.request('POST', '/user/repos', {
           ...repoOptions,
-          auto_init, // Use the provided value or default to true
+          auto_init,
         });
-      } catch (error) {
-        if (error instanceof Error && error.message.includes('404')) {
-          // If user endpoint fails, try organization endpoint
-          return await this.request('POST', `/orgs/${options.name}/repos`, {
-            ...repoOptions,
-            auto_init,
-          });
-        }
-        throw error;
       }
     } catch (error) {
       console.error('Failed to create repository:', error);
@@ -119,11 +116,22 @@ export class GitHubService extends BaseGitHubService {
   async ensureRepoExists(owner: string, repo: string): Promise<void> {
     const exists = await this.repoExists(owner, repo);
     if (!exists) {
+      // First determine if the owner is an organization
+      let isOrg = false;
+      try {
+        const ownerInfo = await this.request('GET', `/users/${owner}`);
+        isOrg = ownerInfo.type === 'Organization';
+      } catch (error) {
+        // If we can't determine, proceed assuming it's a user
+        console.warn(`Could not determine if ${owner} is an organization:`, error);
+      }
+
       await this.createRepo({
         name: repo,
         private: true,
         auto_init: true,
         description: 'Repository created by Bolt to GitHub extension',
+        org: isOrg ? owner : undefined,
       });
 
       // Wait a bit for GitHub to initialize the repository
@@ -243,12 +251,23 @@ This repository was automatically initialized by the Bolt to GitHub extension.
     const randomStr = Math.random().toString(36).substring(2, 8);
     const tempRepoName = `temp-${sourceRepoName}-${timestamp}-${randomStr}`;
 
+    // First determine if the owner is an organization
+    let isOrg = false;
+    try {
+      const ownerInfo = await this.request('GET', `/users/${ownerName}`);
+      isOrg = ownerInfo.type === 'Organization';
+    } catch (error) {
+      // If we can't determine, proceed assuming it's a user
+      console.warn(`Could not determine if ${ownerName} is an organization:`, error);
+    }
+
     // Create repo without auto-init
     await this.createRepo({
       name: tempRepoName,
       private: true,
       auto_init: false,
       description: 'Temporary repository for Bolt import - will be deleted automatically',
+      org: isOrg ? ownerName : undefined,
     });
 
     // Initialize with an empty commit to create the default branch
@@ -394,7 +413,24 @@ This repository was automatically initialized by the Bolt to GitHub extension.
     }>
   > {
     try {
-      const repos = await this.request('GET', `/user/repos?per_page=100&sort=updated`);
+      // Get repos from user account
+      let repos = await this.request('GET', `/user/repos?per_page=100&sort=updated`);
+      
+      // Get org repos the user has access to
+      try {
+        const orgs = await this.request('GET', '/user/orgs');
+        
+        for (const org of orgs) {
+          try {
+            const orgRepos = await this.request('GET', `/orgs/${org.login}/repos?per_page=100&sort=updated`);
+            repos = repos.concat(orgRepos);
+          } catch (error) {
+            console.warn(`Failed to fetch repos for organization ${org.login}:`, error);
+          }
+        }
+      } catch (error) {
+        console.warn('Failed to fetch organizations:', error);
+      }
 
       return repos.map((repo: any) => ({
         name: repo.name,
