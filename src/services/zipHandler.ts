@@ -130,12 +130,6 @@ export class ZipHandler {
 
       await this.uploadToGitHub(processedFiles, repoOwner, repoName, targetBranch, commitMessage);
 
-      await this.updateStatus(
-        'success',
-        100,
-        `Successfully uploaded ${processedFiles.size} files to GitHub`
-      );
-
       // Clear the status after a delay
       setTimeout(() => {
         this.updateStatus('idle', 0, '');
@@ -237,11 +231,11 @@ export class ZipHandler {
       'GET',
       `/repos/${repoOwner}/${repoName}/git/trees/${baseTreeSha}?recursive=1`
     );
-    
+
     // Create a map of existing file paths to their SHAs
     const existingFiles = new Map<string, string>();
     if (existingTree.tree) {
-      existingTree.tree.forEach((item: {path: string; sha: string; type: string}) => {
+      existingTree.tree.forEach((item: { path: string; sha: string; type: string }) => {
         if (item.type === 'blob') {
           existingFiles.set(item.path, item.sha);
         }
@@ -264,14 +258,14 @@ export class ZipHandler {
     }
 
     await this.updateStatus(
-      'uploading', 
-      40, 
+      'uploading',
+      40,
       `Creating ${changedFiles.size} file blobs (of ${processedFiles.size} total files)...`
     );
 
     // Only create blobs for changed files
     const newTreeItems = await this.createBlobs(changedFiles, repoOwner, repoName);
-    
+
     // Add unchanged files to the tree with their existing SHAs
     const treeItems = [...newTreeItems];
     for (const [path, sha] of existingFiles.entries()) {
@@ -281,7 +275,7 @@ export class ZipHandler {
           path,
           mode: '100644',
           type: 'blob',
-          sha
+          sha,
         });
       }
     }
@@ -322,6 +316,12 @@ export class ZipHandler {
         force: false,
       }
     );
+
+    await this.updateStatus(
+      'success',
+      100,
+      `Successfully uploaded ${changedFiles.size} files to GitHub`
+    );
   }
 
   private sleep(ms: number): Promise<void> {
@@ -336,18 +336,18 @@ export class ZipHandler {
     const encoder = new TextEncoder();
     const blobPrefix = encoder.encode(`blob ${content.length}\0`);
     const contentBytes = encoder.encode(content);
-    
+
     // Combine the arrays
     const fullData = new Uint8Array(blobPrefix.length + contentBytes.length);
     fullData.set(blobPrefix);
     fullData.set(contentBytes, blobPrefix.length);
-    
+
     // Calculate SHA-1 hash
     const hashBuffer = await crypto.subtle.digest('SHA-1', fullData);
-    
+
     // Convert to hex string
     return Array.from(new Uint8Array(hashBuffer))
-      .map(b => b.toString(16).padStart(2, '0'))
+      .map((b) => b.toString(16).padStart(2, '0'))
       .join('');
   }
 
@@ -410,22 +410,22 @@ export class ZipHandler {
     // Process files in batches of max 30 files to avoid overwhelming GitHub
     const MAX_BATCH_SIZE = 30;
     const fileBatches: Array<Map<string, string>> = [];
-    
+
     // Split files into batches
     let currentBatch = new Map<string, string>();
     let currentBatchSize = 0;
-    
+
     for (const [path, content] of files.entries()) {
       currentBatch.set(path, content);
       currentBatchSize++;
-      
+
       if (currentBatchSize >= MAX_BATCH_SIZE) {
         fileBatches.push(currentBatch);
         currentBatch = new Map<string, string>();
         currentBatchSize = 0;
       }
     }
-    
+
     // Add the last batch if it has any files
     if (currentBatchSize > 0) {
       fileBatches.push(currentBatch);
@@ -435,13 +435,13 @@ export class ZipHandler {
     for (let batchIndex = 0; batchIndex < fileBatches.length; batchIndex++) {
       const batch = fileBatches[batchIndex];
       const batchNumber = batchIndex + 1;
-      
+
       await this.updateStatus(
         'uploading',
         40 + Math.floor((batchIndex / fileBatches.length) * 30),
         `Processing batch ${batchNumber}/${fileBatches.length} (${batch.size} files)...`
       );
-      
+
       // Add a pause between batches to avoid rate limits
       if (batchIndex > 0) {
         await this.sleep(1000); // 1 second pause between batches
@@ -453,7 +453,7 @@ export class ZipHandler {
           let success = false;
           let attempts = 0;
           const maxAttempts = 5;
-          
+
           while (!success && attempts < maxAttempts) {
             try {
               attempts++;
@@ -499,27 +499,27 @@ export class ZipHandler {
                 response?: { status: number };
                 message: string;
               };
-              
+
               // Handle rate limit errors (HTTP 403 with specific message)
               if (
                 (errorObj instanceof Response && errorObj.status === 403) ||
                 (errorObj.response && errorObj.response.status === 403) ||
-                (typeof errorObj.message === 'string' && 
-                  (errorObj.message.includes('rate limit') || 
-                   errorObj.message.includes('secondary rate limits')))
+                (typeof errorObj.message === 'string' &&
+                  (errorObj.message.includes('rate limit') ||
+                    errorObj.message.includes('secondary rate limits')))
               ) {
                 // Calculate exponential backoff time
                 const baseDelay = 1000; // Start with 1 second
                 const maxDelay = 60000; // Max 1 minute
                 const delay = Math.min(baseDelay * Math.pow(2, attempts - 1), maxDelay);
-                
+
                 // Log handled in status update
                 await this.updateStatus(
                   'uploading',
                   40 + Math.floor((completedFiles / totalFiles) * 30),
-                  `Rate limit hit. Waiting ${Math.ceil(delay/1000)}s before retry...`
+                  `Rate limit hit. Waiting ${Math.ceil(delay / 1000)}s before retry...`
                 );
-                
+
                 await this.sleep(delay);
                 // Handle rate limit with appropriate parameter type
                 if (errorObj instanceof Response) {
@@ -528,7 +528,7 @@ export class ZipHandler {
                   // For other error types, just wait using our own sleep method
                   await this.sleep(2000 * attempts);
                 }
-                
+
                 // Don't increment completedFiles as we're retrying
               } else if (attempts < maxAttempts) {
                 // For non-rate limit errors, retry a few times with increasing delay
