@@ -19,3 +19,4 @@ yarn-error.log*
 
 vite.config.ts.timestamp*
 .history
+.qodo
