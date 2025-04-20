@@ -35,20 +35,20 @@ export class GitHubTokenValidator extends BaseGitHubService {
 
       try {
         authUser = await this.request('GET', '/user');
-        
+
         // Check if the owner is not the current user
         if (username.toLowerCase() !== authUser.login.toLowerCase()) {
           try {
             const targetUser = await this.request('GET', `/users/${username}`);
             isOrg = targetUser.type === 'Organization';
-            
+
             // If it's an org, check if the user is a member
             if (isOrg) {
               const orgs = await this.request('GET', '/user/orgs');
               const hasOrgAccess = orgs.some(
                 (org: any) => org.login.toLowerCase() === username.toLowerCase()
               );
-              
+
               if (!hasOrgAccess) {
                 return {
                   isValid: false,
@@ -59,7 +59,8 @@ export class GitHubTokenValidator extends BaseGitHubService {
               // If not an org and not the current user, they can't create repos here
               return {
                 isValid: false,
-                error: 'Token can only be used with your GitHub username or organizations you have access to',
+                error:
+                  'Token can only be used with your GitHub username or organizations you have access to',
               };
             }
           } catch (error) {
@@ -72,7 +73,7 @@ export class GitHubTokenValidator extends BaseGitHubService {
       } catch (error) {
         return { isValid: false, error: 'Invalid GitHub token' };
       }
-      
+
       // Create a temporary test repo
       const timestamp = Date.now();
       const repoName = `test-repo-${timestamp}`;

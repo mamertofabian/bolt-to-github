@@ -415,14 +415,17 @@ This repository was automatically initialized by the Bolt to GitHub extension.
     try {
       // Get repos from user account
       let repos = await this.request('GET', `/user/repos?per_page=100&sort=updated`);
-      
+
       // Get org repos the user has access to
       try {
         const orgs = await this.request('GET', '/user/orgs');
-        
+
         for (const org of orgs) {
           try {
-            const orgRepos = await this.request('GET', `/orgs/${org.login}/repos?per_page=100&sort=updated`);
+            const orgRepos = await this.request(
+              'GET',
+              `/orgs/${org.login}/repos?per_page=100&sort=updated`
+            );
             repos = repos.concat(orgRepos);
           } catch (error) {
             console.warn(`Failed to fetch repos for organization ${org.login}:`, error);
