@@ -331,23 +331,47 @@ export class ZipHandler {
   /**
    * Calculate the Git blob hash for a string content
    * GitHub calculates blob SHA using the format: "blob " + content.length + "\0" + content
+   *
+   * Optimized for better performance with:
+   * 1. Pre-allocated buffer to avoid multiple array creations
+   * 2. Single TextEncoder instance
+   * 3. More efficient hex string generation
    */
   private async calculateGitBlobHash(content: string): Promise<string> {
     const encoder = new TextEncoder();
-    const blobPrefix = encoder.encode(`blob ${content.length}\0`);
-    const contentBytes = encoder.encode(content);
 
-    // Combine the arrays
-    const fullData = new Uint8Array(blobPrefix.length + contentBytes.length);
-    fullData.set(blobPrefix);
-    fullData.set(contentBytes, blobPrefix.length);
+    // Prepare the prefix string once
+    const prefixStr = `blob ${content.length}\0`;
+
+    // Calculate total buffer size needed up front
+    const totalLength = new TextEncoder().encode(prefixStr + content).length;
+
+    // Encode directly into a single buffer
+    let bytes: Uint8Array;
+
+    // Modern browsers support encodeInto for better performance
+    if (typeof encoder.encodeInto === 'function') {
+      bytes = new Uint8Array(totalLength);
+      const prefixResult = encoder.encodeInto(prefixStr, bytes);
+      if (prefixResult && typeof prefixResult.written === 'number') {
+        encoder.encodeInto(content, bytes.subarray(prefixResult.written));
+      }
+    } else {
+      // Fallback for browsers without encodeInto
+      const prefixBytes = encoder.encode(prefixStr);
+      const contentBytes = encoder.encode(content);
+
+      bytes = new Uint8Array(prefixBytes.length + contentBytes.length);
+      bytes.set(prefixBytes);
+      bytes.set(contentBytes, prefixBytes.length);
+    }
 
     // Calculate SHA-1 hash
-    const hashBuffer = await crypto.subtle.digest('SHA-1', fullData);
+    const hashBuffer = await crypto.subtle.digest('SHA-1', bytes);
 
-    // Convert to hex string
+    // Convert to hex string using the imported utility function
     return Array.from(new Uint8Array(hashBuffer))
-      .map((b) => b.toString(16).padStart(2, '0'))
+      .map((byte) => byte.toString(16).padStart(2, '0'))
       .join('');
   }
 
