@@ -28,24 +28,81 @@ export class GitHubTokenValidator extends BaseGitHubService {
     onProgress?: ProgressCallback
   ): Promise<{ isValid: boolean; error?: string }> {
     try {
+      // First determine if username refers to an organization
+      let isOrg = false;
+      let testOwner = username;
+      let authUser;
+
+      try {
+        authUser = await this.request('GET', '/user');
+
+        // Check if the owner is not the current user
+        if (username.toLowerCase() !== authUser.login.toLowerCase()) {
+          try {
+            const targetUser = await this.request('GET', `/users/${username}`);
+            isOrg = targetUser.type === 'Organization';
+
+            // If it's an org, check if the user is a member
+            if (isOrg) {
+              const orgs = await this.request('GET', '/user/orgs');
+              const hasOrgAccess = orgs.some(
+                (org: any) => org.login.toLowerCase() === username.toLowerCase()
+              );
+
+              if (!hasOrgAccess) {
+                return {
+                  isValid: false,
+                  error: 'Token does not have access to this organization',
+                };
+              }
+            } else {
+              // If not an org and not the current user, they can't create repos here
+              return {
+                isValid: false,
+                error:
+                  'Token can only be used with your GitHub username or organizations you have access to',
+              };
+            }
+          } catch (error) {
+            if (error instanceof Error && error.message.includes('404')) {
+              return { isValid: false, error: 'Invalid GitHub username or organization' };
+            }
+            throw error;
+          }
+        }
+      } catch (error) {
+        return { isValid: false, error: 'Invalid GitHub token' };
+      }
+
       // Create a temporary test repo
       const timestamp = Date.now();
       const repoName = `test-repo-${timestamp}`;
 
       // Test repository creation (All repositories access)
       try {
-        await this.request('POST', '/user/repos', {
-          name: repoName,
-          private: true,
-          auto_init: true,
-        });
+        if (isOrg) {
+          // Create in organization
+          await this.request('POST', `/orgs/${username}/repos`, {
+            name: repoName,
+            private: true,
+            auto_init: true,
+          });
+        } else {
+          // Create in user account
+          await this.request('POST', '/user/repos', {
+            name: repoName,
+            private: true,
+            auto_init: true,
+          });
+        }
         await this.delay(2000);
         onProgress?.({ permission: 'repos', isValid: true });
       } catch (error) {
         onProgress?.({ permission: 'repos', isValid: false });
+        console.error('Repository creation failed:', error);
         return {
           isValid: false,
-          error: 'Token lacks repository creation permission',
+          error: `Token lacks repository creation permission${isOrg ? ' for this organization' : ''}`,
         };
       }
 
@@ -58,6 +115,7 @@ export class GitHubTokenValidator extends BaseGitHubService {
         onProgress?.({ permission: 'admin', isValid: true });
       } catch (error) {
         onProgress?.({ permission: 'admin', isValid: false });
+        console.error('Repo visibility change failed:', error);
         // Cleanup repo before returning
         try {
           await this.request('DELETE', `/repos/${username}/${repoName}`);
@@ -66,7 +124,7 @@ export class GitHubTokenValidator extends BaseGitHubService {
         }
         return {
           isValid: false,
-          error: 'Token lacks repository administration permission',
+          error: `Token lacks repository administration permission${isOrg ? ' for this organization' : ''}`,
         };
       }
 
@@ -83,6 +141,7 @@ export class GitHubTokenValidator extends BaseGitHubService {
         onProgress?.({ permission: 'code', isValid: true });
       } catch (error) {
         onProgress?.({ permission: 'code', isValid: false });
+        console.error('Content read/write check failed:', error);
         // Cleanup repo before returning
         try {
           await this.request('DELETE', `/repos/${username}/${repoName}`);
@@ -91,7 +150,7 @@ export class GitHubTokenValidator extends BaseGitHubService {
         }
         return {
           isValid: false,
-          error: 'Token lacks repository contents read/write permission',
+          error: `Token lacks repository contents read/write permission${isOrg ? ' for this organization' : ''}`,
         };
       }
 
@@ -132,16 +191,24 @@ export class GitHubTokenValidator extends BaseGitHubService {
         return { isValid: true };
       }
 
-      const targetUser = await this.request('GET', `/users/${username}`);
-      if (targetUser.type === 'Organization') {
-        const orgs = await this.request('GET', '/user/orgs');
-        const hasOrgAccess = orgs.some(
-          (org: any) => org.login.toLowerCase() === username.toLowerCase()
-        );
-        if (hasOrgAccess) {
-          return { isValid: true };
+      // Check if username refers to an organization
+      try {
+        const targetUser = await this.request('GET', `/users/${username}`);
+        if (targetUser.type === 'Organization') {
+          const orgs = await this.request('GET', '/user/orgs');
+          const hasOrgAccess = orgs.some(
+            (org: any) => org.login.toLowerCase() === username.toLowerCase()
+          );
+          if (hasOrgAccess) {
+            return { isValid: true };
+          }
+          return { isValid: false, error: 'Token does not have access to this organization' };
         }
-        return { isValid: false, error: 'Token does not have access to this organization' };
+      } catch (error) {
+        if (error instanceof Error && error.message.includes('404')) {
+          return { isValid: false, error: 'Invalid GitHub username or organization' };
+        }
+        throw error;
       }
 
       return {

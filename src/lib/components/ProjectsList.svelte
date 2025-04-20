@@ -61,14 +61,13 @@
     }));
 
     const repos = showRepos
-      ? allRepos
-          .map((repo) => ({
-            repoName: repo.name,
-            gitHubRepo: true,
-            private: repo.private,
-            description: repo.description,
-            language: repo.language,
-          }))
+      ? allRepos.map((repo) => ({
+          repoName: repo.name,
+          gitHubRepo: true,
+          private: repo.private,
+          description: repo.description,
+          language: repo.language,
+        }))
       : [];
 
     filteredProjects = [...existingProjects, ...repos].filter((project) =>
@@ -298,16 +297,16 @@
               <Github class="h-5 w-5" />
             </Button>
             {#if !project.projectId}
-            <Button
-              variant="ghost"
-              size="icon"
-              title="Import from GitHub to Bolt"
-              class="h-8 w-8 opacity-70 group-hover:opacity-100"
-              on:click={() =>
-                importFromGitHub(repoOwner, project.repoName, project.private ?? false)}
-            >
-              <Import class="h-5 w-5" />
-            </Button>
+              <Button
+                variant="ghost"
+                size="icon"
+                title="Import from GitHub to Bolt"
+                class="h-8 w-8 opacity-70 group-hover:opacity-100"
+                on:click={() =>
+                  importFromGitHub(repoOwner, project.repoName, project.private ?? false)}
+              >
+                <Import class="h-5 w-5" />
+              </Button>
             {/if}
           </div>
         </div>

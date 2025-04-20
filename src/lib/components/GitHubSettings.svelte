@@ -541,6 +541,7 @@
       class="w-full bg-blue-600 hover:bg-blue-700 text-white"
       disabled={buttonDisabled ||
         isValidatingToken ||
+        isCheckingPermissions ||
         !githubToken ||
         !repoOwner ||
         (!isOnboarding && (!repoName || !branch)) ||
@@ -548,6 +549,8 @@
     >
       {#if isValidatingToken}
         Validating...
+      {:else if isCheckingPermissions}
+        Checking permissions...
       {:else if buttonDisabled}
         {status}
       {:else}

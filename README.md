@@ -28,9 +28,16 @@ A Chrome extension that automatically captures ZIP file downloads from bolt.new,
   <img src="https://img.shields.io/badge/Install%20from-Chrome%20Web%20Store-blue?style=for-the-badge&logo=google-chrome&logoColor=white" alt="Install from Chrome Web Store" height="40">
 </a>
 
-### Latest stable version (v1.2.1) includes the following features:
+### Latest stable version (v1.2.2) includes the following features:
 
-#### 🔒 New in v1.2.1
+#### 🛠️ New in v1.2.2
+
+- Support for GitHub organization repositories
+- Enhanced button feedback with permission checking status
+- ZipHandler service for better file processing
+- Development guide with commands and code style guidelines
+
+#### 🔒 Added in v1.2.1
 
 - Support for Private GitHub repositories (see demo here: https://youtu.be/d9NqXRoroi0)
 - Enhanced GitHub integration with token validation

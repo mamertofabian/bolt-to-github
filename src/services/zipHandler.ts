@@ -17,7 +17,7 @@ export class ZipHandler {
     progress: number = 0,
     message: string = ''
   ) => {
-    console.log('📊 Updating status:', { status, progress, message });
+    // Send status update to UI
     this.sendStatus({ status, progress, message });
   };
 
@@ -33,7 +33,7 @@ export class ZipHandler {
         'GET',
         `/repos/${repoOwner}/${repoName}/branches/${targetBranch}`
       );
-    } catch (error) {
+    } catch (_) {
       branchExists = false;
     }
 
@@ -88,7 +88,7 @@ export class ZipHandler {
     try {
       await this.updateStatus('uploading', 0, 'Processing ZIP file...');
 
-      console.log('🗜️ Processing ZIP file...');
+      // Start processing the ZIP file
       const files = await ZipProcessor.processZipBlob(blob);
 
       await this.updateStatus('uploading', 10, 'Preparing files...');
@@ -110,7 +110,7 @@ export class ZipHandler {
       }
 
       const targetBranch = branch || 'main';
-      console.log('📋 Repository details:', { repoOwner, repoName, targetBranch });
+      // Repository details identified
 
       await this.updateStatus('uploading', 15, 'Checking repository...');
       await this.githubService.ensureRepoExists(repoOwner, repoName);
@@ -130,18 +130,12 @@ export class ZipHandler {
 
       await this.uploadToGitHub(processedFiles, repoOwner, repoName, targetBranch, commitMessage);
 
-      await this.updateStatus(
-        'success',
-        100,
-        `Successfully uploaded ${processedFiles.size} files to GitHub`
-      );
-
       // Clear the status after a delay
       setTimeout(() => {
         this.updateStatus('idle', 0, '');
       }, 5000);
     } catch (error) {
-      console.error('❌ Error uploading files:', error);
+      // Error handling
       await this.updateStatus(
         'error',
         0,
@@ -194,14 +188,14 @@ export class ZipHandler {
 
     for (const [path, content] of files.entries()) {
       if (path.endsWith('/') || !content.trim()) {
-        console.log(`📁 Skipping entry: ${path}`);
+        // Skip directory entries and empty files
         continue;
       }
 
       const normalizedPath = path.startsWith('project/') ? path.slice(8) : path;
 
       if (ig.ignores(normalizedPath)) {
-        console.log(`🚫 Ignoring file: ${normalizedPath}`);
+        // Skip files that match .gitignore patterns
         continue;
       }
 
@@ -231,10 +225,69 @@ export class ZipHandler {
     );
     const baseTreeSha = baseCommit.tree.sha;
 
-    await this.updateStatus('uploading', 30, 'Creating file blobs...');
+    // Fetch the full tree with content
+    await this.updateStatus('uploading', 30, 'Analyzing repository changes...');
+    const existingTree = await this.githubService.request(
+      'GET',
+      `/repos/${repoOwner}/${repoName}/git/trees/${baseTreeSha}?recursive=1`
+    );
 
-    // Create blobs for all files
-    const treeItems = await this.createBlobs(processedFiles, repoOwner, repoName);
+    // Create a map of existing file paths to their SHAs
+    const existingFiles = new Map<string, string>();
+    if (existingTree.tree) {
+      existingTree.tree.forEach((item: { path: string; sha: string; type: string }) => {
+        if (item.type === 'blob') {
+          existingFiles.set(item.path, item.sha);
+        }
+      });
+    }
+
+    // Determine which files have changed
+    const changedFiles = new Map<string, string>();
+    for (const [path, content] of processedFiles.entries()) {
+      // If file doesn't exist in repo, it's changed
+      if (!existingFiles.has(path)) {
+        changedFiles.set(path, content);
+      } else {
+        // For existing files, compare content hash
+        const contentHash = await this.calculateGitBlobHash(content);
+        if (existingFiles.get(path) !== contentHash) {
+          changedFiles.set(path, content);
+        }
+      }
+    }
+
+    // If no files have changed, skip the commit process
+    if (changedFiles.size === 0) {
+      await this.updateStatus(
+        'success',
+        100,
+        'No changes detected. Repository is already up to date.'
+      );
+      return;
+    }
+    await this.updateStatus(
+      'uploading',
+      40,
+      `Creating ${changedFiles.size} file blobs (of ${processedFiles.size} total files)...`
+    );
+
+    // Only create blobs for changed files
+    const newTreeItems = await this.createBlobs(changedFiles, repoOwner, repoName);
+
+    // Add unchanged files to the tree with their existing SHAs
+    const treeItems = [...newTreeItems];
+    for (const [path, sha] of existingFiles.entries()) {
+      // Only add if the file still exists in our processed files and hasn't changed
+      if (processedFiles.has(path) && !changedFiles.has(path)) {
+        treeItems.push({
+          path,
+          mode: '100644',
+          type: 'blob',
+          sha,
+        });
+      }
+    }
 
     await this.updateStatus('uploading', 70, 'Creating tree...');
 
@@ -272,10 +325,63 @@ export class ZipHandler {
         force: false,
       }
     );
+
+    await this.updateStatus(
+      'success',
+      100,
+      `Successfully uploaded ${changedFiles.size} files to GitHub`
+    );
   }
 
   private sleep(ms: number): Promise<void> {
     return new Promise((resolve) => setTimeout(resolve, ms));
+  }
+
+  /**
+   * Calculate the Git blob hash for a string content
+   * GitHub calculates blob SHA using the format: "blob " + content.length + "\0" + content
+   *
+   * Optimized for better performance with:
+   * 1. Pre-allocated buffer to avoid multiple array creations
+   * 2. Single TextEncoder instance
+   * 3. More efficient hex string generation
+   */
+  private async calculateGitBlobHash(content: string): Promise<string> {
+    const encoder = new TextEncoder();
+
+    // Prepare the prefix string once
+    const prefixStr = `blob ${content.length}\0`;
+
+    // Calculate total buffer size needed up front
+    const totalLength = new TextEncoder().encode(prefixStr + content).length;
+
+    // Encode directly into a single buffer
+    let bytes: Uint8Array;
+
+    // Modern browsers support encodeInto for better performance
+    if (typeof encoder.encodeInto === 'function') {
+      bytes = new Uint8Array(totalLength);
+      const prefixResult = encoder.encodeInto(prefixStr, bytes);
+      if (prefixResult && typeof prefixResult.written === 'number') {
+        encoder.encodeInto(content, bytes.subarray(prefixResult.written));
+      }
+    } else {
+      // Fallback for browsers without encodeInto
+      const prefixBytes = encoder.encode(prefixStr);
+      const contentBytes = encoder.encode(content);
+
+      bytes = new Uint8Array(prefixBytes.length + contentBytes.length);
+      bytes.set(prefixBytes);
+      bytes.set(contentBytes, prefixBytes.length);
+    }
+
+    // Calculate SHA-1 hash
+    const hashBuffer = await crypto.subtle.digest('SHA-1', bytes);
+
+    // Convert to hex string using the imported utility function
+    return Array.from(new Uint8Array(hashBuffer))
+      .map((byte) => byte.toString(16).padStart(2, '0'))
+      .join('');
   }
 
   private async createBlobs(
@@ -287,19 +393,34 @@ export class ZipHandler {
     const totalFiles = files.size;
     let completedFiles = 0;
 
-    const rateLimitHandler = new RateLimitHandler();
+    // Check rate limit status at the beginning
     const rateLimit = await this.githubService.request('GET', '/rate_limit');
     const remainingRequests = rateLimit.resources.core.remaining;
     const resetTime = rateLimit.resources.core.reset;
+    const now = Math.floor(Date.now() / 1000);
+    const waitTime = resetTime - now;
 
+    // Monitor rate limit info internally
+
+    // Warn if rate limit is low
+    if (remainingRequests < files.size + 10) {
+      await this.updateStatus(
+        'uploading',
+        40,
+        `Rate limit warning: ${remainingRequests} requests remaining of ${files.size} needed`
+      );
+    }
+
+    // If very low on remaining requests, wait for reset if it's soon
     if (remainingRequests < 10) {
-      const now = Math.floor(Date.now() / 1000);
-      const waitTime = resetTime - now;
-
-      // If reset is happening soon (within 2 minutes), wait for it
-      if (waitTime <= 120) {
-        console.log(`Waiting ${waitTime} seconds for rate limit reset...`);
-        await rateLimitHandler.sleep(waitTime * 1000);
+      // If reset is happening soon (within 5 minutes), wait for it
+      if (waitTime <= 300) {
+        await this.updateStatus(
+          'uploading',
+          40,
+          `Waiting ${Math.ceil(waitTime)} seconds for rate limit reset...`
+        );
+        await this.sleep(waitTime * 1000);
         // Recheck rate limit after waiting
         const newRateLimit = await this.githubService.request('GET', '/rate_limit');
         if (newRateLimit.resources.core.remaining < 10) {
@@ -312,61 +433,154 @@ export class ZipHandler {
       }
     }
 
-    const queue = new Queue(1); // Using a queue for serial execution
+    // Create an enhanced rate limit handler with exponential backoff
+    const rateLimitHandler = new RateLimitHandler();
+    const queue = new Queue(1); // Using a queue for serial execution with concurrency of 1
 
     // Reset rate limit handler counter before starting batch
     rateLimitHandler.resetRequestCount();
 
-    let fileCount = 0;
+    // Process files in batches of max 30 files to avoid overwhelming GitHub
+    const MAX_BATCH_SIZE = 30;
+    const fileBatches: Array<Map<string, string>> = [];
+
+    // Split files into batches
+    let currentBatch = new Map<string, string>();
+    let currentBatchSize = 0;
+
     for (const [path, content] of files.entries()) {
-      await queue.add(async () => {
-        let success = false;
-        while (!success) {
-          try {
-            await rateLimitHandler.beforeRequest();
+      currentBatch.set(path, content);
+      currentBatchSize++;
 
-            const blobData = await this.githubService.request(
-              'POST',
-              `/repos/${repoOwner}/${repoName}/git/blobs`,
-              {
-                content: toBase64(content),
-                encoding: 'base64',
+      if (currentBatchSize >= MAX_BATCH_SIZE) {
+        fileBatches.push(currentBatch);
+        currentBatch = new Map<string, string>();
+        currentBatchSize = 0;
+      }
+    }
+
+    // Add the last batch if it has any files
+    if (currentBatchSize > 0) {
+      fileBatches.push(currentBatch);
+    }
+
+    // Process each batch with a pause between batches
+    for (let batchIndex = 0; batchIndex < fileBatches.length; batchIndex++) {
+      const batch = fileBatches[batchIndex];
+      const batchNumber = batchIndex + 1;
+
+      await this.updateStatus(
+        'uploading',
+        40 + Math.floor((batchIndex / fileBatches.length) * 30),
+        `Processing batch ${batchNumber}/${fileBatches.length} (${batch.size} files)...`
+      );
+
+      // Add a pause between batches to avoid rate limits
+      if (batchIndex > 0) {
+        await this.sleep(1000); // 1 second pause between batches
+      }
+
+      let fileCount = 0;
+      for (const [path, content] of batch.entries()) {
+        await queue.add(async () => {
+          let success = false;
+          let attempts = 0;
+          const maxAttempts = 5;
+
+          while (!success && attempts < maxAttempts) {
+            try {
+              attempts++;
+              await rateLimitHandler.beforeRequest();
+
+              const blobData = await this.githubService.request(
+                'POST',
+                `/repos/${repoOwner}/${repoName}/git/blobs`,
+                {
+                  content: toBase64(content),
+                  encoding: 'base64',
+                }
+              );
+
+              results.push({
+                path,
+                mode: '100644',
+                type: 'blob',
+                sha: blobData.sha,
+              });
+
+              success = true;
+              rateLimitHandler.resetRetryCount();
+
+              // Reset request counter periodically to maintain burst behavior
+              fileCount++;
+              if (fileCount % 5 === 0) {
+                rateLimitHandler.resetRequestCount();
+                await this.sleep(500); // Brief pause every 5 files
               }
-            );
 
-            results.push({
-              path,
-              mode: '100644',
-              type: 'blob',
-              sha: blobData.sha,
-            });
+              completedFiles++;
+              if (completedFiles % 5 === 0 || completedFiles === totalFiles) {
+                await this.updateStatus(
+                  'uploading',
+                  40 + Math.floor((completedFiles / totalFiles) * 30),
+                  `Uploading files (${completedFiles}/${totalFiles})...`
+                );
+              }
+            } catch (error) {
+              const errorObj = error as Error & {
+                status?: number;
+                response?: { status: number };
+                message: string;
+              };
 
-            success = true;
-            rateLimitHandler.resetRetryCount();
+              // Handle rate limit errors (HTTP 403 with specific message)
+              if (
+                (errorObj instanceof Response && errorObj.status === 403) ||
+                (errorObj.response && errorObj.response.status === 403) ||
+                (typeof errorObj.message === 'string' &&
+                  (errorObj.message.includes('rate limit') ||
+                    errorObj.message.includes('secondary rate limits')))
+              ) {
+                // Calculate exponential backoff time
+                const baseDelay = 1000; // Start with 1 second
+                const maxDelay = 60000; // Max 1 minute
+                const delay = Math.min(baseDelay * Math.pow(2, attempts - 1), maxDelay);
 
-            // Reset request counter every 10 files to maintain burst behavior
-            fileCount++;
-            if (fileCount % 10 === 0) {
-              rateLimitHandler.resetRequestCount();
-            }
+                // Log handled in status update
+                await this.updateStatus(
+                  'uploading',
+                  40 + Math.floor((completedFiles / totalFiles) * 30),
+                  `Rate limit hit. Waiting ${Math.ceil(delay / 1000)}s before retry...`
+                );
 
-            completedFiles++;
-            await this.updateStatus(
-              'uploading',
-              20 + Math.floor((completedFiles / totalFiles) * 60),
-              `Uploading files (${completedFiles}/${totalFiles})...`
-            );
-          } catch (error) {
-            if (error instanceof Response && error.status === 403) {
-              await rateLimitHandler.handleRateLimit(error);
-              // Retry the current file by decrementing the loop counter
-              completedFiles--;
-            } else {
-              throw error;
+                await this.sleep(delay);
+                // Handle rate limit with appropriate parameter type
+                if (errorObj instanceof Response) {
+                  await rateLimitHandler.handleRateLimit(errorObj);
+                } else {
+                  // For other error types, just wait using our own sleep method
+                  await this.sleep(2000 * attempts);
+                }
+
+                // Don't increment completedFiles as we're retrying
+              } else if (attempts < maxAttempts) {
+                // For non-rate limit errors, retry a few times with increasing delay
+                const delay = 1000 * attempts;
+                // Log handled in status update
+                await this.sleep(delay);
+              } else {
+                // Final failure after multiple attempts
+                await this.updateStatus(
+                  'error',
+                  40,
+                  `Failed to upload ${path} after ${maxAttempts} attempts`
+                );
+                throw errorObj;
+              }
             }
           }
-        }
-      });
+        });
+      }
     }
 
     return results;
