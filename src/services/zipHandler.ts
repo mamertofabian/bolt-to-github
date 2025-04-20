@@ -257,6 +257,15 @@ export class ZipHandler {
       }
     }
 
+    // If no files have changed, skip the commit process
+    if (changedFiles.size === 0) {
+      await this.updateStatus(
+        'success',
+        100,
+        'No changes detected. Repository is already up to date.'
+      );
+      return;
+    }
     await this.updateStatus(
       'uploading',
       40,
