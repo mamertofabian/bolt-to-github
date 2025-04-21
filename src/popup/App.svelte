@@ -249,8 +249,14 @@
   <Card class="border-slate-800 bg-slate-900">
     <CardHeader>
       <CardTitle class="flex items-center gap-2">
-        <img src="/assets/icons/icon48.png" alt="Bolt to GitHub" class="w-5 h-5" />
-        Bolt to GitHub <span class="text-xs text-slate-400">v{version}</span>
+        <a
+          href="https://bolt2github.com"
+          target="_blank"
+          class="flex items-center gap-2 hover:opacity-80 transition-opacity"
+        >
+          <img src="/assets/icons/icon48.png" alt="Bolt to GitHub" class="w-5 h-5" />
+          Bolt to GitHub <span class="text-xs text-slate-400">v{version}</span>
+        </a>
       </CardTitle>
       <CardDescription class="text-slate-400">
         Upload and sync your Bolt projects to GitHub

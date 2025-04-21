@@ -209,6 +209,13 @@
       <ul class="space-y-2 text-sm text-slate-400">
         <li>
           • Visit our <a
+            href="https://bolt2github.com"
+            target="_blank"
+            class="text-blue-400 hover:underline">official website</a
+          > for comprehensive guides and documentation
+        </li>
+        <li>
+          • Check our <a
             href="https://github.com/mamertofabian/bolt-to-github"
             target="_blank"
             class="text-blue-400 hover:underline">GitHub repository</a
@@ -227,6 +234,13 @@
             target="_blank"
             class="text-blue-400 hover:underline">AI development tutorials</a
           > on YouTube for expert guidance and tips! 🎥
+        </li>
+        <li>
+          • Need professional help? Try our <a
+            href="https://fix.aidrivencoder.com"
+            target="_blank"
+            class="text-blue-400 hover:underline">AI Dev fixing services</a
+          > for expert assistance with your development challenges
         </li>
       </ul>
     </div>
