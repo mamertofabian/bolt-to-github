@@ -314,18 +314,27 @@
     {/each}
   {/if}
   {#if importProgress}
-    <div class="fixed inset-0 bg-black/50 flex items-center justify-center">
+    <div class="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
       <div class="bg-slate-900 border border-slate-800 rounded-lg p-4 max-w-sm w-full mx-4">
         <h3 class="font-medium mb-2">Importing {importProgress.repoName}</h3>
         <p class="text-sm text-slate-400 mb-3">{importProgress.status}</p>
-        {#if importProgress.progress !== undefined}
-          <div class="w-full bg-slate-800 rounded-full h-2">
-            <div
-              class="bg-emerald-500 h-2 rounded-full transition-all duration-300"
-              style="width: {importProgress.progress}%"
-            />
+
+        <div class="w-full bg-slate-800 rounded-full h-2.5 overflow-hidden">
+          <div
+            class="bg-blue-600 h-full rounded-full transition-all duration-300 relative"
+            style="width: {importProgress.progress || 0}%"
+            role="progressbar"
+            aria-valuenow={importProgress.progress || 0}
+            aria-valuemin="0"
+            aria-valuemax="100"
+          >
+            {#if importProgress.progress && importProgress.progress > 10}
+              <span class="absolute top-1/2 -translate-y-1/2 right-1 text-[10px] text-white font-medium px-1">
+                {Math.round(importProgress.progress)}%
+              </span>
+            {/if}
           </div>
-        {/if}
+        </div>
       </div>
     </div>
   {/if}

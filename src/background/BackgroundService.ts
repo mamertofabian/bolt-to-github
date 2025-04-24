@@ -74,6 +74,42 @@ export class BackgroundService {
   }
 
   private broadcastStatus(status: UploadStatusState) {
+    // Show notification for important status updates
+    if (status.status === 'uploading' && status.message) {
+      const notificationId = 'import-progress';
+      const progressPercent = Math.round(status.progress || 0);
+      // Create or update the notification with progress information
+      chrome.notifications.create(notificationId, {
+        type: 'basic',
+        iconUrl: chrome.runtime.getURL('assets/bolt-icon.png'),
+        title: 'GitHub Repository Import',
+        message: `${status.message} (${progressPercent}% complete)`,
+        contextMessage: 'Bolt to GitHub Extension',
+        isClickable: true,
+      });
+    } else if (status.status === 'success') {
+      // Clear the progress notification when done
+      chrome.notifications.clear('import-progress');
+      // Show success notification
+      chrome.notifications.create({
+        type: 'basic',
+        iconUrl: chrome.runtime.getURL('assets/bolt-icon.png'),
+        title: 'Import Complete',
+        message: 'Repository has been successfully imported to Bolt',
+      });
+    } else if (status.status === 'error') {
+      // Clear the progress notification on error
+      chrome.notifications.clear('import-progress');
+      // Show error notification
+      chrome.notifications.create({
+        type: 'basic',
+        iconUrl: chrome.runtime.getURL('assets/bolt-icon.png'),
+        title: 'Import Failed',
+        message: status.message || 'Failed to import repository',
+      });
+    }
+    
+    // Broadcast to all ports
     for (const [tabId, port] of this.ports) {
       this.sendResponse(port, {
         type: 'UPLOAD_STATUS',
