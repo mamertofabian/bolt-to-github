@@ -330,6 +330,9 @@
 
           <TabsContent value="help">
             <Help />
+            <div class="mt-6">
+              <Footer />
+            </div>
           </TabsContent>
         </Tabs>
       {:else if hasInitialSettings && repoOwner && githubToken}
@@ -374,7 +377,6 @@
         </div>
       {/if}
     </CardContent>
-    <Footer />
   </Card>
   <Modal show={showTempRepoModal} title="Private Repository Import">
     <div class="space-y-4">
