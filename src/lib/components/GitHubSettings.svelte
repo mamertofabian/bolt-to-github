@@ -454,16 +454,7 @@
 
         <div class="space-y-4">
           <div class="space-y-2">
-            <Label for="repoName" class="text-slate-200">
-              Repository Name
-              <span class="text-sm text-slate-400 ml-2">
-                {#if projectId}
-                  (Project-specific repository)
-                {:else}
-                  (Default repository)
-                {/if}
-              </span>
-            </Label>
+            <Label for="repoName" class="text-slate-200">Repository Name</Label>
             <div class="relative">
               <div class="relative">
                 <Input

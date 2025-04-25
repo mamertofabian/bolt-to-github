@@ -1,7 +1,8 @@
 <script lang="ts">
   import { onMount } from 'svelte';
   import { Button } from '$lib/components/ui/button';
-  import { Github, Import, Zap, X, RefreshCw, Trash2 } from 'lucide-svelte';
+  import { Github, Import, Zap, X, RefreshCw, Trash2, Settings } from 'lucide-svelte';
+  import RepoSettings from '$lib/components/RepoSettings.svelte';
   import { GitHubService } from '../../services/GitHubService';
   import { fade } from 'svelte/transition';
 
@@ -14,6 +15,8 @@
   let loadingRepos = false;
   let showDeleteModal = false;
   let projectToDelete: { projectId: string; repoName: string } | null = null;
+  let showSettingsModal = false;
+  let projectToEdit: { projectId: string; repoName: string; branch: string } | null = null;
 
   const githubService = new GitHubService(githubToken);
   let commitCounts: Record<string, number> = {};
@@ -107,6 +110,11 @@
   function confirmDeleteProject(projectId: string, repoName: string) {
     projectToDelete = { projectId, repoName };
     showDeleteModal = true;
+  }
+
+  function openRepoSettings(projectId: string, repoName: string, branch: string) {
+    projectToEdit = { projectId, repoName, branch };
+    showSettingsModal = true;
   }
 
   async function deleteProject() {
@@ -292,8 +300,8 @@
             aria-label="Bolt project {project.repoName}"
           >
             <div class="flex flex-col">
-              <div class="flex items-center justify-between">
-                <div>
+              <div class="relative">
+                <div class="w-full">
                   <h3 class="font-medium">
                     {project.repoName}
                     {project.branch ? `(${project.branch})` : ''}
@@ -323,51 +331,70 @@
                   </div>
                 </div>
 
-                <div class="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                    {#if project.projectId && project.projectId !== currentlyLoadedProjectId}
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        title="Open in Bolt"
-                        class="h-8 w-8 hover:text-emerald-500"
-                        on:click={() => project.projectId && openBoltProject(project.projectId)}
-                      >
-                        <Zap class="h-5 w-5" />
-                      </Button>
-                    {/if}
-
+                <div
+                  class="absolute top-0 right-0 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity bg-gradient-to-l from-slate-800/90 via-slate-800/70 to-transparent pl-8 pr-1 py-1 rounded-l-full"
+                >
+                  {#if project.projectId && project.projectId !== currentlyLoadedProjectId}
                     <Button
                       variant="ghost"
                       size="icon"
-                      title="Open GitHub Repository"
-                      class="h-8 w-8 hover:text-blue-500"
-                      on:click={() => openGitHubRepo(repoOwner, project.repoName)}
+                      title="Open in Bolt"
+                      class="h-8 w-8 hover:text-emerald-500"
+                      on:click={() => project.projectId && openBoltProject(project.projectId)}
                     >
-                      <Github class="h-5 w-5" />
+                      <Zap class="h-5 w-5" />
                     </Button>
-                    {#if !project.projectId}
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        title="Import from GitHub to Bolt"
-                        class="h-8 w-8 hover:text-amber-500"
-                        on:click={() =>
-                          importFromGitHub(repoOwner, project.repoName, project.private ?? false)}
-                      >
-                        <Import class="h-5 w-5" />
-                      </Button>
-                    {/if}
-                    {#if project.projectId}
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        title="Delete Project"
-                        class="h-8 w-8 hover:text-red-500"
-                        on:click={() => project.projectId && confirmDeleteProject(project.projectId, project.repoName)}
-                      >
-                        <Trash2 class="h-5 w-5" />
-                      </Button>
-                    {/if}
+                  {/if}
+
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    title="Open GitHub Repository"
+                    class="h-8 w-8 hover:text-blue-500"
+                    on:click={() => openGitHubRepo(repoOwner, project.repoName)}
+                  >
+                    <Github class="h-5 w-5" />
+                  </Button>
+                  {#if !project.projectId}
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      title="Import from GitHub to Bolt"
+                      class="h-8 w-8 hover:text-amber-500"
+                      on:click={() =>
+                        importFromGitHub(repoOwner, project.repoName, project.private ?? false)}
+                    >
+                      <Import class="h-5 w-5" />
+                    </Button>
+                  {/if}
+                  {#if project.projectId}
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      title="Repository Settings"
+                      class="h-8 w-8 hover:text-amber-500"
+                      on:click={() =>
+                        project.projectId &&
+                        openRepoSettings(
+                          project.projectId,
+                          project.repoName,
+                          project.branch || 'main'
+                        )}
+                    >
+                      <Settings class="h-5 w-5" />
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      title="Delete Project"
+                      class="h-8 w-8 hover:text-red-500"
+                      on:click={() =>
+                        project.projectId &&
+                        confirmDeleteProject(project.projectId, project.repoName)}
+                    >
+                      <Trash2 class="h-5 w-5" />
+                    </Button>
+                  {/if}
                 </div>
               </div>
             </div>
@@ -388,8 +415,8 @@
             tabindex="-1"
             aria-label="GitHub repository {project.repoName}"
           >
-            <div class="flex items-center justify-between">
-              <div class="space-y-0.5">
+            <div class="relative">
+              <div class="w-full">
                 <h3 class="font-medium">
                   {project.repoName}
                   {project.branch ? `(${project.branch})` : ''}
@@ -416,7 +443,9 @@
                   {/if}
                 </div>
               </div>
-              <div class="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+              <div
+                class="absolute top-0 right-0 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity bg-gradient-to-l from-slate-800/90 via-slate-800/70 to-transparent pl-8 pr-1 py-1 rounded-l-full"
+              >
                 {#if project.projectId && project.projectId !== currentlyLoadedProjectId}
                   <Button
                     variant="ghost"
@@ -456,7 +485,9 @@
                     size="icon"
                     title="Delete Project"
                     class="h-8 w-8 hover:text-red-500"
-                    on:click={() => project.projectId && confirmDeleteProject(project.projectId, project.repoName)}
+                    on:click={() =>
+                      project.projectId &&
+                      confirmDeleteProject(project.projectId, project.repoName)}
                   >
                     <Trash2 class="h-5 w-5" />
                   </Button>
@@ -488,9 +519,7 @@
   {#if showDeleteModal}
     <div class="fixed inset-0 bg-black/50 flex items-center justify-center">
       <div class="bg-slate-900 border border-slate-800 rounded-lg p-4 max-w-sm w-full mx-4">
-        <h3 class="font-medium mb-3">
-          Delete Project
-        </h3>
+        <h3 class="font-medium mb-3">Delete Project</h3>
 
         {#if projectToDelete}
           <p class="text-sm text-slate-300 mb-4">
@@ -526,5 +555,25 @@
         </div>
       </div>
     </div>
+  {/if}
+
+  {#if showSettingsModal && projectToEdit}
+    <RepoSettings
+      {repoOwner}
+      {githubToken}
+      projectId={projectToEdit.projectId}
+      repoName={projectToEdit.repoName}
+      branch={projectToEdit.branch}
+      onSave={() => {
+        showSettingsModal = false;
+        projectToEdit = null;
+        // Refresh the project settings by triggering a re-render
+        projectSettings = { ...projectSettings };
+      }}
+      onCancel={() => {
+        showSettingsModal = false;
+        projectToEdit = null;
+      }}
+    />
   {/if}
 </div>

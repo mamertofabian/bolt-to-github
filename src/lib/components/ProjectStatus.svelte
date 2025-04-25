@@ -2,12 +2,15 @@
   import { createEventDispatcher, onMount } from 'svelte';
   import { Alert, AlertTitle, AlertDescription } from './ui/alert';
   import { GitHubService } from '../../services/GitHubService';
+  import RepoSettings from '$lib/components/RepoSettings.svelte';
 
   export let projectId: string;
   export let gitHubUsername: string;
   export let repoName: string;
   export let branch: string;
   export let token: string;
+
+  let showSettingsModal = false;
 
   let isLoading = {
     repoStatus: true,
@@ -80,8 +83,8 @@
   <AlertDescription class="text-slate-300">
     <div
       class="mt-2 grid grid-cols-[auto_1fr] gap-x-2 bg-slate-900/50 p-2 rounded-sm cursor-pointer hover:bg-slate-900/70 transition-colors group"
-      on:click={() => dispatch('switchTab', 'settings')}
-      on:keydown={(e) => e.key === 'Enter' && dispatch('switchTab', 'settings')}
+      on:click={() => (showSettingsModal = true)}
+      on:keydown={(e) => e.key === 'Enter' && (showSettingsModal = true)}
       role="button"
       tabindex={0}
     >
@@ -134,3 +137,23 @@
     </button>
   </AlertDescription>
 </Alert>
+
+{#if showSettingsModal}
+  <RepoSettings
+    repoOwner={gitHubUsername}
+    githubToken={token}
+    {projectId}
+    {repoName}
+    {branch}
+    onSave={() => {
+      showSettingsModal = false;
+      // Refresh project status after saving
+      getProjectStatus();
+      // Notify parent that settings were updated
+      dispatch('settingsUpdated');
+    }}
+    onCancel={() => {
+      showSettingsModal = false;
+    }}
+  />
+{/if}
