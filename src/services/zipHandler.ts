@@ -119,12 +119,32 @@ export class ZipHandler {
         'projectSettings',
       ]);
 
-      if (!projectSettings?.[currentProjectId]) {
-        throw new Error('Project settings not found for this project');
-      }
+      // Create default project settings if they don't exist
+      let repoName: string;
+      let branch: string;
 
-      const repoName = projectSettings[currentProjectId].repoName;
-      const branch = projectSettings[currentProjectId].branch;
+      if (!projectSettings?.[currentProjectId]) {
+        console.log('Project settings not found, creating default settings for:', currentProjectId);
+
+        // Create a mutable copy of the project settings
+        const updatedProjectSettings = projectSettings ? { ...projectSettings } : {};
+
+        // Use the project ID as the repo name with a default branch of 'main'
+        updatedProjectSettings[currentProjectId] = { repoName: currentProjectId, branch: 'main' };
+
+        // Save the updated settings
+        await chrome.storage.sync.set({ projectSettings: updatedProjectSettings });
+
+        console.log('Created default project settings:', updatedProjectSettings[currentProjectId]);
+
+        // Use the newly created settings
+        repoName = currentProjectId;
+        branch = 'main';
+      } else {
+        // Use existing settings
+        repoName = projectSettings[currentProjectId].repoName;
+        branch = projectSettings[currentProjectId].branch;
+      }
 
       if (!repoOwner || !repoName) {
         throw new Error('Repository details not configured');
