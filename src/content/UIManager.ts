@@ -342,6 +342,7 @@ export class UIManager {
     if (!confirmed) return;
 
     try {
+      // Trigger the download button click
       await this.findAndClickDownloadButton();
 
       // Update button state to processing
@@ -358,8 +359,9 @@ export class UIManager {
 
       this.isGitHubUpload = true;
       this.messageHandler.sendCommitMessage(commitMessage || 'Commit from Bolt to GitHub');
-
-      this.findAndClickDownloadButton(); // This will close the dropdown
+      
+      // We don't need to call findAndClickDownloadButton again
+      // The download process is already triggered by the first call
     } catch (error) {
       console.error('Error during GitHub upload:', error);
       throw new Error('Failed to trigger download. The page structure may have changed.');
@@ -387,23 +389,62 @@ export class UIManager {
   }
 
   async findAndClickDownloadButton() {
-    this.findAndClickExportButton();
+    try {
+      // Try to find and click the export button
+      this.findAndClickExportButton();
+      
+      // Wait for the dropdown content to render with increasing timeouts
+      let attempts = 0;
+      const maxAttempts = 3;
+      let exportDropdown = null;
+      
+      while (attempts < maxAttempts && !exportDropdown) {
+        // Increase wait time with each attempt
+        const waitTime = 200 * (attempts + 1);
+        console.log(`Waiting ${waitTime}ms for dropdown to appear (attempt ${attempts + 1}/${maxAttempts})`);
+        await new Promise((resolve) => setTimeout(resolve, waitTime));
+        
+        // Find all dropdowns
+        const allDropdowns = Array.from(document.querySelectorAll('[role="menu"], [data-radix-menu-content]'));
+        console.log('Found dropdowns:', allDropdowns.length);
+        
+        if (allDropdowns.length === 0) {
+          console.log('No dropdowns found, will retry');
+          attempts++;
+          continue;
+        }
+        
+        // Find the dropdown that contains download-related buttons
+        exportDropdown = allDropdowns.find(dropdown => {
+          const buttons = dropdown.querySelectorAll('button');
+          console.log('Checking dropdown with buttons:', buttons.length);
+          
+          // Check if any button in this dropdown has download text or icon
+          return Array.from(buttons).some(button => {
+            const hasDownloadText = button.textContent?.toLowerCase().includes('download');
+            const hasDownloadIcon = button.querySelector('[class*="i-ph:download-simple"]');
+            return hasDownloadText || hasDownloadIcon;
+          });
+        });
+        
+        if (!exportDropdown) {
+          console.log('No export dropdown found in this attempt, will retry');
+          attempts++;
+        }
+      }
+      
+      if (!exportDropdown) {
+        throw new Error('Export dropdown content not found after multiple attempts');
+      }
+      console.log('Found export dropdown:', exportDropdown);
 
-    // Wait a bit for the dropdown content to render
-    await new Promise((resolve) => setTimeout(resolve, 200));
-
-    // Find the dropdown content
-    const dropdownContent = document.querySelector('[role="menu"], [data-radix-menu-content]');
-    if (!dropdownContent) {
-      throw new Error('Dropdown content not found');
-    }
-
-    // Find download button
-    const downloadButton = Array.from(dropdownContent.querySelectorAll('button')).find((button) => {
-      const hasIcon = button.querySelector('.i-ph\\:download-simple');
-      const hasText = button.textContent?.toLowerCase().includes('download');
-      return hasIcon || hasText;
-    });
+      // Find download button within the identified export dropdown
+      const downloadButton = Array.from(exportDropdown.querySelectorAll('button')).find((button) => {
+        // Search for the icon class anywhere within the button's descendants
+        const hasIcon = button.querySelector('[class*="i-ph:download-simple"]');
+        const hasText = button.textContent?.toLowerCase().includes('download');
+        return hasIcon || hasText;
+      });
 
     if (!downloadButton) {
       throw new Error('Download button not found in dropdown');
@@ -411,6 +452,44 @@ export class UIManager {
 
     console.log('Found download button, clicking...');
     downloadButton.click();
+    
+    // Close the dropdown by clicking outside or pressing Escape
+    setTimeout(() => {
+      try {
+        console.log('Closing export dropdown...');
+        // Method 1: Try to dispatch Escape key to close the dropdown
+        const escapeEvent = new KeyboardEvent('keydown', {
+          key: 'Escape',
+          code: 'Escape',
+          bubbles: true,
+          cancelable: true
+        });
+        document.dispatchEvent(escapeEvent);
+        
+        // Method 2: As a fallback, click outside the dropdown
+        setTimeout(() => {
+          // If dropdown is still open, click on the body element to close it
+          const dropdowns = document.querySelectorAll('[role="menu"], [data-radix-menu-content]');
+          if (dropdowns.length > 0) {
+            console.log('Dropdown still open, clicking outside to close it');
+            // Click in an empty area of the page
+            const clickEvent = new MouseEvent('click', {
+              bubbles: true,
+              cancelable: true,
+              view: window
+            });
+            document.body.dispatchEvent(clickEvent);
+          }
+        }, 100);
+      } catch (closeError) {
+        console.warn('Error while trying to close dropdown:', closeError);
+        // Non-critical error, don't throw
+      }
+    }, 300); // Wait a bit after clicking the download button
+    } catch (error) {
+      console.error('Error finding or clicking download button:', error);
+      throw error; // Re-throw to allow caller to handle
+    }
   }
 
   // Function to show confirmation dialog
