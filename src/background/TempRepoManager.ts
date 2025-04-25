@@ -82,6 +82,13 @@ export class BackgroundTempRepoManager {
         message: 'Repository imported successfully',
         progress: 100,
       });
+
+      // Cleanup temp repo after 30 seconds to make sure the project is opened
+      setTimeout(() => {
+        if (!this.cleanupInterval) {
+          this.startCleanupInterval();
+        }
+      }, 30000);
     } catch (error) {
       console.error('Failed to import private repository:', error);
       this.broadcastStatus({
