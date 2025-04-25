@@ -151,6 +151,7 @@ export class UIManager {
     const button = document.createElement('button');
     button.setAttribute('data-github-upload', 'true');
     button.setAttribute('data-testid', 'github-upload-button');
+    button.setAttribute('aria-haspopup', 'menu');
     button.className = [
       'rounded-md',
       'items-center',
@@ -173,10 +174,13 @@ export class UIManager {
         <path fill="currentColor" d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0016 8c0-4.42-3.58-8-8-8z"/>
       </svg>
       GitHub
+      <svg width="12" height="12" viewBox="0 0 24 24" style="margin-left: 2px;">
+        <path fill="currentColor" d="M7 10l5 5 5-5z"/>
+      </svg>
     `;
 
     button.addEventListener('click', async () => {
-      await this.handleGitHubButtonClick();
+      await this.handleGitHubDropdownClick(button);
     });
 
     console.log('GitHub button created');
@@ -184,8 +188,148 @@ export class UIManager {
     return button;
   }
 
-  private async handleGitHubButtonClick() {
-    console.log('Handling GitHub button click');
+  private async handleGitHubDropdownClick(button: HTMLButtonElement) {
+    console.log('Handling GitHub dropdown click');
+
+    // Dispatch keydown event to open dropdown
+    const keydownEvent = new KeyboardEvent('keydown', {
+      key: 'Enter',
+      bubbles: true,
+      cancelable: true,
+    });
+    button.dispatchEvent(keydownEvent);
+    console.log('Dispatched keydown to GitHub button');
+
+    // Wait a bit for the dropdown content to render
+    await new Promise((resolve) => setTimeout(resolve, 200));
+
+    // Create dropdown content if it doesn't exist
+    let dropdownContent = document.querySelector('#github-dropdown-content') as HTMLElement;
+    if (!dropdownContent) {
+      dropdownContent = this.createGitHubDropdownContent();
+      document.body.appendChild(dropdownContent);
+
+      // Position the dropdown below the button
+      const buttonRect = button.getBoundingClientRect();
+      dropdownContent.style.position = 'absolute';
+      dropdownContent.style.top = `${buttonRect.bottom + window.scrollY}px`;
+      dropdownContent.style.left = `${buttonRect.left + window.scrollX}px`;
+      dropdownContent.style.zIndex = '9999';
+    } else {
+      dropdownContent.style.display = 'block';
+    }
+
+    // Add click event listener to close dropdown when clicking outside
+    const closeDropdown = (e: MouseEvent) => {
+      if (
+        e.target !== button &&
+        e.target !== dropdownContent &&
+        !dropdownContent?.contains(e.target as Node)
+      ) {
+        (dropdownContent as HTMLElement).style.display = 'none';
+        document.removeEventListener('click', closeDropdown);
+      }
+    };
+
+    // Add the event listener with a slight delay to avoid immediate closing
+    setTimeout(() => {
+      document.addEventListener('click', closeDropdown);
+    }, 100);
+  }
+
+  private createGitHubDropdownContent(): HTMLElement {
+    const dropdownContent = document.createElement('div');
+    dropdownContent.id = 'github-dropdown-content';
+    dropdownContent.setAttribute('role', 'menu');
+    dropdownContent.className = [
+      'rounded-md',
+      'shadow-lg',
+      'overflow-hidden',
+      'min-w-[180px]',
+      'animate-fadeIn',
+    ].join(' ');
+
+    // Add some custom styles for animation and better appearance
+    const style = document.createElement('style');
+    style.textContent = `
+      @keyframes fadeIn {
+        from { opacity: 0; transform: translateY(-10px); }
+        to { opacity: 1; transform: translateY(0); }
+      }
+      .animate-fadeIn {
+        animation: fadeIn 0.2s ease-out forwards;
+      }
+      #github-dropdown-content {
+        background-color: #1a1a1a; /* Match the Export dropdown background */
+        border: none;
+        box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3);
+      }
+      #github-dropdown-content button {
+        color: #ffffff;
+        padding: 8px 16px;
+        width: 100%;
+        text-align: left;
+        border: none;
+        background: transparent;
+        font-size: 12px;
+      }
+      #github-dropdown-content button:hover {
+        background-color: #333333; /* Match the Export dropdown hover state */
+      }
+      #github-dropdown-content button svg {
+        transition: transform 0.15s ease;
+        margin-right: 8px;
+      }
+      #github-dropdown-content button:hover svg {
+        transform: scale(1.05);
+      }
+      /* Remove border between items to match Export dropdown */
+      #github-dropdown-content button:first-child {
+        border-bottom: none;
+      }
+    `;
+    document.head.appendChild(style);
+
+    // Push option
+    const pushButton = document.createElement('button');
+    pushButton.className = 'dropdown-item flex items-center';
+    pushButton.innerHTML = `
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4" />
+        <polyline points="10 17 15 12 10 7" />
+        <line x1="15" y1="12" x2="3" y2="12" />
+      </svg>
+      <span>Push to GitHub</span>
+    `;
+    pushButton.addEventListener('click', async () => {
+      (dropdownContent as HTMLElement).style.display = 'none';
+      await this.handleGitHubPushAction();
+    });
+
+    // Settings option
+    const settingsButton = document.createElement('button');
+    settingsButton.className = 'dropdown-item flex items-center';
+    settingsButton.innerHTML = `
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <circle cx="12" cy="12" r="3" />
+        <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z" />
+      </svg>
+      <span>Settings</span>
+    `;
+    settingsButton.addEventListener('click', () => {
+      (dropdownContent as HTMLElement).style.display = 'none';
+      // Directly send the OPEN_SETTINGS message instead of showing the notification
+      this.messageHandler.sendMessage('OPEN_SETTINGS');
+    });
+
+    dropdownContent.appendChild(pushButton);
+    dropdownContent.appendChild(settingsButton);
+
+    return dropdownContent;
+  }
+
+  private async handleGitHubPushAction() {
+    console.log('Handling GitHub push action');
     const settings = await SettingsService.getGitHubSettings();
     if (!settings.isSettingsValid) {
       this.showSettingsNotification();
