@@ -305,33 +305,31 @@
           </TabsContent>
 
           <TabsContent value="settings">
-            <Card class="border-slate-800 bg-slate-900">
-              <CardHeader>
-                <CardTitle>GitHub Settings</CardTitle>
-                <CardDescription class="text-slate-400">
-                  Configure your GitHub repository settings
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <GitHubSettings
-                  bind:githubToken
-                  bind:repoOwner
-                  bind:repoName
-                  bind:branch
-                  projectId={parsedProjectId}
-                  {status}
-                  buttonDisabled={hasStatus}
-                  onSave={saveSettings}
-                  onInput={checkSettingsValidity}
-                />
-              </CardContent>
-            </Card>
+            <div class="space-y-4">
+              <div>
+                <h2 class="text-xl font-semibold text-slate-200">GitHub Settings</h2>
+                <p class="text-sm text-slate-400">Configure your GitHub repository settings</p>
+              </div>
+              <GitHubSettings
+                bind:githubToken
+                bind:repoOwner
+                bind:repoName
+                bind:branch
+                projectId={parsedProjectId}
+                {status}
+                buttonDisabled={hasStatus}
+                onSave={saveSettings}
+                onInput={checkSettingsValidity}
+              />
+            </div>
           </TabsContent>
 
           <TabsContent value="help">
-            <Help />
-            <div class="mt-6">
-              <Footer />
+            <div class="space-y-4">
+              <Help />
+              <div class="mt-3">
+                <Footer />
+              </div>
             </div>
           </TabsContent>
         </Tabs>

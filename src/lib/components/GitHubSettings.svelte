@@ -286,15 +286,15 @@
   }
 </script>
 
-<div class="space-y-6">
+<div class="space-y-4">
   <!-- Quick Links Section -->
   <NewUserGuide />
 
   <!-- Settings Form -->
-  <form on:submit|preventDefault={handleSave} class="space-y-6">
+  <form on:submit|preventDefault={handleSave} class="space-y-4">
     <!-- General GitHub Settings Section -->
-    <div class="p-4 bg-slate-850 border border-slate-700 rounded-md">
-      <h3 class="text-slate-200 font-medium mb-4 flex items-center">
+    <div class="p-3 bg-slate-850 border border-slate-700 rounded-md">
+      <h3 class="text-slate-200 font-medium mb-3 flex items-center">
         <span>General GitHub Settings</span>
         <span class="text-xs text-slate-400 ml-2">(Used across all projects)</span>
       </h3>
@@ -440,8 +440,8 @@
 
     {#if !isOnboarding}
       <!-- Project-specific Settings Section -->
-      <div class="p-4 bg-slate-850 border border-slate-700 rounded-md">
-        <h3 class="text-slate-200 font-medium mb-4 flex items-center">
+      <div class="p-3 bg-slate-850 border border-slate-700 rounded-md">
+        <h3 class="text-slate-200 font-medium mb-3 flex items-center">
           <span>Project Repository Settings</span>
           <span class="text-xs text-slate-400 ml-2">
             {#if projectId}
