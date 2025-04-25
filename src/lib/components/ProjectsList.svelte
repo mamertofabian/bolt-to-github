@@ -81,13 +81,9 @@
     );
   }
 
-  onMount(async () => {
-    // Get current tab URL
-    const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
-    currentTabIsBolt = tab?.url?.includes('bolt.new') ?? false;
-
-    // Load all repos
-    await loadAllRepos();
+  // Function to refresh project data
+  async function refreshProjectData() {
+    console.log('Refreshing project data in ProjectsList');
 
     // Fetch commit counts for projects that have IDs
     for (const [projectId, settings] of Object.entries(projectSettings)) {
@@ -97,6 +93,62 @@
         settings.branch
       );
     }
+
+    // Force a UI update by creating a new object
+    commitCounts = { ...commitCounts };
+  }
+
+  onMount(() => {
+    // Set up storage change listener
+    const storageChangeListener = (changes: any, areaName: string) => {
+      console.log('Storage changes detected:', changes, 'in area:', areaName);
+
+      // Check if lastSettingsUpdate changed in local storage
+      if (areaName === 'local' && changes.lastSettingsUpdate) {
+        const updateInfo = changes.lastSettingsUpdate.newValue;
+        console.log('Settings update detected:', updateInfo);
+
+        // Force refresh of project settings
+        chrome.storage.sync.get(['projectSettings'], (result) => {
+          console.log('Refreshing project settings with:', result.projectSettings);
+          if (result.projectSettings) {
+            projectSettings = { ...result.projectSettings };
+            refreshProjectData();
+          }
+        });
+      }
+
+      // Check if projectSettings changed in sync storage
+      if (areaName === 'sync' && changes.projectSettings) {
+        console.log('Project settings changed in sync storage');
+        projectSettings = { ...changes.projectSettings.newValue };
+        refreshProjectData();
+      }
+    };
+
+    // Add the storage change listener
+    chrome.storage.onChanged.addListener(storageChangeListener);
+
+    // Initialize data (async)
+    const initializeData = async () => {
+      // Get current tab URL
+      const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
+      currentTabIsBolt = tab?.url?.includes('bolt.new') ?? false;
+
+      // Load all repos
+      await loadAllRepos();
+
+      // Initial load of commit counts
+      await refreshProjectData();
+    };
+
+    // Start initialization
+    initializeData();
+
+    // Return a cleanup function to remove the listener when the component is destroyed
+    return () => {
+      chrome.storage.onChanged.removeListener(storageChangeListener);
+    };
   });
 
   function openBoltProject(projectId: string) {

@@ -66,8 +66,49 @@
     }
   };
 
-  onMount(async () => {
-    await getProjectStatus();
+  onMount(() => {
+    // Set up storage change listener
+    const storageChangeListener = (changes: any, areaName: string) => {
+      console.log('Storage changes detected in ProjectStatus:', changes, 'in area:', areaName);
+
+      // Check if lastSettingsUpdate changed in local storage
+      if (areaName === 'local' && changes.lastSettingsUpdate) {
+        const updateInfo = changes.lastSettingsUpdate.newValue;
+        console.log('Settings update detected in ProjectStatus:', updateInfo);
+
+        // Only update if this is the current project
+        if (updateInfo.projectId === projectId) {
+          console.log('Updating current project status with:', updateInfo);
+
+          // Update local variables if they've changed
+          if (repoName !== updateInfo.repoName) {
+            repoName = updateInfo.repoName;
+          }
+          if (branch !== updateInfo.branch) {
+            branch = updateInfo.branch;
+          }
+
+          // Refresh the project status
+          getProjectStatus();
+        }
+      }
+    };
+
+    // Add the storage change listener
+    chrome.storage.onChanged.addListener(storageChangeListener);
+
+    // Initialize data (async)
+    const initializeData = async () => {
+      await getProjectStatus();
+    };
+
+    // Start initialization
+    initializeData();
+
+    // Return a cleanup function to remove the listener when the component is destroyed
+    return () => {
+      chrome.storage.onChanged.removeListener(storageChangeListener);
+    };
   });
 
   const dispatch = createEventDispatcher();

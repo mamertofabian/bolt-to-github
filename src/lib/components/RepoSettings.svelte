@@ -109,8 +109,14 @@
   async function handleSave() {
     try {
       isSaving = true;
+      console.log('Saving repository settings for project:', projectId);
+
       // Get current settings
-      const settings = await chrome.storage.sync.get(['projectSettings']);
+      const settings = await chrome.storage.sync.get([
+        'projectSettings',
+        'githubToken',
+        'repoOwner',
+      ]);
       let updatedProjectSettings = { ...(settings.projectSettings || {}) };
 
       // Update project settings
@@ -120,7 +126,23 @@
       };
 
       // Save updated settings
-      await chrome.storage.sync.set({ projectSettings: updatedProjectSettings });
+      await chrome.storage.sync.set({
+        projectSettings: updatedProjectSettings,
+        githubToken: settings.githubToken,
+        repoOwner: settings.repoOwner,
+      });
+
+      // Store a timestamp in local storage to trigger refresh in other components
+      await chrome.storage.local.set({
+        lastSettingsUpdate: {
+          timestamp: Date.now(),
+          projectId,
+          repoName,
+          branch,
+        },
+      });
+
+      console.log('Settings saved successfully with timestamp');
 
       // Call onSave callback
       onSave();
