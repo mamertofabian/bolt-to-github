@@ -14,8 +14,6 @@
   let loadingRepos = false;
   let showDeleteModal = false;
   let projectToDelete: { projectId: string; repoName: string } | null = null;
-  let selectMode = false;
-  let selectedProjects: string[] = [];
 
   const githubService = new GitHubService(githubToken);
   let commitCounts: Record<string, number> = {};
@@ -106,30 +104,8 @@
     window.open(`https://github.com/${repoOwner}/${repoName}`, '_blank');
   }
 
-  function toggleSelectMode() {
-    selectMode = !selectMode;
-    if (!selectMode) {
-      selectedProjects = [];
-    }
-  }
-
-  function toggleProjectSelection(projectId: string | undefined) {
-    if (!projectId) return;
-
-    if (selectedProjects.includes(projectId)) {
-      selectedProjects = selectedProjects.filter((id) => id !== projectId);
-    } else {
-      selectedProjects = [...selectedProjects, projectId];
-    }
-  }
-
   function confirmDeleteProject(projectId: string, repoName: string) {
     projectToDelete = { projectId, repoName };
-    showDeleteModal = true;
-  }
-
-  function confirmDeleteSelectedProjects() {
-    if (selectedProjects.length === 0) return;
     showDeleteModal = true;
   }
 
@@ -139,19 +115,9 @@
       const settings = await chrome.storage.sync.get(['projectSettings']);
       let updatedProjectSettings = { ...(settings.projectSettings || {}) };
 
-      if (projectToDelete) {
+      if (projectToDelete && updatedProjectSettings[projectToDelete.projectId]) {
         // Delete single project
-        if (updatedProjectSettings[projectToDelete.projectId]) {
-          delete updatedProjectSettings[projectToDelete.projectId];
-        }
-      } else if (selectedProjects.length > 0) {
-        // Delete multiple projects
-        for (const projectId of selectedProjects) {
-          if (updatedProjectSettings[projectId]) {
-            delete updatedProjectSettings[projectId];
-          }
-        }
-        selectedProjects = [];
+        delete updatedProjectSettings[projectToDelete.projectId];
       }
 
       // Save updated settings
@@ -163,7 +129,6 @@
       // Close the modal and reset state
       showDeleteModal = false;
       projectToDelete = null;
-      selectMode = false;
     } catch (error) {
       console.error('Failed to delete project(s):', error);
     }
@@ -315,63 +280,18 @@
           <h2 class="text-sm font-semibold text-emerald-500 flex items-center gap-2">
             <Zap class="h-4 w-4" /> Bolt Projects
           </h2>
-          <div class="flex items-center gap-2">
-            {#if selectMode}
-              <button
-                type="button"
-                class="text-xs text-slate-400 hover:text-slate-300"
-                on:click={toggleSelectMode}
-              >
-                Cancel
-              </button>
-              {#if selectedProjects.length > 0}
-                <button
-                  type="button"
-                  class="text-xs text-red-400 hover:text-red-500 flex items-center gap-1"
-                  on:click={confirmDeleteSelectedProjects}
-                >
-                  Delete ({selectedProjects.length})
-                </button>
-              {/if}
-            {:else}
-              <button
-                type="button"
-                class="flex items-center justify-center h-6 w-6 text-slate-400 hover:text-red-400 transition-colors rounded-md"
-                title="Select projects to delete"
-                on:click={toggleSelectMode}
-              >
-                <Trash2 class="h-4 w-4" />
-              </button>
-            {/if}
-          </div>
         </div>
         {#each filteredProjects.filter((p) => !p.gitHubRepo) as project}
           <div
-            class="border border-slate-800 rounded-lg p-3 hover:bg-slate-800/50 transition-colors relative mb-2 {project.projectId ===
+            class="border border-slate-800 rounded-lg p-3 hover:bg-slate-800/50 transition-colors relative mb-2 group {project.projectId ===
             currentlyLoadedProjectId
               ? 'bg-slate-800/30 border-slate-700'
-              : ''} {selectMode && project.projectId && selectedProjects.includes(project.projectId)
-              ? 'border-red-500'
               : ''}"
             role="button"
-            tabindex={selectMode ? 0 : -1}
-            on:click={() => selectMode && toggleProjectSelection(project.projectId)}
-            on:keydown={(e) =>
-              e.key === 'Enter' && selectMode && toggleProjectSelection(project.projectId)}
-            aria-label={selectMode ? `Select project ${project.repoName}` : ''}
+            tabindex="-1"
+            aria-label="Bolt project {project.repoName}"
           >
-            {#if selectMode && project.projectId}
-              <div class="absolute left-3 top-1/2 -translate-y-1/2">
-                <input
-                  type="checkbox"
-                  checked={selectedProjects.includes(project.projectId)}
-                  class="w-4 h-4 rounded border-slate-700 text-red-500 focus:ring-red-500 focus:ring-opacity-25 bg-slate-800"
-                  on:change={() => toggleProjectSelection(project.projectId)}
-                />
-              </div>
-            {/if}
-
-            <div class="flex flex-col {selectMode ? 'pl-6' : ''}">
+            <div class="flex flex-col">
               <div class="flex items-center justify-between">
                 <div>
                   <h3 class="font-medium">
@@ -403,14 +323,13 @@
                   </div>
                 </div>
 
-                {#if !selectMode}
-                  <div class="flex gap-1">
+                <div class="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
                     {#if project.projectId && project.projectId !== currentlyLoadedProjectId}
                       <Button
                         variant="ghost"
                         size="icon"
                         title="Open in Bolt"
-                        class="h-8 w-8 opacity-70 hover:opacity-100"
+                        class="h-8 w-8 hover:text-emerald-500"
                         on:click={() => project.projectId && openBoltProject(project.projectId)}
                       >
                         <Zap class="h-5 w-5" />
@@ -421,7 +340,7 @@
                       variant="ghost"
                       size="icon"
                       title="Open GitHub Repository"
-                      class="h-8 w-8 opacity-70 hover:opacity-100"
+                      class="h-8 w-8 hover:text-blue-500"
                       on:click={() => openGitHubRepo(repoOwner, project.repoName)}
                     >
                       <Github class="h-5 w-5" />
@@ -431,15 +350,25 @@
                         variant="ghost"
                         size="icon"
                         title="Import from GitHub to Bolt"
-                        class="h-8 w-8 opacity-70 hover:opacity-100"
+                        class="h-8 w-8 hover:text-amber-500"
                         on:click={() =>
                           importFromGitHub(repoOwner, project.repoName, project.private ?? false)}
                       >
                         <Import class="h-5 w-5" />
                       </Button>
                     {/if}
-                  </div>
-                {/if}
+                    {#if project.projectId}
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        title="Delete Project"
+                        class="h-8 w-8 hover:text-red-500"
+                        on:click={() => project.projectId && confirmDeleteProject(project.projectId, project.repoName)}
+                      >
+                        <Trash2 class="h-5 w-5" />
+                      </Button>
+                    {/if}
+                </div>
               </div>
             </div>
           </div>
@@ -455,6 +384,9 @@
         {#each filteredProjects.filter((p) => p.gitHubRepo) as project}
           <div
             class="border border-slate-800 rounded-lg p-3 hover:bg-slate-800/50 transition-colors group mb-2"
+            role="button"
+            tabindex="-1"
+            aria-label="GitHub repository {project.repoName}"
           >
             <div class="flex items-center justify-between">
               <div class="space-y-0.5">
@@ -484,13 +416,13 @@
                   {/if}
                 </div>
               </div>
-              <div class="flex gap-1">
+              <div class="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
                 {#if project.projectId && project.projectId !== currentlyLoadedProjectId}
                   <Button
                     variant="ghost"
                     size="icon"
                     title="Open in Bolt"
-                    class="h-8 w-8 opacity-70 group-hover:opacity-100"
+                    class="h-8 w-8 hover:text-emerald-500"
                     on:click={() => project.projectId && openBoltProject(project.projectId)}
                   >
                     <Zap class="h-5 w-5" />
@@ -501,7 +433,7 @@
                   variant="ghost"
                   size="icon"
                   title="Open GitHub Repository"
-                  class="h-8 w-8 opacity-70 group-hover:opacity-100"
+                  class="h-8 w-8 hover:text-blue-500"
                   on:click={() => openGitHubRepo(repoOwner, project.repoName)}
                 >
                   <Github class="h-5 w-5" />
@@ -511,11 +443,22 @@
                     variant="ghost"
                     size="icon"
                     title="Import from GitHub to Bolt"
-                    class="h-8 w-8 opacity-70 group-hover:opacity-100"
+                    class="h-8 w-8 hover:text-amber-500"
                     on:click={() =>
                       importFromGitHub(repoOwner, project.repoName, project.private ?? false)}
                   >
                     <Import class="h-5 w-5" />
+                  </Button>
+                {/if}
+                {#if project.projectId}
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    title="Delete Project"
+                    class="h-8 w-8 hover:text-red-500"
+                    on:click={() => project.projectId && confirmDeleteProject(project.projectId, project.repoName)}
+                  >
+                    <Trash2 class="h-5 w-5" />
                   </Button>
                 {/if}
               </div>
@@ -546,22 +489,14 @@
     <div class="fixed inset-0 bg-black/50 flex items-center justify-center">
       <div class="bg-slate-900 border border-slate-800 rounded-lg p-4 max-w-sm w-full mx-4">
         <h3 class="font-medium mb-3">
-          Delete {selectedProjects.length > 0 ? 'Projects' : 'Project'}
+          Delete Project
         </h3>
 
         {#if projectToDelete}
-          <!-- Single project delete -->
           <p class="text-sm text-slate-300 mb-4">
             Are you sure you want to delete the project <span class="font-semibold text-white"
               >{projectToDelete.repoName}</span
             >?
-          </p>
-        {:else if selectedProjects.length > 0}
-          <!-- Multiple projects delete -->
-          <p class="text-sm text-slate-300 mb-4">
-            Are you sure you want to delete <span class="font-semibold text-white"
-              >{selectedProjects.length}</span
-            > selected projects?
           </p>
         {/if}
 
