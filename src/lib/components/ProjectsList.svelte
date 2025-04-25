@@ -240,13 +240,19 @@
       </div>
     </div>
   {:else}
-    {#each filteredProjects as project}
-      <div
-        class="border border-slate-800 rounded-lg p-3 hover:bg-slate-800/50 transition-colors group {project.projectId ===
-        currentlyLoadedProjectId
-          ? 'bg-slate-800/30 border-slate-700'
-          : ''}"
-      >
+    <!-- Group projects by type -->
+    {#if filteredProjects.some(p => !p.gitHubRepo)}
+      <div class="mb-3">
+        <h2 class="text-sm font-semibold text-emerald-500 flex items-center gap-2 mb-2 px-1">
+          <Zap class="h-4 w-4" /> Bolt Projects
+        </h2>
+        {#each filteredProjects.filter(p => !p.gitHubRepo) as project}
+          <div
+            class="border border-slate-800 rounded-lg p-3 hover:bg-slate-800/50 transition-colors group mb-2 {project.projectId ===
+            currentlyLoadedProjectId
+              ? 'bg-slate-800/30 border-slate-700'
+              : ''}"
+          >
         <div class="flex items-center justify-between">
           <div class="space-y-0.5">
             <h3 class="font-medium">
@@ -311,7 +317,86 @@
           </div>
         </div>
       </div>
-    {/each}
+        {/each}
+      </div>
+    {/if}
+
+    {#if filteredProjects.some(p => p.gitHubRepo)}
+      <div>
+        <h2 class="text-sm font-semibold text-blue-500 flex items-center gap-2 mb-2 px-1">
+          <Github class="h-4 w-4" /> GitHub Repositories
+        </h2>
+        {#each filteredProjects.filter(p => p.gitHubRepo) as project}
+          <div
+            class="border border-slate-800 rounded-lg p-3 hover:bg-slate-800/50 transition-colors group mb-2"
+          >
+            <div class="flex items-center justify-between">
+              <div class="space-y-0.5">
+                <h3 class="font-medium">
+                  {project.repoName}
+                  {project.branch ? `(${project.branch})` : ''}
+                  {#if project.projectId === currentlyLoadedProjectId}
+                    <span class="text-xs text-emerald-500 ml-2">(Current)</span>
+                  {/if}
+                  {#if project.gitHubRepo}
+                    <span class="text-xs {project.private ? 'text-red-500' : 'text-blue-500'} ml-2">
+                      ({project.private ? 'Private' : 'Public'})
+                    </span>
+                  {/if}
+                </h3>
+                <div class="flex flex-col gap-1 text-xs text-slate-400">
+                  {#if project.projectId}
+                    <p>
+                      Bolt ID: {project.projectId} ({commitCounts[project.projectId] ?? '...'} commits)
+                    </p>
+                  {/if}
+                  {#if project.description}
+                    <p>{project.description}</p>
+                  {/if}
+                  {#if project.language}
+                    <p>Language: {project.language}</p>
+                  {/if}
+                </div>
+              </div>
+              <div class="flex gap-1">
+                {#if project.projectId && project.projectId !== currentlyLoadedProjectId}
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    title="Open in Bolt"
+                    class="h-8 w-8 opacity-70 group-hover:opacity-100"
+                    on:click={() => project.projectId && openBoltProject(project.projectId)}
+                  >
+                    <Zap class="h-5 w-5" />
+                  </Button>
+                {/if}
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  title="Open GitHub Repository"
+                  class="h-8 w-8 opacity-70 group-hover:opacity-100"
+                  on:click={() => openGitHubRepo(repoOwner, project.repoName)}
+                >
+                  <Github class="h-5 w-5" />
+                </Button>
+                {#if !project.projectId}
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    title="Import from GitHub to Bolt"
+                    class="h-8 w-8 opacity-70 group-hover:opacity-100"
+                    on:click={() =>
+                      importFromGitHub(repoOwner, project.repoName, project.private ?? false)}
+                  >
+                    <Import class="h-5 w-5" />
+                  </Button>
+                {/if}
+              </div>
+            </div>
+          </div>
+        {/each}
+      </div>
+    {/if}
   {/if}
   {#if importProgress}
     <div class="fixed inset-0 bg-black/50 flex items-center justify-center">
