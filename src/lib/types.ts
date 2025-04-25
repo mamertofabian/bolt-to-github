@@ -11,7 +11,8 @@ export type MessageType =
   | 'GITHUB_SETTINGS_CHANGED'
   | 'OPEN_SETTINGS'
   | 'IMPORT_PRIVATE_REPO'
-  | 'DELETE_TEMP_REPO';
+  | 'DELETE_TEMP_REPO'
+  | 'PUSH_TO_GITHUB';
 
 export interface Message {
   type: MessageType;

@@ -104,6 +104,19 @@ export class BackgroundService {
       });
     });
 
+    // Setup runtime message listener for direct messages (not using ports)
+    chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
+      console.log('📥 Received runtime message:', message);
+      
+      if (message.action === 'PUSH_TO_GITHUB') {
+        this.handlePushToGitHub();
+        sendResponse({ success: true });
+      }
+      
+      // Return true to indicate we'll send a response asynchronously
+      return true;
+    });
+
     // Clean up when tabs are closed
     chrome.tabs.onRemoved.addListener((tabId) => {
       this.ports.delete(tabId);
@@ -297,6 +310,38 @@ export class BackgroundService {
       port.postMessage(message);
     } catch (error) {
       console.error('Error sending response:', error);
+    }
+  }
+
+  private async handlePushToGitHub(): Promise<void> {
+    console.log('🔄 Handling Push to GitHub action');
+    
+    try {
+      // Find the active tab with bolt.new URL
+      const tabs = await chrome.tabs.query({ active: true, currentWindow: true });
+      const boltTab = tabs.find(tab => tab.url?.includes('bolt.new'));
+      
+      if (!boltTab || !boltTab.id) {
+        console.error('No active Bolt tab found');
+        return;
+      }
+      
+      const tabId = boltTab.id;
+      const port = this.ports.get(tabId);
+      
+      if (!port) {
+        console.error('No connected port for tab:', tabId);
+        return;
+      }
+      
+      // Send a message to the content script to trigger the GitHub push action
+      this.sendResponse(port, {
+        type: 'PUSH_TO_GITHUB'
+      });
+      
+      console.log('✅ Push to GitHub message sent to content script');
+    } catch (error) {
+      console.error('Error handling Push to GitHub action:', error);
     }
   }
 

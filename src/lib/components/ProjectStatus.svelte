@@ -117,67 +117,94 @@
     event.stopPropagation();
     chrome.tabs.create({ url: `https://github.com/${gitHubUsername}/${repoName}/tree/${branch}` });
   }
+
+  function pushToGitHub(event: MouseEvent | KeyboardEvent) {
+    event.stopPropagation();
+    // Send a message to trigger the GitHub push action
+    chrome.runtime.sendMessage({ action: 'PUSH_TO_GITHUB' });
+  }
 </script>
 
-<Alert class="border-green-900 bg-green-950">
-  <AlertTitle>Currently loaded project:</AlertTitle>
-  <AlertDescription class="text-slate-300">
-    <div
-      class="mt-2 grid grid-cols-[auto_1fr] gap-x-2 bg-slate-900/50 p-2 rounded-sm cursor-pointer hover:bg-slate-900/70 transition-colors group"
-      on:click={() => (showSettingsModal = true)}
-      on:keydown={(e) => e.key === 'Enter' && (showSettingsModal = true)}
-      role="button"
-      tabindex={0}
-    >
-      <span class="text-slate-400">Project ID:</span>
-      <span class="font-mono">{projectId}</span>
-      <span class="text-slate-400">Repository:</span>
-      <span class="font-mono">{repoName}</span>
-      <span class="text-slate-400">Branch:</span>
-      <span class="font-mono">{branch}</span>
-      <span class="text-slate-400">Status:</span>
-      <span class="font-mono">
-        {#if isLoading.repoStatus}
-          <span class="text-slate-500">Loading...</span>
-        {:else}
-          <span class="text-green-400">{repoExists ? 'Exists' : 'Will be created'}</span>
-        {/if}
-      </span>
-      <span class="text-slate-400">Visibility:</span>
-      <span class="font-mono">
-        {#if isLoading.visibility}
-          <span class="text-slate-500">Loading...</span>
-        {:else}
-          {repoExists ? (isPrivate ? 'Private' : 'Public') : 'N/A'}
-        {/if}
-      </span>
-      <span class="text-slate-400">Latest Commit:</span>
-      <span class="font-mono">
-        {#if isLoading.latestCommit}
-          <span class="text-slate-500">Loading...</span>
-        {:else if latestCommit}
-          <div class="text-xs text-slate-400 mt-1">
-            {new Date(latestCommit.date).toLocaleString()}
-          </div>
-          <div class="text-xs text-slate-400 mt-1">{latestCommit.message}</div>
-        {:else}
-          N/A
-        {/if}
-      </span>
+<div class="border border-green-900 bg-green-950 rounded-lg overflow-hidden">
+  <div class="px-4 pt-3 pb-1">
+    <h3 class="font-medium text-sm">Currently loaded project:</h3>
+  </div>
+  <div class="text-slate-300">
+    <div class="space-y-3 px-4 pb-4">
+      <!-- Project details section -->
+      <div
+        class="grid grid-cols-[4.5rem_1fr] gap-x-2 bg-slate-900/50 p-3 rounded-sm cursor-pointer hover:bg-slate-900/70 transition-colors group"
+        on:click={() => (showSettingsModal = true)}
+        on:keydown={(e) => e.key === 'Enter' && (showSettingsModal = true)}
+        role="button"
+        tabindex={0}
+      >
+        <span class="text-slate-400">Project ID:</span>
+        <span class="font-mono">{projectId}</span>
+        <span class="text-slate-400">Repository:</span>
+        <span class="font-mono">{repoName}</span>
+        <span class="text-slate-400">Branch:</span>
+        <span class="font-mono">{branch}</span>
+        <span class="text-slate-400">Status:</span>
+        <span class="font-mono">
+          {#if isLoading.repoStatus}
+            <span class="text-slate-500">Loading...</span>
+          {:else}
+            <span class="text-green-400">{repoExists ? 'Exists' : 'Will be created'}</span>
+          {/if}
+        </span>
+        <span class="text-slate-400">Visibility:</span>
+        <span class="font-mono">
+          {#if isLoading.visibility}
+            <span class="text-slate-500">Loading...</span>
+          {:else}
+            {repoExists ? (isPrivate ? 'Private' : 'Public') : 'N/A'}
+          {/if}
+        </span>
+        <span class="text-slate-400">Latest Commit:</span>
+        <span class="font-mono">
+          {#if isLoading.latestCommit}
+            <span class="text-slate-500">Loading...</span>
+          {:else if latestCommit}
+            <div class="text-xs text-slate-400 mt-1">
+              {new Date(latestCommit.date).toLocaleString()}
+            </div>
+            <div class="text-xs text-slate-400 mt-1">{latestCommit.message}</div>
+          {:else}
+            N/A
+          {/if}
+        </span>
+      </div>
+      
+      <!-- Button row -->
+      <div class="flex gap-3">
+        <button
+          class="flex-1 text-sm border border-slate-700 rounded px-3 py-1.5 text-slate-400 hover:bg-slate-800 hover:text-slate-300 transition-colors whitespace-nowrap"
+          on:click|stopPropagation={openGitHub}
+          disabled={isLoading.repoStatus || !repoExists}
+        >
+          {isLoading.repoStatus
+            ? 'Loading...'
+            : repoExists
+              ? 'Open GitHub'
+              : 'Repo to be created'}
+        </button>
+        <button
+          class="flex-1 text-sm border border-green-700 bg-green-900/30 rounded px-3 py-1.5 text-green-400 hover:bg-green-800/50 hover:text-green-300 transition-colors flex items-center justify-center gap-1 whitespace-nowrap"
+          on:click|stopPropagation={pushToGitHub}
+          disabled={isLoading.repoStatus}
+        >
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4" />
+            <polyline points="10 17 15 12 10 7" />
+            <line x1="15" y1="12" x2="3" y2="12" />
+          </svg>
+          Push to GitHub
+        </button>
+      </div>
     </div>
-    <button
-      class="col-span-2 text-sm mt-2 border border-slate-700 rounded px-2 py-1 text-slate-400 hover:bg-slate-800 hover:text-slate-300 transition-colors"
-      on:click|stopPropagation={openGitHub}
-      disabled={isLoading.repoStatus || !repoExists}
-    >
-      {isLoading.repoStatus
-        ? 'Loading...'
-        : repoExists
-          ? 'Open GitHub repository'
-          : 'Repo to be created'}
-    </button>
-  </AlertDescription>
-</Alert>
+  </div>
+</div>
 
 {#if showSettingsModal}
   <RepoSettings

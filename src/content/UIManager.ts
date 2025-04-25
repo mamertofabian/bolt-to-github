@@ -380,7 +380,7 @@ export class UIManager {
     return dropdownContent;
   }
 
-  private async handleGitHubPushAction() {
+  public async handleGitHubPushAction() {
     console.log('Handling GitHub push action');
     const settings = await SettingsService.getGitHubSettings();
     if (!settings.isSettingsValid) {
