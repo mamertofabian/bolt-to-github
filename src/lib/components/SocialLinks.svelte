@@ -40,7 +40,7 @@
 <div class="mt-3 flex justify-center">
   <Button
     variant="outline"
-    class="border-blue-600/50 hover:bg-blue-600/10 text-blue-400 flex items-center gap-2 w-full"
+    class="border-indigo-500/70 hover:bg-indigo-500/10 text-indigo-300 hover:text-indigo-200 flex items-center gap-2 w-full font-medium transition-colors duration-200"
     on:click={() => openLink(HELP_LINK)}
   >
     <HelpCircle class="w-4 h-4" />
