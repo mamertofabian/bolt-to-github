@@ -5,7 +5,7 @@
   export let GITHUB_LINK: string;
   export let YOUTUBE_LINK: string;
   export let COFFEE_LINK: string;
-  export let HELP_LINK: string = "https://fix.aidrivencoder.com";
+  export let HELP_LINK: string = 'https://fix.aidrivencoder.com';
 
   function openLink(url: string) {
     chrome.tabs.create({ url });
