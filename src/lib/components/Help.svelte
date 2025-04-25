@@ -35,7 +35,7 @@
   <!-- Getting Started Section -->
   <div class="border border-slate-800 rounded-lg overflow-hidden">
     <button
-      class="w-full p-3 flex items-center justify-between bg-slate-800/50 hover:bg-slate-800/70 transition-colors"
+      class="w-full py-2 px-3 flex items-center justify-between bg-slate-800/50 hover:bg-slate-800/70 transition-colors"
       on:click={() => toggleSection('gettingStarted')}
     >
       <h3 class="text-base font-semibold text-slate-200 text-left">🚀 Getting Started</h3>
@@ -60,7 +60,7 @@
   <!-- GitHub Token Guide Section -->
   <div class="border border-slate-800 rounded-lg overflow-hidden">
     <button
-      class="w-full p-4 flex items-center justify-between bg-slate-800/50 hover:bg-slate-800/70 transition-colors"
+      class="w-full py-2 px-3 flex items-center justify-between bg-slate-800/50 hover:bg-slate-800/70 transition-colors"
       on:click={() => toggleSection('tokenGuide')}
     >
       <h3 class="text-base font-semibold text-slate-200 text-left">🔑 GitHub Token Guide</h3>
@@ -129,7 +129,7 @@
   <!-- Private Repository Import Section -->
   <div class="border border-slate-800 rounded-lg overflow-hidden">
     <button
-      class="w-full p-4 flex items-center justify-between bg-slate-800/50 hover:bg-slate-800/70 transition-colors"
+      class="w-full py-2 px-3 flex items-center justify-between bg-slate-800/50 hover:bg-slate-800/70 transition-colors"
       on:click={() => toggleSection('privateRepo')}
     >
       <h3 class="text-base font-semibold text-slate-200 text-left">🔒 Private Repository Import</h3>
@@ -166,7 +166,7 @@
   <!-- Security & Privacy Section -->
   <div class="border border-slate-800 rounded-lg overflow-hidden">
     <button
-      class="w-full p-4 flex items-center justify-between bg-slate-800/50 hover:bg-slate-800/70 transition-colors"
+      class="w-full py-2 px-3 flex items-center justify-between bg-slate-800/50 hover:bg-slate-800/70 transition-colors"
       on:click={() => toggleSection('security')}
     >
       <h3 class="text-base font-semibold text-slate-200 text-left">🛡️ Security & Privacy</h3>
