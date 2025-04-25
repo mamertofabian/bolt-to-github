@@ -180,6 +180,10 @@ export class ContentManager {
         console.log('🔊 Received GitHub settings changed:', message.data.isValid);
         this.uiManager?.updateButtonState(message.data.isValid);
         break;
+      case 'PUSH_TO_GITHUB':
+        console.log('🔊 Received Push to GitHub message');
+        this.uiManager?.handleGitHubPushAction();
+        break;
       default:
         console.warn('Unhandled message type:', message.type);
     }

@@ -6,6 +6,9 @@
   </a>
   <h3>A project by <a href="https://aidrivencoder.com">AI-Driven Coder</a></h3>
   <p>
+    <a href="https://bolt2github.com">
+      <img src="https://img.shields.io/badge/Website-bolt2github.com-blue" alt="Official Website">
+    </a>
     <a href="https://chrome.google.com/webstore/detail/pikdepbilbnnpgdkdaaoeekgflljmame">
       <img src="https://img.shields.io/chrome-web-store/v/pikdepbilbnnpgdkdaaoeekgflljmame" alt="Chrome Web Store">
     </a>
@@ -18,7 +21,7 @@
   </p>
 </div>
 
-A Chrome extension that automatically captures ZIP file downloads from bolt.new, extracts them, and pushes the contents to a specified GitHub repository. Built with Svelte, TypeScript, and TailwindCSS.
+A Chrome extension that automatically captures ZIP file downloads from bolt.new, extracts them, and pushes the contents to a specified GitHub repository. Built with Svelte, TypeScript, and TailwindCSS. Visit our official website at [bolt2github.com](https://bolt2github.com) for more information, tutorials, and resources.
 
 ## 📦 Installation Options
 
@@ -242,6 +245,7 @@ See our [Contributing Guide](#contributing) for more details.
 
 ### Documentation & Tutorials
 
+- 🌐 [Official Website](https://bolt2github.com)
 - 📺 [Watch our video tutorials](https://youtube.com/@aidrivencoder)
 - 📖 [Read the documentation](https://github.com/mamertofabian/bolt-to-github)
 - 💡 [Get development tips](https://aidrivencoder.com)

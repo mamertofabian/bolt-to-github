@@ -18,7 +18,28 @@ export class ZipHandler {
     message: string = ''
   ) => {
     // Send status update to UI
-    this.sendStatus({ status, progress, message });
+    console.log(`ZipHandler: Sending status update: ${status}, ${progress}%, ${message}`);
+
+    // Send the status update and ensure it's properly dispatched
+    try {
+      this.sendStatus({ status, progress, message });
+
+      // For important status changes, send a duplicate update after a small delay
+      // to ensure it's received and processed by the UI
+      if (status === 'uploading' && progress === 0) {
+        // Initial upload status - critical to show
+        setTimeout(() => {
+          this.sendStatus({ status, progress, message });
+        }, 100);
+      } else if (status === 'success' || status === 'error') {
+        // Final statuses - critical to show
+        setTimeout(() => {
+          this.sendStatus({ status, progress, message });
+        }, 100);
+      }
+    } catch (error) {
+      console.error('Error sending status update:', error);
+    }
   };
 
   private ensureBranchExists = async (
@@ -98,12 +119,32 @@ export class ZipHandler {
         'projectSettings',
       ]);
 
-      if (!projectSettings?.[currentProjectId]) {
-        throw new Error('Project settings not found for this project');
-      }
+      // Create default project settings if they don't exist
+      let repoName: string;
+      let branch: string;
 
-      const repoName = projectSettings[currentProjectId].repoName;
-      const branch = projectSettings[currentProjectId].branch;
+      if (!projectSettings?.[currentProjectId]) {
+        console.log('Project settings not found, creating default settings for:', currentProjectId);
+
+        // Create a mutable copy of the project settings
+        const updatedProjectSettings = projectSettings ? { ...projectSettings } : {};
+
+        // Use the project ID as the repo name with a default branch of 'main'
+        updatedProjectSettings[currentProjectId] = { repoName: currentProjectId, branch: 'main' };
+
+        // Save the updated settings
+        await chrome.storage.sync.set({ projectSettings: updatedProjectSettings });
+
+        console.log('Created default project settings:', updatedProjectSettings[currentProjectId]);
+
+        // Use the newly created settings
+        repoName = currentProjectId;
+        branch = 'main';
+      } else {
+        // Use existing settings
+        repoName = projectSettings[currentProjectId].repoName;
+        branch = projectSettings[currentProjectId].branch;
+      }
 
       if (!repoOwner || !repoName) {
         throw new Error('Repository details not configured');
@@ -130,10 +171,9 @@ export class ZipHandler {
 
       await this.uploadToGitHub(processedFiles, repoOwner, repoName, targetBranch, commitMessage);
 
-      // Clear the status after a delay
-      setTimeout(() => {
-        this.updateStatus('idle', 0, '');
-      }, 5000);
+      // Success state will auto-hide in the UI component
+      // No need to reset to idle state here as it can cause race conditions
+      // The UI will handle hiding the notification after a delay
     } catch (error) {
       // Error handling
       await this.updateStatus(

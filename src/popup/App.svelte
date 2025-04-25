@@ -249,8 +249,14 @@
   <Card class="border-slate-800 bg-slate-900">
     <CardHeader>
       <CardTitle class="flex items-center gap-2">
-        <img src="/assets/icons/icon48.png" alt="Bolt to GitHub" class="w-5 h-5" />
-        Bolt to GitHub <span class="text-xs text-slate-400">v{version}</span>
+        <a
+          href="https://bolt2github.com"
+          target="_blank"
+          class="flex items-center gap-2 hover:opacity-80 transition-opacity"
+        >
+          <img src="/assets/icons/icon48.png" alt="Bolt to GitHub" class="w-5 h-5" />
+          Bolt to GitHub <span class="text-xs text-slate-400">v{version}</span>
+        </a>
       </CardTitle>
       <CardDescription class="text-slate-400">
         Upload and sync your Bolt projects to GitHub
@@ -299,31 +305,32 @@
           </TabsContent>
 
           <TabsContent value="settings">
-            <Card class="border-slate-800 bg-slate-900">
-              <CardHeader>
-                <CardTitle>GitHub Settings</CardTitle>
-                <CardDescription class="text-slate-400">
-                  Configure your GitHub repository settings
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <GitHubSettings
-                  bind:githubToken
-                  bind:repoOwner
-                  bind:repoName
-                  bind:branch
-                  projectId={parsedProjectId}
-                  {status}
-                  buttonDisabled={hasStatus}
-                  onSave={saveSettings}
-                  onInput={checkSettingsValidity}
-                />
-              </CardContent>
-            </Card>
+            <div class="space-y-4">
+              <div>
+                <h2 class="text-xl font-semibold text-slate-200">GitHub Settings</h2>
+                <p class="text-sm text-slate-400">Configure your GitHub repository settings</p>
+              </div>
+              <GitHubSettings
+                bind:githubToken
+                bind:repoOwner
+                bind:repoName
+                bind:branch
+                projectId={parsedProjectId}
+                {status}
+                buttonDisabled={hasStatus}
+                onSave={saveSettings}
+                onInput={checkSettingsValidity}
+              />
+            </div>
           </TabsContent>
 
           <TabsContent value="help">
-            <Help />
+            <div class="space-y-4">
+              <Help />
+              <div class="mt-3">
+                <Footer />
+              </div>
+            </div>
           </TabsContent>
         </Tabs>
       {:else if hasInitialSettings && repoOwner && githubToken}
@@ -368,7 +375,6 @@
         </div>
       {/if}
     </CardContent>
-    <Footer />
   </Card>
   <Modal show={showTempRepoModal} title="Private Repository Import">
     <div class="space-y-4">

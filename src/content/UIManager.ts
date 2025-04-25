@@ -4,6 +4,12 @@ import type { MessageHandler } from './MessageHandler';
 import UploadStatus from './UploadStatus.svelte';
 import Notification from './Notification.svelte';
 
+// Define proper types for Svelte components
+type SvelteComponent = {
+  $set: (props: Record<string, any>) => void;
+  $destroy: () => void;
+};
+
 interface NotificationOptions {
   type: 'info' | 'error' | 'success';
   message: string;
@@ -12,10 +18,10 @@ interface NotificationOptions {
 
 export class UIManager {
   private static instance: UIManager | null = null;
-  private uploadStatusComponent: UploadStatus | null = null;
+  private uploadStatusComponent: SvelteComponent | null = null;
   private uploadButton: HTMLElement | null = null;
   private observer: MutationObserver | null = null;
-  private notificationComponent: Notification | null = null;
+  private notificationComponent: SvelteComponent | null = null;
   private isGitHubUpload = false;
   private messageHandler: MessageHandler;
 
@@ -73,7 +79,7 @@ export class UIManager {
           container.remove();
         },
       },
-    });
+    }) as SvelteComponent;
   }
 
   private async initializeUI() {
@@ -101,23 +107,43 @@ export class UIManager {
     // Create new container and component
     const target = document.createElement('div');
     target.id = 'bolt-to-github-upload-status-container';
+    target.style.zIndex = '10000'; // Ensure high z-index
+    target.style.position = 'fixed'; // Use fixed positioning
+    target.style.top = '20px'; // Position at the top of the viewport
+    target.style.right = '20px'; // Position at the right of the viewport
+
+    const initComponent = () => {
+      if (!document.body.contains(target)) {
+        console.log('Appending upload status container to body');
+        document.body.appendChild(target);
+      }
+
+      try {
+        this.uploadStatusComponent = new UploadStatus({
+          target,
+          props: {
+            status: {
+              status: 'idle',
+              progress: 0,
+              message: '',
+            },
+          },
+        }) as SvelteComponent;
+
+        console.log('🔊 Upload status component created successfully');
+      } catch (error) {
+        console.error('🔊 Error creating upload status component:', error);
+      }
+    };
 
     // Wait for document.body to be available
     if (document.body) {
-      console.log('Appending upload status container to body');
-      document.body.appendChild(target);
+      initComponent();
     } else {
       // If body isn't available, wait for it
       console.log('Waiting for body to be available');
-      document.addEventListener('DOMContentLoaded', () => {
-        console.log('Appending upload status container to body');
-        document.body?.appendChild(target);
-      });
+      document.addEventListener('DOMContentLoaded', initComponent);
     }
-
-    this.uploadStatusComponent = new UploadStatus({
-      target,
-    });
   }
 
   private async initializeUploadButton() {
@@ -151,6 +177,7 @@ export class UIManager {
     const button = document.createElement('button');
     button.setAttribute('data-github-upload', 'true');
     button.setAttribute('data-testid', 'github-upload-button');
+    button.setAttribute('aria-haspopup', 'menu');
     button.className = [
       'rounded-md',
       'items-center',
@@ -173,10 +200,13 @@ export class UIManager {
         <path fill="currentColor" d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0016 8c0-4.42-3.58-8-8-8z"/>
       </svg>
       GitHub
+      <svg width="12" height="12" viewBox="0 0 24 24" style="margin-left: 4px;">
+        <path fill="currentColor" d="M16.59 8.59L12 13.17 7.41 8.59 6 10l6 6 6-6z"/>
+      </svg>
     `;
 
     button.addEventListener('click', async () => {
-      await this.handleGitHubButtonClick();
+      await this.handleGitHubDropdownClick(button);
     });
 
     console.log('GitHub button created');
@@ -184,8 +214,174 @@ export class UIManager {
     return button;
   }
 
-  private async handleGitHubButtonClick() {
-    console.log('Handling GitHub button click');
+  private async handleGitHubDropdownClick(button: HTMLButtonElement) {
+    console.log('Handling GitHub dropdown click');
+
+    // Dispatch keydown event to open dropdown
+    const keydownEvent = new KeyboardEvent('keydown', {
+      key: 'Enter',
+      bubbles: true,
+      cancelable: true,
+    });
+    button.dispatchEvent(keydownEvent);
+    console.log('Dispatched keydown to GitHub button');
+
+    // Wait a bit for the dropdown content to render
+    await new Promise((resolve) => setTimeout(resolve, 200));
+
+    // Create dropdown content if it doesn't exist
+    let dropdownContent = document.querySelector('#github-dropdown-content') as HTMLElement;
+    if (!dropdownContent) {
+      dropdownContent = this.createGitHubDropdownContent();
+      document.body.appendChild(dropdownContent);
+      // Set initial position (will be updated below)
+      dropdownContent.style.position = 'fixed';
+      dropdownContent.style.zIndex = '9999';
+    }
+
+    // Always update position when showing the dropdown
+    if (dropdownContent) {
+      dropdownContent.style.display = 'block';
+
+      // Position the dropdown below the button
+      const updatePosition = () => {
+        const buttonRect = button.getBoundingClientRect();
+        dropdownContent.style.top = `${buttonRect.bottom}px`;
+        dropdownContent.style.left = `${buttonRect.left}px`;
+      };
+
+      // Update position immediately
+      updatePosition();
+
+      // Add window resize listener to keep dropdown aligned with button
+      const resizeListener = () => updatePosition();
+      window.addEventListener('resize', resizeListener);
+
+      // Clean up resize listener when dropdown is closed
+      const removeResizeListener = () => {
+        if (dropdownContent.style.display === 'none') {
+          window.removeEventListener('resize', resizeListener);
+          document.removeEventListener('click', removeResizeListener);
+        }
+      };
+
+      // Add listener to clean up when dropdown is closed
+      document.addEventListener('click', removeResizeListener);
+    }
+
+    // Add click event listener to close dropdown when clicking outside
+    const closeDropdown = (e: MouseEvent) => {
+      if (
+        e.target !== button &&
+        e.target !== dropdownContent &&
+        !dropdownContent?.contains(e.target as Node)
+      ) {
+        (dropdownContent as HTMLElement).style.display = 'none';
+        document.removeEventListener('click', closeDropdown);
+      }
+    };
+
+    // Add the event listener with a slight delay to avoid immediate closing
+    setTimeout(() => {
+      document.addEventListener('click', closeDropdown);
+    }, 100);
+  }
+
+  private createGitHubDropdownContent(): HTMLElement {
+    const dropdownContent = document.createElement('div');
+    dropdownContent.id = 'github-dropdown-content';
+    dropdownContent.setAttribute('role', 'menu');
+    dropdownContent.className = [
+      'rounded-md',
+      'shadow-lg',
+      'overflow-hidden',
+      'min-w-[180px]',
+      'animate-fadeIn',
+    ].join(' ');
+
+    // Add some custom styles for animation and better appearance
+    const style = document.createElement('style');
+    style.textContent = `
+      @keyframes fadeIn {
+        from { opacity: 0; transform: translateY(-10px); }
+        to { opacity: 1; transform: translateY(0); }
+      }
+      .animate-fadeIn {
+        animation: fadeIn 0.2s ease-out forwards;
+      }
+      #github-dropdown-content {
+        background-color: #1a1a1a; /* Match the Export dropdown background */
+        border: none;
+        box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3);
+        position: fixed; /* Use fixed positioning to avoid scroll issues */
+        z-index: 9999;
+      }
+      #github-dropdown-content button {
+        color: #ffffff;
+        padding: 8px 16px;
+        width: 100%;
+        text-align: left;
+        border: none;
+        background: transparent;
+        font-size: 12px;
+      }
+      #github-dropdown-content button:hover {
+        background-color: #333333; /* Match the Export dropdown hover state */
+      }
+      #github-dropdown-content button svg {
+        transition: transform 0.15s ease;
+        margin-right: 8px;
+      }
+      #github-dropdown-content button:hover svg {
+        transform: scale(1.05);
+      }
+      /* Remove border between items to match Export dropdown */
+      #github-dropdown-content button:first-child {
+        border-bottom: none;
+      }
+    `;
+    document.head.appendChild(style);
+
+    // Push option
+    const pushButton = document.createElement('button');
+    pushButton.className = 'dropdown-item flex items-center';
+    pushButton.innerHTML = `
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4" />
+        <polyline points="10 17 15 12 10 7" />
+        <line x1="15" y1="12" x2="3" y2="12" />
+      </svg>
+      <span>Push to GitHub</span>
+    `;
+    pushButton.addEventListener('click', async () => {
+      (dropdownContent as HTMLElement).style.display = 'none';
+      await this.handleGitHubPushAction();
+    });
+
+    // Settings option
+    const settingsButton = document.createElement('button');
+    settingsButton.className = 'dropdown-item flex items-center';
+    settingsButton.innerHTML = `
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <circle cx="12" cy="12" r="3" />
+        <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z" />
+      </svg>
+      <span>Settings</span>
+    `;
+    settingsButton.addEventListener('click', () => {
+      (dropdownContent as HTMLElement).style.display = 'none';
+      // Directly send the OPEN_SETTINGS message instead of showing the notification
+      this.messageHandler.sendMessage('OPEN_SETTINGS');
+    });
+
+    dropdownContent.appendChild(pushButton);
+    dropdownContent.appendChild(settingsButton);
+
+    return dropdownContent;
+  }
+
+  public async handleGitHubPushAction() {
+    console.log('Handling GitHub push action');
     const settings = await SettingsService.getGitHubSettings();
     if (!settings.isSettingsValid) {
       this.showSettingsNotification();
@@ -198,6 +394,7 @@ export class UIManager {
     if (!confirmed) return;
 
     try {
+      // Trigger the download button click
       await this.findAndClickDownloadButton();
 
       // Update button state to processing
@@ -208,6 +405,9 @@ export class UIManager {
             <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
           </svg>
           Pushing to GitHub...
+          <svg width="12" height="12" viewBox="0 0 24 24" style="margin-left: 4px;">
+            <path fill="currentColor" d="M16.59 8.59L12 13.17 7.41 8.59 6 10l6 6 6-6z"/>
+          </svg>
         `;
         (this.uploadButton as HTMLButtonElement).disabled = true;
       }
@@ -215,7 +415,8 @@ export class UIManager {
       this.isGitHubUpload = true;
       this.messageHandler.sendCommitMessage(commitMessage || 'Commit from Bolt to GitHub');
 
-      this.findAndClickDownloadButton(); // This will close the dropdown
+      // We don't need to call findAndClickDownloadButton again
+      // The download process is already triggered by the first call
     } catch (error) {
       console.error('Error during GitHub upload:', error);
       throw new Error('Failed to trigger download. The page structure may have changed.');
@@ -243,30 +444,113 @@ export class UIManager {
   }
 
   async findAndClickDownloadButton() {
-    this.findAndClickExportButton();
+    try {
+      // Try to find and click the export button
+      this.findAndClickExportButton();
 
-    // Wait a bit for the dropdown content to render
-    await new Promise((resolve) => setTimeout(resolve, 200));
+      // Wait for the dropdown content to render with increasing timeouts
+      let attempts = 0;
+      const maxAttempts = 3;
+      let exportDropdown = null;
 
-    // Find the dropdown content
-    const dropdownContent = document.querySelector('[role="menu"], [data-radix-menu-content]');
-    if (!dropdownContent) {
-      throw new Error('Dropdown content not found');
+      while (attempts < maxAttempts && !exportDropdown) {
+        // Increase wait time with each attempt
+        const waitTime = 200 * (attempts + 1);
+        console.log(
+          `Waiting ${waitTime}ms for dropdown to appear (attempt ${attempts + 1}/${maxAttempts})`
+        );
+        await new Promise((resolve) => setTimeout(resolve, waitTime));
+
+        // Find all dropdowns
+        const allDropdowns = Array.from(
+          document.querySelectorAll('[role="menu"], [data-radix-menu-content]')
+        );
+        console.log('Found dropdowns:', allDropdowns.length);
+
+        if (allDropdowns.length === 0) {
+          console.log('No dropdowns found, will retry');
+          attempts++;
+          continue;
+        }
+
+        // Find the dropdown that contains download-related buttons
+        exportDropdown = allDropdowns.find((dropdown) => {
+          const buttons = dropdown.querySelectorAll('button');
+          console.log('Checking dropdown with buttons:', buttons.length);
+
+          // Check if any button in this dropdown has download text or icon
+          return Array.from(buttons).some((button) => {
+            const hasDownloadText = button.textContent?.toLowerCase().includes('download');
+            const hasDownloadIcon = button.querySelector('[class*="i-ph:download-simple"]');
+            return hasDownloadText || hasDownloadIcon;
+          });
+        });
+
+        if (!exportDropdown) {
+          console.log('No export dropdown found in this attempt, will retry');
+          attempts++;
+        }
+      }
+
+      if (!exportDropdown) {
+        throw new Error('Export dropdown content not found after multiple attempts');
+      }
+      console.log('Found export dropdown:', exportDropdown);
+
+      // Find download button within the identified export dropdown
+      const downloadButton = Array.from(exportDropdown.querySelectorAll('button')).find(
+        (button) => {
+          // Search for the icon class anywhere within the button's descendants
+          const hasIcon = button.querySelector('[class*="i-ph:download-simple"]');
+          const hasText = button.textContent?.toLowerCase().includes('download');
+          return hasIcon || hasText;
+        }
+      );
+
+      if (!downloadButton) {
+        throw new Error('Download button not found in dropdown');
+      }
+
+      console.log('Found download button, clicking...');
+      downloadButton.click();
+
+      // Close the dropdown by clicking outside or pressing Escape
+      setTimeout(() => {
+        try {
+          console.log('Closing export dropdown...');
+          // Method 1: Try to dispatch Escape key to close the dropdown
+          const escapeEvent = new KeyboardEvent('keydown', {
+            key: 'Escape',
+            code: 'Escape',
+            bubbles: true,
+            cancelable: true,
+          });
+          document.dispatchEvent(escapeEvent);
+
+          // Method 2: As a fallback, click outside the dropdown
+          setTimeout(() => {
+            // If dropdown is still open, click on the body element to close it
+            const dropdowns = document.querySelectorAll('[role="menu"], [data-radix-menu-content]');
+            if (dropdowns.length > 0) {
+              console.log('Dropdown still open, clicking outside to close it');
+              // Click in an empty area of the page
+              const clickEvent = new MouseEvent('click', {
+                bubbles: true,
+                cancelable: true,
+                view: window,
+              });
+              document.body.dispatchEvent(clickEvent);
+            }
+          }, 100);
+        } catch (closeError) {
+          console.warn('Error while trying to close dropdown:', closeError);
+          // Non-critical error, don't throw
+        }
+      }, 300); // Wait a bit after clicking the download button
+    } catch (error) {
+      console.error('Error finding or clicking download button:', error);
+      throw error; // Re-throw to allow caller to handle
     }
-
-    // Find download button
-    const downloadButton = Array.from(dropdownContent.querySelectorAll('button')).find((button) => {
-      const hasIcon = button.querySelector('.i-ph\\:download-simple');
-      const hasText = button.textContent?.toLowerCase().includes('download');
-      return hasIcon || hasText;
-    });
-
-    if (!downloadButton) {
-      throw new Error('Download button not found in dropdown');
-    }
-
-    console.log('Found download button, clicking...');
-    downloadButton.click();
   }
 
   // Function to show confirmation dialog
@@ -401,14 +685,46 @@ export class UIManager {
   };
 
   public updateUploadStatus(status: UploadStatusState) {
-    // console.log('🔊 Updating upload status:', status);
+    console.log('🔊 Updating upload status:', status);
+
+    // If component doesn't exist, initialize it first
     if (!this.uploadStatusComponent) {
       console.log('🔊 Upload status component not found, initializing');
       this.initializeUploadStatus();
+
+      // Add a small delay to ensure component is mounted before updating
+      setTimeout(() => {
+        this.updateUploadStatusInternal(status);
+      }, 50);
+      return;
     }
 
-    // console.log('🔊 Setting upload status:', status);
-    this.uploadStatusComponent?.$set({ status });
+    this.updateUploadStatusInternal(status);
+  }
+
+  private updateUploadStatusInternal(status: UploadStatusState) {
+    // Ensure the container is visible in the DOM
+    const container = document.getElementById('bolt-to-github-upload-status-container');
+    if (!container || !document.body.contains(container)) {
+      console.log('🔊 Upload status container not in DOM, reinitializing');
+      this.initializeUploadStatus();
+
+      // Add a slightly longer delay to ensure component is fully mounted
+      setTimeout(() => {
+        if (this.uploadStatusComponent) {
+          console.log('🔊 Setting upload status after initialization:', status);
+          this.uploadStatusComponent.$set({ status });
+        }
+      }, 100);
+      return;
+    }
+
+    console.log('🔊 Setting upload status:', status);
+
+    // Update the component immediately if it exists
+    if (this.uploadStatusComponent) {
+      this.uploadStatusComponent.$set({ status });
+    }
 
     // Reset GitHub button when upload is complete
     if (status.status !== 'uploading' && this.isGitHubUpload && this.uploadButton) {
@@ -418,6 +734,9 @@ export class UIManager {
           <path fill="currentColor" d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0016 8c0-4.42-3.58-8-8-8z"/>
         </svg>
         GitHub
+        <svg width="12" height="12" viewBox="0 0 24 24" style="margin-left: 4px;">
+          <path fill="currentColor" d="M16.59 8.59L12 13.17 7.41 8.59 6 10l6 6 6-6z"/>
+        </svg>
       `;
       (this.uploadButton as HTMLButtonElement).disabled = false;
     }

@@ -286,254 +286,273 @@
   }
 </script>
 
-<div class="space-y-6">
+<div class="space-y-4">
   <!-- Quick Links Section -->
   <NewUserGuide />
 
   <!-- Settings Form -->
   <form on:submit|preventDefault={handleSave} class="space-y-4">
-    <div class="space-y-2">
-      <Label for="githubToken" class="text-slate-200">
-        GitHub Token
-        <span class="text-sm text-slate-400 ml-2">(Required for uploading)</span>
-      </Label>
-      <div class="relative">
-        <Input
-          type="password"
-          id="githubToken"
-          bind:value={githubToken}
-          on:input={handleTokenInput}
-          placeholder="ghp_***********************************"
-          class="bg-slate-800 border-slate-700 text-slate-200 placeholder:text-slate-500 pr-10"
-        />
-        {#if githubToken}
-          <div class="absolute right-3 top-1/2 -translate-y-1/2">
-            {#if isValidatingToken}
-              <div
-                class="animate-spin h-4 w-4 border-2 border-slate-400 border-t-transparent rounded-full"
-              />
-            {:else if isTokenValid === true}
-              <Check class="h-4 w-4 text-green-500" />
-            {:else if isTokenValid === false}
-              <X class="h-4 w-4 text-red-500" />
+    <!-- General GitHub Settings Section -->
+    <div class="p-3 bg-slate-850 border border-slate-700 rounded-md">
+      <h3 class="text-slate-200 font-medium mb-3 flex items-center">
+        <span>General GitHub Settings</span>
+        <span class="text-xs text-slate-400 ml-2">(Used across all projects)</span>
+      </h3>
+
+      <div class="space-y-4">
+        <div class="space-y-2">
+          <Label for="githubToken" class="text-slate-200">
+            GitHub Token
+            <span class="text-sm text-slate-400 ml-2">(Required for uploading)</span>
+          </Label>
+          <div class="relative">
+            <Input
+              type="password"
+              id="githubToken"
+              bind:value={githubToken}
+              on:input={handleTokenInput}
+              placeholder="ghp_***********************************"
+              class="bg-slate-800 border-slate-700 text-slate-200 placeholder:text-slate-500 pr-10"
+            />
+            {#if githubToken}
+              <div class="absolute right-3 top-1/2 -translate-y-1/2">
+                {#if isValidatingToken}
+                  <div
+                    class="animate-spin h-4 w-4 border-2 border-slate-400 border-t-transparent rounded-full"
+                  />
+                {:else if isTokenValid === true}
+                  <Check class="h-4 w-4 text-green-500" />
+                {:else if isTokenValid === false}
+                  <X class="h-4 w-4 text-red-500" />
+                {/if}
+              </div>
             {/if}
           </div>
-        {/if}
-      </div>
-      {#if validationError}
-        <p class="text-sm text-red-400 mt-1">{validationError}</p>
-      {:else if tokenType}
-        <div class="space-y-2">
-          <p class="text-sm text-emerald-400">
-            {tokenType === 'classic' ? '🔑 Classic' : '✨ Fine-grained'} token detected
-          </p>
-          {#if isTokenValid}
-            <div class="flex items-center gap-2">
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                class="text-xs"
-                on:click={checkTokenPermissions}
-                disabled={isCheckingPermissions}
-              >
-                {#if isCheckingPermissions}
-                  <Loader2 class="h-3 w-3 mr-1 animate-spin" />
-                  Checking...
-                {:else}
-                  Verify Permissions
-                {/if}
-              </Button>
-              <div class="flex items-center gap-2">
-                {#if previousToken === githubToken && lastPermissionCheck}
-                  <div class="relative group">
-                    <HelpCircle class="h-3 w-3 text-slate-400" />
-                    <div
-                      class="absolute bottom-full mb-2 left-1/2 -translate-x-1/2 hidden group-hover:block w-64 p-2 text-xs bg-slate-900 border border-slate-700 rounded-md shadow-lg"
-                    >
-                      <p>Last verified: {new Date(lastPermissionCheck).toLocaleString()}</p>
-                      <p class="mt-1 text-slate-400">
-                        Permissions are automatically re-verified when the token changes or after 30
-                        days.
-                      </p>
+          {#if validationError}
+            <p class="text-sm text-red-400 mt-1">{validationError}</p>
+          {:else if tokenType}
+            <div class="space-y-2">
+              <p class="text-sm text-emerald-400">
+                {tokenType === 'classic' ? '🔑 Classic' : '✨ Fine-grained'} token detected
+              </p>
+              {#if isTokenValid}
+                <div class="flex items-center gap-2">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    class="text-xs"
+                    on:click={checkTokenPermissions}
+                    disabled={isCheckingPermissions}
+                  >
+                    {#if isCheckingPermissions}
+                      <Loader2 class="h-3 w-3 mr-1 animate-spin" />
+                      Checking...
+                    {:else}
+                      Verify
+                    {/if}
+                  </Button>
+                  <div class="flex items-center gap-2">
+                    {#if previousToken === githubToken && lastPermissionCheck}
+                      <div class="relative group">
+                        <HelpCircle class="h-3 w-3 text-slate-400" />
+                        <div
+                          class="absolute bottom-full mb-2 left-1/2 -translate-x-1/2 hidden group-hover:block w-64 p-2 text-xs bg-slate-900 border border-slate-700 rounded-md shadow-lg"
+                        >
+                          <p>Last verified: {new Date(lastPermissionCheck).toLocaleString()}</p>
+                          <p class="mt-1 text-slate-400">
+                            Permissions are automatically re-verified when the token changes or
+                            after 30 days.
+                          </p>
+                        </div>
+                      </div>
+                    {/if}
+                    <div class="flex items-center gap-1.5 text-xs">
+                      <span class="flex items-center gap-0.5">
+                        {#if currentCheck === 'repos'}
+                          <Loader2 class="h-3 w-3 animate-spin text-slate-400" />
+                        {:else if permissionStatus.allRepos !== undefined}
+                          {#if permissionStatus.allRepos}
+                            <Check class="h-3 w-3 text-green-500" />
+                          {:else}
+                            <X class="h-3 w-3 text-red-500" />
+                          {/if}
+                        {:else if previousToken === githubToken && lastPermissionCheck}
+                          <Check class="h-3 w-3 text-green-500 opacity-50" />
+                        {/if}
+                        Repos
+                      </span>
+                      <span class="flex items-center gap-0.5">
+                        {#if currentCheck === 'admin'}
+                          <Loader2 class="h-3 w-3 animate-spin text-slate-400" />
+                        {:else if permissionStatus.admin !== undefined}
+                          {#if permissionStatus.admin}
+                            <Check class="h-3 w-3 text-green-500" />
+                          {:else}
+                            <X class="h-3 w-3 text-red-500" />
+                          {/if}
+                        {:else if previousToken === githubToken && lastPermissionCheck}
+                          <Check class="h-3 w-3 text-green-500 opacity-50" />
+                        {/if}
+                        Admin
+                      </span>
+                      <span class="flex items-center gap-0.5">
+                        {#if currentCheck === 'code'}
+                          <Loader2 class="h-3 w-3 animate-spin text-slate-400" />
+                        {:else if permissionStatus.contents !== undefined}
+                          {#if permissionStatus.contents}
+                            <Check class="h-3 w-3 text-green-500" />
+                          {:else}
+                            <X class="h-3 w-3 text-red-500" />
+                          {/if}
+                        {:else if previousToken === githubToken && lastPermissionCheck}
+                          <Check class="h-3 w-3 text-green-500 opacity-50" />
+                        {/if}
+                        Code
+                      </span>
                     </div>
                   </div>
-                {/if}
-                <div class="flex items-center gap-1.5 text-xs">
-                  <span class="flex items-center gap-0.5">
-                    {#if currentCheck === 'repos'}
-                      <Loader2 class="h-3 w-3 animate-spin text-slate-400" />
-                    {:else if permissionStatus.allRepos !== undefined}
-                      {#if permissionStatus.allRepos}
-                        <Check class="h-3 w-3 text-green-500" />
-                      {:else}
-                        <X class="h-3 w-3 text-red-500" />
-                      {/if}
-                    {:else if previousToken === githubToken && lastPermissionCheck}
-                      <Check class="h-3 w-3 text-green-500 opacity-50" />
-                    {/if}
-                    Repos
-                  </span>
-                  <span class="flex items-center gap-0.5">
-                    {#if currentCheck === 'admin'}
-                      <Loader2 class="h-3 w-3 animate-spin text-slate-400" />
-                    {:else if permissionStatus.admin !== undefined}
-                      {#if permissionStatus.admin}
-                        <Check class="h-3 w-3 text-green-500" />
-                      {:else}
-                        <X class="h-3 w-3 text-red-500" />
-                      {/if}
-                    {:else if previousToken === githubToken && lastPermissionCheck}
-                      <Check class="h-3 w-3 text-green-500 opacity-50" />
-                    {/if}
-                    Admin
-                  </span>
-                  <span class="flex items-center gap-0.5">
-                    {#if currentCheck === 'code'}
-                      <Loader2 class="h-3 w-3 animate-spin text-slate-400" />
-                    {:else if permissionStatus.contents !== undefined}
-                      {#if permissionStatus.contents}
-                        <Check class="h-3 w-3 text-green-500" />
-                      {:else}
-                        <X class="h-3 w-3 text-red-500" />
-                      {/if}
-                    {:else if previousToken === githubToken && lastPermissionCheck}
-                      <Check class="h-3 w-3 text-green-500 opacity-50" />
-                    {/if}
-                    Code
-                  </span>
                 </div>
-              </div>
+              {/if}
             </div>
+            {#if permissionError}
+              <p class="text-sm text-red-400 mt-1">{permissionError}</p>
+            {/if}
           {/if}
         </div>
-        {#if permissionError}
-          <p class="text-sm text-red-400 mt-1">{permissionError}</p>
-        {/if}
-      {/if}
-    </div>
 
-    <div class="space-y-2">
-      <Label for="repoOwner" class="text-slate-200">
-        Repository Owner
-        <span class="text-sm text-slate-400 ml-2">(Your GitHub username)</span>
-      </Label>
-      <Input
-        type="text"
-        id="repoOwner"
-        bind:value={repoOwner}
-        on:input={handleOwnerInput}
-        placeholder="username or organization"
-        class="bg-slate-800 border-slate-700 text-slate-200 placeholder:text-slate-500"
-      />
+        <div class="space-y-2">
+          <Label for="repoOwner" class="text-slate-200">
+            Repository Owner
+            <span class="text-sm text-slate-400 ml-2">(Your GitHub username)</span>
+          </Label>
+          <Input
+            type="text"
+            id="repoOwner"
+            bind:value={repoOwner}
+            on:input={handleOwnerInput}
+            placeholder="username or organization"
+            class="bg-slate-800 border-slate-700 text-slate-200 placeholder:text-slate-500"
+          />
+        </div>
+      </div>
     </div>
 
     {#if !isOnboarding}
-      <div class="space-y-2">
-        <Label for="repoName" class="text-slate-200">
-          Repository Name
-          <span class="text-sm text-slate-400 ml-2">
+      <!-- Project-specific Settings Section -->
+      <div class="p-3 bg-slate-850 border border-slate-700 rounded-md">
+        <h3 class="text-slate-200 font-medium mb-3 flex items-center">
+          <span>Project Repository Settings</span>
+          <span class="text-xs text-slate-400 ml-2">
             {#if projectId}
-              (Project-specific repository)
+              (For current project only)
             {:else}
-              (Default repository)
+              (Default settings)
             {/if}
           </span>
-        </Label>
-        <div class="relative">
-          <div class="relative">
-            <Input
-              type="text"
-              id="repoName"
-              bind:value={repoName}
-              on:input={handleRepoInput}
-              on:focus={handleRepoFocus}
-              on:blur={handleRepoBlur}
-              on:keydown={handleRepoKeydown}
-              placeholder="Search or enter repository name"
-              class="bg-slate-800 border-slate-700 text-slate-200 placeholder:text-slate-500 pr-10"
-              autocomplete="off"
-            />
-            <div class="absolute right-3 top-1/2 -translate-y-1/2">
-              {#if isLoadingRepos}
-                <Loader2 class="h-4 w-4 text-slate-400 animate-spin" />
-              {:else}
-                <Search class="h-4 w-4 text-slate-400" />
+        </h3>
+
+        <div class="space-y-4">
+          <div class="space-y-2">
+            <Label for="repoName" class="text-slate-200">Repository Name</Label>
+            <div class="relative">
+              <div class="relative">
+                <Input
+                  type="text"
+                  id="repoName"
+                  bind:value={repoName}
+                  on:input={handleRepoInput}
+                  on:focus={handleRepoFocus}
+                  on:blur={handleRepoBlur}
+                  on:keydown={handleRepoKeydown}
+                  placeholder="Search or enter repository name"
+                  class="bg-slate-800 border-slate-700 text-slate-200 placeholder:text-slate-500 pr-10"
+                  autocomplete="off"
+                />
+                <div class="absolute right-3 top-1/2 -translate-y-1/2">
+                  {#if isLoadingRepos}
+                    <Loader2 class="h-4 w-4 text-slate-400 animate-spin" />
+                  {:else}
+                    <Search class="h-4 w-4 text-slate-400" />
+                  {/if}
+                </div>
+              </div>
+              {#if showRepoDropdown && (filteredRepos.length > 0 || !repoExists)}
+                <div
+                  class="absolute z-50 w-full mt-1 bg-slate-800 border border-slate-700 rounded-md shadow-lg"
+                >
+                  <ul class="py-1 max-h-60 overflow-auto">
+                    {#each filteredRepos as repo, i}
+                      <li>
+                        <button
+                          class="w-full px-3 py-2 text-left hover:bg-slate-700 text-slate-200 {selectedIndex ===
+                          i
+                            ? 'bg-slate-700'
+                            : ''}"
+                          on:click={() => selectRepo(repo)}
+                        >
+                          <div class="flex items-center justify-between">
+                            <span class="font-medium">{repo.name}</span>
+                            {#if repo.private}
+                              <span class="text-xs text-slate-400">Private</span>
+                            {/if}
+                          </div>
+                          {#if repo.description}
+                            <p class="text-sm text-slate-400 truncate">{repo.description}</p>
+                          {/if}
+                        </button>
+                      </li>
+                    {/each}
+                    {#if !repoExists}
+                      <li class="px-3 py-2 text-sm text-slate-400">
+                        {#if repoName.length > 0}
+                          <p class="text-orange-400">
+                            💡If the repository "{repoName}" doesn't exist, it will be created
+                            automatically.
+                          </p>
+                        {:else}
+                          <p>
+                            Enter a repository name (new) or select from your repositories
+                            carefully.
+                          </p>
+                        {/if}
+                      </li>
+                    {/if}
+                  </ul>
+                </div>
               {/if}
             </div>
+            {#if repoExists}
+              <p class="text-sm text-blue-400">
+                ℹ️ Using existing repository. Make sure it is correct.
+              </p>
+            {:else if repoName}
+              <p class="text-sm text-emerald-400">
+                ✨ A new repository will be created if it doesn't exist yet.
+              </p>
+            {/if}
           </div>
-          {#if showRepoDropdown && (filteredRepos.length > 0 || !repoExists)}
-            <div
-              class="absolute z-50 w-full mt-1 bg-slate-800 border border-slate-700 rounded-md shadow-lg"
-            >
-              <ul class="py-1 max-h-60 overflow-auto">
-                {#each filteredRepos as repo, i}
-                  <li>
-                    <button
-                      class="w-full px-3 py-2 text-left hover:bg-slate-700 text-slate-200 {selectedIndex ===
-                      i
-                        ? 'bg-slate-700'
-                        : ''}"
-                      on:click={() => selectRepo(repo)}
-                    >
-                      <div class="flex items-center justify-between">
-                        <span class="font-medium">{repo.name}</span>
-                        {#if repo.private}
-                          <span class="text-xs text-slate-400">Private</span>
-                        {/if}
-                      </div>
-                      {#if repo.description}
-                        <p class="text-sm text-slate-400 truncate">{repo.description}</p>
-                      {/if}
-                    </button>
-                  </li>
-                {/each}
-                {#if !repoExists}
-                  <li class="px-3 py-2 text-sm text-slate-400">
-                    {#if repoName.length > 0}
-                      <p class="text-orange-400">
-                        💡If the repository "{repoName}" doesn't exist, it will be created
-                        automatically.
-                      </p>
-                    {:else}
-                      <p>
-                        Enter a repository name (new) or select from your repositories carefully.
-                      </p>
-                    {/if}
-                  </li>
-                {/if}
-              </ul>
-            </div>
-          {/if}
-        </div>
-        {#if repoExists}
-          <p class="text-sm text-blue-400">
-            ℹ️ Using existing repository. Make sure it is correct.
-          </p>
-        {:else if repoName}
-          <p class="text-sm text-emerald-400">
-            ✨ A new repository will be created if it doesn't exist yet.
-          </p>
-        {/if}
-      </div>
 
-      <div class="space-y-2">
-        <Label for="branch" class="text-slate-200">
-          Branch
-          <span class="text-sm text-slate-400 ml-2">(Usually "main")</span>
-        </Label>
-        <Input
-          type="text"
-          id="branch"
-          bind:value={branch}
-          on:input={onInput}
-          placeholder="main"
-          class="bg-slate-800 border-slate-700 text-slate-200 placeholder:text-slate-500"
-        />
+          <div class="space-y-2">
+            <Label for="branch" class="text-slate-200">
+              Branch
+              <span class="text-sm text-slate-400 ml-2">(Usually "main")</span>
+            </Label>
+            <Input
+              type="text"
+              id="branch"
+              bind:value={branch}
+              on:input={onInput}
+              placeholder="main"
+              class="bg-slate-800 border-slate-700 text-slate-200 placeholder:text-slate-500"
+            />
+          </div>
+          <p class="text-sm text-slate-400">
+            💡 If the branch doesn't exist, it will be created automatically from the default
+            branch.
+          </p>
+        </div>
       </div>
-      <p class="text-sm text-slate-400">
-        💡 If the branch doesn't exist, it will be created automatically from the default branch.
-      </p>
     {/if}
 
     <Button
