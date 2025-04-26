@@ -852,8 +852,20 @@ export class UIManager {
       // Show notification with summary
       this.showNotification({
         type: 'success',
-        message: `Found ${addedCount + modifiedCount} changed files. Check console for details.`,
+        message: `Found ${addedCount + modifiedCount} changed files. Opening file changes view...`,
         duration: 5000
+      });
+      
+      // Send file changes to popup for display
+      // Convert Map to object for message passing
+      const changesObject: Record<string, FileChange> = {};
+      changedFiles.forEach((value, key) => {
+        changesObject[key] = value;
+      });
+      
+      // Send message to open the popup with file changes
+      this.messageHandler.sendMessage('OPEN_FILE_CHANGES', {
+        changes: changesObject
       });
     } catch (error) {
       console.error('Error showing changed files:', error);

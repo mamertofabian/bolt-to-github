@@ -22,6 +22,8 @@
   import { Button } from '$lib/components/ui/button';
   import Help from '$lib/components/Help.svelte';
   import ProjectStatus from '$lib/components/ProjectStatus.svelte';
+  import FileChanges from '../components/FileChanges.svelte';
+  import type { FileChange } from '../services/FilePreviewService';
 
   let githubToken: string = '';
   let repoOwner = '';
@@ -38,6 +40,7 @@
   let isBoltSite: boolean = false;
   let githubSettings: GitHubSettingsInterface;
   let parsedProjectId: string | null = null;
+  let fileChanges: Map<string, FileChange> | null = null;
   const version = chrome.runtime.getManifest().version;
   let hasStatus = false;
   let isValidatingToken = false;
@@ -45,6 +48,7 @@
   let validationError: string | null = null;
   let hasInitialSettings = false;
   let showTempRepoModal = false;
+  let showFileChangesModal = false;
   let tempRepoData: TempRepoMetadata | null = null;
   let port: chrome.runtime.Port;
   let hasDeletedTempRepo = false;
@@ -145,6 +149,10 @@
         uploadStatus = message.status;
         uploadProgress = message.progress || 0;
         uploadMessage = message.message || '';
+      } else if (message.type === 'FILE_CHANGES') {
+        console.log('Received file changes:', message.changes);
+        fileChanges = new Map(Object.entries(message.changes));
+        showFileChangesModal = true; // Show the file changes modal
       }
     });
 
@@ -376,6 +384,20 @@
       {/if}
     </CardContent>
   </Card>
+  <Modal show={showFileChangesModal} title="File Changes">
+    <div class="space-y-4 h-[400px]">
+      {#if fileChanges}
+        <div class="h-[350px]">
+          <FileChanges changes={fileChanges} onClose={() => showFileChangesModal = false} />
+        </div>
+      {:else}
+        <div class="flex items-center justify-center h-[350px]">
+          <p class="text-slate-400">No file changes to display</p>
+        </div>
+      {/if}
+    </div>
+  </Modal>
+
   <Modal show={showTempRepoModal} title="Private Repository Import">
     <div class="space-y-4">
       <p class="text-amber-300 font-medium">

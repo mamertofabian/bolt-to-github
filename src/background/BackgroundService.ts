@@ -111,6 +111,11 @@ export class BackgroundService {
       if (message.action === 'PUSH_TO_GITHUB') {
         this.handlePushToGitHub();
         sendResponse({ success: true });
+      } else if (message.type === 'FILE_CHANGES') {
+        console.log('📄 Received file changes, forwarding to popup');
+        // Forward file changes to popup
+        chrome.runtime.sendMessage(message);
+        sendResponse({ success: true });
       }
       
       // Return true to indicate we'll send a response asynchronously
@@ -180,6 +185,17 @@ export class BackgroundService {
 
         case 'OPEN_SETTINGS':
           console.log('Opening settings popup');
+          chrome.action.openPopup();
+          break;
+          
+        case 'OPEN_FILE_CHANGES':
+          console.log('Opening file changes popup');
+          // Forward the file changes data to the popup
+          chrome.runtime.sendMessage({
+            type: 'FILE_CHANGES',
+            changes: message.data?.changes || {}
+          });
+          // Open the popup
           chrome.action.openPopup();
           break;
 
