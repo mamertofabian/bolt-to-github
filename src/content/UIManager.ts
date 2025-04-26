@@ -739,19 +739,20 @@ export class UIManager {
    */
   public async handleShowChangedFiles() {
     try {
-      // Show notification that we're loading files
+      // Show notification that we're refreshing and loading files
       this.showNotification({
         type: 'info',
-        message: 'Loading project files...',
+        message: 'Refreshing and loading project files...',
         duration: 3000
       });
 
       console.group('Changed Files');
-      console.log('Loading project files...');
+      console.log('Refreshing and loading project files...');
       
-      // Load the current project files (using cache if available)
+      // Load the current project files with a forced refresh (invalidate cache)
+      // since this is a user-driven action, we always want the latest files
       const startTime = performance.now();
-      await this.filePreviewService.loadProjectFiles();
+      await this.filePreviewService.loadProjectFiles(true); // Pass true to force refresh
       const loadTime = performance.now() - startTime;
       console.log(`Files loaded in ${loadTime.toFixed(2)}ms`);
       
