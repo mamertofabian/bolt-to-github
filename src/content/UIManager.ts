@@ -414,15 +414,42 @@ export class UIManager {
       this.isGitHubUpload = true;
       this.messageHandler.sendCommitMessage(commitMessage || 'Commit from Bolt to GitHub');
 
-      // Use the DownloadService to get the project ZIP
-      const blob = await this.downloadService.downloadProjectZip();
-      
-      // Convert blob to base64 and send to background script
-      const base64data = await this.downloadService.blobToBase64(blob);
-      if (base64data) {
-        this.messageHandler.sendZipData(base64data);
-      } else {
-        throw new Error('Failed to convert ZIP file to base64');
+      // Update status to show we're downloading
+      this.updateUploadStatus({
+        status: 'uploading',
+        progress: 5,
+        message: 'Downloading project files...'
+      });
+
+      try {
+        // Use the DownloadService to get the project files (using cache if available)
+        const blob = await this.downloadService.downloadProjectZip();
+        
+        // Convert blob to base64 and send to background script
+        const base64data = await this.downloadService.blobToBase64(blob);
+        if (base64data) {
+          this.messageHandler.sendZipData(base64data);
+        } else {
+          throw new Error('Failed to convert ZIP file to base64');
+        }
+      } catch (error) {
+        // If download fails, try to use cached files as fallback
+        console.warn('Download failed, trying to use cached files:', error);
+        this.updateUploadStatus({
+          status: 'uploading',
+          progress: 5,
+          message: 'Using cached project files...'
+        });
+        
+        // Get cached project files and convert to base64
+        const files = await this.downloadService.getProjectFiles(false);
+        if (files && files.size > 0) {
+          // We need to convert the files back to a ZIP format
+          // This will be handled by the background script
+          this.messageHandler.sendMessage('USE_CACHED_FILES', { files: Object.fromEntries(files) });
+        } else {
+          throw new Error('No cached files available and download failed');
+        }
       }
     } catch (error) {
       console.error('Error during GitHub upload:', error);

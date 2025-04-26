@@ -1,4 +1,6 @@
 import { ZipProcessor } from '../lib/zip';
+import { CacheService } from './CacheService';
+import type { ProjectFiles } from '$lib/types';
 
 /**
  * Service responsible for downloading project ZIP files from Bolt
@@ -11,6 +13,10 @@ export class DownloadService {
   private currentDownloadPromise: Promise<Blob> | null = null;
   // Event listener for download interception
   private clickListener: ((e: MouseEvent) => void) | null = null;
+  // Cache service for storing downloaded files
+  private cacheService: CacheService = CacheService.getInstance();
+  // Current project ID (extracted from URL)
+  private currentProjectId: string | null = null;
   /**
    * Downloads the project ZIP file by finding and clicking the export/download buttons
    * @returns Promise resolving to the downloaded Blob
@@ -69,12 +75,63 @@ export class DownloadService {
   }
 
   /**
-   * Downloads the project ZIP and extracts its contents
+   * Gets the current project ID from the URL
+   * @returns The project ID or null if not found
+   */
+  private getCurrentProjectId(): string | null {
+    // Extract project ID from URL
+    // URL format is typically: https://bolt.dev/project/{projectId}/...
+    const url = window.location.href;
+    const projectMatch = url.match(/\/project\/([^\/]+)/);
+    if (projectMatch && projectMatch[1]) {
+      return projectMatch[1];
+    }
+    return null;
+  }
+
+  /**
+   * Downloads the project ZIP and extracts its contents, using cache when available
+   * @param forceRefresh Whether to force a fresh download even if cache is available
    * @returns Promise resolving to a Map of filenames to file contents
    */
-  public async getProjectFiles(): Promise<Map<string, string>> {
+  public async getProjectFiles(forceRefresh = false): Promise<ProjectFiles> {
+    // Get current project ID
+    this.currentProjectId = this.getCurrentProjectId();
+    if (!this.currentProjectId) {
+      console.warn('Could not determine project ID from URL');
+      // Fall back to direct download without caching
+      const blob = await this.downloadProjectZip();
+      return ZipProcessor.processZipBlob(blob);
+    }
+
+    // Check cache first if not forcing refresh
+    if (!forceRefresh) {
+      const cachedFiles = this.cacheService.getCachedProjectFiles(this.currentProjectId);
+      if (cachedFiles) {
+        return cachedFiles;
+      }
+    }
+
+    // Cache miss or forced refresh, download and cache
+    console.log(`Downloading project files for ${this.currentProjectId}${forceRefresh ? ' (forced refresh)' : ''}`);
     const blob = await this.downloadProjectZip();
-    return ZipProcessor.processZipBlob(blob);
+    const files = await ZipProcessor.processZipBlob(blob);
+    
+    // Cache the downloaded files
+    if (this.currentProjectId) {
+      this.cacheService.cacheProjectFiles(this.currentProjectId, files);
+    }
+    
+    return files;
+  }
+
+  /**
+   * Invalidates the cache for the current project
+   */
+  public invalidateCache(): void {
+    if (this.currentProjectId) {
+      this.cacheService.invalidateCache(this.currentProjectId);
+    }
   }
 
   /**

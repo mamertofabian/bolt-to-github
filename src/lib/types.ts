@@ -12,7 +12,8 @@ export type MessageType =
   | 'OPEN_SETTINGS'
   | 'IMPORT_PRIVATE_REPO'
   | 'DELETE_TEMP_REPO'
-  | 'PUSH_TO_GITHUB';
+  | 'PUSH_TO_GITHUB'
+  | 'USE_CACHED_FILES';
 
 export interface Message {
   type: MessageType;
@@ -48,3 +49,9 @@ export interface GithubConfig {
   repo: string;
   branch: string;
 }
+
+/**
+ * Type representing a collection of project files
+ * Map of file paths to file contents
+ */
+export type ProjectFiles = Map<string, string>;
