@@ -1,5 +1,6 @@
 import type { UploadStatusState } from '$lib/types';
 import { SettingsService } from '../services/settings';
+import { DownloadService } from '../services/DownloadService';
 import type { MessageHandler } from './MessageHandler';
 import UploadStatus from './UploadStatus.svelte';
 import Notification from './Notification.svelte';
@@ -24,11 +25,12 @@ export class UIManager {
   private notificationComponent: SvelteComponent | null = null;
   private isGitHubUpload = false;
   private messageHandler: MessageHandler;
+  private downloadService: DownloadService;
 
   private constructor(messageHandler: MessageHandler) {
     this.messageHandler = messageHandler;
+    this.downloadService = new DownloadService();
     this.initializeUI();
-    this.setupClickListeners();
     this.setupMutationObserver();
   }
 
@@ -394,9 +396,6 @@ export class UIManager {
     if (!confirmed) return;
 
     try {
-      // Trigger the download button click
-      await this.findAndClickDownloadButton();
-
       // Update button state to processing
       if (this.uploadButton) {
         this.uploadButton.innerHTML = `
@@ -415,141 +414,29 @@ export class UIManager {
       this.isGitHubUpload = true;
       this.messageHandler.sendCommitMessage(commitMessage || 'Commit from Bolt to GitHub');
 
-      // We don't need to call findAndClickDownloadButton again
-      // The download process is already triggered by the first call
+      // Use the DownloadService to get the project ZIP
+      const blob = await this.downloadService.downloadProjectZip();
+      
+      // Convert blob to base64 and send to background script
+      const base64data = await this.downloadService.blobToBase64(blob);
+      if (base64data) {
+        this.messageHandler.sendZipData(base64data);
+      } else {
+        throw new Error('Failed to convert ZIP file to base64');
+      }
     } catch (error) {
       console.error('Error during GitHub upload:', error);
-      throw new Error('Failed to trigger download. The page structure may have changed.');
-    }
-  }
-
-  private findAndClickExportButton() {
-    const exportButton = Array.from(document.querySelectorAll('button[aria-haspopup="menu"]')).find(
-      (btn) => btn.textContent?.includes('Export') && btn.querySelector('.i-ph\\:export')
-    ) as HTMLButtonElement;
-
-    if (!exportButton) {
-      throw new Error('Export button not found');
-    }
-    console.log('Found export button:', exportButton);
-
-    // Dispatch keydown event to open dropdown
-    const keydownEvent = new KeyboardEvent('keydown', {
-      key: 'Enter',
-      bubbles: true,
-      cancelable: true,
-    });
-    exportButton.dispatchEvent(keydownEvent);
-    console.log('Dispatched keydown to export button');
-  }
-
-  async findAndClickDownloadButton() {
-    try {
-      // Try to find and click the export button
-      this.findAndClickExportButton();
-
-      // Wait for the dropdown content to render with increasing timeouts
-      let attempts = 0;
-      const maxAttempts = 3;
-      let exportDropdown = null;
-
-      while (attempts < maxAttempts && !exportDropdown) {
-        // Increase wait time with each attempt
-        const waitTime = 200 * (attempts + 1);
-        console.log(
-          `Waiting ${waitTime}ms for dropdown to appear (attempt ${attempts + 1}/${maxAttempts})`
-        );
-        await new Promise((resolve) => setTimeout(resolve, waitTime));
-
-        // Find all dropdowns
-        const allDropdowns = Array.from(
-          document.querySelectorAll('[role="menu"], [data-radix-menu-content]')
-        );
-        console.log('Found dropdowns:', allDropdowns.length);
-
-        if (allDropdowns.length === 0) {
-          console.log('No dropdowns found, will retry');
-          attempts++;
-          continue;
-        }
-
-        // Find the dropdown that contains download-related buttons
-        exportDropdown = allDropdowns.find((dropdown) => {
-          const buttons = dropdown.querySelectorAll('button');
-          console.log('Checking dropdown with buttons:', buttons.length);
-
-          // Check if any button in this dropdown has download text or icon
-          return Array.from(buttons).some((button) => {
-            const hasDownloadText = button.textContent?.toLowerCase().includes('download');
-            const hasDownloadIcon = button.querySelector('[class*="i-ph:download-simple"]');
-            return hasDownloadText || hasDownloadIcon;
-          });
-        });
-
-        if (!exportDropdown) {
-          console.log('No export dropdown found in this attempt, will retry');
-          attempts++;
-        }
+      this.showNotification({
+        type: 'error',
+        message: `Failed to download project: ${error instanceof Error ? error.message : 'Unknown error'}`,
+        duration: 5000
+      });
+      
+      // Reset button state
+      if (this.uploadButton) {
+        this.updateButtonState(true);
       }
-
-      if (!exportDropdown) {
-        throw new Error('Export dropdown content not found after multiple attempts');
-      }
-      console.log('Found export dropdown:', exportDropdown);
-
-      // Find download button within the identified export dropdown
-      const downloadButton = Array.from(exportDropdown.querySelectorAll('button')).find(
-        (button) => {
-          // Search for the icon class anywhere within the button's descendants
-          const hasIcon = button.querySelector('[class*="i-ph:download-simple"]');
-          const hasText = button.textContent?.toLowerCase().includes('download');
-          return hasIcon || hasText;
-        }
-      );
-
-      if (!downloadButton) {
-        throw new Error('Download button not found in dropdown');
-      }
-
-      console.log('Found download button, clicking...');
-      downloadButton.click();
-
-      // Close the dropdown by clicking outside or pressing Escape
-      setTimeout(() => {
-        try {
-          console.log('Closing export dropdown...');
-          // Method 1: Try to dispatch Escape key to close the dropdown
-          const escapeEvent = new KeyboardEvent('keydown', {
-            key: 'Escape',
-            code: 'Escape',
-            bubbles: true,
-            cancelable: true,
-          });
-          document.dispatchEvent(escapeEvent);
-
-          // Method 2: As a fallback, click outside the dropdown
-          setTimeout(() => {
-            // If dropdown is still open, click on the body element to close it
-            const dropdowns = document.querySelectorAll('[role="menu"], [data-radix-menu-content]');
-            if (dropdowns.length > 0) {
-              console.log('Dropdown still open, clicking outside to close it');
-              // Click in an empty area of the page
-              const clickEvent = new MouseEvent('click', {
-                bubbles: true,
-                cancelable: true,
-                view: window,
-              });
-              document.body.dispatchEvent(clickEvent);
-            }
-          }, 100);
-        } catch (closeError) {
-          console.warn('Error while trying to close dropdown:', closeError);
-          // Non-critical error, don't throw
-        }
-      }, 300); // Wait a bit after clicking the download button
-    } catch (error) {
-      console.error('Error finding or clicking download button:', error);
-      throw error; // Re-throw to allow caller to handle
+      this.isGitHubUpload = false;
     }
   }
 
@@ -747,68 +634,6 @@ export class UIManager {
       this.uploadButton.classList.toggle('disabled', !isValid);
       // Update other button states as needed
     }
-  }
-
-  private setupClickListeners() {
-    let clickSource: HTMLElement | null = null;
-
-    document.addEventListener(
-      'click',
-      async (e) => {
-        const target = e.target as HTMLElement;
-        clickSource = target;
-
-        if (target instanceof HTMLElement) {
-          const downloadElement = target.closest('a[download], button[download]');
-          if (downloadElement) {
-            const isFromGitHubButton = target.closest('[data-github-upload]') !== null;
-
-            if (isFromGitHubButton || this.isGitHubUpload) {
-              e.preventDefault();
-              e.stopPropagation();
-              await this.handleDownloadInterception();
-            }
-          }
-        }
-      },
-      true
-    );
-  }
-
-  private async handleDownloadInterception() {
-    const downloadLinks = document.querySelectorAll('a[download][href^="blob:"]');
-    for (const link of Array.from(downloadLinks)) {
-      const blobUrl = (link as HTMLAnchorElement).href;
-      await this.handleBlobUrl(blobUrl);
-    }
-  }
-
-  private async handleBlobUrl(blobUrl: string) {
-    try {
-      const response = await fetch(blobUrl);
-      if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
-
-      const blob = await response.blob();
-      const base64data = await this.blobToBase64(blob);
-
-      if (base64data) {
-        this.messageHandler.sendZipData(base64data);
-      }
-    } catch (error) {
-      console.error('Error processing blob:', error);
-    }
-  }
-
-  private blobToBase64(blob: Blob): Promise<string | null> {
-    return new Promise((resolve) => {
-      const reader = new FileReader();
-      reader.onload = () => {
-        const base64data = reader.result?.toString().split(',')[1] || null;
-        resolve(base64data);
-      };
-      reader.onerror = () => resolve(null);
-      reader.readAsDataURL(blob);
-    });
   }
 
   private setupMutationObserver() {
