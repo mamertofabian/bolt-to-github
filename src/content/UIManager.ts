@@ -1,6 +1,7 @@
 import type { UploadStatusState } from '$lib/types';
 import { SettingsService } from '../services/settings';
 import { DownloadService } from '../services/DownloadService';
+import { FilePreviewService, type FileChange } from '../services/FilePreviewService';
 import type { MessageHandler } from './MessageHandler';
 import UploadStatus from './UploadStatus.svelte';
 import Notification from './Notification.svelte';
@@ -26,10 +27,12 @@ export class UIManager {
   private isGitHubUpload = false;
   private messageHandler: MessageHandler;
   private downloadService: DownloadService;
+  private filePreviewService: FilePreviewService;
 
   private constructor(messageHandler: MessageHandler) {
     this.messageHandler = messageHandler;
     this.downloadService = new DownloadService();
+    this.filePreviewService = FilePreviewService.getInstance();
     this.initializeUI();
     this.setupMutationObserver();
   }
@@ -360,6 +363,22 @@ export class UIManager {
       await this.handleGitHubPushAction();
     });
 
+    // Show Changed Files option
+    const changedFilesButton = document.createElement('button');
+    changedFilesButton.className = 'dropdown-item flex items-center';
+    changedFilesButton.innerHTML = `
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+        <polyline points="14 2 14 8 20 8"></polyline>
+        <line x1="9" y1="15" x2="15" y2="15"></line>
+      </svg>
+      <span>Show Changed Files</span>
+    `;
+    changedFilesButton.addEventListener('click', async () => {
+      (dropdownContent as HTMLElement).style.display = 'none';
+      await this.handleShowChangedFiles();
+    });
+
     // Settings option
     const settingsButton = document.createElement('button');
     settingsButton.className = 'dropdown-item flex items-center';
@@ -377,6 +396,7 @@ export class UIManager {
     });
 
     dropdownContent.appendChild(pushButton);
+    dropdownContent.appendChild(changedFilesButton);
     dropdownContent.appendChild(settingsButton);
 
     return dropdownContent;
@@ -709,6 +729,137 @@ export class UIManager {
           childList: true,
           subtree: true,
         });
+      });
+    }
+  }
+
+  /**
+   * Handle the "Show Changed Files" button click
+   * This will download the project files (or use cache) and show changed files in the console
+   */
+  public async handleShowChangedFiles() {
+    try {
+      // Show notification that we're loading files
+      this.showNotification({
+        type: 'info',
+        message: 'Loading project files...',
+        duration: 3000
+      });
+
+      console.group('Changed Files');
+      console.log('Loading project files...');
+      
+      // Load the current project files (using cache if available)
+      const startTime = performance.now();
+      await this.filePreviewService.loadProjectFiles();
+      const loadTime = performance.now() - startTime;
+      console.log(`Files loaded in ${loadTime.toFixed(2)}ms`);
+      
+      // Get settings to determine if we should compare with GitHub
+      const { repoOwner, projectSettings } = await chrome.storage.sync.get([
+        'repoOwner',
+        'projectSettings',
+      ]);
+      
+      // Get the current project ID from the URL
+      const projectId = window.location.pathname.split('/').pop() || '';
+      
+      let changedFiles: Map<string, FileChange>;
+      
+      // Check if GitHub comparison is possible
+      if (repoOwner && projectSettings?.[projectId]) {
+        const { repoName, branch } = projectSettings[projectId];
+        const targetBranch = branch || 'main';
+        
+        console.log('Comparing with GitHub repository...');
+        console.log(`Repository: ${repoOwner}/${repoName}, Branch: ${targetBranch}`);
+        
+        // Use GitHub comparison
+        try {
+          // Import GitHubService dynamically to avoid circular dependencies
+          const { GitHubService } = await import('../services/GitHubService');
+          
+          // Create a new instance of GitHubService
+          const token = await chrome.storage.sync.get(['githubToken']);
+          const githubService = new GitHubService(token.githubToken);
+          
+          // Compare with GitHub
+          changedFiles = await this.filePreviewService.compareWithGitHub(
+            repoOwner,
+            repoName,
+            targetBranch,
+            githubService
+          );
+          
+          console.log('Successfully compared with GitHub repository');
+        } catch (githubError) {
+          console.warn('Failed to compare with GitHub, falling back to local comparison:', githubError);
+          // Fall back to local comparison
+          changedFiles = await this.filePreviewService.getChangedFiles();
+        }
+      } else {
+        console.log('No GitHub settings found, using local comparison only');
+        // Use local comparison only
+        changedFiles = await this.filePreviewService.getChangedFiles();
+      }
+      
+      // Count files by status
+      let addedCount = 0;
+      let modifiedCount = 0;
+      let unchangedCount = 0;
+      let deletedCount = 0;
+      
+      changedFiles.forEach(file => {
+        switch (file.status) {
+          case 'added': addedCount++; break;
+          case 'modified': modifiedCount++; break;
+          case 'unchanged': unchangedCount++; break;
+          case 'deleted': deletedCount++; break;
+        }
+      });
+      
+      // Log summary
+      console.log('Change Summary:');
+      console.log(`- Total files: ${changedFiles.size}`);
+      console.log(`- Added: ${addedCount}`);
+      console.log(`- Modified: ${modifiedCount}`);
+      console.log(`- Unchanged: ${unchangedCount}`);
+      console.log(`- Deleted: ${deletedCount}`);
+      
+      // Log details of changed files (added and modified)
+      if (addedCount > 0 || modifiedCount > 0) {
+        console.log('\nChanged Files:');
+        changedFiles.forEach((file, path) => {
+          if (file.status === 'added' || file.status === 'modified') {
+            console.log(`${file.status === 'added' ? '➕' : '✏️'} ${path}`);
+          }
+        });
+      }
+      
+      // Log deleted files if any
+      if (deletedCount > 0) {
+        console.log('\nDeleted Files:');
+        changedFiles.forEach((file, path) => {
+          if (file.status === 'deleted') {
+            console.log(`❌ ${path}`);
+          }
+        });
+      }
+      
+      console.groupEnd();
+      
+      // Show notification with summary
+      this.showNotification({
+        type: 'success',
+        message: `Found ${addedCount + modifiedCount} changed files. Check console for details.`,
+        duration: 5000
+      });
+    } catch (error) {
+      console.error('Error showing changed files:', error);
+      this.showNotification({
+        type: 'error',
+        message: `Failed to show changed files: ${error instanceof Error ? error.message : 'Unknown error'}`,
+        duration: 5000
       });
     }
   }

@@ -1,8 +1,9 @@
 import { DownloadService } from './DownloadService';
 import { CacheService } from './CacheService';
+import { GitHubComparisonService } from './GitHubComparisonService';
 import type { ProjectFiles } from '$lib/types';
 
-interface FileChange {
+export interface FileChange {
   path: string;
   status: 'added' | 'modified' | 'unchanged' | 'deleted';
   content: string;
@@ -25,6 +26,7 @@ export class FilePreviewService {
   private static instance: FilePreviewService | null = null;
   private downloadService: DownloadService;
   private cacheService: CacheService;
+  private githubComparisonService: GitHubComparisonService;
   private currentFiles: ProjectFiles | null = null;
   private previousFiles: ProjectFiles | null = null;
   private changedFiles: Map<string, FileChange> | null = null;
@@ -32,6 +34,7 @@ export class FilePreviewService {
   private constructor() {
     this.downloadService = new DownloadService();
     this.cacheService = CacheService.getInstance();
+    this.githubComparisonService = GitHubComparisonService.getInstance();
     
     // Register for cache refresh events
     this.cacheService.onCacheRefreshNeeded(this.handleCacheRefresh);
@@ -106,16 +109,18 @@ export class FilePreviewService {
     // Make sure current files are loaded
     await this.loadProjectFiles();
     
-    // If we don't have previous files, we can't calculate changes
+    // Create a map for the changes
+    const changes = new Map<string, FileChange>();
+    
+    // If we don't have previous files, this is the first load
     if (!this.previousFiles || !this.currentFiles) {
-      // Create a map of all current files as "added"
-      const changes = new Map<string, FileChange>();
-      
+      // If this is the first time loading files, mark all as unchanged
+      // This avoids showing all files as "added" on the first run
       if (this.currentFiles) {
         this.currentFiles.forEach((content, path) => {
           changes.set(path, {
             path,
-            status: 'added',
+            status: 'unchanged',
             content
           });
         });
@@ -124,9 +129,6 @@ export class FilePreviewService {
       this.changedFiles = changes;
       return changes;
     }
-    
-    // Calculate changes between previous and current files
-    const changes = new Map<string, FileChange>();
     
     // Check for modified and unchanged files
     this.currentFiles.forEach((content, path) => {
@@ -418,6 +420,47 @@ export class FilePreviewService {
     container.appendChild(diffContainer);
   }
   
+  /**
+   * Compare current files with GitHub repository files
+   * @param repoOwner GitHub repository owner
+   * @param repoName GitHub repository name
+   * @param targetBranch GitHub repository branch
+   * @param githubService Optional GitHubService instance to use
+   * @returns Map of file paths to change information
+   */
+  public async compareWithGitHub(
+    repoOwner: string,
+    repoName: string,
+    targetBranch: string,
+    githubService?: any // Using any temporarily to avoid circular dependency
+  ): Promise<Map<string, FileChange>> {
+    // Make sure current files are loaded
+    await this.loadProjectFiles();
+    
+    if (!this.currentFiles) {
+      throw new Error('No files loaded. Call loadProjectFiles first.');
+    }
+    
+    // If a GitHub service is provided, set it on the comparison service
+    if (githubService) {
+      this.githubComparisonService.setGitHubService(githubService);
+    }
+    
+    // Use the GitHub comparison service to compare files
+    const result = await this.githubComparisonService.compareWithGitHub(
+      this.currentFiles,
+      repoOwner,
+      repoName,
+      targetBranch,
+      (message, progress) => {
+        console.log(`GitHub comparison: ${message} (${progress}%)`);
+      }
+    );
+    
+    // Return just the changes map
+    return result.changes;
+  }
+
   /**
    * Clean up resources when the service is no longer needed
    */

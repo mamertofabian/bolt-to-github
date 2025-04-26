@@ -5,12 +5,18 @@ import ignore from 'ignore';
 import type { ProcessingStatus, UploadStatusState } from '$lib/types';
 import { RateLimitHandler } from './RateLimitHandler';
 import { Queue } from '../lib/Queue';
+import { GitHubComparisonService } from './GitHubComparisonService';
 
 export class ZipHandler {
+  private githubComparisonService: GitHubComparisonService;
+  
   constructor(
     private githubService: GitHubService,
     private sendStatus: (status: UploadStatusState) => void
-  ) {}
+  ) {
+    this.githubComparisonService = GitHubComparisonService.getInstance();
+    this.githubComparisonService.setGitHubService(githubService);
+  }
 
   private updateStatus = async (
     status: ProcessingStatus,
@@ -252,7 +258,7 @@ export class ZipHandler {
     targetBranch: string,
     commitMessage: string
   ) {
-    // Get the current commit SHA
+    // Get the current commit SHA for reference
     const baseRef = await this.githubService.request(
       'GET',
       `/repos/${repoOwner}/${repoName}/git/refs/heads/${targetBranch}`
@@ -265,38 +271,36 @@ export class ZipHandler {
     );
     const baseTreeSha = baseCommit.tree.sha;
 
-    // Fetch the full tree with content
+    // Use the GitHubComparisonService to determine which files have changed
     await this.updateStatus('uploading', 30, 'Analyzing repository changes...');
-    const existingTree = await this.githubService.request(
-      'GET',
-      `/repos/${repoOwner}/${repoName}/git/trees/${baseTreeSha}?recursive=1`
+    
+    // Create a progress callback for the comparison service
+    const progressCallback = (message: string, progress: number) => {
+      // Only log to console, don't update UI status for intermediate steps
+      console.log(`GitHub comparison: ${message} (${progress}%)`);
+    };
+    
+    // Compare local files with GitHub repository
+    const comparisonResult = await this.githubComparisonService.compareWithGitHub(
+      processedFiles,
+      repoOwner,
+      repoName,
+      targetBranch,
+      progressCallback
     );
-
-    // Create a map of existing file paths to their SHAs
-    const existingFiles = new Map<string, string>();
-    if (existingTree.tree) {
-      existingTree.tree.forEach((item: { path: string; sha: string; type: string }) => {
-        if (item.type === 'blob') {
-          existingFiles.set(item.path, item.sha);
-        }
-      });
-    }
-
-    // Determine which files have changed
+    
+    // Get the repository data and changes
+    const { changes, repoData } = comparisonResult;
+    const { existingFiles } = repoData;
+    
+    // Extract changed files (added or modified) from the comparison result
     const changedFiles = new Map<string, string>();
-    for (const [path, content] of processedFiles.entries()) {
-      // If file doesn't exist in repo, it's changed
-      if (!existingFiles.has(path)) {
-        changedFiles.set(path, content);
-      } else {
-        // For existing files, compare content hash
-        const contentHash = await this.calculateGitBlobHash(content);
-        if (existingFiles.get(path) !== contentHash) {
-          changedFiles.set(path, content);
-        }
+    changes.forEach((fileChange, path) => {
+      if (fileChange.status === 'added' || fileChange.status === 'modified') {
+        changedFiles.set(path, fileChange.content);
       }
-    }
-
+    });
+    
     // If no files have changed, skip the commit process
     if (changedFiles.size === 0) {
       await this.updateStatus(
@@ -306,6 +310,7 @@ export class ZipHandler {
       );
       return;
     }
+    
     await this.updateStatus(
       'uploading',
       40,
