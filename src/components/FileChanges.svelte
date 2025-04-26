@@ -4,7 +4,6 @@
 
   // Props
   export let changes: Map<string, FileChange>;
-  export let onClose: () => void = () => {};
 
   // Derived state
   $: addedFiles = Array.from(changes.values()).filter(file => file.status === 'added');
@@ -48,20 +47,7 @@
     return path.replace(/^project\//, '');
   }
 
-  onMount(() => {
-    // Add keyboard shortcut to close with Escape key
-    const handleKeydown = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') {
-        onClose();
-      }
-    };
-    
-    window.addEventListener('keydown', handleKeydown);
-    
-    return () => {
-      window.removeEventListener('keydown', handleKeydown);
-    };
-  });
+  // No need for keyboard shortcuts as the modal handles Escape key
 </script>
 
 <div class="file-changes-container">
@@ -70,12 +56,7 @@
     <div class="file-changes-summary">
       <span class="file-count">{changedCount} changed files (of {totalCount} total)</span>
     </div>
-    <button class="close-button" on:click={onClose}>
-      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-        <line x1="18" y1="6" x2="6" y2="18"></line>
-        <line x1="6" y1="6" x2="18" y2="18"></line>
-      </svg>
-    </button>
+
   </div>
   
   <div class="file-changes-tabs">
@@ -232,24 +213,6 @@
     font-size: 14px;
     color: #aaa;
     margin-left: auto;
-    margin-right: 16px;
-  }
-  
-  .close-button {
-    background: transparent;
-    border: none;
-    color: #aaa;
-    cursor: pointer;
-    padding: 4px;
-    border-radius: 4px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-  }
-  
-  .close-button:hover {
-    color: #fff;
-    background-color: rgba(255, 255, 255, 0.1);
   }
   
   .file-changes-tabs {

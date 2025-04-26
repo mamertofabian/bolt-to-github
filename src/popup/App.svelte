@@ -386,12 +386,23 @@
   </Card>
   <Modal show={showFileChangesModal} title="File Changes">
     <div class="space-y-4 h-[400px]">
+      <div class="flex justify-between items-center mb-4">
+        <h3 class="text-lg font-medium text-slate-200">Changes detected in your project</h3>
+        <Button
+          variant="outline"
+          size="sm"
+          class="border-slate-700 hover:bg-slate-800"
+          on:click={() => showFileChangesModal = false}
+        >
+          Close
+        </Button>
+      </div>
       {#if fileChanges}
-        <div class="h-[350px]">
-          <FileChanges changes={fileChanges} onClose={() => showFileChangesModal = false} />
+        <div class="h-[320px] overflow-y-auto">
+          <FileChanges changes={fileChanges} />
         </div>
       {:else}
-        <div class="flex items-center justify-center h-[350px]">
+        <div class="flex items-center justify-center h-[320px]">
           <p class="text-slate-400">No file changes to display</p>
         </div>
       {/if}
