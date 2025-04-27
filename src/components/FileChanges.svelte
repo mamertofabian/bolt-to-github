@@ -51,27 +51,24 @@
 </script>
 
 <div class="file-changes-container">
-  <div class="file-changes-header">
-    <h2>File Changes</h2>
-    <div class="file-changes-summary">
-      <span class="file-count">{changedCount} changed files (of {totalCount} total)</span>
-    </div>
-
-  </div>
-  
   <div class="file-changes-tabs">
-    <button 
-      class="tab-button {activeTab === 'changed' ? 'active' : ''}"
-      on:click={() => activeTab = 'changed'}
-    >
-      Changed ({changedCount})
-    </button>
-    <button 
-      class="tab-button {activeTab === 'all' ? 'active' : ''}"
-      on:click={() => activeTab = 'all'}
-    >
-      All Files ({totalCount})
-    </button>
+    <div class="file-changes-summary">
+      <span class="file-count text-xs">{changedCount} changed files (of {totalCount} total)</span>
+    </div>
+    <div class="tabs-wrapper">
+      <button 
+        class="tab-button {activeTab === 'changed' ? 'active' : ''}"
+        on:click={() => activeTab = 'changed'}
+      >
+        Changed ({changedCount})
+      </button>
+      <button 
+        class="tab-button {activeTab === 'all' ? 'active' : ''}"
+        on:click={() => activeTab = 'all'}
+      >
+        All Files ({totalCount})
+      </button>
+    </div>
   </div>
   
   <div class="file-changes-content">
@@ -186,52 +183,45 @@
 
 <style>
   .file-changes-container {
-    background-color: #1a1a1a;
-    color: #ffffff;
-    border-radius: 8px;
+    background-color: #111827;
+    color: #e5e7eb;
+    border-radius: 4px;
     display: flex;
     flex-direction: column;
     overflow: hidden;
     height: 100%;
   }
   
-  .file-changes-header {
-    padding: 16px;
-    border-bottom: 1px solid #333;
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-  }
-  
-  .file-changes-header h2 {
-    margin: 0;
-    font-size: 18px;
-    font-weight: 600;
-  }
-  
   .file-changes-summary {
-    font-size: 14px;
-    color: #aaa;
-    margin-left: auto;
+    font-size: 0.75rem;
+    color: #94a3b8;
+    padding: 0.5rem 0.75rem;
   }
   
   .file-changes-tabs {
     display: flex;
-    border-bottom: 1px solid #333;
+    flex-direction: column;
+    border-bottom: 1px solid #1e293b;
+  }
+  
+  .tabs-wrapper {
+    display: flex;
   }
   
   .tab-button {
-    padding: 12px 16px;
+    padding: 0.5rem 0.75rem;
     background: transparent;
     border: none;
-    color: #aaa;
+    color: #94a3b8;
     cursor: pointer;
-    font-size: 14px;
+    font-size: 0.75rem;
     position: relative;
+    transition: all 0.2s ease;
   }
   
   .tab-button.active {
-    color: #fff;
+    color: #e5e7eb;
+    background-color: #1e293b;
   }
   
   .tab-button.active::after {
@@ -241,30 +231,31 @@
     left: 0;
     right: 0;
     height: 2px;
-    background-color: #4a9eff;
+    background-color: #3b82f6;
   }
   
   .tab-button:hover {
-    color: #fff;
-    background-color: rgba(255, 255, 255, 0.05);
+    color: #e5e7eb;
+    background-color: #1e293b;
   }
   
   .file-changes-content {
-    padding: 16px;
+    padding: 0.5rem 0.75rem;
     overflow-y: auto;
     flex: 1;
+    background-color: #111827;
   }
   
   .file-section {
-    margin-bottom: 24px;
+    margin-bottom: 0.75rem;
   }
   
   .file-section h3 {
-    font-size: 14px;
-    font-weight: 600;
-    margin: 0 0 8px 0;
-    padding-bottom: 4px;
-    border-bottom: 1px solid #333;
+    font-size: 0.75rem;
+    font-weight: 500;
+    margin: 0 0 0.25rem 0;
+    padding-bottom: 0.25rem;
+    border-bottom: 1px solid #1e293b;
   }
   
   .file-list {
@@ -276,19 +267,21 @@
   .file-item {
     display: flex;
     align-items: center;
-    padding: 4px 0;
-    font-size: 13px;
+    padding: 0.125rem 0;
+    font-size: 0.75rem;
   }
   
   .file-icon {
-    margin-right: 8px;
-    width: 16px;
+    margin-right: 0.5rem;
+    min-width: 1rem;
     display: inline-flex;
     justify-content: center;
   }
   
   .file-path {
     word-break: break-all;
+    font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+    font-size: 0.7rem;
   }
   
   .empty-state {
@@ -296,21 +289,22 @@
     flex-direction: column;
     align-items: center;
     justify-content: center;
-    padding: 32px 16px;
-    color: #aaa;
+    padding: 1rem;
+    color: #94a3b8;
     text-align: center;
+    font-size: 0.75rem;
   }
   
   .show-unchanged-toggle {
-    margin-bottom: 16px;
-    font-size: 13px;
-    color: #aaa;
+    margin-bottom: 0.75rem;
+    font-size: 0.75rem;
+    color: #94a3b8;
     display: flex;
     align-items: center;
   }
   
   .show-unchanged-toggle input {
-    margin-right: 8px;
+    margin-right: 0.5rem;
   }
   
   .text-green-500 {
@@ -326,6 +320,6 @@
   }
   
   .text-gray-500 {
-    color: #9ca3af;
+    color: #64748b;
   }
 </style>

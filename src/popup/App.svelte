@@ -7,7 +7,6 @@
     CardHeader,
     CardTitle,
   } from '$lib/components/ui/card';
-  import Modal from '$lib/components/ui/modal/Modal.svelte';
   import { STORAGE_KEY } from '../background/TempRepoManager';
   import { Tabs, TabsContent } from '$lib/components/ui/tabs';
   import Header from '$lib/components/Header.svelte';
@@ -22,8 +21,9 @@
   import { Button } from '$lib/components/ui/button';
   import Help from '$lib/components/Help.svelte';
   import ProjectStatus from '$lib/components/ProjectStatus.svelte';
-  import FileChanges from '../components/FileChanges.svelte';
   import type { FileChange } from '../services/FilePreviewService';
+  import FileChangesModal from './components/FileChangesModal.svelte';
+  import TempRepoModal from './components/TempRepoModal.svelte';
 
   let githubToken: string = '';
   let repoOwner = '';
@@ -396,91 +396,20 @@
       {/if}
     </CardContent>
   </Card>
-  <Modal show={showFileChangesModal} title="File Changes">
-    <div class="space-y-4 h-[400px]">
-      <div class="flex justify-between items-center mb-4">
-        <h3 class="text-lg font-medium text-slate-200">Changes detected in your project</h3>
-        <Button
-          variant="outline"
-          size="sm"
-          class="border-slate-700 hover:bg-slate-800"
-          on:click={() => showFileChangesModal = false}
-        >
-          Close
-        </Button>
-      </div>
-      {#if fileChanges}
-        <div class="h-[320px] overflow-y-auto">
-          <FileChanges changes={fileChanges} />
-        </div>
-      {:else}
-        <div class="flex items-center justify-center h-[320px]">
-          <p class="text-slate-400">No file changes to display</p>
-        </div>
-      {/if}
-    </div>
-  </Modal>
+  <FileChangesModal 
+    bind:show={showFileChangesModal} 
+    bind:fileChanges={fileChanges} 
+  />
 
-  <Modal show={showTempRepoModal} title="Private Repository Import">
-    <div class="space-y-4">
-      <p class="text-amber-300 font-medium">
-        It looks like you just imported a private GitHub repository. Would you like to:
-      </p>
-
-      <div class="space-y-2">
-        {#if !hasDeletedTempRepo}
-          <div class="space-y-2">
-            <p class="text-sm text-slate-400">1. Clean up the temporary repository:</p>
-            <Button
-              variant="outline"
-              class="w-full border-slate-700 hover:bg-slate-800"
-              on:click={handleDeleteTempRepo}
-            >
-              Delete the temporary public repository now
-            </Button>
-          </div>
-        {:else}
-          <div
-            class="text-sm text-green-400 p-2 border border-green-800 bg-green-900/20 rounded-md"
-          >
-            ✓ Temporary repository has been deleted
-          </div>
-        {/if}
-
-        {#if !hasUsedTempRepoName}
-          <div class="space-y-2">
-            <p class="text-sm text-slate-400">2. Configure repository name:</p>
-            <Button
-              variant="outline"
-              class="w-full border-slate-700 hover:bg-slate-800"
-              on:click={handleUseTempRepoName}
-            >
-              Use original repository name ({tempRepoData?.originalRepo})
-            </Button>
-          </div>
-        {:else}
-          <div
-            class="text-sm text-green-400 p-2 border border-green-800 bg-green-900/20 rounded-md"
-          >
-            ✓ Repository name has been configured
-          </div>
-        {/if}
-
-        <Button
-          variant="ghost"
-          class="w-full text-slate-400 hover:text-slate-300"
-          on:click={() => (showTempRepoModal = false)}
-        >
-          Dismiss
-        </Button>
-      </div>
-
-      <p class="text-sm text-slate-400">
-        Note: The temporary repository will be automatically deleted in 1 minute if not deleted
-        manually.
-      </p>
-    </div>
-  </Modal>
+  <TempRepoModal 
+    bind:show={showTempRepoModal} 
+    bind:tempRepoData={tempRepoData} 
+    bind:hasDeletedTempRepo={hasDeletedTempRepo} 
+    bind:hasUsedTempRepoName={hasUsedTempRepoName} 
+    onDeleteTempRepo={handleDeleteTempRepo} 
+    onUseTempRepoName={handleUseTempRepoName} 
+    onDismiss={() => (showTempRepoModal = false)} 
+  />
 </main>
 
 <style>
