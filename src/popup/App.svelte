@@ -101,7 +101,7 @@
       console.log('Found pending file changes:', pendingChanges.pendingFileChanges);
       fileChanges = new Map(Object.entries(pendingChanges.pendingFileChanges));
       showFileChangesModal = true;
-      
+
       // Clear the pending changes
       await chrome.storage.local.remove('pendingFileChanges');
       console.log('Cleared pending file changes from storage');
@@ -163,8 +163,13 @@
         uploadMessage = message.message || '';
       } else if (message.type === 'FILE_CHANGES') {
         console.log('Received file changes:', message.changes);
-        fileChanges = new Map(Object.entries(message.changes));
+        // Store file changes in local storage for future access
+        const changesObject = message.changes;
+        chrome.storage.local.set({ storedFileChanges: changesObject });
+        fileChanges = new Map(Object.entries(changesObject));
         showFileChangesModal = true; // Show the file changes modal
+      } else if (message.type === 'OPEN_FILE_CHANGES') {
+        showStoredFileChanges();
       }
     });
 
@@ -177,6 +182,16 @@
       tempRepoData = tempRepos[tempRepos.length - 1];
       showTempRepoModal = true;
     }
+
+    // Add listener to clear file changes when popup closes
+    window.addEventListener('unload', async () => {
+      try {
+        await chrome.storage.local.remove('storedFileChanges');
+        console.log('Cleared stored file changes on popup close');
+      } catch (error) {
+        console.error('Error clearing stored file changes:', error);
+      }
+    });
   });
 
   async function handleDeleteTempRepo() {
@@ -263,6 +278,59 @@
   function handleSwitchTab(event: CustomEvent<string>) {
     activeTab = event.detail;
   }
+
+  /**
+   * Shows the file changes modal with stored changes or fetches them if they don't exist
+   */
+  async function showStoredFileChanges() {
+    try {
+      // First check if we already have file changes in memory
+      if (fileChanges && fileChanges.size > 0) {
+        showFileChangesModal = true;
+        return;
+      }
+
+      // Try to get file changes from storage
+      const result = await chrome.storage.local.get('storedFileChanges');
+      if (result.storedFileChanges) {
+        console.log('Found stored file changes:', result.storedFileChanges);
+        fileChanges = new Map(Object.entries(result.storedFileChanges));
+        showFileChangesModal = true;
+        return;
+      }
+
+      // If we don't have file changes in storage, request them from the content script
+      console.log('No stored file changes, requesting from content script...');
+      // Send message to the active tab to request file changes
+      const tabs = await chrome.tabs.query({ active: true, currentWindow: true });
+      if (tabs[0]?.id && isBoltSite) {
+        chrome.tabs.sendMessage(tabs[0].id, { action: 'REQUEST_FILE_CHANGES' });
+        // Let the user know what's happening
+        status = 'Calculating file changes...';
+        hasStatus = true;
+        setTimeout(() => {
+          status = '';
+          hasStatus = false;
+        }, 5000);
+      } else {
+        console.error('No active Bolt tab found or not on Bolt site');
+        status = 'Cannot show file changes: Not on a Bolt project page';
+        hasStatus = true;
+        setTimeout(() => {
+          status = '';
+          hasStatus = false;
+        }, 3000);
+      }
+    } catch (error) {
+      console.error('Error showing file changes:', error);
+      status = `Error retrieving file changes: ${error instanceof Error ? error.message : 'Unknown error'}`;
+      hasStatus = true;
+      setTimeout(() => {
+        status = '';
+        hasStatus = false;
+      }, 3000);
+    }
+  }
 </script>
 
 <main class="w-[400px] p-3 bg-slate-950 text-slate-50">
@@ -288,13 +356,6 @@
           <Header />
 
           <TabsContent value="home">
-            <button
-              class="w-full mb-3 px-4 py-2 bg-slate-700 hover:bg-slate-600 rounded-md text-slate-200 transition-colors"
-              on:click={() => (activeTab = 'projects')}
-            >
-              View All Projects
-            </button>
-
             {#if !isSettingsValid || !parsedProjectId}
               <StatusAlert on:switchTab={handleSwitchTab} />
             {:else}
@@ -306,6 +367,7 @@
                 {branch}
                 token={githubToken}
                 on:switchTab={handleSwitchTab}
+                on:showFileChanges={showStoredFileChanges}
               />
             {/if}
 
@@ -396,19 +458,16 @@
       {/if}
     </CardContent>
   </Card>
-  <FileChangesModal 
-    bind:show={showFileChangesModal} 
-    bind:fileChanges={fileChanges} 
-  />
+  <FileChangesModal bind:show={showFileChangesModal} bind:fileChanges />
 
-  <TempRepoModal 
-    bind:show={showTempRepoModal} 
-    bind:tempRepoData={tempRepoData} 
-    bind:hasDeletedTempRepo={hasDeletedTempRepo} 
-    bind:hasUsedTempRepoName={hasUsedTempRepoName} 
-    onDeleteTempRepo={handleDeleteTempRepo} 
-    onUseTempRepoName={handleUseTempRepoName} 
-    onDismiss={() => (showTempRepoModal = false)} 
+  <TempRepoModal
+    bind:show={showTempRepoModal}
+    bind:tempRepoData
+    bind:hasDeletedTempRepo
+    bind:hasUsedTempRepoName
+    onDeleteTempRepo={handleDeleteTempRepo}
+    onUseTempRepoName={handleUseTempRepoName}
+    onDismiss={() => (showTempRepoModal = false)}
   />
 </main>
 

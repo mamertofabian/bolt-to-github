@@ -11,6 +11,7 @@
   export let token: string;
 
   let showSettingsModal = false;
+  let hasFileChanges = false;
 
   let isLoading = {
     repoStatus: true,
@@ -66,7 +67,21 @@
     }
   };
 
+  // Check if there are stored file changes
+  async function checkStoredFileChanges() {
+    try {
+      const result = await chrome.storage.local.get(['storedFileChanges', 'pendingFileChanges']);
+      hasFileChanges = !!(result.storedFileChanges || result.pendingFileChanges);
+    } catch (error) {
+      console.error('Error checking for stored file changes:', error);
+      hasFileChanges = false;
+    }
+  }
+
   onMount(() => {
+    // Check for stored file changes initially
+    checkStoredFileChanges();
+
     // Set up storage change listener
     const storageChangeListener = (changes: any, areaName: string) => {
       console.log('Storage changes detected in ProjectStatus:', changes, 'in area:', areaName);
@@ -91,6 +106,11 @@
           // Refresh the project status
           getProjectStatus();
         }
+      }
+
+      // Update hasFileChanges when storage changes
+      if (areaName === 'local' && (changes.storedFileChanges || changes.pendingFileChanges)) {
+        checkStoredFileChanges();
       }
     };
 
@@ -122,6 +142,13 @@
     event.stopPropagation();
     // Send a message to trigger the GitHub push action
     chrome.runtime.sendMessage({ action: 'PUSH_TO_GITHUB' });
+  }
+
+  function viewFileChanges(event: MouseEvent | KeyboardEvent) {
+    event.stopPropagation();
+    // Instead of sending a message directly, dispatch an event to the parent component
+    // This will allow App.svelte to call its showStoredFileChanges function
+    dispatch('showFileChanges');
   }
 </script>
 
@@ -175,31 +202,80 @@
           {/if}
         </span>
       </div>
-      
-      <!-- Button row -->
-      <div class="flex gap-3">
+
+      <!-- Icon-only buttons with tooltips -->
+      <div class="flex justify-end gap-2">
+        <!-- Open in GitHub button -->
         <button
-          class="flex-1 text-sm border border-slate-700 rounded px-3 py-1.5 text-slate-400 hover:bg-slate-800 hover:text-slate-300 transition-colors whitespace-nowrap"
+          class="tooltip-container w-8 h-8 flex items-center justify-center border border-slate-700 rounded-full text-slate-400 hover:bg-slate-800 hover:text-slate-300 transition-colors"
           on:click|stopPropagation={openGitHub}
           disabled={isLoading.repoStatus || !repoExists}
+          aria-label="Open in GitHub"
         >
-          {isLoading.repoStatus
-            ? 'Loading...'
-            : repoExists
-              ? 'Open GitHub'
-              : 'Repo to be created'}
+          <svg
+            width="16"
+            height="16"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="2"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+          >
+            <path
+              d="M9 19c-5 1.5-5-2.5-7-3m14 6v-3.87a3.37 3.37 0 0 0-.94-2.61c3.14-.35 6.44-1.54 6.44-7A5.44 5.44 0 0 0 20 4.77 5.07 5.07 0 0 0 19.91 1S18.73.65 16 2.48a13.38 13.38 0 0 0-7 0C6.27.65 5.09 1 5.09 1A5.07 5.07 0 0 0 5 4.77a5.44 5.44 0 0 0-1.5 3.78c0 5.42 3.3 6.61 6.44 7A3.37 3.37 0 0 0 9 18.13V22"
+            ></path>
+          </svg>
+          <span class="tooltip">Open in GitHub</span>
         </button>
+
+        <!-- View File Changes button - only show if there are changes -->
+        {#if hasFileChanges}
+          <button
+            class="tooltip-container w-8 h-8 flex items-center justify-center border border-slate-700 rounded-full text-slate-400 hover:bg-slate-800 hover:text-slate-300 transition-colors"
+            on:click|stopPropagation={viewFileChanges}
+            aria-label="View File Changes"
+          >
+            <svg
+              width="16"
+              height="16"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+            >
+              <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+              <polyline points="14 2 14 8 20 8"></polyline>
+              <line x1="9" y1="15" x2="15" y2="15"></line>
+            </svg>
+            <span class="tooltip">View File Changes</span>
+          </button>
+        {/if}
+
+        <!-- Push to GitHub button -->
         <button
-          class="flex-1 text-sm border border-green-700 bg-green-900/30 rounded px-3 py-1.5 text-green-400 hover:bg-green-800/50 hover:text-green-300 transition-colors flex items-center justify-center gap-1 whitespace-nowrap"
+          class="tooltip-container w-8 h-8 flex items-center justify-center border border-green-700 bg-green-900/30 rounded-full text-green-400 hover:bg-green-800/50 hover:text-green-300 transition-colors"
           on:click|stopPropagation={pushToGitHub}
           disabled={isLoading.repoStatus}
+          aria-label="Push to GitHub"
         >
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-            <path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4" />
-            <polyline points="10 17 15 12 10 7" />
-            <line x1="15" y1="12" x2="3" y2="12" />
+          <svg
+            width="16"
+            height="16"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="2"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+          >
+            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+            <polyline points="17 8 12 3 7 8" />
+            <line x1="12" y1="3" x2="12" y2="15" />
           </svg>
-          Push to GitHub
+          <span class="tooltip">Push to GitHub</span>
         </button>
       </div>
     </div>
@@ -225,3 +301,47 @@
     }}
   />
 {/if}
+
+<style>
+  /* Tooltip styles */
+  .tooltip-container {
+    position: relative;
+  }
+
+  .tooltip {
+    visibility: hidden;
+    position: absolute;
+    top: -30px;
+    left: 50%;
+    transform: translateX(-50%);
+    background-color: #1a1a1a;
+    color: #f0f0f0;
+    text-align: center;
+    border-radius: 4px;
+    padding: 3px 8px;
+    font-size: 11px;
+    white-space: nowrap;
+    z-index: 10;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+    opacity: 0;
+    transition:
+      opacity 0.2s,
+      visibility 0.2s;
+  }
+
+  .tooltip::before {
+    content: '';
+    position: absolute;
+    bottom: -5px;
+    left: 50%;
+    transform: translateX(-50%);
+    border-width: 5px 5px 0 5px;
+    border-style: solid;
+    border-color: #1a1a1a transparent transparent transparent;
+  }
+
+  .tooltip-container:hover .tooltip {
+    visibility: visible;
+    opacity: 1;
+  }
+</style>

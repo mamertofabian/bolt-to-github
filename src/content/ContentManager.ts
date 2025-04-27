@@ -169,6 +169,18 @@ export class ContentManager {
     chrome.runtime.onConnect.addListener(() => {
       this.reinitialize();
     });
+
+    // Listen for direct messages from the popup
+    chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
+      if (message.action === 'REQUEST_FILE_CHANGES') {
+        console.log('Received request for file changes from popup');
+        // Trigger the file changes calculation and display
+        this.uiManager?.handleShowChangedFiles();
+        // Acknowledge receipt
+        sendResponse({ success: true });
+      }
+      return true; // Keep the message channel open for async response
+    });
   }
 
   private handleBackgroundMessage(message: Message): void {
