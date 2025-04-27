@@ -190,12 +190,13 @@ export class BackgroundService {
           
         case 'OPEN_FILE_CHANGES':
           console.log('Opening file changes popup');
-          // Forward the file changes data to the popup
-          chrome.runtime.sendMessage({
-            type: 'FILE_CHANGES',
-            changes: message.data?.changes || {}
+          // Store the file changes in local storage for the popup to retrieve
+          await chrome.storage.local.set({
+            'pendingFileChanges': message.data?.changes || {}
           });
-          // Open the popup
+          console.log('Stored file changes in local storage');
+          
+          // Open the popup - it will check for pendingFileChanges when it loads
           chrome.action.openPopup();
           break;
 

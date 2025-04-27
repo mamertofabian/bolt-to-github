@@ -95,6 +95,18 @@
     // Connect to background service
     port = chrome.runtime.connect({ name: 'popup' });
 
+    // Check for pending file changes
+    const pendingChanges = await chrome.storage.local.get('pendingFileChanges');
+    if (pendingChanges.pendingFileChanges) {
+      console.log('Found pending file changes:', pendingChanges.pendingFileChanges);
+      fileChanges = new Map(Object.entries(pendingChanges.pendingFileChanges));
+      showFileChangesModal = true;
+      
+      // Clear the pending changes
+      await chrome.storage.local.remove('pendingFileChanges');
+      console.log('Cleared pending file changes from storage');
+    }
+
     githubSettings = (await chrome.storage.sync.get([
       'githubToken',
       'repoOwner',
