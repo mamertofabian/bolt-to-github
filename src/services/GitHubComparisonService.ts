@@ -1,6 +1,7 @@
 import { GitHubService } from './GitHubService';
 import type { FileChange } from './FilePreviewService';
 import type { ProjectFiles } from '$lib/types';
+import { calculateGitBlobHash, processFilesWithGitignore } from '$lib/fileUtils';
 
 /**
  * Service for comparing local files with GitHub repository files
@@ -107,103 +108,92 @@ export class GitHubComparisonService {
       if (content === '' || originalPath.endsWith('/')) {
         continue;
       }
-      
+
       // Normalize path by removing 'project/' prefix if it exists
       const path = originalPath.startsWith('project/') ? originalPath.substring(8) : originalPath;
-      
+
       if (!existingFiles.has(path)) {
         // File doesn't exist in GitHub repo - it's new
         changes.set(originalPath, {
           path: originalPath,
           status: 'added',
-          content
+          content,
         });
       } else {
         // File exists in GitHub repo - check if it's changed
-        const contentHash = await this.calculateGitBlobHash(content);
+        const contentHash = await calculateGitBlobHash(content);
         if (existingFiles.get(path) !== contentHash) {
           // Content has changed
           changes.set(originalPath, {
             path: originalPath,
             status: 'modified',
-            content
+            content,
           });
         } else {
           // File is unchanged
           changes.set(originalPath, {
             path: originalPath,
             status: 'unchanged',
-            content
+            content,
           });
         }
       }
+    }
+
+    // Get files that would be ignored by .gitignore
+    let ignoredPaths: Set<string> = new Set();
+    
+    try {
+      // Create a map with all GitHub paths to test against gitignore
+      const allPathsMap = new Map<string, string>();
+      for (const path of existingFiles.keys()) {
+        allPathsMap.set(path, ''); // Content doesn't matter, just need the path
+      }
+      
+      // Process with gitignore to get the non-ignored files
+      const nonIgnoredFiles = await processFilesWithGitignore(allPathsMap);
+      
+      // Find which paths were ignored (in existingFiles but not in nonIgnoredFiles)
+      ignoredPaths = new Set(
+        Array.from(existingFiles.keys()).filter(path => {
+          const normalizedPath = path.startsWith('project/') ? path.slice(8) : path;
+          return !nonIgnoredFiles.has(normalizedPath);
+        })
+      );
+    } catch (error) {
+      console.error('Error determining ignored files:', error);
     }
 
     // Check for deleted files (files in GitHub but not in local files)
     for (const path of existingFiles.keys()) {
       // Check if the file exists in local files (with or without project/ prefix)
       const normalizedPath = `project/${path}`;
+      
       if (!localFiles.has(path) && !localFiles.has(normalizedPath)) {
+        // Skip files that are intentionally ignored by .gitignore
+        if (ignoredPaths.has(path)) {
+          continue;
+        }
+        
+        // Only mark as deleted if the file is not ignored
         changes.set(path, {
           path,
           status: 'deleted',
-          content: ''
+          content: '',
         });
       }
     }
 
     notifyProgress('Comparison complete', 100);
-    
+
     // Return both the changes and repository data
     return {
       changes,
       repoData: {
         baseTreeSha,
         baseSha,
-        existingFiles
-      }
+        existingFiles,
+      },
     };
-  }
-
-  /**
-   * Calculate the Git blob hash for a string content
-   * GitHub calculates blob SHA using the format: "blob " + content.length + "\0" + content
-   */
-  private async calculateGitBlobHash(content: string): Promise<string> {
-    const encoder = new TextEncoder();
-
-    // Prepare the prefix string once
-    const prefixStr = `blob ${content.length}\0`;
-
-    // Calculate total buffer size needed up front
-    const totalLength = new TextEncoder().encode(prefixStr + content).length;
-
-    // Encode directly into a single buffer
-    let bytes: Uint8Array;
-
-    // Modern browsers support encodeInto for better performance
-    if (typeof encoder.encodeInto === 'function') {
-      bytes = new Uint8Array(totalLength);
-      const prefixResult = encoder.encodeInto(prefixStr, bytes);
-      if (prefixResult && typeof prefixResult.written === 'number') {
-        encoder.encodeInto(content, bytes.subarray(prefixResult.written));
-      }
-    } else {
-      // Fallback for browsers without encodeInto
-      const prefixBytes = encoder.encode(prefixStr);
-      const contentBytes = encoder.encode(content);
-
-      bytes = new Uint8Array(prefixBytes.length + contentBytes.length);
-      bytes.set(prefixBytes);
-      bytes.set(contentBytes, prefixBytes.length);
-    }
-
-    // Calculate SHA-1 hash
-    const hashBuffer = await crypto.subtle.digest('SHA-1', bytes);
-
-    // Convert to hex string
-    return Array.from(new Uint8Array(hashBuffer))
-      .map((byte) => byte.toString(16).padStart(2, '0'))
-      .join('');
   }
 }
