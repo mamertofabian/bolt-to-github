@@ -420,6 +420,8 @@ export class ZipHandler {
 
       let fileCount = 0;
       for (const [path, content] of batch.entries()) {
+        // Strip the 'project/' prefix from file paths
+        const normalizedPath = path.startsWith('project/') ? path.substring('project/'.length) : path;
         await queue.add(async () => {
           let success = false;
           let attempts = 0;
@@ -440,7 +442,7 @@ export class ZipHandler {
               );
 
               results.push({
-                path,
+                path: normalizedPath,
                 mode: '100644',
                 type: 'blob',
                 sha: blobData.sha,
