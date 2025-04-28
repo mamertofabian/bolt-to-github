@@ -162,10 +162,11 @@
         uploadProgress = message.progress || 0;
         uploadMessage = message.message || '';
       } else if (message.type === 'FILE_CHANGES') {
-        console.log('Received file changes:', message.changes);
-        // Store file changes in local storage for future access
+        console.log('Received file changes:', message.changes, 'for project:', message.projectId);
+        // Store file changes in local storage for future access with project ID as identifier
         const changesObject = message.changes;
-        chrome.storage.local.set({ storedFileChanges: changesObject });
+        const projectId = message.projectId;
+        chrome.storage.local.set({ storedFileChanges: { projectId, changes: changesObject } });
         fileChanges = new Map(Object.entries(changesObject));
         showFileChangesModal = true; // Show the file changes modal
       } else if (message.type === 'OPEN_FILE_CHANGES') {
@@ -294,9 +295,24 @@
       const result = await chrome.storage.local.get('storedFileChanges');
       if (result.storedFileChanges) {
         console.log('Found stored file changes:', result.storedFileChanges);
-        fileChanges = new Map(Object.entries(result.storedFileChanges));
-        showFileChangesModal = true;
-        return;
+        
+        // Check if the stored file changes have the new format with projectId
+        if (result.storedFileChanges.projectId && result.storedFileChanges.changes) {
+          // Check if stored projectId matches the current project (if we have a project ID)
+          if (!parsedProjectId || parsedProjectId === result.storedFileChanges.projectId) {
+            // Use the changes from storage
+            fileChanges = new Map(Object.entries(result.storedFileChanges.changes));
+            showFileChangesModal = true;
+            return;
+          } else {
+            console.log('Stored file changes are for a different project, requesting new changes');
+          }
+        } else {
+          // Legacy format without projectId - use it for backward compatibility
+          fileChanges = new Map(Object.entries(result.storedFileChanges));
+          showFileChangesModal = true;
+          return;
+        }
       }
 
       // If we don't have file changes in storage, request them from the content script
@@ -304,7 +320,18 @@
       // Send message to the active tab to request file changes
       const tabs = await chrome.tabs.query({ active: true, currentWindow: true });
       if (tabs[0]?.id && isBoltSite) {
-        chrome.tabs.sendMessage(tabs[0].id, { action: 'REQUEST_FILE_CHANGES' });
+        chrome.tabs.sendMessage(tabs[0].id, { action: 'REQUEST_FILE_CHANGES' }, (response) => {
+          if (response && response.success) {
+            console.log('Received response from content script with projectId:', response.projectId);
+            // Store the projectId for later use
+            if (response.projectId) {
+              // Make sure to update parsedProjectId if needed
+              if (!parsedProjectId) {
+                parsedProjectId = response.projectId;
+              }
+            }
+          }
+        });
         // Let the user know what's happening
         status = 'Calculating file changes...';
         hasStatus = true;

@@ -877,11 +877,12 @@ export class UIManager {
       // Send message to open the popup with file changes
       this.messageHandler.sendMessage('OPEN_FILE_CHANGES', {
         changes: changesObject,
+        projectId, // Include the projectId to identify which project these changes belong to
       });
 
       // Also store the changes in local storage for future retrieval
       try {
-        await chrome.storage.local.set({ storedFileChanges: changesObject });
+        await chrome.storage.local.set({ storedFileChanges: { projectId, changes: changesObject } });
         console.log('File changes stored in local storage for future retrieval');
       } catch (storageError) {
         console.error('Failed to store file changes in local storage:', storageError);

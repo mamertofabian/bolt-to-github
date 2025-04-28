@@ -174,10 +174,14 @@ export class ContentManager {
     chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
       if (message.action === 'REQUEST_FILE_CHANGES') {
         console.log('Received request for file changes from popup');
-        // Trigger the file changes calculation and display
+        // Get the current project ID from the URL
+        const projectId = window.location.pathname.split('/').pop() || '';
+        console.log('Current project ID:', projectId);
+        
+        // Trigger the file changes calculation and display with the current project ID
         this.uiManager?.handleShowChangedFiles();
         // Acknowledge receipt
-        sendResponse({ success: true });
+        sendResponse({ success: true, projectId });
       }
       return true; // Keep the message channel open for async response
     });
