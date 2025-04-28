@@ -251,9 +251,10 @@ This repository was automatically initialized by the Bolt to GitHub extension.
    * Creates a temporary public repository for migration purposes
    * @param ownerName Repository owner (username or organization)
    * @param sourceRepoName Source repository name
+   * @param branch Branch name to use (default: 'main')
    * @returns Promise resolving to the name of the created temporary repository
    */
-  async createTemporaryPublicRepo(ownerName: string, sourceRepoName: string): Promise<string> {
+  async createTemporaryPublicRepo(ownerName: string, sourceRepoName: string, branch: string = 'main'): Promise<string> {
     const timestamp = Date.now();
     const randomStr = Math.random().toString(36).substring(2, 8);
     const tempRepoName = `temp-${sourceRepoName}-${timestamp}-${randomStr}`;
@@ -277,14 +278,14 @@ This repository was automatically initialized by the Bolt to GitHub extension.
       org: isOrg ? ownerName : undefined,
     });
 
-    // Initialize with an empty commit to create the default branch
+    // Initialize with an empty commit to create the specified branch
     await this.pushFile({
       owner: ownerName,
       repo: tempRepoName,
       path: '.gitkeep',
       content: btoa(''), // Empty file
-      branch: 'main',
-      message: 'Initialize repository',
+      branch: branch,
+      message: `Initialize repository with branch '${branch}'`,
       checkExisting: false,
     });
 
@@ -355,6 +356,33 @@ This repository was automatically initialized by the Bolt to GitHub extension.
       console.error('Failed to fetch repositories:', error);
       throw new Error(
         `Failed to fetch repositories: ${error instanceof Error ? error.message : 'Unknown error'}`
+      );
+    }
+  }
+
+  /**
+   * Lists branches for a repository
+   * @param owner Repository owner (username or organization)
+   * @param repo Repository name
+   * @returns Promise resolving to an array of branch names and their details
+   */
+  async listBranches(owner: string, repo: string): Promise<Array<{name: string; isDefault: boolean}>> {
+    try {
+      // Get repository information to determine the default branch
+      const repoInfo = await this.apiClient.request('GET', `/repos/${owner}/${repo}`);
+      const defaultBranch = repoInfo.default_branch;
+      
+      // Get all branches for the repository
+      const branches = await this.apiClient.request('GET', `/repos/${owner}/${repo}/branches?per_page=100`);
+      
+      return branches.map((branch: any) => ({
+        name: branch.name,
+        isDefault: branch.name === defaultBranch
+      }));
+    } catch (error) {
+      console.error(`Failed to fetch branches for ${owner}/${repo}:`, error);
+      throw new Error(
+        `Failed to fetch branches: ${error instanceof Error ? error.message : 'Unknown error'}`
       );
     }
   }

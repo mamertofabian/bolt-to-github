@@ -321,4 +321,140 @@ describe('RepositoryService', () => {
       expect(result).toEqual(userRepos);
     });
   });
+
+  describe('listBranches', () => {
+    it('should return list of branches with default branch marked', async () => {
+      // Arrange
+      const repoInfo = {
+        default_branch: 'main'
+      };
+      
+      const branches = [
+        { name: 'main', commit: { sha: 'abc123' } },
+        { name: 'develop', commit: { sha: 'def456' } },
+        { name: 'feature/test', commit: { sha: 'ghi789' } }
+      ];
+      
+      mockApiClient.request.mockImplementation((method: string, endpoint: string) => {
+        if (endpoint === '/repos/testuser/test-repo') {
+          return Promise.resolve(repoInfo);
+        }
+        if (endpoint === '/repos/testuser/test-repo/branches?per_page=100') {
+          return Promise.resolve(branches);
+        }
+        return Promise.reject(new Error(`Unexpected request: ${method} ${endpoint}`));
+      });
+      
+      // Act
+      const result = await repositoryService.listBranches('testuser', 'test-repo');
+      
+      // Assert
+      expect(result).toHaveLength(3);
+      expect(result).toEqual([
+        { name: 'main', isDefault: true },
+        { name: 'develop', isDefault: false },
+        { name: 'feature/test', isDefault: false }
+      ]);
+      expect(mockApiClient.request).toHaveBeenCalledWith('GET', '/repos/testuser/test-repo');
+      expect(mockApiClient.request).toHaveBeenCalledWith('GET', '/repos/testuser/test-repo/branches?per_page=100');
+    });
+    
+    it('should handle errors when fetching branches', async () => {
+      // Arrange
+      mockApiClient.request.mockRejectedValueOnce(new Error('Failed to fetch repository info'));
+      
+      // Act & Assert
+      await expect(repositoryService.listBranches('testuser', 'test-repo'))
+        .rejects.toThrow('Failed to fetch branches: Failed to fetch repository info');
+    });
+  });
+
+  describe('createTemporaryPublicRepo', () => {
+    it('should create a temporary repository with specified branch', async () => {
+      // Mock Math.random to return a predictable value for testing
+      const originalRandom = Math.random;
+      // Mock that will return '123456' when toString(36).substring(2, 8) is called
+      Math.random = jest.fn(() => ({ 
+        toString: (radix: number) => radix === 36 ? '0.123456' : '0.123456'
+      })) as unknown as () => number;
+      
+      // Mock Date.now to return a predictable value for testing
+      const originalDateNow = Date.now;
+      Date.now = jest.fn(() => 1234567890) as () => number;
+      
+      // Arrange
+      mockApiClient.request.mockImplementation((method: string, endpoint: string, body?: any) => {
+        if (method === 'GET' && endpoint === '/users/testuser') {
+          return Promise.resolve({ type: 'User' });
+        }
+        if (method === 'POST' && endpoint === '/user/repos') {
+          return Promise.resolve({ name: body.name });
+        }
+        if (method === 'PUT' && endpoint.includes('/contents/')) {
+          return Promise.resolve({ content: { name: '.gitkeep' } });
+        }
+        return Promise.reject(new Error(`Unexpected request: ${method} ${endpoint}`));
+      });
+      
+      // Act
+      const result = await repositoryService.createTemporaryPublicRepo('testuser', 'source-repo', 'develop');
+      
+      // Assert
+      expect(result).toBe('temp-source-repo-1234567890-123456');
+      expect(mockApiClient.request).toHaveBeenCalledWith('GET', '/users/testuser');
+      expect(mockApiClient.request).toHaveBeenCalledWith('POST', '/user/repos', expect.objectContaining({
+        name: 'temp-source-repo-1234567890-123456',
+        private: true,
+        auto_init: false,
+        description: 'Temporary repository for Bolt import - will be deleted automatically'
+      }));
+      expect(mockApiClient.request).toHaveBeenCalledWith('PUT', '/repos/testuser/temp-source-repo-1234567890-123456/contents/.gitkeep', expect.objectContaining({
+        message: `Initialize repository with branch 'develop'`,
+        branch: 'develop'
+      }));
+      
+      // Restore original functions
+      Math.random = originalRandom;
+      Date.now = originalDateNow;
+    });
+    
+    it('should use main as default branch when not specified', async () => {
+      // Mock Math.random and Date.now
+      const originalRandom = Math.random;
+      const originalDateNow = Date.now;
+      // Mock that will return '123456' when toString(36).substring(2, 8) is called
+      Math.random = jest.fn(() => ({ 
+        toString: (radix: number) => radix === 36 ? '0.123456' : '0.123456'
+      })) as unknown as () => number;
+      Date.now = jest.fn(() => 1234567890) as () => number;
+      
+      // Arrange
+      mockApiClient.request.mockImplementation((method: string, endpoint: string, body?: any) => {
+        if (method === 'GET' && endpoint === '/users/testuser') {
+          return Promise.resolve({ type: 'User' });
+        }
+        if (method === 'POST' && endpoint === '/user/repos') {
+          return Promise.resolve({ name: body.name });
+        }
+        if (method === 'PUT' && endpoint.includes('/contents/')) {
+          return Promise.resolve({ content: { name: '.gitkeep' } });
+        }
+        return Promise.reject(new Error(`Unexpected request: ${method} ${endpoint}`));
+      });
+      
+      // Act
+      const result = await repositoryService.createTemporaryPublicRepo('testuser', 'source-repo');
+      
+      // Assert
+      expect(result).toBe('temp-source-repo-1234567890-123456');
+      expect(mockApiClient.request).toHaveBeenCalledWith('PUT', '/repos/testuser/temp-source-repo-1234567890-123456/contents/.gitkeep', expect.objectContaining({
+        message: `Initialize repository with branch 'main'`,
+        branch: 'main'
+      }));
+      
+      // Restore original functions
+      Math.random = originalRandom;
+      Date.now = originalDateNow;
+    });
+  });
 });

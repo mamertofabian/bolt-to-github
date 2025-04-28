@@ -99,9 +99,10 @@ export interface IRepositoryService {
    * Creates a temporary public repository for migration purposes
    * @param ownerName Repository owner (username or organization)
    * @param sourceRepoName Source repository name
+   * @param branch Branch name to use (default: 'main')
    * @returns Promise resolving to the name of the created temporary repository
    */
-  createTemporaryPublicRepo(ownerName: string, sourceRepoName: string): Promise<string>;
+  createTemporaryPublicRepo(ownerName: string, sourceRepoName: string, branch?: string): Promise<string>;
   
   /**
    * Deletes a repository
@@ -125,6 +126,15 @@ export interface IRepositoryService {
    * @returns Promise resolving to an array of repository summaries
    */
   listRepos(): Promise<Array<RepoSummary>>;
+  
+  /**
+   * Lists branches for a repository
+   * @param owner Repository owner (username or organization)
+   * @param repo Repository name
+   * @returns Promise resolving to an array of branch names and their details
+   */
+  listBranches(owner: string, repo: string): Promise<Array<{name: string; isDefault: boolean}>>;
+
   
   /**
    * Clones the contents of a repository

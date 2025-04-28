@@ -8,6 +8,7 @@ interface TempRepoMetadata {
   tempRepo: string;
   createdAt: number;
   owner: string;
+  branch: string;
 }
 
 export class BackgroundTempRepoManager {
@@ -23,7 +24,7 @@ export class BackgroundTempRepoManager {
     this.startCleanupInterval();
   }
 
-  async handlePrivateRepoImport(sourceRepo: string): Promise<void> {
+  async handlePrivateRepoImport(sourceRepo: string, branch?: string): Promise<void> {
     let tempRepoName: string | undefined;
     try {
       this.broadcastStatus({
@@ -32,12 +33,26 @@ export class BackgroundTempRepoManager {
         progress: 10,
       });
 
-      tempRepoName = await this.githubService.createTemporaryPublicRepo(this.owner, sourceRepo);
-      await this.saveTempRepo(sourceRepo, tempRepoName);
+      // First, determine the default branch if none is provided
+      let branchToUse: string = branch || 'main';
+      if (!branch) {
+        try {
+          const branches = await this.githubService.listBranches(this.owner, sourceRepo);
+          const defaultBranch = branches.find((b: {name: string; isDefault: boolean}) => b.isDefault);
+          branchToUse = defaultBranch ? defaultBranch.name : 'main';
+          console.log(`Using detected default branch: ${branchToUse}`);
+        } catch (error) {
+          console.warn('Failed to detect default branch, falling back to main:', error);
+          branchToUse = 'main';
+        }
+      }
+
+      tempRepoName = await this.githubService.createTemporaryPublicRepo(this.owner, sourceRepo, branchToUse);
+      await this.saveTempRepo(sourceRepo, tempRepoName, branchToUse);
 
       this.broadcastStatus({
         status: 'uploading',
-        message: 'Copying repository contents...',
+        message: `Copying repository contents from branch '${branchToUse}'...`,
         progress: 30,
       });
 
@@ -46,11 +61,11 @@ export class BackgroundTempRepoManager {
         sourceRepo,
         this.owner,
         tempRepoName,
-        'main',
+        branchToUse,
         (progress) => {
           this.broadcastStatus({
             status: 'uploading',
-            message: 'Copying repository contents...',
+            message: `Copying repository contents from branch '${branchToUse}'...`,
             progress: Math.floor(30 + progress * 0.4), // Adjust progress to fit within 30-70 range
           });
         }
@@ -99,13 +114,14 @@ export class BackgroundTempRepoManager {
     }
   }
 
-  private async saveTempRepo(originalRepo: string, tempRepo: string): Promise<void> {
+  private async saveTempRepo(originalRepo: string, tempRepo: string, branch: string): Promise<void> {
     const tempRepos = await this.getTempRepos();
     tempRepos.push({
       originalRepo,
       tempRepo,
       createdAt: Date.now(),
       owner: this.owner,
+      branch,
     });
     await chrome.storage.local.set({
       [STORAGE_KEY]: tempRepos,

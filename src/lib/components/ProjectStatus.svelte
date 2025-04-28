@@ -284,20 +284,18 @@
 
 {#if showSettingsModal}
   <RepoSettings
+    show={showSettingsModal}
     repoOwner={gitHubUsername}
     githubToken={token}
     {projectId}
     {repoName}
     {branch}
-    onSave={() => {
+    on:close={() => {
       showSettingsModal = false;
       // Refresh project status after saving
       getProjectStatus();
       // Notify parent that settings were updated
       dispatch('settingsUpdated');
-    }}
-    onCancel={() => {
-      showSettingsModal = false;
     }}
   />
 {/if}

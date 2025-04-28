@@ -205,8 +205,8 @@ export class BackgroundService {
           if (!this.tempRepoManager) {
             throw new Error('Temp repo manager not initialized');
           }
-          await this.tempRepoManager.handlePrivateRepoImport(message.data.repoName);
-          console.log('✅ Private repo import completed');
+          await this.tempRepoManager.handlePrivateRepoImport(message.data.repoName, message.data.branch);
+          console.log(`✅ Private repo import completed from branch '${message.data.branch || 'default'}'`);
           break;
         case 'DELETE_TEMP_REPO':
           await this.tempRepoManager?.cleanupTempRepos(true);

@@ -5,6 +5,7 @@
   import RepoSettings from '$lib/components/RepoSettings.svelte';
   import { GitHubService } from '../../services/GitHubService';
   import { fade } from 'svelte/transition';
+  import BranchSelectionModal from '../../popup/components/BranchSelectionModal.svelte';
 
   export let projectSettings: Record<string, { repoName: string; branch: string }>;
   export let repoOwner: string;
@@ -17,6 +18,8 @@
   let projectToDelete: { projectId: string; repoName: string } | null = null;
   let showSettingsModal = false;
   let projectToEdit: { projectId: string; repoName: string; branch: string } | null = null;
+  let showBranchSelectionModal = false;
+  let repoToImport: { owner: string; repo: string; isPrivate: boolean } | null = null;
 
   const githubService = new GitHubService(githubToken);
   let commitCounts: Record<string, number> = {};
@@ -210,12 +213,23 @@
       return;
     }
 
+    // Show branch selection modal
+    repoToImport = { owner: repoOwner, repo: repoName, isPrivate };
+    showBranchSelectionModal = true;
+  }
+
+  async function handleBranchSelected(branch: string) {
+    if (!repoToImport) return;
+    
+    const { owner, repo } = repoToImport;
+    showBranchSelectionModal = false;
+    
     try {
-      console.log('🔄 Sending message to import private repo:', repoName);
+      console.log(`🔄 Sending message to import private repo: ${repo} from branch: ${branch}`);
 
       // Only show progress if we're not on bolt.new
       if (!currentTabIsBolt) {
-        importProgress = { repoName, status: 'Starting import...' };
+        importProgress = { repoName: repo, status: `Starting import from branch '${branch}'...` };
       }
 
       // Send message directly to background service
@@ -234,7 +248,7 @@
 
           if (!currentTabIsBolt) {
             importProgress = {
-              repoName,
+              repoName: repo,
               status: message.status.message || 'Processing...',
               progress: message.status.progress,
             };
@@ -252,10 +266,10 @@
         }
       });
 
-      // Then send message
+      // Then send message with branch information
       port.postMessage({
         type: 'IMPORT_PRIVATE_REPO',
-        data: { repoName },
+        data: { repoName: repo, branch },
       });
 
       // If we're on bolt.new, close the popup immediately
@@ -265,6 +279,7 @@
     } catch (error) {
       console.error('❌ Failed to import private repository:', error);
       alert('Failed to import private repository. Please try again later.');
+      repoToImport = null;
     }
   }
 </script>
@@ -611,20 +626,29 @@
 
   {#if showSettingsModal && projectToEdit}
     <RepoSettings
+      show={showSettingsModal}
       {repoOwner}
       {githubToken}
       projectId={projectToEdit.projectId}
       repoName={projectToEdit.repoName}
       branch={projectToEdit.branch}
-      onSave={() => {
+      on:close={() => {
         showSettingsModal = false;
         projectToEdit = null;
-        // Refresh the project settings by triggering a re-render
-        projectSettings = { ...projectSettings };
       }}
+    />
+  {/if}
+
+  {#if showBranchSelectionModal && repoToImport}
+    <BranchSelectionModal
+      show={showBranchSelectionModal}
+      owner={repoToImport.owner}
+      repo={repoToImport.repo}
+      token={githubToken}
+      onBranchSelected={handleBranchSelected}
       onCancel={() => {
-        showSettingsModal = false;
-        projectToEdit = null;
+        showBranchSelectionModal = false;
+        repoToImport = null;
       }}
     />
   {/if}

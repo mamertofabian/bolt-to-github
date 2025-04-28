@@ -4,14 +4,16 @@
   import { Label } from '$lib/components/ui/label';
   import { Search, Loader2 } from 'lucide-svelte';
   import { GitHubService } from '../../services/GitHubService';
+  import { createEventDispatcher } from 'svelte';
 
-  export let repoOwner: string;
-  export let githubToken: string;
+  const dispatch = createEventDispatcher();
+
+  export let show = false;
+  export let repoOwner: string = '';
+  export let githubToken: string = '';
   export let projectId: string;
   export let repoName: string;
   export let branch: string = 'main';
-  export let onSave: () => void;
-  export let onCancel: () => void;
 
   let isLoadingRepos = false;
   let repositories: Array<{
@@ -106,7 +108,9 @@
     }, 200);
   }
 
-  async function handleSave() {
+  async function saveSettings() {
+    if (!repoName || !branch) return;
+
     try {
       isSaving = true;
       console.log('Saving repository settings for project:', projectId);
@@ -144,10 +148,12 @@
 
       console.log('Settings saved successfully with timestamp');
 
-      // Call onSave callback
-      onSave();
+      // Notify parent that settings were saved
+      dispatch('close');
     } catch (error) {
-      console.error('Error saving repository settings:', error);
+      console.error('Failed to save settings:', error);
+      // TODO: Replace with a modal
+      alert('Failed to save settings. Please try again.');
     } finally {
       isSaving = false;
     }
@@ -157,6 +163,7 @@
   loadRepositories();
 </script>
 
+{#if show}
 <div class="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
   <div class="bg-slate-900 border border-slate-800 rounded-lg p-5 max-w-md w-full mx-4">
     <h2 class="text-lg font-medium mb-4">Repository Settings</h2>
@@ -258,24 +265,27 @@
         </p>
       </div>
 
-      <div class="flex justify-end gap-2 mt-6">
+      <div class="flex justify-end space-x-2 mt-6">
         <Button
-          type="button"
           variant="outline"
-          class="border-slate-700 hover:bg-slate-800 text-slate-200"
-          on:click={onCancel}
+          class="text-xs py-1 h-8 border-slate-700 bg-slate-800 hover:bg-slate-700"
+          on:click={() => dispatch('close')}
         >
           Cancel
         </Button>
         <Button
-          type="button"
-          class="bg-blue-600 hover:bg-blue-700 text-white"
-          on:click={handleSave}
-          disabled={isSaving || !repoName || !branch}
+          variant="default"
+          class="text-xs py-1 h-8 bg-blue-600 hover:bg-blue-700"
+          on:click={saveSettings}
+          disabled={!repoName || !branch || isSaving}
         >
-          {isSaving ? 'Saving...' : 'Save Settings'}
+          {#if isSaving}
+            <Loader2 class="h-3 w-3 mr-1 animate-spin" />
+          {/if}
+          Save Settings
         </Button>
       </div>
     </div>
   </div>
 </div>
+{/if}
