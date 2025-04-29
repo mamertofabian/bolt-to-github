@@ -100,13 +100,13 @@ To try the latest development version:
    ```bash
    git clone https://github.com/mamertofabian/bolt-to-github.git
    cd bolt-to-github
-   npm install
+   pnpm install
    ```
 
 2. Build the extension:
 
    ```bash
-   npm run build
+   pnpm run build
    ```
 
 3. Load in Chrome:
@@ -176,15 +176,15 @@ If you want to modify the extension or contribute to its development:
    ```bash
    git clone https://github.com/mamertofabian/bolt-to-github.git
    cd bolt-to-github
-   npm install
+   pnpm install
    ```
 
 3. Build for development:
 
    ```bash
-   npm run watch   # For development with hot reload
+   pnpm run watch   # For development with hot reload
    # OR
-   npm run build  # For production build
+   pnpm run build  # For production build
    ```
 
 4. Load in Chrome:

@@ -1,11 +1,13 @@
 export default {
-  preset: 'ts-jest/presets/default-esm',
   testEnvironment: 'node',
   roots: ['<rootDir>/src'],
   transform: {
-    '^.+\\.tsx?$': ['ts-jest', {
-      useESM: true,
-    }],
+    '^.+\\.tsx?$': [
+      'ts-jest',
+      {
+        useESM: true,
+      },
+    ],
   },
   extensionsToTreatAsEsm: ['.ts'],
   moduleNameMapper: {
@@ -15,8 +17,5 @@ export default {
   moduleFileExtensions: ['ts', 'tsx', 'js', 'jsx', 'json', 'node'],
   collectCoverage: true,
   coverageDirectory: 'coverage',
-  collectCoverageFrom: [
-    'src/**/*.{ts,tsx}',
-    '!src/**/*.d.ts',
-  ],
+  collectCoverageFrom: ['src/**/*.{ts,tsx}', '!src/**/*.d.ts'],
 };
