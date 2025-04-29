@@ -39,8 +39,7 @@ export class FilePreviewService {
 
     try {
       // Get idle monitor service, but handle cases where it might not be available
-      const idleMonitor = IdleMonitorService.getInstance();
-      this.cacheService = CacheService.getInstance(idleMonitor);
+      this.cacheService = CacheService.getInstance(IdleMonitorService.getInstance());
     } catch (error) {
       console.warn('Error initializing idle monitor or cache service:', error);
       // Create cache service with null idle monitor as fallback

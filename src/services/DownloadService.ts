@@ -1,5 +1,6 @@
 import { ZipProcessor } from '../lib/zip';
 import { CacheService } from './CacheService';
+import { IdleMonitorService } from './IdleMonitorService';
 import type { ProjectFiles } from '$lib/types';
 
 /**
@@ -14,7 +15,7 @@ export class DownloadService {
   // Event listener for download interception
   private clickListener: ((e: MouseEvent) => void) | null = null;
   // Cache service for storing downloaded files
-  private cacheService: CacheService = CacheService.getInstance();
+  private cacheService: CacheService = CacheService.getInstance(IdleMonitorService.getInstance());
   // Current project ID (extracted from URL)
   private currentProjectId: string | null = null;
   /**
@@ -82,7 +83,7 @@ export class DownloadService {
     // Extract project ID from URL
     // URL format is typically: https://bolt.dev/project/{projectId}/...
     const url = window.location.href;
-    const projectMatch = url.match(/\/project\/([^\/]+)/);
+    const projectMatch = url.match(/\/project\/([^/]+)/);
     if (projectMatch && projectMatch[1]) {
       return projectMatch[1];
     }
