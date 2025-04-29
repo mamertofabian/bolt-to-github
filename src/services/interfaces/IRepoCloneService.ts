@@ -1,6 +1,7 @@
 /**
  * Interface for repository cloning service
  */
+
 export interface IRepoCloneService {
   /**
    * Clones repository contents from one repository to another
