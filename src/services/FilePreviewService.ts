@@ -36,7 +36,17 @@ export class FilePreviewService {
 
   private constructor() {
     this.downloadService = new DownloadService();
-    this.cacheService = CacheService.getInstance(IdleMonitorService.getInstance());
+
+    try {
+      // Get idle monitor service, but handle cases where it might not be available
+      const idleMonitor = IdleMonitorService.getInstance();
+      this.cacheService = CacheService.getInstance(idleMonitor);
+    } catch (error) {
+      console.warn('Error initializing idle monitor or cache service:', error);
+      // Create cache service with null idle monitor as fallback
+      this.cacheService = CacheService.getInstance(null as any);
+    }
+
     this.githubComparisonService = GitHubComparisonService.getInstance();
 
     // Register for cache refresh events

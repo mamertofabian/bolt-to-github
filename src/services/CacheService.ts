@@ -21,16 +21,20 @@ export class CacheService implements ICacheService {
   private idleCallbackId: number | null = null;
 
   private constructor(
-    private idleMonitor: IIdleMonitorService,
+    private idleMonitor: IIdleMonitorService | null,
     private window: Window = globalThis.window
   ) {
     // Initialize both browser idle detection and user idle detection
     this.setupBrowserIdleDetection();
-    this.setupUserIdleDetection();
+    if (this.idleMonitor) {
+      this.setupUserIdleDetection();
+    } else {
+      console.warn('No idle monitor provided, user idle detection disabled');
+    }
   }
 
   public static getInstance(
-    idleMonitor: IIdleMonitorService,
+    idleMonitor: IIdleMonitorService | null,
     window: Window = globalThis.window
   ): CacheService {
     if (!CacheService.instance) {
@@ -137,12 +141,21 @@ export class CacheService implements ICacheService {
   }
 
   private setupUserIdleDetection(): void {
-    this.idleMonitor.addListener((state) => {
-      if (state === 'idle' || state === 'locked') {
-        console.log('User is idle, refreshing all caches proactively');
-        this.refreshAllCaches();
-      }
-    });
+    if (!this.idleMonitor) {
+      console.warn('IdleMonitor not available, user idle detection disabled');
+      return;
+    }
+
+    try {
+      this.idleMonitor.addListener((state) => {
+        if (state === 'idle' || state === 'locked') {
+          console.log('User is idle, refreshing all caches proactively');
+          this.refreshAllCaches();
+        }
+      });
+    } catch (error) {
+      console.warn('Error setting up user idle detection:', error);
+    }
   }
 
   private refreshStaleCaches(): void {

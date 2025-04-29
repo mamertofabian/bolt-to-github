@@ -2,6 +2,7 @@ import type { IIdleMonitorService } from './interfaces/IIdleMonitorService';
 
 /**
  * Service to monitor user idle state using Chrome's idle API
+ * with fallback for environments where the API is not available
  */
 export class IdleMonitorService implements IIdleMonitorService {
   private static readonly DEFAULT_IDLE_THRESHOLD = 60; // 60 seconds before considering user idle
@@ -11,11 +12,13 @@ export class IdleMonitorService implements IIdleMonitorService {
   private initialized = false;
   private currentState: chrome.idle.IdleState = 'active';
 
-  private constructor(private chromeIdle: typeof chrome.idle = chrome.idle) {
+  private constructor(private chromeIdle: typeof chrome.idle | null = self.chrome?.idle || null) {
     this.initialize();
   }
 
-  public static getInstance(chromeIdle: typeof chrome.idle = chrome.idle): IdleMonitorService {
+  public static getInstance(
+    chromeIdle: typeof chrome.idle | null = self.chrome?.idle || null
+  ): IdleMonitorService {
     if (!IdleMonitorService.instance) {
       IdleMonitorService.instance = new IdleMonitorService(chromeIdle);
     }
@@ -23,24 +26,35 @@ export class IdleMonitorService implements IIdleMonitorService {
   }
 
   private initialize(): void {
-    if (!this.chromeIdle || this.initialized) return;
+    if (!this.chromeIdle) {
+      console.warn('Chrome idle API not available, using fallback implementation');
+      this.initialized = true;
+      return;
+    }
+
+    if (this.initialized) return;
 
     this.initialized = true;
 
-    // Set detection interval (in seconds)
-    this.chromeIdle.setDetectionInterval(IdleMonitorService.DEFAULT_IDLE_THRESHOLD);
+    try {
+      // Set detection interval (in seconds)
+      this.chromeIdle.setDetectionInterval(IdleMonitorService.DEFAULT_IDLE_THRESHOLD);
 
-    // Listen for state changes
-    this.chromeIdle.onStateChanged.addListener((newState) => {
-      this.currentState = newState;
-      this.notifyListeners(newState);
-    });
+      // Listen for state changes
+      this.chromeIdle.onStateChanged.addListener((newState) => {
+        this.currentState = newState;
+        this.notifyListeners(newState);
+      });
 
-    // Get initial state
-    this.chromeIdle.queryState(IdleMonitorService.DEFAULT_IDLE_THRESHOLD, (state) => {
-      this.currentState = state;
-      this.notifyListeners(state);
-    });
+      // Get initial state
+      this.chromeIdle.queryState(IdleMonitorService.DEFAULT_IDLE_THRESHOLD, (state) => {
+        this.currentState = state;
+        this.notifyListeners(state);
+      });
+    } catch (error) {
+      console.error('Error initializing idle monitor:', error);
+      // Continue with fallback behavior
+    }
   }
 
   public getCurrentState(): chrome.idle.IdleState {
