@@ -177,7 +177,7 @@ export class ContentManager {
         // Get the current project ID from the URL
         const projectId = window.location.pathname.split('/').pop() || '';
         console.log('Current project ID:', projectId);
-        
+
         // Trigger the file changes calculation and display with the current project ID
         this.uiManager?.handleShowChangedFiles();
         // Acknowledge receipt

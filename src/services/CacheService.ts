@@ -50,7 +50,7 @@ export class CacheService {
     this.cache.set(projectId, {
       files,
       timestamp: Date.now(),
-      projectId
+      projectId,
     });
     console.log(`Cached ${files.size} files for project ${projectId}`);
   }
@@ -62,18 +62,18 @@ export class CacheService {
    */
   public getCachedProjectFiles(projectId: string): ProjectFiles | null {
     const cached = this.cache.get(projectId);
-    
+
     if (!cached) {
       console.log(`No cache found for project ${projectId}`);
       return null;
     }
-    
+
     const age = Date.now() - cached.timestamp;
     if (age > this.maxCacheAge) {
       console.log(`Cache for project ${projectId} is stale (${Math.round(age / 1000)}s old)`);
       return null;
     }
-    
+
     console.log(`Using cached files for project ${projectId} (${Math.round(age / 1000)}s old)`);
     return cached.files;
   }
@@ -110,7 +110,7 @@ export class CacheService {
    * @param callback The callback to remove
    */
   public removeRefreshCallback(callback: (projectId: string) => void): void {
-    this.refreshCallbacks = this.refreshCallbacks.filter(cb => cb !== callback);
+    this.refreshCallbacks = this.refreshCallbacks.filter((cb) => cb !== callback);
   }
 
   /**
@@ -119,7 +119,7 @@ export class CacheService {
    */
   public setIdleRefreshEnabled(enabled: boolean): void {
     this.idleRefreshEnabled = enabled;
-    
+
     if (!enabled && this.idleCallbackId !== null) {
       window.cancelIdleCallback(this.idleCallbackId);
       this.idleCallbackId = null;
@@ -143,14 +143,14 @@ export class CacheService {
         (deadline) => {
           // Reset the callback ID since this one is now running
           this.idleCallbackId = null;
-          
+
           if (!this.idleRefreshEnabled) return;
-          
+
           // Check if we have enough idle time (at least 1 second)
           if (deadline.timeRemaining() > 1000 || deadline.didTimeout) {
             this.refreshStaleCaches();
           }
-          
+
           // Schedule the next idle check
           scheduleIdleRefresh();
         },
@@ -168,7 +168,7 @@ export class CacheService {
   private refreshStaleCaches(): void {
     const now = Date.now();
     const staleCaches: string[] = [];
-    
+
     // Find stale caches
     this.cache.forEach((cached, projectId) => {
       const age = now - cached.timestamp;
@@ -176,11 +176,11 @@ export class CacheService {
         staleCaches.push(projectId);
       }
     });
-    
+
     // Trigger refresh callbacks for stale caches
     if (staleCaches.length > 0) {
       console.log(`Refreshing ${staleCaches.length} stale caches during idle time`);
-      
+
       for (const projectId of staleCaches) {
         // Notify all registered callbacks
         for (const callback of this.refreshCallbacks) {

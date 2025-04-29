@@ -295,7 +295,7 @@
       const result = await chrome.storage.local.get('storedFileChanges');
       if (result.storedFileChanges) {
         console.log('Found stored file changes:', result.storedFileChanges);
-        
+
         // Check if the stored file changes have the new format with projectId
         if (result.storedFileChanges.projectId && result.storedFileChanges.changes) {
           // Check if stored projectId matches the current project (if we have a project ID)
@@ -322,7 +322,10 @@
       if (tabs[0]?.id && isBoltSite) {
         chrome.tabs.sendMessage(tabs[0].id, { action: 'REQUEST_FILE_CHANGES' }, (response) => {
           if (response && response.success) {
-            console.log('Received response from content script with projectId:', response.projectId);
+            console.log(
+              'Received response from content script with projectId:',
+              response.projectId
+            );
             // Store the projectId for later use
             if (response.projectId) {
               // Make sure to update parsedProjectId if needed

@@ -26,8 +26,8 @@ export class GitHubService {
     // Initialize components
     this.apiClient = new GitHubApiClient(token);
     this.tokenService = new TokenService(this.apiClient);
-    this.repositoryService = new RepositoryService(this.apiClient);
     this.fileService = new FileService(this.apiClient);
+    this.repositoryService = new RepositoryService(this.apiClient, this.fileService);
   }
 
   // Legacy methods TODO: Remove after refactoring
@@ -119,7 +119,11 @@ export class GitHubService {
     return this.repositoryService.getCommitCount(owner, repo, branch);
   }
 
-  async createTemporaryPublicRepo(ownerName: string, sourceRepoName: string, branch?: string): Promise<string> {
+  async createTemporaryPublicRepo(
+    ownerName: string,
+    sourceRepoName: string,
+    branch?: string
+  ): Promise<string> {
     // Use the new repositoryService
     return this.repositoryService.createTemporaryPublicRepo(ownerName, sourceRepoName, branch);
   }
@@ -158,7 +162,10 @@ export class GitHubService {
     return this.repositoryService.listRepos();
   }
 
-  async listBranches(owner: string, repo: string): Promise<Array<{name: string; isDefault: boolean}>> {
+  async listBranches(
+    owner: string,
+    repo: string
+  ): Promise<Array<{ name: string; isDefault: boolean }>> {
     // Use the new repositoryService
     return this.repositoryService.listBranches(owner, repo);
   }

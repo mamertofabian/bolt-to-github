@@ -11,7 +11,7 @@
   function handleClose() {
     show = false;
   }
-  
+
   function pushToGitHub(event: MouseEvent | KeyboardEvent) {
     event.stopPropagation();
     // Send a message to trigger the GitHub push action
@@ -68,7 +68,7 @@
     border-bottom: 1px solid #334155;
     padding-bottom: 0.5rem;
   }
-  
+
   /* Customize Modal content */
   :global(.fixed > div > .bg-slate-900) {
     padding: 0.75rem !important;

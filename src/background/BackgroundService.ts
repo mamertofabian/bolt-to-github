@@ -107,7 +107,7 @@ export class BackgroundService {
     // Setup runtime message listener for direct messages (not using ports)
     chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
       console.log('📥 Received runtime message:', message);
-      
+
       if (message.action === 'PUSH_TO_GITHUB') {
         this.handlePushToGitHub();
         sendResponse({ success: true });
@@ -117,7 +117,7 @@ export class BackgroundService {
         chrome.runtime.sendMessage(message);
         sendResponse({ success: true });
       }
-      
+
       // Return true to indicate we'll send a response asynchronously
       return true;
     });
@@ -187,15 +187,15 @@ export class BackgroundService {
           console.log('Opening settings popup');
           chrome.action.openPopup();
           break;
-          
+
         case 'OPEN_FILE_CHANGES':
           console.log('Opening file changes popup');
           // Store the file changes in local storage for the popup to retrieve
           await chrome.storage.local.set({
-            'pendingFileChanges': message.data?.changes || {}
+            pendingFileChanges: message.data?.changes || {},
           });
           console.log('Stored file changes in local storage');
-          
+
           // Open the popup - it will check for pendingFileChanges when it loads
           chrome.action.openPopup();
           break;
@@ -205,8 +205,13 @@ export class BackgroundService {
           if (!this.tempRepoManager) {
             throw new Error('Temp repo manager not initialized');
           }
-          await this.tempRepoManager.handlePrivateRepoImport(message.data.repoName, message.data.branch);
-          console.log(`✅ Private repo import completed from branch '${message.data.branch || 'default'}'`);
+          await this.tempRepoManager.handlePrivateRepoImport(
+            message.data.repoName,
+            message.data.branch
+          );
+          console.log(
+            `✅ Private repo import completed from branch '${message.data.branch || 'default'}'`
+          );
           break;
         case 'DELETE_TEMP_REPO':
           await this.tempRepoManager?.cleanupTempRepos(true);
@@ -332,30 +337,30 @@ export class BackgroundService {
 
   private async handlePushToGitHub(): Promise<void> {
     console.log('🔄 Handling Push to GitHub action');
-    
+
     try {
       // Find the active tab with bolt.new URL
       const tabs = await chrome.tabs.query({ active: true, currentWindow: true });
-      const boltTab = tabs.find(tab => tab.url?.includes('bolt.new'));
-      
+      const boltTab = tabs.find((tab) => tab.url?.includes('bolt.new'));
+
       if (!boltTab || !boltTab.id) {
         console.error('No active Bolt tab found');
         return;
       }
-      
+
       const tabId = boltTab.id;
       const port = this.ports.get(tabId);
-      
+
       if (!port) {
         console.error('No connected port for tab:', tabId);
         return;
       }
-      
+
       // Send a message to the content script to trigger the GitHub push action
       this.sendResponse(port, {
-        type: 'PUSH_TO_GITHUB'
+        type: 'PUSH_TO_GITHUB',
       });
-      
+
       console.log('✅ Push to GitHub message sent to content script');
     } catch (error) {
       console.error('Error handling Push to GitHub action:', error);

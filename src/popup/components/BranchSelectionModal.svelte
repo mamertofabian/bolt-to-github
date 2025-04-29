@@ -35,7 +35,7 @@
       branches = await githubService.listBranches(owner, repo);
 
       // Set the default branch as selected
-      const defaultBranch = branches.find(b => b.isDefault);
+      const defaultBranch = branches.find((b) => b.isDefault);
       if (defaultBranch) {
         selectedBranch = defaultBranch.name;
       } else if (branches.length > 0) {
@@ -78,7 +78,9 @@
       <div class="space-y-2 max-h-48 overflow-y-auto pr-1">
         {#each branches as branch}
           <div
-            class="flex items-center p-2 rounded border {selectedBranch === branch.name ? 'border-blue-500 bg-blue-900/20' : 'border-slate-700 bg-slate-800/50 hover:bg-slate-800'}"
+            class="flex items-center p-2 rounded border {selectedBranch === branch.name
+              ? 'border-blue-500 bg-blue-900/20'
+              : 'border-slate-700 bg-slate-800/50 hover:bg-slate-800'}"
             on:click={() => (selectedBranch = branch.name)}
             on:keydown={(e) => e.key === 'Enter' && (selectedBranch = branch.name)}
             role="button"

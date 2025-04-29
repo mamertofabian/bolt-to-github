@@ -882,7 +882,9 @@ export class UIManager {
 
       // Also store the changes in local storage for future retrieval
       try {
-        await chrome.storage.local.set({ storedFileChanges: { projectId, changes: changesObject } });
+        await chrome.storage.local.set({
+          storedFileChanges: { projectId, changes: changesObject },
+        });
         console.log('File changes stored in local storage for future retrieval');
       } catch (storageError) {
         console.error('Failed to store file changes in local storage:', storageError);

@@ -12,7 +12,7 @@ export interface IGitHubApiClient {
    * @returns Promise resolving to the API response
    */
   request(method: string, endpoint: string, body?: any, options?: RequestInit): Promise<any>;
-  
+
   /**
    * Gets the current rate limit status
    * @returns Promise resolving to rate limit information

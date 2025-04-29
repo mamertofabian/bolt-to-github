@@ -38,7 +38,9 @@ export class BackgroundTempRepoManager {
       if (!branch) {
         try {
           const branches = await this.githubService.listBranches(this.owner, sourceRepo);
-          const defaultBranch = branches.find((b: {name: string; isDefault: boolean}) => b.isDefault);
+          const defaultBranch = branches.find(
+            (b: { name: string; isDefault: boolean }) => b.isDefault
+          );
           branchToUse = defaultBranch ? defaultBranch.name : 'main';
           console.log(`Using detected default branch: ${branchToUse}`);
         } catch (error) {
@@ -47,7 +49,11 @@ export class BackgroundTempRepoManager {
         }
       }
 
-      tempRepoName = await this.githubService.createTemporaryPublicRepo(this.owner, sourceRepo, branchToUse);
+      tempRepoName = await this.githubService.createTemporaryPublicRepo(
+        this.owner,
+        sourceRepo,
+        branchToUse
+      );
       await this.saveTempRepo(sourceRepo, tempRepoName, branchToUse);
 
       this.broadcastStatus({
@@ -114,7 +120,11 @@ export class BackgroundTempRepoManager {
     }
   }
 
-  private async saveTempRepo(originalRepo: string, tempRepo: string, branch: string): Promise<void> {
+  private async saveTempRepo(
+    originalRepo: string,
+    tempRepo: string,
+    branch: string
+  ): Promise<void> {
     const tempRepos = await this.getTempRepos();
     tempRepos.push({
       originalRepo,

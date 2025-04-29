@@ -135,9 +135,12 @@
   }
 
   // Define the storage change listener outside of onMount
-  const storageChangeListener = (changes: Record<string, chrome.storage.StorageChange>, areaName: string) => {
+  const storageChangeListener = (
+    changes: Record<string, chrome.storage.StorageChange>,
+    areaName: string
+  ) => {
     console.log('Storage changes detected in GitHubSettings:', changes, 'in area:', areaName);
-    
+
     // Check if lastSettingsUpdate changed in local storage
     if (areaName === 'local' && changes.lastSettingsUpdate) {
       const updateInfo = changes.lastSettingsUpdate.newValue as {
@@ -147,7 +150,7 @@
         branch: string;
       };
       console.log('Settings update detected:', updateInfo);
-      
+
       // If the update is for the current project, update the local state
       if (projectId && updateInfo && updateInfo.projectId === projectId) {
         repoName = updateInfo.repoName;
@@ -155,10 +158,13 @@
         console.log('Updated local state with new project settings:', repoName, branch);
       }
     }
-    
+
     // Check if projectSettings changed in sync storage
     if (areaName === 'sync' && changes.projectSettings && projectId) {
-      const newSettings = (changes.projectSettings.newValue || {}) as Record<string, { repoName: string; branch: string }>;
+      const newSettings = (changes.projectSettings.newValue || {}) as Record<
+        string,
+        { repoName: string; branch: string }
+      >;
       if (newSettings[projectId]) {
         repoName = newSettings[projectId].repoName;
         branch = newSettings[projectId].branch;
@@ -183,10 +189,10 @@
   onMount(() => {
     // Start the async initialization without awaiting it
     initializeSettings();
-    
+
     // Add the storage change listener
     chrome.storage.onChanged.addListener(storageChangeListener);
-    
+
     // Return a cleanup function to remove the listener when the component is destroyed
     return () => {
       chrome.storage.onChanged.removeListener(storageChangeListener);

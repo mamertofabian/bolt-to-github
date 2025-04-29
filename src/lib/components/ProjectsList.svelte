@@ -220,10 +220,10 @@
 
   async function handleBranchSelected(branch: string) {
     if (!repoToImport) return;
-    
+
     const { owner, repo } = repoToImport;
     showBranchSelectionModal = false;
-    
+
     try {
       console.log(`🔄 Sending message to import private repo: ${repo} from branch: ${branch}`);
 

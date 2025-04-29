@@ -142,20 +142,20 @@ export class GitHubComparisonService {
 
     // Get files that would be ignored by .gitignore
     let ignoredPaths: Set<string> = new Set();
-    
+
     try {
       // Create a map with all GitHub paths to test against gitignore
       const allPathsMap = new Map<string, string>();
       for (const path of existingFiles.keys()) {
         allPathsMap.set(path, ''); // Content doesn't matter, just need the path
       }
-      
+
       // Process with gitignore to get the non-ignored files
       const nonIgnoredFiles = await processFilesWithGitignore(allPathsMap);
-      
+
       // Find which paths were ignored (in existingFiles but not in nonIgnoredFiles)
       ignoredPaths = new Set(
-        Array.from(existingFiles.keys()).filter(path => {
+        Array.from(existingFiles.keys()).filter((path) => {
           const normalizedPath = path.startsWith('project/') ? path.slice(8) : path;
           return !nonIgnoredFiles.has(normalizedPath);
         })
@@ -168,13 +168,13 @@ export class GitHubComparisonService {
     for (const path of existingFiles.keys()) {
       // Check if the file exists in local files (with or without project/ prefix)
       const normalizedPath = `project/${path}`;
-      
+
       if (!localFiles.has(path) && !localFiles.has(normalizedPath)) {
         // Skip files that are intentionally ignored by .gitignore
         if (ignoredPaths.has(path)) {
           continue;
         }
-        
+
         // Only mark as deleted if the file is not ignored
         changes.set(path, {
           path,

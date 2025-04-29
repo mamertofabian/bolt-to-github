@@ -56,17 +56,17 @@ export class DownloadService {
 
       // Wait for the download to complete
       const blob = await blobPromise;
-      
+
       // Reset state after download completes
       this.cleanupDownloadInterception();
       this.currentDownloadPromise = null;
-      
+
       return blob;
     } catch (error) {
       // Reset state on error
       this.cleanupDownloadInterception();
       this.currentDownloadPromise = null;
-      
+
       console.error('Error downloading project ZIP:', error);
       throw new Error(
         `Failed to download project ZIP: ${error instanceof Error ? error.message : 'Unknown error'}`
@@ -113,15 +113,17 @@ export class DownloadService {
     }
 
     // Cache miss or forced refresh, download and cache
-    console.log(`Downloading project files for ${this.currentProjectId}${forceRefresh ? ' (forced refresh)' : ''}`);
+    console.log(
+      `Downloading project files for ${this.currentProjectId}${forceRefresh ? ' (forced refresh)' : ''}`
+    );
     const blob = await this.downloadProjectZip();
     const files = await ZipProcessor.processZipBlob(blob);
-    
+
     // Cache the downloaded files
     if (this.currentProjectId) {
       this.cacheService.cacheProjectFiles(this.currentProjectId, files);
     }
-    
+
     return files;
   }
 
@@ -139,7 +141,10 @@ export class DownloadService {
    * @param resolve Function to resolve the promise with the blob
    * @param reject Function to reject the promise with an error
    */
-  private setupDownloadInterception(resolve: (blob: Blob) => void, reject: (error: Error) => void): void {
+  private setupDownloadInterception(
+    resolve: (blob: Blob) => void,
+    reject: (error: Error) => void
+  ): void {
     // Create a click listener to intercept download links
     this.clickListener = async (e: MouseEvent) => {
       const target = e.target as HTMLElement;
@@ -149,7 +154,7 @@ export class DownloadService {
           // Prevent the default download behavior
           e.preventDefault();
           e.stopPropagation();
-          
+
           try {
             // Find all download links with blob URLs
             const downloadLinks = document.querySelectorAll('a[download][href^="blob:"]');
@@ -160,16 +165,20 @@ export class DownloadService {
             }
           } catch (error) {
             console.error('Error intercepting download:', error);
-            reject(new Error(`Failed to intercept download: ${error instanceof Error ? error.message : 'Unknown error'}`));
+            reject(
+              new Error(
+                `Failed to intercept download: ${error instanceof Error ? error.message : 'Unknown error'}`
+              )
+            );
           }
         }
       }
     };
-    
+
     // Add the listener with capture phase to intercept before default handling
     document.addEventListener('click', this.clickListener, true);
   }
-  
+
   /**
    * Cleans up download interception by removing the event listener and resetting state
    */
@@ -180,7 +189,7 @@ export class DownloadService {
     }
     this.isDownloading = false;
   }
-  
+
   /**
    * Finds and clicks the export button to open the dropdown
    */
@@ -202,7 +211,7 @@ export class DownloadService {
     });
     exportButton.dispatchEvent(keydownEvent);
     console.log('Dispatched keydown to export button');
-    
+
     // Wait for the dropdown to appear
     await new Promise((resolve) => setTimeout(resolve, 200));
   }
@@ -261,24 +270,22 @@ export class DownloadService {
     console.log('Found export dropdown:', exportDropdown);
 
     // Find download button within the identified export dropdown
-    const downloadButton = Array.from(exportDropdown.querySelectorAll('button')).find(
-      (button) => {
-        // Search for the icon class anywhere within the button's descendants
-        const hasIcon = button.querySelector('[class*="i-ph:download-simple"]');
-        const hasText = button.textContent?.toLowerCase().includes('download');
-        return hasIcon || hasText;
-      }
-    );
+    const downloadButton = Array.from(exportDropdown.querySelectorAll('button')).find((button) => {
+      // Search for the icon class anywhere within the button's descendants
+      const hasIcon = button.querySelector('[class*="i-ph:download-simple"]');
+      const hasText = button.textContent?.toLowerCase().includes('download');
+      return hasIcon || hasText;
+    });
 
     if (!downloadButton) {
       throw new Error('Download button not found in dropdown');
     }
 
     console.log('Found download button, clicking...');
-    
+
     // Click the download button - the click will be intercepted by our event listener
     downloadButton.click();
-    
+
     // Close the dropdown by clicking outside or pressing Escape
     setTimeout(() => {
       try {

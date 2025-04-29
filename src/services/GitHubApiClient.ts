@@ -31,7 +31,10 @@ export class GitHubApiClient implements IGitHubApiClient {
    * @param token GitHub API token
    * @param baseUrl Base URL for the GitHub API (defaults to 'https://api.github.com')
    */
-  constructor(private token: string, baseUrl = 'https://api.github.com') {
+  constructor(
+    private token: string,
+    baseUrl = 'https://api.github.com'
+  ) {
     this.rateLimitHandler = new RateLimitHandler();
     this.baseUrl = baseUrl;
   }
@@ -45,7 +48,12 @@ export class GitHubApiClient implements IGitHubApiClient {
    * @returns Promise resolving to the API response
    * @throws GitHubApiError if the request fails
    */
-  async request(method: string, endpoint: string, body?: any, options: RequestInit = {}): Promise<any> {
+  async request(
+    method: string,
+    endpoint: string,
+    body?: any,
+    options: RequestInit = {}
+  ): Promise<any> {
     const url = `${this.baseUrl}${endpoint}`;
     let retryCount = 0;
     const maxRetries = 3;
@@ -92,15 +100,11 @@ export class GitHubApiClient implements IGitHubApiClient {
             errorDetails = { message: response.statusText };
           }
 
-          const errorMessage = errorDetails.message || errorDetails.error || 'Unknown GitHub API error';
+          const errorMessage =
+            errorDetails.message || errorDetails.error || 'Unknown GitHub API error';
           const fullErrorMessage = `GitHub API Error (${response.status}): ${errorMessage}`;
 
-          throw new GitHubApiError(
-            fullErrorMessage,
-            response.status,
-            errorMessage,
-            errorDetails
-          );
+          throw new GitHubApiError(fullErrorMessage, response.status, errorMessage, errorDetails);
         }
 
         // Return null for 204 No Content responses
@@ -117,7 +121,7 @@ export class GitHubApiClient implements IGitHubApiClient {
           // Add response headers to the data for pagination and rate limit info
           Object.defineProperty(data, 'headers', {
             value: response.headers,
-            enumerable: false
+            enumerable: false,
           });
           return data;
         }

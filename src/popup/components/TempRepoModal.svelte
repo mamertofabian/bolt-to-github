@@ -74,7 +74,8 @@
     </div>
 
     <p class="text-xs text-slate-500 italic mt-1">
-      Note: The temporary repository will be automatically deleted in 1 minute if not deleted manually.
+      Note: The temporary repository will be automatically deleted in 1 minute if not deleted
+      manually.
     </p>
   </div>
 </Modal>
@@ -88,7 +89,7 @@
     border-bottom: 1px solid #334155;
     padding-bottom: 0.5rem;
   }
-  
+
   /* Customize Modal content */
   :global(.fixed > div > .bg-slate-900) {
     padding: 0.75rem !important;

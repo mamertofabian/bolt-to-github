@@ -67,12 +67,12 @@ export class FileService implements IFileService {
         'GET',
         `/repos/${owner}/${repo}/contents/${path}?ref=${branch}`
       );
-      
+
       // If response is an array, it's a directory, not a file
       if (Array.isArray(response)) {
         throw new Error(`Path ${path} is a directory, not a file`);
       }
-      
+
       sha = response.sha;
     } catch (error) {
       // If error is not 404 (file not found), propagate it
@@ -128,7 +128,7 @@ export class FileService implements IFileService {
         console.warn(`File ${path} doesn't exist, considering deletion successful`);
         return;
       }
-      
+
       // Get file SHA which is required for deletion
       const fileInfo = await this.apiClient.request(
         'GET',
@@ -167,7 +167,12 @@ export class FileService implements IFileService {
    * @param branch Branch name
    * @returns Promise resolving to an array of file information
    */
-  async listFiles(owner: string, repo: string, path: string, branch: string): Promise<Array<FileInfo>> {
+  async listFiles(
+    owner: string,
+    repo: string,
+    path: string,
+    branch: string
+  ): Promise<Array<FileInfo>> {
     try {
       const response = await this.apiClient.request(
         'GET',
@@ -244,10 +249,7 @@ export class FileService implements IFileService {
    */
   async fileExists(owner: string, repo: string, path: string, branch: string): Promise<boolean> {
     try {
-      await this.apiClient.request(
-        'GET',
-        `/repos/${owner}/${repo}/contents/${path}?ref=${branch}`
-      );
+      await this.apiClient.request('GET', `/repos/${owner}/${repo}/contents/${path}?ref=${branch}`);
       return true;
     } catch (error) {
       if (error instanceof Error && error.message.includes('404')) {
@@ -275,7 +277,7 @@ export class FileService implements IFileService {
   ): Promise<void> {
     // Normalize path to ensure it doesn't have trailing slash
     const normalizedPath = path.endsWith('/') ? path.slice(0, -1) : path;
-    
+
     // Create a .gitkeep file in the directory to effectively create the directory
     await this.writeFile(
       owner,

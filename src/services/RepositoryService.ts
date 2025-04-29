@@ -5,18 +5,27 @@ import type {
   RepoCreateOptions,
   RepoSummary,
 } from './interfaces/IRepositoryService';
-import { Queue } from '../lib/Queue';
-import { RateLimitHandler } from './RateLimitHandler';
+import type { IFileService } from './interfaces/IFileService';
+import type { IRepoCloneService } from './interfaces/IRepoCloneService';
 
 /**
  * Service for GitHub repository management operations
  */
 export class RepositoryService implements IRepositoryService {
+  // Consistent timeout duration for repository initialization
+  private static readonly REPO_INIT_WAIT_MS = 2000;
+
   /**
    * Creates a new RepositoryService instance
    * @param apiClient GitHub API client
+   * @param fileService File service
+   * @param repoCloneService Repository clone service
    */
-  constructor(private apiClient: IGitHubApiClient) {}
+  constructor(
+    private apiClient: IGitHubApiClient,
+    private fileService: IFileService,
+    private repoCloneService?: IRepoCloneService
+  ) {}
 
   /**
    * Checks if a repository exists
@@ -82,10 +91,7 @@ export class RepositoryService implements IRepositoryService {
         });
       }
     } catch (error) {
-      console.error('Failed to create repository:', error);
-      throw new Error(
-        `Failed to create repository: ${error instanceof Error ? error.message : 'Unknown error'}`
-      );
+      throw this.createServiceError('Failed to create repository', error);
     }
   }
 
@@ -99,14 +105,7 @@ export class RepositoryService implements IRepositoryService {
     const exists = await this.repoExists(owner, repo);
     if (!exists) {
       // First determine if the owner is an organization
-      let isOrg = false;
-      try {
-        const ownerInfo = await this.apiClient.request('GET', `/users/${owner}`);
-        isOrg = ownerInfo.type === 'Organization';
-      } catch (error) {
-        // If we can't determine, proceed assuming it's a user
-        console.warn(`Could not determine if ${owner} is an organization:`, error);
-      }
+      const isOrg = await this.isOrganization(owner);
 
       await this.createRepo({
         name: repo,
@@ -117,7 +116,7 @@ export class RepositoryService implements IRepositoryService {
       });
 
       // Wait a bit for GitHub to initialize the repository
-      await new Promise((resolve) => setTimeout(resolve, 2000));
+      await new Promise((resolve) => setTimeout(resolve, RepositoryService.REPO_INIT_WAIT_MS));
     }
   }
 
@@ -132,7 +131,6 @@ export class RepositoryService implements IRepositoryService {
       const commits = await this.apiClient.request('GET', `/repos/${owner}/${repo}/commits`);
       return commits.length === 0;
     } catch (error) {
-      console.log('error', error);
       if (error instanceof Error && error.message.includes('409')) {
         // 409 is returned for empty repositories
         return true;
@@ -162,63 +160,14 @@ This repository was automatically initialized by the Bolt to GitHub extension.
 - Created to ensure a valid Git repository structure
 - Serves as an initial commit point for your project`;
 
-    await this.pushFile({
+    await this.fileService.writeFile(
       owner,
       repo,
-      path: 'README.md',
-      content: btoa(readmeContent),
+      'README.md',
+      readmeContent,
       branch,
-      message: 'Initialize repository with auto-generated README',
-    });
-  }
-
-  /**
-   * Helper method to push a file to a repository
-   * @param params File push parameters
-   * @returns Promise resolving to the API response
-   */
-  private async pushFile(params: {
-    owner: string;
-    repo: string;
-    path: string;
-    content: string;
-    branch: string;
-    message: string;
-    checkExisting?: boolean;
-  }) {
-    const { owner, repo, path, content, branch, message, checkExisting = true } = params;
-
-    try {
-      // Try to get existing file if needed
-      let sha: string | undefined;
-      if (checkExisting) {
-        try {
-          const response = await this.apiClient.request(
-            'GET',
-            `/repos/${owner}/${repo}/contents/${path}?ref=${branch}`
-          );
-          sha = response.sha;
-        } catch (error) {
-          // File doesn't exist, which is fine
-          console.log('File does not exist yet, will create new');
-        }
-      }
-
-      // Create or update file
-      const body = {
-        message,
-        content,
-        branch,
-        ...(sha ? { sha } : {}),
-      };
-
-      return await this.apiClient.request('PUT', `/repos/${owner}/${repo}/contents/${path}`, body);
-    } catch (error) {
-      console.error('GitHub API Error:', error);
-      throw new Error(
-        `Failed to push file: ${error instanceof Error ? error.message : 'Unknown error'}`
-      );
-    }
+      'Initialize repository with auto-generated README'
+    );
   }
 
   /**
@@ -270,14 +219,7 @@ This repository was automatically initialized by the Bolt to GitHub extension.
     const tempRepoName = `temp-${sourceRepoName}-${timestamp}-${randomStr}`;
 
     // First determine if the owner is an organization
-    let isOrg = false;
-    try {
-      const ownerInfo = await this.apiClient.request('GET', `/users/${ownerName}`);
-      isOrg = ownerInfo.type === 'Organization';
-    } catch (error) {
-      // If we can't determine, proceed assuming it's a user
-      console.warn(`Could not determine if ${ownerName} is an organization:`, error);
-    }
+    const isOrg = await this.isOrganization(ownerName);
 
     // Create repo without auto-init
     await this.createRepo({
@@ -289,15 +231,14 @@ This repository was automatically initialized by the Bolt to GitHub extension.
     });
 
     // Initialize with an empty commit to create the specified branch
-    await this.pushFile({
-      owner: ownerName,
-      repo: tempRepoName,
-      path: '.gitkeep',
-      content: btoa(''), // Empty file
-      branch: branch,
-      message: `Initialize repository with branch '${branch}'`,
-      checkExisting: false,
-    });
+    await this.fileService.writeFile(
+      ownerName,
+      tempRepoName,
+      '.gitkeep',
+      '',
+      branch,
+      `Initialize repository with branch '${branch}'`
+    );
 
     return tempRepoName;
   }
@@ -309,7 +250,11 @@ This repository was automatically initialized by the Bolt to GitHub extension.
    * @returns Promise resolving when deletion is complete
    */
   async deleteRepo(owner: string, repo: string): Promise<void> {
-    await this.apiClient.request('DELETE', `/repos/${owner}/${repo}`);
+    try {
+      await this.apiClient.request('DELETE', `/repos/${owner}/${repo}`);
+    } catch (error) {
+      throw this.createServiceError(`Failed to delete repository ${owner}/${repo}`, error);
+    }
   }
 
   /**
@@ -320,9 +265,16 @@ This repository was automatically initialized by the Bolt to GitHub extension.
    * @returns Promise resolving when update is complete
    */
   async updateRepoVisibility(owner: string, repo: string, makePrivate: boolean): Promise<void> {
-    await this.apiClient.request('PATCH', `/repos/${owner}/${repo}`, {
-      private: makePrivate,
-    });
+    try {
+      await this.apiClient.request('PATCH', `/repos/${owner}/${repo}`, {
+        private: makePrivate,
+      });
+    } catch (error) {
+      throw this.createServiceError(
+        `Failed to update repository visibility for ${owner}/${repo}`,
+        error
+      );
+    }
   }
 
   /**
@@ -363,10 +315,7 @@ This repository was automatically initialized by the Bolt to GitHub extension.
         language: repo.language,
       }));
     } catch (error) {
-      console.error('Failed to fetch repositories:', error);
-      throw new Error(
-        `Failed to fetch repositories: ${error instanceof Error ? error.message : 'Unknown error'}`
-      );
+      throw this.createServiceError('Failed to fetch repositories', error);
     }
   }
 
@@ -396,15 +345,13 @@ This repository was automatically initialized by the Bolt to GitHub extension.
         isDefault: branch.name === defaultBranch,
       }));
     } catch (error) {
-      console.error(`Failed to fetch branches for ${owner}/${repo}:`, error);
-      throw new Error(
-        `Failed to fetch branches: ${error instanceof Error ? error.message : 'Unknown error'}`
-      );
+      throw this.createServiceError(`Failed to fetch branches for ${owner}/${repo}`, error);
     }
   }
 
   /**
    * Clones repository contents from one repository to another
+   * This method is now a proxy to the RepoCloneService
    * @param sourceOwner Source repository owner
    * @param sourceRepo Source repository name
    * @param targetOwner Target repository owner
@@ -421,103 +368,46 @@ This repository was automatically initialized by the Bolt to GitHub extension.
     branch: string = 'main',
     onProgress?: (progress: number) => void
   ): Promise<void> {
-    // Use a rate limit handler to prevent hitting GitHub API rate limits
-    const rateLimitHandler = new RateLimitHandler();
-    const queue = new Queue(1); // Using a queue for serial execution
-
-    try {
-      // Check rate limits before starting
-      await rateLimitHandler.beforeRequest();
-      const rateLimit = await this.apiClient.request('GET', '/rate_limit');
-      const remainingRequests = rateLimit.resources.core.remaining;
-      const resetTime = rateLimit.resources.core.reset;
-
-      if (remainingRequests < 10) {
-        const now = Math.floor(Date.now() / 1000);
-        const waitTime = resetTime - now;
-
-        // If reset is happening soon (within 2 minutes), wait for it
-        if (waitTime <= 120) {
-          console.log(`Waiting ${waitTime} seconds for rate limit reset...`);
-          await rateLimitHandler.sleep(waitTime * 1000);
-          // Recheck rate limit after waiting
-          const newRateLimit = await this.apiClient.request('GET', '/rate_limit');
-          if (newRateLimit.resources.core.remaining < 10) {
-            throw new Error('Insufficient API rate limit remaining even after waiting for reset');
-          }
-        } else {
-          throw new Error(
-            `Insufficient API rate limit remaining. Reset in ${Math.ceil(waitTime / 60)} minutes`
-          );
-        }
-      }
-
-      // Get all files from source repo
-      const response = await this.apiClient.request(
-        'GET',
-        `/repos/${sourceOwner}/${sourceRepo}/git/trees/${branch}?recursive=1`
-      );
-
-      const files = response.tree.filter((item: any) => item.type === 'blob');
-      const totalFiles = files.length;
-
-      // Reset rate limit handler counter before starting batch
-      rateLimitHandler.resetRequestCount();
-
-      // Process files serially through queue
-      for (let i = 0; i < files.length; i++) {
-        const file = files[i];
-
-        await queue.add(async () => {
-          let success = false;
-          while (!success) {
-            try {
-              // Get file content
-              await rateLimitHandler.beforeRequest();
-              const content = await this.apiClient.request(
-                'GET',
-                `/repos/${sourceOwner}/${sourceRepo}/contents/${file.path}?ref=${branch}`
-              );
-
-              // Push file content
-              await rateLimitHandler.beforeRequest();
-              await this.pushFile({
-                owner: targetOwner,
-                repo: targetRepo,
-                path: file.path,
-                content: content.content,
-                branch,
-                message: `Copy ${file.path} from ${sourceRepo}`,
-                checkExisting: false,
-              });
-
-              success = true;
-              rateLimitHandler.resetRetryCount();
-
-              // Reset request counter every 10 files to maintain burst behavior
-              if ((i + 1) % 10 === 0) {
-                rateLimitHandler.resetRequestCount();
-              }
-
-              if (onProgress) {
-                const progress = ((i + 1) / totalFiles) * 100;
-                onProgress(progress);
-              }
-            } catch (error) {
-              if (error instanceof Response && error.status === 403) {
-                await rateLimitHandler.handleRateLimit(error);
-              } else {
-                throw error;
-              }
-            }
-          }
-        });
-      }
-    } catch (error) {
-      console.error('Failed to clone repository contents:', error);
-      throw new Error(
-        `Failed to clone repository contents: ${error instanceof Error ? error.message : 'Unknown error'}`
-      );
+    if (!this.repoCloneService) {
+      throw new Error('RepoCloneService is required for cloning repository contents');
     }
+
+    await this.repoCloneService.cloneRepoContents(
+      sourceOwner,
+      sourceRepo,
+      targetOwner,
+      targetRepo,
+      branch,
+      onProgress
+    );
+  }
+
+  /**
+   * Checks if an owner is an organization
+   * @param owner Owner name (username or organization)
+   * @returns Promise resolving to true if the owner is an organization, false otherwise
+   * @private
+   */
+  private async isOrganization(owner: string): Promise<boolean> {
+    try {
+      const ownerInfo = await this.apiClient.request('GET', `/users/${owner}`);
+      return ownerInfo.type === 'Organization';
+    } catch (error) {
+      // If we can't determine, proceed assuming it's a user
+      console.warn(`Could not determine if ${owner} is an organization:`, error);
+      return false;
+    }
+  }
+
+  /**
+   * Creates a standardized error with consistent formatting
+   * @param message Base error message
+   * @param error Original error
+   * @returns Error with consistent format
+   * @private
+   */
+  private createServiceError(message: string, error: unknown): Error {
+    console.error(`${message}:`, error);
+    return new Error(`${message}: ${error instanceof Error ? error.message : 'Unknown error'}`);
   }
 }
