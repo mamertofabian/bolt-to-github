@@ -1,3 +1,5 @@
+import type { IIdleMonitorService } from './interfaces/IIdleMonitorService';
+import type { ICacheService } from './interfaces/ICacheService';
 import type { ProjectFiles } from '$lib/types';
 
 interface CachedProject {
@@ -10,7 +12,7 @@ interface CachedProject {
  * Service responsible for caching downloaded project files
  * to avoid unnecessary repeated downloads.
  */
-export class CacheService {
+export class CacheService implements ICacheService {
   private static instance: CacheService | null = null;
   private cache: Map<string, CachedProject> = new Map();
   private maxCacheAge = 5 * 60 * 1000; // 5 minutes default cache lifetime
@@ -18,34 +20,29 @@ export class CacheService {
   private idleRefreshEnabled = true;
   private idleCallbackId: number | null = null;
 
-  private constructor() {
-    // Initialize idle detection for cache refresh
-    this.setupIdleDetection();
+  private constructor(
+    private idleMonitor: IIdleMonitorService,
+    private window: Window = globalThis.window
+  ) {
+    // Initialize both browser idle detection and user idle detection
+    this.setupBrowserIdleDetection();
+    this.setupUserIdleDetection();
   }
 
-  /**
-   * Get the singleton instance of CacheService
-   */
-  public static getInstance(): CacheService {
+  public static getInstance(
+    idleMonitor: IIdleMonitorService,
+    window: Window = globalThis.window
+  ): CacheService {
     if (!CacheService.instance) {
-      CacheService.instance = new CacheService();
+      CacheService.instance = new CacheService(idleMonitor, window);
     }
     return CacheService.instance;
   }
 
-  /**
-   * Set the maximum age of cached items before they're considered stale
-   * @param maxAgeMs Maximum age in milliseconds
-   */
   public setMaxCacheAge(maxAgeMs: number): void {
     this.maxCacheAge = maxAgeMs;
   }
 
-  /**
-   * Store project files in the cache
-   * @param projectId The project identifier
-   * @param files Map of filenames to file contents
-   */
   public cacheProjectFiles(projectId: string, files: ProjectFiles): void {
     this.cache.set(projectId, {
       files,
@@ -55,11 +52,6 @@ export class CacheService {
     console.log(`Cached ${files.size} files for project ${projectId}`);
   }
 
-  /**
-   * Get cached project files if available and not stale
-   * @param projectId The project identifier
-   * @returns The cached files or null if not available or stale
-   */
   public getCachedProjectFiles(projectId: string): ProjectFiles | null {
     const cached = this.cache.get(projectId);
 
@@ -78,10 +70,6 @@ export class CacheService {
     return cached.files;
   }
 
-  /**
-   * Invalidate the cache for a specific project
-   * @param projectId The project identifier
-   */
   public invalidateCache(projectId: string): void {
     if (this.cache.has(projectId)) {
       this.cache.delete(projectId);
@@ -89,57 +77,43 @@ export class CacheService {
     }
   }
 
-  /**
-   * Clear all cached data
-   */
   public clearAllCaches(): void {
     this.cache.clear();
     console.log('All caches cleared');
   }
 
-  /**
-   * Register a callback to be called when a cache refresh is needed
-   * @param callback Function to call with the projectId that needs refreshing
-   */
   public onCacheRefreshNeeded(callback: (projectId: string) => void): void {
     this.refreshCallbacks.push(callback);
   }
 
-  /**
-   * Remove a previously registered callback
-   * @param callback The callback to remove
-   */
   public removeRefreshCallback(callback: (projectId: string) => void): void {
     this.refreshCallbacks = this.refreshCallbacks.filter((cb) => cb !== callback);
   }
 
-  /**
-   * Enable or disable automatic cache refresh during idle time
-   * @param enabled Whether to enable idle refresh
-   */
   public setIdleRefreshEnabled(enabled: boolean): void {
     this.idleRefreshEnabled = enabled;
 
-    if (!enabled && this.idleCallbackId !== null) {
-      window.cancelIdleCallback(this.idleCallbackId);
-      this.idleCallbackId = null;
-    } else if (enabled && this.idleCallbackId === null) {
-      this.setupIdleDetection();
+    if (!enabled) {
+      if (this.idleCallbackId !== null) {
+        this.window.cancelIdleCallback(this.idleCallbackId);
+        this.idleCallbackId = null;
+      }
+    } else {
+      if (this.idleCallbackId === null) {
+        this.setupBrowserIdleDetection();
+      }
     }
   }
 
-  /**
-   * Set up idle detection to refresh caches when the browser is idle
-   */
-  private setupIdleDetection(): void {
+  private setupBrowserIdleDetection(): void {
     // Only proceed if the browser supports idle callbacks
-    if (typeof window.requestIdleCallback !== 'function') {
-      console.warn('requestIdleCallback not supported, idle cache refresh disabled');
+    if (typeof this.window.requestIdleCallback !== 'function') {
+      console.warn('requestIdleCallback not supported, browser idle cache refresh disabled');
       return;
     }
 
     const scheduleIdleRefresh = () => {
-      this.idleCallbackId = window.requestIdleCallback(
+      this.idleCallbackId = this.window.requestIdleCallback(
         (deadline) => {
           // Reset the callback ID since this one is now running
           this.idleCallbackId = null;
@@ -162,9 +136,15 @@ export class CacheService {
     scheduleIdleRefresh();
   }
 
-  /**
-   * Refresh any stale caches during idle time
-   */
+  private setupUserIdleDetection(): void {
+    this.idleMonitor.addListener((state) => {
+      if (state === 'idle' || state === 'locked') {
+        console.log('User is idle, refreshing all caches proactively');
+        this.refreshAllCaches();
+      }
+    });
+  }
+
   private refreshStaleCaches(): void {
     const now = Date.now();
     const staleCaches: string[] = [];
@@ -179,19 +159,35 @@ export class CacheService {
 
     // Trigger refresh callbacks for stale caches
     if (staleCaches.length > 0) {
-      console.log(`Refreshing ${staleCaches.length} stale caches during idle time`);
+      console.log(`Refreshing ${staleCaches.length} stale caches during browser idle time`);
+      this.refreshCaches(staleCaches);
+    }
+  }
 
-      for (const projectId of staleCaches) {
-        // Notify all registered callbacks
-        for (const callback of this.refreshCallbacks) {
-          try {
-            callback(projectId);
-          } catch (error) {
-            console.error(`Error in cache refresh callback for project ${projectId}:`, error);
-          }
+  private refreshAllCaches(): void {
+    if (!this.idleRefreshEnabled || this.cache.size === 0) return;
+
+    console.log(`Refreshing all ${this.cache.size} caches during user idle time`);
+    const allProjectIds = Array.from(this.cache.keys());
+    this.refreshCaches(allProjectIds);
+  }
+
+  private refreshCaches(projectIds: string[]): void {
+    for (const projectId of projectIds) {
+      // Notify all registered callbacks
+      for (const callback of this.refreshCallbacks) {
+        try {
+          callback(projectId);
+        } catch (error) {
+          console.error(`Error in cache refresh callback for project ${projectId}:`, error);
         }
       }
     }
+  }
+
+  // For testing purposes only
+  public static resetInstance(): void {
+    CacheService.instance = null;
   }
 }
 

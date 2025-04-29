@@ -2,6 +2,7 @@ import { DownloadService } from './DownloadService';
 import { CacheService } from './CacheService';
 import { GitHubComparisonService } from './GitHubComparisonService';
 import { GitHubService } from './GitHubService';
+import { IdleMonitorService } from './IdleMonitorService';
 import type { ProjectFiles } from '$lib/types';
 import { processFilesWithGitignore } from '$lib/fileUtils';
 
@@ -12,7 +13,7 @@ export interface FileChange {
   previousContent?: string;
 }
 
-interface DiffResult {
+export interface DiffResult {
   path: string;
   changes: Array<{
     type: 'added' | 'deleted' | 'unchanged';
@@ -35,7 +36,7 @@ export class FilePreviewService {
 
   private constructor() {
     this.downloadService = new DownloadService();
-    this.cacheService = CacheService.getInstance();
+    this.cacheService = CacheService.getInstance(IdleMonitorService.getInstance());
     this.githubComparisonService = GitHubComparisonService.getInstance();
 
     // Register for cache refresh events
