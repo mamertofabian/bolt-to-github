@@ -1,3 +1,8 @@
+---
+description: 
+globs: 
+alwaysApply: true
+---
 # Security
 
 ## Sensitive Files
@@ -120,3 +125,9 @@ DO NOT read or modify:
 - Maintain a clean git history
 - Use Husky for git hooks
 - Use lint-staged for pre-commit linting and formatting
+
+## AI Agent Development
+
+- Do not stop until all type issues and unit tests are passing.
+
+- 
