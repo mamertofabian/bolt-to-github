@@ -1,6 +1,9 @@
 <script lang="ts">
   import type { FileChange } from '../services/FilePreviewService';
   import { onMount } from 'svelte';
+  import { Button } from '$lib/components/ui/button';
+  import { Eye } from 'lucide-svelte';
+  import DiffViewer from '$lib/components/DiffViewer.svelte';
 
   // Props
   export let changes: Map<string, FileChange>;
@@ -14,6 +17,8 @@
   // State
   let activeTab = 'changed';
   let showUnchanged = false;
+  let showDiffViewer = false;
+  let selectedFilePath = '';
 
   // Computed values
   $: changedCount = addedFiles.length + modifiedFiles.length + deletedFiles.length;
@@ -57,6 +62,12 @@
     return path.replace(/^project\//, '');
   }
 
+  // Function to handle viewing the diff
+  function viewFileDiff(path: string) {
+    selectedFilePath = path;
+    showDiffViewer = true;
+  }
+
   // No need for keyboard shortcuts as the modal handles Escape key
 </script>
 
@@ -94,8 +105,22 @@
             <ul class="file-list">
               {#each addedFiles as file}
                 <li class="file-item">
-                  <span class="file-icon text-green-500">{getStatusIcon(file.status)}</span>
-                  <span class="file-path">{formatPath(file.path)}</span>
+                  <div class="flex items-center justify-between w-full">
+                    <div class="flex items-center">
+                      <span class="file-icon text-green-500">{getStatusIcon(file.status)}</span>
+                      <span class="file-path">{formatPath(file.path)}</span>
+                    </div>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      class="h-6 px-2 ml-2 text-xs"
+                      title="View changes"
+                      on:click={() => viewFileDiff(file.path)}
+                    >
+                      <Eye class="h-3 w-3 mr-1" />
+                      Diff
+                    </Button>
+                  </div>
                 </li>
               {/each}
             </ul>
@@ -108,8 +133,22 @@
             <ul class="file-list">
               {#each modifiedFiles as file}
                 <li class="file-item">
-                  <span class="file-icon text-blue-500">{getStatusIcon(file.status)}</span>
-                  <span class="file-path">{formatPath(file.path)}</span>
+                  <div class="flex items-center justify-between w-full">
+                    <div class="flex items-center">
+                      <span class="file-icon text-blue-500">{getStatusIcon(file.status)}</span>
+                      <span class="file-path">{formatPath(file.path)}</span>
+                    </div>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      class="h-6 px-2 ml-2 text-xs"
+                      title="View changes"
+                      on:click={() => viewFileDiff(file.path)}
+                    >
+                      <Eye class="h-3 w-3 mr-1" />
+                      Diff
+                    </Button>
+                  </div>
                 </li>
               {/each}
             </ul>
@@ -122,8 +161,22 @@
             <ul class="file-list">
               {#each deletedFiles as file}
                 <li class="file-item">
-                  <span class="file-icon text-red-500">{getStatusIcon(file.status)}</span>
-                  <span class="file-path">{formatPath(file.path)}</span>
+                  <div class="flex items-center justify-between w-full">
+                    <div class="flex items-center">
+                      <span class="file-icon text-red-500">{getStatusIcon(file.status)}</span>
+                      <span class="file-path">{formatPath(file.path)}</span>
+                    </div>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      class="h-6 px-2 ml-2 text-xs"
+                      title="View changes"
+                      on:click={() => viewFileDiff(file.path)}
+                    >
+                      <Eye class="h-3 w-3 mr-1" />
+                      Diff
+                    </Button>
+                  </div>
                 </li>
               {/each}
             </ul>
@@ -144,8 +197,22 @@
           <ul class="file-list">
             {#each addedFiles as file}
               <li class="file-item">
-                <span class="file-icon text-green-500">{getStatusIcon(file.status)}</span>
-                <span class="file-path">{formatPath(file.path)}</span>
+                <div class="flex items-center justify-between w-full">
+                  <div class="flex items-center">
+                    <span class="file-icon text-green-500">{getStatusIcon(file.status)}</span>
+                    <span class="file-path">{formatPath(file.path)}</span>
+                  </div>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    class="h-6 px-2 ml-2 text-xs"
+                    title="View changes"
+                    on:click={() => viewFileDiff(file.path)}
+                  >
+                    <Eye class="h-3 w-3 mr-1" />
+                    Diff
+                  </Button>
+                </div>
               </li>
             {/each}
           </ul>
@@ -156,8 +223,22 @@
           <ul class="file-list">
             {#each modifiedFiles as file}
               <li class="file-item">
-                <span class="file-icon text-blue-500">{getStatusIcon(file.status)}</span>
-                <span class="file-path">{formatPath(file.path)}</span>
+                <div class="flex items-center justify-between w-full">
+                  <div class="flex items-center">
+                    <span class="file-icon text-blue-500">{getStatusIcon(file.status)}</span>
+                    <span class="file-path">{formatPath(file.path)}</span>
+                  </div>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    class="h-6 px-2 ml-2 text-xs"
+                    title="View changes"
+                    on:click={() => viewFileDiff(file.path)}
+                  >
+                    <Eye class="h-3 w-3 mr-1" />
+                    Diff
+                  </Button>
+                </div>
               </li>
             {/each}
           </ul>
@@ -168,8 +249,22 @@
           <ul class="file-list">
             {#each deletedFiles as file}
               <li class="file-item">
-                <span class="file-icon text-red-500">{getStatusIcon(file.status)}</span>
-                <span class="file-path">{formatPath(file.path)}</span>
+                <div class="flex items-center justify-between w-full">
+                  <div class="flex items-center">
+                    <span class="file-icon text-red-500">{getStatusIcon(file.status)}</span>
+                    <span class="file-path">{formatPath(file.path)}</span>
+                  </div>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    class="h-6 px-2 ml-2 text-xs"
+                    title="View changes"
+                    on:click={() => viewFileDiff(file.path)}
+                  >
+                    <Eye class="h-3 w-3 mr-1" />
+                    Diff
+                  </Button>
+                </div>
               </li>
             {/each}
           </ul>
@@ -180,8 +275,12 @@
           <ul class="file-list">
             {#each unchangedFiles as file}
               <li class="file-item">
-                <span class="file-icon text-gray-500">{getStatusIcon(file.status)}</span>
-                <span class="file-path">{formatPath(file.path)}</span>
+                <div class="flex items-center justify-between w-full">
+                  <div class="flex items-center">
+                    <span class="file-icon text-gray-500">{getStatusIcon(file.status)}</span>
+                    <span class="file-path">{formatPath(file.path)}</span>
+                  </div>
+                </div>
               </li>
             {/each}
           </ul>
@@ -190,6 +289,13 @@
     {/if}
   </div>
 </div>
+
+<!-- Add the DiffViewer component -->
+<DiffViewer
+  bind:show={showDiffViewer}
+  path={selectedFilePath}
+  fileChange={changes.get(selectedFilePath)}
+/>
 
 <style>
   .file-changes-container {
@@ -279,6 +385,7 @@
     align-items: center;
     padding: 0.125rem 0;
     font-size: 0.75rem;
+    width: 100%;
   }
 
   .file-icon {
