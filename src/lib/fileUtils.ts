@@ -3,17 +3,18 @@
  */
 import type { ProjectFiles } from './types';
 
+// Import ignore package statically instead of dynamically to work in service workers
+import ignore from 'ignore';
+
 /**
  * Process files according to gitignore rules
  * @param files Map of file paths to content
  * @returns Map of processed file paths to content
  */
-export async function processFilesWithGitignore(files: ProjectFiles): Promise<ProjectFiles> {
+export function processFilesWithGitignore(files: ProjectFiles): ProjectFiles {
   const processedFiles = new Map<string, string>();
 
   try {
-    // Dynamically import ignore package
-    const { default: ignore } = await import('ignore');
     const ig = ignore();
 
     // Check for .gitignore and initialize ignore patterns

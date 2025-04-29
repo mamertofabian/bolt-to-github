@@ -151,7 +151,7 @@ export class GitHubComparisonService {
       }
 
       // Process with gitignore to get the non-ignored files
-      const nonIgnoredFiles = await processFilesWithGitignore(allPathsMap);
+      const nonIgnoredFiles = processFilesWithGitignore(allPathsMap);
 
       // Find which paths were ignored (in existingFiles but not in nonIgnoredFiles)
       ignoredPaths = new Set(
