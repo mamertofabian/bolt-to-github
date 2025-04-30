@@ -22,8 +22,10 @@
     ]
   },
   "dependencies": {
+    "@testing-library/jest-dom": "^6.6.3",
     "fflate": "^0.8.2",
     "ignore": "^6.0.2",
+    "jest-environment-jsdom": "^29.7.0",
     "lucide-svelte": "^0.460.1"
   },
   "devDependencies": {

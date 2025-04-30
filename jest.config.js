@@ -1,5 +1,5 @@
 export default {
-  testEnvironment: 'node',
+  testEnvironment: 'jsdom',
   roots: ['<rootDir>/src'],
   transform: {
     '^.+\\.tsx?$': [
@@ -12,7 +12,11 @@ export default {
   extensionsToTreatAsEsm: ['.ts'],
   moduleNameMapper: {
     '^(\\.{1,2}/.*)\\.js$': '$1',
+    '^\\$lib/fileUtils$': '<rootDir>/src/test/setup/fileUtils-mock.js',
+    '^\\$lib/(.*)$': '<rootDir>/src/lib/$1',
+    '\\.svelte$': '<rootDir>/src/test/setup/svelte-mock.js',
   },
+  setupFilesAfterEnv: ['<rootDir>/src/test/setup/fetch-mocks.js'],
   testRegex: '(/__tests__/.*|(\\.|/)(test|spec))\\.tsx?$',
   moduleFileExtensions: ['ts', 'tsx', 'js', 'jsx', 'json', 'node'],
   collectCoverage: true,

@@ -12,7 +12,7 @@ framework = "Jest"
 
 ## An additional Javascript utility library used to test your code, if any. 
 ## Possible values are None, Testing Library, Enzyme, or Chai. Not applicable to Python projects.
-# utility_library = "Testing Library"
+utility_library = "Testing Library"
 
 ## A hint to the test generator about whether to use mocks or not. Possible values are true or false.
 use_mocks = true
