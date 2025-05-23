@@ -6,6 +6,7 @@ import type {
 } from '../types/UITypes';
 import type { INotificationManager } from '../types/ManagerInterfaces';
 import type { MessageHandler } from '../MessageHandler';
+import type { UIStateManager } from '../services/UIStateManager';
 import Notification from '../Notification.svelte';
 
 /**
@@ -15,9 +16,11 @@ import Notification from '../Notification.svelte';
 export class NotificationManager implements INotificationManager {
   private notificationComponent: SvelteComponent | null = null;
   private messageHandler: MessageHandler;
+  private stateManager?: UIStateManager;
 
-  constructor(messageHandler: MessageHandler) {
+  constructor(messageHandler: MessageHandler, stateManager?: UIStateManager) {
     this.messageHandler = messageHandler;
+    this.stateManager = stateManager;
   }
 
   /**
@@ -145,21 +148,36 @@ export class NotificationManager implements INotificationManager {
       'text-sm',
     ].join(' ');
 
-    notification.innerHTML = `
-      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor">
-        <circle cx="12" cy="12" r="10"></circle>
-        <line x1="12" y1="8" x2="12" y2="12"></line>
-        <line x1="12" y1="16" x2="12.01" y2="16"></line>
-      </svg>
-      <span>
-        Please configure your GitHub settings first. 
-        <button class="text-white font-medium hover:text-white/90 underline underline-offset-2">Open Settings</button>
-      </span>
+    // Create icon SVG element
+    const iconSvg = document.createElement('svg');
+    iconSvg.setAttribute('width', '20');
+    iconSvg.setAttribute('height', '20');
+    iconSvg.setAttribute('viewBox', '0 0 24 24');
+    iconSvg.setAttribute('fill', 'none');
+    iconSvg.setAttribute('stroke', 'currentColor');
+    iconSvg.innerHTML = `
+      <circle cx="12" cy="12" r="10"></circle>
+      <line x1="12" y1="8" x2="12" y2="12"></line>
+      <line x1="12" y1="16" x2="12.01" y2="16"></line>
     `;
 
+    // Create text content
+    const textSpan = document.createElement('span');
+    textSpan.textContent = 'Please configure your GitHub settings first. ';
+
+    // Create settings button
+    const settingsButton = document.createElement('button');
+    settingsButton.className =
+      'text-white font-medium hover:text-white/90 underline underline-offset-2';
+    settingsButton.textContent = 'Open Settings';
+
+    // Assemble notification
+    notification.appendChild(iconSvg);
+    notification.appendChild(textSpan);
+    notification.appendChild(settingsButton);
+
     // Add click handler for settings button
-    const settingsButton = notification.querySelector('button');
-    settingsButton?.addEventListener('click', () => {
+    settingsButton.addEventListener('click', () => {
       this.messageHandler.sendMessage('OPEN_SETTINGS');
       document.body.removeChild(notification);
     });
@@ -167,7 +185,7 @@ export class NotificationManager implements INotificationManager {
     // Add close button
     const closeButton = document.createElement('button');
     closeButton.className = 'ml-2 text-white hover:text-white/90 font-medium text-lg leading-none';
-    closeButton.innerHTML = '×';
+    closeButton.textContent = '×';
     closeButton.addEventListener('click', () => {
       document.body.removeChild(notification);
     });

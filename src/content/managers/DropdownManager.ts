@@ -1,5 +1,6 @@
 import type { IDropdownManager } from '../types/ManagerInterfaces';
 import type { MessageHandler } from '../MessageHandler';
+import type { UIStateManager } from '../services/UIStateManager';
 
 /**
  * DropdownManager handles the GitHub dropdown creation, positioning, and interaction
@@ -7,6 +8,7 @@ import type { MessageHandler } from '../MessageHandler';
  */
 export class DropdownManager implements IDropdownManager {
   private messageHandler: MessageHandler;
+  private stateManager?: UIStateManager;
   private onPushActionCallback?: () => Promise<void>;
   private onShowChangedFilesCallback?: () => Promise<void>;
   private currentDropdown: HTMLElement | null = null;
@@ -15,10 +17,12 @@ export class DropdownManager implements IDropdownManager {
 
   constructor(
     messageHandler: MessageHandler,
+    stateManager?: UIStateManager,
     onPushActionCallback?: () => Promise<void>,
     onShowChangedFilesCallback?: () => Promise<void>
   ) {
     this.messageHandler = messageHandler;
+    this.stateManager = stateManager;
     this.onPushActionCallback = onPushActionCallback;
     this.onShowChangedFilesCallback = onShowChangedFilesCallback;
   }

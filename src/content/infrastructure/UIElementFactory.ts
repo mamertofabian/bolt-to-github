@@ -22,6 +22,35 @@ export interface OverlayConfig {
 }
 
 /**
+ * Security utilities
+ */
+class SecurityUtils {
+  /**
+   * Sanitize HTML content to prevent XSS
+   * Basic sanitization - for production consider using DOMPurify
+   */
+  static sanitizeHTML(html: string): string {
+    const div = document.createElement('div');
+    div.textContent = html;
+    return div.innerHTML;
+  }
+
+  /**
+   * Safely set innerHTML with basic sanitization
+   */
+  static safeSetInnerHTML(element: HTMLElement, html: string): void {
+    // Remove script tags and event handlers for basic security
+    const sanitized = html
+      .replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, '')
+      .replace(/on\w+="[^"]*"/gi, '')
+      .replace(/on\w+='[^']*'/gi, '')
+      .replace(/javascript:/gi, '');
+
+    element.innerHTML = sanitized;
+  }
+}
+
+/**
  * UIElementFactory provides factory methods for creating UI elements
  * Ensures consistent styling and behavior across the application
  */

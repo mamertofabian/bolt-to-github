@@ -51,9 +51,25 @@ export type SvelteComponent = {
 
 // UI State types
 export interface UIState {
-  isButtonValid: boolean;
-  isUploadInProgress: boolean;
-  currentNotification: NotificationOptions | null;
+  uploadStatus: import('../../lib/types').UploadStatusState;
+  buttonState: {
+    isValid: boolean;
+    isProcessing: boolean;
+    isInitialized: boolean;
+  };
+  notifications: {
+    active: number;
+    lastType?: 'info' | 'error' | 'success';
+  };
+  dropdown: {
+    isVisible: boolean;
+    position?: { top: number; left: number };
+  };
+  components: {
+    uploadStatusInitialized: boolean;
+    notificationInitialized: boolean;
+    buttonInitialized: boolean;
+  };
 }
 
 export interface ComponentPosition {

@@ -1,18 +1,8 @@
 import type { UploadStatusState } from '$lib/types';
-import { SettingsService } from '../services/settings';
-import { DownloadService } from '../services/DownloadService';
-import { FilePreviewService, type FileChange } from '../services/FilePreviewService';
 import type { MessageHandler } from './MessageHandler';
-// Remove UploadStatus import since it's now handled by UploadStatusManager
-// import UploadStatus from './UploadStatus.svelte';
 
 // Import new types and managers
-import type {
-  NotificationOptions,
-  SvelteComponent,
-  ConfirmationOptions,
-  ConfirmationResult,
-} from './types/UITypes';
+import type { NotificationOptions } from './types/UITypes';
 import { NotificationManager } from './managers/NotificationManager';
 import { UploadStatusManager } from './managers/UploadStatusManager';
 import { GitHubButtonManager } from './managers/GitHubButtonManager';
@@ -21,30 +11,14 @@ import { GitHubUploadHandler } from './handlers/GitHubUploadHandler';
 import { FileChangeHandler } from './handlers/FileChangeHandler';
 import { DOMObserver } from './infrastructure/DOMObserver';
 import { ComponentLifecycleManager } from './infrastructure/ComponentLifecycleManager';
-
-// Remove the old type definitions since they're now in UITypes
-// type SvelteComponent = {
-//   $set: (props: Record<string, any>) => void;
-//   $destroy: () => void;
-// };
-//
-// interface NotificationOptions {
-//   type: 'info' | 'error' | 'success';
-//   message: string;
-//   duration?: number;
-// }
+import { UIStateManager } from './services/UIStateManager';
 
 export class UIManager {
   private static instance: UIManager | null = null;
-  // Remove uploadButton since it's now in GitHubButtonManager
-  // private uploadButton: HTMLElement | null = null;
-  private observer: MutationObserver | null = null;
-  // Remove the old notification component since it's now in NotificationManager
-  // private notificationComponent: SvelteComponent | null = null;
   private isGitHubUpload = false;
-  private messageHandler: MessageHandler;
-  private downloadService: DownloadService;
-  private filePreviewService: FilePreviewService;
+
+  // Add centralized state management
+  private stateManager: UIStateManager;
 
   // Add the managers
   private notificationManager: NotificationManager;
@@ -61,56 +35,47 @@ export class UIManager {
   private componentLifecycleManager: ComponentLifecycleManager;
 
   private constructor(messageHandler: MessageHandler) {
-    this.messageHandler = messageHandler;
-    this.downloadService = new DownloadService();
-    this.filePreviewService = FilePreviewService.getInstance();
+    // Initialize centralized state management first
+    this.stateManager = new UIStateManager();
 
     // Initialize infrastructure components
     this.domObserver = new DOMObserver(3, 1000, 500); // maxRetries, retryDelay, observationDelay
     this.componentLifecycleManager = new ComponentLifecycleManager();
 
-    // Initialize NotificationManager
-    this.notificationManager = new NotificationManager(messageHandler);
+    // Initialize NotificationManager with state integration
+    this.notificationManager = new NotificationManager(messageHandler, this.stateManager);
 
-    // Initialize UploadStatusManager with callback for button state management
-    this.uploadStatusManager = new UploadStatusManager((status: UploadStatusState) => {
-      this.handleUploadStatusChange(status);
-    });
+    // Initialize UploadStatusManager with state integration
+    this.uploadStatusManager = new UploadStatusManager(this.stateManager);
 
-    // Initialize GitHubButtonManager with dropdown click callback
-    this.githubButtonManager = new GitHubButtonManager(async (button: HTMLButtonElement) => {
-      await this.dropdownManager.show(button);
-    });
+    // Initialize GitHubButtonManager with state integration
+    this.githubButtonManager = new GitHubButtonManager(
+      this.stateManager,
+      async (button: HTMLButtonElement) => {
+        await this.dropdownManager.show(button);
+      }
+    );
 
-    // Initialize DropdownManager with action callbacks
+    // Initialize DropdownManager with state integration
     this.dropdownManager = new DropdownManager(
       messageHandler,
+      this.stateManager,
       () => this.handleGitHubPushAction(), // Push action callback
       () => this.handleShowChangedFiles() // Show changed files callback
     );
 
-    // Initialize GitHubUploadHandler
+    // Initialize GitHubUploadHandler with state integration
     this.githubUploadHandler = new GitHubUploadHandler(
       messageHandler,
       this.notificationManager,
-      (isProcessing: boolean) => {
-        // Handle button state changes
-        if (isProcessing) {
-          this.githubButtonManager.setProcessingState();
-          this.isGitHubUpload = true;
-        } else {
-          this.githubButtonManager.updateState(true);
-          this.isGitHubUpload = false;
-        }
-      },
-      (status: UploadStatusState) => {
-        // Handle upload status updates
-        this.updateUploadStatus(status);
-      }
+      this.stateManager
     );
 
     // Initialize FileChangeHandler
     this.fileChangeHandler = new FileChangeHandler(messageHandler, this.notificationManager);
+
+    // Set up state change listening for coordination
+    this.setupStateCoordination();
 
     this.initializeUI();
     this.startDOMObservation();
@@ -148,9 +113,7 @@ export class UIManager {
 
   private async initializeUI() {
     console.log('🔊 Initializing UI');
-    // Use UploadStatusManager instead of direct initialization
     this.uploadStatusManager.initialize();
-    // Use GitHubButtonManager instead of direct initialization
     await this.githubButtonManager.initialize();
   }
 
@@ -189,14 +152,21 @@ export class UIManager {
   }
 
   /**
-   * Handle upload status changes - callback from UploadStatusManager
-   * This manages the button state when upload status changes
+   * Handle upload status changes - now managed through UIStateManager
+   * This method is called by state change listeners
    */
-  private handleUploadStatusChange(status: UploadStatusState): void {
+  private handleUploadStatusChange(newState: any, previousState: any): void {
+    const status = newState.uploadStatus;
+    const buttonState = newState.buttonState;
+
     // Reset GitHub button when upload is complete
     if (status.status !== 'uploading' && this.isGitHubUpload) {
       this.isGitHubUpload = false;
-      this.githubButtonManager.resetState();
+    }
+
+    // Update isGitHubUpload flag based on upload status
+    if (status.status === 'uploading') {
+      this.isGitHubUpload = true;
     }
   }
 
@@ -237,5 +207,19 @@ export class UIManager {
   public updateButtonState(isValid: boolean) {
     // Delegate to GitHubButtonManager
     this.githubButtonManager.updateState(isValid);
+  }
+
+  /**
+   * Set up state coordination between components
+   */
+  private setupStateCoordination(): void {
+    // Listen to state changes for coordination
+    this.stateManager.addListener((newState, previousState) => {
+      this.handleUploadStatusChange(newState, previousState);
+    });
+
+    // Mark components as initialized
+    this.stateManager.setComponentInitialized('notificationInitialized', true);
+    this.stateManager.setComponentInitialized('uploadStatusInitialized', true);
   }
 }

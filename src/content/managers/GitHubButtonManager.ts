@@ -1,4 +1,5 @@
 import type { IGitHubButtonManager } from '../types/ManagerInterfaces';
+import type { UIStateManager } from '../services/UIStateManager';
 import { SettingsService } from '../../services/settings';
 
 /**
@@ -7,9 +8,14 @@ import { SettingsService } from '../../services/settings';
  */
 export class GitHubButtonManager implements IGitHubButtonManager {
   private uploadButton: HTMLElement | null = null;
+  private stateManager?: UIStateManager;
   private onDropdownClickCallback?: (button: HTMLButtonElement) => Promise<void>;
 
-  constructor(onDropdownClickCallback?: (button: HTMLButtonElement) => Promise<void>) {
+  constructor(
+    stateManager?: UIStateManager,
+    onDropdownClickCallback?: (button: HTMLButtonElement) => Promise<void>
+  ) {
+    this.stateManager = stateManager;
     this.onDropdownClickCallback = onDropdownClickCallback;
   }
 
@@ -101,42 +107,66 @@ export class GitHubButtonManager implements IGitHubButtonManager {
   }
 
   /**
-   * Update the button state
-   * Replaces the previous updateButtonState method from UIManager
+   * Update button state based on settings validity
    */
   public updateState(isValid: boolean): void {
-    if (this.uploadButton) {
-      this.uploadButton.classList.toggle('disabled', !isValid);
-      // Update other button states as needed
+    if (!this.uploadButton) return;
+
+    if (isValid) {
+      this.uploadButton.classList.remove('opacity-50');
+      this.uploadButton.classList.add(
+        'enabled:hover:bg-bolt-elements-button-secondary-backgroundHover'
+      );
+      (this.uploadButton as HTMLButtonElement).disabled = false;
+    } else {
+      this.uploadButton.classList.add('opacity-50');
+      this.uploadButton.classList.remove(
+        'enabled:hover:bg-bolt-elements-button-secondary-backgroundHover'
+      );
+      (this.uploadButton as HTMLButtonElement).disabled = true;
+    }
+
+    // Update centralized state if state manager is available
+    if (this.stateManager) {
+      this.stateManager.setButtonState(isValid);
     }
   }
 
   /**
-   * Set the button to processing state (uploading)
+   * Set button to processing state during uploads
    */
   public setProcessingState(): void {
-    if (this.uploadButton) {
-      this.uploadButton.innerHTML = `
-        <svg class="animate-spin" width="16" height="16" viewBox="0 0 24 24">
+    if (!this.uploadButton) return;
+
+    (this.uploadButton as HTMLButtonElement).disabled = true;
+    this.uploadButton.innerHTML = `
+      <div class="flex items-center gap-1.5">
+        <svg class="animate-spin h-3 w-3" viewBox="0 0 24 24">
           <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4" fill="none"></circle>
           <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
         </svg>
-        Pushing to GitHub...
-        <svg width="12" height="12" viewBox="0 0 24 24" style="margin-left: 4px;">
-          <path fill="currentColor" d="M16.59 8.59L12 13.17 7.41 8.59 6 10l6 6 6-6z"/>
-        </svg>
-      `;
-      (this.uploadButton as HTMLButtonElement).disabled = true;
+        <span>Uploading...</span>
+      </div>
+    `;
+
+    // Update centralized state if state manager is available
+    if (this.stateManager) {
+      this.stateManager.setButtonProcessing(true);
     }
   }
 
   /**
-   * Reset the button to normal state
+   * Reset button to normal state
    */
   public resetState(): void {
-    if (this.uploadButton) {
-      this.uploadButton.innerHTML = this.getButtonHTML();
-      (this.uploadButton as HTMLButtonElement).disabled = false;
+    if (!this.uploadButton) return;
+
+    (this.uploadButton as HTMLButtonElement).disabled = false;
+    this.uploadButton.innerHTML = this.getButtonHTML();
+
+    // Update centralized state if state manager is available
+    if (this.stateManager) {
+      this.stateManager.setButtonProcessing(false);
     }
   }
 

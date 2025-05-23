@@ -1,6 +1,7 @@
 import type { IGitHubUploadHandler } from '../types/HandlerInterfaces';
 import type { INotificationManager } from '../types/ManagerInterfaces';
 import type { MessageHandler } from '../MessageHandler';
+import type { UIStateManager } from '../services/UIStateManager';
 import { SettingsService } from '../../services/settings';
 import { DownloadService } from '../../services/DownloadService';
 
@@ -29,20 +30,17 @@ export class GitHubUploadHandler implements IGitHubUploadHandler {
   private messageHandler: MessageHandler;
   private downloadService: DownloadService;
   private notificationManager: INotificationManager;
-  private onButtonStateChangeCallback?: (isProcessing: boolean) => void;
-  private onUploadStatusCallback?: (status: any) => void;
+  private stateManager?: UIStateManager;
 
   constructor(
     messageHandler: MessageHandler,
     notificationManager: INotificationManager,
-    onButtonStateChangeCallback?: (isProcessing: boolean) => void,
-    onUploadStatusCallback?: (status: any) => void
+    stateManager?: UIStateManager
   ) {
     this.messageHandler = messageHandler;
     this.notificationManager = notificationManager;
+    this.stateManager = stateManager;
     this.downloadService = new DownloadService();
-    this.onButtonStateChangeCallback = onButtonStateChangeCallback;
-    this.onUploadStatusCallback = onUploadStatusCallback;
   }
 
   /**
@@ -81,8 +79,8 @@ export class GitHubUploadHandler implements IGitHubUploadHandler {
 
     try {
       // Notify about button state change (processing)
-      if (this.onButtonStateChangeCallback) {
-        this.onButtonStateChangeCallback(true);
+      if (this.stateManager) {
+        this.stateManager.setButtonProcessing(true);
       }
 
       // Send commit message to background
@@ -108,8 +106,8 @@ export class GitHubUploadHandler implements IGitHubUploadHandler {
       });
 
       // Reset button state
-      if (this.onButtonStateChangeCallback) {
-        this.onButtonStateChangeCallback(false);
+      if (this.stateManager) {
+        this.stateManager.setButtonProcessing(false);
       }
     }
   }
@@ -161,8 +159,8 @@ export class GitHubUploadHandler implements IGitHubUploadHandler {
    * Update upload status through callback
    */
   private updateUploadStatus(status: any): void {
-    if (this.onUploadStatusCallback) {
-      this.onUploadStatusCallback(status);
+    if (this.stateManager) {
+      this.stateManager.setUploadStatus(status);
     }
   }
 

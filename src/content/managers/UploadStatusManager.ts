@@ -1,6 +1,7 @@
 import type { UploadStatusState } from '../../lib/types';
 import type { SvelteComponent, ComponentPosition } from '../types/UITypes';
 import type { IUploadStatusManager } from '../types/ManagerInterfaces';
+import type { UIStateManager } from '../services/UIStateManager';
 import UploadStatus from '../UploadStatus.svelte';
 
 /**
@@ -15,11 +16,11 @@ export class UploadStatusManager implements IUploadStatusManager {
     zIndex: '10000',
   };
 
-  // Callback for when upload status changes (for button state management)
-  private onStatusChangeCallback?: (status: UploadStatusState) => void;
+  // State manager for centralized state coordination
+  private stateManager?: UIStateManager;
 
-  constructor(onStatusChangeCallback?: (status: UploadStatusState) => void) {
-    this.onStatusChangeCallback = onStatusChangeCallback;
+  constructor(stateManager?: UIStateManager) {
+    this.stateManager = stateManager;
   }
 
   /**
@@ -132,9 +133,9 @@ export class UploadStatusManager implements IUploadStatusManager {
       this.uploadStatusComponent.$set({ status });
     }
 
-    // Notify the callback about status change (for button state management)
-    if (this.onStatusChangeCallback) {
-      this.onStatusChangeCallback(status);
+    // Update centralized state if state manager is available
+    if (this.stateManager) {
+      this.stateManager.setUploadStatus(status);
     }
   }
 
