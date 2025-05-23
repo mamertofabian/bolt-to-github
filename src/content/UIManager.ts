@@ -19,6 +19,8 @@ import { GitHubButtonManager } from './managers/GitHubButtonManager';
 import { DropdownManager } from './managers/DropdownManager';
 import { GitHubUploadHandler } from './handlers/GitHubUploadHandler';
 import { FileChangeHandler } from './handlers/FileChangeHandler';
+import { DOMObserver } from './infrastructure/DOMObserver';
+import { ComponentLifecycleManager } from './infrastructure/ComponentLifecycleManager';
 
 // Remove the old type definitions since they're now in UITypes
 // type SvelteComponent = {
@@ -54,10 +56,18 @@ export class UIManager {
   private githubUploadHandler: GitHubUploadHandler;
   private fileChangeHandler: FileChangeHandler;
 
+  // Add infrastructure components
+  private domObserver: DOMObserver;
+  private componentLifecycleManager: ComponentLifecycleManager;
+
   private constructor(messageHandler: MessageHandler) {
     this.messageHandler = messageHandler;
     this.downloadService = new DownloadService();
     this.filePreviewService = FilePreviewService.getInstance();
+
+    // Initialize infrastructure components
+    this.domObserver = new DOMObserver(3, 1000, 500); // maxRetries, retryDelay, observationDelay
+    this.componentLifecycleManager = new ComponentLifecycleManager();
 
     // Initialize NotificationManager
     this.notificationManager = new NotificationManager(messageHandler);
@@ -103,7 +113,7 @@ export class UIManager {
     this.fileChangeHandler = new FileChangeHandler(messageHandler, this.notificationManager);
 
     this.initializeUI();
-    this.setupMutationObserver();
+    this.startDOMObservation();
   }
 
   static getInstance(messageHandler?: MessageHandler): UIManager {
@@ -144,54 +154,30 @@ export class UIManager {
     await this.githubButtonManager.initialize();
   }
 
-  private setupMutationObserver() {
-    let timeoutId: number;
-    let retryCount = 0;
-    const maxRetries = 3;
+  private startDOMObservation() {
+    this.domObserver.start(
+      () => {
+        // Initialization callback - called when DOM changes are detected
+        const button = document.querySelector('[data-github-upload]');
+        const buttonContainer = document.querySelector('div.flex.grow-1.basis-60 div.flex.gap-2');
 
-    const attemptInitialization = () => {
-      const button = document.querySelector('[data-github-upload]');
-      const buttonContainer = document.querySelector('div.flex.grow-1.basis-60 div.flex.gap-2');
-
-      if (!button && buttonContainer) {
-        this.githubButtonManager.initialize();
-        retryCount = 0; // Reset count on success
-      } else if (!buttonContainer && retryCount < maxRetries) {
-        retryCount++;
-        timeoutId = window.setTimeout(attemptInitialization, 1000); // 1 second between retries
-      } else if (retryCount >= maxRetries) {
+        if (!button && buttonContainer) {
+          this.githubButtonManager.initialize();
+        } else if (!buttonContainer) {
+          // Still attempt initialization even if container is not found
+          this.githubButtonManager.initialize();
+        }
+      },
+      () => {
+        // Error callback - called when max retries are reached
         this.showNotification({
           type: 'error',
           message:
             'Failed to initialize GitHub upload button. Please try to refresh the page. If the issue persists, please submit an issue on GitHub.',
           duration: 7000,
         });
-        retryCount = 0; // Reset for future attempts
       }
-    };
-
-    this.observer = new MutationObserver(() => {
-      if (timeoutId) {
-        clearTimeout(timeoutId);
-      }
-      timeoutId = window.setTimeout(attemptInitialization, 500);
-    });
-
-    // Wait for document.body to be available
-    if (document.body) {
-      this.observer.observe(document.body, {
-        childList: true,
-        subtree: true,
-      });
-    } else {
-      // If body isn't available, wait for it
-      document.addEventListener('DOMContentLoaded', () => {
-        this.observer?.observe(document.body, {
-          childList: true,
-          subtree: true,
-        });
-      });
-    }
+    );
   }
 
   /**
@@ -223,7 +209,11 @@ export class UIManager {
   }
 
   public cleanup() {
-    this.observer?.disconnect();
+    // Stop DOM observation
+    this.domObserver.stop();
+
+    // Cleanup all components through ComponentLifecycleManager
+    this.componentLifecycleManager.cleanupAll();
 
     // Use managers' cleanup methods
     this.githubButtonManager.cleanup();
@@ -236,6 +226,7 @@ export class UIManager {
     console.log('🔊 Reinitializing UI manager');
     this.cleanup();
     this.initializeUI();
+    this.startDOMObservation();
   }
 
   public updateUploadStatus(status: UploadStatusState) {
