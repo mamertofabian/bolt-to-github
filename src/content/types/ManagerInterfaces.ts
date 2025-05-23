@@ -11,6 +11,7 @@ import type {
 export interface INotificationManager {
   showNotification(options: NotificationOptions): void;
   showConfirmationDialog(options: ConfirmationOptions): Promise<ConfirmationResult>;
+  showSettingsNotification(): void;
   cleanup(): void;
 }
 
