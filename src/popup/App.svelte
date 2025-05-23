@@ -15,352 +15,218 @@
   import GitHubSettings from '$lib/components/GitHubSettings.svelte';
   import { COFFEE_LINK, GITHUB_LINK, YOUTUBE_LINK } from '$lib/constants';
   import Footer from '$lib/components/Footer.svelte';
-  import type { GitHubSettingsInterface } from '$lib/types';
   import ProjectsList from '$lib/components/ProjectsList.svelte';
-  import { GitHubService } from '../services/GitHubService';
   import { Button } from '$lib/components/ui/button';
   import Help from '$lib/components/Help.svelte';
   import ProjectStatus from '$lib/components/ProjectStatus.svelte';
-  import type { FileChange } from '../services/FilePreviewService';
   import FileChangesModal from './components/FileChangesModal.svelte';
   import TempRepoModal from './components/TempRepoModal.svelte';
 
-  let githubToken: string = '';
-  let repoOwner = '';
-  let repoName = '';
-  let branch = 'main';
-  let projectSettings: Record<string, { repoName: string; branch: string }> = {};
-  let status = '';
-  let uploadProgress = 0;
-  let uploadStatus = 'idle';
-  let uploadMessage = '';
-  let isSettingsValid = false;
-  let activeTab = 'home';
-  let currentUrl: string = '';
-  let isBoltSite: boolean = false;
-  let githubSettings: GitHubSettingsInterface;
-  let parsedProjectId: string | null = null;
-  let fileChanges: Map<string, FileChange> | null = null;
-  const version = chrome.runtime.getManifest().version;
-  let hasStatus = false;
-  let isValidatingToken = false;
-  let isTokenValid: boolean | null = null;
-  let validationError: string | null = null;
-  let hasInitialSettings = false;
-  let showTempRepoModal = false;
-  let showFileChangesModal = false;
-  let tempRepoData: TempRepoMetadata | null = null;
-  let port: chrome.runtime.Port;
-  let hasDeletedTempRepo = false;
-  let hasUsedTempRepoName = false;
+  // Import stores and services
+  import {
+    githubSettingsStore,
+    githubSettingsActions,
+    isSettingsValid,
+    projectSettingsStore,
+    projectSettingsActions,
+    isOnBoltProject,
+    currentProjectId,
+    uiStateStore,
+    uiStateActions,
+    uploadStateStore,
+    uploadStateActions,
+  } from '$lib/stores';
+  import { ChromeStorageService } from '$lib/services/chromeStorage';
+  import { ChromeMessagingService } from '$lib/services/chromeMessaging';
+
+  // Component references
   let projectStatusRef: ProjectStatus;
 
-  interface TempRepoMetadata {
-    originalRepo: string;
-    tempRepo: string;
-    createdAt: number;
-    owner: string;
-  }
-
-  async function validateGitHubToken(token: string, username: string): Promise<boolean> {
-    if (!token) {
-      isTokenValid = false;
-      validationError = 'GitHub token is required';
-      return false;
-    }
-
-    try {
-      isValidatingToken = true;
-      const githubService = new GitHubService(token);
-      const result = await githubService.validateTokenAndUser(username);
-      isTokenValid = result.isValid;
-      validationError = result.error || null;
-      return result.isValid;
-    } catch (error) {
-      console.error('Error validating settings:', error);
-      isTokenValid = false;
-      validationError = 'Validation failed';
-      return false;
-    } finally {
-      isValidatingToken = false;
-    }
-  }
-
-  $: console.log('repoOwner', repoOwner);
+  // Store subscriptions
+  $: uiState = $uiStateStore;
 
   onMount(async () => {
     // Add dark mode to the document
     document.documentElement.classList.add('dark');
 
-    // Connect to background service
-    port = chrome.runtime.connect({ name: 'popup' });
+    // Initialize stores
+    await initializeStores();
 
-    // Check for pending file changes
-    const pendingChanges = await chrome.storage.local.get('pendingFileChanges');
-    if (pendingChanges.pendingFileChanges) {
-      console.log('Found pending file changes:', pendingChanges.pendingFileChanges);
-      fileChanges = new Map(Object.entries(pendingChanges.pendingFileChanges));
-      showFileChangesModal = true;
+    // Set up Chrome messaging
+    setupChromeMessaging();
 
-      // Clear the pending changes
-      await chrome.storage.local.remove('pendingFileChanges');
-      console.log('Cleared pending file changes from storage');
+    // Handle pending file changes
+    await handlePendingFileChanges();
+
+    // Handle temp repositories
+    await handleTempRepositories();
+
+    // Setup cleanup
+    setupCleanup();
+  });
+
+  async function initializeStores(): Promise<void> {
+    // Initialize all stores
+    githubSettingsActions.initialize();
+    projectSettingsActions.initialize();
+    uploadStateActions.initializePort();
+
+    // Detect current project
+    await projectSettingsActions.detectCurrentProject();
+
+    // Load project-specific settings if we have a project ID
+    if ($currentProjectId) {
+      githubSettingsActions.loadProjectSettings($currentProjectId);
     }
+  }
 
-    githubSettings = (await chrome.storage.sync.get([
-      'githubToken',
-      'repoOwner',
-      'projectSettings',
-    ])) as GitHubSettingsInterface;
+  function setupChromeMessaging(): void {
+    // Initialize Chrome messaging service
+    ChromeMessagingService.initializePort('popup');
 
-    githubToken = githubSettings.githubToken || '';
-    repoOwner = githubSettings.repoOwner || '';
-    projectSettings = githubSettings.projectSettings || {};
-    hasInitialSettings = Boolean(githubSettings.githubToken && githubSettings.repoOwner);
-
-    // Validate existing token and username if they exist
-    if (githubToken && repoOwner) {
-      await validateGitHubToken(githubToken, repoOwner);
-    }
-
-    const tabs = await chrome.tabs.query({ active: true, currentWindow: true });
-    console.log(`📄 App: ${tabs[0]?.url}`);
-    if (tabs[0]?.url) {
-      currentUrl = tabs[0].url;
-      isBoltSite = currentUrl.includes('bolt.new');
-
-      if (isBoltSite) {
-        const match = currentUrl.match(/bolt\.new\/~\/([^/]+)/);
-        parsedProjectId = match?.[1] || null;
-        console.log(`📄 App: ${parsedProjectId}`);
-        // Get projectId from storage
-        const projectId = await chrome.storage.sync.get('projectId');
-
-        if (match && parsedProjectId && projectId.projectId === parsedProjectId) {
-          if (projectSettings[parsedProjectId]) {
-            console.log(
-              '📄 App: projectSettings[parsedProjectId]',
-              projectSettings[parsedProjectId]
-            );
-            repoName = projectSettings[parsedProjectId].repoName;
-            branch = projectSettings[parsedProjectId].branch;
-          } else {
-            // Use project ID as default repo name for new projects
-            repoName = parsedProjectId;
-            console.log('📄 App: saving new project settings');
-            saveSettings();
-          }
-        }
-      }
-    }
-
-    checkSettingsValidity();
-
-    chrome.runtime.onMessage.addListener((message) => {
+    // Set up message handlers
+    ChromeMessagingService.addPortMessageHandler((message) => {
       if (message.type === 'UPLOAD_STATUS') {
-        uploadStatus = message.status;
-        uploadProgress = message.progress || 0;
-        uploadMessage = message.message || '';
+        uploadStateActions.handleUploadStatusMessage(message);
       } else if (message.type === 'FILE_CHANGES') {
         console.log('Received file changes:', message.changes, 'for project:', message.projectId);
-        // Store file changes in local storage for future access with project ID as identifier
-        const changesObject = message.changes;
-        const projectId = message.projectId;
-        chrome.storage.local.set({ storedFileChanges: { projectId, changes: changesObject } });
-        fileChanges = new Map(Object.entries(changesObject));
-        showFileChangesModal = true; // Show the file changes modal
+        uiStateActions.processFileChangesMessage(message.changes, message.projectId);
       } else if (message.type === 'OPEN_FILE_CHANGES') {
         showStoredFileChanges();
       }
     });
+  }
 
-    // Check for temp repos
-    const result = await chrome.storage.local.get(STORAGE_KEY);
-    const tempRepos: TempRepoMetadata[] = result[STORAGE_KEY] || [];
+  async function handlePendingFileChanges(): Promise<void> {
+    const pendingChanges = await ChromeStorageService.getPendingFileChanges();
+    if (pendingChanges) {
+      console.log('Found pending file changes:', pendingChanges);
+      const fileChangesMap = new Map(Object.entries(pendingChanges)) as Map<string, any>;
+      uiStateActions.setFileChanges(fileChangesMap);
+      uiStateActions.showFileChangesModal();
 
-    if (tempRepos.length > 0 && parsedProjectId) {
-      // Get the most recent temp repo
-      tempRepoData = tempRepos[tempRepos.length - 1];
-      showTempRepoModal = true;
+      // Clear the pending changes
+      await ChromeStorageService.clearPendingFileChanges();
+      console.log('Cleared pending file changes from storage');
     }
+  }
 
+  async function handleTempRepositories(): Promise<void> {
+    if ($currentProjectId) {
+      const result = await ChromeStorageService.get(STORAGE_KEY, true);
+      const tempRepos = result[STORAGE_KEY] || [];
+
+      if (tempRepos.length > 0) {
+        // Get the most recent temp repo
+        const tempRepoData = tempRepos[tempRepos.length - 1];
+        uiStateActions.showTempRepoModal(tempRepoData);
+      }
+    }
+  }
+
+  function setupCleanup(): void {
     // Add listener to clear file changes when popup closes
     window.addEventListener('unload', async () => {
       try {
-        await chrome.storage.local.remove('storedFileChanges');
+        await ChromeStorageService.clearStoredFileChanges();
         console.log('Cleared stored file changes on popup close');
       } catch (error) {
         console.error('Error clearing stored file changes:', error);
       }
     });
-  });
+  }
 
-  async function handleDeleteTempRepo() {
-    if (tempRepoData) {
-      port.postMessage({
-        type: 'DELETE_TEMP_REPO',
-        data: {
-          owner: tempRepoData.owner,
-          repo: tempRepoData.tempRepo,
-        },
-      });
-      hasDeletedTempRepo = true;
+  async function handleDeleteTempRepo(): Promise<void> {
+    if (uiState.tempRepoData) {
+      ChromeMessagingService.sendDeleteTempRepoMessage(
+        uiState.tempRepoData.owner,
+        uiState.tempRepoData.tempRepo
+      );
+      uiStateActions.markTempRepoDeleted();
 
-      // Only close modal if both actions are completed
-      if (hasDeletedTempRepo && hasUsedTempRepoName) {
-        showTempRepoModal = false;
+      // Check if we can close the modal
+      if (await uiStateActions.canCloseTempRepoModal()) {
+        uiStateActions.hideTempRepoModal();
       }
     }
   }
 
-  async function handleUseTempRepoName() {
-    if (tempRepoData) {
-      repoName = tempRepoData.originalRepo;
-      await saveSettings();
-      await projectStatusRef.getProjectStatus();
-      hasUsedTempRepoName = true;
+  async function handleUseTempRepoName(): Promise<void> {
+    if (uiState.tempRepoData) {
+      githubSettingsActions.setRepoName(uiState.tempRepoData.originalRepo);
+      const result = await githubSettingsActions.saveSettings();
 
-      // Only close modal if both actions are completed
-      if (hasDeletedTempRepo && hasUsedTempRepoName) {
-        showTempRepoModal = false;
+      if (result.success) {
+        await projectStatusRef.getProjectStatus();
+        uiStateActions.markTempRepoNameUsed();
+
+        // Check if we can close the modal
+        if (await uiStateActions.canCloseTempRepoModal()) {
+          uiStateActions.hideTempRepoModal();
+        }
+      } else {
+        uiStateActions.showStatus(result.error || 'Failed to save settings');
       }
     }
   }
 
-  function checkSettingsValidity() {
-    // Only consider settings valid if we have all required fields AND the validation passed
-    isSettingsValid =
-      Boolean(githubToken && repoOwner && repoName && branch) &&
-      !isValidatingToken &&
-      isTokenValid === true;
-  }
+  async function saveSettings(): Promise<void> {
+    const result = await githubSettingsActions.saveSettings();
 
-  async function saveSettings() {
-    try {
-      // Validate token and username before saving
-      const isValid = await validateGitHubToken(githubToken, repoOwner);
-      if (!isValid) {
-        status = validationError || 'Validation failed';
-        hasStatus = true;
-        setTimeout(() => {
-          status = '';
-          hasStatus = false;
-        }, 3000);
-        return;
+    if (result.success) {
+      uiStateActions.showStatus('Settings saved successfully!');
+
+      // Update project settings if we have a project ID
+      if ($currentProjectId) {
+        githubSettingsActions.setProjectSettings(
+          $currentProjectId,
+          $githubSettingsStore.repoName,
+          $githubSettingsStore.branch
+        );
       }
-
-      const settings = {
-        githubToken: githubToken || '',
-        repoOwner: repoOwner || '',
-        projectSettings,
-      };
-
-      if (parsedProjectId) {
-        projectSettings[parsedProjectId] = { repoName, branch };
-        settings.projectSettings = projectSettings;
-      }
-
-      await chrome.storage.sync.set(settings);
-      hasInitialSettings = true;
-      status = 'Settings saved successfully!';
-      hasStatus = true;
-      checkSettingsValidity();
-      setTimeout(() => {
-        status = '';
-        hasStatus = false;
-      }, 3000);
-    } catch (error) {
-      status = 'Error saving settings';
-      hasStatus = true;
-      console.error(error);
+    } else {
+      uiStateActions.showStatus(result.error || 'Failed to save settings');
     }
   }
 
-  function handleSwitchTab(event: CustomEvent<string>) {
-    activeTab = event.detail;
+  function handleSwitchTab(event: CustomEvent<string>): void {
+    uiStateActions.setActiveTab(event.detail);
   }
 
-  /**
-   * Shows the file changes modal with stored changes or fetches them if they don't exist
-   */
-  async function showStoredFileChanges() {
+  async function showStoredFileChanges(): Promise<void> {
     try {
       // First check if we already have file changes in memory
-      if (fileChanges && fileChanges.size > 0) {
-        showFileChangesModal = true;
+      if (uiState.fileChanges && uiState.fileChanges.size > 0) {
+        uiStateActions.showFileChangesModal();
         return;
       }
 
-      // Try to get file changes from storage
-      const result = await chrome.storage.local.get('storedFileChanges');
-      if (result.storedFileChanges) {
-        console.log('Found stored file changes:', result.storedFileChanges);
+      // Try to load from storage
+      const loaded = await uiStateActions.loadStoredFileChanges($currentProjectId);
 
-        // Check if the stored file changes have the new format with projectId
-        if (result.storedFileChanges.projectId && result.storedFileChanges.changes) {
-          // Check if stored projectId matches the current project (if we have a project ID)
-          if (!parsedProjectId || parsedProjectId === result.storedFileChanges.projectId) {
-            // Use the changes from storage
-            fileChanges = new Map(Object.entries(result.storedFileChanges.changes));
-            showFileChangesModal = true;
-            return;
-          } else {
-            console.log('Stored file changes are for a different project, requesting new changes');
-          }
+      if (!loaded) {
+        // Request new file changes from content script
+        if ($isOnBoltProject) {
+          await uiStateActions.requestFileChangesFromContentScript();
         } else {
-          // Legacy format without projectId - use it for backward compatibility
-          fileChanges = new Map(Object.entries(result.storedFileChanges));
-          showFileChangesModal = true;
-          return;
+          uiStateActions.showStatus('Cannot show file changes: Not on a Bolt project page');
         }
-      }
-
-      // If we don't have file changes in storage, request them from the content script
-      console.log('No stored file changes, requesting from content script...');
-      // Send message to the active tab to request file changes
-      const tabs = await chrome.tabs.query({ active: true, currentWindow: true });
-      if (tabs[0]?.id && isBoltSite) {
-        chrome.tabs.sendMessage(tabs[0].id, { action: 'REQUEST_FILE_CHANGES' }, (response) => {
-          if (response && response.success) {
-            console.log(
-              'Received response from content script with projectId:',
-              response.projectId
-            );
-            // Store the projectId for later use
-            if (response.projectId) {
-              // Make sure to update parsedProjectId if needed
-              if (!parsedProjectId) {
-                parsedProjectId = response.projectId;
-              }
-            }
-          }
-        });
-        // Let the user know what's happening
-        status = 'Calculating file changes...';
-        hasStatus = true;
-        setTimeout(() => {
-          status = '';
-          hasStatus = false;
-        }, 5000);
-      } else {
-        console.error('No active Bolt tab found or not on Bolt site');
-        status = 'Cannot show file changes: Not on a Bolt project page';
-        hasStatus = true;
-        setTimeout(() => {
-          status = '';
-          hasStatus = false;
-        }, 3000);
       }
     } catch (error) {
       console.error('Error showing file changes:', error);
-      status = `Error retrieving file changes: ${error instanceof Error ? error.message : 'Unknown error'}`;
-      hasStatus = true;
-      setTimeout(() => {
-        status = '';
-        hasStatus = false;
-      }, 3000);
+      uiStateActions.showStatus(
+        `Error retrieving file changes: ${error instanceof Error ? error.message : 'Unknown error'}`
+      );
     }
   }
+
+  function checkSettingsValidity(): void {
+    // This is now handled by the derived store automatically
+    // No need for manual validation
+  }
+
+  // Reactive statements for debugging
+  $: console.log('repoOwner', $githubSettingsStore.repoOwner);
 </script>
 
 <main class="w-[400px] p-3 bg-slate-950 text-slate-50">
@@ -373,7 +239,8 @@
           class="flex items-center gap-2 hover:opacity-80 transition-opacity"
         >
           <img src="/assets/icons/icon48.png" alt="Bolt to GitHub" class="w-5 h-5" />
-          Bolt to GitHub <span class="text-xs text-slate-400">v{version}</span>
+          Bolt to GitHub
+          <span class="text-xs text-slate-400">v{$projectSettingsStore.version}</span>
         </a>
       </CardTitle>
       <CardDescription class="text-slate-400">
@@ -381,21 +248,21 @@
       </CardDescription>
     </CardHeader>
     <CardContent>
-      {#if isBoltSite && parsedProjectId}
-        <Tabs bind:value={activeTab} class="w-full">
+      {#if $isOnBoltProject && $currentProjectId}
+        <Tabs bind:value={uiState.activeTab} class="w-full">
           <Header />
 
           <TabsContent value="home">
-            {#if !isSettingsValid || !parsedProjectId}
+            {#if !$isSettingsValid || !$currentProjectId}
               <StatusAlert on:switchTab={handleSwitchTab} />
             {:else}
               <ProjectStatus
                 bind:this={projectStatusRef}
-                projectId={parsedProjectId}
-                gitHubUsername={repoOwner}
-                {repoName}
-                {branch}
-                token={githubToken}
+                projectId={$currentProjectId}
+                gitHubUsername={$githubSettingsStore.repoOwner}
+                repoName={$githubSettingsStore.repoName}
+                branch={$githubSettingsStore.branch}
+                token={$githubSettingsStore.githubToken}
                 on:switchTab={handleSwitchTab}
                 on:showFileChanges={showStoredFileChanges}
               />
@@ -408,11 +275,11 @@
 
           <TabsContent value="projects">
             <ProjectsList
-              {projectSettings}
-              {repoOwner}
-              {githubToken}
-              currentlyLoadedProjectId={parsedProjectId}
-              {isBoltSite}
+              projectSettings={$githubSettingsStore.projectSettings}
+              repoOwner={$githubSettingsStore.repoOwner}
+              githubToken={$githubSettingsStore.githubToken}
+              currentlyLoadedProjectId={$currentProjectId}
+              isBoltSite={$projectSettingsStore.isBoltSite}
             />
           </TabsContent>
 
@@ -423,13 +290,13 @@
                 <p class="text-sm text-slate-400">Configure your GitHub repository settings</p>
               </div>
               <GitHubSettings
-                bind:githubToken
-                bind:repoOwner
-                bind:repoName
-                bind:branch
-                projectId={parsedProjectId}
-                {status}
-                buttonDisabled={hasStatus}
+                bind:githubToken={$githubSettingsStore.githubToken}
+                bind:repoOwner={$githubSettingsStore.repoOwner}
+                bind:repoName={$githubSettingsStore.repoName}
+                bind:branch={$githubSettingsStore.branch}
+                projectId={$currentProjectId}
+                status={uiState.status}
+                buttonDisabled={uiState.hasStatus}
                 onSave={saveSettings}
                 onInput={checkSettingsValidity}
               />
@@ -445,18 +312,18 @@
             </div>
           </TabsContent>
         </Tabs>
-      {:else if hasInitialSettings && repoOwner && githubToken}
+      {:else if $githubSettingsStore.hasInitialSettings && $githubSettingsStore.repoOwner && $githubSettingsStore.githubToken}
         <ProjectsList
-          {projectSettings}
-          {repoOwner}
-          {githubToken}
-          currentlyLoadedProjectId={parsedProjectId}
-          {isBoltSite}
+          projectSettings={$githubSettingsStore.projectSettings}
+          repoOwner={$githubSettingsStore.repoOwner}
+          githubToken={$githubSettingsStore.githubToken}
+          currentlyLoadedProjectId={$currentProjectId}
+          isBoltSite={$projectSettingsStore.isBoltSite}
         />
       {:else}
         <div class="flex flex-col items-center justify-center p-4 text-center space-y-6">
           <div class="space-y-2">
-            {#if !isBoltSite}
+            {#if !$projectSettingsStore.isBoltSite}
               <Button
                 variant="outline"
                 class="border-slate-800 hover:bg-slate-800 text-slate-200"
@@ -474,12 +341,12 @@
             </p>
             <GitHubSettings
               isOnboarding={true}
-              bind:githubToken
-              bind:repoName
-              bind:branch
-              bind:repoOwner
-              {status}
-              buttonDisabled={hasStatus}
+              bind:githubToken={$githubSettingsStore.githubToken}
+              bind:repoName={$githubSettingsStore.repoName}
+              bind:branch={$githubSettingsStore.branch}
+              bind:repoOwner={$githubSettingsStore.repoOwner}
+              status={uiState.status}
+              buttonDisabled={uiState.hasStatus}
               onSave={saveSettings}
               onInput={checkSettingsValidity}
             />
@@ -488,16 +355,20 @@
       {/if}
     </CardContent>
   </Card>
-  <FileChangesModal bind:show={showFileChangesModal} bind:fileChanges />
+
+  <FileChangesModal
+    bind:show={uiState.showFileChangesModal}
+    bind:fileChanges={uiState.fileChanges}
+  />
 
   <TempRepoModal
-    bind:show={showTempRepoModal}
-    bind:tempRepoData
-    bind:hasDeletedTempRepo
-    bind:hasUsedTempRepoName
+    bind:show={uiState.showTempRepoModal}
+    bind:tempRepoData={uiState.tempRepoData}
+    bind:hasDeletedTempRepo={uiState.hasDeletedTempRepo}
+    bind:hasUsedTempRepoName={uiState.hasUsedTempRepoName}
     onDeleteTempRepo={handleDeleteTempRepo}
     onUseTempRepoName={handleUseTempRepoName}
-    onDismiss={() => (showTempRepoModal = false)}
+    onDismiss={() => uiStateActions.hideTempRepoModal()}
   />
 </main>
 
