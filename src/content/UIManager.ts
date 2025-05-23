@@ -4,35 +4,53 @@ import { DownloadService } from '../services/DownloadService';
 import { FilePreviewService, type FileChange } from '../services/FilePreviewService';
 import type { MessageHandler } from './MessageHandler';
 import UploadStatus from './UploadStatus.svelte';
-import Notification from './Notification.svelte';
+// Remove the old Notification import - now handled by NotificationManager
+// import Notification from './Notification.svelte';
 
-// Define proper types for Svelte components
-type SvelteComponent = {
-  $set: (props: Record<string, any>) => void;
-  $destroy: () => void;
-};
+// Import new types and managers
+import type {
+  NotificationOptions,
+  SvelteComponent,
+  ConfirmationOptions,
+  ConfirmationResult,
+} from './types/UITypes';
+import { NotificationManager } from './managers/NotificationManager';
 
-interface NotificationOptions {
-  type: 'info' | 'error' | 'success';
-  message: string;
-  duration?: number;
-}
+// Remove the old type definitions since they're now in UITypes
+// type SvelteComponent = {
+//   $set: (props: Record<string, any>) => void;
+//   $destroy: () => void;
+// };
+//
+// interface NotificationOptions {
+//   type: 'info' | 'error' | 'success';
+//   message: string;
+//   duration?: number;
+// }
 
 export class UIManager {
   private static instance: UIManager | null = null;
   private uploadStatusComponent: SvelteComponent | null = null;
   private uploadButton: HTMLElement | null = null;
   private observer: MutationObserver | null = null;
-  private notificationComponent: SvelteComponent | null = null;
+  // Remove the old notification component since it's now in NotificationManager
+  // private notificationComponent: SvelteComponent | null = null;
   private isGitHubUpload = false;
   private messageHandler: MessageHandler;
   private downloadService: DownloadService;
   private filePreviewService: FilePreviewService;
 
+  // Add the NotificationManager
+  private notificationManager: NotificationManager;
+
   private constructor(messageHandler: MessageHandler) {
     this.messageHandler = messageHandler;
     this.downloadService = new DownloadService();
     this.filePreviewService = FilePreviewService.getInstance();
+
+    // Initialize NotificationManager
+    this.notificationManager = new NotificationManager(messageHandler);
+
     this.initializeUI();
     this.setupMutationObserver();
   }
@@ -63,28 +81,8 @@ export class UIManager {
   }
 
   public showNotification(options: NotificationOptions): void {
-    // Cleanup existing notification if any
-    this.notificationComponent?.$destroy();
-
-    // Create container for notification
-    const container = document.createElement('div');
-    container.id = 'bolt-to-github-notification-container';
-    document.body.appendChild(container);
-
-    // Create new notification component
-    this.notificationComponent = new Notification({
-      target: container,
-      props: {
-        type: options.type,
-        message: options.message,
-        duration: options.duration || 5000,
-        onClose: () => {
-          this.notificationComponent?.$destroy();
-          this.notificationComponent = null;
-          container.remove();
-        },
-      },
-    }) as SvelteComponent;
+    // Delegate to NotificationManager
+    this.notificationManager.showNotification(options);
   }
 
   private async initializeUI() {
@@ -403,16 +401,21 @@ export class UIManager {
   }
 
   public async handleGitHubPushAction() {
-    console.log('Handling GitHub push action');
+    console.log('🔊 Handling GitHub push action');
+
     const settings = await SettingsService.getGitHubSettings();
     if (!settings.isSettingsValid) {
-      this.showSettingsNotification();
+      this.notificationManager.showSettingsNotification();
       return;
     }
 
-    const { confirmed, commitMessage } = await this.showGitHubConfirmation(
-      settings.gitHubSettings?.projectSettings || {}
-    );
+    const { confirmed, commitMessage } = await this.notificationManager.showConfirmationDialog({
+      title: 'Confirm GitHub Upload',
+      message: `Are you sure you want to upload this project to GitHub? <br />
+        <span class="font-mono">${settings.gitHubSettings?.projectSettings?.repoName || 'N/A'} / ${settings.gitHubSettings?.projectSettings?.branch || 'N/A'}</span>`,
+      confirmText: 'Upload',
+      cancelText: 'Cancel',
+    });
     if (!confirmed) return;
 
     try {
@@ -486,137 +489,6 @@ export class UIManager {
       this.isGitHubUpload = false;
     }
   }
-
-  // Function to show confirmation dialog
-  private showGitHubConfirmation = (
-    projectSettings: Record<string, { repoName: string; branch: string }>
-  ): Promise<{ confirmed: boolean; commitMessage?: string }> => {
-    return new Promise((resolve) => {
-      const overlay = document.createElement('div');
-      overlay.style.zIndex = '9999';
-      overlay.style.backgroundColor = 'rgba(0, 0, 0, 0.5)';
-      overlay.className = ['fixed', 'inset-0', 'flex', 'items-center', 'justify-center'].join(' ');
-
-      const dialog = document.createElement('div');
-      dialog.style.zIndex = '10000';
-      dialog.style.width = '320px'; // Set fixed width
-      dialog.style.backgroundColor = '#0f172a'; // Match bg-slate-900
-      dialog.className = [
-        'p-6',
-        'rounded-lg',
-        'shadow-xl',
-        'mx-4',
-        'space-y-4',
-        'border',
-        'border-slate-700',
-        'relative',
-      ].join(' ');
-
-      dialog.innerHTML = `
-        <h3 class="text-lg font-semibold text-white">Confirm GitHub Upload</h3>
-        <p class="text-slate-300 text-sm">Are you sure you want to upload this project to GitHub? <br />
-          <span class="font-mono">${projectSettings.repoName} / ${projectSettings.branch}</span>
-        </p>
-        <div class="mt-4">
-          <label for="commit-message" class="block text-sm text-slate-300 mb-2">Commit message (optional)</label>
-          <input 
-            type="text" 
-            id="commit-message" 
-            placeholder="Commit from Bolt to GitHub"
-            class="w-full px-3 py-2 text-sm rounded-md bg-slate-800 text-white border border-slate-700 focus:border-blue-500 focus:outline-none"
-          >
-        </div>
-        <div class="flex justify-end gap-3 mt-6">
-          <button class="px-4 py-2 text-sm rounded-md bg-slate-800 text-slate-300 hover:bg-slate-700" id="cancel-upload">
-            Cancel
-          </button>
-          <button class="px-4 py-2 text-sm rounded-md bg-blue-600 text-white hover:bg-blue-700" id="confirm-upload">
-            Upload
-          </button>
-        </div>
-      `;
-
-      overlay.appendChild(dialog);
-      document.body.appendChild(overlay);
-
-      // Handle clicks
-      overlay.addEventListener('click', (e) => {
-        if (e.target === overlay) {
-          document.body.removeChild(overlay);
-          resolve({ confirmed: false });
-        }
-      });
-
-      dialog.querySelector('#cancel-upload')?.addEventListener('click', () => {
-        document.body.removeChild(overlay);
-        resolve({ confirmed: false });
-      });
-
-      dialog.querySelector('#confirm-upload')?.addEventListener('click', () => {
-        const commitMessage =
-          (dialog.querySelector('#commit-message') as HTMLInputElement)?.value ||
-          'Commit from Bolt to GitHub';
-        document.body.removeChild(overlay);
-        resolve({ confirmed: true, commitMessage });
-      });
-    });
-  };
-
-  // Also update the notification z-index
-  private showSettingsNotification = () => {
-    const notification = document.createElement('div');
-    notification.style.zIndex = '10000';
-    notification.className = [
-      'fixed',
-      'top-4',
-      'right-4',
-      'p-4',
-      'bg-red-500',
-      'text-white',
-      'rounded-md',
-      'shadow-lg',
-      'flex',
-      'items-center',
-      'gap-2',
-      'text-sm',
-    ].join(' ');
-
-    notification.innerHTML = `
-      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor">
-        <circle cx="12" cy="12" r="10"></circle>
-        <line x1="12" y1="8" x2="12" y2="12"></line>
-        <line x1="12" y1="16" x2="12.01" y2="16"></line>
-      </svg>
-      <span>
-        Please configure your GitHub settings first. 
-        <button class="text-white font-medium hover:text-white/90 underline underline-offset-2">Open Settings</button>
-      </span>
-    `;
-
-    // Add click handler for settings button
-    const settingsButton = notification.querySelector('button');
-    settingsButton?.addEventListener('click', () => {
-      this.messageHandler.sendMessage('OPEN_SETTINGS');
-      document.body.removeChild(notification);
-    });
-
-    // Add close button
-    const closeButton = document.createElement('button');
-    closeButton.className = 'ml-2 text-white hover:text-white/90 font-medium text-lg leading-none';
-    closeButton.innerHTML = '×';
-    closeButton.addEventListener('click', () => {
-      document.body.removeChild(notification);
-    });
-    notification.appendChild(closeButton);
-
-    // Add to body and remove after 5 seconds
-    document.body.appendChild(notification);
-    setTimeout(() => {
-      if (document.body.contains(notification)) {
-        document.body.removeChild(notification);
-      }
-    }, 5000);
-  };
 
   public updateUploadStatus(status: UploadStatusState) {
     console.log('🔊 Updating upload status:', status);
@@ -905,16 +777,11 @@ export class UIManager {
       this.uploadStatusComponent.$destroy();
       this.uploadStatusComponent = null;
     }
-    if (this.notificationComponent) {
-      this.notificationComponent.$destroy();
-      this.notificationComponent = null;
-    }
     this.uploadButton?.remove();
     this.uploadButton = null;
 
-    // Clean up notification container if it exists
-    const notificationContainer = document.getElementById('bolt-to-github-notification-container');
-    notificationContainer?.remove();
+    // Use NotificationManager cleanup instead of manual cleanup
+    this.notificationManager.cleanup();
   }
 
   public reinitialize() {
