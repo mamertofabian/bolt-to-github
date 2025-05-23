@@ -23,6 +23,11 @@ export interface IUploadStatusManager {
 export interface IGitHubButtonManager {
   initialize(): Promise<void>;
   updateState(isValid: boolean): void;
+  setProcessingState(): void;
+  resetState(): void;
+  getButton(): HTMLElement | null;
+  isInitialized(): boolean;
+  buttonExists(): boolean;
   cleanup(): void;
 }
 
@@ -30,6 +35,7 @@ export interface IDropdownManager {
   show(button: HTMLButtonElement): Promise<void>;
   hide(): void;
   createContent(): HTMLElement;
+  cleanup(): void;
 }
 
 export interface IUIStateManager {
