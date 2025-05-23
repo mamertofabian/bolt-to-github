@@ -3,9 +3,8 @@ import { SettingsService } from '../services/settings';
 import { DownloadService } from '../services/DownloadService';
 import { FilePreviewService, type FileChange } from '../services/FilePreviewService';
 import type { MessageHandler } from './MessageHandler';
-import UploadStatus from './UploadStatus.svelte';
-// Remove the old Notification import - now handled by NotificationManager
-// import Notification from './Notification.svelte';
+// Remove UploadStatus import since it's now handled by UploadStatusManager
+// import UploadStatus from './UploadStatus.svelte';
 
 // Import new types and managers
 import type {
@@ -15,6 +14,7 @@ import type {
   ConfirmationResult,
 } from './types/UITypes';
 import { NotificationManager } from './managers/NotificationManager';
+import { UploadStatusManager } from './managers/UploadStatusManager';
 
 // Remove the old type definitions since they're now in UITypes
 // type SvelteComponent = {
@@ -30,7 +30,8 @@ import { NotificationManager } from './managers/NotificationManager';
 
 export class UIManager {
   private static instance: UIManager | null = null;
-  private uploadStatusComponent: SvelteComponent | null = null;
+  // Remove uploadStatusComponent since it's now in UploadStatusManager
+  // private uploadStatusComponent: SvelteComponent | null = null;
   private uploadButton: HTMLElement | null = null;
   private observer: MutationObserver | null = null;
   // Remove the old notification component since it's now in NotificationManager
@@ -40,8 +41,9 @@ export class UIManager {
   private downloadService: DownloadService;
   private filePreviewService: FilePreviewService;
 
-  // Add the NotificationManager
+  // Add the managers
   private notificationManager: NotificationManager;
+  private uploadStatusManager: UploadStatusManager;
 
   private constructor(messageHandler: MessageHandler) {
     this.messageHandler = messageHandler;
@@ -50,6 +52,11 @@ export class UIManager {
 
     // Initialize NotificationManager
     this.notificationManager = new NotificationManager(messageHandler);
+
+    // Initialize UploadStatusManager with callback for button state management
+    this.uploadStatusManager = new UploadStatusManager((status: UploadStatusState) => {
+      this.handleUploadStatusChange(status);
+    });
 
     this.initializeUI();
     this.setupMutationObserver();
@@ -88,65 +95,8 @@ export class UIManager {
   private async initializeUI() {
     console.log('🔊 Initializing UI');
     await this.initializeUploadButton();
-    this.initializeUploadStatus();
-  }
-
-  private initializeUploadStatus() {
-    console.log('🔊 Initializing upload status');
-    // Clean up existing instance if any
-    if (this.uploadStatusComponent) {
-      console.log('Destroying existing upload status component');
-      this.uploadStatusComponent.$destroy();
-      this.uploadStatusComponent = null;
-    }
-
-    // Remove existing container if any
-    const existingContainer = document.getElementById('bolt-to-github-upload-status-container');
-    if (existingContainer) {
-      console.log('Removing existing upload status container');
-      existingContainer.remove();
-    }
-
-    // Create new container and component
-    const target = document.createElement('div');
-    target.id = 'bolt-to-github-upload-status-container';
-    target.style.zIndex = '10000'; // Ensure high z-index
-    target.style.position = 'fixed'; // Use fixed positioning
-    target.style.top = '20px'; // Position at the top of the viewport
-    target.style.right = '20px'; // Position at the right of the viewport
-
-    const initComponent = () => {
-      if (!document.body.contains(target)) {
-        console.log('Appending upload status container to body');
-        document.body.appendChild(target);
-      }
-
-      try {
-        this.uploadStatusComponent = new UploadStatus({
-          target,
-          props: {
-            status: {
-              status: 'idle',
-              progress: 0,
-              message: '',
-            },
-          },
-        }) as SvelteComponent;
-
-        console.log('🔊 Upload status component created successfully');
-      } catch (error) {
-        console.error('🔊 Error creating upload status component:', error);
-      }
-    };
-
-    // Wait for document.body to be available
-    if (document.body) {
-      initComponent();
-    } else {
-      // If body isn't available, wait for it
-      console.log('Waiting for body to be available');
-      document.addEventListener('DOMContentLoaded', initComponent);
-    }
+    // Use UploadStatusManager instead of direct initialization
+    this.uploadStatusManager.initialize();
   }
 
   private async initializeUploadButton() {
@@ -491,61 +441,8 @@ export class UIManager {
   }
 
   public updateUploadStatus(status: UploadStatusState) {
-    console.log('🔊 Updating upload status:', status);
-
-    // If component doesn't exist, initialize it first
-    if (!this.uploadStatusComponent) {
-      console.log('🔊 Upload status component not found, initializing');
-      this.initializeUploadStatus();
-
-      // Add a small delay to ensure component is mounted before updating
-      setTimeout(() => {
-        this.updateUploadStatusInternal(status);
-      }, 50);
-      return;
-    }
-
-    this.updateUploadStatusInternal(status);
-  }
-
-  private updateUploadStatusInternal(status: UploadStatusState) {
-    // Ensure the container is visible in the DOM
-    const container = document.getElementById('bolt-to-github-upload-status-container');
-    if (!container || !document.body.contains(container)) {
-      console.log('🔊 Upload status container not in DOM, reinitializing');
-      this.initializeUploadStatus();
-
-      // Add a slightly longer delay to ensure component is fully mounted
-      setTimeout(() => {
-        if (this.uploadStatusComponent) {
-          console.log('🔊 Setting upload status after initialization:', status);
-          this.uploadStatusComponent.$set({ status });
-        }
-      }, 100);
-      return;
-    }
-
-    console.log('🔊 Setting upload status:', status);
-
-    // Update the component immediately if it exists
-    if (this.uploadStatusComponent) {
-      this.uploadStatusComponent.$set({ status });
-    }
-
-    // Reset GitHub button when upload is complete
-    if (status.status !== 'uploading' && this.isGitHubUpload && this.uploadButton) {
-      this.isGitHubUpload = false;
-      this.uploadButton.innerHTML = `
-        <svg width="16" height="16" viewBox="0 0 16 16" style="margin-right: 2px;">
-          <path fill="currentColor" d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0016 8c0-4.42-3.58-8-8-8z"/>
-        </svg>
-        GitHub
-        <svg width="12" height="12" viewBox="0 0 24 24" style="margin-left: 4px;">
-          <path fill="currentColor" d="M16.59 8.59L12 13.17 7.41 8.59 6 10l6 6 6-6z"/>
-        </svg>
-      `;
-      (this.uploadButton as HTMLButtonElement).disabled = false;
-    }
+    // Delegate to UploadStatusManager
+    this.uploadStatusManager.updateStatus(status);
   }
 
   public updateButtonState(isValid: boolean) {
@@ -771,17 +668,37 @@ export class UIManager {
     }
   }
 
+  /**
+   * Handle upload status changes - callback from UploadStatusManager
+   * This manages the button state when upload status changes
+   */
+  private handleUploadStatusChange(status: UploadStatusState): void {
+    // Reset GitHub button when upload is complete
+    if (status.status !== 'uploading' && this.isGitHubUpload && this.uploadButton) {
+      this.isGitHubUpload = false;
+      this.uploadButton.innerHTML = `
+        <svg width="16" height="16" viewBox="0 0 16 16" style="margin-right: 2px;">
+          <path fill="currentColor" d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0016 8c0-4.42-3.58-8-8-8z"/>
+        </svg>
+        GitHub
+        <svg width="12" height="12" viewBox="0 0 24 24" style="margin-left: 4px;">
+          <path fill="currentColor" d="M16.59 8.59L12 13.17 7.41 8.59 6 10l6 6 6-6z"/>
+        </svg>
+      `;
+      (this.uploadButton as HTMLButtonElement).disabled = false;
+    }
+  }
+
   public cleanup() {
     this.observer?.disconnect();
-    if (this.uploadStatusComponent) {
-      this.uploadStatusComponent.$destroy();
-      this.uploadStatusComponent = null;
-    }
     this.uploadButton?.remove();
     this.uploadButton = null;
 
     // Use NotificationManager cleanup instead of manual cleanup
     this.notificationManager.cleanup();
+
+    // Use UploadStatusManager cleanup
+    this.uploadStatusManager.cleanup();
   }
 
   public reinitialize() {
