@@ -2,6 +2,15 @@ import { FileService } from '../FileService';
 import type { IGitHubApiClient } from '../interfaces/IGitHubApiClient';
 import { expect, jest, describe, it, beforeEach } from '@jest/globals';
 
+// Mock the fileUtils module
+jest.mock('$lib/fileUtils', () => ({
+  decodeBase64ToUtf8: jest.fn((base64: string) => Buffer.from(base64, 'base64').toString('utf-8')),
+}));
+
+// Import the mocked function so we can check if it was called
+import { decodeBase64ToUtf8 } from '$lib/fileUtils';
+const mockDecodeBase64ToUtf8 = decodeBase64ToUtf8 as jest.MockedFunction<typeof decodeBase64ToUtf8>;
+
 jest.spyOn(console, 'error').mockImplementation(() => {});
 jest.spyOn(console, 'log').mockImplementation(() => {});
 jest.spyOn(console, 'warn').mockImplementation(() => {});
@@ -18,8 +27,10 @@ describe('FileService', () => {
 
     fileService = new FileService(mockApiClient as IGitHubApiClient);
 
-    // Mock global atob and btoa functions
-    global.atob = jest.fn((str: string) => Buffer.from(str, 'base64').toString('utf-8'));
+    // Reset the mocked functions
+    jest.clearAllMocks();
+
+    // Mock global btoa function (still needed for writeFile)
     global.btoa = jest.fn((str: string) => Buffer.from(str).toString('base64'));
   });
 
@@ -43,7 +54,7 @@ describe('FileService', () => {
         'GET',
         '/repos/testuser/test-repo/contents/test.txt?ref=main'
       );
-      expect(global.atob).toHaveBeenCalledWith(mockContent);
+      expect(mockDecodeBase64ToUtf8).toHaveBeenCalledWith(mockContent);
     });
 
     it('should throw an error when file has no content', async () => {

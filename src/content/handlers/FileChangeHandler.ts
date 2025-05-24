@@ -32,11 +32,11 @@ export class FileChangeHandler implements IFileChangeHandler {
    */
   public async showChangedFiles(): Promise<void> {
     try {
-      // Show notification that we're refreshing and loading files
+      // Show initial loading notification (longer duration)
       this.notificationManager.showNotification({
         type: 'info',
-        message: 'Refreshing and loading project files...',
-        duration: 3000,
+        message: 'Loading project files...',
+        duration: 10000, // Show for 10 seconds
       });
 
       console.group('Changed Files');
@@ -48,6 +48,13 @@ export class FileChangeHandler implements IFileChangeHandler {
       await this.filePreviewService.loadProjectFiles(true); // Pass true to force refresh
       const loadTime = performance.now() - startTime;
       console.log(`Files loaded in ${loadTime.toFixed(2)}ms`);
+
+      // Update loading message
+      this.notificationManager.showNotification({
+        type: 'info',
+        message: 'Comparing files with GitHub repository...',
+        duration: 8000,
+      });
 
       // Get changed files (with GitHub comparison if possible)
       const changedFiles = await this.getChangedFilesWithComparison();

@@ -2,9 +2,10 @@
 <script lang="ts">
   import { FilePreviewService } from '../../services/FilePreviewService';
   import { Button } from '$lib/components/ui/button';
-  import { X, Copy } from 'lucide-svelte';
+  import { X, Copy, Eye, FileText } from 'lucide-svelte';
   import { onMount } from 'svelte';
   import type { DiffResult, FileChange } from '../../services/FilePreviewService';
+  import { normalizeContentForComparison } from '$lib/fileUtils';
 
   export let path: string;
   export let show = false;
@@ -15,6 +16,8 @@
   let error: string | null = null;
   let fileExtension = path.split('.').pop() || 'txt';
   let debugInfo = '';
+  let showContextualView = true;
+  let contextLines = 3;
 
   // Get the file preview service
   const filePreviewService = FilePreviewService.getInstance();
@@ -71,48 +74,88 @@
           const oldContent = fileChange.previousContent || '';
           const newContent = fileChange.content;
 
-          // Even with missing previousContent, we can show what's available
-          const oldLines = oldContent.split('\n');
-          const newLines = newContent.split('\n');
-          const changes: DiffResult['changes'] = [];
+          debugInfo += `, Old content length: ${oldContent.length}, New content length: ${newContent.length}`;
 
           // If previousContent is missing, treat all as added
           if (!fileChange.previousContent) {
-            newLines.forEach((line, index) => {
-              changes.push({
+            const newLines = newContent.split('\n');
+            diffResult = {
+              path,
+              changes: newLines.map((line, index) => ({
                 type: 'added',
                 content: line,
                 lineNumber: index + 1,
-              });
-            });
+              })),
+            };
+            debugInfo += `, No previous content - showing all as added`;
           } else {
-            // Simple diff - consider all lines different for now
-            // Mark old lines as deleted
-            oldLines.forEach((line, index) => {
-              changes.push({
-                type: 'deleted',
-                content: line,
-                lineNumber: index + 1,
-              });
-            });
+            // Check if content is actually identical after normalization first
+            const normalizedOld = normalizeContentForComparison(oldContent);
+            const normalizedNew = normalizeContentForComparison(newContent);
 
-            // Mark new lines as added
-            newLines.forEach((line, index) => {
-              changes.push({
-                type: 'added',
-                content: line,
-                lineNumber: index + 1,
-              });
-            });
+            if (normalizedOld === normalizedNew) {
+              // Files are actually identical - show as unchanged
+              const newLines = newContent.split('\n');
+              diffResult = {
+                path,
+                changes: newLines.map((content, index) => ({
+                  type: 'unchanged',
+                  content,
+                  lineNumber: index + 1,
+                })),
+              };
+              debugInfo += `, Content identical after normalization`;
+            } else {
+              // Use the FilePreviewService's built-in diff algorithm for better line-by-line comparison
+              try {
+                const contextLinesToUse = showContextualView ? contextLines : 0;
+                diffResult = filePreviewService.calculateLineDiff(
+                  path,
+                  oldContent,
+                  newContent,
+                  contextLinesToUse
+                );
+                debugInfo += `, Using FilePreviewService calculateLineDiff (context: ${contextLinesToUse})`;
+              } catch (error) {
+                console.warn(
+                  'Error using FilePreviewService diff, falling back to basic diff:',
+                  error
+                );
+
+                // Fallback to simple comparison if FilePreviewService fails
+                const oldLines = oldContent.split('\n');
+                const newLines = newContent.split('\n');
+                const changes: DiffResult['changes'] = [];
+
+                // Mark old lines as deleted
+                oldLines.forEach((line, index) => {
+                  changes.push({
+                    type: 'deleted',
+                    content: line,
+                    lineNumber: index + 1,
+                  });
+                });
+
+                // Mark new lines as added
+                newLines.forEach((line, index) => {
+                  changes.push({
+                    type: 'added',
+                    content: line,
+                    lineNumber: index + 1,
+                  });
+                });
+
+                // Sort by line number
+                changes.sort((a, b) => a.lineNumber - b.lineNumber);
+
+                diffResult = {
+                  path,
+                  changes,
+                };
+                debugInfo += `, Using basic fallback diff`;
+              }
+            }
           }
-
-          // Sort by line number
-          changes.sort((a, b) => a.lineNumber - b.lineNumber);
-
-          diffResult = {
-            path,
-            changes,
-          };
         } else if (fileChange.status === 'unchanged') {
           // For unchanged files, show the content with unchanged type
           const lines = fileChange.content.split('\n');
@@ -162,8 +205,18 @@
     navigator.clipboard.writeText(diffText);
   }
 
+  function toggleView() {
+    showContextualView = !showContextualView;
+    loadDiff(); // Reload diff with new view setting
+  }
+
   // Function to determine the CSS class for a line based on its type
-  function getLineClass(type: 'added' | 'deleted' | 'unchanged'): string {
+  function getLineClass(type: 'added' | 'deleted' | 'unchanged', lineNumber: number): string {
+    // Special styling for skipped line indicators
+    if (lineNumber === -1) {
+      return 'bg-slate-700/30 text-slate-400 italic';
+    }
+
     switch (type) {
       case 'added':
         return 'bg-green-500/10 text-green-200';
@@ -194,12 +247,34 @@
     >
       <!-- Header -->
       <div class="flex justify-between items-center p-4 border-b border-slate-800">
-        <div class="flex items-center space-x-2 overflow-hidden">
+        <div class="flex flex-col overflow-hidden">
           <h2 class="text-lg font-medium truncate">
             {path}
           </h2>
+          {#if diffResult?.isContextual && diffResult?.totalLines}
+            <span class="text-xs text-slate-400">
+              Showing contextual view ({contextLines} line context) • {diffResult.changes.length} of
+              {diffResult.totalLines} lines
+            </span>
+          {/if}
         </div>
         <div class="flex items-center space-x-2">
+          <Button
+            variant="ghost"
+            size="sm"
+            class="h-8 px-2"
+            title={showContextualView ? 'Show full file' : 'Show contextual view'}
+            on:click={toggleView}
+            disabled={!diffResult || isLoading}
+          >
+            {#if showContextualView}
+              <FileText class="h-4 w-4 mr-1" />
+              Full
+            {:else}
+              <Eye class="h-4 w-4 mr-1" />
+              Context
+            {/if}
+          </Button>
           <Button
             variant="ghost"
             size="icon"
@@ -246,12 +321,12 @@
               <table class="w-full border-collapse">
                 <tbody>
                   {#each diffResult.changes as change}
-                    <tr class={getLineClass(change.type)}>
+                    <tr class={getLineClass(change.type, change.lineNumber)}>
                       <!-- Line number -->
                       <td
                         class="text-slate-500 text-right pr-2 select-none w-12 border-r border-slate-700"
                       >
-                        {change.lineNumber}
+                        {change.lineNumber === -1 ? '...' : change.lineNumber}
                       </td>
                       <!-- Line prefix -->
                       <td class="w-6 px-2 select-none text-center">

@@ -149,4 +149,36 @@ export const fileChangesActions = {
   reset(): void {
     fileChangesStore.set(initialState);
   },
+
+  /**
+   * Debug helper to log current file changes
+   */
+  debugFileChanges(): void {
+    fileChangesStore.subscribe((state) => {
+      if (state.fileChanges) {
+        console.log('Current file changes:', {
+          totalFiles: state.fileChanges.size,
+          byStatus: {
+            added: Array.from(state.fileChanges.values()).filter((f) => f.status === 'added')
+              .length,
+            modified: Array.from(state.fileChanges.values()).filter((f) => f.status === 'modified')
+              .length,
+            deleted: Array.from(state.fileChanges.values()).filter((f) => f.status === 'deleted')
+              .length,
+            unchanged: Array.from(state.fileChanges.values()).filter(
+              (f) => f.status === 'unchanged'
+            ).length,
+          },
+          files: Array.from(state.fileChanges.entries()).map(([path, change]) => ({
+            path,
+            status: change.status,
+            hasContent: !!change.content,
+            hasPreviousContent: !!change.previousContent,
+            contentLength: change.content?.length || 0,
+            previousContentLength: change.previousContent?.length || 0,
+          })),
+        });
+      }
+    })();
+  },
 };

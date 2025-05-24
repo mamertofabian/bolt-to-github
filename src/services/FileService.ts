@@ -1,5 +1,6 @@
 import type { IGitHubApiClient } from './interfaces/IGitHubApiClient';
 import type { IFileService, FileInfo } from './interfaces/IFileService';
+import { decodeBase64ToUtf8 } from '$lib/fileUtils';
 
 /**
  * Service for GitHub file operations
@@ -30,8 +31,8 @@ export class FileService implements IFileService {
         throw new Error(`File ${path} has no content`);
       }
 
-      // GitHub API returns base64 encoded content
-      return atob(response.content.replace(/\s/g, ''));
+      // GitHub API returns base64 encoded content - decode properly as UTF-8
+      return decodeBase64ToUtf8(response.content.replace(/\s/g, ''));
     } catch (error) {
       console.error(`Failed to read file ${path}:`, error);
       throw new Error(

@@ -1,7 +1,12 @@
 import { GitHubService } from './GitHubService';
 import type { FileChange } from './FilePreviewService';
 import type { ProjectFiles } from '$lib/types';
-import { calculateGitBlobHash, processFilesWithGitignore } from '$lib/fileUtils';
+import {
+  calculateGitBlobHash,
+  processFilesWithGitignore,
+  normalizeContentForComparison,
+  decodeBase64ToUtf8,
+} from '$lib/fileUtils';
 
 /**
  * Service for comparing local files with GitHub repository files
@@ -29,6 +34,15 @@ export class GitHubComparisonService {
    */
   public setGitHubService(githubService: GitHubService): void {
     this.githubService = githubService;
+  }
+
+  /**
+   * Normalize content for comparison by handling line endings and whitespace
+   * @param content The content to normalize
+   * @returns Normalized content
+   */
+  private normalizeContent(content: string): string {
+    return normalizeContentForComparison(content);
   }
 
   /**
@@ -102,6 +116,10 @@ export class GitHubComparisonService {
     // Create a map to store file changes
     const changes = new Map<string, FileChange>();
 
+    // Keep track of progress for detailed comparison
+    const totalFiles = localFiles.size;
+    let processedFiles = 0;
+
     // Process all local files to determine their status
     for (const [originalPath, content] of localFiles.entries()) {
       // Skip directory entries (empty files or paths ending with /)
@@ -121,16 +139,62 @@ export class GitHubComparisonService {
         });
       } else {
         // File exists in GitHub repo - check if it's changed
-        const contentHash = await calculateGitBlobHash(content);
+        const normalizedContent = this.normalizeContent(content);
+        const contentHash = await calculateGitBlobHash(normalizedContent);
+
         if (existingFiles.get(path) !== contentHash) {
-          // Content has changed
-          changes.set(originalPath, {
-            path: originalPath,
-            status: 'modified',
-            content,
-          });
+          // Hashes don't match - but let's fetch the actual GitHub content for proper comparison
+          let githubContent = '';
+          let isActuallyModified = false;
+
+          try {
+            notifyProgress(
+              `Fetching content for ${path}...`,
+              50 + (processedFiles / totalFiles) * 30
+            );
+
+            // Use the FileService through GitHubService to fetch the actual content
+            const response = await this.githubService.request(
+              'GET',
+              `/repos/${repoOwner}/${repoName}/contents/${path}?ref=${targetBranch}`
+            );
+
+            if (response.content) {
+              // Properly decode UTF-8 content from base64
+              githubContent = decodeBase64ToUtf8(response.content.replace(/\s/g, ''));
+              const normalizedGithubContent = this.normalizeContent(githubContent);
+
+              // Compare normalized content directly as final check
+              isActuallyModified = normalizedContent !== normalizedGithubContent;
+            } else {
+              // If we can't get the content, consider it modified to be safe
+              isActuallyModified = true;
+            }
+          } catch (error) {
+            console.warn(`Failed to fetch GitHub content for ${path}:`, error);
+            // If we can't fetch content, consider it modified to be safe
+            isActuallyModified = true;
+          }
+
+          if (isActuallyModified) {
+            // Content has actually changed
+            changes.set(originalPath, {
+              path: originalPath,
+              status: 'modified',
+              content,
+              previousContent: githubContent, // Now we have the actual GitHub content
+            });
+          } else {
+            // Content is actually the same after normalization - hash difference was due to encoding/line ending differences
+            changes.set(originalPath, {
+              path: originalPath,
+              status: 'unchanged',
+              content,
+              previousContent: githubContent,
+            });
+          }
         } else {
-          // File is unchanged
+          // Hashes match - file is unchanged
           changes.set(originalPath, {
             path: originalPath,
             status: 'unchanged',
@@ -138,6 +202,8 @@ export class GitHubComparisonService {
           });
         }
       }
+
+      processedFiles++;
     }
 
     // Get files that would be ignored by .gitignore
@@ -163,6 +229,8 @@ export class GitHubComparisonService {
     } catch (error) {
       console.error('Error determining ignored files:', error);
     }
+
+    notifyProgress('Checking for deleted files...', 90);
 
     // Check for deleted files (files in GitHub but not in local files)
     for (const path of existingFiles.keys()) {

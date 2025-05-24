@@ -66,13 +66,57 @@ export class GitHubUploadHandler implements IGitHubUploadHandler {
       return;
     }
 
-    // Show confirmation dialog
+    // Check for file changes to provide better confirmation message
+    let changesSummary = 'Checking for changes...';
+    let hasChanges = false;
+
+    try {
+      // Import FileChangeHandler to check for changes
+      const { FileChangeHandler } = await import('./FileChangeHandler');
+      const fileChangeHandler = new FileChangeHandler(
+        this.messageHandler,
+        this.notificationManager
+      );
+
+      // Get current changes without forcing UI display
+      const changes = await fileChangeHandler.getChangedFiles(true);
+
+      // Count changes
+      const addedCount = Array.from(changes.values()).filter((f) => f.status === 'added').length;
+      const modifiedCount = Array.from(changes.values()).filter(
+        (f) => f.status === 'modified'
+      ).length;
+      const deletedCount = Array.from(changes.values()).filter(
+        (f) => f.status === 'deleted'
+      ).length;
+
+      hasChanges = addedCount > 0 || modifiedCount > 0 || deletedCount > 0;
+
+      if (hasChanges) {
+        const changeParts = [];
+        if (addedCount > 0) changeParts.push(`${addedCount} added`);
+        if (modifiedCount > 0) changeParts.push(`${modifiedCount} modified`);
+        if (deletedCount > 0) changeParts.push(`${deletedCount} deleted`);
+        changesSummary = `Found changes: ${changeParts.join(', ')} file(s)`;
+      } else {
+        changesSummary = 'No changes detected - all files are up to date';
+      }
+    } catch (error) {
+      console.warn('Could not check for file changes:', error);
+      changesSummary = 'Unable to detect changes';
+    }
+
+    // Show enhanced confirmation dialog
+    const confirmationMessage = hasChanges
+      ? `${changesSummary}<br><br>Do you want to push these changes to GitHub?`
+      : `${changesSummary}<br><br>Do you still want to push to GitHub? This will upload all project files.`;
+
     const { confirmed, commitMessage } = await this.notificationManager.showConfirmationDialog({
-      title: 'Confirm GitHub Upload',
-      message: `Are you sure you want to upload this project to GitHub? <br />
-        <span class="font-mono">${settings.gitHubSettings?.projectSettings?.repoName || 'N/A'} / ${settings.gitHubSettings?.projectSettings?.branch || 'N/A'}</span>`,
-      confirmText: 'Upload',
+      title: hasChanges ? 'Confirm GitHub Push' : 'No Changes - Confirm Push',
+      message: `Repository: <span class="font-mono">${settings.gitHubSettings?.projectSettings?.repoName || 'N/A'} / ${settings.gitHubSettings?.projectSettings?.branch || 'N/A'}</span><br><br>${confirmationMessage}`,
+      confirmText: hasChanges ? 'Push Changes' : 'Push Anyway',
       cancelText: 'Cancel',
+      type: hasChanges ? 'info' : 'warning',
     });
 
     if (!confirmed) return;

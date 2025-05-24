@@ -20,6 +20,8 @@ export interface DiffResult {
     content: string;
     lineNumber: number;
   }>;
+  isContextual?: boolean;
+  totalLines?: number;
 }
 
 /**
@@ -210,8 +212,21 @@ export class FilePreviewService {
     const changes = await this.getChangedFiles();
     const fileChange = changes.get(path);
 
-    if (!fileChange || fileChange.status === 'unchanged') {
+    if (!fileChange) {
       return null;
+    }
+
+    // For unchanged files, show content with unchanged type
+    if (fileChange.status === 'unchanged') {
+      const lines = fileChange.content.split('\n');
+      return {
+        path,
+        changes: lines.map((content, index) => ({
+          type: 'unchanged',
+          content,
+          lineNumber: index + 1,
+        })),
+      };
     }
 
     // For added files, all lines are new
@@ -242,10 +257,133 @@ export class FilePreviewService {
 
     // For modified files, compare line by line
     if (fileChange.status === 'modified' && fileChange.previousContent) {
-      return this.calculateLineDiff(path, fileChange.previousContent, fileChange.content);
+      return this.calculateLineDiffInternal(path, fileChange.previousContent, fileChange.content);
     }
 
     return null;
+  }
+
+  /**
+   * Calculate a simple line-by-line diff between two file versions (public version)
+   * @param path The file path
+   * @param oldContent The old file content
+   * @param newContent The new file content
+   * @param contextLines Number of surrounding lines to show (0 = show all lines)
+   * @returns Diff result showing line changes
+   */
+  public calculateLineDiff(
+    path: string,
+    oldContent: string,
+    newContent: string,
+    contextLines: number = 0
+  ): DiffResult {
+    const fullDiff = this.calculateLineDiffInternal(path, oldContent, newContent);
+
+    if (contextLines <= 0) {
+      return fullDiff;
+    }
+
+    return this.createContextualDiff(fullDiff, contextLines);
+  }
+
+  /**
+   * Create a contextual diff showing only changed lines with surrounding context
+   * @param fullDiff The complete diff result
+   * @param contextLines Number of context lines to show around changes
+   * @returns Contextual diff result
+   */
+  private createContextualDiff(fullDiff: DiffResult, contextLines: number): DiffResult {
+    const changes = fullDiff.changes;
+    if (changes.length === 0) {
+      return fullDiff;
+    }
+
+    // Find ranges of changed lines (added/deleted)
+    const changedRanges: Array<{ start: number; end: number }> = [];
+    let currentRange: { start: number; end: number } | null = null;
+
+    for (let i = 0; i < changes.length; i++) {
+      const change = changes[i];
+      if (change.type === 'added' || change.type === 'deleted') {
+        if (!currentRange) {
+          currentRange = { start: i, end: i };
+        } else {
+          currentRange.end = i;
+        }
+      } else {
+        // Unchanged line - end current range if exists
+        if (currentRange) {
+          changedRanges.push(currentRange);
+          currentRange = null;
+        }
+      }
+    }
+
+    // Add final range if it exists
+    if (currentRange) {
+      changedRanges.push(currentRange);
+    }
+
+    if (changedRanges.length === 0) {
+      // No changes, show just the first few lines for context
+      return {
+        ...fullDiff,
+        changes: changes.slice(0, Math.min(contextLines * 2, changes.length)),
+        isContextual: true,
+        totalLines: changes.length,
+      };
+    }
+
+    // Expand ranges to include context lines and merge overlapping ranges
+    const expandedRanges: Array<{ start: number; end: number }> = [];
+
+    for (const range of changedRanges) {
+      const expandedStart = Math.max(0, range.start - contextLines);
+      const expandedEnd = Math.min(changes.length - 1, range.end + contextLines);
+
+      // Check if this range overlaps with the previous one
+      if (expandedRanges.length > 0) {
+        const lastRange = expandedRanges[expandedRanges.length - 1];
+        if (expandedStart <= lastRange.end + 1) {
+          // Merge with previous range
+          lastRange.end = expandedEnd;
+          continue;
+        }
+      }
+
+      expandedRanges.push({ start: expandedStart, end: expandedEnd });
+    }
+
+    // Extract lines for each range
+    const contextualChanges: DiffResult['changes'] = [];
+
+    for (let rangeIndex = 0; rangeIndex < expandedRanges.length; rangeIndex++) {
+      const range = expandedRanges[rangeIndex];
+
+      // Add separator if not the first range
+      if (rangeIndex > 0) {
+        const skippedLines = range.start - expandedRanges[rangeIndex - 1].end - 1;
+        if (skippedLines > 0) {
+          contextualChanges.push({
+            type: 'unchanged',
+            content: `... (${skippedLines} lines skipped) ...`,
+            lineNumber: -1, // Special marker for skipped lines
+          });
+        }
+      }
+
+      // Add lines from this range
+      for (let i = range.start; i <= range.end; i++) {
+        contextualChanges.push(changes[i]);
+      }
+    }
+
+    return {
+      ...fullDiff,
+      changes: contextualChanges,
+      isContextual: true,
+      totalLines: changes.length,
+    };
   }
 
   /**
@@ -255,7 +393,11 @@ export class FilePreviewService {
    * @param newContent The new file content
    * @returns Diff result showing line changes
    */
-  private calculateLineDiff(path: string, oldContent: string, newContent: string): DiffResult {
+  private calculateLineDiffInternal(
+    path: string,
+    oldContent: string,
+    newContent: string
+  ): DiffResult {
     const oldLines = oldContent.split('\n');
     const newLines = newContent.split('\n');
     const changes: DiffResult['changes'] = [];

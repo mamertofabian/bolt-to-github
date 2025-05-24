@@ -77,6 +77,46 @@ export function processFilesWithGitignore(files: ProjectFiles): ProjectFiles {
 }
 
 /**
+ * Properly decode base64 content to UTF-8 string
+ * @param base64Content Base64 encoded content
+ * @returns UTF-8 decoded string
+ */
+export function decodeBase64ToUtf8(base64Content: string): string {
+  try {
+    // First decode base64 to binary string
+    const binaryString = atob(base64Content);
+
+    // Convert binary string to Uint8Array
+    const bytes = new Uint8Array(binaryString.length);
+    for (let i = 0; i < binaryString.length; i++) {
+      bytes[i] = binaryString.charCodeAt(i);
+    }
+
+    // Decode bytes as UTF-8
+    const decoder = new TextDecoder('utf-8');
+    return decoder.decode(bytes);
+  } catch (error) {
+    console.warn('Failed to decode base64 content as UTF-8, falling back to atob:', error);
+    // Fallback to atob if UTF-8 decoding fails
+    return atob(base64Content);
+  }
+}
+
+/**
+ * Normalize content for consistent comparison
+ * @param content The content to normalize
+ * @returns Normalized content
+ */
+export function normalizeContentForComparison(content: string): string {
+  // Normalize line endings to LF (\n) and trim trailing whitespace from lines
+  return content
+    .replace(/\r\n/g, '\n') // Convert CRLF to LF
+    .replace(/\r/g, '\n') // Convert CR to LF
+    .replace(/[ \t]+$/gm, '') // Remove trailing whitespace from each line
+    .replace(/\n+$/, '\n'); // Ensure single trailing newline
+}
+
+/**
  * Calculate the Git blob hash for a string content
  * GitHub calculates blob SHA using the format: "blob " + content.length + "\0" + content
  * @param content The content to hash
