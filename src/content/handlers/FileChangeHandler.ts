@@ -249,9 +249,14 @@ export class FileChangeHandler implements IFileChangeHandler {
     // Also store the changes in local storage for future retrieval
     try {
       await chrome.storage.local.set({
-        storedFileChanges: { projectId, changes: changesObject },
+        storedFileChanges: {
+          projectId,
+          changes: changesObject,
+          timestamp: Date.now(),
+          url: window.location.href, // Store URL to detect navigation changes
+        },
       });
-      console.log('File changes stored in local storage for future retrieval');
+      console.log('File changes stored in local storage for future retrieval with timestamp');
     } catch (storageError) {
       console.error('Failed to store file changes in local storage:', storageError);
     }

@@ -253,15 +253,36 @@ export class GitHubUploadHandler implements IGitHubUploadHandler {
       const result = await chrome.storage.local.get(['storedFileChanges']);
       const storedData = result.storedFileChanges;
 
-      if (!storedData || !storedData.changes) {
+      if (!storedData || !storedData.changes || !storedData.timestamp) {
+        console.log('No valid stored file changes found');
         return null;
       }
 
-      // Get current project ID to ensure we're using changes for the right project
+      // Get current project ID and URL to ensure we're using changes for the right context
       const currentProjectId = window.location.pathname.split('/').pop() || '';
+      const currentUrl = window.location.href;
 
+      // Check if project ID matches
       if (storedData.projectId !== currentProjectId) {
         console.log('Stored changes are for different project, ignoring');
+        await this.clearStoredFileChanges();
+        return null;
+      }
+
+      // Check if URL has changed (different project or navigation)
+      if (storedData.url !== currentUrl) {
+        console.log('URL changed since storing changes, invalidating cache');
+        await this.clearStoredFileChanges();
+        return null;
+      }
+
+      // Check if stored changes are recent (within 10 minutes)
+      const CACHE_DURATION = 10 * 60 * 1000; // 10 minutes in milliseconds
+      const age = Date.now() - storedData.timestamp;
+
+      if (age > CACHE_DURATION) {
+        console.log(`Stored changes are too old (${Math.round(age / 60000)} minutes), ignoring`);
+        await this.clearStoredFileChanges();
         return null;
       }
 
@@ -271,13 +292,26 @@ export class GitHubUploadHandler implements IGitHubUploadHandler {
         changesMap.set(key, value);
       });
 
+      const ageMinutes = Math.round(age / 60000);
       console.log(
-        `Retrieved ${changesMap.size} stored file changes for project ${currentProjectId}`
+        `Retrieved ${changesMap.size} stored file changes for project ${currentProjectId} (${ageMinutes} min old)`
       );
       return changesMap;
     } catch (error) {
       console.warn('Error retrieving stored file changes:', error);
       return null;
+    }
+  }
+
+  /**
+   * Clear stored file changes from local storage
+   */
+  private async clearStoredFileChanges(): Promise<void> {
+    try {
+      await chrome.storage.local.remove(['storedFileChanges']);
+      console.log('Cleared stored file changes');
+    } catch (error) {
+      console.warn('Error clearing stored file changes:', error);
     }
   }
 

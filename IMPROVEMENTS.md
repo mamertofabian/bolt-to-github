@@ -243,11 +243,11 @@ If you still see false positives:
 
 - `src/content/handlers/GitHubUploadHandler.ts` - Enhanced push confirmation
 
-### 4. Optimized Push from File Changes View
+### 4. Optimized Push from File Changes View with Smart Cache Invalidation
 
-**Enhancement:** Eliminates redundant file comparison when pushing from file changes view.
+**Enhancement:** Eliminates redundant file comparison when pushing from file changes view with proper cache management.
 
-**Problem:** When users clicked Push from the file changes view, the system was doing another full file comparison even though it had just done one to populate the view.
+**Problem:** When users clicked Push from the file changes view, the system was doing another full file comparison even though it had just done one to populate the view. Additionally, there was no cache invalidation strategy.
 
 **Solution:**
 
@@ -258,15 +258,33 @@ If you still see false positives:
   - `handleGitHubPush(true)` - Uses stored changes (default, for file changes view)
   - `handleGitHubPushWithFreshComparison()` - Forces fresh comparison (for main interface)
 
+**Cache Invalidation Strategy:**
+
+- **Timestamp Tracking**: Stored changes include timestamp for age verification
+- **10-Minute Expiration**: Cached changes expire after 10 minutes
+- **URL Change Detection**: Cache invalidated when user navigates to different project
+- **Project ID Validation**: Cache ignored if project ID doesn't match current project
+- **Automatic Cleanup**: Stale cache cleared on page initialization
+
+**Cache Validation Logic:**
+
+1. **Age Check**: `age > 10 minutes` → Cache invalid
+2. **Project Check**: `storedProjectId !== currentProjectId` → Cache invalid
+3. **URL Check**: `storedUrl !== currentUrl` → Cache invalid
+4. **Missing Data**: No timestamp or malformed data → Cache invalid
+
 **Performance Impact:**
 
-- **File Changes View → Push**: No redundant comparison, instant confirmation dialog
+- **File Changes View → Push (Recent)**: No redundant comparison, instant confirmation dialog
+- **File Changes View → Push (Stale)**: Fresh comparison performed automatically
 - **Main Interface → Push**: Still does comparison as before
-- **Wrong Project Detection**: Ignores stored changes if project ID doesn't match
+- **Navigation**: Automatic cache cleanup prevents cross-project contamination
 
 **Files Updated:**
 
-- `src/content/handlers/GitHubUploadHandler.ts` - Added stored changes logic and optimized workflow
+- `src/content/handlers/GitHubUploadHandler.ts` - Added cache invalidation and timestamp checking
+- `src/content/handlers/FileChangeHandler.ts` - Enhanced storage with timestamp and URL tracking
+- `src/content/ContentManager.ts` - Added cache cleanup on page initialization
 
 ### 5. File Changes Refresh Button
 

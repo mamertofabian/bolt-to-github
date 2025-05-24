@@ -22,6 +22,9 @@ export class ContentManager {
       this.messageHandler = new MessageHandler(this.port!);
       this.uiManager = UIManager.getInstance(this.messageHandler);
       this.setupEventListeners();
+
+      // Clear any stale stored file changes on initialization
+      this.clearStaleStoredChanges();
     } catch (error) {
       console.error('Error initializing ContentManager:', error);
       this.handleInitializationError(error);
@@ -152,6 +155,31 @@ export class ContentManager {
     this.isReconnecting = false;
     this.reconnectAttempts = 0;
     this.uiManager?.cleanup();
+  }
+
+  /**
+   * Clear stale stored file changes on initialization
+   */
+  private async clearStaleStoredChanges(): Promise<void> {
+    try {
+      const result = await chrome.storage.local.get(['storedFileChanges']);
+      const storedData = result.storedFileChanges;
+
+      if (!storedData) {
+        return;
+      }
+
+      const currentUrl = window.location.href;
+      const currentProjectId = window.location.pathname.split('/').pop() || '';
+
+      // Clear if URL changed or project ID changed
+      if (storedData.url !== currentUrl || storedData.projectId !== currentProjectId) {
+        await chrome.storage.local.remove(['storedFileChanges']);
+        console.log('Cleared stale stored file changes due to navigation');
+      }
+    } catch (error) {
+      console.warn('Error checking/clearing stale stored changes:', error);
+    }
   }
 
   private setupEventListeners(): void {
