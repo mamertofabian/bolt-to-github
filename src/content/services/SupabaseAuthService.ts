@@ -34,7 +34,7 @@ export class SupabaseAuthService {
   private readonly SUPABASE_URL = 'https://gapvjcqybzabnrjnxzhg.supabase.co';
   private readonly SUPABASE_ANON_KEY =
     'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImdhcHZqY3F5YnphYm5yam54emhnIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDc3MjMwMzQsImV4cCI6MjA2MzI5OTAzNH0.6bpYH1nccYIEKbQmctojedbrzMVBGcHhgjCyKXVUgzc';
-  private readonly CHECK_INTERVAL = 1000 * 60 * 10; // Check every 10 minutes
+  private readonly CHECK_INTERVAL = 1000 * 60 * 15; // Check every 15 minutes
 
   private constructor() {
     this.supabaseUrl = this.SUPABASE_URL;
@@ -202,7 +202,7 @@ export class SupabaseAuthService {
   }
 
   /**
-   * Get authentication token from a specific tab
+   * Get authentication token from a specific tab with refresh token support
    */
   private async getTokenFromTab(tabId: number): Promise<string | null> {
     try {
@@ -222,9 +222,14 @@ export class SupabaseAuthService {
             console.log('✅ Found auth token with project-specific key');
             try {
               const parsed = JSON.parse(session);
-              return parsed.access_token || parsed.token;
+              return {
+                access_token: parsed.access_token || parsed.token,
+                refresh_token: parsed.refresh_token,
+                expires_at: parsed.expires_at,
+                expires_in: parsed.expires_in,
+              };
             } catch {
-              return session;
+              return { access_token: session, refresh_token: null };
             }
           }
 
@@ -235,9 +240,14 @@ export class SupabaseAuthService {
             console.log('✅ Found auth token with fallback key');
             try {
               const parsed = JSON.parse(fallbackSession);
-              return parsed.access_token || parsed.token;
+              return {
+                access_token: parsed.access_token || parsed.token,
+                refresh_token: parsed.refresh_token,
+                expires_at: parsed.expires_at,
+                expires_in: parsed.expires_in,
+              };
             } catch {
-              return fallbackSession;
+              return { access_token: fallbackSession, refresh_token: null };
             }
           }
 
@@ -247,15 +257,97 @@ export class SupabaseAuthService {
         args: [projectRef],
       });
 
-      const token = result[0]?.result || null;
-      if (token) {
+      const tokenData = result[0]?.result || null;
+      if (tokenData?.access_token) {
         console.log('🔐 Successfully retrieved auth token from tab');
+
+        // Check if token is expired and attempt refresh if needed
+        if (tokenData.expires_at && tokenData.refresh_token) {
+          const expiresAt = new Date(tokenData.expires_at * 1000);
+          const now = new Date();
+          const timeUntilExpiry = expiresAt.getTime() - now.getTime();
+
+          // If token expires in less than 5 minutes, try to refresh
+          if (timeUntilExpiry < 5 * 60 * 1000) {
+            console.log('🔄 Token expires soon, attempting refresh...');
+            const refreshedToken = await this.refreshToken(tokenData.refresh_token, tabId);
+            if (refreshedToken) {
+              return refreshedToken;
+            }
+          }
+        }
+
+        return tokenData.access_token;
       }
 
-      return token;
+      return null;
     } catch (error) {
       // Tab might not be accessible or script injection failed
       console.warn('Failed to get token from tab:', error);
+      return null;
+    }
+  }
+
+  /**
+   * Refresh an expired access token using the refresh token
+   */
+  private async refreshToken(refreshToken: string, tabId?: number): Promise<string | null> {
+    try {
+      console.log('🔄 Attempting to refresh access token...');
+
+      const response = await fetch(`${this.supabaseUrl}/auth/v1/token?grant_type=refresh_token`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          apikey: this.anonKey,
+        },
+        body: JSON.stringify({
+          refresh_token: refreshToken,
+        }),
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        console.log('✅ Token refresh successful');
+
+        // Update localStorage with new token if we have tab access
+        if (tabId && data.access_token) {
+          try {
+            const projectRef = this.supabaseUrl.split('://')[1].split('.')[0];
+            await chrome.scripting.executeScript({
+              target: { tabId },
+              func: (projectRef: string, tokenData: any) => {
+                const sessionKey = `sb-${projectRef}-auth-token`;
+                const newSession = {
+                  access_token: tokenData.access_token,
+                  refresh_token: tokenData.refresh_token,
+                  expires_at: tokenData.expires_at,
+                  expires_in: tokenData.expires_in,
+                  user: tokenData.user,
+                };
+                localStorage.setItem(sessionKey, JSON.stringify(newSession));
+                console.log('🔄 Updated localStorage with refreshed token');
+              },
+              args: [projectRef, data],
+            });
+          } catch (error) {
+            console.warn('Could not update localStorage with refreshed token:', error);
+          }
+        }
+
+        // Store the new token
+        if (data.access_token) {
+          await chrome.storage.local.set({ supabaseToken: data.access_token });
+        }
+
+        return data.access_token;
+      } else {
+        const errorData = await response.json().catch(() => ({}));
+        console.warn('❌ Token refresh failed:', response.status, errorData);
+        return null;
+      }
+    } catch (error) {
+      console.error('❌ Error refreshing token:', error);
       return null;
     }
   }
@@ -284,11 +376,112 @@ export class SupabaseAuthService {
           created_at: user.created_at,
           updated_at: user.updated_at,
         };
+      } else if (response.status === 403) {
+        const errorData = await response.json().catch(() => ({}));
+        console.warn('🔐 Token verification failed (403):', errorData);
+
+        // Check if it's an expired token error
+        if (errorData.error_code === 'bad_jwt' || errorData.msg?.includes('expired')) {
+          console.log('🔄 Token expired, attempting to refresh from localStorage...');
+
+          // Try to get refresh token and refresh
+          const refreshedToken = await this.attemptTokenRefresh();
+          if (refreshedToken) {
+            console.log('✅ Token refreshed successfully, retrying verification');
+            return this.verifyTokenAndGetUser(refreshedToken);
+          }
+        }
       }
 
       return null;
     } catch (error) {
       console.error('Error verifying token:', error);
+      return null;
+    }
+  }
+
+  /**
+   * Attempt to refresh token using available refresh tokens from localStorage
+   */
+  private async attemptTokenRefresh(): Promise<string | null> {
+    try {
+      // Try to get refresh token from localStorage
+      const tabs = await chrome.tabs.query({ url: 'https://bolt2github.com/*' });
+
+      for (const tab of tabs) {
+        if (tab.id) {
+          const refreshToken = await this.getRefreshTokenFromTab(tab.id);
+          if (refreshToken) {
+            const newAccessToken = await this.refreshToken(refreshToken, tab.id);
+            if (newAccessToken) {
+              return newAccessToken;
+            }
+          }
+        }
+      }
+
+      // Also try other tabs where user might have visited bolt2github.com
+      const allTabs = await chrome.tabs.query({});
+      for (const tab of allTabs) {
+        if (tab.id && tab.url?.includes('bolt2github.com')) {
+          const refreshToken = await this.getRefreshTokenFromTab(tab.id);
+          if (refreshToken) {
+            const newAccessToken = await this.refreshToken(refreshToken, tab.id);
+            if (newAccessToken) {
+              return newAccessToken;
+            }
+          }
+        }
+      }
+
+      return null;
+    } catch (error) {
+      console.error('Error attempting token refresh:', error);
+      return null;
+    }
+  }
+
+  /**
+   * Get refresh token from a specific tab
+   */
+  private async getRefreshTokenFromTab(tabId: number): Promise<string | null> {
+    try {
+      const projectRef = this.supabaseUrl.split('://')[1].split('.')[0];
+
+      const result = await chrome.scripting.executeScript({
+        target: { tabId },
+        func: (projectRef: string) => {
+          const sessionKey = `sb-${projectRef}-auth-token`;
+          const session = localStorage.getItem(sessionKey);
+
+          if (session) {
+            try {
+              const parsed = JSON.parse(session);
+              return parsed.refresh_token;
+            } catch {
+              return null;
+            }
+          }
+
+          // Fallback: check for generic key
+          const fallbackSession = localStorage.getItem('supabase.auth.token');
+          if (fallbackSession) {
+            try {
+              const parsed = JSON.parse(fallbackSession);
+              return parsed.refresh_token;
+            } catch {
+              return null;
+            }
+          }
+
+          return null;
+        },
+        args: [projectRef],
+      });
+
+      return result[0]?.result || null;
+    } catch (error) {
+      console.warn('Failed to get refresh token from tab:', error);
       return null;
     }
   }
@@ -350,6 +543,20 @@ export class SupabaseAuthService {
           subscriptionId: undefined, // Not provided in this response
           customerId: undefined, // Not provided in this response
         };
+      } else if (response.status === 403) {
+        const errorData = await response.json().catch(() => ({}));
+        console.warn('🔐 Subscription check failed (403):', errorData);
+
+        // Check if it's an expired token error
+        if (errorData.error_code === 'bad_jwt' || errorData.msg?.includes('expired')) {
+          console.log('🔄 Token expired during subscription check, attempting to refresh...');
+
+          const refreshedToken = await this.attemptTokenRefresh();
+          if (refreshedToken) {
+            console.log('✅ Token refreshed, retrying subscription check');
+            return this.getSubscriptionStatus(refreshedToken, user);
+          }
+        }
       }
 
       return { isActive: false, plan: 'free' };
@@ -445,6 +652,55 @@ export class SupabaseAuthService {
   public async forceCheck(): Promise<void> {
     console.log('🔄 Forcing auth status check');
     await this.checkAuthStatus();
+  }
+
+  /**
+   * Get token expiration info for debugging
+   */
+  public async getTokenExpiration(): Promise<{
+    expiresAt: number | null;
+    timeUntilExpiry: number | null;
+    isExpired: boolean;
+  } | null> {
+    try {
+      const tabs = await chrome.tabs.query({ url: 'https://bolt2github.com/*' });
+      if (tabs.length > 0) {
+        const projectRef = this.supabaseUrl.split('://')[1].split('.')[0];
+        const result = await chrome.scripting.executeScript({
+          target: { tabId: tabs[0].id! },
+          func: (projectRef: string) => {
+            const sessionKey = `sb-${projectRef}-auth-token`;
+            const session = localStorage.getItem(sessionKey);
+            if (session) {
+              try {
+                const parsed = JSON.parse(session);
+                return parsed.expires_at;
+              } catch {
+                return null;
+              }
+            }
+            return null;
+          },
+          args: [projectRef],
+        });
+
+        const expiresAt = result[0]?.result;
+        if (expiresAt) {
+          const expiresAtMs = expiresAt * 1000; // Convert to milliseconds
+          const now = Date.now();
+          const timeUntilExpiry = expiresAtMs - now;
+          return {
+            expiresAt: expiresAtMs,
+            timeUntilExpiry,
+            isExpired: timeUntilExpiry <= 0,
+          };
+        }
+      }
+      return null;
+    } catch (error) {
+      console.error('Error getting token expiration:', error);
+      return null;
+    }
   }
 
   /**

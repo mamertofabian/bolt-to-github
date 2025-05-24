@@ -15,6 +15,54 @@ import { UIStateManager } from './services/UIStateManager';
 import { PushReminderService } from './services/PushReminderService';
 import { PremiumService } from './services/PremiumService';
 
+// Global fallback debug functions (work even if UIManager hasn't loaded)
+if (typeof window !== 'undefined') {
+  (window as any).checkBoltToGitHubToken = () => {
+    console.log('🔍 Manual token expiration check (fallback method)...');
+    const projectRef = 'gapvjcqybzabnrjnxzhg';
+    const sessionKey = `sb-${projectRef}-auth-token`;
+    const session = localStorage.getItem(sessionKey);
+
+    if (session) {
+      try {
+        const parsed = JSON.parse(session);
+        console.log('📋 Raw token data:', parsed);
+
+        if (parsed.expires_at) {
+          const expiresAt = new Date(parsed.expires_at * 1000);
+          const now = new Date();
+          const timeUntilExpiry = expiresAt.getTime() - now.getTime();
+          const timeUntilExpiryMinutes = Math.round(timeUntilExpiry / (1000 * 60));
+          const isExpired = timeUntilExpiry <= 0;
+
+          console.log(`🔍 Token info:
+  - Expires at: ${expiresAt.toLocaleString()}
+  - Time until expiry: ${timeUntilExpiryMinutes} minutes
+  - Is expired: ${isExpired}`);
+
+          if (isExpired) {
+            console.warn('⚠️ Token is expired! This explains the 403 errors.');
+            console.log('💡 Solution: Visit https://bolt2github.com to refresh your session');
+          } else if (timeUntilExpiryMinutes < 5) {
+            console.warn('⚠️ Token expires very soon! Refresh should trigger automatically.');
+          } else {
+            console.log('✅ Token is valid and not expiring soon.');
+          }
+        } else {
+          console.log('❌ No expiration info found in token');
+        }
+      } catch (error) {
+        console.error('❌ Failed to parse session:', error);
+      }
+    } else {
+      console.log('❌ No auth token found in localStorage');
+      console.log('💡 Make sure you are logged in at https://bolt2github.com');
+    }
+  };
+
+  console.log('🔧 Fallback token check available: window.checkBoltToGitHubToken()');
+}
+
 export class UIManager {
   private static instance: UIManager | null = null;
   private isGitHubUpload = false;
@@ -101,8 +149,66 @@ export class UIManager {
         getCurrentTabs: () => this.getCurrentTabs(),
         checkPremiumStatus: () => this.checkPremiumStatus(),
         forcePremiumRefresh: () => this.forcePremiumRefresh(),
+        checkTokenExpiration: () => this.checkTokenExpiration(),
+        // Add manual token check function that works without UIManager
+        manualTokenCheck: () => {
+          console.log('🔍 Manual token expiration check...');
+          const projectRef = 'gapvjcqybzabnrjnxzhg';
+          const sessionKey = `sb-${projectRef}-auth-token`;
+          const session = localStorage.getItem(sessionKey);
+
+          if (session) {
+            try {
+              const parsed = JSON.parse(session);
+              if (parsed.expires_at) {
+                const expiresAt = new Date(parsed.expires_at * 1000);
+                const now = new Date();
+                const timeUntilExpiry = expiresAt.getTime() - now.getTime();
+                const timeUntilExpiryMinutes = Math.round(timeUntilExpiry / (1000 * 60));
+                const isExpired = timeUntilExpiry <= 0;
+
+                console.log(`🔍 Token info:
+  - Expires at: ${expiresAt.toLocaleString()}
+  - Time until expiry: ${timeUntilExpiryMinutes} minutes
+  - Is expired: ${isExpired}`);
+
+                if (isExpired) {
+                  console.warn('⚠️ Token is expired! This explains the 403 errors.');
+                } else if (timeUntilExpiryMinutes < 5) {
+                  console.warn('⚠️ Token expires very soon! Refresh should trigger automatically.');
+                } else {
+                  console.log('✅ Token is valid and not expiring soon.');
+                }
+              } else {
+                console.log('❌ No expiration info found in token');
+              }
+            } catch (error) {
+              console.error('❌ Failed to parse session:', error);
+            }
+          } else {
+            console.log('❌ No auth token found in localStorage');
+          }
+        },
+        // Check if we're on the right page
+        checkPage: () => {
+          const url = window.location.href;
+          const isBoltPage = url.includes('bolt.new');
+          console.log(`🔍 Current page: ${url}`);
+          console.log(`📍 Is Bolt page: ${isBoltPage}`);
+          console.log(
+            `🔧 UIManager initialized: ${typeof (window as any).debugBoltToGitHub?.getUIManager === 'function'}`
+          );
+          return {
+            url,
+            isBoltPage,
+            uiManagerReady: typeof (window as any).debugBoltToGitHub?.getUIManager === 'function',
+          };
+        },
       };
       console.log('🐛 Debug tools available: window.debugBoltToGitHub');
+      console.log(
+        '🔧 Try: window.debugBoltToGitHub.checkPage() and window.debugBoltToGitHub.manualTokenCheck()'
+      );
     }
 
     // Link premium service to file change handler
@@ -508,6 +614,42 @@ export class UIManager {
       console.log('✅ Premium status refresh completed');
     } catch (error) {
       console.error('❌ Failed to refresh premium status:', error);
+    }
+  }
+
+  /**
+   * Check token expiration info (for debugging)
+   */
+  public async checkTokenExpiration() {
+    console.log('🔍 Checking token expiration...');
+    try {
+      // Get SupabaseAuthService instance
+      const { SupabaseAuthService } = await import('./services/SupabaseAuthService');
+      const authService = SupabaseAuthService.getInstance();
+
+      const expiration = await authService.getTokenExpiration();
+      if (expiration) {
+        const { expiresAt, timeUntilExpiry, isExpired } = expiration;
+        const expiresAtDate = new Date(expiresAt!);
+        const timeUntilExpiryMinutes = Math.round(timeUntilExpiry! / (1000 * 60));
+
+        console.log(`🔍 Token info:
+  - Expires at: ${expiresAtDate.toLocaleString()}
+  - Time until expiry: ${timeUntilExpiryMinutes} minutes
+  - Is expired: ${isExpired}`);
+
+        if (isExpired) {
+          console.warn('⚠️ Token is expired! This explains the 403 errors.');
+        } else if (timeUntilExpiryMinutes < 5) {
+          console.warn('⚠️ Token expires very soon! Refresh should trigger automatically.');
+        } else {
+          console.log('✅ Token is valid and not expiring soon.');
+        }
+      } else {
+        console.log('❌ No token expiration info found (user not authenticated?)');
+      }
+    } catch (error) {
+      console.error('❌ Failed to check token expiration:', error);
     }
   }
 }
