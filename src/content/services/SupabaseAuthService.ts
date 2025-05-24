@@ -34,7 +34,7 @@ export class SupabaseAuthService {
   private readonly SUPABASE_URL = 'https://gapvjcqybzabnrjnxzhg.supabase.co';
   private readonly SUPABASE_ANON_KEY =
     'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImdhcHZqY3F5YnphYm5yam54emhnIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDc3MjMwMzQsImV4cCI6MjA2MzI5OTAzNH0.6bpYH1nccYIEKbQmctojedbrzMVBGcHhgjCyKXVUgzc';
-  private readonly CHECK_INTERVAL = 1000 * 60 * 15; // Check every 15 minutes
+  private readonly CHECK_INTERVAL = 30000; // 30 seconds
 
   private constructor() {
     this.supabaseUrl = this.SUPABASE_URL;
