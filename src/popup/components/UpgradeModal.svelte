@@ -7,6 +7,13 @@
   export let reason: string = ''; // Why they need to upgrade
   export let features: PremiumFeature[] = [];
 
+  // Accordion state - track which feature is expanded
+  let expandedFeature: string | null = null;
+
+  function toggleFeature(featureId: string) {
+    expandedFeature = expandedFeature === featureId ? null : featureId;
+  }
+
   function handleUpgrade() {
     // Open upgrade page
     chrome.tabs.create({
@@ -17,6 +24,8 @@
 
   function handleClose() {
     show = false;
+    // Reset expanded state when closing
+    expandedFeature = null;
   }
 
   function getFeatureTitle(): string {
@@ -75,15 +84,77 @@
         </p>
       </div>
 
-      <!-- Features list - compact horizontal layout -->
+      <!-- Enhanced features list with accordion -->
       {#if features.length > 0}
-        <div class="mb-4">
+        <div class="mb-2">
           <h3 class="text-slate-200 font-medium mb-2 text-sm">Pro Features:</h3>
-          <div class="grid grid-cols-1 gap-2">
-            {#each features as premiumFeature}
-              <div class="flex items-center gap-2 text-xs">
-                <span class="text-sm">{premiumFeature.icon}</span>
-                <span class="text-slate-200 font-medium">{premiumFeature.name}</span>
+          <div class="space-y-1">
+            {#each features as premiumFeature, index}
+              <div
+                class="border border-slate-700/50 rounded-md overflow-hidden bg-slate-800/30 hover:bg-slate-800/50 transition-all duration-200"
+              >
+                <!-- Feature header - clickable -->
+                <button
+                  class="w-full flex items-center justify-between p-3 text-left hover:bg-slate-800/30 transition-colors duration-150 group"
+                  on:click={() => toggleFeature(premiumFeature.id)}
+                >
+                  <div class="flex items-center gap-2.5 flex-1">
+                    <span class="text-sm">{premiumFeature.icon}</span>
+                    <span class="text-slate-200 font-medium text-xs group-hover:text-slate-100"
+                      >{premiumFeature.name}</span
+                    >
+                  </div>
+                  <!-- Chevron indicator -->
+                  <svg
+                    class="w-4 h-4 text-slate-400 transition-transform duration-200 {expandedFeature ===
+                    premiumFeature.id
+                      ? 'rotate-180'
+                      : ''}"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
+                      stroke-width="2"
+                      d="M19 9l-7 7-7-7"
+                    ></path>
+                  </svg>
+                </button>
+
+                <!-- Feature description - collapsible -->
+                {#if expandedFeature === premiumFeature.id}
+                  <div class="px-3 pb-2 pt-0" style="animation: slideDown 0.2s ease-out;">
+                    <div class="border-t border-slate-700/30 pt-2">
+                      <p class="text-slate-400 text-xs leading-relaxed">
+                        {premiumFeature.description}
+                      </p>
+                      {#if premiumFeature.benefits && premiumFeature.benefits.length > 0}
+                        <div class="mt-2 space-y-1">
+                          {#each premiumFeature.benefits as benefit}
+                            <div class="flex items-center gap-1.5 text-xs">
+                              <svg
+                                class="w-3 h-3 text-emerald-400 flex-shrink-0"
+                                fill="none"
+                                stroke="currentColor"
+                                viewBox="0 0 24 24"
+                              >
+                                <path
+                                  stroke-linecap="round"
+                                  stroke-linejoin="round"
+                                  stroke-width="2"
+                                  d="M5 13l4 4L19 7"
+                                ></path>
+                              </svg>
+                              <span class="text-slate-300">{benefit}</span>
+                            </div>
+                          {/each}
+                        </div>
+                      {/if}
+                    </div>
+                  </div>
+                {/if}
               </div>
             {/each}
           </div>
@@ -156,6 +227,17 @@
     to {
       opacity: 1;
       transform: translateY(0) scale(1);
+    }
+  }
+
+  @keyframes slideDown {
+    from {
+      opacity: 0;
+      transform: translateY(-10px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
     }
   }
 </style>
