@@ -17,7 +17,7 @@
 - ESM modules only (type: "module" in package.json)
 - Strict TypeScript: explicit types, no implicit any, strict null checks
 - Svelte component props must be properly typed
-- Max 300 lines per file
+- Soft limit of 300 lines per file
 - Formatting: 2-space indent, single quotes, 100 char line limit
 - Import path aliases: use $lib/\* for imports from src/lib
 - No console.log (only warn/error) in production code

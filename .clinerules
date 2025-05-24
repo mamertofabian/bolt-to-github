@@ -61,7 +61,7 @@ DO NOT read or modify:
 
 ## Code Quality
 
-- Maximum 300 lines of code per file
+- Soft limit of 300 lines of code per file
 - ESLint rules must be followed:
   - No unused variables (except prefixed with \_)
   - Warn on any usage
