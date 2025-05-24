@@ -9,6 +9,10 @@ export interface PushReminderSettings {
   snoozeInterval: number; // minutes
   minimumChanges: number; // minimum files changed to trigger reminder
   maxRemindersPerSession: number;
+  // New scheduled reminder settings
+  scheduledEnabled: boolean; // separate enable/disable for scheduled reminders
+  scheduledInterval: number; // minutes - fixed interval regardless of activity
+  maxScheduledPerSession: number; // max scheduled reminders per session
 }
 
 export interface ReminderState {
@@ -16,6 +20,9 @@ export interface ReminderState {
   lastSnoozeTime: number;
   reminderCount: number;
   sessionStartTime: number;
+  // New scheduled reminder state
+  lastScheduledReminderTime: number;
+  scheduledReminderCount: number;
 }
 
 /**
@@ -28,6 +35,8 @@ export class PushReminderService {
   private activityMonitor: ActivityMonitor;
   private isEnabled: boolean = true;
   private checkInterval: NodeJS.Timeout | null = null;
+  // New scheduled reminder interval
+  private scheduledInterval: NodeJS.Timeout | null = null;
   private state: ReminderState;
 
   // Default settings
@@ -37,6 +46,9 @@ export class PushReminderService {
     snoozeInterval: 10, // 10 minutes
     minimumChanges: 3, // at least 3 files changed
     maxRemindersPerSession: 5, // max 5 reminders per session
+    scheduledEnabled: true,
+    scheduledInterval: 15, // 15 minutes for scheduled reminders
+    maxScheduledPerSession: 10, // max 10 scheduled reminders per session
   };
 
   // Debug mode for testing (shorter intervals)
@@ -52,6 +64,8 @@ export class PushReminderService {
       lastSnoozeTime: 0,
       reminderCount: 0,
       sessionStartTime: Date.now(),
+      lastScheduledReminderTime: 0,
+      scheduledReminderCount: 0,
     };
 
     console.log('🔧 Push reminder: Service initializing with settings:', this.settings);
@@ -102,6 +116,9 @@ export class PushReminderService {
     this.checkInterval = setInterval(() => {
       this.checkForReminderOpportunity();
     }, checkInterval);
+
+    // Set up scheduled reminders (independent of activity)
+    this.setupScheduledReminders();
   }
 
   /**
@@ -369,6 +386,11 @@ export class PushReminderService {
     this.settings = { ...this.settings, ...newSettings };
     await this.saveSettings();
     console.log('🔊 Push reminder settings updated:', this.settings);
+
+    // Restart scheduled reminders if settings changed
+    if (newSettings.scheduledEnabled !== undefined || newSettings.scheduledInterval !== undefined) {
+      this.setupScheduledReminders();
+    }
   }
 
   /**
@@ -377,7 +399,10 @@ export class PushReminderService {
   public resetReminderState(): void {
     this.state.lastReminderTime = Date.now();
     this.state.reminderCount = 0;
-    console.log('🔊 Push reminder state reset');
+    // Also reset scheduled reminder count when user pushes
+    this.state.scheduledReminderCount = 0;
+    this.state.lastScheduledReminderTime = Date.now();
+    console.log('🔊 Push reminder state reset (both idle and scheduled)');
   }
 
   /**
@@ -420,6 +445,9 @@ export class PushReminderService {
     if (this.checkInterval) {
       clearInterval(this.checkInterval);
     }
+    if (this.scheduledInterval) {
+      clearInterval(this.scheduledInterval);
+    }
     this.setupActivityMonitoring();
   }
 
@@ -433,6 +461,9 @@ export class PushReminderService {
     // Restart monitoring with normal intervals
     if (this.checkInterval) {
       clearInterval(this.checkInterval);
+    }
+    if (this.scheduledInterval) {
+      clearInterval(this.scheduledInterval);
     }
     this.setupActivityMonitoring();
   }
@@ -454,6 +485,22 @@ export class PushReminderService {
   }
 
   /**
+   * Force a scheduled reminder check (for testing)
+   */
+  public async forceScheduledReminderCheck(): Promise<void> {
+    console.log('🔊 Forcing scheduled reminder check...');
+    await this.checkForScheduledReminder();
+  }
+
+  /**
+   * Force show a scheduled reminder (for testing)
+   */
+  public async forceShowScheduledReminder(): Promise<void> {
+    console.log('🔊 Forcing scheduled reminder display...');
+    await this.showScheduledReminder();
+  }
+
+  /**
    * Clean up resources
    */
   public cleanup(): void {
@@ -466,7 +513,142 @@ export class PushReminderService {
       console.log('🔧 Push reminder: Cleared check interval');
     }
 
+    if (this.scheduledInterval) {
+      clearInterval(this.scheduledInterval);
+      this.scheduledInterval = null;
+      console.log('🔧 Push reminder: Cleared scheduled interval');
+    }
+
     this.activityMonitor.stop();
     console.log('🔧 Push reminder: Stopped activity monitor');
+  }
+
+  /**
+   * Set up scheduled reminders that run on fixed intervals regardless of activity
+   */
+  private setupScheduledReminders(): void {
+    if (!this.settings.scheduledEnabled) {
+      console.log('🔧 Push reminder: Scheduled reminders disabled');
+      return;
+    }
+
+    // Clear any existing scheduled interval
+    if (this.scheduledInterval) {
+      clearInterval(this.scheduledInterval);
+    }
+
+    // Set up scheduled reminder interval (or shorter interval in debug mode)
+    const scheduledInterval = this.debugMode
+      ? 60 * 1000 // 1 minute in debug mode
+      : this.settings.scheduledInterval * 60 * 1000;
+
+    console.log(
+      `🔧 Push reminder: Setting up scheduled reminders with ${scheduledInterval / 1000}s interval (debug: ${this.debugMode})`
+    );
+
+    this.scheduledInterval = setInterval(() => {
+      this.checkForScheduledReminder();
+    }, scheduledInterval);
+  }
+
+  /**
+   * Check if we should show a scheduled reminder (ignores activity state)
+   */
+  private async checkForScheduledReminder(): Promise<void> {
+    console.log('⏰ Push reminder: Checking for scheduled reminder...');
+
+    if (!this.settings.scheduledEnabled || !this.isEnabled) {
+      console.log(
+        '❌ Scheduled reminder: Disabled (scheduledEnabled:',
+        this.settings.scheduledEnabled,
+        ', isEnabled:',
+        this.isEnabled,
+        ')'
+      );
+      return;
+    }
+    console.log('✅ Scheduled reminder: Service is enabled');
+
+    // Check if we've reached max scheduled reminders for this session
+    if (this.state.scheduledReminderCount >= this.settings.maxScheduledPerSession) {
+      console.log(
+        '❌ Scheduled reminder: Max scheduled reminders reached for session (',
+        this.state.scheduledReminderCount,
+        '/',
+        this.settings.maxScheduledPerSession,
+        ')'
+      );
+      return;
+    }
+    console.log(
+      '✅ Scheduled reminder: Under scheduled reminder limit (',
+      this.state.scheduledReminderCount,
+      '/',
+      this.settings.maxScheduledPerSession,
+      ')'
+    );
+
+    // Check if we're in snooze period (affects both types of reminders)
+    if (this.isInSnoozeInterval()) {
+      const snoozeUntil = new Date(
+        this.state.lastSnoozeTime + this.settings.snoozeInterval * 60 * 1000
+      );
+      console.log(
+        '❌ Scheduled reminder: In snooze period until',
+        snoozeUntil.toLocaleTimeString()
+      );
+      return;
+    }
+    console.log('✅ Scheduled reminder: Not in snooze period');
+
+    // Check if there are enough changes to warrant a reminder
+    console.log('🔍 Scheduled reminder: Checking for significant changes...');
+    const hasSignificantChanges = await this.hasSignificantChanges();
+    if (!hasSignificantChanges) {
+      console.log('❌ Scheduled reminder: Not enough significant changes');
+      return;
+    }
+    console.log('✅ Scheduled reminder: Has significant changes');
+
+    // All conditions met - show scheduled reminder
+    console.log('⏰ Scheduled reminder: ALL CONDITIONS MET - Showing scheduled reminder!');
+    await this.showScheduledReminder();
+  }
+
+  /**
+   * Show a scheduled push reminder notification
+   */
+  private async showScheduledReminder(): Promise<void> {
+    try {
+      console.log('⏰ Scheduled reminder: Generating scheduled reminder message...');
+      const changes = await this.getChangesSummary();
+
+      const message = `⏰ Scheduled reminder: You have ${changes.count} unsaved changes. Consider pushing to GitHub! ${changes.summary}`;
+      console.log('📢 Scheduled reminder: Showing notification:', message);
+
+      this.notificationManager.showNotification({
+        type: 'info',
+        message: message,
+        duration: 10000, // 10 seconds for scheduled reminders (slightly shorter)
+      });
+
+      // Update scheduled reminder state
+      const oldState = { ...this.state };
+      this.state.lastScheduledReminderTime = Date.now();
+      this.state.scheduledReminderCount++;
+
+      console.log('📊 Scheduled reminder: State updated:', {
+        oldScheduledCount: oldState.scheduledReminderCount,
+        newScheduledCount: this.state.scheduledReminderCount,
+        maxScheduled: this.settings.maxScheduledPerSession,
+        lastScheduledTime: new Date(this.state.lastScheduledReminderTime).toLocaleTimeString(),
+      });
+
+      console.log(
+        `⏰ Scheduled reminder: Successfully shown reminder ${this.state.scheduledReminderCount}/${this.settings.maxScheduledPerSession}`
+      );
+    } catch (error) {
+      console.error('❌ Scheduled reminder: Failed to show reminder:', error);
+    }
   }
 }

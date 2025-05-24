@@ -320,4 +320,18 @@ export class UIManager {
   public async forceShowReminder(): Promise<void> {
     return this.pushReminderService.forceShowReminder();
   }
+
+  /**
+   * Force a scheduled reminder check (for testing)
+   */
+  public async forceScheduledReminderCheck(): Promise<void> {
+    return this.pushReminderService.forceScheduledReminderCheck();
+  }
+
+  /**
+   * Force show a scheduled reminder (for testing)
+   */
+  public async forceShowScheduledReminder(): Promise<void> {
+    return this.pushReminderService.forceShowScheduledReminder();
+  }
 }

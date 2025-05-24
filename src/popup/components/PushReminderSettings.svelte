@@ -14,6 +14,9 @@
     snoozeInterval: 10,
     minimumChanges: 3,
     maxRemindersPerSession: 5,
+    scheduledEnabled: true,
+    scheduledInterval: 15,
+    maxScheduledPerSession: 10,
   };
 
   let state: ReminderState = {
@@ -21,6 +24,8 @@
     lastSnoozeTime: 0,
     reminderCount: 0,
     sessionStartTime: Date.now(),
+    lastScheduledReminderTime: 0,
+    scheduledReminderCount: 0,
   };
 
   let loading = false;
@@ -134,78 +139,153 @@
         </div>
       {:else}
         <div class="space-y-4">
-          <!-- Enable/Disable -->
-          <div class="flex items-center justify-between">
-            <label class="text-slate-200 font-medium" for="enabled">Enable Reminders</label>
-            <input
-              type="checkbox"
-              bind:checked={settings.enabled}
-              class="w-4 h-4 text-blue-600 bg-slate-800 border-slate-600 rounded focus:ring-blue-500"
-            />
-          </div>
-
-          <!-- Reminder Interval -->
-          <div>
-            <label class="block text-slate-200 font-medium mb-1" for="reminderInterval">
-              Reminder Interval (minutes)
-            </label>
-            <input
-              type="number"
-              bind:value={settings.reminderInterval}
-              min="5"
-              max="120"
-              class="w-full px-3 py-2 bg-slate-800 border border-slate-600 rounded text-slate-200 focus:ring-2 focus:ring-blue-500"
-            />
-            <p class="text-xs text-slate-400 mt-1">
-              How often to show reminders when you have unsaved changes
+          <!-- Main Reminders Section -->
+          <div class="border-b border-slate-700 pb-4">
+            <h3 class="text-slate-200 font-medium mb-3">Idle-Based Reminders</h3>
+            <p class="text-xs text-slate-400 mb-3">
+              Show reminders when both you and Bolt are idle
             </p>
+
+            <!-- Enable/Disable -->
+            <div class="flex items-center justify-between mb-3">
+              <label class="text-slate-200 font-medium" for="enabled">Enable Idle Reminders</label>
+              <input
+                type="checkbox"
+                bind:checked={settings.enabled}
+                class="w-4 h-4 text-blue-600 bg-slate-800 border-slate-600 rounded focus:ring-blue-500"
+              />
+            </div>
           </div>
 
-          <!-- Snooze Interval -->
-          <div>
-            <label class="block text-slate-200 font-medium mb-1" for="snoozeInterval">
-              Snooze Duration (minutes)
-            </label>
-            <input
-              type="number"
-              bind:value={settings.snoozeInterval}
-              min="5"
-              max="60"
-              class="w-full px-3 py-2 bg-slate-800 border border-slate-600 rounded text-slate-200 focus:ring-2 focus:ring-blue-500"
-            />
-            <p class="text-xs text-slate-400 mt-1">How long to wait after snoozing a reminder</p>
-          </div>
-
-          <!-- Minimum Changes -->
-          <div>
-            <label class="block text-slate-200 font-medium mb-1" for="minimumChanges">
-              Minimum Changes Required
-            </label>
-            <input
-              type="number"
-              bind:value={settings.minimumChanges}
-              min="1"
-              max="20"
-              class="w-full px-3 py-2 bg-slate-800 border border-slate-600 rounded text-slate-200 focus:ring-2 focus:ring-blue-500"
-            />
-            <p class="text-xs text-slate-400 mt-1">Only remind when this many files have changed</p>
-          </div>
-
-          <!-- Max Reminders -->
-          <div>
-            <label class="block text-slate-200 font-medium mb-1" for="maxRemindersPerSession">
-              Max Reminders Per Session
-            </label>
-            <input
-              type="number"
-              bind:value={settings.maxRemindersPerSession}
-              min="1"
-              max="20"
-              class="w-full px-3 py-2 bg-slate-800 border border-slate-600 rounded text-slate-200 focus:ring-2 focus:ring-blue-500"
-            />
-            <p class="text-xs text-slate-400 mt-1">
-              Stop reminding after this many reminders in one session
+          <!-- Scheduled Reminders Section -->
+          <div class="border-b border-slate-700 pb-4">
+            <h3 class="text-slate-200 font-medium mb-3">Scheduled Reminders</h3>
+            <p class="text-xs text-slate-400 mb-3">
+              Regular reminders regardless of activity (gentle nudges)
             </p>
+
+            <!-- Enable/Disable Scheduled -->
+            <div class="flex items-center justify-between mb-3">
+              <label class="text-slate-200 font-medium" for="scheduledEnabled"
+                >Enable Scheduled Reminders</label
+              >
+              <input
+                type="checkbox"
+                bind:checked={settings.scheduledEnabled}
+                class="w-4 h-4 text-blue-600 bg-slate-800 border-slate-600 rounded focus:ring-blue-500"
+              />
+            </div>
+
+            <!-- Scheduled Interval -->
+            <div class="mb-3">
+              <label class="block text-slate-200 font-medium mb-1" for="scheduledInterval">
+                Scheduled Interval (minutes)
+              </label>
+              <input
+                type="number"
+                bind:value={settings.scheduledInterval}
+                min="5"
+                max="60"
+                disabled={!settings.scheduledEnabled}
+                class="w-full px-3 py-2 bg-slate-800 border border-slate-600 rounded text-slate-200 focus:ring-2 focus:ring-blue-500 disabled:opacity-50"
+              />
+              <p class="text-xs text-slate-400 mt-1">Fixed interval for scheduled reminders</p>
+            </div>
+
+            <!-- Max Scheduled Reminders -->
+            <div>
+              <label class="block text-slate-200 font-medium mb-1" for="maxScheduledPerSession">
+                Max Scheduled Per Session
+              </label>
+              <input
+                type="number"
+                bind:value={settings.maxScheduledPerSession}
+                min="1"
+                max="20"
+                disabled={!settings.scheduledEnabled}
+                class="w-full px-3 py-2 bg-slate-800 border border-slate-600 rounded text-slate-200 focus:ring-2 focus:ring-blue-500 disabled:opacity-50"
+              />
+              <p class="text-xs text-slate-400 mt-1">
+                Stop scheduled reminders after this many per session
+              </p>
+            </div>
+          </div>
+
+          <!-- General Settings -->
+          <div class="border-b border-slate-700 pb-4">
+            <h3 class="text-slate-200 font-medium mb-3">General Settings</h3>
+
+            <!-- Reminder Interval -->
+            <div class="mb-3">
+              <label class="block text-slate-200 font-medium mb-1" for="reminderInterval">
+                Idle Reminder Interval (minutes)
+              </label>
+              <input
+                type="number"
+                bind:value={settings.reminderInterval}
+                min="5"
+                max="120"
+                disabled={!settings.enabled}
+                class="w-full px-3 py-2 bg-slate-800 border border-slate-600 rounded text-slate-200 focus:ring-2 focus:ring-blue-500 disabled:opacity-50"
+              />
+              <p class="text-xs text-slate-400 mt-1">
+                How often to show idle-based reminders when you have unsaved changes
+              </p>
+            </div>
+          </div>
+
+          <!-- Shared Settings -->
+          <div class="border-b border-slate-700 pb-4">
+            <h3 class="text-slate-200 font-medium mb-3">Shared Settings</h3>
+
+            <!-- Snooze Interval -->
+            <div>
+              <label class="block text-slate-200 font-medium mb-1" for="snoozeInterval">
+                Snooze Duration (minutes)
+              </label>
+              <input
+                type="number"
+                bind:value={settings.snoozeInterval}
+                min="5"
+                max="60"
+                class="w-full px-3 py-2 bg-slate-800 border border-slate-600 rounded text-slate-200 focus:ring-2 focus:ring-blue-500"
+              />
+              <p class="text-xs text-slate-400 mt-1">How long to wait after snoozing a reminder</p>
+            </div>
+
+            <!-- Minimum Changes -->
+            <div>
+              <label class="block text-slate-200 font-medium mb-1" for="minimumChanges">
+                Minimum Changes Required
+              </label>
+              <input
+                type="number"
+                bind:value={settings.minimumChanges}
+                min="1"
+                max="20"
+                class="w-full px-3 py-2 bg-slate-800 border border-slate-600 rounded text-slate-200 focus:ring-2 focus:ring-blue-500"
+              />
+              <p class="text-xs text-slate-400 mt-1">
+                Only remind when this many files have changed
+              </p>
+            </div>
+
+            <!-- Max Reminders -->
+            <div>
+              <label class="block text-slate-200 font-medium mb-1" for="maxRemindersPerSession">
+                Max Reminders Per Session
+              </label>
+              <input
+                type="number"
+                bind:value={settings.maxRemindersPerSession}
+                min="1"
+                max="20"
+                class="w-full px-3 py-2 bg-slate-800 border border-slate-600 rounded text-slate-200 focus:ring-2 focus:ring-blue-500"
+              />
+              <p class="text-xs text-slate-400 mt-1">
+                Stop reminding after this many reminders in one session
+              </p>
+            </div>
           </div>
 
           <!-- Current Status -->
@@ -213,15 +293,27 @@
             <h3 class="text-slate-200 font-medium mb-2">Current Status</h3>
             <div class="space-y-2 text-sm">
               <div class="flex justify-between">
-                <span class="text-slate-400">Last Reminder:</span>
+                <span class="text-slate-400">Last Idle Reminder:</span>
                 <span class="text-slate-200">
                   {getTimeAgo(state.lastReminderTime)}
                 </span>
               </div>
               <div class="flex justify-between">
-                <span class="text-slate-400">Reminders This Session:</span>
+                <span class="text-slate-400">Last Scheduled Reminder:</span>
+                <span class="text-slate-200">
+                  {getTimeAgo(state.lastScheduledReminderTime)}
+                </span>
+              </div>
+              <div class="flex justify-between">
+                <span class="text-slate-400">Idle Reminders This Session:</span>
                 <span class="text-slate-200">
                   {state.reminderCount} / {settings.maxRemindersPerSession}
+                </span>
+              </div>
+              <div class="flex justify-between">
+                <span class="text-slate-400">Scheduled Reminders This Session:</span>
+                <span class="text-slate-200">
+                  {state.scheduledReminderCount} / {settings.maxScheduledPerSession}
                 </span>
               </div>
               <div class="flex justify-between">
