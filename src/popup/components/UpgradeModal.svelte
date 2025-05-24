@@ -1,6 +1,6 @@
 <script lang="ts">
-  import type { PremiumFeature } from '../../content/services/PremiumService';
   import { Button } from '$lib/components/ui/button';
+  import type { PremiumFeature } from '$lib/constants/premiumFeatures';
 
   export let show = false;
   export let feature: string = ''; // Which feature triggered the modal

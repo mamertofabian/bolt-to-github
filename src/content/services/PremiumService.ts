@@ -16,13 +16,6 @@ export interface UsageLimits {
   };
 }
 
-export interface PremiumFeature {
-  id: string;
-  name: string;
-  description: string;
-  icon: string;
-}
-
 /**
  * PremiumService manages premium feature access, usage limits, and upgrade prompts
  */
@@ -287,32 +280,6 @@ export class PremiumService {
   }
 
   /**
-   * Get premium features list for marketing
-   */
-  public getPremiumFeatures(): PremiumFeature[] {
-    return [
-      {
-        id: 'unlimited-file-changes',
-        name: 'Unlimited File Changes',
-        description: 'View and compare unlimited file changes per day',
-        icon: '📁',
-      },
-      {
-        id: 'push-reminders',
-        name: 'Smart Push Reminders',
-        description: 'Intelligent reminders to push your changes when idle or on schedule',
-        icon: '⏰',
-      },
-      {
-        id: 'branch-selector',
-        name: 'Branch Selector',
-        description: 'Choose specific branches when importing private repositories',
-        icon: '🌿',
-      },
-    ];
-  }
-
-  /**
    * Get current premium status for display
    */
   public getStatus(): PremiumStatus {
@@ -320,12 +287,18 @@ export class PremiumService {
   }
 
   /**
-   * Check premium status from server (placeholder for future SSO)
+   * Check premium status from server
+   * Currently triggers auth service to re-check Supabase status
    */
   public async checkPremiumStatusFromServer(): Promise<void> {
-    // TODO: Implement when SSO is ready
-    // This will validate premium status with your backend
-    console.log('Premium status check from server not yet implemented');
+    console.log('🔄 Triggering premium status refresh...');
+
+    // Force auth service to check again
+    try {
+      await chrome.runtime.sendMessage({ type: 'FORCE_AUTH_CHECK' });
+    } catch (error) {
+      console.warn('Failed to trigger auth check:', error);
+    }
   }
 
   /**

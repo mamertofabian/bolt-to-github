@@ -7,6 +7,7 @@
   import { fade } from 'svelte/transition';
   import BranchSelectionModal from '../../popup/components/BranchSelectionModal.svelte';
   import { githubSettingsStore, githubSettingsActions, currentProjectId } from '$lib/stores';
+  import { triggerUpgradeModal } from '$lib/utils/upgradeModal';
 
   export let repoOwner: string;
   export let githubToken: string;
@@ -187,33 +188,8 @@
       });
       if (!response.hasAccess) {
         // Show upgrade modal for branch selector
-        const upgradeEvent = new CustomEvent('showUpgrade', {
-          detail: {
-            feature: 'branchSelector',
-            reason: 'Branch selector for private repositories requires premium access.',
-            features: [
-              {
-                id: 'unlimited-file-changes',
-                name: 'Unlimited File Changes',
-                description: 'View and compare unlimited file changes per day',
-                icon: '📁',
-              },
-              {
-                id: 'push-reminders',
-                name: 'Smart Push Reminders',
-                description: 'Intelligent reminders to push your changes when idle or on schedule',
-                icon: '⏰',
-              },
-              {
-                id: 'branch-selector',
-                name: 'Branch Selector',
-                description: 'Choose specific branches when importing private repositories',
-                icon: '🌿',
-              },
-            ],
-          },
-        });
-        window.dispatchEvent(upgradeEvent);
+        // Use the unified upgrade modal system
+        triggerUpgradeModal('branchSelector');
         return;
       }
     } catch (error) {

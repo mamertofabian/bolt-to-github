@@ -24,6 +24,8 @@
   import TempRepoModal from './components/TempRepoModal.svelte';
   import PushReminderSettings from './components/PushReminderSettings.svelte';
   import UpgradeModal from './components/UpgradeModal.svelte';
+  import { setUpgradeModalState } from '$lib/utils/upgradeModal';
+  import type { PremiumFeature } from '$lib/constants/premiumFeatures';
 
   // Import stores and services
   import {
@@ -251,39 +253,28 @@
         </a>
         {#if isUserPremium}
           <span
-            class="text-xs bg-gradient-to-r from-emerald-600 to-green-600 text-white px-2 py-1 rounded-full flex items-center gap-1"
+            class="text-xs font-medium bg-gradient-to-r from-emerald-500 to-teal-500 text-white px-3 py-1.5 rounded-full flex items-center gap-1.5 shadow-sm"
           >
-            ✅ {userPlan.toUpperCase()}
+            <svg class="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
+              <path
+                fill-rule="evenodd"
+                d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"
+                clip-rule="evenodd"
+              ></path>
+            </svg>
+            PRO
           </span>
         {:else}
           <Button
             size="sm"
             class="text-xs bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white px-3 py-1 h-6"
             on:click={() => {
-              upgradeModalFeature = 'premium';
-              upgradeModalReason = 'Unlock unlimited features and remove daily limits';
-              premiumFeatures = [
-                {
-                  id: 'unlimited-file-changes',
-                  name: 'Unlimited File Changes',
-                  description: 'View and compare unlimited file changes per day',
-                  icon: '📁',
-                },
-                {
-                  id: 'push-reminders',
-                  name: 'Smart Push Reminders',
-                  description:
-                    'Intelligent reminders to push your changes when idle or on schedule',
-                  icon: '⏰',
-                },
-                {
-                  id: 'branch-selector',
-                  name: 'Branch Selector',
-                  description: 'Choose specific branches when importing private repositories',
-                  icon: '🌿',
-                },
-              ];
-              showUpgradeModal = true;
+              setUpgradeModalState('general', (feature, reason, features) => {
+                upgradeModalFeature = feature;
+                upgradeModalReason = reason;
+                premiumFeatures = features;
+                showUpgradeModal = true;
+              });
             }}
           >
             ✨ Upgrade
@@ -348,98 +339,212 @@
               />
 
               <!-- Push Reminder Settings -->
-              <div class="border-t border-slate-800 pt-4">
-                <div class="flex items-center justify-between">
-                  <div>
-                    <h3 class="text-lg font-semibold text-slate-200 flex items-center gap-2">
-                      Push Reminders
-                      <span
-                        class="text-xs bg-gradient-to-r from-blue-600 to-purple-600 text-white px-2 py-1 rounded-full"
+              <div class="border-t border-slate-800/50 pt-6">
+                <div
+                  class="bg-gradient-to-br from-slate-800/20 to-slate-800/5 rounded-xl p-4 border border-slate-700/30"
+                >
+                  <div class="flex items-center justify-between">
+                    <div class="flex-1">
+                      <div class="flex items-center gap-3 mb-2">
+                        <h3 class="text-lg font-semibold text-slate-100">Push Reminders</h3>
+                        <span
+                          class="text-xs font-medium bg-gradient-to-r from-purple-500 to-pink-500 text-white px-3 py-1.5 rounded-full flex items-center gap-1.5 shadow-sm"
+                        >
+                          <svg
+                            class="w-3 h-3"
+                            fill="none"
+                            stroke="currentColor"
+                            viewBox="0 0 24 24"
+                          >
+                            <path
+                              stroke-linecap="round"
+                              stroke-linejoin="round"
+                              stroke-width="2"
+                              d="M13 10V3L4 14h7v7l9-11h-7z"
+                            ></path>
+                          </svg>
+                          PREMIUM
+                        </span>
+                      </div>
+                      <p class="text-sm text-slate-400">
+                        Smart reminders to save your work to GitHub
+                      </p>
+                    </div>
+                    <Button
+                      variant="outline"
+                      class="border-slate-600 hover:bg-slate-700 text-slate-300 hover:text-slate-200 font-medium px-4 py-2 transition-all duration-200"
+                      on:click={() => (showPushReminderSettings = true)}
+                    >
+                      <svg
+                        class="w-4 h-4 mr-2"
+                        fill="none"
+                        stroke="currentColor"
+                        viewBox="0 0 24 24"
                       >
-                        ✨ PREMIUM
-                      </span>
-                    </h3>
-                    <p class="text-sm text-slate-400">
-                      Smart reminders to save your work to GitHub
-                    </p>
+                        <path
+                          stroke-linecap="round"
+                          stroke-linejoin="round"
+                          stroke-width="2"
+                          d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"
+                        ></path>
+                        <path
+                          stroke-linecap="round"
+                          stroke-linejoin="round"
+                          stroke-width="2"
+                          d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"
+                        ></path>
+                      </svg>
+                      Configure
+                    </Button>
                   </div>
-                  <Button
-                    variant="outline"
-                    class="border-slate-700 hover:bg-slate-800 text-slate-200"
-                    on:click={() => (showPushReminderSettings = true)}
-                  >
-                    Configure
-                  </Button>
                 </div>
               </div>
 
               <!-- Premium Status -->
-              <div class="border-t border-slate-800 pt-4">
-                <div class="flex items-center justify-between">
-                  <div>
-                    <h3 class="text-lg font-semibold text-slate-200 flex items-center gap-2">
-                      Premium Status
-                      {#if isUserPremium}
-                        <span
-                          class="text-xs bg-gradient-to-r from-emerald-600 to-green-600 text-white px-2 py-1 rounded-full flex items-center gap-1"
-                        >
-                          ✅ {userPlan.toUpperCase()}
-                        </span>
-                      {/if}
-                    </h3>
-                    <p class="text-sm text-slate-400">
-                      {#if isUserPremium}
-                        {userPlan === 'pro' ? 'Pro Plan' : 'Premium Plan'} • Unlimited features
-                        {#if premiumStatus.expiresAt}
-                          • Expires {new Date(premiumStatus.expiresAt).toLocaleDateString()}
+              <div class="border-t border-slate-800/50 pt-6">
+                <div
+                  class="bg-gradient-to-br from-slate-800/30 to-slate-800/10 rounded-xl p-4 border border-slate-700/50"
+                >
+                  <div class="flex items-start justify-between">
+                    <div class="flex-1">
+                      <div class="flex items-center gap-3 mb-2">
+                        <h3 class="text-lg font-semibold text-slate-100">Premium Status</h3>
+                        {#if isUserPremium}
+                          <span
+                            class="text-xs font-medium bg-gradient-to-r from-emerald-500 to-teal-500 text-white px-3 py-1.5 rounded-full flex items-center gap-1.5 shadow-lg"
+                          >
+                            <svg class="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
+                              <path
+                                fill-rule="evenodd"
+                                d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"
+                                clip-rule="evenodd"
+                              ></path>
+                            </svg>
+                            PRO
+                          </span>
                         {/if}
+                      </div>
+                      <div class="space-y-1">
+                        {#if isUserPremium}
+                          <p class="text-slate-300 font-medium">Premium Plan</p>
+                          <div class="flex items-center gap-2 text-sm text-slate-400">
+                            <svg
+                              class="w-4 h-4 text-emerald-400"
+                              fill="none"
+                              stroke="currentColor"
+                              viewBox="0 0 24 24"
+                            >
+                              <path
+                                stroke-linecap="round"
+                                stroke-linejoin="round"
+                                stroke-width="2"
+                                d="M5 13l4 4L19 7"
+                              ></path>
+                            </svg>
+                            <span>Unlimited features</span>
+                          </div>
+                          {#if premiumStatus.expiresAt}
+                            <div class="flex items-center gap-2 text-sm text-slate-400">
+                              <svg
+                                class="w-4 h-4"
+                                fill="none"
+                                stroke="currentColor"
+                                viewBox="0 0 24 24"
+                              >
+                                <path
+                                  stroke-linecap="round"
+                                  stroke-linejoin="round"
+                                  stroke-width="2"
+                                  d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"
+                                ></path>
+                              </svg>
+                              <span
+                                >Expires {new Date(
+                                  premiumStatus.expiresAt
+                                ).toLocaleDateString()}</span
+                              >
+                            </div>
+                          {/if}
+                        {:else}
+                          <p class="text-slate-300 font-medium">Free Plan</p>
+                          <div class="flex items-center gap-2 text-sm text-slate-400">
+                            <svg
+                              class="w-4 h-4 text-amber-400"
+                              fill="none"
+                              stroke="currentColor"
+                              viewBox="0 0 24 24"
+                            >
+                              <path
+                                stroke-linecap="round"
+                                stroke-linejoin="round"
+                                stroke-width="2"
+                                d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.732 16.5c-.77.833.192 2.5 1.732 2.5z"
+                              ></path>
+                            </svg>
+                            <span>3 file changes per day</span>
+                          </div>
+                        {/if}
+                      </div>
+                    </div>
+                    <div class="ml-4">
+                      {#if !isUserPremium}
+                        <Button
+                          class="bg-gradient-to-r from-blue-500 to-purple-600 hover:from-blue-600 hover:to-purple-700 text-white font-medium px-6 py-2 shadow-lg hover:shadow-xl transition-all duration-200"
+                          on:click={() => {
+                            setUpgradeModalState('general', (feature, reason, features) => {
+                              upgradeModalFeature = feature;
+                              upgradeModalReason = reason;
+                              premiumFeatures = features;
+                              showUpgradeModal = true;
+                            });
+                          }}
+                        >
+                          <svg
+                            class="w-4 h-4 mr-2"
+                            fill="none"
+                            stroke="currentColor"
+                            viewBox="0 0 24 24"
+                          >
+                            <path
+                              stroke-linecap="round"
+                              stroke-linejoin="round"
+                              stroke-width="2"
+                              d="M13 10V3L4 14h7v7l9-11h-7z"
+                            ></path>
+                          </svg>
+                          Upgrade
+                        </Button>
                       {:else}
-                        Free plan • 3 file changes per day
+                        <Button
+                          variant="outline"
+                          class="border-slate-600 hover:bg-slate-700 text-slate-200 hover:text-slate-100 font-medium px-4 py-2 transition-all duration-200"
+                          on:click={() =>
+                            window.open('https://bolt2github.com/dashboard', '_blank')}
+                        >
+                          <svg
+                            class="w-4 h-4 mr-2"
+                            fill="none"
+                            stroke="currentColor"
+                            viewBox="0 0 24 24"
+                          >
+                            <path
+                              stroke-linecap="round"
+                              stroke-linejoin="round"
+                              stroke-width="2"
+                              d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"
+                            ></path>
+                            <path
+                              stroke-linecap="round"
+                              stroke-linejoin="round"
+                              stroke-width="2"
+                              d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"
+                            ></path>
+                          </svg>
+                          Manage
+                        </Button>
                       {/if}
-                    </p>
+                    </div>
                   </div>
-                  {#if !isUserPremium}
-                    <Button
-                      class="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white"
-                      on:click={() => {
-                        upgradeModalFeature = 'premium';
-                        upgradeModalReason = 'Unlock all premium features';
-                        premiumFeatures = [
-                          {
-                            id: 'unlimited-file-changes',
-                            name: 'Unlimited File Changes',
-                            description: 'View and compare unlimited file changes per day',
-                            icon: '📁',
-                          },
-                          {
-                            id: 'push-reminders',
-                            name: 'Smart Push Reminders',
-                            description:
-                              'Intelligent reminders to push your changes when idle or on schedule',
-                            icon: '⏰',
-                          },
-                          {
-                            id: 'branch-selector',
-                            name: 'Branch Selector',
-                            description:
-                              'Choose specific branches when importing private repositories',
-                            icon: '🌿',
-                          },
-                        ];
-                        showUpgradeModal = true;
-                      }}
-                    >
-                      ✨ Upgrade
-                    </Button>
-                  {:else}
-                    <Button
-                      variant="outline"
-                      class="border-slate-700 hover:bg-slate-800 text-slate-200"
-                      on:click={() => window.open('https://bolt2github.com/dashboard', '_blank')}
-                    >
-                      Manage
-                    </Button>
-                  {/if}
                 </div>
               </div>
             </div>
