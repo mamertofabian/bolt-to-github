@@ -267,20 +267,31 @@
             PRO
           </span>
         {:else}
-          <Button
-            size="sm"
-            class="text-xs bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white px-3 py-1 h-6"
-            on:click={() => {
-              setUpgradeModalState('general', (feature, reason, features) => {
-                upgradeModalFeature = feature;
-                upgradeModalReason = reason;
-                premiumFeatures = features;
-                showUpgradeModal = true;
-              });
-            }}
-          >
-            ✨ Upgrade
-          </Button>
+          <div class="flex items-center gap-2">
+            <Button
+              size="sm"
+              class="text-xs bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white px-3 py-1 h-6"
+              on:click={() => {
+                setUpgradeModalState('general', (feature, reason, features) => {
+                  upgradeModalFeature = feature;
+                  upgradeModalReason = reason;
+                  premiumFeatures = features;
+                  showUpgradeModal = true;
+                });
+              }}
+            >
+              ✨ Upgrade
+            </Button>
+            <button
+              class="text-xs text-slate-400 hover:text-slate-300 transition-colors underline"
+              on:click={() => {
+                chrome.tabs.create({ url: 'https://bolt2github.com/login' });
+              }}
+              title="Sign in if you already have a premium account"
+            >
+              Sign in
+            </button>
+          </div>
         {/if}
       </CardTitle>
       <CardDescription class="text-slate-400">

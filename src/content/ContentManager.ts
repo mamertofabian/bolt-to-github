@@ -1,3 +1,4 @@
+/* eslint-disable no-console */
 import type { Message } from '$lib/types';
 import { MessageHandler } from './MessageHandler';
 import { UIManager } from './UIManager';
@@ -289,6 +290,18 @@ export class ContentManager {
                 console.warn('❌ Premium service not available');
                 sendResponse({ error: 'Premium service not available' });
               }
+            } else {
+              console.warn('❌ UI manager not available');
+              sendResponse({ error: 'UI manager not available' });
+            }
+            return;
+          }
+          if (message.type === 'SHOW_REAUTHENTICATION_MODAL') {
+            console.log('📨 Received SHOW_REAUTHENTICATION_MODAL message:', message.data);
+            /* Show re-authentication modal via UIManager */
+            if (this.uiManager) {
+              this.uiManager.showReauthenticationModal(message.data);
+              sendResponse({ success: true });
             } else {
               console.warn('❌ UI manager not available');
               sendResponse({ error: 'UI manager not available' });

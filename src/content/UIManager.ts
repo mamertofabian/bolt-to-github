@@ -1,3 +1,4 @@
+/* eslint-disable no-console */
 import type { UploadStatusState } from '$lib/types';
 import type { MessageHandler } from './MessageHandler';
 
@@ -196,6 +197,127 @@ export class UIManager {
     } catch (error) {
       console.log('Could not communicate with popup for upgrade prompt:', error);
     }
+  }
+
+  /**
+   * Show re-authentication modal when session is invalidated
+   */
+  public showReauthenticationModal(data: {
+    message: string;
+    actionText: string;
+    actionUrl: string;
+  }): void {
+    console.log('🔐 Showing re-authentication modal:', data);
+
+    /* Create and show a styled modal notification with action button */
+    const modalElement = document.createElement('div');
+    modalElement.className = 'bolt-auth-modal-overlay';
+    modalElement.innerHTML = `
+      <div class="bolt-auth-modal">
+        <div class="bolt-auth-modal-header">
+          <h3>🔐 Authentication Required</h3>
+        </div>
+        <div class="bolt-auth-modal-content">
+          <p>${data.message}</p>
+        </div>
+        <div class="bolt-auth-modal-actions">
+          <button class="bolt-auth-modal-btn bolt-auth-modal-btn-primary" data-action="signin">
+            ${data.actionText}
+          </button>
+          <button class="bolt-auth-modal-btn bolt-auth-modal-btn-secondary" data-action="dismiss">
+            Dismiss
+          </button>
+        </div>
+      </div>
+    `;
+
+    /* Add modal styles */
+    const styles = document.createElement('style');
+    styles.textContent = `
+      .bolt-auth-modal-overlay {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: rgba(0, 0, 0, 0.7);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        z-index: 10000;
+        font-family: system-ui, -apple-system, sans-serif;
+      }
+      .bolt-auth-modal {
+        background: #1e1e1e;
+        border-radius: 12px;
+        padding: 24px;
+        max-width: 440px;
+        margin: 20px;
+        box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+        border: 1px solid #374151;
+      }
+      .bolt-auth-modal-header h3 {
+        margin: 0 0 16px 0;
+        color: #f9fafb;
+        font-size: 18px;
+        font-weight: 600;
+      }
+      .bolt-auth-modal-content p {
+        margin: 0 0 24px 0;
+        color: #d1d5db;
+        line-height: 1.5;
+        font-size: 14px;
+      }
+      .bolt-auth-modal-actions {
+        display: flex;
+        gap: 12px;
+        justify-content: flex-end;
+      }
+      .bolt-auth-modal-btn {
+        padding: 10px 20px;
+        border-radius: 8px;
+        border: 1px solid transparent;
+        font-size: 14px;
+        font-weight: 500;
+        cursor: pointer;
+        transition: all 0.2s;
+      }
+      .bolt-auth-modal-btn-primary {
+        background: #3b82f6;
+        color: white;
+        border-color: #3b82f6;
+      }
+      .bolt-auth-modal-btn-primary:hover {
+        background: #2563eb;
+        border-color: #2563eb;
+      }
+      .bolt-auth-modal-btn-secondary {
+        background: transparent;
+        color: #9ca3af;
+        border-color: #4b5563;
+      }
+      .bolt-auth-modal-btn-secondary:hover {
+        background: #374151;
+        color: #d1d5db;
+      }
+    `;
+
+    /* Add event listeners */
+    modalElement.addEventListener('click', (e) => {
+      const target = e.target as HTMLElement;
+      if (target.dataset.action === 'signin') {
+        window.open(data.actionUrl, '_blank');
+        document.body.removeChild(modalElement);
+        document.head.removeChild(styles);
+      } else if (target.dataset.action === 'dismiss' || target === modalElement) {
+        document.body.removeChild(modalElement);
+        document.head.removeChild(styles);
+      }
+    });
+
+    /* Show the modal */
+    document.head.appendChild(styles);
+    document.body.appendChild(modalElement);
   }
 
   /**

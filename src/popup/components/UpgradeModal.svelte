@@ -15,16 +15,24 @@
   }
 
   function handleUpgrade() {
-    // Open upgrade page
+    /* Open upgrade page */
     chrome.tabs.create({
       url: 'https://bolt2github.com/upgrade',
     });
     show = false;
   }
 
+  function handleSignIn() {
+    /* Open sign in page for existing premium users */
+    chrome.tabs.create({
+      url: 'https://bolt2github.com/login',
+    });
+    show = false;
+  }
+
   function handleClose() {
     show = false;
-    // Reset expanded state when closing
+    /* Reset expanded state when closing */
     expandedFeature = null;
   }
 
@@ -190,6 +198,17 @@
           Upgrade Now
         </Button>
         <Button on:click={handleClose} variant="outline" class="px-3 text-sm py-2">Later</Button>
+      </div>
+
+      <!-- Sign in link for existing premium users -->
+      <div class="text-center border-t border-slate-700/30 pt-3 mb-2">
+        <p class="text-slate-500 text-xs mb-2">Already upgraded?</p>
+        <button
+          on:click={handleSignIn}
+          class="text-blue-400 hover:text-blue-300 text-xs underline transition-colors"
+        >
+          Sign in to your account
+        </button>
       </div>
 
       <!-- Compact trust indicators -->
