@@ -13,6 +13,7 @@
     ChevronRight,
   } from 'lucide-svelte';
   import RepoSettings from '$lib/components/RepoSettings.svelte';
+  import ConfirmationDialog from '$lib/components/ui/dialog/ConfirmationDialog.svelte';
   import { GitHubService } from '../../services/GitHubService';
   import { fade } from 'svelte/transition';
   import BranchSelectionModal from '../../popup/components/BranchSelectionModal.svelte';
@@ -45,6 +46,10 @@
   let projectToEdit: { projectId: string; repoName: string; branch: string } | null = null;
   let showBranchSelectionModal = false;
   let repoToImport: { owner: string; repo: string; isPrivate: boolean } | null = null;
+
+  // Add confirmation dialog state
+  let showImportConfirmDialog = false;
+  let repoToConfirmImport: { owner: string; repo: string; isPrivate: boolean } | null = null;
 
   const githubService = new GitHubService(githubToken);
   let commitCounts: Record<string, number> = {};
@@ -293,19 +298,30 @@
       console.warn('Failed to check premium status, allowing access:', error);
     }
 
-    if (
-      !confirm(
-        'Warning: This will temporarily create a public copy of your private repository to enable import.\n\n' +
-          'The temporary repository will be automatically deleted after 1 minute.\n\n' +
-          'Do you want to continue?'
-      )
-    ) {
-      return;
-    }
+    // Store the repo info and show confirmation dialog
+    repoToConfirmImport = { owner: repoOwner, repo: repoName, isPrivate };
+    showImportConfirmDialog = true;
+  }
+
+  function handleImportConfirm() {
+    if (!repoToConfirmImport) return;
 
     // Show branch selection modal
-    repoToImport = { owner: repoOwner, repo: repoName, isPrivate };
+    repoToImport = {
+      owner: repoToConfirmImport.owner,
+      repo: repoToConfirmImport.repo,
+      isPrivate: repoToConfirmImport.isPrivate,
+    };
     showBranchSelectionModal = true;
+
+    // Reset confirmation state
+    showImportConfirmDialog = false;
+    repoToConfirmImport = null;
+  }
+
+  function handleImportCancel() {
+    showImportConfirmDialog = false;
+    repoToConfirmImport = null;
   }
 
   async function handleBranchSelected(branch: string) {
@@ -773,6 +789,19 @@
         showBranchSelectionModal = false;
         repoToImport = null;
       }}
+    />
+  {/if}
+
+  {#if showImportConfirmDialog && repoToConfirmImport}
+    <ConfirmationDialog
+      show={showImportConfirmDialog}
+      title="Import Private Repository"
+      message="This will temporarily create a <strong>public copy</strong> of your private repository to enable import.<br><br>The temporary repository will be automatically deleted after 1 minute.<br><br>Do you want to continue?"
+      type="warning"
+      confirmText="Continue Import"
+      cancelText="Cancel"
+      onConfirm={handleImportConfirm}
+      onCancel={handleImportCancel}
     />
   {/if}
 </div>
