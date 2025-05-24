@@ -15,6 +15,7 @@ export class PremiumService {
   private premiumStatus: PremiumStatus;
   private supabaseAuthService: any; // Will be imported dynamically
   private currentAuthPlan: 'free' | 'monthly' | 'yearly' = 'free';
+  private uiManager?: any; // Reference to UIManager for updating components
 
   constructor() {
     this.premiumStatus = {
@@ -28,6 +29,13 @@ export class PremiumService {
 
     this.loadStoredData();
     this.initializeSupabaseAuth();
+  }
+
+  /**
+   * Set UIManager reference for updating components when premium status changes
+   */
+  public setUIManager(uiManager: any): void {
+    this.uiManager = uiManager;
   }
 
   /**
@@ -65,6 +73,11 @@ export class PremiumService {
         branchSelector: authData.isPremium,
       },
     });
+
+    // Update dropdown manager with new premium status
+    if (this.uiManager) {
+      this.uiManager.updateDropdownPremiumStatus();
+    }
 
     console.log(
       `🔐 Premium status updated from auth: ${authData.isPremium ? 'active' : 'inactive'} (${authData.plan})`

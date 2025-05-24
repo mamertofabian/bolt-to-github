@@ -90,6 +90,9 @@ export class UIManager {
     console.log('🔊 Initializing PremiumService');
     this.premiumService = new PremiumService();
 
+    // Set UIManager reference in PremiumService for component updates
+    this.premiumService.setUIManager(this);
+
     // Link premium service to push reminder service
     this.pushReminderService.setPremiumService(this.premiumService);
 
@@ -516,5 +519,12 @@ export class UIManager {
     feature: keyof import('./services/PremiumService').PremiumStatus['features']
   ): boolean {
     return this.premiumService.hasFeature(feature);
+  }
+
+  /**
+   * Update dropdown manager when premium status changes
+   */
+  public updateDropdownPremiumStatus(): void {
+    this.dropdownManager.updatePremiumStatus();
   }
 }

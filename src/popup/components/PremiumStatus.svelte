@@ -16,6 +16,10 @@
   function handleManage() {
     window.open('https://bolt2github.com/dashboard', '_blank');
   }
+
+  function handleSignIn() {
+    window.open('https://bolt2github.com/login', '_blank');
+  }
 </script>
 
 <!-- Premium Status -->
@@ -238,6 +242,16 @@
             </svg>
             Upgrade to Premium
           </Button>
+          <!-- Sign in link for existing premium users -->
+          <div class="text-center border-t border-slate-700/30 pt-3 mb-2">
+            <p class="text-slate-500 text-xs mb-2">Already upgraded?</p>
+            <button
+              on:click={handleSignIn}
+              class="text-blue-400 hover:text-blue-300 text-xs underline transition-colors"
+            >
+              Sign in to your account
+            </button>
+          </div>
         {:else}
           <Button
             variant="outline"

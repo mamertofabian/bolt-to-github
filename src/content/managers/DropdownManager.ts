@@ -39,6 +39,37 @@ export class DropdownManager implements IDropdownManager {
   }
 
   /**
+   * Update premium status and refresh dropdown if it's currently shown
+   */
+  public updatePremiumStatus(): void {
+    console.log('🔄 Updating dropdown premium status...');
+
+    /* If dropdown is currently shown, refresh its content */
+    if (this.currentDropdown && this.currentDropdown.style.display === 'block') {
+      console.log('✅ Refreshing visible dropdown content');
+      this.refreshDropdownContent();
+    }
+  }
+
+  /**
+   * Refresh the dropdown content with current premium status
+   */
+  public refreshDropdownContent(): void {
+    if (!this.currentDropdown) {
+      return;
+    }
+
+    /* Clear existing content */
+    this.currentDropdown.innerHTML = '';
+
+    /* Recreate dropdown items with current premium status */
+    const items = this.createDropdownItems();
+    items.forEach((item) => this.currentDropdown!.appendChild(item));
+
+    console.log('🔄 Dropdown content refreshed with current premium status');
+  }
+
+  /**
    * Show the dropdown for the given button
    * Replaces the previous handleGitHubDropdownClick method from UIManager
    */
@@ -57,15 +88,17 @@ export class DropdownManager implements IDropdownManager {
     // Wait a bit for the dropdown content to render
     await new Promise((resolve) => setTimeout(resolve, 200));
 
-    // Create dropdown content if it doesn't exist
+    // Always recreate dropdown content to ensure it reflects current premium status
     let dropdownContent = document.querySelector('#github-dropdown-content') as HTMLElement;
-    if (!dropdownContent) {
-      dropdownContent = this.createContent();
-      document.body.appendChild(dropdownContent);
-      // Set initial position (will be updated below)
-      dropdownContent.style.position = 'fixed';
-      dropdownContent.style.zIndex = '9999';
+    if (dropdownContent) {
+      dropdownContent.remove();
     }
+
+    dropdownContent = this.createContent();
+    document.body.appendChild(dropdownContent);
+    // Set initial position (will be updated below)
+    dropdownContent.style.position = 'fixed';
+    dropdownContent.style.zIndex = '9999';
 
     this.currentDropdown = dropdownContent;
 
