@@ -67,7 +67,8 @@ export class UIManager {
       messageHandler,
       this.stateManager,
       () => this.handleGitHubPushAction(), // Push action callback
-      () => this.handleShowChangedFiles() // Show changed files callback
+      () => this.handleShowChangedFiles(), // Show changed files callback
+      (feature: string) => this.handleUpgradePrompt(feature) // Upgrade prompt callback
     );
 
     // Initialize GitHubUploadHandler with state integration
@@ -93,6 +94,9 @@ export class UIManager {
 
     // Link premium service to file change handler
     this.fileChangeHandler.setPremiumService(this.premiumService);
+
+    // Link premium service to dropdown manager
+    this.dropdownManager.setPremiumService(this.premiumService);
 
     // Set up state change listening for coordination
     this.setupStateCoordination();
@@ -170,6 +174,28 @@ export class UIManager {
    */
   public async handleShowChangedFiles() {
     return this.fileChangeHandler.showChangedFiles();
+  }
+
+  /**
+   * Handle upgrade prompt for premium features
+   */
+  public async handleUpgradePrompt(feature: string): Promise<void> {
+    // Show notification about premium feature
+    this.notificationManager.showNotification({
+      type: 'info',
+      message: `🔒 File changes comparison is a Pro feature. Upgrade to view detailed file changes and comparisons!`,
+      duration: 8000,
+    });
+
+    // Send message to open upgrade modal if popup is available
+    try {
+      chrome.runtime.sendMessage({
+        type: 'SHOW_UPGRADE_MODAL',
+        feature: feature,
+      });
+    } catch (error) {
+      console.log('Could not communicate with popup for upgrade prompt:', error);
+    }
   }
 
   /**

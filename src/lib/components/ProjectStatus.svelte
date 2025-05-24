@@ -3,6 +3,7 @@
   import { Alert, AlertTitle, AlertDescription } from './ui/alert';
   import { GitHubService } from '../../services/GitHubService';
   import RepoSettings from '$lib/components/RepoSettings.svelte';
+  import premiumStatusStore, { isPremium } from '$lib/stores/premiumStore';
 
   export let projectId: string;
   export let gitHubUsername: string;
@@ -12,6 +13,10 @@
 
   let showSettingsModal = false;
   let hasFileChanges = false;
+
+  // Premium status
+  $: premiumStatus = $premiumStatusStore;
+  $: isUserPremium = $isPremium;
 
   let isLoading = {
     repoStatus: true,
@@ -146,6 +151,17 @@
 
   function viewFileChanges(event: MouseEvent | KeyboardEvent) {
     event.stopPropagation();
+
+    // Check if user has premium access
+    if (!isUserPremium) {
+      // Send message to show upgrade modal
+      chrome.runtime.sendMessage({
+        type: 'SHOW_UPGRADE_MODAL',
+        feature: 'file-changes',
+      });
+      return;
+    }
+
     // Instead of sending a message directly, dispatch an event to the parent component
     // This will allow App.svelte to call its showStoredFileChanges function
     dispatch('showFileChanges');
@@ -231,27 +247,37 @@
 
         <!-- View File Changes button - only show if there are changes -->
         {#if hasFileChanges}
-          <button
-            class="tooltip-container w-8 h-8 flex items-center justify-center border border-slate-700 rounded-full text-slate-400 hover:bg-slate-800 hover:text-slate-300 transition-colors"
-            on:click|stopPropagation={viewFileChanges}
-            aria-label="View File Changes"
-          >
-            <svg
-              width="16"
-              height="16"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              stroke-width="2"
-              stroke-linecap="round"
-              stroke-linejoin="round"
+          <div class="relative">
+            <button
+              class="tooltip-container w-8 h-8 flex items-center justify-center border border-slate-700 rounded-full text-slate-400 hover:bg-slate-800 hover:text-slate-300 transition-colors {!isUserPremium
+                ? 'opacity-75'
+                : ''}"
+              on:click|stopPropagation={viewFileChanges}
+              aria-label="View File Changes{!isUserPremium ? ' (Pro)' : ''}"
             >
-              <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
-              <polyline points="14 2 14 8 20 8"></polyline>
-              <line x1="9" y1="15" x2="15" y2="15"></line>
-            </svg>
-            <span class="tooltip">View File Changes</span>
-          </button>
+              <svg
+                width="16"
+                height="16"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="2"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+              >
+                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+                <polyline points="14 2 14 8 20 8"></polyline>
+                <line x1="9" y1="15" x2="15" y2="15"></line>
+              </svg>
+              <span class="tooltip">View File Changes{!isUserPremium ? ' (Pro)' : ''}</span>
+            </button>
+            {#if !isUserPremium}
+              <span
+                class="absolute -top-1 -right-1 text-[8px] bg-gradient-to-r from-blue-500 to-purple-600 text-white px-1 py-0.5 rounded-full font-bold leading-none"
+                >PRO</span
+              >
+            {/if}
+          </div>
         {/if}
 
         <!-- Push to GitHub button -->

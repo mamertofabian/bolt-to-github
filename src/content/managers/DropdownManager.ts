@@ -11,20 +11,31 @@ export class DropdownManager implements IDropdownManager {
   private stateManager?: UIStateManager;
   private onPushActionCallback?: () => Promise<void>;
   private onShowChangedFilesCallback?: () => Promise<void>;
+  private onUpgradePromptCallback?: (feature: string) => Promise<void>;
   private currentDropdown: HTMLElement | null = null;
   private resizeListener?: () => void;
   private clickOutsideListener?: (e: MouseEvent) => void;
+  private premiumService?: any; // Will be injected from UIManager
 
   constructor(
     messageHandler: MessageHandler,
     stateManager?: UIStateManager,
     onPushActionCallback?: () => Promise<void>,
-    onShowChangedFilesCallback?: () => Promise<void>
+    onShowChangedFilesCallback?: () => Promise<void>,
+    onUpgradePromptCallback?: (feature: string) => Promise<void>
   ) {
     this.messageHandler = messageHandler;
     this.stateManager = stateManager;
     this.onPushActionCallback = onPushActionCallback;
     this.onShowChangedFilesCallback = onShowChangedFilesCallback;
+    this.onUpgradePromptCallback = onUpgradePromptCallback;
+  }
+
+  /**
+   * Set premium service for checking premium features
+   */
+  public setPremiumService(premiumService: any): void {
+    this.premiumService = premiumService;
   }
 
   /**
@@ -237,19 +248,37 @@ export class DropdownManager implements IDropdownManager {
     });
     items.push(pushButton);
 
-    // Show Changed Files option
+    // Show Changed Files option - now premium feature
     const changedFilesButton = document.createElement('button');
-    changedFilesButton.className = 'dropdown-item flex items-center';
+    const isPremium = this.premiumService?.isPremium() || false;
+
+    changedFilesButton.className = `dropdown-item flex items-center justify-between ${!isPremium ? 'opacity-75' : ''}`;
     changedFilesButton.innerHTML = `
-      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-        <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
-        <polyline points="14 2 14 8 20 8"></polyline>
-        <line x1="9" y1="15" x2="15" y2="15"></line>
-      </svg>
-      <span>Show Changed Files</span>
+      <div class="flex items-center">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+          <polyline points="14 2 14 8 20 8"></polyline>
+          <line x1="9" y1="15" x2="15" y2="15"></line>
+        </svg>
+        <span>Show Changed Files</span>
+      </div>
+      ${!isPremium ? '<span class="text-xs bg-gradient-to-r from-blue-500 to-purple-600 text-white px-2 py-0.5 rounded-full font-medium">PRO</span>' : ''}
     `;
+
     changedFilesButton.addEventListener('click', async () => {
       this.hide();
+
+      if (!isPremium) {
+        // Show upgrade prompt for file changes feature
+        if (this.onUpgradePromptCallback) {
+          await this.onUpgradePromptCallback('file-changes');
+        } else {
+          // Fallback notification
+          console.log('Upgrade required for file changes feature');
+        }
+        return;
+      }
+
       if (this.onShowChangedFilesCallback) {
         await this.onShowChangedFilesCallback();
       }

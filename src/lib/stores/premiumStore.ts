@@ -5,7 +5,7 @@ export interface PopupPremiumStatus {
   plan: string;
   expiresAt?: number;
   features: {
-    unlimitedFileChanges: boolean;
+    viewFileChanges: boolean;
     pushReminders: boolean;
     branchSelector: boolean;
   };
@@ -17,7 +17,7 @@ const premiumStatusStore = writable<PopupPremiumStatus>({
   isPremium: false,
   plan: 'free',
   features: {
-    unlimitedFileChanges: false,
+    viewFileChanges: false,
     pushReminders: false,
     branchSelector: false,
   },

@@ -11,9 +11,9 @@ export interface PremiumFeature {
  */
 export const PREMIUM_FEATURES: PremiumFeature[] = [
   {
-    id: 'unlimited-file-changes',
-    name: 'Unlimited File Changes',
-    description: 'View and compare unlimited file changes per day',
+    id: 'view-file-changes',
+    name: 'Detailed File Changes',
+    description: 'View and compare file changes with GitHub repositories',
     icon: '📁',
   },
   {
@@ -24,7 +24,7 @@ export const PREMIUM_FEATURES: PremiumFeature[] = [
   },
   {
     id: 'branch-selector',
-    name: 'Branch Selector',
+    name: 'Import Specific Branches',
     description: 'Choose specific branches when importing private repositories',
     icon: '🌿',
   },
@@ -36,12 +36,13 @@ export const PREMIUM_FEATURES: PremiumFeature[] = [
 export const UPGRADE_MODAL_CONFIGS = {
   general: {
     feature: 'premium',
-    reason: 'Unlock unlimited features and remove daily limits',
+    reason: 'Unlock professional features',
     features: PREMIUM_FEATURES,
   },
   fileChanges: {
     feature: 'file-changes',
-    reason: 'You have reached your daily limit of 3 file changes. Upgrade to get unlimited access.',
+    reason:
+      'File changes comparison is a Pro feature. Upgrade to view detailed file changes and comparisons!',
     features: PREMIUM_FEATURES,
   },
   pushReminders: {

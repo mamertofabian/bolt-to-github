@@ -22,7 +22,7 @@
   function getFeatureTitle(): string {
     switch (feature) {
       case 'fileChanges':
-        return 'Unlimited File Changes';
+        return 'Detailed File Changes';
       case 'pushReminders':
         return 'Smart Push Reminders';
       case 'branchSelector':
@@ -37,7 +37,7 @@
       case 'fileChanges':
         return (
           reason ||
-          "You've reached your daily limit of 3 file change views. Upgrade for unlimited access!"
+          'Get detailed file change analysis and comparisons with GitHub repositories. Upgrade for full access!'
         );
       case 'pushReminders':
         return 'Stay on top of your work with intelligent push reminders that notify you when you have unsaved changes.';
@@ -51,60 +51,58 @@
 
 {#if show}
   <div class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-    <div class="bg-slate-900 border border-slate-800 rounded-lg p-6 w-96 max-w-[90vw]">
+    <div
+      class="bg-slate-900 border border-slate-800 rounded-lg p-4 w-80 max-w-[90vw] max-h-[500px] overflow-y-auto"
+    >
       <!-- Header -->
-      <div class="flex justify-between items-start mb-4">
+      <div class="flex justify-between items-start mb-3">
         <div>
-          <h2 class="text-xl font-bold text-slate-200 mb-1">✨ Upgrade to Premium</h2>
-          <p class="text-sm text-slate-400">Unlock {getFeatureTitle()}</p>
+          <h2 class="text-lg font-bold text-slate-200 mb-0.5">✨ Upgrade to Pro</h2>
+          <p class="text-xs text-slate-400">Unlock {getFeatureTitle()}</p>
         </div>
         <button
           on:click={handleClose}
-          class="text-slate-400 hover:text-slate-200 text-xl leading-none"
+          class="text-slate-400 hover:text-slate-200 text-lg leading-none"
         >
           ✕
         </button>
       </div>
 
       <!-- Main message -->
-      <div class="mb-6">
-        <p class="text-slate-300 text-sm leading-relaxed">
+      <div class="mb-4">
+        <p class="text-slate-300 text-xs leading-relaxed">
           {getFeatureMessage()}
         </p>
       </div>
 
-      <!-- Features list -->
+      <!-- Features list - compact horizontal layout -->
       {#if features.length > 0}
-        <div class="mb-6">
-          <h3 class="text-slate-200 font-medium mb-3">Premium Features:</h3>
-          <div class="space-y-3">
+        <div class="mb-4">
+          <h3 class="text-slate-200 font-medium mb-2 text-sm">Pro Features:</h3>
+          <div class="grid grid-cols-1 gap-2">
             {#each features as premiumFeature}
-              <div class="flex items-start gap-3">
-                <span class="text-lg">{premiumFeature.icon}</span>
-                <div>
-                  <h4 class="text-slate-200 font-medium text-sm">{premiumFeature.name}</h4>
-                  <p class="text-slate-400 text-xs">{premiumFeature.description}</p>
-                </div>
+              <div class="flex items-center gap-2 text-xs">
+                <span class="text-sm">{premiumFeature.icon}</span>
+                <span class="text-slate-200 font-medium">{premiumFeature.name}</span>
               </div>
             {/each}
           </div>
         </div>
       {/if}
 
-      <!-- Pricing teaser -->
+      <!-- Compact pricing -->
       <div
-        class="bg-gradient-to-r from-blue-500/10 to-purple-500/10 border border-blue-500/20 rounded-lg p-4 mb-6"
+        class="bg-gradient-to-r from-blue-500/10 to-purple-500/10 border border-blue-500/20 rounded-md p-3 mb-4"
       >
         <div class="text-center">
-          <p class="text-blue-300 font-medium text-sm mb-1">Simple Pricing</p>
-          <div class="flex items-center justify-center gap-3 mb-1">
+          <div class="flex items-center justify-center gap-4 mb-1">
             <div class="text-center">
-              <p class="text-white text-lg font-bold">$4/month</p>
+              <p class="text-white text-sm font-bold">$4/mo</p>
               <p class="text-slate-400 text-xs">Monthly</p>
             </div>
-            <span class="text-slate-500">or</span>
+            <span class="text-slate-500 text-xs">or</span>
             <div class="text-center">
-              <p class="text-white text-lg font-bold">$40/year</p>
+              <p class="text-white text-sm font-bold">$40/yr</p>
               <p class="text-slate-400 text-xs">Save $8</p>
             </div>
           </div>
@@ -113,21 +111,19 @@
       </div>
 
       <!-- Actions -->
-      <div class="flex gap-3">
+      <div class="flex gap-2 mb-3">
         <Button
           on:click={handleUpgrade}
-          class="flex-1 bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700"
+          class="flex-1 bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-sm py-2"
         >
           Upgrade Now
         </Button>
-        <Button on:click={handleClose} variant="outline" class="px-4">Later</Button>
+        <Button on:click={handleClose} variant="outline" class="px-3 text-sm py-2">Later</Button>
       </div>
 
-      <!-- Trust indicators -->
-      <div class="mt-4 text-center">
-        <p class="text-slate-500 text-xs">
-          Join 1,000+ developers who upgraded • Secure payment • No spam
-        </p>
+      <!-- Compact trust indicators -->
+      <div class="text-center">
+        <p class="text-slate-500 text-xs">1,000+ developers • Secure payment</p>
       </div>
     </div>
   </div>

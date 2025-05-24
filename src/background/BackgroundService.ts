@@ -356,7 +356,7 @@ export class BackgroundService {
     sendResponse: (response: any) => void
   ): Promise<void> {
     try {
-      const premiumFeatures = ['pushReminders', 'branchSelector', 'unlimitedFileChanges'];
+      const premiumFeatures = ['pushReminders', 'branchSelector', 'viewFileChanges'];
 
       // Check if the feature requires premium
       if (!premiumFeatures.includes(feature)) {

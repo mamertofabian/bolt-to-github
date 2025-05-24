@@ -40,32 +40,21 @@ export class FileChangeHandler implements IFileChangeHandler {
    * Replaces the previous handleShowChangedFiles method from UIManager
    */
   public async showChangedFiles(): Promise<void> {
-    // Check premium status and usage limits
+    // Check premium status
     if (!this.premiumService) {
       console.warn('PremiumService not available for file changes check');
-    } else {
-      const usage = this.premiumService.canUseFileChanges();
-      if (!usage.allowed) {
-        this.showPremiumLimitNotification(usage.reason, usage.remaining || 0);
-        return;
-      }
-
-      // Track usage for free users
-      await this.premiumService.useFileChanges();
-
-      // Show remaining uses for free users
-      if (
-        !this.premiumService.hasFeature('unlimitedFileChanges') &&
-        usage.remaining !== undefined
-      ) {
-        const remaining = usage.remaining - 1; // Subtract the one we just used
-        if (remaining > 0) {
-          console.log(`File changes used. ${remaining} remaining today.`);
-        } else {
-          console.log('File changes limit reached for today.');
-        }
-      }
+      this.showPremiumRequiredNotification();
+      return;
     }
+
+    const usage = this.premiumService.canUseFileChanges();
+    if (!usage.allowed) {
+      this.showPremiumRequiredNotification();
+      return;
+    }
+
+    // Track usage for premium users (no-op for premium users)
+    await this.premiumService.useFileChanges();
 
     try {
       // Show initial loading notification (longer duration)
@@ -299,17 +288,12 @@ export class FileChangeHandler implements IFileChangeHandler {
   }
 
   /**
-   * Show premium limit notification when file changes limit is reached
+   * Show premium required notification for file changes feature
    */
-  private showPremiumLimitNotification(reason?: string, remaining?: number): void {
-    const message =
-      reason === 'Daily limit reached'
-        ? `📁 Daily file changes limit reached (3/3). Upgrade for unlimited access!`
-        : `📁 Premium feature required. Upgrade for unlimited file changes!`;
-
+  private showPremiumRequiredNotification(): void {
     this.notificationManager.showNotification({
       type: 'info',
-      message,
+      message: `🔒 File changes comparison is a Pro feature. Upgrade to view detailed file changes and comparisons!`,
       duration: 8000,
     });
   }

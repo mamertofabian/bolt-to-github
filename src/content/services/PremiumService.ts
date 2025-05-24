@@ -2,47 +2,27 @@ export interface PremiumStatus {
   isPremium: boolean;
   expiresAt?: number;
   features: {
-    unlimitedFileChanges: boolean;
+    viewFileChanges: boolean;
     pushReminders: boolean;
     branchSelector: boolean;
   };
 }
 
-export interface UsageLimits {
-  fileChangesDaily: {
-    used: number;
-    limit: number;
-    resetTime: number; // timestamp when daily limit resets
-  };
-}
-
 /**
- * PremiumService manages premium feature access, usage limits, and upgrade prompts
+ * PremiumService manages premium feature access and upgrade prompts
  */
 export class PremiumService {
   private premiumStatus: PremiumStatus;
-  private usageLimits: UsageLimits;
   private supabaseAuthService: any; // Will be imported dynamically
   private currentAuthPlan: 'free' | 'monthly' | 'yearly' = 'free';
-
-  // Free tier limits
-  private readonly FREE_DAILY_FILE_CHANGES = 3;
 
   constructor() {
     this.premiumStatus = {
       isPremium: false,
       features: {
-        unlimitedFileChanges: false,
+        viewFileChanges: false,
         pushReminders: false,
         branchSelector: false,
-      },
-    };
-
-    this.usageLimits = {
-      fileChangesDaily: {
-        used: 0,
-        limit: this.FREE_DAILY_FILE_CHANGES,
-        resetTime: this.getNextMidnight(),
       },
     };
 
@@ -80,7 +60,7 @@ export class PremiumService {
       isPremium: authData.isPremium,
       expiresAt,
       features: {
-        unlimitedFileChanges: authData.isPremium,
+        viewFileChanges: authData.isPremium,
         pushReminders: authData.isPremium,
         branchSelector: authData.isPremium,
       },
@@ -96,17 +76,10 @@ export class PremiumService {
    */
   private async loadStoredData(): Promise<void> {
     try {
-      const result = await chrome.storage.local.get(['premiumStatus', 'usageLimits']);
+      const result = await chrome.storage.local.get(['premiumStatus']);
 
       if (result.premiumStatus) {
         this.premiumStatus = { ...this.premiumStatus, ...result.premiumStatus };
-      }
-
-      if (result.usageLimits) {
-        this.usageLimits = { ...this.usageLimits, ...result.usageLimits };
-
-        // Reset daily limits if needed
-        this.checkAndResetDailyLimits();
       }
     } catch (error) {
       console.warn('Failed to load premium data:', error);
@@ -120,7 +93,6 @@ export class PremiumService {
     try {
       await chrome.storage.local.set({
         premiumStatus: this.premiumStatus,
-        usageLimits: this.usageLimits,
       });
 
       // Also save to sync storage for popup access
@@ -156,29 +128,6 @@ export class PremiumService {
   }
 
   /**
-   * Check if daily limits need to be reset
-   */
-  private checkAndResetDailyLimits(): void {
-    const now = Date.now();
-    if (now >= this.usageLimits.fileChangesDaily.resetTime) {
-      this.usageLimits.fileChangesDaily.used = 0;
-      this.usageLimits.fileChangesDaily.resetTime = this.getNextMidnight();
-      this.saveData();
-    }
-  }
-
-  /**
-   * Get timestamp for next midnight (daily reset)
-   */
-  private getNextMidnight(): number {
-    const now = new Date();
-    const tomorrow = new Date(now);
-    tomorrow.setDate(tomorrow.getDate() + 1);
-    tomorrow.setHours(0, 0, 0, 0);
-    return tomorrow.getTime();
-  }
-
-  /**
    * Check if user has premium access
    */
   public isPremium(): boolean {
@@ -203,24 +152,14 @@ export class PremiumService {
    * Check if user can use file changes feature
    */
   public canUseFileChanges(): { allowed: boolean; reason?: string; remaining?: number } {
-    this.checkAndResetDailyLimits();
-
-    if (this.hasFeature('unlimitedFileChanges')) {
+    if (this.hasFeature('viewFileChanges')) {
       return { allowed: true };
     }
 
-    const { used, limit } = this.usageLimits.fileChangesDaily;
-    if (used >= limit) {
-      return {
-        allowed: false,
-        reason: 'Daily limit reached',
-        remaining: 0,
-      };
-    }
-
     return {
-      allowed: true,
-      remaining: limit - used,
+      allowed: false,
+      reason: 'Premium feature required',
+      remaining: 0,
     };
   }
 
@@ -228,9 +167,7 @@ export class PremiumService {
    * Use one file changes check (for free users)
    */
   public async useFileChanges(): Promise<void> {
-    if (!this.hasFeature('unlimitedFileChanges')) {
-      this.checkAndResetDailyLimits();
-      this.usageLimits.fileChangesDaily.used++;
+    if (!this.hasFeature('viewFileChanges')) {
       await this.saveData();
     }
   }
@@ -238,9 +175,8 @@ export class PremiumService {
   /**
    * Get usage information for display
    */
-  public getUsageInfo(): UsageLimits {
-    this.checkAndResetDailyLimits();
-    return { ...this.usageLimits };
+  public getUsageInfo(): PremiumStatus {
+    return { ...this.premiumStatus };
   }
 
   /**
@@ -258,25 +194,17 @@ export class PremiumService {
   private updateFeatureAccess(): void {
     if (this.premiumStatus.isPremium) {
       this.premiumStatus.features = {
-        unlimitedFileChanges: true,
+        viewFileChanges: true,
         pushReminders: true,
         branchSelector: true,
       };
     } else {
       this.premiumStatus.features = {
-        unlimitedFileChanges: false,
+        viewFileChanges: false,
         pushReminders: false,
         branchSelector: false,
       };
     }
-  }
-
-  /**
-   * Get time until daily limit resets
-   */
-  public getTimeUntilReset(): number {
-    this.checkAndResetDailyLimits();
-    return this.usageLimits.fileChangesDaily.resetTime - Date.now();
   }
 
   /**
