@@ -2,6 +2,7 @@ import type { IGitHubUploadHandler } from '../types/HandlerInterfaces';
 import type { INotificationManager } from '../types/ManagerInterfaces';
 import type { MessageHandler } from '../MessageHandler';
 import type { UIStateManager } from '../services/UIStateManager';
+import type { FileChange } from '../../services/FilePreviewService';
 import { SettingsService } from '../../services/settings';
 import { DownloadService } from '../../services/DownloadService';
 
@@ -53,10 +54,18 @@ export class GitHubUploadHandler implements IGitHubUploadHandler {
   }
 
   /**
+   * Handle GitHub push with fresh file comparison (for main interface)
+   */
+  public async handleGitHubPushWithFreshComparison(): Promise<void> {
+    return this.handleGitHubPush(false);
+  }
+
+  /**
    * Handle the complete GitHub push workflow
    * Replaces the previous handleGitHubPushAction method from UIManager
+   * @param useStoredChanges Whether to use stored changes from recent comparison (default: true)
    */
-  public async handleGitHubPush(): Promise<void> {
+  public async handleGitHubPush(useStoredChanges: boolean = true): Promise<void> {
     console.log('🔊 Handling GitHub push action');
 
     // Validate settings first
@@ -71,15 +80,29 @@ export class GitHubUploadHandler implements IGitHubUploadHandler {
     let hasChanges = false;
 
     try {
-      // Import FileChangeHandler to check for changes
-      const { FileChangeHandler } = await import('./FileChangeHandler');
-      const fileChangeHandler = new FileChangeHandler(
-        this.messageHandler,
-        this.notificationManager
-      );
+      let changes: Map<string, FileChange> | null = null;
 
-      // Get current changes without forcing UI display
-      const changes = await fileChangeHandler.getChangedFiles(true);
+      // Try to use stored changes first (if called from file changes view)
+      if (useStoredChanges) {
+        changes = await this.getStoredFileChanges();
+        if (changes) {
+          console.log('Using stored file changes (from recent comparison)');
+        }
+      }
+
+      // If no stored changes found or not using stored changes, do fresh comparison
+      if (!changes) {
+        console.log('No stored changes found, performing fresh comparison');
+        // Import FileChangeHandler to check for changes
+        const { FileChangeHandler } = await import('./FileChangeHandler');
+        const fileChangeHandler = new FileChangeHandler(
+          this.messageHandler,
+          this.notificationManager
+        );
+
+        // Get current changes without forcing UI display
+        changes = await fileChangeHandler.getChangedFiles(true);
+      }
 
       // Count changes
       const addedCount = Array.from(changes.values()).filter((f) => f.status === 'added').length;
@@ -109,7 +132,7 @@ export class GitHubUploadHandler implements IGitHubUploadHandler {
     // Show enhanced confirmation dialog
     const confirmationMessage = hasChanges
       ? `${changesSummary}<br><br>Do you want to push these changes to GitHub?`
-      : `${changesSummary}<br><br>Do you still want to push to GitHub? This will upload all project files.`;
+      : `${changesSummary}<br><br>Do you still want to push to GitHub?`;
 
     const { confirmed, commitMessage } = await this.notificationManager.showConfirmationDialog({
       title: hasChanges ? 'Confirm GitHub Push' : 'No Changes - Confirm Push',
@@ -220,6 +243,42 @@ export class GitHubUploadHandler implements IGitHubUploadHandler {
       };
     }
     return null;
+  }
+
+  /**
+   * Get stored file changes from local storage if they exist and are recent
+   */
+  private async getStoredFileChanges(): Promise<Map<string, FileChange> | null> {
+    try {
+      const result = await chrome.storage.local.get(['storedFileChanges']);
+      const storedData = result.storedFileChanges;
+
+      if (!storedData || !storedData.changes) {
+        return null;
+      }
+
+      // Get current project ID to ensure we're using changes for the right project
+      const currentProjectId = window.location.pathname.split('/').pop() || '';
+
+      if (storedData.projectId !== currentProjectId) {
+        console.log('Stored changes are for different project, ignoring');
+        return null;
+      }
+
+      // Convert stored object back to Map
+      const changesMap = new Map();
+      Object.entries(storedData.changes).forEach(([key, value]) => {
+        changesMap.set(key, value);
+      });
+
+      console.log(
+        `Retrieved ${changesMap.size} stored file changes for project ${currentProjectId}`
+      );
+      return changesMap;
+    } catch (error) {
+      console.warn('Error retrieving stored file changes:', error);
+      return null;
+    }
   }
 
   /**

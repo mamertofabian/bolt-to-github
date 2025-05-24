@@ -243,6 +243,149 @@ If you still see false positives:
 
 - `src/content/handlers/GitHubUploadHandler.ts` - Enhanced push confirmation
 
+### 4. Optimized Push from File Changes View
+
+**Enhancement:** Eliminates redundant file comparison when pushing from file changes view.
+
+**Problem:** When users clicked Push from the file changes view, the system was doing another full file comparison even though it had just done one to populate the view.
+
+**Solution:**
+
+- **Smart Change Detection**: `GitHubUploadHandler.handleGitHubPush()` now accepts `useStoredChanges` parameter
+- **Stored Changes Reuse**: Checks local storage for recently computed file changes for the current project
+- **Fallback to Fresh Comparison**: If no stored changes found, performs fresh comparison as before
+- **Context-Aware Methods**:
+  - `handleGitHubPush(true)` - Uses stored changes (default, for file changes view)
+  - `handleGitHubPushWithFreshComparison()` - Forces fresh comparison (for main interface)
+
+**Performance Impact:**
+
+- **File Changes View → Push**: No redundant comparison, instant confirmation dialog
+- **Main Interface → Push**: Still does comparison as before
+- **Wrong Project Detection**: Ignores stored changes if project ID doesn't match
+
+**Files Updated:**
+
+- `src/content/handlers/GitHubUploadHandler.ts` - Added stored changes logic and optimized workflow
+
+### 5. File Changes Refresh Button
+
+**Enhancement:** Added refresh button to manually trigger file comparison with rate limiting protection.
+
+**Problem:** Users had no way to manually refresh file changes after making modifications or when wanting to get the latest comparison.
+
+**Solution:**
+
+- **Refresh Button**: Added refresh button with spinning icon animation during refresh
+- **Rate Limiting Aware**: Uses existing `GitHubApiClient` with built-in `RateLimitHandler`
+- **Error Handling**: Displays rate limiting warnings and error messages
+- **UI Feedback**:
+  - Button shows "Refreshing..." with spinning icon during operation
+  - Error display area with rate limiting guidance
+  - Disabled button prevents multiple concurrent refreshes
+- **Reuses Infrastructure**: Leverages existing comparison pipeline with all optimizations
+
+**Message Flow:**
+
+1. **Popup → Content Script**: `REFRESH_FILE_CHANGES` tab message
+2. **Content Script**: Calls `uiManager.handleShowChangedFiles()` (force refresh)
+3. **FileChangeHandler**: Uses `GitHubComparisonService` with rate limiting
+4. **Content Script → Popup**: Updated changes via `OPEN_FILE_CHANGES` message
+
+**Files Updated:**
+
+- `src/popup/components/FileChangesModal.svelte` - Added refresh button and error handling
+- `src/content/ContentManager.ts` - Added `REFRESH_FILE_CHANGES` message handler
+
+### 6. Enhanced Push Button UX
+
+**Enhancement:** Improved push button behavior with change detection and confirmation.
+
+**Features:**
+
+- **Change Count Display**: Button shows count of changes, e.g., "Push (3)" or "Push (No changes)"
+- **Visual Feedback**: Button becomes semi-transparent when no changes detected
+- **Smart Confirmation**: Shows confirmation dialog when pushing with 0 changes
+- **Disabled During Refresh**: Push button disabled while file changes are refreshing
+- **Detailed Header**: Shows breakdown of added/modified/deleted/unchanged files
+- **Informative Tooltips**: Button tooltip explains what will happen
+
+**User Experience:**
+
+- **With Changes**: "Push (5)" → Direct push
+- **No Changes**: "Push (No changes)" → Confirmation dialog → Push anyway or cancel
+- **During Refresh**: Push button disabled to prevent conflicts
+
+**Message Examples:**
+
+- Header: "3 added, 2 modified, 1 deleted • 45 unchanged"
+- No changes: "All 51 files are up to date"
+- Confirmation: "No changes detected (51 unchanged files). Do you still want to push to GitHub?"
+
+**Files Updated:**
+
+- `src/popup/components/FileChangesModal.svelte` - Enhanced push button and change detection
+
+### 7. Custom Confirmation Dialog
+
+**Enhancement:** Replaced native browser confirm dialog with custom modal component.
+
+**Problem:** Native `confirm()` dialog was jarring and didn't match the app's design system.
+
+**Solution:**
+
+- **Custom Component**: Created `ConfirmationDialog.svelte` with consistent design
+- **Icon Support**: Warning, info, and danger icons with appropriate colors
+- **Keyboard Support**: ESC to cancel, Enter to confirm
+- **HTML Content**: Supports HTML formatting in messages (line breaks, emphasis)
+- **Themed Design**: Matches existing dark theme and color scheme
+- **Button Variants**: Contextual button colors (warning = yellow, danger = red, info = blue)
+
+**Features:**
+
+- **Visual Appeal**: Clean modal with icon, title, and formatted message
+- **Accessibility**: Keyboard navigation and focus management
+- **Customizable**: Different types (warning/info/danger) with appropriate styling
+- **Responsive**: Works on mobile and desktop
+- **Consistent**: Uses same Button and styling components as rest of app
+
+**Example Usage:**
+
+```svelte
+<ConfirmationDialog
+  bind:show={showConfirmationDialog}
+  title="No Changes Detected"
+  message="No changes detected (51 unchanged files).<br><br>Do you still want to push?"
+  type="warning"
+  confirmText="Push Anyway"
+  cancelText="Cancel"
+  onConfirm={handleConfirmPush}
+  onCancel={handleCancelPush}
+/>
+```
+
+**Files Updated:**
+
+- `src/lib/components/ui/dialog/ConfirmationDialog.svelte` - New reusable confirmation dialog
+- `src/popup/components/FileChangesModal.svelte` - Replaced native confirm with custom dialog
+
+### Rate Limiting Protection
+
+**Existing Infrastructure Used:**
+
+- `GitHubApiClient` → `RateLimitHandler` → Handles all GitHub API calls
+- **Burst Limit**: 10 requests before rate limiting kicks in
+- **Request Spacing**: 1 second minimum between mutative requests
+- **Retry Logic**: Exponential backoff with max 5 retries
+- **Rate Limit Headers**: Respects `x-ratelimit-remaining` and `x-ratelimit-reset`
+- **Sleep Logic**: Waits for rate limit reset when needed
+
+**GitHubComparisonService Rate Limit Behavior:**
+
+- Initial calls: Repository tree fetch (2-3 API calls)
+- Content fetching: Only for files with hash mismatches (variable API calls)
+- All requests go through `GitHubApiClient` with built-in rate limiting
+
 ### Benefits
 
 1. **Better UX**: Users see only relevant changes in diff viewer
@@ -250,3 +393,8 @@ If you still see false positives:
 3. **Clear Feedback**: Loading states keep users informed during longer operations
 4. **Informed Decisions**: Push confirmation shows exactly what will be uploaded
 5. **Prevents Mistakes**: Warning when pushing with no changes
+6. **Performance Optimization**: No redundant comparisons when pushing from file changes view
+7. **Manual Refresh**: Users can refresh file changes on demand with rate limiting protection
+8. **Rate Limiting Awareness**: Clear error messages when rate limits are hit
+9. **Smart Push Behavior**: Change count display and confirmations prevent accidental pushes
+10. **Enhanced Visual Feedback**: Clear indication of file status and button states

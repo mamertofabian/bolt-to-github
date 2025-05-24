@@ -182,6 +182,27 @@ export class ContentManager {
         this.uiManager?.handleShowChangedFiles();
         // Acknowledge receipt
         sendResponse({ success: true, projectId });
+      } else if (message.action === 'REFRESH_FILE_CHANGES') {
+        console.log('Received refresh file changes request from popup');
+        // Get the current project ID from the URL
+        const projectId = window.location.pathname.split('/').pop() || '';
+        console.log('Refreshing file changes for project ID:', projectId);
+
+        // Trigger the file changes calculation with forced refresh
+        // This will automatically send the updated changes back to the popup
+        this.uiManager
+          ?.handleShowChangedFiles()
+          .then(() => {
+            sendResponse({ success: true, projectId });
+          })
+          .catch((error) => {
+            console.error('Error refreshing file changes:', error);
+            sendResponse({
+              success: false,
+              error: error instanceof Error ? error.message : 'Unknown error',
+              projectId,
+            });
+          });
       }
       return true; // Keep the message channel open for async response
     });
