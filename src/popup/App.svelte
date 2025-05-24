@@ -26,6 +26,7 @@
   import PushReminderSection from './components/PushReminderSection.svelte';
   import PremiumStatus from './components/PremiumStatus.svelte';
   import UpgradeModal from './components/UpgradeModal.svelte';
+  import AnalyticsToggle from '$lib/components/ui/AnalyticsToggle.svelte';
   import { setUpgradeModalState } from '$lib/utils/upgradeModal';
   import type { PremiumFeature } from '$lib/constants/premiumFeatures';
 
@@ -357,6 +358,9 @@
 
               <!-- Push Reminder Settings -->
               <PushReminderSection on:configure={() => (showPushReminderSettings = true)} />
+
+              <!-- Analytics Toggle -->
+              <AnalyticsToggle />
 
               <!-- Premium Status -->
               <PremiumStatus

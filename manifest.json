@@ -12,7 +12,8 @@
   "host_permissions": [
     "https://bolt.new/*",
     "https://api.github.com/*",
-    "https://bolt2github.com/*"
+    "https://bolt2github.com/*",
+    "https://www.google-analytics.com/*"
   ],
   "background": {
     "service_worker": "src/background/index.ts",

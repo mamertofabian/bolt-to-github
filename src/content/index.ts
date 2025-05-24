@@ -4,6 +4,49 @@ import { ContentManager } from './ContentManager';
 console.log('🚀 Content script initializing...');
 
 let manager: ContentManager | null = null;
+let analyticsInitialized = false;
+
+/**
+ * Send analytics event to background script
+ */
+function sendAnalyticsToBackground(eventType: string, eventData: any) {
+  try {
+    chrome.runtime.sendMessage({
+      type: 'ANALYTICS_EVENT',
+      eventType,
+      eventData,
+    });
+  } catch (error) {
+    console.error('Failed to send analytics to background:', error);
+  }
+}
+
+/**
+ * Initialize analytics tracking
+ */
+async function initializeAnalytics() {
+  if (analyticsInitialized) return;
+
+  try {
+    // Track that content script was loaded on bolt.new
+    sendAnalyticsToBackground('extension_opened', { context: 'content_script' });
+
+    // Check if this is a Bolt project page
+    if (window.location.href.includes('bolt.new/~/')) {
+      sendAnalyticsToBackground('bolt_project_event', {
+        eventType: 'detected',
+        projectMetadata: {
+          projectName: window.location.pathname.split('/').pop() || 'unknown',
+        },
+      });
+    }
+
+    analyticsInitialized = true;
+    console.log('📊 Analytics initialized in content script');
+  } catch (error) {
+    console.error('Failed to initialize analytics:', error);
+  }
+}
 
 /**
  * Initialize the content manager when DOM is ready
@@ -19,6 +62,9 @@ function initializeContentManager() {
 
     manager = new ContentManager();
     console.log('🔊 ContentManager initialized successfully');
+
+    // Initialize analytics after content manager is ready
+    initializeAnalytics();
   } catch (error) {
     console.error('🔊 Error initializing ContentManager:', error);
   }
