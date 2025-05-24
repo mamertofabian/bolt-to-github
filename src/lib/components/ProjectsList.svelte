@@ -1,7 +1,17 @@
 <script lang="ts">
   import { onMount } from 'svelte';
   import { Button } from '$lib/components/ui/button';
-  import { Github, Import, Zap, X, RefreshCw, Trash2, Settings } from 'lucide-svelte';
+  import {
+    Github,
+    Import,
+    Zap,
+    X,
+    RefreshCw,
+    Trash2,
+    Settings,
+    ChevronLeft,
+    ChevronRight,
+  } from 'lucide-svelte';
   import RepoSettings from '$lib/components/RepoSettings.svelte';
   import { GitHubService } from '../../services/GitHubService';
   import { fade } from 'svelte/transition';
@@ -16,6 +26,17 @@
 
   // Use stores instead of props
   $: projectSettings = $githubSettingsStore.projectSettings;
+
+  // Pagination state
+  let boltProjectsPage = 1;
+  let reposPage = 1;
+  const itemsPerPage = 5;
+  let paginatedBoltProjects: any[] = [];
+  let paginatedRepos: any[] = [];
+  let boltProjectsTotalPages = 0;
+  let reposTotalPages = 0;
+  let totalBoltProjects = 0;
+  let totalRepos = 0;
 
   let loadingRepos = false;
   let showDeleteModal = false;
@@ -39,32 +60,16 @@
 
   let searchQuery = '';
   let showRepos = true;
-  let filteredProjects: Array<{
-    projectId?: string;
-    repoName: string;
-    branch?: string;
-    gitHubRepo?: boolean;
-    description?: string | null;
-    private?: boolean;
-    language?: string | null;
-  }> = [];
   let importProgress: { repoName: string; status: string; progress?: number } | null = null;
   let currentTabIsBolt = false;
 
-  async function loadAllRepos() {
-    console.log('Loading repos for', repoOwner);
-    try {
-      loadingRepos = true;
-      allRepos = await githubService.listRepos();
-      // Simulate a delay to show the loading spinner
-      await new Promise((resolve) => setTimeout(resolve, 1000));
-      loadingRepos = false;
-    } catch (error) {
-      loadingRepos = false;
-      console.error('Failed to load repos:', error);
-    }
+  // Reset pagination when search changes
+  $: if (searchQuery !== undefined) {
+    boltProjectsPage = 1;
+    reposPage = 1;
   }
 
+  // Filter and paginate logic
   $: {
     const existingProjects = Object.entries(projectSettings).map(([projectId, settings]) => ({
       projectId,
@@ -83,9 +88,52 @@
         }))
       : [];
 
-    filteredProjects = [...existingProjects, ...repos].filter((project) =>
+    // First filter by search across all items
+    const allProjects = [...existingProjects, ...repos];
+    const searchFiltered = allProjects.filter((project) =>
       project.repoName.toLowerCase().includes(searchQuery.toLowerCase())
     );
+
+    // Separate into bolt projects and repos
+    const boltProjects = searchFiltered.filter((p) => !p.gitHubRepo);
+    const gitHubRepos = searchFiltered.filter((p) => p.gitHubRepo);
+
+    // Store totals for display
+    totalBoltProjects = boltProjects.length;
+    totalRepos = gitHubRepos.length;
+
+    // Calculate total pages
+    boltProjectsTotalPages = Math.ceil(boltProjects.length / itemsPerPage);
+    reposTotalPages = Math.ceil(gitHubRepos.length / itemsPerPage);
+
+    // Ensure current pages don't exceed total pages
+    if (boltProjectsPage > boltProjectsTotalPages && boltProjectsTotalPages > 0) {
+      boltProjectsPage = boltProjectsTotalPages;
+    }
+    if (reposPage > reposTotalPages && reposTotalPages > 0) {
+      reposPage = reposTotalPages;
+    }
+
+    // Apply pagination
+    const boltStartIndex = (boltProjectsPage - 1) * itemsPerPage;
+    const reposStartIndex = (reposPage - 1) * itemsPerPage;
+
+    paginatedBoltProjects = boltProjects.slice(boltStartIndex, boltStartIndex + itemsPerPage);
+    paginatedRepos = gitHubRepos.slice(reposStartIndex, reposStartIndex + itemsPerPage);
+  }
+
+  async function loadAllRepos() {
+    console.log('Loading repos for', repoOwner);
+    try {
+      loadingRepos = true;
+      allRepos = await githubService.listRepos();
+      // Simulate a delay to show the loading spinner
+      await new Promise((resolve) => setTimeout(resolve, 1000));
+      loadingRepos = false;
+    } catch (error) {
+      loadingRepos = false;
+      console.error('Failed to load repos:', error);
+    }
   }
 
   // Function to refresh project data
@@ -126,6 +174,55 @@
   // Watch for changes in projectSettings from the store and refresh data
   $: if (projectSettings && Object.keys(projectSettings).length > 0) {
     refreshProjectData();
+  }
+
+  // Helper function to render project actions
+  function renderProjectActions(project: any) {
+    return [
+      ...(project.projectId && project.projectId !== currentlyLoadedProjectId
+        ? [
+            {
+              icon: Zap,
+              title: 'Open in Bolt',
+              class: 'hover:text-emerald-500',
+              action: () => openBoltProject(project.projectId),
+            },
+          ]
+        : []),
+      {
+        icon: Github,
+        title: 'Open GitHub Repository',
+        class: 'hover:text-blue-500',
+        action: () => openGitHubRepo(repoOwner, project.repoName),
+      },
+      ...(!project.projectId
+        ? [
+            {
+              icon: Import,
+              title: 'Import from GitHub to Bolt',
+              class: 'hover:text-amber-500',
+              action: () => importFromGitHub(repoOwner, project.repoName, project.private ?? false),
+            },
+          ]
+        : []),
+      ...(project.projectId
+        ? [
+            {
+              icon: Settings,
+              title: 'Repository Settings',
+              class: 'hover:text-amber-500',
+              action: () =>
+                openRepoSettings(project.projectId, project.repoName, project.branch || 'main'),
+            },
+            {
+              icon: Trash2,
+              title: 'Delete Project',
+              class: 'hover:text-red-500',
+              action: () => confirmDeleteProject(project.projectId, project.repoName),
+            },
+          ]
+        : []),
+    ];
   }
 
   function openBoltProject(projectId: string) {
@@ -275,6 +372,19 @@
       repoToImport = null;
     }
   }
+
+  // Pagination functions
+  function goToBoltPage(page: number) {
+    if (page >= 1 && page <= boltProjectsTotalPages) {
+      boltProjectsPage = page;
+    }
+  }
+
+  function goToRepoPage(page: number) {
+    if (page >= 1 && page <= reposTotalPages) {
+      reposPage = page;
+    }
+  }
 </script>
 
 <div class="space-y-2">
@@ -322,7 +432,7 @@
     {/if}
   </div>
 
-  {#if filteredProjects.length === 0}
+  {#if totalBoltProjects === 0 && totalRepos === 0}
     <div class="flex flex-col items-center justify-center p-4 text-center space-y-6">
       <div class="space-y-2">
         {#if !isBoltSite}
@@ -341,15 +451,22 @@
       </div>
     </div>
   {:else}
-    <!-- Group projects by type -->
-    {#if filteredProjects.some((p) => !p.gitHubRepo)}
-      <div class="mb-3">
+    <!-- Bolt Projects Section -->
+    {#if totalBoltProjects > 0}
+      <div class="mb-4">
         <div class="flex items-center justify-between mb-2 px-1">
           <h2 class="text-sm font-semibold text-emerald-500 flex items-center gap-2">
             <Zap class="h-4 w-4" /> Bolt Projects
+            <span class="text-xs text-slate-400 font-normal">({totalBoltProjects})</span>
           </h2>
+          {#if boltProjectsTotalPages > 1}
+            <div class="flex items-center gap-1 text-xs text-slate-400">
+              Page {boltProjectsPage} of {boltProjectsTotalPages}
+            </div>
+          {/if}
         </div>
-        {#each filteredProjects.filter((p) => !p.gitHubRepo) as project}
+
+        {#each paginatedBoltProjects as project}
           <div
             class="border border-slate-800 rounded-lg p-3 hover:bg-slate-800/50 transition-colors relative mb-2 group {project.projectId ===
             currentlyLoadedProjectId
@@ -394,81 +511,84 @@
                 <div
                   class="absolute top-0 right-0 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity bg-gradient-to-l from-slate-800/90 via-slate-800/70 to-transparent pl-8 pr-1 py-1 rounded-l-full"
                 >
-                  {#if project.projectId && project.projectId !== currentlyLoadedProjectId}
+                  {#each renderProjectActions(project) as action}
                     <Button
                       variant="ghost"
                       size="icon"
-                      title="Open in Bolt"
-                      class="h-8 w-8 hover:text-emerald-500"
-                      on:click={() => project.projectId && openBoltProject(project.projectId)}
+                      title={action.title}
+                      class="h-8 w-8 {action.class}"
+                      on:click={action.action}
                     >
-                      <Zap class="h-5 w-5" />
+                      <svelte:component this={action.icon} class="h-5 w-5" />
                     </Button>
-                  {/if}
-
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    title="Open GitHub Repository"
-                    class="h-8 w-8 hover:text-blue-500"
-                    on:click={() => openGitHubRepo(repoOwner, project.repoName)}
-                  >
-                    <Github class="h-5 w-5" />
-                  </Button>
-                  {#if !project.projectId}
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      title="Import from GitHub to Bolt"
-                      class="h-8 w-8 hover:text-amber-500"
-                      on:click={() =>
-                        importFromGitHub(repoOwner, project.repoName, project.private ?? false)}
-                    >
-                      <Import class="h-5 w-5" />
-                    </Button>
-                  {/if}
-                  {#if project.projectId}
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      title="Repository Settings"
-                      class="h-8 w-8 hover:text-amber-500"
-                      on:click={() =>
-                        project.projectId &&
-                        openRepoSettings(
-                          project.projectId,
-                          project.repoName,
-                          project.branch || 'main'
-                        )}
-                    >
-                      <Settings class="h-5 w-5" />
-                    </Button>
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      title="Delete Project"
-                      class="h-8 w-8 hover:text-red-500"
-                      on:click={() =>
-                        project.projectId &&
-                        confirmDeleteProject(project.projectId, project.repoName)}
-                    >
-                      <Trash2 class="h-5 w-5" />
-                    </Button>
-                  {/if}
+                  {/each}
                 </div>
               </div>
             </div>
           </div>
         {/each}
+
+        <!-- Bolt Projects Pagination -->
+        {#if boltProjectsTotalPages > 1}
+          <div class="flex items-center justify-center gap-2 mt-3 mb-2">
+            <Button
+              variant="ghost"
+              size="icon"
+              class="h-8 w-8 border border-slate-800 hover:bg-slate-800"
+              disabled={boltProjectsPage === 1}
+              on:click={() => goToBoltPage(boltProjectsPage - 1)}
+            >
+              <ChevronLeft class="h-4 w-4" />
+            </Button>
+
+            {#each Array.from({ length: Math.min(5, boltProjectsTotalPages) }, (_, i) => {
+              const startPage = Math.max(1, Math.min(boltProjectsPage - 2, boltProjectsTotalPages - 4));
+              return startPage + i;
+            }) as page}
+              {#if page <= boltProjectsTotalPages}
+                <Button
+                  variant={page === boltProjectsPage ? 'default' : 'ghost'}
+                  size="icon"
+                  class="h-8 w-8 text-xs {page === boltProjectsPage
+                    ? 'bg-emerald-600 hover:bg-emerald-700'
+                    : 'border border-slate-800 hover:bg-slate-800'}"
+                  on:click={() => goToBoltPage(page)}
+                >
+                  {page}
+                </Button>
+              {/if}
+            {/each}
+
+            <Button
+              variant="ghost"
+              size="icon"
+              class="h-8 w-8 border border-slate-800 hover:bg-slate-800"
+              disabled={boltProjectsPage === boltProjectsTotalPages}
+              on:click={() => goToBoltPage(boltProjectsPage + 1)}
+            >
+              <ChevronRight class="h-4 w-4" />
+            </Button>
+          </div>
+        {/if}
       </div>
     {/if}
 
-    {#if filteredProjects.some((p) => p.gitHubRepo)}
+    <!-- GitHub Repositories Section -->
+    {#if totalRepos > 0}
       <div>
-        <h2 class="text-sm font-semibold text-blue-500 flex items-center gap-2 mb-2 px-1">
-          <Github class="h-4 w-4" /> GitHub Repositories
-        </h2>
-        {#each filteredProjects.filter((p) => p.gitHubRepo) as project}
+        <div class="flex items-center justify-between mb-2 px-1">
+          <h2 class="text-sm font-semibold text-blue-500 flex items-center gap-2">
+            <Github class="h-4 w-4" /> GitHub Repositories
+            <span class="text-xs text-slate-400 font-normal">({totalRepos})</span>
+          </h2>
+          {#if reposTotalPages > 1}
+            <div class="flex items-center gap-1 text-xs text-slate-400">
+              Page {reposPage} of {reposTotalPages}
+            </div>
+          {/if}
+        </div>
+
+        {#each paginatedRepos as project}
           <div
             class="border border-slate-800 rounded-lg p-3 hover:bg-slate-800/50 transition-colors group mb-2"
             role="button"
@@ -503,62 +623,72 @@
                   {/if}
                 </div>
               </div>
+
               <div
                 class="absolute top-0 right-0 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity bg-gradient-to-l from-slate-800/90 via-slate-800/70 to-transparent pl-8 pr-1 py-1 rounded-l-full"
               >
-                {#if project.projectId && project.projectId !== currentlyLoadedProjectId}
+                {#each renderProjectActions(project) as action}
                   <Button
                     variant="ghost"
                     size="icon"
-                    title="Open in Bolt"
-                    class="h-8 w-8 hover:text-emerald-500"
-                    on:click={() => project.projectId && openBoltProject(project.projectId)}
+                    title={action.title}
+                    class="h-8 w-8 {action.class}"
+                    on:click={action.action}
                   >
-                    <Zap class="h-5 w-5" />
+                    <svelte:component this={action.icon} class="h-5 w-5" />
                   </Button>
-                {/if}
-
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  title="Open GitHub Repository"
-                  class="h-8 w-8 hover:text-blue-500"
-                  on:click={() => openGitHubRepo(repoOwner, project.repoName)}
-                >
-                  <Github class="h-5 w-5" />
-                </Button>
-                {#if !project.projectId}
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    title="Import from GitHub to Bolt"
-                    class="h-8 w-8 hover:text-amber-500"
-                    on:click={() =>
-                      importFromGitHub(repoOwner, project.repoName, project.private ?? false)}
-                  >
-                    <Import class="h-5 w-5" />
-                  </Button>
-                {/if}
-                {#if project.projectId}
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    title="Delete Project"
-                    class="h-8 w-8 hover:text-red-500"
-                    on:click={() =>
-                      project.projectId &&
-                      confirmDeleteProject(project.projectId, project.repoName)}
-                  >
-                    <Trash2 class="h-5 w-5" />
-                  </Button>
-                {/if}
+                {/each}
               </div>
             </div>
           </div>
         {/each}
+
+        <!-- GitHub Repositories Pagination -->
+        {#if reposTotalPages > 1}
+          <div class="flex items-center justify-center gap-2 mt-3">
+            <Button
+              variant="ghost"
+              size="icon"
+              class="h-8 w-8 border border-slate-800 hover:bg-slate-800"
+              disabled={reposPage === 1}
+              on:click={() => goToRepoPage(reposPage - 1)}
+            >
+              <ChevronLeft class="h-4 w-4" />
+            </Button>
+
+            {#each Array.from({ length: Math.min(5, reposTotalPages) }, (_, i) => {
+              const startPage = Math.max(1, Math.min(reposPage - 2, reposTotalPages - 4));
+              return startPage + i;
+            }) as page}
+              {#if page <= reposTotalPages}
+                <Button
+                  variant={page === reposPage ? 'default' : 'ghost'}
+                  size="icon"
+                  class="h-8 w-8 text-xs {page === reposPage
+                    ? 'bg-blue-600 hover:bg-blue-700'
+                    : 'border border-slate-800 hover:bg-slate-800'}"
+                  on:click={() => goToRepoPage(page)}
+                >
+                  {page}
+                </Button>
+              {/if}
+            {/each}
+
+            <Button
+              variant="ghost"
+              size="icon"
+              class="h-8 w-8 border border-slate-800 hover:bg-slate-800"
+              disabled={reposPage === reposTotalPages}
+              on:click={() => goToRepoPage(reposPage + 1)}
+            >
+              <ChevronRight class="h-4 w-4" />
+            </Button>
+          </div>
+        {/if}
       </div>
     {/if}
   {/if}
+
   {#if importProgress}
     <div class="fixed inset-0 bg-black/50 flex items-center justify-center">
       <div class="bg-slate-900 border border-slate-800 rounded-lg p-4 max-w-sm w-full mx-4">
