@@ -23,6 +23,7 @@
   import FileChangesModal from './components/FileChangesModal.svelte';
   import TempRepoModal from './components/TempRepoModal.svelte';
   import PushReminderSettings from './components/PushReminderSettings.svelte';
+  import UpgradeModal from './components/UpgradeModal.svelte';
 
   // Import stores and services
   import {
@@ -55,6 +56,10 @@
 
   let projectStatusRef: ProjectStatus;
   let showPushReminderSettings = false;
+  let showUpgradeModal = false;
+  let upgradeModalFeature = '';
+  let upgradeModalReason = '';
+  let premiumFeatures: Array<{ id: string; name: string; description: string; icon: string }> = [];
 
   // Message handlers
   function handleUploadStatusMessage(message: any) {
@@ -123,6 +128,14 @@
 
     // Add cleanup listener
     window.addEventListener('unload', cleanup);
+
+    // Listen for upgrade modal triggers from other components
+    window.addEventListener('showUpgrade', ((event: CustomEvent) => {
+      upgradeModalFeature = event.detail.feature;
+      upgradeModalReason = event.detail.reason;
+      premiumFeatures = event.detail.features;
+      showUpgradeModal = true;
+    }) as EventListener);
   }
 
   async function checkForTempRepos() {
@@ -288,7 +301,14 @@
               <div class="border-t border-slate-800 pt-4">
                 <div class="flex items-center justify-between">
                   <div>
-                    <h3 class="text-lg font-semibold text-slate-200">Push Reminders</h3>
+                    <h3 class="text-lg font-semibold text-slate-200 flex items-center gap-2">
+                      Push Reminders
+                      <span
+                        class="text-xs bg-gradient-to-r from-blue-600 to-purple-600 text-white px-2 py-1 rounded-full"
+                      >
+                        ✨ PREMIUM
+                      </span>
+                    </h3>
                     <p class="text-sm text-slate-400">
                       Smart reminders to save your work to GitHub
                     </p>
@@ -299,6 +319,48 @@
                     on:click={() => (showPushReminderSettings = true)}
                   >
                     Configure
+                  </Button>
+                </div>
+              </div>
+
+              <!-- Premium Status -->
+              <div class="border-t border-slate-800 pt-4">
+                <div class="flex items-center justify-between">
+                  <div>
+                    <h3 class="text-lg font-semibold text-slate-200">Premium Status</h3>
+                    <p class="text-sm text-slate-400">Free plan • 3 file changes per day</p>
+                  </div>
+                  <Button
+                    class="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white"
+                    on:click={() => {
+                      upgradeModalFeature = 'premium';
+                      upgradeModalReason = 'Unlock all premium features';
+                      premiumFeatures = [
+                        {
+                          id: 'unlimited-file-changes',
+                          name: 'Unlimited File Changes',
+                          description: 'View and compare unlimited file changes per day',
+                          icon: '📁',
+                        },
+                        {
+                          id: 'push-reminders',
+                          name: 'Smart Push Reminders',
+                          description:
+                            'Intelligent reminders to push your changes when idle or on schedule',
+                          icon: '⏰',
+                        },
+                        {
+                          id: 'branch-selector',
+                          name: 'Branch Selector',
+                          description:
+                            'Choose specific branches when importing private repositories',
+                          icon: '🌿',
+                        },
+                      ];
+                      showUpgradeModal = true;
+                    }}
+                  >
+                    ✨ Upgrade
                   </Button>
                 </div>
               </div>
@@ -373,6 +435,13 @@
   />
 
   <PushReminderSettings bind:show={showPushReminderSettings} />
+
+  <UpgradeModal
+    bind:show={showUpgradeModal}
+    feature={upgradeModalFeature}
+    reason={upgradeModalReason}
+    features={premiumFeatures}
+  />
 </main>
 
 <style>

@@ -3,6 +3,7 @@ import type { Message, MessageType, Port, UploadStatusState } from '../lib/types
 import { StateManager } from './StateManager';
 import { ZipHandler } from '../services/zipHandler';
 import { BackgroundTempRepoManager } from './TempRepoManager';
+import { SupabaseAuthService } from '../content/services/SupabaseAuthService';
 
 export class BackgroundService {
   private stateManager: StateManager;
@@ -11,6 +12,7 @@ export class BackgroundService {
   private githubService: GitHubService | null;
   private tempRepoManager: BackgroundTempRepoManager | null = null;
   private pendingCommitMessage: string;
+  private supabaseAuthService: SupabaseAuthService;
   private storageListener:
     | ((changes: { [key: string]: chrome.storage.StorageChange }, namespace: string) => void)
     | null = null;
@@ -22,6 +24,7 @@ export class BackgroundService {
     this.githubService = null;
     this.zipHandler = null;
     this.pendingCommitMessage = 'Commit from Bolt to GitHub';
+    this.supabaseAuthService = SupabaseAuthService.getInstance();
     this.initialize();
   }
 
@@ -116,6 +119,9 @@ export class BackgroundService {
         // Forward file changes to popup
         chrome.runtime.sendMessage(message);
         sendResponse({ success: true });
+      } else if (message.type === 'CHECK_PREMIUM_FEATURE') {
+        this.handleCheckPremiumFeature(message.feature, sendResponse);
+        return true; // Will respond asynchronously
       }
 
       // Return true to indicate we'll send a response asynchronously
@@ -332,6 +338,31 @@ export class BackgroundService {
       port.postMessage(message);
     } catch (error) {
       console.error('Error sending response:', error);
+    }
+  }
+
+  private async handleCheckPremiumFeature(
+    feature: string,
+    sendResponse: (response: any) => void
+  ): Promise<void> {
+    try {
+      const premiumFeatures = ['pushReminders', 'branchSelector', 'unlimitedFileChanges'];
+
+      // Check if the feature requires premium
+      if (!premiumFeatures.includes(feature)) {
+        sendResponse({ hasAccess: true });
+        return;
+      }
+
+      // Check premium status from Supabase auth service
+      const hasAccess = this.supabaseAuthService.isPremium();
+
+      console.log(`🔍 Checking premium feature: ${feature}, hasAccess: ${hasAccess}`);
+
+      sendResponse({ hasAccess });
+    } catch (error) {
+      console.error('Error checking premium feature:', error);
+      sendResponse({ hasAccess: false });
     }
   }
 

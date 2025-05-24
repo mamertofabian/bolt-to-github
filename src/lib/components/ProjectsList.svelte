@@ -179,6 +179,47 @@
       return;
     }
 
+    // Check premium access for branch selector on private repos
+    try {
+      const response = await chrome.runtime.sendMessage({
+        type: 'CHECK_PREMIUM_FEATURE',
+        feature: 'branchSelector',
+      });
+      if (!response.hasAccess) {
+        // Show upgrade modal for branch selector
+        const upgradeEvent = new CustomEvent('showUpgrade', {
+          detail: {
+            feature: 'branchSelector',
+            reason: 'Branch selector for private repositories requires premium access.',
+            features: [
+              {
+                id: 'unlimited-file-changes',
+                name: 'Unlimited File Changes',
+                description: 'View and compare unlimited file changes per day',
+                icon: '📁',
+              },
+              {
+                id: 'push-reminders',
+                name: 'Smart Push Reminders',
+                description: 'Intelligent reminders to push your changes when idle or on schedule',
+                icon: '⏰',
+              },
+              {
+                id: 'branch-selector',
+                name: 'Branch Selector',
+                description: 'Choose specific branches when importing private repositories',
+                icon: '🌿',
+              },
+            ],
+          },
+        });
+        window.dispatchEvent(upgradeEvent);
+        return;
+      }
+    } catch (error) {
+      console.warn('Failed to check premium status, allowing access:', error);
+    }
+
     if (
       !confirm(
         'Warning: This will temporarily create a public copy of your private repository to enable import.\n\n' +

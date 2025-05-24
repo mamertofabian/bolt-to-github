@@ -2,6 +2,7 @@ import type { MessageHandler } from '../MessageHandler';
 import type { INotificationManager } from '../types/ManagerInterfaces';
 import type { FileChange } from '../../services/FilePreviewService';
 import { ActivityMonitor } from '../infrastructure/ActivityMonitor';
+import type { PremiumService } from './PremiumService';
 
 export interface PushReminderSettings {
   enabled: boolean;
@@ -38,6 +39,7 @@ export class PushReminderService {
   // New scheduled reminder interval
   private scheduledInterval: NodeJS.Timeout | null = null;
   private state: ReminderState;
+  private premiumService: PremiumService | null = null;
 
   // Default settings
   private settings: PushReminderSettings = {
@@ -137,6 +139,14 @@ export class PushReminderService {
       );
       return;
     }
+
+    // Check premium access for push reminders
+    if (!this.premiumService?.hasFeature('pushReminders')) {
+      console.log('❌ Push reminder: Premium feature not available');
+      this.showPremiumUpgradeNotification('pushReminders');
+      return;
+    }
+
     console.log('✅ Push reminder: Service is enabled');
 
     // Check if we've reached max reminders for this session
@@ -498,6 +508,28 @@ export class PushReminderService {
   public async forceShowScheduledReminder(): Promise<void> {
     console.log('🔊 Forcing scheduled reminder display...');
     await this.showScheduledReminder();
+  }
+
+  /**
+   * Set premium service reference (called by UIManager)
+   */
+  public setPremiumService(premiumService: PremiumService): void {
+    this.premiumService = premiumService;
+  }
+
+  /**
+   * Show premium upgrade notification for blocked features
+   */
+  private showPremiumUpgradeNotification(feature: string): void {
+    const featureNames: Record<string, string> = {
+      pushReminders: 'Smart Push Reminders',
+    };
+
+    this.notificationManager.showNotification({
+      type: 'info',
+      message: `⭐ ${featureNames[feature] || 'Premium Feature'} requires upgrade. Click to learn more!`,
+      duration: 8000,
+    });
   }
 
   /**

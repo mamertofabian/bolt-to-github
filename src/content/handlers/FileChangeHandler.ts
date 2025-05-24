@@ -2,6 +2,7 @@ import type { IFileChangeHandler } from '../types/HandlerInterfaces';
 import type { INotificationManager } from '../types/ManagerInterfaces';
 import type { MessageHandler } from '../MessageHandler';
 import { FilePreviewService, type FileChange } from '../../services/FilePreviewService';
+import type { PremiumService } from '../services/PremiumService';
 
 /**
  * FileChangeHandler handles file change detection, comparison, and display
@@ -11,11 +12,19 @@ export class FileChangeHandler implements IFileChangeHandler {
   private messageHandler: MessageHandler;
   private notificationManager: INotificationManager;
   private filePreviewService: FilePreviewService;
+  private premiumService: PremiumService | null = null;
 
   constructor(messageHandler: MessageHandler, notificationManager: INotificationManager) {
     this.messageHandler = messageHandler;
     this.notificationManager = notificationManager;
     this.filePreviewService = FilePreviewService.getInstance();
+  }
+
+  /**
+   * Set premium service reference (called by UIManager)
+   */
+  public setPremiumService(premiumService: PremiumService): void {
+    this.premiumService = premiumService;
   }
 
   /**
@@ -31,6 +40,33 @@ export class FileChangeHandler implements IFileChangeHandler {
    * Replaces the previous handleShowChangedFiles method from UIManager
    */
   public async showChangedFiles(): Promise<void> {
+    // Check premium status and usage limits
+    if (!this.premiumService) {
+      console.warn('PremiumService not available for file changes check');
+    } else {
+      const usage = this.premiumService.canUseFileChanges();
+      if (!usage.allowed) {
+        this.showPremiumLimitNotification(usage.reason, usage.remaining || 0);
+        return;
+      }
+
+      // Track usage for free users
+      await this.premiumService.useFileChanges();
+
+      // Show remaining uses for free users
+      if (
+        !this.premiumService.hasFeature('unlimitedFileChanges') &&
+        usage.remaining !== undefined
+      ) {
+        const remaining = usage.remaining - 1; // Subtract the one we just used
+        if (remaining > 0) {
+          console.log(`File changes used. ${remaining} remaining today.`);
+        } else {
+          console.log('File changes limit reached for today.');
+        }
+      }
+    }
+
     try {
       // Show initial loading notification (longer duration)
       this.notificationManager.showNotification({
@@ -260,6 +296,22 @@ export class FileChangeHandler implements IFileChangeHandler {
     } catch (storageError) {
       console.error('Failed to store file changes in local storage:', storageError);
     }
+  }
+
+  /**
+   * Show premium limit notification when file changes limit is reached
+   */
+  private showPremiumLimitNotification(reason?: string, remaining?: number): void {
+    const message =
+      reason === 'Daily limit reached'
+        ? `📁 Daily file changes limit reached (3/3). Upgrade for unlimited access!`
+        : `📁 Premium feature required. Upgrade for unlimited file changes!`;
+
+    this.notificationManager.showNotification({
+      type: 'info',
+      message,
+      duration: 8000,
+    });
   }
 
   /**

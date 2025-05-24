@@ -13,6 +13,7 @@ import { DOMObserver } from './infrastructure/DOMObserver';
 import { ComponentLifecycleManager } from './infrastructure/ComponentLifecycleManager';
 import { UIStateManager } from './services/UIStateManager';
 import { PushReminderService } from './services/PushReminderService';
+import { PremiumService } from './services/PremiumService';
 
 export class UIManager {
   private static instance: UIManager | null = null;
@@ -37,6 +38,7 @@ export class UIManager {
 
   // Add services
   private pushReminderService: PushReminderService;
+  private premiumService: PremiumService;
 
   private constructor(messageHandler: MessageHandler) {
     // Initialize centralized state management first
@@ -81,6 +83,16 @@ export class UIManager {
     // Initialize PushReminderService
     console.log('🔊 Initializing PushReminderService');
     this.pushReminderService = new PushReminderService(messageHandler, this.notificationManager);
+
+    // Initialize PremiumService
+    console.log('🔊 Initializing PremiumService');
+    this.premiumService = new PremiumService();
+
+    // Link premium service to push reminder service
+    this.pushReminderService.setPremiumService(this.premiumService);
+
+    // Link premium service to file change handler
+    this.fileChangeHandler.setPremiumService(this.premiumService);
 
     // Set up state change listening for coordination
     this.setupStateCoordination();
@@ -333,5 +345,28 @@ export class UIManager {
    */
   public async forceShowScheduledReminder(): Promise<void> {
     return this.pushReminderService.forceShowScheduledReminder();
+  }
+
+  /**
+   * Get premium service for external access
+   */
+  public getPremiumService(): PremiumService {
+    return this.premiumService;
+  }
+
+  /**
+   * Check if user has premium access
+   */
+  public isPremium(): boolean {
+    return this.premiumService.isPremium();
+  }
+
+  /**
+   * Check if user can use a specific premium feature
+   */
+  public hasFeature(
+    feature: keyof import('./services/PremiumService').PremiumStatus['features']
+  ): boolean {
+    return this.premiumService.hasFeature(feature);
   }
 }
