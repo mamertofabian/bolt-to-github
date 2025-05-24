@@ -52,7 +52,7 @@ export class PushReminderService {
   };
 
   // Debug mode for testing (shorter intervals)
-  private debugMode: boolean = true;
+  private debugMode: boolean = false;
 
   constructor(messageHandler: MessageHandler, notificationManager: INotificationManager) {
     this.messageHandler = messageHandler;
