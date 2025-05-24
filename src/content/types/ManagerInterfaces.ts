@@ -3,6 +3,7 @@
 import type { UploadStatusState } from '../../lib/types';
 import type {
   NotificationOptions,
+  UpgradeNotificationOptions,
   ConfirmationOptions,
   ConfirmationResult,
   UIState,
@@ -10,6 +11,7 @@ import type {
 
 export interface INotificationManager {
   showNotification(options: NotificationOptions): void;
+  showUpgradeNotification(options: UpgradeNotificationOptions): void;
   showConfirmationDialog(options: ConfirmationOptions): Promise<ConfirmationResult>;
   showSettingsNotification(): void;
   cleanup(): void;

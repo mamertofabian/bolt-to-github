@@ -6,6 +6,14 @@ export interface NotificationOptions {
   duration?: number;
 }
 
+export interface UpgradeNotificationOptions {
+  type: 'info' | 'error' | 'success';
+  message: string;
+  duration?: number;
+  upgradeText?: string;
+  onUpgrade?: () => void;
+}
+
 export interface ConfirmationOptions {
   title: string;
   message: string;

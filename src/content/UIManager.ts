@@ -184,22 +184,35 @@ export class UIManager {
    * Handle upgrade prompt for premium features
    */
   public async handleUpgradePrompt(feature: string): Promise<void> {
-    // Show notification about premium feature
-    this.notificationManager.showNotification({
+    // Show upgrade notification with clickable upgrade button
+    this.notificationManager.showUpgradeNotification({
       type: 'info',
-      message: `🔒 File changes comparison is a Pro feature. Upgrade to view detailed file changes and comparisons!`,
-      duration: 8000,
-    });
+      message:
+        '🔒 File changes comparison is a Pro feature. Upgrade to view detailed file changes and comparisons!',
+      duration: 10000,
+      upgradeText: 'Upgrade Now',
+      onUpgrade: () => {
+        console.log('🔊 Upgrade button clicked for feature:', feature);
 
-    // Send message to open upgrade modal if popup is available
-    try {
-      chrome.runtime.sendMessage({
-        type: 'SHOW_UPGRADE_MODAL',
-        feature: feature,
-      });
-    } catch (error) {
-      console.log('Could not communicate with popup for upgrade prompt:', error);
-    }
+        // Primary approach: try to open upgrade URL directly
+        try {
+          console.log('🔊 Opening upgrade URL...');
+          window.open('https://bolt2github.com/upgrade', '_blank');
+          console.log('✅ Upgrade URL opened successfully');
+        } catch (openError) {
+          console.error('❌ Could not open upgrade URL:', openError);
+
+          // Fallback: try Chrome extension URLs if direct URL fails
+          try {
+            console.log('🔊 Trying Chrome tabs API fallback...');
+            chrome.tabs.create({ url: 'https://bolt2github.com/upgrade' });
+            console.log('✅ Chrome tabs API worked');
+          } catch (tabsError) {
+            console.error('❌ Chrome tabs API also failed:', tabsError);
+          }
+        }
+      },
+    });
   }
 
   /**

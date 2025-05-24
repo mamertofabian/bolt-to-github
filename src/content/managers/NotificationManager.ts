@@ -1,5 +1,6 @@
 import type {
   NotificationOptions,
+  UpgradeNotificationOptions,
   ConfirmationOptions,
   ConfirmationResult,
   SvelteComponent,
@@ -198,6 +199,132 @@ export class NotificationManager implements INotificationManager {
         document.body.removeChild(notification);
       }
     }, 5000);
+  }
+
+  /**
+   * Show an upgrade notification with a clickable upgrade button
+   */
+  public showUpgradeNotification(options: UpgradeNotificationOptions): void {
+    const notification = document.createElement('div');
+    notification.style.cssText = `
+      position: fixed;
+      top: 1rem;
+      right: 1rem;
+      z-index: 10000;
+      padding: 1rem;
+      background-color: #2563eb;
+      color: white;
+      border-radius: 8px;
+      box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+      max-width: 24rem;
+      font-size: 14px;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+      line-height: 1.4;
+    `;
+
+    // Create icon SVG element
+    const iconSvg = document.createElement('svg');
+    iconSvg.setAttribute('width', '20');
+    iconSvg.setAttribute('height', '20');
+    iconSvg.setAttribute('viewBox', '0 0 24 24');
+    iconSvg.setAttribute('fill', 'none');
+    iconSvg.setAttribute('stroke', 'currentColor');
+    iconSvg.setAttribute('stroke-width', '2');
+    iconSvg.style.cssText = 'flex-shrink: 0; margin-right: 8px;';
+    iconSvg.innerHTML = `
+      <circle cx="12" cy="12" r="10"></circle>
+      <path d="m9 12 2 2 4-4"></path>
+    `;
+
+    // Create main content container
+    const contentDiv = document.createElement('div');
+    contentDiv.style.cssText = 'display: flex; align-items: flex-start; gap: 8px;';
+
+    // Create text and button container
+    const textButtonContainer = document.createElement('div');
+    textButtonContainer.style.cssText = 'flex: 1;';
+
+    // Create message text
+    const messageDiv = document.createElement('div');
+    messageDiv.style.cssText = 'margin-bottom: 12px; color: white; line-height: 1.4;';
+    messageDiv.textContent = options.message;
+
+    // Create upgrade button
+    const upgradeButton = document.createElement('button');
+    upgradeButton.style.cssText = `
+      background-color: white;
+      color: #2563eb;
+      padding: 6px 12px;
+      border-radius: 4px;
+      font-size: 13px;
+      font-weight: 500;
+      border: none;
+      cursor: pointer;
+      transition: background-color 0.2s ease;
+      font-family: inherit;
+    `;
+    upgradeButton.textContent = options.upgradeText || 'Upgrade Now';
+
+    // Add hover effect
+    upgradeButton.addEventListener('mouseenter', () => {
+      upgradeButton.style.backgroundColor = '#f1f5f9';
+    });
+    upgradeButton.addEventListener('mouseleave', () => {
+      upgradeButton.style.backgroundColor = 'white';
+    });
+
+    // Add click handler for upgrade button
+    upgradeButton.addEventListener('click', () => {
+      if (options.onUpgrade) {
+        options.onUpgrade();
+      }
+      document.body.removeChild(notification);
+    });
+
+    // Create close button
+    const closeButton = document.createElement('button');
+    closeButton.style.cssText = `
+      margin-left: 8px;
+      color: white;
+      background: none;
+      border: none;
+      font-size: 18px;
+      font-weight: bold;
+      cursor: pointer;
+      line-height: 1;
+      padding: 2px 4px;
+      flex-shrink: 0;
+      opacity: 0.8;
+      font-family: inherit;
+    `;
+    closeButton.textContent = '×';
+    closeButton.addEventListener('mouseenter', () => {
+      closeButton.style.opacity = '1';
+    });
+    closeButton.addEventListener('mouseleave', () => {
+      closeButton.style.opacity = '0.8';
+    });
+    closeButton.addEventListener('click', () => {
+      document.body.removeChild(notification);
+    });
+
+    // Assemble the notification
+    textButtonContainer.appendChild(messageDiv);
+    textButtonContainer.appendChild(upgradeButton);
+    contentDiv.appendChild(iconSvg);
+    contentDiv.appendChild(textButtonContainer);
+    contentDiv.appendChild(closeButton);
+    notification.appendChild(contentDiv);
+
+    // Add to body and remove after duration
+    document.body.appendChild(notification);
+
+    const duration = options.duration || 8000;
+    setTimeout(() => {
+      if (document.body.contains(notification)) {
+        document.body.removeChild(notification);
+      }
+    }, duration);
   }
 
   /**
