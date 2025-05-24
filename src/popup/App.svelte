@@ -255,6 +255,39 @@
           >
             ✅ {userPlan.toUpperCase()}
           </span>
+        {:else}
+          <Button
+            size="sm"
+            class="text-xs bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white px-3 py-1 h-6"
+            on:click={() => {
+              upgradeModalFeature = 'premium';
+              upgradeModalReason = 'Unlock unlimited features and remove daily limits';
+              premiumFeatures = [
+                {
+                  id: 'unlimited-file-changes',
+                  name: 'Unlimited File Changes',
+                  description: 'View and compare unlimited file changes per day',
+                  icon: '📁',
+                },
+                {
+                  id: 'push-reminders',
+                  name: 'Smart Push Reminders',
+                  description:
+                    'Intelligent reminders to push your changes when idle or on schedule',
+                  icon: '⏰',
+                },
+                {
+                  id: 'branch-selector',
+                  name: 'Branch Selector',
+                  description: 'Choose specific branches when importing private repositories',
+                  icon: '🌿',
+                },
+              ];
+              showUpgradeModal = true;
+            }}
+          >
+            ✨ Upgrade
+          </Button>
         {/if}
       </CardTitle>
       <CardDescription class="text-slate-400">
