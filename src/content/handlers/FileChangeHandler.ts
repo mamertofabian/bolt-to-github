@@ -140,19 +140,66 @@ export class FileChangeHandler implements IFileChangeHandler {
         console.log('Successfully compared with GitHub repository');
       } catch (githubError) {
         console.warn(
-          'Failed to compare with GitHub, falling back to local comparison:',
+          'Failed to compare with GitHub, falling back based on error type:',
           githubError
         );
-        // Fall back to local comparison
-        changedFiles = await this.filePreviewService.getChangedFiles();
+
+        // Check if this is a 404 error (repository doesn't exist)
+        const is404Error =
+          githubError instanceof Error &&
+          (githubError.message.includes('404') || githubError.message.includes('Not Found'));
+
+        if (is404Error) {
+          console.log('Repository does not exist - treating all files as new for push purposes');
+          // For non-existent repositories, get current files and mark them as 'added'
+          // This is appropriate for push reminders since the user needs to create the repo
+          changedFiles = await this.getChangedFilesForNonExistentRepo();
+        } else {
+          // For other GitHub errors (network, auth, etc.), fall back to local comparison
+          console.log('GitHub error (not 404) - falling back to local comparison');
+          changedFiles = await this.filePreviewService.getChangedFiles();
+        }
       }
     } else {
-      console.log('No GitHub settings found, using local comparison only');
-      // Use local comparison only
-      changedFiles = await this.filePreviewService.getChangedFiles();
+      console.log('No GitHub settings found - treating all files as new for push purposes');
+      // If no GitHub settings are configured, this project has never been associated with GitHub
+      // All files should be considered as 'added' since they need to be pushed for the first time
+      // This ensures push reminders work correctly for projects that haven't been set up with GitHub yet
+      changedFiles = await this.getChangedFilesForNonExistentRepo();
     }
 
     return changedFiles;
+  }
+
+  /**
+   * Get changed files for a non-existent repository
+   * Marks all current files as 'added' since they need to be pushed to create the repo
+   */
+  private async getChangedFilesForNonExistentRepo(): Promise<Map<string, FileChange>> {
+    // Load current project files
+    await this.filePreviewService.loadProjectFiles();
+
+    // Get processed files (applying gitignore rules)
+    const processedFiles = await this.filePreviewService.getProcessedFiles();
+
+    const changes = new Map<string, FileChange>();
+
+    // Mark all files as 'added' since the repository doesn't exist
+    processedFiles.forEach((content, path) => {
+      // Skip directory entries (empty files or paths ending with /)
+      if (content === '' || path.endsWith('/')) {
+        return;
+      }
+
+      changes.set(path, {
+        path,
+        status: 'added',
+        content,
+      });
+    });
+
+    console.log(`Marked ${changes.size} files as 'added' for non-existent repository`);
+    return changes;
   }
 
   /**

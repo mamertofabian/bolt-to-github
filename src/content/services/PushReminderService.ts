@@ -282,6 +282,17 @@ export class PushReminderService {
         `📊 Push reminder: Found ${meaningfulChanges.length} meaningful changes (need ${this.settings.minimumChanges})`
       );
 
+      // Provide context for why files are considered changed
+      if (changeBreakdown.added === changeBreakdown.meaningful && changeBreakdown.added > 0) {
+        console.log(
+          '📊 Push reminder: All meaningful changes are "added" files - likely new project or non-existent GitHub repo'
+        );
+      } else if (changeBreakdown.meaningful > 0) {
+        console.log('📊 Push reminder: Mix of changes detected - active development session');
+      } else {
+        console.log('📊 Push reminder: No meaningful changes detected');
+      }
+
       const hasEnough = meaningfulChanges.length >= this.settings.minimumChanges;
       console.log(`📊 Push reminder: Has enough changes: ${hasEnough}`);
 
