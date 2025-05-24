@@ -7,6 +7,7 @@ export class ActivityMonitor {
   private lastBoltActivity: number = Date.now();
   private isMonitoring: boolean = false;
   private listeners: (() => void)[] = [];
+  private boltActivityObserver: MutationObserver | null = null;
 
   // Activity thresholds (in milliseconds)
   private readonly USER_IDLE_THRESHOLD = 5 * 60 * 1000; // 5 minutes
@@ -47,8 +48,13 @@ export class ActivityMonitor {
    * Set up monitoring for Bolt AI activity indicators
    */
   private setupBoltActivityMonitoring(): void {
+    // Disconnect existing observer if any
+    if (this.boltActivityObserver) {
+      this.boltActivityObserver.disconnect();
+    }
+
     // Monitor for DOM changes that indicate Bolt activity
-    const observer = new MutationObserver((mutations) => {
+    this.boltActivityObserver = new MutationObserver((mutations) => {
       let boltActivityDetected = false;
 
       mutations.forEach((mutation) => {
@@ -81,13 +87,41 @@ export class ActivityMonitor {
       }
     });
 
-    // Start observing the document for changes
-    observer.observe(document.body, {
-      childList: true,
-      subtree: true,
-      attributes: true,
-      attributeFilter: ['class', 'data-testid'],
-    });
+    // Start observing the document for changes - with safety check
+    this.startDocumentObservation(this.boltActivityObserver);
+  }
+
+  /**
+   * Safely start observing the document body
+   */
+  private startDocumentObservation(observer: MutationObserver): void {
+    const startObserving = () => {
+      if (document.body) {
+        try {
+          observer.observe(document.body, {
+            childList: true,
+            subtree: true,
+            attributes: true,
+            attributeFilter: ['class', 'data-testid'],
+          });
+          console.log('🔊 ActivityMonitor: Started observing document.body for Bolt activity');
+        } catch (error) {
+          console.error('ActivityMonitor: Failed to observe document.body:', error);
+        }
+      } else {
+        console.warn('ActivityMonitor: document.body not available, retrying...');
+        // Retry after a short delay
+        setTimeout(startObserving, 100);
+      }
+    };
+
+    // Try immediately
+    startObserving();
+
+    // Also listen for DOMContentLoaded as a fallback
+    if (document.readyState === 'loading') {
+      document.addEventListener('DOMContentLoaded', startObserving, { once: true });
+    }
   }
 
   /**
@@ -209,6 +243,13 @@ export class ActivityMonitor {
   public stop(): void {
     this.isMonitoring = false;
     this.listeners = [];
+
+    // Disconnect the Bolt activity observer
+    if (this.boltActivityObserver) {
+      this.boltActivityObserver.disconnect();
+      this.boltActivityObserver = null;
+    }
+
     console.log('🔊 Activity monitor stopped');
   }
 
