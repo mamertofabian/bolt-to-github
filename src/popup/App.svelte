@@ -34,6 +34,8 @@
     projectSettingsActions,
     uiStateStore,
     uiStateActions,
+    fileChangesStore,
+    fileChangesActions,
     uploadStateStore,
     uploadStateActions,
     type TempRepoMetadata,
@@ -44,6 +46,7 @@
   $: githubSettings = $githubSettingsStore;
   $: projectSettings = $projectSettingsStore;
   $: uiState = $uiStateStore;
+  $: fileChangesState = $fileChangesStore;
   $: uploadState = $uploadStateStore;
   $: settingsValid = $isSettingsValid;
   $: onBoltProject = $isOnBoltProject;
@@ -59,7 +62,7 @@
   function handleFileChangesMessage(message: any) {
     if (message.type === 'FILE_CHANGES') {
       console.log('Received file changes:', message.changes, 'for project:', message.projectId);
-      uiStateActions.processFileChangesMessage(message.changes, message.projectId);
+      fileChangesActions.processFileChangesMessage(message.changes, message.projectId);
     }
   }
 
@@ -88,8 +91,8 @@
         string,
         import('../services/FilePreviewService').FileChange
       >;
-      uiStateActions.setFileChanges(fileChangesMap);
-      uiStateActions.showFileChangesModal();
+      fileChangesActions.setFileChanges(fileChangesMap);
+      fileChangesActions.showModal();
       await chrome.storage.local.remove('pendingFileChanges');
       console.log('Cleared pending file changes from storage');
     }
@@ -153,11 +156,15 @@
   }
 
   async function showStoredFileChanges() {
-    const success = await uiStateActions.loadStoredFileChanges(projectId);
+    const success = await fileChangesActions.loadStoredFileChanges(projectId);
     if (!success) {
       // Try to request from content script
-      await uiStateActions.requestFileChangesFromContentScript();
-      uiStateActions.showStatus('Calculating file changes...', 5000);
+      try {
+        await fileChangesActions.requestFileChangesFromContentScript();
+        uiStateActions.showStatus('Calculating file changes...', 5000);
+      } catch (error) {
+        uiStateActions.showStatus('Cannot show file changes: Not on a Bolt project page');
+      }
     }
   }
 
@@ -330,8 +337,8 @@
   </Card>
 
   <FileChangesModal
-    bind:show={uiState.showFileChangesModal}
-    bind:fileChanges={uiState.fileChanges}
+    bind:show={fileChangesState.showModal}
+    bind:fileChanges={fileChangesState.fileChanges}
   />
 
   <TempRepoModal

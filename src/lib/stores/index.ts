@@ -18,5 +18,8 @@ export {
 // Export UI State Store
 export { uiStateStore, uiStateActions, type UIState, type TempRepoMetadata } from './uiState';
 
+// Export File Changes Store
+export { fileChangesStore, fileChangesActions, type FileChangesState } from './fileChanges';
+
 // Export Upload State Store
 export { uploadStateStore, uploadStateActions, type UploadState } from './uploadState';
