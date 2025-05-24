@@ -40,51 +40,52 @@ export class FileChangeHandler implements IFileChangeHandler {
    * Replaces the previous handleShowChangedFiles method from UIManager
    */
   public async showChangedFiles(): Promise<void> {
-    // Check premium status
+    /* Check premium status */
     if (!this.premiumService) {
       console.warn('PremiumService not available for file changes check');
       this.showPremiumRequiredNotification();
       return;
     }
 
-    const usage = this.premiumService.canUseFileChanges();
+    /* Validate subscription status with server before allowing feature use */
+    const usage = await this.premiumService.canUseFileChanges();
     if (!usage.allowed) {
       this.showPremiumRequiredNotification();
       return;
     }
 
-    // Track usage for premium users (no-op for premium users)
+    /* Track usage for premium users (no-op for premium users) */
     await this.premiumService.useFileChanges();
 
     try {
-      // Show initial loading notification (longer duration)
+      /* Show initial loading notification (longer duration) */
       this.notificationManager.showNotification({
         type: 'info',
         message: 'Loading project files...',
-        duration: 10000, // Show for 10 seconds
+        duration: 10000 /* Show for 10 seconds */,
       });
 
       console.group('Changed Files');
       console.log('Refreshing and loading project files...');
 
-      // Load the current project files with a forced refresh (invalidate cache)
-      // since this is a user-driven action, we always want the latest files
+      /* Load the current project files with a forced refresh (invalidate cache) */
+      /* since this is a user-driven action, we always want the latest files */
       const startTime = performance.now();
-      await this.filePreviewService.loadProjectFiles(true); // Pass true to force refresh
+      await this.filePreviewService.loadProjectFiles(true); /* Pass true to force refresh */
       const loadTime = performance.now() - startTime;
       console.log(`Files loaded in ${loadTime.toFixed(2)}ms`);
 
-      // Update loading message
+      /* Update loading message */
       this.notificationManager.showNotification({
         type: 'info',
         message: 'Comparing files with GitHub repository...',
         duration: 8000,
       });
 
-      // Get changed files (with GitHub comparison if possible)
+      /* Get changed files (with GitHub comparison if possible) */
       const changedFiles = await this.getChangedFilesWithComparison();
 
-      // Process and display results
+      /* Process and display results */
       await this.processAndDisplayChanges(changedFiles);
     } catch (error) {
       console.error('Error showing changed files:', error);

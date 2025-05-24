@@ -44,6 +44,7 @@ export class SupabaseAuthService {
     'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImdhcHZqY3F5YnphYm5yam54emhnIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDc3MjMwMzQsImV4cCI6MjA2MzI5OTAzNH0.6bpYH1nccYIEKbQmctojedbrzMVBGcHhgjCyKXVUgzc';
   private readonly CHECK_INTERVAL_UNAUTHENTICATED = 30000; /* 30 seconds when not authenticated */
   private readonly CHECK_INTERVAL_AUTHENTICATED = 3600000; /* 1 hour when authenticated */
+  private readonly CHECK_INTERVAL_PREMIUM = 900000; /* 15 minutes for premium users (more frequent validation) */
 
   private constructor() {
     this.supabaseUrl = this.SUPABASE_URL;
@@ -185,14 +186,23 @@ export class SupabaseAuthService {
       clearInterval(this.checkInterval);
     }
 
-    const interval = this.authState.isAuthenticated
-      ? this.CHECK_INTERVAL_AUTHENTICATED
-      : this.CHECK_INTERVAL_UNAUTHENTICATED;
+    /* Use different intervals based on authentication and subscription status */
+    let interval: number;
+    if (!this.authState.isAuthenticated) {
+      interval = this.CHECK_INTERVAL_UNAUTHENTICATED;
+    } else if (this.authState.subscription.isActive) {
+      /* Premium users get more frequent checks to detect subscription changes faster */
+      interval = this.CHECK_INTERVAL_PREMIUM;
+    } else {
+      interval = this.CHECK_INTERVAL_AUTHENTICATED;
+    }
 
     this.checkInterval = setInterval(() => {
       this.checkAuthStatus();
     }, interval);
-    console.log(`🔄 Started auth checks every ${interval / 1000}s`);
+    console.log(
+      `🔄 Started auth checks every ${interval / 1000}s (${this.authState.subscription.isActive ? 'premium' : this.authState.isAuthenticated ? 'authenticated' : 'unauthenticated'})`
+    );
   }
 
   /**
@@ -699,6 +709,7 @@ export class SupabaseAuthService {
             .sendMessage(tab.id, {
               type: 'UPDATE_PREMIUM_STATUS',
               data: {
+                isAuthenticated: this.authState.isAuthenticated,
                 isPremium: this.authState.subscription.isActive,
                 plan: this.authState.subscription.plan,
                 expiresAt: this.authState.subscription.expiresAt,
@@ -856,5 +867,101 @@ export class SupabaseAuthService {
       clearInterval(this.checkInterval);
       this.checkInterval = null;
     }
+  }
+
+  /**
+   * Validate current subscription status with server
+   * Used before allowing premium features
+   */
+  public async validateSubscriptionStatus(): Promise<boolean> {
+    try {
+      console.log('🔍 Validating subscription status with server...');
+
+      const token = await this.getAuthToken();
+      if (!token) {
+        console.log('❌ No auth token available for subscription validation');
+        return false;
+      }
+
+      const user = await this.verifyTokenAndGetUser(token);
+      if (!user) {
+        console.log('❌ Token verification failed during subscription validation');
+        return false;
+      }
+
+      const subscription = await this.getSubscriptionStatus(token, user);
+
+      /* Check if subscription status has changed */
+      if (subscription.isActive !== this.authState.subscription.isActive) {
+        console.log(
+          `💰 Subscription status changed during validation: ${subscription.isActive ? 'activated' : 'deactivated'}`
+        );
+
+        this.updateAuthState({
+          subscription,
+        });
+
+        /* If subscription was deactivated, handle graceful downgrade */
+        if (!subscription.isActive && this.authState.subscription.isActive) {
+          await this.handleSubscriptionDowngrade();
+        }
+      }
+
+      return subscription.isActive;
+    } catch (error) {
+      console.error('Error validating subscription status:', error);
+      return false;
+    }
+  }
+
+  /**
+   * Handle subscription downgrade (expired/cancelled)
+   */
+  private async handleSubscriptionDowngrade(): Promise<void> {
+    console.log('📉 Handling subscription downgrade...');
+
+    /* Show notification to user about subscription change */
+    await this.notifySubscriptionDowngrade();
+
+    /* Force immediate auth status check to update all components */
+    await this.checkAuthStatus();
+  }
+
+  /**
+   * Notify user about subscription downgrade
+   */
+  private async notifySubscriptionDowngrade(): Promise<void> {
+    try {
+      /* Send message to all bolt.new tabs to show downgrade notification */
+      const tabs = await chrome.tabs.query({ url: 'https://bolt.new/*' });
+      for (const tab of tabs) {
+        if (tab.id) {
+          chrome.tabs
+            .sendMessage(tab.id, {
+              type: 'SHOW_SUBSCRIPTION_DOWNGRADE',
+              data: {
+                message:
+                  'Your premium subscription has expired or been cancelled. Premium features are no longer available.',
+                actionText: 'Renew Subscription',
+                actionUrl: 'https://bolt2github.com/upgrade',
+              },
+            })
+            .catch(() => {
+              /* Tab might not have content script injected, ignore error */
+            });
+        }
+      }
+      console.log('📢 Sent subscription downgrade notifications to bolt.new tabs');
+    } catch (error) {
+      console.warn('Failed to send subscription downgrade notification:', error);
+    }
+  }
+
+  /**
+   * Force subscription revalidation (for immediate checks)
+   */
+  public async forceSubscriptionRevalidation(): Promise<boolean> {
+    console.log('🔄 Forcing subscription revalidation...');
+    return await this.validateSubscriptionStatus();
   }
 }

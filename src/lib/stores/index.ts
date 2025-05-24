@@ -27,6 +27,7 @@ export { uploadStateStore, uploadStateActions, type UploadState } from './upload
 // Export Premium Store
 export {
   default as premiumStatusStore,
+  isAuthenticated,
   isPremium,
   premiumPlan,
   premiumFeatures,

@@ -1,6 +1,6 @@
 <script lang="ts">
   import { Button } from '$lib/components/ui/button';
-  import premiumStatusStore, { isPremium } from '$lib/stores/premiumStore';
+  import premiumStatusStore, { isPremium, isAuthenticated } from '$lib/stores/premiumStore';
   import { createEventDispatcher } from 'svelte';
 
   const dispatch = createEventDispatcher();
@@ -8,6 +8,7 @@
   // Premium status
   $: premiumStatus = $premiumStatusStore;
   $: isUserPremium = $isPremium;
+  $: isUserAuthenticated = $isAuthenticated;
 
   function handleUpgrade() {
     dispatch('upgrade');
@@ -176,7 +177,11 @@
                       d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.732 16.5c-.77.833.192 2.5 1.732 2.5z"
                     ></path>
                   </svg>
-                  <span>Basic features included</span>
+                  <span>
+                    {isUserAuthenticated
+                      ? 'Account active - upgrade for premium features'
+                      : 'Basic features included'}
+                  </span>
                 </div>
               </div>
 
@@ -243,15 +248,17 @@
             Upgrade to Premium
           </Button>
           <!-- Sign in link for existing premium users -->
-          <div class="text-center border-t border-slate-700/30 pt-3 mb-2">
-            <p class="text-slate-500 text-xs mb-2">Already upgraded?</p>
-            <button
-              on:click={handleSignIn}
-              class="text-blue-400 hover:text-blue-300 text-xs underline transition-colors"
-            >
-              Sign in to your account
-            </button>
-          </div>
+          {#if !isUserAuthenticated}
+            <div class="text-center border-t border-slate-700/30 pt-3 mb-2">
+              <p class="text-slate-500 text-xs mb-2">Already upgraded?</p>
+              <button
+                on:click={handleSignIn}
+                class="text-blue-400 hover:text-blue-300 text-xs underline transition-colors"
+              >
+                Sign in to your account
+              </button>
+            </div>
+          {/if}
         {:else}
           <Button
             variant="outline"

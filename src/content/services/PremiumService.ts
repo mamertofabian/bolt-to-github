@@ -1,5 +1,6 @@
 export interface PremiumStatus {
   isPremium: boolean;
+  isAuthenticated: boolean;
   expiresAt?: number;
   features: {
     viewFileChanges: boolean;
@@ -16,10 +17,13 @@ export class PremiumService {
   private supabaseAuthService: any; // Will be imported dynamically
   private currentAuthPlan: 'free' | 'monthly' | 'yearly' = 'free';
   private uiManager?: any; // Reference to UIManager for updating components
+  private lastSubscriptionCheck: number = 0;
+  private readonly SUBSCRIPTION_CHECK_CACHE_DURATION = 300000; // 5 minutes cache for subscription checks
 
   constructor() {
     this.premiumStatus = {
       isPremium: false,
+      isAuthenticated: false,
       features: {
         viewFileChanges: false,
         pushReminders: false,
@@ -55,6 +59,7 @@ export class PremiumService {
    * Update premium status from Supabase auth service
    */
   public async updatePremiumStatusFromAuth(authData: {
+    isAuthenticated: boolean;
     isPremium: boolean;
     plan: 'free' | 'monthly' | 'yearly';
     expiresAt?: string;
@@ -65,6 +70,7 @@ export class PremiumService {
     this.currentAuthPlan = authData.plan;
 
     await this.updatePremiumStatus({
+      isAuthenticated: authData.isAuthenticated,
       isPremium: authData.isPremium,
       expiresAt,
       features: {
@@ -80,7 +86,7 @@ export class PremiumService {
     }
 
     console.log(
-      `🔐 Premium status updated from auth: ${authData.isPremium ? 'active' : 'inactive'} (${authData.plan})`
+      `🔐 Premium status updated from auth: authenticated=${authData.isAuthenticated}, premium=${authData.isPremium} (${authData.plan})`
     );
   }
 
@@ -92,7 +98,12 @@ export class PremiumService {
       const result = await chrome.storage.local.get(['premiumStatus']);
 
       if (result.premiumStatus) {
-        this.premiumStatus = { ...this.premiumStatus, ...result.premiumStatus };
+        this.premiumStatus = {
+          ...this.premiumStatus,
+          ...result.premiumStatus,
+          // Ensure isAuthenticated is always defined (default to false for backward compatibility)
+          isAuthenticated: result.premiumStatus.isAuthenticated ?? false,
+        };
       }
     } catch (error) {
       console.warn('Failed to load premium data:', error);
@@ -111,6 +122,7 @@ export class PremiumService {
       // Also save to sync storage for popup access
       await chrome.storage.sync.set({
         popupPremiumStatus: {
+          isAuthenticated: this.premiumStatus.isAuthenticated,
           isPremium: this.premiumStatus.isPremium,
           plan: this.getCurrentPlan(),
           expiresAt: this.premiumStatus.expiresAt,
@@ -142,9 +154,33 @@ export class PremiumService {
 
   /**
    * Check if user has premium access
+   * Now includes server-side validation for active subscriptions
    */
-  public isPremium(): boolean {
-    // Check if premium has expired
+  public async isPremium(): Promise<boolean> {
+    /* Check if premium has expired locally first */
+    if (this.premiumStatus.expiresAt && Date.now() > this.premiumStatus.expiresAt) {
+      console.log('⏰ Premium subscription expired locally');
+      this.premiumStatus.isPremium = false;
+      this.updateFeatureAccess();
+      this.saveData();
+      return false;
+    }
+
+    /* If user appears to have premium, validate with server */
+    if (this.premiumStatus.isPremium) {
+      const serverValidation = await this.validateSubscriptionWithServer();
+      return serverValidation;
+    }
+
+    return false;
+  }
+
+  /**
+   * Check if user has premium access (synchronous version for backwards compatibility)
+   * Note: This doesn't include server validation and should be used sparingly
+   */
+  public isPremiumSync(): boolean {
+    /* Check if premium has expired */
     if (this.premiumStatus.expiresAt && Date.now() > this.premiumStatus.expiresAt) {
       this.premiumStatus.isPremium = false;
       this.updateFeatureAccess();
@@ -156,16 +192,38 @@ export class PremiumService {
 
   /**
    * Check if specific feature is available
+   * Now includes server-side validation for premium features
    */
-  public hasFeature(feature: keyof PremiumStatus['features']): boolean {
+  public async hasFeature(feature: keyof PremiumStatus['features']): Promise<boolean> {
+    /* For premium features, validate subscription status */
+    if (this.premiumStatus.features[feature] && this.premiumStatus.isPremium) {
+      const isValid = await this.isPremium();
+      return isValid;
+    }
+
+    return this.premiumStatus.features[feature];
+  }
+
+  /**
+   * Check if specific feature is available (synchronous version)
+   * Note: This doesn't include server validation and should be used sparingly
+   */
+  public hasFeatureSync(feature: keyof PremiumStatus['features']): boolean {
     return this.premiumStatus.features[feature];
   }
 
   /**
    * Check if user can use file changes feature
+   * Now includes server-side validation
    */
-  public canUseFileChanges(): { allowed: boolean; reason?: string; remaining?: number } {
-    if (this.hasFeature('viewFileChanges')) {
+  public async canUseFileChanges(): Promise<{
+    allowed: boolean;
+    reason?: string;
+    remaining?: number;
+  }> {
+    const hasAccess = await this.hasFeature('viewFileChanges');
+
+    if (hasAccess) {
       return { allowed: true };
     }
 
@@ -270,6 +328,61 @@ export class PremiumService {
       console.warn('Error checking authentication status, redirecting to signup:', error);
       // Default to signup if we can't determine auth status
       chrome.tabs.create({ url: 'https://bolt2github.com/register' });
+    }
+  }
+
+  /**
+   * Validate subscription status with server before allowing premium features
+   */
+  private async validateSubscriptionWithServer(): Promise<boolean> {
+    try {
+      // Use cache to avoid too frequent server calls
+      const now = Date.now();
+      if (now - this.lastSubscriptionCheck < this.SUBSCRIPTION_CHECK_CACHE_DURATION) {
+        console.log('✅ Using cached subscription status (within 5 minutes)');
+        return this.premiumStatus.isPremium;
+      }
+
+      // Get Supabase auth service instance and validate subscription
+      const authServiceModule = await import('./SupabaseAuthService');
+      const authService = authServiceModule.SupabaseAuthService.getInstance();
+
+      const isSubscriptionValid = await authService.validateSubscriptionStatus();
+      this.lastSubscriptionCheck = now;
+
+      if (!isSubscriptionValid && this.premiumStatus.isPremium) {
+        console.log('📉 Server validation failed - subscription is no longer active');
+        await this.handleSubscriptionInvalidation();
+      }
+
+      return isSubscriptionValid;
+    } catch (error) {
+      console.warn('Failed to validate subscription with server:', error);
+      // Fall back to current status if server validation fails
+      return this.premiumStatus.isPremium;
+    }
+  }
+
+  /**
+   * Handle subscription invalidation (expired/cancelled)
+   */
+  private async handleSubscriptionInvalidation(): Promise<void> {
+    console.log('🚫 Handling subscription invalidation...');
+
+    // Update premium status to inactive
+    await this.updatePremiumStatus({
+      isAuthenticated: false, // Session is likely invalid if subscription validation failed
+      isPremium: false,
+      features: {
+        viewFileChanges: false,
+        pushReminders: false,
+        branchSelector: false,
+      },
+    });
+
+    // Update UI components
+    if (this.uiManager) {
+      this.uiManager.updateDropdownPremiumStatus();
     }
   }
 }

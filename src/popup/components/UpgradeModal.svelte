@@ -1,11 +1,15 @@
 <script lang="ts">
   import { Button } from '$lib/components/ui/button';
   import type { PremiumFeature } from '$lib/constants/premiumFeatures';
+  import { isAuthenticated } from '$lib/stores';
 
   export let show = false;
   export let feature: string = ''; // Which feature triggered the modal
   export let reason: string = ''; // Why they need to upgrade
   export let features: PremiumFeature[] = [];
+
+  // Reactive subscriptions
+  $: isUserAuthenticated = $isAuthenticated;
 
   // Accordion state - track which feature is expanded
   let expandedFeature: string | null = null;
@@ -201,15 +205,17 @@
       </div>
 
       <!-- Sign in link for existing premium users -->
-      <div class="text-center border-t border-slate-700/30 pt-3 mb-2">
-        <p class="text-slate-500 text-xs mb-2">Already upgraded?</p>
-        <button
-          on:click={handleSignIn}
-          class="text-blue-400 hover:text-blue-300 text-xs underline transition-colors"
-        >
-          Sign in to your account
-        </button>
-      </div>
+      {#if !isUserAuthenticated}
+        <div class="text-center border-t border-slate-700/30 pt-3 mb-2">
+          <p class="text-slate-500 text-xs mb-2">Already upgraded?</p>
+          <button
+            on:click={handleSignIn}
+            class="text-blue-400 hover:text-blue-300 text-xs underline transition-colors"
+          >
+            Sign in to your account
+          </button>
+        </div>
+      {/if}
 
       <!-- Compact trust indicators -->
       <div class="text-center">

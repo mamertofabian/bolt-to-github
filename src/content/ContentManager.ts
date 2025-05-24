@@ -308,6 +308,23 @@ export class ContentManager {
             }
             return;
           }
+
+          if (message.type === 'SHOW_SUBSCRIPTION_DOWNGRADE') {
+            console.log('📨 Received SHOW_SUBSCRIPTION_DOWNGRADE message:', message.data);
+            /* Show subscription downgrade notification via UIManager */
+            if (this.uiManager) {
+              this.uiManager.showNotification({
+                type: 'info',
+                message: `⚠️ ${message.data.message} Click here to renew: ${message.data.actionUrl}`,
+                duration: 15000,
+              });
+              sendResponse({ success: true });
+            } else {
+              console.warn('❌ UI manager not available');
+              sendResponse({ error: 'UI manager not available' });
+            }
+            return;
+          }
         } catch (error) {
           console.error('Error handling message:', error);
           sendResponse({ error: error instanceof Error ? error.message : 'Unknown error' });

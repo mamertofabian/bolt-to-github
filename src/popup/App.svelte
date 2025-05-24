@@ -45,6 +45,7 @@
     uploadStateStore,
     uploadStateActions,
     premiumStatusStore,
+    isAuthenticated,
     isPremium,
     premiumPlan,
     premiumFeatures as userPremiumFeatures,
@@ -63,6 +64,7 @@
   $: onBoltProject = $isOnBoltProject;
   $: projectId = $currentProjectId;
   $: premiumStatus = $premiumStatusStore;
+  $: isUserAuthenticated = $isAuthenticated;
   $: isUserPremium = $isPremium;
   $: userPlan = $premiumPlan;
   $: userFeatures = $userPremiumFeatures;
@@ -282,15 +284,17 @@
             >
               ✨ Upgrade
             </Button>
-            <button
-              class="text-xs text-slate-400 hover:text-slate-300 transition-colors underline"
-              on:click={() => {
-                chrome.tabs.create({ url: 'https://bolt2github.com/login' });
-              }}
-              title="Sign in if you already have a premium account"
-            >
-              Sign in
-            </button>
+            {#if !isUserAuthenticated}
+              <button
+                class="text-xs text-slate-400 hover:text-slate-300 transition-colors underline"
+                on:click={() => {
+                  chrome.tabs.create({ url: 'https://bolt2github.com/login' });
+                }}
+                title="Sign in if you already have a premium account"
+              >
+                Sign in
+              </button>
+            {/if}
           </div>
         {/if}
       </CardTitle>

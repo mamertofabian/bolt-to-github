@@ -506,19 +506,35 @@ export class UIManager {
   }
 
   /**
-   * Check if user has premium access
+   * Check if user has premium access (for UI display)
    */
   public isPremium(): boolean {
-    return this.premiumService.isPremium();
+    return this.premiumService.isPremiumSync();
   }
 
   /**
-   * Check if user can use a specific premium feature
+   * Check if user has premium access (with server validation)
+   */
+  public async isPremiumValidated(): Promise<boolean> {
+    return await this.premiumService.isPremium();
+  }
+
+  /**
+   * Check if user can use a specific premium feature (for UI display)
    */
   public hasFeature(
     feature: keyof import('./services/PremiumService').PremiumStatus['features']
   ): boolean {
-    return this.premiumService.hasFeature(feature);
+    return this.premiumService.hasFeatureSync(feature);
+  }
+
+  /**
+   * Check if user can use a specific premium feature (with server validation)
+   */
+  public async hasFeatureValidated(
+    feature: keyof import('./services/PremiumService').PremiumStatus['features']
+  ): Promise<boolean> {
+    return await this.premiumService.hasFeature(feature);
   }
 
   /**

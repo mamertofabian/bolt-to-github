@@ -283,7 +283,7 @@ export class DropdownManager implements IDropdownManager {
 
     // Show Changed Files option - now premium feature
     const changedFilesButton = document.createElement('button');
-    const isPremium = this.premiumService?.isPremium() || false;
+    const isPremium = this.premiumService?.isPremiumSync() || false;
 
     changedFilesButton.className = `dropdown-item flex items-center justify-between ${!isPremium ? 'opacity-75' : ''}`;
     changedFilesButton.innerHTML = `
@@ -301,17 +301,19 @@ export class DropdownManager implements IDropdownManager {
     changedFilesButton.addEventListener('click', async () => {
       this.hide();
 
+      /* Server validation happens in the callback - FileChangeHandler will validate subscription */
       if (!isPremium) {
-        // Show upgrade prompt for file changes feature
+        /* Show upgrade prompt for file changes feature */
         if (this.onUpgradePromptCallback) {
           await this.onUpgradePromptCallback('file-changes');
         } else {
-          // Fallback notification
+          /* Fallback notification */
           console.log('Upgrade required for file changes feature');
         }
         return;
       }
 
+      /* For premium users, proceed to file changes (validation happens in FileChangeHandler) */
       if (this.onShowChangedFilesCallback) {
         await this.onShowChangedFilesCallback();
       }

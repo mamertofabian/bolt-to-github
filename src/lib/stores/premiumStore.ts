@@ -1,6 +1,18 @@
 import { writable, derived } from 'svelte/store';
 
+/**
+ * Premium Store for Popup UI
+ *
+ * Handles both authentication status and premium status to provide
+ * appropriate UI elements:
+ *
+ * - isAuthenticated: false, isPremium: false → Show "Sign in" + "Upgrade" buttons
+ * - isAuthenticated: true, isPremium: false → Show only "Upgrade" button
+ * - isAuthenticated: true, isPremium: true → Show "PRO" badge
+ */
+
 export interface PopupPremiumStatus {
+  isAuthenticated: boolean;
   isPremium: boolean;
   plan: string;
   expiresAt?: number;
@@ -14,6 +26,7 @@ export interface PopupPremiumStatus {
 
 // Create the writable store
 const premiumStatusStore = writable<PopupPremiumStatus>({
+  isAuthenticated: false,
   isPremium: false,
   plan: 'free',
   features: {
@@ -25,6 +38,7 @@ const premiumStatusStore = writable<PopupPremiumStatus>({
 });
 
 // Derived store for easy access to specific values
+export const isAuthenticated = derived(premiumStatusStore, ($store) => $store.isAuthenticated);
 export const isPremium = derived(premiumStatusStore, ($store) => $store.isPremium);
 export const premiumPlan = derived(premiumStatusStore, ($store) => $store.plan);
 export const premiumFeatures = derived(premiumStatusStore, ($store) => $store.features);
@@ -38,8 +52,13 @@ export const premiumStatusActions = {
     try {
       const result = await chrome.storage.sync.get(['popupPremiumStatus']);
       if (result.popupPremiumStatus) {
-        premiumStatusStore.set(result.popupPremiumStatus);
-        console.log('📊 Loaded premium status:', result.popupPremiumStatus);
+        // Ensure backward compatibility - if isAuthenticated is not present, default to false
+        const status = {
+          ...result.popupPremiumStatus,
+          isAuthenticated: result.popupPremiumStatus.isAuthenticated ?? false,
+        };
+        premiumStatusStore.set(status);
+        console.log('📊 Loaded premium status:', status);
       }
     } catch (error) {
       console.error('Failed to load premium status:', error);
