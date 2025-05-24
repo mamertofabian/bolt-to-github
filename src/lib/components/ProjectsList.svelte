@@ -6,12 +6,15 @@
   import { GitHubService } from '../../services/GitHubService';
   import { fade } from 'svelte/transition';
   import BranchSelectionModal from '../../popup/components/BranchSelectionModal.svelte';
+  import { githubSettingsStore, githubSettingsActions, currentProjectId } from '$lib/stores';
 
-  export let projectSettings: Record<string, { repoName: string; branch: string }>;
   export let repoOwner: string;
   export let githubToken: string;
   export let isBoltSite: boolean = true;
   export let currentlyLoadedProjectId: string | null = null;
+
+  // Use stores instead of props
+  $: projectSettings = $githubSettingsStore.projectSettings;
 
   let loadingRepos = false;
   let showDeleteModal = false;
@@ -102,36 +105,6 @@
   }
 
   onMount(() => {
-    // Set up storage change listener
-    const storageChangeListener = (changes: any, areaName: string) => {
-      console.log('Storage changes detected:', changes, 'in area:', areaName);
-
-      // Check if lastSettingsUpdate changed in local storage
-      if (areaName === 'local' && changes.lastSettingsUpdate) {
-        const updateInfo = changes.lastSettingsUpdate.newValue;
-        console.log('Settings update detected:', updateInfo);
-
-        // Force refresh of project settings
-        chrome.storage.sync.get(['projectSettings'], (result) => {
-          console.log('Refreshing project settings with:', result.projectSettings);
-          if (result.projectSettings) {
-            projectSettings = { ...result.projectSettings };
-            refreshProjectData();
-          }
-        });
-      }
-
-      // Check if projectSettings changed in sync storage
-      if (areaName === 'sync' && changes.projectSettings) {
-        console.log('Project settings changed in sync storage');
-        projectSettings = { ...changes.projectSettings.newValue };
-        refreshProjectData();
-      }
-    };
-
-    // Add the storage change listener
-    chrome.storage.onChanged.addListener(storageChangeListener);
-
     // Initialize data (async)
     const initializeData = async () => {
       // Get current tab URL
@@ -147,12 +120,12 @@
 
     // Start initialization
     initializeData();
-
-    // Return a cleanup function to remove the listener when the component is destroyed
-    return () => {
-      chrome.storage.onChanged.removeListener(storageChangeListener);
-    };
   });
+
+  // Watch for changes in projectSettings from the store and refresh data
+  $: if (projectSettings && Object.keys(projectSettings).length > 0) {
+    refreshProjectData();
+  }
 
   function openBoltProject(projectId: string) {
     window.open(`https://bolt.new/~/${projectId}`, '_blank');
@@ -174,20 +147,23 @@
 
   async function deleteProject() {
     try {
-      // Get current settings
-      const settings = await chrome.storage.sync.get(['projectSettings']);
-      let updatedProjectSettings = { ...(settings.projectSettings || {}) };
+      if (projectToDelete) {
+        // Get current settings
+        const settings = await chrome.storage.sync.get(['projectSettings']);
+        let updatedProjectSettings = { ...(settings.projectSettings || {}) };
 
-      if (projectToDelete && updatedProjectSettings[projectToDelete.projectId]) {
         // Delete single project
         delete updatedProjectSettings[projectToDelete.projectId];
+
+        // Save updated settings to Chrome storage
+        await chrome.storage.sync.set({ projectSettings: updatedProjectSettings });
+
+        // Update the store to trigger reactivity
+        githubSettingsStore.update((state) => ({
+          ...state,
+          projectSettings: updatedProjectSettings,
+        }));
       }
-
-      // Save updated settings
-      await chrome.storage.sync.set({ projectSettings: updatedProjectSettings });
-
-      // Update the local projectSettings variable to refresh the UI
-      projectSettings = updatedProjectSettings;
 
       // Close the modal and reset state
       showDeleteModal = false;

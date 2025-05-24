@@ -199,26 +199,30 @@ export const githubSettingsActions = {
    */
   async saveSettings(): Promise<{ success: boolean; error?: string }> {
     try {
-      const currentState = await new Promise<GitHubSettingsState>((resolve) => {
-        const unsubscribe = githubSettingsStore.subscribe((state) => {
-          unsubscribe();
-          resolve(state);
-        });
+      let currentState: GitHubSettingsState;
+
+      // Get current state from store
+      const unsubscribe = githubSettingsStore.subscribe((state) => {
+        currentState = state;
       });
+      unsubscribe();
 
       // Validate token before saving
-      const isValid = await this.validateToken(currentState.githubToken, currentState.repoOwner);
+      const isValid = await githubSettingsActions.validateToken(
+        currentState!.githubToken,
+        currentState!.repoOwner
+      );
       if (!isValid) {
         return {
           success: false,
-          error: currentState.validationError || 'Validation failed',
+          error: currentState!.validationError || 'Validation failed',
         };
       }
 
       const settings = {
-        githubToken: currentState.githubToken,
-        repoOwner: currentState.repoOwner,
-        projectSettings: currentState.projectSettings,
+        githubToken: currentState!.githubToken,
+        repoOwner: currentState!.repoOwner,
+        projectSettings: currentState!.projectSettings,
       };
 
       await chrome.storage.sync.set(settings);

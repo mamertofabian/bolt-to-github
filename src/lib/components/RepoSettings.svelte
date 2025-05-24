@@ -5,6 +5,7 @@
   import { Search, Loader2 } from 'lucide-svelte';
   import { GitHubService } from '../../services/GitHubService';
   import { createEventDispatcher } from 'svelte';
+  import { githubSettingsActions } from '$lib/stores';
 
   const dispatch = createEventDispatcher();
 
@@ -135,6 +136,9 @@
         githubToken: settings.githubToken,
         repoOwner: settings.repoOwner,
       });
+
+      // Update the store to trigger immediate reactivity
+      githubSettingsActions.setProjectSettings(projectId, repoName, branch);
 
       // Store a timestamp in local storage to trigger refresh in other components
       await chrome.storage.local.set({
