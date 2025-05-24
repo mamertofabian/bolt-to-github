@@ -31,9 +31,10 @@ export class SupabaseAuthService {
   private checkInterval: NodeJS.Timeout | null = null;
 
   // Configuration - replace with your actual Supabase project details
-  private readonly SUPABASE_URL = 'https://your-project.supabase.co';
-  private readonly SUPABASE_ANON_KEY = 'your-anon-key';
-  private readonly CHECK_INTERVAL = 30000; // Check every 30 seconds
+  private readonly SUPABASE_URL = 'https://gapvjcqybzabnrjnxzhg.supabase.co';
+  private readonly SUPABASE_ANON_KEY =
+    'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImdhcHZqY3F5YnphYm5yam54emhnIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDc3MjMwMzQsImV4cCI6MjA2MzI5OTAzNH0.6bpYH1nccYIEKbQmctojedbrzMVBGcHhgjCyKXVUgzc';
+  private readonly CHECK_INTERVAL = 1000 * 60 * 10; // Check every 10 minutes
 
   private constructor() {
     this.supabaseUrl = this.SUPABASE_URL;
@@ -120,15 +121,25 @@ export class SupabaseAuthService {
    */
   private async checkAuthStatus(): Promise<void> {
     try {
+      console.log('🔄 Checking authentication status...');
+
       // Try to get authentication token from various sources
       const token = await this.getAuthToken();
 
       if (token) {
+        console.log('🔐 Found authentication token');
+
         // Verify token and get user info
         const user = await this.verifyTokenAndGetUser(token);
         if (user) {
-          // Get subscription status
-          const subscription = await this.getSubscriptionStatus(token);
+          console.log(`👤 Verified user: ${user.email}`);
+
+          // Get subscription status using the user info
+          const subscription = await this.getSubscriptionStatus(token, user);
+
+          console.log(
+            `💰 Subscription status: ${subscription.isActive ? 'active' : 'inactive'} (${subscription.plan})`
+          );
 
           this.updateAuthState({
             isAuthenticated: true,
@@ -136,6 +147,7 @@ export class SupabaseAuthService {
             subscription,
           });
         } else {
+          console.log('❌ Token verification failed');
           this.updateAuthState({
             isAuthenticated: false,
             user: null,
@@ -143,6 +155,7 @@ export class SupabaseAuthService {
           });
         }
       } else {
+        console.log('❌ No authentication token found');
         this.updateAuthState({
           isAuthenticated: false,
           user: null,
@@ -193,12 +206,20 @@ export class SupabaseAuthService {
    */
   private async getTokenFromTab(tabId: number): Promise<string | null> {
     try {
+      // Extract project reference from Supabase URL
+      const projectRef = this.supabaseUrl.split('://')[1].split('.')[0];
+
       const result = await chrome.scripting.executeScript({
         target: { tabId },
-        func: () => {
-          // Check for Supabase session in localStorage
-          const session = localStorage.getItem('supabase.auth.token');
+        func: (projectRef: string) => {
+          // Check for Supabase session in localStorage with project-specific key
+          const sessionKey = `sb-${projectRef}-auth-token`;
+          const session = localStorage.getItem(sessionKey);
+
+          console.log(`🔍 Checking for auth token with key: ${sessionKey}`);
+
           if (session) {
+            console.log('✅ Found auth token with project-specific key');
             try {
               const parsed = JSON.parse(session);
               return parsed.access_token || parsed.token;
@@ -206,13 +227,35 @@ export class SupabaseAuthService {
               return session;
             }
           }
+
+          // Fallback: check for generic key (older format)
+          console.log('🔍 Checking fallback key: supabase.auth.token');
+          const fallbackSession = localStorage.getItem('supabase.auth.token');
+          if (fallbackSession) {
+            console.log('✅ Found auth token with fallback key');
+            try {
+              const parsed = JSON.parse(fallbackSession);
+              return parsed.access_token || parsed.token;
+            } catch {
+              return fallbackSession;
+            }
+          }
+
+          console.log('❌ No auth token found in localStorage');
           return null;
         },
+        args: [projectRef],
       });
 
-      return result[0]?.result || null;
+      const token = result[0]?.result || null;
+      if (token) {
+        console.log('🔐 Successfully retrieved auth token from tab');
+      }
+
+      return token;
     } catch (error) {
       // Tab might not be accessible or script injection failed
+      console.warn('Failed to get token from tab:', error);
       return null;
     }
   }
@@ -251,25 +294,61 @@ export class SupabaseAuthService {
   }
 
   /**
-   * Get subscription status from your edge function
+   * Get subscription status from Supabase RPC function
    */
-  private async getSubscriptionStatus(token: string): Promise<SubscriptionStatus> {
+  private async getSubscriptionStatus(
+    token: string,
+    user?: SupabaseUser
+  ): Promise<SubscriptionStatus> {
     try {
-      const response = await fetch(`${this.supabaseUrl}/functions/v1/check-subscription`, {
+      // Use provided user or get from token
+      let userInfo = user;
+      if (!userInfo) {
+        const fetchedUser = await this.verifyTokenAndGetUser(token);
+        if (!fetchedUser) {
+          return { isActive: false, plan: 'free' };
+        }
+        userInfo = fetchedUser;
+      }
+
+      const response = await fetch(`${this.supabaseUrl}/rest/v1/rpc/get_subscription_status`, {
+        method: 'POST',
         headers: {
           Authorization: `Bearer ${token}`,
           'Content-Type': 'application/json',
+          apikey: this.anonKey,
         },
+        body: JSON.stringify({
+          input_user_id: userInfo.id,
+        }),
       });
 
       if (response.ok) {
         const data = await response.json();
+        console.log('🔍 Raw subscription response:', data);
+
+        // Handle array response from RPC function
+        const subscriptionData = Array.isArray(data) ? data[0] : data;
+
+        if (!subscriptionData) {
+          console.log('⚠️ No subscription data found in response');
+          return { isActive: false, plan: 'free' };
+        }
+
+        console.log('📋 Parsed subscription data:', subscriptionData);
+
+        // Map the response to our SubscriptionStatus interface
+        const isActive = subscriptionData.subscription_status === 'active';
+        const plan = this.mapPlanName(subscriptionData.plan_name);
+
+        console.log(`💰 Subscription parsed: isActive=${isActive}, plan=${plan}`);
+
         return {
-          isActive: data.isActive || false,
-          plan: data.plan || 'free',
-          expiresAt: data.expiresAt,
-          subscriptionId: data.subscriptionId,
-          customerId: data.customerId,
+          isActive,
+          plan,
+          expiresAt: subscriptionData.current_period_end,
+          subscriptionId: undefined, // Not provided in this response
+          customerId: undefined, // Not provided in this response
         };
       }
 
@@ -278,6 +357,31 @@ export class SupabaseAuthService {
       console.error('Error getting subscription status:', error);
       return { isActive: false, plan: 'free' };
     }
+  }
+
+  /**
+   * Map plan names from your backend to our internal plan types
+   */
+  private mapPlanName(planName: string | null): 'free' | 'monthly' | 'yearly' {
+    if (!planName) return 'free';
+
+    const lowerPlan = planName.toLowerCase();
+    console.log(`🔍 Mapping plan name: "${planName}" -> "${lowerPlan}"`);
+
+    if (
+      lowerPlan.includes('yearly') ||
+      lowerPlan.includes('annual') ||
+      lowerPlan.includes('pro annual')
+    ) {
+      console.log('📅 Mapped to yearly plan');
+      return 'yearly';
+    } else if (lowerPlan.includes('monthly') || lowerPlan.includes('pro monthly')) {
+      console.log('📅 Mapped to monthly plan');
+      return 'monthly';
+    }
+
+    console.log('📅 Mapped to free plan (fallback)');
+    return 'free';
   }
 
   /**
@@ -369,7 +473,7 @@ export class SupabaseAuthService {
    */
   public openSignUpPage(): void {
     chrome.tabs.create({
-      url: 'https://bolt2github.com/signup',
+      url: 'https://bolt2github.com/register',
     });
   }
 

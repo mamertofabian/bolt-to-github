@@ -275,6 +275,26 @@ export class ContentManager {
             }
             return;
           }
+
+          if (message.type === 'UPDATE_PREMIUM_STATUS') {
+            console.log('📨 Received UPDATE_PREMIUM_STATUS message from background:', message.data);
+            // Forward to premium service through UIManager
+            if (this.uiManager) {
+              const premiumService = this.uiManager.getPremiumService();
+              if (premiumService) {
+                await premiumService.updatePremiumStatusFromAuth(message.data);
+                console.log('✅ Premium status updated successfully');
+                sendResponse({ success: true });
+              } else {
+                console.warn('❌ Premium service not available');
+                sendResponse({ error: 'Premium service not available' });
+              }
+            } else {
+              console.warn('❌ UI manager not available');
+              sendResponse({ error: 'UI manager not available' });
+            }
+            return;
+          }
         } catch (error) {
           console.error('Error handling message:', error);
           sendResponse({ error: error instanceof Error ? error.message : 'Unknown error' });

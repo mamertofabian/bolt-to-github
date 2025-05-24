@@ -23,3 +23,13 @@ export { fileChangesStore, fileChangesActions, type FileChangesState } from './f
 
 // Export Upload State Store
 export { uploadStateStore, uploadStateActions, type UploadState } from './uploadState';
+
+// Export Premium Store
+export {
+  default as premiumStatusStore,
+  isPremium,
+  premiumPlan,
+  premiumFeatures,
+  premiumStatusActions,
+  type PopupPremiumStatus,
+} from './premiumStore';

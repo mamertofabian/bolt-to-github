@@ -40,6 +40,11 @@
     fileChangesActions,
     uploadStateStore,
     uploadStateActions,
+    premiumStatusStore,
+    isPremium,
+    premiumPlan,
+    premiumFeatures as userPremiumFeatures,
+    premiumStatusActions,
     type TempRepoMetadata,
   } from '$lib/stores';
   import { ChromeMessagingService } from '$lib/services/chromeMessaging';
@@ -53,6 +58,10 @@
   $: settingsValid = $isSettingsValid;
   $: onBoltProject = $isOnBoltProject;
   $: projectId = $currentProjectId;
+  $: premiumStatus = $premiumStatusStore;
+  $: isUserPremium = $isPremium;
+  $: userPlan = $premiumPlan;
+  $: userFeatures = $userPremiumFeatures;
 
   let projectStatusRef: ProjectStatus;
   let showPushReminderSettings = false;
@@ -85,6 +94,7 @@
     projectSettingsActions.initialize();
     githubSettingsActions.initialize();
     uploadStateActions.initializePort();
+    premiumStatusActions.initialize();
 
     // Setup Chrome messaging
     ChromeMessagingService.addPortMessageHandler(handleUploadStatusMessage);
@@ -239,6 +249,13 @@
           <img src="/assets/icons/icon48.png" alt="Bolt to GitHub" class="w-5 h-5" />
           Bolt to GitHub <span class="text-xs text-slate-400">v{projectSettings.version}</span>
         </a>
+        {#if isUserPremium}
+          <span
+            class="text-xs bg-gradient-to-r from-emerald-600 to-green-600 text-white px-2 py-1 rounded-full flex items-center gap-1"
+          >
+            ✅ {userPlan.toUpperCase()}
+          </span>
+        {/if}
       </CardTitle>
       <CardDescription class="text-slate-400">
         Upload and sync your Bolt projects to GitHub
@@ -327,41 +344,69 @@
               <div class="border-t border-slate-800 pt-4">
                 <div class="flex items-center justify-between">
                   <div>
-                    <h3 class="text-lg font-semibold text-slate-200">Premium Status</h3>
-                    <p class="text-sm text-slate-400">Free plan • 3 file changes per day</p>
+                    <h3 class="text-lg font-semibold text-slate-200 flex items-center gap-2">
+                      Premium Status
+                      {#if isUserPremium}
+                        <span
+                          class="text-xs bg-gradient-to-r from-emerald-600 to-green-600 text-white px-2 py-1 rounded-full flex items-center gap-1"
+                        >
+                          ✅ {userPlan.toUpperCase()}
+                        </span>
+                      {/if}
+                    </h3>
+                    <p class="text-sm text-slate-400">
+                      {#if isUserPremium}
+                        {userPlan === 'pro' ? 'Pro Plan' : 'Premium Plan'} • Unlimited features
+                        {#if premiumStatus.expiresAt}
+                          • Expires {new Date(premiumStatus.expiresAt).toLocaleDateString()}
+                        {/if}
+                      {:else}
+                        Free plan • 3 file changes per day
+                      {/if}
+                    </p>
                   </div>
-                  <Button
-                    class="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white"
-                    on:click={() => {
-                      upgradeModalFeature = 'premium';
-                      upgradeModalReason = 'Unlock all premium features';
-                      premiumFeatures = [
-                        {
-                          id: 'unlimited-file-changes',
-                          name: 'Unlimited File Changes',
-                          description: 'View and compare unlimited file changes per day',
-                          icon: '📁',
-                        },
-                        {
-                          id: 'push-reminders',
-                          name: 'Smart Push Reminders',
-                          description:
-                            'Intelligent reminders to push your changes when idle or on schedule',
-                          icon: '⏰',
-                        },
-                        {
-                          id: 'branch-selector',
-                          name: 'Branch Selector',
-                          description:
-                            'Choose specific branches when importing private repositories',
-                          icon: '🌿',
-                        },
-                      ];
-                      showUpgradeModal = true;
-                    }}
-                  >
-                    ✨ Upgrade
-                  </Button>
+                  {#if !isUserPremium}
+                    <Button
+                      class="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white"
+                      on:click={() => {
+                        upgradeModalFeature = 'premium';
+                        upgradeModalReason = 'Unlock all premium features';
+                        premiumFeatures = [
+                          {
+                            id: 'unlimited-file-changes',
+                            name: 'Unlimited File Changes',
+                            description: 'View and compare unlimited file changes per day',
+                            icon: '📁',
+                          },
+                          {
+                            id: 'push-reminders',
+                            name: 'Smart Push Reminders',
+                            description:
+                              'Intelligent reminders to push your changes when idle or on schedule',
+                            icon: '⏰',
+                          },
+                          {
+                            id: 'branch-selector',
+                            name: 'Branch Selector',
+                            description:
+                              'Choose specific branches when importing private repositories',
+                            icon: '🌿',
+                          },
+                        ];
+                        showUpgradeModal = true;
+                      }}
+                    >
+                      ✨ Upgrade
+                    </Button>
+                  {:else}
+                    <Button
+                      variant="outline"
+                      class="border-slate-700 hover:bg-slate-800 text-slate-200"
+                      on:click={() => window.open('https://bolt2github.com/dashboard', '_blank')}
+                    >
+                      Manage
+                    </Button>
+                  {/if}
                 </div>
               </div>
             </div>

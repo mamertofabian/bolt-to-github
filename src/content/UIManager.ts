@@ -91,6 +91,20 @@ export class UIManager {
     // Link premium service to push reminder service
     this.pushReminderService.setPremiumService(this.premiumService);
 
+    // Expose debug methods to global scope for debugging
+    if (typeof window !== 'undefined') {
+      (window as any).debugBoltToGitHub = {
+        forceAuthCheck: () => this.forceAuthCheck(),
+        getUIManager: () => this,
+        getPremiumService: () => this.premiumService,
+        checkLocalStorageAuth: () => this.checkLocalStorageAuth(),
+        getCurrentTabs: () => this.getCurrentTabs(),
+        checkPremiumStatus: () => this.checkPremiumStatus(),
+        forcePremiumRefresh: () => this.forcePremiumRefresh(),
+      };
+      console.log('🐛 Debug tools available: window.debugBoltToGitHub');
+    }
+
     // Link premium service to file change handler
     this.fileChangeHandler.setPremiumService(this.premiumService);
 
@@ -170,6 +184,28 @@ export class UIManager {
    */
   public async handleShowChangedFiles() {
     return this.fileChangeHandler.showChangedFiles();
+  }
+
+  /**
+   * Force a Supabase authentication check (for debugging)
+   */
+  public async forceAuthCheck() {
+    console.log('🔐 Triggering manual auth check...');
+    try {
+      await chrome.runtime.sendMessage({ type: 'FORCE_AUTH_CHECK' });
+      this.showNotification({
+        type: 'info',
+        message: 'Authentication check triggered. Check console for details.',
+        duration: 3000,
+      });
+    } catch (error) {
+      console.error('Failed to trigger auth check:', error);
+      this.showNotification({
+        type: 'error',
+        message: 'Failed to trigger authentication check',
+        duration: 5000,
+      });
+    }
   }
 
   /**
@@ -368,5 +404,110 @@ export class UIManager {
     feature: keyof import('./services/PremiumService').PremiumStatus['features']
   ): boolean {
     return this.premiumService.hasFeature(feature);
+  }
+
+  /**
+   * Debug method to check local storage for auth tokens
+   */
+  public checkLocalStorageAuth() {
+    console.log('🔍 Checking localStorage for Supabase auth tokens...');
+
+    // Check project-specific key
+    const projectRef = 'gapvjcqybzabnrjnxzhg';
+    const sessionKey = `sb-${projectRef}-auth-token`;
+    const session = localStorage.getItem(sessionKey);
+
+    console.log(`🔍 Checking key: ${sessionKey}`);
+    if (session) {
+      console.log('✅ Found session with project-specific key:', session.substring(0, 100) + '...');
+      try {
+        const parsed = JSON.parse(session);
+        console.log('📋 Parsed session data:', {
+          access_token: parsed.access_token ? 'Present' : 'Missing',
+          expires_at: parsed.expires_at,
+          user: parsed.user ? { id: parsed.user.id, email: parsed.user.email } : 'Missing',
+        });
+      } catch (error) {
+        console.error('❌ Failed to parse session:', error);
+      }
+    } else {
+      console.log('❌ No session found with project-specific key');
+    }
+
+    // Check fallback key
+    const fallbackSession = localStorage.getItem('supabase.auth.token');
+    console.log('🔍 Checking fallback key: supabase.auth.token');
+    if (fallbackSession) {
+      console.log('✅ Found session with fallback key');
+    } else {
+      console.log('❌ No session found with fallback key');
+    }
+
+    // Check all localStorage keys containing 'supabase' or 'auth'
+    console.log('🔍 All localStorage keys containing "supabase" or "auth":');
+    for (let i = 0; i < localStorage.length; i++) {
+      const key = localStorage.key(i);
+      if (key && (key.includes('supabase') || key.includes('auth'))) {
+        console.log(`  - ${key}`);
+      }
+    }
+  }
+
+  /**
+   * Debug method to check current tab information
+   */
+  public async getCurrentTabs() {
+    console.log('🔍 Checking current tabs for bolt2github.com...');
+    try {
+      const tabs = await chrome.tabs.query({ url: 'https://bolt2github.com/*' });
+      console.log(
+        `📋 Found ${tabs.length} bolt2github.com tabs:`,
+        tabs.map((tab) => ({ id: tab.id, url: tab.url, active: tab.active }))
+      );
+
+      const allTabs = await chrome.tabs.query({});
+      const authTabs = allTabs.filter((tab) => tab.url?.includes('bolt2github.com'));
+      console.log(
+        `📋 All tabs with bolt2github.com: ${authTabs.length}`,
+        authTabs.map((tab) => ({ id: tab.id, url: tab.url, active: tab.active }))
+      );
+    } catch (error) {
+      console.error('❌ Error checking tabs:', error);
+    }
+  }
+
+  /**
+   * Debug method to check current premium status
+   */
+  public checkPremiumStatus() {
+    console.log('🔍 Checking current premium status...');
+
+    const premiumStatus = this.premiumService.getStatus();
+    console.log('📋 Premium status:', premiumStatus);
+
+    const usageInfo = this.premiumService.getUsageInfo();
+    console.log('📊 Usage info:', usageInfo);
+
+    const isPremium = this.premiumService.isPremium();
+    console.log(`💎 Is premium: ${isPremium}`);
+
+    // Check stored auth state
+    chrome.storage.local.get(['supabaseAuthState', 'premiumStatus']).then((result) => {
+      console.log('💾 Stored auth state:', result.supabaseAuthState);
+      console.log('💾 Stored premium status:', result.premiumStatus);
+    });
+  }
+
+  /**
+   * Force refresh premium status (for debugging)
+   */
+  public async forcePremiumRefresh() {
+    console.log('🔄 Forcing premium status refresh...');
+    try {
+      await this.premiumService.checkPremiumStatusFromServer();
+      console.log('✅ Premium status refresh completed');
+    } catch (error) {
+      console.error('❌ Failed to refresh premium status:', error);
+    }
   }
 }

@@ -30,6 +30,7 @@ export class PremiumService {
   private premiumStatus: PremiumStatus;
   private usageLimits: UsageLimits;
   private supabaseAuthService: any; // Will be imported dynamically
+  private currentAuthPlan: 'free' | 'monthly' | 'yearly' = 'free';
 
   // Free tier limits
   private readonly FREE_DAILY_FILE_CHANGES = 3;
@@ -61,16 +62,9 @@ export class PremiumService {
    */
   private async initializeSupabaseAuth(): Promise<void> {
     try {
-      // Import SupabaseAuthService in background context
-      if (typeof chrome !== 'undefined' && chrome.runtime) {
-        // In background/service worker context
-        chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
-          if (message.type === 'UPDATE_PREMIUM_STATUS') {
-            this.updatePremiumStatusFromAuth(message.data);
-            sendResponse({ success: true });
-          }
-        });
-      }
+      // Message handling is now done through ContentManager
+      // to avoid conflicts with multiple message listeners
+      console.log('🔐 Supabase auth integration initialized (messages handled by ContentManager)');
     } catch (error) {
       console.warn('Failed to initialize Supabase auth integration:', error);
     }
@@ -79,12 +73,15 @@ export class PremiumService {
   /**
    * Update premium status from Supabase auth service
    */
-  private async updatePremiumStatusFromAuth(authData: {
+  public async updatePremiumStatusFromAuth(authData: {
     isPremium: boolean;
     plan: 'free' | 'monthly' | 'yearly';
     expiresAt?: string;
   }): Promise<void> {
     const expiresAt = authData.expiresAt ? new Date(authData.expiresAt).getTime() : undefined;
+
+    // Store the plan info for better UI display
+    this.currentAuthPlan = authData.plan;
 
     await this.updatePremiumStatus({
       isPremium: authData.isPremium,
@@ -132,9 +129,37 @@ export class PremiumService {
         premiumStatus: this.premiumStatus,
         usageLimits: this.usageLimits,
       });
+
+      // Also save to sync storage for popup access
+      await chrome.storage.sync.set({
+        popupPremiumStatus: {
+          isPremium: this.premiumStatus.isPremium,
+          plan: this.getCurrentPlan(),
+          expiresAt: this.premiumStatus.expiresAt,
+          features: this.premiumStatus.features,
+          lastUpdated: Date.now(),
+        },
+      });
     } catch (error) {
       console.warn('Failed to save premium data:', error);
     }
+  }
+
+  /**
+   * Get current plan name for display
+   */
+  private getCurrentPlan(): string {
+    if (!this.premiumStatus.isPremium) return 'free';
+
+    // Use the actual plan from auth if available
+    if (this.currentAuthPlan === 'yearly') {
+      return 'pro annual';
+    } else if (this.currentAuthPlan === 'monthly') {
+      return 'pro monthly';
+    }
+
+    // Fallback to generic 'pro' for premium users
+    return 'pro';
   }
 
   /**
@@ -325,12 +350,12 @@ export class PremiumService {
         chrome.tabs.create({ url: 'https://bolt2github.com/upgrade' });
       } else {
         // User needs to sign up first
-        chrome.tabs.create({ url: 'https://bolt2github.com/signup' });
+        chrome.tabs.create({ url: 'https://bolt2github.com/register' });
       }
     } catch (error) {
       console.warn('Error checking authentication status, redirecting to signup:', error);
       // Default to signup if we can't determine auth status
-      chrome.tabs.create({ url: 'https://bolt2github.com/signup' });
+      chrome.tabs.create({ url: 'https://bolt2github.com/register' });
     }
   }
 }

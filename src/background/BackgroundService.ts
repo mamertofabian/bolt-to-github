@@ -26,6 +26,12 @@ export class BackgroundService {
     this.pendingCommitMessage = 'Commit from Bolt to GitHub';
     this.supabaseAuthService = SupabaseAuthService.getInstance();
     this.initialize();
+
+    // Force initial auth check
+    setTimeout(() => {
+      console.log('🔐 Forcing initial Supabase auth check...');
+      this.supabaseAuthService.forceCheck();
+    }, 2000); // Wait 2 seconds after initialization
   }
 
   // this.initializeListeners();
@@ -122,6 +128,10 @@ export class BackgroundService {
       } else if (message.type === 'CHECK_PREMIUM_FEATURE') {
         this.handleCheckPremiumFeature(message.feature, sendResponse);
         return true; // Will respond asynchronously
+      } else if (message.type === 'FORCE_AUTH_CHECK') {
+        console.log('🔐 Forcing auth check via message');
+        this.supabaseAuthService.forceCheck();
+        sendResponse({ success: true });
       }
 
       // Return true to indicate we'll send a response asynchronously
