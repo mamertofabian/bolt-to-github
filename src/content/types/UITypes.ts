@@ -56,6 +56,8 @@ export interface UIState {
     isValid: boolean;
     isProcessing: boolean;
     isInitialized: boolean;
+    loadingState?: 'detecting-changes' | 'pushing' | 'custom';
+    loadingText?: string;
   };
   notifications: {
     active: number;

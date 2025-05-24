@@ -57,15 +57,19 @@ export class GitHubUploadHandler implements IGitHubUploadHandler {
    * Handle GitHub push with fresh file comparison (for main interface)
    */
   public async handleGitHubPushWithFreshComparison(): Promise<void> {
-    return this.handleGitHubPush(false);
+    return this.handleGitHubPush(false, true);
   }
 
   /**
    * Handle the complete GitHub push workflow
    * Replaces the previous handleGitHubPushAction method from UIManager
    * @param useStoredChanges Whether to use stored changes from recent comparison (default: true)
+   * @param skipChangeDetection Whether to skip the pre-push change detection phase (default: false)
    */
-  public async handleGitHubPush(useStoredChanges: boolean = true): Promise<void> {
+  public async handleGitHubPush(
+    useStoredChanges: boolean = true,
+    skipChangeDetection: boolean = false
+  ): Promise<void> {
     console.log('🔊 Handling GitHub push action');
 
     // Validate settings first
@@ -74,6 +78,39 @@ export class GitHubUploadHandler implements IGitHubUploadHandler {
       this.notificationManager.showSettingsNotification();
       return;
     }
+
+    // Skip change detection for direct pushes (GitHub button, Project Status)
+    if (skipChangeDetection) {
+      console.log('Skipping change detection for direct push');
+
+      // Show simple confirmation dialog without change detection
+      const { confirmed, commitMessage } = await this.notificationManager.showConfirmationDialog({
+        title: 'Confirm GitHub Push',
+        message: `Repository: <span class="font-mono">${settings.gitHubSettings?.projectSettings?.repoName || 'N/A'} / ${settings.gitHubSettings?.projectSettings?.branch || 'N/A'}</span><br><br>Push your changes to GitHub?<br><small class="text-gray-500">Only modified files will be uploaded.</small>`,
+        confirmText: 'Push Changes',
+        cancelText: 'Cancel',
+        type: 'info',
+      });
+
+      if (!confirmed) return;
+
+      // Proceed directly to upload
+      await this.proceedWithUpload(commitMessage);
+      return;
+    }
+
+    // Original change detection flow for file changes view
+    // Set detecting changes state before checking for changes
+    if (this.stateManager) {
+      this.stateManager.setButtonDetectingChanges();
+    }
+
+    // Show status notification to inform user about the process
+    this.notificationManager.showNotification({
+      type: 'info',
+      message: 'Detecting changes before push...',
+      duration: 8000,
+    });
 
     // Check for file changes to provide better confirmation message
     let changesSummary = 'Checking for changes...';
@@ -129,6 +166,11 @@ export class GitHubUploadHandler implements IGitHubUploadHandler {
       changesSummary = 'Unable to detect changes';
     }
 
+    // Reset button state before showing confirmation dialog
+    if (this.stateManager) {
+      this.stateManager.resetButtonLoadingState();
+    }
+
     // Show enhanced confirmation dialog
     const confirmationMessage = hasChanges
       ? `${changesSummary}<br><br>Do you want to push these changes to GitHub?`
@@ -142,12 +184,25 @@ export class GitHubUploadHandler implements IGitHubUploadHandler {
       type: hasChanges ? 'info' : 'warning',
     });
 
-    if (!confirmed) return;
-
-    try {
-      // Notify about button state change (processing)
+    if (!confirmed) {
+      // Reset button state if cancelled
       if (this.stateManager) {
-        this.stateManager.setButtonProcessing(true);
+        this.stateManager.resetButtonLoadingState();
+      }
+      return;
+    }
+
+    await this.proceedWithUpload(commitMessage);
+  }
+
+  /**
+   * Proceed with the actual upload process
+   */
+  private async proceedWithUpload(commitMessage?: string): Promise<void> {
+    try {
+      // Set pushing state when user confirms
+      if (this.stateManager) {
+        this.stateManager.setButtonPushing();
       }
 
       // Send commit message to background
@@ -172,9 +227,9 @@ export class GitHubUploadHandler implements IGitHubUploadHandler {
         duration: 5000,
       });
 
-      // Reset button state
+      // Reset button state on error
       if (this.stateManager) {
-        this.stateManager.setButtonProcessing(false);
+        this.stateManager.resetButtonLoadingState();
       }
     }
   }

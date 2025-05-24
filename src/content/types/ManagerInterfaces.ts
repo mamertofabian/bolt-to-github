@@ -25,6 +25,9 @@ export interface IGitHubButtonManager {
   initialize(): Promise<void>;
   updateState(isValid: boolean): void;
   setProcessingState(): void;
+  setDetectingChangesState(): void;
+  setPushingState(): void;
+  setLoadingState(text: string): void;
   resetState(): void;
   getButton(): HTMLElement | null;
   isInitialized(): boolean;
@@ -42,6 +45,10 @@ export interface IDropdownManager {
 export interface IUIStateManager {
   setUploadStatus(status: UploadStatusState): void;
   setButtonState(isValid: boolean): void;
+  setButtonDetectingChanges(): void;
+  setButtonPushing(): void;
+  setButtonLoadingState(text: string): void;
+  resetButtonLoadingState(): void;
   getState(): UIState;
 }
 

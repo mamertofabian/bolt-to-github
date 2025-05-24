@@ -148,11 +148,60 @@ export class GitHubButtonManager implements IGitHubButtonManager {
         <span>Uploading...</span>
       </div>
     `;
+  }
 
-    // Update centralized state if state manager is available
-    if (this.stateManager) {
-      this.stateManager.setButtonProcessing(true);
-    }
+  /**
+   * Set button to detecting changes state
+   */
+  public setDetectingChangesState(): void {
+    if (!this.uploadButton) return;
+
+    (this.uploadButton as HTMLButtonElement).disabled = true;
+    this.uploadButton.innerHTML = `
+      <div class="flex items-center gap-1.5">
+        <svg class="animate-spin h-3 w-3" viewBox="0 0 24 24">
+          <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4" fill="none"></circle>
+          <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+        </svg>
+        <span>Detecting changes...</span>
+      </div>
+    `;
+  }
+
+  /**
+   * Set button to pushing state
+   */
+  public setPushingState(): void {
+    if (!this.uploadButton) return;
+
+    (this.uploadButton as HTMLButtonElement).disabled = true;
+    this.uploadButton.innerHTML = `
+      <div class="flex items-center gap-1.5">
+        <svg class="animate-spin h-3 w-3" viewBox="0 0 24 24">
+          <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4" fill="none"></circle>
+          <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+        </svg>
+        <span>Pushing...</span>
+      </div>
+    `;
+  }
+
+  /**
+   * Set button to a custom loading state with specified text
+   */
+  public setLoadingState(text: string): void {
+    if (!this.uploadButton) return;
+
+    (this.uploadButton as HTMLButtonElement).disabled = true;
+    this.uploadButton.innerHTML = `
+      <div class="flex items-center gap-1.5">
+        <svg class="animate-spin h-3 w-3" viewBox="0 0 24 24">
+          <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4" fill="none"></circle>
+          <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+        </svg>
+        <span>${text}</span>
+      </div>
+    `;
   }
 
   /**
@@ -163,11 +212,6 @@ export class GitHubButtonManager implements IGitHubButtonManager {
 
     (this.uploadButton as HTMLButtonElement).disabled = false;
     this.uploadButton.innerHTML = this.getButtonHTML();
-
-    // Update centralized state if state manager is available
-    if (this.stateManager) {
-      this.stateManager.setButtonProcessing(false);
-    }
   }
 
   /**

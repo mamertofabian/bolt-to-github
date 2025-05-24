@@ -14,6 +14,8 @@ export type StateChangeListener = (newState: UIState, previousState: UIState) =>
 export class UIStateManager implements IUIStateManager {
   private state: UIState;
   private listeners: Set<StateChangeListener> = new Set();
+  private notificationDepth = 0;
+  private readonly MAX_NOTIFICATION_DEPTH = 5;
 
   constructor() {
     this.state = this.createInitialState();
@@ -64,6 +66,9 @@ export class UIStateManager implements IUIStateManager {
       status.status === 'error'
     ) {
       this.state.buttonState.isProcessing = false;
+      // Clear loading state when upload completes
+      delete this.state.buttonState.loadingState;
+      delete this.state.buttonState.loadingText;
     }
 
     this.notifyListeners(previousState);
@@ -84,6 +89,48 @@ export class UIStateManager implements IUIStateManager {
   public setButtonProcessing(isProcessing: boolean): void {
     const previousState = { ...this.state };
     this.state.buttonState.isProcessing = isProcessing;
+    this.notifyListeners(previousState);
+  }
+
+  /**
+   * Set button to detecting changes state
+   */
+  public setButtonDetectingChanges(): void {
+    const previousState = { ...this.state };
+    this.state.buttonState.isProcessing = true;
+    this.state.buttonState.loadingState = 'detecting-changes';
+    this.notifyListeners(previousState);
+  }
+
+  /**
+   * Set button to pushing state
+   */
+  public setButtonPushing(): void {
+    const previousState = { ...this.state };
+    this.state.buttonState.isProcessing = true;
+    this.state.buttonState.loadingState = 'pushing';
+    this.notifyListeners(previousState);
+  }
+
+  /**
+   * Set button to custom loading state
+   */
+  public setButtonLoadingState(text: string): void {
+    const previousState = { ...this.state };
+    this.state.buttonState.isProcessing = true;
+    this.state.buttonState.loadingState = 'custom';
+    this.state.buttonState.loadingText = text;
+    this.notifyListeners(previousState);
+  }
+
+  /**
+   * Reset button loading state
+   */
+  public resetButtonLoadingState(): void {
+    const previousState = { ...this.state };
+    this.state.buttonState.isProcessing = false;
+    delete this.state.buttonState.loadingState;
+    delete this.state.buttonState.loadingText;
     this.notifyListeners(previousState);
   }
 
@@ -145,7 +192,23 @@ export class UIStateManager implements IUIStateManager {
    * Get current state (readonly copy)
    */
   public getState(): UIState {
-    return JSON.parse(JSON.stringify(this.state));
+    // Use structuredClone if available, fallback to manual copy to avoid circular references
+    if (typeof structuredClone !== 'undefined') {
+      try {
+        return structuredClone(this.state);
+      } catch (error) {
+        console.warn('structuredClone failed, using manual copy:', error);
+      }
+    }
+
+    // Manual deep copy to avoid circular references
+    return {
+      uploadStatus: { ...this.state.uploadStatus },
+      buttonState: { ...this.state.buttonState },
+      notifications: { ...this.state.notifications },
+      dropdown: { ...this.state.dropdown },
+      components: { ...this.state.components },
+    };
   }
 
   /**
@@ -189,14 +252,26 @@ export class UIStateManager implements IUIStateManager {
    * Notify all listeners of state change
    */
   private notifyListeners(previousState: UIState): void {
-    const currentState = this.getState();
-    this.listeners.forEach((listener) => {
-      try {
-        listener(currentState, previousState);
-      } catch (error) {
-        console.error('Error in state change listener:', error);
-      }
-    });
+    // Prevent infinite loops
+    if (this.notificationDepth >= this.MAX_NOTIFICATION_DEPTH) {
+      console.warn('Maximum notification depth reached, preventing infinite loop');
+      return;
+    }
+
+    this.notificationDepth++;
+
+    try {
+      const currentState = this.getState();
+      this.listeners.forEach((listener) => {
+        try {
+          listener(currentState, previousState);
+        } catch (error) {
+          console.error('Error in state change listener:', error);
+        }
+      });
+    } finally {
+      this.notificationDepth--;
+    }
   }
 
   /**

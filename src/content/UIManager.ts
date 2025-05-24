@@ -159,6 +159,29 @@ export class UIManager {
     const status = newState.uploadStatus;
     const buttonState = newState.buttonState;
 
+    // Handle specific loading states
+    if (buttonState.loadingState && buttonState.isProcessing) {
+      switch (buttonState.loadingState) {
+        case 'detecting-changes':
+          this.githubButtonManager.setDetectingChangesState();
+          break;
+        case 'pushing':
+          this.githubButtonManager.setPushingState();
+          break;
+        case 'custom':
+          if (buttonState.loadingText) {
+            this.githubButtonManager.setLoadingState(buttonState.loadingText);
+          }
+          break;
+      }
+    } else if (!buttonState.isProcessing && !buttonState.loadingState) {
+      // Reset button state when not processing and no loading state
+      this.githubButtonManager.resetState();
+    } else if (buttonState.isProcessing && !buttonState.loadingState) {
+      // Use legacy processing state for backward compatibility
+      this.githubButtonManager.setProcessingState();
+    }
+
     // Reset GitHub button when upload is complete
     if (status.status !== 'uploading' && this.isGitHubUpload) {
       this.isGitHubUpload = false;
@@ -175,7 +198,9 @@ export class UIManager {
    * Delegates to GitHubUploadHandler
    */
   public async handleGitHubPushAction() {
-    return this.githubUploadHandler.handleGitHubPush();
+    // Skip change detection for direct GitHub button clicks
+    // The upload process itself has intelligent hash-based change detection
+    return this.githubUploadHandler.handleGitHubPush(true, true);
   }
 
   public cleanup() {
