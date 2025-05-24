@@ -156,6 +156,31 @@ console.log('Decoded UTF-8:', decoded);
 3. **Partial file updates**: Support for showing partial file changes in large files
 4. **Smart comparison**: More intelligent comparison algorithms for specific file types
 
+## Testing
+
+### FileService Test Fix
+
+Fixed a broken test in `FileService.test.ts` that was failing after introducing the `decodeBase64ToUtf8` function:
+
+- **Issue**: Test was expecting `global.atob` to be called, but `FileService` now uses `decodeBase64ToUtf8`
+- **Solution**: Added proper mock for `$lib/fileUtils` module and updated test assertions
+- **Files Updated**: `src/services/__tests__/FileService.test.ts`
+
+### New FileUtils Tests
+
+Created comprehensive unit tests for `src/lib/fileUtils.ts`:
+
+- **File**: `src/lib/__tests__/fileUtils.test.ts`
+- **Coverage**: Tests for `processFilesWithGitignore`, `decodeBase64ToUtf8`, and `normalizeContentForComparison`
+- **Key Features**:
+  - Tests gitignore processing with various scenarios
+  - Tests content normalization edge cases
+  - Tests UTF-8 decoding (basic scenarios due to Jest environment limitations)
+  - Validates actual behavior vs expected behavior
+- **Notes**:
+  - `calculateGitBlobHash` tests skipped due to complexity of mocking `crypto.subtle` in Jest
+  - UTF-8 encoding tests are limited in Jest but work properly in browser environment
+
 ## Debugging Tips
 
 If you still see false positives:
