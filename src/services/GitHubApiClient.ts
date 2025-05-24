@@ -1,4 +1,4 @@
-import { IGitHubApiClient } from './interfaces/IGitHubApiClient';
+import type { IGitHubApiClient } from './interfaces/IGitHubApiClient';
 import { RateLimitHandler } from './RateLimitHandler';
 
 /**
@@ -58,6 +58,7 @@ export class GitHubApiClient implements IGitHubApiClient {
     let retryCount = 0;
     const maxRetries = 3;
 
+    // eslint-disable-next-line no-constant-condition
     while (true) {
       try {
         // Apply rate limiting

@@ -135,7 +135,6 @@ export class TokenService implements ITokenService {
     try {
       // First determine if username refers to an organization
       let isOrg = false;
-      let testOwner = username;
       let authUser;
 
       try {

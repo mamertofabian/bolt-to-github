@@ -9,10 +9,12 @@ import { GitHubApiClient } from './GitHubApiClient';
 import { TokenService } from './TokenService';
 import { RepositoryService } from './RepositoryService';
 import { FileService } from './FileService';
+import { RepoCloneService } from './RepoCloneService';
 import type { IGitHubApiClient } from './interfaces/IGitHubApiClient';
 import type { ITokenService } from './interfaces/ITokenService';
 import type { IRepositoryService } from './interfaces/IRepositoryService';
 import type { IFileService } from './interfaces/IFileService';
+import type { IRepoCloneService } from './interfaces/IRepoCloneService';
 import type { ProgressCallback } from './types/common';
 
 export class GitHubService {
@@ -21,13 +23,19 @@ export class GitHubService {
   private tokenService: ITokenService;
   private repositoryService: IRepositoryService;
   private fileService: IFileService;
+  private repoCloneService: IRepoCloneService;
 
   constructor(token: string) {
     // Initialize components
     this.apiClient = new GitHubApiClient(token);
     this.tokenService = new TokenService(this.apiClient);
     this.fileService = new FileService(this.apiClient);
-    this.repositoryService = new RepositoryService(this.apiClient, this.fileService);
+    this.repoCloneService = new RepoCloneService(this.apiClient, this.fileService);
+    this.repositoryService = new RepositoryService(
+      this.apiClient,
+      this.fileService,
+      this.repoCloneService
+    );
   }
 
   // Legacy methods TODO: Remove after refactoring
