@@ -155,6 +155,10 @@ export class ContentManager {
     this.isReconnecting = false;
     this.reconnectAttempts = 0;
     this.uiManager?.cleanup();
+
+    // Reset UIManager singleton to ensure clean recreation
+    UIManager.resetInstance();
+    this.uiManager = undefined; // Clear reference to cleaned up UIManager
   }
 
   /**
@@ -200,24 +204,21 @@ export class ContentManager {
 
     // Listen for direct messages from the popup
     chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
+      // Handle legacy file changes requests
       if (message.action === 'REQUEST_FILE_CHANGES') {
         console.log('Received request for file changes from popup');
-        // Get the current project ID from the URL
         const projectId = window.location.pathname.split('/').pop() || '';
         console.log('Current project ID:', projectId);
-
-        // Trigger the file changes calculation and display with the current project ID
         this.uiManager?.handleShowChangedFiles();
-        // Acknowledge receipt
         sendResponse({ success: true, projectId });
-      } else if (message.action === 'REFRESH_FILE_CHANGES') {
+        return;
+      }
+
+      if (message.action === 'REFRESH_FILE_CHANGES') {
         console.log('Received refresh file changes request from popup');
-        // Get the current project ID from the URL
         const projectId = window.location.pathname.split('/').pop() || '';
         console.log('Refreshing file changes for project ID:', projectId);
 
-        // Trigger the file changes calculation with forced refresh
-        // This will automatically send the updated changes back to the popup
         this.uiManager
           ?.handleShowChangedFiles()
           .then(() => {
@@ -231,7 +232,55 @@ export class ContentManager {
               projectId,
             });
           });
+        return true; // Keep channel open for async response
       }
+
+      // Handle new message types with async support
+      (async () => {
+        try {
+          if (message.type === 'REFRESH_FILE_CHANGES') {
+            await this.uiManager?.handleShowChangedFiles();
+            sendResponse({ success: true });
+            return;
+          }
+
+          if (message.type === 'GET_PUSH_REMINDER_DEBUG') {
+            const reminderService = this.uiManager?.getPushReminderService();
+            if (reminderService) {
+              const debugInfo = reminderService.getDebugInfo();
+              sendResponse(debugInfo);
+            } else {
+              sendResponse({ error: 'Push reminder service not available' });
+            }
+            return;
+          }
+
+          if (message.type === 'UPDATE_PUSH_REMINDER_SETTINGS') {
+            const reminderService = this.uiManager?.getPushReminderService();
+            if (reminderService) {
+              await reminderService.updateSettings(message.settings);
+              sendResponse({ success: true });
+            } else {
+              sendResponse({ error: 'Push reminder service not available' });
+            }
+            return;
+          }
+
+          if (message.type === 'SNOOZE_PUSH_REMINDERS') {
+            if (this.uiManager) {
+              this.uiManager.snoozePushReminders();
+              sendResponse({ success: true });
+            } else {
+              sendResponse({ error: 'UI manager not available' });
+            }
+            return;
+          }
+        } catch (error) {
+          console.error('Error handling message:', error);
+          sendResponse({ error: error instanceof Error ? error.message : 'Unknown error' });
+        }
+      })();
+
       return true; // Keep the message channel open for async response
     });
   }
@@ -259,7 +308,13 @@ export class ContentManager {
     try {
       this.cleanup();
       this.initializeConnection();
-      this.uiManager?.reinitialize();
+
+      // Recreate UIManager since cleanup destroyed the previous instance
+      if (this.messageHandler) {
+        this.uiManager = UIManager.initialize(this.messageHandler);
+        console.log('🔧 ContentManager: Recreated UIManager after cleanup');
+      }
+
       this.messageHandler?.sendMessage('CONTENT_SCRIPT_READY');
     } catch (error) {
       console.error('Error reinitializing content script:', error);

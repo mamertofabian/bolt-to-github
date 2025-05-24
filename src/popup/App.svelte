@@ -22,6 +22,7 @@
   import ProjectStatus from '$lib/components/ProjectStatus.svelte';
   import FileChangesModal from './components/FileChangesModal.svelte';
   import TempRepoModal from './components/TempRepoModal.svelte';
+  import PushReminderSettings from './components/PushReminderSettings.svelte';
 
   // Import stores and services
   import {
@@ -53,6 +54,7 @@
   $: projectId = $currentProjectId;
 
   let projectStatusRef: ProjectStatus;
+  let showPushReminderSettings = false;
 
   // Message handlers
   function handleUploadStatusMessage(message: any) {
@@ -281,6 +283,25 @@
                 onSave={saveSettings}
                 onInput={() => {}}
               />
+
+              <!-- Push Reminder Settings -->
+              <div class="border-t border-slate-800 pt-4">
+                <div class="flex items-center justify-between">
+                  <div>
+                    <h3 class="text-lg font-semibold text-slate-200">Push Reminders</h3>
+                    <p class="text-sm text-slate-400">
+                      Smart reminders to save your work to GitHub
+                    </p>
+                  </div>
+                  <Button
+                    variant="outline"
+                    class="border-slate-700 hover:bg-slate-800 text-slate-200"
+                    on:click={() => (showPushReminderSettings = true)}
+                  >
+                    Configure
+                  </Button>
+                </div>
+              </div>
             </div>
           </TabsContent>
 
@@ -350,6 +371,8 @@
     onUseTempRepoName={handleUseTempRepoName}
     onDismiss={() => uiStateActions.hideTempRepoModal()}
   />
+
+  <PushReminderSettings bind:show={showPushReminderSettings} />
 </main>
 
 <style>

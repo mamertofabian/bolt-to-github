@@ -12,6 +12,7 @@ import { FileChangeHandler } from './handlers/FileChangeHandler';
 import { DOMObserver } from './infrastructure/DOMObserver';
 import { ComponentLifecycleManager } from './infrastructure/ComponentLifecycleManager';
 import { UIStateManager } from './services/UIStateManager';
+import { PushReminderService } from './services/PushReminderService';
 
 export class UIManager {
   private static instance: UIManager | null = null;
@@ -33,6 +34,9 @@ export class UIManager {
   // Add infrastructure components
   private domObserver: DOMObserver;
   private componentLifecycleManager: ComponentLifecycleManager;
+
+  // Add services
+  private pushReminderService: PushReminderService;
 
   private constructor(messageHandler: MessageHandler) {
     // Initialize centralized state management first
@@ -74,6 +78,10 @@ export class UIManager {
     // Initialize FileChangeHandler
     this.fileChangeHandler = new FileChangeHandler(messageHandler, this.notificationManager);
 
+    // Initialize PushReminderService
+    console.log('🔊 Initializing PushReminderService');
+    this.pushReminderService = new PushReminderService(messageHandler, this.notificationManager);
+
     // Set up state change listening for coordination
     this.setupStateCoordination();
 
@@ -101,6 +109,7 @@ export class UIManager {
   // Reset instance (useful for testing or cleanup)
   static resetInstance(): void {
     if (UIManager.instance) {
+      console.log('🔧 UIManager: Resetting singleton instance');
       UIManager.instance.cleanup();
       UIManager.instance = null;
     }
@@ -185,6 +194,11 @@ export class UIManager {
     // Reset GitHub button when upload is complete
     if (status.status !== 'uploading' && this.isGitHubUpload) {
       this.isGitHubUpload = false;
+
+      // Reset push reminder state when upload completes successfully
+      if (status.status === 'success') {
+        this.pushReminderService.resetReminderState();
+      }
     }
 
     // Update isGitHubUpload flag based on upload status
@@ -215,6 +229,9 @@ export class UIManager {
     this.dropdownManager.cleanup();
     this.notificationManager.cleanup();
     this.uploadStatusManager.cleanup();
+
+    // Cleanup services
+    this.pushReminderService.cleanup();
   }
 
   public reinitialize() {
@@ -246,5 +263,61 @@ export class UIManager {
     // Mark components as initialized
     this.stateManager.setComponentInitialized('notificationInitialized', true);
     this.stateManager.setComponentInitialized('uploadStatusInitialized', true);
+  }
+
+  /**
+   * Get push reminder service for external control
+   */
+  public getPushReminderService(): PushReminderService {
+    return this.pushReminderService;
+  }
+
+  /**
+   * Enable push reminders
+   */
+  public enablePushReminders(): void {
+    this.pushReminderService.enable();
+  }
+
+  /**
+   * Disable push reminders
+   */
+  public disablePushReminders(): void {
+    this.pushReminderService.disable();
+  }
+
+  /**
+   * Snooze push reminders for the configured interval
+   */
+  public snoozePushReminders(): void {
+    this.pushReminderService.snoozeReminders();
+  }
+
+  /**
+   * Enable debug mode for push reminders (faster testing)
+   */
+  public enablePushReminderDebugMode(): void {
+    this.pushReminderService.enableDebugMode();
+  }
+
+  /**
+   * Disable debug mode for push reminders
+   */
+  public disablePushReminderDebugMode(): void {
+    this.pushReminderService.disableDebugMode();
+  }
+
+  /**
+   * Force a push reminder check (for testing)
+   */
+  public async forceReminderCheck(): Promise<void> {
+    return this.pushReminderService.forceReminderCheck();
+  }
+
+  /**
+   * Force show a push reminder (for testing)
+   */
+  public async forceShowReminder(): Promise<void> {
+    return this.pushReminderService.forceShowReminder();
   }
 }
