@@ -180,4 +180,134 @@ export class BackgroundTempRepoManager {
       this.cleanupInterval = null;
     }
   }
+
+  /**
+   * Static methods for popup integration
+   */
+
+  /**
+   * Get the most recent temp repository for a project
+   */
+  public static async getMostRecentTempRepo(projectId: string): Promise<TempRepoMetadata | null> {
+    try {
+      const tempRepos = await BackgroundTempRepoManager.getAllTempRepos();
+
+      // Filter by project (we'll need to enhance metadata to include projectId)
+      // For now, we'll return the most recent repo overall
+      if (tempRepos.length === 0) {
+        return null;
+      }
+
+      // Sort by timestamp (most recent first) and return the first one
+      const sortedRepos = tempRepos.sort((a, b) => b.createdAt - a.createdAt);
+      return sortedRepos[0];
+    } catch (error) {
+      console.error('Error getting most recent temp repo:', error);
+      return null;
+    }
+  }
+
+  /**
+   * Get all temp repositories
+   */
+  public static async getAllTempRepos(): Promise<TempRepoMetadata[]> {
+    try {
+      const result = await chrome.storage.local.get(STORAGE_KEY);
+      return result[STORAGE_KEY] || [];
+    } catch (error) {
+      console.error('Error getting temp repositories:', error);
+      return [];
+    }
+  }
+
+  /**
+   * Request temp repo deletion (for popup use)
+   */
+  public static async requestTempRepoDeletion(owner: string, tempRepo: string): Promise<boolean> {
+    try {
+      // Send message to background script to handle deletion
+      const response = await chrome.runtime.sendMessage({
+        type: 'DELETE_TEMP_REPO',
+        data: {
+          owner,
+          tempRepo,
+          timestamp: Date.now(),
+        },
+      });
+
+      if (response?.success) {
+        console.log('Temp repo deletion requested successfully');
+        return true;
+      } else {
+        console.warn('Background script did not confirm temp repo deletion');
+        return false;
+      }
+    } catch (error) {
+      console.error('Error requesting temp repo deletion:', error);
+      return false;
+    }
+  }
+
+  /**
+   * Remove a temp repository from storage (for background script use)
+   */
+  public static async removeTempRepository(owner: string, tempRepo: string): Promise<boolean> {
+    try {
+      const tempRepos = await BackgroundTempRepoManager.getAllTempRepos();
+
+      const filteredRepos = tempRepos.filter(
+        (repo: TempRepoMetadata) => !(repo.owner === owner && repo.tempRepo === tempRepo)
+      );
+
+      if (filteredRepos.length !== tempRepos.length) {
+        await chrome.storage.local.set({
+          [STORAGE_KEY]: filteredRepos,
+        });
+
+        console.log('Temp repository removed:', { owner, tempRepo });
+        return true;
+      }
+
+      return false;
+    } catch (error) {
+      console.error('Error removing temp repository:', error);
+      return false;
+    }
+  }
+
+  /**
+   * Format temp repository for display
+   */
+  public static formatTempRepositoryForDisplay(repo: TempRepoMetadata): {
+    displayName: string;
+    fullName: string;
+    originalName: string;
+    age: string;
+    isOld: boolean;
+  } {
+    const now = Date.now();
+    const timestamp = repo.createdAt || now;
+    const ageMs = now - timestamp;
+    const ageHours = Math.floor(ageMs / (1000 * 60 * 60));
+    const ageDays = Math.floor(ageHours / 24);
+
+    let age: string;
+    if (ageDays > 0) {
+      age = `${ageDays} day${ageDays > 1 ? 's' : ''} ago`;
+    } else if (ageHours > 0) {
+      age = `${ageHours} hour${ageHours > 1 ? 's' : ''} ago`;
+    } else {
+      age = 'Just now';
+    }
+
+    const isOld = ageDays > 7; // Consider old if more than 7 days
+
+    return {
+      displayName: repo.tempRepo || 'Unknown',
+      fullName: `${repo.owner}/${repo.tempRepo}`,
+      originalName: repo.originalRepo || 'Unknown',
+      age,
+      isOld,
+    };
+  }
 }

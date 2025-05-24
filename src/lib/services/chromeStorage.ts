@@ -253,4 +253,17 @@ export class ChromeStorageService {
       throw error;
     }
   }
+
+  /**
+   * Get all data from storage
+   */
+  static async getAll(useLocal = false): Promise<Record<string, any>> {
+    try {
+      const storage = useLocal ? chrome.storage.local : chrome.storage.sync;
+      return await storage.get(null);
+    } catch (error) {
+      console.error('Error getting all data from storage:', error);
+      return {};
+    }
+  }
 }

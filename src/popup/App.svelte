@@ -7,7 +7,7 @@
     CardHeader,
     CardTitle,
   } from '$lib/components/ui/card';
-  import { STORAGE_KEY } from '../background/TempRepoManager';
+
   import { Tabs, TabsContent } from '$lib/components/ui/tabs';
   import Header from '$lib/components/Header.svelte';
   import SocialLinks from '$lib/components/SocialLinks.svelte';
@@ -36,8 +36,14 @@
     uploadStateStore,
     uploadStateActions,
   } from '$lib/stores';
-  import { ChromeStorageService } from '$lib/services/chromeStorage';
-  import { ChromeMessagingService } from '$lib/services/chromeMessaging';
+  import {
+    ChromeStorageService,
+    ChromeMessagingService,
+    ProjectDetectionService,
+    FileChangeHandler,
+    BackgroundTempRepoManager,
+    TEMP_REPO_STORAGE_KEY,
+  } from '$lib/services';
 
   // Component references
   let projectStatusRef: ProjectStatus;
@@ -98,27 +104,18 @@
   }
 
   async function handlePendingFileChanges(): Promise<void> {
-    const pendingChanges = await ChromeStorageService.getPendingFileChanges();
-    if (pendingChanges) {
-      console.log('Found pending file changes:', pendingChanges);
-      const fileChangesMap = new Map(Object.entries(pendingChanges)) as Map<string, any>;
-      uiStateActions.setFileChanges(fileChangesMap);
+    const pendingData = await FileChangeHandler.retrievePendingFileChanges();
+    if (pendingData) {
+      console.log('Found pending file changes:', pendingData);
+      uiStateActions.setFileChanges(pendingData.changes);
       uiStateActions.showFileChangesModal();
-
-      // Clear the pending changes
-      await ChromeStorageService.clearPendingFileChanges();
-      console.log('Cleared pending file changes from storage');
     }
   }
 
   async function handleTempRepositories(): Promise<void> {
     if ($currentProjectId) {
-      const result = await ChromeStorageService.get(STORAGE_KEY, true);
-      const tempRepos = result[STORAGE_KEY] || [];
-
-      if (tempRepos.length > 0) {
-        // Get the most recent temp repo
-        const tempRepoData = tempRepos[tempRepos.length - 1];
+      const tempRepoData = await BackgroundTempRepoManager.getMostRecentTempRepo($currentProjectId);
+      if (tempRepoData) {
         uiStateActions.showTempRepoModal(tempRepoData);
       }
     }
@@ -128,8 +125,10 @@
     // Add listener to clear file changes when popup closes
     window.addEventListener('unload', async () => {
       try {
-        await ChromeStorageService.clearStoredFileChanges();
-        console.log('Cleared stored file changes on popup close');
+        if ($currentProjectId) {
+          await FileChangeHandler.clearFileChanges($currentProjectId);
+          console.log('Cleared stored file changes on popup close');
+        }
       } catch (error) {
         console.error('Error clearing stored file changes:', error);
       }
@@ -138,15 +137,18 @@
 
   async function handleDeleteTempRepo(): Promise<void> {
     if (uiState.tempRepoData) {
-      ChromeMessagingService.sendDeleteTempRepoMessage(
+      const success = await BackgroundTempRepoManager.requestTempRepoDeletion(
         uiState.tempRepoData.owner,
         uiState.tempRepoData.tempRepo
       );
-      uiStateActions.markTempRepoDeleted();
 
-      // Check if we can close the modal
-      if (await uiStateActions.canCloseTempRepoModal()) {
-        uiStateActions.hideTempRepoModal();
+      if (success) {
+        uiStateActions.markTempRepoDeleted();
+
+        // Check if we can close the modal
+        if (await uiStateActions.canCloseTempRepoModal()) {
+          uiStateActions.hideTempRepoModal();
+        }
       }
     }
   }

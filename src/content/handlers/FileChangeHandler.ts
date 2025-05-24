@@ -267,4 +267,109 @@ export class FileChangeHandler implements IFileChangeHandler {
     }
     return this.getChangedFilesWithComparison();
   }
+
+  /**
+   * Storage abstraction methods for popup integration
+   */
+
+  /**
+   * Retrieve and clear pending file changes for popup initialization
+   */
+  public static async retrievePendingFileChanges(): Promise<{
+    projectId: string;
+    changes: Map<string, any>;
+  } | null> {
+    try {
+      const result = await chrome.storage.local.get('pendingFileChanges');
+
+      if (
+        !result.pendingFileChanges ||
+        !result.pendingFileChanges.projectId ||
+        !result.pendingFileChanges.changes
+      ) {
+        return null;
+      }
+
+      const pendingData = result.pendingFileChanges;
+
+      // Clear pending changes immediately
+      await chrome.storage.local.remove('pendingFileChanges');
+
+      // Convert back to Map
+      const fileChanges = new Map(Object.entries(pendingData.changes));
+
+      return {
+        projectId: pendingData.projectId,
+        changes: fileChanges,
+      };
+    } catch (error) {
+      console.error('Error retrieving pending file changes:', error);
+      return null;
+    }
+  }
+
+  /**
+   * Clear stored file changes for a specific project
+   */
+  public static async clearFileChanges(projectId: string): Promise<void> {
+    try {
+      // Clear the stored file changes for this project
+      await chrome.storage.local.remove('storedFileChanges');
+      console.log('File changes cleared for project:', projectId);
+    } catch (error) {
+      console.error('Error clearing file changes:', error);
+    }
+  }
+
+  /**
+   * Store pending file changes for popup initialization
+   */
+  public static async storePendingFileChanges(
+    projectId: string,
+    fileChanges: Record<string, any>
+  ): Promise<void> {
+    try {
+      const pendingData = {
+        projectId,
+        changes: fileChanges,
+        timestamp: Date.now(),
+      };
+
+      await chrome.storage.local.set({
+        pendingFileChanges: pendingData,
+      });
+
+      console.log('Pending file changes stored for project:', projectId);
+    } catch (error) {
+      console.error('Error storing pending file changes:', error);
+    }
+  }
+
+  /**
+   * Load stored file changes for popup display
+   */
+  public static async loadStoredFileChanges(projectId?: string): Promise<Map<string, any> | null> {
+    try {
+      const result = await chrome.storage.local.get('storedFileChanges');
+
+      if (!result.storedFileChanges) {
+        return null;
+      }
+
+      const storedData = result.storedFileChanges;
+
+      // Check if project ID matches (if provided)
+      if (projectId && storedData.projectId !== projectId) {
+        return null;
+      }
+
+      // Convert Object back to Map
+      const fileChanges = new Map(Object.entries(storedData.changes || {}));
+      console.log('File changes loaded from storage for project:', storedData.projectId);
+      return fileChanges;
+    } catch (error) {
+      console.error('Error loading stored file changes:', error);
+      return null;
+    }
+  }
 }
