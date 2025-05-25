@@ -1,5 +1,6 @@
 import type { MessageHandler } from '../MessageHandler';
 import type { INotificationManager } from '../types/ManagerInterfaces';
+import type { NotificationAction } from '../types/UITypes';
 import type { FileChange } from '../../services/FilePreviewService';
 import { ActivityMonitor } from '../infrastructure/ActivityMonitor';
 import type { PremiumService } from './PremiumService';
@@ -328,6 +329,34 @@ export class PushReminderService {
         type: 'info',
         message: message,
         duration: 15000, // 15 seconds
+        actions: [
+          {
+            text: 'Push to GitHub',
+            variant: 'primary',
+            action: async () => {
+              console.log('🚀 Push reminder: User clicked "Push to GitHub" button');
+              try {
+                // Send message to runtime to trigger GitHub push
+                chrome.runtime.sendMessage({ action: 'PUSH_TO_GITHUB' });
+
+                // Reset reminder state since user is taking action
+                this.resetReminderState();
+
+                console.log('✅ Push reminder: GitHub push initiated from notification');
+              } catch (error) {
+                console.error('❌ Push reminder: Failed to initiate GitHub push:', error);
+              }
+            },
+          },
+          {
+            text: 'Snooze',
+            variant: 'ghost',
+            action: () => {
+              console.log('😴 Push reminder: User snoozed reminders');
+              this.snoozeReminders();
+            },
+          },
+        ],
       });
 
       // Update state
@@ -691,6 +720,34 @@ export class PushReminderService {
         type: 'info',
         message: message,
         duration: 10000, // 10 seconds for scheduled reminders (slightly shorter)
+        actions: [
+          {
+            text: 'Push to GitHub',
+            variant: 'primary',
+            action: async () => {
+              console.log('🚀 Scheduled reminder: User clicked "Push to GitHub" button');
+              try {
+                // Send message to runtime to trigger GitHub push
+                chrome.runtime.sendMessage({ action: 'PUSH_TO_GITHUB' });
+
+                // Reset reminder state since user is taking action
+                this.resetReminderState();
+
+                console.log('✅ Scheduled reminder: GitHub push initiated from notification');
+              } catch (error) {
+                console.error('❌ Scheduled reminder: Failed to initiate GitHub push:', error);
+              }
+            },
+          },
+          {
+            text: 'Snooze',
+            variant: 'ghost',
+            action: () => {
+              console.log('😴 Scheduled reminder: User snoozed reminders');
+              this.snoozeReminders();
+            },
+          },
+        ],
       });
 
       // Update scheduled reminder state

@@ -1,9 +1,17 @@
 // Base UI types for the content script components
 
+export interface NotificationAction {
+  text: string;
+  action: () => void | Promise<void>;
+  variant?: 'primary' | 'secondary' | 'ghost';
+  disabled?: boolean;
+}
+
 export interface NotificationOptions {
   type: 'info' | 'error' | 'success';
   message: string;
   duration?: number;
+  actions?: NotificationAction[];
 }
 
 export interface UpgradeNotificationOptions {

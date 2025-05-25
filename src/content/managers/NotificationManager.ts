@@ -44,6 +44,7 @@ export class NotificationManager implements INotificationManager {
         type: options.type,
         message: options.message,
         duration: options.duration || 5000,
+        actions: options.actions || [],
         onClose: () => {
           this.notificationComponent?.$destroy();
           this.notificationComponent = null;
@@ -132,199 +133,44 @@ export class NotificationManager implements INotificationManager {
    * Replaces the previous showSettingsNotification method from UIManager
    */
   public showSettingsNotification(): void {
-    const notification = document.createElement('div');
-    notification.style.zIndex = '10000';
-    notification.className = [
-      'fixed',
-      'top-4',
-      'right-4',
-      'p-4',
-      'bg-red-500',
-      'text-white',
-      'rounded-md',
-      'shadow-lg',
-      'flex',
-      'items-center',
-      'gap-2',
-      'text-sm',
-    ].join(' ');
-
-    // Create icon SVG element
-    const iconSvg = document.createElement('svg');
-    iconSvg.setAttribute('width', '20');
-    iconSvg.setAttribute('height', '20');
-    iconSvg.setAttribute('viewBox', '0 0 24 24');
-    iconSvg.setAttribute('fill', 'none');
-    iconSvg.setAttribute('stroke', 'currentColor');
-    iconSvg.innerHTML = `
-      <circle cx="12" cy="12" r="10"></circle>
-      <line x1="12" y1="8" x2="12" y2="12"></line>
-      <line x1="12" y1="16" x2="12.01" y2="16"></line>
-    `;
-
-    // Create text content
-    const textSpan = document.createElement('span');
-    textSpan.textContent = 'Please configure your GitHub settings first. ';
-
-    // Create settings button
-    const settingsButton = document.createElement('button');
-    settingsButton.className =
-      'text-white font-medium hover:text-white/90 underline underline-offset-2';
-    settingsButton.textContent = 'Open Settings';
-
-    // Assemble notification
-    notification.appendChild(iconSvg);
-    notification.appendChild(textSpan);
-    notification.appendChild(settingsButton);
-
-    // Add click handler for settings button
-    settingsButton.addEventListener('click', () => {
-      this.messageHandler.sendMessage('OPEN_SETTINGS');
-      document.body.removeChild(notification);
+    // Use the unified Svelte notification component instead of direct DOM manipulation
+    this.showNotification({
+      type: 'error',
+      message: 'Please configure your GitHub settings first.',
+      duration: 5000,
+      actions: [
+        {
+          text: 'Open Settings',
+          variant: 'primary',
+          action: () => {
+            this.messageHandler.sendMessage('OPEN_SETTINGS');
+          },
+        },
+      ],
     });
-
-    // Add close button
-    const closeButton = document.createElement('button');
-    closeButton.className = 'ml-2 text-white hover:text-white/90 font-medium text-lg leading-none';
-    closeButton.textContent = '×';
-    closeButton.addEventListener('click', () => {
-      document.body.removeChild(notification);
-    });
-    notification.appendChild(closeButton);
-
-    // Add to body and remove after 5 seconds
-    document.body.appendChild(notification);
-    setTimeout(() => {
-      if (document.body.contains(notification)) {
-        document.body.removeChild(notification);
-      }
-    }, 5000);
   }
 
   /**
    * Show an upgrade notification with a clickable upgrade button
    */
   public showUpgradeNotification(options: UpgradeNotificationOptions): void {
-    const notification = document.createElement('div');
-    notification.style.cssText = `
-      position: fixed;
-      top: 1rem;
-      right: 1rem;
-      z-index: 10000;
-      padding: 1rem;
-      background-color: #2563eb;
-      color: white;
-      border-radius: 8px;
-      box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
-      max-width: 24rem;
-      font-size: 14px;
-      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
-      line-height: 1.4;
-    `;
-
-    // Create icon SVG element
-    const iconSvg = document.createElement('svg');
-    iconSvg.setAttribute('width', '20');
-    iconSvg.setAttribute('height', '20');
-    iconSvg.setAttribute('viewBox', '0 0 24 24');
-    iconSvg.setAttribute('fill', 'none');
-    iconSvg.setAttribute('stroke', 'currentColor');
-    iconSvg.setAttribute('stroke-width', '2');
-    iconSvg.style.cssText = 'flex-shrink: 0; margin-right: 8px;';
-    iconSvg.innerHTML = `
-      <circle cx="12" cy="12" r="10"></circle>
-      <path d="m9 12 2 2 4-4"></path>
-    `;
-
-    // Create main content container
-    const contentDiv = document.createElement('div');
-    contentDiv.style.cssText = 'display: flex; align-items: flex-start; gap: 8px;';
-
-    // Create text and button container
-    const textButtonContainer = document.createElement('div');
-    textButtonContainer.style.cssText = 'flex: 1;';
-
-    // Create message text
-    const messageDiv = document.createElement('div');
-    messageDiv.style.cssText = 'margin-bottom: 12px; color: white; line-height: 1.4;';
-    messageDiv.textContent = options.message;
-
-    // Create upgrade button
-    const upgradeButton = document.createElement('button');
-    upgradeButton.style.cssText = `
-      background-color: white;
-      color: #2563eb;
-      padding: 6px 12px;
-      border-radius: 4px;
-      font-size: 13px;
-      font-weight: 500;
-      border: none;
-      cursor: pointer;
-      transition: background-color 0.2s ease;
-      font-family: inherit;
-    `;
-    upgradeButton.textContent = options.upgradeText || 'Upgrade Now';
-
-    // Add hover effect
-    upgradeButton.addEventListener('mouseenter', () => {
-      upgradeButton.style.backgroundColor = '#f1f5f9';
+    // Use the unified Svelte notification component instead of direct DOM manipulation
+    this.showNotification({
+      type: options.type || 'info',
+      message: options.message,
+      duration: options.duration || 8000,
+      actions: [
+        {
+          text: options.upgradeText || 'Upgrade Now',
+          variant: 'primary',
+          action: () => {
+            if (options.onUpgrade) {
+              options.onUpgrade();
+            }
+          },
+        },
+      ],
     });
-    upgradeButton.addEventListener('mouseleave', () => {
-      upgradeButton.style.backgroundColor = 'white';
-    });
-
-    // Add click handler for upgrade button
-    upgradeButton.addEventListener('click', () => {
-      if (options.onUpgrade) {
-        options.onUpgrade();
-      }
-      document.body.removeChild(notification);
-    });
-
-    // Create close button
-    const closeButton = document.createElement('button');
-    closeButton.style.cssText = `
-      margin-left: 8px;
-      color: white;
-      background: none;
-      border: none;
-      font-size: 18px;
-      font-weight: bold;
-      cursor: pointer;
-      line-height: 1;
-      padding: 2px 4px;
-      flex-shrink: 0;
-      opacity: 0.8;
-      font-family: inherit;
-    `;
-    closeButton.textContent = '×';
-    closeButton.addEventListener('mouseenter', () => {
-      closeButton.style.opacity = '1';
-    });
-    closeButton.addEventListener('mouseleave', () => {
-      closeButton.style.opacity = '0.8';
-    });
-    closeButton.addEventListener('click', () => {
-      document.body.removeChild(notification);
-    });
-
-    // Assemble the notification
-    textButtonContainer.appendChild(messageDiv);
-    textButtonContainer.appendChild(upgradeButton);
-    contentDiv.appendChild(iconSvg);
-    contentDiv.appendChild(textButtonContainer);
-    contentDiv.appendChild(closeButton);
-    notification.appendChild(contentDiv);
-
-    // Add to body and remove after duration
-    document.body.appendChild(notification);
-
-    const duration = options.duration || 8000;
-    setTimeout(() => {
-      if (document.body.contains(notification)) {
-        document.body.removeChild(notification);
-      }
-    }, duration);
   }
 
   /**
@@ -342,15 +188,5 @@ export class NotificationManager implements INotificationManager {
     if (container) {
       container.remove();
     }
-
-    // Remove any settings notifications
-    const settingsNotifications = document.querySelectorAll(
-      '[class*="fixed"][class*="top-4"][class*="right-4"]'
-    );
-    settingsNotifications.forEach((notification) => {
-      if (notification.parentNode) {
-        notification.parentNode.removeChild(notification);
-      }
-    });
   }
 }
