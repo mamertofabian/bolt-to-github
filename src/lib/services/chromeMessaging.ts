@@ -243,6 +243,24 @@ export class ChromeMessagingService {
   }
 
   /**
+   * Send message to open issues modal
+   */
+  static sendOpenIssuesMessage(): void {
+    this.sendPortMessage({
+      type: 'OPEN_ISSUES',
+    });
+  }
+
+  /**
+   * Send message to open projects tab
+   */
+  static sendOpenProjectsMessage(): void {
+    this.sendPortMessage({
+      type: 'OPEN_PROJECTS',
+    });
+  }
+
+  /**
    * Cleanup all handlers and connections
    */
   static cleanup(): void {

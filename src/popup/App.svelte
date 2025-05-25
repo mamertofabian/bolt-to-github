@@ -34,6 +34,7 @@
   import NewsletterSection from '$lib/components/NewsletterSection.svelte';
   import SuccessToast from '$lib/components/SuccessToast.svelte';
   import { SubscriptionService } from '../services/SubscriptionService';
+  import IssueManager from '$lib/components/IssueManager.svelte';
 
   // Import stores and services
   import {
@@ -89,6 +90,9 @@
   let showSuccessToast = false;
   let successToastMessage = '';
   let showSubscribePrompt = false;
+
+  // Issues modal state
+  let showIssuesModal = false;
 
   // Message handlers
   function handleUploadStatusMessage(message: any) {
@@ -156,6 +160,9 @@
     // Check for temp repos
     await checkForTempRepos();
 
+    // Check for popup context (opened from content script)
+    await checkPopupContext();
+
     // Add cleanup listener
     window.addEventListener('unload', cleanup);
 
@@ -183,6 +190,57 @@
     if (tempRepos.length > 0 && projectId) {
       const tempRepoData = tempRepos[tempRepos.length - 1];
       uiStateActions.showTempRepoModal(tempRepoData);
+    }
+  }
+
+  async function checkPopupContext() {
+    try {
+      const result = await chrome.storage.local.get('popupContext');
+      const context = result.popupContext;
+
+      if (context) {
+        console.log('Popup opened with context:', context);
+
+        switch (context) {
+          case 'issues':
+            // Only show issues if we have valid settings and are on a Bolt project
+            if (settingsValid && projectId && githubSettings.githubToken) {
+              showIssuesModal = true;
+            } else {
+              // Switch to settings tab if settings are invalid
+              uiStateActions.setActiveTab('settings');
+            }
+            break;
+
+          case 'projects':
+            // Switch to projects tab
+            if (onBoltProject) {
+              uiStateActions.setActiveTab('projects');
+            } else if (
+              githubSettings.hasInitialSettings &&
+              githubSettings.repoOwner &&
+              githubSettings.githubToken
+            ) {
+              // Already shows projects list when not on bolt project but has settings
+            } else {
+              // Switch to settings if no valid settings
+              uiStateActions.setActiveTab('settings');
+            }
+            break;
+
+          case 'settings':
+            // Switch to settings tab
+            if (onBoltProject) {
+              uiStateActions.setActiveTab('settings');
+            }
+            break;
+        }
+
+        // Clear the context after handling it
+        await chrome.storage.local.remove('popupContext');
+      }
+    } catch (error) {
+      console.error('Error checking popup context:', error);
     }
   }
 
@@ -548,6 +606,17 @@
       showSubscribePrompt = false;
     }}
   />
+
+  <!-- Issues modal -->
+  {#if settingsValid && githubSettings.githubToken && githubSettings.repoOwner && githubSettings.repoName}
+    <IssueManager
+      bind:show={showIssuesModal}
+      githubToken={githubSettings.githubToken}
+      repoOwner={githubSettings.repoOwner}
+      repoName={githubSettings.repoName}
+      on:close={() => (showIssuesModal = false)}
+    />
+  {/if}
 </main>
 
 <style>

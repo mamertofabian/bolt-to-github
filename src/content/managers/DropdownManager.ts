@@ -320,6 +320,38 @@ export class DropdownManager implements IDropdownManager {
     });
     items.push(changedFilesButton);
 
+    // Issues option
+    const issuesButton = document.createElement('button');
+    issuesButton.className = 'dropdown-item flex items-center';
+    issuesButton.innerHTML = `
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <circle cx="12" cy="12" r="10" />
+        <path d="M12 6v6l4 2" />
+      </svg>
+      <span>Issues</span>
+    `;
+    issuesButton.addEventListener('click', () => {
+      this.hide();
+      this.messageHandler.sendMessage('OPEN_ISSUES');
+    });
+    items.push(issuesButton);
+
+    // Projects option
+    const projectsButton = document.createElement('button');
+    projectsButton.className = 'dropdown-item flex items-center';
+    projectsButton.innerHTML = `
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <rect x="3" y="3" width="18" height="18" rx="2" ry="2" />
+        <path d="M9 9h6v6H9z" />
+      </svg>
+      <span>Projects</span>
+    `;
+    projectsButton.addEventListener('click', () => {
+      this.hide();
+      this.messageHandler.sendMessage('OPEN_PROJECTS');
+    });
+    items.push(projectsButton);
+
     // Settings option
     const settingsButton = document.createElement('button');
     settingsButton.className = 'dropdown-item flex items-center';

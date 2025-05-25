@@ -322,6 +322,27 @@ export class BackgroundService {
             action: 'settings_opened',
             context: 'content_script',
           });
+          await chrome.storage.local.set({ popupContext: 'settings' });
+          chrome.action.openPopup();
+          break;
+
+        case 'OPEN_ISSUES':
+          console.log('Opening issues popup');
+          await this.sendAnalyticsEvent('user_action', {
+            action: 'issues_opened',
+            context: 'content_script',
+          });
+          await chrome.storage.local.set({ popupContext: 'issues' });
+          chrome.action.openPopup();
+          break;
+
+        case 'OPEN_PROJECTS':
+          console.log('Opening projects popup');
+          await this.sendAnalyticsEvent('user_action', {
+            action: 'projects_opened',
+            context: 'content_script',
+          });
+          await chrome.storage.local.set({ popupContext: 'projects' });
           chrome.action.openPopup();
           break;
 
