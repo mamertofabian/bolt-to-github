@@ -15,10 +15,8 @@
   import RepoSettings from '$lib/components/RepoSettings.svelte';
   import ConfirmationDialog from '$lib/components/ui/dialog/ConfirmationDialog.svelte';
   import { GitHubService } from '../../services/GitHubService';
-  import { fade } from 'svelte/transition';
   import BranchSelectionModal from '../../popup/components/BranchSelectionModal.svelte';
-  import { githubSettingsStore, githubSettingsActions, currentProjectId } from '$lib/stores';
-  import { triggerUpgradeModal } from '$lib/utils/upgradeModal';
+  import { githubSettingsStore } from '$lib/stores';
 
   export let repoOwner: string;
   export let githubToken: string;
@@ -282,28 +280,12 @@
       return;
     }
 
-    // Check premium access for branch selector on private repos
-    try {
-      const response = await chrome.runtime.sendMessage({
-        type: 'CHECK_PREMIUM_FEATURE',
-        feature: 'branchSelector',
-      });
-      if (!response.hasAccess) {
-        // Show upgrade modal for branch selector
-        // Use the unified upgrade modal system
-        triggerUpgradeModal('branchSelector');
-        return;
-      }
-    } catch (error) {
-      console.warn('Failed to check premium status, allowing access:', error);
-    }
-
     // Store the repo info and show confirmation dialog
     repoToConfirmImport = { owner: repoOwner, repo: repoName, isPrivate };
     showImportConfirmDialog = true;
   }
 
-  function handleImportConfirm() {
+  async function handleImportConfirm() {
     if (!repoToConfirmImport) return;
 
     // Show branch selection modal
