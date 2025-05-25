@@ -326,15 +326,22 @@ export class BackgroundService {
           chrome.action.openPopup();
           break;
 
-        case 'OPEN_ISSUES':
+        case 'OPEN_ISSUES': {
           console.log('Opening issues popup');
           await this.sendAnalyticsEvent('user_action', {
             action: 'issues_opened',
             context: 'content_script',
           });
-          await chrome.storage.local.set({ popupContext: 'issues' });
+          // Check premium status before allowing access
+          const hasIssuesAccess = this.supabaseAuthService.isPremium();
+          if (hasIssuesAccess) {
+            await chrome.storage.local.set({ popupContext: 'issues' });
+          } else {
+            await chrome.storage.local.set({ popupContext: 'settings' });
+          }
           chrome.action.openPopup();
           break;
+        }
 
         case 'OPEN_PROJECTS':
           console.log('Opening projects popup');
@@ -609,7 +616,7 @@ export class BackgroundService {
     sendResponse: (response: any) => void
   ): Promise<void> {
     try {
-      const premiumFeatures = ['pushReminders', 'branchSelector', 'viewFileChanges'];
+      const premiumFeatures = ['pushReminders', 'branchSelector', 'viewFileChanges', 'issues'];
 
       // Check if the feature requires premium
       if (!premiumFeatures.includes(feature)) {

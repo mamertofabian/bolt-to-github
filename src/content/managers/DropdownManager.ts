@@ -320,18 +320,38 @@ export class DropdownManager implements IDropdownManager {
     });
     items.push(changedFilesButton);
 
-    // Issues option
+    // Issues option - now premium feature
     const issuesButton = document.createElement('button');
-    issuesButton.className = 'dropdown-item flex items-center';
+    const isPremiumForIssues = this.premiumService?.isPremiumSync() || false;
+
+    issuesButton.className = `dropdown-item flex items-center justify-between ${!isPremiumForIssues ? 'opacity-75' : ''}`;
     issuesButton.innerHTML = `
-      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-        <circle cx="12" cy="12" r="10" />
-        <path d="M12 6v6l4 2" />
-      </svg>
-      <span>Issues</span>
+      <div class="flex items-center">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <circle cx="12" cy="12" r="10" />
+          <path d="M12 6v6l4 2" />
+        </svg>
+        <span>Issues</span>
+      </div>
+      ${!isPremiumForIssues ? '<span class="text-xs bg-gradient-to-r from-blue-500 to-purple-600 text-white px-2 py-0.5 rounded-full font-medium">PRO</span>' : ''}
     `;
-    issuesButton.addEventListener('click', () => {
+
+    issuesButton.addEventListener('click', async () => {
       this.hide();
+
+      /* Server validation happens in the callback - similar to file changes */
+      if (!isPremiumForIssues) {
+        /* Show upgrade prompt for issues feature */
+        if (this.onUpgradePromptCallback) {
+          await this.onUpgradePromptCallback('issues');
+        } else {
+          /* Fallback notification */
+          console.log('Upgrade required for issues feature');
+        }
+        return;
+      }
+
+      /* For premium users, proceed to open issues */
       this.messageHandler.sendMessage('OPEN_ISSUES');
     });
     items.push(issuesButton);
