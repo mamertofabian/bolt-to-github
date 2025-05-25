@@ -3,6 +3,8 @@
   import { Alert, AlertTitle, AlertDescription } from './ui/alert';
   import { GitHubService } from '../../services/GitHubService';
   import RepoSettings from '$lib/components/RepoSettings.svelte';
+  import IssueManager from '$lib/components/IssueManager.svelte';
+  import QuickIssueForm from '$lib/components/QuickIssueForm.svelte';
   import premiumStatusStore, { isPremium } from '$lib/stores/premiumStore';
 
   export let projectId: string;
@@ -13,6 +15,8 @@
 
   let showSettingsModal = false;
   let hasFileChanges = false;
+  let showIssueManager = false;
+  let showQuickIssueForm = false;
 
   // Premium status
   $: premiumStatus = $premiumStatusStore;
@@ -23,6 +27,7 @@
     visibility: true,
     commits: true,
     latestCommit: true,
+    issues: true,
   };
 
   let repoExists: boolean | null = null;
@@ -31,6 +36,7 @@
     date: string;
     message: string;
   } | null = null;
+  let openIssuesCount: number = 0;
 
   export const getProjectStatus = async () => {
     try {
@@ -60,10 +66,21 @@
           };
         }
         isLoading.latestCommit = false;
+
+        // Get issue count
+        try {
+          const issues = await githubService.getIssues(gitHubUsername, repoName, 'open');
+          openIssuesCount = issues.length;
+        } catch (err) {
+          console.log('Error fetching issues:', err);
+          openIssuesCount = 0;
+        }
+        isLoading.issues = false;
       } else {
         isLoading.visibility = false;
         isLoading.commits = false;
         isLoading.latestCommit = false;
+        isLoading.issues = false;
       }
     } catch (error) {
       console.log('Error fetching repo details:', error);
@@ -166,6 +183,39 @@
     // This will allow App.svelte to call its showStoredFileChanges function
     dispatch('showFileChanges');
   }
+
+  function openIssueManager(event: MouseEvent | KeyboardEvent) {
+    event.stopPropagation();
+
+    // Check if user has premium access
+    if (!isUserPremium) {
+      // Send message to show upgrade modal
+      chrome.runtime.sendMessage({
+        type: 'SHOW_UPGRADE_MODAL',
+        feature: 'github-issues',
+      });
+      return;
+    }
+
+    showIssueManager = true;
+  }
+
+  function openQuickIssueForm(event: MouseEvent | KeyboardEvent) {
+    event.stopPropagation();
+    showQuickIssueForm = true;
+  }
+
+  function handleIssueSuccess() {
+    showQuickIssueForm = false;
+    // Refresh project status to update issue count
+    getProjectStatus();
+  }
+
+  function handleIssueManagerClose() {
+    showIssueManager = false;
+    // Refresh project status to update issue count
+    getProjectStatus();
+  }
 </script>
 
 <div class="border border-green-900 bg-green-950 rounded-lg overflow-hidden">
@@ -204,6 +254,14 @@
             {repoExists ? (isPrivate ? 'Private' : 'Public') : 'N/A'}
           {/if}
         </span>
+        <span class="text-slate-400">Open Issues:</span>
+        <span class="font-mono">
+          {#if isLoading.issues}
+            <span class="text-slate-500">Loading...</span>
+          {:else}
+            <span class="text-slate-300">{openIssuesCount}</span>
+          {/if}
+        </span>
         <span class="text-slate-400">Latest Commit:</span>
         <span class="font-mono">
           {#if isLoading.latestCommit}
@@ -220,7 +278,7 @@
       </div>
 
       <!-- Icon-only buttons with tooltips -->
-      <div class="flex justify-end gap-2">
+      <div class="flex justify-center gap-2">
         <!-- Open in GitHub button -->
         <button
           class="tooltip-container w-8 h-8 flex items-center justify-center border border-slate-700 rounded-full text-slate-400 hover:bg-slate-800 hover:text-slate-300 transition-colors"
@@ -243,6 +301,62 @@
             ></path>
           </svg>
           <span class="tooltip">Open in GitHub</span>
+        </button>
+
+        <!-- GitHub Issues Manager button (PRO) -->
+        <div class="relative">
+          <button
+            class="tooltip-container w-8 h-8 flex items-center justify-center border border-slate-700 rounded-full text-slate-400 hover:bg-slate-800 hover:text-slate-300 transition-colors {!isUserPremium
+              ? 'opacity-75'
+              : ''}"
+            on:click|stopPropagation={openIssueManager}
+            disabled={isLoading.repoStatus || !repoExists}
+            aria-label="GitHub Issues{!isUserPremium ? ' (Pro)' : ''}"
+          >
+            <svg
+              width="16"
+              height="16"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+            >
+              <circle cx="12" cy="12" r="10"></circle>
+              <path d="M12 6v6l4 2"></path>
+            </svg>
+            <span class="tooltip">GitHub Issues{!isUserPremium ? ' (Pro)' : ''}</span>
+          </button>
+          {#if !isUserPremium}
+            <span
+              class="absolute -top-1 -right-1 text-[8px] bg-gradient-to-r from-blue-500 to-purple-600 text-white px-1 py-0.5 rounded-full font-bold leading-none"
+              >PRO</span
+            >
+          {/if}
+        </div>
+
+        <!-- Quick Issue button -->
+        <button
+          class="tooltip-container w-8 h-8 flex items-center justify-center border border-slate-700 rounded-full text-slate-400 hover:bg-slate-800 hover:text-slate-300 transition-colors"
+          on:click|stopPropagation={openQuickIssueForm}
+          disabled={isLoading.repoStatus || !repoExists}
+          aria-label="Quick Issue"
+        >
+          <svg
+            width="16"
+            height="16"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="2"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+          >
+            <line x1="12" y1="5" x2="12" y2="19"></line>
+            <line x1="5" y1="12" x2="19" y2="12"></line>
+          </svg>
+          <span class="tooltip">Quick Issue</span>
         </button>
 
         <!-- View File Changes button - only show if there are changes -->
@@ -323,6 +437,28 @@
       // Notify parent that settings were updated
       dispatch('settingsUpdated');
     }}
+  />
+{/if}
+
+{#if showIssueManager}
+  <IssueManager
+    show={showIssueManager}
+    githubToken={token}
+    repoOwner={gitHubUsername}
+    {repoName}
+    {branch}
+    on:close={handleIssueManagerClose}
+  />
+{/if}
+
+{#if showQuickIssueForm}
+  <QuickIssueForm
+    show={showQuickIssueForm}
+    githubToken={token}
+    repoOwner={gitHubUsername}
+    {repoName}
+    on:success={handleIssueSuccess}
+    on:close={() => (showQuickIssueForm = false)}
   />
 {/if}
 

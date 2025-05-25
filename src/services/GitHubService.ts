@@ -178,18 +178,66 @@ export class GitHubService {
     return this.repositoryService.listBranches(owner, repo);
   }
 
-  // Feedback functionality
+  // Issue management functionality
+  async getIssues(
+    owner: string,
+    repo: string,
+    state: 'open' | 'closed' | 'all' = 'open',
+    forceRefresh: boolean = false
+  ): Promise<any[]> {
+    let url = `/repos/${owner}/${repo}/issues?state=${state}&sort=created&direction=desc`;
+
+    // Add cache-busting parameter when forcing refresh
+    if (forceRefresh) {
+      url += `&_refresh=${Date.now()}`;
+    }
+
+    return this.apiClient.request('GET', url);
+  }
+
+  async getIssue(owner: string, repo: string, issueNumber: number): Promise<any> {
+    return this.apiClient.request('GET', `/repos/${owner}/${repo}/issues/${issueNumber}`);
+  }
+
   async createIssue(
     owner: string,
     repo: string,
     issue: {
       title: string;
-      body: string;
+      body?: string;
       labels?: string[];
       assignees?: string[];
     }
   ): Promise<any> {
     return this.apiClient.request('POST', `/repos/${owner}/${repo}/issues`, issue);
+  }
+
+  async updateIssue(
+    owner: string,
+    repo: string,
+    issueNumber: number,
+    update: {
+      state?: 'open' | 'closed';
+      title?: string;
+      body?: string;
+      labels?: string[];
+      assignees?: string[];
+    }
+  ): Promise<any> {
+    return this.apiClient.request('PATCH', `/repos/${owner}/${repo}/issues/${issueNumber}`, update);
+  }
+
+  async addIssueComment(
+    owner: string,
+    repo: string,
+    issueNumber: number,
+    comment: { body: string }
+  ): Promise<any> {
+    return this.apiClient.request(
+      'POST',
+      `/repos/${owner}/${repo}/issues/${issueNumber}/comments`,
+      comment
+    );
   }
 
   async submitFeedback(feedback: {

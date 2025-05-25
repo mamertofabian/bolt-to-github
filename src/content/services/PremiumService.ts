@@ -6,6 +6,7 @@ export interface PremiumStatus {
     viewFileChanges: boolean;
     pushReminders: boolean;
     branchSelector: boolean;
+    githubIssues: boolean;
   };
 }
 
@@ -28,6 +29,7 @@ export class PremiumService {
         viewFileChanges: false,
         pushReminders: false,
         branchSelector: false,
+        githubIssues: false,
       },
     };
 
@@ -77,6 +79,7 @@ export class PremiumService {
         viewFileChanges: authData.isPremium,
         pushReminders: authData.isPremium,
         branchSelector: authData.isPremium,
+        githubIssues: authData.isPremium,
       },
     });
 
@@ -268,12 +271,14 @@ export class PremiumService {
         viewFileChanges: true,
         pushReminders: true,
         branchSelector: true,
+        githubIssues: true,
       };
     } else {
       this.premiumStatus.features = {
         viewFileChanges: false,
         pushReminders: false,
         branchSelector: false,
+        githubIssues: false,
       };
     }
   }
@@ -377,6 +382,7 @@ export class PremiumService {
         viewFileChanges: false,
         pushReminders: false,
         branchSelector: false,
+        githubIssues: false,
       },
     });
 

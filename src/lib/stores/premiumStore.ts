@@ -20,6 +20,7 @@ export interface PopupPremiumStatus {
     viewFileChanges: boolean;
     pushReminders: boolean;
     branchSelector: boolean;
+    githubIssues: boolean;
   };
   lastUpdated: number;
 }
@@ -33,6 +34,7 @@ const premiumStatusStore = writable<PopupPremiumStatus>({
     viewFileChanges: false,
     pushReminders: false,
     branchSelector: false,
+    githubIssues: false,
   },
   lastUpdated: 0,
 });
