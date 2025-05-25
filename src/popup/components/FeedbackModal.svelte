@@ -98,6 +98,22 @@
 
   function selectCategory(selectedCategory: string) {
     category = selectedCategory;
+
+    // Smooth scroll to message textarea and focus it after a short delay
+    setTimeout(() => {
+      const messageTextarea = document.getElementById('message');
+      if (messageTextarea) {
+        messageTextarea.scrollIntoView({
+          behavior: 'smooth',
+          block: 'center',
+          inline: 'nearest',
+        });
+        // Focus after scrolling is complete
+        setTimeout(() => {
+          messageTextarea.focus();
+        }, 300);
+      }
+    }, 100);
   }
 
   // Load email from Chrome local storage if available
