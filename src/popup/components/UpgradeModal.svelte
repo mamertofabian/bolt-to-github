@@ -48,6 +48,8 @@
         return 'Smart Push Reminders';
       case 'branchSelector':
         return 'Branch Selector';
+      case 'issues':
+        return 'GitHub Issues Management';
       default:
         return 'Premium Features';
     }
@@ -64,6 +66,11 @@
         return 'Stay on top of your work with intelligent push reminders that notify you when you have unsaved changes.';
       case 'branchSelector':
         return 'Choose specific branches when importing private repositories for better organization.';
+      case 'issues':
+        return (
+          reason ||
+          'Create, view, and manage GitHub Issues directly from Bolt. Upgrade to streamline your issue tracking workflow!'
+        );
       default:
         return 'Unlock powerful features to enhance your development workflow.';
     }

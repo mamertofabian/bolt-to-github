@@ -331,7 +331,7 @@ export class DropdownManager implements IDropdownManager {
           <circle cx="12" cy="12" r="10" />
           <path d="M12 6v6l4 2" />
         </svg>
-        <span>Issues</span>
+        <span>Manage Issues</span>
       </div>
       ${!isPremiumForIssues ? '<span class="text-xs bg-gradient-to-r from-blue-500 to-purple-600 text-white px-2 py-0.5 rounded-full font-medium">PRO</span>' : ''}
     `;

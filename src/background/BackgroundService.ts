@@ -217,7 +217,7 @@ export class BackgroundService {
     });
 
     // Setup runtime message listener for direct messages (not using ports)
-    chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
+    chrome.runtime.onMessage.addListener(async (message, sender, sendResponse) => {
       console.log('📥 Received runtime message:', message);
 
       if (message.action === 'PUSH_TO_GITHUB') {
@@ -238,6 +238,20 @@ export class BackgroundService {
       } else if (message.type === 'ANALYTICS_EVENT') {
         console.log('📊 Received analytics event:', message.eventType, message.eventData);
         this.handleAnalyticsEvent(message.eventType, message.eventData);
+        sendResponse({ success: true });
+      } else if (message.type === 'SHOW_UPGRADE_MODAL') {
+        console.log('🔊 Received SHOW_UPGRADE_MODAL message:', message.feature);
+        await this.sendAnalyticsEvent('user_action', {
+          action: 'upgrade_modal_requested',
+          feature: message.feature,
+          context: 'content_script',
+        });
+        // Store the upgrade modal context and open popup
+        await chrome.storage.local.set({
+          popupContext: 'upgrade',
+          upgradeModalFeature: message.feature,
+        });
+        chrome.action.openPopup();
         sendResponse({ success: true });
       }
 

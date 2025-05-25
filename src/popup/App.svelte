@@ -195,8 +195,9 @@
 
   async function checkPopupContext() {
     try {
-      const result = await chrome.storage.local.get('popupContext');
+      const result = await chrome.storage.local.get(['popupContext', 'upgradeModalFeature']);
       const context = result.popupContext;
+      const upgradeFeature = result.upgradeModalFeature;
 
       if (context) {
         console.log('Popup opened with context:', context);
@@ -234,10 +235,32 @@
               uiStateActions.setActiveTab('settings');
             }
             break;
+
+          case 'upgrade':
+            // Show upgrade modal with the specified feature
+            if (upgradeFeature) {
+              // Import upgrade modal utility to get the configuration
+              const { getUpgradeModalConfig } = await import('$lib/utils/upgradeModal');
+              try {
+                const config = getUpgradeModalConfig(upgradeFeature);
+                upgradeModalFeature = config.feature;
+                upgradeModalReason = config.reason;
+                premiumFeatures = config.features;
+                showUpgradeModal = true;
+              } catch (error) {
+                console.error('Error loading upgrade modal config:', error);
+                // Fallback to general upgrade modal
+                upgradeModalFeature = 'premium';
+                upgradeModalReason = 'Unlock professional features';
+                premiumFeatures = [];
+                showUpgradeModal = true;
+              }
+            }
+            break;
         }
 
         // Clear the context after handling it
-        await chrome.storage.local.remove('popupContext');
+        await chrome.storage.local.remove(['popupContext', 'upgradeModalFeature']);
       }
     } catch (error) {
       console.error('Error checking popup context:', error);

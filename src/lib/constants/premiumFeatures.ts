@@ -47,6 +47,18 @@ export const PREMIUM_FEATURES: PremiumFeature[] = [
     ],
     icon: '🌿',
   },
+  {
+    id: 'github-issues',
+    name: 'GitHub Issues Management',
+    description: 'Create, view, and manage GitHub Issues directly from Bolt',
+    benefits: [
+      'Create new issues without leaving Bolt',
+      'View all repository issues in one place',
+      'Filter by status (open, closed, all)',
+      'Quick access to issue management',
+    ],
+    icon: '🐛',
+  },
 ];
 
 /**
@@ -72,6 +84,12 @@ export const UPGRADE_MODAL_CONFIGS = {
   branchSelector: {
     feature: 'branch-selector',
     reason: 'Branch selection for private repositories is a premium feature.',
+    features: PREMIUM_FEATURES,
+  },
+  issues: {
+    feature: 'issues',
+    reason:
+      'GitHub Issues management is a Pro feature. Upgrade to create and manage issues directly from Bolt!',
     features: PREMIUM_FEATURES,
   },
 } as const;

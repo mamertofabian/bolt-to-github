@@ -191,35 +191,57 @@ export class UIManager {
    * Handle upgrade prompt for premium features
    */
   public async handleUpgradePrompt(feature: string): Promise<void> {
-    // Show upgrade notification with clickable upgrade button
-    this.notificationManager.showUpgradeNotification({
-      type: 'info',
-      message:
-        '🔒 File changes comparison is a Pro feature. Upgrade to view detailed file changes and comparisons!',
-      duration: 10000,
-      upgradeText: 'Upgrade Now',
-      onUpgrade: () => {
-        console.log('🔊 Upgrade button clicked for feature:', feature);
+    console.log('🔊 Handling upgrade prompt for feature:', feature);
 
-        // Primary approach: try to open upgrade URL directly
-        try {
-          console.log('🔊 Opening upgrade URL...');
-          window.open('https://bolt2github.com/upgrade', '_blank');
-          console.log('✅ Upgrade URL opened successfully');
-        } catch (openError) {
-          console.error('❌ Could not open upgrade URL:', openError);
+    try {
+      // Map feature names to upgrade modal types
+      let modalType: string;
+      switch (feature) {
+        case 'file-changes':
+          modalType = 'fileChanges';
+          break;
+        case 'issues':
+          modalType = 'issues';
+          break;
+        case 'push-reminders':
+          modalType = 'pushReminders';
+          break;
+        case 'branch-selector':
+          modalType = 'branchSelector';
+          break;
+        default:
+          modalType = 'general';
+      }
 
-          // Fallback: try Chrome extension URLs if direct URL fails
+      // Send message to background service to trigger upgrade modal via popup
+      chrome.runtime.sendMessage({
+        type: 'SHOW_UPGRADE_MODAL',
+        feature: modalType,
+      });
+
+      console.log('✅ Upgrade modal request sent for feature:', feature);
+    } catch (error) {
+      console.error('❌ Failed to trigger upgrade modal:', error);
+
+      // Fallback: show notification with upgrade button
+      this.notificationManager.showUpgradeNotification({
+        type: 'info',
+        message: `🔒 ${feature === 'issues' ? 'GitHub Issues management' : 'This feature'} is a Pro feature. Upgrade for full access!`,
+        duration: 10000,
+        upgradeText: 'Upgrade Now',
+        onUpgrade: () => {
           try {
-            console.log('🔊 Trying Chrome tabs API fallback...');
-            chrome.tabs.create({ url: 'https://bolt2github.com/upgrade' });
-            console.log('✅ Chrome tabs API worked');
-          } catch (tabsError) {
-            console.error('❌ Chrome tabs API also failed:', tabsError);
+            window.open('https://bolt2github.com/upgrade', '_blank');
+          } catch (openError) {
+            try {
+              chrome.tabs.create({ url: 'https://bolt2github.com/upgrade' });
+            } catch (tabsError) {
+              console.error('❌ All upgrade URL methods failed:', tabsError);
+            }
           }
-        }
-      },
-    });
+        },
+      });
+    }
   }
 
   /**
