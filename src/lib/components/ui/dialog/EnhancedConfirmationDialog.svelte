@@ -1,7 +1,7 @@
 <script lang="ts">
   import { Button } from '$lib/components/ui/button';
   import { Input } from '$lib/components/ui/input';
-  import { Github, Upload, X, FileText } from 'lucide-svelte';
+  import { Github, Upload, X, FileText, Bookmark } from 'lucide-svelte';
   import { onMount, createEventDispatcher } from 'svelte';
   import { fly, scale, fade } from 'svelte/transition';
   import { quintOut, backOut } from 'svelte/easing';
@@ -190,7 +190,8 @@
                 on:click={() => (showTemplates = !showTemplates)}
                 type="button"
               >
-                {showTemplates ? 'Hide' : 'Show'} templates
+                <Bookmark class="h-3 w-3" />
+                <span>{showTemplates ? 'Hide' : 'Show'} templates</span>
               </button>
             {/if}
           </div>
@@ -201,15 +202,24 @@
               class="enhanced-templates"
               transition:fly={{ y: -10, duration: prefersReducedMotion ? 0 : 200 }}
             >
-              {#each commitMessageTemplates as template}
-                <button
-                  class="enhanced-template-item"
-                  on:click={() => selectTemplate(template)}
-                  type="button"
+              <div class="enhanced-templates-header">
+                <span class="text-xs font-medium text-slate-400">Quick Templates</span>
+                <span class="text-xs text-slate-500">{commitMessageTemplates.length} available</span
                 >
-                  {template}
-                </button>
-              {/each}
+              </div>
+              <div class="enhanced-templates-grid">
+                {#each commitMessageTemplates as template, index}
+                  <button
+                    class="enhanced-template-item"
+                    on:click={() => selectTemplate(template)}
+                    type="button"
+                    style="animation-delay: {index * 50}ms"
+                  >
+                    <span class="template-text">{template}</span>
+                    <div class="template-hover-bg"></div>
+                  </button>
+                {/each}
+              </div>
             </div>
           {/if}
 
@@ -470,40 +480,121 @@
   }
 
   .enhanced-template-toggle {
+    display: flex;
+    align-items: center;
+    gap: 0.375rem;
     font-size: 0.75rem;
     color: #60a5fa;
-    background: none;
-    border: none;
+    background: rgba(59, 130, 246, 0.1);
+    border: 1px solid rgba(59, 130, 246, 0.2);
+    border-radius: 0.375rem;
+    padding: 0.375rem 0.75rem;
     cursor: pointer;
-    transition: color 0.2s ease;
+    transition: all 0.2s ease;
+    font-weight: 500;
+    backdrop-filter: blur(8px);
   }
 
   .enhanced-template-toggle:hover {
     color: #93c5fd;
+    background: rgba(59, 130, 246, 0.15);
+    border-color: rgba(59, 130, 246, 0.3);
+    transform: scale(1.02);
+  }
+
+  .enhanced-template-toggle:active {
+    transform: scale(0.98);
   }
 
   .enhanced-templates {
+    background: rgba(15, 23, 42, 0.6);
+    border: 1px solid var(--enhanced-border);
+    border-radius: 0.75rem;
+    padding: 1rem;
+    backdrop-filter: blur(12px);
+    box-shadow:
+      0 4px 12px rgba(0, 0, 0, 0.15),
+      inset 0 1px 0 rgba(255, 255, 255, 0.05);
+  }
+
+  .enhanced-templates-header {
     display: flex;
-    flex-direction: column;
-    gap: 0.25rem;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 0.75rem;
+    padding-bottom: 0.5rem;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  }
+
+  .enhanced-templates-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+    gap: 0.5rem;
   }
 
   .enhanced-template-item {
-    width: 100%;
+    position: relative;
+    overflow: hidden;
     text-align: left;
-    padding: 0.5rem 0.75rem;
+    padding: 0.75rem;
     font-size: 0.75rem;
     color: var(--enhanced-text-secondary);
-    background: rgba(30, 41, 59, 0.3);
-    border: 1px solid var(--enhanced-border);
-    border-radius: 0.375rem;
+    background: rgba(30, 41, 59, 0.4);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 0.5rem;
     cursor: pointer;
-    transition: all 0.2s ease;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    transform: translateY(0);
+    opacity: 0;
+    animation: slideInTemplate 0.4s ease-out forwards;
   }
 
   .enhanced-template-item:hover {
-    background: rgba(30, 41, 59, 0.5);
+    background: rgba(30, 41, 59, 0.7);
     color: var(--enhanced-text-primary);
+    border-color: rgba(59, 130, 246, 0.3);
+    transform: translateY(-2px);
+    box-shadow:
+      0 8px 16px rgba(0, 0, 0, 0.2),
+      0 0 0 1px rgba(59, 130, 246, 0.2);
+  }
+
+  .enhanced-template-item:active {
+    transform: translateY(0);
+  }
+
+  .template-text {
+    position: relative;
+    z-index: 2;
+    font-family: 'JetBrains Mono', 'Fira Code', 'Monaco', 'Menlo', monospace;
+    font-weight: 500;
+  }
+
+  .template-hover-bg {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: linear-gradient(135deg, rgba(59, 130, 246, 0.1), rgba(147, 51, 234, 0.1));
+    opacity: 0;
+    transition: opacity 0.3s ease;
+    z-index: 1;
+  }
+
+  .enhanced-template-item:hover .template-hover-bg {
+    opacity: 1;
+  }
+
+  @keyframes slideInTemplate {
+    from {
+      opacity: 0;
+      transform: translateY(10px) scale(0.95);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0) scale(1);
+    }
   }
 
   .enhanced-input-wrapper {

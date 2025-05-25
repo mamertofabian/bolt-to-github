@@ -5,6 +5,7 @@ import type { UIStateManager } from '../services/UIStateManager';
 import type { FileChange } from '../../services/FilePreviewService';
 import { SettingsService } from '../../services/settings';
 import { DownloadService } from '../../services/DownloadService';
+import { CommitTemplateService } from '../services/CommitTemplateService';
 
 // Local interface to match actual structure returned by SettingsService
 interface CurrentProjectSettings {
@@ -32,6 +33,7 @@ export class GitHubUploadHandler implements IGitHubUploadHandler {
   private downloadService: DownloadService;
   private notificationManager: INotificationManager;
   private stateManager?: UIStateManager;
+  private commitTemplateService: CommitTemplateService;
 
   constructor(
     messageHandler: MessageHandler,
@@ -42,6 +44,7 @@ export class GitHubUploadHandler implements IGitHubUploadHandler {
     this.notificationManager = notificationManager;
     this.stateManager = stateManager;
     this.downloadService = new DownloadService();
+    this.commitTemplateService = CommitTemplateService.getInstance();
   }
 
   /**
@@ -83,6 +86,9 @@ export class GitHubUploadHandler implements IGitHubUploadHandler {
     if (skipChangeDetection) {
       console.log('Skipping change detection for direct push');
 
+      // Get commit message templates for the dialog
+      const commitMessageTemplates = await this.commitTemplateService.getTemplateSuggestions();
+
       // Show simple confirmation dialog without change detection
       const { confirmed, commitMessage } = await this.notificationManager.showConfirmationDialog({
         title: 'Confirm GitHub Push',
@@ -90,9 +96,15 @@ export class GitHubUploadHandler implements IGitHubUploadHandler {
         confirmText: 'Push Changes',
         cancelText: 'Cancel',
         type: 'info',
+        commitMessageTemplates,
       });
 
       if (!confirmed) return;
+
+      // Record template usage if applicable
+      if (commitMessage) {
+        await this.commitTemplateService.recordTemplateUsage(commitMessage);
+      }
 
       // Proceed directly to upload
       await this.proceedWithUpload(commitMessage);
@@ -171,6 +183,9 @@ export class GitHubUploadHandler implements IGitHubUploadHandler {
       this.stateManager.resetButtonLoadingState();
     }
 
+    // Get commit message templates for the dialog
+    const commitMessageTemplates = await this.commitTemplateService.getTemplateSuggestions();
+
     // Show enhanced confirmation dialog
     const confirmationMessage = hasChanges
       ? `${changesSummary}<br><br>Do you want to push these changes to GitHub?`
@@ -182,6 +197,7 @@ export class GitHubUploadHandler implements IGitHubUploadHandler {
       confirmText: hasChanges ? 'Push Changes' : 'Push Anyway',
       cancelText: 'Cancel',
       type: hasChanges ? 'info' : 'warning',
+      commitMessageTemplates,
     });
 
     if (!confirmed) {
@@ -190,6 +206,11 @@ export class GitHubUploadHandler implements IGitHubUploadHandler {
         this.stateManager.resetButtonLoadingState();
       }
       return;
+    }
+
+    // Record template usage if applicable
+    if (commitMessage) {
+      await this.commitTemplateService.recordTemplateUsage(commitMessage);
     }
 
     await this.proceedWithUpload(commitMessage);
