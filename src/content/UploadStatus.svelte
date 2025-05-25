@@ -66,14 +66,14 @@
       console.log(`🔄 Setting auto-hide for ${newStatus.status} status`);
       hideTimeout = window.setTimeout(() => {
         console.log('🔄 Auto-hiding notification');
-        closeNotification();
+        closeNotification('Auto-hide');
         hideTimeout = null;
       }, 5000);
     }
   }
 
-  function closeNotification() {
-    console.log('🔄 Closing notification');
+  function closeNotification(source?: string) {
+    console.log('🔄 Closing notification', source);
     animationClass = 'notification-exit';
 
     // Reset state after animation completes
@@ -87,11 +87,12 @@
     );
   }
 
-  function handleKeydown(event: KeyboardEvent) {
-    if (event.key === 'Escape') {
-      closeNotification();
-    }
-  }
+  // This causes premature closing of the notification
+  // function handleKeydown(event: KeyboardEvent) {
+  //   if (event.key === 'Escape') {
+  //     closeNotification();
+  //   }
+  // }
 
   // Clean up timers on destroy
   onDestroy(() => {
@@ -116,7 +117,7 @@
   }
 </script>
 
-<svelte:window on:keydown={handleKeydown} />
+<!-- <svelte:window on:keydown={handleKeydown} /> -->
 
 <div id="bolt-upload-status">
   <div
@@ -152,7 +153,7 @@
           </span>
           <button
             class="close-button"
-            on:click={closeNotification}
+            on:click={() => closeNotification('Close button')}
             aria-label="Close notification"
             type="button"
           >
