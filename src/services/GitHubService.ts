@@ -177,4 +177,55 @@ export class GitHubService {
     // Use the new repositoryService
     return this.repositoryService.listBranches(owner, repo);
   }
+
+  // Feedback functionality
+  async createIssue(
+    owner: string,
+    repo: string,
+    issue: {
+      title: string;
+      body: string;
+      labels?: string[];
+      assignees?: string[];
+    }
+  ): Promise<any> {
+    return this.apiClient.request('POST', `/repos/${owner}/${repo}/issues`, issue);
+  }
+
+  async submitFeedback(feedback: {
+    category: 'appreciation' | 'question' | 'bug' | 'feature' | 'other';
+    message: string;
+    email?: string;
+    metadata?: {
+      browserInfo: string;
+      extensionVersion: string;
+      url?: string;
+    };
+  }): Promise<any> {
+    // Convert feedback to GitHub issue format
+    const issueTitle = `[${feedback.category.toUpperCase()}] User Feedback`;
+
+    let issueBody = `## User Feedback\n\n`;
+    issueBody += `**Category:** ${feedback.category}\n\n`;
+    issueBody += `**Message:**\n${feedback.message}\n\n`;
+
+    if (feedback.email) {
+      issueBody += `**Contact:** ${feedback.email}\n\n`;
+    }
+
+    if (feedback.metadata) {
+      issueBody += `**Extension Version:** ${feedback.metadata.extensionVersion}\n`;
+      issueBody += `**Browser Info:** ${feedback.metadata.browserInfo}\n`;
+      if (feedback.metadata.url) {
+        issueBody += `**Page URL:** ${feedback.metadata.url}\n`;
+      }
+    }
+
+    // Create issue in the extension's repository
+    return this.createIssue('mamertofabian', 'bolt-to-github', {
+      title: issueTitle,
+      body: issueBody,
+      labels: ['feedback', feedback.category],
+    });
+  }
 }

@@ -26,6 +26,7 @@
   import PushReminderSection from './components/PushReminderSection.svelte';
   import PremiumStatus from './components/PremiumStatus.svelte';
   import UpgradeModal from './components/UpgradeModal.svelte';
+  import FeedbackModal from './components/FeedbackModal.svelte';
   import AnalyticsToggle from '$lib/components/ui/AnalyticsToggle.svelte';
   import { setUpgradeModalState } from '$lib/utils/upgradeModal';
   import type { PremiumFeature } from '$lib/constants/premiumFeatures';
@@ -73,6 +74,7 @@
   let projectStatusRef: ProjectStatus;
   let showPushReminderSettings = false;
   let showUpgradeModal = false;
+  let showFeedbackModal = false;
   let upgradeModalFeature = '';
   let upgradeModalReason = '';
   let premiumFeatures: Array<{ id: string; name: string; description: string; icon: string }> = [];
@@ -330,7 +332,12 @@
             {/if}
 
             <div class="mt-6 space-y-4">
-              <SocialLinks {GITHUB_LINK} {YOUTUBE_LINK} {COFFEE_LINK} />
+              <SocialLinks
+                {GITHUB_LINK}
+                {YOUTUBE_LINK}
+                {COFFEE_LINK}
+                on:feedback={() => (showFeedbackModal = true)}
+              />
             </div>
           </TabsContent>
 
@@ -456,6 +463,8 @@
     reason={upgradeModalReason}
     features={premiumFeatures}
   />
+
+  <FeedbackModal bind:show={showFeedbackModal} githubToken={githubSettings.githubToken} />
 </main>
 
 <style>

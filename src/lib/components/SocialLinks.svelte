@@ -1,18 +1,25 @@
 <script lang="ts">
-  import { Coffee, GithubIcon, YoutubeIcon, HelpCircle } from 'lucide-svelte';
+  import { Coffee, GithubIcon, YoutubeIcon, HelpCircle, MessageSquare } from 'lucide-svelte';
   import { Button } from '$lib/components/ui/button';
+  import { createEventDispatcher } from 'svelte';
 
   export let GITHUB_LINK: string;
   export let YOUTUBE_LINK: string;
   export let COFFEE_LINK: string;
   export let HELP_LINK: string = 'https://fix.aidrivencoder.com';
 
+  const dispatch = createEventDispatcher();
+
   function openLink(url: string) {
     chrome.tabs.create({ url });
   }
+
+  function handleFeedbackClick() {
+    dispatch('feedback');
+  }
 </script>
 
-<div class="flex justify-center space-x-4">
+<div class="flex justify-center space-x-2">
   <Button
     variant="outline"
     class="border-slate-800 hover:bg-slate-800 text-slate-200"
@@ -26,6 +33,14 @@
     on:click={() => openLink(YOUTUBE_LINK)}
   >
     <YoutubeIcon class="w-4 h-4" />
+  </Button>
+  <Button
+    variant="outline"
+    class="border-blue-600/50 hover:bg-blue-600/10 text-blue-400 hover:text-blue-300 flex items-center gap-1.5"
+    on:click={handleFeedbackClick}
+    title="Send feedback to the developer"
+  >
+    <MessageSquare class="w-4 h-4" />
   </Button>
   <Button
     variant="outline"
