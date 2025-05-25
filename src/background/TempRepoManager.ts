@@ -1,5 +1,6 @@
 import { GitHubService } from '../services/GitHubService';
 import type { UploadStatusState } from '../lib/types';
+import { OperationStateManager } from '../content/services/OperationStateManager';
 
 export const STORAGE_KEY = 'bolt_temp_repos';
 
@@ -15,12 +16,14 @@ export class BackgroundTempRepoManager {
   private static CLEANUP_INTERVAL = 30 * 1000; // 30 seconds
   private static MAX_AGE = 60 * 1000; // 60 seconds
   private cleanupInterval: NodeJS.Timeout | null = null;
+  private operationStateManager: OperationStateManager;
 
   constructor(
     private githubService: GitHubService,
     private owner: string,
     private broadcastStatus: (status: UploadStatusState) => void
   ) {
+    this.operationStateManager = OperationStateManager.getInstance();
     // Start cleanup interval only if there are existing temp repos
     this.initializeCleanup();
   }
@@ -37,8 +40,19 @@ export class BackgroundTempRepoManager {
   }
 
   async handlePrivateRepoImport(sourceRepo: string, branch?: string): Promise<void> {
+    // Generate unique operation ID for this import
+    const operationId = `import-${Date.now()}-${Math.random().toString(36).substring(2, 8)}`;
     let tempRepoName: string | undefined;
+
     try {
+      // Start tracking the import operation
+      await this.operationStateManager.startOperation(
+        'import',
+        operationId,
+        `Importing private repository: ${sourceRepo}`,
+        { sourceRepo, branch }
+      );
+
       this.broadcastStatus({
         status: 'uploading',
         message: 'Creating temporary repository...',
@@ -116,12 +130,22 @@ export class BackgroundTempRepoManager {
         progress: 100,
       });
 
+      // Mark operation as completed
+      await this.operationStateManager.completeOperation(operationId);
+
       // Start cleanup interval if not already running
       if (!this.cleanupInterval) {
         this.startCleanupInterval();
       }
     } catch (error) {
       console.error('Failed to import private repository:', error);
+
+      // Mark operation as failed
+      await this.operationStateManager.failOperation(
+        operationId,
+        error instanceof Error ? error : new Error('Unknown error')
+      );
+
       this.broadcastStatus({
         status: 'error',
         message: error instanceof Error ? error.message : 'Failed to import repository',

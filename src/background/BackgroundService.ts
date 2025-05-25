@@ -4,6 +4,7 @@ import { StateManager } from './StateManager';
 import { ZipHandler } from '../services/zipHandler';
 import { BackgroundTempRepoManager } from './TempRepoManager';
 import { SupabaseAuthService } from '../content/services/SupabaseAuthService';
+import { OperationStateManager } from '../content/services/OperationStateManager';
 
 export class BackgroundService {
   private stateManager: StateManager;
@@ -13,6 +14,7 @@ export class BackgroundService {
   private tempRepoManager: BackgroundTempRepoManager | null = null;
   private pendingCommitMessage: string;
   private supabaseAuthService: SupabaseAuthService;
+  private operationStateManager: OperationStateManager;
   private storageListener:
     | ((changes: { [key: string]: chrome.storage.StorageChange }, namespace: string) => void)
     | null = null;
@@ -25,6 +27,7 @@ export class BackgroundService {
     this.zipHandler = null;
     this.pendingCommitMessage = 'Commit from Bolt to GitHub';
     this.supabaseAuthService = SupabaseAuthService.getInstance();
+    this.operationStateManager = OperationStateManager.getInstance();
     this.initialize();
 
     // Track extension lifecycle
@@ -416,6 +419,20 @@ export class BackgroundService {
     const port = this.ports.get(tabId);
     if (!port) return;
 
+    // Generate unique operation ID for this push
+    const operationId = `push-${Date.now()}-${Math.random().toString(36).substring(2, 8)}`;
+
+    // Start tracking the push operation
+    await this.operationStateManager.startOperation(
+      'push',
+      operationId,
+      'GitHub push operation via background service',
+      {
+        tabId,
+        commitMessage: this.pendingCommitMessage,
+      }
+    );
+
     const startTime = Date.now();
     let uploadSuccess = false;
     let uploadMetadata: any = {};
@@ -473,6 +490,9 @@ export class BackgroundService {
         // Reset commit message after successful upload
         this.pendingCommitMessage = 'Commit from Bolt to GitHub';
 
+        // Mark operation as completed - push successful
+        await this.operationStateManager.completeOperation(operationId);
+
         this.sendResponse(port, {
           type: 'UPLOAD_STATUS',
           status: { status: 'success', message: 'Upload completed successfully', progress: 100 },
@@ -496,6 +516,12 @@ export class BackgroundService {
           error_message: errorMessage,
           context: 'zip_processing',
         });
+
+        // Mark operation as failed
+        await this.operationStateManager.failOperation(
+          operationId,
+          decodeError instanceof Error ? decodeError : new Error(errorMessage)
+        );
 
         if (isGitHubError) {
           // Extract the original GitHub error message if available
@@ -527,6 +553,12 @@ export class BackgroundService {
           error_message: error instanceof Error ? error.message : 'Unknown error',
           context: 'general',
         });
+
+        // Mark operation as failed for any outer catch errors
+        await this.operationStateManager.failOperation(
+          operationId,
+          error instanceof Error ? error : new Error('Unknown error occurred')
+        );
       }
 
       this.sendResponse(port, {

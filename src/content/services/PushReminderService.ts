@@ -3,6 +3,7 @@ import type { INotificationManager } from '../types/ManagerInterfaces';
 import type { FileChange } from '../../services/FilePreviewService';
 import { ActivityMonitor } from '../infrastructure/ActivityMonitor';
 import type { PremiumService } from './PremiumService';
+import { OperationStateManager } from './OperationStateManager';
 
 export interface PushReminderSettings {
   enabled: boolean;
@@ -40,6 +41,7 @@ export class PushReminderService {
   private scheduledInterval: NodeJS.Timeout | null = null;
   private state: ReminderState;
   private premiumService: PremiumService | null = null;
+  private operationStateManager: OperationStateManager;
 
   // Default settings
   private settings: PushReminderSettings = {
@@ -60,6 +62,7 @@ export class PushReminderService {
     this.messageHandler = messageHandler;
     this.notificationManager = notificationManager;
     this.activityMonitor = new ActivityMonitor();
+    this.operationStateManager = OperationStateManager.getInstance();
 
     this.state = {
       lastReminderTime: 0,
@@ -177,6 +180,13 @@ export class PushReminderService {
       return;
     }
     console.log('✅ Push reminder: Not in snooze period');
+
+    // Check for ongoing operations that should suppress reminders
+    if (await this.hasOngoingOperations()) {
+      console.log('❌ Push reminder: Skipping due to ongoing operations');
+      return;
+    }
+    console.log('✅ Push reminder: No conflicting operations in progress');
 
     // Check if enough time has passed since last reminder
     if (!this.hasReminderIntervalPassed()) {
@@ -452,6 +462,7 @@ export class PushReminderService {
       isInSnooze: this.isInSnoozeInterval(),
       hasIntervalPassed: this.hasReminderIntervalPassed(),
       activityMonitor: this.activityMonitor.getDebugInfo(),
+      operationState: this.operationStateManager.getDebugInfo(),
     };
   }
 
@@ -644,6 +655,13 @@ export class PushReminderService {
     }
     console.log('✅ Scheduled reminder: Not in snooze period');
 
+    // Check for ongoing operations that should suppress reminders
+    if (await this.hasOngoingOperations()) {
+      console.log('❌ Scheduled reminder: Skipping due to ongoing operations');
+      return;
+    }
+    console.log('✅ Scheduled reminder: No conflicting operations in progress');
+
     // Check if there are enough changes to warrant a reminder
     console.log('🔍 Scheduled reminder: Checking for significant changes...');
     const hasSignificantChanges = await this.hasSignificantChanges();
@@ -693,5 +711,148 @@ export class PushReminderService {
     } catch (error) {
       console.error('❌ Scheduled reminder: Failed to show reminder:', error);
     }
+  }
+
+  /**
+   * Check for ongoing operations that should suppress reminders
+   */
+  private async hasOngoingOperations(): Promise<boolean> {
+    // Check for push operations, import operations, comparison operations, and other conflicting operations
+    const conflictingOperationTypes: ('push' | 'import' | 'clone' | 'sync' | 'comparison')[] = [
+      'push',
+      'import',
+      'clone',
+      'sync',
+      'comparison',
+    ];
+
+    const hasConflictingOps =
+      this.operationStateManager.hasOngoingOperations(conflictingOperationTypes);
+
+    if (hasConflictingOps) {
+      const ongoingOps =
+        this.operationStateManager.getOngoingOperationsByType(conflictingOperationTypes);
+      console.log(
+        '🔍 Push reminder: Found ongoing operations:',
+        ongoingOps.map((op) => ({
+          type: op.type,
+          id: op.id,
+          description: op.description,
+          durationMs: Date.now() - op.startTime,
+        }))
+      );
+      return true;
+    }
+
+    // Additional checks for upload status through UIStateManager if available
+    try {
+      // Check if there's an active upload by looking at UI state
+      // This covers cases where operations might not be tracked by OperationStateManager
+      const uiState = await this.checkUIUploadState();
+      if (uiState.isUploading) {
+        console.log('🔍 Push reminder: Found active upload through UI state check');
+        return true;
+      }
+    } catch (error) {
+      console.warn('❌ Push reminder: Failed to check UI upload state:', error);
+    }
+
+    return false;
+  }
+
+  /**
+   * Check UI upload state to detect ongoing uploads
+   */
+  private async checkUIUploadState(): Promise<{ isUploading: boolean }> {
+    try {
+      // Try to access upload state from storage or UI state
+      const result = await chrome.storage.local.get(['uploadState']);
+      if (result.uploadState && result.uploadState.uploadStatus === 'uploading') {
+        return { isUploading: true };
+      }
+    } catch (error) {
+      // Storage access might fail, continue to other checks
+    }
+
+    return { isUploading: false };
+  }
+
+  /**
+   * Test operation state functionality (for debugging)
+   */
+  public testOperationState(): void {
+    console.log('🧪 Testing operation state functionality...');
+
+    // Start a test operation
+    const testId = 'test-operation-' + Date.now();
+    this.operationStateManager.startOperation('push', testId, 'Test push operation');
+
+    console.log('✅ Started test operation:', testId);
+    console.log('📊 Current operations:', this.operationStateManager.getDebugInfo());
+
+    // Complete it after 5 seconds
+    setTimeout(() => {
+      this.operationStateManager.completeOperation(testId);
+      console.log('✅ Completed test operation:', testId);
+      console.log('📊 Operations after completion:', this.operationStateManager.getDebugInfo());
+    }, 5000);
+  }
+
+  /**
+   * Test operation suppression (for debugging)
+   */
+  public async testOperationSuppression(): Promise<void> {
+    console.log('🧪 Testing operation suppression...');
+
+    // Start a test operation
+    const testId = 'test-suppression-' + Date.now();
+    this.operationStateManager.startOperation('push', testId, 'Test suppression operation');
+
+    console.log('✅ Started test operation for suppression test:', testId);
+
+    // Try to check for reminders (should be suppressed)
+    const hasOngoing = await this.hasOngoingOperations();
+    console.log('🔍 Has ongoing operations:', hasOngoing);
+
+    if (hasOngoing) {
+      console.log('✅ Operation suppression working correctly!');
+    } else {
+      console.log('❌ Operation suppression not working!');
+    }
+
+    // Clean up
+    this.operationStateManager.completeOperation(testId);
+    console.log('🧹 Cleaned up test operation');
+  }
+
+  /**
+   * Test comparison operation suppression (for debugging)
+   */
+  public async testComparisonSuppression(): Promise<void> {
+    console.log('🧪 Testing comparison operation suppression...');
+
+    // Start a test comparison operation
+    const testId = 'test-comparison-' + Date.now();
+    this.operationStateManager.startOperation('comparison', testId, 'Test comparison operation', {
+      repoOwner: 'test',
+      repoName: 'test-repo',
+      targetBranch: 'main',
+    });
+
+    console.log('✅ Started test comparison operation:', testId);
+
+    // Try to check for reminders (should be suppressed)
+    const hasOngoing = await this.hasOngoingOperations();
+    console.log('🔍 Has ongoing operations (should include comparison):', hasOngoing);
+
+    if (hasOngoing) {
+      console.log('✅ Comparison operation suppression working correctly!');
+    } else {
+      console.log('❌ Comparison operation suppression not working!');
+    }
+
+    // Clean up
+    this.operationStateManager.completeOperation(testId);
+    console.log('🧹 Cleaned up test comparison operation');
   }
 }
