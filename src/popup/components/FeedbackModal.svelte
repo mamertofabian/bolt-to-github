@@ -37,7 +37,10 @@
   function resetForm() {
     category = '';
     message = '';
-    email = '';
+    // Don't reset email if it was prepopulated from storage
+    if (!email) {
+      loadUserEmail();
+    }
     isSuccess = false;
     error = null;
   }
@@ -96,12 +99,29 @@
   function selectCategory(selectedCategory: string) {
     category = selectedCategory;
   }
+
+  // Load email from Chrome local storage if available
+  async function loadUserEmail() {
+    try {
+      const result = await chrome.storage.local.get('supabaseAuthState');
+      if (result.supabaseAuthState?.user?.email) {
+        email = result.supabaseAuthState.user.email;
+      }
+    } catch (error) {
+      console.error('Error loading email from storage:', error);
+    }
+  }
+
+  // Initialize email when component mounts
+  $: if (show && !email) {
+    loadUserEmail();
+  }
 </script>
 
 <svelte:window on:keydown={handleKeydown} />
 
 <Modal {show} title="">
-  <div class="space-y-4 max-h-[400px] overflow-y-auto scrollbar-styled">
+  <div class="space-y-4 max-h-[400px] overflow-y-auto scrollbar-styled pr-3 pl-1">
     {#if isSuccess}
       <div class="flex flex-col items-center justify-center py-8 text-center">
         <div class="bg-green-500/20 p-4 rounded-full mb-4">
@@ -228,6 +248,7 @@
   .scrollbar-styled {
     scrollbar-width: thin;
     scrollbar-color: #475569 #1e293b;
+    padding-right: 4px;
   }
 
   .scrollbar-styled::-webkit-scrollbar {
@@ -237,6 +258,7 @@
   .scrollbar-styled::-webkit-scrollbar-track {
     background: #1e293b;
     border-radius: 4px;
+    margin-right: 4px;
   }
 
   .scrollbar-styled::-webkit-scrollbar-thumb {
