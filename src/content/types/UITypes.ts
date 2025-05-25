@@ -27,6 +27,14 @@ export interface ConfirmationOptions {
   message: string;
   confirmText?: string;
   cancelText?: string;
+  placeholder?: string;
+  showFilePreview?: boolean;
+  fileChangesSummary?: {
+    added: number;
+    modified: number;
+    deleted: number;
+  };
+  commitMessageTemplates?: string[];
   type?: 'info' | 'warning' | 'error';
 }
 
@@ -63,6 +71,7 @@ export interface DialogOptions {
 export type SvelteComponent = {
   $set: (props: Record<string, any>) => void;
   $destroy: () => void;
+  $on?: (event: string, handler: (event: CustomEvent) => void) => void;
 };
 
 // UI State types

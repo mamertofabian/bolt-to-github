@@ -9,19 +9,32 @@ import type { INotificationManager } from '../types/ManagerInterfaces';
 import type { MessageHandler } from '../MessageHandler';
 import type { UIStateManager } from '../services/UIStateManager';
 import Notification from '../Notification.svelte';
+import { EnhancedConfirmationDialog } from '../../lib/components/ui/dialog';
+
+interface NotificationInstance {
+  component: SvelteComponent;
+  container: HTMLElement;
+  id: string;
+}
 
 /**
  * NotificationManager handles all notification-related functionality
  * Previously part of UIManager
  */
 export class NotificationManager implements INotificationManager {
-  private notificationComponent: SvelteComponent | null = null;
+  private notifications: NotificationInstance[] = [];
   private messageHandler: MessageHandler;
   private stateManager?: UIStateManager;
+  private notificationCounter = 0;
+  private resizeListener?: () => void;
 
   constructor(messageHandler: MessageHandler, stateManager?: UIStateManager) {
     this.messageHandler = messageHandler;
     this.stateManager = stateManager;
+
+    // Add resize listener for responsive updates
+    this.resizeListener = () => this.updateNotificationPositions();
+    window.addEventListener('resize', this.resizeListener);
   }
 
   /**
@@ -29,16 +42,27 @@ export class NotificationManager implements INotificationManager {
    * Replaces the previous showNotification method from UIManager
    */
   public showNotification(options: NotificationOptions): void {
-    // Cleanup existing notification if any
-    this.notificationComponent?.$destroy();
+    const notificationId = `notification-${++this.notificationCounter}`;
 
     // Create container for notification
     const container = document.createElement('div');
-    container.id = 'bolt-to-github-notification-container';
+    container.id = `bolt-to-github-notification-container-${notificationId}`;
+    container.style.position = 'fixed';
+    container.style.top = this.calculateNotificationTop() + 'px';
+    container.style.right = '1rem';
+    container.style.zIndex = '10000';
+    container.style.pointerEvents = 'none';
+
+    // Handle mobile responsiveness
+    if (window.innerWidth <= 640) {
+      container.style.left = '1rem';
+      container.style.right = '1rem';
+    }
+
     document.body.appendChild(container);
 
     // Create new notification component
-    this.notificationComponent = new Notification({
+    const notificationComponent = new Notification({
       target: container,
       props: {
         type: options.type,
@@ -46,12 +70,76 @@ export class NotificationManager implements INotificationManager {
         duration: options.duration || 5000,
         actions: options.actions || [],
         onClose: () => {
-          this.notificationComponent?.$destroy();
-          this.notificationComponent = null;
-          container.remove();
+          this.removeNotification(notificationId);
         },
       },
     }) as SvelteComponent;
+
+    // Store the notification instance
+    const notificationInstance: NotificationInstance = {
+      component: notificationComponent,
+      container: container,
+      id: notificationId,
+    };
+
+    this.notifications.push(notificationInstance);
+
+    // Update positions of all notifications
+    this.updateNotificationPositions();
+  }
+
+  /**
+   * Calculate the top position for a new notification
+   */
+  private calculateNotificationTop(): number {
+    const baseTop = 16; // 1rem in pixels
+    const notificationHeight = 88; // Increased height to account for enhanced styling
+    const gap = 12; // Increased gap for better visual separation
+
+    return baseTop + this.notifications.length * (notificationHeight + gap);
+  }
+
+  /**
+   * Update positions of all notifications to maintain proper stacking
+   */
+  private updateNotificationPositions(): void {
+    const baseTop = 16; // 1rem in pixels
+    const notificationHeight = 88; // Increased height to account for enhanced styling
+    const gap = 12; // Increased gap for better visual separation
+
+    this.notifications.forEach((notification, index) => {
+      const top = baseTop + index * (notificationHeight + gap);
+      notification.container.style.top = top + 'px';
+
+      // Update mobile responsiveness for existing notifications
+      if (window.innerWidth <= 640) {
+        notification.container.style.left = '1rem';
+        notification.container.style.right = '1rem';
+      } else {
+        notification.container.style.left = 'auto';
+        notification.container.style.right = '1rem';
+      }
+    });
+  }
+
+  /**
+   * Remove a specific notification by ID
+   */
+  private removeNotification(notificationId: string): void {
+    const index = this.notifications.findIndex((n) => n.id === notificationId);
+    if (index === -1) return;
+
+    const notification = this.notifications[index];
+
+    // Destroy the component and remove the container
+    notification.component.$destroy();
+    notification.container.remove();
+
+    // Remove from array
+    this.notifications.splice(index, 1);
+
+    // Update positions of remaining notifications
+    this.updateNotificationPositions();
   }
 
   /**
@@ -60,70 +148,46 @@ export class NotificationManager implements INotificationManager {
    */
   public showConfirmationDialog(options: ConfirmationOptions): Promise<ConfirmationResult> {
     return new Promise((resolve) => {
-      const overlay = document.createElement('div');
-      overlay.style.zIndex = '9999';
-      overlay.style.backgroundColor = 'rgba(0, 0, 0, 0.5)';
-      overlay.className = ['fixed', 'inset-0', 'flex', 'items-center', 'justify-center'].join(' ');
+      // Create container for the enhanced dialog
+      const container = document.createElement('div');
+      container.id = 'bolt-to-github-confirmation-dialog-container';
+      container.style.position = 'fixed';
+      container.style.top = '0';
+      container.style.left = '0';
+      container.style.width = '100%';
+      container.style.height = '100%';
+      container.style.zIndex = '2147483646';
+      container.style.pointerEvents = 'none';
+      document.body.appendChild(container);
 
-      const dialog = document.createElement('div');
-      dialog.style.zIndex = '10000';
-      dialog.style.width = '320px'; // Set fixed width
-      dialog.style.backgroundColor = '#0f172a'; // Match bg-slate-900
-      dialog.className = [
-        'p-6',
-        'rounded-lg',
-        'shadow-xl',
-        'mx-4',
-        'space-y-4',
-        'border',
-        'border-slate-700',
-        'relative',
-      ].join(' ');
+      // Create the enhanced confirmation dialog component
+      const dialogComponent = new EnhancedConfirmationDialog({
+        target: container,
+        props: {
+          show: true,
+          title: options.title,
+          message: options.message,
+          confirmText: options.confirmText || 'Push to GitHub',
+          cancelText: options.cancelText || 'Cancel',
+          placeholder: options.placeholder || 'Commit from Bolt to GitHub',
+          showFilePreview: options.showFilePreview || false,
+          fileChangesSummary: options.fileChangesSummary || null,
+          commitMessageTemplates: options.commitMessageTemplates || [],
+          isLoading: false,
+        },
+      }) as SvelteComponent;
 
-      dialog.innerHTML = `
-        <h3 class="text-lg font-semibold text-white">${options.title}</h3>
-        <p class="text-slate-300 text-sm">${options.message}</p>
-        <div class="mt-4">
-          <label for="commit-message" class="block text-sm text-slate-300 mb-2">Commit message (optional)</label>
-          <input 
-            type="text" 
-            id="commit-message" 
-            placeholder="Commit from Bolt to GitHub"
-            class="w-full px-3 py-2 text-sm rounded-md bg-slate-800 text-white border border-slate-700 focus:border-blue-500 focus:outline-none"
-          >
-        </div>
-        <div class="flex justify-end gap-3 mt-6">
-          <button class="px-4 py-2 text-sm rounded-md bg-slate-800 text-slate-300 hover:bg-slate-700" id="cancel-upload">
-            ${options.cancelText || 'Cancel'}
-          </button>
-          <button class="px-4 py-2 text-sm rounded-md bg-blue-600 text-white hover:bg-blue-700" id="confirm-upload">
-            ${options.confirmText || 'Confirm'}
-          </button>
-        </div>
-      `;
-
-      overlay.appendChild(dialog);
-      document.body.appendChild(overlay);
-
-      // Handle clicks
-      overlay.addEventListener('click', (e) => {
-        if (e.target === overlay) {
-          document.body.removeChild(overlay);
-          resolve({ confirmed: false });
-        }
+      // Handle dialog events
+      dialogComponent.$on?.('confirm', (event: CustomEvent<{ commitMessage: string }>) => {
+        dialogComponent.$destroy();
+        container.remove();
+        resolve({ confirmed: true, commitMessage: event.detail.commitMessage });
       });
 
-      dialog.querySelector('#cancel-upload')?.addEventListener('click', () => {
-        document.body.removeChild(overlay);
+      dialogComponent.$on?.('cancel', () => {
+        dialogComponent.$destroy();
+        container.remove();
         resolve({ confirmed: false });
-      });
-
-      dialog.querySelector('#confirm-upload')?.addEventListener('click', () => {
-        const commitMessage =
-          (dialog.querySelector('#commit-message') as HTMLInputElement)?.value ||
-          'Commit from Bolt to GitHub';
-        document.body.removeChild(overlay);
-        resolve({ confirmed: true, commitMessage });
       });
     });
   }
@@ -177,16 +241,23 @@ export class NotificationManager implements INotificationManager {
    * Cleanup all notification components and resources
    */
   public cleanup(): void {
-    // Cleanup notification component
-    if (this.notificationComponent) {
-      this.notificationComponent.$destroy();
-      this.notificationComponent = null;
+    // Cleanup all notification components
+    this.notifications.forEach((notification) => {
+      notification.component.$destroy();
+      notification.container.remove();
+    });
+    this.notifications = [];
+
+    // Remove resize listener
+    if (this.resizeListener) {
+      window.removeEventListener('resize', this.resizeListener);
+      this.resizeListener = undefined;
     }
 
-    // Remove notification container if it exists
-    const container = document.getElementById('bolt-to-github-notification-container');
-    if (container) {
-      container.remove();
+    // Remove confirmation dialog container if it exists
+    const dialogContainer = document.getElementById('bolt-to-github-confirmation-dialog-container');
+    if (dialogContainer) {
+      dialogContainer.remove();
     }
   }
 }
