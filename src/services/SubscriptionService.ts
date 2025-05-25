@@ -20,40 +20,33 @@ export interface SubscriptionResponse {
 }
 
 export class SubscriptionService {
-  private apiEndpoint = 'https://connect.mailerlite.com/api/subscribers'; // MailerLite API endpoint
-  private apiKey: string = '';
-
-  constructor() {
-    // In a real implementation, you would get this from environment variables
-    // or a secure configuration endpoint. For now, this should be configured
-    // by the extension developer in their deployment.
-    this.apiKey = 'YOUR_MAILERLITE_API_KEY'; // Replace with actual MailerLite API key
-  }
+  private apiEndpoint =
+    'https://gapvjcqybzabnrjnxzhg.supabase.co/functions/v1/newsletter-subscription';
 
   async subscribe(data: SubscriptionData): Promise<SubscriptionResponse> {
     try {
-      // Prepare the payload for MailerLite API
+      // Parse name into first and last name if provided
+      const nameParts = data.name ? data.name.trim().split(' ') : [];
+      const firstName = nameParts[0] || '';
+      const lastName = nameParts.slice(1).join(' ') || '';
+
+      // Prepare the payload for Supabase function
       const payload = {
         email: data.email,
-        fields: {
-          name: data.name || '',
+        firstName,
+        lastName,
+        customFields: {
           source: data.metadata?.subscriptionSource || 'extension',
           version: chrome.runtime.getManifest().version,
           subscription_date: new Date().toISOString(),
           preferences: JSON.stringify(data.preferences || {}),
         },
-        groups: [], // MailerLite group IDs can be added here if needed
-        status: 'active',
-        subscribed_at: new Date().toISOString(),
       };
 
       const response = await fetch(this.apiEndpoint, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          Accept: 'application/json',
-          Authorization: `Bearer ${this.apiKey}`,
-          'X-Requested-With': 'XMLHttpRequest',
         },
         body: JSON.stringify(payload),
       });
@@ -61,22 +54,29 @@ export class SubscriptionService {
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({}));
 
-        // Handle MailerLite specific error responses
-        if (response.status === 422 && errorData.errors?.email) {
-          throw new Error('This email is already subscribed or invalid.');
+        // Handle common error responses
+        if (response.status === 422 || response.status === 400) {
+          throw new Error(errorData.message || 'This email is already subscribed or invalid.');
         }
-        if (response.status === 401) {
-          throw new Error('Newsletter service configuration error.');
+        if (response.status === 500) {
+          throw new Error('Newsletter service is temporarily unavailable.');
         }
 
         throw new Error(`Subscription failed: ${errorData.message || response.statusText}`);
       }
 
       const result = await response.json();
+
+      if (!result.success) {
+        throw new Error(result.message || 'Subscription failed');
+      }
+
       return {
         success: true,
-        message: 'Successfully subscribed to newsletter! You may receive a confirmation email.',
-        subscriptionId: result.data?.id || 'unknown',
+        message:
+          result.message ||
+          'Successfully subscribed to newsletter! You may receive a confirmation email.',
+        subscriptionId: result.subscriber?.id || 'unknown',
       };
     } catch (error) {
       console.error('Subscription error:', error);

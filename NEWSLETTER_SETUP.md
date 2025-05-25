@@ -1,6 +1,6 @@
 # Newsletter Subscription Setup
 
-This document explains how to configure the newsletter subscription feature that integrates with MailerLite.
+This document explains how to configure the newsletter subscription feature that integrates with MailerLite via a secure Supabase function.
 
 ## Overview
 
@@ -10,38 +10,58 @@ The newsletter subscription feature provides an unintrusive way for users to opt
 - **Value-driven**: Clear communication of what users will receive
 - **Privacy-focused**: Easy to unsubscribe, respects user preferences
 - **Smart timing**: Shows prompts only at contextually appropriate moments
+- **Secure**: API keys are protected server-side via Supabase function
 
-## MailerLite Configuration
+## Supabase Function Integration
 
-### 1. Get Your MailerLite API Key
+### 1. Current Configuration
 
-1. Log in to your [MailerLite account](https://www.mailerlite.com/)
-2. Go to **Integrations** > **Developer API**
-3. Generate a new API token
-4. Copy the API token
+The extension is configured to use a Supabase Edge Function that securely handles MailerLite API integration:
 
-### 2. Configure the Extension
+**Endpoint**: `https://gapvjcqybzabnrjnxzhg.supabase.co/functions/v1/newsletter-subscription`
 
-In `src/services/SubscriptionService.ts`, replace the placeholder API key:
+### 2. API Request Format
+
+The extension sends subscription data in this format:
 
 ```typescript
-constructor() {
-  // Replace this with your actual MailerLite API key
-  this.apiKey = 'YOUR_ACTUAL_MAILERLITE_API_KEY';
+{
+  email: 'user@example.com',
+  firstName: 'John',         // First part of name if provided
+  lastName: 'Doe',           // Remaining parts of name if provided
+  customFields: {
+    source: 'extension',
+    version: '1.3.0',
+    subscription_date: '2024-01-03T10:30:00Z',
+    preferences: '{"productUpdates":true,"tips":true}'
+  }
 }
 ```
 
-### 3. Optional: Configure Groups
+### 3. Expected Response Format
 
-If you want to assign subscribers to specific MailerLite groups:
+**Success Response (201)**:
 
-```typescript
-const payload = {
-  email: data.email,
-  // ... other fields
-  groups: ['your-group-id-here'], // Add your MailerLite group ID
-  // ...
-};
+```json
+{
+  "success": true,
+  "message": "Successfully subscribed to newsletter",
+  "subscriber": {
+    "id": "mailerlite_subscriber_id",
+    "email": "user@example.com",
+    "status": "active",
+    "subscribedAt": "2024-01-03T10:30:00Z"
+  }
+}
+```
+
+**Error Response (422/400/500)**:
+
+```json
+{
+  "success": false,
+  "message": "Error description"
+}
 ```
 
 ## Feature Components
@@ -94,15 +114,16 @@ The system shows subscription prompts intelligently:
 - `newsletterSubscription`: Subscription status and email
 - `usageStats`: Interaction count and last prompt date
 
-### MailerLite Fields
+### Custom Fields Sent to MailerLite
 
-The extension sends these custom fields to MailerLite:
+The extension sends these custom fields via the Supabase function:
 
-- `name`: User's name (optional)
 - `source`: Always "extension"
 - `version`: Extension version number
 - `subscription_date`: ISO timestamp
 - `preferences`: JSON string of subscription preferences
+
+The Supabase function processes these and forwards to MailerLite with proper formatting.
 
 ## Privacy & Compliance
 
@@ -145,8 +166,8 @@ Tests cover:
 
 ### API Errors
 
-- MailerLite-specific error handling
-- Clear user feedback
+- Supabase function error handling
+- Clear user feedback for various error scenarios
 - Prevents duplicate subscription attempts
 
 ### Validation
@@ -189,27 +210,27 @@ thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
 
 ## Deployment Checklist
 
-- [ ] Replace placeholder API key with actual MailerLite key
+- [ ] Verify Supabase function is deployed and accessible
 - [ ] Test subscription flow in development
-- [ ] Verify MailerLite webhook (if using double opt-in)
-- [ ] Configure MailerLite groups (if desired)
-- [ ] Test error scenarios
+- [ ] Verify MailerLite integration via Supabase function
+- [ ] Test error scenarios (network errors, invalid emails, etc.)
 - [ ] Verify privacy policy mentions newsletter
-- [ ] Test unsubscribe flow
+- [ ] Test unsubscribe flow (handled by MailerLite)
 
 ## Security Considerations
 
-- **API Key Protection**: Store securely, never expose in client code
-- **CORS Configuration**: MailerLite API supports CORS for web extensions
-- **Data Validation**: All input validated before sending to API
-- **Rate Limiting**: Prevent spam submissions
+- **API Key Protection**: MailerLite API key is secured server-side in Supabase function
+- **Client-side Security**: No sensitive credentials exposed in extension code
+- **Data Validation**: Input validated both client-side and in Supabase function
+- **Rate Limiting**: Can be implemented in Supabase function if needed
 
 ## Support
 
 For issues with:
 
-- **MailerLite API**: Check [MailerLite API documentation](https://developers.mailerlite.com/)
+- **Supabase Function**: Check Supabase function logs and MailerLite API integration
+- **MailerLite API**: Refer to [MailerLite API documentation](https://developers.mailerlite.com/)
 - **Extension Integration**: Review this documentation and test files
 - **User Experience**: Adjust timing and messaging as needed
 
-The newsletter feature is designed to be unintrusive and valuable to users while respecting their privacy and preferences.
+The newsletter feature is designed to be unintrusive and valuable to users while respecting their privacy and preferences. The Supabase function integration ensures secure handling of API credentials and provides a robust, scalable solution.

@@ -1,3 +1,4 @@
+import { describe, jest, beforeEach, it, expect } from '@jest/globals';
 import { SubscriptionService } from '../SubscriptionService';
 
 // Mock chrome API
@@ -13,7 +14,6 @@ const mockChrome = {
   },
 };
 
-// @ts-ignore
 global.chrome = mockChrome;
 
 // Mock fetch
@@ -194,11 +194,13 @@ describe('SubscriptionService', () => {
   });
 
   describe('subscribe', () => {
-    it('should successfully subscribe with MailerLite API', async () => {
+    it('should successfully subscribe with Supabase function', async () => {
       const mockResponse = {
         ok: true,
         json: async () => ({
-          data: { id: 'subscriber-123' },
+          success: true,
+          message: 'Successfully subscribed to newsletter',
+          subscriber: { id: 'subscriber-123' },
         }),
       };
       (global.fetch as jest.Mock).mockResolvedValue(mockResponse);
@@ -216,30 +218,27 @@ describe('SubscriptionService', () => {
       });
 
       expect(result.success).toBe(true);
-      expect(result.message).toBe(
-        'Successfully subscribed to newsletter! You may receive a confirmation email.'
-      );
+      expect(result.message).toBe('Successfully subscribed to newsletter');
       expect(result.subscriptionId).toBe('subscriber-123');
 
       expect(global.fetch).toHaveBeenCalledWith(
-        'https://connect.mailerlite.com/api/subscribers',
+        'https://gapvjcqybzabnrjnxzhg.supabase.co/functions/v1/newsletter-subscription',
         expect.objectContaining({
           method: 'POST',
           headers: expect.objectContaining({
             'Content-Type': 'application/json',
-            Accept: 'application/json',
-            Authorization: 'Bearer YOUR_MAILERLITE_API_KEY',
           }),
+          body: expect.stringContaining('"email":"test@example.com"'),
         })
       );
     });
 
-    it('should handle MailerLite API errors gracefully', async () => {
+    it('should handle Supabase function errors gracefully', async () => {
       const mockResponse = {
         ok: false,
         status: 422,
         json: async () => ({
-          errors: { email: ['Email is already subscribed'] },
+          message: 'Email is already subscribed',
         }),
       };
       (global.fetch as jest.Mock).mockResolvedValue(mockResponse);
@@ -255,7 +254,7 @@ describe('SubscriptionService', () => {
       });
 
       expect(result.success).toBe(false);
-      expect(result.message).toBe('This email is already subscribed or invalid.');
+      expect(result.message).toBe('Email is already subscribed');
     });
 
     it('should handle network errors', async () => {

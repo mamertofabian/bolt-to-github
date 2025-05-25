@@ -14,7 +14,7 @@
     "https://api.github.com/*",
     "https://bolt2github.com/*",
     "https://www.google-analytics.com/*",
-    "https://connect.mailerlite.com/*"
+    "https://gapvjcqybzabnrjnxzhg.supabase.co/*"
   ],
   "background": {
     "service_worker": "src/background/index.ts",
