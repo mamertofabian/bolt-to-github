@@ -187,6 +187,13 @@
     uiStateActions.setActiveTab(event.detail);
   }
 
+  function openSignInPage() {
+    // Use browser extension API to open new tab
+    if (typeof chrome !== 'undefined' && chrome.tabs) {
+      chrome.tabs.create({ url: 'https://bolt2github.com/login' });
+    }
+  }
+
   async function showStoredFileChanges() {
     const success = await fileChangesActions.loadStoredFileChanges(projectId);
     if (!success) {
@@ -288,9 +295,7 @@
             {#if !isUserAuthenticated}
               <button
                 class="text-xs text-slate-400 hover:text-slate-300 transition-colors underline"
-                on:click={() => {
-                  chrome.tabs.create({ url: 'https://bolt2github.com/login' });
-                }}
+                on:click={openSignInPage}
                 title="Sign in if you already have a premium account"
               >
                 Sign in
