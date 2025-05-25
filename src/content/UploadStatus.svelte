@@ -12,9 +12,14 @@
   let notificationVisible = false;
   let mounted = false;
   let hideTimeout: number | null = null;
+  let animationClass = '';
+  let progressBarRef: HTMLElement;
 
   // Watch for status changes and update UI accordingly
   $: if (mounted) updateNotificationUI(status);
+
+  // Respect user's motion preferences
+  const prefersReducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 
   onMount(() => {
     console.log('🔄 UploadStatus component mounted');
@@ -33,19 +38,35 @@
     }
 
     if (newStatus.status === 'idle') {
-      notificationVisible = false;
+      animationClass = 'notification-exit';
+      setTimeout(
+        () => {
+          notificationVisible = false;
+          animationClass = '';
+        },
+        prefersReducedMotion ? 0 : 300
+      );
       return;
     }
 
     // Always make visible for non-idle states
     notificationVisible = true;
+    animationClass = 'notification-enter';
+
+    // Remove enter animation class after animation completes
+    setTimeout(
+      () => {
+        animationClass = '';
+      },
+      prefersReducedMotion ? 0 : 400
+    );
 
     // Auto-hide for success/error states
     if (newStatus.status === 'success' || newStatus.status === 'error') {
       console.log(`🔄 Setting auto-hide for ${newStatus.status} status`);
       hideTimeout = window.setTimeout(() => {
         console.log('🔄 Auto-hiding notification');
-        notificationVisible = false;
+        closeNotification();
         hideTimeout = null;
       }, 5000);
     }
@@ -53,11 +74,23 @@
 
   function closeNotification() {
     console.log('🔄 Closing notification');
-    notificationVisible = false;
+    animationClass = 'notification-exit';
+
     // Reset state after animation completes
-    setTimeout(() => {
-      status = { status: 'idle' };
-    }, 300); // Match the CSS transition duration
+    setTimeout(
+      () => {
+        notificationVisible = false;
+        animationClass = '';
+        status = { status: 'idle' };
+      },
+      prefersReducedMotion ? 0 : 300
+    );
+  }
+
+  function handleKeydown(event: KeyboardEvent) {
+    if (event.key === 'Escape') {
+      closeNotification();
+    }
   }
 
   // Clean up timers on destroy
@@ -67,67 +100,125 @@
       clearTimeout(hideTimeout);
     }
   });
+
+  // Get status icon
+  function getStatusIcon(status: string) {
+    switch (status) {
+      case 'uploading':
+        return '⬆️';
+      case 'success':
+        return '✅';
+      case 'error':
+        return '⚠️';
+      default:
+        return '';
+    }
+  }
 </script>
+
+<svelte:window on:keydown={handleKeydown} />
 
 <div id="bolt-upload-status">
   <div
-    class="bolt-notification fixed top-4 right-4 w-80 bg-gray-800/100 rounded-lg shadow-lg border border-gray-700 p-4 transition-all duration-300"
-    class:hidden={!notificationVisible || status.status === 'idle'}
-    style="margin-top: 40px; margin-right: 10px; z-index: 10001;"
+    class="bolt-notification {animationClass}"
+    class:notification-visible={notificationVisible && status.status !== 'idle'}
+    class:status-uploading={status.status === 'uploading'}
+    class:status-success={status.status === 'success'}
+    class:status-error={status.status === 'error'}
+    role="alert"
+    aria-live="polite"
+    aria-atomic="true"
+    tabindex="-1"
   >
-    <div class="flex items-center justify-between mb-2">
-      <span
-        class="font-medium status-text"
-        class:text-gray-100={status.status === 'uploading'}
-        class:text-green-400={status.status === 'success'}
-        class:text-red-400={status.status === 'error'}
-      >
-        {#if status.status === 'uploading'}
-          Pushing to GitHub...
-        {:else if status.status === 'success'}
-          Push Complete!
-        {:else if status.status === 'error'}
-          Push Failed
-        {/if}
-      </span>
-      <div class="flex items-center gap-2">
-        <span class="text-sm text-gray-300">{status.progress || 0}%</span>
-        <button
-          class="close-button text-gray-400 hover:text-gray-200 transition-colors p-0.5 rounded hover:bg-white/10"
-          on:click={closeNotification}
-        >
-          <svg
-            xmlns="http://www.w3.org/2000/svg"
-            class="h-5 w-5"
-            viewBox="0 0 20 20"
-            fill="currentColor"
+    <div class="notification-content">
+      <div class="notification-header">
+        <div class="status-info">
+          <span class="status-icon" aria-hidden="true">
+            {getStatusIcon(status.status)}
+          </span>
+          <span class="status-text">
+            {#if status.status === 'uploading'}
+              Pushing to GitHub...
+            {:else if status.status === 'success'}
+              Push Complete!
+            {:else if status.status === 'error'}
+              Push Failed
+            {/if}
+          </span>
+        </div>
+        <div class="notification-controls">
+          <span class="progress-percentage" aria-label="Progress: {status.progress || 0} percent">
+            {status.progress || 0}%
+          </span>
+          <button
+            class="close-button"
+            on:click={closeNotification}
+            aria-label="Close notification"
+            type="button"
           >
-            <path
-              fill-rule="evenodd"
-              d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z"
-              clip-rule="evenodd"
-            />
-          </svg>
-        </button>
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              class="close-icon"
+              viewBox="0 0 20 20"
+              fill="currentColor"
+              aria-hidden="true"
+            >
+              <path
+                fill-rule="evenodd"
+                d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z"
+                clip-rule="evenodd"
+              />
+            </svg>
+          </button>
+        </div>
       </div>
-    </div>
 
-    <div class="w-full bg-gray-700 rounded-full h-2.5 mb-2">
       <div
-        class="h-2.5 rounded-full transition-all duration-300"
-        class:bg-blue-500={status.status === 'uploading'}
-        class:bg-green-500={status.status === 'success'}
-        class:bg-red-500={status.status === 'error'}
-        style="width: {status.progress || 0}%"
-      ></div>
-    </div>
+        class="progress-container"
+        role="progressbar"
+        aria-valuenow={status.progress || 0}
+        aria-valuemin="0"
+        aria-valuemax="100"
+      >
+        <div class="progress-track">
+          <div
+            bind:this={progressBarRef}
+            class="progress-bar"
+            style="width: {status.progress || 0}%"
+          >
+            <div class="progress-shimmer"></div>
+          </div>
+        </div>
+      </div>
 
-    <p class="text-sm text-gray-300">{status.message || ''}</p>
+      {#if status.message}
+        <p class="status-message">{status.message}</p>
+      {/if}
+    </div>
   </div>
 </div>
 
 <style>
-  .bolt-notification {
+  /* CSS Custom Properties for theming */
+  :root {
+    --upload-primary: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    --upload-success: linear-gradient(135deg, #4ade80 0%, #22c55e 100%);
+    --upload-error: linear-gradient(135deg, #f87171 0%, #ef4444 100%);
+    --upload-background: rgba(17, 24, 39, 0.95);
+    --upload-border: rgba(255, 255, 255, 0.1);
+    --upload-text-primary: rgba(255, 255, 255, 0.95);
+    --upload-text-secondary: rgba(255, 255, 255, 0.7);
+    --upload-shadow:
+      0 25px 50px -12px rgba(0, 0, 0, 0.5), 0 0 0 1px rgba(255, 255, 255, 0.05),
+      inset 0 1px 0 rgba(255, 255, 255, 0.1);
+  }
+
+  #bolt-upload-status {
+    position: fixed;
+    top: 0;
+    right: 0;
+    z-index: 10001;
+    pointer-events: none;
     font-family:
       ui-sans-serif,
       system-ui,
@@ -139,28 +230,343 @@
       Arial,
       'Noto Sans',
       sans-serif;
-    backdrop-filter: none;
-    background-color: rgb(31, 41, 55);
-    box-shadow:
-      0 10px 15px -3px rgba(0, 0, 0, 0.3),
-      0 4px 6px -4px rgba(0, 0, 0, 0.3);
   }
 
-  .bolt-notification.hidden {
-    transform: translateY(-150%);
-    opacity: 0;
-    pointer-events: none;
-  }
-
-  :global(#bolt-upload-status) {
+  .bolt-notification {
     position: fixed;
-    top: 0;
-    right: 0;
-    z-index: 10001;
-    pointer-events: none;
+    top: 1rem;
+    right: 1rem;
+    width: 22rem;
+    max-width: calc(100vw - 2rem);
+    background: var(--upload-background);
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
+    border: 1px solid var(--upload-border);
+    border-radius: 0.75rem;
+    box-shadow: var(--upload-shadow);
+    pointer-events: auto;
+    transform: translateX(100%) scale(0.9);
+    opacity: 0;
+    transition: all 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+    margin-top: 2.5rem;
+    margin-right: 0.625rem;
   }
 
-  :global(#bolt-upload-status .bolt-notification) {
-    pointer-events: auto;
+  .bolt-notification.notification-visible {
+    transform: translateX(0) scale(1);
+    opacity: 1;
+  }
+
+  .notification-enter {
+    animation: slideInScale 0.4s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+  }
+
+  .notification-exit {
+    animation: slideOutScale 0.3s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+  }
+
+  @keyframes slideInScale {
+    0% {
+      transform: translateX(100%) scale(0.9);
+      opacity: 0;
+    }
+    100% {
+      transform: translateX(0) scale(1);
+      opacity: 1;
+    }
+  }
+
+  @keyframes slideOutScale {
+    0% {
+      transform: translateX(0) scale(1);
+      opacity: 1;
+    }
+    100% {
+      transform: translateX(100%) scale(0.95);
+      opacity: 0;
+    }
+  }
+
+  @keyframes shimmer {
+    0% {
+      background-position: 200% 0;
+    }
+    100% {
+      background-position: -200% 0;
+    }
+  }
+
+  @keyframes slide {
+    0% {
+      left: -100%;
+    }
+    100% {
+      left: 100%;
+    }
+  }
+
+  @keyframes pulse {
+    0%,
+    100% {
+      opacity: 1;
+    }
+    50% {
+      opacity: 0.8;
+    }
+  }
+
+  @keyframes success-celebration {
+    0% {
+      transform: scale(1);
+    }
+    50% {
+      transform: scale(1.05);
+    }
+    100% {
+      transform: scale(1);
+    }
+  }
+
+  @keyframes error-shake {
+    0%,
+    100% {
+      transform: translateX(0);
+    }
+    25% {
+      transform: translateX(-2px);
+    }
+    75% {
+      transform: translateX(2px);
+    }
+  }
+
+  .notification-content {
+    padding: 1.25rem;
+  }
+
+  .notification-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 0.75rem;
+  }
+
+  .status-info {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+  }
+
+  .status-icon {
+    font-size: 1.125rem;
+    line-height: 1;
+  }
+
+  .status-text {
+    font-weight: 600;
+    font-size: 0.95rem;
+    color: var(--upload-text-primary);
+    letter-spacing: -0.01em;
+  }
+
+  .notification-controls {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+  }
+
+  .progress-percentage {
+    font-size: 0.875rem;
+    font-weight: 500;
+    color: var(--upload-text-secondary);
+    min-width: 2.5rem;
+    text-align: right;
+  }
+
+  .close-button {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 2rem;
+    height: 2rem;
+    border: none;
+    background: rgba(255, 255, 255, 0.1);
+    color: var(--upload-text-secondary);
+    border-radius: 0.375rem;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    backdrop-filter: blur(8px);
+  }
+
+  .close-button:hover {
+    background: rgba(255, 255, 255, 0.2);
+    color: var(--upload-text-primary);
+    transform: scale(1.05);
+  }
+
+  .close-button:focus {
+    outline: 2px solid rgba(255, 255, 255, 0.3);
+    outline-offset: 2px;
+  }
+
+  .close-icon {
+    width: 1.125rem;
+    height: 1.125rem;
+  }
+
+  .progress-container {
+    margin-bottom: 0.75rem;
+  }
+
+  .progress-track {
+    width: 100%;
+    height: 0.5rem;
+    background: rgba(255, 255, 255, 0.1);
+    border-radius: 0.375rem;
+    overflow: hidden;
+    position: relative;
+  }
+
+  .progress-bar {
+    height: 100%;
+    border-radius: 0.375rem;
+    position: relative;
+    overflow: hidden;
+    transition: width 0.3s ease;
+    background: var(--upload-primary);
+    background-size: 200% 100%;
+  }
+
+  .status-uploading .progress-bar {
+    background: var(--upload-primary);
+    animation: shimmer 2s infinite;
+  }
+
+  .status-success .progress-bar {
+    background: var(--upload-success);
+  }
+
+  .status-error .progress-bar {
+    background: var(--upload-error);
+  }
+
+  .progress-shimmer {
+    position: absolute;
+    top: 0;
+    left: -100%;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.3), transparent);
+    animation: slide 1.5s infinite;
+  }
+
+  .status-uploading .progress-shimmer {
+    animation: slide 1.5s infinite;
+  }
+
+  .status-message {
+    font-size: 0.875rem;
+    color: var(--upload-text-secondary);
+    line-height: 1.4;
+    margin: 0;
+  }
+
+  /* Status-specific animations */
+  .status-uploading {
+    animation: pulse 2s infinite;
+  }
+
+  .status-success .notification-content {
+    animation: success-celebration 0.6s ease-out;
+  }
+
+  .status-error .notification-content {
+    animation: error-shake 0.5s ease-out;
+  }
+
+  /* Enhanced glassmorphism for different states */
+  .status-uploading {
+    background: rgba(17, 24, 39, 0.9);
+    border-color: rgba(102, 126, 234, 0.3);
+  }
+
+  .status-success {
+    background: rgba(17, 24, 39, 0.9);
+    border-color: rgba(74, 222, 128, 0.3);
+  }
+
+  .status-error {
+    background: rgba(17, 24, 39, 0.9);
+    border-color: rgba(248, 113, 113, 0.3);
+  }
+
+  /* Accessibility: Respect reduced motion preferences */
+  @media (prefers-reduced-motion: reduce) {
+    .bolt-notification,
+    .progress-bar,
+    .close-button,
+    .notification-content {
+      animation: none !important;
+      transition: none !important;
+    }
+
+    .progress-shimmer {
+      display: none;
+    }
+  }
+
+  /* Mobile responsiveness */
+  @media (max-width: 640px) {
+    .bolt-notification {
+      width: calc(100vw - 2rem);
+      right: 1rem;
+      left: 1rem;
+      margin-right: 0;
+    }
+
+    .notification-content {
+      padding: 1rem;
+    }
+
+    .status-text {
+      font-size: 0.875rem;
+    }
+
+    .close-button {
+      width: 1.75rem;
+      height: 1.75rem;
+    }
+
+    .close-icon {
+      width: 1rem;
+      height: 1rem;
+    }
+  }
+
+  /* High contrast mode support */
+  @media (prefers-contrast: high) {
+    .bolt-notification {
+      background: rgba(0, 0, 0, 0.95);
+      border: 2px solid white;
+    }
+
+    .status-text {
+      color: white;
+    }
+
+    .progress-track {
+      background: rgba(255, 255, 255, 0.3);
+    }
+
+    .close-button {
+      background: rgba(255, 255, 255, 0.2);
+      border: 1px solid rgba(255, 255, 255, 0.5);
+    }
+  }
+
+  /* Focus management for keyboard navigation */
+  .bolt-notification:focus-within {
+    outline: 2px solid rgba(255, 255, 255, 0.3);
+    outline-offset: 2px;
   }
 </style>
