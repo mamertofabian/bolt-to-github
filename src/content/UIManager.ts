@@ -80,7 +80,11 @@ export class UIManager {
     );
 
     // Initialize FileChangeHandler
-    this.fileChangeHandler = new FileChangeHandler(messageHandler, this.notificationManager);
+    this.fileChangeHandler = new FileChangeHandler(
+      messageHandler,
+      this.notificationManager,
+      this.uploadStatusManager
+    );
 
     // Initialize PushReminderService
     console.log('🔊 Initializing PushReminderService');
@@ -98,6 +102,9 @@ export class UIManager {
 
     // Link premium service to file change handler
     this.fileChangeHandler.setPremiumService(this.premiumService);
+
+    // Link upload status manager to file change handler
+    this.fileChangeHandler.setUploadStatusManager(this.uploadStatusManager);
 
     // Link premium service to dropdown manager
     this.dropdownManager.setPremiumService(this.premiumService);

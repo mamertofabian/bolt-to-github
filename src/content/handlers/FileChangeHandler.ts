@@ -1,5 +1,5 @@
 import type { IFileChangeHandler } from '../types/HandlerInterfaces';
-import type { INotificationManager } from '../types/ManagerInterfaces';
+import type { INotificationManager, IUploadStatusManager } from '../types/ManagerInterfaces';
 import type { MessageHandler } from '../MessageHandler';
 import { FilePreviewService, type FileChange } from '../../services/FilePreviewService';
 import type { PremiumService } from '../services/PremiumService';
@@ -11,12 +11,18 @@ import type { PremiumService } from '../services/PremiumService';
 export class FileChangeHandler implements IFileChangeHandler {
   private messageHandler: MessageHandler;
   private notificationManager: INotificationManager;
+  private uploadStatusManager: IUploadStatusManager | null = null;
   private filePreviewService: FilePreviewService;
   private premiumService: PremiumService | null = null;
 
-  constructor(messageHandler: MessageHandler, notificationManager: INotificationManager) {
+  constructor(
+    messageHandler: MessageHandler,
+    notificationManager: INotificationManager,
+    uploadStatusManager?: IUploadStatusManager
+  ) {
     this.messageHandler = messageHandler;
     this.notificationManager = notificationManager;
+    this.uploadStatusManager = uploadStatusManager || null;
     this.filePreviewService = FilePreviewService.getInstance();
   }
 
@@ -25,6 +31,13 @@ export class FileChangeHandler implements IFileChangeHandler {
    */
   public setPremiumService(premiumService: PremiumService): void {
     this.premiumService = premiumService;
+  }
+
+  /**
+   * Set upload status manager reference (called by UIManager)
+   */
+  public setUploadStatusManager(uploadStatusManager: IUploadStatusManager): void {
+    this.uploadStatusManager = uploadStatusManager;
   }
 
   /**
@@ -58,12 +71,21 @@ export class FileChangeHandler implements IFileChangeHandler {
     await this.premiumService.useFileChanges();
 
     try {
-      /* Show initial loading notification (longer duration) */
-      this.notificationManager.showNotification({
-        type: 'info',
-        message: 'Loading project files...',
-        duration: 10000 /* Show for 10 seconds */,
-      });
+      /* Show initial loading status with progress tracking */
+      if (this.uploadStatusManager) {
+        this.uploadStatusManager.updateStatus({
+          status: 'loading',
+          message: 'Loading project files...',
+          progress: 10,
+        });
+      } else {
+        // Fallback to notification for backward compatibility
+        this.notificationManager.showNotification({
+          type: 'info',
+          message: 'Loading project files...',
+          duration: 10000,
+        });
+      }
 
       console.group('Changed Files');
       console.log('Refreshing and loading project files...');
@@ -75,12 +97,21 @@ export class FileChangeHandler implements IFileChangeHandler {
       const loadTime = performance.now() - startTime;
       console.log(`Files loaded in ${loadTime.toFixed(2)}ms`);
 
-      /* Update loading message */
-      this.notificationManager.showNotification({
-        type: 'info',
-        message: 'Comparing files with GitHub repository...',
-        duration: 8000,
-      });
+      /* Update to analyzing status */
+      if (this.uploadStatusManager) {
+        this.uploadStatusManager.updateStatus({
+          status: 'analyzing',
+          message: 'Comparing files with GitHub repository...',
+          progress: 60,
+        });
+      } else {
+        // Fallback to notification for backward compatibility
+        this.notificationManager.showNotification({
+          type: 'info',
+          message: 'Comparing files with GitHub repository...',
+          duration: 8000,
+        });
+      }
 
       /* Get changed files (with GitHub comparison if possible) */
       const changedFiles = await this.getChangedFilesWithComparison();
@@ -89,11 +120,20 @@ export class FileChangeHandler implements IFileChangeHandler {
       await this.processAndDisplayChanges(changedFiles);
     } catch (error) {
       console.error('Error showing changed files:', error);
-      this.notificationManager.showNotification({
-        type: 'error',
-        message: `Failed to show changed files: ${error instanceof Error ? error.message : 'Unknown error'}`,
-        duration: 5000,
-      });
+      if (this.uploadStatusManager) {
+        this.uploadStatusManager.updateStatus({
+          status: 'error',
+          message: `Failed to show changed files: ${error instanceof Error ? error.message : 'Unknown error'}`,
+          progress: 100,
+        });
+      } else {
+        // Fallback to notification for backward compatibility
+        this.notificationManager.showNotification({
+          type: 'error',
+          message: `Failed to show changed files: ${error instanceof Error ? error.message : 'Unknown error'}`,
+          duration: 5000,
+        });
+      }
     }
   }
 
@@ -212,15 +252,25 @@ export class FileChangeHandler implements IFileChangeHandler {
     // Log summary and details
     this.logChangeSummary(counts, changedFiles);
 
-    // Show notification with summary
-    this.notificationManager.showNotification({
-      type: 'success',
-      message: `Found ${counts.addedCount + counts.modifiedCount} changed files. Opening file changes view...`,
-      duration: 5000,
-    });
-
     // Send file changes to popup and store in local storage
     await this.sendAndStoreChanges(changedFiles);
+
+    // Show completion status with file count
+    const totalChanges = counts.addedCount + counts.modifiedCount;
+    if (this.uploadStatusManager) {
+      this.uploadStatusManager.updateStatus({
+        status: 'complete',
+        message: `Found ${totalChanges} changed files. Opening file changes view...`,
+        progress: 100,
+      });
+    } else {
+      // Fallback to notification for backward compatibility
+      this.notificationManager.showNotification({
+        type: 'success',
+        message: `Found ${totalChanges} changed files. Opening file changes view...`,
+        duration: 5000,
+      });
+    }
   }
 
   /**

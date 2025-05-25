@@ -61,8 +61,12 @@
       prefersReducedMotion ? 0 : 400
     );
 
-    // Auto-hide for success/error states
-    if (newStatus.status === 'success' || newStatus.status === 'error') {
+    // Auto-hide for success/error/complete states
+    if (
+      newStatus.status === 'success' ||
+      newStatus.status === 'error' ||
+      newStatus.status === 'complete'
+    ) {
       console.log(`🔄 Setting auto-hide for ${newStatus.status} status`);
       hideTimeout = window.setTimeout(() => {
         console.log('🔄 Auto-hiding notification');
@@ -107,7 +111,12 @@
     switch (status) {
       case 'uploading':
         return '⬆️';
+      case 'loading':
+        return '📁';
+      case 'analyzing':
+        return '🔍';
       case 'success':
+      case 'complete':
         return '✅';
       case 'error':
         return '⚠️';
@@ -124,7 +133,10 @@
     class="bolt-notification {animationClass}"
     class:notification-visible={notificationVisible && status.status !== 'idle'}
     class:status-uploading={status.status === 'uploading'}
+    class:status-loading={status.status === 'loading'}
+    class:status-analyzing={status.status === 'analyzing'}
     class:status-success={status.status === 'success'}
+    class:status-complete={status.status === 'complete'}
     class:status-error={status.status === 'error'}
     role="alert"
     aria-live="polite"
@@ -140,10 +152,16 @@
           <span class="status-text">
             {#if status.status === 'uploading'}
               Pushing to GitHub...
+            {:else if status.status === 'loading'}
+              Loading files...
+            {:else if status.status === 'analyzing'}
+              Analyzing changes...
             {:else if status.status === 'success'}
               Push Complete!
+            {:else if status.status === 'complete'}
+              Analysis Complete!
             {:else if status.status === 'error'}
-              Push Failed
+              Operation Failed
             {/if}
           </span>
         </div>
@@ -151,26 +169,28 @@
           <span class="progress-percentage" aria-label="Progress: {status.progress || 0} percent">
             {status.progress || 0}%
           </span>
-          <button
-            class="close-button"
-            on:click={() => closeNotification('Close button')}
-            aria-label="Close notification"
-            type="button"
-          >
-            <svg
-              xmlns="http://www.w3.org/2000/svg"
-              class="close-icon"
-              viewBox="0 0 20 20"
-              fill="currentColor"
-              aria-hidden="true"
+          {#if status.status === 'success' || status.status === 'error' || status.status === 'complete'}
+            <button
+              class="close-button"
+              on:click={() => closeNotification('Close button')}
+              aria-label="Close notification"
+              type="button"
             >
-              <path
-                fill-rule="evenodd"
-                d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z"
-                clip-rule="evenodd"
-              />
-            </svg>
-          </button>
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                class="close-icon"
+                viewBox="0 0 20 20"
+                fill="currentColor"
+                aria-hidden="true"
+              >
+                <path
+                  fill-rule="evenodd"
+                  d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z"
+                  clip-rule="evenodd"
+                />
+              </svg>
+            </button>
+          {/if}
         </div>
       </div>
 
@@ -443,7 +463,21 @@
     animation: shimmer 2s infinite;
   }
 
+  .status-loading .progress-bar {
+    background: var(--upload-primary);
+    animation: shimmer 2s infinite;
+  }
+
+  .status-analyzing .progress-bar {
+    background: var(--upload-primary);
+    animation: shimmer 2s infinite;
+  }
+
   .status-success .progress-bar {
+    background: var(--upload-success);
+  }
+
+  .status-complete .progress-bar {
     background: var(--upload-success);
   }
 
@@ -465,6 +499,14 @@
     animation: slide 1.5s infinite;
   }
 
+  .status-loading .progress-shimmer {
+    animation: slide 1.5s infinite;
+  }
+
+  .status-analyzing .progress-shimmer {
+    animation: slide 1.5s infinite;
+  }
+
   .status-message {
     font-size: 0.875rem;
     color: var(--upload-text-secondary);
@@ -477,7 +519,19 @@
     animation: pulse 2s infinite;
   }
 
+  .status-loading {
+    animation: pulse 2s infinite;
+  }
+
+  .status-analyzing {
+    animation: pulse 2s infinite;
+  }
+
   .status-success .notification-content {
+    animation: success-celebration 0.6s ease-out;
+  }
+
+  .status-complete .notification-content {
     animation: success-celebration 0.6s ease-out;
   }
 
@@ -491,7 +545,22 @@
     border-color: rgba(102, 126, 234, 0.3);
   }
 
+  .status-loading {
+    background: rgba(17, 24, 39, 0.9);
+    border-color: rgba(102, 126, 234, 0.3);
+  }
+
+  .status-analyzing {
+    background: rgba(17, 24, 39, 0.9);
+    border-color: rgba(102, 126, 234, 0.3);
+  }
+
   .status-success {
+    background: rgba(17, 24, 39, 0.9);
+    border-color: rgba(74, 222, 128, 0.3);
+  }
+
+  .status-complete {
     background: rgba(17, 24, 39, 0.9);
     border-color: rgba(74, 222, 128, 0.3);
   }
