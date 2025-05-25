@@ -24,6 +24,7 @@
 
   let isLoading = {
     repoStatus: true,
+    branchStatus: true,
     visibility: true,
     commits: true,
     latestCommit: true,
@@ -31,6 +32,7 @@
   };
 
   let repoExists: boolean | null = null;
+  let branchExists: boolean | null = null;
   let isPrivate: boolean | null = null;
   let latestCommit: {
     date: string;
@@ -51,6 +53,17 @@
         // Get visibility
         isPrivate = repoInfo.private ?? null;
         isLoading.visibility = false;
+
+        // Check if branch exists
+        try {
+          const branches = await githubService.listBranches(gitHubUsername, repoName);
+          branchExists = branches.some((b) => b.name === branch);
+          isLoading.branchStatus = false;
+        } catch (error) {
+          console.log('Error fetching branches:', error);
+          branchExists = false;
+          isLoading.branchStatus = false;
+        }
 
         // Get latest commit
         const commits = await githubService.request(
@@ -77,6 +90,8 @@
         }
         isLoading.issues = false;
       } else {
+        branchExists = false;
+        isLoading.branchStatus = false;
         isLoading.visibility = false;
         isLoading.commits = false;
         isLoading.latestCommit = false;
@@ -240,10 +255,14 @@
         <span class="font-mono">{branch}</span>
         <span class="text-slate-400">Status:</span>
         <span class="font-mono">
-          {#if isLoading.repoStatus}
+          {#if isLoading.repoStatus || isLoading.branchStatus}
             <span class="text-slate-500">Loading...</span>
+          {:else if repoExists && branchExists}
+            <span class="text-green-400">Repo/branch exists</span>
+          {:else if repoExists && !branchExists}
+            <span class="text-yellow-400">Repo exists, branch to be created</span>
           {:else}
-            <span class="text-green-400">{repoExists ? 'Exists' : 'Will be created'}</span>
+            <span class="text-blue-400">Will be created</span>
           {/if}
         </span>
         <span class="text-slate-400">Visibility:</span>
