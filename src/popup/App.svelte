@@ -208,8 +208,7 @@
             if (settingsValid && projectId && githubSettings.githubToken) {
               showIssuesModal = true;
             } else {
-              // Switch to settings tab if settings are invalid
-              uiStateActions.setActiveTab('settings');
+              uiStateActions.setActiveTab('home');
             }
             break;
 
@@ -256,6 +255,10 @@
                 showUpgradeModal = true;
               }
             }
+            break;
+
+          case 'home':
+          default:
             break;
         }
 

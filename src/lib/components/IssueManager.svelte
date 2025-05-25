@@ -1,11 +1,11 @@
 <script lang="ts">
   import { onMount, createEventDispatcher } from 'svelte';
-  import { GitHubService } from '../../services/GitHubService';
   import { Button } from '$lib/components/ui/button';
   import { Input } from '$lib/components/ui/input';
   import { Label } from '$lib/components/ui/label';
   import IssueCard from './IssueCard.svelte';
   import NewIssueForm from './NewIssueForm.svelte';
+  import { issuesStore } from '$lib/stores/issuesStore';
   export let githubToken: string;
   export let repoOwner: string;
   export let repoName: string;
@@ -13,23 +13,27 @@
 
   const dispatch = createEventDispatcher();
 
-  let issues: any[] = [];
-  let isLoading = false;
-  let error: string | null = null;
   let showNewIssueForm = false;
   let selectedState: 'open' | 'closed' | 'all' = 'open';
   let modalElement: HTMLDivElement;
-  let isRefreshing = false;
   let showCloseConfirmation = false;
   let issueToClose: number | null = null;
+  let isCreatingIssue = false;
+  let isClosingIssue = false;
+
+  // Use issues store for reactive data
+  $: issuesData = issuesStore.getIssuesForRepo(repoOwner, repoName, selectedState);
+  $: ({ issues, isLoading, error } = $issuesData);
+  $: isRefreshingStore = issuesStore.getLoadingState(repoOwner, repoName, selectedState);
+  $: isRefreshing = $isRefreshingStore;
 
   onMount(async () => {
-    if (show && repoOwner && repoName) {
+    if (show && repoOwner && repoName && githubToken) {
       await loadIssues();
     }
   });
 
-  $: if (show && repoOwner && repoName) {
+  $: if (show && repoOwner && repoName && githubToken) {
     loadIssues();
   }
 
@@ -44,22 +48,10 @@
   async function loadIssues(forceRefresh: boolean = false) {
     if (!githubToken || !repoOwner || !repoName) return;
 
-    isLoading = true;
-    if (forceRefresh) {
-      isRefreshing = true;
-    }
-    error = null;
-
     try {
-      const githubService = new GitHubService(githubToken);
-      issues = await githubService.getIssues(repoOwner, repoName, selectedState, forceRefresh);
+      await issuesStore.loadIssues(repoOwner, repoName, githubToken, selectedState, forceRefresh);
     } catch (err) {
       console.error('Error loading issues:', err);
-      error = err instanceof Error ? err.message : 'Failed to load issues';
-      issues = [];
-    } finally {
-      isLoading = false;
-      isRefreshing = false;
     }
   }
 
@@ -68,13 +60,11 @@
     if (!githubToken || !repoOwner || !repoName) return;
 
     try {
-      const githubService = new GitHubService(githubToken);
-      await githubService.createIssue(repoOwner, repoName, { title, body });
+      await issuesStore.createIssue(repoOwner, repoName, githubToken, { title, body });
+      isCreatingIssue = false;
       showNewIssueForm = false;
-      await loadIssues(true); // Force refresh to show new issue
     } catch (err) {
       console.error('Error creating issue:', err);
-      error = err instanceof Error ? err.message : 'Failed to create issue';
     }
   }
 
@@ -87,16 +77,19 @@
     if (!githubToken || !repoOwner || !repoName || issueToClose === null) return;
 
     try {
-      const githubService = new GitHubService(githubToken);
-      await githubService.updateIssue(repoOwner, repoName, issueToClose, { state: 'closed' });
+      console.log('Closing issue:', issueToClose);
+      isClosingIssue = true;
+      await issuesStore.updateIssue(repoOwner, repoName, githubToken, issueToClose, {
+        state: 'closed',
+      });
       showCloseConfirmation = false;
       issueToClose = null;
-      await loadIssues(true); // Force refresh to show updated state
+      isClosingIssue = false;
     } catch (err) {
       console.error('Error closing issue:', err);
-      error = err instanceof Error ? err.message : 'Failed to close issue';
       showCloseConfirmation = false;
       issueToClose = null;
+      isClosingIssue = false;
     }
   }
 
@@ -110,7 +103,8 @@
   }
 
   function handleStateChange() {
-    loadIssues();
+    // The reactive statement will automatically update when selectedState changes
+    // No need to manually load issues
   }
 
   function handleClose() {
@@ -226,7 +220,11 @@
           </Button>
 
           <!-- New Issue Button -->
-          <Button size="sm" on:click={() => (showNewIssueForm = true)} disabled={showNewIssueForm}>
+          <Button
+            size="sm"
+            on:click={() => (showNewIssueForm = true)}
+            disabled={showNewIssueForm || isCreatingIssue}
+          >
             <svg
               width="16"
               height="16"
@@ -253,6 +251,7 @@
           <NewIssueForm
             on:submit={handleCreateIssue}
             on:cancel={() => (showNewIssueForm = false)}
+            bind:isCreatingIssue
           />
         {:else if isLoading && issues.length === 0}
           <div class="flex items-center justify-center h-32" role="status" aria-live="polite">
@@ -366,7 +365,14 @@
       </p>
       <div class="flex gap-3 justify-end">
         <Button variant="outline" size="sm" on:click={cancelCloseIssue}>Cancel</Button>
-        <Button variant="destructive" size="sm" on:click={confirmCloseIssue}>Close Issue</Button>
+        <Button
+          variant="destructive"
+          size="sm"
+          on:click={confirmCloseIssue}
+          disabled={isClosingIssue}
+        >
+          {isClosingIssue ? 'Closing...' : 'Close Issue'}
+        </Button>
       </div>
     </div>
   </div>

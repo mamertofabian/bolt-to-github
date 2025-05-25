@@ -351,7 +351,7 @@ export class BackgroundService {
           if (hasIssuesAccess) {
             await chrome.storage.local.set({ popupContext: 'issues' });
           } else {
-            await chrome.storage.local.set({ popupContext: 'settings' });
+            await chrome.storage.local.set({ popupContext: 'home' });
           }
           chrome.action.openPopup();
           break;

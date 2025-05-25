@@ -6,22 +6,20 @@
 
   const dispatch = createEventDispatcher();
 
+  export let isCreatingIssue = false;
   let title = '';
   let body = '';
-  let isSubmitting = false;
 
   function handleSubmit() {
     if (!title.trim()) return;
 
-    isSubmitting = true;
+    isCreatingIssue = true;
     dispatch('submit', { title: title.trim(), body: body.trim() });
+  }
 
-    // Reset form after a short delay to allow parent to handle submission
-    setTimeout(() => {
-      isSubmitting = false;
-      title = '';
-      body = '';
-    }, 500);
+  $: if (!isCreatingIssue) {
+    title = '';
+    body = '';
   }
 
   function handleCancel() {
@@ -42,7 +40,7 @@
         bind:value={title}
         placeholder="Enter issue title..."
         required
-        disabled={isSubmitting}
+        disabled={isCreatingIssue}
         class="bg-slate-700 border-slate-600 text-white placeholder-slate-400 focus:border-blue-500 focus:ring-blue-500"
       />
     </div>
@@ -54,7 +52,7 @@
         bind:value={body}
         placeholder="Describe the issue..."
         rows="4"
-        disabled={isSubmitting}
+        disabled={isCreatingIssue}
         class="w-full px-3 py-2 bg-slate-700 border border-slate-600 rounded-md text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 resize-vertical min-h-[100px]"
       ></textarea>
     </div>
@@ -65,7 +63,7 @@
         variant="outline"
         size="sm"
         on:click={handleCancel}
-        disabled={isSubmitting}
+        disabled={isCreatingIssue}
         class="border-slate-600 text-slate-300 hover:bg-slate-700"
       >
         Cancel
@@ -74,10 +72,10 @@
       <Button
         type="submit"
         size="sm"
-        disabled={isSubmitting || !title.trim()}
+        disabled={isCreatingIssue || !title.trim()}
         class="bg-green-600 hover:bg-green-700 text-white"
       >
-        {isSubmitting ? 'Creating...' : 'Create Issue'}
+        {isCreatingIssue ? 'Creating...' : 'Create Issue'}
       </Button>
     </div>
   </form>

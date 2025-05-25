@@ -6,6 +6,7 @@
   import IssueManager from '$lib/components/IssueManager.svelte';
   import QuickIssueForm from '$lib/components/QuickIssueForm.svelte';
   import premiumStatusStore, { isPremium } from '$lib/stores/premiumStore';
+  import { issuesStore } from '$lib/stores/issuesStore';
 
   export let projectId: string;
   export let gitHubUsername: string;
@@ -21,6 +22,10 @@
   // Premium status
   $: premiumStatus = $premiumStatusStore;
   $: isUserPremium = $isPremium;
+
+  // Issues count from store
+  $: openIssuesCountStore = issuesStore.getOpenIssuesCount(gitHubUsername, repoName);
+  $: openIssuesCount = $openIssuesCountStore;
 
   let isLoading = {
     repoStatus: true,
@@ -38,7 +43,6 @@
     date: string;
     message: string;
   } | null = null;
-  let openIssuesCount: number = 0;
 
   export const getProjectStatus = async () => {
     try {
@@ -80,13 +84,11 @@
         }
         isLoading.latestCommit = false;
 
-        // Get issue count
+        // Load issues into store
         try {
-          const issues = await githubService.getIssues(gitHubUsername, repoName, 'open');
-          openIssuesCount = issues.length;
+          await issuesStore.loadIssues(gitHubUsername, repoName, token, 'all');
         } catch (err) {
           console.log('Error fetching issues:', err);
-          openIssuesCount = 0;
         }
         isLoading.issues = false;
       } else {
@@ -222,14 +224,12 @@
 
   function handleIssueSuccess() {
     showQuickIssueForm = false;
-    // Refresh project status to update issue count
-    getProjectStatus();
+    // Issue count will be updated automatically via the store
   }
 
   function handleIssueManagerClose() {
     showIssueManager = false;
-    // Refresh project status to update issue count
-    getProjectStatus();
+    // Issue count will be updated automatically via the store
   }
 </script>
 
@@ -465,7 +465,6 @@
     githubToken={token}
     repoOwner={gitHubUsername}
     {repoName}
-    {branch}
     on:close={handleIssueManagerClose}
   />
 {/if}

@@ -3,7 +3,7 @@
   import { Button } from '$lib/components/ui/button';
   import { Input } from '$lib/components/ui/input';
   import { Label } from '$lib/components/ui/label';
-  import { GitHubService } from '../../services/GitHubService';
+  import { issuesStore } from '$lib/stores/issuesStore';
 
   export let show: boolean;
   export let githubToken: string;
@@ -24,8 +24,7 @@
     error = null;
 
     try {
-      const githubService = new GitHubService(githubToken);
-      await githubService.createIssue(repoOwner, repoName, {
+      await issuesStore.createIssue(repoOwner, repoName, githubToken, {
         title: title.trim(),
         body: body.trim(),
       });
@@ -60,6 +59,7 @@
 
 {#if show}
   <!-- Modal Backdrop -->
+  <!-- svelte-ignore a11y-no-noninteractive-element-interactions-->
   <div
     class="fixed inset-0 bg-black/50 flex items-center justify-center z-50"
     on:click={handleCancel}
@@ -69,6 +69,7 @@
     tabindex="-1"
   >
     <!-- Modal Content -->
+    <!-- svelte-ignore a11y-click-events-have-key-events -->
     <div
       class="bg-slate-900 border border-slate-700 rounded-lg w-full max-w-md mx-4"
       on:click|stopPropagation
