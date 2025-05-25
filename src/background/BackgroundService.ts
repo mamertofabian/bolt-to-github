@@ -195,7 +195,7 @@ export class BackgroundService {
   }
 
   private setupConnectionHandlers(): void {
-    chrome.runtime.onConnect.addListener(async (port: Port) => {
+    chrome.runtime.onConnect.addListener((port: Port) => {
       const tabId = port.sender?.tab?.id ?? -1; // Use -1 for popup
 
       if (!['bolt-content', 'popup'].includes(port.name)) {
@@ -204,16 +204,6 @@ export class BackgroundService {
 
       console.log('📝 New connection from:', port.name, 'tabId:', tabId);
       this.ports.set(tabId, port);
-
-      // Track extension usage
-      try {
-        // Use message-based analytics to avoid DOM issues
-        await this.sendAnalyticsEvent('extension_opened', {
-          context: port.name === 'popup' ? 'popup' : 'content_script',
-        });
-      } catch (error) {
-        console.error('Failed to track extension opened:', error);
-      }
 
       port.onDisconnect.addListener(() => {
         console.log('🔌 Port disconnected:', tabId);
