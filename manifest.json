@@ -13,7 +13,8 @@
     "https://bolt.new/*",
     "https://api.github.com/*",
     "https://bolt2github.com/*",
-    "https://www.google-analytics.com/*"
+    "https://www.google-analytics.com/*",
+    "https://connect.mailerlite.com/*"
   ],
   "background": {
     "service_worker": "src/background/index.ts",

@@ -30,6 +30,9 @@
   import AnalyticsToggle from '$lib/components/ui/AnalyticsToggle.svelte';
   import { setUpgradeModalState } from '$lib/utils/upgradeModal';
   import type { PremiumFeature } from '$lib/constants/premiumFeatures';
+  import NewsletterModal from '$lib/components/NewsletterModal.svelte';
+  import SuccessToast from '$lib/components/SuccessToast.svelte';
+  import { SubscriptionService } from '../services/SubscriptionService';
 
   // Import stores and services
   import {
@@ -78,6 +81,13 @@
   let upgradeModalFeature = '';
   let upgradeModalReason = '';
   let premiumFeatures: Array<{ id: string; name: string; description: string; icon: string }> = [];
+
+  // Newsletter subscription state
+  let showNewsletterModal = false;
+  let hasSubscribed = false;
+  let showSuccessToast = false;
+  let successToastMessage = '';
+  let showSubscribePrompt = false;
 
   // Message handlers
   function handleUploadStatusMessage(message: any) {
@@ -155,6 +165,14 @@
       premiumFeatures = event.detail.features;
       showUpgradeModal = true;
     }) as EventListener);
+
+    // Initialize newsletter subscription status
+    try {
+      const subscription = await SubscriptionService.getSubscriptionStatus();
+      hasSubscribed = subscription.subscribed;
+    } catch (error) {
+      console.error('Error loading subscription status:', error);
+    }
   }
 
   async function checkForTempRepos() {
@@ -179,7 +197,8 @@
 
     const result = await githubSettingsActions.saveSettings();
     if (result.success) {
-      uiStateActions.showStatus('Settings saved successfully!');
+      // Show success toast with potential subscription prompt
+      await handleSuccessfulAction('Settings saved successfully!');
     } else {
       uiStateActions.showStatus(result.error || 'Error saving settings');
     }
@@ -247,6 +266,46 @@
     } catch (error) {
       console.error('Error during cleanup:', error);
     }
+  }
+
+  // Newsletter subscription functions
+  async function handleNewsletterClick() {
+    showNewsletterModal = true;
+  }
+
+  async function handleNewsletterModalClose() {
+    showNewsletterModal = false;
+    // Refresh subscription status
+    try {
+      const subscription = await SubscriptionService.getSubscriptionStatus();
+      hasSubscribed = subscription.subscribed;
+    } catch (error) {
+      console.error('Error refreshing subscription status:', error);
+    }
+  }
+
+  async function handleSuccessfulAction(message: string) {
+    // Increment interaction count
+    try {
+      const count = await SubscriptionService.incrementInteractionCount();
+
+      // Check if we should show subscription prompt
+      const shouldPrompt = await SubscriptionService.shouldShowSubscriptionPrompt();
+
+      successToastMessage = message;
+      showSubscribePrompt = shouldPrompt && !hasSubscribed;
+      showSuccessToast = true;
+    } catch (error) {
+      console.error('Error handling successful action:', error);
+      // Still show success toast without subscription prompt
+      successToastMessage = message;
+      showSuccessToast = true;
+    }
+  }
+
+  async function handleToastSubscribe() {
+    await SubscriptionService.updateLastPromptDate();
+    showNewsletterModal = true;
   }
 
   onMount(initializeApp);
@@ -392,7 +451,11 @@
             <div class="space-y-4">
               <Help />
               <div class="mt-3">
-                <Footer />
+                <Footer
+                  {hasSubscribed}
+                  version={projectSettings.version}
+                  on:newsletter={handleNewsletterClick}
+                />
               </div>
             </div>
           </TabsContent>
@@ -465,6 +528,22 @@
   />
 
   <FeedbackModal bind:show={showFeedbackModal} githubToken={githubSettings.githubToken} />
+
+  <!-- Newsletter subscription modal -->
+  <NewsletterModal bind:show={showNewsletterModal} on:close={handleNewsletterModalClose} />
+
+  <!-- Success toast with optional subscription prompt -->
+  <SuccessToast
+    bind:show={showSuccessToast}
+    message={successToastMessage}
+    {showSubscribePrompt}
+    {hasSubscribed}
+    on:subscribe={handleToastSubscribe}
+    on:hide={() => {
+      showSuccessToast = false;
+      showSubscribePrompt = false;
+    }}
+  />
 </main>
 
 <style>

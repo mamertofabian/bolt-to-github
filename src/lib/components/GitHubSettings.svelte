@@ -14,6 +14,7 @@
   } from 'lucide-svelte';
   import { onMount } from 'svelte';
   import { CREATE_FINE_GRAINED_TOKEN_URL, GitHubService } from '../../services/GitHubService';
+  import { SubscriptionService } from '../../services/SubscriptionService';
   import NewUserGuide from './github/NewUserGuide.svelte';
 
   export let isOnboarding: boolean = false;
@@ -59,6 +60,13 @@
   };
   let permissionError: string | null = null;
   let previousToken: string | null = null;
+
+  // Newsletter subscription variables
+  let subscribeToNewsletter = false;
+  let subscriberEmail = '';
+  let isSubscribing = false;
+  let hasSubscribed = false;
+  let subscriptionError: string | null = null;
 
   // Collapsible state - collapsed by default if settings are populated
   $: hasRequiredSettings = githubToken && repoOwner && (isOnboarding || (repoName && branch));
@@ -354,6 +362,56 @@
     repoName = projectSettings[projectId].repoName;
     branch = projectSettings[projectId].branch;
   }
+
+  // Newsletter subscription functions
+  function isValidSubscriberEmail(email: string): boolean {
+    return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
+  }
+
+  async function handleSubscribe() {
+    if (!isValidSubscriberEmail(subscriberEmail)) return;
+
+    isSubscribing = true;
+    subscriptionError = null;
+
+    try {
+      const subscriptionService = new SubscriptionService();
+      const result = await subscriptionService.subscribe({
+        email: subscriberEmail,
+        preferences: {
+          productUpdates: true,
+          tips: true,
+          communityNews: true,
+        },
+        metadata: {
+          subscriptionSource: 'extension',
+          extensionVersion: '',
+          subscriptionDate: '',
+        },
+      });
+
+      if (result.success) {
+        hasSubscribed = true;
+        subscribeToNewsletter = false; // Hide the form
+
+        // Save subscription status to storage
+        await SubscriptionService.saveSubscriptionStatus(subscriberEmail);
+      } else {
+        subscriptionError = result.message || 'Failed to subscribe';
+      }
+    } catch (error) {
+      console.error('Subscription error:', error);
+      subscriptionError = 'Failed to subscribe. Please try again.';
+    } finally {
+      isSubscribing = false;
+    }
+  }
+
+  // Load subscription status on mount
+  onMount(async () => {
+    const subscription = await SubscriptionService.getSubscriptionStatus();
+    hasSubscribed = subscription.subscribed;
+  });
 </script>
 
 <div class="space-y-4">
@@ -675,6 +733,52 @@
               </div>
             </div>
           {/if}
+
+          <!-- Newsletter Subscription Option -->
+          <div class="mt-4 pt-4 border-t border-slate-800">
+            <div class="flex items-start space-x-2">
+              <input
+                type="checkbox"
+                id="newsletter"
+                bind:checked={subscribeToNewsletter}
+                class="mt-1 w-4 h-4 text-blue-600 bg-slate-800 border-slate-600 rounded focus:ring-blue-500 focus:ring-2"
+              />
+              <div class="flex-1">
+                <Label for="newsletter" class="font-medium text-slate-300">Stay Updated</Label>
+                <p class="text-xs text-slate-400 mt-1">
+                  Receive occasional updates about new features, tips, and community news. We
+                  respect your privacy and you can unsubscribe at any time.
+                </p>
+              </div>
+            </div>
+
+            {#if subscribeToNewsletter && !hasSubscribed}
+              <div class="mt-3 pl-6 space-y-2">
+                <Label for="subscriberEmail" class="text-sm text-slate-300">Email</Label>
+                <div class="flex gap-2">
+                  <Input
+                    id="subscriberEmail"
+                    type="email"
+                    placeholder="your@email.com"
+                    bind:value={subscriberEmail}
+                    class="flex-1 bg-slate-800 border-slate-700 text-slate-200 placeholder:text-slate-500"
+                  />
+                  <Button
+                    type="button"
+                    size="sm"
+                    disabled={!isValidSubscriberEmail(subscriberEmail) || isSubscribing}
+                    on:click={handleSubscribe}
+                    class="bg-blue-600 hover:bg-blue-700 text-white"
+                  >
+                    {isSubscribing ? 'Subscribing...' : 'Subscribe'}
+                  </Button>
+                </div>
+                {#if subscriptionError}
+                  <p class="text-xs text-red-400">{subscriptionError}</p>
+                {/if}
+              </div>
+            {/if}
+          </div>
 
           <Button
             type="submit"
