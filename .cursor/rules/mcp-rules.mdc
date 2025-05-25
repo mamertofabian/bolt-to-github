@@ -1,5 +1,5 @@
 ---
-description: GitHub MCP Server
+description: GitHub MCP Server for issues management
 globs: 
 alwaysApply: false
 ---
