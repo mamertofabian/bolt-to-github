@@ -328,7 +328,21 @@
       // Show success toast with potential subscription prompt
       await handleSuccessfulAction('Settings saved successfully!');
     } else {
-      uiStateActions.showStatus(result.error || 'Error saving settings');
+      // Check if it's a storage quota error
+      if (result.error && result.error.includes('MAX_WRITE_OPERATIONS_PER_H')) {
+        // Don't show on button, this will be handled in GitHubSettings component
+        console.error('Storage quota exceeded:', result.error);
+      } else {
+        uiStateActions.showStatus(result.error || 'Error saving settings');
+      }
+    }
+  }
+
+  function handleSettingsError(error: string) {
+    // This will be called from GitHubSettings when storage quota errors occur
+    if (error.includes('MAX_WRITE_OPERATIONS_PER_H')) {
+      // Clear any existing status to prevent it showing on button
+      uiStateActions.clearStatus();
     }
   }
 
@@ -552,6 +566,7 @@
                 status={uiState.status}
                 buttonDisabled={uiState.hasStatus}
                 onSave={saveSettings}
+                onError={handleSettingsError}
                 onInput={() => {}}
               />
 
@@ -626,6 +641,7 @@
               status={uiState.status}
               buttonDisabled={uiState.hasStatus}
               onSave={saveSettings}
+              onError={handleSettingsError}
               onInput={() => {}}
             />
           </div>

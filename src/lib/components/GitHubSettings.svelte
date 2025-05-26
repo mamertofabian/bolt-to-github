@@ -24,9 +24,13 @@
   export let status: string;
   export let onSave: () => void;
   export let onInput: () => void;
+  export let onError: ((error: string) => void) | null = null;
   export let projectId: string | null = null;
   export let projectSettings: Record<string, { repoName: string; branch: string }> = {};
   export let buttonDisabled: boolean = false;
+
+  // Add state for handling storage quota errors
+  let storageQuotaError: string | null = null;
 
   let isValidatingToken = false;
   let isTokenValid: boolean | null = null;
@@ -60,12 +64,22 @@
   let permissionError: string | null = null;
   let previousToken: string | null = null;
 
+  // Collapsible state - add manual toggle state
+  let manuallyToggled = false;
+  let isExpanded = true; // Initially expanded
+
   // Collapsible state - collapsed by default if settings are populated
   $: hasRequiredSettings = githubToken && repoOwner && (isOnboarding || (repoName && branch));
-  $: isExpanded = isOnboarding || !hasRequiredSettings;
+  $: {
+    // Only auto-collapse if not manually toggled by user
+    if (!manuallyToggled) {
+      isExpanded = isOnboarding || !hasRequiredSettings;
+    }
+  }
 
   function toggleExpanded() {
     isExpanded = !isExpanded;
+    manuallyToggled = true; // Mark as manually toggled
   }
 
   $: filteredRepos = repositories
@@ -334,6 +348,9 @@
   const handleSave = async (event: Event) => {
     event.preventDefault();
 
+    // Clear any previous storage errors
+    storageQuotaError = null;
+
     const THIRTY_DAYS = 30 * 24 * 60 * 60 * 1000;
     const needsCheck =
       previousToken !== githubToken ||
@@ -347,7 +364,35 @@
       }
     }
 
-    onSave();
+    // Set up a listener for chrome.runtime.lastError before calling onSave
+    const originalError = chrome.runtime.lastError;
+
+    try {
+      await onSave();
+
+      // Check for storage quota errors after save attempt
+      setTimeout(() => {
+        if (
+          chrome.runtime.lastError &&
+          chrome.runtime.lastError.message?.includes('MAX_WRITE_OPERATIONS_PER_H')
+        ) {
+          const errorMsg = chrome.runtime.lastError.message;
+          storageQuotaError =
+            'Storage quota exceeded. You can only save settings 1800 times per hour (once every 2 seconds). Please wait a moment before trying again.';
+          if (onError) {
+            onError(errorMsg);
+          }
+        }
+      }, 100);
+    } catch (error) {
+      if (error instanceof Error && error.message.includes('MAX_WRITE_OPERATIONS_PER_H')) {
+        storageQuotaError =
+          'Storage quota exceeded. You can only save settings 1800 times per hour (once every 2 seconds). Please wait a moment before trying again.';
+        if (onError) {
+          onError(error.message);
+        }
+      }
+    }
   };
 
   $: if (!isOnboarding && projectId && projectSettings[projectId]) {
@@ -676,6 +721,19 @@
             </div>
           {/if}
 
+          <!-- Storage Quota Error Display -->
+          {#if storageQuotaError}
+            <div class="p-3 bg-red-900/20 border border-red-700 rounded-md">
+              <div class="flex items-start gap-2">
+                <X class="w-4 h-4 text-red-400 mt-0.5 flex-shrink-0" />
+                <div class="text-sm text-red-200">
+                  <p class="font-medium">Storage Limit Exceeded</p>
+                  <p class="mt-1">{storageQuotaError}</p>
+                </div>
+              </div>
+            </div>
+          {/if}
+
           <Button
             type="submit"
             class="w-full bg-blue-600 hover:bg-blue-700 text-white"
@@ -691,7 +749,7 @@
               Validating...
             {:else if isCheckingPermissions}
               Checking permissions...
-            {:else if buttonDisabled}
+            {:else if buttonDisabled && !status.includes('MAX_WRITE_OPERATIONS')}
               {status}
             {:else}
               {isOnboarding ? 'Get Started' : 'Save Settings'}
