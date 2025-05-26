@@ -3,16 +3,28 @@ description:
 globs: 
 alwaysApply: true
 ---
+# Development
+
+## Repository
+
+- This uses mamertofabian/bolt-to-github GitHub repository
+
+## Environment
+
+ - This project is being developed in a Windows environment and thus using Powershell. So start using powershell commands instead of bash commands right from the first attempt when running commands.
+ - Use pnpm as package manager
+
+### Available pnpm commands
+
+Since this is a Chrome extension project, running `dev` won't work during testing. The developer already loaded the `dist` folder in Chrome Extension developer mode so the extension is already loaded. Running `build` or `watch` is enough for manual testing.
+
+- pnpm run build
+- pnpm run lint
+- pnpm run check
+- pnpm run test
+- Check the package.json for other commands
+
 # Security
-
-## Sensitive Files
-
-DO NOT read or modify:
-
-- .env files
-- \*_/config/secrets._
-- \*_/_.pem
-- Any file containing API keys, tokens, or credentials
 
 ## Security Practices
 

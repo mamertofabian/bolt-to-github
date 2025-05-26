@@ -76,6 +76,17 @@
   $: userPlan = $premiumPlan;
   $: userFeatures = $userPremiumFeatures;
 
+  // Handle pending popup context when stores are ready
+  $: if (
+    pendingPopupContext &&
+    !hasHandledPendingContext &&
+    githubSettings &&
+    typeof settingsValid !== 'undefined' &&
+    typeof projectId !== 'undefined'
+  ) {
+    handlePendingPopupContext();
+  }
+
   let projectStatusRef: ProjectStatus;
   let showPushReminderSettings = false;
   let showUpgradeModal = false;
@@ -93,6 +104,11 @@
 
   // Issues modal state
   let showIssuesModal = false;
+
+  // Add pending popup context state
+  let pendingPopupContext = '';
+  let pendingUpgradeFeature = '';
+  let hasHandledPendingContext = false;
 
   // Message handlers
   function handleUploadStatusMessage(message: any) {
@@ -201,72 +217,99 @@
 
       if (context) {
         console.log('Popup opened with context:', context);
+        pendingPopupContext = context;
+        pendingUpgradeFeature = upgradeFeature || '';
 
-        switch (context) {
-          case 'issues':
-            // Only show issues if we have valid settings and are on a Bolt project
-            if (settingsValid && projectId && githubSettings.githubToken) {
-              showIssuesModal = true;
-            } else {
-              uiStateActions.setActiveTab('home');
-            }
-            break;
-
-          case 'projects':
-            // Switch to projects tab
-            if (onBoltProject) {
-              uiStateActions.setActiveTab('projects');
-            } else if (
-              githubSettings.hasInitialSettings &&
-              githubSettings.repoOwner &&
-              githubSettings.githubToken
-            ) {
-              // Already shows projects list when not on bolt project but has settings
-            } else {
-              // Switch to settings if no valid settings
-              uiStateActions.setActiveTab('settings');
-            }
-            break;
-
-          case 'settings':
-            // Switch to settings tab
-            if (onBoltProject) {
-              uiStateActions.setActiveTab('settings');
-            }
-            break;
-
-          case 'upgrade':
-            // Show upgrade modal with the specified feature
-            if (upgradeFeature) {
-              // Import upgrade modal utility to get the configuration
-              const { getUpgradeModalConfig } = await import('$lib/utils/upgradeModal');
-              try {
-                const config = getUpgradeModalConfig(upgradeFeature);
-                upgradeModalFeature = config.feature;
-                upgradeModalReason = config.reason;
-                premiumFeatures = config.features;
-                showUpgradeModal = true;
-              } catch (error) {
-                console.error('Error loading upgrade modal config:', error);
-                // Fallback to general upgrade modal
-                upgradeModalFeature = 'premium';
-                upgradeModalReason = 'Unlock professional features';
-                premiumFeatures = [];
-                showUpgradeModal = true;
-              }
-            }
-            break;
-
-          case 'home':
-          default:
-            break;
-        }
-
-        // Clear the context after handling it
+        // Clear the context after storing it
         await chrome.storage.local.remove(['popupContext', 'upgradeModalFeature']);
       }
     } catch (error) {
       console.error('Error checking popup context:', error);
+    }
+  }
+
+  async function handlePendingPopupContext() {
+    if (!pendingPopupContext || hasHandledPendingContext) return;
+
+    hasHandledPendingContext = true;
+    const context = pendingPopupContext;
+    const upgradeFeature = pendingUpgradeFeature;
+
+    console.log('Handling pending popup context:', context);
+
+    switch (context) {
+      case 'issues':
+        // Only show issues if we have valid settings and are on a Bolt project
+        if (settingsValid && projectId && githubSettings.githubToken) {
+          showIssuesModal = true;
+        } else {
+          uiStateActions.setActiveTab('home');
+        }
+        break;
+
+      case 'projects':
+        // Switch to projects tab
+        if (onBoltProject) {
+          uiStateActions.setActiveTab('projects');
+        } else if (
+          githubSettings.hasInitialSettings &&
+          githubSettings.repoOwner &&
+          githubSettings.githubToken
+        ) {
+          // Already shows projects list when not on bolt project but has settings
+        } else {
+          // Switch to settings if no valid settings
+          uiStateActions.setActiveTab('settings');
+        }
+        break;
+
+      case 'settings':
+        // Switch to settings tab
+        if (onBoltProject) {
+          uiStateActions.setActiveTab('settings');
+        }
+        break;
+
+      case 'upgrade':
+        // Show upgrade modal with the specified feature
+        if (upgradeFeature) {
+          // Import upgrade modal utility to get the configuration
+          const { getUpgradeModalConfig } = await import('$lib/utils/upgradeModal');
+          try {
+            // Ensure the upgradeFeature is a valid key
+            const validFeature = [
+              'general',
+              'fileChanges',
+              'pushReminders',
+              'branchSelector',
+              'issues',
+            ].includes(upgradeFeature)
+              ? (upgradeFeature as
+                  | 'issues'
+                  | 'general'
+                  | 'fileChanges'
+                  | 'pushReminders'
+                  | 'branchSelector')
+              : ('general' as const);
+            const config = getUpgradeModalConfig(validFeature);
+            upgradeModalFeature = config.feature;
+            upgradeModalReason = config.reason;
+            premiumFeatures = config.features;
+            showUpgradeModal = true;
+          } catch (error) {
+            console.error('Error loading upgrade modal config:', error);
+            // Fallback to general upgrade modal
+            upgradeModalFeature = 'premium';
+            upgradeModalReason = 'Unlock professional features';
+            premiumFeatures = [];
+            showUpgradeModal = true;
+          }
+        }
+        break;
+
+      case 'home':
+      default:
+        break;
     }
   }
 
