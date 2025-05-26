@@ -465,7 +465,7 @@
             </svg>
             PRO
           </span>
-        {:else}
+        {:else if onBoltProject || (githubSettings.hasInitialSettings && isUserAuthenticated)}
           <div class="flex items-center gap-2">
             <Button
               size="sm"
