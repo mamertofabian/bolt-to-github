@@ -241,7 +241,7 @@
 </script>
 
 {#if show}
-  <div class="fixed inset-0 bg-black/50 z-50 flex items-center justify-center">
+  <div class="fixed inset-0 bg-black/50 z-50 flex items-center justify-center px-2">
     <div
       class="sm:max-w-[800px] max-h-[80vh] bg-slate-900 text-slate-50 border border-slate-800 rounded-lg shadow-xl overflow-hidden flex flex-col"
     >
