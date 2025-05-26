@@ -7,6 +7,7 @@
   import { createEventDispatcher } from 'svelte';
   import { githubSettingsActions } from '$lib/stores';
   import { projectSettingsActions } from '$lib/stores/projectSettings';
+  import Modal from '$lib/components/ui/modal/Modal.svelte';
 
   const dispatch = createEventDispatcher();
 
@@ -16,7 +17,7 @@
   export let projectId: string;
   export let repoName: string;
   export let branch: string = 'main';
-  export let projectTitle: string = 'My Project';
+  export let projectTitle: string = '';
 
   let isLoadingRepos = false;
   let repositories: Array<{
@@ -34,6 +35,8 @@
   let repoExists = false;
   let selectedIndex = -1;
   let isSaving = false;
+  let showErrorModal = false;
+  let errorMessage = '';
 
   $: filteredRepos = repositories
     .filter(
@@ -141,8 +144,7 @@
       });
 
       // Update the stores to trigger immediate reactivity
-      githubSettingsActions.setProjectSettings(projectId, repoName, branch);
-      projectSettingsActions.setProjectTitle(projectTitle);
+      githubSettingsActions.setProjectSettings(projectId, repoName, branch, projectTitle);
 
       // Store a timestamp in local storage to trigger refresh in other components
       await chrome.storage.local.set({
@@ -161,11 +163,16 @@
       dispatch('close');
     } catch (error) {
       console.error('Failed to save settings:', error);
-      // TODO: Replace with a modal
-      alert('Failed to save settings. Please try again.');
+      errorMessage = 'Failed to save settings. Please try again.';
+      showErrorModal = true;
     } finally {
       isSaving = false;
     }
+  }
+
+  // Ensure projectTitle is set correctly
+  $: if (!projectTitle && repoName) {
+    projectTitle = repoName;
   }
 
   // Load repositories when component is mounted
@@ -313,3 +320,17 @@
     </div>
   </div>
 {/if}
+
+<!-- Error Modal -->
+<Modal show={showErrorModal} title="Error">
+  <p class="text-slate-300 mb-4">{errorMessage}</p>
+  <div class="flex justify-end">
+    <Button
+      variant="default"
+      class="text-xs py-1 h-8 bg-blue-600 hover:bg-blue-700"
+      on:click={() => (showErrorModal = false)}
+    >
+      OK
+    </Button>
+  </div>
+</Modal>

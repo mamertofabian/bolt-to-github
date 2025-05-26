@@ -393,7 +393,7 @@
                   project.projectId,
                   project.repoName,
                   project.branch || 'main',
-                  project.projectTitle || ''
+                  project.projectTitle || project.repoName
                 ),
             },
             {
@@ -1079,7 +1079,7 @@
       projectId={projectToEdit.projectId}
       repoName={projectToEdit.repoName}
       branch={projectToEdit.branch}
-      projectTitle={projectToEdit.projectTitle || ''}
+      projectTitle={projectToEdit.projectTitle || projectToEdit.repoName}
       on:close={() => {
         showSettingsModal = false;
         projectToEdit = null;

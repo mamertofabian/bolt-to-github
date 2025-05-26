@@ -119,12 +119,17 @@ export const githubSettingsActions = {
   /**
    * Update project settings for a specific project
    */
-  setProjectSettings(projectId: string, repoName: string, branch: string): void {
+  setProjectSettings(
+    projectId: string,
+    repoName: string,
+    branch: string,
+    projectTitle?: string
+  ): void {
     githubSettingsStore.update((state) => ({
       ...state,
       projectSettings: {
         ...state.projectSettings,
-        [projectId]: { repoName, branch },
+        [projectId]: { repoName, branch, ...(projectTitle && { projectTitle }) },
       },
     }));
   },
