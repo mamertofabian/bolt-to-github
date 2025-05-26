@@ -41,6 +41,10 @@ export class UIManager {
   private pushReminderService: PushReminderService;
   private premiumService: PremiumService;
 
+  // Store original history functions for cleanup
+  private originalPushState: typeof history.pushState | null = null;
+  private originalReplaceState: typeof history.replaceState | null = null;
+
   private constructor(messageHandler: MessageHandler) {
     // Initialize centralized state management first
     this.stateManager = new UIStateManager();
@@ -112,6 +116,9 @@ export class UIManager {
     // Set up state change listening for coordination
     this.setupStateCoordination();
 
+    // Set up URL change detection for SPA navigation
+    this.setupURLChangeDetection();
+
     this.initializeUI();
     this.startDOMObservation();
   }
@@ -160,11 +167,26 @@ export class UIManager {
         const button = document.querySelector('[data-github-upload]');
         const buttonContainer = document.querySelector('div.flex.grow-1.basis-60 div.flex.gap-2');
 
-        if (!button && buttonContainer) {
+        // Enhanced detection: Check if we're on a project page
+        const isProjectPage = this.isOnProjectPage();
+
+        console.log('🔊 DOM change detected:', {
+          hasButton: !!button,
+          hasContainer: !!buttonContainer,
+          isProjectPage,
+          currentUrl: window.location.href,
+        });
+
+        // Only initialize if:
+        // 1. We don't already have a button
+        // 2. We have a button container (indicating project UI is loaded)
+        // 3. We're actually on a project page
+        if (!button && buttonContainer && isProjectPage) {
+          console.log('🔊 Initializing GitHub button for new project');
           this.githubButtonManager.initialize();
-        } else if (!buttonContainer) {
-          // Still attempt initialization even if container is not found
-          this.githubButtonManager.initialize();
+        } else if (!button && !buttonContainer && isProjectPage) {
+          // Project page detected but container not ready yet - this is normal during page load
+          console.log('🔊 Project page detected, waiting for container to be ready');
         }
       },
       () => {
@@ -177,6 +199,16 @@ export class UIManager {
         });
       }
     );
+  }
+
+  /**
+   * Check if we're currently on a project page (URL contains project ID)
+   */
+  private isOnProjectPage(): boolean {
+    const currentUrl = window.location.href;
+    // Match bolt.new/~/projectId pattern
+    const projectMatch = currentUrl.match(/bolt\.new\/~\/([^/?#]+)/);
+    return !!projectMatch;
   }
 
   /**
@@ -437,11 +469,20 @@ export class UIManager {
 
     // Cleanup services
     this.pushReminderService.cleanup();
+
+    // Restore original history functions
+    if (this.originalPushState && this.originalReplaceState) {
+      history.pushState = this.originalPushState;
+      history.replaceState = this.originalReplaceState;
+      this.originalPushState = null;
+      this.originalReplaceState = null;
+    }
   }
 
   public reinitialize() {
     console.log('🔊 Reinitializing UI manager');
     this.cleanup();
+    this.setupURLChangeDetection();
     this.initializeUI();
     this.startDOMObservation();
   }
@@ -584,5 +625,80 @@ export class UIManager {
    */
   public updateDropdownPremiumStatus(): void {
     this.dropdownManager.updatePremiumStatus();
+  }
+
+  /**
+   * Set up URL change detection for SPA navigation
+   * This helps detect when users navigate to/from project pages without page refresh
+   */
+  private setupURLChangeDetection(): void {
+    // Listen for popstate events (back/forward navigation)
+    window.addEventListener('popstate', () => {
+      this.handleUrlChange();
+    });
+
+    // Override pushState and replaceState to catch programmatic navigation
+    this.originalPushState = history.pushState;
+    this.originalReplaceState = history.replaceState;
+
+    history.pushState = (...args) => {
+      this.originalPushState!.apply(history, args);
+      // Use setTimeout to ensure the URL has changed
+      setTimeout(() => this.handleUrlChange(), 0);
+    };
+
+    history.replaceState = (...args) => {
+      this.originalReplaceState!.apply(history, args);
+      // Use setTimeout to ensure the URL has changed
+      setTimeout(() => this.handleUrlChange(), 0);
+    };
+
+    console.log('🔊 URL change detection set up for SPA navigation');
+  }
+
+  /**
+   * Handle URL changes and check if we need to initialize the button for a new project
+   */
+  private handleUrlChange(): void {
+    const newUrl = window.location.href;
+    const newProjectId = this.extractProjectIdFromUrl(newUrl);
+    const isProjectPage = this.isOnProjectPage();
+
+    console.log('🔊 URL changed:', {
+      newUrl,
+      newProjectId,
+      isProjectPage,
+      hasExistingButton: !!document.querySelector('[data-github-upload]'),
+    });
+
+    // If we're now on a project page and don't have a button, try to initialize
+    if (isProjectPage && !document.querySelector('[data-github-upload]')) {
+      console.log('🔊 New project detected via URL change, attempting button initialization');
+
+      // Use a small delay to let the DOM settle after navigation
+      setTimeout(() => {
+        const buttonContainer = document.querySelector('div.flex.grow-1.basis-60 div.flex.gap-2');
+        if (buttonContainer && !document.querySelector('[data-github-upload]')) {
+          console.log('🔊 Initializing GitHub button after URL change');
+          this.githubButtonManager.initialize();
+        }
+      }, 250);
+    }
+    // If we're no longer on a project page and have a button, clean it up
+    else if (!isProjectPage && document.querySelector('[data-github-upload]')) {
+      console.log('🔊 Left project page, cleaning up GitHub button');
+      const button = document.querySelector('[data-github-upload]');
+      if (button) {
+        button.remove();
+      }
+    }
+  }
+
+  /**
+   * Extract project ID from URL
+   */
+  private extractProjectIdFromUrl(url: string): string | null {
+    const match = url.match(/bolt\.new\/~\/([^/?#]+)/);
+    return match ? match[1] : null;
   }
 }

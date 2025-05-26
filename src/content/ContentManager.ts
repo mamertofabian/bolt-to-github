@@ -34,8 +34,9 @@ export class ContentManager {
 
   private shouldInitialize(): boolean {
     const currentUrl = window.location.href;
-    const match = currentUrl.match(/bolt\.new\/~\/([^/]+)/);
-    return !!match;
+    // Initialize on any bolt.new page, not just project pages
+    // The URL change detection will handle project-specific logic
+    return currentUrl.includes('bolt.new');
   }
 
   private initializeConnection() {
