@@ -16,10 +16,22 @@ export default {
     '^\\$lib/(.*)$': '<rootDir>/src/lib/$1',
     '\\.svelte$': '<rootDir>/src/test/setup/svelte-mock.js',
   },
-  setupFilesAfterEnv: ['<rootDir>/src/test/setup/fetch-mocks.js'],
+  setupFilesAfterEnv: [
+    '<rootDir>/src/test/setup/fetch-mocks.js',
+    '<rootDir>/src/test/setup/chrome-mocks.js',
+    '<rootDir>/src/test/setup/dom-mocks.js',
+  ],
   testRegex: '(/__tests__/.*|(\\.|/)(test|spec))\\.tsx?$',
   moduleFileExtensions: ['ts', 'tsx', 'js', 'jsx', 'json', 'node'],
   collectCoverage: true,
   coverageDirectory: 'coverage',
   collectCoverageFrom: ['src/**/*.{ts,tsx}', '!src/**/*.d.ts'],
+  coverageThreshold: {
+    global: {
+      branches: 60,
+      functions: 60,
+      lines: 60,
+      statements: 60,
+    },
+  },
 };
