@@ -65,9 +65,9 @@ describe('UploadStatusManager', () => {
       const container = document.getElementById('bolt-to-github-upload-status-container');
       expect(container).toBeTruthy();
       expect(container?.style.position).toBe('fixed');
-      expect(container?.style.top).toBe('20px');
-      expect(container?.style.right).toBe('20px');
-      expect(container?.style.zIndex).toBe('10000');
+      expect(container?.style.top).toBe('4rem');
+      expect(container?.style.right).toBe('1rem');
+      expect(container?.style.zIndex).toBe('10001');
     });
 
     test('removes existing container before creating new one', () => {
@@ -226,7 +226,7 @@ describe('UploadStatusManager', () => {
       expect(container?.style.left).toBe('100px');
       expect(container?.style.zIndex).toBe('20000');
       // Right should still be set from default
-      expect(container?.style.right).toBe('20px');
+      expect(container?.style.right).toBe('1rem');
     });
 
     test('updates position on existing container', () => {
@@ -240,7 +240,7 @@ describe('UploadStatusManager', () => {
       });
 
       expect(container?.style.bottom).toBe('30px');
-      expect(container?.style.top).toBe('20px'); // Should maintain existing top
+      expect(container?.style.top).toBe('4rem'); // Should maintain existing top
     });
 
     test('handles position update when container does not exist', () => {
@@ -256,8 +256,8 @@ describe('UploadStatusManager', () => {
 
       const container = document.getElementById('bolt-to-github-upload-status-container');
       expect(container?.style.left).toBe('200px');
-      expect(container?.style.top).toBe('20px'); // Default maintained
-      expect(container?.style.right).toBe('20px'); // Default maintained
+      expect(container?.style.top).toBe('4rem'); // Default maintained
+      expect(container?.style.right).toBe('1rem'); // Default maintained
     });
   });
 

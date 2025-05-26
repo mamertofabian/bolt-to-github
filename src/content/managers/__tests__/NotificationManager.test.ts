@@ -81,7 +81,7 @@ describe('NotificationManager', () => {
 
       const container = containers[0] as HTMLElement;
       expect(container.style.position).toBe('fixed');
-      expect(container.style.zIndex).toBe('10000');
+      expect(container.style.zIndex).toBe('10002');
     });
 
     test('shows error notification', () => {

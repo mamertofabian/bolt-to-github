@@ -82,8 +82,15 @@
     !hasHandledPendingContext &&
     githubSettings &&
     typeof settingsValid !== 'undefined' &&
-    typeof projectId !== 'undefined'
+    typeof onBoltProject !== 'undefined'
   ) {
+    console.log('🎯 Triggering handlePendingPopupContext with:', {
+      pendingPopupContext,
+      onBoltProject,
+      settingsValid,
+      projectId,
+      hasGitHubSettings: !!(githubSettings?.repoOwner && githubSettings?.githubToken),
+    });
     handlePendingPopupContext();
   }
 
@@ -235,38 +242,64 @@
     const context = pendingPopupContext;
     const upgradeFeature = pendingUpgradeFeature;
 
-    console.log('Handling pending popup context:', context);
+    console.log('🎯 Handling pending popup context:', context, {
+      onBoltProject,
+      settingsValid,
+      projectId,
+      hasGitHubSettings: !!(githubSettings?.repoOwner && githubSettings?.githubToken),
+      activeTab: uiState.activeTab,
+    });
 
     switch (context) {
       case 'issues':
         // Only show issues if we have valid settings and are on a Bolt project
         if (settingsValid && projectId && githubSettings.githubToken) {
+          console.log('🎯 Opening issues modal');
           showIssuesModal = true;
         } else {
+          console.log('🎯 Issues access denied, going to home tab');
           uiStateActions.setActiveTab('home');
         }
         break;
 
       case 'projects':
-        // Switch to projects tab
+        console.log('🎯 Processing projects context...');
+        // Switch to projects tab if on bolt project
         if (onBoltProject) {
-          uiStateActions.setActiveTab('projects');
+          console.log('🎯 On bolt project, setting active tab to projects');
+          // Small delay to ensure UI is rendered
+          setTimeout(() => {
+            uiStateActions.setActiveTab('projects');
+            console.log('🎯 Projects tab activated');
+          }, 10);
         } else if (
-          githubSettings.hasInitialSettings &&
-          githubSettings.repoOwner &&
-          githubSettings.githubToken
+          githubSettings?.hasInitialSettings &&
+          githubSettings?.repoOwner &&
+          githubSettings?.githubToken
         ) {
-          // Already shows projects list when not on bolt project but has settings
+          console.log(
+            '🎯 Not on bolt project but has settings - projects list should already be visible'
+          );
+          // Projects list is already shown as main content when not on bolt project but has settings
+          // No tab switching needed as we're not in tabbed interface
         } else {
-          // Switch to settings if no valid settings
-          uiStateActions.setActiveTab('settings');
+          console.log('🎯 No valid settings, redirecting to settings');
+          // If no valid settings, the onboarding UI should be shown
+          // No explicit action needed as the template handles this
         }
         break;
 
       case 'settings':
         // Switch to settings tab
         if (onBoltProject) {
-          uiStateActions.setActiveTab('settings');
+          console.log('🎯 Setting active tab to settings');
+          // Small delay to ensure UI is rendered
+          setTimeout(() => {
+            uiStateActions.setActiveTab('settings');
+            console.log('🎯 Settings tab activated');
+          }, 10);
+        } else {
+          console.log('🎯 Not on bolt project, settings handled by onboarding UI');
         }
         break;
 
