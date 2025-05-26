@@ -6,6 +6,7 @@ export interface ProjectSettingsState {
   isBoltSite: boolean;
   parsedProjectId: string | null;
   version: string;
+  projectTitle: string;
 }
 
 // Initial state
@@ -14,6 +15,7 @@ const initialState: ProjectSettingsState = {
   isBoltSite: false,
   parsedProjectId: null,
   version: '',
+  projectTitle: '',
 };
 
 // Create the writable store
@@ -28,6 +30,11 @@ export const isOnBoltProject = derived(
 export const currentProjectId = derived(
   projectSettingsStore,
   ($project) => $project.parsedProjectId
+);
+
+export const currentProjectTitle = derived(
+  projectSettingsStore,
+  ($project) => $project.projectTitle
 );
 
 // Store actions
@@ -53,6 +60,11 @@ export const projectSettingsActions = {
     if (isBoltSite) {
       const match = url.match(/bolt\.new\/~\/([^/]+)/);
       parsedProjectId = match?.[1] || null;
+
+      // Load project title if we have a project ID
+      if (parsedProjectId) {
+        this.loadProjectTitle(parsedProjectId);
+      }
     }
 
     projectSettingsStore.update((state) => ({
@@ -71,6 +83,36 @@ export const projectSettingsActions = {
       ...state,
       parsedProjectId: projectId,
     }));
+  },
+
+  /**
+   * Set project title for easier identification
+   */
+  setProjectTitle(title: string): void {
+    projectSettingsStore.update((state) => ({
+      ...state,
+      projectTitle: title,
+    }));
+  },
+
+  /**
+   * Load project title from storage
+   */
+  async loadProjectTitle(projectId: string): Promise<void> {
+    try {
+      const result = await chrome.storage.sync.get(['projectSettings']);
+      const projectSettings = result.projectSettings || {};
+      const projectData = projectSettings[projectId];
+
+      if (projectData && projectData.projectTitle) {
+        this.setProjectTitle(projectData.projectTitle);
+      } else {
+        this.setProjectTitle('');
+      }
+    } catch (error) {
+      console.error('Error loading project title:', error);
+      this.setProjectTitle('');
+    }
   },
 
   /**
@@ -131,6 +173,7 @@ export const projectSettingsActions = {
       currentUrl: '',
       isBoltSite: false,
       parsedProjectId: null,
+      projectTitle: '',
     }));
   },
 };

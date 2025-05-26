@@ -28,6 +28,7 @@ export interface Message {
 export interface ProjectSetting {
   repoName: string;
   branch: string;
+  projectTitle?: string;
 }
 
 export type ProjectSettings = Record<string, ProjectSetting>;

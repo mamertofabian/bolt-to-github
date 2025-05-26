@@ -7,12 +7,14 @@
   import QuickIssueForm from '$lib/components/QuickIssueForm.svelte';
   import premiumStatusStore, { isPremium } from '$lib/stores/premiumStore';
   import { issuesStore } from '$lib/stores/issuesStore';
+  import { projectSettingsStore } from '$lib/stores/projectSettings';
 
   export let projectId: string;
   export let gitHubUsername: string;
   export let repoName: string;
   export let branch: string;
   export let token: string;
+  export let projectTitle: string = '';
 
   let showSettingsModal = false;
   let hasFileChanges = false;
@@ -117,6 +119,21 @@
     }
   }
 
+  // Load project title from storage
+  async function loadProjectTitle() {
+    try {
+      const result = await chrome.storage.sync.get(['projectSettings']);
+      const projectSettings = result.projectSettings || {};
+      const currentProject = projectSettings[projectId];
+
+      if (currentProject && currentProject.projectTitle) {
+        projectTitle = currentProject.projectTitle;
+      }
+    } catch (error) {
+      console.error('Error loading project title:', error);
+    }
+  }
+
   onMount(() => {
     // Check for stored file changes initially
     checkStoredFileChanges();
@@ -141,6 +158,9 @@
           if (branch !== updateInfo.branch) {
             branch = updateInfo.branch;
           }
+          if (updateInfo.projectTitle !== undefined && projectTitle !== updateInfo.projectTitle) {
+            projectTitle = updateInfo.projectTitle;
+          }
 
           // Refresh the project status
           getProjectStatus();
@@ -158,6 +178,7 @@
 
     // Initialize data (async)
     const initializeData = async () => {
+      await loadProjectTitle();
       await getProjectStatus();
     };
 
@@ -234,11 +255,8 @@
 </script>
 
 <div class="border border-green-900 bg-green-950 rounded-lg overflow-hidden">
-  <div class="px-4 pt-3 pb-1">
-    <h3 class="font-medium text-sm">Currently loaded project:</h3>
-  </div>
   <div class="text-slate-300">
-    <div class="space-y-3 px-4 pb-4">
+    <div class="space-y-3 px-4 py-4">
       <!-- Project details section -->
       <div
         class="grid grid-cols-[4.5rem_1fr] gap-x-2 bg-slate-900/50 p-3 rounded-sm cursor-pointer hover:bg-slate-900/70 transition-colors group"
@@ -247,7 +265,9 @@
         role="button"
         tabindex={0}
       >
-        <span class="text-slate-400">Project ID:</span>
+        <span class="text-slate-400">Project:</span>
+        <span class="font-mono">{projectTitle}</span>
+        <span class="text-slate-400">ID:</span>
         <span class="font-mono">{projectId}</span>
         <span class="text-slate-400">Repository:</span>
         <span class="font-mono">{repoName}</span>
@@ -449,6 +469,7 @@
     {projectId}
     {repoName}
     {branch}
+    {projectTitle}
     on:close={() => {
       showSettingsModal = false;
       // Refresh project status after saving

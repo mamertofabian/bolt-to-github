@@ -43,7 +43,12 @@
   let showDeleteModal = false;
   let projectToDelete: { projectId: string; repoName: string } | null = null;
   let showSettingsModal = false;
-  let projectToEdit: { projectId: string; repoName: string; branch: string } | null = null;
+  let projectToEdit: {
+    projectId: string;
+    repoName: string;
+    branch: string;
+    projectTitle?: string;
+  } | null = null;
   let showBranchSelectionModal = false;
   let repoToImport: { owner: string; repo: string; isPrivate: boolean } | null = null;
 
@@ -87,6 +92,7 @@
       projectId,
       repoName: settings.repoName,
       branch: settings.branch,
+      projectTitle: settings.projectTitle || '',
       gitHubRepo: false,
     }));
 
@@ -102,8 +108,12 @@
 
     // First filter by search across all items
     const allProjects = [...existingProjects, ...repos];
-    const searchFiltered = allProjects.filter((project) =>
-      project.repoName.toLowerCase().includes(searchQuery.toLowerCase())
+    const searchFiltered = allProjects.filter(
+      (project) =>
+        project.repoName.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        ('projectTitle' in project &&
+          project.projectTitle &&
+          project.projectTitle.toLowerCase().includes(searchQuery.toLowerCase()))
     );
 
     // Separate into bolt projects and repos
@@ -379,7 +389,12 @@
               title: 'Repository Settings',
               class: 'hover:text-amber-500',
               action: () =>
-                openRepoSettings(project.projectId, project.repoName, project.branch || 'main'),
+                openRepoSettings(
+                  project.projectId,
+                  project.repoName,
+                  project.branch || 'main',
+                  project.projectTitle || ''
+                ),
             },
             {
               icon: Trash2,
@@ -405,8 +420,13 @@
     showDeleteModal = true;
   }
 
-  function openRepoSettings(projectId: string, repoName: string, branch: string) {
-    projectToEdit = { projectId, repoName, branch };
+  function openRepoSettings(
+    projectId: string,
+    repoName: string,
+    branch: string,
+    projectTitle: string = ''
+  ) {
+    projectToEdit = { projectId, repoName, branch, projectTitle };
     showSettingsModal = true;
   }
 
@@ -662,6 +682,10 @@
               <div class="relative">
                 <div class="w-full">
                   <h3 class="font-medium">
+                    {#if 'projectTitle' in project && project.projectTitle}
+                      <span class="text-emerald-400">{project.projectTitle}</span>
+                      <span class="text-slate-400 text-sm mx-2">•</span>
+                    {/if}
                     {project.repoName}
                     {project.branch ? `(${project.branch})` : ''}
                     {#if project.projectId === currentlyLoadedProjectId}
@@ -1055,6 +1079,7 @@
       projectId={projectToEdit.projectId}
       repoName={projectToEdit.repoName}
       branch={projectToEdit.branch}
+      projectTitle={projectToEdit.projectTitle || ''}
       on:close={() => {
         showSettingsModal = false;
         projectToEdit = null;

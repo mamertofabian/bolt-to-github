@@ -6,6 +6,7 @@
   import { GitHubService } from '../../services/GitHubService';
   import { createEventDispatcher } from 'svelte';
   import { githubSettingsActions } from '$lib/stores';
+  import { projectSettingsActions } from '$lib/stores/projectSettings';
 
   const dispatch = createEventDispatcher();
 
@@ -15,6 +16,7 @@
   export let projectId: string;
   export let repoName: string;
   export let branch: string = 'main';
+  export let projectTitle: string = '';
 
   let isLoadingRepos = false;
   let repositories: Array<{
@@ -128,6 +130,7 @@
       updatedProjectSettings[projectId] = {
         repoName,
         branch,
+        projectTitle,
       };
 
       // Save updated settings
@@ -137,8 +140,9 @@
         repoOwner: settings.repoOwner,
       });
 
-      // Update the store to trigger immediate reactivity
+      // Update the stores to trigger immediate reactivity
       githubSettingsActions.setProjectSettings(projectId, repoName, branch);
+      projectSettingsActions.setProjectTitle(projectTitle);
 
       // Store a timestamp in local storage to trigger refresh in other components
       await chrome.storage.local.set({
@@ -147,6 +151,7 @@
           projectId,
           repoName,
           branch,
+          projectTitle,
         },
       });
 
@@ -173,6 +178,20 @@
       <h2 class="text-lg font-medium mb-4">Repository Settings</h2>
 
       <div class="space-y-4">
+        <div class="space-y-2">
+          <Label for="projectTitle" class="text-slate-200">Project Title</Label>
+          <Input
+            type="text"
+            id="projectTitle"
+            bind:value={projectTitle}
+            placeholder="Enter a descriptive title for this project"
+            class="bg-slate-800 border-slate-700 text-slate-200 placeholder:text-slate-500"
+          />
+          <p class="text-sm text-slate-400">
+            💡 A custom title to help you easily identify this project
+          </p>
+        </div>
+
         <div class="space-y-2">
           <Label for="repoName" class="text-slate-200">Repository Name</Label>
           <div class="relative">
