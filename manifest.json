@@ -34,5 +34,11 @@
       "js": ["src/content/index.ts"],
       "run_at": "document_start"
     }
+  ],
+  "web_accessible_resources": [
+    {
+      "resources": ["assets/*.js", "assets/*.css", "content/*.js", "src/content/*.js"],
+      "matches": ["https://bolt.new/*"]
+    }
   ]
 }

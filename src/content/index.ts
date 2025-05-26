@@ -60,6 +60,12 @@ function initializeContentManager() {
       return;
     }
 
+    // Check if chrome runtime is available to avoid context invalidation errors
+    if (!chrome.runtime?.id) {
+      console.warn('🔊 Chrome runtime not available, extension context may be invalidated');
+      return;
+    }
+
     manager = new ContentManager();
     console.log('🔊 ContentManager initialized successfully');
 
@@ -67,6 +73,17 @@ function initializeContentManager() {
     initializeAnalytics();
   } catch (error) {
     console.error('🔊 Error initializing ContentManager:', error);
+
+    // Check if this is an extension context error
+    if (
+      error instanceof Error &&
+      (error.message.includes('Extension context invalidated') ||
+        error.message.includes('chrome-extension://invalid/'))
+    ) {
+      console.log(
+        '🔊 Extension context invalidated during initialization - user should refresh page'
+      );
+    }
   }
 }
 
@@ -84,6 +101,24 @@ function waitForDOMReady() {
 
 // Start initialization
 waitForDOMReady();
+
+// Handle page visibility changes which can cause extension context issues
+document.addEventListener('visibilitychange', () => {
+  if (document.visibilityState === 'visible' && manager) {
+    // Check if extension context is still valid when page becomes visible
+    try {
+      if (!chrome.runtime?.id) {
+        console.warn(
+          '🔊 Extension context invalid after visibility change - manager needs refresh'
+        );
+        manager = null;
+        initializeContentManager();
+      }
+    } catch (error) {
+      console.warn('🔊 Extension context check failed after visibility change:', error);
+    }
+  }
+});
 
 // Export for extension updates/reloads if needed
 export const onExecute = ({ perf }: { perf: { injectTime: number; loadTime: number } }) => {

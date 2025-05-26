@@ -89,10 +89,20 @@ export class ContentManager {
     });
   }
   private isExtensionContextInvalidated(error: any): boolean {
-    return (
-      error?.message?.includes('Extension context invalidated') ||
-      error?.message?.includes('Extension context was invalidated')
-    );
+    // Check for various extension context invalidation patterns
+    if (!error?.message) return false;
+
+    const invalidationPatterns = [
+      'Extension context invalidated',
+      'Extension context was invalidated',
+      'Could not establish connection',
+      'Receiving end does not exist',
+      'The message port closed before a response was received',
+      'chrome-extension://invalid/',
+      'net::ERR_FAILED',
+    ];
+
+    return invalidationPatterns.some((pattern) => error.message.includes(pattern));
   }
 
   private handleExtensionContextInvalidated(): void {
