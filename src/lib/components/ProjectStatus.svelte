@@ -1,20 +1,18 @@
 <script lang="ts">
   import { createEventDispatcher, onMount } from 'svelte';
-  import { Alert, AlertTitle, AlertDescription } from './ui/alert';
   import { GitHubService } from '../../services/GitHubService';
   import RepoSettings from '$lib/components/RepoSettings.svelte';
   import IssueManager from '$lib/components/IssueManager.svelte';
   import QuickIssueForm from '$lib/components/QuickIssueForm.svelte';
-  import premiumStatusStore, { isPremium } from '$lib/stores/premiumStore';
+  import { isPremium } from '$lib/stores/premiumStore';
   import { issuesStore } from '$lib/stores/issuesStore';
-  import { projectSettingsStore } from '$lib/stores/projectSettings';
 
   export let projectId: string;
   export let gitHubUsername: string;
   export let repoName: string;
   export let branch: string;
   export let token: string;
-  export let projectTitle: string = '';
+  export let projectTitle: string = 'My Project';
 
   let showSettingsModal = false;
   let hasFileChanges = false;
@@ -22,7 +20,6 @@
   let showQuickIssueForm = false;
 
   // Premium status
-  $: premiumStatus = $premiumStatusStore;
   $: isUserPremium = $isPremium;
 
   // Issues count from store

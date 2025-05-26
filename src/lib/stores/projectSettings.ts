@@ -15,7 +15,7 @@ const initialState: ProjectSettingsState = {
   isBoltSite: false,
   parsedProjectId: null,
   version: '',
-  projectTitle: '',
+  projectTitle: 'My Project',
 };
 
 // Create the writable store

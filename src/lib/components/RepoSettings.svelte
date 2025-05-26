@@ -16,7 +16,7 @@
   export let projectId: string;
   export let repoName: string;
   export let branch: string = 'main';
-  export let projectTitle: string = '';
+  export let projectTitle: string = 'My Project';
 
   let isLoadingRepos = false;
   let repositories: Array<{
