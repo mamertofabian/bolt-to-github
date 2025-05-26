@@ -1,16 +1,22 @@
 import type { GitHubService } from './GitHubService';
 import { toBase64 } from '../lib/common';
 import { ZipProcessor } from '../lib/zip';
-import ignore from 'ignore';
 import type { ProcessingStatus, UploadStatusState } from '$lib/types';
 import { RateLimitHandler } from './RateLimitHandler';
 import { Queue } from '../lib/Queue';
+import { GitHubComparisonService } from './GitHubComparisonService';
+import { processFilesWithGitignore } from '$lib/fileUtils';
 
 export class ZipHandler {
+  private githubComparisonService: GitHubComparisonService;
+
   constructor(
     private githubService: GitHubService,
     private sendStatus: (status: UploadStatusState) => void
-  ) {}
+  ) {
+    this.githubComparisonService = GitHubComparisonService.getInstance();
+    this.githubComparisonService.setGitHubService(githubService);
+  }
 
   private updateStatus = async (
     status: ProcessingStatus,
@@ -165,7 +171,7 @@ export class ZipHandler {
 
       await this.ensureBranchExists(repoOwner, repoName, targetBranch);
 
-      const processedFiles = await this.processFilesWithGitignore(files);
+      const processedFiles = await processFilesWithGitignore(files);
 
       await this.updateStatus('uploading', 20, 'Getting repository information...');
 
@@ -185,66 +191,6 @@ export class ZipHandler {
     }
   };
 
-  private async processFilesWithGitignore(
-    files: Map<string, string>
-  ): Promise<Map<string, string>> {
-    const processedFiles = new Map<string, string>();
-    const ig = ignore();
-
-    // Check for .gitignore and initialize ignore patterns
-    const gitignoreContent = files.get('.gitignore') || files.get('project/.gitignore');
-    if (gitignoreContent) {
-      ig.add(gitignoreContent.split('\n'));
-    } else {
-      // Default ignore patterns for common directories when no .gitignore exists
-      ig.add([
-        'node_modules/',
-        'dist/',
-        'build/',
-        '.DS_Store',
-        'coverage/',
-        '.env',
-        '.env.local',
-        '.env.*.local',
-        '*.log',
-        'npm-debug.log*',
-        'yarn-debug.log*',
-        'yarn-error.log*',
-        '.idea/',
-        '.vscode/',
-        '*.suo',
-        '*.ntvs*',
-        '*.njsproj',
-        '*.sln',
-        '*.sw?',
-        '.next/',
-        'out/',
-        '.nuxt/',
-        '.cache/',
-        '.temp/',
-        'tmp/',
-      ]);
-    }
-
-    for (const [path, content] of files.entries()) {
-      if (path.endsWith('/') || !content.trim()) {
-        // Skip directory entries and empty files
-        continue;
-      }
-
-      const normalizedPath = path.startsWith('project/') ? path.slice(8) : path;
-
-      if (ig.ignores(normalizedPath)) {
-        // Skip files that match .gitignore patterns
-        continue;
-      }
-
-      processedFiles.set(normalizedPath, content);
-    }
-
-    return processedFiles;
-  }
-
   private async uploadToGitHub(
     processedFiles: Map<string, string>,
     repoOwner: string,
@@ -252,7 +198,7 @@ export class ZipHandler {
     targetBranch: string,
     commitMessage: string
   ) {
-    // Get the current commit SHA
+    // Get the current commit SHA for reference
     const baseRef = await this.githubService.request(
       'GET',
       `/repos/${repoOwner}/${repoName}/git/refs/heads/${targetBranch}`
@@ -265,37 +211,35 @@ export class ZipHandler {
     );
     const baseTreeSha = baseCommit.tree.sha;
 
-    // Fetch the full tree with content
+    // Use the GitHubComparisonService to determine which files have changed
     await this.updateStatus('uploading', 30, 'Analyzing repository changes...');
-    const existingTree = await this.githubService.request(
-      'GET',
-      `/repos/${repoOwner}/${repoName}/git/trees/${baseTreeSha}?recursive=1`
+
+    // Create a progress callback for the comparison service
+    const progressCallback = (message: string, progress: number) => {
+      // Only log to console, don't update UI status for intermediate steps
+      console.log(`GitHub comparison: ${message} (${progress}%)`);
+    };
+
+    // Compare local files with GitHub repository
+    const comparisonResult = await this.githubComparisonService.compareWithGitHub(
+      processedFiles,
+      repoOwner,
+      repoName,
+      targetBranch,
+      progressCallback
     );
 
-    // Create a map of existing file paths to their SHAs
-    const existingFiles = new Map<string, string>();
-    if (existingTree.tree) {
-      existingTree.tree.forEach((item: { path: string; sha: string; type: string }) => {
-        if (item.type === 'blob') {
-          existingFiles.set(item.path, item.sha);
-        }
-      });
-    }
+    // Get the repository data and changes
+    const { changes, repoData } = comparisonResult;
+    const { existingFiles } = repoData;
 
-    // Determine which files have changed
+    // Extract changed files (added or modified) from the comparison result
     const changedFiles = new Map<string, string>();
-    for (const [path, content] of processedFiles.entries()) {
-      // If file doesn't exist in repo, it's changed
-      if (!existingFiles.has(path)) {
-        changedFiles.set(path, content);
-      } else {
-        // For existing files, compare content hash
-        const contentHash = await this.calculateGitBlobHash(content);
-        if (existingFiles.get(path) !== contentHash) {
-          changedFiles.set(path, content);
-        }
+    changes.forEach((fileChange, path) => {
+      if (fileChange.status === 'added' || fileChange.status === 'modified') {
+        changedFiles.set(path, fileChange.content);
       }
-    }
+    });
 
     // If no files have changed, skip the commit process
     if (changedFiles.size === 0) {
@@ -306,6 +250,7 @@ export class ZipHandler {
       );
       return;
     }
+
     await this.updateStatus(
       'uploading',
       40,
@@ -375,53 +320,6 @@ export class ZipHandler {
 
   private sleep(ms: number): Promise<void> {
     return new Promise((resolve) => setTimeout(resolve, ms));
-  }
-
-  /**
-   * Calculate the Git blob hash for a string content
-   * GitHub calculates blob SHA using the format: "blob " + content.length + "\0" + content
-   *
-   * Optimized for better performance with:
-   * 1. Pre-allocated buffer to avoid multiple array creations
-   * 2. Single TextEncoder instance
-   * 3. More efficient hex string generation
-   */
-  private async calculateGitBlobHash(content: string): Promise<string> {
-    const encoder = new TextEncoder();
-
-    // Prepare the prefix string once
-    const prefixStr = `blob ${content.length}\0`;
-
-    // Calculate total buffer size needed up front
-    const totalLength = new TextEncoder().encode(prefixStr + content).length;
-
-    // Encode directly into a single buffer
-    let bytes: Uint8Array;
-
-    // Modern browsers support encodeInto for better performance
-    if (typeof encoder.encodeInto === 'function') {
-      bytes = new Uint8Array(totalLength);
-      const prefixResult = encoder.encodeInto(prefixStr, bytes);
-      if (prefixResult && typeof prefixResult.written === 'number') {
-        encoder.encodeInto(content, bytes.subarray(prefixResult.written));
-      }
-    } else {
-      // Fallback for browsers without encodeInto
-      const prefixBytes = encoder.encode(prefixStr);
-      const contentBytes = encoder.encode(content);
-
-      bytes = new Uint8Array(prefixBytes.length + contentBytes.length);
-      bytes.set(prefixBytes);
-      bytes.set(contentBytes, prefixBytes.length);
-    }
-
-    // Calculate SHA-1 hash
-    const hashBuffer = await crypto.subtle.digest('SHA-1', bytes);
-
-    // Convert to hex string using the imported utility function
-    return Array.from(new Uint8Array(hashBuffer))
-      .map((byte) => byte.toString(16).padStart(2, '0'))
-      .join('');
   }
 
   private async createBlobs(
@@ -522,6 +420,10 @@ export class ZipHandler {
 
       let fileCount = 0;
       for (const [path, content] of batch.entries()) {
+        // Strip the 'project/' prefix from file paths
+        const normalizedPath = path.startsWith('project/')
+          ? path.substring('project/'.length)
+          : path;
         await queue.add(async () => {
           let success = false;
           let attempts = 0;
@@ -542,7 +444,7 @@ export class ZipHandler {
               );
 
               results.push({
-                path,
+                path: normalizedPath,
                 mode: '100644',
                 type: 'blob',
                 sha: blobData.sha,

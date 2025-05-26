@@ -1,25 +1,64 @@
 <script lang="ts">
   import { onMount } from 'svelte';
   import { Button } from '$lib/components/ui/button';
-  import { Github, Import, Zap, X, RefreshCw, Trash2, Settings } from 'lucide-svelte';
+  import {
+    Github,
+    Import,
+    Zap,
+    X,
+    RefreshCw,
+    Trash2,
+    Settings,
+    ChevronLeft,
+    ChevronRight,
+    Loader2,
+  } from 'lucide-svelte';
   import RepoSettings from '$lib/components/RepoSettings.svelte';
+  import ConfirmationDialog from '$lib/components/ui/dialog/ConfirmationDialog.svelte';
   import { GitHubService } from '../../services/GitHubService';
-  import { fade } from 'svelte/transition';
+  import BranchSelectionModal from '../../popup/components/BranchSelectionModal.svelte';
+  import { githubSettingsStore } from '$lib/stores';
 
-  export let projectSettings: Record<string, { repoName: string; branch: string }>;
   export let repoOwner: string;
   export let githubToken: string;
   export let isBoltSite: boolean = true;
   export let currentlyLoadedProjectId: string | null = null;
 
+  // Use stores instead of props
+  $: projectSettings = $githubSettingsStore.projectSettings;
+
+  // Pagination state
+  let boltProjectsPage = 1;
+  let reposPage = 1;
+  const itemsPerPage = 5;
+  let paginatedBoltProjects: any[] = [];
+  let paginatedRepos: any[] = [];
+  let boltProjectsTotalPages = 0;
+  let reposTotalPages = 0;
+  let totalBoltProjects = 0;
+  let totalRepos = 0;
+
   let loadingRepos = false;
+  let initialLoadingRepos = true;
   let showDeleteModal = false;
   let projectToDelete: { projectId: string; repoName: string } | null = null;
   let showSettingsModal = false;
-  let projectToEdit: { projectId: string; repoName: string; branch: string } | null = null;
+  let projectToEdit: {
+    projectId: string;
+    repoName: string;
+    branch: string;
+    projectTitle?: string;
+  } | null = null;
+  let showBranchSelectionModal = false;
+  let repoToImport: { owner: string; repo: string; isPrivate: boolean } | null = null;
+
+  // Add confirmation dialog state
+  let showImportConfirmDialog = false;
+  let repoToConfirmImport: { owner: string; repo: string; isPrivate: boolean } | null = null;
 
   const githubService = new GitHubService(githubToken);
   let commitCounts: Record<string, number> = {};
+  let loadingCommitCounts: Record<string, boolean> = {};
   let allRepos: Array<{
     name: string;
     description: string | null;
@@ -32,37 +71,28 @@
 
   let searchQuery = '';
   let showRepos = true;
-  let filteredProjects: Array<{
-    projectId?: string;
-    repoName: string;
-    branch?: string;
-    gitHubRepo?: boolean;
-    description?: string | null;
-    private?: boolean;
-    language?: string | null;
-  }> = [];
   let importProgress: { repoName: string; status: string; progress?: number } | null = null;
   let currentTabIsBolt = false;
 
-  async function loadAllRepos() {
-    console.log('Loading repos for', repoOwner);
-    try {
-      loadingRepos = true;
-      allRepos = await githubService.listRepos();
-      // Simulate a delay to show the loading spinner
-      await new Promise((resolve) => setTimeout(resolve, 1000));
-      loadingRepos = false;
-    } catch (error) {
-      loadingRepos = false;
-      console.error('Failed to load repos:', error);
-    }
+  // Cache keys and durations
+  const REPOS_CACHE_KEY = `github_repos_${repoOwner}`;
+  const COMMITS_CACHE_KEY = `github_commits_${repoOwner}`;
+  const REPOS_CACHE_DURATION = 5 * 60 * 1000; // 5 minutes
+  const COMMITS_CACHE_DURATION = 2 * 60 * 1000; // 2 minutes (commits change more frequently)
+
+  // Reset pagination when search changes
+  $: if (searchQuery !== undefined) {
+    boltProjectsPage = 1;
+    reposPage = 1;
   }
 
+  // Filter and paginate logic
   $: {
     const existingProjects = Object.entries(projectSettings).map(([projectId, settings]) => ({
       projectId,
       repoName: settings.repoName,
       branch: settings.branch,
+      projectTitle: settings.projectTitle || '',
       gitHubRepo: false,
     }));
 
@@ -76,66 +106,214 @@
         }))
       : [];
 
-    filteredProjects = [...existingProjects, ...repos].filter((project) =>
-      project.repoName.toLowerCase().includes(searchQuery.toLowerCase())
+    // First filter by search across all items
+    const allProjects = [...existingProjects, ...repos];
+    const searchFiltered = allProjects.filter(
+      (project) =>
+        project.repoName.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        ('projectTitle' in project &&
+          project.projectTitle &&
+          project.projectTitle.toLowerCase().includes(searchQuery.toLowerCase()))
     );
+
+    // Separate into bolt projects and repos
+    const boltProjects = searchFiltered.filter((p) => !p.gitHubRepo);
+    const gitHubRepos = searchFiltered.filter((p) => p.gitHubRepo);
+
+    // Store totals for display
+    totalBoltProjects = boltProjects.length;
+    totalRepos = gitHubRepos.length;
+
+    // Calculate total pages
+    boltProjectsTotalPages = Math.ceil(boltProjects.length / itemsPerPage);
+    reposTotalPages = Math.ceil(gitHubRepos.length / itemsPerPage);
+
+    // Ensure current pages don't exceed total pages
+    if (boltProjectsPage > boltProjectsTotalPages && boltProjectsTotalPages > 0) {
+      boltProjectsPage = boltProjectsTotalPages;
+    }
+    if (reposPage > reposTotalPages && reposTotalPages > 0) {
+      reposPage = reposTotalPages;
+    }
+
+    // Apply pagination
+    const boltStartIndex = (boltProjectsPage - 1) * itemsPerPage;
+    const reposStartIndex = (reposPage - 1) * itemsPerPage;
+
+    paginatedBoltProjects = boltProjects.slice(boltStartIndex, boltStartIndex + itemsPerPage);
+    paginatedRepos = gitHubRepos.slice(reposStartIndex, reposStartIndex + itemsPerPage);
+  }
+
+  async function loadReposFromCache() {
+    try {
+      const cached = await chrome.storage.local.get([
+        REPOS_CACHE_KEY,
+        `${REPOS_CACHE_KEY}_timestamp`,
+      ]);
+      const cachedRepos = cached[REPOS_CACHE_KEY];
+      const timestamp = cached[`${REPOS_CACHE_KEY}_timestamp`];
+
+      if (cachedRepos && timestamp && Date.now() - timestamp < REPOS_CACHE_DURATION) {
+        console.log('Loading repos from cache for', repoOwner);
+        allRepos = cachedRepos;
+        return true;
+      }
+      return false;
+    } catch (error) {
+      console.error('Failed to load repos from cache:', error);
+      return false;
+    }
+  }
+
+  async function saveReposToCache(repos: typeof allRepos) {
+    try {
+      await chrome.storage.local.set({
+        [REPOS_CACHE_KEY]: repos,
+        [`${REPOS_CACHE_KEY}_timestamp`]: Date.now(),
+      });
+      console.log('Repos cached for', repoOwner);
+    } catch (error) {
+      console.error('Failed to cache repos:', error);
+    }
+  }
+
+  async function loadCommitCountsFromCache() {
+    try {
+      const cached = await chrome.storage.local.get([
+        COMMITS_CACHE_KEY,
+        `${COMMITS_CACHE_KEY}_timestamp`,
+      ]);
+      const cachedCommits = cached[COMMITS_CACHE_KEY];
+      const timestamp = cached[`${COMMITS_CACHE_KEY}_timestamp`];
+
+      if (cachedCommits && timestamp && Date.now() - timestamp < COMMITS_CACHE_DURATION) {
+        console.log('Loading commit counts from cache for', repoOwner);
+        commitCounts = { ...cachedCommits };
+        return true;
+      }
+      return false;
+    } catch (error) {
+      console.error('Failed to load commit counts from cache:', error);
+      return false;
+    }
+  }
+
+  async function saveCommitCountsToCache(counts: Record<string, number>) {
+    try {
+      await chrome.storage.local.set({
+        [COMMITS_CACHE_KEY]: counts,
+        [`${COMMITS_CACHE_KEY}_timestamp`]: Date.now(),
+      });
+      console.log('Commit counts cached for', repoOwner);
+    } catch (error) {
+      console.error('Failed to cache commit counts:', error);
+    }
+  }
+
+  async function loadAllRepos(forceRefresh = false) {
+    console.log('Loading repos for', repoOwner, forceRefresh ? '(force refresh)' : '');
+
+    try {
+      loadingRepos = true;
+
+      // Try to load from cache first unless force refresh is requested
+      if (!forceRefresh) {
+        const cachedSuccessfully = await loadReposFromCache();
+        if (cachedSuccessfully) {
+          initialLoadingRepos = false;
+          loadingRepos = false;
+          return;
+        }
+      }
+
+      // Fetch from API
+      const repos = await githubService.listRepos();
+
+      // Simulate a brief delay for better UX (only for non-cached loads)
+      if (initialLoadingRepos) {
+        await new Promise((resolve) => setTimeout(resolve, 800));
+      }
+
+      allRepos = repos;
+      await saveReposToCache(repos);
+
+      initialLoadingRepos = false;
+      loadingRepos = false;
+    } catch (error) {
+      initialLoadingRepos = false;
+      loadingRepos = false;
+      console.error('Failed to load repos:', error);
+    }
   }
 
   // Function to refresh project data
-  async function refreshProjectData() {
-    console.log('Refreshing project data in ProjectsList');
+  async function refreshProjectData(forceRefresh = false) {
+    console.log('Refreshing project data in ProjectsList', forceRefresh ? '(force refresh)' : '');
 
-    // Fetch commit counts for projects that have IDs
-    for (const [projectId, settings] of Object.entries(projectSettings)) {
-      commitCounts[projectId] = await githubService.getCommitCount(
-        repoOwner,
-        settings.repoName,
-        settings.branch
-      );
+    // Try to load from cache first unless force refresh is requested
+    if (!forceRefresh) {
+      const cachedSuccessfully = await loadCommitCountsFromCache();
+      if (cachedSuccessfully) {
+        // Check if we have all the required commit counts
+        const projectIds = Object.keys(projectSettings);
+        const cachedIds = Object.keys(commitCounts);
+        const hasAllCounts = projectIds.every((id) => cachedIds.includes(id));
+
+        if (hasAllCounts) {
+          console.log('All commit counts loaded from cache');
+          return;
+        }
+      }
     }
 
-    // Force a UI update by creating a new object
-    commitCounts = { ...commitCounts };
+    // Fetch commit counts for projects that have IDs
+    const newCommitCounts: Record<string, number> = { ...commitCounts };
+    const newLoadingStates: Record<string, boolean> = { ...loadingCommitCounts };
+
+    // Track which projects need loading
+    const projectsToLoad = Object.entries(projectSettings).filter(([projectId]) => {
+      return forceRefresh || commitCounts[projectId] === undefined;
+    });
+
+    // Set loading states for projects we're about to fetch
+    for (const [projectId] of projectsToLoad) {
+      newLoadingStates[projectId] = true;
+    }
+    loadingCommitCounts = newLoadingStates;
+
+    for (const [projectId, settings] of projectsToLoad) {
+      try {
+        newCommitCounts[projectId] = await githubService.getCommitCount(
+          repoOwner,
+          settings.repoName,
+          settings.branch
+        );
+      } catch (error) {
+        console.error(`Failed to fetch commit count for ${projectId}:`, error);
+        // Keep existing count if available
+        if (commitCounts[projectId] !== undefined) {
+          newCommitCounts[projectId] = commitCounts[projectId];
+        }
+      } finally {
+        // Clear loading state for this project
+        newLoadingStates[projectId] = false;
+      }
+    }
+
+    // Update commit counts and loading states
+    commitCounts = newCommitCounts;
+    loadingCommitCounts = newLoadingStates;
+    await saveCommitCountsToCache(commitCounts);
   }
 
   onMount(() => {
-    // Set up storage change listener
-    const storageChangeListener = (changes: any, areaName: string) => {
-      console.log('Storage changes detected:', changes, 'in area:', areaName);
-
-      // Check if lastSettingsUpdate changed in local storage
-      if (areaName === 'local' && changes.lastSettingsUpdate) {
-        const updateInfo = changes.lastSettingsUpdate.newValue;
-        console.log('Settings update detected:', updateInfo);
-
-        // Force refresh of project settings
-        chrome.storage.sync.get(['projectSettings'], (result) => {
-          console.log('Refreshing project settings with:', result.projectSettings);
-          if (result.projectSettings) {
-            projectSettings = { ...result.projectSettings };
-            refreshProjectData();
-          }
-        });
-      }
-
-      // Check if projectSettings changed in sync storage
-      if (areaName === 'sync' && changes.projectSettings) {
-        console.log('Project settings changed in sync storage');
-        projectSettings = { ...changes.projectSettings.newValue };
-        refreshProjectData();
-      }
-    };
-
-    // Add the storage change listener
-    chrome.storage.onChanged.addListener(storageChangeListener);
-
     // Initialize data (async)
     const initializeData = async () => {
       // Get current tab URL
       const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
       currentTabIsBolt = tab?.url?.includes('bolt.new') ?? false;
 
-      // Load all repos
+      // Load all repos (will try cache first)
       await loadAllRepos();
 
       // Initial load of commit counts
@@ -144,12 +322,90 @@
 
     // Start initialization
     initializeData();
-
-    // Return a cleanup function to remove the listener when the component is destroyed
-    return () => {
-      chrome.storage.onChanged.removeListener(storageChangeListener);
-    };
   });
+
+  // Keep track of previous project settings to detect changes
+  let previousProjectSettings: typeof projectSettings = {};
+
+  // Watch for changes in projectSettings from the store and refresh data
+  $: if (projectSettings && Object.keys(projectSettings).length > 0) {
+    // Check if this is a new project or branch change
+    const currentKeys = Object.keys(projectSettings);
+    const previousKeys = Object.keys(previousProjectSettings);
+
+    const hasNewProjects = currentKeys.some((key) => !previousKeys.includes(key));
+    const hasBranchChanges = currentKeys.some(
+      (key) =>
+        previousProjectSettings[key] &&
+        projectSettings[key] &&
+        previousProjectSettings[key].branch !== projectSettings[key].branch
+    );
+
+    if (hasNewProjects || hasBranchChanges) {
+      // Force refresh commit counts for new projects or branch changes
+      refreshProjectData(true);
+    } else if (currentKeys.length !== previousKeys.length) {
+      // Just refresh normally for other changes
+      refreshProjectData();
+    }
+
+    // Update previous settings
+    previousProjectSettings = { ...projectSettings };
+  }
+
+  // Helper function to render project actions
+  function renderProjectActions(project: any) {
+    return [
+      ...(project.projectId && project.projectId !== currentlyLoadedProjectId
+        ? [
+            {
+              icon: Zap,
+              title: 'Open in Bolt',
+              class: 'hover:text-emerald-500',
+              action: () => openBoltProject(project.projectId),
+            },
+          ]
+        : []),
+      {
+        icon: Github,
+        title: 'Open GitHub Repository',
+        class: 'hover:text-blue-500',
+        action: () => openGitHubRepo(repoOwner, project.repoName),
+      },
+      ...(!project.projectId
+        ? [
+            {
+              icon: Import,
+              title: 'Import from GitHub to Bolt',
+              class: 'hover:text-amber-500',
+              action: () => importFromGitHub(repoOwner, project.repoName, project.private ?? false),
+            },
+          ]
+        : []),
+      ...(project.projectId
+        ? [
+            {
+              icon: Settings,
+              title: 'Repository Settings',
+              class: 'hover:text-amber-500',
+              action: () =>
+                openRepoSettings(
+                  project.projectId,
+                  project.repoName,
+                  project.branch || 'main',
+                  project.projectTitle || project.repoName
+                ),
+            },
+            {
+              icon: Trash2,
+              title: 'Delete Project',
+              class: 'hover:text-red-500',
+              action: () => confirmDeleteProject(project.projectId, project.repoName),
+            },
+          ]
+        : []),
+    ];
+  }
 
   function openBoltProject(projectId: string) {
     window.open(`https://bolt.new/~/${projectId}`, '_blank');
@@ -164,27 +420,46 @@
     showDeleteModal = true;
   }
 
-  function openRepoSettings(projectId: string, repoName: string, branch: string) {
-    projectToEdit = { projectId, repoName, branch };
+  function openRepoSettings(
+    projectId: string,
+    repoName: string,
+    branch: string,
+    projectTitle: string = ''
+  ) {
+    projectToEdit = { projectId, repoName, branch, projectTitle };
     showSettingsModal = true;
   }
 
   async function deleteProject() {
     try {
-      // Get current settings
-      const settings = await chrome.storage.sync.get(['projectSettings']);
-      let updatedProjectSettings = { ...(settings.projectSettings || {}) };
+      if (projectToDelete) {
+        // Get current settings
+        const settings = await chrome.storage.sync.get(['projectSettings']);
+        let updatedProjectSettings = { ...(settings.projectSettings || {}) };
 
-      if (projectToDelete && updatedProjectSettings[projectToDelete.projectId]) {
         // Delete single project
         delete updatedProjectSettings[projectToDelete.projectId];
+
+        // Save updated settings to Chrome storage
+        await chrome.storage.sync.set({ projectSettings: updatedProjectSettings });
+
+        // Update the store to trigger reactivity
+        githubSettingsStore.update((state) => ({
+          ...state,
+          projectSettings: updatedProjectSettings,
+        }));
+
+        // Remove from commit counts and loading states, then update cache
+        if (projectToDelete.projectId in commitCounts) {
+          delete commitCounts[projectToDelete.projectId];
+          commitCounts = { ...commitCounts };
+          await saveCommitCountsToCache(commitCounts);
+        }
+        if (projectToDelete.projectId in loadingCommitCounts) {
+          delete loadingCommitCounts[projectToDelete.projectId];
+          loadingCommitCounts = { ...loadingCommitCounts };
+        }
       }
-
-      // Save updated settings
-      await chrome.storage.sync.set({ projectSettings: updatedProjectSettings });
-
-      // Update the local projectSettings variable to refresh the UI
-      projectSettings = updatedProjectSettings;
 
       // Close the modal and reset state
       showDeleteModal = false;
@@ -200,22 +475,44 @@
       return;
     }
 
-    if (
-      !confirm(
-        'Warning: This will temporarily create a public copy of your private repository to enable import.\n\n' +
-          'The temporary repository will be automatically deleted after 1 minute.\n\n' +
-          'Do you want to continue?'
-      )
-    ) {
-      return;
-    }
+    // Store the repo info and show confirmation dialog
+    repoToConfirmImport = { owner: repoOwner, repo: repoName, isPrivate };
+    showImportConfirmDialog = true;
+  }
+
+  async function handleImportConfirm() {
+    if (!repoToConfirmImport) return;
+
+    // Show branch selection modal
+    repoToImport = {
+      owner: repoToConfirmImport.owner,
+      repo: repoToConfirmImport.repo,
+      isPrivate: repoToConfirmImport.isPrivate,
+    };
+    showBranchSelectionModal = true;
+
+    // Reset confirmation state
+    showImportConfirmDialog = false;
+    repoToConfirmImport = null;
+  }
+
+  function handleImportCancel() {
+    showImportConfirmDialog = false;
+    repoToConfirmImport = null;
+  }
+
+  async function handleBranchSelected(branch: string) {
+    if (!repoToImport) return;
+
+    const { owner, repo } = repoToImport;
+    showBranchSelectionModal = false;
 
     try {
-      console.log('🔄 Sending message to import private repo:', repoName);
+      console.log(`🔄 Sending message to import private repo: ${repo} from branch: ${branch}`);
 
       // Only show progress if we're not on bolt.new
       if (!currentTabIsBolt) {
-        importProgress = { repoName, status: 'Starting import...' };
+        importProgress = { repoName: repo, status: `Starting import from branch '${branch}'...` };
       }
 
       // Send message directly to background service
@@ -234,7 +531,7 @@
 
           if (!currentTabIsBolt) {
             importProgress = {
-              repoName,
+              repoName: repo,
               status: message.status.message || 'Processing...',
               progress: message.status.progress,
             };
@@ -252,10 +549,10 @@
         }
       });
 
-      // Then send message
+      // Then send message with branch information
       port.postMessage({
         type: 'IMPORT_PRIVATE_REPO',
-        data: { repoName },
+        data: { repoName: repo, branch },
       });
 
       // If we're on bolt.new, close the popup immediately
@@ -265,7 +562,28 @@
     } catch (error) {
       console.error('❌ Failed to import private repository:', error);
       alert('Failed to import private repository. Please try again later.');
+      repoToImport = null;
     }
+  }
+
+  // Pagination functions
+  function goToBoltPage(page: number) {
+    if (page >= 1 && page <= boltProjectsTotalPages) {
+      boltProjectsPage = page;
+    }
+  }
+
+  function goToRepoPage(page: number) {
+    if (page >= 1 && page <= reposTotalPages) {
+      reposPage = page;
+    }
+  }
+
+  // Handle refresh with force refresh
+  async function handleRefreshRepos() {
+    await loadAllRepos(true);
+    // Also refresh commit counts when refreshing repos
+    await refreshProjectData(true);
   }
 </script>
 
@@ -276,7 +594,7 @@
         type="text"
         bind:value={searchQuery}
         placeholder="Search projects..."
-        class="w-full bg-transparent border border-slate-800 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-slate-700"
+        class="w-full bg-transparent border border-slate-800 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-slate-700 transition-colors"
       />
       {#if searchQuery}
         <Button
@@ -300,10 +618,10 @@
     {#if showRepos}
       <Button
         variant="ghost"
-        class="border-slate-800 hover:bg-slate-800 text-slate-200"
+        class="border-slate-800 hover:bg-slate-800 text-slate-200 transition-colors"
         title="Refresh Repos"
         disabled={loadingRepos}
-        on:click={loadAllRepos}
+        on:click={handleRefreshRepos}
       >
         {#if loadingRepos}
           <RefreshCw class="animate-spin h-5 w-5" />
@@ -314,38 +632,47 @@
     {/if}
   </div>
 
-  {#if filteredProjects.length === 0}
-    <div class="flex flex-col items-center justify-center p-4 text-center space-y-6">
-      <div class="space-y-2">
+  {#if totalBoltProjects === 0 && totalRepos === 0 && !initialLoadingRepos && !loadingRepos}
+    <div
+      class="flex flex-col items-center justify-center p-6 text-center space-y-6 bg-slate-900/30 rounded-lg border border-slate-800"
+    >
+      <div class="space-y-3">
         {#if !isBoltSite}
           <Button
             variant="outline"
-            class="border-slate-800 hover:bg-slate-800 text-slate-200"
+            class="border-slate-700 hover:bg-slate-800 text-slate-200 transition-colors"
             on:click={() => window.open('https://bolt.new', '_blank')}
           >
             Go to bolt.new
           </Button>
         {/if}
-        <p class="text-sm text-green-400">
+        <p class="text-sm text-emerald-400">
           💡 No Bolt projects found. Create or load an existing Bolt project to get started.
         </p>
-        <p class="text-sm text-green-400">🌟 You can also load any of your GitHub repositories.</p>
+        <p class="text-sm text-blue-400">🌟 You can also load any of your GitHub repositories.</p>
       </div>
     </div>
   {:else}
-    <!-- Group projects by type -->
-    {#if filteredProjects.some((p) => !p.gitHubRepo)}
-      <div class="mb-3">
-        <div class="flex items-center justify-between mb-2 px-1">
+    <!-- Bolt Projects Section -->
+    {#if totalBoltProjects > 0}
+      <div class="mb-6">
+        <div class="flex items-center justify-between mb-3 px-1">
           <h2 class="text-sm font-semibold text-emerald-500 flex items-center gap-2">
             <Zap class="h-4 w-4" /> Bolt Projects
+            <span class="text-xs text-slate-400 font-normal">({totalBoltProjects})</span>
           </h2>
+          {#if boltProjectsTotalPages > 1}
+            <div class="flex items-center gap-1 text-xs text-slate-400">
+              Page {boltProjectsPage} of {boltProjectsTotalPages}
+            </div>
+          {/if}
         </div>
-        {#each filteredProjects.filter((p) => !p.gitHubRepo) as project}
+
+        {#each paginatedBoltProjects as project}
           <div
-            class="border border-slate-800 rounded-lg p-3 hover:bg-slate-800/50 transition-colors relative mb-2 group {project.projectId ===
+            class="border border-slate-800 rounded-lg p-3 hover:bg-slate-800/50 transition-all duration-200 relative mb-2 group {project.projectId ===
             currentlyLoadedProjectId
-              ? 'bg-slate-800/30 border-slate-700'
+              ? 'bg-slate-800/30 border-slate-700 shadow-lg shadow-emerald-500/10'
               : ''}"
             role="button"
             tabindex="-1"
@@ -355,14 +682,18 @@
               <div class="relative">
                 <div class="w-full">
                   <h3 class="font-medium">
+                    {#if 'projectTitle' in project && project.projectTitle}
+                      <span class="text-emerald-400">{project.projectTitle}</span>
+                      <span class="text-slate-400 text-sm mx-2">•</span>
+                    {/if}
                     {project.repoName}
                     {project.branch ? `(${project.branch})` : ''}
                     {#if project.projectId === currentlyLoadedProjectId}
-                      <span class="text-xs text-emerald-500 ml-2">(Current)</span>
+                      <span class="text-xs text-emerald-500 ml-2 font-semibold">(Current)</span>
                     {/if}
                     {#if project.gitHubRepo}
                       <span
-                        class="text-xs {project.private ? 'text-red-500' : 'text-blue-500'} ml-2"
+                        class="text-xs {project.private ? 'text-red-400' : 'text-blue-400'} ml-2"
                       >
                         ({project.private ? 'Private' : 'Public'})
                       </span>
@@ -371,197 +702,326 @@
                   <div class="flex flex-col gap-1 text-xs text-slate-400 mt-1">
                     {#if project.projectId}
                       <p>
-                        Bolt ID: {project.projectId} ({commitCounts[project.projectId] ?? '...'} commits)
+                        Bolt ID: {project.projectId} (
+                        {#if loadingCommitCounts[project.projectId]}
+                          <span class="inline-flex items-center">
+                            <div class="commit-loader"></div>
+                          </span>
+                        {:else}
+                          {commitCounts[project.projectId] ?? '...'}
+                        {/if} commits)
                       </p>
                     {/if}
                     {#if project.description}
-                      <p>{project.description}</p>
+                      <p class="text-slate-300">{project.description}</p>
                     {/if}
                     {#if project.language}
-                      <p>Language: {project.language}</p>
+                      <p>Language: <span class="text-slate-300">{project.language}</span></p>
                     {/if}
                   </div>
                 </div>
 
                 <div
-                  class="absolute top-0 right-0 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity bg-gradient-to-l from-slate-800/90 via-slate-800/70 to-transparent pl-8 pr-1 py-1 rounded-l-full"
+                  class="absolute top-0 right-0 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity duration-200 bg-gradient-to-l from-slate-800/95 via-slate-800/80 to-transparent pl-8 pr-1 py-1 rounded-l-full"
                 >
-                  {#if project.projectId && project.projectId !== currentlyLoadedProjectId}
+                  {#each renderProjectActions(project) as action}
                     <Button
                       variant="ghost"
                       size="icon"
-                      title="Open in Bolt"
-                      class="h-8 w-8 hover:text-emerald-500"
-                      on:click={() => project.projectId && openBoltProject(project.projectId)}
+                      title={action.title}
+                      class="h-8 w-8 {action.class} transition-colors"
+                      on:click={action.action}
                     >
-                      <Zap class="h-5 w-5" />
+                      <svelte:component this={action.icon} class="h-5 w-5" />
                     </Button>
-                  {/if}
-
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    title="Open GitHub Repository"
-                    class="h-8 w-8 hover:text-blue-500"
-                    on:click={() => openGitHubRepo(repoOwner, project.repoName)}
-                  >
-                    <Github class="h-5 w-5" />
-                  </Button>
-                  {#if !project.projectId}
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      title="Import from GitHub to Bolt"
-                      class="h-8 w-8 hover:text-amber-500"
-                      on:click={() =>
-                        importFromGitHub(repoOwner, project.repoName, project.private ?? false)}
-                    >
-                      <Import class="h-5 w-5" />
-                    </Button>
-                  {/if}
-                  {#if project.projectId}
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      title="Repository Settings"
-                      class="h-8 w-8 hover:text-amber-500"
-                      on:click={() =>
-                        project.projectId &&
-                        openRepoSettings(
-                          project.projectId,
-                          project.repoName,
-                          project.branch || 'main'
-                        )}
-                    >
-                      <Settings class="h-5 w-5" />
-                    </Button>
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      title="Delete Project"
-                      class="h-8 w-8 hover:text-red-500"
-                      on:click={() =>
-                        project.projectId &&
-                        confirmDeleteProject(project.projectId, project.repoName)}
-                    >
-                      <Trash2 class="h-5 w-5" />
-                    </Button>
-                  {/if}
+                  {/each}
                 </div>
               </div>
             </div>
           </div>
         {/each}
+
+        <!-- Bolt Projects Pagination -->
+        {#if boltProjectsTotalPages > 1}
+          <div class="flex items-center justify-center gap-2 mt-4 mb-2">
+            <Button
+              variant="ghost"
+              size="icon"
+              class="h-8 w-8 border border-slate-800 hover:bg-slate-800 transition-colors"
+              disabled={boltProjectsPage === 1}
+              on:click={() => goToBoltPage(boltProjectsPage - 1)}
+            >
+              <ChevronLeft class="h-4 w-4" />
+            </Button>
+
+            {#each Array.from({ length: Math.min(5, boltProjectsTotalPages) }, (_, i) => {
+              const startPage = Math.max(1, Math.min(boltProjectsPage - 2, boltProjectsTotalPages - 4));
+              return startPage + i;
+            }) as page}
+              {#if page <= boltProjectsTotalPages}
+                <Button
+                  variant={page === boltProjectsPage ? 'default' : 'ghost'}
+                  size="icon"
+                  class="h-8 w-8 text-xs transition-colors {page === boltProjectsPage
+                    ? 'bg-emerald-600 hover:bg-emerald-700'
+                    : 'border border-slate-800 hover:bg-slate-800'}"
+                  on:click={() => goToBoltPage(page)}
+                >
+                  {page}
+                </Button>
+              {/if}
+            {/each}
+
+            <Button
+              variant="ghost"
+              size="icon"
+              class="h-8 w-8 border border-slate-800 hover:bg-slate-800 transition-colors"
+              disabled={boltProjectsPage === boltProjectsTotalPages}
+              on:click={() => goToBoltPage(boltProjectsPage + 1)}
+            >
+              <ChevronRight class="h-4 w-4" />
+            </Button>
+          </div>
+        {/if}
       </div>
     {/if}
 
-    {#if filteredProjects.some((p) => p.gitHubRepo)}
+    <!-- GitHub Repositories Section -->
+    {#if showRepos}
       <div>
-        <h2 class="text-sm font-semibold text-blue-500 flex items-center gap-2 mb-2 px-1">
-          <Github class="h-4 w-4" /> GitHub Repositories
-        </h2>
-        {#each filteredProjects.filter((p) => p.gitHubRepo) as project}
-          <div
-            class="border border-slate-800 rounded-lg p-3 hover:bg-slate-800/50 transition-colors group mb-2"
-            role="button"
-            tabindex="-1"
-            aria-label="GitHub repository {project.repoName}"
-          >
-            <div class="relative">
-              <div class="w-full">
-                <h3 class="font-medium">
-                  {project.repoName}
-                  {project.branch ? `(${project.branch})` : ''}
-                  {#if project.projectId === currentlyLoadedProjectId}
-                    <span class="text-xs text-emerald-500 ml-2">(Current)</span>
-                  {/if}
-                  {#if project.gitHubRepo}
-                    <span class="text-xs {project.private ? 'text-red-500' : 'text-blue-500'} ml-2">
-                      ({project.private ? 'Private' : 'Public'})
-                    </span>
-                  {/if}
-                </h3>
-                <div class="flex flex-col gap-1 text-xs text-slate-400">
-                  {#if project.projectId}
-                    <p>
-                      Bolt ID: {project.projectId} ({commitCounts[project.projectId] ?? '...'} commits)
-                    </p>
-                  {/if}
-                  {#if project.description}
-                    <p>{project.description}</p>
-                  {/if}
-                  {#if project.language}
-                    <p>Language: {project.language}</p>
-                  {/if}
+        <div class="flex items-center justify-between mb-3 px-1">
+          <h2 class="text-sm font-semibold text-blue-500 flex items-center gap-2">
+            <Github class="h-4 w-4" /> GitHub Repositories
+            {#if !initialLoadingRepos && !loadingRepos}
+              <span class="text-xs text-slate-400 font-normal">({totalRepos})</span>
+            {/if}
+            {#if loadingRepos}
+              <Loader2 class="h-4 w-4 animate-spin text-blue-400 ml-1" />
+            {/if}
+          </h2>
+          {#if reposTotalPages > 1 && !initialLoadingRepos && !loadingRepos}
+            <div class="flex items-center gap-1 text-xs text-slate-400">
+              Page {reposPage} of {reposTotalPages}
+            </div>
+          {/if}
+        </div>
+
+        {#if initialLoadingRepos}
+          <!-- Initial loading state with skeleton -->
+          <div class="space-y-2">
+            <div class="text-xs text-slate-400 mb-3 flex items-center gap-2">
+              <Loader2 class="h-4 w-4 animate-spin" />
+              Loading your GitHub repositories...
+            </div>
+            {#each Array(3) as _}
+              <div class="border border-slate-800 rounded-lg p-3 mb-2 animate-pulse">
+                <div class="flex flex-col space-y-3">
+                  <div class="h-5 bg-slate-700 rounded w-3/4"></div>
+                  <div class="space-y-2">
+                    <div class="h-3 bg-slate-800 rounded w-full"></div>
+                    <div class="h-3 bg-slate-800 rounded w-5/6"></div>
+                  </div>
                 </div>
               </div>
+            {/each}
+          </div>
+        {:else if loadingRepos}
+          <!-- Refreshing state -->
+          <div class="space-y-2">
+            <div class="text-xs text-slate-400 mb-3 flex items-center gap-2">
+              <Loader2 class="h-4 w-4 animate-spin" />
+              Refreshing repositories...
+            </div>
+            {#each paginatedRepos as project}
               <div
-                class="absolute top-0 right-0 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity bg-gradient-to-l from-slate-800/90 via-slate-800/70 to-transparent pl-8 pr-1 py-1 rounded-l-full"
+                class="border border-slate-800 rounded-lg p-3 hover:bg-slate-800/50 transition-all duration-200 group mb-2 opacity-60"
+                role="button"
+                tabindex="-1"
+                aria-label="GitHub repository {project.repoName}"
               >
-                {#if project.projectId && project.projectId !== currentlyLoadedProjectId}
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    title="Open in Bolt"
-                    class="h-8 w-8 hover:text-emerald-500"
-                    on:click={() => project.projectId && openBoltProject(project.projectId)}
-                  >
-                    <Zap class="h-5 w-5" />
-                  </Button>
-                {/if}
+                <div class="relative">
+                  <div class="w-full">
+                    <h3 class="font-medium">
+                      {project.repoName}
+                      {project.branch ? `(${project.branch})` : ''}
+                      {#if project.projectId === currentlyLoadedProjectId}
+                        <span class="text-xs text-emerald-500 ml-2 font-semibold">(Current)</span>
+                      {/if}
+                      {#if project.gitHubRepo}
+                        <span
+                          class="text-xs {project.private ? 'text-red-400' : 'text-blue-400'} ml-2"
+                        >
+                          ({project.private ? 'Private' : 'Public'})
+                        </span>
+                      {/if}
+                    </h3>
+                    <div class="flex flex-col gap-1 text-xs text-slate-400">
+                      {#if project.projectId}
+                        <p>
+                          Bolt ID: {project.projectId} (
+                          {#if loadingCommitCounts[project.projectId]}
+                            <span class="inline-flex items-center">
+                              <div class="commit-loader"></div>
+                            </span>
+                          {:else}
+                            {commitCounts[project.projectId] ?? '...'}
+                          {/if} commits)
+                        </p>
+                      {/if}
+                      {#if project.description}
+                        <p class="text-slate-300">{project.description}</p>
+                      {/if}
+                      {#if project.language}
+                        <p>Language: <span class="text-slate-300">{project.language}</span></p>
+                      {/if}
+                    </div>
+                  </div>
+                </div>
+              </div>
+            {/each}
+          </div>
+        {:else if totalRepos === 0}
+          <!-- No repos found -->
+          <div
+            class="flex flex-col items-center justify-center p-6 text-center space-y-3 bg-slate-900/20 rounded-lg border border-slate-800"
+          >
+            <Github class="h-8 w-8 text-slate-600" />
+            <p class="text-sm text-slate-400">No GitHub repositories found</p>
+            <p class="text-xs text-slate-500">
+              Try refreshing or check your GitHub token permissions
+            </p>
+          </div>
+        {:else}
+          <!-- Normal loaded state -->
+          {#each paginatedRepos as project}
+            <div
+              class="border border-slate-800 rounded-lg p-3 hover:bg-slate-800/50 transition-all duration-200 group mb-2"
+              role="button"
+              tabindex="-1"
+              aria-label="GitHub repository {project.repoName}"
+            >
+              <div class="relative">
+                <div class="w-full">
+                  <h3 class="font-medium">
+                    {project.repoName}
+                    {project.branch ? `(${project.branch})` : ''}
+                    {#if project.projectId === currentlyLoadedProjectId}
+                      <span class="text-xs text-emerald-500 ml-2 font-semibold">(Current)</span>
+                    {/if}
+                    {#if project.gitHubRepo}
+                      <span
+                        class="text-xs {project.private ? 'text-red-400' : 'text-blue-400'} ml-2"
+                      >
+                        ({project.private ? 'Private' : 'Public'})
+                      </span>
+                    {/if}
+                  </h3>
+                  <div class="flex flex-col gap-1 text-xs text-slate-400">
+                    {#if project.projectId}
+                      <p>
+                        Bolt ID: {project.projectId} (
+                        {#if loadingCommitCounts[project.projectId]}
+                          <span class="inline-flex items-center">
+                            <div class="commit-loader"></div>
+                          </span>
+                        {:else}
+                          {commitCounts[project.projectId] ?? '...'}
+                        {/if} commits)
+                      </p>
+                    {/if}
+                    {#if project.description}
+                      <p class="text-slate-300">{project.description}</p>
+                    {/if}
+                    {#if project.language}
+                      <p>Language: <span class="text-slate-300">{project.language}</span></p>
+                    {/if}
+                  </div>
+                </div>
 
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  title="Open GitHub Repository"
-                  class="h-8 w-8 hover:text-blue-500"
-                  on:click={() => openGitHubRepo(repoOwner, project.repoName)}
+                <div
+                  class="absolute top-0 right-0 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity duration-200 bg-gradient-to-l from-slate-800/95 via-slate-800/80 to-transparent pl-8 pr-1 py-1 rounded-l-full"
                 >
-                  <Github class="h-5 w-5" />
-                </Button>
-                {#if !project.projectId}
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    title="Import from GitHub to Bolt"
-                    class="h-8 w-8 hover:text-amber-500"
-                    on:click={() =>
-                      importFromGitHub(repoOwner, project.repoName, project.private ?? false)}
-                  >
-                    <Import class="h-5 w-5" />
-                  </Button>
-                {/if}
-                {#if project.projectId}
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    title="Delete Project"
-                    class="h-8 w-8 hover:text-red-500"
-                    on:click={() =>
-                      project.projectId &&
-                      confirmDeleteProject(project.projectId, project.repoName)}
-                  >
-                    <Trash2 class="h-5 w-5" />
-                  </Button>
-                {/if}
+                  {#each renderProjectActions(project) as action}
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      title={action.title}
+                      class="h-8 w-8 {action.class} transition-colors"
+                      on:click={action.action}
+                    >
+                      <svelte:component this={action.icon} class="h-5 w-5" />
+                    </Button>
+                  {/each}
+                </div>
               </div>
             </div>
-          </div>
-        {/each}
+          {/each}
+
+          <!-- GitHub Repositories Pagination -->
+          {#if reposTotalPages > 1}
+            <div class="flex items-center justify-center gap-2 mt-4">
+              <Button
+                variant="ghost"
+                size="icon"
+                class="h-8 w-8 border border-slate-800 hover:bg-slate-800 transition-colors"
+                disabled={reposPage === 1}
+                on:click={() => goToRepoPage(reposPage - 1)}
+              >
+                <ChevronLeft class="h-4 w-4" />
+              </Button>
+
+              {#each Array.from({ length: Math.min(5, reposTotalPages) }, (_, i) => {
+                const startPage = Math.max(1, Math.min(reposPage - 2, reposTotalPages - 4));
+                return startPage + i;
+              }) as page}
+                {#if page <= reposTotalPages}
+                  <Button
+                    variant={page === reposPage ? 'default' : 'ghost'}
+                    size="icon"
+                    class="h-8 w-8 text-xs transition-colors {page === reposPage
+                      ? 'bg-blue-600 hover:bg-blue-700'
+                      : 'border border-slate-800 hover:bg-slate-800'}"
+                    on:click={() => goToRepoPage(page)}
+                  >
+                    {page}
+                  </Button>
+                {/if}
+              {/each}
+
+              <Button
+                variant="ghost"
+                size="icon"
+                class="h-8 w-8 border border-slate-800 hover:bg-slate-800 transition-colors"
+                disabled={reposPage === reposTotalPages}
+                on:click={() => goToRepoPage(reposPage + 1)}
+              >
+                <ChevronRight class="h-4 w-4" />
+              </Button>
+            </div>
+          {/if}
+        {/if}
       </div>
     {/if}
   {/if}
+
   {#if importProgress}
-    <div class="fixed inset-0 bg-black/50 flex items-center justify-center">
-      <div class="bg-slate-900 border border-slate-800 rounded-lg p-4 max-w-sm w-full mx-4">
-        <h3 class="font-medium mb-2">Importing {importProgress.repoName}</h3>
-        <p class="text-sm text-slate-400 mb-3">{importProgress.status}</p>
+    <div class="fixed inset-0 bg-black/60 flex items-center justify-center backdrop-blur-sm">
+      <div
+        class="bg-slate-900 border border-slate-700 rounded-lg p-6 max-w-sm w-full mx-4 shadow-2xl"
+      >
+        <h3 class="font-medium mb-3 text-white">Importing {importProgress.repoName}</h3>
+        <p class="text-sm text-slate-300 mb-4">{importProgress.status}</p>
         {#if importProgress.progress !== undefined}
-          <div class="w-full bg-slate-800 rounded-full h-2">
+          <div class="w-full bg-slate-800 rounded-full h-3 overflow-hidden">
             <div
-              class="bg-emerald-500 h-2 rounded-full transition-all duration-300"
+              class="bg-gradient-to-r from-emerald-500 to-emerald-400 h-3 rounded-full transition-all duration-500 ease-out"
               style="width: {importProgress.progress}%"
             />
+          </div>
+          <p class="text-xs text-slate-400 mt-2 text-center">{importProgress.progress}%</p>
+        {:else}
+          <div class="flex items-center justify-center">
+            <Loader2 class="h-6 w-6 animate-spin text-emerald-500" />
           </div>
         {/if}
       </div>
@@ -569,9 +1029,11 @@
   {/if}
 
   {#if showDeleteModal}
-    <div class="fixed inset-0 bg-black/50 flex items-center justify-center">
-      <div class="bg-slate-900 border border-slate-800 rounded-lg p-4 max-w-sm w-full mx-4">
-        <h3 class="font-medium mb-3">Delete Project</h3>
+    <div class="fixed inset-0 bg-black/60 flex items-center justify-center backdrop-blur-sm">
+      <div
+        class="bg-slate-900 border border-slate-700 rounded-lg p-6 max-w-sm w-full mx-4 shadow-2xl"
+      >
+        <h3 class="font-medium mb-4 text-white">Delete Project</h3>
 
         {#if projectToDelete}
           <p class="text-sm text-slate-300 mb-4">
@@ -581,15 +1043,15 @@
           </p>
         {/if}
 
-        <p class="text-xs text-amber-400 mb-4">
+        <p class="text-xs text-amber-400 mb-6">
           This will only remove the project(s) from this extension. The GitHub repositories will not
           be affected.
         </p>
 
-        <div class="flex justify-end gap-2">
+        <div class="flex justify-end gap-3">
           <Button
             variant="ghost"
-            class="border-slate-800 hover:bg-slate-800 text-slate-200"
+            class="border-slate-700 hover:bg-slate-800 text-slate-200 transition-colors"
             on:click={() => {
               showDeleteModal = false;
               projectToDelete = null;
@@ -599,7 +1061,7 @@
           </Button>
           <Button
             variant="destructive"
-            class="bg-red-600 hover:bg-red-700 text-white"
+            class="bg-red-600 hover:bg-red-700 text-white transition-colors"
             on:click={deleteProject}
           >
             Delete
@@ -611,21 +1073,64 @@
 
   {#if showSettingsModal && projectToEdit}
     <RepoSettings
+      show={showSettingsModal}
       {repoOwner}
       {githubToken}
       projectId={projectToEdit.projectId}
       repoName={projectToEdit.repoName}
       branch={projectToEdit.branch}
-      onSave={() => {
-        showSettingsModal = false;
-        projectToEdit = null;
-        // Refresh the project settings by triggering a re-render
-        projectSettings = { ...projectSettings };
-      }}
-      onCancel={() => {
+      projectTitle={projectToEdit.projectTitle || projectToEdit.repoName}
+      on:close={() => {
         showSettingsModal = false;
         projectToEdit = null;
       }}
     />
   {/if}
+
+  {#if showBranchSelectionModal && repoToImport}
+    <BranchSelectionModal
+      show={showBranchSelectionModal}
+      owner={repoToImport.owner}
+      repo={repoToImport.repo}
+      token={githubToken}
+      onBranchSelected={handleBranchSelected}
+      onCancel={() => {
+        showBranchSelectionModal = false;
+        repoToImport = null;
+      }}
+    />
+  {/if}
+
+  {#if showImportConfirmDialog && repoToConfirmImport}
+    <ConfirmationDialog
+      show={showImportConfirmDialog}
+      title="Import Private Repository"
+      message="This will temporarily create a <strong>public copy</strong> of your private repository to enable import.<br><br>The temporary repository will be automatically deleted after 1 minute.<br><br>Do you want to continue?"
+      type="warning"
+      confirmText="Continue Import"
+      cancelText="Cancel"
+      onConfirm={handleImportConfirm}
+      onCancel={handleImportCancel}
+    />
+  {/if}
 </div>
+
+<style>
+  @keyframes spin {
+    from {
+      transform: rotate(0deg);
+    }
+    to {
+      transform: rotate(360deg);
+    }
+  }
+
+  .commit-loader {
+    width: 12px;
+    height: 12px;
+    border: 1.5px solid #334155;
+    border-top: 1.5px solid #64748b;
+    border-radius: 50%;
+    animation: spin 0.8s linear infinite;
+  }
+</style>

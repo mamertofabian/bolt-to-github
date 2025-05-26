@@ -1,35 +1,126 @@
+/* eslint-disable no-console */
 import type { UploadStatusState } from '$lib/types';
-import { SettingsService } from '../services/settings';
 import type { MessageHandler } from './MessageHandler';
-import UploadStatus from './UploadStatus.svelte';
-import Notification from './Notification.svelte';
 
-// Define proper types for Svelte components
-type SvelteComponent = {
-  $set: (props: Record<string, any>) => void;
-  $destroy: () => void;
-};
-
-interface NotificationOptions {
-  type: 'info' | 'error' | 'success';
-  message: string;
-  duration?: number;
-}
+// Import new types and managers
+import type { NotificationOptions } from './types/UITypes';
+import { NotificationManager } from './managers/NotificationManager';
+import { UploadStatusManager } from './managers/UploadStatusManager';
+import { GitHubButtonManager } from './managers/GitHubButtonManager';
+import { DropdownManager } from './managers/DropdownManager';
+import { GitHubUploadHandler } from './handlers/GitHubUploadHandler';
+import { FileChangeHandler } from './handlers/FileChangeHandler';
+import { DOMObserver } from './infrastructure/DOMObserver';
+import { ComponentLifecycleManager } from './infrastructure/ComponentLifecycleManager';
+import { UIStateManager } from './services/UIStateManager';
+import { PushReminderService } from './services/PushReminderService';
+import { PremiumService } from './services/PremiumService';
 
 export class UIManager {
   private static instance: UIManager | null = null;
-  private uploadStatusComponent: SvelteComponent | null = null;
-  private uploadButton: HTMLElement | null = null;
-  private observer: MutationObserver | null = null;
-  private notificationComponent: SvelteComponent | null = null;
   private isGitHubUpload = false;
-  private messageHandler: MessageHandler;
+
+  // Add centralized state management
+  private stateManager: UIStateManager;
+
+  // Add the managers
+  private notificationManager: NotificationManager;
+  private uploadStatusManager: UploadStatusManager;
+  private githubButtonManager: GitHubButtonManager;
+  private dropdownManager: DropdownManager;
+
+  // Add the handlers
+  private githubUploadHandler: GitHubUploadHandler;
+  private fileChangeHandler: FileChangeHandler;
+
+  // Add infrastructure components
+  private domObserver: DOMObserver;
+  private componentLifecycleManager: ComponentLifecycleManager;
+
+  // Add services
+  private pushReminderService: PushReminderService;
+  private premiumService: PremiumService;
+
+  // Store original history functions for cleanup
+  private originalPushState: typeof history.pushState | null = null;
+  private originalReplaceState: typeof history.replaceState | null = null;
 
   private constructor(messageHandler: MessageHandler) {
-    this.messageHandler = messageHandler;
+    // Initialize centralized state management first
+    this.stateManager = new UIStateManager();
+
+    // Initialize infrastructure components
+    this.domObserver = new DOMObserver(3, 1000, 500); // maxRetries, retryDelay, observationDelay
+    this.componentLifecycleManager = new ComponentLifecycleManager();
+
+    // Initialize NotificationManager with state integration
+    this.notificationManager = new NotificationManager(messageHandler, this.stateManager);
+
+    // Initialize UploadStatusManager with state integration
+    this.uploadStatusManager = new UploadStatusManager(this.stateManager);
+
+    // Initialize GitHubButtonManager with state integration
+    this.githubButtonManager = new GitHubButtonManager(
+      this.stateManager,
+      async (button: HTMLButtonElement) => {
+        await this.dropdownManager.show(button);
+      }
+    );
+
+    // Initialize DropdownManager with state integration
+    this.dropdownManager = new DropdownManager(
+      messageHandler,
+      this.stateManager,
+      () => this.handleGitHubPushAction(), // Push action callback
+      () => this.handleShowChangedFiles(), // Show changed files callback
+      (feature: string) => this.handleUpgradePrompt(feature) // Upgrade prompt callback
+    );
+
+    // Initialize GitHubUploadHandler with state integration
+    this.githubUploadHandler = new GitHubUploadHandler(
+      messageHandler,
+      this.notificationManager,
+      this.stateManager
+    );
+
+    // Initialize FileChangeHandler
+    this.fileChangeHandler = new FileChangeHandler(
+      messageHandler,
+      this.notificationManager,
+      this.uploadStatusManager
+    );
+
+    // Initialize PushReminderService
+    console.log('🔊 Initializing PushReminderService');
+    this.pushReminderService = new PushReminderService(messageHandler, this.notificationManager);
+
+    // Initialize PremiumService
+    console.log('🔊 Initializing PremiumService');
+    this.premiumService = new PremiumService();
+
+    // Set UIManager reference in PremiumService for component updates
+    this.premiumService.setUIManager(this);
+
+    // Link premium service to push reminder service
+    this.pushReminderService.setPremiumService(this.premiumService);
+
+    // Link premium service to file change handler
+    this.fileChangeHandler.setPremiumService(this.premiumService);
+
+    // Link upload status manager to file change handler
+    this.fileChangeHandler.setUploadStatusManager(this.uploadStatusManager);
+
+    // Link premium service to dropdown manager
+    this.dropdownManager.setPremiumService(this.premiumService);
+
+    // Set up state change listening for coordination
+    this.setupStateCoordination();
+
+    // Set up URL change detection for SPA navigation
+    this.setupURLChangeDetection();
+
     this.initializeUI();
-    this.setupClickListeners();
-    this.setupMutationObserver();
+    this.startDOMObservation();
   }
 
   static getInstance(messageHandler?: MessageHandler): UIManager {
@@ -52,836 +143,562 @@ export class UIManager {
   // Reset instance (useful for testing or cleanup)
   static resetInstance(): void {
     if (UIManager.instance) {
+      console.log('🔧 UIManager: Resetting singleton instance');
       UIManager.instance.cleanup();
       UIManager.instance = null;
     }
   }
 
   public showNotification(options: NotificationOptions): void {
-    // Cleanup existing notification if any
-    this.notificationComponent?.$destroy();
-
-    // Create container for notification
-    const container = document.createElement('div');
-    container.id = 'bolt-to-github-notification-container';
-    document.body.appendChild(container);
-
-    // Create new notification component
-    this.notificationComponent = new Notification({
-      target: container,
-      props: {
-        type: options.type,
-        message: options.message,
-        duration: options.duration || 5000,
-        onClose: () => {
-          this.notificationComponent?.$destroy();
-          this.notificationComponent = null;
-          container.remove();
-        },
-      },
-    }) as SvelteComponent;
+    // Delegate to NotificationManager
+    this.notificationManager.showNotification(options);
   }
 
   private async initializeUI() {
     console.log('🔊 Initializing UI');
-    await this.initializeUploadButton();
-    this.initializeUploadStatus();
+    this.uploadStatusManager.initialize();
+    await this.githubButtonManager.initialize();
   }
 
-  private initializeUploadStatus() {
-    console.log('🔊 Initializing upload status');
-    // Clean up existing instance if any
-    if (this.uploadStatusComponent) {
-      console.log('Destroying existing upload status component');
-      this.uploadStatusComponent.$destroy();
-      this.uploadStatusComponent = null;
-    }
+  private startDOMObservation() {
+    this.domObserver.start(
+      () => {
+        // Initialization callback - called when DOM changes are detected
+        const button = document.querySelector('[data-github-upload]');
+        const buttonContainer = document.querySelector('div.flex.grow-1.basis-60 div.flex.gap-2');
 
-    // Remove existing container if any
-    const existingContainer = document.getElementById('bolt-to-github-upload-status-container');
-    if (existingContainer) {
-      console.log('Removing existing upload status container');
-      existingContainer.remove();
-    }
+        // Enhanced detection: Check if we're on a project page
+        const isProjectPage = this.isOnProjectPage();
 
-    // Create new container and component
-    const target = document.createElement('div');
-    target.id = 'bolt-to-github-upload-status-container';
-    target.style.zIndex = '10000'; // Ensure high z-index
-    target.style.position = 'fixed'; // Use fixed positioning
-    target.style.top = '20px'; // Position at the top of the viewport
-    target.style.right = '20px'; // Position at the right of the viewport
-
-    const initComponent = () => {
-      if (!document.body.contains(target)) {
-        console.log('Appending upload status container to body');
-        document.body.appendChild(target);
-      }
-
-      try {
-        this.uploadStatusComponent = new UploadStatus({
-          target,
-          props: {
-            status: {
-              status: 'idle',
-              progress: 0,
-              message: '',
-            },
-          },
-        }) as SvelteComponent;
-
-        console.log('🔊 Upload status component created successfully');
-      } catch (error) {
-        console.error('🔊 Error creating upload status component:', error);
-      }
-    };
-
-    // Wait for document.body to be available
-    if (document.body) {
-      initComponent();
-    } else {
-      // If body isn't available, wait for it
-      console.log('Waiting for body to be available');
-      document.addEventListener('DOMContentLoaded', initComponent);
-    }
-  }
-
-  private async initializeUploadButton() {
-    console.log('🔊 Initializing upload button');
-    const buttonContainer = document.querySelector('div.flex.grow-1.basis-60 div.flex.gap-2');
-    console.log('Button container found:', !!buttonContainer);
-
-    const existingButton = document.querySelector('[data-github-upload]');
-    console.log('Existing GitHub button found:', !!existingButton);
-
-    if (!buttonContainer || existingButton) {
-      console.log('Exiting initializeUploadButton early');
-      return;
-    }
-
-    const settings = await SettingsService.getGitHubSettings();
-    const button = this.createGitHubButton();
-    this.updateButtonState(settings.isSettingsValid);
-    this.uploadButton = button;
-
-    const deployButton = buttonContainer.querySelector('button:last-child');
-    if (deployButton) {
-      deployButton.before(button);
-    }
-
-    console.log('Upload button initialized');
-  }
-
-  private createGitHubButton(): HTMLButtonElement {
-    console.log('Creating GitHub button');
-    const button = document.createElement('button');
-    button.setAttribute('data-github-upload', 'true');
-    button.setAttribute('data-testid', 'github-upload-button');
-    button.setAttribute('aria-haspopup', 'menu');
-    button.className = [
-      'rounded-md',
-      'items-center',
-      'justify-center',
-      'outline-accent-600',
-      'px-3',
-      'py-1.25',
-      'disabled:cursor-not-allowed',
-      'text-xs',
-      'bg-bolt-elements-button-secondary-background',
-      'text-bolt-elements-button-secondary-text',
-      'enabled:hover:bg-bolt-elements-button-secondary-backgroundHover',
-      'flex',
-      'gap-1.7',
-      'transition-opacity',
-    ].join(' ');
-
-    button.innerHTML = `
-      <svg width="16" height="16" viewBox="0 0 16 16" style="margin-right: 2px;">
-        <path fill="currentColor" d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0016 8c0-4.42-3.58-8-8-8z"/>
-      </svg>
-      GitHub
-      <svg width="12" height="12" viewBox="0 0 24 24" style="margin-left: 4px;">
-        <path fill="currentColor" d="M16.59 8.59L12 13.17 7.41 8.59 6 10l6 6 6-6z"/>
-      </svg>
-    `;
-
-    button.addEventListener('click', async () => {
-      await this.handleGitHubDropdownClick(button);
-    });
-
-    console.log('GitHub button created');
-
-    return button;
-  }
-
-  private async handleGitHubDropdownClick(button: HTMLButtonElement) {
-    console.log('Handling GitHub dropdown click');
-
-    // Dispatch keydown event to open dropdown
-    const keydownEvent = new KeyboardEvent('keydown', {
-      key: 'Enter',
-      bubbles: true,
-      cancelable: true,
-    });
-    button.dispatchEvent(keydownEvent);
-    console.log('Dispatched keydown to GitHub button');
-
-    // Wait a bit for the dropdown content to render
-    await new Promise((resolve) => setTimeout(resolve, 200));
-
-    // Create dropdown content if it doesn't exist
-    let dropdownContent = document.querySelector('#github-dropdown-content') as HTMLElement;
-    if (!dropdownContent) {
-      dropdownContent = this.createGitHubDropdownContent();
-      document.body.appendChild(dropdownContent);
-      // Set initial position (will be updated below)
-      dropdownContent.style.position = 'fixed';
-      dropdownContent.style.zIndex = '9999';
-    }
-
-    // Always update position when showing the dropdown
-    if (dropdownContent) {
-      dropdownContent.style.display = 'block';
-
-      // Position the dropdown below the button
-      const updatePosition = () => {
-        const buttonRect = button.getBoundingClientRect();
-        dropdownContent.style.top = `${buttonRect.bottom}px`;
-        dropdownContent.style.left = `${buttonRect.left}px`;
-      };
-
-      // Update position immediately
-      updatePosition();
-
-      // Add window resize listener to keep dropdown aligned with button
-      const resizeListener = () => updatePosition();
-      window.addEventListener('resize', resizeListener);
-
-      // Clean up resize listener when dropdown is closed
-      const removeResizeListener = () => {
-        if (dropdownContent.style.display === 'none') {
-          window.removeEventListener('resize', resizeListener);
-          document.removeEventListener('click', removeResizeListener);
-        }
-      };
-
-      // Add listener to clean up when dropdown is closed
-      document.addEventListener('click', removeResizeListener);
-    }
-
-    // Add click event listener to close dropdown when clicking outside
-    const closeDropdown = (e: MouseEvent) => {
-      if (
-        e.target !== button &&
-        e.target !== dropdownContent &&
-        !dropdownContent?.contains(e.target as Node)
-      ) {
-        (dropdownContent as HTMLElement).style.display = 'none';
-        document.removeEventListener('click', closeDropdown);
-      }
-    };
-
-    // Add the event listener with a slight delay to avoid immediate closing
-    setTimeout(() => {
-      document.addEventListener('click', closeDropdown);
-    }, 100);
-  }
-
-  private createGitHubDropdownContent(): HTMLElement {
-    const dropdownContent = document.createElement('div');
-    dropdownContent.id = 'github-dropdown-content';
-    dropdownContent.setAttribute('role', 'menu');
-    dropdownContent.className = [
-      'rounded-md',
-      'shadow-lg',
-      'overflow-hidden',
-      'min-w-[180px]',
-      'animate-fadeIn',
-    ].join(' ');
-
-    // Add some custom styles for animation and better appearance
-    const style = document.createElement('style');
-    style.textContent = `
-      @keyframes fadeIn {
-        from { opacity: 0; transform: translateY(-10px); }
-        to { opacity: 1; transform: translateY(0); }
-      }
-      .animate-fadeIn {
-        animation: fadeIn 0.2s ease-out forwards;
-      }
-      #github-dropdown-content {
-        background-color: #1a1a1a; /* Match the Export dropdown background */
-        border: none;
-        box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3);
-        position: fixed; /* Use fixed positioning to avoid scroll issues */
-        z-index: 9999;
-      }
-      #github-dropdown-content button {
-        color: #ffffff;
-        padding: 8px 16px;
-        width: 100%;
-        text-align: left;
-        border: none;
-        background: transparent;
-        font-size: 12px;
-      }
-      #github-dropdown-content button:hover {
-        background-color: #333333; /* Match the Export dropdown hover state */
-      }
-      #github-dropdown-content button svg {
-        transition: transform 0.15s ease;
-        margin-right: 8px;
-      }
-      #github-dropdown-content button:hover svg {
-        transform: scale(1.05);
-      }
-      /* Remove border between items to match Export dropdown */
-      #github-dropdown-content button:first-child {
-        border-bottom: none;
-      }
-    `;
-    document.head.appendChild(style);
-
-    // Push option
-    const pushButton = document.createElement('button');
-    pushButton.className = 'dropdown-item flex items-center';
-    pushButton.innerHTML = `
-      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-        <path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4" />
-        <polyline points="10 17 15 12 10 7" />
-        <line x1="15" y1="12" x2="3" y2="12" />
-      </svg>
-      <span>Push to GitHub</span>
-    `;
-    pushButton.addEventListener('click', async () => {
-      (dropdownContent as HTMLElement).style.display = 'none';
-      await this.handleGitHubPushAction();
-    });
-
-    // Settings option
-    const settingsButton = document.createElement('button');
-    settingsButton.className = 'dropdown-item flex items-center';
-    settingsButton.innerHTML = `
-      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-        <circle cx="12" cy="12" r="3" />
-        <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z" />
-      </svg>
-      <span>Settings</span>
-    `;
-    settingsButton.addEventListener('click', () => {
-      (dropdownContent as HTMLElement).style.display = 'none';
-      // Directly send the OPEN_SETTINGS message instead of showing the notification
-      this.messageHandler.sendMessage('OPEN_SETTINGS');
-    });
-
-    dropdownContent.appendChild(pushButton);
-    dropdownContent.appendChild(settingsButton);
-
-    return dropdownContent;
-  }
-
-  public async handleGitHubPushAction() {
-    console.log('Handling GitHub push action');
-    const settings = await SettingsService.getGitHubSettings();
-    if (!settings.isSettingsValid) {
-      this.showSettingsNotification();
-      return;
-    }
-
-    const { confirmed, commitMessage } = await this.showGitHubConfirmation(
-      settings.gitHubSettings?.projectSettings || {}
-    );
-    if (!confirmed) return;
-
-    try {
-      // Trigger the download button click
-      await this.findAndClickDownloadButton();
-
-      // Update button state to processing
-      if (this.uploadButton) {
-        this.uploadButton.innerHTML = `
-          <svg class="animate-spin" width="16" height="16" viewBox="0 0 24 24">
-            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4" fill="none"></circle>
-            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-          </svg>
-          Pushing to GitHub...
-          <svg width="12" height="12" viewBox="0 0 24 24" style="margin-left: 4px;">
-            <path fill="currentColor" d="M16.59 8.59L12 13.17 7.41 8.59 6 10l6 6 6-6z"/>
-          </svg>
-        `;
-        (this.uploadButton as HTMLButtonElement).disabled = true;
-      }
-
-      this.isGitHubUpload = true;
-      this.messageHandler.sendCommitMessage(commitMessage || 'Commit from Bolt to GitHub');
-
-      // We don't need to call findAndClickDownloadButton again
-      // The download process is already triggered by the first call
-    } catch (error) {
-      console.error('Error during GitHub upload:', error);
-      throw new Error('Failed to trigger download. The page structure may have changed.');
-    }
-  }
-
-  private findAndClickExportButton() {
-    const exportButton = Array.from(document.querySelectorAll('button[aria-haspopup="menu"]')).find(
-      (btn) => btn.textContent?.includes('Export') && btn.querySelector('.i-ph\\:export')
-    ) as HTMLButtonElement;
-
-    if (!exportButton) {
-      throw new Error('Export button not found');
-    }
-    console.log('Found export button:', exportButton);
-
-    // Dispatch keydown event to open dropdown
-    const keydownEvent = new KeyboardEvent('keydown', {
-      key: 'Enter',
-      bubbles: true,
-      cancelable: true,
-    });
-    exportButton.dispatchEvent(keydownEvent);
-    console.log('Dispatched keydown to export button');
-  }
-
-  async findAndClickDownloadButton() {
-    try {
-      // Try to find and click the export button
-      this.findAndClickExportButton();
-
-      // Wait for the dropdown content to render with increasing timeouts
-      let attempts = 0;
-      const maxAttempts = 3;
-      let exportDropdown = null;
-
-      while (attempts < maxAttempts && !exportDropdown) {
-        // Increase wait time with each attempt
-        const waitTime = 200 * (attempts + 1);
-        console.log(
-          `Waiting ${waitTime}ms for dropdown to appear (attempt ${attempts + 1}/${maxAttempts})`
-        );
-        await new Promise((resolve) => setTimeout(resolve, waitTime));
-
-        // Find all dropdowns
-        const allDropdowns = Array.from(
-          document.querySelectorAll('[role="menu"], [data-radix-menu-content]')
-        );
-        console.log('Found dropdowns:', allDropdowns.length);
-
-        if (allDropdowns.length === 0) {
-          console.log('No dropdowns found, will retry');
-          attempts++;
-          continue;
-        }
-
-        // Find the dropdown that contains download-related buttons
-        exportDropdown = allDropdowns.find((dropdown) => {
-          const buttons = dropdown.querySelectorAll('button');
-          console.log('Checking dropdown with buttons:', buttons.length);
-
-          // Check if any button in this dropdown has download text or icon
-          return Array.from(buttons).some((button) => {
-            const hasDownloadText = button.textContent?.toLowerCase().includes('download');
-            const hasDownloadIcon = button.querySelector('[class*="i-ph:download-simple"]');
-            return hasDownloadText || hasDownloadIcon;
-          });
+        console.log('🔊 DOM change detected:', {
+          hasButton: !!button,
+          hasContainer: !!buttonContainer,
+          isProjectPage,
+          currentUrl: window.location.href,
         });
 
-        if (!exportDropdown) {
-          console.log('No export dropdown found in this attempt, will retry');
-          attempts++;
-        }
-      }
-
-      if (!exportDropdown) {
-        throw new Error('Export dropdown content not found after multiple attempts');
-      }
-      console.log('Found export dropdown:', exportDropdown);
-
-      // Find download button within the identified export dropdown
-      const downloadButton = Array.from(exportDropdown.querySelectorAll('button')).find(
-        (button) => {
-          // Search for the icon class anywhere within the button's descendants
-          const hasIcon = button.querySelector('[class*="i-ph:download-simple"]');
-          const hasText = button.textContent?.toLowerCase().includes('download');
-          return hasIcon || hasText;
-        }
-      );
-
-      if (!downloadButton) {
-        throw new Error('Download button not found in dropdown');
-      }
-
-      console.log('Found download button, clicking...');
-      downloadButton.click();
-
-      // Close the dropdown by clicking outside or pressing Escape
-      setTimeout(() => {
-        try {
-          console.log('Closing export dropdown...');
-          // Method 1: Try to dispatch Escape key to close the dropdown
-          const escapeEvent = new KeyboardEvent('keydown', {
-            key: 'Escape',
-            code: 'Escape',
-            bubbles: true,
-            cancelable: true,
-          });
-          document.dispatchEvent(escapeEvent);
-
-          // Method 2: As a fallback, click outside the dropdown
-          setTimeout(() => {
-            // If dropdown is still open, click on the body element to close it
-            const dropdowns = document.querySelectorAll('[role="menu"], [data-radix-menu-content]');
-            if (dropdowns.length > 0) {
-              console.log('Dropdown still open, clicking outside to close it');
-              // Click in an empty area of the page
-              const clickEvent = new MouseEvent('click', {
-                bubbles: true,
-                cancelable: true,
-                view: window,
-              });
-              document.body.dispatchEvent(clickEvent);
-            }
-          }, 100);
-        } catch (closeError) {
-          console.warn('Error while trying to close dropdown:', closeError);
-          // Non-critical error, don't throw
-        }
-      }, 300); // Wait a bit after clicking the download button
-    } catch (error) {
-      console.error('Error finding or clicking download button:', error);
-      throw error; // Re-throw to allow caller to handle
-    }
-  }
-
-  // Function to show confirmation dialog
-  private showGitHubConfirmation = (
-    projectSettings: Record<string, { repoName: string; branch: string }>
-  ): Promise<{ confirmed: boolean; commitMessage?: string }> => {
-    return new Promise((resolve) => {
-      const overlay = document.createElement('div');
-      overlay.style.zIndex = '9999';
-      overlay.style.backgroundColor = 'rgba(0, 0, 0, 0.5)';
-      overlay.className = ['fixed', 'inset-0', 'flex', 'items-center', 'justify-center'].join(' ');
-
-      const dialog = document.createElement('div');
-      dialog.style.zIndex = '10000';
-      dialog.style.width = '320px'; // Set fixed width
-      dialog.style.backgroundColor = '#0f172a'; // Match bg-slate-900
-      dialog.className = [
-        'p-6',
-        'rounded-lg',
-        'shadow-xl',
-        'mx-4',
-        'space-y-4',
-        'border',
-        'border-slate-700',
-        'relative',
-      ].join(' ');
-
-      dialog.innerHTML = `
-        <h3 class="text-lg font-semibold text-white">Confirm GitHub Upload</h3>
-        <p class="text-slate-300 text-sm">Are you sure you want to upload this project to GitHub? <br />
-          <span class="font-mono">${projectSettings.repoName} / ${projectSettings.branch}</span>
-        </p>
-        <div class="mt-4">
-          <label for="commit-message" class="block text-sm text-slate-300 mb-2">Commit message (optional)</label>
-          <input 
-            type="text" 
-            id="commit-message" 
-            placeholder="Commit from Bolt to GitHub"
-            class="w-full px-3 py-2 text-sm rounded-md bg-slate-800 text-white border border-slate-700 focus:border-blue-500 focus:outline-none"
-          >
-        </div>
-        <div class="flex justify-end gap-3 mt-6">
-          <button class="px-4 py-2 text-sm rounded-md bg-slate-800 text-slate-300 hover:bg-slate-700" id="cancel-upload">
-            Cancel
-          </button>
-          <button class="px-4 py-2 text-sm rounded-md bg-blue-600 text-white hover:bg-blue-700" id="confirm-upload">
-            Upload
-          </button>
-        </div>
-      `;
-
-      overlay.appendChild(dialog);
-      document.body.appendChild(overlay);
-
-      // Handle clicks
-      overlay.addEventListener('click', (e) => {
-        if (e.target === overlay) {
-          document.body.removeChild(overlay);
-          resolve({ confirmed: false });
-        }
-      });
-
-      dialog.querySelector('#cancel-upload')?.addEventListener('click', () => {
-        document.body.removeChild(overlay);
-        resolve({ confirmed: false });
-      });
-
-      dialog.querySelector('#confirm-upload')?.addEventListener('click', () => {
-        const commitMessage =
-          (dialog.querySelector('#commit-message') as HTMLInputElement)?.value ||
-          'Commit from Bolt to GitHub';
-        document.body.removeChild(overlay);
-        resolve({ confirmed: true, commitMessage });
-      });
-    });
-  };
-
-  // Also update the notification z-index
-  private showSettingsNotification = () => {
-    const notification = document.createElement('div');
-    notification.style.zIndex = '10000';
-    notification.className = [
-      'fixed',
-      'top-4',
-      'right-4',
-      'p-4',
-      'bg-red-500',
-      'text-white',
-      'rounded-md',
-      'shadow-lg',
-      'flex',
-      'items-center',
-      'gap-2',
-      'text-sm',
-    ].join(' ');
-
-    notification.innerHTML = `
-      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor">
-        <circle cx="12" cy="12" r="10"></circle>
-        <line x1="12" y1="8" x2="12" y2="12"></line>
-        <line x1="12" y1="16" x2="12.01" y2="16"></line>
-      </svg>
-      <span>
-        Please configure your GitHub settings first. 
-        <button class="text-white font-medium hover:text-white/90 underline underline-offset-2">Open Settings</button>
-      </span>
-    `;
-
-    // Add click handler for settings button
-    const settingsButton = notification.querySelector('button');
-    settingsButton?.addEventListener('click', () => {
-      this.messageHandler.sendMessage('OPEN_SETTINGS');
-      document.body.removeChild(notification);
-    });
-
-    // Add close button
-    const closeButton = document.createElement('button');
-    closeButton.className = 'ml-2 text-white hover:text-white/90 font-medium text-lg leading-none';
-    closeButton.innerHTML = '×';
-    closeButton.addEventListener('click', () => {
-      document.body.removeChild(notification);
-    });
-    notification.appendChild(closeButton);
-
-    // Add to body and remove after 5 seconds
-    document.body.appendChild(notification);
-    setTimeout(() => {
-      if (document.body.contains(notification)) {
-        document.body.removeChild(notification);
-      }
-    }, 5000);
-  };
-
-  public updateUploadStatus(status: UploadStatusState) {
-    console.log('🔊 Updating upload status:', status);
-
-    // If component doesn't exist, initialize it first
-    if (!this.uploadStatusComponent) {
-      console.log('🔊 Upload status component not found, initializing');
-      this.initializeUploadStatus();
-
-      // Add a small delay to ensure component is mounted before updating
-      setTimeout(() => {
-        this.updateUploadStatusInternal(status);
-      }, 50);
-      return;
-    }
-
-    this.updateUploadStatusInternal(status);
-  }
-
-  private updateUploadStatusInternal(status: UploadStatusState) {
-    // Ensure the container is visible in the DOM
-    const container = document.getElementById('bolt-to-github-upload-status-container');
-    if (!container || !document.body.contains(container)) {
-      console.log('🔊 Upload status container not in DOM, reinitializing');
-      this.initializeUploadStatus();
-
-      // Add a slightly longer delay to ensure component is fully mounted
-      setTimeout(() => {
-        if (this.uploadStatusComponent) {
-          console.log('🔊 Setting upload status after initialization:', status);
-          this.uploadStatusComponent.$set({ status });
-        }
-      }, 100);
-      return;
-    }
-
-    console.log('🔊 Setting upload status:', status);
-
-    // Update the component immediately if it exists
-    if (this.uploadStatusComponent) {
-      this.uploadStatusComponent.$set({ status });
-    }
-
-    // Reset GitHub button when upload is complete
-    if (status.status !== 'uploading' && this.isGitHubUpload && this.uploadButton) {
-      this.isGitHubUpload = false;
-      this.uploadButton.innerHTML = `
-        <svg width="16" height="16" viewBox="0 0 16 16" style="margin-right: 2px;">
-          <path fill="currentColor" d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0016 8c0-4.42-3.58-8-8-8z"/>
-        </svg>
-        GitHub
-        <svg width="12" height="12" viewBox="0 0 24 24" style="margin-left: 4px;">
-          <path fill="currentColor" d="M16.59 8.59L12 13.17 7.41 8.59 6 10l6 6 6-6z"/>
-        </svg>
-      `;
-      (this.uploadButton as HTMLButtonElement).disabled = false;
-    }
-  }
-
-  public updateButtonState(isValid: boolean) {
-    if (this.uploadButton) {
-      this.uploadButton.classList.toggle('disabled', !isValid);
-      // Update other button states as needed
-    }
-  }
-
-  private setupClickListeners() {
-    let clickSource: HTMLElement | null = null;
-
-    document.addEventListener(
-      'click',
-      async (e) => {
-        const target = e.target as HTMLElement;
-        clickSource = target;
-
-        if (target instanceof HTMLElement) {
-          const downloadElement = target.closest('a[download], button[download]');
-          if (downloadElement) {
-            const isFromGitHubButton = target.closest('[data-github-upload]') !== null;
-
-            if (isFromGitHubButton || this.isGitHubUpload) {
-              e.preventDefault();
-              e.stopPropagation();
-              await this.handleDownloadInterception();
-            }
-          }
+        // Only initialize if:
+        // 1. We don't already have a button
+        // 2. We have a button container (indicating project UI is loaded)
+        // 3. We're actually on a project page
+        if (!button && buttonContainer && isProjectPage) {
+          console.log('🔊 Initializing GitHub button for new project');
+          this.githubButtonManager.initialize();
+        } else if (!button && !buttonContainer && isProjectPage) {
+          // Project page detected but container not ready yet - this is normal during page load
+          console.log('🔊 Project page detected, waiting for container to be ready');
         }
       },
-      true
-    );
-  }
-
-  private async handleDownloadInterception() {
-    const downloadLinks = document.querySelectorAll('a[download][href^="blob:"]');
-    for (const link of Array.from(downloadLinks)) {
-      const blobUrl = (link as HTMLAnchorElement).href;
-      await this.handleBlobUrl(blobUrl);
-    }
-  }
-
-  private async handleBlobUrl(blobUrl: string) {
-    try {
-      const response = await fetch(blobUrl);
-      if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
-
-      const blob = await response.blob();
-      const base64data = await this.blobToBase64(blob);
-
-      if (base64data) {
-        this.messageHandler.sendZipData(base64data);
-      }
-    } catch (error) {
-      console.error('Error processing blob:', error);
-    }
-  }
-
-  private blobToBase64(blob: Blob): Promise<string | null> {
-    return new Promise((resolve) => {
-      const reader = new FileReader();
-      reader.onload = () => {
-        const base64data = reader.result?.toString().split(',')[1] || null;
-        resolve(base64data);
-      };
-      reader.onerror = () => resolve(null);
-      reader.readAsDataURL(blob);
-    });
-  }
-
-  private setupMutationObserver() {
-    let timeoutId: number;
-    let retryCount = 0;
-    const maxRetries = 3;
-
-    const attemptInitialization = () => {
-      const button = document.querySelector('[data-github-upload]');
-      const buttonContainer = document.querySelector('div.flex.grow-1.basis-60 div.flex.gap-2');
-
-      if (!button && buttonContainer) {
-        this.initializeUploadButton();
-        retryCount = 0; // Reset count on success
-      } else if (!buttonContainer && retryCount < maxRetries) {
-        retryCount++;
-        timeoutId = window.setTimeout(attemptInitialization, 1000); // 1 second between retries
-      } else if (retryCount >= maxRetries) {
+      () => {
+        // Error callback - called when max retries are reached
         this.showNotification({
           type: 'error',
           message:
             'Failed to initialize GitHub upload button. Please try to refresh the page. If the issue persists, please submit an issue on GitHub.',
           duration: 7000,
         });
-        retryCount = 0; // Reset for future attempts
       }
-    };
+    );
+  }
 
-    this.observer = new MutationObserver(() => {
-      if (timeoutId) {
-        clearTimeout(timeoutId);
+  /**
+   * Check if we're currently on a project page (URL contains project ID)
+   */
+  private isOnProjectPage(): boolean {
+    const currentUrl = window.location.href;
+    // Match bolt.new/~/projectId pattern
+    const projectMatch = currentUrl.match(/bolt\.new\/~\/([^/?#]+)/);
+    return !!projectMatch;
+  }
+
+  /**
+   * Handle the "Show Changed Files" button click
+   * Delegates to FileChangeHandler
+   */
+  public async handleShowChangedFiles() {
+    return this.fileChangeHandler.showChangedFiles();
+  }
+
+  /**
+   * Handle upgrade prompt for premium features
+   */
+  public async handleUpgradePrompt(feature: string): Promise<void> {
+    console.log('🔊 Handling upgrade prompt for feature:', feature);
+
+    try {
+      // Map feature names to upgrade modal types
+      let modalType: string;
+      switch (feature) {
+        case 'file-changes':
+          modalType = 'fileChanges';
+          break;
+        case 'issues':
+          modalType = 'issues';
+          break;
+        case 'push-reminders':
+          modalType = 'pushReminders';
+          break;
+        case 'branch-selector':
+          modalType = 'branchSelector';
+          break;
+        default:
+          modalType = 'general';
       }
-      timeoutId = window.setTimeout(attemptInitialization, 500);
-    });
 
-    // Wait for document.body to be available
-    if (document.body) {
-      this.observer.observe(document.body, {
-        childList: true,
-        subtree: true,
+      // Send message to background service to trigger upgrade modal via popup
+      chrome.runtime.sendMessage({
+        type: 'SHOW_UPGRADE_MODAL',
+        feature: modalType,
       });
-    } else {
-      // If body isn't available, wait for it
-      document.addEventListener('DOMContentLoaded', () => {
-        this.observer?.observe(document.body, {
-          childList: true,
-          subtree: true,
-        });
+
+      console.log('✅ Upgrade modal request sent for feature:', feature);
+    } catch (error) {
+      console.error('❌ Failed to trigger upgrade modal:', error);
+
+      // Fallback: show notification with upgrade button
+      this.notificationManager.showUpgradeNotification({
+        type: 'info',
+        message: `🔒 ${feature === 'issues' ? 'GitHub Issues management' : 'This feature'} is a Pro feature. Upgrade for full access!`,
+        duration: 10000,
+        upgradeText: 'Upgrade Now',
+        onUpgrade: () => {
+          try {
+            window.open('https://bolt2github.com/upgrade', '_blank');
+          } catch (openError) {
+            try {
+              chrome.tabs.create({ url: 'https://bolt2github.com/upgrade' });
+            } catch (tabsError) {
+              console.error('❌ All upgrade URL methods failed:', tabsError);
+            }
+          }
+        },
       });
     }
   }
 
-  public cleanup() {
-    this.observer?.disconnect();
-    if (this.uploadStatusComponent) {
-      this.uploadStatusComponent.$destroy();
-      this.uploadStatusComponent = null;
-    }
-    if (this.notificationComponent) {
-      this.notificationComponent.$destroy();
-      this.notificationComponent = null;
-    }
-    this.uploadButton?.remove();
-    this.uploadButton = null;
+  /**
+   * Show re-authentication modal when session is invalidated
+   */
+  public showReauthenticationModal(data: {
+    message: string;
+    actionText: string;
+    actionUrl: string;
+  }): void {
+    console.log('🔐 Showing re-authentication modal:', data);
 
-    // Clean up notification container if it exists
-    const notificationContainer = document.getElementById('bolt-to-github-notification-container');
-    notificationContainer?.remove();
+    /* Create and show a styled modal notification with action button */
+    const modalElement = document.createElement('div');
+    modalElement.className = 'bolt-auth-modal-overlay';
+    modalElement.innerHTML = `
+      <div class="bolt-auth-modal">
+        <div class="bolt-auth-modal-header">
+          <h3>🔐 Authentication Required</h3>
+        </div>
+        <div class="bolt-auth-modal-content">
+          <p>${data.message}</p>
+        </div>
+        <div class="bolt-auth-modal-actions">
+          <button class="bolt-auth-modal-btn bolt-auth-modal-btn-primary" data-action="signin">
+            ${data.actionText}
+          </button>
+          <button class="bolt-auth-modal-btn bolt-auth-modal-btn-secondary" data-action="dismiss">
+            Dismiss
+          </button>
+        </div>
+      </div>
+    `;
+
+    /* Add modal styles */
+    const styles = document.createElement('style');
+    styles.textContent = `
+      .bolt-auth-modal-overlay {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: rgba(0, 0, 0, 0.7);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        z-index: 10000;
+        font-family: system-ui, -apple-system, sans-serif;
+      }
+      .bolt-auth-modal {
+        background: #1e1e1e;
+        border-radius: 12px;
+        padding: 24px;
+        max-width: 440px;
+        margin: 20px;
+        box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+        border: 1px solid #374151;
+      }
+      .bolt-auth-modal-header h3 {
+        margin: 0 0 16px 0;
+        color: #f9fafb;
+        font-size: 18px;
+        font-weight: 600;
+      }
+      .bolt-auth-modal-content p {
+        margin: 0 0 24px 0;
+        color: #d1d5db;
+        line-height: 1.5;
+        font-size: 14px;
+      }
+      .bolt-auth-modal-actions {
+        display: flex;
+        gap: 12px;
+        justify-content: flex-end;
+      }
+      .bolt-auth-modal-btn {
+        padding: 10px 20px;
+        border-radius: 8px;
+        border: 1px solid transparent;
+        font-size: 14px;
+        font-weight: 500;
+        cursor: pointer;
+        transition: all 0.2s;
+      }
+      .bolt-auth-modal-btn-primary {
+        background: #3b82f6;
+        color: white;
+        border-color: #3b82f6;
+      }
+      .bolt-auth-modal-btn-primary:hover {
+        background: #2563eb;
+        border-color: #2563eb;
+      }
+      .bolt-auth-modal-btn-secondary {
+        background: transparent;
+        color: #9ca3af;
+        border-color: #4b5563;
+      }
+      .bolt-auth-modal-btn-secondary:hover {
+        background: #374151;
+        color: #d1d5db;
+      }
+    `;
+
+    /* Add event listeners */
+    modalElement.addEventListener('click', (e) => {
+      const target = e.target as HTMLElement;
+      if (target.dataset.action === 'signin') {
+        window.open(data.actionUrl, '_blank');
+        document.body.removeChild(modalElement);
+        document.head.removeChild(styles);
+      } else if (target.dataset.action === 'dismiss' || target === modalElement) {
+        document.body.removeChild(modalElement);
+        document.head.removeChild(styles);
+      }
+    });
+
+    /* Show the modal */
+    document.head.appendChild(styles);
+    document.body.appendChild(modalElement);
+  }
+
+  /**
+   * Handle upload status changes - now managed through UIStateManager
+   * This method is called by state change listeners
+   */
+  private handleUploadStatusChange(newState: any, previousState: any): void {
+    const status = newState.uploadStatus;
+    const buttonState = newState.buttonState;
+
+    // Handle specific loading states
+    if (buttonState.loadingState && buttonState.isProcessing) {
+      switch (buttonState.loadingState) {
+        case 'detecting-changes':
+          this.githubButtonManager.setDetectingChangesState();
+          break;
+        case 'pushing':
+          this.githubButtonManager.setPushingState();
+          break;
+        case 'custom':
+          if (buttonState.loadingText) {
+            this.githubButtonManager.setLoadingState(buttonState.loadingText);
+          }
+          break;
+      }
+    } else if (!buttonState.isProcessing && !buttonState.loadingState) {
+      // Reset button state when not processing and no loading state
+      this.githubButtonManager.resetState();
+    } else if (buttonState.isProcessing && !buttonState.loadingState) {
+      // Use legacy processing state for backward compatibility
+      this.githubButtonManager.setProcessingState();
+    }
+
+    // Reset GitHub button when upload is complete
+    if (status.status !== 'uploading' && this.isGitHubUpload) {
+      this.isGitHubUpload = false;
+
+      // Reset push reminder state when upload completes successfully
+      if (status.status === 'success') {
+        this.pushReminderService.resetReminderState();
+      }
+    }
+
+    // Update isGitHubUpload flag based on upload status
+    if (status.status === 'uploading') {
+      this.isGitHubUpload = true;
+    }
+  }
+
+  /**
+   * Handle GitHub push action
+   * Delegates to GitHubUploadHandler
+   */
+  public async handleGitHubPushAction() {
+    // Skip change detection for direct GitHub button clicks
+    // The upload process itself has intelligent hash-based change detection
+    return this.githubUploadHandler.handleGitHubPush(true, true);
+  }
+
+  public cleanup() {
+    // Stop DOM observation
+    this.domObserver.stop();
+
+    // Cleanup all components through ComponentLifecycleManager
+    this.componentLifecycleManager.cleanupAll();
+
+    // Use managers' cleanup methods
+    this.githubButtonManager.cleanup();
+    this.dropdownManager.cleanup();
+    this.notificationManager.cleanup();
+    this.uploadStatusManager.cleanup();
+
+    // Cleanup services
+    this.pushReminderService.cleanup();
+
+    // Restore original history functions
+    if (this.originalPushState && this.originalReplaceState) {
+      history.pushState = this.originalPushState;
+      history.replaceState = this.originalReplaceState;
+      this.originalPushState = null;
+      this.originalReplaceState = null;
+    }
   }
 
   public reinitialize() {
     console.log('🔊 Reinitializing UI manager');
     this.cleanup();
+    this.setupURLChangeDetection();
     this.initializeUI();
+    this.startDOMObservation();
+  }
+
+  public updateUploadStatus(status: UploadStatusState) {
+    // Delegate to UploadStatusManager
+    this.uploadStatusManager.updateStatus(status);
+  }
+
+  public updateButtonState(isValid: boolean) {
+    // Delegate to GitHubButtonManager
+    this.githubButtonManager.updateState(isValid);
+  }
+
+  /**
+   * Set up state coordination between components
+   */
+  private setupStateCoordination(): void {
+    // Listen to state changes for coordination
+    this.stateManager.addListener((newState, previousState) => {
+      this.handleUploadStatusChange(newState, previousState);
+    });
+
+    // Mark components as initialized
+    this.stateManager.setComponentInitialized('notificationInitialized', true);
+    this.stateManager.setComponentInitialized('uploadStatusInitialized', true);
+  }
+
+  /**
+   * Get push reminder service for external control
+   */
+  public getPushReminderService(): PushReminderService {
+    return this.pushReminderService;
+  }
+
+  /**
+   * Enable push reminders
+   */
+  public enablePushReminders(): void {
+    this.pushReminderService.enable();
+  }
+
+  /**
+   * Disable push reminders
+   */
+  public disablePushReminders(): void {
+    this.pushReminderService.disable();
+  }
+
+  /**
+   * Snooze push reminders for the configured interval
+   */
+  public snoozePushReminders(): void {
+    this.pushReminderService.snoozeReminders();
+  }
+
+  /**
+   * Enable debug mode for push reminders (faster testing)
+   */
+  public enablePushReminderDebugMode(): void {
+    this.pushReminderService.enableDebugMode();
+  }
+
+  /**
+   * Disable debug mode for push reminders
+   */
+  public disablePushReminderDebugMode(): void {
+    this.pushReminderService.disableDebugMode();
+  }
+
+  /**
+   * Force a push reminder check (for testing)
+   */
+  public async forceReminderCheck(): Promise<void> {
+    return this.pushReminderService.forceReminderCheck();
+  }
+
+  /**
+   * Force show a push reminder (for testing)
+   */
+  public async forceShowReminder(): Promise<void> {
+    return this.pushReminderService.forceShowReminder();
+  }
+
+  /**
+   * Force a scheduled reminder check (for testing)
+   */
+  public async forceScheduledReminderCheck(): Promise<void> {
+    return this.pushReminderService.forceScheduledReminderCheck();
+  }
+
+  /**
+   * Force show a scheduled reminder (for testing)
+   */
+  public async forceShowScheduledReminder(): Promise<void> {
+    return this.pushReminderService.forceShowScheduledReminder();
+  }
+
+  /**
+   * Get premium service for external access
+   */
+  public getPremiumService(): PremiumService {
+    return this.premiumService;
+  }
+
+  /**
+   * Check if user has premium access (for UI display)
+   */
+  public isPremium(): boolean {
+    return this.premiumService.isPremiumSync();
+  }
+
+  /**
+   * Check if user has premium access (with server validation)
+   */
+  public async isPremiumValidated(): Promise<boolean> {
+    return await this.premiumService.isPremium();
+  }
+
+  /**
+   * Check if user can use a specific premium feature (for UI display)
+   */
+  public hasFeature(
+    feature: keyof import('./services/PremiumService').PremiumStatus['features']
+  ): boolean {
+    return this.premiumService.hasFeatureSync(feature);
+  }
+
+  /**
+   * Check if user can use a specific premium feature (with server validation)
+   */
+  public async hasFeatureValidated(
+    feature: keyof import('./services/PremiumService').PremiumStatus['features']
+  ): Promise<boolean> {
+    return await this.premiumService.hasFeature(feature);
+  }
+
+  /**
+   * Update dropdown manager when premium status changes
+   */
+  public updateDropdownPremiumStatus(): void {
+    this.dropdownManager.updatePremiumStatus();
+  }
+
+  /**
+   * Set up URL change detection for SPA navigation
+   * This helps detect when users navigate to/from project pages without page refresh
+   */
+  private setupURLChangeDetection(): void {
+    // Listen for popstate events (back/forward navigation)
+    window.addEventListener('popstate', () => {
+      this.handleUrlChange();
+    });
+
+    // Override pushState and replaceState to catch programmatic navigation
+    this.originalPushState = history.pushState;
+    this.originalReplaceState = history.replaceState;
+
+    history.pushState = (...args) => {
+      this.originalPushState!.apply(history, args);
+      // Use setTimeout to ensure the URL has changed
+      setTimeout(() => this.handleUrlChange(), 0);
+    };
+
+    history.replaceState = (...args) => {
+      this.originalReplaceState!.apply(history, args);
+      // Use setTimeout to ensure the URL has changed
+      setTimeout(() => this.handleUrlChange(), 0);
+    };
+
+    console.log('🔊 URL change detection set up for SPA navigation');
+  }
+
+  /**
+   * Handle URL changes and check if we need to initialize the button for a new project
+   */
+  private handleUrlChange(): void {
+    const newUrl = window.location.href;
+    const newProjectId = this.extractProjectIdFromUrl(newUrl);
+    const isProjectPage = this.isOnProjectPage();
+
+    console.log('🔊 URL changed:', {
+      newUrl,
+      newProjectId,
+      isProjectPage,
+      hasExistingButton: !!document.querySelector('[data-github-upload]'),
+    });
+
+    // If we're now on a project page and don't have a button, try to initialize
+    if (isProjectPage && !document.querySelector('[data-github-upload]')) {
+      console.log('🔊 New project detected via URL change, attempting button initialization');
+
+      // Use a small delay to let the DOM settle after navigation
+      setTimeout(() => {
+        const buttonContainer = document.querySelector('div.flex.grow-1.basis-60 div.flex.gap-2');
+        if (buttonContainer && !document.querySelector('[data-github-upload]')) {
+          console.log('🔊 Initializing GitHub button after URL change');
+          this.githubButtonManager.initialize();
+        }
+      }, 250);
+    }
+    // If we're no longer on a project page and have a button, clean it up
+    else if (!isProjectPage && document.querySelector('[data-github-upload]')) {
+      console.log('🔊 Left project page, cleaning up GitHub button');
+      const button = document.querySelector('[data-github-upload]');
+      if (button) {
+        button.remove();
+      }
+    }
+  }
+
+  /**
+   * Extract project ID from URL
+   */
+  private extractProjectIdFromUrl(url: string): string | null {
+    const match = url.match(/bolt\.new\/~\/([^/?#]+)/);
+    return match ? match[1] : null;
   }
 }

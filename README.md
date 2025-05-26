@@ -31,9 +31,20 @@ A Chrome extension that automatically captures ZIP file downloads from bolt.new,
   <img src="https://img.shields.io/badge/Install%20from-Chrome%20Web%20Store-blue?style=for-the-badge&logo=google-chrome&logoColor=white" alt="Install from Chrome Web Store" height="40">
 </a>
 
-### Latest stable version (v1.2.2) includes the following features:
+### Latest stable version (v1.2.3) includes the following features:
 
-#### 🛠️ New in v1.2.2
+#### 🚀 New in v1.2.3
+
+- Add Push to GitHub button in Settings popup
+- Enhanced UI with better positioning and responsiveness
+- GitHub dropdown menu with accessibility enhancements
+- Project organization features (grouping by type: Bolt and GitHub)
+- Project deletion functionality
+- Repository settings management improvements
+- Help button with improved resources and links to official website
+- Improvements in temporary repository clean up
+
+#### 🛠️ Added in v1.2.2
 
 - Support for GitHub organization repositories
 - Enhanced button feedback with permission checking status
@@ -89,13 +100,13 @@ To try the latest development version:
    ```bash
    git clone https://github.com/mamertofabian/bolt-to-github.git
    cd bolt-to-github
-   npm install
+   pnpm install
    ```
 
 2. Build the extension:
 
    ```bash
-   npm run build
+   pnpm run build
    ```
 
 3. Load in Chrome:
@@ -165,15 +176,15 @@ If you want to modify the extension or contribute to its development:
    ```bash
    git clone https://github.com/mamertofabian/bolt-to-github.git
    cd bolt-to-github
-   npm install
+   pnpm install
    ```
 
 3. Build for development:
 
    ```bash
-   npm run watch   # For development with hot reload
+   pnpm run watch   # For development with hot reload
    # OR
-   npm run build  # For production build
+   pnpm run build  # For production build
    ```
 
 4. Load in Chrome:
@@ -257,9 +268,29 @@ See our [Contributing Guide](#contributing) for more details.
 - 📧 [Email support](mailto:mamerto@codefrost.com)
 - 💻 [Custom development inquiries](https://codefrost.com)
 
-### Report Issues
+### Report Issues & Send Feedback
 
-For bugs or feature requests, please [open an issue](https://github.com/mamertofabian/bolt-to-github/issues) on the GitHub repository.
+For bugs or feature requests, you have multiple convenient options:
+
+#### Built-in Feedback System 🚀
+
+- Click the extension icon and go to the "Help" tab
+- Click the "Send Feedback" button for an easy-to-use feedback form
+- **Works for everyone**: Whether you're authenticated with GitHub or not!
+- **Smart fallback**: If you're not logged in, the system will guide you to submit feedback directly on GitHub with pre-filled content
+
+#### Direct GitHub Issues
+
+- [Open an issue](https://github.com/mamertofabian/bolt-to-github/issues) directly on the GitHub repository
+- Perfect for detailed bug reports or feature requests
+
+#### Quick Feedback Categories
+
+- 💝 **Appreciation**: Share what you love about the extension
+- ❓ **Questions**: Ask for help or clarification
+- 🐛 **Bug Reports**: Report issues or unexpected behavior
+- ✨ **Feature Requests**: Suggest new features or improvements
+- 💬 **General Feedback**: Any other thoughts or suggestions
 
 ### Support the Project
 

@@ -10,9 +10,13 @@ export type MessageType =
   | 'CONTENT_SCRIPT_READY'
   | 'GITHUB_SETTINGS_CHANGED'
   | 'OPEN_SETTINGS'
+  | 'OPEN_FILE_CHANGES'
+  | 'OPEN_ISSUES'
+  | 'OPEN_PROJECTS'
   | 'IMPORT_PRIVATE_REPO'
   | 'DELETE_TEMP_REPO'
-  | 'PUSH_TO_GITHUB';
+  | 'PUSH_TO_GITHUB'
+  | 'USE_CACHED_FILES';
 
 export interface Message {
   type: MessageType;
@@ -24,6 +28,7 @@ export interface Message {
 export interface ProjectSetting {
   repoName: string;
   branch: string;
+  projectTitle?: string;
 }
 
 export type ProjectSettings = Record<string, ProjectSetting>;
@@ -34,7 +39,14 @@ export interface GitHubSettingsInterface {
   projectSettings?: ProjectSettings;
 }
 
-export type ProcessingStatus = 'idle' | 'uploading' | 'success' | 'error';
+export type ProcessingStatus =
+  | 'idle'
+  | 'uploading'
+  | 'success'
+  | 'error'
+  | 'loading'
+  | 'analyzing'
+  | 'complete';
 
 export interface UploadStatusState {
   status: ProcessingStatus;
@@ -48,3 +60,9 @@ export interface GithubConfig {
   repo: string;
   branch: string;
 }
+
+/**
+ * Type representing a collection of project files
+ * Map of file paths to file contents
+ */
+export type ProjectFiles = Map<string, string>;

@@ -11,7 +11,7 @@
     "strict": true,
     "noImplicitAny": true,
     "strictNullChecks": true,
-    "types": ["chrome"],
+    "types": ["chrome", "jest"],
     "baseUrl": ".",
     "paths": {
       "$lib": ["src/lib"],

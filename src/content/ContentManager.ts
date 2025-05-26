@@ -1,3 +1,4 @@
+/* eslint-disable no-console */
 import type { Message } from '$lib/types';
 import { MessageHandler } from './MessageHandler';
 import { UIManager } from './UIManager';
@@ -22,6 +23,9 @@ export class ContentManager {
       this.messageHandler = new MessageHandler(this.port!);
       this.uiManager = UIManager.getInstance(this.messageHandler);
       this.setupEventListeners();
+
+      // Clear any stale stored file changes on initialization
+      this.clearStaleStoredChanges();
     } catch (error) {
       console.error('Error initializing ContentManager:', error);
       this.handleInitializationError(error);
@@ -30,8 +34,9 @@ export class ContentManager {
 
   private shouldInitialize(): boolean {
     const currentUrl = window.location.href;
-    const match = currentUrl.match(/bolt\.new\/~\/([^/]+)/);
-    return !!match;
+    // Initialize on any bolt.new page, not just project pages
+    // The URL change detection will handle project-specific logic
+    return currentUrl.includes('bolt.new');
   }
 
   private initializeConnection() {
@@ -84,10 +89,20 @@ export class ContentManager {
     });
   }
   private isExtensionContextInvalidated(error: any): boolean {
-    return (
-      error?.message?.includes('Extension context invalidated') ||
-      error?.message?.includes('Extension context was invalidated')
-    );
+    // Check for various extension context invalidation patterns
+    if (!error?.message) return false;
+
+    const invalidationPatterns = [
+      'Extension context invalidated',
+      'Extension context was invalidated',
+      'Could not establish connection',
+      'Receiving end does not exist',
+      'The message port closed before a response was received',
+      'chrome-extension://invalid/',
+      'net::ERR_FAILED',
+    ];
+
+    return invalidationPatterns.some((pattern) => error.message.includes(pattern));
   }
 
   private handleExtensionContextInvalidated(): void {
@@ -152,6 +167,35 @@ export class ContentManager {
     this.isReconnecting = false;
     this.reconnectAttempts = 0;
     this.uiManager?.cleanup();
+
+    // Reset UIManager singleton to ensure clean recreation
+    UIManager.resetInstance();
+    this.uiManager = undefined; // Clear reference to cleaned up UIManager
+  }
+
+  /**
+   * Clear stale stored file changes on initialization
+   */
+  private async clearStaleStoredChanges(): Promise<void> {
+    try {
+      const result = await chrome.storage.local.get(['storedFileChanges']);
+      const storedData = result.storedFileChanges;
+
+      if (!storedData) {
+        return;
+      }
+
+      const currentUrl = window.location.href;
+      const currentProjectId = window.location.pathname.split('/').pop() || '';
+
+      // Clear if URL changed or project ID changed
+      if (storedData.url !== currentUrl || storedData.projectId !== currentProjectId) {
+        await chrome.storage.local.remove(['storedFileChanges']);
+        console.log('Cleared stale stored file changes due to navigation');
+      }
+    } catch (error) {
+      console.warn('Error checking/clearing stale stored changes:', error);
+    }
   }
 
   private setupEventListeners(): void {
@@ -168,6 +212,137 @@ export class ContentManager {
     // Handle extension updates
     chrome.runtime.onConnect.addListener(() => {
       this.reinitialize();
+    });
+
+    // Listen for direct messages from the popup
+    chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
+      // Handle legacy file changes requests
+      if (message.action === 'REQUEST_FILE_CHANGES') {
+        console.log('Received request for file changes from popup');
+        const projectId = window.location.pathname.split('/').pop() || '';
+        console.log('Current project ID:', projectId);
+        this.uiManager?.handleShowChangedFiles();
+        sendResponse({ success: true, projectId });
+        return;
+      }
+
+      if (message.action === 'REFRESH_FILE_CHANGES') {
+        console.log('Received refresh file changes request from popup');
+        const projectId = window.location.pathname.split('/').pop() || '';
+        console.log('Refreshing file changes for project ID:', projectId);
+
+        this.uiManager
+          ?.handleShowChangedFiles()
+          .then(() => {
+            sendResponse({ success: true, projectId });
+          })
+          .catch((error) => {
+            console.error('Error refreshing file changes:', error);
+            sendResponse({
+              success: false,
+              error: error instanceof Error ? error.message : 'Unknown error',
+              projectId,
+            });
+          });
+        return true; // Keep channel open for async response
+      }
+
+      // Handle new message types with async support
+      (async () => {
+        try {
+          if (message.type === 'REFRESH_FILE_CHANGES') {
+            await this.uiManager?.handleShowChangedFiles();
+            sendResponse({ success: true });
+            return;
+          }
+
+          if (message.type === 'GET_PUSH_REMINDER_DEBUG') {
+            const reminderService = this.uiManager?.getPushReminderService();
+            if (reminderService) {
+              const debugInfo = reminderService.getDebugInfo();
+              sendResponse(debugInfo);
+            } else {
+              sendResponse({ error: 'Push reminder service not available' });
+            }
+            return;
+          }
+
+          if (message.type === 'UPDATE_PUSH_REMINDER_SETTINGS') {
+            const reminderService = this.uiManager?.getPushReminderService();
+            if (reminderService) {
+              await reminderService.updateSettings(message.settings);
+              sendResponse({ success: true });
+            } else {
+              sendResponse({ error: 'Push reminder service not available' });
+            }
+            return;
+          }
+
+          if (message.type === 'SNOOZE_PUSH_REMINDERS') {
+            if (this.uiManager) {
+              this.uiManager.snoozePushReminders();
+              sendResponse({ success: true });
+            } else {
+              sendResponse({ error: 'UI manager not available' });
+            }
+            return;
+          }
+
+          if (message.type === 'UPDATE_PREMIUM_STATUS') {
+            console.log('📨 Received UPDATE_PREMIUM_STATUS message from background:', message.data);
+            // Forward to premium service through UIManager
+            if (this.uiManager) {
+              const premiumService = this.uiManager.getPremiumService();
+              if (premiumService) {
+                await premiumService.updatePremiumStatusFromAuth(message.data);
+                console.log('✅ Premium status updated successfully');
+                sendResponse({ success: true });
+              } else {
+                console.warn('❌ Premium service not available');
+                sendResponse({ error: 'Premium service not available' });
+              }
+            } else {
+              console.warn('❌ UI manager not available');
+              sendResponse({ error: 'UI manager not available' });
+            }
+            return;
+          }
+          if (message.type === 'SHOW_REAUTHENTICATION_MODAL') {
+            console.log('📨 Received SHOW_REAUTHENTICATION_MODAL message:', message.data);
+            /* Show re-authentication modal via UIManager */
+            if (this.uiManager) {
+              this.uiManager.showReauthenticationModal(message.data);
+              sendResponse({ success: true });
+            } else {
+              console.warn('❌ UI manager not available');
+              sendResponse({ error: 'UI manager not available' });
+            }
+            return;
+          }
+
+          if (message.type === 'SHOW_SUBSCRIPTION_DOWNGRADE') {
+            console.log('📨 Received SHOW_SUBSCRIPTION_DOWNGRADE message:', message.data);
+            /* Show subscription downgrade notification via UIManager */
+            if (this.uiManager) {
+              this.uiManager.showNotification({
+                type: 'info',
+                message: `⚠️ ${message.data.message} Click here to renew: ${message.data.actionUrl}`,
+                duration: 15000,
+              });
+              sendResponse({ success: true });
+            } else {
+              console.warn('❌ UI manager not available');
+              sendResponse({ error: 'UI manager not available' });
+            }
+            return;
+          }
+        } catch (error) {
+          console.error('Error handling message:', error);
+          sendResponse({ error: error instanceof Error ? error.message : 'Unknown error' });
+        }
+      })();
+
+      return true; // Keep the message channel open for async response
     });
   }
 
@@ -194,7 +369,13 @@ export class ContentManager {
     try {
       this.cleanup();
       this.initializeConnection();
-      this.uiManager?.reinitialize();
+
+      // Recreate UIManager since cleanup destroyed the previous instance
+      if (this.messageHandler) {
+        this.uiManager = UIManager.initialize(this.messageHandler);
+        console.log('🔧 ContentManager: Recreated UIManager after cleanup');
+      }
+
       this.messageHandler?.sendMessage('CONTENT_SCRIPT_READY');
     } catch (error) {
       console.error('Error reinitializing content script:', error);

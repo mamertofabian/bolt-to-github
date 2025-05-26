@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { onMount } from 'svelte';
+  import { onMount, onDestroy } from 'svelte';
   import {
     Card,
     CardContent,
@@ -7,7 +7,6 @@
     CardHeader,
     CardTitle,
   } from '$lib/components/ui/card';
-  import Modal from '$lib/components/ui/modal/Modal.svelte';
   import { STORAGE_KEY } from '../background/TempRepoManager';
   import { Tabs, TabsContent } from '$lib/components/ui/tabs';
   import Header from '$lib/components/Header.svelte';
@@ -16,233 +15,443 @@
   import GitHubSettings from '$lib/components/GitHubSettings.svelte';
   import { COFFEE_LINK, GITHUB_LINK, YOUTUBE_LINK } from '$lib/constants';
   import Footer from '$lib/components/Footer.svelte';
-  import type { GitHubSettingsInterface } from '$lib/types';
+
   import ProjectsList from '$lib/components/ProjectsList.svelte';
-  import { GitHubService } from '../services/GitHubService';
   import { Button } from '$lib/components/ui/button';
   import Help from '$lib/components/Help.svelte';
   import ProjectStatus from '$lib/components/ProjectStatus.svelte';
+  import FileChangesModal from './components/FileChangesModal.svelte';
+  import TempRepoModal from './components/TempRepoModal.svelte';
+  import PushReminderSettings from './components/PushReminderSettings.svelte';
+  import PushReminderSection from './components/PushReminderSection.svelte';
+  import PremiumStatus from './components/PremiumStatus.svelte';
+  import UpgradeModal from './components/UpgradeModal.svelte';
+  import FeedbackModal from './components/FeedbackModal.svelte';
+  import AnalyticsToggle from '$lib/components/ui/AnalyticsToggle.svelte';
+  import { setUpgradeModalState } from '$lib/utils/upgradeModal';
+  import type { PremiumFeature } from '$lib/constants/premiumFeatures';
+  import NewsletterModal from '$lib/components/NewsletterModal.svelte';
+  import NewsletterSection from '$lib/components/NewsletterSection.svelte';
+  import SuccessToast from '$lib/components/SuccessToast.svelte';
+  import { SubscriptionService } from '../services/SubscriptionService';
+  import IssueManager from '$lib/components/IssueManager.svelte';
 
-  let githubToken: string = '';
-  let repoOwner = '';
-  let repoName = '';
-  let branch = 'main';
-  let projectSettings: Record<string, { repoName: string; branch: string }> = {};
-  let status = '';
-  let uploadProgress = 0;
-  let uploadStatus = 'idle';
-  let uploadMessage = '';
-  let isSettingsValid = false;
-  let activeTab = 'home';
-  let currentUrl: string = '';
-  let isBoltSite: boolean = false;
-  let githubSettings: GitHubSettingsInterface;
-  let parsedProjectId: string | null = null;
-  const version = chrome.runtime.getManifest().version;
-  let hasStatus = false;
-  let isValidatingToken = false;
-  let isTokenValid: boolean | null = null;
-  let validationError: string | null = null;
-  let hasInitialSettings = false;
-  let showTempRepoModal = false;
-  let tempRepoData: TempRepoMetadata | null = null;
-  let port: chrome.runtime.Port;
-  let hasDeletedTempRepo = false;
-  let hasUsedTempRepoName = false;
+  // Import stores and services
+  import {
+    githubSettingsStore,
+    isSettingsValid,
+    githubSettingsActions,
+    projectSettingsStore,
+    isOnBoltProject,
+    currentProjectId,
+    projectSettingsActions,
+    uiStateStore,
+    uiStateActions,
+    fileChangesStore,
+    fileChangesActions,
+    uploadStateStore,
+    uploadStateActions,
+    premiumStatusStore,
+    isAuthenticated,
+    isPremium,
+    premiumPlan,
+    premiumFeatures as userPremiumFeatures,
+    premiumStatusActions,
+    type TempRepoMetadata,
+  } from '$lib/stores';
+  import { ChromeMessagingService } from '$lib/services/chromeMessaging';
+
+  // Reactive store subscriptions
+  $: githubSettings = $githubSettingsStore;
+  $: projectSettings = $projectSettingsStore;
+  $: uiState = $uiStateStore;
+  $: fileChangesState = $fileChangesStore;
+  $: uploadState = $uploadStateStore;
+  $: settingsValid = $isSettingsValid;
+  $: onBoltProject = $isOnBoltProject;
+  $: projectId = $currentProjectId;
+  $: premiumStatus = $premiumStatusStore;
+  $: isUserAuthenticated = $isAuthenticated;
+  $: isUserPremium = $isPremium;
+  $: userPlan = $premiumPlan;
+  $: userFeatures = $userPremiumFeatures;
+
+  // Handle pending popup context when stores are ready
+  $: if (
+    pendingPopupContext &&
+    !hasHandledPendingContext &&
+    githubSettings &&
+    typeof settingsValid !== 'undefined' &&
+    typeof projectId !== 'undefined'
+  ) {
+    handlePendingPopupContext();
+  }
+
   let projectStatusRef: ProjectStatus;
+  let showPushReminderSettings = false;
+  let showUpgradeModal = false;
+  let showFeedbackModal = false;
+  let upgradeModalFeature = '';
+  let upgradeModalReason = '';
+  let premiumFeatures: Array<{ id: string; name: string; description: string; icon: string }> = [];
 
-  interface TempRepoMetadata {
-    originalRepo: string;
-    tempRepo: string;
-    createdAt: number;
-    owner: string;
+  // Newsletter subscription state
+  let showNewsletterModal = false;
+  let hasSubscribed = false;
+  let showSuccessToast = false;
+  let successToastMessage = '';
+  let showSubscribePrompt = false;
+
+  // Issues modal state
+  let showIssuesModal = false;
+
+  // Add pending popup context state
+  let pendingPopupContext = '';
+  let pendingUpgradeFeature = '';
+  let hasHandledPendingContext = false;
+
+  // Message handlers
+  function handleUploadStatusMessage(message: any) {
+    uploadStateActions.handleUploadStatusMessage(message);
   }
 
-  async function validateGitHubToken(token: string, username: string): Promise<boolean> {
-    if (!token) {
-      isTokenValid = false;
-      validationError = 'GitHub token is required';
-      return false;
-    }
-
-    try {
-      isValidatingToken = true;
-      const githubService = new GitHubService(token);
-      const result = await githubService.validateTokenAndUser(username);
-      isTokenValid = result.isValid;
-      validationError = result.error || null;
-      return result.isValid;
-    } catch (error) {
-      console.error('Error validating settings:', error);
-      isTokenValid = false;
-      validationError = 'Validation failed';
-      return false;
-    } finally {
-      isValidatingToken = false;
+  function handleFileChangesMessage(message: any) {
+    if (message.type === 'FILE_CHANGES') {
+      console.log('Received file changes:', message.changes, 'for project:', message.projectId);
+      fileChangesActions.processFileChangesMessage(message.changes, message.projectId);
     }
   }
 
-  $: console.log('repoOwner', repoOwner);
+  function handleOpenFileChangesMessage() {
+    showStoredFileChanges();
+  }
 
-  onMount(async () => {
+  async function initializeApp() {
     // Add dark mode to the document
     document.documentElement.classList.add('dark');
 
-    // Connect to background service
-    port = chrome.runtime.connect({ name: 'popup' });
+    // Initialize stores
+    projectSettingsActions.initialize();
+    githubSettingsActions.initialize();
+    uploadStateActions.initializePort();
+    premiumStatusActions.initialize();
 
-    githubSettings = (await chrome.storage.sync.get([
-      'githubToken',
-      'repoOwner',
-      'projectSettings',
-    ])) as GitHubSettingsInterface;
+    // Setup Chrome messaging
+    ChromeMessagingService.addPortMessageHandler(handleUploadStatusMessage);
+    ChromeMessagingService.addPortMessageHandler(handleFileChangesMessage);
 
-    githubToken = githubSettings.githubToken || '';
-    repoOwner = githubSettings.repoOwner || '';
-    projectSettings = githubSettings.projectSettings || {};
-    hasInitialSettings = Boolean(githubSettings.githubToken && githubSettings.repoOwner);
-
-    // Validate existing token and username if they exist
-    if (githubToken && repoOwner) {
-      await validateGitHubToken(githubToken, repoOwner);
+    // Check for pending file changes first
+    const pendingChanges = await chrome.storage.local.get('pendingFileChanges');
+    if (pendingChanges.pendingFileChanges) {
+      console.log('Found pending file changes:', pendingChanges.pendingFileChanges);
+      const fileChangesMap = new Map(Object.entries(pendingChanges.pendingFileChanges)) as Map<
+        string,
+        import('../services/FilePreviewService').FileChange
+      >;
+      fileChangesActions.setFileChanges(fileChangesMap);
+      fileChangesActions.showModal();
+      await chrome.storage.local.remove('pendingFileChanges');
+      console.log('Cleared pending file changes from storage');
     }
 
-    const tabs = await chrome.tabs.query({ active: true, currentWindow: true });
-    console.log(`📄 App: ${tabs[0]?.url}`);
-    if (tabs[0]?.url) {
-      currentUrl = tabs[0].url;
-      isBoltSite = currentUrl.includes('bolt.new');
+    // Detect current project
+    await projectSettingsActions.detectCurrentProject();
 
-      if (isBoltSite) {
-        const match = currentUrl.match(/bolt\.new\/~\/([^/]+)/);
-        parsedProjectId = match?.[1] || null;
-        console.log(`📄 App: ${parsedProjectId}`);
-        // Get projectId from storage
-        const projectId = await chrome.storage.sync.get('projectId');
-
-        if (match && parsedProjectId && projectId.projectId === parsedProjectId) {
-          if (projectSettings[parsedProjectId]) {
-            console.log(
-              '📄 App: projectSettings[parsedProjectId]',
-              projectSettings[parsedProjectId]
-            );
-            repoName = projectSettings[parsedProjectId].repoName;
-            branch = projectSettings[parsedProjectId].branch;
-          } else {
-            // Use project ID as default repo name for new projects
-            repoName = parsedProjectId;
-            console.log('📄 App: saving new project settings');
-            saveSettings();
-          }
-        }
-      }
+    // Load project-specific settings if we're on a bolt project
+    if (projectId) {
+      githubSettingsActions.loadProjectSettings(projectId);
     }
 
-    checkSettingsValidity();
-
+    // Setup runtime message listener
     chrome.runtime.onMessage.addListener((message) => {
       if (message.type === 'UPLOAD_STATUS') {
-        uploadStatus = message.status;
-        uploadProgress = message.progress || 0;
-        uploadMessage = message.message || '';
+        handleUploadStatusMessage(message);
+      } else if (message.type === 'FILE_CHANGES') {
+        handleFileChangesMessage(message);
+      } else if (message.type === 'OPEN_FILE_CHANGES') {
+        handleOpenFileChangesMessage();
       }
     });
 
     // Check for temp repos
+    await checkForTempRepos();
+
+    // Check for popup context (opened from content script)
+    await checkPopupContext();
+
+    // Add cleanup listener
+    window.addEventListener('unload', cleanup);
+
+    // Listen for upgrade modal triggers from other components
+    window.addEventListener('showUpgrade', ((event: CustomEvent) => {
+      upgradeModalFeature = event.detail.feature;
+      upgradeModalReason = event.detail.reason;
+      premiumFeatures = event.detail.features;
+      showUpgradeModal = true;
+    }) as EventListener);
+
+    // Initialize newsletter subscription status
+    try {
+      const subscription = await SubscriptionService.getSubscriptionStatus();
+      hasSubscribed = subscription.subscribed;
+    } catch (error) {
+      console.error('Error loading subscription status:', error);
+    }
+  }
+
+  async function checkForTempRepos() {
     const result = await chrome.storage.local.get(STORAGE_KEY);
     const tempRepos: TempRepoMetadata[] = result[STORAGE_KEY] || [];
 
-    if (tempRepos.length > 0 && parsedProjectId) {
-      // Get the most recent temp repo
-      tempRepoData = tempRepos[tempRepos.length - 1];
-      showTempRepoModal = true;
-    }
-  });
-
-  async function handleDeleteTempRepo() {
-    if (tempRepoData) {
-      port.postMessage({
-        type: 'DELETE_TEMP_REPO',
-        data: {
-          owner: tempRepoData.owner,
-          repo: tempRepoData.tempRepo,
-        },
-      });
-      hasDeletedTempRepo = true;
-
-      // Only close modal if both actions are completed
-      if (hasDeletedTempRepo && hasUsedTempRepoName) {
-        showTempRepoModal = false;
-      }
+    if (tempRepos.length > 0 && projectId) {
+      const tempRepoData = tempRepos[tempRepos.length - 1];
+      uiStateActions.showTempRepoModal(tempRepoData);
     }
   }
 
-  async function handleUseTempRepoName() {
-    if (tempRepoData) {
-      repoName = tempRepoData.originalRepo;
-      await saveSettings();
-      await projectStatusRef.getProjectStatus();
-      hasUsedTempRepoName = true;
+  async function checkPopupContext() {
+    try {
+      const result = await chrome.storage.local.get(['popupContext', 'upgradeModalFeature']);
+      const context = result.popupContext;
+      const upgradeFeature = result.upgradeModalFeature;
 
-      // Only close modal if both actions are completed
-      if (hasDeletedTempRepo && hasUsedTempRepoName) {
-        showTempRepoModal = false;
+      if (context) {
+        console.log('Popup opened with context:', context);
+        pendingPopupContext = context;
+        pendingUpgradeFeature = upgradeFeature || '';
+
+        // Clear the context after storing it
+        await chrome.storage.local.remove(['popupContext', 'upgradeModalFeature']);
       }
+    } catch (error) {
+      console.error('Error checking popup context:', error);
     }
   }
 
-  function checkSettingsValidity() {
-    // Only consider settings valid if we have all required fields AND the validation passed
-    isSettingsValid =
-      Boolean(githubToken && repoOwner && repoName && branch) &&
-      !isValidatingToken &&
-      isTokenValid === true;
+  async function handlePendingPopupContext() {
+    if (!pendingPopupContext || hasHandledPendingContext) return;
+
+    hasHandledPendingContext = true;
+    const context = pendingPopupContext;
+    const upgradeFeature = pendingUpgradeFeature;
+
+    console.log('Handling pending popup context:', context);
+
+    switch (context) {
+      case 'issues':
+        // Only show issues if we have valid settings and are on a Bolt project
+        if (settingsValid && projectId && githubSettings.githubToken) {
+          showIssuesModal = true;
+        } else {
+          uiStateActions.setActiveTab('home');
+        }
+        break;
+
+      case 'projects':
+        // Switch to projects tab
+        if (onBoltProject) {
+          uiStateActions.setActiveTab('projects');
+        } else if (
+          githubSettings.hasInitialSettings &&
+          githubSettings.repoOwner &&
+          githubSettings.githubToken
+        ) {
+          // Already shows projects list when not on bolt project but has settings
+        } else {
+          // Switch to settings if no valid settings
+          uiStateActions.setActiveTab('settings');
+        }
+        break;
+
+      case 'settings':
+        // Switch to settings tab
+        if (onBoltProject) {
+          uiStateActions.setActiveTab('settings');
+        }
+        break;
+
+      case 'upgrade':
+        // Show upgrade modal with the specified feature
+        if (upgradeFeature) {
+          // Import upgrade modal utility to get the configuration
+          const { getUpgradeModalConfig } = await import('$lib/utils/upgradeModal');
+          try {
+            // Ensure the upgradeFeature is a valid key
+            const validFeature = [
+              'general',
+              'fileChanges',
+              'pushReminders',
+              'branchSelector',
+              'issues',
+            ].includes(upgradeFeature)
+              ? (upgradeFeature as
+                  | 'issues'
+                  | 'general'
+                  | 'fileChanges'
+                  | 'pushReminders'
+                  | 'branchSelector')
+              : ('general' as const);
+            const config = getUpgradeModalConfig(validFeature);
+            upgradeModalFeature = config.feature;
+            upgradeModalReason = config.reason;
+            premiumFeatures = config.features;
+            showUpgradeModal = true;
+          } catch (error) {
+            console.error('Error loading upgrade modal config:', error);
+            // Fallback to general upgrade modal
+            upgradeModalFeature = 'premium';
+            upgradeModalReason = 'Unlock professional features';
+            premiumFeatures = [];
+            showUpgradeModal = true;
+          }
+        }
+        break;
+
+      case 'home':
+      default:
+        break;
+    }
   }
 
   async function saveSettings() {
-    try {
-      // Validate token and username before saving
-      const isValid = await validateGitHubToken(githubToken, repoOwner);
-      if (!isValid) {
-        status = validationError || 'Validation failed';
-        hasStatus = true;
-        setTimeout(() => {
-          status = '';
-          hasStatus = false;
-        }, 3000);
-        return;
+    // If we have a current project, update its settings in the store first
+    if (projectId) {
+      githubSettingsActions.setProjectSettings(
+        projectId,
+        githubSettings.repoName,
+        githubSettings.branch
+      );
+    }
+
+    const result = await githubSettingsActions.saveSettings();
+    if (result.success) {
+      // Show success toast with potential subscription prompt
+      await handleSuccessfulAction('Settings saved successfully!');
+    } else {
+      // Check if it's a storage quota error
+      if (result.error && result.error.includes('MAX_WRITE_OPERATIONS_PER_H')) {
+        // Don't show on button, this will be handled in GitHubSettings component
+        console.error('Storage quota exceeded:', result.error);
+      } else {
+        uiStateActions.showStatus(result.error || 'Error saving settings');
       }
+    }
+  }
 
-      const settings = {
-        githubToken: githubToken || '',
-        repoOwner: repoOwner || '',
-        projectSettings,
-      };
-
-      if (parsedProjectId) {
-        projectSettings[parsedProjectId] = { repoName, branch };
-        settings.projectSettings = projectSettings;
-      }
-
-      await chrome.storage.sync.set(settings);
-      hasInitialSettings = true;
-      status = 'Settings saved successfully!';
-      hasStatus = true;
-      checkSettingsValidity();
-      setTimeout(() => {
-        status = '';
-        hasStatus = false;
-      }, 3000);
-    } catch (error) {
-      status = 'Error saving settings';
-      hasStatus = true;
-      console.error(error);
+  function handleSettingsError(error: string) {
+    // This will be called from GitHubSettings when storage quota errors occur
+    if (error.includes('MAX_WRITE_OPERATIONS_PER_H')) {
+      // Clear any existing status to prevent it showing on button
+      uiStateActions.clearStatus();
     }
   }
 
   function handleSwitchTab(event: CustomEvent<string>) {
-    activeTab = event.detail;
+    uiStateActions.setActiveTab(event.detail);
   }
+
+  function openSignInPage() {
+    // Use browser extension API to open new tab
+    if (typeof chrome !== 'undefined' && chrome.tabs) {
+      chrome.tabs.create({ url: 'https://bolt2github.com/login' });
+    }
+  }
+
+  async function showStoredFileChanges() {
+    const success = await fileChangesActions.loadStoredFileChanges(projectId);
+    if (!success) {
+      // Try to request from content script
+      try {
+        await fileChangesActions.requestFileChangesFromContentScript();
+        uiStateActions.showStatus('Calculating file changes...', 5000);
+      } catch (error) {
+        uiStateActions.showStatus('Cannot show file changes: Not on a Bolt project page');
+      }
+    }
+  }
+
+  async function handleDeleteTempRepo() {
+    ChromeMessagingService.sendDeleteTempRepoMessage(
+      uiState.tempRepoData!.owner,
+      uiState.tempRepoData!.tempRepo
+    );
+    uiStateActions.markTempRepoDeleted();
+
+    // Check if we can close the modal
+    const canClose = await uiStateActions.canCloseTempRepoModal();
+    if (canClose) {
+      uiStateActions.hideTempRepoModal();
+    }
+  }
+
+  async function handleUseTempRepoName() {
+    if (uiState.tempRepoData) {
+      githubSettingsActions.setRepoName(uiState.tempRepoData.originalRepo);
+      await saveSettings();
+      await projectStatusRef.getProjectStatus();
+      uiStateActions.markTempRepoNameUsed();
+
+      // Check if we can close the modal
+      const canClose = await uiStateActions.canCloseTempRepoModal();
+      if (canClose) {
+        uiStateActions.hideTempRepoModal();
+      }
+    }
+  }
+
+  async function cleanup() {
+    try {
+      await chrome.storage.local.remove('storedFileChanges');
+      console.log('Cleared stored file changes on popup close');
+      ChromeMessagingService.cleanup();
+      uploadStateActions.disconnect();
+    } catch (error) {
+      console.error('Error during cleanup:', error);
+    }
+  }
+
+  // Newsletter subscription functions
+  async function handleNewsletterClick() {
+    showNewsletterModal = true;
+  }
+
+  async function handleNewsletterModalClose() {
+    showNewsletterModal = false;
+    // Refresh subscription status
+    try {
+      const subscription = await SubscriptionService.getSubscriptionStatus();
+      hasSubscribed = subscription.subscribed;
+    } catch (error) {
+      console.error('Error refreshing subscription status:', error);
+    }
+  }
+
+  async function handleSuccessfulAction(message: string) {
+    // Increment interaction count
+    try {
+      const count = await SubscriptionService.incrementInteractionCount();
+
+      // Check if we should show subscription prompt
+      const shouldPrompt = await SubscriptionService.shouldShowSubscriptionPrompt();
+
+      successToastMessage = message;
+      showSubscribePrompt = shouldPrompt && !hasSubscribed;
+      showSuccessToast = true;
+    } catch (error) {
+      console.error('Error handling successful action:', error);
+      // Still show success toast without subscription prompt
+      successToastMessage = message;
+      showSuccessToast = true;
+    }
+  }
+
+  async function handleToastSubscribe() {
+    await SubscriptionService.updateLastPromptDate();
+    showNewsletterModal = true;
+  }
+
+  onMount(initializeApp);
+  onDestroy(cleanup);
 </script>
 
 <main class="w-[400px] p-3 bg-slate-950 text-slate-50">
@@ -255,52 +464,90 @@
           class="flex items-center gap-2 hover:opacity-80 transition-opacity"
         >
           <img src="/assets/icons/icon48.png" alt="Bolt to GitHub" class="w-5 h-5" />
-          Bolt to GitHub <span class="text-xs text-slate-400">v{version}</span>
+          Bolt to GitHub <span class="text-xs text-slate-400">v{projectSettings.version}</span>
         </a>
+        {#if isUserPremium}
+          <span
+            class="text-xs font-medium bg-gradient-to-r from-emerald-500 to-teal-500 text-white px-3 py-1.5 rounded-full flex items-center gap-1.5 shadow-sm"
+          >
+            <svg class="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
+              <path
+                fill-rule="evenodd"
+                d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"
+                clip-rule="evenodd"
+              ></path>
+            </svg>
+            PRO
+          </span>
+        {:else if onBoltProject || (githubSettings.hasInitialSettings && isUserAuthenticated)}
+          <div class="flex items-center gap-2">
+            <Button
+              size="sm"
+              class="text-xs bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white px-3 py-1 h-6"
+              on:click={() => {
+                setUpgradeModalState('general', (feature, reason, features) => {
+                  upgradeModalFeature = feature;
+                  upgradeModalReason = reason;
+                  premiumFeatures = features;
+                  showUpgradeModal = true;
+                });
+              }}
+            >
+              ✨ Upgrade
+            </Button>
+            {#if !isUserAuthenticated}
+              <button
+                class="text-xs text-slate-400 hover:text-slate-300 transition-colors underline"
+                on:click={openSignInPage}
+                title="Sign in if you already have a premium account"
+              >
+                Sign in
+              </button>
+            {/if}
+          </div>
+        {/if}
       </CardTitle>
       <CardDescription class="text-slate-400">
         Upload and sync your Bolt projects to GitHub
       </CardDescription>
     </CardHeader>
     <CardContent>
-      {#if isBoltSite && parsedProjectId}
-        <Tabs bind:value={activeTab} class="w-full">
+      {#if onBoltProject}
+        <Tabs bind:value={uiState.activeTab} class="w-full">
           <Header />
 
           <TabsContent value="home">
-            <button
-              class="w-full mb-3 px-4 py-2 bg-slate-700 hover:bg-slate-600 rounded-md text-slate-200 transition-colors"
-              on:click={() => (activeTab = 'projects')}
-            >
-              View All Projects
-            </button>
-
-            {#if !isSettingsValid || !parsedProjectId}
+            {#if !settingsValid || !projectId}
               <StatusAlert on:switchTab={handleSwitchTab} />
             {:else}
               <ProjectStatus
                 bind:this={projectStatusRef}
-                projectId={parsedProjectId}
-                gitHubUsername={repoOwner}
-                {repoName}
-                {branch}
-                token={githubToken}
+                {projectId}
+                gitHubUsername={githubSettings.repoOwner}
+                repoName={githubSettings.repoName}
+                branch={githubSettings.branch}
+                token={githubSettings.githubToken}
                 on:switchTab={handleSwitchTab}
+                on:showFileChanges={showStoredFileChanges}
               />
             {/if}
 
             <div class="mt-6 space-y-4">
-              <SocialLinks {GITHUB_LINK} {YOUTUBE_LINK} {COFFEE_LINK} />
+              <SocialLinks
+                {GITHUB_LINK}
+                {YOUTUBE_LINK}
+                {COFFEE_LINK}
+                on:feedback={() => (showFeedbackModal = true)}
+              />
             </div>
           </TabsContent>
 
           <TabsContent value="projects">
             <ProjectsList
-              {projectSettings}
-              {repoOwner}
-              {githubToken}
-              currentlyLoadedProjectId={parsedProjectId}
-              {isBoltSite}
+              repoOwner={githubSettings.repoOwner}
+              githubToken={githubSettings.githubToken}
+              currentlyLoadedProjectId={projectId}
+              isBoltSite={projectSettings.isBoltSite}
             />
           </TabsContent>
 
@@ -311,16 +558,38 @@
                 <p class="text-sm text-slate-400">Configure your GitHub repository settings</p>
               </div>
               <GitHubSettings
-                bind:githubToken
-                bind:repoOwner
-                bind:repoName
-                bind:branch
-                projectId={parsedProjectId}
-                {status}
-                buttonDisabled={hasStatus}
+                bind:githubToken={githubSettings.githubToken}
+                bind:repoOwner={githubSettings.repoOwner}
+                bind:repoName={githubSettings.repoName}
+                bind:branch={githubSettings.branch}
+                {projectId}
+                status={uiState.status}
+                buttonDisabled={uiState.hasStatus}
                 onSave={saveSettings}
-                onInput={checkSettingsValidity}
+                onError={handleSettingsError}
+                onInput={() => {}}
               />
+
+              <!-- Push Reminder Settings -->
+              <PushReminderSection on:configure={() => (showPushReminderSettings = true)} />
+
+              <!-- Analytics Toggle -->
+              <AnalyticsToggle />
+
+              <!-- Premium Status -->
+              <PremiumStatus
+                on:upgrade={() => {
+                  setUpgradeModalState('general', (feature, reason, features) => {
+                    upgradeModalFeature = feature;
+                    upgradeModalReason = reason;
+                    premiumFeatures = features;
+                    showUpgradeModal = true;
+                  });
+                }}
+              />
+
+              <!-- Newsletter Subscription -->
+              <NewsletterSection />
             </div>
           </TabsContent>
 
@@ -328,23 +597,26 @@
             <div class="space-y-4">
               <Help />
               <div class="mt-3">
-                <Footer />
+                <Footer
+                  {hasSubscribed}
+                  version={projectSettings.version}
+                  on:newsletter={handleNewsletterClick}
+                />
               </div>
             </div>
           </TabsContent>
         </Tabs>
-      {:else if hasInitialSettings && repoOwner && githubToken}
+      {:else if githubSettings.hasInitialSettings && githubSettings.repoOwner && githubSettings.githubToken}
         <ProjectsList
-          {projectSettings}
-          {repoOwner}
-          {githubToken}
-          currentlyLoadedProjectId={parsedProjectId}
-          {isBoltSite}
+          repoOwner={githubSettings.repoOwner}
+          githubToken={githubSettings.githubToken}
+          currentlyLoadedProjectId={projectId}
+          isBoltSite={projectSettings.isBoltSite}
         />
       {:else}
         <div class="flex flex-col items-center justify-center p-4 text-center space-y-6">
           <div class="space-y-2">
-            {#if !isBoltSite}
+            {#if !projectSettings.isBoltSite}
               <Button
                 variant="outline"
                 class="border-slate-800 hover:bg-slate-800 text-slate-200"
@@ -362,80 +634,74 @@
             </p>
             <GitHubSettings
               isOnboarding={true}
-              bind:githubToken
-              bind:repoName
-              bind:branch
-              bind:repoOwner
-              {status}
-              buttonDisabled={hasStatus}
+              bind:githubToken={githubSettings.githubToken}
+              bind:repoName={githubSettings.repoName}
+              bind:branch={githubSettings.branch}
+              bind:repoOwner={githubSettings.repoOwner}
+              status={uiState.status}
+              buttonDisabled={uiState.hasStatus}
               onSave={saveSettings}
-              onInput={checkSettingsValidity}
+              onError={handleSettingsError}
+              onInput={() => {}}
             />
           </div>
         </div>
       {/if}
     </CardContent>
   </Card>
-  <Modal show={showTempRepoModal} title="Private Repository Import">
-    <div class="space-y-4">
-      <p class="text-amber-300 font-medium">
-        It looks like you just imported a private GitHub repository. Would you like to:
-      </p>
 
-      <div class="space-y-2">
-        {#if !hasDeletedTempRepo}
-          <div class="space-y-2">
-            <p class="text-sm text-slate-400">1. Clean up the temporary repository:</p>
-            <Button
-              variant="outline"
-              class="w-full border-slate-700 hover:bg-slate-800"
-              on:click={handleDeleteTempRepo}
-            >
-              Delete the temporary public repository now
-            </Button>
-          </div>
-        {:else}
-          <div
-            class="text-sm text-green-400 p-2 border border-green-800 bg-green-900/20 rounded-md"
-          >
-            ✓ Temporary repository has been deleted
-          </div>
-        {/if}
+  <FileChangesModal
+    bind:show={fileChangesState.showModal}
+    bind:fileChanges={fileChangesState.fileChanges}
+  />
 
-        {#if !hasUsedTempRepoName}
-          <div class="space-y-2">
-            <p class="text-sm text-slate-400">2. Configure repository name:</p>
-            <Button
-              variant="outline"
-              class="w-full border-slate-700 hover:bg-slate-800"
-              on:click={handleUseTempRepoName}
-            >
-              Use original repository name ({tempRepoData?.originalRepo})
-            </Button>
-          </div>
-        {:else}
-          <div
-            class="text-sm text-green-400 p-2 border border-green-800 bg-green-900/20 rounded-md"
-          >
-            ✓ Repository name has been configured
-          </div>
-        {/if}
+  <TempRepoModal
+    bind:show={uiState.showTempRepoModal}
+    bind:tempRepoData={uiState.tempRepoData}
+    bind:hasDeletedTempRepo={uiState.hasDeletedTempRepo}
+    bind:hasUsedTempRepoName={uiState.hasUsedTempRepoName}
+    onDeleteTempRepo={handleDeleteTempRepo}
+    onUseTempRepoName={handleUseTempRepoName}
+    onDismiss={() => uiStateActions.hideTempRepoModal()}
+  />
 
-        <Button
-          variant="ghost"
-          class="w-full text-slate-400 hover:text-slate-300"
-          on:click={() => (showTempRepoModal = false)}
-        >
-          Dismiss
-        </Button>
-      </div>
+  <PushReminderSettings bind:show={showPushReminderSettings} />
 
-      <p class="text-sm text-slate-400">
-        Note: The temporary repository will be automatically deleted in 1 minute if not deleted
-        manually.
-      </p>
-    </div>
-  </Modal>
+  <UpgradeModal
+    bind:show={showUpgradeModal}
+    feature={upgradeModalFeature}
+    reason={upgradeModalReason}
+    features={premiumFeatures}
+  />
+
+  <FeedbackModal bind:show={showFeedbackModal} githubToken={githubSettings.githubToken} />
+
+  <!-- Newsletter subscription modal -->
+  <NewsletterModal bind:show={showNewsletterModal} on:close={handleNewsletterModalClose} />
+
+  <!-- Success toast with optional subscription prompt -->
+  <SuccessToast
+    bind:show={showSuccessToast}
+    message={successToastMessage}
+    {showSubscribePrompt}
+    {hasSubscribed}
+    on:subscribe={handleToastSubscribe}
+    on:hide={() => {
+      showSuccessToast = false;
+      showSubscribePrompt = false;
+    }}
+  />
+
+  <!-- Issues modal -->
+  {#if settingsValid && githubSettings.githubToken && githubSettings.repoOwner && githubSettings.repoName}
+    <IssueManager
+      bind:show={showIssuesModal}
+      githubToken={githubSettings.githubToken}
+      repoOwner={githubSettings.repoOwner}
+      repoName={githubSettings.repoName}
+      on:close={() => (showIssuesModal = false)}
+    />
+  {/if}
 </main>
 
 <style>

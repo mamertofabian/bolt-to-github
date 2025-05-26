@@ -76,3 +76,48 @@
     @apply bg-background text-foreground;
   }
 }
+
+/* Custom scrollbar styling for dark theme */
+@layer utilities {
+  /* Main scrollbar styling */
+  * {
+    scrollbar-width: thin;
+    scrollbar-color: #475569 #0f172a;
+  }
+
+  *::-webkit-scrollbar {
+    width: 8px;
+  }
+
+  *::-webkit-scrollbar-track {
+    background: #0f172a;
+    border-radius: 4px;
+  }
+
+  *::-webkit-scrollbar-thumb {
+    background: #475569;
+    border-radius: 4px;
+    transition: background 0.2s ease;
+  }
+
+  *::-webkit-scrollbar-thumb:hover {
+    background: #64748b;
+  }
+
+  *::-webkit-scrollbar-thumb:active {
+    background: #334155;
+  }
+
+  *::-webkit-scrollbar-corner {
+    background: transparent;
+  }
+
+  /* Specific styling for modal overlays */
+  .bg-slate-900 {
+    scrollbar-color: #475569 #1e293b;
+  }
+
+  .bg-slate-900::-webkit-scrollbar-track {
+    background: #1e293b;
+  }
+}
