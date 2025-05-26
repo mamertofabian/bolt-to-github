@@ -264,9 +264,6 @@ export class GitHubService {
     if (feedback.metadata) {
       issueBody += `**Extension Version:** ${feedback.metadata.extensionVersion}\n`;
       issueBody += `**Browser Info:** ${feedback.metadata.browserInfo}\n`;
-      if (feedback.metadata.url) {
-        issueBody += `**Page URL:** ${feedback.metadata.url}\n`;
-      }
     }
 
     // Create issue in the extension's repository

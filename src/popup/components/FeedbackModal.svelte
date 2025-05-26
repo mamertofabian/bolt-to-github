@@ -4,7 +4,7 @@
   import { Button } from '$lib/components/ui/button';
   import { Input } from '$lib/components/ui/input';
   import Modal from '$lib/components/ui/modal/Modal.svelte';
-  import { Check, AlertCircle, MessageSquare, Send } from 'lucide-svelte';
+  import { Check, AlertCircle, MessageSquare, Send, ExternalLink } from 'lucide-svelte';
 
   export let show = false;
   export let githubToken = '';
@@ -17,6 +17,7 @@
   let isSubmitting = false;
   let isSuccess = false;
   let error: string | null = null;
+  let showFallbackOption = false;
 
   const feedbackCategories = [
     {
@@ -43,6 +44,7 @@
     }
     isSuccess = false;
     error = null;
+    showFallbackOption = false;
   }
 
   function closeModal() {
@@ -57,11 +59,62 @@
     }
   }
 
+  // Generate GitHub issue URL for manual submission
+  function generateGitHubIssueUrl(): string {
+    if (!category || !message.trim()) return '';
+
+    const manifestData = chrome.runtime.getManifest();
+    const issueTitle = `[${category.toUpperCase()}] User Feedback`;
+
+    let issueBody = `## User Feedback\n\n`;
+    issueBody += `**Category:** ${category}\n\n`;
+    issueBody += `**Message:**\n${message.trim()}\n\n`;
+
+    if (email.trim()) {
+      issueBody += `**Contact:** ${email.trim()}\n\n`;
+    }
+
+    issueBody += `**Extension Version:** ${manifestData.version}\n`;
+    issueBody += `**Browser Info:** ${navigator.userAgent}\n`;
+
+    const params = new URLSearchParams({
+      title: issueTitle,
+      body: issueBody,
+      labels: `feedback,${category}`,
+    });
+
+    return `https://github.com/mamertofabian/bolt-to-github/issues/new?${params.toString()}`;
+  }
+
+  function openGitHubIssueInNewTab() {
+    const url = generateGitHubIssueUrl();
+    if (url) {
+      if (typeof chrome !== 'undefined' && chrome.tabs) {
+        chrome.tabs.create({ url });
+      } else {
+        window.open(url, '_blank');
+      }
+      closeModal();
+    }
+  }
+
+  function isAuthenticationError(error: Error): boolean {
+    const errorMessage = error.message.toLowerCase();
+    return (
+      errorMessage.includes('401') ||
+      errorMessage.includes('bad credentials') ||
+      errorMessage.includes('unauthorized') ||
+      errorMessage.includes('authentication') ||
+      errorMessage.includes('invalid token')
+    );
+  }
+
   async function handleSubmit() {
     if (!category || !message.trim()) return;
 
     isSubmitting = true;
     error = null;
+    showFallbackOption = false;
 
     try {
       // Get browser and extension info
@@ -90,7 +143,15 @@
       }, 3000);
     } catch (err) {
       console.error('Error submitting feedback:', err);
-      error = err instanceof Error ? err.message : 'Failed to submit feedback';
+
+      if (err instanceof Error && isAuthenticationError(err)) {
+        error =
+          'GitHub authentication required. You can submit feedback directly on GitHub instead.';
+        showFallbackOption = true;
+      } else {
+        error = err instanceof Error ? err.message : 'Failed to submit feedback';
+        showFallbackOption = true;
+      }
     } finally {
       isSubmitting = false;
     }
@@ -165,7 +226,14 @@
         {#if error}
           <div class="bg-red-500/20 p-3 rounded-md border border-red-500/30 flex items-start gap-2">
             <AlertCircle class="h-4 w-4 text-red-400 mt-0.5 flex-shrink-0" />
-            <span class="text-red-400 text-sm">{error}</span>
+            <div class="text-red-400 text-sm">
+              <p>{error}</p>
+              {#if showFallbackOption}
+                <p class="mt-2 text-slate-300">
+                  Don't worry! You can still submit your feedback directly on GitHub.
+                </p>
+              {/if}
+            </div>
           </div>
         {/if}
 
@@ -218,6 +286,55 @@
             <p class="text-xs text-slate-500">
               Only provide if you'd like a response to your feedback
             </p>
+          </div>
+
+          <!-- Fallback Option -->
+          {#if showFallbackOption && category && message.trim()}
+            <div class="bg-blue-500/10 p-3 rounded-md border border-blue-500/30">
+              <h4 class="text-sm font-medium text-blue-400 mb-2">Alternative: Submit on GitHub</h4>
+              <p class="text-xs text-slate-300 mb-3">
+                Click the button below to open GitHub and submit your feedback directly. Your
+                message will be pre-filled for you.
+              </p>
+              <Button
+                type="button"
+                size="sm"
+                class="bg-blue-600 hover:bg-blue-700 text-white flex items-center gap-2 w-full"
+                on:click={openGitHubIssueInNewTab}
+              >
+                <ExternalLink class="h-3 w-3" />
+                Submit Feedback on GitHub
+              </Button>
+            </div>
+          {/if}
+
+          <!-- Direct GitHub Link -->
+          <div class="bg-slate-800/50 p-3 rounded-md border border-slate-700">
+            <p class="text-xs text-slate-400 mb-2">
+              Prefer to submit feedback directly? You can always create an issue on our GitHub
+              repository:
+            </p>
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              class="border-slate-600 bg-slate-800 hover:bg-slate-700 text-slate-300 flex items-center gap-2 w-full"
+              on:click={() => {
+                if (typeof chrome !== 'undefined' && chrome.tabs) {
+                  chrome.tabs.create({
+                    url: 'https://github.com/mamertofabian/bolt-to-github/issues/new',
+                  });
+                } else {
+                  window.open(
+                    'https://github.com/mamertofabian/bolt-to-github/issues/new',
+                    '_blank'
+                  );
+                }
+              }}
+            >
+              <ExternalLink class="h-3 w-3" />
+              Open GitHub Issues Page
+            </Button>
           </div>
 
           <!-- Action Buttons -->

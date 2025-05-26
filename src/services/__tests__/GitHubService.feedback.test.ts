@@ -60,7 +60,6 @@ describe('GitHubService Feedback', () => {
         metadata: {
           browserInfo: 'Chrome/91.0',
           extensionVersion: '1.0.0',
-          url: 'https://bolt.new/test',
         },
       };
 
@@ -82,7 +81,6 @@ describe('GitHubService Feedback', () => {
       expect(calledWith.body).toContain('**Contact:** test@example.com');
       expect(calledWith.body).toContain('**Extension Version:** 1.0.0');
       expect(calledWith.body).toContain('**Browser Info:** Chrome/91.0');
-      expect(calledWith.body).toContain('**Page URL:** https://bolt.new/test');
 
       expect(result).toEqual(mockIssueResponse);
     });
@@ -153,6 +151,32 @@ describe('GitHubService Feedback', () => {
       };
 
       await expect(githubService.submitFeedback(feedback)).rejects.toThrow('GitHub API Error');
+    });
+
+    it('should handle authentication errors (401) correctly', async () => {
+      const authError = new Error('GitHub API Error (401): Bad credentials');
+      mockApiClient.request.mockRejectedValue(authError);
+
+      const feedback = {
+        category: 'bug' as const,
+        message: 'Test authentication error',
+      };
+
+      await expect(githubService.submitFeedback(feedback)).rejects.toThrow(
+        'GitHub API Error (401): Bad credentials'
+      );
+    });
+
+    it('should handle unauthorized errors correctly', async () => {
+      const unauthorizedError = new Error('Unauthorized access');
+      mockApiClient.request.mockRejectedValue(unauthorizedError);
+
+      const feedback = {
+        category: 'feature' as const,
+        message: 'Test unauthorized error',
+      };
+
+      await expect(githubService.submitFeedback(feedback)).rejects.toThrow('Unauthorized access');
     });
   });
 });

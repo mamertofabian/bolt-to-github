@@ -268,9 +268,29 @@ See our [Contributing Guide](#contributing) for more details.
 - 📧 [Email support](mailto:mamerto@codefrost.com)
 - 💻 [Custom development inquiries](https://codefrost.com)
 
-### Report Issues
+### Report Issues & Send Feedback
 
-For bugs or feature requests, please [open an issue](https://github.com/mamertofabian/bolt-to-github/issues) on the GitHub repository.
+For bugs or feature requests, you have multiple convenient options:
+
+#### Built-in Feedback System 🚀
+
+- Click the extension icon and go to the "Help" tab
+- Click the "Send Feedback" button for an easy-to-use feedback form
+- **Works for everyone**: Whether you're authenticated with GitHub or not!
+- **Smart fallback**: If you're not logged in, the system will guide you to submit feedback directly on GitHub with pre-filled content
+
+#### Direct GitHub Issues
+
+- [Open an issue](https://github.com/mamertofabian/bolt-to-github/issues) directly on the GitHub repository
+- Perfect for detailed bug reports or feature requests
+
+#### Quick Feedback Categories
+
+- 💝 **Appreciation**: Share what you love about the extension
+- ❓ **Questions**: Ask for help or clarification
+- 🐛 **Bug Reports**: Report issues or unexpected behavior
+- ✨ **Feature Requests**: Suggest new features or improvements
+- 💬 **General Feedback**: Any other thoughts or suggestions
 
 ### Support the Project
 
