@@ -11,9 +11,9 @@ import UploadStatus from '../UploadStatus.svelte';
 export class UploadStatusManager implements IUploadStatusManager {
   private uploadStatusComponent: SvelteComponent | null = null;
   private defaultPosition: ComponentPosition = {
-    top: '20px',
-    right: '20px',
-    zIndex: '10000',
+    top: '4rem',
+    right: '1rem',
+    zIndex: '10001',
   };
 
   // State manager for centralized state coordination
@@ -144,6 +144,9 @@ export class UploadStatusManager implements IUploadStatusManager {
    */
   private applyPositionStyles(element: HTMLElement): void {
     element.style.position = 'fixed';
+    element.style.width = '22rem';
+    element.style.maxWidth = 'calc(100vw - 2rem)';
+    element.style.pointerEvents = 'none';
     if (this.defaultPosition.top) element.style.top = this.defaultPosition.top;
     if (this.defaultPosition.right) element.style.right = this.defaultPosition.right;
     if (this.defaultPosition.bottom) element.style.bottom = this.defaultPosition.bottom;

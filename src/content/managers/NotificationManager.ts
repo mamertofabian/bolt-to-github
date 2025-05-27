@@ -50,7 +50,7 @@ export class NotificationManager implements INotificationManager {
     container.style.position = 'fixed';
     container.style.top = this.calculateNotificationTop() + 'px';
     container.style.right = '1rem';
-    container.style.zIndex = '10000';
+    container.style.zIndex = '10002';
     container.style.pointerEvents = 'none';
 
     // Handle mobile responsiveness

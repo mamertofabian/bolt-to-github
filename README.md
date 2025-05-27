@@ -31,9 +31,40 @@ A Chrome extension that automatically captures ZIP file downloads from bolt.new,
   <img src="https://img.shields.io/badge/Install%20from-Chrome%20Web%20Store-blue?style=for-the-badge&logo=google-chrome&logoColor=white" alt="Install from Chrome Web Store" height="40">
 </a>
 
-### Latest stable version (v1.2.3) includes the following features:
+### Latest stable version (v1.2.3) with v1.3.0 under review:
 
-#### 🚀 New in v1.2.3
+#### 🎉 Version 1.3.0 - Major "Pro" Features Release (Currently Under Review)
+
+**⚠️ Note**: Version 1.3.0 is currently under review in the Chrome Web Store and will be available soon!
+
+**Premium Features & Enhanced Functionality:**
+
+- **Premium subscription system** with advanced features and Supabase integration
+- **GitHub Issues management** - Create, view, edit, and manage GitHub issues directly from the extension
+- **Push reminder system** - Scheduled reminders and notifications for your projects
+- **File changes detection** - Advanced diff viewer to see what's changed before pushing
+- **Newsletter subscription** - Stay updated with latest features and tips
+- **Enhanced feedback system** - Improved GitHub integration for bug reports and feature requests
+- **Branch selection modal** - Better repository management with branch switching
+- **Commit message templates** - Predefined templates for consistent commit messages
+- **Analytics tracking** - Better understanding of usage patterns for improvements
+
+**Technical Improvements:**
+
+- **Complete architecture refactoring** - Modular content script architecture with specialized managers
+- **Comprehensive testing suite** - 154 files with Jest unit tests and mock implementations
+- **Enhanced performance** - Better file loading, caching, and state management
+- **Migration to pnpm** - Improved package management and faster builds
+- **Premium authentication** - Re-authentication modal and session management
+
+**Developer Experience:**
+
+- **Enhanced documentation** - Technical debt documentation, testing guides, and setup instructions
+- **Multiple AI tool integrations** - Configuration files for Cline, Copilot, Cursor, Qodo, and Windsurf
+- **Husky pre-commit hooks** - Automated code quality checks
+- **Service layer restructuring** - Better interfaces and dependency injection
+
+#### 🚀 Current Stable Features (v1.2.3)
 
 - Add Push to GitHub button in Settings popup
 - Enhanced UI with better positioning and responsiveness
@@ -100,7 +131,12 @@ To try the latest development version:
    ```bash
    git clone https://github.com/mamertofabian/bolt-to-github.git
    cd bolt-to-github
+
+   # Install using pnpm (recommended) - faster and more efficient
    pnpm install
+
+   # Or using npm if you prefer
+   npm install
    ```
 
 2. Build the extension:
@@ -176,15 +212,28 @@ If you want to modify the extension or contribute to its development:
    ```bash
    git clone https://github.com/mamertofabian/bolt-to-github.git
    cd bolt-to-github
+
+   # This project uses pnpm for better performance and disk efficiency
    pnpm install
    ```
 
 3. Build for development:
 
    ```bash
-   pnpm run watch   # For development with hot reload
-   # OR
-   pnpm run build  # For production build
+   # Development with hot reload
+   pnpm run watch
+
+   # Production build
+   pnpm run build
+
+   # Run tests (v1.3.0+)
+   pnpm test
+
+   # Lint code
+   pnpm run lint
+
+   # Format code
+   pnpm run format
    ```
 
 4. Load in Chrome:
@@ -192,6 +241,31 @@ If you want to modify the extension or contribute to its development:
    - Enable "Developer mode" (top right)
    - Click "Load unpacked"
    - Select the `dist` directory from your project folder
+
+#### Adding UI Components (shadcn-svelte)
+
+This project uses [shadcn-svelte](https://www.shadcn-svelte.com/) for UI components. To add new components:
+
+```bash
+# Use the shadcn-svelte CLI (not the regular shadcn CLI)
+pnpm dlx shadcn-svelte@latest add [component-name]
+
+# Examples:
+pnpm dlx shadcn-svelte@latest add button
+pnpm dlx shadcn-svelte@latest add card
+pnpm dlx shadcn-svelte@latest add dialog
+```
+
+**Important**: Always use `shadcn-svelte@latest` (not `shadcn@latest`) as this project uses the Svelte variant.
+
+The components will be automatically added to `src/lib/components/ui/` and can be imported like:
+
+```svelte
+<script>
+  import { Button } from '$lib/components/ui/button';
+  import { Card, CardContent, CardHeader, CardTitle } from '$lib/components/ui/card';
+</script>
+```
 
 See our [Contributing Guide](#contributing) for more details.
 
@@ -202,33 +276,58 @@ See our [Contributing Guide](#contributing) for more details.
 ├── assets/                # Extension icons and assets
 │   └── icons/            # Extension icons in various sizes
 ├── src/
-│   ├── background.ts     # Extension background service
-│   ├── content/          # Content scripts
-│   │   ├── upload-status.ts
-│   │   └── UploadStatus.svelte
+│   ├── background/      # Extension background service
+│   │   └── __tests__/   # Background service tests
+│   ├── content/         # Content scripts with modular architecture
+│   │   ├── __tests__/   # Content script tests
+│   │   ├── handlers/    # Event and action handlers
+│   │   ├── infrastructure/ # Core infrastructure services
+│   │   ├── managers/    # Specialized UI and state managers
+│   │   ├── services/    # Content-specific services
+│   │   └── types/       # Content script type definitions
 │   ├── lib/             # Core library and utilities
-│   │   ├── common.ts    # Common utilities
-│   │   ├── constants.ts # Application constants
-│   │   ├── github.ts    # GitHub API integration
-│   │   ├── utils.ts     # Utility functions
-│   │   ├── zip.ts       # ZIP file processing
-│   │   └── components/  # Reusable UI components
-│   │       ├── ui/      # shadcn-svelte UI components
-│   │       ├── Footer.svelte
-│   │       ├── GitHubSettings.svelte
-│   │       ├── Header.svelte
-│   │       ├── NotBoltSite.svelte
-│   │       ├── SocialLinks.svelte
-│   │       ├── StatusAlert.svelte
-│   │       └── UploadProgress.svelte
+│   │   ├── __tests__/   # Library tests
+│   │   ├── components/  # Reusable UI components
+│   │   │   ├── ui/      # shadcn-svelte UI components
+│   │   │   │   ├── alert/
+│   │   │   │   ├── badge/
+│   │   │   │   ├── button/
+│   │   │   │   ├── card/
+│   │   │   │   ├── dialog/
+│   │   │   │   ├── input/
+│   │   │   │   ├── label/
+│   │   │   │   ├── modal/
+│   │   │   │   └── tabs/
+│   │   │   ├── github/  # GitHub-specific components
+│   │   │   ├── EnhancedGitHubSettings.svelte
+│   │   │   ├── Footer.svelte
+│   │   │   ├── GitHubSettings.svelte
+│   │   │   ├── Header.svelte
+│   │   │   ├── NotBoltSite.svelte
+│   │   │   ├── SocialLinks.svelte
+│   │   │   ├── StatusAlert.svelte
+│   │   │   └── UploadProgress.svelte
+│   │   ├── constants/   # Application constants
+│   │   ├── services/    # Core services (GitHub, storage, etc.)
+│   │   ├── stores/      # Svelte stores for state management
+│   │   └── utils/       # Utility functions
 │   ├── popup/           # Extension popup UI
+│   │   ├── components/  # Popup-specific components
 │   │   ├── App.svelte   # Main popup component
 │   │   ├── index.html   # Popup HTML template
 │   │   └── main.ts      # Popup entry point
 │   ├── services/        # Service modules
-│   │   ├── buttonInjector.ts
-│   │   └── zipHandler.ts
+│   │   ├── __tests__/   # Service tests
+│   │   ├── interfaces/  # Service interfaces
+│   │   ├── types/       # Service type definitions
+│   │   ├── GitHubAppService.ts      # GitHub App authentication
+│   │   ├── UnifiedGitHubService.ts  # Unified authentication service
+│   │   ├── PremiumService.ts        # Premium features service
+│   │   ├── SupabaseAuthService.ts   # Supabase integration
+│   │   └── [other services]
 │   ├── styles/          # Global styles
+│   ├── test/            # Test setup and utilities
+│   │   └── setup/       # Test configuration
 │   └── types/           # TypeScript type definitions
 ├── manifest.json         # Chrome extension manifest
 ├── package.json         # Project dependencies and scripts
@@ -239,6 +338,8 @@ See our [Contributing Guide](#contributing) for more details.
 
 ## Tech Stack
 
+### Core Technologies
+
 - [Svelte](https://svelte.dev/) - UI framework
 - [TypeScript](https://www.typescriptlang.org/) - Type safety
 - [Vite](https://vitejs.dev/) - Build tool
@@ -246,11 +347,27 @@ See our [Contributing Guide](#contributing) for more details.
 - [shadcn-svelte](https://www.shadcn-svelte.com/) - UI components
 - [fflate](https://github.com/101arrowz/fflate) - Zip file processing
 
+### Premium Features (v1.3.0+)
+
+- [Supabase](https://supabase.com/) - Backend services and authentication
+- [MailerLite](https://mailerlite.com/) - Newsletter management
+- [Jest](https://jestjs.io/) - Testing framework
+
+### Development Tools
+
+- [pnpm](https://pnpm.io/) - Package manager
+- [ESLint](https://eslint.org/) - Code linting
+- [Prettier](https://prettier.io/) - Code formatting
+- [Husky](https://typicode.github.io/husky/) - Git hooks
+
 ## Security
 
-- GitHub tokens are stored securely using Chrome's storage API
-- All communication with GitHub uses HTTPS
-- ZIP file processing happens entirely in the browser
+- **Multiple authentication methods**: Support for both Personal Access Tokens and GitHub Apps (v1.3.0+)
+- **GitHub Apps integration**: More secure authentication with short-lived tokens and fine-grained permissions
+- **Secure token storage**: GitHub tokens are stored securely using Chrome's storage API
+- **HTTPS communication**: All communication with GitHub uses HTTPS
+- **Browser-only processing**: ZIP file processing happens entirely in the browser
+- **Premium authentication**: Enhanced security with Supabase integration (v1.3.0+)
 
 ## Support & Resources
 
@@ -259,6 +376,9 @@ See our [Contributing Guide](#contributing) for more details.
 - 🌐 [Official Website](https://bolt2github.com)
 - 📺 [Watch our video tutorials](https://youtube.com/@aidrivencoder)
 - 📖 [Read the documentation](https://github.com/mamertofabian/bolt-to-github)
+- 🔧 [GitHub Apps Migration Guide](GITHUB_APPS_MIGRATION_GUIDE.md) - Modern authentication alternative to PATs
+- 📋 [Technical Documentation](TECHNICAL_DEBT.md) - Architecture and implementation details
+- 🧪 [Testing Reference](TESTING_REFERENCE.md) - Testing guidelines and best practices
 - 💡 [Get development tips](https://aidrivencoder.com)
 - 💬 [Discord Community](https://discord.gg/JtjYHBBnGU)
 

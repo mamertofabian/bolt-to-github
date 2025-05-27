@@ -1,3 +1,123 @@
+## 2025-05-26 - Version 1.3.0 (PR #76)
+
+### 🎉 Major Release: "Pro" Features & Comprehensive Refactoring
+
+This release represents a significant milestone with extensive refactoring, premium features implementation, and major architectural improvements.
+
+### Added
+
+#### Premium Features & Subscription System
+
+- **Premium subscription system** with Supabase integration
+- **GitHub Issues management** functionality with full CRUD operations
+- **Push reminder system** with scheduled reminders and notifications
+- **Upgrade modal** for premium feature access and subscription management
+- **Subscription validation** and downgrade notification features
+- **Re-authentication modal** for session management
+
+#### New UI Components & Features
+
+- **File changes detection** and diff viewer with responsive layout
+- **Newsletter subscription** feature with MailerLite integration
+- **Feedback system** with GitHub integration and smooth UX
+- **Branch selection modal** for repository management
+- **File preview service** for project file comparison
+- **Enhanced confirmation dialogs** for GitHub uploads
+- **Analytics tracking** system for user interactions
+- **Commit message templates** functionality
+
+#### Testing & Development
+
+- **Comprehensive Jest testing suite** with 154 files changed
+- **Unit tests** for FileChangeHandler, GitHubUploadHandler, ComponentLifecycleManager
+- **Mock implementations** for Chrome APIs, DOM, and fetch operations
+- **Testing reference guide** with best practices
+- **Multiple code audit reports** (Cline, Copilot, Cursor, Qodo, Roo, Windsurf)
+
+#### Documentation & Tooling
+
+- **Extension context invalidation fixes** documentation
+- **Technical debt** comprehensive documentation
+- **Analytics setup** guide
+- **Newsletter setup** documentation
+- **Husky pre-commit hooks** integration
+- **Multiple AI tool configuration** files (.codiumai.toml, .clinerules, .windsurfrules)
+
+### Changed
+
+#### Major Architectural Refactoring
+
+- **Complete UIManager refactoring** with delegation to specialized managers
+- **Modular content script architecture** with separation of concerns
+- **Service layer restructuring** with interfaces and dependency injection
+- **Store management** centralization with Svelte stores
+- **Chrome messaging and storage** abstraction layers
+
+#### Enhanced Components
+
+- **DiffViewer component** improved layout responsiveness
+- **ProjectsList component** with caching, loading states, and pagination
+- **GitHubSettings component** with collapsible sections and improved validation
+- **App.svelte** major enhancements for premium features and context handling
+- **UploadStatus component** with improved animations and accessibility
+- **Notification component** enhanced user interactions
+
+#### Performance & UX Improvements
+
+- **File loading notifications** and force refresh behavior improvements
+- **Download handling** with caching support integration
+- **Button state management** improvements in GitHub upload workflow
+- **Project title handling** refactoring across components
+- **Storage quota error handling** in GitHubSettings and App components
+
+### Fixed
+
+- **Extension context invalidation** issues with enhanced error handling
+- **Private repository importing** bug resolution
+- **File changes modal display** when using "Show Changed Files"
+- **Token expiration checks** and refresh logic implementation
+- **Project detection** and URL handling improvements
+
+### Technical Improvements
+
+#### New Managers & Services
+
+- `DropdownManager`, `GitHubButtonManager`, `NotificationManager`, `UploadStatusManager`
+- `FileChangeHandler`, `GitHubUploadHandler`
+- `ComponentLifecycleManager`, `DOMObserver`, `UIElementFactory`
+- `OperationStateManager`, `UIStateManager`, `PremiumService`
+- `SupabaseAuthService`, `CommitTemplateService`, `PushReminderService`
+
+#### Infrastructure Enhancements
+
+- **Activity monitoring** system implementation
+- **Cache service** with idle monitoring functionality
+- **File service** abstraction layer
+- **Repository service** with comprehensive API coverage
+- **Token service** refactoring from GitHubTokenValidator
+
+#### Build & Dependencies
+
+- **Migration from npm to pnpm** (package-lock.json → pnpm-lock.yaml)
+- **ESLint configuration** updates
+- **Release workflow** improvements
+- **Manifest version** updates to support new features
+
+### Breaking Changes
+
+- Removed `BaseGitHubService` and legacy `GitHubTokenValidator` classes
+- Significant API changes in UIManager due to refactoring
+- Service interface changes for better type safety
+
+### Statistics
+
+- **154 files changed**
+- **44,499 insertions**
+- **7,208 deletions**
+- **Major version bump** to 1.3.0
+
+This release establishes the foundation for premium features while significantly improving code quality, testability, and maintainability.
+
 ## 2024-04-20
 
 ### Added

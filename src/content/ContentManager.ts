@@ -11,6 +11,9 @@ export class ContentManager {
   private reconnectAttempts = 0;
   private readonly MAX_RECONNECT_ATTEMPTS = 5;
   private readonly RECONNECT_DELAY = 1000;
+  private reconnectTimer: NodeJS.Timeout | null = null;
+  private heartbeatInterval: NodeJS.Timeout | null = null;
+  private isDestroyed = false;
 
   constructor() {
     if (!this.shouldInitialize()) {
@@ -20,12 +23,21 @@ export class ContentManager {
 
     try {
       this.initializeConnection();
-      this.messageHandler = new MessageHandler(this.port!);
+
+      if (!this.port) {
+        throw new Error('Failed to establish port connection');
+      }
+
+      this.messageHandler = new MessageHandler(this.port);
       this.uiManager = UIManager.getInstance(this.messageHandler);
       this.setupEventListeners();
+      this.startHeartbeat();
 
       // Clear any stale stored file changes on initialization
       this.clearStaleStoredChanges();
+
+      console.log('🎉 ContentManager initialized successfully with MessageHandler');
+      console.log('💡 Press Ctrl+Shift+D to test notification systems');
     } catch (error) {
       console.error('Error initializing ContentManager:', error);
       this.handleInitializationError(error);
@@ -41,6 +53,11 @@ export class ContentManager {
 
   private initializeConnection() {
     try {
+      // Check if chrome runtime is available
+      if (!chrome.runtime?.id) {
+        throw new Error('Chrome runtime not available - extension context invalidated');
+      }
+
       this.port = chrome.runtime.connect({ name: 'bolt-content' });
       console.log('🔊 Connected to background service with port:', this.port);
 
@@ -51,6 +68,12 @@ export class ContentManager {
       this.setupPortListeners();
       this.isReconnecting = false;
       this.reconnectAttempts = 0;
+
+      // Clear any existing reconnect timer
+      if (this.reconnectTimer) {
+        clearTimeout(this.reconnectTimer);
+        this.reconnectTimer = null;
+      }
     } catch (error) {
       if (this.isExtensionContextInvalidated(error)) {
         console.warn('Extension context invalidated, attempting reconnection...');
@@ -65,7 +88,7 @@ export class ContentManager {
   private setupPortListeners(): void {
     if (!this.port) {
       console.error('Port is not initialized');
-      this.handleDisconnection();
+      this.scheduleReconnection();
       return;
     }
 
@@ -81,15 +104,25 @@ export class ContentManager {
       const error = chrome.runtime.lastError;
       console.log('Port disconnected:', error?.message || 'No error message');
 
-      if (this.isExtensionContextInvalidated(error)) {
+      // Check if this is true extension context invalidation vs normal disconnect
+      const contextInvalidated = this.isExtensionContextInvalidated(error) || !chrome.runtime?.id;
+
+      if (contextInvalidated) {
+        console.log('🔴 Extension context invalidation detected');
         this.handleExtensionContextInvalidated();
       } else {
-        this.handleDisconnection();
+        console.log('🟡 Normal port disconnect, attempting reconnection');
+        this.scheduleReconnection();
       }
     });
   }
+
   private isExtensionContextInvalidated(error: any): boolean {
     // Check for various extension context invalidation patterns
+    if (!error?.message && !chrome.runtime?.id) {
+      return true;
+    }
+
     if (!error?.message) return false;
 
     const invalidationPatterns = [
@@ -106,13 +139,92 @@ export class ContentManager {
   }
 
   private handleExtensionContextInvalidated(): void {
-    console.log('Extension context invalidated, cleaning up...');
-    this.cleanup();
+    console.log('Extension context invalidated, attempting recovery...');
+
+    // Show notification before cleanup (while UIManager still exists)
     this.notifyUserOfExtensionReload();
+
+    // Clean up current state
+    this.cleanup();
+
+    // Attempt to reinitialize after a short delay
+    setTimeout(() => {
+      if (!this.isDestroyed) {
+        console.log('🔄 Attempting to reinitialize after context invalidation...');
+        this.attemptRecovery();
+      }
+    }, 2000); // Wait 2 seconds before attempting recovery
   }
 
-  private handleDisconnection(): void {
-    if (this.isReconnecting || this.reconnectAttempts >= this.MAX_RECONNECT_ATTEMPTS) {
+  private attemptRecovery(): void {
+    try {
+      // Check if Chrome runtime is available for recovery
+      if (!chrome.runtime?.id) {
+        console.warn('🔄 Recovery failed: Chrome runtime still not available');
+        // Try again in 5 seconds
+        setTimeout(() => {
+          if (!this.isDestroyed) {
+            console.log('🔄 Retrying recovery...');
+            this.attemptRecovery();
+          }
+        }, 5000);
+        return;
+      }
+
+      console.log('✅ Chrome runtime available, attempting full reinitialization...');
+
+      // Reset the destroyed flag since we're recovering
+      this.isDestroyed = false;
+
+      // Try to reinitialize everything
+      this.initializeConnection();
+
+      if (!this.port) {
+        throw new Error('Failed to establish port connection during recovery');
+      }
+
+      // Recreate MessageHandler with new port
+      this.messageHandler = new MessageHandler(this.port);
+
+      // Recreate UIManager
+      this.uiManager = UIManager.getInstance(this.messageHandler);
+      console.log('🔧 Recovery: Recreated UIManager after context invalidation');
+
+      // Re-setup event listeners
+      this.setupEventListeners();
+      this.startHeartbeat();
+
+      // Clear any stale stored file changes
+      this.clearStaleStoredChanges();
+
+      this.messageHandler.sendMessage('CONTENT_SCRIPT_READY');
+
+      console.log('🎉 Recovery successful! GitHub button should be restored.');
+    } catch (error) {
+      console.error('❌ Recovery failed:', error);
+
+      // If recovery fails, try again in 10 seconds (up to 3 attempts)
+      if (this.reconnectAttempts < 3) {
+        this.reconnectAttempts++;
+        console.log(`🔄 Scheduling recovery retry ${this.reconnectAttempts}/3 in 10 seconds...`);
+        setTimeout(() => {
+          if (!this.isDestroyed) {
+            this.attemptRecovery();
+          }
+        }, 10000);
+      } else {
+        console.error('💀 Recovery failed after 3 attempts. Extension needs manual refresh.');
+        this.notifyUserOfError();
+      }
+    }
+  }
+
+  private scheduleReconnection(): void {
+    if (
+      this.isDestroyed ||
+      this.isReconnecting ||
+      this.reconnectAttempts >= this.MAX_RECONNECT_ATTEMPTS
+    ) {
       return;
     }
 
@@ -122,21 +234,79 @@ export class ContentManager {
     console.log(
       `Attempting reconnection (${this.reconnectAttempts}/${this.MAX_RECONNECT_ATTEMPTS})...`
     );
-    setTimeout(() => this.reconnect(), this.RECONNECT_DELAY);
+
+    // Clear any existing timer
+    if (this.reconnectTimer) {
+      clearTimeout(this.reconnectTimer);
+    }
+
+    this.reconnectTimer = setTimeout(
+      () => {
+        this.reconnect();
+      },
+      this.RECONNECT_DELAY * Math.pow(2, this.reconnectAttempts - 1)
+    ); // Exponential backoff
   }
 
   private reconnect(): void {
+    if (this.isDestroyed) {
+      return;
+    }
+
     try {
+      // Check if extension context is still invalid
+      if (!chrome.runtime?.id) {
+        console.warn('Extension context still invalid, scheduling another reconnection...');
+        this.scheduleReconnection();
+        return;
+      }
+
       this.initializeConnection();
       if (this.port) {
+        // Update the message handler with the new port
         this.messageHandler?.updatePort(this.port);
+
+        // Re-setup event listeners (they might have been cleaned up)
         this.setupEventListeners();
-        console.log('Successfully reconnected');
+
+        // Restart heartbeat
+        this.startHeartbeat();
+
+        // Check connection status
+        const connectionStatus = this.messageHandler?.getConnectionStatus();
+        console.log('Successfully reconnected - MessageHandler status:', connectionStatus);
       }
     } catch (error) {
       console.error('Reconnection failed:', error);
-      this.handleDisconnection();
+      this.scheduleReconnection();
     }
+  }
+
+  private startHeartbeat(): void {
+    // Clear existing heartbeat
+    if (this.heartbeatInterval) {
+      clearInterval(this.heartbeatInterval);
+    }
+
+    // Send periodic heartbeat to detect connection issues early
+    this.heartbeatInterval = setInterval(() => {
+      if (this.port && chrome.runtime?.id) {
+        try {
+          const heartbeatMessage = { type: 'HEARTBEAT' as const };
+          console.debug('💓 Sending heartbeat:', JSON.stringify(heartbeatMessage));
+          this.port.postMessage(heartbeatMessage);
+        } catch (error) {
+          console.warn('Heartbeat failed, connection may be broken:', error);
+          this.scheduleReconnection();
+        }
+      } else {
+        console.warn('No port or runtime available during heartbeat');
+        this.scheduleReconnection();
+      }
+
+      // Also check MessageHandler health
+      this.checkMessageHandlerHealth();
+    }, 30000); // Every 30 seconds
   }
 
   private handleInitializationError(error: any): void {
@@ -163,9 +333,31 @@ export class ContentManager {
   }
 
   private cleanup(): void {
-    this.port = null;
+    this.isDestroyed = true;
+
+    // Clear timers
+    if (this.reconnectTimer) {
+      clearTimeout(this.reconnectTimer);
+      this.reconnectTimer = null;
+    }
+
+    if (this.heartbeatInterval) {
+      clearInterval(this.heartbeatInterval);
+      this.heartbeatInterval = null;
+    }
+
+    // Clean up port
+    if (this.port) {
+      try {
+        this.port.disconnect();
+      } catch (error) {
+        // Ignore disconnect errors during cleanup
+      }
+      this.port = null;
+    }
+
     this.isReconnecting = false;
-    this.reconnectAttempts = 0;
+    // Don't reset reconnectAttempts here - recovery process may need it
     this.uiManager?.cleanup();
 
     // Reset UIManager singleton to ensure clean recreation
@@ -208,6 +400,24 @@ export class ContentManager {
         this.reconnect();
       }
     });
+
+    // Add debug listener for testing notifications
+    window.addEventListener('keydown', (event) => {
+      // Ctrl+Shift+D = Test Notifications
+      if (event.ctrlKey && event.shiftKey && event.key === 'D') {
+        this.debugNotifications();
+        event.preventDefault();
+      }
+    });
+
+    // Listen for MessageHandler connection issues
+    window.addEventListener('messageHandlerDisconnected', ((event: CustomEvent) => {
+      console.warn('🔌 MessageHandler reported connection issue:', event.detail);
+      if (!this.isReconnecting && !this.isDestroyed) {
+        console.log('🔄 Initiating immediate reconnection due to MessageHandler issue');
+        this.scheduleReconnection();
+      }
+    }) as EventListener);
 
     // Handle extension updates
     chrome.runtime.onConnect.addListener(() => {
@@ -359,8 +569,34 @@ export class ContentManager {
         console.log('🔊 Received Push to GitHub message');
         this.uiManager?.handleGitHubPushAction();
         break;
+      case 'HEARTBEAT_RESPONSE':
+        // Heartbeat response received - connection is healthy
+        console.debug('💓 Heartbeat response received');
+        break;
       default:
         console.warn('Unhandled message type:', message.type);
+    }
+  }
+
+  public checkMessageHandlerHealth(): void {
+    if (!this.messageHandler) {
+      console.warn('🔌 MessageHandler is not available');
+      return;
+    }
+
+    const status = this.messageHandler.getConnectionStatus();
+    // Only log health check if there are issues or queued messages
+    if (!status.connected || status.queuedMessages > 0) {
+      console.log('🔍 MessageHandler health check:', status);
+    }
+
+    if (!status.connected && status.queuedMessages > 0) {
+      console.warn(
+        `🔌 MessageHandler disconnected with ${status.queuedMessages} queued messages, triggering reconnection`
+      );
+      if (!this.isReconnecting && !this.isDestroyed) {
+        this.scheduleReconnection();
+      }
     }
   }
 
@@ -370,16 +606,110 @@ export class ContentManager {
       this.cleanup();
       this.initializeConnection();
 
-      // Recreate UIManager since cleanup destroyed the previous instance
-      if (this.messageHandler) {
-        this.uiManager = UIManager.initialize(this.messageHandler);
-        console.log('🔧 ContentManager: Recreated UIManager after cleanup');
+      if (!this.port) {
+        throw new Error('Failed to establish port connection during reinitialize');
       }
 
-      this.messageHandler?.sendMessage('CONTENT_SCRIPT_READY');
+      // Recreate MessageHandler with new port
+      this.messageHandler = new MessageHandler(this.port);
+
+      // Recreate UIManager since cleanup destroyed the previous instance
+      this.uiManager = UIManager.initialize(this.messageHandler);
+      console.log('🔧 ContentManager: Recreated UIManager after cleanup');
+
+      // Re-setup event listeners
+      this.setupEventListeners();
+      this.startHeartbeat();
+
+      this.messageHandler.sendMessage('CONTENT_SCRIPT_READY');
     } catch (error) {
       console.error('Error reinitializing content script:', error);
       this.handleInitializationError(error);
     }
+  }
+
+  /**
+   * Debug method to test notification systems
+   * Triggered by Ctrl+Shift+D
+   */
+  private debugNotifications(): void {
+    console.log('🔧 Debug: Testing notification systems...');
+
+    if (!this.uiManager) {
+      console.error('🔧 Debug: UIManager not available');
+      return;
+    }
+
+    // Test regular notification
+    console.log('🔧 Debug: Testing regular notification...');
+    this.uiManager.showNotification({
+      type: 'info',
+      message: '🔧 Debug: Regular notification test',
+      duration: 3000,
+    });
+
+    // Test upload status notification
+    setTimeout(() => {
+      console.log('🔧 Debug: Testing upload status notification...');
+      this.uiManager?.updateUploadStatus({
+        status: 'uploading',
+        progress: 50,
+        message: '🔧 Debug: Upload status test',
+      });
+    }, 1000);
+
+    // Test success notification
+    setTimeout(() => {
+      console.log('🔧 Debug: Testing success notification...');
+      this.uiManager?.showNotification({
+        type: 'success',
+        message: '🔧 Debug: Success notification test',
+        duration: 3000,
+      });
+    }, 2000);
+
+    // Test upload completion
+    setTimeout(() => {
+      console.log('🔧 Debug: Testing upload completion...');
+      this.uiManager?.updateUploadStatus({
+        status: 'success',
+        progress: 100,
+        message: '🔧 Debug: Upload complete test',
+      });
+    }, 4000);
+
+    // Check DOM for notification containers
+    setTimeout(() => {
+      console.log('🔧 Debug: Checking DOM for notification containers...');
+      const notificationContainers = document.querySelectorAll(
+        '[id*="bolt-to-github-notification-container"]'
+      );
+      const uploadContainers = document.querySelectorAll('#bolt-to-github-upload-status-container');
+
+      console.log('🔧 Debug: Found notification containers:', notificationContainers.length);
+      console.log('🔧 Debug: Found upload containers:', uploadContainers.length);
+
+      notificationContainers.forEach((container, index) => {
+        const rect = container.getBoundingClientRect();
+        console.log(`🔧 Debug: Notification container ${index}:`, {
+          id: container.id,
+          visible: rect.width > 0 && rect.height > 0,
+          position: { top: rect.top, right: rect.right, width: rect.width, height: rect.height },
+          zIndex: (container as HTMLElement).style.zIndex,
+          display: (container as HTMLElement).style.display,
+        });
+      });
+
+      uploadContainers.forEach((container, index) => {
+        const rect = container.getBoundingClientRect();
+        console.log(`🔧 Debug: Upload container ${index}:`, {
+          id: container.id,
+          visible: rect.width > 0 && rect.height > 0,
+          position: { top: rect.top, right: rect.right, width: rect.width, height: rect.height },
+          zIndex: (container as HTMLElement).style.zIndex,
+          display: (container as HTMLElement).style.display,
+        });
+      });
+    }, 5000);
   }
 }

@@ -235,10 +235,9 @@
   }
 
   #bolt-upload-status {
-    position: fixed;
-    top: 0;
-    right: 0;
-    z-index: 10001;
+    position: relative;
+    width: 100%;
+    height: 100%;
     pointer-events: none;
     font-family:
       ui-sans-serif,
@@ -254,9 +253,7 @@
   }
 
   .bolt-notification {
-    position: fixed;
-    top: 1rem;
-    right: 1rem;
+    position: relative;
     width: 22rem;
     max-width: calc(100vw - 2rem);
     background: var(--upload-background);
@@ -269,8 +266,6 @@
     transform: translateX(100%) scale(0.9);
     opacity: 0;
     transition: all 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
-    margin-top: 2.5rem;
-    margin-right: 0.625rem;
   }
 
   .bolt-notification.notification-visible {

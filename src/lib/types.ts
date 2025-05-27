@@ -16,7 +16,9 @@ export type MessageType =
   | 'IMPORT_PRIVATE_REPO'
   | 'DELETE_TEMP_REPO'
   | 'PUSH_TO_GITHUB'
-  | 'USE_CACHED_FILES';
+  | 'USE_CACHED_FILES'
+  | 'HEARTBEAT'
+  | 'HEARTBEAT_RESPONSE';
 
 export interface Message {
   type: MessageType;

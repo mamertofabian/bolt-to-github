@@ -120,6 +120,23 @@ document.addEventListener('visibilitychange', () => {
   }
 });
 
+// Listen for extension lifecycle events
+if (chrome.runtime?.onStartup) {
+  chrome.runtime.onStartup.addListener(() => {
+    console.log('🔊 Extension startup detected, reinitializing...');
+    manager = null;
+    initializeContentManager();
+  });
+}
+
+// Handle browser focus events which can indicate service worker restart
+window.addEventListener('focus', () => {
+  if (!manager) {
+    console.log('🔊 Window focus detected without manager, reinitializing...');
+    initializeContentManager();
+  }
+});
+
 // Export for extension updates/reloads if needed
 export const onExecute = ({ perf }: { perf: { injectTime: number; loadTime: number } }) => {
   console.log('🚀 Content script reinitializing...', perf);

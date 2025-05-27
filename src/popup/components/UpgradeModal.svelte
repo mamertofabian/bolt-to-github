@@ -2,6 +2,7 @@
   import { Button } from '$lib/components/ui/button';
   import type { PremiumFeature } from '$lib/constants/premiumFeatures';
   import { isAuthenticated } from '$lib/stores';
+  import premiumStatusStore, { premiumStatusActions } from '$lib/stores/premiumStore';
 
   export let show = false;
   export let feature: string = ''; // Which feature triggered the modal
@@ -10,12 +11,56 @@
 
   // Reactive subscriptions
   $: isUserAuthenticated = $isAuthenticated;
+  $: premiumStatus = $premiumStatusStore;
 
   // Accordion state - track which feature is expanded
   let expandedFeature: string | null = null;
 
+  // Refresh state
+  let isRefreshing = false;
+  let showSuccess = false;
+
   function toggleFeature(featureId: string) {
     expandedFeature = expandedFeature === featureId ? null : featureId;
+  }
+
+  async function handleRefreshSubscription() {
+    if (isRefreshing) return;
+
+    try {
+      isRefreshing = true;
+      console.log('🔄 Manually refreshing subscription status from upgrade modal...');
+
+      // Send message to background script to force subscription check
+      await chrome.runtime.sendMessage({ type: 'FORCE_SUBSCRIPTION_REFRESH' });
+
+      // Also refresh the local premium store
+      await premiumStatusActions.refresh();
+
+      console.log('✅ Subscription status refreshed');
+
+      // Show brief success feedback
+      showRefreshFeedback();
+
+      // If user is now premium, close the modal
+      setTimeout(() => {
+        if (premiumStatus.isPremium) {
+          console.log('🎉 User is now premium, closing upgrade modal');
+          handleClose();
+        }
+      }, 1500);
+    } catch (error) {
+      console.error('Error refreshing subscription:', error);
+    } finally {
+      isRefreshing = false;
+    }
+  }
+
+  function showRefreshFeedback() {
+    showSuccess = true;
+    setTimeout(() => {
+      showSuccess = false;
+    }, 2000); // Hide after 2 seconds
   }
 
   function handleUpgrade() {
@@ -201,14 +246,63 @@
       </div>
 
       <!-- Actions -->
-      <div class="flex gap-2 mb-3">
-        <Button
-          on:click={handleUpgrade}
-          class="flex-1 bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-sm py-2"
-        >
-          Upgrade Now
-        </Button>
-        <Button on:click={handleClose} variant="outline" class="px-3 text-sm py-2">Later</Button>
+      <div class="space-y-2 mb-3">
+        <div class="flex gap-2">
+          <Button
+            on:click={handleUpgrade}
+            class="flex-1 bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-sm py-2"
+          >
+            Upgrade Now
+          </Button>
+          <Button on:click={handleClose} variant="outline" class="px-3 text-sm py-2">Later</Button>
+        </div>
+
+        <!-- Refresh button for authenticated users -->
+        {#if isUserAuthenticated}
+          <Button
+            variant="outline"
+            size="sm"
+            class="w-full border-slate-700 hover:bg-slate-800/50 text-slate-300 hover:text-slate-200 text-sm py-1.5 transition-all duration-200 {showSuccess
+              ? 'border-emerald-500/50 bg-emerald-500/10'
+              : ''}"
+            on:click={handleRefreshSubscription}
+            disabled={isRefreshing}
+          >
+            {#if showSuccess}
+              <svg
+                class="w-3 h-3 mr-1.5 text-emerald-400"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  stroke-width="2"
+                  d="M5 13l4 4L19 7"
+                ></path>
+              </svg>
+              <span class="text-emerald-400">Refreshed!</span>
+            {:else}
+              <svg
+                class="w-3 h-3 mr-1.5 {isRefreshing ? 'animate-spin' : ''}"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  stroke-width="2"
+                  d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"
+                ></path>
+              </svg>
+              <span class="text-xs">
+                {isRefreshing ? 'Checking subscription...' : 'Already upgraded? Refresh status'}
+              </span>
+            {/if}
+          </Button>
+        {/if}
       </div>
 
       <!-- Sign in link for existing premium users -->

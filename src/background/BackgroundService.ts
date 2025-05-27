@@ -15,6 +15,7 @@ export class BackgroundService {
   private pendingCommitMessage: string;
   private supabaseAuthService: SupabaseAuthService;
   private operationStateManager: OperationStateManager;
+  private keepAliveInterval: NodeJS.Timeout | null = null;
   private storageListener:
     | ((changes: { [key: string]: chrome.storage.StorageChange }, namespace: string) => void)
     | null = null;
@@ -155,6 +156,7 @@ export class BackgroundService {
     }
     this.setupConnectionHandlers();
     this.setupStorageListener();
+    this.startKeepAlive();
     console.log('👂 Background service initialized');
   }
 
@@ -235,6 +237,10 @@ export class BackgroundService {
         console.log('🔐 Forcing auth check via message');
         this.supabaseAuthService.forceCheck();
         sendResponse({ success: true });
+      } else if (message.type === 'FORCE_SUBSCRIPTION_REFRESH') {
+        console.log('💰 Forcing subscription refresh via message');
+        this.supabaseAuthService.forceSubscriptionRevalidation();
+        sendResponse({ success: true });
       } else if (message.type === 'ANALYTICS_EVENT') {
         console.log('📊 Received analytics event:', message.eventType, message.eventData);
         this.handleAnalyticsEvent(message.eventType, message.eventData);
@@ -308,6 +314,16 @@ export class BackgroundService {
     if (!port) return;
 
     try {
+      // Debug premium user message handling
+      if (message.type === 'HEARTBEAT') {
+        console.debug('🔍 HEARTBEAT message received:', {
+          type: message.type,
+          typeOf: typeof message.type,
+          isPremium: this.supabaseAuthService?.isPremium(),
+          fullMessage: JSON.stringify(message),
+        });
+      }
+
       switch (message.type) {
         case 'ZIP_DATA':
           await this.sendAnalyticsEvent('user_action', {
@@ -337,7 +353,13 @@ export class BackgroundService {
             context: 'content_script',
           });
           await chrome.storage.local.set({ popupContext: 'settings' });
-          chrome.action.openPopup();
+          console.log('✅ Storage set: popupContext = settings');
+
+          // Small delay to ensure storage is written before opening popup
+          setTimeout(() => {
+            chrome.action.openPopup();
+            console.log('✅ Popup opened for settings');
+          }, 10);
           break;
 
         case 'OPEN_ISSUES': {
@@ -348,12 +370,15 @@ export class BackgroundService {
           });
           // Check premium status before allowing access
           const hasIssuesAccess = this.supabaseAuthService.isPremium();
-          if (hasIssuesAccess) {
-            await chrome.storage.local.set({ popupContext: 'issues' });
-          } else {
-            await chrome.storage.local.set({ popupContext: 'home' });
-          }
-          chrome.action.openPopup();
+          const context = hasIssuesAccess ? 'issues' : 'home';
+          await chrome.storage.local.set({ popupContext: context });
+          console.log(`✅ Storage set: popupContext = ${context}`);
+
+          // Small delay to ensure storage is written before opening popup
+          setTimeout(() => {
+            chrome.action.openPopup();
+            console.log(`✅ Popup opened for ${context}`);
+          }, 10);
           break;
         }
 
@@ -364,7 +389,13 @@ export class BackgroundService {
             context: 'content_script',
           });
           await chrome.storage.local.set({ popupContext: 'projects' });
-          chrome.action.openPopup();
+          console.log('✅ Storage set: popupContext = projects');
+
+          // Small delay to ensure storage is written before opening popup
+          setTimeout(() => {
+            chrome.action.openPopup();
+            console.log('✅ Popup opened for projects');
+          }, 10);
           break;
 
         case 'OPEN_FILE_CHANGES':
@@ -423,10 +454,23 @@ export class BackgroundService {
           });
           break;
 
+        case 'HEARTBEAT':
+          // Respond to heartbeat to keep connection alive
+          this.sendResponse(port, {
+            type: 'HEARTBEAT_RESPONSE',
+            timestamp: Date.now(),
+          });
+          break;
+
         default:
-          console.warn('Unknown message type:', message.type);
+          console.warn(
+            'Unknown message type:',
+            message.type,
+            'Full message:',
+            JSON.stringify(message)
+          );
       }
-    } catch (error) {
+    } catch (error: unknown) {
       console.error(`Error handling message ${message.type}:`, error);
 
       // Track errors for debugging
@@ -616,7 +660,7 @@ export class BackgroundService {
 
   private sendResponse(
     port: Port,
-    message: { type: MessageType; status?: UploadStatusState }
+    message: { type: MessageType; status?: UploadStatusState; timestamp?: number }
   ): void {
     try {
       port.postMessage(message);
@@ -731,7 +775,23 @@ export class BackgroundService {
     }
   }
 
+  private startKeepAlive(): void {
+    // Keep the service worker alive by sending periodic messages to itself
+    this.keepAliveInterval = setInterval(() => {
+      // Check if there are any active ports
+      if (this.ports.size > 0) {
+        console.debug('🫀 Service worker keep-alive heartbeat');
+      }
+    }, 20000); // Every 20 seconds
+  }
+
   public destroy(): void {
+    // Clean up keep-alive interval
+    if (this.keepAliveInterval) {
+      clearInterval(this.keepAliveInterval);
+      this.keepAliveInterval = null;
+    }
+
     if (this.storageListener) {
       chrome.storage.onChanged.removeListener(this.storageListener);
       this.storageListener = null;
