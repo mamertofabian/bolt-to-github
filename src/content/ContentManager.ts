@@ -104,9 +104,14 @@ export class ContentManager {
       const error = chrome.runtime.lastError;
       console.log('Port disconnected:', error?.message || 'No error message');
 
-      if (this.isExtensionContextInvalidated(error) || !chrome.runtime?.id) {
+      // Check if this is true extension context invalidation vs normal disconnect
+      const contextInvalidated = this.isExtensionContextInvalidated(error) || !chrome.runtime?.id;
+
+      if (contextInvalidated) {
+        console.log('🔴 Extension context invalidation detected');
         this.handleExtensionContextInvalidated();
       } else {
+        console.log('🟡 Normal port disconnect, attempting reconnection');
         this.scheduleReconnection();
       }
     });
@@ -134,9 +139,84 @@ export class ContentManager {
   }
 
   private handleExtensionContextInvalidated(): void {
-    console.log('Extension context invalidated, cleaning up...');
-    this.cleanup();
+    console.log('Extension context invalidated, attempting recovery...');
+
+    // Show notification before cleanup (while UIManager still exists)
     this.notifyUserOfExtensionReload();
+
+    // Clean up current state
+    this.cleanup();
+
+    // Attempt to reinitialize after a short delay
+    setTimeout(() => {
+      if (!this.isDestroyed) {
+        console.log('🔄 Attempting to reinitialize after context invalidation...');
+        this.attemptRecovery();
+      }
+    }, 2000); // Wait 2 seconds before attempting recovery
+  }
+
+  private attemptRecovery(): void {
+    try {
+      // Check if Chrome runtime is available for recovery
+      if (!chrome.runtime?.id) {
+        console.warn('🔄 Recovery failed: Chrome runtime still not available');
+        // Try again in 5 seconds
+        setTimeout(() => {
+          if (!this.isDestroyed) {
+            console.log('🔄 Retrying recovery...');
+            this.attemptRecovery();
+          }
+        }, 5000);
+        return;
+      }
+
+      console.log('✅ Chrome runtime available, attempting full reinitialization...');
+
+      // Reset the destroyed flag since we're recovering
+      this.isDestroyed = false;
+
+      // Try to reinitialize everything
+      this.initializeConnection();
+
+      if (!this.port) {
+        throw new Error('Failed to establish port connection during recovery');
+      }
+
+      // Recreate MessageHandler with new port
+      this.messageHandler = new MessageHandler(this.port);
+
+      // Recreate UIManager
+      this.uiManager = UIManager.getInstance(this.messageHandler);
+      console.log('🔧 Recovery: Recreated UIManager after context invalidation');
+
+      // Re-setup event listeners
+      this.setupEventListeners();
+      this.startHeartbeat();
+
+      // Clear any stale stored file changes
+      this.clearStaleStoredChanges();
+
+      this.messageHandler.sendMessage('CONTENT_SCRIPT_READY');
+
+      console.log('🎉 Recovery successful! GitHub button should be restored.');
+    } catch (error) {
+      console.error('❌ Recovery failed:', error);
+
+      // If recovery fails, try again in 10 seconds (up to 3 attempts)
+      if (this.reconnectAttempts < 3) {
+        this.reconnectAttempts++;
+        console.log(`🔄 Scheduling recovery retry ${this.reconnectAttempts}/3 in 10 seconds...`);
+        setTimeout(() => {
+          if (!this.isDestroyed) {
+            this.attemptRecovery();
+          }
+        }, 10000);
+      } else {
+        console.error('💀 Recovery failed after 3 attempts. Extension needs manual refresh.');
+        this.notifyUserOfError();
+      }
+    }
   }
 
   private scheduleReconnection(): void {
@@ -275,7 +355,7 @@ export class ContentManager {
     }
 
     this.isReconnecting = false;
-    this.reconnectAttempts = 0;
+    // Don't reset reconnectAttempts here - recovery process may need it
     this.uiManager?.cleanup();
 
     // Reset UIManager singleton to ensure clean recreation
