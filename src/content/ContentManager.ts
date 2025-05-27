@@ -292,7 +292,9 @@ export class ContentManager {
     this.heartbeatInterval = setInterval(() => {
       if (this.port && chrome.runtime?.id) {
         try {
-          this.port.postMessage({ type: 'HEARTBEAT' });
+          const heartbeatMessage = { type: 'HEARTBEAT' as const };
+          console.debug('💓 Sending heartbeat:', JSON.stringify(heartbeatMessage));
+          this.port.postMessage(heartbeatMessage);
         } catch (error) {
           console.warn('Heartbeat failed, connection may be broken:', error);
           this.scheduleReconnection();

@@ -314,6 +314,16 @@ export class BackgroundService {
     if (!port) return;
 
     try {
+      // Debug premium user message handling
+      if (message.type === 'HEARTBEAT') {
+        console.debug('🔍 HEARTBEAT message received:', {
+          type: message.type,
+          typeOf: typeof message.type,
+          isPremium: this.supabaseAuthService?.isPremium(),
+          fullMessage: JSON.stringify(message),
+        });
+      }
+
       switch (message.type) {
         case 'ZIP_DATA':
           await this.sendAnalyticsEvent('user_action', {
@@ -453,9 +463,14 @@ export class BackgroundService {
           break;
 
         default:
-          console.warn('Unknown message type:', message.type);
+          console.warn(
+            'Unknown message type:',
+            message.type,
+            'Full message:',
+            JSON.stringify(message)
+          );
       }
-    } catch (error) {
+    } catch (error: unknown) {
       console.error(`Error handling message ${message.type}:`, error);
 
       // Track errors for debugging
