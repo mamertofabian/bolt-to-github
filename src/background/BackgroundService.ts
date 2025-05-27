@@ -237,6 +237,10 @@ export class BackgroundService {
         console.log('🔐 Forcing auth check via message');
         this.supabaseAuthService.forceCheck();
         sendResponse({ success: true });
+      } else if (message.type === 'FORCE_SUBSCRIPTION_REFRESH') {
+        console.log('💰 Forcing subscription refresh via message');
+        this.supabaseAuthService.forceSubscriptionRevalidation();
+        sendResponse({ success: true });
       } else if (message.type === 'ANALYTICS_EVENT') {
         console.log('📊 Received analytics event:', message.eventType, message.eventData);
         this.handleAnalyticsEvent(message.eventType, message.eventData);

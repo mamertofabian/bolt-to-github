@@ -73,13 +73,16 @@ export class SupabaseAuthService {
    * Initialize the service and start checking for authentication
    */
   private async initialize(): Promise<void> {
-    console.log('🔐 Initializing Supabase auth service');
+    console.log('🔐 Initializing Supabase auth service (hybrid mode)');
 
     /* Load cached auth state */
     await this.loadCachedAuthState();
 
-    /* Setup immediate authentication detection */
-    this.setupImmediateAuthDetection();
+    /* Setup subscription upgrade detection (only for premium feature responsiveness) */
+    this.setupSubscriptionUpgradeDetection();
+
+    /* Setup initial authentication detection if not authenticated */
+    this.setupInitialAuthDetection();
 
     /* Start periodic checks */
     this.startPeriodicChecks();
@@ -115,70 +118,6 @@ export class SupabaseAuthService {
   }
 
   /**
-   * Setup immediate authentication detection for faster response to user sign-ins
-   */
-  private setupImmediateAuthDetection(): void {
-    try {
-      /* Listen for tab updates on bolt2github.com */
-      chrome.tabs.onUpdated.addListener(async (tabId, changeInfo, tab) => {
-        if (changeInfo.status === 'complete' && tab.url && tab.url.includes('bolt2github.com')) {
-          console.log('🔍 Detected bolt2github.com tab update, checking for auth...');
-          await this.checkForImmediateAuth(tabId);
-        }
-      });
-
-      /* Listen for tab navigation events */
-      chrome.tabs.onActivated.addListener(async (activeInfo) => {
-        try {
-          const tab = await chrome.tabs.get(activeInfo.tabId);
-          if (tab.url && tab.url.includes('bolt2github.com')) {
-            console.log('🔍 Detected bolt2github.com tab activation, checking for auth...');
-            await this.checkForImmediateAuth(activeInfo.tabId);
-          }
-        } catch (error) {
-          /* Tab might be closed or inaccessible, ignore */
-        }
-      });
-
-      console.log('🎯 Setup immediate auth detection listeners');
-    } catch (error) {
-      console.warn('Failed to setup immediate auth detection:', error);
-    }
-  }
-
-  /**
-   * Check for immediate authentication when bolt2github.com tabs are accessed
-   */
-  private async checkForImmediateAuth(tabId: number): Promise<void> {
-    try {
-      console.log('⚡ Performing immediate auth check...');
-
-      /* Try to get token from the specific tab */
-      const tokenData = await this.extractTokenFromTab(tabId);
-
-      if (tokenData?.access_token) {
-        console.log('✅ Found fresh auth token, updating immediately');
-
-        /* Store the new token data */
-        await this.storeTokenData(tokenData);
-
-        /* Force an immediate auth status check */
-        await this.checkAuthStatus();
-
-        /* If we just became authenticated, restart periodic checks with longer interval */
-        if (this.authState.isAuthenticated) {
-          console.log('🔄 User authenticated - switching to longer check interval');
-          this.startPeriodicChecks();
-        }
-      } else {
-        console.log('⏳ No auth token found yet, continuing existing checks');
-      }
-    } catch (error) {
-      console.warn('Error in immediate auth check:', error);
-    }
-  }
-
-  /**
    * Start periodic authentication checks
    */
   private startPeriodicChecks(): void {
@@ -203,6 +142,126 @@ export class SupabaseAuthService {
     console.log(
       `🔄 Started auth checks every ${interval / 1000}s (${this.authState.subscription.isActive ? 'premium' : this.authState.isAuthenticated ? 'authenticated' : 'unauthenticated'})`
     );
+  }
+
+  /**
+   * Setup initial authentication detection (only when not authenticated)
+   * This monitors bolt2github.com to capture initial login tokens
+   */
+  private setupInitialAuthDetection(): void {
+    try {
+      /* Only monitor if user is not authenticated */
+      if (this.authState.isAuthenticated) {
+        console.log('🔐 User already authenticated, skipping initial auth detection');
+        return;
+      }
+
+      console.log('🔍 Setting up initial authentication detection for bolt2github.com');
+
+      /* Listen for bolt2github.com tab loads to capture initial authentication */
+      chrome.tabs.onUpdated.addListener(async (tabId, changeInfo, tab) => {
+        /* Only check if user is NOT authenticated and tab finished loading */
+        if (
+          !this.authState.isAuthenticated &&
+          changeInfo.status === 'complete' &&
+          tab.url &&
+          tab.url.includes('bolt2github.com')
+        ) {
+          console.log('🔍 Detected bolt2github.com page load, checking for authentication...');
+
+          /* Give a moment for the page to fully load and set localStorage */
+          setTimeout(async () => {
+            const tokenData = await this.extractTokenFromTab(tabId);
+            if (tokenData?.access_token) {
+              console.log('✅ Found authentication tokens on bolt2github.com, storing...');
+              await this.storeTokenData(tokenData);
+
+              /* Force immediate auth check with new tokens */
+              await this.checkAuthStatus();
+
+              /* If now authenticated, we can stop monitoring bolt2github.com */
+              if (this.authState.isAuthenticated) {
+                console.log('🎉 Initial authentication successful - extension now independent');
+              }
+            }
+          }, 1000); /* 1 second delay for page load */
+        }
+      });
+
+      console.log('🔍 Initial authentication detection active (monitoring bolt2github.com)');
+    } catch (error) {
+      console.warn('Failed to setup initial authentication detection:', error);
+    }
+  }
+
+  /**
+   * Setup subscription upgrade detection (only watches upgrade/billing pages)
+   * This maintains independence while allowing quick premium feature activation
+   */
+  private setupSubscriptionUpgradeDetection(): void {
+    try {
+      /* Only listen for specific upgrade/billing related pages */
+      chrome.tabs.onUpdated.addListener(async (tabId, changeInfo, tab) => {
+        /* Only check if user is authenticated and on upgrade/billing pages */
+        if (
+          this.authState.isAuthenticated &&
+          changeInfo.status === 'complete' &&
+          tab.url &&
+          (tab.url.includes('bolt2github.com/upgrade') ||
+            tab.url.includes('bolt2github.com/billing') ||
+            tab.url.includes('bolt2github.com/checkout') ||
+            tab.url.includes('bolt2github.com/subscription'))
+        ) {
+          console.log('💰 Detected upgrade/billing page, checking subscription status...');
+
+          /* Give a moment for any backend processing to complete */
+          setTimeout(async () => {
+            const wasActive = this.authState.subscription.isActive;
+            await this.validateSubscriptionStatus();
+
+            /* If subscription status changed, notify user immediately */
+            if (!wasActive && this.authState.subscription.isActive) {
+              console.log('🎉 Subscription upgraded! Notifying user...');
+              await this.notifySubscriptionUpgrade();
+            }
+          }, 2000); /* 2 second delay for backend processing */
+        }
+      });
+
+      console.log('💰 Setup subscription upgrade detection for billing pages');
+    } catch (error) {
+      console.warn('Failed to setup subscription upgrade detection:', error);
+    }
+  }
+
+  /**
+   * Notify user about successful subscription upgrade
+   */
+  private async notifySubscriptionUpgrade(): Promise<void> {
+    try {
+      /* Send message to all bolt.new tabs about upgrade */
+      const tabs = await chrome.tabs.query({ url: 'https://bolt.new/*' });
+      for (const tab of tabs) {
+        if (tab.id) {
+          chrome.tabs
+            .sendMessage(tab.id, {
+              type: 'SUBSCRIPTION_UPGRADED',
+              data: {
+                message:
+                  '🎉 Subscription upgraded successfully! Premium features are now available.',
+                plan: this.authState.subscription.plan,
+                showSuccessMessage: true,
+              },
+            })
+            .catch(() => {
+              /* Tab might not have content script injected */
+            });
+        }
+      }
+      console.log('📢 Sent subscription upgrade notifications');
+    } catch (error) {
+      console.warn('Failed to send subscription upgrade notification:', error);
+    }
   }
 
   /**
@@ -257,44 +316,37 @@ export class SupabaseAuthService {
   }
 
   /**
-   * Try to get authentication token from various sources
+   * Get authentication token (hybrid mode - stored tokens + bolt2github.com fallback when not authenticated)
    */
   private async getAuthToken(): Promise<string | null> {
     try {
-      /* Method 1: Check stored tokens first (for independent operation) */
+      console.log('🔐 Getting auth token (hybrid mode)');
+
+      /* Method 1: Check stored tokens first */
       const storedToken = await this.getValidStoredToken();
       if (storedToken) {
         return storedToken;
       }
 
-      /* Method 2: Check if user is on bolt2github.com and has session */
-      const tabs = await chrome.tabs.query({ url: 'https://bolt2github.com/*' });
-      if (tabs.length > 0) {
-        const tokenData = await this.extractTokenFromTab(tabs[0].id!);
-        if (tokenData?.access_token) {
-          await this.storeTokenData(tokenData);
-          return tokenData.access_token;
-        }
-      }
-
-      /* Method 3: Check localStorage in any tab (if user visited site) */
-      const allTabs = await chrome.tabs.query({});
-      for (const tab of allTabs) {
-        if (tab.id && tab.url?.includes('bolt2github.com')) {
-          const tokenData = await this.extractTokenFromTab(tab.id);
-          if (tokenData?.access_token) {
-            await this.storeTokenData(tokenData);
-            return tokenData.access_token;
-          }
-        }
-      }
-
-      /* Method 4: Final fallback - attempt refresh with stored refresh token */
+      /* Method 2: Attempt refresh with stored refresh token */
       const refreshedToken = await this.refreshStoredToken();
       if (refreshedToken) {
         return refreshedToken;
       }
 
+      /* Method 3: If not authenticated, check bolt2github.com tabs as fallback */
+      if (!this.authState.isAuthenticated) {
+        console.log('🔍 No stored tokens found, checking bolt2github.com tabs...');
+        const tabToken = await this.extractTokenFromActiveTabs();
+        if (tabToken) {
+          console.log('✅ Found token in bolt2github.com tab, storing for future use');
+          await this.storeTokenData(tabToken);
+          return tabToken.access_token;
+        }
+      }
+
+      /* No tokens available - user needs to authenticate */
+      console.log('❌ No authentication tokens available - user needs to authenticate');
       return null;
     } catch (error) {
       console.warn('Error getting auth token:', error);
@@ -347,14 +399,63 @@ export class SupabaseAuthService {
         ? tokenData.expires_at * 1000
         : Date.now() + 3600 * 1000; /* 1 hour default */
 
-      await chrome.storage.local.set({
+      const storageData: any = {
         supabaseToken: tokenData.access_token,
-        supabaseRefreshToken: tokenData.refresh_token,
         supabaseTokenExpiry: expiresAt,
+      };
+
+      /* Only store refresh token if it exists and is not empty */
+      if (tokenData.refresh_token && tokenData.refresh_token.trim() !== '') {
+        storageData.supabaseRefreshToken = tokenData.refresh_token;
+        console.log('💾 Storing refresh token (length:', tokenData.refresh_token.length, ')');
+      } else {
+        console.warn('⚠️ No valid refresh token to store');
+      }
+
+      await chrome.storage.local.set(storageData);
+
+      console.log('💾 Stored token data in chrome storage:', {
+        hasAccessToken: !!tokenData.access_token,
+        hasRefreshToken: !!tokenData.refresh_token,
+        expiresAt: new Date(expiresAt),
       });
-      console.log('💾 Stored token data in chrome storage');
     } catch (error) {
       console.warn('Failed to store token data:', error);
+    }
+  }
+
+  /**
+   * Extract tokens from currently active bolt2github.com tabs
+   */
+  private async extractTokenFromActiveTabs(): Promise<TokenData | null> {
+    try {
+      console.log('🔍 Looking for authentication tokens in bolt2github.com tabs...');
+
+      const tabs = await chrome.tabs.query({ url: 'https://bolt2github.com/*' });
+      console.log(`🔍 Found ${tabs.length} bolt2github.com tabs`);
+
+      if (tabs.length === 0) {
+        console.log('❌ No bolt2github.com tabs found');
+        return null;
+      }
+
+      for (const tab of tabs) {
+        if (tab.id) {
+          console.log(`🔍 Checking tab ${tab.id}: ${tab.url}`);
+          const tokenData = await this.extractTokenFromTab(tab.id);
+
+          if (tokenData?.access_token) {
+            console.log('✅ Found valid tokens in tab');
+            return tokenData;
+          }
+        }
+      }
+
+      console.log('❌ No valid tokens found in any bolt2github.com tabs');
+      return null;
+    } catch (error) {
+      console.warn('Error extracting tokens from active tabs:', error);
+      return null;
     }
   }
 
@@ -369,52 +470,153 @@ export class SupabaseAuthService {
       const result = await chrome.scripting.executeScript({
         target: { tabId },
         func: (projectRef: string) => {
-          /* Check for Supabase session in localStorage with project-specific key */
-          const sessionKey = `sb-${projectRef}-auth-token`;
-          const session = localStorage.getItem(sessionKey);
+          console.log(`🔍 Starting token extraction for project: ${projectRef}`);
 
-          console.log(`🔍 Checking for auth token with key: ${sessionKey}`);
+          /* List all localStorage keys for debugging */
+          const allKeys = Object.keys(localStorage);
+          const supabaseKeys = allKeys.filter(
+            (key) => key.includes('supabase') || key.includes('sb-') || key.includes('auth')
+          );
+          console.log(
+            `🔍 Found ${allKeys.length} localStorage keys, ${supabaseKeys.length} Supabase-related:`,
+            supabaseKeys
+          );
+
+          /* Method 1: Check for project-specific auth token */
+          const sessionKey = `sb-${projectRef}-auth-token`;
+          let session = localStorage.getItem(sessionKey);
+          console.log(`🔍 Checking key: ${sessionKey}`, session ? 'Found' : 'Not found');
 
           if (session) {
             console.log('✅ Found auth token with project-specific key');
             try {
               const parsed = JSON.parse(session);
+              console.log('📋 Parsed session structure:', Object.keys(parsed));
+
               return {
                 access_token: parsed.access_token || parsed.token,
-                refresh_token: parsed.refresh_token || undefined,
+                refresh_token: parsed.refresh_token,
                 expires_at: parsed.expires_at,
                 expires_in: parsed.expires_in,
               };
-            } catch {
+            } catch (error) {
+              console.warn('❌ Failed to parse project-specific session:', error);
               return { access_token: session, refresh_token: undefined };
             }
           }
 
-          /* Fallback: check for generic key (older format) */
-          console.log('🔍 Checking fallback key: supabase.auth.token');
-          const fallbackSession = localStorage.getItem('supabase.auth.token');
-          if (fallbackSession) {
-            console.log('✅ Found auth token with fallback key');
+          /* Method 2: Check for session in user object format */
+          const userSessionKey = `sb-${projectRef}-auth-user`;
+          const userSession = localStorage.getItem(userSessionKey);
+          console.log(
+            `🔍 Checking user session key: ${userSessionKey}`,
+            userSession ? 'Found' : 'Not found'
+          );
+
+          if (userSession) {
             try {
-              const parsed = JSON.parse(fallbackSession);
-              return {
-                access_token: parsed.access_token || parsed.token,
-                refresh_token: parsed.refresh_token || undefined,
-                expires_at: parsed.expires_at,
-                expires_in: parsed.expires_in,
-              };
-            } catch {
-              return { access_token: fallbackSession, refresh_token: undefined };
+              const userParsed = JSON.parse(userSession);
+              console.log('📋 User session structure:', Object.keys(userParsed));
+
+              if (userParsed.session) {
+                const sessionData = userParsed.session;
+                console.log('📋 Session data structure:', Object.keys(sessionData));
+
+                return {
+                  access_token: sessionData.access_token,
+                  refresh_token: sessionData.refresh_token,
+                  expires_at: sessionData.expires_at,
+                  expires_in: sessionData.expires_in,
+                };
+              }
+            } catch (error) {
+              console.warn('❌ Failed to parse user session:', error);
             }
           }
 
-          console.log('❌ No auth token found in localStorage');
+          /* Method 3: Check for generic Supabase session keys */
+          const genericKeys = [
+            'supabase.auth.token',
+            'supabase.session',
+            `sb.${projectRef}.session`,
+            'supabase.auth.session',
+          ];
+
+          for (const key of genericKeys) {
+            session = localStorage.getItem(key);
+            console.log(`🔍 Checking generic key: ${key}`, session ? 'Found' : 'Not found');
+
+            if (session) {
+              try {
+                const parsed = JSON.parse(session);
+                console.log('📋 Generic session structure:', Object.keys(parsed));
+
+                /* Handle different session structures */
+                const sessionData = parsed.session || parsed;
+
+                if (sessionData.access_token || sessionData.token) {
+                  return {
+                    access_token: sessionData.access_token || sessionData.token,
+                    refresh_token: sessionData.refresh_token,
+                    expires_at: sessionData.expires_at,
+                    expires_in: sessionData.expires_in,
+                  };
+                }
+              } catch (error) {
+                console.warn(`❌ Failed to parse session for key ${key}:`, error);
+                /* If JSON parsing fails but we have a string, treat as direct token */
+                if (typeof session === 'string' && session.length > 20) {
+                  return { access_token: session, refresh_token: undefined };
+                }
+              }
+            }
+          }
+
+          /* Method 4: Search through all localStorage for Supabase patterns */
+          console.log('🔍 Searching all localStorage keys for Supabase sessions...');
+          for (const key of allKeys) {
+            if ((key.includes('supabase') || key.includes('sb-')) && key.includes('auth')) {
+              const value = localStorage.getItem(key);
+              if (value) {
+                try {
+                  const parsed = JSON.parse(value);
+                  if (parsed && (parsed.access_token || parsed.token || parsed.session)) {
+                    console.log(`✅ Found potential session in key: ${key}`);
+
+                    const sessionData = parsed.session || parsed;
+                    if (sessionData.access_token || sessionData.token) {
+                      return {
+                        access_token: sessionData.access_token || sessionData.token,
+                        refresh_token: sessionData.refresh_token,
+                        expires_at: sessionData.expires_at,
+                        expires_in: sessionData.expires_in,
+                      };
+                    }
+                  }
+                } catch {
+                  /* Not JSON, skip */
+                }
+              }
+            }
+          }
+
+          console.log('❌ No auth token found in localStorage after exhaustive search');
           return null;
         },
         args: [projectRef],
       });
 
-      return result[0]?.result || null;
+      const tokenData = result[0]?.result || null;
+
+      if (tokenData) {
+        console.log('🎯 Successfully extracted token data:', {
+          hasAccessToken: !!tokenData.access_token,
+          hasRefreshToken: !!tokenData.refresh_token,
+          expiresAt: tokenData.expires_at,
+        });
+      }
+
+      return tokenData;
     } catch (error) {
       console.warn('Failed to extract token from tab:', error);
       return null;
@@ -684,6 +886,15 @@ export class SupabaseAuthService {
 
       /* Restart periodic checks with appropriate interval when auth status changes */
       this.startPeriodicChecks();
+
+      /* If user became authenticated, they no longer need initial auth detection */
+      /* If user became unauthenticated, restart initial auth detection */
+      if (this.authState.isAuthenticated && !previousState.isAuthenticated) {
+        console.log('🎉 User authenticated - extension now independent from bolt2github.com');
+      } else if (!this.authState.isAuthenticated && previousState.isAuthenticated) {
+        console.log('🔄 User unauthenticated - restarting initial auth detection');
+        this.setupInitialAuthDetection();
+      }
     }
 
     if (previousState.subscription.isActive !== this.authState.subscription.isActive) {
@@ -963,5 +1174,245 @@ export class SupabaseAuthService {
   public async forceSubscriptionRevalidation(): Promise<boolean> {
     console.log('🔄 Forcing subscription revalidation...');
     return await this.validateSubscriptionStatus();
+  }
+
+  /**
+   * Debug method to check what's stored in chrome storage
+   */
+  public async debugStoredTokens(): Promise<void> {
+    try {
+      const storage = await chrome.storage.local.get();
+      const tokenKeys = Object.keys(storage).filter(
+        (key) =>
+          key.includes('supabase') ||
+          key.includes('Token') ||
+          key.includes('token') ||
+          key.includes('auth')
+      );
+
+      console.log('🔍 All storage keys:', Object.keys(storage));
+      console.log('🔍 Token-related keys:', tokenKeys);
+
+      const tokenData = await chrome.storage.local.get([
+        'supabaseToken',
+        'supabaseRefreshToken',
+        'supabaseTokenExpiry',
+        'supabaseAuthState',
+      ]);
+
+      console.log('🔍 Current token storage:', {
+        hasAccessToken: !!tokenData.supabaseToken,
+        hasRefreshToken: !!tokenData.supabaseRefreshToken,
+        tokenExpiry: tokenData.supabaseTokenExpiry ? new Date(tokenData.supabaseTokenExpiry) : null,
+        authState: tokenData.supabaseAuthState,
+        accessTokenLength: tokenData.supabaseToken?.length || 0,
+        refreshTokenLength: tokenData.supabaseRefreshToken?.length || 0,
+      });
+
+      if (tokenData.supabaseTokenExpiry) {
+        const now = Date.now();
+        const expiry = tokenData.supabaseTokenExpiry;
+        const timeUntilExpiry = expiry - now;
+        console.log('🕒 Token expiry info:', {
+          expiresAt: new Date(expiry),
+          timeUntilExpiry: Math.round(timeUntilExpiry / 1000 / 60), // minutes
+          isExpired: timeUntilExpiry <= 0,
+          expiresInMinutes: Math.round(timeUntilExpiry / 1000 / 60),
+        });
+      }
+    } catch (error) {
+      console.error('Error debugging stored tokens:', error);
+    }
+  }
+
+  /**
+   * Force token refresh for debugging
+   */
+  public async debugForceTokenRefresh(): Promise<boolean> {
+    try {
+      console.log('🔄 Debug: Forcing token refresh...');
+
+      const refreshedToken = await this.refreshStoredToken();
+      if (refreshedToken) {
+        console.log('✅ Debug: Token refresh successful');
+        await this.debugStoredTokens();
+        return true;
+      } else {
+        console.log('❌ Debug: Token refresh failed');
+        await this.debugStoredTokens();
+        return false;
+      }
+    } catch (error) {
+      console.error('Error in debug token refresh:', error);
+      return false;
+    }
+  }
+
+  /**
+   * Manually extract tokens from bolt2github.com tabs for testing
+   */
+  public async debugExtractTokensFromTabs(): Promise<void> {
+    try {
+      console.log('🔍 Debug: Looking for bolt2github.com tabs...');
+
+      const tabs = await chrome.tabs.query({ url: 'https://bolt2github.com/*' });
+      console.log(`🔍 Found ${tabs.length} bolt2github.com tabs`);
+
+      if (tabs.length === 0) {
+        console.warn(
+          '⚠️ No bolt2github.com tabs found. Please open bolt2github.com and try again.'
+        );
+        return;
+      }
+
+      for (const tab of tabs) {
+        if (tab.id) {
+          console.log(`🔍 Extracting tokens from tab ${tab.id}: ${tab.url}`);
+          const tokenData = await this.extractTokenFromTab(tab.id);
+
+          if (tokenData) {
+            console.log('✅ Successfully extracted tokens, storing...');
+            await this.storeTokenData(tokenData);
+
+            /* Force a status check with the new tokens */
+            await this.checkAuthStatus();
+            break;
+          } else {
+            console.log('❌ No tokens found in this tab');
+          }
+        }
+      }
+
+      /* Show what we have stored now */
+      await this.debugStoredTokens();
+    } catch (error) {
+      console.error('Error in debug token extraction:', error);
+    }
+  }
+
+  /**
+   * Initial authentication - manually extract tokens from bolt2github.com
+   * This is the ONLY time the extension looks at bolt2github.com
+   */
+  public async authenticateFromBolt2GitHub(): Promise<boolean> {
+    try {
+      console.log('🔐 Starting initial authentication from bolt2github.com...');
+
+      const tabs = await chrome.tabs.query({ url: 'https://bolt2github.com/*' });
+      if (tabs.length === 0) {
+        console.warn('❌ No bolt2github.com tabs found. Please open bolt2github.com and sign in.');
+        return false;
+      }
+
+      for (const tab of tabs) {
+        if (tab.id) {
+          console.log(`🔍 Checking tab ${tab.id}: ${tab.url}`);
+          const tokenData = await this.extractTokenFromTab(tab.id);
+
+          if (tokenData?.access_token) {
+            console.log('✅ Successfully extracted tokens from bolt2github.com');
+            await this.storeTokenData(tokenData);
+
+            /* Verify the tokens work */
+            await this.checkAuthStatus();
+
+            if (this.authState.isAuthenticated) {
+              console.log('✅ Initial authentication successful - extension is now independent');
+              /* Switch to authenticated interval */
+              this.startPeriodicChecks();
+              return true;
+            }
+          }
+        }
+      }
+
+      console.log('❌ Failed to extract valid tokens from bolt2github.com');
+      return false;
+    } catch (error) {
+      console.error('Error in initial authentication:', error);
+      return false;
+    }
+  }
+
+  /**
+   * Public logout method - clears all authentication data and notifies users
+   */
+  public async logout(): Promise<void> {
+    try {
+      console.log('🚪 User initiated logout - clearing all authentication data');
+
+      /* Clear all stored tokens and auth state */
+      await this.clearStoredTokens();
+
+      /* Stop periodic checks since we're no longer authenticated */
+      if (this.checkInterval) {
+        clearInterval(this.checkInterval);
+        this.checkInterval = null;
+      }
+
+      /* Restart with unauthenticated interval */
+      this.startPeriodicChecks();
+
+      /* Restart initial authentication detection since user is now unauthenticated */
+      this.setupInitialAuthDetection();
+
+      /* Notify all content scripts about logout */
+      await this.notifyLogout();
+
+      console.log('✅ Logout completed successfully - extension back to unauthenticated state');
+    } catch (error) {
+      console.error('Error during logout:', error);
+    }
+  }
+
+  /**
+   * Notify content scripts and UI about logout
+   */
+  private async notifyLogout(): Promise<void> {
+    try {
+      /* Send message to all bolt.new tabs about logout */
+      const tabs = await chrome.tabs.query({ url: 'https://bolt.new/*' });
+      for (const tab of tabs) {
+        if (tab.id) {
+          chrome.tabs
+            .sendMessage(tab.id, {
+              type: 'USER_LOGGED_OUT',
+              data: {
+                message: 'You have been logged out. Sign in again to access premium features.',
+                showLoginPrompt: true,
+              },
+            })
+            .catch(() => {
+              /* Tab might not have content script injected */
+            });
+        }
+      }
+
+      /* Also clear any GitHub Apps cache since user changed */
+      await this.clearGitHubAppsCache();
+
+      console.log('📢 Sent logout notifications to all tabs');
+    } catch (error) {
+      console.warn('Error sending logout notifications:', error);
+    }
+  }
+
+  /**
+   * Clear GitHub Apps cache when user logs out
+   */
+  private async clearGitHubAppsCache(): Promise<void> {
+    try {
+      const storage = await chrome.storage.local.get();
+      const keysToRemove = Object.keys(storage).filter(
+        (key) => key.startsWith('github_app_token_') || key.startsWith('github_app_installation_')
+      );
+
+      if (keysToRemove.length > 0) {
+        await chrome.storage.local.remove(keysToRemove);
+        console.log('🧹 Cleared GitHub Apps cache on logout');
+      }
+    } catch (error) {
+      console.warn('Error clearing GitHub Apps cache:', error);
+    }
   }
 }
