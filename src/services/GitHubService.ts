@@ -10,12 +10,69 @@ import { TokenService } from './TokenService';
 import { RepositoryService } from './RepositoryService';
 import { FileService } from './FileService';
 import { RepoCloneService } from './RepoCloneService';
+import { UnifiedGitHubAuthService } from './UnifiedGitHubAuthService';
 import type { IGitHubApiClient } from './interfaces/IGitHubApiClient';
 import type { ITokenService } from './interfaces/ITokenService';
 import type { IRepositoryService } from './interfaces/IRepositoryService';
 import type { IFileService } from './interfaces/IFileService';
 import type { IRepoCloneService } from './interfaces/IRepoCloneService';
 import type { ProgressCallback } from './types/common';
+
+/**
+ * Enhanced GitHubApiClient that uses UnifiedGitHubAuthService for smart token switching
+ */
+class UnifiedGitHubApiClient extends GitHubApiClient {
+  private unifiedAuth: UnifiedGitHubAuthService;
+  private readonly githubApiUrl = 'https://api.github.com';
+
+  constructor(fallbackToken?: string) {
+    // Initialize with a temporary token, will be replaced by unified auth
+    super(fallbackToken || 'temp');
+    this.unifiedAuth = UnifiedGitHubAuthService.getInstance();
+  }
+
+  async request(
+    method: string,
+    endpoint: string,
+    body?: any,
+    options: RequestInit = {}
+  ): Promise<any> {
+    // Use unified auth service for the actual request
+    return this.unifiedAuth
+      .apiRequest(
+        `${this.githubApiUrl}${endpoint}`,
+        {
+          method,
+          ...options,
+          headers: {
+            'Content-Type': 'application/json',
+            ...options.headers,
+          },
+          body: body ? JSON.stringify(body) : undefined,
+        },
+        // Determine operation type based on endpoint
+        this.getOperationType(endpoint)
+      )
+      .then((response) => {
+        if (!response.ok) {
+          throw new Error(`GitHub API request failed: ${response.status} ${response.statusText}`);
+        }
+        return response.json();
+      });
+  }
+
+  private getOperationType(endpoint: string): 'user_action' | 'repo_intensive' {
+    // Classify API calls for optimal token selection
+    if (
+      endpoint.includes('/issues') ||
+      endpoint.includes('/pulls') ||
+      endpoint.includes('/commits')
+    ) {
+      return 'user_action'; // User attribution important
+    }
+    return 'repo_intensive'; // File operations, trees, etc.
+  }
+}
 
 export class GitHubService {
   // Refactored components
@@ -24,10 +81,14 @@ export class GitHubService {
   private repositoryService: IRepositoryService;
   private fileService: IFileService;
   private repoCloneService: IRepoCloneService;
+  private unifiedAuth: UnifiedGitHubAuthService;
 
-  constructor(token: string) {
-    // Initialize components
-    this.apiClient = new GitHubApiClient(token);
+  constructor(fallbackToken?: string) {
+    // Initialize unified auth service
+    this.unifiedAuth = UnifiedGitHubAuthService.getInstance();
+
+    // Initialize components with unified API client
+    this.apiClient = new UnifiedGitHubApiClient(fallbackToken);
     this.tokenService = new TokenService(this.apiClient);
     this.fileService = new FileService(this.apiClient);
     this.repoCloneService = new RepoCloneService(this.apiClient, this.fileService);
@@ -36,6 +97,27 @@ export class GitHubService {
       this.fileService,
       this.repoCloneService
     );
+  }
+
+  /**
+   * Get current authentication status
+   */
+  async getAuthStatus() {
+    return this.unifiedAuth.getAuthenticationStatus();
+  }
+
+  /**
+   * Get best available token info
+   */
+  async getBestTokenInfo() {
+    return this.unifiedAuth.getBestAuthToken();
+  }
+
+  /**
+   * Force refresh authentication cache
+   */
+  async refreshAuth() {
+    return this.unifiedAuth.forceRefresh();
   }
 
   // Legacy methods TODO: Remove after refactoring

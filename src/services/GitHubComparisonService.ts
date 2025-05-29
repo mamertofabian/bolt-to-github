@@ -1,4 +1,5 @@
 import { GitHubService } from './GitHubService';
+import { UnifiedGitHubAuthService } from './UnifiedGitHubAuthService';
 import type { FileChange } from './FilePreviewService';
 import type { ProjectFiles } from '$lib/types';
 import {
@@ -16,10 +17,12 @@ import { OperationStateManager } from '../content/services/OperationStateManager
 export class GitHubComparisonService {
   private static instance: GitHubComparisonService | null = null;
   private githubService: GitHubService | null = null;
+  private unifiedAuthService: UnifiedGitHubAuthService;
   private operationStateManager: OperationStateManager;
 
   private constructor() {
     this.operationStateManager = OperationStateManager.getInstance();
+    this.unifiedAuthService = UnifiedGitHubAuthService.getInstance();
   }
 
   /**
@@ -33,11 +36,28 @@ export class GitHubComparisonService {
   }
 
   /**
-   * Set the GitHub service instance
+   * Set the GitHub service instance (for backward compatibility)
    * @param githubService The GitHub service instance
    */
   public setGitHubService(githubService: GitHubService): void {
     this.githubService = githubService;
+  }
+
+  /**
+   * Make GitHub API request using unified auth service
+   */
+  private async apiRequest(endpoint: string, options: RequestInit = {}): Promise<any> {
+    const response = await this.unifiedAuthService.apiRequest(
+      `https://api.github.com${endpoint}`,
+      options,
+      'repo_intensive' // Most comparison operations are repo-intensive
+    );
+
+    if (!response.ok) {
+      throw new Error(`GitHub API request failed: ${response.status} ${response.statusText}`);
+    }
+
+    return response.json();
   }
 
   /**
@@ -72,10 +92,6 @@ export class GitHubComparisonService {
       existingFiles: Map<string, string>;
     };
   }> {
-    if (!this.githubService) {
-      throw new Error('GitHub service not set. Call setGitHubService first.');
-    }
-
     // Generate unique operation ID for this comparison
     const operationId = `comparison-${Date.now()}-${Math.random().toString(36).substring(2, 8)}`;
 
@@ -97,23 +113,20 @@ export class GitHubComparisonService {
 
       notifyProgress('Fetching repository data...', 10);
 
-      // Get the current commit SHA
-      const baseRef = await this.githubService.request(
-        'GET',
+      // Get the current commit SHA using unified auth
+      const baseRef = await this.apiRequest(
         `/repos/${repoOwner}/${repoName}/git/refs/heads/${targetBranch}`
       );
       const baseSha = baseRef.object.sha;
 
-      const baseCommit = await this.githubService.request(
-        'GET',
+      const baseCommit = await this.apiRequest(
         `/repos/${repoOwner}/${repoName}/git/commits/${baseSha}`
       );
       const baseTreeSha = baseCommit.tree.sha;
 
-      // Fetch the full tree with content
+      // Fetch the full tree with content using unified auth
       notifyProgress('Analyzing repository files...', 30);
-      const existingTree = await this.githubService.request(
-        'GET',
+      const existingTree = await this.apiRequest(
         `/repos/${repoOwner}/${repoName}/git/trees/${baseTreeSha}?recursive=1`
       );
 
@@ -169,9 +182,8 @@ export class GitHubComparisonService {
                 50 + (processedFiles / totalFiles) * 30
               );
 
-              // Use the FileService through GitHubService to fetch the actual content
-              const response = await this.githubService.request(
-                'GET',
+              // Use unified auth to fetch the actual content
+              const response = await this.apiRequest(
                 `/repos/${repoOwner}/${repoName}/contents/${path}?ref=${targetBranch}`
               );
 

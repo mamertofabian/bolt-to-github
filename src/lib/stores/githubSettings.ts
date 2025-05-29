@@ -176,7 +176,7 @@ export const githubSettingsActions = {
     }));
 
     try {
-      const githubService = new GitHubService(token);
+      const githubService = new GitHubService(token); // Token used as fallback
       const result = await githubService.validateTokenAndUser(username);
 
       githubSettingsStore.update((state) => ({

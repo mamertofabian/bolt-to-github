@@ -21,7 +21,7 @@
 
   export let repoOwner: string;
   export let githubToken: string;
-  export let isBoltSite: boolean = true;
+  export let isBoltSite: boolean = false;
   export let currentlyLoadedProjectId: string | null = null;
 
   // Use stores instead of props
@@ -56,7 +56,7 @@
   let showImportConfirmDialog = false;
   let repoToConfirmImport: { owner: string; repo: string; isPrivate: boolean } | null = null;
 
-  const githubService = new GitHubService(githubToken);
+  const githubService = new GitHubService(githubToken); // Token used as fallback
   let commitCounts: Record<string, number> = {};
   let loadingCommitCounts: Record<string, boolean> = {};
   let allRepos: Array<{

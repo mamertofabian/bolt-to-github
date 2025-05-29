@@ -104,7 +104,7 @@
 
     try {
       isLoadingRepos = true;
-      const githubService = new GitHubService(githubToken);
+      const githubService = new GitHubService(githubToken); // Token used as fallback
       repositories = await githubService.listRepos();
     } catch (error) {
       console.error('Error loading repositories:', error);
@@ -238,22 +238,34 @@
     }
 
     try {
+      clearTimeout(tokenValidationTimeout);
       isValidatingToken = true;
+      isTokenValid = null;
       validationError = null;
-      const githubService = new GitHubService(githubToken);
-      const result = await githubService.validateTokenAndUser(repoOwner);
-      isTokenValid = result.isValid;
-      validationError = result.error || null;
 
-      if (result.isValid) {
-        // Check token type
-        const isClassic = await githubService.isClassicToken();
-        tokenType = isClassic ? 'classic' : 'fine-grained';
-      }
+      const githubService = new GitHubService(githubToken); // Token used as fallback
+      const isValid = await githubService.validateToken();
 
-      // Load repositories after successful validation
-      if (result.isValid) {
-        await loadRepositories();
+      if (isValid) {
+        try {
+          // Check token type
+          const isClassic = await githubService.isClassicToken();
+          tokenType = isClassic ? 'classic' : 'fine-grained';
+
+          isTokenValid = true;
+          validationError = null;
+
+          // Load repositories when token is valid
+          await loadRepositories();
+        } catch (error) {
+          console.error('Error determining token type:', error);
+          isTokenValid = true; // Still valid, just couldn't determine type
+          tokenType = null;
+        }
+      } else {
+        isTokenValid = false;
+        validationError = 'Invalid GitHub token';
+        repositories = [];
       }
     } catch (error) {
       console.error('Error validating settings:', error);
@@ -289,9 +301,8 @@
   }
 
   async function checkTokenPermissions() {
-    if (!githubToken || isCheckingPermissions) return;
-
     isCheckingPermissions = true;
+    currentCheck = null;
     permissionError = null;
     permissionStatus = {
       allRepos: undefined,
@@ -300,7 +311,7 @@
     };
 
     try {
-      const githubService = new GitHubService(githubToken);
+      const githubService = new GitHubService(githubToken); // Token used as fallback
 
       const result = await githubService.verifyTokenPermissions(
         repoOwner,

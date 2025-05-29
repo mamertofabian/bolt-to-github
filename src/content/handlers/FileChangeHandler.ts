@@ -3,6 +3,7 @@ import type { INotificationManager, IUploadStatusManager } from '../types/Manage
 import type { MessageHandler } from '../MessageHandler';
 import { FilePreviewService, type FileChange } from '../../services/FilePreviewService';
 import type { PremiumService } from '../services/PremiumService';
+import { GitHubComparisonService } from '../../services/GitHubComparisonService';
 
 /**
  * FileChangeHandler handles file change detection, comparison, and display
@@ -167,7 +168,9 @@ export class FileChangeHandler implements IFileChangeHandler {
 
         // Create a new instance of GitHubService
         const token = await chrome.storage.sync.get(['githubToken']);
-        const githubService = new GitHubService(token.githubToken);
+        const githubService = new GitHubService(token.githubToken); // Token used as fallback
+        const comparisonService = GitHubComparisonService.getInstance();
+        comparisonService.setGitHubService(githubService);
 
         // Compare with GitHub
         changedFiles = await this.filePreviewService.compareWithGitHub(
