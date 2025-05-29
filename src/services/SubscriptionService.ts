@@ -1,3 +1,5 @@
+import { SUPABASE_CONFIG } from '../lib/constants/supabase';
+
 export interface SubscriptionData {
   email: string;
   name?: string;
@@ -20,8 +22,7 @@ export interface SubscriptionResponse {
 }
 
 export class SubscriptionService {
-  private apiEndpoint =
-    'https://gapvjcqybzabnrjnxzhg.supabase.co/functions/v1/newsletter-subscription';
+  private apiEndpoint = `${SUPABASE_CONFIG.URL}/functions/v1/newsletter-subscription`;
 
   async subscribe(data: SubscriptionData): Promise<SubscriptionResponse> {
     try {

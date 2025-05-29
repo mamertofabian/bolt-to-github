@@ -1,5 +1,6 @@
 import { describe, jest, beforeEach, it, expect } from '@jest/globals';
 import { SubscriptionService } from '../SubscriptionService';
+import { SUPABASE_CONFIG } from '../../lib/constants/supabase';
 
 // Mock chrome API
 const mockChrome = {
@@ -222,7 +223,7 @@ describe('SubscriptionService', () => {
       expect(result.subscriptionId).toBe('subscriber-123');
 
       expect(global.fetch).toHaveBeenCalledWith(
-        'https://gapvjcqybzabnrjnxzhg.supabase.co/functions/v1/newsletter-subscription',
+        `${SUPABASE_CONFIG.URL}/functions/v1/newsletter-subscription`,
         expect.objectContaining({
           method: 'POST',
           headers: expect.objectContaining({

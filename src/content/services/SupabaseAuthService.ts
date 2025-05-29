@@ -1,4 +1,7 @@
 /* eslint-disable no-console */
+
+import { SUPABASE_CONFIG } from '../../lib/constants/supabase';
+
 export interface SupabaseUser {
   id: string;
   email: string;
@@ -39,9 +42,8 @@ export class SupabaseAuthService {
   private checkInterval: NodeJS.Timeout | null = null;
 
   /* Configuration - replace with your actual Supabase project details */
-  private readonly SUPABASE_URL = 'https://gapvjcqybzabnrjnxzhg.supabase.co';
-  private readonly SUPABASE_ANON_KEY =
-    'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImdhcHZqY3F5YnphYm5yam54emhnIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDc3MjMwMzQsImV4cCI6MjA2MzI5OTAzNH0.6bpYH1nccYIEKbQmctojedbrzMVBGcHhgjCyKXVUgzc';
+  private readonly SUPABASE_URL = SUPABASE_CONFIG.URL;
+  private readonly SUPABASE_ANON_KEY = SUPABASE_CONFIG.ANON_KEY;
   private readonly CHECK_INTERVAL_UNAUTHENTICATED = 30000; /* 30 seconds when not authenticated */
   private readonly CHECK_INTERVAL_AUTHENTICATED = 3600000; /* 1 hour when authenticated */
   private readonly CHECK_INTERVAL_PREMIUM = 900000; /* 15 minutes for premium users (more frequent validation) */
@@ -945,38 +947,6 @@ export class SupabaseAuthService {
   }
 
   /**
-   * Get token expiration info for debugging
-   */
-  public async getTokenExpiration(): Promise<{
-    expiresAt: number | null;
-    timeUntilExpiry: number | null;
-    isExpired: boolean;
-  } | null> {
-    try {
-      const tabs = await chrome.tabs.query({ url: 'https://bolt2github.com/*' });
-      if (tabs.length > 0) {
-        const tokenData = await this.extractTokenFromTab(tabs[0].id!);
-        const expiresAt = tokenData?.expires_at;
-
-        if (expiresAt) {
-          const expiresAtMs = expiresAt * 1000; /* Convert to milliseconds */
-          const now = Date.now();
-          const timeUntilExpiry = expiresAtMs - now;
-          return {
-            expiresAt: expiresAtMs,
-            timeUntilExpiry,
-            isExpired: timeUntilExpiry <= 0,
-          };
-        }
-      }
-      return null;
-    } catch (error) {
-      console.error('Error getting token expiration:', error);
-      return null;
-    }
-  }
-
-  /**
    * Get current authentication state
    */
   public getAuthState(): AuthState {
@@ -1174,120 +1144,6 @@ export class SupabaseAuthService {
   public async forceSubscriptionRevalidation(): Promise<boolean> {
     console.log('🔄 Forcing subscription revalidation...');
     return await this.validateSubscriptionStatus();
-  }
-
-  /**
-   * Debug method to check what's stored in chrome storage
-   */
-  public async debugStoredTokens(): Promise<void> {
-    try {
-      const storage = await chrome.storage.local.get();
-      const tokenKeys = Object.keys(storage).filter(
-        (key) =>
-          key.includes('supabase') ||
-          key.includes('Token') ||
-          key.includes('token') ||
-          key.includes('auth')
-      );
-
-      console.log('🔍 All storage keys:', Object.keys(storage));
-      console.log('🔍 Token-related keys:', tokenKeys);
-
-      const tokenData = await chrome.storage.local.get([
-        'supabaseToken',
-        'supabaseRefreshToken',
-        'supabaseTokenExpiry',
-        'supabaseAuthState',
-      ]);
-
-      console.log('🔍 Current token storage:', {
-        hasAccessToken: !!tokenData.supabaseToken,
-        hasRefreshToken: !!tokenData.supabaseRefreshToken,
-        tokenExpiry: tokenData.supabaseTokenExpiry ? new Date(tokenData.supabaseTokenExpiry) : null,
-        authState: tokenData.supabaseAuthState,
-        accessTokenLength: tokenData.supabaseToken?.length || 0,
-        refreshTokenLength: tokenData.supabaseRefreshToken?.length || 0,
-      });
-
-      if (tokenData.supabaseTokenExpiry) {
-        const now = Date.now();
-        const expiry = tokenData.supabaseTokenExpiry;
-        const timeUntilExpiry = expiry - now;
-        console.log('🕒 Token expiry info:', {
-          expiresAt: new Date(expiry),
-          timeUntilExpiry: Math.round(timeUntilExpiry / 1000 / 60), // minutes
-          isExpired: timeUntilExpiry <= 0,
-          expiresInMinutes: Math.round(timeUntilExpiry / 1000 / 60),
-        });
-      }
-    } catch (error) {
-      console.error('Error debugging stored tokens:', error);
-    }
-  }
-
-  /**
-   * Force token refresh for debugging
-   */
-  public async debugForceTokenRefresh(): Promise<boolean> {
-    try {
-      console.log('🔄 Debug: Forcing token refresh...');
-
-      const refreshedToken = await this.refreshStoredToken();
-      if (refreshedToken) {
-        console.log('✅ Debug: Token refresh successful');
-        await this.debugStoredTokens();
-        return true;
-      } else {
-        console.log('❌ Debug: Token refresh failed');
-        await this.debugStoredTokens();
-        return false;
-      }
-    } catch (error) {
-      console.error('Error in debug token refresh:', error);
-      return false;
-    }
-  }
-
-  /**
-   * Manually extract tokens from bolt2github.com tabs for testing
-   */
-  public async debugExtractTokensFromTabs(): Promise<void> {
-    try {
-      console.log('🔍 Debug: Looking for bolt2github.com tabs...');
-
-      const tabs = await chrome.tabs.query({ url: 'https://bolt2github.com/*' });
-      console.log(`🔍 Found ${tabs.length} bolt2github.com tabs`);
-
-      if (tabs.length === 0) {
-        console.warn(
-          '⚠️ No bolt2github.com tabs found. Please open bolt2github.com and try again.'
-        );
-        return;
-      }
-
-      for (const tab of tabs) {
-        if (tab.id) {
-          console.log(`🔍 Extracting tokens from tab ${tab.id}: ${tab.url}`);
-          const tokenData = await this.extractTokenFromTab(tab.id);
-
-          if (tokenData) {
-            console.log('✅ Successfully extracted tokens, storing...');
-            await this.storeTokenData(tokenData);
-
-            /* Force a status check with the new tokens */
-            await this.checkAuthStatus();
-            break;
-          } else {
-            console.log('❌ No tokens found in this tab');
-          }
-        }
-      }
-
-      /* Show what we have stored now */
-      await this.debugStoredTokens();
-    } catch (error) {
-      console.error('Error in debug token extraction:', error);
-    }
   }
 
   /**
