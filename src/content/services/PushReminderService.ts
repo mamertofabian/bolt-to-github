@@ -328,7 +328,7 @@ export class PushReminderService {
       this.notificationManager.showNotification({
         type: 'info',
         message: message,
-        duration: 15000, // 15 seconds
+        duration: 0, // Make reminder persistent - user must take action or close manually
         actions: [
           {
             text: 'Push to GitHub',
@@ -719,7 +719,7 @@ export class PushReminderService {
       this.notificationManager.showNotification({
         type: 'info',
         message: message,
-        duration: 10000, // 10 seconds for scheduled reminders (slightly shorter)
+        duration: 0, // Make reminder persistent - user must take action or close manually
         actions: [
           {
             text: 'Push to GitHub',

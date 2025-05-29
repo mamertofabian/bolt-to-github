@@ -21,11 +21,19 @@
   // Minimum duration to ensure readability (1.5 seconds)
   const MINIMUM_DURATION = 1500;
 
+  // Check if this is a reminder notification (should be persistent)
+  const isReminderNotification =
+    message.includes('unsaved changes') || message.includes('Consider pushing to GitHub');
+
   onMount(() => {
     mounted = true;
     showStartTime = Date.now();
     animationClass = 'notification-enter';
-    startAutoCloseTimer();
+
+    // Only start auto-close timer if it's not a reminder notification
+    if (!isReminderNotification) {
+      startAutoCloseTimer();
+    }
 
     // Remove enter animation class after animation completes
     setTimeout(
@@ -37,7 +45,7 @@
   });
 
   const startAutoCloseTimer = () => {
-    if (duration > 0) {
+    if (duration > 0 && !isReminderNotification) {
       // Use the longer of the specified duration or minimum duration
       const effectiveDuration = Math.max(duration, MINIMUM_DURATION);
 
@@ -55,7 +63,7 @@
   };
 
   const resumeAutoClose = () => {
-    if (!autoCloseTimer && duration > 0) {
+    if (!autoCloseTimer && duration > 0 && !isReminderNotification) {
       // Calculate remaining time, ensuring minimum duration is respected
       const elapsedTime = Date.now() - showStartTime;
       const effectiveDuration = Math.max(duration, MINIMUM_DURATION);
@@ -68,6 +76,12 @@
   };
 
   const handleClose = () => {
+    // For reminder notifications, close immediately when user clicks X
+    if (isReminderNotification) {
+      performClose();
+      return;
+    }
+
     // Ensure minimum duration has passed before allowing close
     const elapsedTime = Date.now() - showStartTime;
     const minimumTimeRemaining = MINIMUM_DURATION - elapsedTime;
@@ -104,7 +118,7 @@
     try {
       await action.action();
       // Auto-close notification after successful action unless it's a persistent notification
-      if (duration > 0) {
+      if (duration > 0 || isReminderNotification) {
         handleClose();
       }
     } catch (error) {
@@ -141,6 +155,7 @@
     class:notification-info={type === 'info'}
     class:notification-success={type === 'success'}
     class:notification-error={type === 'error'}
+    class:notification-reminder={isReminderNotification}
     role="alert"
     aria-live="polite"
     aria-atomic="true"
@@ -150,7 +165,8 @@
     transition:fly={{ x: 100, duration: prefersReducedMotion ? 0 : 400 }}
   >
     <div class="enhanced-notification-content">
-      <div class="enhanced-notification-header">
+      <!-- Top row: Icon, message, and close button -->
+      <div class="enhanced-notification-top">
         <div class="enhanced-status-info">
           <span class="enhanced-status-icon" aria-hidden="true">
             {getTypeIcon(type)}
@@ -162,44 +178,43 @@
           </div>
         </div>
 
-        <div class="enhanced-notification-controls">
-          {#if actions && actions.length > 0}
-            <div class="enhanced-notification-actions">
-              {#each actions as action}
-                <button
-                  on:click={() => handleActionClick(action)}
-                  class="enhanced-action-button enhanced-action-{action.variant || 'secondary'}"
-                  disabled={action.disabled}
-                  aria-label={action.text}
-                >
-                  {action.text}
-                </button>
-              {/each}
-            </div>
-          {/if}
-
-          <button
-            on:click={handleClose}
-            class="enhanced-close-button"
-            aria-label="Close notification"
-            type="button"
+        <button
+          on:click={handleClose}
+          class="enhanced-close-button"
+          aria-label="Close notification"
+          type="button"
+        >
+          <svg
+            xmlns="http://www.w3.org/2000/svg"
+            class="enhanced-close-icon"
+            viewBox="0 0 20 20"
+            fill="currentColor"
+            aria-hidden="true"
           >
-            <svg
-              xmlns="http://www.w3.org/2000/svg"
-              class="enhanced-close-icon"
-              viewBox="0 0 20 20"
-              fill="currentColor"
-              aria-hidden="true"
-            >
-              <path
-                fill-rule="evenodd"
-                d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z"
-                clip-rule="evenodd"
-              />
-            </svg>
-          </button>
-        </div>
+            <path
+              fill-rule="evenodd"
+              d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z"
+              clip-rule="evenodd"
+            />
+          </svg>
+        </button>
       </div>
+
+      <!-- Bottom row: Action buttons (if any) -->
+      {#if actions && actions.length > 0}
+        <div class="enhanced-notification-actions">
+          {#each actions as action}
+            <button
+              on:click={() => handleActionClick(action)}
+              class="enhanced-action-button enhanced-action-{action.variant || 'secondary'}"
+              disabled={action.disabled}
+              aria-label={action.text}
+            >
+              {action.text}
+            </button>
+          {/each}
+        </div>
+      {/if}
     </div>
   </div>
 {/if}
@@ -221,8 +236,9 @@
 
   .enhanced-notification {
     position: relative;
-    width: 22rem;
+    width: 26rem;
     max-width: calc(100vw - 2rem);
+    min-width: 20rem;
     background: var(--notification-background);
     backdrop-filter: blur(16px);
     -webkit-backdrop-filter: blur(16px);
@@ -249,6 +265,18 @@
   .enhanced-notification.notification-visible {
     transform: translateX(0) scale(1);
     opacity: 1;
+  }
+
+  /* Special styling for reminder notifications */
+  .enhanced-notification.notification-reminder {
+    width: 28rem;
+    border-color: rgba(251, 191, 36, 0.4);
+    background: rgba(17, 24, 39, 0.97);
+    box-shadow:
+      0 25px 50px -12px rgba(0, 0, 0, 0.6),
+      0 0 0 1px rgba(251, 191, 36, 0.2),
+      inset 0 1px 0 rgba(255, 255, 255, 0.1),
+      0 0 20px rgba(251, 191, 36, 0.1);
   }
 
   .notification-enter {
@@ -283,13 +311,17 @@
 
   .enhanced-notification-content {
     padding: 1.25rem;
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
   }
 
-  .enhanced-notification-header {
+  .enhanced-notification-top {
     display: flex;
     align-items: flex-start;
     justify-content: space-between;
-    gap: 0.75rem;
+    gap: 1rem;
+    min-height: 2.5rem;
   }
 
   .enhanced-status-info {
@@ -316,27 +348,24 @@
     font-weight: 500;
     font-size: 0.875rem;
     color: var(--notification-text-primary);
-    line-height: 1.4;
+    line-height: 1.5;
     word-wrap: break-word;
+    word-break: break-word;
     display: block;
-  }
-
-  .enhanced-notification-controls {
-    display: flex;
-    align-items: flex-start;
-    gap: 0.5rem;
-    flex-shrink: 0;
+    white-space: pre-wrap;
   }
 
   .enhanced-notification-actions {
     display: flex;
-    gap: 0.5rem;
+    gap: 0.75rem;
     align-items: center;
+    justify-content: flex-end;
     flex-wrap: wrap;
+    margin-top: 0.25rem;
   }
 
   .enhanced-action-button {
-    padding: 0.375rem 0.75rem;
+    padding: 0.5rem 1rem;
     border-radius: 0.375rem;
     font-size: 0.75rem;
     font-weight: 500;
@@ -346,6 +375,8 @@
     white-space: nowrap;
     font-family: inherit;
     backdrop-filter: blur(8px);
+    min-width: auto;
+    text-align: center;
   }
 
   .enhanced-action-button:disabled {
@@ -484,15 +515,26 @@
   @media (max-width: 640px) {
     .enhanced-notification {
       width: calc(100vw - 2rem);
+      min-width: unset;
       margin: 0;
+    }
+
+    .enhanced-notification.notification-reminder {
+      width: calc(100vw - 2rem);
     }
 
     .enhanced-notification-content {
       padding: 1rem;
+      gap: 0.75rem;
+    }
+
+    .enhanced-notification-top {
+      gap: 0.75rem;
     }
 
     .enhanced-notification-message {
       font-size: 0.8125rem;
+      line-height: 1.4;
     }
 
     .enhanced-close-button {
@@ -506,13 +548,25 @@
     }
 
     .enhanced-action-button {
-      padding: 0.25rem 0.5rem;
+      padding: 0.375rem 0.75rem;
       font-size: 0.6875rem;
     }
 
     .enhanced-notification-actions {
-      flex-direction: column;
-      align-items: stretch;
+      gap: 0.5rem;
+      justify-content: center;
+      margin-top: 0.5rem;
+    }
+  }
+
+  /* Tablet and medium screens */
+  @media (max-width: 1024px) and (min-width: 641px) {
+    .enhanced-notification {
+      width: 24rem;
+    }
+
+    .enhanced-notification.notification-reminder {
+      width: 26rem;
     }
   }
 
