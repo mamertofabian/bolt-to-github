@@ -241,6 +241,14 @@ export class BackgroundService {
         console.log('💰 Forcing subscription refresh via message');
         this.supabaseAuthService.forceSubscriptionRevalidation();
         sendResponse({ success: true });
+      } else if (message.type === 'USER_LOGOUT') {
+        console.log('🚪 User logout requested from popup');
+        await this.sendAnalyticsEvent('user_action', {
+          action: 'user_logout',
+          context: 'popup',
+        });
+        await this.supabaseAuthService.logout();
+        sendResponse({ success: true });
       } else if (message.type === 'ANALYTICS_EVENT') {
         console.log('📊 Received analytics event:', message.eventType, message.eventData);
         this.handleAnalyticsEvent(message.eventType, message.eventData);

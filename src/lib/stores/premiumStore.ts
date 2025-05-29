@@ -104,6 +104,40 @@ export const premiumStatusActions = {
   async refresh() {
     await this.loadPremiumStatus();
   },
+
+  /**
+   * Logout user and clear authentication tokens
+   */
+  async logout() {
+    try {
+      console.log('🚪 Logout initiated from popup...');
+
+      // Send message to background script to trigger logout
+      await chrome.runtime.sendMessage({ type: 'USER_LOGOUT' });
+
+      // Clear the popup premium status from sync storage
+      await chrome.storage.sync.remove(['popupPremiumStatus']);
+
+      // Clear local premium status
+      premiumStatusStore.set({
+        isAuthenticated: false,
+        isPremium: false,
+        plan: 'free',
+        features: {
+          viewFileChanges: false,
+          pushReminders: false,
+          branchSelector: false,
+          githubIssues: false,
+        },
+        lastUpdated: Date.now(),
+      });
+
+      console.log('✅ Logout completed from popup');
+    } catch (error) {
+      console.error('❌ Error during logout:', error);
+      throw error;
+    }
+  },
 };
 
 // Export the main store
