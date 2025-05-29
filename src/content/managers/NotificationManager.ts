@@ -15,6 +15,8 @@ interface NotificationInstance {
   component: SvelteComponent;
   container: HTMLElement;
   id: string;
+  type?: 'reminder' | 'regular'; // Track notification type
+  message?: string; // Track message for identification
 }
 
 /**
@@ -43,6 +45,16 @@ export class NotificationManager implements INotificationManager {
    */
   public showNotification(options: NotificationOptions): void {
     const notificationId = `notification-${++this.notificationCounter}`;
+
+    // Check if this is a reminder notification
+    const isReminderNotification =
+      options.message.includes('unsaved changes') ||
+      options.message.includes('Consider pushing to GitHub');
+
+    // Remove existing reminder notifications before showing a new one
+    if (isReminderNotification) {
+      this.removeExistingReminderNotifications();
+    }
 
     // Create container for notification
     const container = document.createElement('div');
@@ -80,6 +92,8 @@ export class NotificationManager implements INotificationManager {
       component: notificationComponent,
       container: container,
       id: notificationId,
+      type: isReminderNotification ? 'reminder' : 'regular',
+      message: options.message,
     };
 
     this.notifications.push(notificationInstance);
@@ -241,6 +255,9 @@ export class NotificationManager implements INotificationManager {
    * Cleanup all notification components and resources
    */
   public cleanup(): void {
+    const debugInfo = this.getNotificationDebugInfo();
+    console.log('🧹 NotificationManager cleanup:', debugInfo);
+
     // Cleanup all notification components
     this.notifications.forEach((notification) => {
       notification.component.$destroy();
@@ -259,5 +276,52 @@ export class NotificationManager implements INotificationManager {
     if (dialogContainer) {
       dialogContainer.remove();
     }
+  }
+
+  /**
+   * Remove all existing reminder notifications to prevent stacking
+   */
+  private removeExistingReminderNotifications(): void {
+    const reminderNotifications = this.notifications.filter((n) => n.type === 'reminder');
+
+    if (reminderNotifications.length > 0) {
+      console.log(
+        `🧹 Removing ${reminderNotifications.length} existing reminder notification(s) to prevent stacking`
+      );
+
+      reminderNotifications.forEach((notification) => {
+        this.removeNotification(notification.id);
+      });
+    }
+  }
+
+  /**
+   * Manually clear all reminder notifications (public method)
+   */
+  public clearReminderNotifications(): void {
+    this.removeExistingReminderNotifications();
+  }
+
+  /**
+   * Get the count of active reminder notifications
+   */
+  public getReminderNotificationCount(): number {
+    return this.notifications.filter((n) => n.type === 'reminder').length;
+  }
+
+  /**
+   * Get debug information about active notifications
+   */
+  public getNotificationDebugInfo(): object {
+    return {
+      totalNotifications: this.notifications.length,
+      reminderNotifications: this.notifications.filter((n) => n.type === 'reminder').length,
+      regularNotifications: this.notifications.filter((n) => n.type === 'regular').length,
+      notifications: this.notifications.map((n) => ({
+        id: n.id,
+        type: n.type,
+        message: n.message?.substring(0, 50) + (n.message && n.message.length > 50 ? '...' : ''),
+      })),
+    };
   }
 }

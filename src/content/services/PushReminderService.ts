@@ -325,6 +325,14 @@ export class PushReminderService {
       const message = `💾 You have ${changes.count} unsaved changes. Consider pushing to GitHub! ${changes.summary}`;
       console.log('📢 Push reminder: Showing notification:', message);
 
+      // Log existing reminder count before showing new one
+      const existingReminders = this.notificationManager.getReminderNotificationCount();
+      if (existingReminders > 0) {
+        console.log(
+          `🧹 Push reminder: ${existingReminders} existing reminder(s) will be cleared to prevent stacking`
+        );
+      }
+
       this.notificationManager.showNotification({
         type: 'info',
         message: message,
@@ -715,6 +723,14 @@ export class PushReminderService {
 
       const message = `⏰ Scheduled reminder: You have ${changes.count} unsaved changes. Consider pushing to GitHub! ${changes.summary}`;
       console.log('📢 Scheduled reminder: Showing notification:', message);
+
+      // Log existing reminder count before showing new one
+      const existingReminders = this.notificationManager.getReminderNotificationCount();
+      if (existingReminders > 0) {
+        console.log(
+          `🧹 Scheduled reminder: ${existingReminders} existing reminder(s) will be cleared to prevent stacking`
+        );
+      }
 
       this.notificationManager.showNotification({
         type: 'info',
