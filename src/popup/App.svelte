@@ -32,6 +32,7 @@
   import type { PremiumFeature } from '$lib/constants/premiumFeatures';
   import NewsletterModal from '$lib/components/NewsletterModal.svelte';
   import NewsletterSection from '$lib/components/NewsletterSection.svelte';
+  import GitHubSettingsApp from './components/GitHubSettingsApp.svelte';
   import SuccessToast from '$lib/components/SuccessToast.svelte';
   import { SubscriptionService } from '../services/SubscriptionService';
   import IssueManager from '$lib/components/IssueManager.svelte';
@@ -623,6 +624,10 @@
 
               <!-- Newsletter Subscription -->
               <NewsletterSection />
+
+              <!-- GitHub Apps Integration Test -->
+              <!-- TODO: Remove this before release -->
+              <GitHubSettingsApp />
             </div>
           </TabsContent>
 
