@@ -222,7 +222,20 @@ export class UnifiedGitHubAuthService {
     const tokenInfo = await this.getBestAuthToken();
 
     if (tokenInfo.type === 'none') {
-      throw new Error('No GitHub authentication available. Please set up GitHub integration.');
+      // Provide more helpful guidance based on user's auth state
+      const authStatus = await this.getAuthenticationStatus();
+
+      if (!authStatus.userAuthenticated) {
+        await this.promptGitHubAppSetup();
+        throw new Error(
+          'No GitHub authentication available. Please sign up and set up GitHub integration.'
+        );
+      } else {
+        await this.promptGitHubAppSetup();
+        throw new Error(
+          'No GitHub tokens configured. Please set up GitHub App integration or add a Personal Access Token.'
+        );
+      }
     }
 
     console.log(
@@ -368,5 +381,41 @@ export class UnifiedGitHubAuthService {
     this.clearCache();
     await this.getBestAuthToken();
     console.log('🔄 Forced refresh of authentication status');
+  }
+
+  /**
+   * Check if user needs authentication setup and guide them
+   */
+  public async checkAndPromptSetup(): Promise<{ needsSetup: boolean; message: string }> {
+    const authStatus = await this.getAuthenticationStatus();
+
+    if (!authStatus.hasGitHubApp && !authStatus.hasPAT) {
+      // No authentication at all
+      if (!authStatus.userAuthenticated) {
+        return {
+          needsSetup: true,
+          message:
+            'Sign up for an account and set up GitHub App integration for the best experience.',
+        };
+      } else {
+        return {
+          needsSetup: true,
+          message:
+            'Set up GitHub App integration or add a Personal Access Token to start using GitHub features.',
+        };
+      }
+    } else if (!authStatus.hasGitHubApp && authStatus.hasPAT) {
+      // Has PAT but could upgrade to GitHub App
+      return {
+        needsSetup: false,
+        message:
+          'Consider upgrading to GitHub App integration for 3x better rate limits and enhanced features.',
+      };
+    }
+
+    return {
+      needsSetup: false,
+      message: 'GitHub authentication is properly configured.',
+    };
   }
 }
