@@ -87,11 +87,11 @@
 
   function getFeatureTitle(): string {
     switch (feature) {
-      case 'fileChanges':
+      case 'file-changes':
         return 'Detailed File Changes';
-      case 'pushReminders':
+      case 'push-reminders':
         return 'Smart Push Reminders';
-      case 'branchSelector':
+      case 'branch-selector':
         return 'Branch Selector';
       case 'issues':
         return 'GitHub Issues Management';
@@ -102,14 +102,14 @@
 
   function getFeatureMessage(): string {
     switch (feature) {
-      case 'fileChanges':
+      case 'file-changes':
         return (
           reason ||
           'Get detailed file change analysis and comparisons with GitHub repositories. Upgrade for full access!'
         );
-      case 'pushReminders':
+      case 'push-reminders':
         return 'Stay on top of your work with intelligent push reminders that notify you when you have unsaved changes.';
-      case 'branchSelector':
+      case 'branch-selector':
         return 'Choose specific branches when importing private repositories for better organization.';
       case 'issues':
         return (

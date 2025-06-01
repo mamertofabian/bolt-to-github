@@ -233,6 +233,7 @@ export class UIManager {
           modalType = 'fileChanges';
           break;
         case 'issues':
+        case 'quick-issue':
           modalType = 'issues';
           break;
         case 'push-reminders':

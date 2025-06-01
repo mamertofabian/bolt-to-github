@@ -28,8 +28,7 @@
   import UpgradeModal from './components/UpgradeModal.svelte';
   import FeedbackModal from './components/FeedbackModal.svelte';
   import AnalyticsToggle from '$lib/components/ui/AnalyticsToggle.svelte';
-  import { setUpgradeModalState } from '$lib/utils/upgradeModal';
-  import type { PremiumFeature } from '$lib/constants/premiumFeatures';
+  import { setUpgradeModalState, type UpgradeModalType } from '$lib/utils/upgradeModal';
   import NewsletterModal from '$lib/components/NewsletterModal.svelte';
   import NewsletterSection from '$lib/components/NewsletterSection.svelte';
   import SuccessToast from '$lib/components/SuccessToast.svelte';
@@ -483,6 +482,15 @@
     showNewsletterModal = true;
   }
 
+  const handleUpgradeClick = (upgradeModalType: UpgradeModalType) => {
+    setUpgradeModalState(upgradeModalType, (feature, reason, features) => {
+      upgradeModalFeature = feature;
+      upgradeModalReason = reason;
+      premiumFeatures = features;
+      showUpgradeModal = true;
+    });
+  };
+
   onMount(initializeApp);
   onDestroy(cleanup);
 </script>
@@ -517,14 +525,7 @@
             <Button
               size="sm"
               class="text-xs bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white px-3 py-1 h-6"
-              on:click={() => {
-                setUpgradeModalState('general', (feature, reason, features) => {
-                  upgradeModalFeature = feature;
-                  upgradeModalReason = reason;
-                  premiumFeatures = features;
-                  showUpgradeModal = true;
-                });
-              }}
+              on:click={() => handleUpgradeClick('general')}
             >
               ✨ Upgrade
             </Button>
@@ -562,6 +563,7 @@
                 token={githubSettings.githubToken}
                 on:switchTab={handleSwitchTab}
                 on:showFileChanges={showStoredFileChanges}
+                {handleUpgradeClick}
               />
             {/if}
 
@@ -610,16 +612,7 @@
               <AnalyticsToggle />
 
               <!-- Premium Status -->
-              <PremiumStatus
-                on:upgrade={() => {
-                  setUpgradeModalState('general', (feature, reason, features) => {
-                    upgradeModalFeature = feature;
-                    upgradeModalReason = reason;
-                    premiumFeatures = features;
-                    showUpgradeModal = true;
-                  });
-                }}
-              />
+              <PremiumStatus on:upgrade={() => handleUpgradeClick('general')} />
 
               <!-- Newsletter Subscription -->
               <NewsletterSection />
