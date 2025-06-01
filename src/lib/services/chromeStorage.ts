@@ -1,4 +1,5 @@
 import type { GitHubSettingsInterface, ProjectSettings } from '../types';
+import type { PushStatistics } from '../types';
 
 // Storage Keys
 export const STORAGE_KEYS = {
@@ -8,6 +9,7 @@ export const STORAGE_KEYS = {
   PROJECT_ID: 'projectId',
   PENDING_FILE_CHANGES: 'pendingFileChanges',
   STORED_FILE_CHANGES: 'storedFileChanges',
+  PUSH_STATISTICS: 'pushStatistics',
 } as const;
 
 // Chrome Storage Service
@@ -250,6 +252,57 @@ export class ChromeStorageService {
       await storage.clear();
     } catch (error) {
       console.error('Error clearing storage:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Get push statistics from local storage
+   */
+  static async getPushStatistics(): Promise<PushStatistics> {
+    try {
+      const result = await chrome.storage.local.get(STORAGE_KEYS.PUSH_STATISTICS);
+      return (
+        result[STORAGE_KEYS.PUSH_STATISTICS] || {
+          totalAttempts: 0,
+          totalSuccesses: 0,
+          totalFailures: 0,
+          records: [],
+        }
+      );
+    } catch (error) {
+      console.error('Error getting push statistics from storage:', error);
+      return {
+        totalAttempts: 0,
+        totalSuccesses: 0,
+        totalFailures: 0,
+        records: [],
+      };
+    }
+  }
+
+  /**
+   * Save push statistics to local storage
+   */
+  static async savePushStatistics(statistics: PushStatistics): Promise<void> {
+    try {
+      await chrome.storage.local.set({
+        [STORAGE_KEYS.PUSH_STATISTICS]: statistics,
+      });
+    } catch (error) {
+      console.error('Error saving push statistics to storage:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Clear push statistics from local storage
+   */
+  static async clearPushStatistics(): Promise<void> {
+    try {
+      await chrome.storage.local.remove(STORAGE_KEYS.PUSH_STATISTICS);
+    } catch (error) {
+      console.error('Error clearing push statistics from storage:', error);
       throw error;
     }
   }

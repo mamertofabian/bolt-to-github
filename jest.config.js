@@ -15,6 +15,7 @@ export default {
     '^\\$lib/fileUtils$': '<rootDir>/src/test/setup/fileUtils-mock.js',
     '^\\$lib/(.*)$': '<rootDir>/src/lib/$1',
     '\\.svelte$': '<rootDir>/src/test/setup/svelte-mock.js',
+    'svelte/store': '<rootDir>/src/test/setup/svelte-store-mock.js',
   },
   setupFilesAfterEnv: [
     '<rootDir>/src/test/setup/fetch-mocks.js',

@@ -68,3 +68,38 @@ export interface GithubConfig {
  * Map of file paths to file contents
  */
 export type ProjectFiles = Map<string, string>;
+
+/**
+ * Interface for a single push record
+ */
+export interface PushRecord {
+  timestamp: number;
+  success: boolean;
+  projectId: string;
+  repoOwner: string;
+  repoName: string;
+  branch: string;
+  filesCount: number;
+  commitMessage: string;
+  error?: string;
+}
+
+/**
+ * Interface for push statistics
+ */
+export interface PushStatistics {
+  totalAttempts: number;
+  totalSuccesses: number;
+  totalFailures: number;
+  lastPushTimestamp?: number;
+  lastSuccessTimestamp?: number;
+  records: PushRecord[];
+}
+
+/**
+ * Interface for push statistics state in the store
+ */
+export interface PushStatisticsState {
+  statistics: PushStatistics;
+  isLoading: boolean;
+}
