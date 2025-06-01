@@ -7,6 +7,7 @@ export interface ProjectSettingsState {
   parsedProjectId: string | null;
   version: string;
   projectTitle: string;
+  isInitializing: boolean;
 }
 
 // Initial state
@@ -16,6 +17,7 @@ const initialState: ProjectSettingsState = {
   parsedProjectId: null,
   version: '',
   projectTitle: 'My Project',
+  isInitializing: true,
 };
 
 // Create the writable store
@@ -43,10 +45,16 @@ export const projectSettingsActions = {
    * Initialize project settings with extension version
    */
   initialize(): void {
+    projectSettingsStore.update((state) => ({
+      ...state,
+      isInitializing: true,
+    }));
+
     const version = chrome.runtime.getManifest().version;
     projectSettingsStore.update((state) => ({
       ...state,
       version,
+      isInitializing: false,
     }));
   },
 

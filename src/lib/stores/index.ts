@@ -1,3 +1,5 @@
+import { derived } from 'svelte/store';
+
 // Export GitHub Settings Store
 export {
   githubSettingsStore,
@@ -34,3 +36,14 @@ export {
   premiumStatusActions,
   type PopupPremiumStatus,
 } from './premiumStore';
+
+// Import stores for derived combinations
+import { githubSettingsStore } from './githubSettings';
+import { projectSettingsStore } from './projectSettings';
+
+// Combined initialization state - true if any store is still initializing
+export const isInitializingStores = derived(
+  [githubSettingsStore, projectSettingsStore],
+  ([$githubSettings, $projectSettings]) =>
+    $githubSettings.isInitializing || $projectSettings.isInitializing
+);

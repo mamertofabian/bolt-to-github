@@ -58,6 +58,7 @@
     premiumPlan,
     premiumFeatures as userPremiumFeatures,
     premiumStatusActions,
+    isInitializingStores,
     type TempRepoMetadata,
   } from '$lib/stores';
   import { ChromeMessagingService } from '$lib/services/chromeMessaging';
@@ -76,6 +77,7 @@
   $: isUserPremium = $isPremium;
   $: userPlan = $premiumPlan;
   $: userFeatures = $userPremiumFeatures;
+  $: isInitializing = $isInitializingStores;
 
   // Handle pending popup context when stores are ready
   $: if (
@@ -138,9 +140,9 @@
     // Add dark mode to the document
     document.documentElement.classList.add('dark');
 
-    // Initialize stores
+    // Initialize stores and wait for them to complete
     projectSettingsActions.initialize();
-    githubSettingsActions.initialize();
+    await githubSettingsActions.initialize();
     uploadStateActions.initializePort();
     premiumStatusActions.initialize();
 
@@ -551,7 +553,16 @@
           <Header />
 
           <TabsContent value="home">
-            {#if !settingsValid || !projectId}
+            {#if isInitializing}
+              <div class="flex items-center justify-center p-6 text-slate-400">
+                <div class="flex items-center gap-3">
+                  <div
+                    class="animate-spin w-4 h-4 border-2 border-slate-600 border-t-slate-400 rounded-full"
+                  ></div>
+                  <span class="text-sm">Checking configuration...</span>
+                </div>
+              </div>
+            {:else if !settingsValid || !projectId}
               <StatusAlert on:switchTab={handleSwitchTab} />
             {:else}
               <ProjectStatus
@@ -577,12 +588,23 @@
           </TabsContent>
 
           <TabsContent value="projects">
-            <ProjectsList
-              repoOwner={githubSettings.repoOwner}
-              githubToken={githubSettings.githubToken}
-              currentlyLoadedProjectId={projectId}
-              isBoltSite={projectSettings.isBoltSite}
-            />
+            {#if isInitializing}
+              <div class="flex items-center justify-center p-6 text-slate-400">
+                <div class="flex items-center gap-3">
+                  <div
+                    class="animate-spin w-4 h-4 border-2 border-slate-600 border-t-slate-400 rounded-full"
+                  ></div>
+                  <span class="text-sm">Loading projects...</span>
+                </div>
+              </div>
+            {:else}
+              <ProjectsList
+                repoOwner={githubSettings.repoOwner}
+                githubToken={githubSettings.githubToken}
+                currentlyLoadedProjectId={projectId}
+                isBoltSite={projectSettings.isBoltSite}
+              />
+            {/if}
           </TabsContent>
 
           <TabsContent value="settings">
@@ -643,6 +665,15 @@
             </div>
           </TabsContent>
         </Tabs>
+      {:else if isInitializing}
+        <div class="flex items-center justify-center p-6 text-slate-400">
+          <div class="flex items-center gap-3">
+            <div
+              class="animate-spin w-4 h-4 border-2 border-slate-600 border-t-slate-400 rounded-full"
+            ></div>
+            <span class="text-sm">Checking configuration...</span>
+          </div>
+        </div>
       {:else if githubSettings.hasInitialSettings && githubSettings.repoOwner && githubSettings.githubToken}
         <ProjectsList
           repoOwner={githubSettings.repoOwner}

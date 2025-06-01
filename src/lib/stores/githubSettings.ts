@@ -13,6 +13,7 @@ export interface GitHubSettingsState {
   isTokenValid: boolean | null;
   validationError: string | null;
   hasInitialSettings: boolean;
+  isInitializing: boolean;
 }
 
 // Initial state
@@ -26,6 +27,7 @@ const initialState: GitHubSettingsState = {
   isTokenValid: null,
   validationError: null,
   hasInitialSettings: false,
+  isInitializing: true,
 };
 
 // Create the writable store
@@ -48,6 +50,11 @@ export const githubSettingsActions = {
    * Initialize settings from Chrome storage
    */
   async initialize(): Promise<void> {
+    githubSettingsStore.update((state) => ({
+      ...state,
+      isInitializing: true,
+    }));
+
     try {
       const storedSettings = (await chrome.storage.sync.get([
         'githubToken',
@@ -67,8 +74,17 @@ export const githubSettingsActions = {
       if (storedSettings.githubToken && storedSettings.repoOwner) {
         await this.validateToken(storedSettings.githubToken, storedSettings.repoOwner);
       }
+
+      githubSettingsStore.update((state) => ({
+        ...state,
+        isInitializing: false,
+      }));
     } catch (error) {
       console.error('Error initializing GitHub settings:', error);
+      githubSettingsStore.update((state) => ({
+        ...state,
+        isInitializing: false,
+      }));
     }
   },
 
