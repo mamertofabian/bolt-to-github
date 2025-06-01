@@ -147,10 +147,8 @@
             <div class="recommendation-text">
               {#if !authStatus.hasGitHubApp && authStatus.hasPAT}
                 Upgrade to GitHub App integration for 3x better rate limits!
-              {:else if authStatus.userAuthenticated && !authStatus.hasGitHubApp}
-                Set up GitHub App integration for the best experience.
               {:else}
-                Sign up and set up GitHub App integration for optimal performance.
+                Set up GitHub App integration for the best experience.
               {/if}
             </div>
           </div>
