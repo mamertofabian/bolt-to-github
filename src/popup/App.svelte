@@ -496,7 +496,7 @@
   onDestroy(cleanup);
 </script>
 
-<main class="w-[400px] p-3 bg-slate-950 text-slate-50">
+<main class="w-[400px] h-[600px] p-3 bg-slate-950 text-slate-50">
   <Card class="border-slate-800 bg-slate-900">
     <CardHeader>
       <CardTitle class="flex items-center gap-2">
@@ -607,7 +607,15 @@
               />
 
               <!-- Push Reminder Settings -->
-              <PushReminderSection on:configure={() => (showPushReminderSettings = true)} />
+              <PushReminderSection
+                on:configure={() => {
+                  if (isUserPremium) {
+                    showPushReminderSettings = true;
+                  } else {
+                    handleUpgradeClick('pushReminders');
+                  }
+                }}
+              />
 
               <!-- GitHub Apps Integration Test -->
               <!-- TODO: Remove this before release -->
