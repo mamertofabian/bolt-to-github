@@ -29,7 +29,7 @@
       <span class="text-slate-500">v{version}</span>
     {/if}
 
-    {#if !hasSubscribed}
+    <!-- {#if !hasSubscribed}
       <Button
         variant="link"
         size="sm"
@@ -38,6 +38,6 @@
       >
         Stay Updated
       </Button>
-    {/if}
+    {/if} -->
   </div>
 </CardFooter>

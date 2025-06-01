@@ -607,8 +607,9 @@
               <!-- Push Reminder Settings -->
               <PushReminderSection on:configure={() => (showPushReminderSettings = true)} />
 
-              <!-- Analytics Toggle -->
-              <AnalyticsToggle />
+              <!-- GitHub Apps Integration Test -->
+              <!-- TODO: Remove this before release -->
+              <GitHubSettingsApp />
 
               <!-- Premium Status -->
               <PremiumStatus
@@ -622,18 +623,18 @@
                 }}
               />
 
-              <!-- Newsletter Subscription -->
-              <NewsletterSection />
-
-              <!-- GitHub Apps Integration Test -->
-              <!-- TODO: Remove this before release -->
-              <GitHubSettingsApp />
+              <!-- Analytics Toggle -->
+              <AnalyticsToggle />
             </div>
           </TabsContent>
 
           <TabsContent value="help">
             <div class="space-y-4">
               <Help />
+
+              <!-- Newsletter Subscription -->
+              <NewsletterSection />
+
               <div class="mt-3">
                 <Footer
                   {hasSubscribed}
