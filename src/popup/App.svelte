@@ -599,24 +599,27 @@
             PRO
           </span>
         {:else if onBoltProject || (githubSettings.hasInitialSettings && isUserAuthenticated)}
-          <div class="flex items-center gap-2">
-            <Button
-              size="sm"
-              class="text-xs bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white px-3 py-1 h-6"
-              on:click={() => handleUpgradeClick('general')}
-            >
-              ✨ Upgrade
-            </Button>
-            {#if !isUserAuthenticated}
-              <button
-                class="text-xs text-slate-400 hover:text-slate-300 transition-colors underline"
-                on:click={openSignInPage}
-                title="Sign in if you already have a premium account"
+          <!-- Hide upgrade/sign-in for new users who haven't connected GitHub yet -->
+          {#if !onBoltProject || githubSettings.githubToken}
+            <div class="flex items-center gap-2">
+              <Button
+                size="sm"
+                class="text-xs bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white px-3 py-1 h-6"
+                on:click={() => handleUpgradeClick('general')}
               >
-                Sign in
-              </button>
-            {/if}
-          </div>
+                ✨ Upgrade
+              </Button>
+              {#if !isUserAuthenticated}
+                <button
+                  class="text-xs text-slate-400 hover:text-slate-300 transition-colors underline"
+                  on:click={openSignInPage}
+                  title="Sign in if you already have a premium account"
+                >
+                  Sign in
+                </button>
+              {/if}
+            </div>
+          {/if}
         {/if}
       </CardTitle>
       <CardDescription class="text-slate-400">
@@ -626,11 +629,85 @@
     <CardContent>
       {#if onBoltProject}
         <Tabs bind:value={uiState.activeTab} class="w-full">
-          <Header />
+          <Header disableTabs={!githubSettings.githubToken} />
 
           <TabsContent value="home">
             {#if !settingsValid || !projectId}
-              <StatusAlert on:switchTab={handleSwitchTab} />
+              <!-- Show onboarding for completely new users (no GitHub token) -->
+              {#if !githubSettings.githubToken}
+                <div class="flex flex-col items-center justify-center p-4 text-center space-y-6">
+                  <div class="space-y-4">
+                    <!-- Welcome Header for Bolt project -->
+                    <div class="space-y-2">
+                      <h2 class="text-xl font-semibold text-slate-200">
+                        Ready to Save Your Project?
+                      </h2>
+                      <p class="text-sm text-slate-400 max-w-md">
+                        Connect your GitHub account to sync this Bolt project to a repository and
+                        start version controlling your code.
+                      </p>
+                    </div>
+
+                    <!-- Getting Started Steps -->
+                    <div class="bg-slate-800/50 rounded-lg p-4 space-y-3 max-w-md">
+                      <h3 class="text-sm font-medium text-slate-200 mb-3">Getting Started:</h3>
+                      <div class="space-y-2 text-left">
+                        <div class="flex items-start gap-3 text-sm">
+                          <span
+                            class="bg-blue-500 text-white rounded-full w-5 h-5 flex items-center justify-center text-xs font-medium flex-shrink-0 mt-0.5"
+                            >1</span
+                          >
+                          <div>
+                            <a
+                              href="https://bolt2github.com/settings?tab=github"
+                              target="_blank"
+                              class="text-slate-200 font-medium hover:text-blue-400 transition-colors cursor-pointer underline decoration-1 underline-offset-2"
+                            >
+                              Connect GitHub Account
+                            </a>
+                            <p class="text-slate-400 text-xs">
+                              Securely link your GitHub account to get started
+                            </p>
+                          </div>
+                        </div>
+                        <div class="flex items-start gap-3 text-sm">
+                          <span
+                            class="bg-slate-600 text-slate-300 rounded-full w-5 h-5 flex items-center justify-center text-xs font-medium flex-shrink-0 mt-0.5"
+                            >2</span
+                          >
+                          <div>
+                            <p class="text-slate-300">Upload This Project</p>
+                            <p class="text-slate-500 text-xs">
+                              Sync your current Bolt project to GitHub
+                            </p>
+                          </div>
+                        </div>
+                        <div class="flex items-start gap-3 text-sm">
+                          <span
+                            class="bg-slate-600 text-slate-300 rounded-full w-5 h-5 flex items-center justify-center text-xs font-medium flex-shrink-0 mt-0.5"
+                            >3</span
+                          >
+                          <div>
+                            <p class="text-slate-300">Manage & Collaborate</p>
+                            <p class="text-slate-500 text-xs">
+                              Track changes and collaborate with your team
+                            </p>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+
+                    <!-- Phase 2: Use new GitHubConnector for new users -->
+                    <GitHubConnector
+                      showAsCard={false}
+                      onAuthenticationSelected={handleAuthenticationSelected}
+                    />
+                  </div>
+                </div>
+              {:else}
+                <!-- Show StatusAlert for users with GitHub token but missing other settings -->
+                <StatusAlert on:switchTab={handleSwitchTab} />
+              {/if}
             {:else}
               <ProjectStatus
                 bind:this={projectStatusRef}
