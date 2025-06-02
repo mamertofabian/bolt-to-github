@@ -1,6 +1,7 @@
 import { writable, derived, type Writable } from 'svelte/store';
 import { GitHubService } from '../../services/GitHubService';
 import type { GitHubSettingsInterface, ProjectSettings } from '../types';
+import { GitHubAppsService } from '../../content/services/GitHubAppsService';
 
 // GitHub Settings State Interface
 export interface GitHubSettingsState {
@@ -25,6 +26,8 @@ export interface GitHubSettingsState {
     isAvailable: boolean;
     lastChecked: number | null;
     canMigrate: boolean;
+    hasInstallationToken: boolean;
+    installationId: number | null;
   };
 }
 
@@ -51,21 +54,33 @@ const initialState: GitHubSettingsState = {
     isAvailable: false,
     lastChecked: null,
     canMigrate: false,
+    hasInstallationToken: false,
+    installationId: null,
   },
 };
 
 // Create the writable store
 export const githubSettingsStore: Writable<GitHubSettingsState> = writable(initialState);
 
+// Derived store for any GitHub authentication (PAT or GitHub App)
+export const hasGitHubAuthentication = derived(
+  githubSettingsStore,
+  ($settings) =>
+    Boolean($settings.githubToken) || Boolean($settings.githubAppStatus.hasInstallationToken)
+);
+
 // Derived store for settings validity
 export const isSettingsValid = derived(
   githubSettingsStore,
   ($settings) =>
     Boolean(
-      $settings.githubToken && $settings.repoOwner && $settings.repoName && $settings.branch
+      ($settings.githubToken || $settings.githubAppStatus.hasInstallationToken) &&
+        $settings.repoOwner &&
+        $settings.repoName &&
+        $settings.branch
     ) &&
     !$settings.isValidatingToken &&
-    $settings.isTokenValid === true
+    ($settings.isTokenValid === true || $settings.githubAppStatus.hasInstallationToken)
 );
 
 // Store actions
@@ -88,6 +103,12 @@ export const githubSettingsActions = {
         projectSettings: storedSettings.projectSettings || {},
         hasInitialSettings: Boolean(storedSettings.githubToken && storedSettings.repoOwner),
       }));
+
+      // Update GitHub App status
+      await this.updateGitHubAppStatus();
+
+      // Check for GitHub App installation token
+      await this.checkGitHubAppStatus();
 
       // Validate existing token if available
       if (storedSettings.githubToken && storedSettings.repoOwner) {
@@ -317,6 +338,8 @@ export const githubSettingsActions = {
           isAvailable: authStatus.hasGitHubApp,
           lastChecked: Date.now(),
           canMigrate: authStatus.canUseGitHubApp,
+          hasInstallationToken: false,
+          installationId: null,
         },
         showMigrationPrompt: authStatus.canUseGitHubApp && authStatus.recommended === 'github_app',
       }));
@@ -348,6 +371,8 @@ export const githubSettingsActions = {
         ...state.githubAppStatus,
         isAvailable: true,
         canMigrate: false,
+        hasInstallationToken: true,
+        installationId: state.githubAppStatus.installationId,
       },
     }));
   },
@@ -401,6 +426,8 @@ export const githubSettingsActions = {
             isAvailable: authStatus.hasGitHubApp,
             lastChecked: Date.now(),
             canMigrate: false, // Already migrated if we're here
+            hasInstallationToken: true, // Assume true for GitHub App users
+            installationId: null, // Will be populated by checkGitHubAppStatus
           },
         }));
       } else if (currentState.githubToken) {
@@ -412,6 +439,8 @@ export const githubSettingsActions = {
             isAvailable: authStatus.hasGitHubApp,
             lastChecked: Date.now(),
             canMigrate: authStatus.canUseGitHubApp,
+            hasInstallationToken: false, // PAT users don't have installation tokens
+            installationId: null,
           },
         }));
       }
@@ -424,6 +453,63 @@ export const githubSettingsActions = {
           authMethod: 'pat',
         }));
       }
+    }
+  },
+
+  /**
+   * Check for GitHub App installation token and update status
+   */
+  async checkGitHubAppStatus(): Promise<void> {
+    try {
+      const result = await chrome.storage.local.get(['github_installation_token']);
+      const installationToken = result.github_installation_token;
+
+      if (installationToken) {
+        // Check if token is still valid (not expired)
+        const expiresAt = new Date(installationToken.expires_at);
+        const now = new Date();
+        const timeUntilExpiry = expiresAt.getTime() - now.getTime();
+
+        const isValid = timeUntilExpiry > 5 * 60 * 1000; // More than 5 minutes left
+
+        githubSettingsStore.update((state) => ({
+          ...state,
+          githubAppStatus: {
+            ...state.githubAppStatus,
+            hasInstallationToken: isValid,
+            installationId: isValid ? installationToken.installation_id : null,
+            isAvailable: isValid,
+            lastChecked: Date.now(),
+          },
+          authMethod: isValid ? 'github_app' : state.authMethod,
+        }));
+      } else {
+        githubSettingsStore.update((state) => ({
+          ...state,
+          githubAppStatus: {
+            ...state.githubAppStatus,
+            hasInstallationToken: false,
+            installationId: null,
+            lastChecked: Date.now(),
+          },
+        }));
+      }
+    } catch (error) {
+      console.error('Error checking GitHub App status:', error);
+    }
+  },
+
+  async updateGitHubAppStatus(): Promise<void> {
+    try {
+      const installationToken = await GitHubAppsService.getInstance().getInstallationToken();
+      if (installationToken) {
+        githubSettingsStore.update((state) => ({
+          ...state,
+          githubAppStatus: { ...state.githubAppStatus, hasInstallationToken: true },
+        }));
+      }
+    } catch (error) {
+      console.error('Error updating GitHub App status:', error);
     }
   },
 };

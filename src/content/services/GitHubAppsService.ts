@@ -3,6 +3,7 @@
 import { SUPABASE_CONFIG } from '../../lib/constants/supabase';
 
 export interface GitHubInstallationToken {
+  username: string;
   token: string;
   expires_at: string;
   installation_id: number;
@@ -203,6 +204,7 @@ export class GitHubAppsService {
 
         if (data.token) {
           const installationToken: GitHubInstallationToken = {
+            username: data.github_username,
             token: data.token,
             expires_at: data.expires_at,
             installation_id: data.installation_id,
@@ -213,6 +215,9 @@ export class GitHubAppsService {
           // Cache the token
           this.cachedInstallationToken = installationToken;
           await chrome.storage.local.set({ github_installation_token: installationToken });
+
+          // Save the repoOwner as the username for backwards compatibility
+          await chrome.storage.sync.set({ repoOwner: installationToken.username });
 
           console.log('✅ Fresh installation token obtained:', {
             installation_id: data.installation_id,

@@ -47,6 +47,7 @@
     githubSettingsStore,
     isSettingsValid,
     githubSettingsActions,
+    hasGitHubAuthentication,
     projectSettingsStore,
     isOnBoltProject,
     currentProjectId,
@@ -81,6 +82,7 @@
   $: isUserPremium = $isPremium;
   $: userPlan = $premiumPlan;
   $: userFeatures = $userPremiumFeatures;
+  $: hasGitHubAuth = $hasGitHubAuthentication;
 
   // Handle pending popup context when stores are ready
   $: if (
@@ -564,8 +566,10 @@
     console.log('Authentication selected:', method, token);
 
     if (method === 'github_app') {
-      // For GitHub App, we'll handle this through the GitHubService factory
-      githubSettingsActions.completeMigration();
+      // For GitHub App, check the installation token status and refresh store
+      githubSettingsActions.checkGitHubAppStatus().then(() => {
+        githubSettingsActions.completeMigration();
+      });
     }
   }
 
@@ -600,7 +604,7 @@
           </span>
         {:else if onBoltProject || (githubSettings.hasInitialSettings && isUserAuthenticated)}
           <!-- Hide upgrade/sign-in for new users who haven't connected GitHub yet -->
-          {#if !onBoltProject || githubSettings.githubToken}
+          {#if !onBoltProject || hasGitHubAuth}
             <div class="flex items-center gap-2">
               <Button
                 size="sm"
@@ -629,12 +633,12 @@
     <CardContent>
       {#if onBoltProject}
         <Tabs bind:value={uiState.activeTab} class="w-full">
-          <Header disableTabs={!githubSettings.githubToken} />
+          <Header disableTabs={!hasGitHubAuth} />
 
           <TabsContent value="home">
             {#if !settingsValid || !projectId}
-              <!-- Show onboarding for completely new users (no GitHub token) -->
-              {#if !githubSettings.githubToken}
+              <!-- Show onboarding for completely new users (no GitHub authentication) -->
+              {#if !hasGitHubAuth}
                 <div class="flex flex-col items-center justify-center p-4 text-center space-y-6">
                   <div class="space-y-4">
                     <!-- Welcome Header for Bolt project -->
@@ -705,7 +709,7 @@
                   </div>
                 </div>
               {:else}
-                <!-- Show StatusAlert for users with GitHub token but missing other settings -->
+                <!-- Show StatusAlert for users with GitHub authentication but missing other settings -->
                 <StatusAlert on:switchTab={handleSwitchTab} />
               {/if}
             {:else}
@@ -749,11 +753,16 @@
               </div>
 
               <!-- Phase 2: Rate Limit Monitor for authenticated users -->
-              {#if githubSettings.githubToken && (githubSettings.authMethod === 'pat' || githubSettings.authMethod === 'github_app')}
+              {#if githubSettings.authMethod === 'pat' || githubSettings.authMethod === 'github_app'}
                 <RateLimitMonitor
                   githubToken={githubSettings.githubToken}
                   onMigrateRequested={handleRateLimitMigrate}
                 />
+              {:else}
+                <div class="text-sm text-slate-400">
+                  GitHub Setting Auth Method: {githubSettings.authMethod}
+                  GitHub Token: {githubSettings.githubToken}
+                </div>
               {/if}
 
               <GitHubSettings

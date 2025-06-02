@@ -47,7 +47,12 @@
 
   export const getProjectStatus = async () => {
     try {
-      const githubService = new GitHubService(token);
+      // Use factory method to get the best available authentication (GitHub App preferred)
+      const githubService = await GitHubService.create({ patToken: token });
+
+      // Log which authentication method is being used for debugging
+      const authMethod = githubService.getApiClientType();
+      console.log(`🔧 ProjectStatus: Using ${authMethod} authentication for GitHub API calls`);
 
       // Get repo info
       const repoInfo = await githubService.getRepoInfo(gitHubUsername, repoName);
