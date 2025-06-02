@@ -43,7 +43,7 @@ export class GitHubAppsService {
 
   /* Rate limit thresholds */
   private readonly USER_TOKEN_LIMIT = 5000; // per hour
-  private readonly INSTALLATION_TOKEN_LIMIT = 15000; // per hour
+  private readonly INSTALLATION_TOKEN_LIMIT = 12500; // per hour
   private readonly RATE_LIMIT_BUFFER = 100; // safety buffer
 
   private constructor() {

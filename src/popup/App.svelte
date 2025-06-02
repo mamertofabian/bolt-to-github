@@ -29,12 +29,18 @@
   import FeedbackModal from './components/FeedbackModal.svelte';
   import AnalyticsToggle from '$lib/components/ui/AnalyticsToggle.svelte';
   import { setUpgradeModalState, type UpgradeModalType } from '$lib/utils/upgradeModal';
+  import { getUpgradeModalConfig } from '$lib/utils/upgradeModal';
   import NewsletterModal from '$lib/components/NewsletterModal.svelte';
   import NewsletterSection from '$lib/components/NewsletterSection.svelte';
   import GitHubSettingsApp from './components/GitHubSettingsApp.svelte';
   import SuccessToast from '$lib/components/SuccessToast.svelte';
   import { SubscriptionService } from '../services/SubscriptionService';
   import IssueManager from '$lib/components/IssueManager.svelte';
+
+  // Phase 2: GitHub App integration components
+  import GitHubConnector from '$lib/components/github/GitHubConnector.svelte';
+  import RateLimitMonitor from '$lib/components/github/RateLimitMonitor.svelte';
+  import GitHubAppMigrationModal from './components/GitHubAppMigrationModal.svelte';
 
   // Import stores and services
   import {
@@ -111,6 +117,10 @@
 
   // Issues modal state
   let showIssuesModal = false;
+
+  // Phase 2: GitHub App migration state
+  let showMigrationModal = false;
+  let currentRateLimit: any = null;
 
   // Add pending popup context state
   let pendingPopupContext = '';
@@ -203,6 +213,38 @@
       hasSubscribed = subscription.subscribed;
     } catch (error) {
       console.error('Error loading subscription status:', error);
+    }
+
+    // Phase 2: Initialize GitHub App integration features
+    await initializePhase2Features();
+  }
+
+  // Phase 2: Enhanced initialization for GitHub App integration
+  async function initializePhase2Features() {
+    // Detect authentication method for existing users
+    if (githubSettings?.githubToken) {
+      await githubSettingsActions.detectAuthMethod();
+
+      // Check if user should see migration prompt
+      await githubSettingsActions.checkMigrationPrompt();
+    }
+  }
+
+  // Watch for GitHub settings changes to trigger Phase 2 features
+  $: if (githubSettings?.githubToken && githubSettings?.authMethod === 'unknown') {
+    initializePhase2Features();
+  }
+
+  // Show migration modal when store indicates it should be shown
+  $: if (githubSettings?.showMigrationPrompt && !showMigrationModal) {
+    // Get current rate limit for the modal
+    if (githubSettings.githubToken) {
+      import('../services/GitHubService').then(({ GitHubService }) => {
+        GitHubService.getAuthenticationStatus(githubSettings.githubToken).then((status) => {
+          currentRateLimit = status.rateLimits.pat;
+          showMigrationModal = true;
+        });
+      });
     }
   }
 
@@ -483,14 +525,49 @@
     showNewsletterModal = true;
   }
 
-  const handleUpgradeClick = (upgradeModalType: UpgradeModalType) => {
-    setUpgradeModalState(upgradeModalType, (feature, reason, features) => {
-      upgradeModalFeature = feature;
-      upgradeModalReason = reason;
-      premiumFeatures = features;
-      showUpgradeModal = true;
-    });
-  };
+  function handleUpgradeClick(feature: UpgradeModalType, reason?: string) {
+    const config = getUpgradeModalConfig(feature);
+    upgradeModalFeature = config.feature;
+    upgradeModalReason = config.reason;
+    premiumFeatures = config.features;
+    showUpgradeModal = true;
+  }
+
+  // Phase 2: GitHub App migration handlers
+  function handleMigrationDismiss() {
+    showMigrationModal = false;
+    githubSettingsActions.dismissMigrationPrompt();
+  }
+
+  function handleMigrationComplete() {
+    showMigrationModal = false;
+    githubSettingsActions.completeMigration();
+    // Show success message
+    handleSuccessfulAction('Successfully migrated to GitHub App! You now have higher rate limits.');
+  }
+
+  function handleRateLimitMigrate() {
+    // Show migration modal if user clicks upgrade from rate limit monitor
+    if (githubSettings?.authMethod === 'pat' && githubSettings?.githubToken) {
+      // Get current rate limit for the modal with both methods checked
+      import('../services/GitHubService').then(({ GitHubService }) => {
+        GitHubService.getAuthenticationStatus(githubSettings.githubToken, true).then((status) => {
+          currentRateLimit = status.rateLimits.pat;
+          showMigrationModal = true;
+        });
+      });
+    }
+  }
+
+  function handleAuthenticationSelected(method: 'github_app', token?: string) {
+    // Handle authentication selection
+    console.log('Authentication selected:', method, token);
+
+    if (method === 'github_app') {
+      // For GitHub App, we'll handle this through the GitHubService factory
+      githubSettingsActions.completeMigration();
+    }
+  }
 
   onMount(initializeApp);
   onDestroy(cleanup);
@@ -593,6 +670,15 @@
                 <h2 class="text-xl font-semibold text-slate-200">GitHub Settings</h2>
                 <p class="text-sm text-slate-400">Configure your GitHub repository settings</p>
               </div>
+
+              <!-- Phase 2: Rate Limit Monitor for authenticated users -->
+              {#if githubSettings.githubToken && (githubSettings.authMethod === 'pat' || githubSettings.authMethod === 'github_app')}
+                <RateLimitMonitor
+                  githubToken={githubSettings.githubToken}
+                  onMigrateRequested={handleRateLimitMigrate}
+                />
+              {/if}
+
               <GitHubSettings
                 bind:githubToken={githubSettings.githubToken}
                 bind:repoOwner={githubSettings.repoOwner}
@@ -672,17 +758,11 @@
               🌟 You can also load any of your GitHub repositories by providing your GitHub token
               and repository owner.
             </p>
-            <GitHubSettings
-              isOnboarding={true}
-              bind:githubToken={githubSettings.githubToken}
-              bind:repoName={githubSettings.repoName}
-              bind:branch={githubSettings.branch}
-              bind:repoOwner={githubSettings.repoOwner}
-              status={uiState.status}
-              buttonDisabled={uiState.hasStatus}
-              onSave={saveSettings}
-              onError={handleSettingsError}
-              onInput={() => {}}
+
+            <!-- Phase 2: Use new GitHubConnector for new users -->
+            <GitHubConnector
+              showAsCard={false}
+              onAuthenticationSelected={handleAuthenticationSelected}
             />
           </div>
         </div>
@@ -742,6 +822,16 @@
       on:close={() => (showIssuesModal = false)}
     />
   {/if}
+
+  <!-- Phase 2: GitHub App Migration Modal -->
+  <GitHubAppMigrationModal
+    bind:show={showMigrationModal}
+    currentPatToken={githubSettings.githubToken}
+    {currentRateLimit}
+    on:close={() => (showMigrationModal = false)}
+    on:dismiss={handleMigrationDismiss}
+    on:migrate={handleMigrationComplete}
+  />
 </main>
 
 <style>

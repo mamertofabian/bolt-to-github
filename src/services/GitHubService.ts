@@ -6,6 +6,7 @@ export const CREATE_FINE_GRAINED_TOKEN_URL =
 
 // Import refactored services
 import { GitHubApiClient } from './GitHubApiClient';
+import { GitHubApiClientFactory } from './GitHubApiClientFactory';
 import { TokenService } from './TokenService';
 import { RepositoryService } from './RepositoryService';
 import { FileService } from './FileService';
@@ -26,7 +27,7 @@ export class GitHubService {
   private repoCloneService: IRepoCloneService;
 
   constructor(token: string) {
-    // Initialize components
+    // Initialize components with legacy PAT-based client for backward compatibility
     this.apiClient = new GitHubApiClient(token);
     this.tokenService = new TokenService(this.apiClient);
     this.fileService = new FileService(this.apiClient);
@@ -36,6 +37,139 @@ export class GitHubService {
       this.fileService,
       this.repoCloneService
     );
+  }
+
+  /**
+   * Factory method to create GitHubService with the best available authentication
+   * Prefers GitHub App for new users, maintains PAT compatibility for existing users
+   *
+   * @param options Configuration options
+   * @returns Promise resolving to GitHubService instance
+   */
+  static async create(
+    options: {
+      patToken?: string;
+      preferGitHubApp?: boolean;
+      userType?: 'new' | 'existing' | 'auto';
+      allowUpgrade?: boolean;
+    } = {}
+  ): Promise<GitHubService> {
+    const { patToken, preferGitHubApp = true, userType = 'auto', allowUpgrade = false } = options;
+
+    let apiClient: IGitHubApiClient;
+
+    try {
+      if (userType === 'new') {
+        // New users get GitHub App by default
+        apiClient = await GitHubApiClientFactory.createApiClientForNewUser();
+      } else if (userType === 'existing' && patToken) {
+        // Existing users with PAT
+        apiClient = await GitHubApiClientFactory.createApiClientForExistingUser(
+          patToken,
+          allowUpgrade
+        );
+      } else {
+        // Auto-detect best option
+        apiClient = await GitHubApiClientFactory.createApiClient(patToken, preferGitHubApp);
+      }
+
+      // Create instance with the chosen API client
+      const instance = new GitHubService(''); // Dummy token, will be replaced
+      instance.apiClient = apiClient;
+      instance.tokenService = new TokenService(apiClient);
+      instance.fileService = new FileService(apiClient);
+      instance.repoCloneService = new RepoCloneService(apiClient, instance.fileService);
+      instance.repositoryService = new RepositoryService(
+        apiClient,
+        instance.fileService,
+        instance.repoCloneService
+      );
+
+      return instance;
+    } catch (error: any) {
+      console.error('Error creating GitHubService with factory:', error);
+
+      // Fallback to PAT if provided
+      if (patToken) {
+        console.log('Falling back to legacy PAT-based GitHubService');
+        return new GitHubService(patToken);
+      }
+
+      throw new Error(`Failed to create GitHubService: ${error?.message || 'Unknown error'}`);
+    }
+  }
+
+  /**
+   * Factory method specifically for new users (GitHub App preferred)
+   */
+  static async createForNewUser(): Promise<GitHubService> {
+    return this.create({ userType: 'new' });
+  }
+
+  /**
+   * Factory method for existing users with PAT
+   * @param patToken User's PAT token
+   * @param allowUpgrade Whether to allow upgrading to GitHub App
+   */
+  static async createForExistingUser(
+    patToken: string,
+    allowUpgrade: boolean = false
+  ): Promise<GitHubService> {
+    return this.create({
+      patToken,
+      userType: 'existing',
+      allowUpgrade,
+    });
+  }
+
+  /**
+   * Get authentication status and recommendations
+   * @param patToken Optional PAT token to check
+   * @param checkBothMethods Whether to check both auth methods (for migration scenarios)
+   */
+  static async getAuthenticationStatus(patToken?: string, checkBothMethods: boolean = false) {
+    return GitHubApiClientFactory.getAuthenticationStatus(patToken, checkBothMethods);
+  }
+
+  /**
+   * Attempt to migrate from PAT to GitHub App
+   * @param currentPatToken Current PAT token
+   * @returns New GitHubService instance using GitHub App, or null if not possible
+   */
+  static async migrateToGitHubApp(currentPatToken: string): Promise<GitHubService | null> {
+    try {
+      const newApiClient = await GitHubApiClientFactory.migrateToGitHubApp(currentPatToken);
+      if (newApiClient) {
+        // Create instance with new API client
+        const instance = new GitHubService(''); // Dummy token, will be replaced
+        instance.apiClient = newApiClient;
+        instance.tokenService = new TokenService(newApiClient);
+        instance.fileService = new FileService(newApiClient);
+        instance.repoCloneService = new RepoCloneService(newApiClient, instance.fileService);
+        instance.repositoryService = new RepositoryService(
+          newApiClient,
+          instance.fileService,
+          instance.repoCloneService
+        );
+        return instance;
+      }
+      return null;
+    } catch (error: any) {
+      console.error('Error migrating to GitHub App:', error);
+      return null;
+    }
+  }
+
+  /**
+   * Get the type of API client currently being used
+   */
+  getApiClientType(): 'pat' | 'github_app' | 'unknown' {
+    if (this.apiClient.constructor.name === 'GitHubApiClient') {
+      return 'pat';
+    } else if (this.apiClient.constructor.name === 'GitHubAppsApiClient') {
+      return 'github_app';
+    }
+    return 'unknown';
   }
 
   // Legacy methods TODO: Remove after refactoring

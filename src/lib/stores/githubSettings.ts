@@ -13,6 +13,19 @@ export interface GitHubSettingsState {
   isTokenValid: boolean | null;
   validationError: string | null;
   hasInitialSettings: boolean;
+  tokenType: 'classic' | 'fine-grained' | null;
+  authMethod: 'pat' | 'github_app' | 'unknown';
+  showMigrationPrompt: boolean;
+  migrationDismissedAt: number | null;
+  rateLimitWarnings: {
+    lastWarningAt: number | null;
+    criticalWarningShown: boolean;
+  };
+  githubAppStatus: {
+    isAvailable: boolean;
+    lastChecked: number | null;
+    canMigrate: boolean;
+  };
 }
 
 // Initial state
@@ -26,6 +39,19 @@ const initialState: GitHubSettingsState = {
   isTokenValid: null,
   validationError: null,
   hasInitialSettings: false,
+  tokenType: null,
+  authMethod: 'unknown',
+  showMigrationPrompt: false,
+  migrationDismissedAt: null,
+  rateLimitWarnings: {
+    lastWarningAt: null,
+    criticalWarningShown: false,
+  },
+  githubAppStatus: {
+    isAvailable: false,
+    lastChecked: null,
+    canMigrate: false,
+  },
 };
 
 // Create the writable store
@@ -66,6 +92,9 @@ export const githubSettingsActions = {
       // Validate existing token if available
       if (storedSettings.githubToken && storedSettings.repoOwner) {
         await this.validateToken(storedSettings.githubToken, storedSettings.repoOwner);
+
+        // Detect authentication method for existing users
+        await this.detectAuthMethod();
       }
     } catch (error) {
       console.error('Error initializing GitHub settings:', error);
@@ -252,5 +281,149 @@ export const githubSettingsActions = {
    */
   reset(): void {
     githubSettingsStore.set(initialState);
+  },
+
+  /**
+   * Check if user should see GitHub App migration prompt
+   */
+  async checkMigrationPrompt(): Promise<void> {
+    let currentState: GitHubSettingsState = initialState;
+    const unsubscribe = githubSettingsStore.subscribe((state) => {
+      currentState = state;
+    });
+    unsubscribe();
+
+    // Don't show if already dismissed recently (within 7 days)
+    if (currentState.migrationDismissedAt) {
+      const daysSinceDismissal =
+        (Date.now() - currentState.migrationDismissedAt) / (1000 * 60 * 60 * 24);
+      if (daysSinceDismissal < 7) {
+        return;
+      }
+    }
+
+    // Only show for PAT users
+    if (currentState.authMethod !== 'pat' || !currentState.githubToken) {
+      return;
+    }
+
+    try {
+      const { GitHubService } = await import('../../services/GitHubService');
+      const authStatus = await GitHubService.getAuthenticationStatus(currentState.githubToken);
+
+      githubSettingsStore.update((state) => ({
+        ...state,
+        githubAppStatus: {
+          isAvailable: authStatus.hasGitHubApp,
+          lastChecked: Date.now(),
+          canMigrate: authStatus.canUseGitHubApp,
+        },
+        showMigrationPrompt: authStatus.canUseGitHubApp && authStatus.recommended === 'github_app',
+      }));
+    } catch (error) {
+      console.error('Error checking migration status:', error);
+    }
+  },
+
+  /**
+   * Dismiss migration prompt
+   */
+  dismissMigrationPrompt(): void {
+    githubSettingsStore.update((state) => ({
+      ...state,
+      showMigrationPrompt: false,
+      migrationDismissedAt: Date.now(),
+    }));
+  },
+
+  /**
+   * Complete migration to GitHub App
+   */
+  completeMigration(): void {
+    githubSettingsStore.update((state) => ({
+      ...state,
+      authMethod: 'github_app',
+      showMigrationPrompt: false,
+      githubAppStatus: {
+        ...state.githubAppStatus,
+        isAvailable: true,
+        canMigrate: false,
+      },
+    }));
+  },
+
+  /**
+   * Update rate limit warning status
+   */
+  updateRateLimitWarnings(options: {
+    showCriticalWarning?: boolean;
+    resetWarnings?: boolean;
+  }): void {
+    githubSettingsStore.update((state) => ({
+      ...state,
+      rateLimitWarnings: {
+        lastWarningAt: options.resetWarnings ? null : Date.now(),
+        criticalWarningShown: options.resetWarnings
+          ? false
+          : (options.showCriticalWarning ?? state.rateLimitWarnings.criticalWarningShown),
+      },
+    }));
+  },
+
+  /**
+   * Detect authentication method based on current setup
+   */
+  async detectAuthMethod(): Promise<void> {
+    let currentState: GitHubSettingsState = initialState;
+    const unsubscribe = githubSettingsStore.subscribe((state) => {
+      currentState = state;
+    });
+    unsubscribe();
+
+    if (!currentState.githubToken) {
+      githubSettingsStore.update((state) => ({
+        ...state,
+        authMethod: 'unknown',
+      }));
+      return;
+    }
+
+    try {
+      const { GitHubService } = await import('../../services/GitHubService');
+      const authStatus = await GitHubService.getAuthenticationStatus(currentState.githubToken);
+
+      // Prioritize GitHub App if available and recommended
+      if (authStatus.canUseGitHubApp && authStatus.recommended === 'github_app') {
+        githubSettingsStore.update((state) => ({
+          ...state,
+          authMethod: 'github_app',
+          githubAppStatus: {
+            isAvailable: authStatus.hasGitHubApp,
+            lastChecked: Date.now(),
+            canMigrate: false, // Already migrated if we're here
+          },
+        }));
+      } else if (currentState.githubToken) {
+        // Fall back to PAT if GitHub App is not available or not recommended
+        githubSettingsStore.update((state) => ({
+          ...state,
+          authMethod: 'pat',
+          githubAppStatus: {
+            isAvailable: authStatus.hasGitHubApp,
+            lastChecked: Date.now(),
+            canMigrate: authStatus.canUseGitHubApp,
+          },
+        }));
+      }
+    } catch (error) {
+      console.error('Error detecting authentication method:', error);
+      // Default to PAT for existing users with tokens as fallback
+      if (currentState.githubToken) {
+        githubSettingsStore.update((state) => ({
+          ...state,
+          authMethod: 'pat',
+        }));
+      }
+    }
   },
 };
