@@ -741,23 +741,64 @@
         />
       {:else}
         <div class="flex flex-col items-center justify-center p-4 text-center space-y-6">
-          <div class="space-y-2">
-            {#if !projectSettings.isBoltSite}
-              <Button
-                variant="outline"
-                class="border-slate-800 hover:bg-slate-800 text-slate-200"
-                on:click={() => window.open('https://bolt.new', '_blank')}
-              >
-                Go to bolt.new
-              </Button>
-            {/if}
-            <p class="text-sm text-green-400">
-              💡 No Bolt projects found. Create or load an existing Bolt project to get started.
-            </p>
-            <p class="text-sm text-green-400 pb-4">
-              🌟 You can also load any of your GitHub repositories by providing your GitHub token
-              and repository owner.
-            </p>
+          <div class="space-y-4">
+            <!-- Welcome Header -->
+            <div class="space-y-2">
+              <h2 class="text-xl font-semibold text-slate-200">Welcome to Bolt to GitHub!</h2>
+              <p class="text-sm text-slate-400 max-w-md">
+                Seamlessly sync your projects with GitHub repositories. Upload, manage, and version
+                control your code with ease.
+              </p>
+            </div>
+
+            <!-- Getting Started Steps -->
+            <div class="bg-slate-800/50 rounded-lg p-4 space-y-3 max-w-md">
+              <h3 class="text-sm font-medium text-slate-200 mb-3">Getting Started:</h3>
+              <div class="space-y-2 text-left">
+                <div class="flex items-start gap-3 text-sm">
+                  <span
+                    class="bg-blue-500 text-white rounded-full w-5 h-5 flex items-center justify-center text-xs font-medium flex-shrink-0 mt-0.5"
+                    >1</span
+                  >
+                  <div>
+                    <a
+                      href="https://bolt2github.com/settings?tab=github"
+                      target="_blank"
+                      class="text-slate-200 font-medium hover:text-blue-400 transition-colors cursor-pointer underline decoration-1 underline-offset-2"
+                    >
+                      Connect GitHub Account
+                    </a>
+                    <p class="text-slate-400 text-xs">
+                      Securely link your GitHub account to get started
+                    </p>
+                  </div>
+                </div>
+                <div class="flex items-start gap-3 text-sm">
+                  <span
+                    class="bg-slate-600 text-slate-300 rounded-full w-5 h-5 flex items-center justify-center text-xs font-medium flex-shrink-0 mt-0.5"
+                    >2</span
+                  >
+                  <div>
+                    <p class="text-slate-300">Upload Projects</p>
+                    <p class="text-slate-500 text-xs">
+                      Sync your local projects to GitHub repositories
+                    </p>
+                  </div>
+                </div>
+                <div class="flex items-start gap-3 text-sm">
+                  <span
+                    class="bg-slate-600 text-slate-300 rounded-full w-5 h-5 flex items-center justify-center text-xs font-medium flex-shrink-0 mt-0.5"
+                    >3</span
+                  >
+                  <div>
+                    <p class="text-slate-300">Manage & Collaborate</p>
+                    <p class="text-slate-500 text-xs">
+                      Track changes and collaborate with your team
+                    </p>
+                  </div>
+                </div>
+              </div>
+            </div>
 
             <!-- Phase 2: Use new GitHubConnector for new users -->
             <GitHubConnector
