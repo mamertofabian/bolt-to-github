@@ -28,17 +28,13 @@
   import UpgradeModal from './components/UpgradeModal.svelte';
   import FeedbackModal from './components/FeedbackModal.svelte';
   import AnalyticsToggle from '$lib/components/ui/AnalyticsToggle.svelte';
-  import { setUpgradeModalState, type UpgradeModalType } from '$lib/utils/upgradeModal';
-  import { getUpgradeModalConfig } from '$lib/utils/upgradeModal';
+  import { getUpgradeModalConfig, type UpgradeModalType } from '$lib/utils/upgradeModal';
   import NewsletterModal from '$lib/components/NewsletterModal.svelte';
   import NewsletterSection from '$lib/components/NewsletterSection.svelte';
-  import GitHubSettingsApp from './components/GitHubSettingsApp.svelte';
-  import GitHubSettingsPat from './components/GitHubSettingsPat.svelte';
   import SuccessToast from '$lib/components/SuccessToast.svelte';
   import { SubscriptionService } from '../services/SubscriptionService';
   import IssueManager from '$lib/components/IssueManager.svelte';
 
-  // Phase 2: GitHub App integration components
   import GitHubConnector from '$lib/components/github/GitHubConnector.svelte';
   import RateLimitMonitor from '$lib/components/github/RateLimitMonitor.svelte';
   import GitHubAppMigrationModal from './components/GitHubAppMigrationModal.svelte';
@@ -69,6 +65,7 @@
     type TempRepoMetadata,
   } from '$lib/stores';
   import { ChromeMessagingService } from '$lib/services/chromeMessaging';
+  import DevOnly from './components/DevOnly.svelte';
 
   // Reactive store subscriptions
   $: githubSettings = $githubSettingsStore;
@@ -122,15 +119,8 @@
   // Issues modal state
   let showIssuesModal = false;
 
-  // Phase 2: GitHub App migration state
   let showMigrationModal = false;
   let currentRateLimit: any = null;
-
-  // Collapsible GitHub Settings App state
-  let showGitHubSettingsApp = false;
-
-  // Collapsible GitHub Settings PAT state
-  let showGitHubSettingsPat = false;
 
   // Add pending popup context state
   let pendingPopupContext = '';
@@ -225,11 +215,9 @@
       console.error('Error loading subscription status:', error);
     }
 
-    // Phase 2: Initialize GitHub App integration features
     await initializePhase2Features();
   }
 
-  // Phase 2: Enhanced initialization for GitHub App integration
   async function initializePhase2Features() {
     // Detect authentication method for existing users
     if (githubSettings?.githubToken) {
@@ -240,22 +228,8 @@
     }
   }
 
-  // Watch for GitHub settings changes to trigger Phase 2 features
   $: if (githubSettings?.githubToken && githubSettings?.authMethod === 'unknown') {
     initializePhase2Features();
-  }
-
-  // Show migration modal when store indicates it should be shown
-  $: if (githubSettings?.showMigrationPrompt && !showMigrationModal) {
-    // Get current rate limit for the modal
-    if (githubSettings.githubToken) {
-      import('../services/GitHubService').then(({ GitHubService }) => {
-        GitHubService.getAuthenticationStatus(githubSettings.githubToken).then((status) => {
-          currentRateLimit = status.rateLimits.pat;
-          showMigrationModal = true;
-        });
-      });
-    }
   }
 
   async function checkForTempRepos() {
@@ -543,7 +517,6 @@
     showUpgradeModal = true;
   }
 
-  // Phase 2: GitHub App migration handlers
   function handleMigrationDismiss() {
     showMigrationModal = false;
     githubSettingsActions.dismissMigrationPrompt();
@@ -554,19 +527,6 @@
     githubSettingsActions.completeMigration();
     // Show success message
     handleSuccessfulAction('Successfully migrated to GitHub App! You now have higher rate limits.');
-  }
-
-  function handleRateLimitMigrate() {
-    // Show migration modal if user clicks upgrade from rate limit monitor
-    if (githubSettings?.authMethod === 'pat' && githubSettings?.githubToken) {
-      // Get current rate limit for the modal with both methods checked
-      import('../services/GitHubService').then(({ GitHubService }) => {
-        GitHubService.getAuthenticationStatus(githubSettings.githubToken, true).then((status) => {
-          currentRateLimit = status.rateLimits.pat;
-          showMigrationModal = true;
-        });
-      });
-    }
   }
 
   function handleAuthenticationSelected(method: 'github_app', token?: string) {
@@ -745,8 +705,6 @@
 
           <TabsContent value="projects">
             <ProjectsList
-              repoOwner={githubSettings.repoOwner}
-              githubToken={githubSettings.githubToken}
               currentlyLoadedProjectId={projectId}
               isBoltSite={projectSettings.isBoltSite}
             />
@@ -760,16 +718,16 @@
               </div>
 
               {#if githubSettings.authMethod === 'pat' || githubSettings.authMethod === 'github_app'}
-                <RateLimitMonitor
-                  githubToken={githubSettings.githubToken}
-                  onMigrateRequested={handleRateLimitMigrate}
-                />
+                <RateLimitMonitor githubToken={githubSettings.githubToken} />
               {:else}
                 <div class="text-sm text-slate-400">
                   GitHub Setting Auth Method: {githubSettings.authMethod}
                   GitHub Token: {githubSettings.githubToken}
                 </div>
               {/if}
+
+              <!-- TODO: Remove this before release -->
+              <DevOnly />
 
               <GitHubSettings
                 bind:githubToken={githubSettings.githubToken}
@@ -794,90 +752,6 @@
                   }
                 }}
               />
-
-              <!-- GitHub Apps Integration Test -->
-              <!-- TODO: Remove this before release -->
-              <div class="github-app-testing-section">
-                <div class="section-header">
-                  <div class="header-content">
-                    <div class="header-text">
-                      <h3 class="text-sm font-medium text-slate-200">🔧 GitHub App Testing</h3>
-                      <p class="text-xs text-slate-400">
-                        Test GitHub App functionality and API access (Development Only)
-                      </p>
-                    </div>
-                    <button
-                      class="collapse-toggle"
-                      on:click={() => (showGitHubSettingsApp = !showGitHubSettingsApp)}
-                      aria-label={showGitHubSettingsApp ? 'Collapse' : 'Expand'}
-                    >
-                      <svg
-                        class="toggle-icon {showGitHubSettingsApp ? 'expanded' : ''}"
-                        width="14"
-                        height="14"
-                        viewBox="0 0 16 16"
-                        fill="none"
-                      >
-                        <path
-                          d="M4 6L8 10L12 6"
-                          stroke="currentColor"
-                          stroke-width="2"
-                          stroke-linecap="round"
-                          stroke-linejoin="round"
-                        />
-                      </svg>
-                    </button>
-                  </div>
-                </div>
-
-                {#if showGitHubSettingsApp}
-                  <div class="collapsible-content">
-                    <GitHubSettingsApp />
-                  </div>
-                {/if}
-              </div>
-
-              <!-- GitHub PAT Testing -->
-              <!-- TODO: Remove this before release -->
-              <div class="github-pat-testing-section">
-                <div class="section-header">
-                  <div class="header-content">
-                    <div class="header-text">
-                      <h3 class="text-sm font-medium text-slate-200">🔑 GitHub PAT Testing</h3>
-                      <p class="text-xs text-slate-400">
-                        Test Personal Access Token functionality and API access (Development Only)
-                      </p>
-                    </div>
-                    <button
-                      class="collapse-toggle"
-                      on:click={() => (showGitHubSettingsPat = !showGitHubSettingsPat)}
-                      aria-label={showGitHubSettingsPat ? 'Collapse' : 'Expand'}
-                    >
-                      <svg
-                        class="toggle-icon {showGitHubSettingsPat ? 'expanded' : ''}"
-                        width="14"
-                        height="14"
-                        viewBox="0 0 16 16"
-                        fill="none"
-                      >
-                        <path
-                          d="M4 6L8 10L12 6"
-                          stroke="currentColor"
-                          stroke-width="2"
-                          stroke-linecap="round"
-                          stroke-linejoin="round"
-                        />
-                      </svg>
-                    </button>
-                  </div>
-                </div>
-
-                {#if showGitHubSettingsPat}
-                  <div class="collapsible-content">
-                    <GitHubSettingsPat />
-                  </div>
-                {/if}
-              </div>
 
               <!-- Premium Status -->
               <PremiumStatus on:upgrade={() => handleUpgradeClick('general')} />
@@ -906,8 +780,6 @@
         </Tabs>
       {:else if githubSettings.hasInitialSettings && githubSettings.repoOwner && githubSettings.githubToken}
         <ProjectsList
-          repoOwner={githubSettings.repoOwner}
-          githubToken={githubSettings.githubToken}
           currentlyLoadedProjectId={projectId}
           isBoltSite={projectSettings.isBoltSite}
         />
@@ -970,7 +842,6 @@
     />
   {/if}
 
-  <!-- Phase 2: GitHub App Migration Modal -->
   <GitHubAppMigrationModal
     bind:show={showMigrationModal}
     currentPatToken={githubSettings.githubToken}
@@ -984,72 +855,6 @@
 <style>
   :global(.lucide) {
     stroke-width: 1.5px;
-  }
-
-  /* Collapsible GitHub App Testing Section */
-  .github-app-testing-section {
-    margin: 16px 0;
-    padding: 12px;
-    background: rgba(15, 23, 42, 0.5);
-    border: 1px solid #334155;
-    border-radius: 8px;
-  }
-
-  /* Collapsible GitHub PAT Testing Section */
-  .github-pat-testing-section {
-    margin: 16px 0;
-    padding: 12px;
-    background: rgba(15, 23, 42, 0.5);
-    border: 1px solid #334155;
-    border-radius: 8px;
-  }
-
-  .section-header {
-    margin-bottom: 0;
-  }
-
-  .header-content {
-    display: flex;
-    justify-content: space-between;
-    align-items: flex-start;
-    gap: 12px;
-  }
-
-  .header-text {
-    flex: 1;
-  }
-
-  .collapse-toggle {
-    background: none;
-    border: none;
-    cursor: pointer;
-    padding: 4px;
-    border-radius: 4px;
-    color: #64748b;
-    transition: all 0.2s ease;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    min-width: 22px;
-    height: 22px;
-  }
-
-  .collapse-toggle:hover {
-    background: rgba(51, 65, 85, 0.8);
-    color: #e2e8f0;
-  }
-
-  .toggle-icon {
-    transition: transform 0.2s ease;
-  }
-
-  .toggle-icon.expanded {
-    transform: rotate(180deg);
-  }
-
-  .collapsible-content {
-    margin-top: 12px;
-    animation: fadeIn 0.2s ease;
   }
 
   @keyframes fadeIn {

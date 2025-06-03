@@ -15,17 +15,29 @@
   } from 'lucide-svelte';
   import RepoSettings from '$lib/components/RepoSettings.svelte';
   import ConfirmationDialog from '$lib/components/ui/dialog/ConfirmationDialog.svelte';
-  import { GitHubService } from '../../services/GitHubService';
+  import { GitHubApiClientFactory } from '../../services/GitHubApiClientFactory';
+  import type { IGitHubApiClient } from '../../services/interfaces/IGitHubApiClient';
   import BranchSelectionModal from '../../popup/components/BranchSelectionModal.svelte';
-  import { githubSettingsStore } from '$lib/stores';
+  import { githubSettingsStore, githubSettingsActions } from '$lib/stores';
 
-  export let repoOwner: string;
-  export let githubToken: string;
   export let isBoltSite: boolean = true;
   export let currentlyLoadedProjectId: string | null = null;
 
+  // Store-based authentication instead of props
+  $: githubSettings = $githubSettingsStore;
+  $: hasGitHubApp = githubSettings.githubAppStatus.hasInstallationToken;
+  $: hasPAT = Boolean(githubSettings.githubToken);
+  $: hasAuthentication = hasGitHubApp || hasPAT;
+  $: authMethod = githubSettings.authMethod; // 'github_app' | 'pat' | 'unknown'
+  $: repoOwner = githubSettings.repoOwner;
+  $: githubToken = githubSettings.githubToken; // Still available for legacy operations
+
   // Use stores instead of props
   $: projectSettings = $githubSettingsStore.projectSettings;
+
+  // GitHub API Client
+  let githubApiClient: IGitHubApiClient | null = null;
+  let clientInitializationError = '';
 
   // Pagination state
   let boltProjectsPage = 1;
@@ -56,7 +68,6 @@
   let showImportConfirmDialog = false;
   let repoToConfirmImport: { owner: string; repo: string; isPrivate: boolean } | null = null;
 
-  const githubService = new GitHubService(githubToken);
   let commitCounts: Record<string, number> = {};
   let loadingCommitCounts: Record<string, boolean> = {};
   let allRepos: Array<{
@@ -80,10 +91,43 @@
   const REPOS_CACHE_DURATION = 5 * 60 * 1000; // 5 minutes
   const COMMITS_CACHE_DURATION = 2 * 60 * 1000; // 2 minutes (commits change more frequently)
 
+  // Initialize GitHub API Client
+  async function initializeGitHubClient() {
+    if (!hasAuthentication) {
+      clientInitializationError = 'No GitHub authentication available';
+      return;
+    }
+
+    clientInitializationError = '';
+
+    try {
+      if (hasGitHubApp) {
+        // Preferred: Use GitHub App
+        githubApiClient = await GitHubApiClientFactory.createApiClientForNewUser();
+        console.log('GitHub client initialized using GitHub App');
+      } else if (hasPAT) {
+        // Fallback: Use PAT
+        githubApiClient = await GitHubApiClientFactory.createApiClientForExistingUser(
+          githubSettings.githubToken,
+          true // Allow migrate to GitHub App if available
+        );
+        console.log('GitHub client initialized using PAT');
+      }
+    } catch (err: any) {
+      clientInitializationError = err.message;
+      console.error('Error initializing GitHub client:', err);
+    }
+  }
+
   // Reset pagination when search changes
   $: if (searchQuery !== undefined) {
     boltProjectsPage = 1;
     reposPage = 1;
+  }
+
+  // Watch for authentication changes
+  $: if (authMethod && authMethod !== 'unknown') {
+    initializeGitHubClient();
   }
 
   // Filter and paginate logic
@@ -226,8 +270,35 @@
         }
       }
 
-      // Fetch from API
-      const repos = await githubService.listRepos();
+      // Ensure GitHub client is initialized
+      if (!githubApiClient) {
+        await initializeGitHubClient();
+      }
+
+      if (!githubApiClient) {
+        throw new Error(clientInitializationError || 'GitHub client not available');
+      }
+
+      // Fetch from API using the new client
+      let repos;
+      try {
+        if (hasGitHubApp) {
+          // GitHub App: Use installation repositories endpoint
+          const response = await githubApiClient.request(
+            'GET',
+            '/installation/repositories?per_page=100'
+          );
+          repos = response.repositories;
+        } else {
+          // PAT: Use user repositories endpoint
+          repos = await githubApiClient.request('GET', '/user/repos?sort=updated&per_page=100');
+        }
+      } catch (error: any) {
+        if (error.message.includes('404') || error.message.includes('403')) {
+          throw new Error('Access denied or repositories not found. Check GitHub authentication.');
+        }
+        throw error;
+      }
 
       // Simulate a brief delay for better UX (only for non-cached loads)
       if (initialLoadingRepos) {
@@ -266,6 +337,16 @@
       }
     }
 
+    // Ensure GitHub client is initialized
+    if (!githubApiClient) {
+      await initializeGitHubClient();
+    }
+
+    if (!githubApiClient) {
+      console.warn('Cannot refresh commit counts: GitHub client not available');
+      return;
+    }
+
     // Fetch commit counts for projects that have IDs
     const newCommitCounts: Record<string, number> = { ...commitCounts };
     const newLoadingStates: Record<string, boolean> = { ...loadingCommitCounts };
@@ -283,12 +364,20 @@
 
     for (const [projectId, settings] of projectsToLoad) {
       try {
-        newCommitCounts[projectId] = await githubService.getCommitCount(
-          repoOwner,
-          settings.repoName,
-          settings.branch
+        const commits = await githubApiClient.request(
+          'GET',
+          `/repos/${repoOwner}/${settings.repoName}/commits?sha=${settings.branch}&per_page=1`
         );
-      } catch (error) {
+
+        // Get commit count from pagination headers if available
+        // For now, we'll use a simplified approach and fetch more commits to count
+        const allCommits = await githubApiClient.request(
+          'GET',
+          `/repos/${repoOwner}/${settings.repoName}/commits?sha=${settings.branch}&per_page=100`
+        );
+
+        newCommitCounts[projectId] = Array.isArray(allCommits) ? allCommits.length : 0;
+      } catch (error: any) {
         console.error(`Failed to fetch commit count for ${projectId}:`, error);
         // Keep existing count if available
         if (commitCounts[projectId] !== undefined) {
@@ -306,12 +395,20 @@
     await saveCommitCountsToCache(commitCounts);
   }
 
-  onMount(() => {
+  onMount(async () => {
+    // Initialize GitHub settings to load stored authentication
+    await githubSettingsActions.initialize();
+
     // Initialize data (async)
     const initializeData = async () => {
       // Get current tab URL
       const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
       currentTabIsBolt = tab?.url?.includes('bolt.new') ?? false;
+
+      // Auto-initialize client if authentication is available
+      if (hasAuthentication) {
+        await initializeGitHubClient();
+      }
 
       // Load all repos (will try cache first)
       await loadAllRepos();
@@ -585,9 +682,63 @@
     // Also refresh commit counts when refreshing repos
     await refreshProjectData(true);
   }
+
+  // Helper function to show migrate prompt for PAT users
+  async function connectToGitHubApp() {
+    // Redirect to GitHub App installation/authorization
+    const connectUrl = 'https://bolt2github.com/dashboard?tab=github&action=connect';
+    await chrome.tabs.create({ url: connectUrl });
+  }
 </script>
 
 <div class="space-y-2">
+  <!-- Authentication Status -->
+  {#if hasGitHubApp}
+    <div
+      class="flex items-center gap-2 mb-3 px-3 py-2 bg-emerald-900/20 border border-emerald-800 rounded-lg"
+    >
+      <div class="text-emerald-400 text-sm">✅ Using GitHub App (Recommended)</div>
+    </div>
+  {:else if hasPAT}
+    <div
+      class="flex items-center justify-between gap-2 mb-3 px-3 py-2 bg-amber-900/20 border border-amber-800 rounded-lg"
+    >
+      <div class="text-amber-400 text-sm">⚠️ Using Personal Access Token</div>
+      <Button
+        variant="ghost"
+        size="sm"
+        class="text-xs text-amber-400 hover:text-amber-300"
+        on:click={connectToGitHubApp}
+      >
+        Connect to GitHub App
+      </Button>
+    </div>
+  {:else}
+    <div
+      class="flex items-center justify-between gap-2 mb-3 px-3 py-2 bg-red-900/20 border border-red-800 rounded-lg"
+    >
+      <div class="text-red-400 text-sm">❌ No GitHub authentication</div>
+      <Button
+        variant="ghost"
+        size="sm"
+        class="text-xs text-red-400 hover:text-red-300"
+        on:click={connectToGitHubApp}
+      >
+        Connect to GitHub App
+      </Button>
+    </div>
+  {/if}
+
+  {#if clientInitializationError}
+    <div
+      class="flex items-center gap-2 mb-3 px-3 py-2 bg-red-900/20 border border-red-800 rounded-lg"
+    >
+      <div class="text-red-400 text-sm">
+        ⚠️ GitHub Client Error: {clientInitializationError}
+      </div>
+    </div>
+  {/if}
+
   <div class="flex items-center gap-2 mb-4">
     <div class="flex-1 relative">
       <input
@@ -620,7 +771,7 @@
         variant="ghost"
         class="border-slate-800 hover:bg-slate-800 text-slate-200 transition-colors"
         title="Refresh Repos"
-        disabled={loadingRepos}
+        disabled={loadingRepos || !hasAuthentication}
         on:click={handleRefreshRepos}
       >
         {#if loadingRepos}

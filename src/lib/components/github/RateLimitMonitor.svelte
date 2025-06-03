@@ -3,21 +3,12 @@
   import { Alert, AlertDescription } from '$lib/components/ui/alert';
   import { Button } from '$lib/components/ui/button';
   import { Badge } from '$lib/components/ui/badge';
-  import {
-    AlertTriangle,
-    Zap,
-    Clock,
-    TrendingUp,
-    RefreshCw,
-    Crown,
-    ExternalLink,
-  } from 'lucide-svelte';
+  import { AlertTriangle, Zap, Clock, TrendingUp, RefreshCw, Crown } from 'lucide-svelte';
   import { GitHubService } from '../../../services/GitHubService';
   import { Progress } from '../ui/progress';
 
   export let githubToken: string = '';
   export let checkInterval: number = 300000; // 5 minutes
-  export let onMigrateRequested: (() => void) | null = null;
   export let showMigratePrompt: boolean = true;
 
   // Rate limit thresholds
@@ -122,25 +113,9 @@
     }
   }
 
-  function getAlertVariant(): 'default' | 'destructive' {
-    if (isCriticalLimit) return 'destructive';
-    return 'default';
-  }
-
-  function getAlertColor(): string {
-    if (isCriticalLimit) return 'red';
-    if (isLowLimit) return 'yellow';
-    return 'blue';
-  }
-
   function handleMigrate() {
-    if (onMigrateRequested) {
-      onMigrateRequested();
-    } else {
-      // Default migrate action - open settings
-      const migrateUrl = 'https://bolt2github.com/settings?tab=github&action=migrate';
-      chrome.tabs.create({ url: migrateUrl });
-    }
+    const migrateUrl = 'https://bolt2github.com/settings?tab=github&action=migrate';
+    chrome.tabs.create({ url: migrateUrl });
   }
 </script>
 
@@ -247,27 +222,6 @@
               Migrate
             {/if}
           </Button>
-        </div>
-      </AlertDescription>
-    </Alert>
-  {:else if apiClientType === 'github_app'}
-    <!-- Success indicator for GitHub App users -->
-    <Alert class="border-green-200 bg-green-50 dark:border-green-800 dark:bg-green-950">
-      <Crown class="h-4 w-4 text-green-600" />
-      <AlertDescription class="text-green-800 dark:text-green-200">
-        <div class="flex items-center justify-between">
-          <div>
-            <div><strong>GitHub App Active</strong></div>
-            <div class="text-sm">
-              You're using the preferred authentication method with 2.5× higher rate limits
-            </div>
-          </div>
-          <Badge
-            variant="secondary"
-            class="text-xs bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200"
-          >
-            Optimized
-          </Badge>
         </div>
       </AlertDescription>
     </Alert>

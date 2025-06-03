@@ -13,8 +13,7 @@
     Settings,
   } from 'lucide-svelte';
   import { onMount } from 'svelte';
-  import { CREATE_FINE_GRAINED_TOKEN_URL, GitHubService } from '../../services/GitHubService';
-  import NewUserGuide from './github/NewUserGuide.svelte';
+  import { GitHubService } from '../../services/GitHubService';
 
   export let isOnboarding: boolean = false;
   export let githubToken: string;
@@ -402,9 +401,6 @@
 </script>
 
 <div class="space-y-4">
-  <!-- Quick Links Section -->
-  <NewUserGuide />
-
   <!-- Collapsible GitHub Settings -->
   <div class="border border-slate-700 rounded-lg bg-slate-900/50 overflow-hidden">
     <!-- Header with toggle -->
