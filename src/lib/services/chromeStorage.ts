@@ -10,6 +10,7 @@ export const STORAGE_KEYS = {
   PENDING_FILE_CHANGES: 'pendingFileChanges',
   STORED_FILE_CHANGES: 'storedFileChanges',
   PUSH_STATISTICS: 'pushStatistics',
+  REPOSITORY_CACHE: 'repositoryCache',
 } as const;
 
 // Chrome Storage Service
@@ -303,6 +304,45 @@ export class ChromeStorageService {
       await chrome.storage.local.remove(STORAGE_KEYS.PUSH_STATISTICS);
     } catch (error) {
       console.error('Error clearing push statistics from storage:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Get repository cache from local storage
+   */
+  static async getRepositoryCache(): Promise<any> {
+    try {
+      const result = await chrome.storage.local.get(STORAGE_KEYS.REPOSITORY_CACHE);
+      return result[STORAGE_KEYS.REPOSITORY_CACHE] || {};
+    } catch (error) {
+      console.error('Error getting repository cache from storage:', error);
+      return {};
+    }
+  }
+
+  /**
+   * Save repository cache to local storage
+   */
+  static async saveRepositoryCache(cache: any): Promise<void> {
+    try {
+      await chrome.storage.local.set({
+        [STORAGE_KEYS.REPOSITORY_CACHE]: cache,
+      });
+    } catch (error) {
+      console.error('Error saving repository cache to storage:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Clear repository cache from local storage
+   */
+  static async clearRepositoryCache(): Promise<void> {
+    try {
+      await chrome.storage.local.remove(STORAGE_KEYS.REPOSITORY_CACHE);
+    } catch (error) {
+      console.error('Error clearing repository cache from storage:', error);
       throw error;
     }
   }

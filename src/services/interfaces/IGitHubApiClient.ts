@@ -115,4 +115,12 @@ export interface IGitHubApiClient {
    * @returns Promise resolving to user information
    */
   getUser(): Promise<any>;
+
+  /**
+   * Gets branches for a repository
+   * @param owner Repository owner (username or organization)
+   * @param name Repository name
+   * @returns Promise resolving to repository branches
+   */
+  getRepositoryBranches(owner: string, name: string): Promise<any>;
 }

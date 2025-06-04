@@ -18,7 +18,12 @@
   import { GitHubApiClientFactory } from '../../services/GitHubApiClientFactory';
   import type { IGitHubApiClient } from '../../services/interfaces/IGitHubApiClient';
   import BranchSelectionModal from '../../popup/components/BranchSelectionModal.svelte';
-  import { githubSettingsStore, githubSettingsActions } from '$lib/stores';
+  import {
+    githubSettingsStore,
+    githubSettingsActions,
+    repositoryActions,
+    repositoryStore,
+  } from '$lib/stores';
 
   export let isBoltSite: boolean = true;
   export let currentlyLoadedProjectId: string | null = null;
@@ -87,9 +92,7 @@
 
   // Cache keys and durations
   const REPOS_CACHE_KEY = `github_repos_${repoOwner}`;
-  const COMMITS_CACHE_KEY = `github_commits_${repoOwner}`;
   const REPOS_CACHE_DURATION = 5 * 60 * 1000; // 5 minutes
-  const COMMITS_CACHE_DURATION = 2 * 60 * 1000; // 2 minutes (commits change more frequently)
 
   // Initialize GitHub API Client
   async function initializeGitHubClient() {
@@ -221,39 +224,6 @@
     }
   }
 
-  async function loadCommitCountsFromCache() {
-    try {
-      const cached = await chrome.storage.local.get([
-        COMMITS_CACHE_KEY,
-        `${COMMITS_CACHE_KEY}_timestamp`,
-      ]);
-      const cachedCommits = cached[COMMITS_CACHE_KEY];
-      const timestamp = cached[`${COMMITS_CACHE_KEY}_timestamp`];
-
-      if (cachedCommits && timestamp && Date.now() - timestamp < COMMITS_CACHE_DURATION) {
-        console.log('Loading commit counts from cache for', repoOwner);
-        commitCounts = { ...cachedCommits };
-        return true;
-      }
-      return false;
-    } catch (error) {
-      console.error('Failed to load commit counts from cache:', error);
-      return false;
-    }
-  }
-
-  async function saveCommitCountsToCache(counts: Record<string, number>) {
-    try {
-      await chrome.storage.local.set({
-        [COMMITS_CACHE_KEY]: counts,
-        [`${COMMITS_CACHE_KEY}_timestamp`]: Date.now(),
-      });
-      console.log('Commit counts cached for', repoOwner);
-    } catch (error) {
-      console.error('Failed to cache commit counts:', error);
-    }
-  }
-
   async function loadAllRepos(forceRefresh = false) {
     console.log('Loading repos for', repoOwner, forceRefresh ? '(force refresh)' : '');
 
@@ -279,22 +249,24 @@
         throw new Error(clientInitializationError || 'GitHub client not available');
       }
 
-      // Fetch from API using the new client
+      // Fetch from API using convenience methods
       let repos;
       try {
         if (hasGitHubApp) {
           // GitHub App: Use installation repositories endpoint
-          const response = await githubApiClient.request(
-            'GET',
-            '/installation/repositories?per_page=100'
-          );
+          const response = await githubApiClient.getInstallationRepositories();
           repos = response.repositories;
         } else {
           // PAT: Use user repositories endpoint
-          repos = await githubApiClient.request('GET', '/user/repos?sort=updated&per_page=100');
+          repos = await githubApiClient.getUserRepositories({ sort: 'updated', per_page: 100 });
         }
       } catch (error: any) {
-        if (error.message.includes('404') || error.message.includes('403')) {
+        if (
+          error.status === 404 ||
+          error.status === 403 ||
+          error.message?.includes('404') ||
+          error.message?.includes('403')
+        ) {
           throw new Error('Access denied or repositories not found. Check GitHub authentication.');
         }
         throw error;
@@ -310,78 +282,81 @@
 
       initialLoadingRepos = false;
       loadingRepos = false;
-    } catch (error) {
+    } catch (error: any) {
       initialLoadingRepos = false;
       loadingRepos = false;
       console.error('Failed to load repos:', error);
+
+      // Show user-friendly error message for common issues
+      if (error.status === 401 || error.message?.includes('401')) {
+        clientInitializationError = 'GitHub authentication expired. Please reconnect.';
+      } else if (error.status === 403 || error.message?.includes('403')) {
+        clientInitializationError = 'GitHub access forbidden. Check permissions.';
+      } else {
+        clientInitializationError = error.message || 'Failed to load repositories';
+      }
     }
   }
 
-  // Function to refresh project data
+  // Updated function to refresh project data using repository store
   async function refreshProjectData(forceRefresh = false) {
     console.log('Refreshing project data in ProjectsList', forceRefresh ? '(force refresh)' : '');
 
-    // Try to load from cache first unless force refresh is requested
-    if (!forceRefresh) {
-      const cachedSuccessfully = await loadCommitCountsFromCache();
-      if (cachedSuccessfully) {
-        // Check if we have all the required commit counts
-        const projectIds = Object.keys(projectSettings);
-        const cachedIds = Object.keys(commitCounts);
-        const hasAllCounts = projectIds.every((id) => cachedIds.includes(id));
-
-        if (hasAllCounts) {
-          console.log('All commit counts loaded from cache');
-          return;
-        }
-      }
-    }
-
-    // Ensure GitHub client is initialized
-    if (!githubApiClient) {
-      await initializeGitHubClient();
-    }
-
-    if (!githubApiClient) {
-      console.warn('Cannot refresh commit counts: GitHub client not available');
+    if (!hasAuthentication || !repoOwner) {
+      console.warn('Cannot refresh project data: No authentication or owner not available');
       return;
     }
 
-    // Fetch commit counts for projects that have IDs
-    const newCommitCounts: Record<string, number> = { ...commitCounts };
-    const newLoadingStates: Record<string, boolean> = { ...loadingCommitCounts };
-
     // Track which projects need loading
-    const projectsToLoad = Object.entries(projectSettings).filter(([projectId]) => {
-      return forceRefresh || commitCounts[projectId] === undefined;
-    });
+    const projectsToLoad = Object.entries(projectSettings);
 
     // Set loading states for projects we're about to fetch
+    const newLoadingStates: Record<string, boolean> = { ...loadingCommitCounts };
     for (const [projectId] of projectsToLoad) {
       newLoadingStates[projectId] = true;
     }
     loadingCommitCounts = newLoadingStates;
 
+    // Use repository store to get repository information
     for (const [projectId, settings] of projectsToLoad) {
       try {
-        const commits = await githubApiClient.request(
-          'GET',
-          `/repos/${repoOwner}/${settings.repoName}/commits?sha=${settings.branch}&per_page=1`
-        );
+        // Get repository information from store (with caching) - only use token if available
+        if (githubToken) {
+          await repositoryActions.getRepositoryInfo(
+            repoOwner,
+            settings.repoName,
+            githubToken,
+            forceRefresh
+          );
+        }
 
-        // Get commit count from pagination headers if available
-        // For now, we'll use a simplified approach and fetch more commits to count
-        const allCommits = await githubApiClient.request(
-          'GET',
-          `/repos/${repoOwner}/${settings.repoName}/commits?sha=${settings.branch}&per_page=100`
-        );
+        // Ensure GitHub client is initialized for commit count
+        if (!githubApiClient) {
+          await initializeGitHubClient();
+        }
 
-        newCommitCounts[projectId] = Array.isArray(allCommits) ? allCommits.length : 0;
+        if (githubApiClient) {
+          try {
+            // Get commit count using convenience method
+            const allCommits = await githubApiClient.getRepositoryCommits(
+              repoOwner,
+              settings.repoName,
+              { sha: settings.branch, per_page: 100 }
+            );
+            commitCounts[projectId] = Array.isArray(allCommits) ? allCommits.length : 0;
+          } catch (error: any) {
+            console.error(`Failed to fetch commit count for ${projectId}:`, error);
+            // Keep existing count if available
+            if (commitCounts[projectId] === undefined) {
+              commitCounts[projectId] = 0;
+            }
+          }
+        }
       } catch (error: any) {
-        console.error(`Failed to fetch commit count for ${projectId}:`, error);
+        console.error(`Failed to fetch repository info for ${projectId}:`, error);
         // Keep existing count if available
-        if (commitCounts[projectId] !== undefined) {
-          newCommitCounts[projectId] = commitCounts[projectId];
+        if (commitCounts[projectId] === undefined) {
+          commitCounts[projectId] = 0;
         }
       } finally {
         // Clear loading state for this project
@@ -389,15 +364,14 @@
       }
     }
 
-    // Update commit counts and loading states
-    commitCounts = newCommitCounts;
+    // Update loading states
     loadingCommitCounts = newLoadingStates;
-    await saveCommitCountsToCache(commitCounts);
   }
 
   onMount(async () => {
-    // Initialize GitHub settings to load stored authentication
+    // Initialize GitHub settings and repository store
     await githubSettingsActions.initialize();
+    await repositoryActions.initialize();
 
     // Initialize data (async)
     const initializeData = async () => {
@@ -413,7 +387,7 @@
       // Load all repos (will try cache first)
       await loadAllRepos();
 
-      // Initial load of commit counts
+      // Initial load of project data using repository store
       await refreshProjectData();
     };
 
@@ -439,7 +413,7 @@
     );
 
     if (hasNewProjects || hasBranchChanges) {
-      // Force refresh commit counts for new projects or branch changes
+      // Force refresh project data for new projects or branch changes
       refreshProjectData(true);
     } else if (currentKeys.length !== previousKeys.length) {
       // Just refresh normally for other changes
@@ -546,23 +520,32 @@
           projectSettings: updatedProjectSettings,
         }));
 
-        // Remove from commit counts and loading states, then update cache
+        // Remove from commit counts
         if (projectToDelete.projectId in commitCounts) {
           delete commitCounts[projectToDelete.projectId];
           commitCounts = { ...commitCounts };
-          await saveCommitCountsToCache(commitCounts);
         }
         if (projectToDelete.projectId in loadingCommitCounts) {
           delete loadingCommitCounts[projectToDelete.projectId];
           loadingCommitCounts = { ...loadingCommitCounts };
+        }
+
+        // Clear repository cache for this project
+        const projectSettings = await chrome.storage.sync.get(['projectSettings']);
+        const settings_data = projectSettings.projectSettings || {};
+        const projectData = settings_data[projectToDelete.projectId];
+        if (projectData && repoOwner) {
+          await repositoryActions.clearRepositoryCache(repoOwner, projectData.repoName);
         }
       }
 
       // Close the modal and reset state
       showDeleteModal = false;
       projectToDelete = null;
-    } catch (error) {
+    } catch (error: any) {
       console.error('Failed to delete project(s):', error);
+      const errorMessage = error.message || 'Unknown error occurred';
+      alert(`Failed to delete project: ${errorMessage}`);
     }
   }
 
@@ -656,9 +639,10 @@
       if (currentTabIsBolt) {
         window.close();
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error('❌ Failed to import private repository:', error);
-      alert('Failed to import private repository. Please try again later.');
+      const errorMessage = error.message || 'Unknown error occurred';
+      alert(`Failed to import private repository: ${errorMessage}. Please try again later.`);
       repoToImport = null;
     }
   }
@@ -679,7 +663,7 @@
   // Handle refresh with force refresh
   async function handleRefreshRepos() {
     await loadAllRepos(true);
-    // Also refresh commit counts when refreshing repos
+    // Also refresh project data when refreshing repos
     await refreshProjectData(true);
   }
 

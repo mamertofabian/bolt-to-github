@@ -126,14 +126,8 @@ export class GitHubAppsApiClient implements IGitHubApiClient {
               Accept: 'application/vnd.github.v3+json',
               Authorization: `Bearer ${userToken.access_token}`,
               'Content-Type': 'application/json',
-              // Cache-busting headers to ensure fresh data
-              'Cache-Control': 'no-cache, no-store, must-revalidate',
-              Pragma: 'no-cache',
-              Expires: '0',
               ...options.headers,
             },
-            // Disable caching at the fetch level
-            cache: 'no-store',
             body: body ? JSON.stringify(body) : undefined,
           });
 
@@ -201,14 +195,8 @@ export class GitHubAppsApiClient implements IGitHubApiClient {
           ...options,
           headers: {
             'Content-Type': 'application/json',
-            // Cache-busting headers to ensure fresh data
-            'Cache-Control': 'no-cache, no-store, must-revalidate',
-            Pragma: 'no-cache',
-            Expires: '0',
             ...options.headers,
           },
-          // Disable caching at the fetch level
-          cache: 'no-store',
           body: body ? JSON.stringify(body) : undefined,
         },
         operationType
@@ -467,5 +455,15 @@ export class GitHubAppsApiClient implements IGitHubApiClient {
    */
   async getUser(): Promise<any> {
     return this.request('GET', '/user');
+  }
+
+  /**
+   * Gets branches for a repository
+   * @param owner Repository owner (username or organization)
+   * @param name Repository name
+   * @returns Promise resolving to repository branches
+   */
+  async getRepositoryBranches(owner: string, name: string): Promise<any> {
+    return this.request('GET', `/repos/${owner}/${name}/branches`);
   }
 }

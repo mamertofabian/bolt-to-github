@@ -6,6 +6,7 @@
   import QuickIssueForm from '$lib/components/QuickIssueForm.svelte';
   import { isPremium } from '$lib/stores/premiumStore';
   import { issuesStore } from '$lib/stores/issuesStore';
+  import { repositoryActions, getRepositoryData } from '$lib/stores';
   import type { UpgradeModalType } from '$lib/utils/upgradeModal';
 
   export let projectId: string;
@@ -28,6 +29,10 @@
   $: openIssuesCountStore = issuesStore.getOpenIssuesCount(gitHubUsername, repoName);
   $: openIssuesCount = $openIssuesCountStore;
 
+  // Repository data from store
+  $: repositoryData = getRepositoryData(gitHubUsername, repoName);
+  $: repoInfo = $repositoryData;
+
   let isLoading = {
     repoStatus: true,
     branchStatus: true,
@@ -37,74 +42,44 @@
     issues: true,
   };
 
-  let repoExists: boolean | null = null;
-  let branchExists: boolean | null = null;
-  let isPrivate: boolean | null = null;
-  let latestCommit: {
-    date: string;
-    message: string;
-  } | null = null;
+  // Derived loading states based on repository store
+  $: {
+    isLoading.repoStatus = repoInfo.isLoading;
+    isLoading.branchStatus = repoInfo.isLoading;
+    isLoading.visibility = repoInfo.isLoading;
+    isLoading.latestCommit = repoInfo.isLoading;
+  }
+
+  // Derived values from repository store
+  $: repoExists = repoInfo.exists;
+  $: branchExists = repoInfo.branches.some((b) => b.name === branch);
+  $: isPrivate = repoInfo.isPrivate;
+  $: latestCommit = repoInfo.latestCommit
+    ? {
+        date: repoInfo.latestCommit.date,
+        message:
+          repoInfo.latestCommit.message.split('\n')[0].slice(0, 50) +
+          (repoInfo.latestCommit.message.length > 50 ? '...' : ''),
+      }
+    : null;
 
   export const getProjectStatus = async () => {
     try {
-      // Use factory method to get the best available authentication (GitHub App preferred)
-      const githubService = await GitHubService.create({ patToken: token });
+      console.log(`🔧 ProjectStatus: Loading repository data for ${gitHubUsername}/${repoName}`);
 
-      // Log which authentication method is being used for debugging
-      const authMethod = githubService.getApiClientType();
-      console.log(`🔧 ProjectStatus: Using ${authMethod} authentication for GitHub API calls`);
+      // Get repository information using the store (with caching)
+      await repositoryActions.getRepositoryInfo(gitHubUsername, repoName, token);
 
-      // Get repo info
-      const repoInfo = await githubService.getRepoInfo(gitHubUsername, repoName);
-      repoExists = repoInfo.exists;
-      isLoading.repoStatus = false;
-
-      if (repoExists) {
-        // Get visibility
-        isPrivate = repoInfo.private ?? null;
-        isLoading.visibility = false;
-
-        // Check if branch exists
-        try {
-          const branches = await githubService.listBranches(gitHubUsername, repoName);
-          branchExists = branches.some((b) => b.name === branch);
-          isLoading.branchStatus = false;
-        } catch (error) {
-          console.log('Error fetching branches:', error);
-          branchExists = false;
-          isLoading.branchStatus = false;
-        }
-
-        // Get latest commit
-        const commits = await githubService.request(
-          'GET',
-          `/repos/${gitHubUsername}/${repoName}/commits?per_page=1`
-        );
-        if (commits[0]?.commit) {
-          latestCommit = {
-            date: commits[0].commit.committer.date,
-            message:
-              commits[0].commit.message.split('\n')[0].slice(0, 50) +
-              (commits[0].commit.message.length > 50 ? '...' : ''),
-          };
-        }
-        isLoading.latestCommit = false;
-
-        // Load issues into store
+      // If repo exists, load issues into store
+      if (repoInfo.exists) {
         try {
           await issuesStore.loadIssues(gitHubUsername, repoName, 'all');
         } catch (err) {
           console.log('Error fetching issues:', err);
         }
-        isLoading.issues = false;
-      } else {
-        branchExists = false;
-        isLoading.branchStatus = false;
-        isLoading.visibility = false;
-        isLoading.commits = false;
-        isLoading.latestCommit = false;
-        isLoading.issues = false;
       }
+
+      isLoading.issues = false;
     } catch (error) {
       console.log('Error fetching repo details:', error);
       // Reset loading states on error
@@ -142,6 +117,11 @@
     // Check for stored file changes initially
     checkStoredFileChanges();
 
+    // Initialize the repository store
+    repositoryActions.initialize().then(() => {
+      console.log('Repository store initialized');
+    });
+
     // Set up storage change listener
     const storageChangeListener = (changes: any, areaName: string) => {
       console.log('Storage changes detected in ProjectStatus:', changes, 'in area:', areaName);
@@ -166,7 +146,11 @@
             projectTitle = updateInfo.projectTitle;
           }
 
-          // Refresh the project status
+          // Refresh the project status (this will also clear cache if repo changed)
+          if (repoName !== updateInfo.repoName) {
+            // Clear cache for old repo if repo name changed
+            repositoryActions.clearRepositoryCache(gitHubUsername, updateInfo.repoName);
+          }
           getProjectStatus();
         }
       }

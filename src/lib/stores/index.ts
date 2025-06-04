@@ -41,3 +41,19 @@ export { pushStatisticsStore, pushStatisticsActions } from './pushStatistics';
 
 // Export Push Statistics Types
 export type { PushStatisticsState, PushStatistics, PushRecord } from '../types';
+
+// Export Repository Store
+export {
+  repositoryStore,
+  repositoryActions,
+  getRepositoryInfo,
+  getBranches,
+  getLatestCommit,
+  getRepositoryData,
+  type RepositoryInfo,
+  type BranchInfo,
+  type CommitInfo,
+  type RepositoryCache,
+  type RepositoryState,
+  type RepositoryStoreState,
+} from './repositoryStore';
