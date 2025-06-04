@@ -6,7 +6,6 @@
   import IssueCard from './IssueCard.svelte';
   import NewIssueForm from './NewIssueForm.svelte';
   import { issuesStore } from '$lib/stores/issuesStore';
-  export let githubToken: string;
   export let repoOwner: string;
   export let repoName: string;
   export let show: boolean;
@@ -28,12 +27,12 @@
   $: isRefreshing = $isRefreshingStore;
 
   onMount(async () => {
-    if (show && repoOwner && repoName && githubToken) {
+    if (show && repoOwner && repoName) {
       await loadIssues();
     }
   });
 
-  $: if (show && repoOwner && repoName && githubToken) {
+  $: if (show && repoOwner && repoName) {
     loadIssues();
   }
 
@@ -46,10 +45,10 @@
   }
 
   async function loadIssues(forceRefresh: boolean = false) {
-    if (!githubToken || !repoOwner || !repoName) return;
+    if (!repoOwner || !repoName) return;
 
     try {
-      await issuesStore.loadIssues(repoOwner, repoName, githubToken, selectedState, forceRefresh);
+      await issuesStore.loadIssues(repoOwner, repoName, selectedState, forceRefresh);
     } catch (err) {
       console.error('Error loading issues:', err);
     }
@@ -57,10 +56,10 @@
 
   async function handleCreateIssue(event: CustomEvent) {
     const { title, body } = event.detail;
-    if (!githubToken || !repoOwner || !repoName) return;
+    if (!repoOwner || !repoName) return;
 
     try {
-      await issuesStore.createIssue(repoOwner, repoName, githubToken, { title, body });
+      await issuesStore.createIssue(repoOwner, repoName, { title, body });
       isCreatingIssue = false;
       showNewIssueForm = false;
     } catch (err) {
@@ -74,12 +73,12 @@
   }
 
   async function confirmCloseIssue() {
-    if (!githubToken || !repoOwner || !repoName || issueToClose === null) return;
+    if (!repoOwner || !repoName || issueToClose === null) return;
 
     try {
       console.log('Closing issue:', issueToClose);
       isClosingIssue = true;
-      await issuesStore.updateIssue(repoOwner, repoName, githubToken, issueToClose, {
+      await issuesStore.updateIssue(repoOwner, repoName, issueToClose, {
         state: 'closed',
       });
       showCloseConfirmation = false;

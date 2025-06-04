@@ -13,12 +13,11 @@ export class TokenService implements ITokenService {
   constructor(private apiClient: IGitHubApiClient) {}
 
   /**
-   * Validates if the token is valid
-   * @returns Promise resolving to true if token is valid, false otherwise
+   * Validates the provided token by making a request to the GitHub API
    */
   async validateToken(): Promise<boolean> {
     try {
-      await this.apiClient.request('GET', '/user');
+      await this.apiClient.getUser();
       return true;
     } catch (error) {
       console.error('Token validation failed:', error);
@@ -79,7 +78,7 @@ export class TokenService implements ITokenService {
     username: string
   ): Promise<{ isValid: boolean; error?: string }> {
     try {
-      const authUser = await this.apiClient.request('GET', '/user');
+      const authUser = await this.apiClient.getUser();
 
       if (!authUser.login) {
         return { isValid: false, error: 'Invalid GitHub token' };
@@ -138,7 +137,7 @@ export class TokenService implements ITokenService {
       let authUser;
 
       try {
-        authUser = await this.apiClient.request('GET', '/user');
+        authUser = await this.apiClient.getUser();
 
         // Check if the owner is not the current user
         if (username.toLowerCase() !== authUser.login.toLowerCase()) {

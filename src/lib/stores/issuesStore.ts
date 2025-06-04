@@ -1,5 +1,11 @@
 import { writable, derived, get } from 'svelte/store';
-import { GitHubService } from '../../services/GitHubService';
+import {
+  githubSettingsStore,
+  githubSettingsActions,
+  type GitHubSettingsState,
+} from './githubSettings';
+import { GitHubApiClientFactory } from '../../services/GitHubApiClientFactory';
+import type { IGitHubApiClient } from '../../services/interfaces/IGitHubApiClient';
 
 export interface Issue {
   number: number;
@@ -46,6 +52,8 @@ function createIssuesStore() {
   const { subscribe, set, update } = issuesState;
   const { subscribe: subscribeLoading, set: setLoading, update: updateLoading } = loadingState;
 
+  let githubApiClient: IGitHubApiClient | null = null;
+
   function getRepoKey(owner: string, repo: string): string {
     return `${owner}/${repo}`;
   }
@@ -79,10 +87,51 @@ function createIssuesStore() {
     }));
   }
 
+  async function initializeGitHubClient(): Promise<boolean> {
+    const githubSettings: GitHubSettingsState = get(githubSettingsStore);
+    const hasGitHubApp = githubSettings.githubAppStatus.hasInstallationToken;
+    const hasPAT = Boolean(githubSettings.githubToken);
+    const hasAuthentication = hasGitHubApp || hasPAT;
+
+    if (!hasAuthentication) {
+      console.warn('No GitHub authentication available for issues store');
+      return false;
+    }
+
+    try {
+      if (hasGitHubApp) {
+        // Preferred: Use GitHub App
+        githubApiClient = await GitHubApiClientFactory.createApiClientForNewUser();
+        console.log('Issues store initialized with GitHub App');
+      } else if (hasPAT) {
+        // Fallback: Use PAT
+        githubApiClient = await GitHubApiClientFactory.createApiClientForExistingUser(
+          githubSettings.githubToken,
+          true // Allow upgrade to GitHub App if available
+        );
+        console.log('Issues store initialized with PAT');
+      }
+      return true;
+    } catch (error) {
+      console.error('Error initializing GitHub client for issues store:', error);
+      githubApiClient = null;
+      return false;
+    }
+  }
+
+  async function ensureGitHubClient(): Promise<IGitHubApiClient> {
+    if (!githubApiClient) {
+      const initialized = await initializeGitHubClient();
+      if (!initialized || !githubApiClient) {
+        throw new Error('GitHub client not initialized. Please configure authentication.');
+      }
+    }
+    return githubApiClient;
+  }
+
   async function loadIssues(
     owner: string,
     repo: string,
-    githubToken: string,
     state: 'open' | 'closed' | 'all' = 'open',
     forceRefresh: boolean = false
   ): Promise<Issue[]> {
@@ -101,8 +150,14 @@ function createIssuesStore() {
     setLoadingForRepo(repoKey, state, true);
 
     try {
-      const githubService = new GitHubService(githubToken);
-      const issues = await githubService.getIssues(owner, repo, state, forceRefresh);
+      const client = await ensureGitHubClient();
+
+      // Use the convenience method instead of direct request
+      const issues = await client.getRepositoryIssues(owner, repo, {
+        state: state === 'all' ? 'all' : state,
+        per_page: 100,
+        sort: 'updated',
+      });
 
       // Update the store
       update((current) => ({
@@ -143,14 +198,19 @@ function createIssuesStore() {
   async function createIssue(
     owner: string,
     repo: string,
-    githubToken: string,
-    issueData: { title: string; body?: string }
+    issueData: { title: string; body?: string; labels?: string[] }
   ): Promise<Issue> {
     const repoKey = getRepoKey(owner, repo);
 
     try {
-      const githubService = new GitHubService(githubToken);
-      const newIssue = await githubService.createIssue(owner, repo, issueData);
+      const client = await ensureGitHubClient();
+
+      // Use the convenience method instead of direct request
+      const newIssue = await client.createRepositoryIssue(owner, repo, {
+        title: issueData.title,
+        body: issueData.body || '',
+        labels: issueData.labels || [],
+      });
 
       // Immediately add the new issue to the store for instant UI update
       update((current) => {
@@ -180,7 +240,7 @@ function createIssuesStore() {
 
       // Force refresh after a short delay to ensure server state is synced
       setTimeout(() => {
-        loadIssues(owner, repo, githubToken, 'all', true);
+        loadIssues(owner, repo, 'all', true);
       }, FORCE_REFRESH_AFTER_ACTION);
 
       return newIssue;
@@ -202,15 +262,16 @@ function createIssuesStore() {
   async function updateIssue(
     owner: string,
     repo: string,
-    githubToken: string,
     issueNumber: number,
-    updateData: { state?: 'open' | 'closed'; title?: string; body?: string }
+    updateData: { state?: 'open' | 'closed'; title?: string; body?: string; labels?: string[] }
   ): Promise<Issue> {
     const repoKey = getRepoKey(owner, repo);
 
     try {
-      const githubService = new GitHubService(githubToken);
-      const updatedIssue = await githubService.updateIssue(owner, repo, issueNumber, updateData);
+      const client = await ensureGitHubClient();
+
+      // Use the convenience method instead of direct request
+      const updatedIssue = await client.updateRepositoryIssue(owner, repo, issueNumber, updateData);
 
       // Immediately update the issue in the store
       update((current) => {
@@ -233,7 +294,7 @@ function createIssuesStore() {
 
       // Force refresh after a short delay to ensure server state is synced
       setTimeout(() => {
-        loadIssues(owner, repo, githubToken, 'all', true);
+        loadIssues(owner, repo, 'all', true);
       }, FORCE_REFRESH_AFTER_ACTION);
 
       return updatedIssue;
@@ -311,6 +372,13 @@ function createIssuesStore() {
   function reset() {
     set({});
     setLoading({});
+    githubApiClient = null;
+  }
+
+  // Initialize the store
+  async function initialize() {
+    await githubSettingsActions.initialize();
+    await initializeGitHubClient();
   }
 
   return {
@@ -324,6 +392,8 @@ function createIssuesStore() {
     invalidateCache: (owner: string, repo: string) => invalidateCache(getRepoKey(owner, repo)),
     clearError,
     reset,
+    initialize,
+    reinitializeClient: initializeGitHubClient,
   };
 }
 

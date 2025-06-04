@@ -28,6 +28,8 @@ export interface GitHubSettingsState {
     canMigrate: boolean;
     hasInstallationToken: boolean;
     installationId: number | null;
+    hasUserAccessToken: boolean;
+    userAccessTokenExpiry: Date | null;
   };
 }
 
@@ -56,6 +58,8 @@ const initialState: GitHubSettingsState = {
     canMigrate: false,
     hasInstallationToken: false,
     installationId: null,
+    hasUserAccessToken: false,
+    userAccessTokenExpiry: null,
   },
 };
 
@@ -66,7 +70,9 @@ export const githubSettingsStore: Writable<GitHubSettingsState> = writable(initi
 export const hasGitHubAuthentication = derived(
   githubSettingsStore,
   ($settings) =>
-    Boolean($settings.githubToken) || Boolean($settings.githubAppStatus.hasInstallationToken)
+    Boolean($settings.githubToken) ||
+    Boolean($settings.githubAppStatus.hasInstallationToken) ||
+    Boolean($settings.githubAppStatus.hasUserAccessToken)
 );
 
 // Derived store for settings validity
@@ -74,13 +80,22 @@ export const isSettingsValid = derived(
   githubSettingsStore,
   ($settings) =>
     Boolean(
-      ($settings.githubToken || $settings.githubAppStatus.hasInstallationToken) &&
+      ($settings.githubToken ||
+        $settings.githubAppStatus.hasInstallationToken ||
+        $settings.githubAppStatus.hasUserAccessToken) &&
         $settings.repoOwner &&
         $settings.repoName &&
         $settings.branch
     ) &&
     !$settings.isValidatingToken &&
-    ($settings.isTokenValid === true || $settings.githubAppStatus.hasInstallationToken)
+    ($settings.isTokenValid === true ||
+      $settings.githubAppStatus.hasInstallationToken ||
+      $settings.githubAppStatus.hasUserAccessToken)
+);
+
+// Derived store for user access token status
+export const hasUserAccessToken = derived(githubSettingsStore, ($settings) =>
+  Boolean($settings.githubAppStatus.hasUserAccessToken)
 );
 
 // Store actions
@@ -109,6 +124,9 @@ export const githubSettingsActions = {
 
       // Check for GitHub App installation token
       await this.checkGitHubAppStatus();
+
+      // Initialize user access token for GitHub App users
+      await this.initializeUserAccessToken();
 
       // Validate existing token if available
       if (storedSettings.githubToken && storedSettings.repoOwner) {
@@ -340,6 +358,8 @@ export const githubSettingsActions = {
           canMigrate: authStatus.canUseGitHubApp,
           hasInstallationToken: false,
           installationId: null,
+          hasUserAccessToken: false,
+          userAccessTokenExpiry: null,
         },
         showMigrationPrompt: authStatus.canUseGitHubApp && authStatus.recommended === 'github_app',
       }));
@@ -373,6 +393,8 @@ export const githubSettingsActions = {
         canMigrate: false,
         hasInstallationToken: true,
         installationId: state.githubAppStatus.installationId,
+        hasUserAccessToken: false,
+        userAccessTokenExpiry: null,
       },
     }));
   },
@@ -428,6 +450,8 @@ export const githubSettingsActions = {
             canMigrate: false, // Already migrated if we're here
             hasInstallationToken: true, // Assume true for GitHub App users
             installationId: null, // Will be populated by checkGitHubAppStatus
+            hasUserAccessToken: false,
+            userAccessTokenExpiry: null,
           },
         }));
       } else if (currentState.githubToken) {
@@ -441,6 +465,8 @@ export const githubSettingsActions = {
             canMigrate: authStatus.canUseGitHubApp,
             hasInstallationToken: false, // PAT users don't have installation tokens
             installationId: null,
+            hasUserAccessToken: false,
+            userAccessTokenExpiry: null,
           },
         }));
       }
@@ -480,6 +506,8 @@ export const githubSettingsActions = {
             installationId: isValid ? installationToken.installation_id : null,
             isAvailable: isValid,
             lastChecked: Date.now(),
+            hasUserAccessToken: false,
+            userAccessTokenExpiry: null,
           },
           authMethod: isValid ? 'github_app' : state.authMethod,
         }));
@@ -491,6 +519,8 @@ export const githubSettingsActions = {
             hasInstallationToken: false,
             installationId: null,
             lastChecked: Date.now(),
+            hasUserAccessToken: false,
+            userAccessTokenExpiry: null,
           },
         }));
       }
@@ -510,6 +540,130 @@ export const githubSettingsActions = {
       }
     } catch (error) {
       console.error('Error updating GitHub App status:', error);
+    }
+  },
+
+  /**
+   * Fetch and store user access token
+   */
+  async fetchUserAccessToken(): Promise<boolean> {
+    try {
+      console.log('Fetching user access token');
+
+      const userToken = await GitHubAppsService.getInstance().getUserAccessToken();
+
+      console.log('User token:', userToken);
+
+      if (userToken && userToken.access_token) {
+        // Store user access token in local storage
+        await chrome.storage.local.set({
+          github_user_access_token: {
+            access_token: userToken.access_token,
+            github_username: userToken.github_username,
+            expires_at: userToken.expires_at,
+            stored_at: new Date().toISOString(),
+          },
+        });
+
+        console.log('User access token stored in local storage');
+
+        // Update store
+        githubSettingsStore.update((state) => ({
+          ...state,
+          githubAppStatus: {
+            ...state.githubAppStatus,
+            hasUserAccessToken: true,
+            userAccessTokenExpiry: new Date(userToken.expires_at),
+          },
+        }));
+
+        console.log('✅ User access token fetched and stored:', {
+          username: userToken.github_username,
+          expires_at: userToken.expires_at,
+        });
+
+        return true;
+      } else {
+        console.log('❌ No user access token available');
+        return false;
+      }
+    } catch (error) {
+      console.error('Error fetching user access token:', error);
+      return false;
+    }
+  },
+
+  /**
+   * Check if stored user access token is still valid
+   */
+  async checkUserAccessToken(): Promise<boolean> {
+    try {
+      const result = await chrome.storage.local.get(['github_user_access_token']);
+      const storedToken = result.github_user_access_token;
+
+      console.log('Checking user access token:', storedToken);
+
+      if (storedToken && storedToken.access_token) {
+        const expiresAt = new Date(storedToken.expires_at);
+        const now = new Date();
+        const timeUntilExpiry = expiresAt.getTime() - now.getTime();
+
+        // Check if token expires within 5 minutes
+        const isValid = timeUntilExpiry > 5 * 60 * 1000;
+
+        githubSettingsStore.update((state) => ({
+          ...state,
+          githubAppStatus: {
+            ...state.githubAppStatus,
+            hasUserAccessToken: isValid,
+            userAccessTokenExpiry: isValid ? expiresAt : null,
+          },
+        }));
+
+        console.log('User access token status:', {
+          isValid,
+          expiresAt: storedToken.expires_at,
+          timeUntilExpiry: timeUntilExpiry,
+        });
+
+        if (!isValid) {
+          console.log('⏰ User access token expired or expiring soon');
+          // Attempt to refresh the token
+          return await this.fetchUserAccessToken();
+        }
+
+        console.log('✅ User access token is valid:', {
+          username: storedToken.github_username,
+          expires_at: storedToken.expires_at,
+        });
+
+        return true;
+      } else {
+        console.log('❌ No stored user access token found');
+        return false;
+      }
+    } catch (error) {
+      console.error('Error checking user access token:', error);
+      return false;
+    }
+  },
+
+  /**
+   * Initialize user access token on startup
+   */
+  async initializeUserAccessToken(): Promise<void> {
+    try {
+      console.log('Initializing user access token');
+
+      // First check if we have a stored token
+      const hasValid = await this.checkUserAccessToken();
+
+      if (!hasValid) {
+        // Try to fetch a new token
+        await this.fetchUserAccessToken();
+      }
+    } catch (error) {
+      console.error('Error initializing user access token:', error);
     }
   },
 };

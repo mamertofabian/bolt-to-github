@@ -6,7 +6,6 @@
   import { issuesStore } from '$lib/stores/issuesStore';
 
   export let show: boolean;
-  export let githubToken: string;
   export let repoOwner: string;
   export let repoName: string;
 
@@ -24,7 +23,7 @@
     error = null;
 
     try {
-      await issuesStore.createIssue(repoOwner, repoName, githubToken, {
+      await issuesStore.createIssue(repoOwner, repoName, {
         title: title.trim(),
         body: body.trim(),
       });

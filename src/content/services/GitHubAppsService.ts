@@ -11,6 +11,12 @@ export interface GitHubInstallationToken {
   repositories?: string;
 }
 
+export interface GitHubAccessToken {
+  github_username: string;
+  access_token: string;
+  expires_at: string;
+}
+
 export interface GitHubTokenInfo {
   token: string;
   type: 'user' | 'installation';
@@ -249,6 +255,67 @@ export class GitHubAppsService {
   }
 
   /**
+   * Get user access token from GitHub OAuth (5K/hour rate limit)
+   */
+  public async getUserAccessToken(): Promise<GitHubAccessToken | null> {
+    try {
+      console.log('🔄 Fetching user access token...');
+      const authToken = await this.getUserToken();
+      if (!authToken) {
+        console.log('❌ No user authentication token available');
+        return null;
+      }
+
+      const response = await fetch(`${this.supabaseUrl}/functions/v1/get-github-token`, {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${authToken}`,
+          'Content-Type': 'application/json',
+          apikey: this.anonKey,
+        },
+        body: JSON.stringify({}),
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+
+        if (data.access_token) {
+          const userAccessToken: GitHubAccessToken = {
+            github_username: data.github_username,
+            access_token: data.access_token,
+            expires_at: data.expires_at,
+          };
+
+          console.log('✅ User access token obtained:', {
+            github_username: data.github_username,
+            expires_at: data.expires_at,
+          });
+
+          return userAccessToken;
+        } else {
+          console.log('❌ No access token in response:', data);
+          return null;
+        }
+      } else {
+        const errorData = await response.json().catch(() => ({}));
+        console.error('❌ Failed to get user access token:', response.status, errorData);
+
+        // Handle specific errors
+        if (errorData.code === 'NO_GITHUB_TOKEN') {
+          console.log('💡 No GitHub token found - user needs to connect GitHub account');
+        } else if (errorData.code === 'TOKEN_EXPIRED') {
+          console.log('⏰ GitHub token expired - user needs to re-authenticate');
+        }
+
+        return null;
+      }
+    } catch (error) {
+      console.error('Error getting user access token:', error);
+      return null;
+    }
+  }
+
+  /**
    * Get user token from SupabaseAuthService
    */
   private async getUserToken(): Promise<string | null> {
@@ -330,8 +397,14 @@ export class GitHubAppsService {
         Authorization: `Bearer ${tokenInfo.token}`,
         Accept: 'application/vnd.github+json',
         'X-GitHub-Api-Version': '2022-11-28',
+        // Cache-busting headers to ensure fresh data
+        'Cache-Control': 'no-cache, no-store, must-revalidate',
+        Pragma: 'no-cache',
+        Expires: '0',
         ...options.headers,
       },
+      // Disable caching at the fetch level
+      cache: 'no-store',
     });
 
     // Log rate limit usage after request

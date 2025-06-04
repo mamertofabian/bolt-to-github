@@ -77,7 +77,7 @@
 
     try {
       // Get user information (works with PAT)
-      userInfo = await githubApiClient.request('GET', '/user');
+      userInfo = await githubApiClient.getUser();
       repoOwner = userInfo.login;
       console.log('User info loaded:', userInfo.login);
     } catch (err: any) {
@@ -92,10 +92,10 @@
 
     try {
       // Get user's repositories (PAT can access all user repos)
-      const reposResponse = await githubApiClient.request(
-        'GET',
-        '/user/repos?sort=updated&per_page=50'
-      );
+      const reposResponse = await githubApiClient.getUserRepositories({
+        sort: 'updated',
+        per_page: 50,
+      });
       availableRepos = reposResponse || [];
 
       console.log(`Found ${availableRepos.length} accessible repositories`);
@@ -116,7 +116,7 @@
 
     try {
       // Test user profile endpoint (PAT advantage)
-      const userResponse = await githubApiClient.request('GET', '/user');
+      const userResponse = await githubApiClient.getUser();
 
       testResults = {
         ...testResults,
@@ -154,7 +154,7 @@
 
     try {
       // Test repository access and get repo info
-      const repoResponse = await githubApiClient.request('GET', `/repos/${owner}/${name}`);
+      const repoResponse = await githubApiClient.getRepository(owner, name);
 
       testResults = {
         ...testResults,
@@ -196,10 +196,7 @@
 
     try {
       // Test getting repository contents (root directory)
-      const contentsResponse = await githubApiClient.request(
-        'GET',
-        `/repos/${owner}/${name}/contents`
-      );
+      const contentsResponse = await githubApiClient.getRepositoryContents(owner, name);
 
       testResults = {
         ...testResults,
@@ -241,10 +238,10 @@
 
     try {
       // Test listing issues
-      const issuesResponse = await githubApiClient.request(
-        'GET',
-        `/repos/${owner}/${name}/issues?state=all&per_page=5`
-      );
+      const issuesResponse = await githubApiClient.getRepositoryIssues(owner, name, {
+        state: 'all',
+        per_page: 5,
+      });
 
       testResults = {
         ...testResults,
@@ -286,10 +283,9 @@
 
     try {
       // Test getting commits
-      const commitsResponse = await githubApiClient.request(
-        'GET',
-        `/repos/${owner}/${name}/commits?per_page=5`
-      );
+      const commitsResponse = await githubApiClient.getRepositoryCommits(owner, name, {
+        per_page: 5,
+      });
 
       testResults = {
         ...testResults,

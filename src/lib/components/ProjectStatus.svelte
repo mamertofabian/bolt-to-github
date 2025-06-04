@@ -92,7 +92,7 @@
 
         // Load issues into store
         try {
-          await issuesStore.loadIssues(gitHubUsername, repoName, token, 'all');
+          await issuesStore.loadIssues(gitHubUsername, repoName, 'all');
         } catch (err) {
           console.log('Error fetching issues:', err);
         }
@@ -494,7 +494,6 @@
 {#if showIssueManager}
   <IssueManager
     show={showIssueManager}
-    githubToken={token}
     repoOwner={gitHubUsername}
     {repoName}
     on:close={handleIssueManagerClose}
@@ -504,7 +503,6 @@
 {#if showQuickIssueForm}
   <QuickIssueForm
     show={showQuickIssueForm}
-    githubToken={token}
     repoOwner={gitHubUsername}
     {repoName}
     on:success={handleIssueSuccess}

@@ -71,8 +71,14 @@ export class GitHubApiClient implements IGitHubApiClient {
             Accept: 'application/vnd.github.v3+json',
             Authorization: `Bearer ${this.token}`,
             'Content-Type': 'application/json',
+            // Cache-busting headers to ensure fresh data
+            'Cache-Control': 'no-cache, no-store, must-revalidate',
+            Pragma: 'no-cache',
+            Expires: '0',
             ...options.headers,
           },
+          // Disable caching at the fetch level
+          cache: 'no-store',
           body: body ? JSON.stringify(body) : undefined,
         });
 
@@ -153,5 +159,164 @@ export class GitHubApiClient implements IGitHubApiClient {
    */
   async getRateLimit(): Promise<any> {
     return this.request('GET', '/rate_limit');
+  }
+
+  // Convenience methods for common GitHub API operations
+
+  /**
+   * Gets repositories accessible to the GitHub App installation
+   * @returns Promise resolving to installation repositories response
+   */
+  async getInstallationRepositories(): Promise<any> {
+    return this.request('GET', '/installation/repositories');
+  }
+
+  /**
+   * Gets information about a specific repository
+   * @param owner Repository owner (username or organization)
+   * @param name Repository name
+   * @returns Promise resolving to repository information
+   */
+  async getRepository(owner: string, name: string): Promise<any> {
+    return this.request('GET', `/repos/${owner}/${name}`);
+  }
+
+  /**
+   * Gets contents of a repository at a specific path
+   * @param owner Repository owner (username or organization)
+   * @param name Repository name
+   * @param path Optional path to contents (defaults to root directory)
+   * @returns Promise resolving to repository contents
+   */
+  async getRepositoryContents(owner: string, name: string, path: string = ''): Promise<any> {
+    const endpoint = `/repos/${owner}/${name}/contents${path ? `/${path}` : ''}`;
+    return this.request('GET', endpoint);
+  }
+
+  /**
+   * Gets issues for a repository
+   * @param owner Repository owner (username or organization)
+   * @param name Repository name
+   * @param options Optional parameters for the request (state, per_page, etc.)
+   * @returns Promise resolving to repository issues
+   */
+  async getRepositoryIssues(
+    owner: string,
+    name: string,
+    options: Record<string, any> = {}
+  ): Promise<any> {
+    const searchParams = new URLSearchParams();
+
+    // Set default options
+    const defaultOptions = { state: 'all', per_page: 5 };
+    const finalOptions = { ...defaultOptions, ...options };
+
+    Object.entries(finalOptions).forEach(([key, value]) => {
+      searchParams.append(key, String(value));
+    });
+
+    const endpoint = `/repos/${owner}/${name}/issues?${searchParams.toString()}`;
+    return this.request('GET', endpoint);
+  }
+
+  /**
+   * Gets commits for a repository
+   * @param owner Repository owner (username or organization)
+   * @param name Repository name
+   * @param options Optional parameters for the request (per_page, since, until, etc.)
+   * @returns Promise resolving to repository commits
+   */
+  async getRepositoryCommits(
+    owner: string,
+    name: string,
+    options: Record<string, any> = {}
+  ): Promise<any> {
+    const searchParams = new URLSearchParams();
+
+    // Set default options
+    const defaultOptions = { per_page: 5 };
+    const finalOptions = { ...defaultOptions, ...options };
+
+    Object.entries(finalOptions).forEach(([key, value]) => {
+      searchParams.append(key, String(value));
+    });
+
+    const endpoint = `/repos/${owner}/${name}/commits?${searchParams.toString()}`;
+    return this.request('GET', endpoint);
+  }
+
+  /**
+   * Creates a new issue in a repository
+   * @param owner Repository owner (username or organization)
+   * @param name Repository name
+   * @param issueData Issue data (title, body, labels, etc.)
+   * @returns Promise resolving to the created issue
+   */
+  async createRepositoryIssue(
+    owner: string,
+    name: string,
+    issueData: {
+      title: string;
+      body?: string;
+      labels?: string[];
+      assignees?: string[];
+      milestone?: number;
+    }
+  ): Promise<any> {
+    const endpoint = `/repos/${owner}/${name}/issues`;
+    return this.request('POST', endpoint, issueData);
+  }
+
+  /**
+   * Updates an existing issue in a repository
+   * @param owner Repository owner (username or organization)
+   * @param name Repository name
+   * @param issueNumber Issue number to update
+   * @param updateData Data to update (title, body, state, labels, etc.)
+   * @returns Promise resolving to the updated issue
+   */
+  async updateRepositoryIssue(
+    owner: string,
+    name: string,
+    issueNumber: number,
+    updateData: {
+      title?: string;
+      body?: string;
+      state?: 'open' | 'closed';
+      labels?: string[];
+      assignees?: string[];
+      milestone?: number;
+    }
+  ): Promise<any> {
+    const endpoint = `/repos/${owner}/${name}/issues/${issueNumber}`;
+    return this.request('PATCH', endpoint, updateData);
+  }
+
+  /**
+   * Gets repositories for the authenticated user (requires user token)
+   * @param options Optional parameters for the request (sort, per_page, etc.)
+   * @returns Promise resolving to user repositories
+   */
+  async getUserRepositories(options: Record<string, any> = {}): Promise<any> {
+    const searchParams = new URLSearchParams();
+
+    // Set default options
+    const defaultOptions = { sort: 'updated', per_page: 50 };
+    const finalOptions = { ...defaultOptions, ...options };
+
+    Object.entries(finalOptions).forEach(([key, value]) => {
+      searchParams.append(key, String(value));
+    });
+
+    const endpoint = `/user/repos?${searchParams.toString()}`;
+    return this.request('GET', endpoint);
+  }
+
+  /**
+   * Gets information about the authenticated user (requires user token)
+   * @returns Promise resolving to user information
+   */
+  async getUser(): Promise<any> {
+    return this.request('GET', '/user');
   }
 }

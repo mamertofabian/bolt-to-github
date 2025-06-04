@@ -70,7 +70,7 @@
 
     try {
       // Get repositories the installation has access to
-      const reposResponse = await githubApiClient.request('GET', '/installation/repositories');
+      const reposResponse = await githubApiClient.getInstallationRepositories();
       availableRepos = reposResponse.repositories || [];
 
       // Auto-populate repo owner from the first repo or integration data
@@ -159,7 +159,7 @@
       const rateLimitResponse = await githubApiClient.getRateLimit();
 
       // Test installation repositories (GitHub App compatible endpoint)
-      const reposResponse = await githubApiClient.request('GET', '/installation/repositories');
+      const reposResponse = await githubApiClient.getInstallationRepositories();
 
       testResults = {
         rateLimit: rateLimitResponse?.rate || null,
@@ -196,7 +196,7 @@
 
     try {
       // Test repository access and get repo info
-      const repoResponse = await githubApiClient.request('GET', `/repos/${owner}/${name}`);
+      const repoResponse = await githubApiClient.getRepository(owner, name);
 
       testResults = {
         ...testResults,
@@ -239,10 +239,7 @@
 
     try {
       // Test getting repository contents (root directory)
-      const contentsResponse = await githubApiClient.request(
-        'GET',
-        `/repos/${owner}/${name}/contents`
-      );
+      const contentsResponse = await githubApiClient.getRepositoryContents(owner, name);
 
       testResults = {
         ...testResults,
@@ -284,10 +281,10 @@
 
     try {
       // Test listing issues
-      const issuesResponse = await githubApiClient.request(
-        'GET',
-        `/repos/${owner}/${name}/issues?state=all&per_page=5`
-      );
+      const issuesResponse = await githubApiClient.getRepositoryIssues(owner, name, {
+        state: 'all',
+        per_page: 5,
+      });
 
       testResults = {
         ...testResults,
@@ -329,10 +326,9 @@
 
     try {
       // Test getting commits
-      const commitsResponse = await githubApiClient.request(
-        'GET',
-        `/repos/${owner}/${name}/commits?per_page=5`
-      );
+      const commitsResponse = await githubApiClient.getRepositoryCommits(owner, name, {
+        per_page: 5,
+      });
 
       testResults = {
         ...testResults,
@@ -350,6 +346,79 @@
         error = err.message;
       }
       console.error('Error testing commits:', err);
+    } finally {
+      loading = false;
+    }
+  }
+
+  async function testUserProfile() {
+    if (!githubApiClient) {
+      error = 'GitHub API client not initialized. Initialize client first.';
+      return;
+    }
+
+    loading = true;
+    error = '';
+    successMessage = '';
+
+    try {
+      // Test user profile endpoint (requires user access token)
+      const userResponse = await githubApiClient.getUser();
+
+      testResults = {
+        ...testResults,
+        userProfile: userResponse,
+        apiCall: 'GET /user',
+        status: 200,
+      };
+
+      console.log('User profile test:', userResponse);
+      successMessage = `User profile retrieved: ${userResponse.login}`;
+    } catch (err: any) {
+      if (err.message.includes('user authentication')) {
+        error = `User authentication required. This endpoint needs a user access token (ghu_). Make sure you've connected your GitHub account.`;
+      } else {
+        error = err.message;
+      }
+      console.error('Error testing user profile:', err);
+    } finally {
+      loading = false;
+    }
+  }
+
+  async function testUserRepositories() {
+    if (!githubApiClient) {
+      error = 'GitHub API client not initialized. Initialize client first.';
+      return;
+    }
+
+    loading = true;
+    error = '';
+    successMessage = '';
+
+    try {
+      // Test user repositories endpoint (requires user access token)
+      const userReposResponse = await githubApiClient.getUserRepositories({
+        sort: 'updated',
+        per_page: 10,
+      });
+
+      testResults = {
+        ...testResults,
+        userRepositories: userReposResponse,
+        apiCall: 'GET /user/repos',
+        status: 200,
+      };
+
+      console.log('User repositories test:', userReposResponse);
+      successMessage = `User repositories retrieved: ${userReposResponse.length} repositories found`;
+    } catch (err: any) {
+      if (err.message.includes('user authentication')) {
+        error = `User authentication required. This endpoint needs a user access token (ghu_). Make sure you've connected your GitHub account.`;
+      } else {
+        error = err.message;
+      }
+      console.error('Error testing user repositories:', err);
     } finally {
       loading = false;
     }
@@ -542,6 +611,32 @@
         >
           {loading ? 'Testing...' : 'Test Commits'}
         </button>
+      </div>
+    </div>
+
+    <!-- User-Specific Test Buttons -->
+    <div class="user-test-group">
+      <h4>User-Specific Tests (Requires User Access Token)</h4>
+      <div class="button-group">
+        <button
+          class="btn btn-warning"
+          on:click={testUserProfile}
+          disabled={loading || !githubApiClient}
+        >
+          {loading ? 'Testing...' : 'Test User Profile'}
+        </button>
+
+        <button
+          class="btn btn-warning"
+          on:click={testUserRepositories}
+          disabled={loading || !githubApiClient}
+        >
+          {loading ? 'Testing...' : 'Test User Repositories'}
+        </button>
+      </div>
+      <div class="help-text">
+        <strong>💡 Note:</strong> These tests require user access tokens (ghu_) and will automatically
+        attempt to fetch them if you have a connected GitHub account.
       </div>
     </div>
   </div>
@@ -1310,6 +1405,39 @@
     /* Dark mode styles */
     @media (prefers-color-scheme: dark) {
       color: #93c5fd;
+    }
+  }
+
+  .btn-warning {
+    background: #f59e0b;
+    color: white;
+  }
+
+  .btn-warning:hover:not(:disabled) {
+    background: #d97706;
+  }
+
+  .user-test-group {
+    background: white;
+    border: 1px solid #e2e8f0;
+    border-radius: 6px;
+    padding: 12px;
+    margin-top: 16px;
+    /* Dark mode styles */
+    @media (prefers-color-scheme: dark) {
+      background: #334155;
+      border-color: #475569;
+    }
+  }
+
+  .user-test-group h4 {
+    margin: 0 0 12px 0;
+    color: #1e293b;
+    font-size: 14px;
+    font-weight: 600;
+    /* Dark mode styles */
+    @media (prefers-color-scheme: dark) {
+      color: #e2e8f0;
     }
   }
 </style>
