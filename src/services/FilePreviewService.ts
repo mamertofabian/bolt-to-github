@@ -11,6 +11,9 @@ export interface FileChange {
   status: 'added' | 'modified' | 'unchanged' | 'deleted';
   content: string;
   previousContent?: string;
+  // ✅ NEW: Enhanced metadata for better tracking
+  authMethod?: 'pat' | 'github_app' | 'unknown';
+  comparedAt?: number;
 }
 
 export interface DiffResult {
@@ -22,6 +25,20 @@ export interface DiffResult {
   }>;
   isContextual?: boolean;
   totalLines?: number;
+  // ✅ NEW: Enhanced diff metadata
+  authMethod?: 'pat' | 'github_app' | 'unknown';
+  generatedAt?: number;
+}
+
+// ✅ NEW: Enhanced comparison options
+export interface GitHubComparisonOptions {
+  repoOwner: string;
+  repoName: string;
+  targetBranch: string;
+  githubService?: GitHubService;
+  authMethod?: 'pat' | 'github_app' | 'auto';
+  progressCallback?: (message: string, progress: number) => void;
+  includeMetadata?: boolean;
 }
 
 /**
@@ -36,6 +53,14 @@ export class FilePreviewService {
   private previousFiles: ProjectFiles | null = null;
   private changedFiles: Map<string, FileChange> | null = null;
 
+  // ✅ NEW: Enhanced authentication tracking
+  private lastGitHubService: GitHubService | null = null;
+  private lastAuthStatus: {
+    currentAuth: 'pat' | 'github_app' | 'unknown' | null;
+    rateLimits?: any;
+    canUpgrade?: boolean;
+  } | null = null;
+
   private constructor() {
     this.downloadService = new DownloadService();
 
@@ -49,6 +74,8 @@ export class FilePreviewService {
     }
 
     this.githubComparisonService = GitHubComparisonService.getInstance();
+    this.lastGitHubService = null;
+    this.lastAuthStatus = null;
 
     // Register for cache refresh events
     this.cacheService.onCacheRefreshNeeded(this.handleCacheRefresh);
@@ -72,7 +99,51 @@ export class FilePreviewService {
     this.currentFiles = null;
     this.previousFiles = null;
     this.changedFiles = null;
+
+    // ✅ NEW: Clear GitHub service cache as well
+    this.lastGitHubService = null;
+    this.lastAuthStatus = null;
   };
+
+  // ✅ NEW: Update authentication status for better error handling
+  private async updateAuthStatus(githubService?: GitHubService): Promise<void> {
+    if (!githubService) return;
+
+    try {
+      this.lastAuthStatus = await githubService.getAuthStatus();
+      this.lastGitHubService = githubService;
+      console.log(
+        `🔐 FilePreviewService: Auth status updated - ${this.lastAuthStatus?.currentAuth}`
+      );
+    } catch (error) {
+      console.warn('Failed to update auth status:', error);
+      this.lastAuthStatus = { currentAuth: 'unknown' };
+    }
+  }
+
+  // ✅ NEW: Enhanced error message generation
+  private getEnhancedErrorMessage(error: unknown, operation: string): string {
+    if (error instanceof Error) {
+      const message = error.message;
+      const authMethod = this.lastAuthStatus?.currentAuth || 'unknown';
+
+      // Check for common GitHub API errors
+      if (message.includes('404')) {
+        return `Repository not found during ${operation}. Please check if the repository exists and you have access to it.`;
+      } else if (message.includes('403')) {
+        return `Access denied during ${operation}. Your ${authMethod === 'pat' ? 'Personal Access Token may need additional permissions' : 'GitHub App may need additional permissions'} or the repository may be private.`;
+      } else if (message.includes('401')) {
+        return `Authentication failed during ${operation}. Please check your GitHub authentication settings.`;
+      } else if (message.includes('rate limit')) {
+        const rateLimits = this.lastAuthStatus?.rateLimits;
+        return `GitHub API rate limit exceeded during ${operation}. ${rateLimits ? `Remaining: ${rateLimits.remaining}/${rateLimits.limit}` : 'Please try again later.'}`;
+      }
+
+      return `${operation} failed: ${message}`;
+    }
+
+    return `${operation} failed: Unknown error occurred.`;
+  }
 
   /**
    * Load the current project files, using cache if available
@@ -138,6 +209,8 @@ export class FilePreviewService {
 
     // Create a map for the changes
     const changes = new Map<string, FileChange>();
+    const timestamp = Date.now();
+    const authMethod = this.lastAuthStatus?.currentAuth || 'unknown';
 
     // If we don't have previous files, this is the first load
     if (!this.previousFiles || !this.currentFiles) {
@@ -149,6 +222,8 @@ export class FilePreviewService {
             path,
             status: 'unchanged',
             content,
+            authMethod,
+            comparedAt: timestamp,
           });
         });
       }
@@ -167,6 +242,8 @@ export class FilePreviewService {
           path,
           status: 'added',
           content,
+          authMethod,
+          comparedAt: timestamp,
         });
       } else if (content !== previousContent) {
         // File is modified
@@ -175,6 +252,8 @@ export class FilePreviewService {
           status: 'modified',
           content,
           previousContent,
+          authMethod,
+          comparedAt: timestamp,
         });
       } else {
         // File is unchanged
@@ -182,6 +261,8 @@ export class FilePreviewService {
           path,
           status: 'unchanged',
           content,
+          authMethod,
+          comparedAt: timestamp,
         });
       }
     });
@@ -194,6 +275,8 @@ export class FilePreviewService {
           status: 'deleted',
           content: '',
           previousContent: content,
+          authMethod,
+          comparedAt: timestamp,
         });
       }
     });
@@ -216,6 +299,9 @@ export class FilePreviewService {
       return null;
     }
 
+    const timestamp = Date.now();
+    const authMethod = this.lastAuthStatus?.currentAuth || 'unknown';
+
     // For unchanged files, show content with unchanged type
     if (fileChange.status === 'unchanged') {
       const lines = fileChange.content.split('\n');
@@ -226,6 +312,8 @@ export class FilePreviewService {
           content,
           lineNumber: index + 1,
         })),
+        authMethod,
+        generatedAt: timestamp,
       };
     }
 
@@ -239,6 +327,8 @@ export class FilePreviewService {
           content,
           lineNumber: index + 1,
         })),
+        authMethod,
+        generatedAt: timestamp,
       };
     }
 
@@ -252,12 +342,23 @@ export class FilePreviewService {
           content,
           lineNumber: index + 1,
         })),
+        authMethod,
+        generatedAt: timestamp,
       };
     }
 
     // For modified files, compare line by line
     if (fileChange.status === 'modified' && fileChange.previousContent) {
-      return this.calculateLineDiffInternal(path, fileChange.previousContent, fileChange.content);
+      const diff = this.calculateLineDiffInternal(
+        path,
+        fileChange.previousContent,
+        fileChange.content
+      );
+      return {
+        ...diff,
+        authMethod,
+        generatedAt: timestamp,
+      };
     }
 
     return null;
@@ -280,10 +381,19 @@ export class FilePreviewService {
     const fullDiff = this.calculateLineDiffInternal(path, oldContent, newContent);
 
     if (contextLines <= 0) {
-      return fullDiff;
+      return {
+        ...fullDiff,
+        authMethod: this.lastAuthStatus?.currentAuth || 'unknown',
+        generatedAt: Date.now(),
+      };
     }
 
-    return this.createContextualDiff(fullDiff, contextLines);
+    const contextualDiff = this.createContextualDiff(fullDiff, contextLines);
+    return {
+      ...contextualDiff,
+      authMethod: this.lastAuthStatus?.currentAuth || 'unknown',
+      generatedAt: Date.now(),
+    };
   }
 
   /**
@@ -494,34 +604,39 @@ export class FilePreviewService {
    * @returns Promise resolving when the preview is created
    */
   public async createFilePreview(path: string, container: HTMLElement): Promise<void> {
-    // Get the file content
-    const content = await this.getFileContent(path);
+    try {
+      // Get the file content
+      const content = await this.getFileContent(path);
 
-    if (!content) {
-      container.innerHTML = `<div class="error">File not found: ${path}</div>`;
-      return;
-    }
+      if (!content) {
+        container.innerHTML = `<div class="error">File not found: ${path}</div>`;
+        return;
+      }
 
-    // Create a pre element with the file content
-    const pre = document.createElement('pre');
-    pre.className = 'file-preview';
+      // Create a pre element with the file content
+      const pre = document.createElement('pre');
+      pre.className = 'file-preview';
 
-    // Add syntax highlighting based on file extension
-    const extension = path.split('.').pop()?.toLowerCase();
-    pre.classList.add(`language-${extension || 'text'}`);
+      // Add syntax highlighting based on file extension
+      const extension = path.split('.').pop()?.toLowerCase();
+      pre.classList.add(`language-${extension || 'text'}`);
 
-    // Create code element
-    const code = document.createElement('code');
-    code.textContent = content;
-    pre.appendChild(code);
+      // Create code element
+      const code = document.createElement('code');
+      code.textContent = content;
+      pre.appendChild(code);
 
-    // Clear container and append preview
-    container.innerHTML = '';
-    container.appendChild(pre);
+      // Clear container and append preview
+      container.innerHTML = '';
+      container.appendChild(pre);
 
-    // Apply syntax highlighting if Prism is available
-    if (typeof window.Prism !== 'undefined') {
-      window.Prism.highlightElement(code);
+      // Apply syntax highlighting if Prism is available
+      if (typeof window.Prism !== 'undefined') {
+        window.Prism.highlightElement(code);
+      }
+    } catch (error) {
+      const errorMessage = this.getEnhancedErrorMessage(error, 'file preview creation');
+      container.innerHTML = `<div class="error">${errorMessage}</div>`;
     }
   }
 
@@ -532,68 +647,82 @@ export class FilePreviewService {
    * @returns Promise resolving when the diff is created
    */
   public async createFileDiff(path: string, container: HTMLElement): Promise<void> {
-    // Get the file diff
-    const diff = await this.getFileDiff(path);
+    try {
+      // Get the file diff
+      const diff = await this.getFileDiff(path);
 
-    if (!diff) {
-      container.innerHTML = `<div class="info">No changes in file: ${path}</div>`;
-      return;
+      if (!diff) {
+        container.innerHTML = `<div class="info">No changes in file: ${path}</div>`;
+        return;
+      }
+
+      // Create a diff container
+      const diffContainer = document.createElement('div');
+      diffContainer.className = 'diff-container';
+
+      // Add file header with metadata
+      const header = document.createElement('div');
+      header.className = 'diff-header';
+      header.innerHTML = `
+        <span class="diff-file-path">${path}</span>
+        ${diff.authMethod ? `<span class="diff-auth-method" title="Generated using ${diff.authMethod} authentication">${diff.authMethod}</span>` : ''}
+        ${diff.generatedAt ? `<span class="diff-timestamp" title="Generated at ${new Date(diff.generatedAt).toISOString()}">${new Date(diff.generatedAt).toLocaleTimeString()}</span>` : ''}
+      `;
+      diffContainer.appendChild(header);
+
+      // Add contextual info if available
+      if (diff.isContextual && diff.totalLines) {
+        const contextInfo = document.createElement('div');
+        contextInfo.className = 'diff-context-info';
+        contextInfo.textContent = `Showing ${diff.changes.length} of ${diff.totalLines} lines (contextual view)`;
+        diffContainer.appendChild(contextInfo);
+      }
+
+      // Create line-by-line diff
+      const diffContent = document.createElement('div');
+      diffContent.className = 'diff-content';
+
+      // Add each line with appropriate styling
+      diff.changes.forEach((change) => {
+        const line = document.createElement('div');
+        line.className = `diff-line diff-${change.type}`;
+
+        // Add line number
+        const lineNumber = document.createElement('span');
+        lineNumber.className = 'diff-line-number';
+        lineNumber.textContent = change.lineNumber === -1 ? '...' : String(change.lineNumber);
+        line.appendChild(lineNumber);
+
+        // Add line prefix (+ for added, - for deleted, space for unchanged)
+        const prefix = document.createElement('span');
+        prefix.className = 'diff-line-prefix';
+        prefix.textContent = change.type === 'added' ? '+' : change.type === 'deleted' ? '-' : ' ';
+        line.appendChild(prefix);
+
+        // Add line content
+        const content = document.createElement('span');
+        content.className = 'diff-line-content';
+        content.textContent = change.content;
+        line.appendChild(content);
+
+        diffContent.appendChild(line);
+      });
+
+      diffContainer.appendChild(diffContent);
+
+      // Clear container and append diff
+      container.innerHTML = '';
+      container.appendChild(diffContainer);
+    } catch (error) {
+      const errorMessage = this.getEnhancedErrorMessage(error, 'file diff creation');
+      container.innerHTML = `<div class="error">${errorMessage}</div>`;
     }
-
-    // Create a diff container
-    const diffContainer = document.createElement('div');
-    diffContainer.className = 'diff-container';
-
-    // Add file header
-    const header = document.createElement('div');
-    header.className = 'diff-header';
-    header.textContent = path;
-    diffContainer.appendChild(header);
-
-    // Create line-by-line diff
-    const diffContent = document.createElement('div');
-    diffContent.className = 'diff-content';
-
-    // Add each line with appropriate styling
-    diff.changes.forEach((change) => {
-      const line = document.createElement('div');
-      line.className = `diff-line diff-${change.type}`;
-
-      // Add line number
-      const lineNumber = document.createElement('span');
-      lineNumber.className = 'diff-line-number';
-      lineNumber.textContent = String(change.lineNumber);
-      line.appendChild(lineNumber);
-
-      // Add line prefix (+ for added, - for deleted, space for unchanged)
-      const prefix = document.createElement('span');
-      prefix.className = 'diff-line-prefix';
-      prefix.textContent = change.type === 'added' ? '+' : change.type === 'deleted' ? '-' : ' ';
-      line.appendChild(prefix);
-
-      // Add line content
-      const content = document.createElement('span');
-      content.className = 'diff-line-content';
-      content.textContent = change.content;
-      line.appendChild(content);
-
-      diffContent.appendChild(line);
-    });
-
-    diffContainer.appendChild(diffContent);
-
-    // Clear container and append diff
-    container.innerHTML = '';
-    container.appendChild(diffContainer);
   }
 
+  // ✅ ENHANCED: Improved compareWithGitHub with new GitHubService architecture
   /**
-   * Compare current files with GitHub repository files
-   * @param repoOwner GitHub repository owner
-   * @param repoName GitHub repository name
-   * @param targetBranch GitHub repository branch
-   * @param githubService Optional GitHubService instance to use
-   * @returns Map of file paths to change information
+   * Compare current files with GitHub repository files (legacy method)
+   * @deprecated Use compareWithGitHubAdvanced for better control and features
    */
   public async compareWithGitHub(
     repoOwner: string,
@@ -601,38 +730,164 @@ export class FilePreviewService {
     targetBranch: string,
     githubService?: GitHubService
   ): Promise<Map<string, FileChange>> {
-    // Get processed files (applying gitignore rules)
-    const processedFiles = await this.getProcessedFiles();
-
-    if (!processedFiles || processedFiles.size === 0) {
-      throw new Error('No files loaded or all files were ignored by gitignore rules.');
-    }
-
-    // If a GitHub service is provided, set it on the comparison service
-    if (githubService) {
-      this.githubComparisonService.setGitHubService(githubService);
-    }
-
-    // Create a progress callback for the comparison service
-    const progressCallback = (message: string, progress: number) => {
-      // Only log progress info in development environment
-      if (process.env.NODE_ENV === 'development') {
-        // eslint-disable-next-line no-console
-        console.log(`GitHub comparison: ${message} (${progress}%)`);
-      }
-    };
-
-    // Use the GitHub comparison service to compare files
-    const result = await this.githubComparisonService.compareWithGitHub(
-      processedFiles,
+    const options: GitHubComparisonOptions = {
       repoOwner,
       repoName,
       targetBranch,
-      progressCallback
-    );
+      githubService,
+      authMethod: 'auto',
+      includeMetadata: true,
+    };
 
-    // Return just the changes map
-    return result.changes;
+    return this.compareWithGitHubAdvanced(options);
+  }
+
+  // ✅ NEW: Advanced GitHub comparison with enhanced options
+  /**
+   * Compare current files with GitHub repository files using advanced options
+   * @param options GitHub comparison configuration options
+   * @returns Map of file paths to change information
+   */
+  public async compareWithGitHubAdvanced(
+    options: GitHubComparisonOptions
+  ): Promise<Map<string, FileChange>> {
+    const {
+      repoOwner,
+      repoName,
+      targetBranch,
+      githubService,
+      authMethod = 'auto',
+      progressCallback,
+      includeMetadata = true,
+    } = options;
+
+    try {
+      // Get processed files (applying gitignore rules)
+      const processedFiles = await this.getProcessedFiles();
+
+      if (!processedFiles || processedFiles.size === 0) {
+        throw new Error('No files loaded or all files were ignored by gitignore rules.');
+      }
+
+      // ✅ ENHANCED: Create or use optimal GitHubService
+      let serviceToUse = githubService;
+
+      if (!serviceToUse) {
+        // ✅ NEW: Create GitHubService with optimal authentication
+        console.log('🔧 Creating optimal GitHubService for comparison...');
+
+        if (authMethod === 'auto') {
+          serviceToUse = await GitHubService.createWithBestAuth({
+            preferGitHubApp: true,
+          });
+        } else if (authMethod === 'github_app') {
+          serviceToUse = await GitHubService.createForNewUser();
+        } else if (authMethod === 'pat') {
+          // For PAT, we'd need the token from storage or settings
+          throw new Error(
+            'PAT authentication requires providing a GitHubService instance with valid PAT token'
+          );
+        }
+
+        if (!serviceToUse) {
+          throw new Error(`Failed to create GitHubService with ${authMethod} authentication`);
+        }
+      }
+
+      // ✅ NEW: Update authentication status
+      await this.updateAuthStatus(serviceToUse);
+
+      console.log(
+        `🔍 Comparing with GitHub using ${this.lastAuthStatus?.currentAuth || 'unknown'} authentication`
+      );
+
+      // Set the GitHub service on the comparison service
+      this.githubComparisonService.setGitHubService(serviceToUse);
+
+      // ✅ ENHANCED: Create enhanced progress callback
+      const enhancedProgressCallback = (message: string, progress: number) => {
+        const enhancedMessage = `[${this.lastAuthStatus?.currentAuth || 'unknown'}] ${message}`;
+
+        // Call user's progress callback if provided
+        if (progressCallback) {
+          progressCallback(enhancedMessage, progress);
+        }
+
+        // Only log progress info in development environment
+        if (process.env.NODE_ENV === 'development') {
+          console.log(`GitHub comparison: ${enhancedMessage} (${progress}%)`);
+        }
+      };
+
+      // Use the GitHub comparison service to compare files
+      const result = await this.githubComparisonService.compareWithGitHub(
+        processedFiles,
+        repoOwner,
+        repoName,
+        targetBranch,
+        enhancedProgressCallback
+      );
+
+      // ✅ ENHANCED: Add authentication metadata to results if requested
+      if (includeMetadata) {
+        const enhancedChanges = new Map<string, FileChange>();
+        const timestamp = Date.now();
+        const authMethod = this.lastAuthStatus?.currentAuth || 'unknown';
+
+        result.changes.forEach((change, path) => {
+          enhancedChanges.set(path, {
+            ...change,
+            authMethod,
+            comparedAt: timestamp,
+          });
+        });
+
+        return enhancedChanges;
+      }
+
+      // Return just the changes map
+      return result.changes;
+    } catch (error) {
+      const enhancedError = this.getEnhancedErrorMessage(error, 'GitHub comparison');
+      console.error('GitHub comparison failed:', enhancedError);
+      throw new Error(enhancedError);
+    }
+  }
+
+  // ✅ NEW: Get current authentication status for external use
+  public getAuthStatus(): {
+    currentAuth: 'pat' | 'github_app' | 'unknown' | null;
+    rateLimits?: any;
+    canUpgrade?: boolean;
+  } | null {
+    return this.lastAuthStatus;
+  }
+
+  // ✅ NEW: Get optimal GitHubService for external use
+  public async getOptimalGitHubService(): Promise<GitHubService | null> {
+    try {
+      const service = await GitHubService.createWithBestAuth({
+        preferGitHubApp: true,
+      });
+
+      if (service) {
+        await this.updateAuthStatus(service);
+      }
+
+      return service;
+    } catch (error) {
+      console.error('Failed to create optimal GitHubService:', error);
+      return null;
+    }
+  }
+
+  // ✅ NEW: Force authentication status refresh
+  public async refreshAuthStatus(githubService?: GitHubService): Promise<void> {
+    if (githubService) {
+      await this.updateAuthStatus(githubService);
+    } else if (this.lastGitHubService) {
+      await this.updateAuthStatus(this.lastGitHubService);
+    }
   }
 
   /**
@@ -646,6 +901,10 @@ export class FilePreviewService {
     this.currentFiles = null;
     this.previousFiles = null;
     this.changedFiles = null;
+
+    // ✅ NEW: Clear GitHub service references
+    this.lastGitHubService = null;
+    this.lastAuthStatus = null;
   }
 }
 
