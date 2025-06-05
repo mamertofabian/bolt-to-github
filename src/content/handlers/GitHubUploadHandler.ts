@@ -3,26 +3,9 @@ import type { INotificationManager } from '../types/ManagerInterfaces';
 import type { MessageHandler } from '../MessageHandler';
 import type { UIStateManager } from '../services/UIStateManager';
 import type { FileChange } from '../../services/FilePreviewService';
-import { SettingsService } from '../../services/settings';
+import { UnifiedSettingsService } from '../../services/UnifiedSettingsService';
 import { DownloadService } from '../../services/DownloadService';
 import { CommitTemplateService } from '../services/CommitTemplateService';
-
-// Local interface to match actual structure returned by SettingsService
-interface CurrentProjectSettings {
-  repoName: string;
-  branch: string;
-}
-
-interface LocalGitHubSettings {
-  githubToken: string;
-  repoOwner: string;
-  projectSettings?: CurrentProjectSettings;
-}
-
-interface LocalSettingsResult {
-  isSettingsValid: boolean;
-  gitHubSettings?: LocalGitHubSettings;
-}
 
 /**
  * GitHubUploadHandler handles the GitHub upload workflow and related operations
@@ -52,7 +35,7 @@ export class GitHubUploadHandler implements IGitHubUploadHandler {
    * Returns true if settings are valid and complete
    */
   public async validateSettings(): Promise<boolean> {
-    const settings = (await SettingsService.getGitHubSettings()) as LocalSettingsResult;
+    const settings = await UnifiedSettingsService.getGitHubSettings();
     return settings.isSettingsValid;
   }
 
@@ -76,7 +59,7 @@ export class GitHubUploadHandler implements IGitHubUploadHandler {
     console.log('🔊 Handling GitHub push action');
 
     // Validate settings first
-    const settings = (await SettingsService.getGitHubSettings()) as LocalSettingsResult;
+    const settings = await UnifiedSettingsService.getGitHubSettings();
     if (!settings.isSettingsValid) {
       this.notificationManager.showSettingsNotification();
       return;
@@ -311,7 +294,7 @@ export class GitHubUploadHandler implements IGitHubUploadHandler {
    * Get current project settings for display
    */
   public async getProjectInfo(): Promise<{ repoName?: string; branch?: string } | null> {
-    const settings = (await SettingsService.getGitHubSettings()) as LocalSettingsResult;
+    const settings = await UnifiedSettingsService.getGitHubSettings();
     if (settings.isSettingsValid && settings.gitHubSettings?.projectSettings) {
       return {
         repoName: settings.gitHubSettings.projectSettings.repoName,

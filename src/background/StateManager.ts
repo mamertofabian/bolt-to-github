@@ -1,4 +1,4 @@
-import { SettingsService } from '../services/settings';
+import { UnifiedSettingsService } from '../services/UnifiedSettingsService';
 
 export class StateManager {
   private static instance: StateManager;
@@ -13,14 +13,14 @@ export class StateManager {
   }
 
   async getGitHubSettings() {
-    return SettingsService.getGitHubSettings();
+    return UnifiedSettingsService.getGitHubSettings();
   }
 
   async getProjectId() {
-    return SettingsService.getProjectId();
+    return UnifiedSettingsService.getProjectId();
   }
 
   async setProjectId(projectId: string) {
-    return SettingsService.setProjectId(projectId);
+    return UnifiedSettingsService.setProjectId(projectId);
   }
 }

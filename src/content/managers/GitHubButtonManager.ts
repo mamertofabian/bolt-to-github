@@ -1,6 +1,6 @@
 import type { IGitHubButtonManager } from '../types/ManagerInterfaces';
 import type { UIStateManager } from '../services/UIStateManager';
-import { SettingsService } from '../../services/settings';
+import { UnifiedSettingsService } from '../../services/UnifiedSettingsService';
 
 /**
  * GitHubButtonManager handles the GitHub button creation, lifecycle, and state management
@@ -37,7 +37,7 @@ export class GitHubButtonManager implements IGitHubButtonManager {
       return;
     }
 
-    const settings = await SettingsService.getGitHubSettings();
+    const settings = await UnifiedSettingsService.getGitHubSettings();
     const button = this.createGitHubButton();
     this.updateState(settings.isSettingsValid);
     this.uploadButton = button;

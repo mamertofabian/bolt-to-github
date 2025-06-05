@@ -1,4 +1,4 @@
-import type { GitHubService } from './GitHubService';
+import { GitHubService } from './GitHubService';
 import { toBase64 } from '../lib/common';
 import { ZipProcessor } from '../lib/zip';
 import type { ProcessingStatus, UploadStatusState } from '$lib/types';
@@ -8,129 +8,53 @@ import { GitHubComparisonService } from './GitHubComparisonService';
 import { processFilesWithGitignore } from '$lib/fileUtils';
 import { pushStatisticsActions } from '../lib/stores';
 
-// ✅ NEW: Enhanced upload result interface
-interface UploadResult {
-  success: boolean;
-  filesUploaded: number;
-  totalFiles: number;
-  authMethod: string;
-  apiCalls: number;
-  duration: number;
-  rateLimitsUsed?: {
-    remaining: number;
-    limit: number;
-  };
-}
-
 export class ZipHandler {
   private githubComparisonService: GitHubComparisonService;
-
-  // ✅ NEW: Enhanced authentication and performance tracking
-  private currentAuthStatus: {
-    currentAuth: 'pat' | 'github_app' | 'unknown' | null;
-    rateLimits?: any;
-    canUpgrade?: boolean;
-  } | null = null;
-
-  private performanceMetrics: {
-    startTime: number;
-    apiCallCount: number;
-    filesProcessed: number;
-    lastRateLimitCheck: number;
-  } = {
-    startTime: 0,
-    apiCallCount: 0,
-    filesProcessed: 0,
-    lastRateLimitCheck: 0,
-  };
+  private githubService: GitHubService;
 
   constructor(
-    private githubService: GitHubService,
+    githubService: GitHubService | undefined,
     private sendStatus: (status: UploadStatusState) => void
   ) {
     this.githubComparisonService = GitHubComparisonService.getInstance();
-    this.currentAuthStatus = null;
-    this.initializeServices();
-  }
 
-  // ✅ NEW: Initialize services with authentication tracking
-  private async initializeServices(): Promise<void> {
-    try {
-      await this.githubComparisonService.setGitHubService(this.githubService);
-      await this.updateAuthStatus();
-    } catch (error) {
-      console.warn('Failed to initialize ZipHandler services:', error);
+    // ✅ NEW: Auto-create optimized GitHubService if none provided
+    if (githubService) {
+      this.githubService = githubService;
+    } else {
+      // Will be initialized async in processZipFile when needed
+      this.githubService = null as any;
+    }
+
+    // Set the GitHub service on comparison service if we have one
+    if (this.githubService) {
+      this.githubComparisonService.setGitHubService(this.githubService);
     }
   }
 
-  // ✅ NEW: Update authentication status for better operations
-  private async updateAuthStatus(): Promise<void> {
-    try {
-      this.currentAuthStatus = await this.githubService.getAuthStatus();
-      console.log(`🔐 ZipHandler: Auth status updated - ${this.currentAuthStatus.currentAuth}`);
-    } catch (error) {
-      console.warn('Failed to update auth status:', error);
-      this.currentAuthStatus = { currentAuth: 'unknown' };
-    }
-  }
-
-  // ✅ NEW: Enhanced error message generation
-  private getEnhancedErrorMessage(error: unknown, operation: string): string {
-    if (error instanceof Error) {
-      const message = error.message;
-      const authMethod = this.currentAuthStatus?.currentAuth || 'unknown';
-
-      // Check for common GitHub API errors
-      if (message.includes('404')) {
-        return `Repository not found during ${operation}. Please check if the repository exists and you have access to it.`;
-      } else if (message.includes('403')) {
-        return `Access denied during ${operation}. Your ${authMethod === 'pat' ? 'Personal Access Token may need additional permissions' : 'GitHub App may need additional permissions'} or the repository may be private.`;
-      } else if (message.includes('401')) {
-        return `Authentication failed during ${operation}. Please check your GitHub authentication settings.`;
-      } else if (message.includes('rate limit')) {
-        const rateLimits = this.currentAuthStatus?.rateLimits;
-        return `GitHub API rate limit exceeded during ${operation}. ${rateLimits ? `Remaining: ${rateLimits.remaining}/${rateLimits.limit}` : 'Please try again later.'}`;
-      } else if (message.includes('timeout')) {
-        return `Request timeout during ${operation}. The repository may be very large or GitHub API is experiencing delays.`;
-      } else if (message.includes('too large')) {
-        return `${message} Consider using ${authMethod === 'pat' ? 'GitHub App authentication for higher limits' : 'smaller files or splitting the upload'}.`;
-      }
-
-      return `${operation} failed: ${message}`;
-    }
-
-    return `${operation} failed: Unknown error occurred.`;
-  }
-
-  // ✅ ENHANCED: Enhanced status updates with auth context
   private updateStatus = async (
     status: ProcessingStatus,
     progress: number = 0,
     message: string = ''
   ) => {
-    // ✅ NEW: Add auth context to status messages
-    const authMethod = this.currentAuthStatus?.currentAuth || 'unknown';
-    const enhancedMessage =
-      status === 'uploading' && message ? `[${authMethod}] ${message}` : message;
-
     // Send status update to UI
-    console.log(`ZipHandler: Sending status update: ${status}, ${progress}%, ${enhancedMessage}`);
+    console.log(`ZipHandler: Sending status update: ${status}, ${progress}%, ${message}`);
 
     // Send the status update and ensure it's properly dispatched
     try {
-      this.sendStatus({ status, progress, message: enhancedMessage });
+      this.sendStatus({ status, progress, message });
 
       // For important status changes, send a duplicate update after a small delay
       // to ensure it's received and processed by the UI
       if (status === 'uploading' && progress === 0) {
         // Initial upload status - critical to show
         setTimeout(() => {
-          this.sendStatus({ status, progress, message: enhancedMessage });
+          this.sendStatus({ status, progress, message });
         }, 100);
       } else if (status === 'success' || status === 'error') {
         // Final statuses - critical to show
         setTimeout(() => {
-          this.sendStatus({ status, progress, message: enhancedMessage });
+          this.sendStatus({ status, progress, message });
         }, 100);
       }
     } catch (error) {
@@ -138,84 +62,79 @@ export class ZipHandler {
     }
   };
 
-  // ✅ ENHANCED: Branch management with better error handling
   private ensureBranchExists = async (
     repoOwner: string,
     repoName: string,
     targetBranch: string
   ) => {
+    // Check if branch exists
+    let branchExists = true;
     try {
-      // Check if branch exists
-      let branchExists = true;
-      try {
-        await this.githubService.request(
-          'GET',
-          `/repos/${repoOwner}/${repoName}/branches/${targetBranch}`
-        );
-        this.performanceMetrics.apiCallCount++;
-      } catch (_) {
-        branchExists = false;
-      }
+      await this.githubService.request(
+        'GET',
+        `/repos/${repoOwner}/${repoName}/branches/${targetBranch}`
+      );
+    } catch (_) {
+      branchExists = false;
+    }
 
-      // If branch doesn't exist, create it from default branch
-      if (!branchExists) {
-        await this.updateStatus('uploading', 18, `Creating branch ${targetBranch}...`);
-
-        try {
-          const defaultBranch = await this.githubService.request(
-            'GET',
-            `/repos/${repoOwner}/${repoName}/git/refs/heads/main`
-          );
-          this.performanceMetrics.apiCallCount++;
-
-          await this.githubService.request('POST', `/repos/${repoOwner}/${repoName}/git/refs`, {
-            ref: `refs/heads/${targetBranch}`,
-            sha: defaultBranch.object.sha,
-          });
-          this.performanceMetrics.apiCallCount++;
-        } catch (error) {
-          const enhancedError = this.getEnhancedErrorMessage(error, 'branch creation');
-          throw new Error(enhancedError);
-        }
-      }
-    } catch (error) {
-      const enhancedError = this.getEnhancedErrorMessage(error, 'branch management');
-      throw new Error(enhancedError);
+    // If branch doesn't exist, create it from default branch
+    if (!branchExists) {
+      await this.updateStatus('uploading', 18, `Creating branch ${targetBranch}...`);
+      const defaultBranch = await this.githubService.request(
+        'GET',
+        `/repos/${repoOwner}/${repoName}/git/refs/heads/main`
+      );
+      await this.githubService.request('POST', `/repos/${repoOwner}/${repoName}/git/refs`, {
+        ref: `refs/heads/${targetBranch}`,
+        sha: defaultBranch.object.sha,
+      });
     }
   };
 
-  // ✅ ENHANCED: Main processing method with comprehensive improvements
   public processZipFile = async (
     blob: Blob,
     currentProjectId: string | null,
     commitMessage: string
-  ): Promise<UploadResult> => {
-    // Reset performance metrics
-    this.performanceMetrics = {
-      startTime: Date.now(),
-      apiCallCount: 0,
-      filesProcessed: 0,
-      lastRateLimitCheck: Date.now(),
-    };
-
-    // ✅ ENHANCED: Size validation with auth-aware messaging
+  ) => {
+    // Add size validation (50MB limit)
     const MAX_FILE_SIZE = 50 * 1024 * 1024; // 50MB in bytes
     if (blob.size > MAX_FILE_SIZE) {
-      const authMethod = this.currentAuthStatus?.currentAuth || 'unknown';
-      const enhancedMessage = `File too large. Maximum size is ${MAX_FILE_SIZE / 1024 / 1024}MB. ${
-        authMethod === 'pat' ? 'Consider upgrading to GitHub App for better performance.' : ''
-      }`;
-      await this.updateStatus('error', 0, enhancedMessage);
-      throw new Error(enhancedMessage);
-    }
-
-    if (!this.githubService) {
       await this.updateStatus(
         'error',
         0,
-        'GitHub service not initialized. Please set your GitHub token.'
+        `File too large. Maximum size is ${MAX_FILE_SIZE / 1024 / 1024}MB`
       );
-      throw new Error('GitHub service not initialized. Please set your GitHub token.');
+      throw new Error(`File too large. Maximum size is ${MAX_FILE_SIZE / 1024 / 1024}MB`);
+    }
+
+    // ✅ NEW: Auto-create optimized GitHubService if none provided
+    if (!this.githubService) {
+      try {
+        console.log('🔄 Creating optimized GitHub service for ZIP processing...');
+
+        // ✅ Use factory method with automatic best-auth selection
+        this.githubService = await GitHubService.createWithBestAuth({
+          preferGitHubApp: true,
+        });
+
+        console.log(
+          `✅ GitHub service created with ${this.githubService.getApiClientType()} for ZIP processing`
+        );
+
+        // Set the service on the comparison service as well
+        this.githubComparisonService.setGitHubService(this.githubService);
+      } catch (error) {
+        console.error('Failed to create GitHub service for ZIP processing:', error);
+        await this.updateStatus(
+          'error',
+          0,
+          'Unable to initialize GitHub service. Please check your GitHub authentication settings.'
+        );
+        throw new Error(
+          'Unable to initialize GitHub service. Please check your GitHub authentication settings.'
+        );
+      }
     }
 
     if (!currentProjectId) {
@@ -226,9 +145,6 @@ export class ZipHandler {
       );
       throw new Error('Project ID not found. Make sure you are on a Bolt project page.');
     }
-
-    // ✅ NEW: Update auth status before processing
-    await this.updateAuthStatus();
 
     try {
       await this.updateStatus('uploading', 0, 'Processing ZIP file...');
@@ -276,7 +192,7 @@ export class ZipHandler {
 
       const targetBranch = branch || 'main';
 
-      // ✅ ENHANCED: Record push attempt with auth context
+      // Record push attempt
       await pushStatisticsActions.recordPushAttempt(
         currentProjectId,
         repoOwner,
@@ -286,30 +202,16 @@ export class ZipHandler {
         commitMessage
       );
 
-      await this.updateStatus('uploading', 15, 'Checking repository...');
+      // Repository details identified
 
-      // ✅ ENHANCED: Repository operations with error handling
-      try {
-        await this.githubService.ensureRepoExists(repoOwner, repoName);
-        this.performanceMetrics.apiCallCount++;
-      } catch (error) {
-        const enhancedError = this.getEnhancedErrorMessage(error, 'repository verification');
-        throw new Error(enhancedError);
-      }
+      await this.updateStatus('uploading', 15, 'Checking repository...');
+      await this.githubService.ensureRepoExists(repoOwner, repoName);
 
       // Check if repo is empty and needs initialization
-      try {
-        const isEmpty = await this.githubService.isRepoEmpty(repoOwner, repoName);
-        this.performanceMetrics.apiCallCount++;
-
-        if (isEmpty) {
-          await this.updateStatus('uploading', 18, 'Initializing empty repository...');
-          await this.githubService.initializeEmptyRepo(repoOwner, repoName, targetBranch);
-          this.performanceMetrics.apiCallCount++;
-        }
-      } catch (error) {
-        const enhancedError = this.getEnhancedErrorMessage(error, 'repository initialization');
-        throw new Error(enhancedError);
+      const isEmpty = await this.githubService.isRepoEmpty(repoOwner, repoName);
+      if (isEmpty) {
+        await this.updateStatus('uploading', 18, 'Initializing empty repository...');
+        await this.githubService.initializeEmptyRepo(repoOwner, repoName, targetBranch);
       }
 
       await this.ensureBranchExists(repoOwner, repoName, targetBranch);
@@ -318,7 +220,7 @@ export class ZipHandler {
 
       await this.updateStatus('uploading', 20, 'Getting repository information...');
 
-      const uploadResult = await this.uploadToGitHub(
+      await this.uploadToGitHub(
         processedFiles,
         repoOwner,
         repoName,
@@ -327,27 +229,18 @@ export class ZipHandler {
         currentProjectId
       );
 
-      // ✅ NEW: Return comprehensive upload result
-      return {
-        success: true,
-        filesUploaded: uploadResult.filesUploaded,
-        totalFiles: processedFiles.size,
-        authMethod: this.currentAuthStatus?.currentAuth || 'unknown',
-        apiCalls: this.performanceMetrics.apiCallCount,
-        duration: Date.now() - this.performanceMetrics.startTime,
-        rateLimitsUsed: this.currentAuthStatus?.rateLimits
-          ? {
-              remaining: this.currentAuthStatus.rateLimits.remaining,
-              limit: this.currentAuthStatus.rateLimits.limit,
-            }
-          : undefined,
-      };
+      // Success state will auto-hide in the UI component
+      // No need to reset to idle state here as it can cause race conditions
+      // The UI will handle hiding the notification after a delay
     } catch (error) {
-      // ✅ ENHANCED: Error handling with auth context
-      const enhancedError = this.getEnhancedErrorMessage(error, 'file upload');
-      await this.updateStatus('error', 0, enhancedError);
+      // Error handling
+      await this.updateStatus(
+        'error',
+        0,
+        `Failed to upload files: ${error instanceof Error ? error.message : 'Unknown error'}`
+      );
 
-      // Record push failure with enhanced context
+      // Record push failure
       try {
         const { repoOwner: errorRepoOwner, projectSettings: errorProjectSettings } =
           await chrome.storage.sync.get(['repoOwner', 'projectSettings']);
@@ -358,18 +251,17 @@ export class ZipHandler {
             errorRepoOwner,
             errorProjectSettings[currentProjectId].repoName,
             errorProjectSettings[currentProjectId].branch || 'main',
-            enhancedError
+            error instanceof Error ? error.message : 'Unknown error'
           );
         }
       } catch (trackingError) {
         console.error('Failed to record push failure:', trackingError);
       }
 
-      throw new Error(enhancedError);
+      throw error;
     }
   };
 
-  // ✅ ENHANCED: Upload method with advanced GitHub comparison
   private async uploadToGitHub(
     processedFiles: Map<string, string>,
     repoOwner: string,
@@ -377,161 +269,134 @@ export class ZipHandler {
     targetBranch: string,
     commitMessage: string,
     currentProjectId?: string
-  ): Promise<{ filesUploaded: number }> {
-    try {
-      // ✅ ENHANCED: Get repository data with error handling
-      const baseRef = await this.githubService.request(
-        'GET',
-        `/repos/${repoOwner}/${repoName}/git/refs/heads/${targetBranch}`
-      );
-      this.performanceMetrics.apiCallCount++;
-      const baseSha = baseRef.object.sha;
+  ) {
+    // Get the current commit SHA for reference
+    const baseRef = await this.githubService.request(
+      'GET',
+      `/repos/${repoOwner}/${repoName}/git/refs/heads/${targetBranch}`
+    );
+    const baseSha = baseRef.object.sha;
 
-      const baseCommit = await this.githubService.request(
-        'GET',
-        `/repos/${repoOwner}/${repoName}/git/commits/${baseSha}`
-      );
-      this.performanceMetrics.apiCallCount++;
-      const baseTreeSha = baseCommit.tree.sha;
+    const baseCommit = await this.githubService.request(
+      'GET',
+      `/repos/${repoOwner}/${repoName}/git/commits/${baseSha}`
+    );
+    const baseTreeSha = baseCommit.tree.sha;
 
-      // ✅ ENHANCED: Use advanced GitHub comparison with auth context
-      await this.updateStatus('uploading', 30, 'Analyzing repository changes...');
+    // Use the GitHubComparisonService to determine which files have changed
+    await this.updateStatus('uploading', 30, 'Analyzing repository changes...');
 
-      // Create enhanced progress callback with auth context
-      const progressCallback = (message: string, progress: number, metadata?: any) => {
-        const authInfo = metadata?.authMethod ? `[${metadata.authMethod}]` : '';
-        const apiInfo = metadata?.apiCalls ? ` (${metadata.apiCalls} API calls)` : '';
-        console.log(`${authInfo} GitHub comparison: ${message} (${progress}%)${apiInfo}`);
-      };
+    // Create a progress callback for the comparison service
+    const progressCallback = (message: string, progress: number) => {
+      // Only log to console, don't update UI status for intermediate steps
+      console.log(`GitHub comparison: ${message} (${progress}%)`);
+    };
 
-      // ✅ NEW: Use advanced comparison method
-      const comparisonResult = await this.githubComparisonService.compareWithGitHubAdvanced(
-        processedFiles,
-        {
-          repoOwner,
-          repoName,
-          targetBranch,
-          progressCallback,
-          includeDeletedFiles: true,
-          includePerformanceMetrics: true,
-        }
-      );
+    // Compare local files with GitHub repository
+    const comparisonResult = await this.githubComparisonService.compareWithGitHub(
+      processedFiles,
+      repoOwner,
+      repoName,
+      targetBranch,
+      progressCallback
+    );
 
-      // ✅ NEW: Add comparison API calls to our metrics
-      this.performanceMetrics.apiCallCount += comparisonResult.metadata.performanceMetrics.apiCalls;
+    // Get the repository data and changes
+    const { changes, repoData } = comparisonResult;
+    const { existingFiles } = repoData;
 
-      // Get the repository data and changes
-      const { changes, repoData } = comparisonResult;
-      const { existingFiles } = repoData;
-
-      // Extract changed files (added or modified) from the comparison result
-      const changedFiles = new Map<string, string>();
-      changes.forEach((fileChange, path) => {
-        if (fileChange.status === 'added' || fileChange.status === 'modified') {
-          changedFiles.set(path, fileChange.content);
-        }
-      });
-
-      // If no files have changed, skip the commit process
-      if (changedFiles.size === 0) {
-        await this.updateStatus(
-          'success',
-          100,
-          'No changes detected. Repository is already up to date.'
-        );
-        return { filesUploaded: 0 };
+    // Extract changed files (added or modified) from the comparison result
+    const changedFiles = new Map<string, string>();
+    changes.forEach((fileChange, path) => {
+      if (fileChange.status === 'added' || fileChange.status === 'modified') {
+        changedFiles.set(path, fileChange.content);
       }
+    });
 
+    // If no files have changed, skip the commit process
+    if (changedFiles.size === 0) {
       await this.updateStatus(
-        'uploading',
-        40,
-        `Creating ${changedFiles.size} file blobs (of ${processedFiles.size} total files)...`
+        'success',
+        100,
+        'No changes detected. Repository is already up to date.'
       );
+      return;
+    }
 
-      // ✅ ENHANCED: Create blobs with better error handling
-      const newTreeItems = await this.createBlobs(changedFiles, repoOwner, repoName);
+    await this.updateStatus(
+      'uploading',
+      40,
+      `Creating ${changedFiles.size} file blobs (of ${processedFiles.size} total files)...`
+    );
 
-      // Add unchanged files to the tree with their existing SHAs
-      const treeItems = [...newTreeItems];
-      for (const [path, sha] of existingFiles.entries()) {
-        // Only add if the file still exists in our processed files and hasn't changed
-        if (processedFiles.has(path) && !changedFiles.has(path)) {
-          treeItems.push({
-            path,
-            mode: '100644',
-            type: 'blob',
-            sha,
-          });
-        }
+    // Only create blobs for changed files
+    const newTreeItems = await this.createBlobs(changedFiles, repoOwner, repoName);
+
+    // Add unchanged files to the tree with their existing SHAs
+    const treeItems = [...newTreeItems];
+    for (const [path, sha] of existingFiles.entries()) {
+      // Only add if the file still exists in our processed files and hasn't changed
+      if (processedFiles.has(path) && !changedFiles.has(path)) {
+        treeItems.push({
+          path,
+          mode: '100644',
+          type: 'blob',
+          sha,
+        });
       }
+    }
 
-      await this.updateStatus('uploading', 70, 'Creating tree...');
+    await this.updateStatus('uploading', 70, 'Creating tree...');
 
-      // ✅ ENHANCED: Tree and commit creation with error handling
-      try {
-        // Create a new tree
-        const newTree = await this.githubService.request(
-          'POST',
-          `/repos/${repoOwner}/${repoName}/git/trees`,
-          {
-            base_tree: baseTreeSha,
-            tree: treeItems,
-          }
-        );
-        this.performanceMetrics.apiCallCount++;
-
-        await this.updateStatus('uploading', 80, 'Creating commit...');
-
-        // Create a new commit
-        const newCommit = await this.githubService.request(
-          'POST',
-          `/repos/${repoOwner}/${repoName}/git/commits`,
-          {
-            message: commitMessage,
-            tree: newTree.sha,
-            parents: [baseSha],
-          }
-        );
-        this.performanceMetrics.apiCallCount++;
-
-        await this.updateStatus('uploading', 90, 'Updating branch...');
-
-        // Update the reference
-        await this.githubService.request(
-          'PATCH',
-          `/repos/${repoOwner}/${repoName}/git/refs/heads/${targetBranch}`,
-          {
-            sha: newCommit.sha,
-            force: false,
-          }
-        );
-        this.performanceMetrics.apiCallCount++;
-
-        const duration = Date.now() - this.performanceMetrics.startTime;
-        await this.updateStatus(
-          'success',
-          100,
-          `Successfully uploaded ${changedFiles.size} files to GitHub (${duration}ms, ${this.performanceMetrics.apiCallCount} API calls)`
-        );
-
-        // ✅ ENHANCED: Record push success with metrics
-        if (currentProjectId) {
-          await pushStatisticsActions.recordPushSuccess(
-            currentProjectId,
-            repoOwner,
-            repoName,
-            targetBranch
-          );
-        }
-
-        return { filesUploaded: changedFiles.size };
-      } catch (error) {
-        const enhancedError = this.getEnhancedErrorMessage(error, 'commit creation');
-        throw new Error(enhancedError);
+    // Create a new tree
+    const newTree = await this.githubService.request(
+      'POST',
+      `/repos/${repoOwner}/${repoName}/git/trees`,
+      {
+        base_tree: baseTreeSha,
+        tree: treeItems,
       }
-    } catch (error) {
-      const enhancedError = this.getEnhancedErrorMessage(error, 'GitHub upload');
-      throw new Error(enhancedError);
+    );
+
+    await this.updateStatus('uploading', 80, 'Creating commit...');
+
+    // Create a new commit
+    const newCommit = await this.githubService.request(
+      'POST',
+      `/repos/${repoOwner}/${repoName}/git/commits`,
+      {
+        message: commitMessage,
+        tree: newTree.sha,
+        parents: [baseSha],
+      }
+    );
+
+    await this.updateStatus('uploading', 90, 'Updating branch...');
+
+    // Update the reference
+    await this.githubService.request(
+      'PATCH',
+      `/repos/${repoOwner}/${repoName}/git/refs/heads/${targetBranch}`,
+      {
+        sha: newCommit.sha,
+        force: false,
+      }
+    );
+
+    await this.updateStatus(
+      'success',
+      100,
+      `Successfully uploaded ${changedFiles.size} files to GitHub`
+    );
+
+    // Record push success
+    if (currentProjectId) {
+      await pushStatisticsActions.recordPushSuccess(
+        currentProjectId,
+        repoOwner,
+        repoName,
+        targetBranch
+      );
     }
   }
 
@@ -539,7 +404,6 @@ export class ZipHandler {
     return new Promise((resolve) => setTimeout(resolve, ms));
   }
 
-  // ✅ ENHANCED: Blob creation with advanced rate limit handling and auth awareness
   private async createBlobs(
     files: Map<string, string>,
     repoOwner: string,
@@ -549,59 +413,44 @@ export class ZipHandler {
     const totalFiles = files.size;
     let completedFiles = 0;
 
-    // ✅ ENHANCED: Check rate limit status with auth awareness
-    try {
-      const rateLimit = await this.githubService.request('GET', '/rate_limit');
-      this.performanceMetrics.apiCallCount++;
+    // Check rate limit status at the beginning
+    const rateLimit = await this.githubService.request('GET', '/rate_limit');
+    const remainingRequests = rateLimit.resources.core.remaining;
+    const resetTime = rateLimit.resources.core.reset;
+    const now = Math.floor(Date.now() / 1000);
+    const waitTime = resetTime - now;
 
-      const remainingRequests = rateLimit.resources.core.remaining;
-      const resetTime = rateLimit.resources.core.reset;
-      const now = Math.floor(Date.now() / 1000);
-      const waitTime = resetTime - now;
+    // Monitor rate limit info internally
 
-      const authMethod = this.currentAuthStatus?.currentAuth || 'unknown';
-      const rateLimitInfo = `${remainingRequests}/${rateLimit.resources.core.limit} (${authMethod})`;
+    // Warn if rate limit is low
+    if (remainingRequests < files.size + 10) {
+      await this.updateStatus(
+        'uploading',
+        40,
+        `Rate limit warning: ${remainingRequests} requests remaining of ${files.size} needed`
+      );
+    }
 
-      // ✅ ENHANCED: Auth-aware rate limit warnings
-      if (remainingRequests < files.size + 10) {
-        const upgradeHint =
-          authMethod === 'pat' ? ' Consider upgrading to GitHub App for 5x higher limits.' : '';
+    // If very low on remaining requests, wait for reset if it's soon
+    if (remainingRequests < 10) {
+      // If reset is happening soon (within 5 minutes), wait for it
+      if (waitTime <= 300) {
         await this.updateStatus(
           'uploading',
           40,
-          `Rate limit warning: ${rateLimitInfo} requests remaining of ${files.size} needed${upgradeHint}`
+          `Waiting ${Math.ceil(waitTime)} seconds for rate limit reset...`
+        );
+        await this.sleep(waitTime * 1000);
+        // Recheck rate limit after waiting
+        const newRateLimit = await this.githubService.request('GET', '/rate_limit');
+        if (newRateLimit.resources.core.remaining < 10) {
+          throw new Error('Insufficient API rate limit remaining even after waiting for reset');
+        }
+      } else {
+        throw new Error(
+          `Insufficient API rate limit remaining. Reset in ${Math.ceil(waitTime / 60)} minutes`
         );
       }
-
-      // If very low on remaining requests, wait for reset if it's soon
-      if (remainingRequests < 10) {
-        // If reset is happening soon (within 5 minutes), wait for it
-        if (waitTime <= 300) {
-          await this.updateStatus(
-            'uploading',
-            40,
-            `Waiting ${Math.ceil(waitTime)} seconds for rate limit reset...`
-          );
-          await this.sleep(waitTime * 1000);
-          // Recheck rate limit after waiting
-          const newRateLimit = await this.githubService.request('GET', '/rate_limit');
-          this.performanceMetrics.apiCallCount++;
-          if (newRateLimit.resources.core.remaining < 10) {
-            throw new Error('Insufficient API rate limit remaining even after waiting for reset');
-          }
-        } else {
-          const upgradeHint =
-            authMethod === 'pat'
-              ? ' Consider upgrading to GitHub App for much higher rate limits.'
-              : '';
-          throw new Error(
-            `Insufficient API rate limit remaining. Reset in ${Math.ceil(waitTime / 60)} minutes${upgradeHint}`
-          );
-        }
-      }
-    } catch (error) {
-      const enhancedError = this.getEnhancedErrorMessage(error, 'rate limit check');
-      throw new Error(enhancedError);
     }
 
     // Create an enhanced rate limit handler with exponential backoff
@@ -611,9 +460,8 @@ export class ZipHandler {
     // Reset rate limit handler counter before starting batch
     rateLimitHandler.resetRequestCount();
 
-    // ✅ ENHANCED: Adaptive batch sizing based on auth method
-    const authMethod = this.currentAuthStatus?.currentAuth || 'unknown';
-    const MAX_BATCH_SIZE = authMethod === 'github_app' ? 50 : 30; // GitHub App can handle larger batches
+    // Process files in batches of max 30 files to avoid overwhelming GitHub
+    const MAX_BATCH_SIZE = 30;
     const fileBatches: Array<Map<string, string>> = [];
 
     // Split files into batches
@@ -636,7 +484,7 @@ export class ZipHandler {
       fileBatches.push(currentBatch);
     }
 
-    // ✅ ENHANCED: Process each batch with auth-aware timing
+    // Process each batch with a pause between batches
     for (let batchIndex = 0; batchIndex < fileBatches.length; batchIndex++) {
       const batch = fileBatches[batchIndex];
       const batchNumber = batchIndex + 1;
@@ -647,10 +495,9 @@ export class ZipHandler {
         `Processing batch ${batchNumber}/${fileBatches.length} (${batch.size} files)...`
       );
 
-      // ✅ ENHANCED: Auth-aware batch delays
+      // Add a pause between batches to avoid rate limits
       if (batchIndex > 0) {
-        const batchDelay = authMethod === 'github_app' ? 500 : 1000; // GitHub App can be faster
-        await this.sleep(batchDelay);
+        await this.sleep(1000); // 1 second pause between batches
       }
 
       let fileCount = 0;
@@ -659,7 +506,6 @@ export class ZipHandler {
         const normalizedPath = path.startsWith('project/')
           ? path.substring('project/'.length)
           : path;
-
         await queue.add(async () => {
           let success = false;
           let attempts = 0;
@@ -678,7 +524,6 @@ export class ZipHandler {
                   encoding: 'base64',
                 }
               );
-              this.performanceMetrics.apiCallCount++;
 
               results.push({
                 path: normalizedPath,
@@ -690,17 +535,14 @@ export class ZipHandler {
               success = true;
               rateLimitHandler.resetRetryCount();
 
-              // ✅ ENHANCED: Auth-aware request pacing
+              // Reset request counter periodically to maintain burst behavior
               fileCount++;
-              if (fileCount % (authMethod === 'github_app' ? 10 : 5) === 0) {
+              if (fileCount % 5 === 0) {
                 rateLimitHandler.resetRequestCount();
-                const pauseTime = authMethod === 'github_app' ? 200 : 500;
-                await this.sleep(pauseTime);
+                await this.sleep(500); // Brief pause every 5 files
               }
 
               completedFiles++;
-              this.performanceMetrics.filesProcessed = completedFiles;
-
               if (completedFiles % 5 === 0 || completedFiles === totalFiles) {
                 await this.updateStatus(
                   'uploading',
@@ -715,7 +557,7 @@ export class ZipHandler {
                 message: string;
               };
 
-              // ✅ ENHANCED: Smart rate limit handling with auth context
+              // Handle rate limit errors (HTTP 403 with specific message)
               if (
                 (errorObj instanceof Response && errorObj.status === 403) ||
                 (errorObj.response && errorObj.response.status === 403) ||
@@ -723,38 +565,41 @@ export class ZipHandler {
                   (errorObj.message.includes('rate limit') ||
                     errorObj.message.includes('secondary rate limits')))
               ) {
-                // ✅ ENHANCED: Auth-aware backoff timing
-                const baseDelay = authMethod === 'github_app' ? 500 : 1000;
-                const maxDelay = authMethod === 'github_app' ? 30000 : 60000;
+                // Calculate exponential backoff time
+                const baseDelay = 1000; // Start with 1 second
+                const maxDelay = 60000; // Max 1 minute
                 const delay = Math.min(baseDelay * Math.pow(2, attempts - 1), maxDelay);
 
-                const upgradeHint =
-                  authMethod === 'pat'
-                    ? ' Consider upgrading to GitHub App for better rate limits.'
-                    : '';
-
+                // Log handled in status update
                 await this.updateStatus(
                   'uploading',
                   40 + Math.floor((completedFiles / totalFiles) * 30),
-                  `Rate limit hit. Waiting ${Math.ceil(delay / 1000)}s before retry...${upgradeHint}`
+                  `Rate limit hit. Waiting ${Math.ceil(delay / 1000)}s before retry...`
                 );
 
                 await this.sleep(delay);
-
+                // Handle rate limit with appropriate parameter type
                 if (errorObj instanceof Response) {
                   await rateLimitHandler.handleRateLimit(errorObj);
                 } else {
+                  // For other error types, just wait using our own sleep method
                   await this.sleep(2000 * attempts);
                 }
+
+                // Don't increment completedFiles as we're retrying
               } else if (attempts < maxAttempts) {
-                // For non-rate limit errors, retry with increasing delay
+                // For non-rate limit errors, retry a few times with increasing delay
                 const delay = 1000 * attempts;
+                // Log handled in status update
                 await this.sleep(delay);
               } else {
                 // Final failure after multiple attempts
-                const enhancedError = this.getEnhancedErrorMessage(errorObj, `uploading ${path}`);
-                await this.updateStatus('error', 40, enhancedError);
-                throw new Error(enhancedError);
+                await this.updateStatus(
+                  'error',
+                  40,
+                  `Failed to upload ${path} after ${maxAttempts} attempts`
+                );
+                throw errorObj;
               }
             }
           }
@@ -762,41 +607,6 @@ export class ZipHandler {
       }
     }
 
-    console.log(
-      `✅ Blob creation completed: ${results.length} files, ${this.performanceMetrics.apiCallCount} API calls, auth: ${authMethod}`
-    );
-
     return results;
-  }
-
-  // ✅ NEW: Get current upload performance metrics
-  public getPerformanceMetrics(): {
-    apiCallCount: number;
-    filesProcessed: number;
-    duration: number;
-    authMethod: string;
-    rateLimitsRemaining?: number;
-  } {
-    return {
-      apiCallCount: this.performanceMetrics.apiCallCount,
-      filesProcessed: this.performanceMetrics.filesProcessed,
-      duration: Date.now() - this.performanceMetrics.startTime,
-      authMethod: this.currentAuthStatus?.currentAuth || 'unknown',
-      rateLimitsRemaining: this.currentAuthStatus?.rateLimits?.remaining,
-    };
-  }
-
-  // ✅ NEW: Get current authentication status
-  public getAuthStatus(): {
-    currentAuth: 'pat' | 'github_app' | 'unknown' | null;
-    rateLimits?: any;
-    canUpgrade?: boolean;
-  } | null {
-    return this.currentAuthStatus;
-  }
-
-  // ✅ NEW: Force authentication status refresh
-  public async refreshAuthStatus(): Promise<void> {
-    await this.updateAuthStatus();
   }
 }

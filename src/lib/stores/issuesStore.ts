@@ -40,29 +40,16 @@ interface LoadingState {
   };
 }
 
-interface StoreAuthStatus {
-  currentAuth: 'pat' | 'github_app' | 'unknown' | null;
-  canUpgradeToGitHubApp: boolean;
-  lastChecked: number;
-}
-
 const CACHE_DURATION = 30000; // 30 seconds
 const FORCE_REFRESH_AFTER_ACTION = 2000; // 2 seconds after create/update/close
-const AUTH_STATUS_CACHE_DURATION = 300000; // 5 minutes
 
 // Create the main stores
 const issuesState = writable<IssuesState>({});
 const loadingState = writable<LoadingState>({});
-const authStatus = writable<StoreAuthStatus>({
-  currentAuth: null,
-  canUpgradeToGitHubApp: false,
-  lastChecked: 0,
-});
 
 function createIssuesStore() {
   const { subscribe, set, update } = issuesState;
   const { subscribe: subscribeLoading, set: setLoading, update: updateLoading } = loadingState;
-  const { subscribe: subscribeAuth, update: updateAuth } = authStatus;
 
   let githubService: GitHubService | null = null;
 
@@ -77,12 +64,6 @@ function createIssuesStore() {
 
     const now = Date.now();
     return now - repoState.lastFetched < CACHE_DURATION;
-  }
-
-  function isAuthStatusCacheValid(): boolean {
-    const status = get(authStatus);
-    const now = Date.now();
-    return now - status.lastChecked < AUTH_STATUS_CACHE_DURATION;
   }
 
   function setLoadingForRepo(repoKey: string, state: string, loading: boolean) {
@@ -114,12 +95,6 @@ function createIssuesStore() {
     if (!hasAuthentication) {
       console.warn('No GitHub authentication available for issues store');
       githubService = null;
-      updateAuth((current) => ({
-        ...current,
-        currentAuth: null,
-        canUpgradeToGitHubApp: false,
-        lastChecked: Date.now(),
-      }));
       return false;
     }
 
@@ -130,28 +105,11 @@ function createIssuesStore() {
         preferGitHubApp: true,
       });
 
-      const authType = githubService.getApiClientType();
-      console.log(`Issues store initialized with ${authType}`);
-
-      // Update authentication status
-      const serviceAuthStatus = await githubService.getAuthStatus();
-      updateAuth((current) => ({
-        ...current,
-        currentAuth: authType,
-        canUpgradeToGitHubApp: serviceAuthStatus.canUpgradeToGitHubApp,
-        lastChecked: Date.now(),
-      }));
-
+      console.log(`Issues store initialized with ${githubService.getApiClientType()}`);
       return true;
     } catch (error) {
       console.error('Error initializing GitHub service for issues store:', error);
       githubService = null;
-      updateAuth((current) => ({
-        ...current,
-        currentAuth: null,
-        canUpgradeToGitHubApp: false,
-        lastChecked: Date.now(),
-      }));
       return false;
     }
   }
@@ -429,65 +387,7 @@ function createIssuesStore() {
   function reset() {
     set({});
     setLoading({});
-    updateAuth((_) => ({
-      currentAuth: null,
-      canUpgradeToGitHubApp: false,
-      lastChecked: 0,
-    }));
     githubService = null;
-  }
-
-  // ✅ NEW: Authentication status and upgrade methods
-  async function refreshAuthStatus() {
-    if (!githubService) {
-      await initializeGitHubService();
-      return;
-    }
-
-    try {
-      const serviceAuthStatus = await githubService.getAuthStatus();
-      const authType = githubService.getApiClientType();
-
-      updateAuth((current) => ({
-        ...current,
-        currentAuth: authType,
-        canUpgradeToGitHubApp: serviceAuthStatus.canUpgradeToGitHubApp,
-        lastChecked: Date.now(),
-      }));
-    } catch (error) {
-      console.error('Error refreshing auth status:', error);
-    }
-  }
-
-  async function upgradeToGitHubApp(): Promise<boolean> {
-    if (!githubService) {
-      console.warn('Cannot upgrade: GitHub service not initialized');
-      return false;
-    }
-
-    try {
-      const upgraded = await githubService.upgradeToGitHubApp();
-      if (upgraded) {
-        console.log('✅ Issues store upgraded to GitHub App');
-        await refreshAuthStatus();
-        return true;
-      }
-      return false;
-    } catch (error) {
-      console.error('Error upgrading to GitHub App:', error);
-      return false;
-    }
-  }
-
-  function getAuthStatus() {
-    return derived([authStatus], ([$authStatus]) => $authStatus);
-  }
-
-  async function getDetailedAuthStatus() {
-    if (!isAuthStatusCacheValid()) {
-      await refreshAuthStatus();
-    }
-    return get(authStatus);
   }
 
   // Initialize the store
@@ -512,15 +412,8 @@ function createIssuesStore() {
     initialize,
     reinitializeClient: initializeGitHubService, // ✅ RENAMED: but kept for backward compatibility
 
-    // ✅ NEW: Enhanced authentication capabilities
+    // ✅ NEW: Enhanced service management
     reinitializeService: initializeGitHubService, // ✅ NEW: More descriptive name
-    refreshAuthStatus,
-    upgradeToGitHubApp,
-    getAuthStatus,
-    getDetailedAuthStatus,
-
-    // ✅ NEW: Subscriptions for authentication status
-    subscribeToAuth: subscribeAuth,
   };
 }
 

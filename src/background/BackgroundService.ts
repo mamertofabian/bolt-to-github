@@ -1,5 +1,5 @@
 import { GitHubService } from '../services/GitHubService';
-import type { Message, MessageType, Port, UploadStatusState } from '../lib/types';
+import type { Message, MessageType, Port, UploadStatusState } from '$lib/types';
 import { StateManager } from './StateManager';
 import { ZipHandler } from '../services/zipHandler';
 import { BackgroundTempRepoManager } from './TempRepoManager';
@@ -20,14 +20,6 @@ export class BackgroundService {
     | ((changes: { [key: string]: chrome.storage.StorageChange }, namespace: string) => void)
     | null = null;
 
-  // ✅ NEW: Enhanced authentication tracking
-  private currentAuthStatus: {
-    currentAuth: 'pat' | 'github_app' | 'unknown';
-    canUpgradeToGitHubApp: boolean;
-    recommendUpgrade: boolean;
-    rateLimits?: any;
-  } | null = null;
-
   constructor() {
     console.log('🚀 Background service initializing...');
     this.stateManager = StateManager.getInstance();
@@ -37,7 +29,6 @@ export class BackgroundService {
     this.pendingCommitMessage = 'Commit from Bolt to GitHub';
     this.supabaseAuthService = SupabaseAuthService.getInstance();
     this.operationStateManager = OperationStateManager.getInstance();
-    this.currentAuthStatus = null;
     this.initialize();
 
     // Track extension lifecycle
@@ -106,22 +97,13 @@ export class BackgroundService {
         return;
       }
 
-      // ✅ ENHANCED: Add auth method to analytics
-      const enhancedParams = {
-        ...params,
-        auth_method: this.currentAuthStatus?.currentAuth || 'unknown',
-        ...(this.currentAuthStatus?.rateLimits && {
-          rate_limit_remaining: this.currentAuthStatus.rateLimits.remaining,
-        }),
-      };
-
       // Send to Google Analytics
       const payload = {
         client_id: clientId,
         events: [
           {
             name: eventName,
-            params: enhancedParams,
+            params,
           },
         ],
       };
@@ -137,7 +119,7 @@ export class BackgroundService {
         mode: 'no-cors',
       });
 
-      console.log('📊 Analytics event sent:', eventName, enhancedParams);
+      console.log('📊 Analytics event sent:', eventName, params);
     } catch (error) {
       console.debug('Analytics event failed (expected in some contexts):', error);
     }
@@ -161,8 +143,8 @@ export class BackgroundService {
 
   private async initialize(): Promise<void> {
     const githubService = await this.initializeGitHubService();
-    this.setupZipHandler(githubService!);
     if (githubService) {
+      this.setupZipHandler(githubService);
       const settings = await this.stateManager.getGitHubSettings();
       if (settings?.gitHubSettings?.repoOwner) {
         this.tempRepoManager = new BackgroundTempRepoManager(
@@ -178,56 +160,31 @@ export class BackgroundService {
     console.log('👂 Background service initialized');
   }
 
-  // ✅ UPDATED: Enhanced GitHub Service initialization with new architecture
   private async initializeGitHubService(): Promise<GitHubService | null> {
     try {
       const settings = await this.stateManager.getGitHubSettings();
 
       if (!settings?.gitHubSettings?.repoOwner) {
-        console.log('❌ No repository owner configured');
+        console.log('❌ No repo owner configured');
         this.githubService = null;
-        this.currentAuthStatus = null;
         return null;
       }
 
-      const { githubToken } = settings.gitHubSettings;
-
-      // ✅ NEW: Use GitHubService factory methods for optimal authentication
-      console.log('✅ Valid settings found, initializing GitHub service with best auth...');
+      // ✅ NEW: Use GitHubService factory method for optimal authentication
+      console.log('✅ Valid settings found, initializing GitHub service with best auth');
 
       this.githubService = await GitHubService.createWithBestAuth({
-        patToken: githubToken,
+        patToken: settings.gitHubSettings.githubToken,
         preferGitHubApp: true,
       });
 
-      // ✅ NEW: Track authentication status for analytics and UI
-      if (this.githubService) {
-        this.currentAuthStatus = await this.githubService.getAuthStatus();
-        const authType = this.githubService.getApiClientType();
-
-        console.log(`🔐 GitHub service initialized with ${authType}`, {
-          canUpgrade: this.currentAuthStatus?.canUpgradeToGitHubApp,
-          rateLimits: this.currentAuthStatus?.rateLimits,
-        });
-
-        // Track authentication method in analytics
-        await this.sendAnalyticsEvent('github_auth_initialized', {
-          auth_method: authType,
-          can_upgrade: this.currentAuthStatus?.canUpgradeToGitHubApp,
-        });
-      }
+      console.log(`GitHub service initialized with ${this.githubService.getApiClientType()}`);
+      return this.githubService;
     } catch (error) {
       console.error('Failed to initialize GitHub service:', error);
       this.githubService = null;
-      this.currentAuthStatus = null;
-
-      // Track initialization failures
-      await this.sendAnalyticsEvent('github_auth_failed', {
-        error_message: error instanceof Error ? error.message : 'Unknown error',
-      });
+      return null;
     }
-
-    return this.githubService;
   }
 
   private setupZipHandler(githubService: GitHubService) {
@@ -288,18 +245,6 @@ export class BackgroundService {
         console.log('💰 Forcing subscription refresh via message');
         this.supabaseAuthService.forceSubscriptionRevalidation();
         sendResponse({ success: true });
-        // ✅ NEW: GitHub App upgrade handling
-      } else if (message.type === 'UPGRADE_TO_GITHUB_APP') {
-        console.log('🚀 Handling GitHub App upgrade request');
-        await this.handleGitHubAppUpgrade(sendResponse);
-        return true; // Will respond asynchronously
-      } else if (message.type === 'GET_AUTH_STATUS') {
-        console.log('🔍 Getting current auth status');
-        sendResponse({
-          success: true,
-          authStatus: this.currentAuthStatus,
-          clientType: this.githubService?.getApiClientType() || 'unknown',
-        });
       } else if (message.type === 'USER_LOGOUT') {
         console.log('🚪 User logout requested from popup');
         await this.sendAnalyticsEvent('user_action', {
@@ -348,7 +293,6 @@ export class BackgroundService {
     });
   }
 
-  // ✅ ENHANCED: Storage listener with better auth change detection
   private setupStorageListener(): void {
     // Remove any existing listener
     if (this.storageListener) {
@@ -358,42 +302,16 @@ export class BackgroundService {
     // Create new listener and store reference
     this.storageListener = async (changes, namespace) => {
       if (namespace === 'sync') {
-        // ✅ ENHANCED: Monitor GitHub settings AND auth method changes
-        const settingsChanged = [
-          'githubToken',
-          'repoOwner',
-          'repoName',
-          'branch',
-          'authMethod',
-          'githubAppStatus',
-        ].some((key) => key in changes);
+        const settingsChanged = ['githubToken', 'repoOwner', 'repoName', 'branch'].some(
+          (key) => key in changes
+        );
 
         if (settingsChanged) {
-          console.log('🔄 GitHub settings or auth changed, reinitializing GitHub service...');
-
-          // Track what changed for analytics
-          const changedKeys = Object.keys(changes);
-          await this.sendAnalyticsEvent('github_settings_changed', {
-            changed_keys: changedKeys,
-            has_auth_change: ['authMethod', 'githubAppStatus'].some((key) =>
-              changedKeys.includes(key)
-            ),
-          });
-
+          console.log('🔄 GitHub settings changed, reinitializing GitHub service...');
           const githubService = await this.initializeGitHubService();
           if (githubService) {
-            console.log('🔄 GitHub service reinitialized, updating dependent services...');
+            console.log('🔄 GitHub service reinitialized, reinitializing ZipHandler...');
             this.setupZipHandler(githubService);
-
-            // ✅ NEW: Update temp repo manager with new auth
-            const settings = await this.stateManager.getGitHubSettings();
-            if (settings?.gitHubSettings?.repoOwner) {
-              this.tempRepoManager = new BackgroundTempRepoManager(
-                githubService,
-                settings.gitHubSettings.repoOwner,
-                (status) => this.broadcastStatus(status)
-              );
-            }
           }
         }
       }
@@ -401,76 +319,6 @@ export class BackgroundService {
 
     // Add the listener
     chrome.storage.onChanged.addListener(this.storageListener);
-  }
-
-  // ✅ NEW: Handle GitHub App upgrade requests
-  private async handleGitHubAppUpgrade(sendResponse: (response: any) => void): Promise<void> {
-    try {
-      if (!this.githubService) {
-        sendResponse({
-          success: false,
-          error: 'GitHub service not initialized',
-        });
-        return;
-      }
-
-      // ✅ NEW: Attempt upgrade using GitHubService
-      const upgraded = await this.githubService.upgradeToGitHubApp();
-
-      if (upgraded) {
-        console.log('✅ Successfully upgraded to GitHub App');
-
-        // Update authentication status
-        this.currentAuthStatus = await this.githubService.getAuthStatus();
-
-        // Track successful upgrade
-        await this.sendAnalyticsEvent('github_app_upgrade_success', {
-          previous_method: 'pat',
-          new_method: 'github_app',
-        });
-
-        // Reinitialize dependent services with new auth
-        this.setupZipHandler(this.githubService);
-
-        const settings = await this.stateManager.getGitHubSettings();
-        if (settings?.gitHubSettings?.repoOwner) {
-          this.tempRepoManager = new BackgroundTempRepoManager(
-            this.githubService,
-            settings.gitHubSettings.repoOwner,
-            (status) => this.broadcastStatus(status)
-          );
-        }
-
-        sendResponse({
-          success: true,
-          message: 'Successfully upgraded to GitHub App',
-          authStatus: this.currentAuthStatus,
-        });
-      } else {
-        console.log('❌ GitHub App upgrade not available');
-        await this.sendAnalyticsEvent('github_app_upgrade_failed', {
-          reason: 'not_available',
-        });
-
-        sendResponse({
-          success: false,
-          error: 'GitHub App upgrade not available',
-        });
-      }
-    } catch (error) {
-      console.error('Error upgrading to GitHub App:', error);
-      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-
-      await this.sendAnalyticsEvent('github_app_upgrade_failed', {
-        reason: 'error',
-        error_message: errorMessage,
-      });
-
-      sendResponse({
-        success: false,
-        error: errorMessage,
-      });
-    }
   }
 
   private async handlePortMessage(tabId: number, message: Message): Promise<void> {
@@ -598,7 +446,6 @@ export class BackgroundService {
             `✅ Private repo import completed from branch '${message.data.branch || 'default'}'`
           );
           break;
-
         case 'DELETE_TEMP_REPO':
           await this.sendAnalyticsEvent('user_action', {
             action: 'temp_repo_cleanup',
@@ -620,11 +467,10 @@ export class BackgroundService {
           break;
 
         case 'HEARTBEAT':
-          // ✅ ENHANCED: Include auth status in heartbeat response
+          // Respond to heartbeat to keep connection alive
           this.sendResponse(port, {
             type: 'HEARTBEAT_RESPONSE',
             timestamp: Date.now(),
-            authStatus: this.currentAuthStatus,
           });
           break;
 
@@ -639,12 +485,11 @@ export class BackgroundService {
     } catch (error: unknown) {
       console.error(`Error handling message ${message.type}:`, error);
 
-      // ✅ ENHANCED: Include auth context in error tracking
+      // Track errors for debugging
       await this.sendAnalyticsEvent('extension_error', {
         error_type: 'port_message_handler',
         message_type: message.type,
         error_message: error instanceof Error ? error.message : 'Unknown error',
-        auth_method: this.currentAuthStatus?.currentAuth || 'unknown',
       });
 
       this.sendResponse(port, {
@@ -673,7 +518,6 @@ export class BackgroundService {
       {
         tabId,
         commitMessage: this.pendingCommitMessage,
-        authMethod: this.currentAuthStatus?.currentAuth || 'unknown',
       }
     );
 
@@ -704,13 +548,11 @@ export class BackgroundService {
         }
         const blob = new Blob([bytes], { type: 'application/zip' });
 
-        // ✅ ENHANCED: Track upload start with auth context
+        // Track upload start
         uploadMetadata = {
           projectId,
           zipSize: blob.size,
           commitMessage: this.pendingCommitMessage,
-          authMethod: this.currentAuthStatus?.currentAuth || 'unknown',
-          rateLimitRemaining: this.currentAuthStatus?.rateLimits?.remaining,
         };
 
         await this.sendAnalyticsEvent('github_upload_started', {
@@ -727,11 +569,10 @@ export class BackgroundService {
         const duration = Date.now() - startTime;
         uploadSuccess = true;
 
-        // ✅ ENHANCED: Track successful upload with performance metrics
+        // Track successful upload
         await this.sendAnalyticsEvent('github_upload_completed', {
           ...uploadMetadata,
           duration,
-          success: true,
         });
 
         // Reset commit message after successful upload
@@ -750,20 +591,18 @@ export class BackgroundService {
           decodeError instanceof Error ? decodeError.message : String(decodeError);
         const isGitHubError = errorMessage.includes('GitHub API Error');
 
-        // ✅ ENHANCED: Track upload failure with detailed context
+        // Track upload failure
         await this.sendAnalyticsEvent('github_upload_failed', {
           ...uploadMetadata,
           duration,
           error_type: isGitHubError ? 'github_api' : 'processing',
           error_message: errorMessage,
-          success: false,
         });
 
         await this.sendAnalyticsEvent('extension_error', {
           error_type: 'upload',
           error_message: errorMessage,
           context: 'zip_processing',
-          auth_method: this.currentAuthStatus?.currentAuth || 'unknown',
         });
 
         // Mark operation as failed
@@ -795,14 +634,12 @@ export class BackgroundService {
           duration,
           error_type: 'general',
           error_message: error instanceof Error ? error.message : 'Unknown error',
-          success: false,
         });
 
         await this.sendAnalyticsEvent('extension_error', {
           error_type: 'upload',
           error_message: error instanceof Error ? error.message : 'Unknown error',
           context: 'general',
-          auth_method: this.currentAuthStatus?.currentAuth || 'unknown',
         });
 
         // Mark operation as failed for any outer catch errors
@@ -835,7 +672,7 @@ export class BackgroundService {
 
   private sendResponse(
     port: Port,
-    message: { type: MessageType; status?: UploadStatusState; timestamp?: number; authStatus?: any }
+    message: { type: MessageType; status?: UploadStatusState; timestamp?: number }
   ): void {
     try {
       port.postMessage(message);
@@ -907,7 +744,6 @@ export class BackgroundService {
             error_type: eventData.errorType,
             error_message: eventData.error,
             context: eventData.context,
-            auth_method: this.currentAuthStatus?.currentAuth || 'unknown',
           });
           break;
 

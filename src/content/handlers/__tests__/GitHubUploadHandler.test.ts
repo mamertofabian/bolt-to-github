@@ -4,12 +4,12 @@ import { GitHubUploadHandler } from '../GitHubUploadHandler';
 import type { INotificationManager } from '../../types/ManagerInterfaces';
 import type { MessageHandler } from '../../MessageHandler';
 import type { UIStateManager } from '../../services/UIStateManager';
-import { SettingsService } from '../../../services/settings';
+import { UnifiedSettingsService } from '../../../services/UnifiedSettingsService';
 import { DownloadService } from '../../../services/DownloadService';
 import { CommitTemplateService } from '../../services/CommitTemplateService';
 
 // Mock external dependencies
-jest.mock('../../../services/settings');
+jest.mock('../../../services/UnifiedSettingsService');
 jest.mock('../../../services/DownloadService');
 jest.mock('../../services/CommitTemplateService');
 jest.mock('../FileChangeHandler', () => ({
@@ -103,18 +103,18 @@ describe('GitHubUploadHandler', () => {
 
   describe('validateSettings', () => {
     test('returns true for valid settings', async () => {
-      (SettingsService.getGitHubSettings as jest.Mock).mockResolvedValue({
+      (UnifiedSettingsService.getGitHubSettings as jest.Mock).mockResolvedValue({
         isSettingsValid: true,
       });
 
       const result = await uploadHandler.validateSettings();
 
       expect(result).toBe(true);
-      expect(SettingsService.getGitHubSettings).toHaveBeenCalled();
+      expect(UnifiedSettingsService.getGitHubSettings).toHaveBeenCalled();
     });
 
     test('returns false for invalid settings', async () => {
-      (SettingsService.getGitHubSettings as jest.Mock).mockResolvedValue({
+      (UnifiedSettingsService.getGitHubSettings as jest.Mock).mockResolvedValue({
         isSettingsValid: false,
       });
 
@@ -124,7 +124,7 @@ describe('GitHubUploadHandler', () => {
     });
 
     test('handles settings service errors', async () => {
-      (SettingsService.getGitHubSettings as jest.Mock).mockRejectedValue(
+      (UnifiedSettingsService.getGitHubSettings as jest.Mock).mockRejectedValue(
         new Error('Settings error')
       );
 
@@ -144,7 +144,7 @@ describe('GitHubUploadHandler', () => {
 
   describe('handleGitHubPush', () => {
     beforeEach(() => {
-      (SettingsService.getGitHubSettings as jest.Mock).mockResolvedValue({
+      (UnifiedSettingsService.getGitHubSettings as jest.Mock).mockResolvedValue({
         isSettingsValid: true,
         gitHubSettings: {
           projectSettings: {
@@ -156,7 +156,7 @@ describe('GitHubUploadHandler', () => {
     });
 
     test('shows settings notification when settings are invalid', async () => {
-      (SettingsService.getGitHubSettings as jest.Mock).mockResolvedValue({
+      (UnifiedSettingsService.getGitHubSettings as jest.Mock).mockResolvedValue({
         isSettingsValid: false,
       });
 
@@ -491,7 +491,7 @@ describe('GitHubUploadHandler', () => {
 
   describe('getProjectInfo', () => {
     test('returns project info for valid settings', async () => {
-      (SettingsService.getGitHubSettings as jest.Mock).mockResolvedValue({
+      (UnifiedSettingsService.getGitHubSettings as jest.Mock).mockResolvedValue({
         isSettingsValid: true,
         gitHubSettings: {
           projectSettings: {
@@ -510,7 +510,7 @@ describe('GitHubUploadHandler', () => {
     });
 
     test('returns null for invalid settings', async () => {
-      (SettingsService.getGitHubSettings as jest.Mock).mockResolvedValue({
+      (UnifiedSettingsService.getGitHubSettings as jest.Mock).mockResolvedValue({
         isSettingsValid: false,
       });
 
@@ -520,7 +520,7 @@ describe('GitHubUploadHandler', () => {
     });
 
     test('returns null when project settings missing', async () => {
-      (SettingsService.getGitHubSettings as jest.Mock).mockResolvedValue({
+      (UnifiedSettingsService.getGitHubSettings as jest.Mock).mockResolvedValue({
         isSettingsValid: true,
         gitHubSettings: {},
       });

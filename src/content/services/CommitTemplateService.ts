@@ -1,5 +1,3 @@
-import { SettingsService } from '../../services/settings';
-
 export interface CommitTemplate {
   id: string;
   name: string;

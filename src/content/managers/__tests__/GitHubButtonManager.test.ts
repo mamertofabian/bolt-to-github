@@ -2,11 +2,11 @@
 
 import { GitHubButtonManager } from '../GitHubButtonManager';
 import type { UIStateManager } from '../../services/UIStateManager';
-import { SettingsService } from '../../../services/settings';
+import { UnifiedSettingsService } from '../../../services/UnifiedSettingsService';
 
-// Mock SettingsService
-jest.mock('../../../services/settings', () => ({
-  SettingsService: {
+// Mock UnifiedSettingsService
+jest.mock('../../../services/UnifiedSettingsService', () => ({
+  UnifiedSettingsService: {
     getGitHubSettings: jest.fn(),
   },
 }));
@@ -37,8 +37,8 @@ describe('GitHubButtonManager', () => {
     jest.spyOn(console, 'log').mockImplementation(() => {});
     jest.spyOn(console, 'error').mockImplementation(() => {});
 
-    // Mock SettingsService default response
-    (SettingsService.getGitHubSettings as jest.Mock).mockResolvedValue({
+    // Mock UnifiedSettingsService default response
+    (UnifiedSettingsService.getGitHubSettings as jest.Mock).mockResolvedValue({
       isSettingsValid: true,
     });
   });
@@ -106,7 +106,7 @@ describe('GitHubButtonManager', () => {
       await githubButtonManager.initialize();
 
       expect(githubButtonManager.isInitialized()).toBe(true);
-      expect(SettingsService.getGitHubSettings).toHaveBeenCalled();
+      expect(UnifiedSettingsService.getGitHubSettings).toHaveBeenCalled();
 
       const button = githubButtonManager.getButton();
       expect(button).toBeTruthy();
@@ -135,7 +135,7 @@ describe('GitHubButtonManager', () => {
     });
 
     test('handles settings service errors gracefully', async () => {
-      (SettingsService.getGitHubSettings as jest.Mock).mockRejectedValue(
+      (UnifiedSettingsService.getGitHubSettings as jest.Mock).mockRejectedValue(
         new Error('Settings error')
       );
 
@@ -482,7 +482,7 @@ describe('GitHubButtonManager', () => {
 
       await githubButtonManager.initialize();
 
-      expect(SettingsService.getGitHubSettings).toHaveBeenCalled();
+      expect(UnifiedSettingsService.getGitHubSettings).toHaveBeenCalled();
     });
   });
 });
