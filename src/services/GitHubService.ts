@@ -21,69 +21,38 @@ import type { ProgressCallback } from './types/common';
 export class GitHubService {
   // Refactored components
   private apiClient: IGitHubApiClient;
-  private tokenService: ITokenService;
-  private repositoryService: IRepositoryService;
-  private fileService: IFileService;
-  private repoCloneService: IRepoCloneService;
+  private tokenService!: ITokenService;
+  private repositoryService!: IRepositoryService;
+  private fileService!: IFileService;
+  private repoCloneService!: IRepoCloneService;
 
   constructor(token: string) {
-    // Initialize components with legacy PAT-based client for backward compatibility
+    // Legacy constructor for backward compatibility
     this.apiClient = new GitHubApiClient(token);
-    this.tokenService = new TokenService(this.apiClient);
-    this.fileService = new FileService(this.apiClient);
-    this.repoCloneService = new RepoCloneService(this.apiClient, this.fileService);
-    this.repositoryService = new RepositoryService(
-      this.apiClient,
-      this.fileService,
-      this.repoCloneService
-    );
+    this.initializeServices();
   }
 
   /**
-   * Factory method to create GitHubService with the best available authentication
-   * Prefers GitHub App for new users, maintains PAT compatibility for existing users
-   *
-   * @param options Configuration options
-   * @returns Promise resolving to GitHubService instance
+   * Static factory method - RECOMMENDED for new code
+   * Automatically chooses the best authentication method
    */
-  static async create(
+  static async createWithBestAuth(
     options: {
       patToken?: string;
       preferGitHubApp?: boolean;
-      userType?: 'new' | 'existing' | 'auto';
       allowUpgrade?: boolean;
     } = {}
   ): Promise<GitHubService> {
-    const { patToken, preferGitHubApp = true, userType = 'auto', allowUpgrade = false } = options;
-
-    let apiClient: IGitHubApiClient;
+    const { patToken, preferGitHubApp = true, allowUpgrade = false } = options;
 
     try {
-      if (userType === 'new') {
-        // New users get GitHub App by default
-        apiClient = await GitHubApiClientFactory.createApiClientForNewUser();
-      } else if (userType === 'existing' && patToken) {
-        // Existing users with PAT
-        apiClient = await GitHubApiClientFactory.createApiClientForExistingUser(
-          patToken,
-          allowUpgrade
-        );
-      } else {
-        // Auto-detect best option
-        apiClient = await GitHubApiClientFactory.createApiClient(patToken, preferGitHubApp);
-      }
+      // Use factory to get the best available client
+      const apiClient = await GitHubApiClientFactory.createApiClient(patToken, preferGitHubApp);
 
       // Create instance with the chosen API client
       const instance = new GitHubService(''); // Dummy token, will be replaced
       instance.apiClient = apiClient;
-      instance.tokenService = new TokenService(apiClient);
-      instance.fileService = new FileService(apiClient);
-      instance.repoCloneService = new RepoCloneService(apiClient, instance.fileService);
-      instance.repositoryService = new RepositoryService(
-        apiClient,
-        instance.fileService,
-        instance.repoCloneService
-      );
+      instance.initializeServices();
 
       return instance;
     } catch (error: any) {
@@ -103,7 +72,7 @@ export class GitHubService {
    * Factory method specifically for new users (GitHub App preferred)
    */
   static async createForNewUser(): Promise<GitHubService> {
-    return this.create({ userType: 'new' });
+    return this.createWithBestAuth({ preferGitHubApp: true });
   }
 
   /**
@@ -115,9 +84,9 @@ export class GitHubService {
     patToken: string,
     allowUpgrade: boolean = false
   ): Promise<GitHubService> {
-    return this.create({
+    return this.createWithBestAuth({
       patToken,
-      userType: 'existing',
+      preferGitHubApp: allowUpgrade,
       allowUpgrade,
     });
   }
@@ -143,14 +112,7 @@ export class GitHubService {
         // Create instance with new API client
         const instance = new GitHubService(''); // Dummy token, will be replaced
         instance.apiClient = newApiClient;
-        instance.tokenService = new TokenService(newApiClient);
-        instance.fileService = new FileService(newApiClient);
-        instance.repoCloneService = new RepoCloneService(newApiClient, instance.fileService);
-        instance.repositoryService = new RepositoryService(
-          newApiClient,
-          instance.fileService,
-          instance.repoCloneService
-        );
+        instance.initializeServices();
         return instance;
       }
       return null;
@@ -161,39 +123,99 @@ export class GitHubService {
   }
 
   /**
+   * Initialize all specialized services with the current API client
+   */
+  private initializeServices(): void {
+    this.tokenService = new TokenService(this.apiClient);
+    this.fileService = new FileService(this.apiClient);
+    this.repoCloneService = new RepoCloneService(this.apiClient, this.fileService);
+    this.repositoryService = new RepositoryService(
+      this.apiClient,
+      this.fileService,
+      this.repoCloneService
+    );
+  }
+
+  /**
    * Get the type of API client currently being used
    */
   getApiClientType(): 'pat' | 'github_app' | 'unknown' {
-    if (this.apiClient.constructor.name === 'GitHubApiClient') {
-      return 'pat';
-    } else if (this.apiClient.constructor.name === 'GitHubAppsApiClient') {
-      return 'github_app';
-    }
-    return 'unknown';
+    return this.apiClient.getAuthType();
   }
 
-  // Legacy methods TODO: Remove after refactoring
+  /**
+   * Get authentication status and upgrade recommendations
+   */
+  async getAuthStatus(): Promise<{
+    currentAuth: 'pat' | 'github_app' | 'unknown';
+    canUpgradeToGitHubApp: boolean;
+    recommendUpgrade: boolean;
+    rateLimits?: any;
+  }> {
+    const currentAuth = this.getApiClientType();
+
+    try {
+      const authStatus = await GitHubApiClientFactory.getAuthenticationStatus();
+
+      return {
+        currentAuth,
+        canUpgradeToGitHubApp: authStatus.hasGitHubApp && currentAuth === 'pat',
+        recommendUpgrade: authStatus.hasGitHubApp && currentAuth === 'pat',
+        rateLimits: authStatus.rateLimits,
+      };
+    } catch (error) {
+      return {
+        currentAuth,
+        canUpgradeToGitHubApp: false,
+        recommendUpgrade: false,
+      };
+    }
+  }
+
+  /**
+   * Upgrade current instance to use GitHub App (if possible)
+   * Returns true if upgrade was successful, false otherwise
+   */
+  async upgradeToGitHubApp(): Promise<boolean> {
+    try {
+      const newApiClient = await GitHubApiClientFactory.createApiClientForNewUser();
+
+      // Only upgrade if we actually get a GitHub App client
+      if (newApiClient.getAuthType() === 'github_app') {
+        this.apiClient = newApiClient;
+        this.initializeServices();
+        console.log('✅ Successfully upgraded to GitHub App authentication');
+        return true;
+      }
+
+      return false;
+    } catch (error) {
+      console.error('Failed to upgrade to GitHub App:', error);
+      return false;
+    }
+  }
+
+  // =============================================================================
+  // PUBLIC API METHODS - Keep these unchanged for backward compatibility
+  // =============================================================================
+
   async request(method: string, url: string, body?: any, headers?: Record<string, string>) {
-    return this.apiClient.request(method, url, body, headers);
+    return this.apiClient.request(method, url, body, { headers });
   }
 
   async validateToken(): Promise<boolean> {
-    // Use the new TokenService instead of the legacy validator
     return this.tokenService.validateToken();
   }
 
   async isClassicToken(): Promise<boolean> {
-    // Use the new TokenService
     return Promise.resolve(this.tokenService.isClassicToken());
   }
 
   async isFineGrainedToken(): Promise<boolean> {
-    // Use the new TokenService
     return Promise.resolve(this.tokenService.isFineGrainedToken());
   }
 
   async validateTokenAndUser(username: string): Promise<{ isValid: boolean; error?: string }> {
-    // Use the new TokenService
     return this.tokenService.validateTokenAndUser(username);
   }
 
@@ -201,40 +223,72 @@ export class GitHubService {
     username: string,
     onProgress?: ProgressCallback
   ): Promise<{ isValid: boolean; error?: string }> {
-    // Use the new TokenService
     return this.tokenService.verifyTokenPermissions(username, onProgress);
   }
 
+  // Repository methods - delegate to RepositoryService
   async repoExists(owner: string, repo: string): Promise<boolean> {
-    // Use the new repositoryService
     return this.repositoryService.repoExists(owner, repo);
   }
 
   async getRepoInfo(owner: string, repo: string): Promise<any> {
-    // Use the new repositoryService
     return this.repositoryService.getRepoInfo(owner, repo);
   }
 
   async createRepo(options: any) {
-    // Use the new repositoryService
     return this.repositoryService.createRepo(options);
   }
 
   async ensureRepoExists(owner: string, repo: string): Promise<void> {
-    // Use the new repositoryService
     return this.repositoryService.ensureRepoExists(owner, repo);
   }
 
   async isRepoEmpty(owner: string, repo: string): Promise<boolean> {
-    // Use the new repositoryService
     return this.repositoryService.isRepoEmpty(owner, repo);
   }
 
   async initializeEmptyRepo(owner: string, repo: string, branch: string): Promise<void> {
-    // Use the new repositoryService
     return this.repositoryService.initializeEmptyRepo(owner, repo, branch);
   }
 
+  async listRepos(): Promise<Array<any>> {
+    return this.repositoryService.listRepos();
+  }
+
+  async listBranches(
+    owner: string,
+    repo: string
+  ): Promise<Array<{ name: string; isDefault: boolean }>> {
+    return this.repositoryService.listBranches(owner, repo);
+  }
+
+  async deleteRepo(owner: string, repo: string): Promise<void> {
+    return this.repositoryService.deleteRepo(owner, repo);
+  }
+
+  async updateRepoVisibility(owner: string, repo: string, makePrivate: boolean): Promise<void> {
+    return this.repositoryService.updateRepoVisibility(owner, repo, makePrivate);
+  }
+
+  async cloneRepoContents(
+    sourceOwner: string,
+    sourceRepo: string,
+    targetOwner: string,
+    targetRepo: string,
+    branch: string = 'main',
+    onProgress?: (progress: number) => void
+  ): Promise<void> {
+    return this.repositoryService.cloneRepoContents(
+      sourceOwner,
+      sourceRepo,
+      targetOwner,
+      targetRepo,
+      branch,
+      onProgress
+    );
+  }
+
+  // File methods - delegate to specialized services
   async pushFile(params: {
     owner: string;
     repo: string;
@@ -245,7 +299,6 @@ export class GitHubService {
     checkExisting?: boolean;
   }) {
     const { owner, repo, path, content, branch, message } = params;
-    // Use the new fileService
     return this.fileService.writeFile(
       owner,
       repo,
@@ -257,7 +310,6 @@ export class GitHubService {
   }
 
   async getCommitCount(owner: string, repo: string, branch: string): Promise<number> {
-    // Use the new repositoryService
     return this.repositoryService.getCommitCount(owner, repo, branch);
   }
 
@@ -266,53 +318,10 @@ export class GitHubService {
     sourceRepoName: string,
     branch?: string
   ): Promise<string> {
-    // Use the new repositoryService
     return this.repositoryService.createTemporaryPublicRepo(ownerName, sourceRepoName, branch);
   }
 
-  async cloneRepoContents(
-    sourceOwner: string,
-    sourceRepo: string,
-    targetOwner: string,
-    targetRepo: string,
-    branch: string = 'main',
-    onProgress?: (progress: number) => void
-  ): Promise<void> {
-    // Use the new repositoryService
-    return this.repositoryService.cloneRepoContents(
-      sourceOwner,
-      sourceRepo,
-      targetOwner,
-      targetRepo,
-      branch,
-      onProgress
-    );
-  }
-
-  async deleteRepo(owner: string, repo: string): Promise<void> {
-    // Use the new repositoryService
-    return this.repositoryService.deleteRepo(owner, repo);
-  }
-
-  async updateRepoVisibility(owner: string, repo: string, makePrivate: boolean): Promise<void> {
-    // Use the new repositoryService
-    return this.repositoryService.updateRepoVisibility(owner, repo, makePrivate);
-  }
-
-  async listRepos(): Promise<Array<any>> {
-    // Use the new repositoryService
-    return this.repositoryService.listRepos();
-  }
-
-  async listBranches(
-    owner: string,
-    repo: string
-  ): Promise<Array<{ name: string; isDefault: boolean }>> {
-    // Use the new repositoryService
-    return this.repositoryService.listBranches(owner, repo);
-  }
-
-  // Issue management functionality
+  // Issue management - keep existing methods
   async getIssues(
     owner: string,
     repo: string,
@@ -400,7 +409,6 @@ export class GitHubService {
       issueBody += `**Browser Info:** ${feedback.metadata.browserInfo}\n`;
     }
 
-    // Create issue in the extension's repository
     return this.createIssue('mamertofabian', 'bolt-to-github', {
       title: issueTitle,
       body: issueBody,

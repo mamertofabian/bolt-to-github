@@ -1,11 +1,10 @@
 <script lang="ts">
   import { onMount } from 'svelte';
-  import { GitHubApiClientFactory } from '../../services/GitHubApiClientFactory';
-  import type { IGitHubApiClient } from '../../services/interfaces/IGitHubApiClient';
-  import { githubSettingsStore, githubSettingsActions } from '../../lib/stores/githubSettings';
+  import { GitHubService } from '../../services/GitHubService';
+  import { githubSettingsStore, githubSettingsActions } from '$lib/stores';
   import premiumStatusStore, { isAuthenticated } from '../../lib/stores/premiumStore';
 
-  let githubApiClient: IGitHubApiClient | null = null;
+  let githubService: GitHubService | null = null;
   let authStatus: any = null;
   let availableRepos: any[] = [];
   let userInfo: any = null;
@@ -28,7 +27,7 @@
     await githubSettingsActions.initialize();
   });
 
-  async function initializeGitHubClient() {
+  async function initializeGitHubService() {
     if (!hasPATToken) {
       error = 'No Personal Access Token found in storage';
       return;
@@ -39,19 +38,23 @@
     successMessage = '';
 
     try {
-      // Create PAT-based API client for existing users
-      githubApiClient = await GitHubApiClientFactory.createApiClientForExistingUser(
+      // Create GitHub Service for existing users with PAT (no upgrade to maintain PAT testing)
+      githubService = await GitHubService.createForExistingUser(
         githubSettings.githubToken,
         false // Don't allow upgrade to maintain PAT testing
       );
 
+      // Verify we're using PAT
+      const clientType = githubService.getApiClientType();
+      console.log(`GitHub Service initialized with: ${clientType}`);
+
       // Load authentication status and user data
       await Promise.all([loadAuthenticationStatus(), loadUserInfo(), loadUserRepositories()]);
 
-      successMessage = 'GitHub PAT client initialized successfully';
+      successMessage = `GitHub Service initialized successfully (${clientType})`;
     } catch (err: any) {
       error = err.message;
-      console.error('Error initializing GitHub PAT client:', err);
+      console.error('Error initializing GitHub Service:', err);
     } finally {
       loading = false;
     }
@@ -59,11 +62,16 @@
 
   async function loadAuthenticationStatus() {
     try {
-      // Get authentication status from factory (with PAT)
-      authStatus = await GitHubApiClientFactory.getAuthenticationStatus(
-        githubSettings.githubToken,
-        true // Check both methods for comparison
-      );
+      // Get authentication status from GitHubService (with PAT)
+      if (githubService) {
+        authStatus = await githubService.getAuthStatus();
+      } else {
+        // Fallback to static method with PAT token
+        authStatus = await GitHubService.getAuthenticationStatus(
+          githubSettings.githubToken,
+          true // Check both methods for comparison
+        );
+      }
       console.log('Authentication status:', authStatus);
     } catch (err: any) {
       console.error('Error loading authentication status:', err);
@@ -71,13 +79,13 @@
   }
 
   async function loadUserInfo() {
-    if (!githubApiClient) {
+    if (!githubService) {
       return;
     }
 
     try {
-      // Get user information (works with PAT)
-      userInfo = await githubApiClient.getUser();
+      // Get user information using GitHubService (works with PAT)
+      userInfo = await githubService.request('GET', '/user');
       repoOwner = userInfo.login;
       console.log('User info loaded:', userInfo.login);
     } catch (err: any) {
@@ -86,17 +94,13 @@
   }
 
   async function loadUserRepositories() {
-    if (!githubApiClient) {
+    if (!githubService) {
       return;
     }
 
     try {
-      // Get user's repositories (PAT can access all user repos)
-      const reposResponse = await githubApiClient.getUserRepositories({
-        sort: 'updated',
-        per_page: 50,
-      });
-      availableRepos = reposResponse || [];
+      // Get user's repositories using GitHubService (PAT can access all user repos)
+      availableRepos = await githubService.listRepos();
 
       console.log(`Found ${availableRepos.length} accessible repositories`);
     } catch (err: any) {
@@ -105,8 +109,8 @@
   }
 
   async function testUserProfile() {
-    if (!githubApiClient) {
-      error = 'GitHub API client not initialized. Initialize client first.';
+    if (!githubService) {
+      error = 'GitHub Service not initialized. Initialize service first.';
       return;
     }
 
@@ -115,14 +119,15 @@
     successMessage = '';
 
     try {
-      // Test user profile endpoint (PAT advantage)
-      const userResponse = await githubApiClient.getUser();
+      // Test user profile endpoint using GitHubService (PAT advantage)
+      const userResponse = await githubService.request('GET', '/user');
 
       testResults = {
         ...testResults,
         userProfile: userResponse,
-        apiCall: 'GET /user',
+        apiCall: 'GitHubService.request("GET", "/user")',
         status: 200,
+        clientType: githubService.getApiClientType(),
       };
 
       console.log('User profile test:', userResponse);
@@ -136,8 +141,8 @@
   }
 
   async function testRepoAccess() {
-    if (!githubApiClient) {
-      error = 'GitHub API client not initialized. Initialize client first.';
+    if (!githubService) {
+      error = 'GitHub Service not initialized. Initialize service first.';
       return;
     }
 
@@ -153,18 +158,18 @@
     successMessage = '';
 
     try {
-      // Test repository access and get repo info
-      const repoResponse = await githubApiClient.getRepository(owner, name);
+      // Test repository access using GitHubService
+      const repoResponse = await githubService.getRepoInfo(owner, name);
 
       testResults = {
         ...testResults,
         repoInfo: repoResponse,
-        apiCall: `GET /repos/${owner}/${name}`,
+        apiCall: `GitHubService.getRepoInfo('${owner}', '${name}')`,
         status: 200,
       };
 
       console.log('Repository access test:', repoResponse);
-      successMessage = `Repository access successful: ${repoResponse.full_name}`;
+      successMessage = `Repository access successful: ${owner}/${name}`;
     } catch (err: any) {
       if (err.message.includes('404') || err.message.includes('Not Found')) {
         error = `Repository not found or you don't have access to it.`;
@@ -178,8 +183,8 @@
   }
 
   async function testRepoContents() {
-    if (!githubApiClient) {
-      error = 'GitHub API client not initialized. Initialize client first.';
+    if (!githubService) {
+      error = 'GitHub Service not initialized. Initialize service first.';
       return;
     }
 
@@ -195,13 +200,16 @@
     successMessage = '';
 
     try {
-      // Test getting repository contents (root directory)
-      const contentsResponse = await githubApiClient.getRepositoryContents(owner, name);
+      // Test getting repository contents using GitHubService
+      const contentsResponse = await githubService.request(
+        'GET',
+        `/repos/${owner}/${name}/contents`
+      );
 
       testResults = {
         ...testResults,
         contents: contentsResponse,
-        apiCall: `GET /repos/${owner}/${name}/contents`,
+        apiCall: `GitHubService.request('GET', '/repos/${owner}/${name}/contents')`,
         status: 200,
       };
 
@@ -220,8 +228,8 @@
   }
 
   async function testIssues() {
-    if (!githubApiClient) {
-      error = 'GitHub API client not initialized. Initialize client first.';
+    if (!githubService) {
+      error = 'GitHub Service not initialized. Initialize service first.';
       return;
     }
 
@@ -237,16 +245,13 @@
     successMessage = '';
 
     try {
-      // Test listing issues
-      const issuesResponse = await githubApiClient.getRepositoryIssues(owner, name, {
-        state: 'all',
-        per_page: 5,
-      });
+      // Test listing issues using GitHubService
+      const issuesResponse = await githubService.getIssues(owner, name, 'all');
 
       testResults = {
         ...testResults,
-        issues: issuesResponse,
-        apiCall: `GET /repos/${owner}/${name}/issues`,
+        issues: issuesResponse.slice(0, 5), // Limit to 5 for display
+        apiCall: `GitHubService.getIssues('${owner}', '${name}', 'all')`,
         status: 200,
       };
 
@@ -265,8 +270,8 @@
   }
 
   async function testCommits() {
-    if (!githubApiClient) {
-      error = 'GitHub API client not initialized. Initialize client first.';
+    if (!githubService) {
+      error = 'GitHub Service not initialized. Initialize service first.';
       return;
     }
 
@@ -282,15 +287,16 @@
     successMessage = '';
 
     try {
-      // Test getting commits
-      const commitsResponse = await githubApiClient.getRepositoryCommits(owner, name, {
-        per_page: 5,
-      });
+      // Test getting commits using GitHubService
+      const commitsResponse = await githubService.request(
+        'GET',
+        `/repos/${owner}/${name}/commits?per_page=5`
+      );
 
       testResults = {
         ...testResults,
         commits: commitsResponse,
-        apiCall: `GET /repos/${owner}/${name}/commits`,
+        apiCall: `GitHubService.request('GET', '/repos/${owner}/${name}/commits?per_page=5')`,
         status: 200,
       };
 
@@ -303,6 +309,114 @@
         error = err.message;
       }
       console.error('Error testing commits:', err);
+    } finally {
+      loading = false;
+    }
+  }
+
+  async function testTokenValidation() {
+    if (!githubService) {
+      error = 'GitHub Service not initialized. Initialize service first.';
+      return;
+    }
+
+    loading = true;
+    error = '';
+    successMessage = '';
+
+    try {
+      // Test token validation using GitHubService
+      const isValid = await githubService.validateToken();
+
+      testResults = {
+        ...testResults,
+        tokenValidation: { isValid },
+        apiCall: 'GitHubService.validateToken()',
+        status: isValid ? 200 : 401,
+      };
+
+      console.log('Token validation test:', isValid);
+      successMessage = `Token validation ${isValid ? 'successful' : 'failed'}`;
+    } catch (err: any) {
+      error = err.message;
+      console.error('Error testing token validation:', err);
+    } finally {
+      loading = false;
+    }
+  }
+
+  async function testUpgradeCheck() {
+    if (!githubService) {
+      error = 'GitHub Service not initialized. Initialize service first.';
+      return;
+    }
+
+    loading = true;
+    error = '';
+    successMessage = '';
+
+    try {
+      // Test upgrade capabilities
+      const authStatus = await githubService.getAuthStatus();
+
+      testResults = {
+        ...testResults,
+        upgradeCheck: authStatus,
+        apiCall: 'GitHubService.getAuthStatus()',
+        status: 200,
+      };
+
+      console.log('Upgrade check:', authStatus);
+
+      if (authStatus.canUpgradeToGitHubApp) {
+        successMessage = 'Upgrade to GitHub App is available!';
+      } else {
+        successMessage = 'No upgrade available (or already using best method)';
+      }
+    } catch (err: any) {
+      error = err.message;
+      console.error('Error testing upgrade check:', err);
+    } finally {
+      loading = false;
+    }
+  }
+
+  async function performUpgrade() {
+    if (!githubService) {
+      error = 'GitHub Service not initialized. Initialize service first.';
+      return;
+    }
+
+    loading = true;
+    error = '';
+    successMessage = '';
+
+    try {
+      // Attempt to upgrade to GitHub App
+      const upgraded = await githubService.upgradeToGitHubApp();
+
+      testResults = {
+        ...testResults,
+        upgrade: {
+          success: upgraded,
+          newClientType: upgraded ? githubService.getApiClientType() : 'pat',
+        },
+        apiCall: 'GitHubService.upgradeToGitHubApp()',
+        status: upgraded ? 200 : 409,
+      };
+
+      console.log('Upgrade attempt:', upgraded);
+
+      if (upgraded) {
+        successMessage = `Successfully upgraded to ${githubService.getApiClientType()}!`;
+        // Reload repositories with new client
+        await loadUserRepositories();
+      } else {
+        successMessage = 'Upgrade not possible or already using GitHub App';
+      }
+    } catch (err: any) {
+      error = err.message;
+      console.error('Error performing upgrade:', err);
     } finally {
       loading = false;
     }
@@ -331,7 +445,7 @@
     userInfo = null;
     error = '';
     successMessage = '';
-    githubApiClient = null;
+    githubService = null;
     selectedRepo = '';
     repoOwner = '';
   }
@@ -339,9 +453,9 @@
 
 <div class="github-pat-settings-app">
   <div class="section-header">
-    <h3>🔑 GitHub PAT (Personal Access Token) Testing</h3>
+    <h3>🔑 GitHub PAT Testing (New Architecture)</h3>
     <p class="text-sm text-gray-600">
-      Test GitHub operations using Personal Access Token for backward compatibility
+      Test GitHub operations using Personal Access Token with the new GitHubService architecture
     </p>
   </div>
 
@@ -360,9 +474,9 @@
         Premium: {premiumStatus.plan}
       </div>
     {/if}
-    {#if githubApiClient}
+    {#if githubService}
       <div class="text-xs text-orange-600 dark:text-orange-400 mt-1">
-        GitHub API Client: PAT-based
+        GitHub Service: {githubService.getApiClientType()} client
       </div>
     {/if}
   </div>
@@ -435,10 +549,10 @@
     <div class="button-group">
       <button
         class="btn btn-primary"
-        on:click={initializeGitHubClient}
+        on:click={initializeGitHubService}
         disabled={loading || !canInitialize}
       >
-        {loading ? 'Initializing...' : 'Initialize PAT Client'}
+        {loading ? 'Initializing...' : 'Initialize PAT Service'}
       </button>
 
       <button
@@ -452,7 +566,7 @@
       <button
         class="btn btn-accent"
         on:click={testUserProfile}
-        disabled={loading || !githubApiClient}
+        disabled={loading || !githubService}
       >
         {loading ? 'Testing...' : 'Test User Profile'}
       </button>
@@ -460,6 +574,40 @@
       <button class="btn btn-outline" on:click={clearResults} disabled={loading}>
         Clear Results
       </button>
+    </div>
+
+    <!-- PAT-Specific Test Buttons -->
+    <div class="pat-test-group">
+      <h4>PAT-Specific Tests</h4>
+      <div class="button-group">
+        <button
+          class="btn btn-info"
+          on:click={testTokenValidation}
+          disabled={loading || !githubService}
+        >
+          {loading ? 'Testing...' : 'Test Token Validation'}
+        </button>
+
+        <button
+          class="btn btn-warning"
+          on:click={testUpgradeCheck}
+          disabled={loading || !githubService}
+        >
+          {loading ? 'Checking...' : 'Check Upgrade Options'}
+        </button>
+
+        <button
+          class="btn btn-upgrade"
+          on:click={performUpgrade}
+          disabled={loading || !githubService}
+        >
+          {loading ? 'Upgrading...' : 'Try Upgrade to GitHub App'}
+        </button>
+      </div>
+      <div class="help-text">
+        <strong>✅ PAT Advantage:</strong> Direct access to user endpoints and all repositories you have
+        permissions to.
+      </div>
     </div>
 
     <!-- Repository Selection -->
@@ -479,9 +627,12 @@
             <select id="repo-select" bind:value={selectedRepo} disabled={loading}>
               <option value="">-- Select a repository --</option>
               {#each availableRepos as repo}
-                <option value="{repo.owner.login}/{repo.name}">
+                <option
+                  value={repo.html_url ? repo.html_url.split('/').slice(-2).join('/') : repo.name}
+                >
                   {repo.name}
-                  {repo.private ? '🔒' : '🌐'} ({repo.owner.login})
+                  {repo.private ? '🔒' : '🌐'}
+                  {#if repo.language}({repo.language}){/if}
                 </option>
               {/each}
             </select>
@@ -504,7 +655,7 @@
           <button
             class="btn btn-info"
             on:click={testRepoAccess}
-            disabled={loading || !githubApiClient || !selectedRepo}
+            disabled={loading || !githubService || !selectedRepo}
           >
             {loading ? 'Testing...' : 'Test Repo Access'}
           </button>
@@ -512,7 +663,7 @@
           <button
             class="btn btn-info"
             on:click={testRepoContents}
-            disabled={loading || !githubApiClient || !selectedRepo}
+            disabled={loading || !githubService || !selectedRepo}
           >
             {loading ? 'Testing...' : 'Test Repo Contents'}
           </button>
@@ -520,7 +671,7 @@
           <button
             class="btn btn-info"
             on:click={testIssues}
-            disabled={loading || !githubApiClient || !selectedRepo}
+            disabled={loading || !githubService || !selectedRepo}
           >
             {loading ? 'Testing...' : 'Test Issues'}
           </button>
@@ -528,7 +679,7 @@
           <button
             class="btn btn-info"
             on:click={testCommits}
-            disabled={loading || !githubApiClient || !selectedRepo}
+            disabled={loading || !githubService || !selectedRepo}
           >
             {loading ? 'Testing...' : 'Test Commits'}
           </button>
@@ -545,50 +696,52 @@
         <h4>Authentication Status</h4>
         <div class="auth-status-info">
           <div class="status-row">
-            <span class="label">GitHub App Available:</span>
-            <span class="value status-{authStatus.hasGitHubApp ? 'success' : 'error'}">
-              {authStatus.hasGitHubApp ? 'Yes' : 'No'}
+            <span class="label">Current Auth Method:</span>
+            <span class="value">{authStatus.currentAuth || 'Unknown'}</span>
+          </div>
+          <div class="status-row">
+            <span class="label">Can Upgrade to GitHub App:</span>
+            <span class="value status-{authStatus.canUpgradeToGitHubApp ? 'success' : 'error'}">
+              {authStatus.canUpgradeToGitHubApp ? 'Yes' : 'No'}
             </span>
           </div>
           <div class="status-row">
-            <span class="label">PAT Available:</span>
-            <span class="value status-{authStatus.hasPAT ? 'success' : 'error'}">
-              {authStatus.hasPAT ? 'Yes' : 'No'}
+            <span class="label">Recommend Upgrade:</span>
+            <span class="value status-{authStatus.recommendUpgrade ? 'success' : 'error'}">
+              {authStatus.recommendUpgrade ? 'Yes' : 'No'}
             </span>
           </div>
-          <div class="status-row">
-            <span class="label">Can Use PAT:</span>
-            <span class="value status-{authStatus.canUsePAT ? 'success' : 'error'}">
-              {authStatus.canUsePAT ? 'Yes' : 'No'}
-            </span>
-          </div>
-          <div class="status-row">
-            <span class="label">Recommended Auth:</span>
-            <span class="value">{authStatus.recommended}</span>
-          </div>
-          {#if authStatus.currentRateLimit}
-            <div class="status-row">
-              <span class="label">Current Rate Limit:</span>
-              <span class="value">
-                {authStatus.currentRateLimit.remaining}/{authStatus.currentRateLimit.limit}
-              </span>
+          {#if authStatus.rateLimits}
+            <div class="rate-limits-info">
+              <span class="label">Rate Limits Available:</span>
+              {#if authStatus.rateLimits.githubApp}
+                <div class="rate-limit-item">
+                  <span class="rate-type">GitHub App:</span>
+                  <span class="rate-value"
+                    >{authStatus.rateLimits.githubApp.remaining}/{authStatus.rateLimits.githubApp
+                      .limit}</span
+                  >
+                </div>
+              {/if}
+              {#if authStatus.rateLimits.pat}
+                <div class="rate-limit-item">
+                  <span class="rate-type">PAT:</span>
+                  <span class="rate-value"
+                    >{authStatus.rateLimits.pat.remaining}/{authStatus.rateLimits.pat.limit}</span
+                  >
+                </div>
+              {/if}
             </div>
-            <div class="status-row">
-              <span class="label">Reset Time:</span>
-              <span class="value">
-                {new Date(authStatus.currentRateLimit.reset * 1000).toLocaleTimeString()}
-              </span>
-            </div>
-          {/if}
-          {#if authStatus.rateLimits.githubApp && authStatus.rateLimits.pat}
-            <div class="upgrade-notice">
-              <span class="upgrade-icon">🚀</span>
-              <span>
-                Consider upgrading to GitHub App for higher rate limits:
-                {authStatus.rateLimits.githubApp.limit}/hour vs {authStatus.rateLimits.pat
-                  .limit}/hour
-              </span>
-            </div>
+            {#if authStatus.rateLimits.githubApp && authStatus.rateLimits.pat}
+              <div class="upgrade-notice">
+                <span class="upgrade-icon">🚀</span>
+                <span>
+                  Consider upgrading to GitHub App for higher rate limits:
+                  {authStatus.rateLimits.githubApp.limit}/hour vs {authStatus.rateLimits.pat
+                    .limit}/hour
+                </span>
+              </div>
+            {/if}
           {/if}
         </div>
       </div>
@@ -640,16 +793,68 @@
           </div>
           <div class="test-row">
             <span class="label">Client Type:</span>
-            <span class="value">PAT-based</span>
+            <span class="value">{testResults.clientType || 'PAT-based'}</span>
           </div>
+
+          <!-- Token Validation Results -->
+          {#if testResults.tokenValidation}
+            <div class="test-row">
+              <span class="label">Token Valid:</span>
+              <span
+                class="value status-{testResults.tokenValidation.isValid ? 'success' : 'error'}"
+              >
+                {testResults.tokenValidation.isValid ? 'Yes' : 'No'}
+              </span>
+            </div>
+          {/if}
+
+          <!-- Upgrade Check Results -->
+          {#if testResults.upgradeCheck}
+            <div class="test-row">
+              <span class="label">Can Upgrade:</span>
+              <span
+                class="value status-{testResults.upgradeCheck.canUpgradeToGitHubApp
+                  ? 'success'
+                  : 'info'}"
+              >
+                {testResults.upgradeCheck.canUpgradeToGitHubApp ? 'Yes' : 'No'}
+              </span>
+            </div>
+            <div class="test-row">
+              <span class="label">Recommend Upgrade:</span>
+              <span
+                class="value status-{testResults.upgradeCheck.recommendUpgrade
+                  ? 'success'
+                  : 'info'}"
+              >
+                {testResults.upgradeCheck.recommendUpgrade ? 'Yes' : 'No'}
+              </span>
+            </div>
+          {/if}
+
+          <!-- Upgrade Results -->
+          {#if testResults.upgrade}
+            <div class="test-row">
+              <span class="label">Upgrade Success:</span>
+              <span class="value status-{testResults.upgrade.success ? 'success' : 'error'}">
+                {testResults.upgrade.success ? 'Yes' : 'No'}
+              </span>
+            </div>
+            {#if testResults.upgrade.success}
+              <div class="test-row">
+                <span class="label">New Client Type:</span>
+                <span class="value">{testResults.upgrade.newClientType}</span>
+              </div>
+            {/if}
+          {/if}
 
           <!-- User Profile Results -->
           {#if testResults.userProfile}
             <div class="test-row">
               <span class="label">Profile Retrieved:</span>
-              <span class="value"
-                >{testResults.userProfile.login} ({testResults.userProfile.type})</span
-              >
+              <span class="value">
+                {testResults.userProfile.login} ({testResults.userProfile.type})
+              </span>
             </div>
           {/if}
 
@@ -657,25 +862,20 @@
           {#if testResults.repoInfo}
             <div class="test-row">
               <span class="label">Repository:</span>
-              <span class="value">{testResults.repoInfo.full_name}</span>
+              <span class="value">{testResults.repoInfo.name}</span>
             </div>
             <div class="test-row">
-              <span class="label">Description:</span>
-              <span class="value">{testResults.repoInfo.description || 'No description'}</span>
-            </div>
-            <div class="test-row">
-              <span class="label">Default Branch:</span>
-              <span class="value">{testResults.repoInfo.default_branch}</span>
-            </div>
-            <div class="test-row">
-              <span class="label">Permissions:</span>
-              <span class="value">
-                Push: {testResults.repoInfo.permissions?.push ? 'Yes' : 'No'}, Pull: {testResults
-                  .repoInfo.permissions?.pull
-                  ? 'Yes'
-                  : 'No'}, Admin: {testResults.repoInfo.permissions?.admin ? 'Yes' : 'No'}
+              <span class="label">Exists:</span>
+              <span class="value status-{testResults.repoInfo.exists ? 'success' : 'error'}">
+                {testResults.repoInfo.exists ? 'Yes' : 'No'}
               </span>
             </div>
+            {#if testResults.repoInfo.description}
+              <div class="test-row">
+                <span class="label">Description:</span>
+                <span class="value">{testResults.repoInfo.description}</span>
+              </div>
+            {/if}
           {/if}
 
           <!-- Repository Contents -->
@@ -753,13 +953,13 @@
 </div>
 
 <style>
+  /* Keep all existing styles and add new ones for the upgrade functionality */
   .github-pat-settings-app {
     padding: 16px;
     background: #f8fafc;
     border-radius: 8px;
     margin: 16px 0;
     border: 1px solid #e2e8f0;
-    /* Dark mode styles */
     @media (prefers-color-scheme: dark) {
       background: #1e293b;
       border-color: #334155;
@@ -771,7 +971,6 @@
     color: #1e293b;
     font-size: 16px;
     font-weight: 600;
-    /* Dark mode styles */
     @media (prefers-color-scheme: dark) {
       color: #e2e8f0;
     }
@@ -782,7 +981,6 @@
     background: white;
     border-radius: 6px;
     border: 1px solid #e2e8f0;
-    /* Dark mode styles */
     @media (prefers-color-scheme: dark) {
       background: #334155;
       border-color: #475569;
@@ -804,41 +1002,25 @@
     background: #ef4444;
   }
 
-  .pat-config {
-    background: white;
-    border: 1px solid #e2e8f0;
-    border-radius: 6px;
-    padding: 12px;
-    margin: 16px 0;
-    /* Dark mode styles */
-    @media (prefers-color-scheme: dark) {
-      background: #334155;
-      border-color: #475569;
-    }
-  }
-
-  .pat-config h4,
-  .pat-status h4 {
-    margin: 0 0 12px 0;
-    color: #1e293b;
-    font-size: 14px;
-    font-weight: 600;
-    /* Dark mode styles */
-    @media (prefers-color-scheme: dark) {
-      color: #e2e8f0;
-    }
-  }
-
   .pat-status {
     background: white;
     border: 1px solid #e2e8f0;
     border-radius: 6px;
     padding: 12px;
     margin: 16px 0;
-    /* Dark mode styles */
     @media (prefers-color-scheme: dark) {
       background: #334155;
       border-color: #475569;
+    }
+  }
+
+  .pat-status h4 {
+    margin: 0 0 12px 0;
+    color: #1e293b;
+    font-size: 14px;
+    font-weight: 600;
+    @media (prefers-color-scheme: dark) {
+      color: #e2e8f0;
     }
   }
 
@@ -860,7 +1042,6 @@
   .token-found {
     background: #f0fdf4;
     border: 1px solid #bbf7d0;
-    /* Dark mode styles */
     @media (prefers-color-scheme: dark) {
       background: #064e3b;
       border-color: #059669;
@@ -870,7 +1051,6 @@
   .token-not-found {
     background: #fef2f2;
     border: 1px solid #fecaca;
-    /* Dark mode styles */
     @media (prefers-color-scheme: dark) {
       background: #7f1d1d;
       border-color: #b91c1c;
@@ -893,7 +1073,6 @@
     font-weight: 600;
     font-size: 14px;
     color: #374151;
-    /* Dark mode styles */
     @media (prefers-color-scheme: dark) {
       color: #e2e8f0;
     }
@@ -902,7 +1081,6 @@
   .status-description {
     font-size: 13px;
     color: #6b7280;
-    /* Dark mode styles */
     @media (prefers-color-scheme: dark) {
       color: #94a3b8;
     }
@@ -917,7 +1095,6 @@
     padding: 4px 8px;
     border-radius: 3px;
     margin-top: 4px;
-    /* Dark mode styles */
     @media (prefers-color-scheme: dark) {
       color: #bbf7d0;
       background: rgba(34, 197, 94, 0.2);
@@ -931,7 +1108,6 @@
     margin-top: 4px;
     font-size: 12px;
     color: #dc2626;
-    /* Dark mode styles */
     @media (prefers-color-scheme: dark) {
       color: #fecaca;
     }
@@ -945,7 +1121,6 @@
     background: #eff6ff;
     border: 1px solid #93c5fd;
     border-radius: 4px;
-    /* Dark mode styles */
     @media (prefers-color-scheme: dark) {
       background: #1e3a8a;
       border-color: #3b82f6;
@@ -956,7 +1131,6 @@
     font-size: 13px;
     font-weight: 500;
     color: #374151;
-    /* Dark mode styles */
     @media (prefers-color-scheme: dark) {
       color: #e2e8f0;
     }
@@ -973,7 +1147,6 @@
   .auth-method-pat {
     background: #fbbf24;
     color: #92400e;
-    /* Dark mode styles */
     @media (prefers-color-scheme: dark) {
       background: #d97706;
       color: #fed7aa;
@@ -983,7 +1156,6 @@
   .auth-method-github_app {
     background: #10b981;
     color: white;
-    /* Dark mode styles */
     @media (prefers-color-scheme: dark) {
       background: #059669;
       color: #bbf7d0;
@@ -994,7 +1166,6 @@
     font-size: 11px;
     color: #6b7280;
     font-style: italic;
-    /* Dark mode styles */
     @media (prefers-color-scheme: dark) {
       color: #94a3b8;
     }
@@ -1008,7 +1179,6 @@
     color: #dc2626;
     font-size: 14px;
     margin: 8px 0;
-    /* Dark mode styles */
     @media (prefers-color-scheme: dark) {
       background: #7f1d1d;
       border-color: #b91c1c;
@@ -1024,7 +1194,6 @@
     color: #16a34a;
     font-size: 14px;
     margin: 8px 0;
-    /* Dark mode styles */
     @media (prefers-color-scheme: dark) {
       background: #064e3b;
       border-color: #059669;
@@ -1036,13 +1205,34 @@
     margin: 16px 0;
   }
 
+  .pat-test-group {
+    background: white;
+    border: 1px solid #e2e8f0;
+    border-radius: 6px;
+    padding: 12px;
+    margin: 16px 0;
+    @media (prefers-color-scheme: dark) {
+      background: #334155;
+      border-color: #475569;
+    }
+  }
+
+  .pat-test-group h4 {
+    margin: 0 0 12px 0;
+    color: #1e293b;
+    font-size: 14px;
+    font-weight: 600;
+    @media (prefers-color-scheme: dark) {
+      color: #e2e8f0;
+    }
+  }
+
   .repo-config {
     background: white;
     border: 1px solid #e2e8f0;
     border-radius: 6px;
     padding: 12px;
     margin: 16px 0;
-    /* Dark mode styles */
     @media (prefers-color-scheme: dark) {
       background: #334155;
       border-color: #475569;
@@ -1054,7 +1244,6 @@
     color: #1e293b;
     font-size: 14px;
     font-weight: 600;
-    /* Dark mode styles */
     @media (prefers-color-scheme: dark) {
       color: #e2e8f0;
     }
@@ -1074,7 +1263,6 @@
     background: #f0fdf4;
     border: 1px solid #bbf7d0;
     border-radius: 4px;
-    /* Dark mode styles */
     @media (prefers-color-scheme: dark) {
       background: #064e3b;
       border-color: #059669;
@@ -1085,7 +1273,6 @@
     font-size: 13px;
     font-weight: 500;
     color: #374151;
-    /* Dark mode styles */
     @media (prefers-color-scheme: dark) {
       color: #e2e8f0;
     }
@@ -1096,7 +1283,6 @@
     font-size: 13px;
     font-weight: 600;
     color: #16a34a;
-    /* Dark mode styles */
     @media (prefers-color-scheme: dark) {
       color: #bbf7d0;
     }
@@ -1112,7 +1298,6 @@
     font-size: 13px;
     font-weight: 500;
     color: #374151;
-    /* Dark mode styles */
     @media (prefers-color-scheme: dark) {
       color: #e2e8f0;
     }
@@ -1125,7 +1310,6 @@
     font-size: 14px;
     background: white;
     color: #374151;
-    /* Dark mode styles */
     @media (prefers-color-scheme: dark) {
       background: #1e293b;
       border-color: #475569;
@@ -1147,7 +1331,6 @@
   .repo-count {
     font-size: 12px;
     color: #6b7280;
-    /* Dark mode styles */
     @media (prefers-color-scheme: dark) {
       color: #94a3b8;
     }
@@ -1160,7 +1343,6 @@
     border-radius: 4px;
     color: #1e40af;
     font-size: 13px;
-    /* Dark mode styles */
     @media (prefers-color-scheme: dark) {
       background: #1e3a8a;
       border-color: #3b82f6;
@@ -1174,7 +1356,6 @@
     border-radius: 6px;
     padding: 12px;
     margin-top: 16px;
-    /* Dark mode styles */
     @media (prefers-color-scheme: dark) {
       background: #334155;
       border-color: #475569;
@@ -1186,7 +1367,6 @@
     color: #1e293b;
     font-size: 14px;
     font-weight: 600;
-    /* Dark mode styles */
     @media (prefers-color-scheme: dark) {
       color: #e2e8f0;
     }
@@ -1249,11 +1429,28 @@
     background: #0284c7;
   }
 
+  .btn-warning {
+    background: #f59e0b;
+    color: white;
+  }
+
+  .btn-warning:hover:not(:disabled) {
+    background: #d97706;
+  }
+
+  .btn-upgrade {
+    background: #8b5cf6;
+    color: white;
+  }
+
+  .btn-upgrade:hover:not(:disabled) {
+    background: #7c3aed;
+  }
+
   .btn-outline {
     background: white;
     color: #374151;
     border: 1px solid #d1d5db;
-    /* Dark mode styles */
     @media (prefers-color-scheme: dark) {
       background: #334155;
       color: #e2e8f0;
@@ -1263,7 +1460,6 @@
 
   .btn-outline:hover:not(:disabled) {
     background: #f9fafb;
-    /* Dark mode styles */
     @media (prefers-color-scheme: dark) {
       background: #475569;
     }
@@ -1279,7 +1475,6 @@
     border-radius: 6px;
     padding: 12px;
     margin-bottom: 12px;
-    /* Dark mode styles */
     @media (prefers-color-scheme: dark) {
       background: #334155;
       border-color: #475569;
@@ -1291,7 +1486,6 @@
     color: #1e293b;
     font-size: 14px;
     font-weight: 600;
-    /* Dark mode styles */
     @media (prefers-color-scheme: dark) {
       color: #e2e8f0;
     }
@@ -1313,7 +1507,6 @@
     align-items: center;
     padding: 4px 0;
     border-bottom: 1px solid #f1f5f9;
-    /* Dark mode styles */
     @media (prefers-color-scheme: dark) {
       border-bottom-color: #475569;
     }
@@ -1329,7 +1522,6 @@
     font-weight: 500;
     color: #374151;
     font-size: 13px;
-    /* Dark mode styles */
     @media (prefers-color-scheme: dark) {
       color: #e2e8f0;
     }
@@ -1339,7 +1531,6 @@
     font-family: monospace;
     font-size: 12px;
     color: #6b7280;
-    /* Dark mode styles */
     @media (prefers-color-scheme: dark) {
       color: #94a3b8;
     }
@@ -1357,8 +1548,40 @@
     color: #dc2626;
   }
 
+  .status-info {
+    color: #3b82f6;
+  }
+
   .status-closed {
     color: #7c3aed;
+  }
+
+  .rate-limits-info {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 4px;
+  }
+
+  .rate-limit-item {
+    display: flex;
+    gap: 8px;
+    font-size: 12px;
+  }
+
+  .rate-type {
+    font-weight: 500;
+    color: #374151;
+    @media (prefers-color-scheme: dark) {
+      color: #e2e8f0;
+    }
+  }
+
+  .rate-value {
+    font-family: monospace;
+    color: #6b7280;
+    @media (prefers-color-scheme: dark) {
+      color: #94a3b8;
+    }
   }
 
   .upgrade-notice {
@@ -1372,7 +1595,6 @@
     color: #92400e;
     font-size: 12px;
     margin-top: 8px;
-    /* Dark mode styles */
     @media (prefers-color-scheme: dark) {
       background: #451a03;
       border-color: #d97706;
@@ -1407,7 +1629,6 @@
     background: #e2e8f0;
     border-radius: 3px;
     color: #475569;
-    /* Dark mode styles */
     @media (prefers-color-scheme: dark) {
       background: #475569;
       color: #e2e8f0;
@@ -1423,7 +1644,6 @@
     background: #f8fafc;
     border-radius: 3px;
     font-size: 11px;
-    /* Dark mode styles */
     @media (prefers-color-scheme: dark) {
       background: #1e293b;
     }
@@ -1433,7 +1653,6 @@
   .commit-sha {
     font-weight: 600;
     color: #3b82f6;
-    /* Dark mode styles */
     @media (prefers-color-scheme: dark) {
       color: #93c5fd;
     }
@@ -1446,7 +1665,6 @@
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
-    /* Dark mode styles */
     @media (prefers-color-scheme: dark) {
       color: #e2e8f0;
     }
@@ -1462,7 +1680,6 @@
   .commit-author {
     font-size: 10px;
     color: #6b7280;
-    /* Dark mode styles */
     @media (prefers-color-scheme: dark) {
       color: #94a3b8;
     }
@@ -1478,7 +1695,6 @@
 
   .text-gray-600 {
     color: #4b5563;
-    /* Dark mode styles */
     @media (prefers-color-scheme: dark) {
       color: #94a3b8;
     }
@@ -1486,7 +1702,6 @@
 
   .text-green-600 {
     color: #16a34a;
-    /* Dark mode styles */
     @media (prefers-color-scheme: dark) {
       color: #bbf7d0;
     }
@@ -1494,7 +1709,6 @@
 
   .text-orange-600 {
     color: #ea580c;
-    /* Dark mode styles */
     @media (prefers-color-scheme: dark) {
       color: #fdba74;
     }

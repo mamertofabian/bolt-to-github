@@ -12,18 +12,13 @@
     ChevronLeft,
     ChevronRight,
     Loader2,
+    ArrowUp,
   } from 'lucide-svelte';
   import RepoSettings from '$lib/components/RepoSettings.svelte';
   import ConfirmationDialog from '$lib/components/ui/dialog/ConfirmationDialog.svelte';
-  import { GitHubApiClientFactory } from '../../services/GitHubApiClientFactory';
-  import type { IGitHubApiClient } from '../../services/interfaces/IGitHubApiClient';
+  import { GitHubService } from '../../services/GitHubService';
   import BranchSelectionModal from '../../popup/components/BranchSelectionModal.svelte';
-  import {
-    githubSettingsStore,
-    githubSettingsActions,
-    repositoryActions,
-    repositoryStore,
-  } from '$lib/stores';
+  import { githubSettingsStore, githubSettingsActions, repositoryActions } from '$lib/stores';
 
   export let isBoltSite: boolean = true;
   export let currentlyLoadedProjectId: string | null = null;
@@ -40,9 +35,14 @@
   // Use stores instead of props
   $: projectSettings = $githubSettingsStore.projectSettings;
 
-  // GitHub API Client
-  let githubApiClient: IGitHubApiClient | null = null;
-  let clientInitializationError = '';
+  // ✅ NEW: GitHub Service instead of API Client
+  let githubService: GitHubService | null = null;
+  let serviceInitializationError = '';
+  let authStatus: {
+    currentAuth: 'pat' | 'github_app' | 'unknown' | null;
+    canUpgradeToGitHubApp: boolean;
+    rateLimits?: any;
+  } | null = null;
 
   // Pagination state
   let boltProjectsPage = 1;
@@ -73,6 +73,10 @@
   let showImportConfirmDialog = false;
   let repoToConfirmImport: { owner: string; repo: string; isPrivate: boolean } | null = null;
 
+  // ✅ NEW: Upgrade prompt state
+  let showUpgradePrompt = false;
+  let upgradingToGitHubApp = false;
+
   let commitCounts: Record<string, number> = {};
   let loadingCommitCounts: Record<string, boolean> = {};
   let allRepos: Array<{
@@ -94,31 +98,39 @@
   const REPOS_CACHE_KEY = `github_repos_${repoOwner}`;
   const REPOS_CACHE_DURATION = 5 * 60 * 1000; // 5 minutes
 
-  // Initialize GitHub API Client
-  async function initializeGitHubClient() {
+  // ✅ UPDATED: Initialize GitHub Service
+  async function initializeGitHubService() {
     if (!hasAuthentication) {
-      clientInitializationError = 'No GitHub authentication available';
+      serviceInitializationError = 'No GitHub authentication available';
+      githubService = null;
+      authStatus = null;
       return;
     }
 
-    clientInitializationError = '';
+    serviceInitializationError = '';
 
     try {
-      if (hasGitHubApp) {
-        // Preferred: Use GitHub App
-        githubApiClient = await GitHubApiClientFactory.createApiClientForNewUser();
-        console.log('GitHub client initialized using GitHub App');
-      } else if (hasPAT) {
-        // Fallback: Use PAT
-        githubApiClient = await GitHubApiClientFactory.createApiClientForExistingUser(
-          githubSettings.githubToken,
-          true // Allow migrate to GitHub App if available
-        );
-        console.log('GitHub client initialized using PAT');
+      // ✅ NEW: Use GitHubService factory methods for optimal authentication
+      githubService = await GitHubService.createWithBestAuth({
+        patToken: githubSettings.githubToken,
+        preferGitHubApp: true,
+      });
+
+      const authType = githubService.getApiClientType();
+      console.log(`GitHub service initialized with ${authType}`);
+
+      // ✅ NEW: Get authentication status for upgrade recommendations
+      authStatus = await githubService.getAuthStatus();
+
+      // Show upgrade prompt if PAT user can upgrade to GitHub App
+      if (authStatus.canUpgradeToGitHubApp && authType === 'pat') {
+        showUpgradePrompt = true;
       }
     } catch (err: any) {
-      clientInitializationError = err.message;
-      console.error('Error initializing GitHub client:', err);
+      serviceInitializationError = err.message;
+      githubService = null;
+      authStatus = null;
+      console.error('Error initializing GitHub service:', err);
     }
   }
 
@@ -130,7 +142,7 @@
 
   // Watch for authentication changes
   $: if (authMethod && authMethod !== 'unknown') {
-    initializeGitHubClient();
+    initializeGitHubService();
   }
 
   // Filter and paginate logic
@@ -240,25 +252,24 @@
         }
       }
 
-      // Ensure GitHub client is initialized
-      if (!githubApiClient) {
-        await initializeGitHubClient();
+      // Ensure GitHub service is initialized
+      if (!githubService) {
+        await initializeGitHubService();
       }
 
-      if (!githubApiClient) {
-        throw new Error(clientInitializationError || 'GitHub client not available');
+      if (!githubService) {
+        throw new Error(serviceInitializationError || 'GitHub service not available');
       }
 
-      // Fetch from API using convenience methods
+      // ✅ UPDATED: Fetch from API using GitHubService
       let repos;
       try {
-        if (hasGitHubApp) {
-          // GitHub App: Use installation repositories endpoint
-          const response = await githubApiClient.getInstallationRepositories();
-          repos = response.repositories;
-        } else {
-          // PAT: Use user repositories endpoint
-          repos = await githubApiClient.getUserRepositories({ sort: 'updated', per_page: 100 });
+        // GitHubService automatically chooses the best method (installation repos vs user repos)
+        repos = await githubService.listRepos();
+
+        // Ensure we have the expected format
+        if (!Array.isArray(repos)) {
+          throw new Error('Invalid repository data received');
         }
       } catch (error: any) {
         if (
@@ -289,11 +300,11 @@
 
       // Show user-friendly error message for common issues
       if (error.status === 401 || error.message?.includes('401')) {
-        clientInitializationError = 'GitHub authentication expired. Please reconnect.';
+        serviceInitializationError = 'GitHub authentication expired. Please reconnect.';
       } else if (error.status === 403 || error.message?.includes('403')) {
-        clientInitializationError = 'GitHub access forbidden. Check permissions.';
+        serviceInitializationError = 'GitHub access forbidden. Check permissions.';
       } else {
-        clientInitializationError = error.message || 'Failed to load repositories';
+        serviceInitializationError = error.message || 'Failed to load repositories';
       }
     }
   }
@@ -330,18 +341,17 @@
           );
         }
 
-        // Ensure GitHub client is initialized for commit count
-        if (!githubApiClient) {
-          await initializeGitHubClient();
+        // ✅ UPDATED: Ensure GitHub service is initialized for commit count
+        if (!githubService) {
+          await initializeGitHubService();
         }
 
-        if (githubApiClient) {
+        if (githubService) {
           try {
-            // Get commit count using convenience method
-            const allCommits = await githubApiClient.getRepositoryCommits(
-              repoOwner,
-              settings.repoName,
-              { sha: settings.branch, per_page: 100 }
+            // ✅ UPDATED: Get commit count using GitHubService direct API call
+            const allCommits = await githubService.request(
+              'GET',
+              `/repos/${repoOwner}/${settings.repoName}/commits?sha=${settings.branch}&per_page=100`
             );
             commitCounts[projectId] = Array.isArray(allCommits) ? allCommits.length : 0;
           } catch (error: any) {
@@ -368,6 +378,37 @@
     loadingCommitCounts = newLoadingStates;
   }
 
+  // ✅ NEW: Handle upgrade to GitHub App
+  async function handleUpgradeToGitHubApp() {
+    if (!githubService) return;
+
+    upgradingToGitHubApp = true;
+    try {
+      const upgraded = await githubService.upgradeToGitHubApp();
+      if (upgraded) {
+        console.log('✅ Successfully upgraded to GitHub App');
+        showUpgradePrompt = false;
+
+        // Refresh authentication status
+        authStatus = await githubService.getAuthStatus();
+
+        // Refresh repositories with new auth method
+        await loadAllRepos(true);
+        await refreshProjectData(true);
+
+        // Show success message (you might want to add a toast notification here)
+        alert('🎉 Successfully upgraded to GitHub App! You now have 5x higher rate limits.');
+      } else {
+        alert('Upgrade not available. You may already be using the best authentication method.');
+      }
+    } catch (error: any) {
+      console.error('Error upgrading to GitHub App:', error);
+      alert(`Failed to upgrade: ${error.message}`);
+    } finally {
+      upgradingToGitHubApp = false;
+    }
+  }
+
   onMount(async () => {
     // Initialize GitHub settings and repository store
     await githubSettingsActions.initialize();
@@ -379,9 +420,9 @@
       const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
       currentTabIsBolt = tab?.url?.includes('bolt.new') ?? false;
 
-      // Auto-initialize client if authentication is available
+      // Auto-initialize service if authentication is available
       if (hasAuthentication) {
-        await initializeGitHubClient();
+        await initializeGitHubService();
       }
 
       // Load all repos (will try cache first)
@@ -676,8 +717,58 @@
 </script>
 
 <div class="space-y-2">
-  <!-- Authentication Status -->
-  {#if hasGitHubApp}
+  <!-- ✅ ENHANCED: Authentication Status with Upgrade Options -->
+  {#if authStatus?.currentAuth === 'github_app'}
+    <div
+      class="flex items-center gap-2 mb-3 px-3 py-2 bg-emerald-900/20 border border-emerald-800 rounded-lg"
+    >
+      <div class="text-emerald-400 text-sm">✅ Using GitHub App (Recommended)</div>
+      {#if authStatus.rateLimits?.githubApp}
+        <div class="text-xs text-emerald-300 ml-auto">
+          {authStatus.rateLimits.githubApp.remaining}/{authStatus.rateLimits.githubApp.limit} requests
+        </div>
+      {/if}
+    </div>
+  {:else if authStatus?.currentAuth === 'pat'}
+    <div
+      class="flex items-center justify-between gap-2 mb-3 px-3 py-2 bg-amber-900/20 border border-amber-800 rounded-lg"
+    >
+      <div class="flex items-center gap-2">
+        <div class="text-amber-400 text-sm">⚠️ Using Personal Access Token</div>
+        {#if authStatus.rateLimits?.pat}
+          <div class="text-xs text-amber-300">
+            {authStatus.rateLimits.pat.remaining}/{authStatus.rateLimits.pat.limit} requests
+          </div>
+        {/if}
+      </div>
+      {#if authStatus.canUpgradeToGitHubApp}
+        <Button
+          variant="ghost"
+          size="sm"
+          class="text-xs text-amber-400 hover:text-amber-300 flex items-center gap-1"
+          on:click={handleUpgradeToGitHubApp}
+          disabled={upgradingToGitHubApp}
+        >
+          {#if upgradingToGitHubApp}
+            <Loader2 class="h-3 w-3 animate-spin" />
+            Upgrading...
+          {:else}
+            <ArrowUp class="h-3 w-3" />
+            Upgrade to GitHub App
+          {/if}
+        </Button>
+      {:else}
+        <Button
+          variant="ghost"
+          size="sm"
+          class="text-xs text-amber-400 hover:text-amber-300"
+          on:click={connectToGitHubApp}
+        >
+          Connect to GitHub App
+        </Button>
+      {/if}
+    </div>
+  {:else if hasGitHubApp}
     <div
       class="flex items-center gap-2 mb-3 px-3 py-2 bg-emerald-900/20 border border-emerald-800 rounded-lg"
     >
@@ -713,12 +804,51 @@
     </div>
   {/if}
 
-  {#if clientInitializationError}
+  <!-- ✅ NEW: Upgrade Prompt for Better Visibility -->
+  {#if showUpgradePrompt && authStatus?.canUpgradeToGitHubApp}
+    <div
+      class="flex items-center justify-between gap-3 mb-3 px-3 py-3 bg-gradient-to-r from-blue-900/20 to-purple-900/20 border border-blue-800 rounded-lg"
+    >
+      <div class="flex items-center gap-2">
+        <div class="text-2xl">🚀</div>
+        <div class="text-sm">
+          <div class="text-blue-400 font-medium">Upgrade Available!</div>
+          <div class="text-blue-300 text-xs">Get 5x higher rate limits with GitHub App</div>
+        </div>
+      </div>
+      <div class="flex items-center gap-2">
+        <Button
+          variant="ghost"
+          size="sm"
+          class="text-xs text-slate-400 hover:text-slate-300"
+          on:click={() => (showUpgradePrompt = false)}
+        >
+          <X class="h-3 w-3" />
+        </Button>
+        <Button
+          variant="default"
+          size="sm"
+          class="text-xs bg-blue-600 hover:bg-blue-700 text-white"
+          on:click={handleUpgradeToGitHubApp}
+          disabled={upgradingToGitHubApp}
+        >
+          {#if upgradingToGitHubApp}
+            <Loader2 class="h-3 w-3 animate-spin mr-1" />
+            Upgrading...
+          {:else}
+            Upgrade Now
+          {/if}
+        </Button>
+      </div>
+    </div>
+  {/if}
+
+  {#if serviceInitializationError}
     <div
       class="flex items-center gap-2 mb-3 px-3 py-2 bg-red-900/20 border border-red-800 rounded-lg"
     >
       <div class="text-red-400 text-sm">
-        ⚠️ GitHub Client Error: {clientInitializationError}
+        ⚠️ GitHub Service Error: {serviceInitializationError}
       </div>
     </div>
   {/if}

@@ -90,21 +90,42 @@ const repos = await githubService.listRepos();
 // Initialize client (once per component)
 await initializeGitHubClient();
 
-// Use client for API calls
-const repos = await githubApiClient?.request('GET', '/user/repos?sort=updated&per_page=50');
+// ✅ PREFERRED: Use convenience methods instead of direct request() calls
+if (hasGitHubApp) {
+  // GitHub App: get installation repositories
+  const result = await githubApiClient?.getInstallationRepositories();
+  const repos = result.repositories;
+} else {
+  // PAT: get user repositories
+  const repos = await githubApiClient?.getUserRepositories({ sort: 'updated', per_page: 50 });
+}
+
+// ❌ DISCOURAGED: Direct request() calls (use convenience methods when available)
+// const repos = await githubApiClient?.request('GET', '/user/repos?sort=updated&per_page=50');
 ```
 
 ### 4. API Call Patterns
 
+**⚠️ Important: Prefer Convenience Methods Over Direct request() Calls**
+
+The `IGitHubApiClient` interface provides convenient methods for common GitHub operations. Always use these instead of the raw `request()` method when available, as they provide better type safety, error handling, and consistency.
+
 ```typescript
-// Repository operations
+// ✅ PREFERRED: Use convenience methods
 async function loadRepositories() {
   if (!githubApiClient) {
     await initializeGitHubClient();
   }
 
   try {
-    const repos = await githubApiClient.request('GET', '/user/repos?sort=updated&per_page=50');
+    // For GitHub App users: get installation repositories
+    if (hasGitHubApp) {
+      const result = await githubApiClient.getInstallationRepositories();
+      return result.repositories;
+    }
+
+    // For PAT users: get user repositories
+    const repos = await githubApiClient.getUserRepositories({ sort: 'updated', per_page: 50 });
     return repos;
   } catch (error) {
     console.error('Failed to load repositories:', error);
@@ -112,30 +133,67 @@ async function loadRepositories() {
   }
 }
 
-// Repository contents
+// ✅ PREFERRED: Repository contents
 async function getRepoContents(owner: string, repo: string, path: string = '') {
-  const contents = await githubApiClient.request('GET', `/repos/${owner}/${repo}/contents/${path}`);
+  const contents = await githubApiClient.getRepositoryContents(owner, repo, path);
   return contents;
 }
 
-// Commit operations
-async function getCommits(owner: string, repo: string, branch: string) {
-  const commits = await githubApiClient.request(
-    'GET',
-    `/repos/${owner}/${repo}/commits?sha=${branch}&per_page=10`
-  );
+// ✅ PREFERRED: Commit operations
+async function getCommits(owner: string, repo: string, branch?: string) {
+  const commits = await githubApiClient.getRepositoryCommits(owner, repo, {
+    sha: branch,
+    per_page: 10,
+  });
   return commits;
 }
 
-// Issues
+// ✅ PREFERRED: Issues
 async function getIssues(owner: string, repo: string) {
-  const issues = await githubApiClient.request(
-    'GET',
-    `/repos/${owner}/${repo}/issues?state=open&per_page=20`
-  );
+  const issues = await githubApiClient.getRepositoryIssues(owner, repo, {
+    state: 'open',
+    per_page: 20,
+  });
   return issues;
 }
+
+// ✅ PREFERRED: Create issues
+async function createIssue(owner: string, repo: string, title: string, body?: string) {
+  const issue = await githubApiClient.createRepositoryIssue(owner, repo, {
+    title,
+    body,
+    labels: ['bug'], // example
+  });
+  return issue;
+}
+
+// ✅ PREFERRED: Get repository information
+async function getRepositoryInfo(owner: string, repo: string) {
+  const repository = await githubApiClient.getRepository(owner, repo);
+  return repository;
+}
+
+// ❌ DISCOURAGED: Direct request() calls (use only when no convenience method exists)
+async function customEndpoint() {
+  // Only use request() for endpoints that don't have convenience methods
+  const result = await githubApiClient.request('GET', '/some/custom/endpoint');
+  return result;
+}
 ```
+
+**Available Convenience Methods:**
+
+- `getInstallationRepositories()` - Get repositories accessible to GitHub App
+- `getUserRepositories(options?)` - Get user's repositories (PAT only)
+- `getRepository(owner, name)` - Get repository information
+- `getRepositoryContents(owner, name, path?)` - Get repository contents
+- `getRepositoryIssues(owner, name, options?)` - Get repository issues
+- `createRepositoryIssue(owner, name, issueData)` - Create new issue
+- `updateRepositoryIssue(owner, name, issueNumber, updateData)` - Update existing issue
+- `getRepositoryCommits(owner, name, options?)` - Get repository commits
+- `getRepositoryBranches(owner, name)` - Get repository branches
+- `getUser()` - Get authenticated user information (PAT only)
+- `getRateLimit()` - Get current rate limit status
 
 ### 5. Error Handling
 
@@ -219,6 +277,24 @@ $: if (githubSettings.githubAppStatus.hasInstallationToken) {
 }
 ```
 
+## Best Practices
+
+### Prefer Convenience Methods
+
+The `IGitHubApiClient` interface provides specialized methods for common GitHub API operations. These methods offer several advantages over direct `request()` calls:
+
+1. **Type Safety**: Convenience methods have properly typed parameters and return values
+2. **Error Handling**: Built-in error handling for common scenarios
+3. **Consistency**: Standardized parameter formats across methods
+4. **Maintainability**: Easier to update and refactor code
+5. **Documentation**: Better IntelliSense and documentation support
+
+**When to use convenience methods vs request():**
+
+- ✅ **Use convenience methods** for any operation that has a dedicated method
+- ❌ **Use request() only** when no convenience method exists for your specific endpoint
+- 🔍 **Check the interface** first before implementing custom request() calls
+
 ## Migration Checklist
 
 ### Phase 1: Store Integration
@@ -235,7 +311,8 @@ $: if (githubSettings.githubAppStatus.hasInstallationToken) {
 
 ### Phase 3: API Migration
 
-- [ ] Replace `githubService.method()` calls with `githubApiClient.request()`
+- [ ] Replace `githubService.method()` calls with appropriate convenience methods
+- [ ] Use `githubApiClient.request()` only when no convenience method exists
 - [ ] Update error handling for new API patterns
 - [ ] Test both GitHub App and PAT flows
 

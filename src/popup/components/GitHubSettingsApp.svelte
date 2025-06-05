@@ -1,12 +1,11 @@
 <script lang="ts">
   import { onMount } from 'svelte';
-  import { GitHubApiClientFactory } from '../../services/GitHubApiClientFactory';
-  import type { IGitHubApiClient } from '../../services/interfaces/IGitHubApiClient';
+  import { GitHubService } from '../../services/GitHubService';
   import { SupabaseAuthService } from '../../content/services/SupabaseAuthService';
   import { SUPABASE_CONFIG } from '../../lib/constants/supabase';
   import premiumStatusStore, { isAuthenticated } from '../../lib/stores/premiumStore';
 
-  let githubApiClient: IGitHubApiClient | null = null;
+  let githubService: GitHubService | null = null;
   let supabaseAuthService: SupabaseAuthService;
   let authState: any = null;
   let githubIntegrations: any[] = [];
@@ -29,11 +28,11 @@
 
     // Auto-load if authenticated
     if (isUserAuthenticated) {
-      initializeGitHubClient();
+      initializeGitHubService();
     }
   });
 
-  async function initializeGitHubClient() {
+  async function initializeGitHubService() {
     if (!isUserAuthenticated) {
       error = 'User not authenticated';
       return;
@@ -44,8 +43,12 @@
     successMessage = '';
 
     try {
-      // Create GitHub App API client (no PAT fallback for this component)
-      githubApiClient = await GitHubApiClientFactory.createApiClientForNewUser();
+      // Create GitHub Service for new users (GitHub App preferred)
+      githubService = await GitHubService.createForNewUser();
+
+      // Verify we're using GitHub App
+      const clientType = githubService.getApiClientType();
+      console.log(`GitHub Service initialized with: ${clientType}`);
 
       // Load GitHub integrations and authentication status
       await Promise.all([
@@ -54,28 +57,34 @@
         loadAvailableRepositories(),
       ]);
 
-      successMessage = 'GitHub API client initialized successfully';
+      successMessage = `GitHub Service initialized successfully (${clientType})`;
     } catch (err: any) {
       error = err.message;
-      console.error('Error initializing GitHub client:', err);
+      console.error('Error initializing GitHub Service:', err);
     } finally {
       loading = false;
     }
   }
 
   async function loadAvailableRepositories() {
-    if (!githubApiClient) {
+    if (!githubService) {
       return;
     }
 
     try {
-      // Get repositories the installation has access to
-      const reposResponse = await githubApiClient.getInstallationRepositories();
-      availableRepos = reposResponse.repositories || [];
+      // Use GitHubService to get accessible repositories
+      // For GitHub App, this will return installation repositories
+      const repos = await githubService.listRepos();
+      availableRepos = repos || [];
 
       // Auto-populate repo owner from the first repo or integration data
-      if (availableRepos.length > 0) {
-        repoOwner = availableRepos[0].owner.login;
+      if (availableRepos.length > 0 && availableRepos[0].html_url) {
+        // Extract owner from repository URL or full_name
+        const repoUrl = availableRepos[0].html_url;
+        const match = repoUrl.match(/github\.com\/([^\/]+)\//);
+        if (match) {
+          repoOwner = match[1];
+        }
       } else if (githubIntegrations.length > 0) {
         repoOwner = githubIntegrations[0].github_username;
       }
@@ -135,8 +144,13 @@
 
   async function loadAuthenticationStatus() {
     try {
-      // Get authentication status from factory
-      authStatus = await GitHubApiClientFactory.getAuthenticationStatus();
+      // Get authentication status from GitHubService
+      if (githubService) {
+        authStatus = await githubService.getAuthStatus();
+      } else {
+        // Fallback to static method
+        authStatus = await GitHubService.getAuthenticationStatus();
+      }
       console.log('Authentication status:', authStatus);
     } catch (err: any) {
       console.error('Error loading authentication status:', err);
@@ -144,8 +158,8 @@
   }
 
   async function testGitHubAPI() {
-    if (!githubApiClient) {
-      error = 'GitHub API client not initialized. Initialize client first.';
+    if (!githubService) {
+      error = 'GitHub Service not initialized. Initialize service first.';
       return;
     }
 
@@ -155,18 +169,18 @@
     testResults = null;
 
     try {
-      // Test rate limit check
-      const rateLimitResponse = await githubApiClient.getRateLimit();
+      // Test rate limit check using GitHubService
+      const rateLimitResponse = await githubService.request('GET', '/rate_limit');
 
-      // Test installation repositories (GitHub App compatible endpoint)
-      const reposResponse = await githubApiClient.getInstallationRepositories();
+      // Test repositories using GitHubService
+      const reposResponse = await githubService.listRepos();
 
       testResults = {
         rateLimit: rateLimitResponse?.rate || null,
-        repositoriesData: reposResponse,
-        apiCall: 'GET /installation/repositories',
-        status: 200, // Success if we got here
-        clientType: 'github_app',
+        repositoriesData: { repositories: reposResponse, total_count: reposResponse?.length || 0 },
+        apiCall: 'GitHubService.listRepos()',
+        status: 200,
+        clientType: githubService.getApiClientType(),
       };
       successMessage = 'GitHub API test successful';
     } catch (err: any) {
@@ -178,8 +192,8 @@
   }
 
   async function testRepoAccess() {
-    if (!githubApiClient) {
-      error = 'GitHub API client not initialized. Initialize client first.';
+    if (!githubService) {
+      error = 'GitHub Service not initialized. Initialize service first.';
       return;
     }
 
@@ -188,25 +202,26 @@
       return;
     }
 
-    const [owner, name] = selectedRepo.split('/');
+    const owner = repoOwner;
+    const name = selectedRepo;
 
     loading = true;
     error = '';
     successMessage = '';
 
     try {
-      // Test repository access and get repo info
-      const repoResponse = await githubApiClient.getRepository(owner, name);
+      // Test repository access using GitHubService
+      const repoResponse = await githubService.getRepoInfo(owner, name);
 
       testResults = {
         ...testResults,
         repoInfo: repoResponse,
-        apiCall: `GET /repos/${owner}/${name}`,
+        apiCall: `GitHubService.getRepoInfo('${owner}', '${name}')`,
         status: 200,
       };
 
       console.log('Repository access test:', repoResponse);
-      successMessage = `Repository access successful: ${repoResponse.full_name}`;
+      successMessage = `Repository access successful: ${owner}/${name}`;
     } catch (err: any) {
       // Provide helpful error message for 404
       if (err.message.includes('404') || err.message.includes('Not Found')) {
@@ -221,8 +236,8 @@
   }
 
   async function testRepoContents() {
-    if (!githubApiClient) {
-      error = 'GitHub API client not initialized. Initialize client first.';
+    if (!githubService) {
+      error = 'GitHub Service not initialized. Initialize service first.';
       return;
     }
 
@@ -231,20 +246,24 @@
       return;
     }
 
-    const [owner, name] = selectedRepo.split('/');
+    const owner = repoOwner;
+    const name = selectedRepo;
 
     loading = true;
     error = '';
     successMessage = '';
 
     try {
-      // Test getting repository contents (root directory)
-      const contentsResponse = await githubApiClient.getRepositoryContents(owner, name);
+      // Test getting repository contents using GitHubService direct API call
+      const contentsResponse = await githubService.request(
+        'GET',
+        `/repos/${owner}/${name}/contents`
+      );
 
       testResults = {
         ...testResults,
         contents: contentsResponse,
-        apiCall: `GET /repos/${owner}/${name}/contents`,
+        apiCall: `GitHubService.request('GET', '/repos/${owner}/${name}/contents')`,
         status: 200,
       };
 
@@ -263,8 +282,8 @@
   }
 
   async function testIssues() {
-    if (!githubApiClient) {
-      error = 'GitHub API client not initialized. Initialize client first.';
+    if (!githubService) {
+      error = 'GitHub Service not initialized. Initialize service first.';
       return;
     }
 
@@ -273,23 +292,21 @@
       return;
     }
 
-    const [owner, name] = selectedRepo.split('/');
+    const owner = repoOwner;
+    const name = selectedRepo;
 
     loading = true;
     error = '';
     successMessage = '';
 
     try {
-      // Test listing issues
-      const issuesResponse = await githubApiClient.getRepositoryIssues(owner, name, {
-        state: 'all',
-        per_page: 5,
-      });
+      // Test listing issues using GitHubService
+      const issuesResponse = await githubService.getIssues(owner, name, 'all');
 
       testResults = {
         ...testResults,
-        issues: issuesResponse,
-        apiCall: `GET /repos/${owner}/${name}/issues`,
+        issues: issuesResponse.slice(0, 5), // Limit to 5 for display
+        apiCall: `GitHubService.getIssues('${owner}', '${name}', 'all')`,
         status: 200,
       };
 
@@ -308,8 +325,8 @@
   }
 
   async function testCommits() {
-    if (!githubApiClient) {
-      error = 'GitHub API client not initialized. Initialize client first.';
+    if (!githubService) {
+      error = 'GitHub Service not initialized. Initialize service first.';
       return;
     }
 
@@ -318,22 +335,24 @@
       return;
     }
 
-    const [owner, name] = selectedRepo.split('/');
+    const owner = repoOwner;
+    const name = selectedRepo;
 
     loading = true;
     error = '';
     successMessage = '';
 
     try {
-      // Test getting commits
-      const commitsResponse = await githubApiClient.getRepositoryCommits(owner, name, {
-        per_page: 5,
-      });
+      // Test getting commits using GitHubService direct API call
+      const commitsResponse = await githubService.request(
+        'GET',
+        `/repos/${owner}/${name}/commits?per_page=5`
+      );
 
       testResults = {
         ...testResults,
         commits: commitsResponse,
-        apiCall: `GET /repos/${owner}/${name}/commits`,
+        apiCall: `GitHubService.request('GET', '/repos/${owner}/${name}/commits?per_page=5')`,
         status: 200,
       };
 
@@ -352,8 +371,8 @@
   }
 
   async function testUserProfile() {
-    if (!githubApiClient) {
-      error = 'GitHub API client not initialized. Initialize client first.';
+    if (!githubService) {
+      error = 'GitHub Service not initialized. Initialize service first.';
       return;
     }
 
@@ -362,13 +381,13 @@
     successMessage = '';
 
     try {
-      // Test user profile endpoint (requires user access token)
-      const userResponse = await githubApiClient.getUser();
+      // Test user profile endpoint using GitHubService direct API call
+      const userResponse = await githubService.request('GET', '/user');
 
       testResults = {
         ...testResults,
         userProfile: userResponse,
-        apiCall: 'GET /user',
+        apiCall: 'GitHubService.request("GET", "/user")',
         status: 200,
       };
 
@@ -387,8 +406,8 @@
   }
 
   async function testUserRepositories() {
-    if (!githubApiClient) {
-      error = 'GitHub API client not initialized. Initialize client first.';
+    if (!githubService) {
+      error = 'GitHub Service not initialized. Initialize service first.';
       return;
     }
 
@@ -397,16 +416,16 @@
     successMessage = '';
 
     try {
-      // Test user repositories endpoint (requires user access token)
-      const userReposResponse = await githubApiClient.getUserRepositories({
-        sort: 'updated',
-        per_page: 10,
-      });
+      // Test user repositories endpoint using GitHubService direct API call
+      const userReposResponse = await githubService.request(
+        'GET',
+        '/user/repos?sort=updated&per_page=10'
+      );
 
       testResults = {
         ...testResults,
         userRepositories: userReposResponse,
-        apiCall: 'GET /user/repos',
+        apiCall: 'GitHubService.request("GET", "/user/repos?sort=updated&per_page=10")',
         status: 200,
       };
 
@@ -457,7 +476,7 @@
     availableRepos = [];
     error = '';
     successMessage = '';
-    githubApiClient = null;
+    githubService = null;
     selectedRepo = '';
     repoOwner = '';
   }
@@ -465,9 +484,9 @@
 
 <div class="github-settings-app">
   <div class="section-header">
-    <h3>🔧 GitHub App Repository Testing</h3>
+    <h3>🔧 GitHub App Repository Testing (New Architecture)</h3>
     <p class="text-sm text-gray-600">
-      Test GitHub App functionality for repository operations (contents, commits, issues, PRs)
+      Test GitHub App functionality using the new GitHubService architecture
     </p>
   </div>
 
@@ -486,9 +505,9 @@
         Premium: {premiumStatus.plan}
       </div>
     {/if}
-    {#if githubApiClient}
+    {#if githubService}
       <div class="text-xs text-blue-600 dark:text-blue-400 mt-1">
-        GitHub API Client: Initialized
+        GitHub Service: {githubService.getApiClientType()} client
       </div>
     {/if}
   </div>
@@ -520,7 +539,7 @@
             <select id="repo-select" bind:value={selectedRepo} disabled={loading}>
               <option value="">-- Select a repository --</option>
               {#each availableRepos as repo}
-                <option value="{repo.owner.login}/{repo.name}">
+                <option value={repo.name}>
                   {repo.name}
                   {repo.private ? '🔒' : '🌐'}
                 </option>
@@ -530,7 +549,7 @@
               {availableRepos.length} repositories available
             </div>
           </div>
-        {:else if githubApiClient}
+        {:else if githubService}
           <div class="no-repos-message">
             <span class="warning-icon">⚠️</span>
             <span
@@ -553,22 +572,18 @@
     <div class="button-group">
       <button
         class="btn btn-primary"
-        on:click={initializeGitHubClient}
+        on:click={initializeGitHubService}
         disabled={loading || !isUserAuthenticated}
       >
-        {loading ? 'Initializing...' : 'Initialize GitHub Client'}
+        {loading ? 'Initializing...' : 'Initialize GitHub Service'}
       </button>
 
       <button class="btn btn-secondary" on:click={refreshAuthStatus} disabled={loading}>
         {loading ? 'Loading...' : 'Refresh Auth Status'}
       </button>
 
-      <button
-        class="btn btn-accent"
-        on:click={testGitHubAPI}
-        disabled={loading || !githubApiClient}
-      >
-        {loading ? 'Testing...' : 'Test Installation Repos'}
+      <button class="btn btn-accent" on:click={testGitHubAPI} disabled={loading || !githubService}>
+        {loading ? 'Testing...' : 'Test Service API'}
       </button>
 
       <button class="btn btn-outline" on:click={clearResults} disabled={loading}>
@@ -583,7 +598,7 @@
         <button
           class="btn btn-info"
           on:click={testRepoAccess}
-          disabled={loading || !githubApiClient || !selectedRepo}
+          disabled={loading || !githubService || !selectedRepo}
         >
           {loading ? 'Testing...' : 'Test Repo Access'}
         </button>
@@ -591,7 +606,7 @@
         <button
           class="btn btn-info"
           on:click={testRepoContents}
-          disabled={loading || !githubApiClient || !selectedRepo}
+          disabled={loading || !githubService || !selectedRepo}
         >
           {loading ? 'Testing...' : 'Test Repo Contents'}
         </button>
@@ -599,7 +614,7 @@
         <button
           class="btn btn-info"
           on:click={testIssues}
-          disabled={loading || !githubApiClient || !selectedRepo}
+          disabled={loading || !githubService || !selectedRepo}
         >
           {loading ? 'Testing...' : 'Test Issues'}
         </button>
@@ -607,7 +622,7 @@
         <button
           class="btn btn-info"
           on:click={testCommits}
-          disabled={loading || !githubApiClient || !selectedRepo}
+          disabled={loading || !githubService || !selectedRepo}
         >
           {loading ? 'Testing...' : 'Test Commits'}
         </button>
@@ -621,7 +636,7 @@
         <button
           class="btn btn-warning"
           on:click={testUserProfile}
-          disabled={loading || !githubApiClient}
+          disabled={loading || !githubService}
         >
           {loading ? 'Testing...' : 'Test User Profile'}
         </button>
@@ -629,7 +644,7 @@
         <button
           class="btn btn-warning"
           on:click={testUserRepositories}
-          disabled={loading || !githubApiClient}
+          disabled={loading || !githubService}
         >
           {loading ? 'Testing...' : 'Test User Repositories'}
         </button>
@@ -649,33 +664,41 @@
         <h4>Authentication Status</h4>
         <div class="auth-status-info">
           <div class="status-row">
-            <span class="label">GitHub App Available:</span>
-            <span class="value status-{authStatus.hasGitHubApp ? 'success' : 'error'}">
-              {authStatus.hasGitHubApp ? 'Yes' : 'No'}
+            <span class="label">Current Auth Method:</span>
+            <span class="value">{authStatus.currentAuth || 'Unknown'}</span>
+          </div>
+          <div class="status-row">
+            <span class="label">Can Upgrade to GitHub App:</span>
+            <span class="value status-{authStatus.canUpgradeToGitHubApp ? 'success' : 'error'}">
+              {authStatus.canUpgradeToGitHubApp ? 'Yes' : 'No'}
             </span>
           </div>
           <div class="status-row">
-            <span class="label">Can Use GitHub App:</span>
-            <span class="value status-{authStatus.canUseGitHubApp ? 'success' : 'error'}">
-              {authStatus.canUseGitHubApp ? 'Yes' : 'No'}
+            <span class="label">Recommend Upgrade:</span>
+            <span class="value status-{authStatus.recommendUpgrade ? 'success' : 'error'}">
+              {authStatus.recommendUpgrade ? 'Yes' : 'No'}
             </span>
           </div>
-          <div class="status-row">
-            <span class="label">Recommended Auth:</span>
-            <span class="value">{authStatus.recommended}</span>
-          </div>
-          {#if authStatus.currentRateLimit}
-            <div class="status-row">
-              <span class="label">Current Rate Limit:</span>
-              <span class="value">
-                {authStatus.currentRateLimit.remaining}/{authStatus.currentRateLimit.limit}
-              </span>
-            </div>
-            <div class="status-row">
-              <span class="label">Reset Time:</span>
-              <span class="value">
-                {new Date(authStatus.currentRateLimit.reset * 1000).toLocaleTimeString()}
-              </span>
+          {#if authStatus.rateLimits}
+            <div class="rate-limits-info">
+              <span class="label">Rate Limits Available:</span>
+              {#if authStatus.rateLimits.githubApp}
+                <div class="rate-limit-item">
+                  <span class="rate-type">GitHub App:</span>
+                  <span class="rate-value"
+                    >{authStatus.rateLimits.githubApp.remaining}/{authStatus.rateLimits.githubApp
+                      .limit}</span
+                  >
+                </div>
+              {/if}
+              {#if authStatus.rateLimits.pat}
+                <div class="rate-limit-item">
+                  <span class="rate-type">PAT:</span>
+                  <span class="rate-value"
+                    >{authStatus.rateLimits.pat.remaining}/{authStatus.rateLimits.pat.limit}</span
+                  >
+                </div>
+              {/if}
             </div>
           {/if}
         </div>
@@ -737,13 +760,12 @@
             </div>
           {/if}
 
-          <!-- Installation Repositories Data -->
+          <!-- Repository Data -->
           {#if testResults.repositoriesData?.repositories}
             <div class="test-row">
-              <span class="label">Installation Repositories:</span>
+              <span class="label">Repositories Found:</span>
               <span class="value">
-                {testResults.repositoriesData.repositories.length} out of {testResults
-                  .repositoriesData.total_count}
+                {testResults.repositoriesData.repositories.length} repositories
               </span>
             </div>
           {/if}
@@ -752,25 +774,20 @@
           {#if testResults.repoInfo}
             <div class="test-row">
               <span class="label">Repository:</span>
-              <span class="value">{testResults.repoInfo.full_name}</span>
+              <span class="value">{testResults.repoInfo.name}</span>
             </div>
             <div class="test-row">
-              <span class="label">Description:</span>
-              <span class="value">{testResults.repoInfo.description || 'No description'}</span>
-            </div>
-            <div class="test-row">
-              <span class="label">Default Branch:</span>
-              <span class="value">{testResults.repoInfo.default_branch}</span>
-            </div>
-            <div class="test-row">
-              <span class="label">Permissions:</span>
-              <span class="value">
-                Push: {testResults.repoInfo.permissions?.push ? 'Yes' : 'No'}, Pull: {testResults
-                  .repoInfo.permissions?.pull
-                  ? 'Yes'
-                  : 'No'}, Admin: {testResults.repoInfo.permissions?.admin ? 'Yes' : 'No'}
+              <span class="label">Exists:</span>
+              <span class="value status-{testResults.repoInfo.exists ? 'success' : 'error'}">
+                {testResults.repoInfo.exists ? 'Yes' : 'No'}
               </span>
             </div>
+            {#if testResults.repoInfo.description}
+              <div class="test-row">
+                <span class="label">Description:</span>
+                <span class="value">{testResults.repoInfo.description}</span>
+              </div>
+            {/if}
           {/if}
 
           <!-- Repository Contents -->
@@ -840,6 +857,22 @@
                 </div>
               </div>
             {/if}
+          {/if}
+
+          <!-- User Profile -->
+          {#if testResults.userProfile}
+            <div class="test-row">
+              <span class="label">User Profile:</span>
+              <span class="value">@{testResults.userProfile.login}</span>
+            </div>
+          {/if}
+
+          <!-- User Repositories -->
+          {#if testResults.userRepositories}
+            <div class="test-row">
+              <span class="label">User Repositories:</span>
+              <span class="value">{testResults.userRepositories.length} repositories</span>
+            </div>
           {/if}
         </div>
       </div>

@@ -4,8 +4,7 @@ import {
   githubSettingsActions,
   type GitHubSettingsState,
 } from './githubSettings';
-import { GitHubApiClientFactory } from '../../services/GitHubApiClientFactory';
-import type { IGitHubApiClient } from '../../services/interfaces/IGitHubApiClient';
+import { GitHubService } from '../../services/GitHubService';
 
 export interface Issue {
   number: number;
@@ -41,18 +40,31 @@ interface LoadingState {
   };
 }
 
+interface StoreAuthStatus {
+  currentAuth: 'pat' | 'github_app' | 'unknown' | null;
+  canUpgradeToGitHubApp: boolean;
+  lastChecked: number;
+}
+
 const CACHE_DURATION = 30000; // 30 seconds
 const FORCE_REFRESH_AFTER_ACTION = 2000; // 2 seconds after create/update/close
+const AUTH_STATUS_CACHE_DURATION = 300000; // 5 minutes
 
-// Create the main store
+// Create the main stores
 const issuesState = writable<IssuesState>({});
 const loadingState = writable<LoadingState>({});
+const authStatus = writable<StoreAuthStatus>({
+  currentAuth: null,
+  canUpgradeToGitHubApp: false,
+  lastChecked: 0,
+});
 
 function createIssuesStore() {
   const { subscribe, set, update } = issuesState;
   const { subscribe: subscribeLoading, set: setLoading, update: updateLoading } = loadingState;
+  const { subscribe: subscribeAuth, update: updateAuth } = authStatus;
 
-  let githubApiClient: IGitHubApiClient | null = null;
+  let githubService: GitHubService | null = null;
 
   function getRepoKey(owner: string, repo: string): string {
     return `${owner}/${repo}`;
@@ -65,6 +77,12 @@ function createIssuesStore() {
 
     const now = Date.now();
     return now - repoState.lastFetched < CACHE_DURATION;
+  }
+
+  function isAuthStatusCacheValid(): boolean {
+    const status = get(authStatus);
+    const now = Date.now();
+    return now - status.lastChecked < AUTH_STATUS_CACHE_DURATION;
   }
 
   function setLoadingForRepo(repoKey: string, state: string, loading: boolean) {
@@ -87,7 +105,7 @@ function createIssuesStore() {
     }));
   }
 
-  async function initializeGitHubClient(): Promise<boolean> {
+  async function initializeGitHubService(): Promise<boolean> {
     const githubSettings: GitHubSettingsState = get(githubSettingsStore);
     const hasGitHubApp = githubSettings.githubAppStatus.hasInstallationToken;
     const hasPAT = Boolean(githubSettings.githubToken);
@@ -95,38 +113,57 @@ function createIssuesStore() {
 
     if (!hasAuthentication) {
       console.warn('No GitHub authentication available for issues store');
+      githubService = null;
+      updateAuth((current) => ({
+        ...current,
+        currentAuth: null,
+        canUpgradeToGitHubApp: false,
+        lastChecked: Date.now(),
+      }));
       return false;
     }
 
     try {
-      if (hasGitHubApp) {
-        // Preferred: Use GitHub App
-        githubApiClient = await GitHubApiClientFactory.createApiClientForNewUser();
-        console.log('Issues store initialized with GitHub App');
-      } else if (hasPAT) {
-        // Fallback: Use PAT
-        githubApiClient = await GitHubApiClientFactory.createApiClientForExistingUser(
-          githubSettings.githubToken,
-          true // Allow upgrade to GitHub App if available
-        );
-        console.log('Issues store initialized with PAT');
-      }
+      // ✅ NEW: Use GitHubService factory methods for optimal authentication
+      githubService = await GitHubService.createWithBestAuth({
+        patToken: githubSettings.githubToken,
+        preferGitHubApp: true,
+      });
+
+      const authType = githubService.getApiClientType();
+      console.log(`Issues store initialized with ${authType}`);
+
+      // Update authentication status
+      const serviceAuthStatus = await githubService.getAuthStatus();
+      updateAuth((current) => ({
+        ...current,
+        currentAuth: authType,
+        canUpgradeToGitHubApp: serviceAuthStatus.canUpgradeToGitHubApp,
+        lastChecked: Date.now(),
+      }));
+
       return true;
     } catch (error) {
-      console.error('Error initializing GitHub client for issues store:', error);
-      githubApiClient = null;
+      console.error('Error initializing GitHub service for issues store:', error);
+      githubService = null;
+      updateAuth((current) => ({
+        ...current,
+        currentAuth: null,
+        canUpgradeToGitHubApp: false,
+        lastChecked: Date.now(),
+      }));
       return false;
     }
   }
 
-  async function ensureGitHubClient(): Promise<IGitHubApiClient> {
-    if (!githubApiClient) {
-      const initialized = await initializeGitHubClient();
-      if (!initialized || !githubApiClient) {
-        throw new Error('GitHub client not initialized. Please configure authentication.');
+  async function ensureGitHubService(): Promise<GitHubService> {
+    if (!githubService) {
+      const initialized = await initializeGitHubService();
+      if (!initialized || !githubService) {
+        throw new Error('GitHub service not initialized. Please configure authentication.');
       }
     }
-    return githubApiClient;
+    return githubService;
   }
 
   async function loadIssues(
@@ -150,14 +187,10 @@ function createIssuesStore() {
     setLoadingForRepo(repoKey, state, true);
 
     try {
-      const client = await ensureGitHubClient();
+      const service = await ensureGitHubService();
 
-      // Use the convenience method instead of direct request
-      const issues = await client.getRepositoryIssues(owner, repo, {
-        state: state === 'all' ? 'all' : state,
-        per_page: 100,
-        sort: 'updated',
-      });
+      // ✅ UPDATED: Use GitHubService method instead of direct API client
+      const issues = await service.getIssues(owner, repo, state);
 
       // Update the store
       update((current) => ({
@@ -203,10 +236,10 @@ function createIssuesStore() {
     const repoKey = getRepoKey(owner, repo);
 
     try {
-      const client = await ensureGitHubClient();
+      const service = await ensureGitHubService();
 
-      // Use the convenience method instead of direct request
-      const newIssue = await client.createRepositoryIssue(owner, repo, {
+      // ✅ UPDATED: Use GitHubService method instead of direct API client
+      const newIssue = await service.createIssue(owner, repo, {
         title: issueData.title,
         body: issueData.body || '',
         labels: issueData.labels || [],
@@ -268,10 +301,10 @@ function createIssuesStore() {
     const repoKey = getRepoKey(owner, repo);
 
     try {
-      const client = await ensureGitHubClient();
+      const service = await ensureGitHubService();
 
-      // Use the convenience method instead of direct request
-      const updatedIssue = await client.updateRepositoryIssue(owner, repo, issueNumber, updateData);
+      // ✅ UPDATED: Use GitHubService method instead of direct API client
+      const updatedIssue = await service.updateIssue(owner, repo, issueNumber, updateData);
 
       // Immediately update the issue in the store
       update((current) => {
@@ -310,6 +343,30 @@ function createIssuesStore() {
       }));
 
       throw error;
+    }
+  }
+
+  async function addIssueComment(
+    owner: string,
+    repo: string,
+    issueNumber: number,
+    comment: { body: string }
+  ): Promise<any> {
+    try {
+      const service = await ensureGitHubService();
+
+      // ✅ UPDATED: Use GitHubService method instead of direct API client
+      const newComment = await service.addIssueComment(owner, repo, issueNumber, comment);
+
+      // Force refresh issues to update comment count
+      setTimeout(() => {
+        loadIssues(owner, repo, 'all', true);
+      }, FORCE_REFRESH_AFTER_ACTION);
+
+      return newComment;
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : 'Failed to add comment';
+      throw new Error(errorMessage);
     }
   }
 
@@ -372,20 +429,80 @@ function createIssuesStore() {
   function reset() {
     set({});
     setLoading({});
-    githubApiClient = null;
+    updateAuth((_) => ({
+      currentAuth: null,
+      canUpgradeToGitHubApp: false,
+      lastChecked: 0,
+    }));
+    githubService = null;
+  }
+
+  // ✅ NEW: Authentication status and upgrade methods
+  async function refreshAuthStatus() {
+    if (!githubService) {
+      await initializeGitHubService();
+      return;
+    }
+
+    try {
+      const serviceAuthStatus = await githubService.getAuthStatus();
+      const authType = githubService.getApiClientType();
+
+      updateAuth((current) => ({
+        ...current,
+        currentAuth: authType,
+        canUpgradeToGitHubApp: serviceAuthStatus.canUpgradeToGitHubApp,
+        lastChecked: Date.now(),
+      }));
+    } catch (error) {
+      console.error('Error refreshing auth status:', error);
+    }
+  }
+
+  async function upgradeToGitHubApp(): Promise<boolean> {
+    if (!githubService) {
+      console.warn('Cannot upgrade: GitHub service not initialized');
+      return false;
+    }
+
+    try {
+      const upgraded = await githubService.upgradeToGitHubApp();
+      if (upgraded) {
+        console.log('✅ Issues store upgraded to GitHub App');
+        await refreshAuthStatus();
+        return true;
+      }
+      return false;
+    } catch (error) {
+      console.error('Error upgrading to GitHub App:', error);
+      return false;
+    }
+  }
+
+  function getAuthStatus() {
+    return derived([authStatus], ([$authStatus]) => $authStatus);
+  }
+
+  async function getDetailedAuthStatus() {
+    if (!isAuthStatusCacheValid()) {
+      await refreshAuthStatus();
+    }
+    return get(authStatus);
   }
 
   // Initialize the store
   async function initialize() {
     await githubSettingsActions.initialize();
-    await initializeGitHubClient();
+    await initializeGitHubService();
   }
 
   return {
     subscribe,
+    // ✅ UNCHANGED: All existing public methods work the same
     loadIssues,
     createIssue,
     updateIssue,
+    addIssueComment, // ✅ NEW: Added missing method
     getIssuesForRepo,
     getOpenIssuesCount,
     getLoadingState,
@@ -393,7 +510,17 @@ function createIssuesStore() {
     clearError,
     reset,
     initialize,
-    reinitializeClient: initializeGitHubClient,
+    reinitializeClient: initializeGitHubService, // ✅ RENAMED: but kept for backward compatibility
+
+    // ✅ NEW: Enhanced authentication capabilities
+    reinitializeService: initializeGitHubService, // ✅ NEW: More descriptive name
+    refreshAuthStatus,
+    upgradeToGitHubApp,
+    getAuthStatus,
+    getDetailedAuthStatus,
+
+    // ✅ NEW: Subscriptions for authentication status
+    subscribeToAuth: subscribeAuth,
   };
 }
 

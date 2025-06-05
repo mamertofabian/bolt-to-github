@@ -19,18 +19,13 @@ export class GitHubApiError extends Error {
 }
 
 /**
- * Implementation of the GitHub API client
- * Handles API requests with proper error handling and rate limiting
+ * PAT-based implementation of the GitHub API client
+ * Focuses on core API operations, delegates business logic to specialized services
  */
 export class GitHubApiClient implements IGitHubApiClient {
   private rateLimitHandler: RateLimitHandler;
   private baseUrl: string;
 
-  /**
-   * Creates a new GitHubApiClient
-   * @param token GitHub API token
-   * @param baseUrl Base URL for the GitHub API (defaults to 'https://api.github.com')
-   */
   constructor(
     private token: string,
     baseUrl = 'https://api.github.com'
@@ -41,12 +36,6 @@ export class GitHubApiClient implements IGitHubApiClient {
 
   /**
    * Makes a request to the GitHub API with rate limiting and error handling
-   * @param method HTTP method (GET, POST, PUT, DELETE, PATCH)
-   * @param endpoint API endpoint (e.g., '/user/repos')
-   * @param body Optional request body
-   * @param options Optional fetch options
-   * @returns Promise resolving to the API response
-   * @throws GitHubApiError if the request fails
    */
   async request(
     method: string,
@@ -58,10 +47,8 @@ export class GitHubApiClient implements IGitHubApiClient {
     let retryCount = 0;
     const maxRetries = 3;
 
-    // eslint-disable-next-line no-constant-condition
     while (true) {
       try {
-        // Apply rate limiting
         await this.rateLimitHandler.beforeRequest();
 
         const response = await fetch(url, {
@@ -129,172 +116,41 @@ export class GitHubApiClient implements IGitHubApiClient {
 
         return null;
       } catch (error) {
-        // If it's already a GitHubApiError, just rethrow it
         if (error instanceof GitHubApiError) {
           throw error;
         }
 
-        // For network errors or other unexpected errors
         const errorMessage = error instanceof Error ? error.message : String(error);
         console.error('GitHub API request failed:', errorMessage);
-        throw new GitHubApiError(
-          `GitHub API request failed: ${errorMessage}`,
-          0, // No status code for network errors
-          errorMessage,
-          { message: errorMessage }
-        );
+        throw new GitHubApiError(`GitHub API request failed: ${errorMessage}`, 0, errorMessage, {
+          message: errorMessage,
+        });
       }
     }
   }
 
   /**
    * Gets the current rate limit status
-   * @returns Promise resolving to rate limit information
    */
   async getRateLimit(): Promise<any> {
     return this.request('GET', '/rate_limit');
   }
 
-  // Convenience methods for common GitHub API operations
-
   /**
-   * Gets repositories accessible to the GitHub App installation
-   * @returns Promise resolving to installation repositories response
+   * Gets information about the authenticated user
+   * Essential for token validation and user identification
    */
-  async getInstallationRepositories(): Promise<any> {
-    return this.request('GET', '/installation/repositories');
+  async getUser(): Promise<any> {
+    return this.request('GET', '/user');
   }
 
   /**
-   * Gets information about a specific repository
-   * @param owner Repository owner (username or organization)
-   * @param name Repository name
-   * @returns Promise resolving to repository information
+   * Gets repositories accessible to the PAT
+   * Returns user repositories (PAT can access user's repos)
    */
-  async getRepository(owner: string, name: string): Promise<any> {
-    return this.request('GET', `/repos/${owner}/${name}`);
-  }
-
-  /**
-   * Gets contents of a repository at a specific path
-   * @param owner Repository owner (username or organization)
-   * @param name Repository name
-   * @param path Optional path to contents (defaults to root directory)
-   * @returns Promise resolving to repository contents
-   */
-  async getRepositoryContents(owner: string, name: string, path: string = ''): Promise<any> {
-    const endpoint = `/repos/${owner}/${name}/contents${path ? `/${path}` : ''}`;
-    return this.request('GET', endpoint);
-  }
-
-  /**
-   * Gets issues for a repository
-   * @param owner Repository owner (username or organization)
-   * @param name Repository name
-   * @param options Optional parameters for the request (state, per_page, etc.)
-   * @returns Promise resolving to repository issues
-   */
-  async getRepositoryIssues(
-    owner: string,
-    name: string,
-    options: Record<string, any> = {}
-  ): Promise<any> {
+  async getAccessibleRepositories(options: Record<string, any> = {}): Promise<any> {
     const searchParams = new URLSearchParams();
 
-    // Set default options
-    const defaultOptions = { state: 'all', per_page: 5 };
-    const finalOptions = { ...defaultOptions, ...options };
-
-    Object.entries(finalOptions).forEach(([key, value]) => {
-      searchParams.append(key, String(value));
-    });
-
-    const endpoint = `/repos/${owner}/${name}/issues?${searchParams.toString()}`;
-    return this.request('GET', endpoint);
-  }
-
-  /**
-   * Gets commits for a repository
-   * @param owner Repository owner (username or organization)
-   * @param name Repository name
-   * @param options Optional parameters for the request (per_page, since, until, etc.)
-   * @returns Promise resolving to repository commits
-   */
-  async getRepositoryCommits(
-    owner: string,
-    name: string,
-    options: Record<string, any> = {}
-  ): Promise<any> {
-    const searchParams = new URLSearchParams();
-
-    // Set default options
-    const defaultOptions = { per_page: 5 };
-    const finalOptions = { ...defaultOptions, ...options };
-
-    Object.entries(finalOptions).forEach(([key, value]) => {
-      searchParams.append(key, String(value));
-    });
-
-    const endpoint = `/repos/${owner}/${name}/commits?${searchParams.toString()}`;
-    return this.request('GET', endpoint);
-  }
-
-  /**
-   * Creates a new issue in a repository
-   * @param owner Repository owner (username or organization)
-   * @param name Repository name
-   * @param issueData Issue data (title, body, labels, etc.)
-   * @returns Promise resolving to the created issue
-   */
-  async createRepositoryIssue(
-    owner: string,
-    name: string,
-    issueData: {
-      title: string;
-      body?: string;
-      labels?: string[];
-      assignees?: string[];
-      milestone?: number;
-    }
-  ): Promise<any> {
-    const endpoint = `/repos/${owner}/${name}/issues`;
-    return this.request('POST', endpoint, issueData);
-  }
-
-  /**
-   * Updates an existing issue in a repository
-   * @param owner Repository owner (username or organization)
-   * @param name Repository name
-   * @param issueNumber Issue number to update
-   * @param updateData Data to update (title, body, state, labels, etc.)
-   * @returns Promise resolving to the updated issue
-   */
-  async updateRepositoryIssue(
-    owner: string,
-    name: string,
-    issueNumber: number,
-    updateData: {
-      title?: string;
-      body?: string;
-      state?: 'open' | 'closed';
-      labels?: string[];
-      assignees?: string[];
-      milestone?: number;
-    }
-  ): Promise<any> {
-    const endpoint = `/repos/${owner}/${name}/issues/${issueNumber}`;
-    return this.request('PATCH', endpoint, updateData);
-  }
-
-  /**
-   * Gets repositories for the authenticated user (requires user token)
-   * @param options Optional parameters for the request (sort, per_page, etc.)
-   * @returns Promise resolving to user repositories
-   */
-  async getUserRepositories(options: Record<string, any> = {}): Promise<any> {
-    const searchParams = new URLSearchParams();
-
-    // Set default options
     const defaultOptions = { sort: 'updated', per_page: 50 };
     const finalOptions = { ...defaultOptions, ...options };
 
@@ -307,20 +163,9 @@ export class GitHubApiClient implements IGitHubApiClient {
   }
 
   /**
-   * Gets information about the authenticated user (requires user token)
-   * @returns Promise resolving to user information
+   * Gets the authentication method being used
    */
-  async getUser(): Promise<any> {
-    return this.request('GET', '/user');
-  }
-
-  /**
-   * Gets branches for a repository
-   * @param owner Repository owner (username or organization)
-   * @param name Repository name
-   * @returns Promise resolving to repository branches
-   */
-  async getRepositoryBranches(owner: string, name: string): Promise<any> {
-    return this.request('GET', `/repos/${owner}/${name}/branches`);
+  getAuthType(): 'pat' | 'github_app' | 'unknown' {
+    return 'pat';
   }
 }

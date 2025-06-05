@@ -1,6 +1,6 @@
 /**
- * Interface for GitHub API client
- * Provides a standardized way to make requests to the GitHub API
+ * Streamlined interface for GitHub API client
+ * Focuses on core API operations, delegates business logic to specialized services
  */
 export interface IGitHubApiClient {
   /**
@@ -19,108 +19,25 @@ export interface IGitHubApiClient {
    */
   getRateLimit(): Promise<any>;
 
-  // Convenience methods for common GitHub API operations
-
-  /**
-   * Gets repositories accessible to the GitHub App installation
-   * @returns Promise resolving to installation repositories response
-   */
-  getInstallationRepositories(): Promise<any>;
-
-  /**
-   * Gets information about a specific repository
-   * @param owner Repository owner (username or organization)
-   * @param name Repository name
-   * @returns Promise resolving to repository information
-   */
-  getRepository(owner: string, name: string): Promise<any>;
-
-  /**
-   * Gets contents of a repository at a specific path
-   * @param owner Repository owner (username or organization)
-   * @param name Repository name
-   * @param path Optional path to contents (defaults to root directory)
-   * @returns Promise resolving to repository contents
-   */
-  getRepositoryContents(owner: string, name: string, path?: string): Promise<any>;
-
-  /**
-   * Gets issues for a repository
-   * @param owner Repository owner (username or organization)
-   * @param name Repository name
-   * @param options Optional parameters for the request (state, per_page, etc.)
-   * @returns Promise resolving to repository issues
-   */
-  getRepositoryIssues(owner: string, name: string, options?: Record<string, any>): Promise<any>;
-
-  /**
-   * Creates a new issue in a repository
-   * @param owner Repository owner (username or organization)
-   * @param name Repository name
-   * @param issueData Issue data (title, body, labels, etc.)
-   * @returns Promise resolving to the created issue
-   */
-  createRepositoryIssue(
-    owner: string,
-    name: string,
-    issueData: {
-      title: string;
-      body?: string;
-      labels?: string[];
-      assignees?: string[];
-      milestone?: number;
-    }
-  ): Promise<any>;
-
-  /**
-   * Updates an existing issue in a repository
-   * @param owner Repository owner (username or organization)
-   * @param name Repository name
-   * @param issueNumber Issue number to update
-   * @param updateData Data to update (title, body, state, labels, etc.)
-   * @returns Promise resolving to the updated issue
-   */
-  updateRepositoryIssue(
-    owner: string,
-    name: string,
-    issueNumber: number,
-    updateData: {
-      title?: string;
-      body?: string;
-      state?: 'open' | 'closed';
-      labels?: string[];
-      assignees?: string[];
-      milestone?: number;
-    }
-  ): Promise<any>;
-
-  /**
-   * Gets commits for a repository
-   * @param owner Repository owner (username or organization)
-   * @param name Repository name
-   * @param options Optional parameters for the request (per_page, since, until, etc.)
-   * @returns Promise resolving to repository commits
-   */
-  getRepositoryCommits(owner: string, name: string, options?: Record<string, any>): Promise<any>;
-
-  /**
-   * Gets repositories for the authenticated user (requires user token)
-   * @param options Optional parameters for the request (sort, per_page, etc.)
-   * @returns Promise resolving to user repositories
-   */
-  getUserRepositories(options?: Record<string, any>): Promise<any>;
-
   /**
    * Gets information about the authenticated user (requires user token)
+   * Essential for token validation and user identification
    * @returns Promise resolving to user information
    */
   getUser(): Promise<any>;
 
   /**
-   * Gets branches for a repository
-   * @param owner Repository owner (username or organization)
-   * @param name Repository name
-   * @returns Promise resolving to repository branches
+   * Gets repositories accessible to the current authentication method
+   * GitHub App: returns installation repositories
+   * PAT: returns user repositories
+   * @param options Optional parameters for the request
+   * @returns Promise resolving to repositories
    */
-  getRepositoryBranches(owner: string, name: string): Promise<any>;
+  getAccessibleRepositories(options?: Record<string, any>): Promise<any>;
+
+  /**
+   * Gets the authentication method being used
+   * @returns Authentication method type
+   */
+  getAuthType(): 'pat' | 'github_app' | 'unknown';
 }
