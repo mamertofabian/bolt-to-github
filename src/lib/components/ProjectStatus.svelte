@@ -50,9 +50,9 @@
       // Get authentication method to determine how to create the service
       const authSettings = await chrome.storage.local.get(['authenticationMethod']);
       const authMethod = authSettings.authenticationMethod || 'pat';
-      
+
       let githubService: UnifiedGitHubService;
-      
+
       if (authMethod === 'github_app') {
         // Use GitHub App authentication
         githubService = new UnifiedGitHubService({ type: 'github_app' });

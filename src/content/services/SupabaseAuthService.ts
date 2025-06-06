@@ -931,7 +931,9 @@ export class SupabaseAuthService {
             isAuthenticated: premiumStatusData.isAuthenticated,
             isPremium: premiumStatusData.isPremium,
             plan: this.mapPlanToDisplayName(premiumStatusData.plan),
-            expiresAt: premiumStatusData.expiresAt ? new Date(premiumStatusData.expiresAt).getTime() : undefined,
+            expiresAt: premiumStatusData.expiresAt
+              ? new Date(premiumStatusData.expiresAt).getTime()
+              : undefined,
             features: {
               viewFileChanges: premiumStatusData.isPremium,
               pushReminders: premiumStatusData.isPremium,
@@ -1301,22 +1303,22 @@ export class SupabaseAuthService {
   private async checkGitHubAppInstallation(token: string): Promise<void> {
     try {
       console.log('🔍 Checking for GitHub App installation...');
-      
+
       // Call the get-github-token endpoint to see if user has GitHub App connected
       const response = await fetch(`${this.supabaseUrl}/functions/v1/get-github-token`, {
         method: 'GET',
         headers: {
-          'Authorization': `Bearer ${token}`,
+          Authorization: `Bearer ${token}`,
           'Content-Type': 'application/json',
         },
       });
 
       if (response.ok) {
         const data = await response.json();
-        
+
         if (data.type === 'github_app' && data.access_token) {
           console.log('✅ GitHub App installation found, syncing to extension...');
-          
+
           // Store GitHub App data in extension storage
           await chrome.storage.local.set({
             githubAppInstallationId: data.installation_id || Date.now(), // Fallback ID
@@ -1324,7 +1326,7 @@ export class SupabaseAuthService {
             githubAppAccessToken: data.access_token,
             githubAppExpiresAt: data.expires_at,
             githubAppScopes: data.scopes,
-            authenticationMethod: 'github_app'
+            authenticationMethod: 'github_app',
           });
 
           // Trigger settings store sync to auto-populate repoOwner
@@ -1341,8 +1343,8 @@ export class SupabaseAuthService {
           try {
             const userResponse = await fetch('https://api.github.com/user', {
               headers: {
-                'Authorization': `Bearer ${data.access_token}`,
-                'Accept': 'application/vnd.github.v3+json',
+                Authorization: `Bearer ${data.access_token}`,
+                Accept: 'application/vnd.github.v3+json',
               },
             });
 
@@ -1358,7 +1360,7 @@ export class SupabaseAuthService {
           }
 
           console.log('🎉 GitHub App installation synced successfully!');
-          
+
           // Notify content scripts about the new authentication method
           await this.notifyGitHubAppSync();
         }
@@ -1407,7 +1409,7 @@ export class SupabaseAuthService {
   public async syncGitHubApp(): Promise<boolean> {
     try {
       console.log('🔄 Manually triggered GitHub App sync...');
-      
+
       const token = await this.getAuthToken();
       if (!token) {
         console.warn('❌ No authentication token available for GitHub App sync');
@@ -1427,7 +1429,10 @@ export class SupabaseAuthService {
    */
   public async hasGitHubApp(): Promise<boolean> {
     try {
-      const storage = await chrome.storage.local.get(['githubAppInstallationId', 'authenticationMethod']);
+      const storage = await chrome.storage.local.get([
+        'githubAppInstallationId',
+        'authenticationMethod',
+      ]);
       return storage.authenticationMethod === 'github_app' && !!storage.githubAppInstallationId;
     } catch (error) {
       console.warn('Error checking GitHub App status:', error);

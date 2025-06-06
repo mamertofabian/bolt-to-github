@@ -42,7 +42,7 @@ const FORCE_REFRESH_AFTER_ACTION = 2000; // 2 seconds after create/update/close
 async function createGitHubService(token: string): Promise<UnifiedGitHubService> {
   const authSettings = await chrome.storage.local.get(['authenticationMethod']);
   const authMethod = authSettings.authenticationMethod || 'pat';
-  
+
   if (authMethod === 'github_app') {
     return new UnifiedGitHubService({ type: 'github_app' });
   } else {
@@ -114,7 +114,7 @@ function createIssuesStore() {
 
     try {
       const githubService = await createGitHubService(githubToken);
-      const issues = await githubService.getIssues(owner, repo, state, forceRefresh);
+      const issues = await githubService.getIssues(owner, repo, state);
 
       // Update the store
       update((current) => ({
@@ -220,9 +220,18 @@ function createIssuesStore() {
   ): Promise<Issue> {
     const repoKey = getRepoKey(owner, repo);
 
+    const { title, body, state } = updateData;
+
     try {
       const githubService = await createGitHubService(githubToken);
-      const updatedIssue = await githubService.updateIssue(owner, repo, issueNumber, updateData);
+      const updatedIssue = await githubService.updateIssue(
+        owner,
+        repo,
+        issueNumber,
+        title,
+        body,
+        state
+      );
 
       // Immediately update the issue in the store
       update((current) => {

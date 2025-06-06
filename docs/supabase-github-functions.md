@@ -430,7 +430,7 @@ async function withRetry<T>(
       return await operation();
     } catch (error) {
       if (i === maxRetries - 1) throw error;
-      await new Promise(resolve => setTimeout(resolve, delay * Math.pow(2, i)));
+      await new Promise((resolve) => setTimeout(resolve, delay * Math.pow(2, i)));
     }
   }
   throw new Error('Max retries exceeded');

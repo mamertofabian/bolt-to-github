@@ -4,10 +4,10 @@
  */
 
 import type { IAuthenticationStrategy } from './interfaces/IAuthenticationStrategy';
-import type { 
-  AuthenticationType, 
-  TokenValidationResult, 
-  PermissionCheckResult 
+import type {
+  AuthenticationType,
+  TokenValidationResult,
+  PermissionCheckResult,
 } from './types/authentication';
 import { GitHubAppService } from './GitHubAppService';
 
@@ -39,20 +39,24 @@ export class GitHubAppAuthenticationStrategy implements IAuthenticationStrategy 
 
     try {
       const tokenResponse = await this.githubAppService.getAccessToken();
-      
+
       this.cachedToken = tokenResponse.access_token;
       this.tokenExpiresAt = new Date(tokenResponse.expires_at);
-      
+
       return this.cachedToken;
     } catch (error) {
       this.cachedToken = null;
       this.tokenExpiresAt = null;
-      
+
       if (error instanceof Error && error.message.includes('Re-authentication required')) {
-        throw new Error('GitHub App authentication expired. Please re-authenticate via bolt2github.com');
+        throw new Error(
+          'GitHub App authentication expired. Please re-authenticate via bolt2github.com'
+        );
       }
-      
-      throw new Error(`Failed to get GitHub App token: ${error instanceof Error ? error.message : 'Unknown error'}`);
+
+      throw new Error(
+        `Failed to get GitHub App token: ${error instanceof Error ? error.message : 'Unknown error'}`
+      );
     }
   }
 
@@ -99,15 +103,17 @@ export class GitHubAppAuthenticationStrategy implements IAuthenticationStrategy 
       // Clear cached token to force refresh
       this.cachedToken = null;
       this.tokenExpiresAt = null;
-      
+
       const tokenResponse = await this.githubAppService.getAccessToken();
-      
+
       this.cachedToken = tokenResponse.access_token;
       this.tokenExpiresAt = new Date(tokenResponse.expires_at);
-      
+
       return this.cachedToken;
     } catch (error) {
-      throw new Error(`Failed to refresh GitHub App token: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      throw new Error(
+        `Failed to refresh GitHub App token: ${error instanceof Error ? error.message : 'Unknown error'}`
+      );
     }
   }
 
@@ -135,7 +141,7 @@ export class GitHubAppAuthenticationStrategy implements IAuthenticationStrategy 
   } | null> {
     try {
       const config = await this.githubAppService.getConfig();
-      
+
       if (config?.githubUsername && config?.githubUserId && config?.avatarUrl) {
         return {
           login: config.githubUsername,
@@ -148,8 +154,8 @@ export class GitHubAppAuthenticationStrategy implements IAuthenticationStrategy 
       const token = await this.getToken();
       const response = await fetch('https://api.github.com/user', {
         headers: {
-          'Authorization': `Bearer ${token}`,
-          'Accept': 'application/vnd.github.v3+json',
+          Authorization: `Bearer ${token}`,
+          Accept: 'application/vnd.github.v3+json',
         },
       });
 
@@ -158,7 +164,7 @@ export class GitHubAppAuthenticationStrategy implements IAuthenticationStrategy 
       }
 
       const userData = await response.json();
-      
+
       // Update config with user info
       const currentConfig = await this.githubAppService.getConfig();
       if (currentConfig) {
@@ -199,7 +205,7 @@ export class GitHubAppAuthenticationStrategy implements IAuthenticationStrategy 
   }> {
     try {
       const config = await this.githubAppService.getConfig();
-      
+
       if (!config) {
         return {};
       }
@@ -231,7 +237,7 @@ export class GitHubAppAuthenticationStrategy implements IAuthenticationStrategy 
   async completeOAuth(code: string, state?: string): Promise<void> {
     try {
       const result = await this.githubAppService.completeOAuthFlow(code, state);
-      
+
       if (result.success) {
         // Store the installation data
         await this.githubAppService.storeConfig({
@@ -248,7 +254,9 @@ export class GitHubAppAuthenticationStrategy implements IAuthenticationStrategy 
         throw new Error('OAuth flow was not successful');
       }
     } catch (error) {
-      throw new Error(`Failed to complete OAuth flow: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      throw new Error(
+        `Failed to complete OAuth flow: ${error instanceof Error ? error.message : 'Unknown error'}`
+      );
     }
   }
 

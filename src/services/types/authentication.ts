@@ -53,7 +53,13 @@ export interface GitHubAppTokenResponse {
 
 export interface GitHubAppErrorResponse {
   error: string;
-  code: 'NO_GITHUB_APP' | 'NO_ACCESS_TOKEN' | 'TOKEN_EXPIRED_NO_REFRESH' | 'TOKEN_RENEWAL_FAILED' | 'NO_INSTALLATION' | 'INSTALLATION_TOKEN_ERROR';
+  code:
+    | 'NO_GITHUB_APP'
+    | 'NO_ACCESS_TOKEN'
+    | 'TOKEN_EXPIRED_NO_REFRESH'
+    | 'TOKEN_RENEWAL_FAILED'
+    | 'NO_INSTALLATION'
+    | 'INSTALLATION_TOKEN_ERROR';
   requires_auth?: boolean;
   has_installation?: boolean;
   expired_at?: string;
@@ -102,7 +108,7 @@ export interface AuthenticationStorage {
   // PAT Storage (existing)
   githubToken?: string;
   repoOwner?: string;
-  
+
   // GitHub App Storage (new)
   githubAppInstallationId?: number;
   githubAppAccessToken?: string;
@@ -113,10 +119,10 @@ export interface AuthenticationStorage {
   githubAppUserId?: number;
   githubAppAvatarUrl?: string;
   githubAppScopes?: string[];
-  
+
   // Authentication Method Selection
   authenticationMethod?: AuthenticationType;
-  
+
   // Migration Status
   migrationPromptShown?: boolean;
   lastMigrationPrompt?: string;

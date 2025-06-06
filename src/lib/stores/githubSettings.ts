@@ -42,17 +42,15 @@ const initialState: GitHubSettingsState = {
 export const githubSettingsStore: Writable<GitHubSettingsState> = writable(initialState);
 
 // Derived store for settings validity
-export const isSettingsValid = derived(
-  githubSettingsStore,
-  ($settings) => {
-    const hasRepoInfo = Boolean($settings.repoOwner && $settings.repoName && $settings.branch);
-    const hasValidAuth = $settings.authenticationMethod === 'github_app' 
+export const isSettingsValid = derived(githubSettingsStore, ($settings) => {
+  const hasRepoInfo = Boolean($settings.repoOwner && $settings.repoName && $settings.branch);
+  const hasValidAuth =
+    $settings.authenticationMethod === 'github_app'
       ? Boolean($settings.githubAppInstallationId)
       : Boolean($settings.githubToken && $settings.isTokenValid === true);
-    
-    return hasRepoInfo && hasValidAuth && !$settings.isValidatingToken;
-  }
-);
+
+  return hasRepoInfo && hasValidAuth && !$settings.isValidatingToken;
+});
 
 // Store actions
 export const githubSettingsActions = {
@@ -242,11 +240,11 @@ export const githubSettingsActions = {
 
     try {
       let githubService: UnifiedGitHubService;
-      
+
       if (currentState!.authenticationMethod === 'github_app') {
         // Use GitHub App authentication
         githubService = new UnifiedGitHubService({
-          type: 'github_app'
+          type: 'github_app',
         });
       } else {
         // Use PAT authentication (backward compatible)
@@ -292,10 +290,7 @@ export const githubSettingsActions = {
       let isValid = false;
       if (currentState!.authenticationMethod === 'github_app') {
         // For GitHub App, just check if we have required data
-        isValid = Boolean(
-          currentState!.githubAppInstallationId && 
-          currentState!.repoOwner
-        );
+        isValid = Boolean(currentState!.githubAppInstallationId && currentState!.repoOwner);
         if (!isValid) {
           return {
             success: false,
@@ -401,7 +396,7 @@ export const githubSettingsActions = {
           localSettings.githubAppUsername,
           localSettings.githubAppAvatarUrl
         );
-        
+
         // Re-initialize settings to auto-populate repoOwner
         await this.initialize();
       }

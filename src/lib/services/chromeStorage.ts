@@ -79,19 +79,19 @@ export class ChromeStorageService {
 
       // Save local data (device-specific)
       const localDataToSave: Record<string, any> = {};
-      
+
       if (settings.authenticationMethod !== undefined) {
         localDataToSave[STORAGE_KEYS.AUTHENTICATION_METHOD] = settings.authenticationMethod;
       }
-      
+
       if (settings.githubAppInstallationId !== undefined) {
         localDataToSave[STORAGE_KEYS.GITHUB_APP_INSTALLATION_ID] = settings.githubAppInstallationId;
       }
-      
+
       if (settings.githubAppUsername !== undefined) {
         localDataToSave[STORAGE_KEYS.GITHUB_APP_USERNAME] = settings.githubAppUsername;
       }
-      
+
       if (settings.githubAppAvatarUrl !== undefined) {
         localDataToSave[STORAGE_KEYS.GITHUB_APP_AVATAR_URL] = settings.githubAppAvatarUrl;
       }
@@ -99,7 +99,9 @@ export class ChromeStorageService {
       // Save to both storages
       await Promise.all([
         chrome.storage.sync.set(syncDataToSave),
-        Object.keys(localDataToSave).length > 0 ? chrome.storage.local.set(localDataToSave) : Promise.resolve(),
+        Object.keys(localDataToSave).length > 0
+          ? chrome.storage.local.set(localDataToSave)
+          : Promise.resolve(),
       ]);
     } catch (error) {
       console.error('Error saving GitHub settings to storage:', error);

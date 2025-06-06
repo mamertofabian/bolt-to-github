@@ -3,10 +3,10 @@
  * Implements strategy pattern for PAT and GitHub App authentication
  */
 
-import type { 
-  TokenValidationResult, 
+import type {
+  TokenValidationResult,
   PermissionCheckResult,
-  AuthenticationType 
+  AuthenticationType,
 } from '../types/authentication';
 
 export interface IAuthenticationStrategy {

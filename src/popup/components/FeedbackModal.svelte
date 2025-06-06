@@ -131,7 +131,7 @@
       // Submit feedback using GitHub Issues API with authentication method detection
       const authSettings = await chrome.storage.local.get(['authenticationMethod']);
       const authMethod = authSettings.authenticationMethod || 'pat';
-      
+
       let githubService: UnifiedGitHubService;
       if (authMethod === 'github_app') {
         githubService = new UnifiedGitHubService({ type: 'github_app' });

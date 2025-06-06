@@ -3,13 +3,13 @@
  * Communicates with Supabase Edge Functions for OAuth flow and token management
  */
 
-import type { 
-  GitHubAppConfig, 
-  GitHubAppInstallation, 
-  GitHubAppTokenResponse, 
+import type {
+  GitHubAppConfig,
+  GitHubAppInstallation,
+  GitHubAppTokenResponse,
   GitHubAppErrorResponse,
   TokenValidationResult,
-  PermissionCheckResult
+  PermissionCheckResult,
 } from './types/authentication';
 import { SUPABASE_CONFIG } from '../lib/constants/supabase';
 
@@ -41,7 +41,7 @@ export class GitHubAppService {
       const authKey = `sb-${SUPABASE_CONFIG.URL.split('//')[1].split('.')[0]}-auth-token`;
       const result = await chrome.storage.local.get(authKey);
       const authData = result[authKey];
-      
+
       if (authData?.access_token) {
         this.userToken = authData.access_token;
         return this.userToken;
@@ -56,7 +56,10 @@ export class GitHubAppService {
   /**
    * Complete GitHub App OAuth flow
    */
-  async completeOAuthFlow(code: string, state?: string): Promise<{
+  async completeOAuthFlow(
+    code: string,
+    state?: string
+  ): Promise<{
     success: boolean;
     github_username: string;
     avatar_url: string;
@@ -65,11 +68,11 @@ export class GitHubAppService {
     installation_found: boolean;
   }> {
     const userToken = await this.getUserToken();
-    
+
     const response = await fetch(`${this.supabaseUrl}/functions/v1/github-app-auth`, {
       method: 'POST',
       headers: {
-        'Authorization': `Bearer ${userToken}`,
+        Authorization: `Bearer ${userToken}`,
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({ code, state }),
@@ -89,11 +92,11 @@ export class GitHubAppService {
    */
   async getAccessToken(): Promise<GitHubAppTokenResponse> {
     const userToken = await this.getUserToken();
-    
+
     const response = await fetch(`${this.supabaseUrl}/functions/v1/get-github-token`, {
       method: 'GET',
       headers: {
-        'Authorization': `Bearer ${userToken}`,
+        Authorization: `Bearer ${userToken}`,
         'Content-Type': 'application/json',
       },
     });
@@ -102,7 +105,7 @@ export class GitHubAppService {
 
     if (!response.ok) {
       const errorData = data as GitHubAppErrorResponse;
-      
+
       // Handle specific error codes
       switch (errorData.code) {
         case 'NO_GITHUB_APP':
@@ -132,11 +135,11 @@ export class GitHubAppService {
     repositories: 'all' | object[];
   }> {
     const userToken = await this.getUserToken();
-    
+
     const response = await fetch(`${this.supabaseUrl}/functions/v1/get-installation-token`, {
       method: 'GET',
       headers: {
-        'Authorization': `Bearer ${userToken}`,
+        Authorization: `Bearer ${userToken}`,
         'Content-Type': 'application/json',
       },
     });
@@ -157,12 +160,12 @@ export class GitHubAppService {
   async validateAuth(): Promise<TokenValidationResult> {
     try {
       const tokenResponse = await this.getAccessToken();
-      
+
       // Test the token by making a user request
       const userResponse = await fetch('https://api.github.com/user', {
         headers: {
-          'Authorization': `Bearer ${tokenResponse.access_token}`,
-          'Accept': 'application/vnd.github.v3+json',
+          Authorization: `Bearer ${tokenResponse.access_token}`,
+          Accept: 'application/vnd.github.v3+json',
         },
       });
 
@@ -174,7 +177,7 @@ export class GitHubAppService {
       }
 
       const userData = await userResponse.json();
-      
+
       return {
         isValid: true,
         userInfo: {
@@ -199,11 +202,11 @@ export class GitHubAppService {
   async checkPermissions(repoOwner: string): Promise<PermissionCheckResult> {
     try {
       const installationToken = await this.getInstallationToken();
-      
+
       // GitHub Apps have predefined permissions based on installation
       // We can check the permissions object returned from the installation token
       const permissions = installationToken.permissions as Record<string, string>;
-      
+
       return {
         isValid: true,
         permissions: {
@@ -320,7 +323,7 @@ export class GitHubAppService {
    */
   async needsRenewal(): Promise<boolean> {
     const config = await this.getConfig();
-    
+
     if (!config?.expiresAt) {
       return true;
     }
@@ -330,7 +333,7 @@ export class GitHubAppService {
     const fiveMinutes = 5 * 60 * 1000;
 
     // Renew if token expires within 5 minutes
-    return (expirationTime - now) < fiveMinutes;
+    return expirationTime - now < fiveMinutes;
   }
 
   /**

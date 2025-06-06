@@ -164,14 +164,14 @@ export class BackgroundService {
     try {
       const settings = await this.stateManager.getGitHubSettings();
       const localSettings = await chrome.storage.local.get(['authenticationMethod']);
-      
+
       const authMethod = localSettings.authenticationMethod || 'pat';
-      
+
       if (authMethod === 'github_app') {
         // Initialize with GitHub App authentication
         console.log('✅ GitHub App authentication detected, initializing GitHub App service');
         this.githubService = new UnifiedGitHubService({
-          type: 'github_app'
+          type: 'github_app',
         });
       } else if (
         settings &&

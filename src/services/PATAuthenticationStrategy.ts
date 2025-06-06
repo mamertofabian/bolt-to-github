@@ -4,10 +4,10 @@
  */
 
 import type { IAuthenticationStrategy } from './interfaces/IAuthenticationStrategy';
-import type { 
-  AuthenticationType, 
-  TokenValidationResult, 
-  PermissionCheckResult 
+import type {
+  AuthenticationType,
+  TokenValidationResult,
+  PermissionCheckResult,
 } from './types/authentication';
 import { GitHubService } from './GitHubService';
 
@@ -77,7 +77,7 @@ export class PATAuthenticationStrategy implements IAuthenticationStrategy {
       const repoOwner = storage.repoOwner || '';
 
       const result = await this.githubService!.validateTokenAndUser(repoOwner);
-      
+
       if (!result.isValid) {
         return {
           isValid: false,
@@ -114,7 +114,7 @@ export class PATAuthenticationStrategy implements IAuthenticationStrategy {
       }
 
       const result = await this.githubService!.verifyTokenPermissions(repoOwner);
-      
+
       return {
         isValid: result.isValid,
         error: result.error,
@@ -141,7 +141,9 @@ export class PATAuthenticationStrategy implements IAuthenticationStrategy {
    * PAT tokens don't auto-refresh, so this throws
    */
   async refreshToken(): Promise<string> {
-    throw new Error('Personal Access Tokens cannot be automatically refreshed. Please generate a new token.');
+    throw new Error(
+      'Personal Access Tokens cannot be automatically refreshed. Please generate a new token.'
+    );
   }
 
   /**
@@ -174,8 +176,8 @@ export class PATAuthenticationStrategy implements IAuthenticationStrategy {
       const token = await this.getToken();
       const response = await fetch('https://api.github.com/user', {
         headers: {
-          'Authorization': `Bearer ${token}`,
-          'Accept': 'application/vnd.github.v3+json',
+          Authorization: `Bearer ${token}`,
+          Accept: 'application/vnd.github.v3+json',
         },
       });
 
@@ -217,12 +219,12 @@ export class PATAuthenticationStrategy implements IAuthenticationStrategy {
       }
 
       const token = await this.getToken();
-      
+
       // Get token scopes from GitHub API
       const response = await fetch('https://api.github.com/user', {
         headers: {
-          'Authorization': `Bearer ${token}`,
-          'Accept': 'application/vnd.github.v3+json',
+          Authorization: `Bearer ${token}`,
+          Accept: 'application/vnd.github.v3+json',
         },
       });
 
@@ -230,7 +232,7 @@ export class PATAuthenticationStrategy implements IAuthenticationStrategy {
       if (response.ok) {
         const scopeHeader = response.headers.get('x-oauth-scopes');
         if (scopeHeader) {
-          scopes.push(...scopeHeader.split(',').map(s => s.trim()));
+          scopes.push(...scopeHeader.split(',').map((s) => s.trim()));
         }
       }
 

@@ -4,9 +4,17 @@
 -->
 <script lang="ts">
   import { Button } from '$lib/components/ui/button';
-  import { ChevronDown, ChevronUp, ExternalLink, Check, Shield, RefreshCw, Settings } from 'lucide-svelte';
+  import {
+    ChevronDown,
+    ChevronUp,
+    ExternalLink,
+    Check,
+    Shield,
+    RefreshCw,
+    Settings,
+  } from 'lucide-svelte';
   import { ChromeStorageService } from '$lib/services/chromeStorage';
-  
+
   export let onConnect: (() => void) | null = null;
   export let showByDefault: boolean = false;
 
@@ -19,7 +27,7 @@
 
   async function handleConnect() {
     isConnecting = true;
-    
+
     try {
       if (onConnect) {
         onConnect();
@@ -45,9 +53,7 @@
       <Shield class="w-5 h-5 text-blue-400" />
       <div>
         <h3 class="text-lg font-semibold text-slate-200">GitHub App Connection Guide</h3>
-        <p class="text-sm text-slate-400">
-          Secure authentication with automatic token refresh
-        </p>
+        <p class="text-sm text-slate-400">Secure authentication with automatic token refresh</p>
       </div>
     </div>
     <div class="flex items-center gap-2">
@@ -74,7 +80,7 @@
             </p>
           </div>
         </div>
-        
+
         <div class="flex items-start gap-3 p-3 bg-blue-900/20 border border-blue-700 rounded-md">
           <RefreshCw class="w-5 h-5 text-blue-400 mt-0.5" />
           <div>
@@ -84,8 +90,10 @@
             </p>
           </div>
         </div>
-        
-        <div class="flex items-start gap-3 p-3 bg-purple-900/20 border border-purple-700 rounded-md">
+
+        <div
+          class="flex items-start gap-3 p-3 bg-purple-900/20 border border-purple-700 rounded-md"
+        >
           <Settings class="w-5 h-5 text-purple-400 mt-0.5" />
           <div>
             <h4 class="text-purple-200 font-medium text-sm">Easy Setup</h4>
@@ -99,10 +107,12 @@
       <!-- Step-by-step Guide -->
       <div class="space-y-4">
         <h4 class="text-slate-200 font-medium">How to Connect:</h4>
-        
+
         <div class="space-y-3">
           <div class="flex items-start gap-3">
-            <div class="w-6 h-6 bg-blue-600 text-white text-xs font-bold rounded-full flex items-center justify-center mt-0.5">
+            <div
+              class="w-6 h-6 bg-blue-600 text-white text-xs font-bold rounded-full flex items-center justify-center mt-0.5"
+            >
               1
             </div>
             <div>
@@ -112,9 +122,11 @@
               </p>
             </div>
           </div>
-          
+
           <div class="flex items-start gap-3">
-            <div class="w-6 h-6 bg-blue-600 text-white text-xs font-bold rounded-full flex items-center justify-center mt-0.5">
+            <div
+              class="w-6 h-6 bg-blue-600 text-white text-xs font-bold rounded-full flex items-center justify-center mt-0.5"
+            >
               2
             </div>
             <div>
@@ -124,9 +136,11 @@
               </p>
             </div>
           </div>
-          
+
           <div class="flex items-start gap-3">
-            <div class="w-6 h-6 bg-blue-600 text-white text-xs font-bold rounded-full flex items-center justify-center mt-0.5">
+            <div
+              class="w-6 h-6 bg-blue-600 text-white text-xs font-bold rounded-full flex items-center justify-center mt-0.5"
+            >
               3
             </div>
             <div>
@@ -148,7 +162,7 @@
               This will redirect you to bolt2github.com for secure authentication
             </p>
           </div>
-          
+
           <Button
             class="bg-blue-600 hover:bg-blue-700 text-white"
             on:click={handleConnect}
@@ -174,15 +188,24 @@
           <div class="mt-3 space-y-3 text-xs text-slate-400">
             <div>
               <p class="font-medium text-slate-300">What permissions does the GitHub App need?</p>
-              <p>The app requests minimal permissions: repository contents (read/write) and metadata (read) for the repositories you choose to install it on.</p>
+              <p>
+                The app requests minimal permissions: repository contents (read/write) and metadata
+                (read) for the repositories you choose to install it on.
+              </p>
             </div>
             <div>
               <p class="font-medium text-slate-300">Can I still use my Personal Access Token?</p>
-              <p>Yes! You can switch between GitHub App and Personal Access Token authentication anytime in the settings.</p>
+              <p>
+                Yes! You can switch between GitHub App and Personal Access Token authentication
+                anytime in the settings.
+              </p>
             </div>
             <div>
               <p class="font-medium text-slate-300">Is my data secure?</p>
-              <p>Absolutely. The GitHub App uses OAuth 2.0 for secure authentication, and tokens are encrypted and stored securely.</p>
+              <p>
+                Absolutely. The GitHub App uses OAuth 2.0 for secure authentication, and tokens are
+                encrypted and stored securely.
+              </p>
             </div>
           </div>
         </details>

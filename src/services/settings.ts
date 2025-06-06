@@ -15,17 +15,18 @@ export class SettingsService {
       ]);
 
       let projectSettings = settings.projectSettings?.[projectId.projectId];
-      
+
       // Get authentication method
       const authMethod = localSettings.authenticationMethod || 'pat';
 
       // Auto-create project settings if needed
       if (!projectSettings && projectId?.projectId && settings.repoOwner) {
         // For GitHub App, we don't need githubToken
-        const hasRequiredAuth = authMethod === 'github_app' 
-          ? localSettings.githubAppInstallationId 
-          : settings.githubToken;
-        
+        const hasRequiredAuth =
+          authMethod === 'github_app'
+            ? localSettings.githubAppInstallationId
+            : settings.githubToken;
+
         if (hasRequiredAuth) {
           projectSettings = { repoName: projectId.projectId, branch: 'main' };
           await chrome.storage.sync.set({
@@ -39,18 +40,15 @@ export class SettingsService {
       if (authMethod === 'github_app') {
         // For GitHub App: need installation ID, repoOwner, and project settings
         isSettingsValid = Boolean(
-          localSettings.githubAppInstallationId && 
-          settings.repoOwner && 
-          settings.projectSettings && 
-          projectSettings
+          localSettings.githubAppInstallationId &&
+            settings.repoOwner &&
+            settings.projectSettings &&
+            projectSettings
         );
       } else {
         // For PAT: need token, repoOwner, and project settings (original logic)
         isSettingsValid = Boolean(
-          settings.githubToken && 
-          settings.repoOwner && 
-          settings.projectSettings && 
-          projectSettings
+          settings.githubToken && settings.repoOwner && settings.projectSettings && projectSettings
         );
       }
 

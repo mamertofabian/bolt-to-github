@@ -16,9 +16,9 @@ export async function syncGitHubAppFromWebApp(): Promise<{
 }> {
   try {
     console.log('🔄 Starting manual GitHub App sync...');
-    
+
     const authService = SupabaseAuthService.getInstance();
-    
+
     // Check current authentication state
     const authState = authService.getAuthState();
     if (!authState.isAuthenticated) {
@@ -31,7 +31,7 @@ export async function syncGitHubAppFromWebApp(): Promise<{
 
     // Trigger the sync
     const syncResult = await authService.syncGitHubApp();
-    
+
     if (!syncResult) {
       return {
         success: false,
@@ -42,7 +42,7 @@ export async function syncGitHubAppFromWebApp(): Promise<{
 
     // Check if GitHub App is now configured
     const hasGitHubApp = await authService.hasGitHubApp();
-    
+
     if (hasGitHubApp) {
       return {
         success: true,
@@ -53,7 +53,8 @@ export async function syncGitHubAppFromWebApp(): Promise<{
       return {
         success: true,
         hasGitHubApp: false,
-        message: 'No GitHub App installation found. Please connect GitHub App on bolt2github.com first.',
+        message:
+          'No GitHub App installation found. Please connect GitHub App on bolt2github.com first.',
       };
     }
   } catch (error) {
@@ -78,9 +79,9 @@ export async function checkGitHubAppStatus(): Promise<{
   try {
     const storage = await ChromeStorageService.getGitHubAppConfig();
     const authMethod = await ChromeStorageService.getAuthenticationMethod();
-    
+
     const isConfigured = authMethod === 'github_app' && !!storage.installationId;
-    
+
     return {
       isConfigured,
       username: storage.username,
@@ -102,11 +103,11 @@ export async function switchToGitHubApp(): Promise<{
 }> {
   try {
     const status = await checkGitHubAppStatus();
-    
+
     if (!status.isConfigured) {
       // Try to sync first
       const syncResult = await syncGitHubAppFromWebApp();
-      
+
       if (!syncResult.hasGitHubApp) {
         return {
           success: false,
@@ -117,7 +118,7 @@ export async function switchToGitHubApp(): Promise<{
 
     // Set authentication method to GitHub App
     await ChromeStorageService.setAuthenticationMethod('github_app');
-    
+
     return {
       success: true,
       message: 'Switched to GitHub App authentication successfully!',
@@ -140,7 +141,7 @@ export async function refreshGitHubAppToken(): Promise<{
 }> {
   try {
     const authService = SupabaseAuthService.getInstance();
-    
+
     // Clear current token to force refresh
     await ChromeStorageService.saveGitHubAppConfig({
       accessToken: undefined,
@@ -148,7 +149,7 @@ export async function refreshGitHubAppToken(): Promise<{
 
     // Trigger sync to get fresh token
     const syncResult = await authService.syncGitHubApp();
-    
+
     if (syncResult) {
       return {
         success: true,
@@ -184,15 +185,15 @@ export async function getGitHubAppInfo(): Promise<{
   try {
     const authMethod = await ChromeStorageService.getAuthenticationMethod();
     const storage = await ChromeStorageService.getGitHubAppConfig();
-    
+
     const isConfigured = authMethod === 'github_app' && !!storage.installationId;
-    
+
     let needsRefresh = false;
     if (storage.expiresAt) {
       const expirationTime = new Date(storage.expiresAt).getTime();
       const now = Date.now();
       const fiveMinutes = 5 * 60 * 1000;
-      needsRefresh = (expirationTime - now) < fiveMinutes;
+      needsRefresh = expirationTime - now < fiveMinutes;
     }
 
     return {
