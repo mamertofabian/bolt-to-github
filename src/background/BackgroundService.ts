@@ -280,6 +280,10 @@ export class BackgroundService {
         });
         chrome.action.openPopup();
         sendResponse({ success: true });
+      } else if (message.type === 'NOTIFY_GITHUB_APP_SYNC') {
+        console.log('📢 Received NOTIFY_GITHUB_APP_SYNC message:', message.data);
+        await this.handleGitHubAppSyncNotification(message.data);
+        sendResponse({ success: true });
       }
 
       // Return true to indicate we'll send a response asynchronously
@@ -793,6 +797,30 @@ export class BackgroundService {
       console.log('✅ Push to GitHub message sent to content script');
     } catch (error) {
       console.error('Error handling Push to GitHub action:', error);
+    }
+  }
+
+  private async handleGitHubAppSyncNotification(data: any): Promise<void> {
+    try {
+      console.log('📢 Handling GitHub App sync notification to all bolt.new tabs');
+
+      // Send message to all bolt.new tabs about GitHub App sync
+      const tabs = await chrome.tabs.query({ url: 'https://bolt.new/*' });
+      for (const tab of tabs) {
+        if (tab.id) {
+          chrome.tabs
+            .sendMessage(tab.id, {
+              type: 'GITHUB_APP_SYNCED',
+              data,
+            })
+            .catch(() => {
+              // Tab might not have content script injected
+            });
+        }
+      }
+      console.log('📢 Sent GitHub App sync notifications to all bolt.new tabs');
+    } catch (error) {
+      console.warn('Failed to send GitHub App sync notification:', error);
     }
   }
 

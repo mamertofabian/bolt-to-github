@@ -1379,24 +1379,20 @@ export class SupabaseAuthService {
    */
   private async notifyGitHubAppSync(): Promise<void> {
     try {
-      // Send message to all bolt.new tabs about GitHub App sync
-      const tabs = await chrome.tabs.query({ url: 'https://bolt.new/*' });
-      for (const tab of tabs) {
-        if (tab.id) {
-          chrome.tabs
-            .sendMessage(tab.id, {
-              type: 'GITHUB_APP_SYNCED',
-              data: {
-                message: '🔗 GitHub App authentication synced successfully!',
-                authMethod: 'github_app',
-              },
-            })
-            .catch(() => {
-              // Tab might not have content script injected
-            });
-        }
-      }
-      console.log('📢 Sent GitHub App sync notifications');
+      // Send message to background script to handle tab messaging
+      // Content scripts don't have access to chrome.tabs API
+      chrome.runtime
+        .sendMessage({
+          type: 'NOTIFY_GITHUB_APP_SYNC',
+          data: {
+            message: '🔗 GitHub App authentication synced successfully!',
+            authMethod: 'github_app',
+          },
+        })
+        .catch(() => {
+          // Background script might not be ready
+        });
+      console.log('📢 Sent GitHub App sync notification request to background');
     } catch (error) {
       console.warn('Failed to send GitHub App sync notification:', error);
     }
