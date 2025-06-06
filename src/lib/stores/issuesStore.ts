@@ -114,9 +114,10 @@ function createIssuesStore() {
 
     try {
       const githubService = await createGitHubService(githubToken);
-      const issues = await githubService.getIssues(owner, repo, state);
+      // Always fetch ALL issues to avoid cache inconsistencies
+      const issues = await githubService.getIssues(owner, repo, 'all');
 
-      // Update the store
+      // Update the store with all issues
       update((current) => ({
         ...current,
         [repoKey]: {
@@ -128,7 +129,8 @@ function createIssuesStore() {
       }));
 
       setLoadingForRepo(repoKey, state, false);
-      return issues;
+      // Return filtered issues based on requested state
+      return filterIssuesByState(issues, state);
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : 'Failed to load issues';
 
