@@ -269,6 +269,13 @@
     try {
       loadingRepos = true;
 
+      // Check if GitHub service is available
+      if (!githubService) {
+        console.log('GitHub service not yet initialized, skipping repo fetch');
+        loadingRepos = false;
+        return;
+      }
+
       // Try to load from cache first unless force refresh is requested
       if (!forceRefresh) {
         const cachedSuccessfully = await loadReposFromCache();
@@ -302,6 +309,12 @@
   // Function to refresh project data
   async function refreshProjectData(forceRefresh = false) {
     console.log('Refreshing project data in ProjectsList', forceRefresh ? '(force refresh)' : '');
+
+    // Check if GitHub service is available
+    if (!githubService) {
+      console.log('GitHub service not yet initialized, skipping commit count fetch');
+      return;
+    }
 
     // Try to load from cache first unless force refresh is requested
     if (!forceRefresh) {
@@ -366,11 +379,30 @@
       const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
       currentTabIsBolt = tab?.url?.includes('bolt.new') ?? false;
 
-      // Load all repos (will try cache first)
-      await loadAllRepos();
+      // Wait for GitHub service to be initialized
+      const waitForGitHubService = async () => {
+        const maxWaitTime = 5000; // 5 seconds
+        const startTime = Date.now();
 
-      // Initial load of commit counts
-      await refreshProjectData();
+        while (!githubService && Date.now() - startTime < maxWaitTime) {
+          await new Promise((resolve) => setTimeout(resolve, 100));
+        }
+
+        if (!githubService) {
+          console.warn('GitHub service not initialized within timeout period');
+          return false;
+        }
+        return true;
+      };
+
+      const serviceReady = await waitForGitHubService();
+      if (serviceReady) {
+        // Load all repos (will try cache first)
+        await loadAllRepos();
+
+        // Initial load of commit counts
+        await refreshProjectData();
+      }
     };
 
     // Start initialization
@@ -381,7 +413,7 @@
   let previousProjectSettings: typeof projectSettings = {};
 
   // Watch for changes in projectSettings from the store and refresh data
-  $: if (projectSettings && Object.keys(projectSettings).length > 0) {
+  $: if (projectSettings && Object.keys(projectSettings).length > 0 && githubService) {
     // Check if this is a new project or branch change
     const currentKeys = Object.keys(projectSettings);
     const previousKeys = Object.keys(previousProjectSettings);
