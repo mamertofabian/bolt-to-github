@@ -83,11 +83,11 @@
   let isExpanded = true; // Initially expanded
 
   // Collapsible state - collapsed by default if settings are populated
-  $: hasRequiredSettings = (
-    (authenticationMethod === 'pat' && githubToken && repoOwner) ||
-    (authenticationMethod === 'github_app' && githubAppInstallationId && repoOwner)
-  ) && (isOnboarding || (repoName && branch));
-  
+  $: hasRequiredSettings =
+    ((authenticationMethod === 'pat' && githubToken && repoOwner) ||
+      (authenticationMethod === 'github_app' && githubAppInstallationId && repoOwner)) &&
+    (isOnboarding || (repoName && branch));
+
   $: {
     // Only auto-collapse if not manually toggled by user
     if (!manuallyToggled) {
@@ -98,17 +98,17 @@
   // Handle authentication method changes
   function handleAuthMethodChange(method: 'pat' | 'github_app') {
     authenticationMethod = method;
-    
+
     // Clear validation state when switching methods
     isTokenValid = null;
     validationError = null;
     githubAppValidationResult = null;
     githubAppConnectionError = null;
-    
+
     if (onAuthMethodChange) {
       onAuthMethodChange(method);
     }
-    
+
     onInput();
   }
 
@@ -139,7 +139,7 @@
     try {
       const authSettings = await chrome.storage.local.get(['authenticationMethod']);
       const authMethod = authSettings.authenticationMethod || 'pat';
-      
+
       if (authMethod === 'github_app') {
         return new UnifiedGitHubService({ type: 'github_app' });
       } else {
@@ -457,13 +457,13 @@
       // Redirect to bolt2github.com for OAuth flow
       const authUrl = 'https://bolt2github.com/auth/github';
       window.open(authUrl, '_blank');
-      
+
       // Show success message
       githubAppConnectionError = null;
-      
     } catch (error) {
       console.error('Error connecting GitHub App:', error);
-      githubAppConnectionError = error instanceof Error ? error.message : 'Failed to connect GitHub App';
+      githubAppConnectionError =
+        error instanceof Error ? error.message : 'Failed to connect GitHub App';
     } finally {
       isConnectingGitHubApp = false;
     }
@@ -554,20 +554,23 @@
               {:else}
                 <div class="w-4 h-4 rounded-full bg-slate-600"></div>
               {/if}
+            {:else if isTokenValid === true}
+              <Check class="w-4 h-4 text-green-500" />
+            {:else if isTokenValid === false}
+              <X class="w-4 h-4 text-red-500" />
             {:else}
-              {#if isTokenValid === true}
-                <Check class="w-4 h-4 text-green-500" />
-              {:else if isTokenValid === false}
-                <X class="w-4 h-4 text-red-500" />
-              {:else}
-                <div class="w-4 h-4 rounded-full bg-slate-600"></div>
-              {/if}
+              <div class="w-4 h-4 rounded-full bg-slate-600"></div>
             {/if}
             <span class="text-xs text-slate-400">
-              {authenticationMethod === 'github_app' 
-                ? (githubAppInstallationId ? 'Connected' : 'Not Connected')
-                : (isTokenValid === true ? 'Connected' : isTokenValid === false ? 'Error' : 'Unknown')
-              }
+              {authenticationMethod === 'github_app'
+                ? githubAppInstallationId
+                  ? 'Connected'
+                  : 'Not Connected'
+                : isTokenValid === true
+                  ? 'Connected'
+                  : isTokenValid === false
+                    ? 'Error'
+                    : 'Unknown'}
             </span>
           </div>
         {/if}
@@ -600,14 +603,16 @@
                 <div class="flex-1">
                   <div class="flex items-center gap-2">
                     <span class="text-slate-200 font-medium">GitHub App</span>
-                    <span class="px-2 py-1 text-xs bg-green-900 text-green-200 rounded">Recommended</span>
+                    <span class="px-2 py-1 text-xs bg-green-900 text-green-200 rounded"
+                      >Recommended</span
+                    >
                   </div>
                   <p class="text-sm text-slate-400 mt-1">
                     Secure authentication with automatic token refresh and fine-grained permissions
                   </p>
                 </div>
               </label>
-              
+
               <label class="flex items-center space-x-3 cursor-pointer">
                 <input
                   type="radio"
@@ -620,7 +625,9 @@
                 <div class="flex-1">
                   <div class="flex items-center gap-2">
                     <span class="text-slate-200 font-medium">Personal Access Token</span>
-                    <span class="px-2 py-1 text-xs bg-slate-700 text-slate-400 rounded">Advanced</span>
+                    <span class="px-2 py-1 text-xs bg-slate-700 text-slate-400 rounded"
+                      >Advanced</span
+                    >
                   </div>
                   <p class="text-sm text-slate-400 mt-1">
                     Manual token management for users who prefer direct GitHub API access
@@ -643,12 +650,18 @@
                 <div class="space-y-3">
                   {#if githubAppInstallationId}
                     <!-- Connected State -->
-                    <div class="flex items-center gap-3 p-3 bg-green-900/20 border border-green-700 rounded-md">
+                    <div
+                      class="flex items-center gap-3 p-3 bg-green-900/20 border border-green-700 rounded-md"
+                    >
                       <Check class="w-5 h-5 text-green-500" />
                       <div class="flex-1">
                         <div class="flex items-center gap-2">
                           {#if githubAppAvatarUrl}
-                            <img src={githubAppAvatarUrl} alt="Profile" class="w-6 h-6 rounded-full" />
+                            <img
+                              src={githubAppAvatarUrl}
+                              alt="Profile"
+                              class="w-6 h-6 rounded-full"
+                            />
                           {/if}
                           <span class="text-green-200 font-medium">
                             Connected as {githubAppUsername || 'GitHub User'}
@@ -674,7 +687,8 @@
                       <div class="p-3 bg-blue-900/20 border border-blue-700 rounded-md">
                         <h4 class="text-blue-200 font-medium mb-2">Connect with GitHub App</h4>
                         <p class="text-sm text-blue-300 mb-3">
-                          GitHub App provides secure authentication with automatic token refresh and fine-grained permissions.
+                          GitHub App provides secure authentication with automatic token refresh and
+                          fine-grained permissions.
                         </p>
                         <Button
                           type="button"
@@ -690,7 +704,7 @@
                           {/if}
                         </Button>
                       </div>
-                      
+
                       {#if githubAppConnectionError}
                         <div class="p-3 bg-red-900/20 border border-red-700 rounded-md">
                           <div class="flex items-start gap-2">
@@ -705,137 +719,141 @@
                     </div>
                   {/if}
                 </div>
-              
-              <!-- Personal Access Token Authentication -->
+
+                <!-- Personal Access Token Authentication -->
               {:else}
                 <div class="space-y-2">
                   <Label for="githubToken" class="text-slate-200">
                     GitHub Token
                     <span class="text-sm text-slate-400 ml-2">(Required for uploading)</span>
                   </Label>
-                <div class="relative">
-                  <Input
-                    type="password"
-                    id="githubToken"
-                    bind:value={githubToken}
-                    on:input={handleTokenInput}
-                    placeholder="ghp_***********************************"
-                    class="bg-slate-800 border-slate-700 text-slate-200 placeholder:text-slate-500 pr-10"
-                  />
-                  {#if githubToken}
-                    <div class="absolute right-3 top-1/2 -translate-y-1/2">
-                      {#if isValidatingToken}
-                        <div
-                          class="animate-spin h-4 w-4 border-2 border-slate-400 border-t-transparent rounded-full"
-                        />
-                      {:else if isTokenValid === true}
-                        <Check class="h-4 w-4 text-green-500" />
-                      {:else if isTokenValid === false}
-                        <X class="h-4 w-4 text-red-500" />
-                      {/if}
-                    </div>
-                  {/if}
-                </div>
-                {#if validationError}
-                  <p class="text-sm text-red-400 mt-1">{validationError}</p>
-                {:else if tokenType}
-                  <div class="space-y-2">
-                    <p class="text-sm text-emerald-400">
-                      {tokenType === 'classic' ? '🔑 Classic' : '✨ Fine-grained'} token detected
-                    </p>
-                    {#if isTokenValid}
-                      <div class="flex items-center gap-2">
-                        <Button
-                          type="button"
-                          variant="outline"
-                          size="sm"
-                          class="text-xs"
-                          on:click={checkTokenPermissions}
-                          disabled={isCheckingPermissions}
-                        >
-                          {#if isCheckingPermissions}
-                            <Loader2 class="h-3 w-3 mr-1 animate-spin" />
-                            Checking...
-                          {:else}
-                            Verify
-                          {/if}
-                        </Button>
-                        <div class="flex items-center gap-2">
-                          {#if previousToken === githubToken && lastPermissionCheck}
-                            <div class="relative group">
-                              <HelpCircle class="h-3 w-3 text-slate-400" />
-                              <div
-                                class="absolute bottom-full mb-2 left-1/2 -translate-x-1/2 hidden group-hover:block w-64 p-2 text-xs bg-slate-900 border border-slate-700 rounded-md shadow-lg"
-                              >
-                                <p>
-                                  Last verified: {new Date(lastPermissionCheck).toLocaleString()}
-                                </p>
-                                <p class="mt-1 text-slate-400">
-                                  Permissions are automatically re-verified when the token changes
-                                  or after 30 days.
-                                </p>
-                              </div>
-                            </div>
-                          {/if}
-                          <div class="flex items-center gap-1.5 text-xs">
-                            <span class="flex items-center gap-0.5">
-                              {#if currentCheck === 'repos'}
-                                <Loader2 class="h-3 w-3 animate-spin text-slate-400" />
-                              {:else if permissionStatus.allRepos !== undefined}
-                                {#if permissionStatus.allRepos}
-                                  <Check class="h-3 w-3 text-green-500" />
-                                {:else}
-                                  <X class="h-3 w-3 text-red-500" />
-                                {/if}
-                              {:else if previousToken === githubToken && lastPermissionCheck}
-                                <Check class="h-3 w-3 text-green-500 opacity-50" />
-                              {/if}
-                              Repos
-                            </span>
-                            <span class="flex items-center gap-0.5">
-                              {#if currentCheck === 'admin'}
-                                <Loader2 class="h-3 w-3 animate-spin text-slate-400" />
-                              {:else if permissionStatus.admin !== undefined}
-                                {#if permissionStatus.admin}
-                                  <Check class="h-3 w-3 text-green-500" />
-                                {:else}
-                                  <X class="h-3 w-3 text-red-500" />
-                                {/if}
-                              {:else if previousToken === githubToken && lastPermissionCheck}
-                                <Check class="h-3 w-3 text-green-500 opacity-50" />
-                              {/if}
-                              Admin
-                            </span>
-                            <span class="flex items-center gap-0.5">
-                              {#if currentCheck === 'code'}
-                                <Loader2 class="h-3 w-3 animate-spin text-slate-400" />
-                              {:else if permissionStatus.contents !== undefined}
-                                {#if permissionStatus.contents}
-                                  <Check class="h-3 w-3 text-green-500" />
-                                {:else}
-                                  <X class="h-3 w-3 text-red-500" />
-                                {/if}
-                              {:else if previousToken === githubToken && lastPermissionCheck}
-                                <Check class="h-3 w-3 text-green-500 opacity-50" />
-                              {/if}
-                              Code
-                            </span>
-                          </div>
-                        </div>
+                  <div class="relative">
+                    <Input
+                      type="password"
+                      id="githubToken"
+                      bind:value={githubToken}
+                      on:input={handleTokenInput}
+                      placeholder="ghp_***********************************"
+                      class="bg-slate-800 border-slate-700 text-slate-200 placeholder:text-slate-500 pr-10"
+                    />
+                    {#if githubToken}
+                      <div class="absolute right-3 top-1/2 -translate-y-1/2">
+                        {#if isValidatingToken}
+                          <div
+                            class="animate-spin h-4 w-4 border-2 border-slate-400 border-t-transparent rounded-full"
+                          />
+                        {:else if isTokenValid === true}
+                          <Check class="h-4 w-4 text-green-500" />
+                        {:else if isTokenValid === false}
+                          <X class="h-4 w-4 text-red-500" />
+                        {/if}
                       </div>
                     {/if}
                   </div>
-                  {#if permissionError}
-                    <p class="text-sm text-red-400 mt-1">{permissionError}</p>
+                  {#if validationError}
+                    <p class="text-sm text-red-400 mt-1">{validationError}</p>
+                  {:else if tokenType}
+                    <div class="space-y-2">
+                      <p class="text-sm text-emerald-400">
+                        {tokenType === 'classic' ? '🔑 Classic' : '✨ Fine-grained'} token detected
+                      </p>
+                      {#if isTokenValid}
+                        <div class="flex items-center gap-2">
+                          <Button
+                            type="button"
+                            variant="outline"
+                            size="sm"
+                            class="text-xs"
+                            on:click={checkTokenPermissions}
+                            disabled={isCheckingPermissions}
+                          >
+                            {#if isCheckingPermissions}
+                              <Loader2 class="h-3 w-3 mr-1 animate-spin" />
+                              Checking...
+                            {:else}
+                              Verify
+                            {/if}
+                          </Button>
+                          <div class="flex items-center gap-2">
+                            {#if previousToken === githubToken && lastPermissionCheck}
+                              <div class="relative group">
+                                <HelpCircle class="h-3 w-3 text-slate-400" />
+                                <div
+                                  class="absolute bottom-full mb-2 left-1/2 -translate-x-1/2 hidden group-hover:block w-64 p-2 text-xs bg-slate-900 border border-slate-700 rounded-md shadow-lg"
+                                >
+                                  <p>
+                                    Last verified: {new Date(lastPermissionCheck).toLocaleString()}
+                                  </p>
+                                  <p class="mt-1 text-slate-400">
+                                    Permissions are automatically re-verified when the token changes
+                                    or after 30 days.
+                                  </p>
+                                </div>
+                              </div>
+                            {/if}
+                            <div class="flex items-center gap-1.5 text-xs">
+                              <span class="flex items-center gap-0.5">
+                                {#if currentCheck === 'repos'}
+                                  <Loader2 class="h-3 w-3 animate-spin text-slate-400" />
+                                {:else if permissionStatus.allRepos !== undefined}
+                                  {#if permissionStatus.allRepos}
+                                    <Check class="h-3 w-3 text-green-500" />
+                                  {:else}
+                                    <X class="h-3 w-3 text-red-500" />
+                                  {/if}
+                                {:else if previousToken === githubToken && lastPermissionCheck}
+                                  <Check class="h-3 w-3 text-green-500 opacity-50" />
+                                {/if}
+                                Repos
+                              </span>
+                              <span class="flex items-center gap-0.5">
+                                {#if currentCheck === 'admin'}
+                                  <Loader2 class="h-3 w-3 animate-spin text-slate-400" />
+                                {:else if permissionStatus.admin !== undefined}
+                                  {#if permissionStatus.admin}
+                                    <Check class="h-3 w-3 text-green-500" />
+                                  {:else}
+                                    <X class="h-3 w-3 text-red-500" />
+                                  {/if}
+                                {:else if previousToken === githubToken && lastPermissionCheck}
+                                  <Check class="h-3 w-3 text-green-500 opacity-50" />
+                                {/if}
+                                Admin
+                              </span>
+                              <span class="flex items-center gap-0.5">
+                                {#if currentCheck === 'code'}
+                                  <Loader2 class="h-3 w-3 animate-spin text-slate-400" />
+                                {:else if permissionStatus.contents !== undefined}
+                                  {#if permissionStatus.contents}
+                                    <Check class="h-3 w-3 text-green-500" />
+                                  {:else}
+                                    <X class="h-3 w-3 text-red-500" />
+                                  {/if}
+                                {:else if previousToken === githubToken && lastPermissionCheck}
+                                  <Check class="h-3 w-3 text-green-500 opacity-50" />
+                                {/if}
+                                Code
+                              </span>
+                            </div>
+                          </div>
+                        </div>
+                      {/if}
+                    </div>
+                    {#if permissionError}
+                      <p class="text-sm text-red-400 mt-1">{permissionError}</p>
+                    {/if}
                   {/if}
-                {/if}
                 </div>
               {/if}
 
               <div class="space-y-2">
                 <Label for="repoOwner" class="text-slate-200">
                   Repository Owner
-                  <span class="text-sm text-slate-400 ml-2">(Your GitHub username)</span>
+                  <span class="text-sm text-slate-400 ml-2">
+                    {authenticationMethod === 'github_app'
+                      ? '(Auto-detected from GitHub App)'
+                      : '(Your GitHub username)'}
+                  </span>
                 </Label>
                 <Input
                   type="text"
@@ -843,8 +861,18 @@
                   bind:value={repoOwner}
                   on:input={handleOwnerInput}
                   placeholder="username or organization"
-                  class="bg-slate-800 border-slate-700 text-slate-200 placeholder:text-slate-500"
+                  class="bg-slate-800 border-slate-700 text-slate-200 placeholder:text-slate-500 {authenticationMethod ===
+                  'github_app'
+                    ? 'opacity-75 cursor-not-allowed'
+                    : ''}"
+                  readonly={authenticationMethod === 'github_app'}
+                  disabled={authenticationMethod === 'github_app'}
                 />
+                {#if authenticationMethod === 'github_app'}
+                  <p class="text-sm text-slate-400">
+                    ℹ️ The repository owner is automatically set from your GitHub App authentication
+                  </p>
+                {/if}
               </div>
             </div>
           </div>
