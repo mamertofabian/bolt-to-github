@@ -1,6 +1,6 @@
 <script lang="ts">
   import { createEventDispatcher, onMount } from 'svelte';
-  import { GitHubService } from '../../services/GitHubService';
+  import { UnifiedGitHubService } from '../../services/UnifiedGitHubService';
   import RepoSettings from '$lib/components/RepoSettings.svelte';
   import IssueManager from '$lib/components/IssueManager.svelte';
   import QuickIssueForm from '$lib/components/QuickIssueForm.svelte';
@@ -47,7 +47,19 @@
 
   export const getProjectStatus = async () => {
     try {
-      const githubService = new GitHubService(token);
+      // Get authentication method to determine how to create the service
+      const authSettings = await chrome.storage.local.get(['authenticationMethod']);
+      const authMethod = authSettings.authenticationMethod || 'pat';
+      
+      let githubService: UnifiedGitHubService;
+      
+      if (authMethod === 'github_app') {
+        // Use GitHub App authentication
+        githubService = new UnifiedGitHubService({ type: 'github_app' });
+      } else {
+        // Use PAT authentication (backward compatible)
+        githubService = new UnifiedGitHubService(token);
+      }
 
       // Get repo info
       const repoInfo = await githubService.getRepoInfo(gitHubUsername, repoName);
@@ -85,9 +97,10 @@
         }
         isLoading.latestCommit = false;
 
-        // Load issues into store
+        // Load issues into store - for GitHub App we pass a placeholder token
+        const tokenToUse = authMethod === 'github_app' ? 'github_app_token' : token;
         try {
-          await issuesStore.loadIssues(gitHubUsername, repoName, token, 'all');
+          await issuesStore.loadIssues(gitHubUsername, repoName, tokenToUse, 'all');
         } catch (err) {
           console.log('Error fetching issues:', err);
         }
@@ -102,6 +115,10 @@
       }
     } catch (error) {
       console.log('Error fetching repo details:', error);
+      // Enhanced error handling for better UX
+      if (error instanceof Error && error.message.includes('no github settings')) {
+        console.log('GitHub App not configured - show setup guidance');
+      }
       // Reset loading states on error
       Object.keys(isLoading).forEach((key) => (isLoading[key as keyof typeof isLoading] = false));
     }

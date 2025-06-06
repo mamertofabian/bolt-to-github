@@ -3,10 +3,9 @@
   import { Input } from '$lib/components/ui/input';
   import { Label } from '$lib/components/ui/label';
   import { Search, Loader2 } from 'lucide-svelte';
-  import { GitHubService } from '../../services/GitHubService';
+  import { UnifiedGitHubService } from '../../services/UnifiedGitHubService';
   import { createEventDispatcher } from 'svelte';
   import { githubSettingsActions } from '$lib/stores';
-  import { projectSettingsActions } from '$lib/stores/projectSettings';
   import Modal from '$lib/components/ui/modal/Modal.svelte';
 
   const dispatch = createEventDispatcher();
@@ -51,11 +50,24 @@
   }
 
   async function loadRepositories() {
-    if (!githubToken || !repoOwner) return;
-
     try {
       isLoadingRepos = true;
-      const githubService = new GitHubService(githubToken);
+
+      // Get authentication method to determine how to create the service
+      const authSettings = await chrome.storage.local.get(['authenticationMethod']);
+      const authMethod = authSettings.authenticationMethod || 'pat';
+
+      let githubService: UnifiedGitHubService;
+
+      if (authMethod === 'github_app') {
+        // Use GitHub App authentication
+        githubService = new UnifiedGitHubService({ type: 'github_app' });
+      } else {
+        // Use PAT authentication (backward compatible)
+        if (!githubToken || !repoOwner) return;
+        githubService = new UnifiedGitHubService(githubToken);
+      }
+
       repositories = await githubService.listRepos();
     } catch (error) {
       console.error('Error loading repositories:', error);

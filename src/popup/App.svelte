@@ -142,6 +142,14 @@
     uploadStateActions.initializePort();
     premiumStatusActions.initialize();
 
+    // Force sync authentication status from background service
+    try {
+      await chrome.runtime.sendMessage({ type: 'FORCE_POPUP_SYNC' });
+      console.log('✅ Forced authentication sync from background service');
+    } catch (error) {
+      console.warn('Failed to force sync authentication status:', error);
+    }
+
     // Setup Chrome messaging
     ChromeMessagingService.addPortMessageHandler(handleUploadStatusMessage);
     ChromeMessagingService.addPortMessageHandler(handleFileChangesMessage);
@@ -597,12 +605,17 @@
                 bind:repoOwner={githubSettings.repoOwner}
                 bind:repoName={githubSettings.repoName}
                 bind:branch={githubSettings.branch}
+                bind:authenticationMethod={githubSettings.authenticationMethod}
+                bind:githubAppInstallationId={githubSettings.githubAppInstallationId}
+                bind:githubAppUsername={githubSettings.githubAppUsername}
+                bind:githubAppAvatarUrl={githubSettings.githubAppAvatarUrl}
                 {projectId}
                 status={uiState.status}
                 buttonDisabled={uiState.hasStatus}
                 onSave={saveSettings}
                 onError={handleSettingsError}
                 onInput={() => {}}
+                onAuthMethodChange={(method) => githubSettingsActions.setAuthenticationMethod(method)}
               />
 
               <!-- Push Reminder Settings -->

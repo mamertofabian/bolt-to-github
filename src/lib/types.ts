@@ -18,7 +18,9 @@ export type MessageType =
   | 'PUSH_TO_GITHUB'
   | 'USE_CACHED_FILES'
   | 'HEARTBEAT'
-  | 'HEARTBEAT_RESPONSE';
+  | 'HEARTBEAT_RESPONSE'
+  | 'GITHUB_APP_SYNCED'
+  | 'SUBSCRIPTION_UPGRADED';
 
 export interface Message {
   type: MessageType;
@@ -39,6 +41,11 @@ export interface GitHubSettingsInterface {
   githubToken: string;
   repoOwner: string;
   projectSettings?: ProjectSettings;
+  // New authentication method fields
+  authenticationMethod?: 'pat' | 'github_app';
+  githubAppInstallationId?: number;
+  githubAppUsername?: string;
+  githubAppAvatarUrl?: string;
 }
 
 export type ProcessingStatus =

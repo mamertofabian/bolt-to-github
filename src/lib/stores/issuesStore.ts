@@ -1,5 +1,5 @@
 import { writable, derived, get } from 'svelte/store';
-import { GitHubService } from '../../services/GitHubService';
+import { UnifiedGitHubService } from '../../services/UnifiedGitHubService';
 
 export interface Issue {
   number: number;
@@ -37,6 +37,18 @@ interface LoadingState {
 
 const CACHE_DURATION = 30000; // 30 seconds
 const FORCE_REFRESH_AFTER_ACTION = 2000; // 2 seconds after create/update/close
+
+// Helper function to create UnifiedGitHubService with proper authentication
+async function createGitHubService(token: string): Promise<UnifiedGitHubService> {
+  const authSettings = await chrome.storage.local.get(['authenticationMethod']);
+  const authMethod = authSettings.authenticationMethod || 'pat';
+  
+  if (authMethod === 'github_app') {
+    return new UnifiedGitHubService({ type: 'github_app' });
+  } else {
+    return new UnifiedGitHubService(token);
+  }
+}
 
 // Create the main store
 const issuesState = writable<IssuesState>({});
@@ -101,7 +113,7 @@ function createIssuesStore() {
     setLoadingForRepo(repoKey, state, true);
 
     try {
-      const githubService = new GitHubService(githubToken);
+      const githubService = await createGitHubService(githubToken);
       const issues = await githubService.getIssues(owner, repo, state, forceRefresh);
 
       // Update the store
@@ -149,7 +161,7 @@ function createIssuesStore() {
     const repoKey = getRepoKey(owner, repo);
 
     try {
-      const githubService = new GitHubService(githubToken);
+      const githubService = await createGitHubService(githubToken);
       const newIssue = await githubService.createIssue(owner, repo, issueData);
 
       // Immediately add the new issue to the store for instant UI update
@@ -209,7 +221,7 @@ function createIssuesStore() {
     const repoKey = getRepoKey(owner, repo);
 
     try {
-      const githubService = new GitHubService(githubToken);
+      const githubService = await createGitHubService(githubToken);
       const updatedIssue = await githubService.updateIssue(owner, repo, issueNumber, updateData);
 
       // Immediately update the issue in the store

@@ -1,4 +1,4 @@
-import { GitHubService } from '../services/GitHubService';
+import { UnifiedGitHubService } from '../services/UnifiedGitHubService';
 import type { Message, MessageType, Port, UploadStatusState } from '../lib/types';
 import { StateManager } from './StateManager';
 import { ZipHandler } from '../services/zipHandler';
@@ -10,7 +10,7 @@ export class BackgroundService {
   private stateManager: StateManager;
   private zipHandler: ZipHandler | null;
   private ports: Map<number, Port>;
-  private githubService: GitHubService | null;
+  private githubService: UnifiedGitHubService | null;
   private tempRepoManager: BackgroundTempRepoManager | null = null;
   private pendingCommitMessage: string;
   private supabaseAuthService: SupabaseAuthService;
@@ -160,20 +160,29 @@ export class BackgroundService {
     console.log('👂 Background service initialized');
   }
 
-  private async initializeGitHubService(): Promise<GitHubService | null> {
+  private async initializeGitHubService(): Promise<UnifiedGitHubService | null> {
     try {
       const settings = await this.stateManager.getGitHubSettings();
-
-      if (
+      const localSettings = await chrome.storage.local.get(['authenticationMethod']);
+      
+      const authMethod = localSettings.authenticationMethod || 'pat';
+      
+      if (authMethod === 'github_app') {
+        // Initialize with GitHub App authentication
+        console.log('✅ GitHub App authentication detected, initializing GitHub App service');
+        this.githubService = new UnifiedGitHubService({
+          type: 'github_app'
+        });
+      } else if (
         settings &&
         settings.gitHubSettings &&
         settings.gitHubSettings.githubToken &&
         settings.gitHubSettings.repoOwner
       ) {
-        console.log('✅ Valid settings found, initializing GitHub service', settings);
-        this.githubService = new GitHubService(settings.gitHubSettings.githubToken);
+        console.log('✅ PAT authentication detected, initializing PAT service', settings);
+        this.githubService = new UnifiedGitHubService(settings.gitHubSettings.githubToken);
       } else {
-        console.log('❌ Invalid or incomplete settings');
+        console.log('❌ No valid authentication configuration found');
         this.githubService = null;
       }
     } catch (error) {
@@ -183,7 +192,7 @@ export class BackgroundService {
     return this.githubService;
   }
 
-  private setupZipHandler(githubService: GitHubService) {
+  private setupZipHandler(githubService: UnifiedGitHubService) {
     this.zipHandler = new ZipHandler(githubService, (status) => this.broadcastStatus(status));
   }
 
@@ -240,6 +249,10 @@ export class BackgroundService {
       } else if (message.type === 'FORCE_SUBSCRIPTION_REFRESH') {
         console.log('💰 Forcing subscription refresh via message');
         this.supabaseAuthService.forceSubscriptionRevalidation();
+        sendResponse({ success: true });
+      } else if (message.type === 'FORCE_POPUP_SYNC') {
+        console.log('🔄 Forcing popup sync via message');
+        await this.supabaseAuthService.forceSyncToPopup();
         sendResponse({ success: true });
       } else if (message.type === 'USER_LOGOUT') {
         console.log('🚪 User logout requested from popup');

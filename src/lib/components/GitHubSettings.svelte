@@ -29,6 +29,13 @@
   export let projectSettings: Record<string, { repoName: string; branch: string }> = {};
   export let buttonDisabled: boolean = false;
 
+  // New authentication method props
+  export let authenticationMethod: 'pat' | 'github_app' = 'pat';
+  export let githubAppInstallationId: number | null = null;
+  export let githubAppUsername: string | null = null;
+  export let githubAppAvatarUrl: string | null = null;
+  export let onAuthMethodChange: ((method: 'pat' | 'github_app') => void) | null = null;
+
   // Add state for handling storage quota errors
   let storageQuotaError: string | null = null;
 
@@ -64,17 +71,44 @@
   let permissionError: string | null = null;
   let previousToken: string | null = null;
 
+  // GitHub App authentication state
+  let isConnectingGitHubApp = false;
+  let githubAppConnectionError: string | null = null;
+  let githubAppValidationResult: { isValid: boolean; error?: string; userInfo?: any } | null = null;
+  let showGitHubAppPermissions = false;
+
   // Collapsible state - add manual toggle state
   let manuallyToggled = false;
   let isExpanded = true; // Initially expanded
 
   // Collapsible state - collapsed by default if settings are populated
-  $: hasRequiredSettings = githubToken && repoOwner && (isOnboarding || (repoName && branch));
+  $: hasRequiredSettings = (
+    (authenticationMethod === 'pat' && githubToken && repoOwner) ||
+    (authenticationMethod === 'github_app' && githubAppInstallationId && repoOwner)
+  ) && (isOnboarding || (repoName && branch));
+  
   $: {
     // Only auto-collapse if not manually toggled by user
     if (!manuallyToggled) {
       isExpanded = isOnboarding || !hasRequiredSettings;
     }
+  }
+
+  // Handle authentication method changes
+  function handleAuthMethodChange(method: 'pat' | 'github_app') {
+    authenticationMethod = method;
+    
+    // Clear validation state when switching methods
+    isTokenValid = null;
+    validationError = null;
+    githubAppValidationResult = null;
+    githubAppConnectionError = null;
+    
+    if (onAuthMethodChange) {
+      onAuthMethodChange(method);
+    }
+    
+    onInput();
   }
 
   function toggleExpanded() {
@@ -395,6 +429,70 @@
     }
   };
 
+  // GitHub App connection function
+  async function connectGitHubApp() {
+    isConnectingGitHubApp = true;
+    githubAppConnectionError = null;
+
+    try {
+      // Redirect to bolt2github.com for OAuth flow
+      const authUrl = 'https://bolt2github.com/auth/github';
+      window.open(authUrl, '_blank');
+      
+      // Show success message
+      githubAppConnectionError = null;
+      
+    } catch (error) {
+      console.error('Error connecting GitHub App:', error);
+      githubAppConnectionError = error instanceof Error ? error.message : 'Failed to connect GitHub App';
+    } finally {
+      isConnectingGitHubApp = false;
+    }
+  }
+
+  // Validate GitHub App authentication
+  async function validateGitHubApp() {
+    if (!githubAppInstallationId) {
+      githubAppValidationResult = {
+        isValid: false,
+        error: 'No GitHub App installation found',
+      };
+      return;
+    }
+
+    try {
+      // This would normally call the GitHubAppService to validate
+      // For now, we'll assume it's valid if we have an installation ID
+      githubAppValidationResult = {
+        isValid: true,
+        userInfo: {
+          login: githubAppUsername || 'GitHub User',
+          avatar_url: githubAppAvatarUrl,
+        },
+      };
+    } catch (error) {
+      githubAppValidationResult = {
+        isValid: false,
+        error: error instanceof Error ? error.message : 'GitHub App validation failed',
+      };
+    }
+  }
+
+  // Update the status display text
+  $: statusDisplayText = (() => {
+    if (authenticationMethod === 'github_app') {
+      if (githubAppInstallationId && githubAppUsername) {
+        return `Connected via GitHub App as ${githubAppUsername}`;
+      }
+      return 'Connect with GitHub App to get started';
+    } else {
+      if (githubToken && repoOwner) {
+        return `Configured for ${repoOwner}${repoName ? `/${repoName}` : ''}`;
+      }
+      return 'Configure your GitHub repository settings';
+    }
+  })();
+
   $: if (!isOnboarding && projectId && projectSettings[projectId]) {
     repoName = projectSettings[projectId].repoName;
     branch = projectSettings[projectId].branch;
@@ -420,26 +518,37 @@
         <div>
           <h2 class="text-lg font-semibold text-slate-200">GitHub Settings</h2>
           <p class="text-sm text-slate-400">
-            {#if hasRequiredSettings}
-              Configured for {repoOwner}{repoName ? `/${repoName}` : ''}
-            {:else}
-              Configure your GitHub repository settings
-            {/if}
+            {statusDisplayText}
           </p>
         </div>
       </div>
       <div class="flex items-center gap-2">
         {#if hasRequiredSettings && !isOnboarding}
           <div class="flex items-center gap-1">
-            {#if isTokenValid === true}
-              <Check class="w-4 h-4 text-green-500" />
-            {:else if isTokenValid === false}
-              <X class="w-4 h-4 text-red-500" />
+            {#if authenticationMethod === 'github_app'}
+              {#if githubAppValidationResult?.isValid === true}
+                <Check class="w-4 h-4 text-green-500" />
+              {:else if githubAppValidationResult?.isValid === false}
+                <X class="w-4 h-4 text-red-500" />
+              {:else if githubAppInstallationId}
+                <Check class="w-4 h-4 text-green-500" />
+              {:else}
+                <div class="w-4 h-4 rounded-full bg-slate-600"></div>
+              {/if}
             {:else}
-              <div class="w-4 h-4 rounded-full bg-slate-600"></div>
+              {#if isTokenValid === true}
+                <Check class="w-4 h-4 text-green-500" />
+              {:else if isTokenValid === false}
+                <X class="w-4 h-4 text-red-500" />
+              {:else}
+                <div class="w-4 h-4 rounded-full bg-slate-600"></div>
+              {/if}
             {/if}
             <span class="text-xs text-slate-400">
-              {isTokenValid === true ? 'Connected' : isTokenValid === false ? 'Error' : 'Unknown'}
+              {authenticationMethod === 'github_app' 
+                ? (githubAppInstallationId ? 'Connected' : 'Not Connected')
+                : (isTokenValid === true ? 'Connected' : isTokenValid === false ? 'Error' : 'Unknown')
+              }
             </span>
           </div>
         {/if}
@@ -456,6 +565,52 @@
       <div class="p-4 space-y-4" style="animation: slideDown 0.2s ease-out;">
         <!-- Settings Form -->
         <form on:submit|preventDefault={handleSave} class="space-y-4">
+          <!-- Authentication Method Selection -->
+          <div class="p-3 bg-slate-850 border border-slate-700 rounded-md">
+            <h3 class="text-slate-200 font-medium mb-3">Authentication Method</h3>
+            <div class="space-y-3">
+              <label class="flex items-center space-x-3 cursor-pointer">
+                <input
+                  type="radio"
+                  name="authMethod"
+                  value="github_app"
+                  checked={authenticationMethod === 'github_app'}
+                  on:change={() => handleAuthMethodChange('github_app')}
+                  class="w-4 h-4 text-blue-600 bg-slate-700 border-slate-600 focus:ring-blue-500 focus:ring-2"
+                />
+                <div class="flex-1">
+                  <div class="flex items-center gap-2">
+                    <span class="text-slate-200 font-medium">GitHub App</span>
+                    <span class="px-2 py-1 text-xs bg-green-900 text-green-200 rounded">Recommended</span>
+                  </div>
+                  <p class="text-sm text-slate-400 mt-1">
+                    Secure authentication with automatic token refresh and fine-grained permissions
+                  </p>
+                </div>
+              </label>
+              
+              <label class="flex items-center space-x-3 cursor-pointer">
+                <input
+                  type="radio"
+                  name="authMethod"
+                  value="pat"
+                  checked={authenticationMethod === 'pat'}
+                  on:change={() => handleAuthMethodChange('pat')}
+                  class="w-4 h-4 text-blue-600 bg-slate-700 border-slate-600 focus:ring-blue-500 focus:ring-2"
+                />
+                <div class="flex-1">
+                  <div class="flex items-center gap-2">
+                    <span class="text-slate-200 font-medium">Personal Access Token</span>
+                    <span class="px-2 py-1 text-xs bg-slate-700 text-slate-400 rounded">Advanced</span>
+                  </div>
+                  <p class="text-sm text-slate-400 mt-1">
+                    Manual token management for users who prefer direct GitHub API access
+                  </p>
+                </div>
+              </label>
+            </div>
+          </div>
+
           <!-- General GitHub Settings Section -->
           <div class="p-3 bg-slate-850 border border-slate-700 rounded-md">
             <h3 class="text-slate-200 font-medium mb-3 flex items-center">
@@ -464,11 +619,81 @@
             </h3>
 
             <div class="space-y-4">
-              <div class="space-y-2">
-                <Label for="githubToken" class="text-slate-200">
-                  GitHub Token
-                  <span class="text-sm text-slate-400 ml-2">(Required for uploading)</span>
-                </Label>
+              <!-- GitHub App Authentication -->
+              {#if authenticationMethod === 'github_app'}
+                <div class="space-y-3">
+                  {#if githubAppInstallationId}
+                    <!-- Connected State -->
+                    <div class="flex items-center gap-3 p-3 bg-green-900/20 border border-green-700 rounded-md">
+                      <Check class="w-5 h-5 text-green-500" />
+                      <div class="flex-1">
+                        <div class="flex items-center gap-2">
+                          {#if githubAppAvatarUrl}
+                            <img src={githubAppAvatarUrl} alt="Profile" class="w-6 h-6 rounded-full" />
+                          {/if}
+                          <span class="text-green-200 font-medium">
+                            Connected as {githubAppUsername || 'GitHub User'}
+                          </span>
+                        </div>
+                        <p class="text-sm text-green-300 mt-1">
+                          GitHub App authentication is active
+                        </p>
+                      </div>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        class="text-xs"
+                        on:click={validateGitHubApp}
+                      >
+                        Refresh
+                      </Button>
+                    </div>
+                  {:else}
+                    <!-- Not Connected State -->
+                    <div class="space-y-3">
+                      <div class="p-3 bg-blue-900/20 border border-blue-700 rounded-md">
+                        <h4 class="text-blue-200 font-medium mb-2">Connect with GitHub App</h4>
+                        <p class="text-sm text-blue-300 mb-3">
+                          GitHub App provides secure authentication with automatic token refresh and fine-grained permissions.
+                        </p>
+                        <Button
+                          type="button"
+                          class="bg-blue-600 hover:bg-blue-700 text-white"
+                          on:click={connectGitHubApp}
+                          disabled={isConnectingGitHubApp}
+                        >
+                          {#if isConnectingGitHubApp}
+                            <Loader2 class="w-4 h-4 mr-2 animate-spin" />
+                            Connecting...
+                          {:else}
+                            Connect with GitHub
+                          {/if}
+                        </Button>
+                      </div>
+                      
+                      {#if githubAppConnectionError}
+                        <div class="p-3 bg-red-900/20 border border-red-700 rounded-md">
+                          <div class="flex items-start gap-2">
+                            <X class="w-4 h-4 text-red-400 mt-0.5 flex-shrink-0" />
+                            <div class="text-sm text-red-200">
+                              <p class="font-medium">Connection Failed</p>
+                              <p class="mt-1">{githubAppConnectionError}</p>
+                            </div>
+                          </div>
+                        </div>
+                      {/if}
+                    </div>
+                  {/if}
+                </div>
+              
+              <!-- Personal Access Token Authentication -->
+              {:else}
+                <div class="space-y-2">
+                  <Label for="githubToken" class="text-slate-200">
+                    GitHub Token
+                    <span class="text-sm text-slate-400 ml-2">(Required for uploading)</span>
+                  </Label>
                 <div class="relative">
                   <Input
                     type="password"
@@ -585,7 +810,8 @@
                     <p class="text-sm text-red-400 mt-1">{permissionError}</p>
                   {/if}
                 {/if}
-              </div>
+                </div>
+              {/if}
 
               <div class="space-y-2">
                 <Label for="repoOwner" class="text-slate-200">
@@ -740,15 +966,18 @@
             disabled={buttonDisabled ||
               isValidatingToken ||
               isCheckingPermissions ||
-              !githubToken ||
+              isConnectingGitHubApp ||
+              (authenticationMethod === 'pat' && (!githubToken || isTokenValid === false)) ||
+              (authenticationMethod === 'github_app' && !githubAppInstallationId) ||
               !repoOwner ||
-              (!isOnboarding && (!repoName || !branch)) ||
-              isTokenValid === false}
+              (!isOnboarding && (!repoName || !branch))}
           >
             {#if isValidatingToken}
               Validating...
             {:else if isCheckingPermissions}
               Checking permissions...
+            {:else if isConnectingGitHubApp}
+              Connecting to GitHub...
             {:else if buttonDisabled && !status.includes('MAX_WRITE_OPERATIONS')}
               {status}
             {:else}

@@ -10,25 +10,49 @@ export const STORAGE_KEYS = {
   PENDING_FILE_CHANGES: 'pendingFileChanges',
   STORED_FILE_CHANGES: 'storedFileChanges',
   PUSH_STATISTICS: 'pushStatistics',
+  // New authentication method keys
+  AUTHENTICATION_METHOD: 'authenticationMethod',
+  GITHUB_APP_INSTALLATION_ID: 'githubAppInstallationId',
+  GITHUB_APP_ACCESS_TOKEN: 'githubAppAccessToken',
+  GITHUB_APP_REFRESH_TOKEN: 'githubAppRefreshToken',
+  GITHUB_APP_EXPIRES_AT: 'githubAppExpiresAt',
+  GITHUB_APP_REFRESH_TOKEN_EXPIRES_AT: 'githubAppRefreshTokenExpiresAt',
+  GITHUB_APP_USERNAME: 'githubAppUsername',
+  GITHUB_APP_USER_ID: 'githubAppUserId',
+  GITHUB_APP_AVATAR_URL: 'githubAppAvatarUrl',
+  GITHUB_APP_SCOPES: 'githubAppScopes',
+  MIGRATION_PROMPT_SHOWN: 'migrationPromptShown',
+  LAST_MIGRATION_PROMPT: 'lastMigrationPrompt',
 } as const;
 
 // Chrome Storage Service
 export class ChromeStorageService {
   /**
-   * Get GitHub settings from sync storage
+   * Get GitHub settings from sync storage (enhanced with authentication method)
    */
   static async getGitHubSettings(): Promise<GitHubSettingsInterface> {
     try {
-      const result = await chrome.storage.sync.get([
+      const syncResult = await chrome.storage.sync.get([
         STORAGE_KEYS.GITHUB_TOKEN,
         STORAGE_KEYS.REPO_OWNER,
         STORAGE_KEYS.PROJECT_SETTINGS,
       ]);
 
+      const localResult = await chrome.storage.local.get([
+        STORAGE_KEYS.AUTHENTICATION_METHOD,
+        STORAGE_KEYS.GITHUB_APP_INSTALLATION_ID,
+        STORAGE_KEYS.GITHUB_APP_USERNAME,
+        STORAGE_KEYS.GITHUB_APP_AVATAR_URL,
+      ]);
+
       return {
-        githubToken: result[STORAGE_KEYS.GITHUB_TOKEN] || '',
-        repoOwner: result[STORAGE_KEYS.REPO_OWNER] || '',
-        projectSettings: result[STORAGE_KEYS.PROJECT_SETTINGS] || {},
+        githubToken: syncResult[STORAGE_KEYS.GITHUB_TOKEN] || '',
+        repoOwner: syncResult[STORAGE_KEYS.REPO_OWNER] || '',
+        projectSettings: syncResult[STORAGE_KEYS.PROJECT_SETTINGS] || {},
+        authenticationMethod: localResult[STORAGE_KEYS.AUTHENTICATION_METHOD] || 'pat',
+        githubAppInstallationId: localResult[STORAGE_KEYS.GITHUB_APP_INSTALLATION_ID],
+        githubAppUsername: localResult[STORAGE_KEYS.GITHUB_APP_USERNAME],
+        githubAppAvatarUrl: localResult[STORAGE_KEYS.GITHUB_APP_AVATAR_URL],
       };
     } catch (error) {
       console.error('Error getting GitHub settings from storage:', error);
@@ -36,22 +60,47 @@ export class ChromeStorageService {
         githubToken: '',
         repoOwner: '',
         projectSettings: {},
+        authenticationMethod: 'pat',
       };
     }
   }
 
   /**
-   * Save GitHub settings to sync storage
+   * Save GitHub settings to sync storage (enhanced with authentication method)
    */
   static async saveGitHubSettings(settings: GitHubSettingsInterface): Promise<void> {
     try {
-      const dataToSave = {
+      // Save sync data (shared across devices)
+      const syncDataToSave = {
         [STORAGE_KEYS.GITHUB_TOKEN]: settings.githubToken,
         [STORAGE_KEYS.REPO_OWNER]: settings.repoOwner,
         [STORAGE_KEYS.PROJECT_SETTINGS]: settings.projectSettings || {},
       };
 
-      await chrome.storage.sync.set(dataToSave);
+      // Save local data (device-specific)
+      const localDataToSave: Record<string, any> = {};
+      
+      if (settings.authenticationMethod !== undefined) {
+        localDataToSave[STORAGE_KEYS.AUTHENTICATION_METHOD] = settings.authenticationMethod;
+      }
+      
+      if (settings.githubAppInstallationId !== undefined) {
+        localDataToSave[STORAGE_KEYS.GITHUB_APP_INSTALLATION_ID] = settings.githubAppInstallationId;
+      }
+      
+      if (settings.githubAppUsername !== undefined) {
+        localDataToSave[STORAGE_KEYS.GITHUB_APP_USERNAME] = settings.githubAppUsername;
+      }
+      
+      if (settings.githubAppAvatarUrl !== undefined) {
+        localDataToSave[STORAGE_KEYS.GITHUB_APP_AVATAR_URL] = settings.githubAppAvatarUrl;
+      }
+
+      // Save to both storages
+      await Promise.all([
+        chrome.storage.sync.set(syncDataToSave),
+        Object.keys(localDataToSave).length > 0 ? chrome.storage.local.set(localDataToSave) : Promise.resolve(),
+      ]);
     } catch (error) {
       console.error('Error saving GitHub settings to storage:', error);
       throw error;
@@ -303,6 +352,248 @@ export class ChromeStorageService {
       await chrome.storage.local.remove(STORAGE_KEYS.PUSH_STATISTICS);
     } catch (error) {
       console.error('Error clearing push statistics from storage:', error);
+      throw error;
+    }
+  }
+
+  // ========================================
+  // Authentication Method Management
+  // ========================================
+
+  /**
+   * Get the current authentication method
+   */
+  static async getAuthenticationMethod(): Promise<'pat' | 'github_app'> {
+    try {
+      const result = await chrome.storage.local.get(STORAGE_KEYS.AUTHENTICATION_METHOD);
+      return result[STORAGE_KEYS.AUTHENTICATION_METHOD] || 'pat';
+    } catch (error) {
+      console.error('Error getting authentication method from storage:', error);
+      return 'pat';
+    }
+  }
+
+  /**
+   * Set the authentication method
+   */
+  static async setAuthenticationMethod(method: 'pat' | 'github_app'): Promise<void> {
+    try {
+      await chrome.storage.local.set({
+        [STORAGE_KEYS.AUTHENTICATION_METHOD]: method,
+      });
+    } catch (error) {
+      console.error('Error setting authentication method in storage:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Check if user has both authentication methods configured
+   */
+  static async hasMultipleAuthMethods(): Promise<{
+    hasPAT: boolean;
+    hasGitHubApp: boolean;
+    hasMultiple: boolean;
+  }> {
+    try {
+      const syncResult = await chrome.storage.sync.get(STORAGE_KEYS.GITHUB_TOKEN);
+      const localResult = await chrome.storage.local.get(STORAGE_KEYS.GITHUB_APP_INSTALLATION_ID);
+
+      const hasPAT = !!syncResult[STORAGE_KEYS.GITHUB_TOKEN];
+      const hasGitHubApp = !!localResult[STORAGE_KEYS.GITHUB_APP_INSTALLATION_ID];
+
+      return {
+        hasPAT,
+        hasGitHubApp,
+        hasMultiple: hasPAT && hasGitHubApp,
+      };
+    } catch (error) {
+      console.error('Error checking multiple auth methods:', error);
+      return {
+        hasPAT: false,
+        hasGitHubApp: false,
+        hasMultiple: false,
+      };
+    }
+  }
+
+  // ========================================
+  // GitHub App Specific Storage
+  // ========================================
+
+  /**
+   * Get GitHub App configuration
+   */
+  static async getGitHubAppConfig(): Promise<{
+    installationId?: number;
+    accessToken?: string;
+    refreshToken?: string;
+    expiresAt?: string;
+    refreshTokenExpiresAt?: string;
+    username?: string;
+    userId?: number;
+    avatarUrl?: string;
+    scopes?: string[];
+  }> {
+    try {
+      const result = await chrome.storage.local.get([
+        STORAGE_KEYS.GITHUB_APP_INSTALLATION_ID,
+        STORAGE_KEYS.GITHUB_APP_ACCESS_TOKEN,
+        STORAGE_KEYS.GITHUB_APP_REFRESH_TOKEN,
+        STORAGE_KEYS.GITHUB_APP_EXPIRES_AT,
+        STORAGE_KEYS.GITHUB_APP_REFRESH_TOKEN_EXPIRES_AT,
+        STORAGE_KEYS.GITHUB_APP_USERNAME,
+        STORAGE_KEYS.GITHUB_APP_USER_ID,
+        STORAGE_KEYS.GITHUB_APP_AVATAR_URL,
+        STORAGE_KEYS.GITHUB_APP_SCOPES,
+      ]);
+
+      return {
+        installationId: result[STORAGE_KEYS.GITHUB_APP_INSTALLATION_ID],
+        accessToken: result[STORAGE_KEYS.GITHUB_APP_ACCESS_TOKEN],
+        refreshToken: result[STORAGE_KEYS.GITHUB_APP_REFRESH_TOKEN],
+        expiresAt: result[STORAGE_KEYS.GITHUB_APP_EXPIRES_AT],
+        refreshTokenExpiresAt: result[STORAGE_KEYS.GITHUB_APP_REFRESH_TOKEN_EXPIRES_AT],
+        username: result[STORAGE_KEYS.GITHUB_APP_USERNAME],
+        userId: result[STORAGE_KEYS.GITHUB_APP_USER_ID],
+        avatarUrl: result[STORAGE_KEYS.GITHUB_APP_AVATAR_URL],
+        scopes: result[STORAGE_KEYS.GITHUB_APP_SCOPES],
+      };
+    } catch (error) {
+      console.error('Error getting GitHub App config from storage:', error);
+      return {};
+    }
+  }
+
+  /**
+   * Save GitHub App configuration
+   */
+  static async saveGitHubAppConfig(config: {
+    installationId?: number;
+    accessToken?: string;
+    refreshToken?: string;
+    expiresAt?: string;
+    refreshTokenExpiresAt?: string;
+    username?: string;
+    userId?: number;
+    avatarUrl?: string;
+    scopes?: string[];
+  }): Promise<void> {
+    try {
+      const dataToSave: Record<string, any> = {};
+
+      if (config.installationId !== undefined) {
+        dataToSave[STORAGE_KEYS.GITHUB_APP_INSTALLATION_ID] = config.installationId;
+      }
+      if (config.accessToken !== undefined) {
+        dataToSave[STORAGE_KEYS.GITHUB_APP_ACCESS_TOKEN] = config.accessToken;
+      }
+      if (config.refreshToken !== undefined) {
+        dataToSave[STORAGE_KEYS.GITHUB_APP_REFRESH_TOKEN] = config.refreshToken;
+      }
+      if (config.expiresAt !== undefined) {
+        dataToSave[STORAGE_KEYS.GITHUB_APP_EXPIRES_AT] = config.expiresAt;
+      }
+      if (config.refreshTokenExpiresAt !== undefined) {
+        dataToSave[STORAGE_KEYS.GITHUB_APP_REFRESH_TOKEN_EXPIRES_AT] = config.refreshTokenExpiresAt;
+      }
+      if (config.username !== undefined) {
+        dataToSave[STORAGE_KEYS.GITHUB_APP_USERNAME] = config.username;
+      }
+      if (config.userId !== undefined) {
+        dataToSave[STORAGE_KEYS.GITHUB_APP_USER_ID] = config.userId;
+      }
+      if (config.avatarUrl !== undefined) {
+        dataToSave[STORAGE_KEYS.GITHUB_APP_AVATAR_URL] = config.avatarUrl;
+      }
+      if (config.scopes !== undefined) {
+        dataToSave[STORAGE_KEYS.GITHUB_APP_SCOPES] = config.scopes;
+      }
+
+      if (Object.keys(dataToSave).length > 0) {
+        await chrome.storage.local.set(dataToSave);
+      }
+    } catch (error) {
+      console.error('Error saving GitHub App config to storage:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Clear GitHub App configuration
+   */
+  static async clearGitHubAppConfig(): Promise<void> {
+    try {
+      await chrome.storage.local.remove([
+        STORAGE_KEYS.GITHUB_APP_INSTALLATION_ID,
+        STORAGE_KEYS.GITHUB_APP_ACCESS_TOKEN,
+        STORAGE_KEYS.GITHUB_APP_REFRESH_TOKEN,
+        STORAGE_KEYS.GITHUB_APP_EXPIRES_AT,
+        STORAGE_KEYS.GITHUB_APP_REFRESH_TOKEN_EXPIRES_AT,
+        STORAGE_KEYS.GITHUB_APP_USERNAME,
+        STORAGE_KEYS.GITHUB_APP_USER_ID,
+        STORAGE_KEYS.GITHUB_APP_AVATAR_URL,
+        STORAGE_KEYS.GITHUB_APP_SCOPES,
+      ]);
+    } catch (error) {
+      console.error('Error clearing GitHub App config from storage:', error);
+      throw error;
+    }
+  }
+
+  // ========================================
+  // Migration Status Management
+  // ========================================
+
+  /**
+   * Check if migration prompt has been shown
+   */
+  static async getMigrationPromptStatus(): Promise<{
+    shown: boolean;
+    lastPrompt?: string;
+  }> {
+    try {
+      const result = await chrome.storage.local.get([
+        STORAGE_KEYS.MIGRATION_PROMPT_SHOWN,
+        STORAGE_KEYS.LAST_MIGRATION_PROMPT,
+      ]);
+
+      return {
+        shown: result[STORAGE_KEYS.MIGRATION_PROMPT_SHOWN] || false,
+        lastPrompt: result[STORAGE_KEYS.LAST_MIGRATION_PROMPT],
+      };
+    } catch (error) {
+      console.error('Error getting migration prompt status:', error);
+      return { shown: false };
+    }
+  }
+
+  /**
+   * Mark migration prompt as shown
+   */
+  static async markMigrationPromptShown(): Promise<void> {
+    try {
+      await chrome.storage.local.set({
+        [STORAGE_KEYS.MIGRATION_PROMPT_SHOWN]: true,
+        [STORAGE_KEYS.LAST_MIGRATION_PROMPT]: new Date().toISOString(),
+      });
+    } catch (error) {
+      console.error('Error marking migration prompt as shown:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Reset migration prompt status (for testing or re-showing)
+   */
+  static async resetMigrationPromptStatus(): Promise<void> {
+    try {
+      await chrome.storage.local.remove([
+        STORAGE_KEYS.MIGRATION_PROMPT_SHOWN,
+        STORAGE_KEYS.LAST_MIGRATION_PROMPT,
+      ]);
+    } catch (error) {
+      console.error('Error resetting migration prompt status:', error);
       throw error;
     }
   }

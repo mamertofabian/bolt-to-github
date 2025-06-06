@@ -1,4 +1,4 @@
-import type { GitHubService } from './GitHubService';
+import type { UnifiedGitHubService } from './UnifiedGitHubService';
 import { toBase64 } from '../lib/common';
 import { ZipProcessor } from '../lib/zip';
 import type { ProcessingStatus, UploadStatusState } from '$lib/types';
@@ -12,7 +12,7 @@ export class ZipHandler {
   private githubComparisonService: GitHubComparisonService;
 
   constructor(
-    private githubService: GitHubService,
+    private githubService: UnifiedGitHubService,
     private sendStatus: (status: UploadStatusState) => void
   ) {
     this.githubComparisonService = GitHubComparisonService.getInstance();
