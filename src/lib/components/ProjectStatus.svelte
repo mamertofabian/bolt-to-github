@@ -34,7 +34,7 @@
     // Get authentication method to determine correct token to use
     const authSettings = await chrome.storage.local.get(['authenticationMethod']);
     const authMethod = authSettings.authenticationMethod || 'pat';
-    
+
     if (authMethod === 'github_app') {
       // For GitHub App, use a placeholder token that the store will recognize
       effectiveToken = 'github_app_token';

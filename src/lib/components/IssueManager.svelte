@@ -64,11 +64,11 @@
 
     try {
       await issuesStore.createIssue(repoOwner, repoName, githubToken, { title, body });
-      
+
       // Reset form state
       isCreatingIssue = false;
       showNewIssueForm = false;
-      
+
       // Force refresh the issue list to ensure the new issue appears
       await loadIssues(true);
     } catch (err) {

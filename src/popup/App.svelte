@@ -137,7 +137,7 @@
     // Get authentication method to determine correct token to use
     const authSettings = await chrome.storage.local.get(['authenticationMethod']);
     const authMethod = authSettings.authenticationMethod || 'pat';
-    
+
     if (authMethod === 'github_app') {
       // For GitHub App, use a placeholder token that the store will recognize
       effectiveGithubToken = 'github_app_token';
@@ -222,7 +222,7 @@
       upgradeModalReason = event.detail.reason;
       premiumFeatures = event.detail.features;
       showUpgradeModal = true;
-    }) as EventListener);
+    }) as (event: Event) => void);
 
     // Initialize newsletter subscription status
     try {
