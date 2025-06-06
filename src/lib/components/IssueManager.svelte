@@ -46,37 +46,10 @@
   }
 
   async function loadIssues(forceRefresh: boolean = false) {
-    console.log('🔍 loadIssues called with:', {
-      githubToken: githubToken ? 'present' : 'missing',
-      repoOwner,
-      repoName,
-      selectedState,
-      forceRefresh
-    });
-
-    // Check if we have required repo info
-    if (!repoOwner || !repoName) {
-      console.log('❌ Early return from loadIssues - missing repo info:', {
-        repoOwner: !!repoOwner,
-        repoName: !!repoName
-      });
-      return;
-    }
-
-    // Check authentication - either token or GitHub App
-    const authSettings = await chrome.storage.local.get(['authenticationMethod']);
-    const authMethod = authSettings.authenticationMethod || 'pat';
-    
-    if (authMethod === 'pat' && !githubToken) {
-      console.log('❌ Early return from loadIssues - PAT auth requires token');
-      return;
-    }
+    if (!githubToken || !repoOwner || !repoName) return;
 
     try {
-      console.log('🚀 Calling issuesStore.loadIssues...');
-      // Pass token (even if empty for GitHub App auth, issuesStore handles it)
-      await issuesStore.loadIssues(repoOwner, repoName, githubToken || '', selectedState, forceRefresh);
-      console.log('✅ issuesStore.loadIssues completed');
+      await issuesStore.loadIssues(repoOwner, repoName, githubToken, selectedState, forceRefresh);
     } catch (err) {
       console.error('Error loading issues:', err);
     }
@@ -84,37 +57,10 @@
 
   async function handleCreateIssue(event: CustomEvent) {
     const { title, body } = event.detail;
-    console.log('🔍 handleCreateIssue called with:', {
-      title,
-      body,
-      githubToken: githubToken ? 'present' : 'missing',
-      repoOwner,
-      repoName
-    });
-
-    // Check if we have required repo info
-    if (!repoOwner || !repoName) {
-      console.log('❌ Early return from handleCreateIssue - missing repo info:', {
-        repoOwner: !!repoOwner,
-        repoName: !!repoName
-      });
-      return;
-    }
-
-    // Check authentication - either token or GitHub App
-    const authSettings = await chrome.storage.local.get(['authenticationMethod']);
-    const authMethod = authSettings.authenticationMethod || 'pat';
-    
-    if (authMethod === 'pat' && !githubToken) {
-      console.log('❌ Early return from handleCreateIssue - PAT auth requires token');
-      return;
-    }
+    if (!githubToken || !repoOwner || !repoName) return;
 
     try {
-      console.log('🚀 Calling issuesStore.createIssue...');
-      // Pass token (even if empty for GitHub App auth, issuesStore handles it)
-      await issuesStore.createIssue(repoOwner, repoName, githubToken || '', { title, body });
-      console.log('✅ issuesStore.createIssue completed');
+      await issuesStore.createIssue(repoOwner, repoName, githubToken, { title, body });
       
       // Reset form state
       isCreatingIssue = false;

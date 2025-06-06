@@ -20,6 +20,7 @@
   let hasFileChanges = false;
   let showIssueManager = false;
   let showQuickIssueForm = false;
+  let effectiveToken = '';
 
   // Premium status
   $: isUserPremium = $isPremium;
@@ -27,6 +28,26 @@
   // Issues count from store
   $: openIssuesCountStore = issuesStore.getOpenIssuesCount(gitHubUsername, repoName);
   $: openIssuesCount = $openIssuesCountStore;
+
+  // Update effective token when component initializes or token changes
+  async function updateEffectiveToken() {
+    // Get authentication method to determine correct token to use
+    const authSettings = await chrome.storage.local.get(['authenticationMethod']);
+    const authMethod = authSettings.authenticationMethod || 'pat';
+    
+    if (authMethod === 'github_app') {
+      // For GitHub App, use a placeholder token that the store will recognize
+      effectiveToken = 'github_app_token';
+    } else {
+      // For PAT, use the actual token
+      effectiveToken = token || '';
+    }
+  }
+
+  // Update effective token when token prop changes
+  $: if (token !== undefined) {
+    updateEffectiveToken();
+  }
 
   let isLoading = {
     repoStatus: true,
@@ -506,7 +527,7 @@
 {#if showIssueManager}
   <IssueManager
     show={showIssueManager}
-    githubToken={token}
+    githubToken={effectiveToken}
     repoOwner={gitHubUsername}
     {repoName}
     on:close={handleIssueManagerClose}
@@ -516,7 +537,7 @@
 {#if showQuickIssueForm}
   <QuickIssueForm
     show={showQuickIssueForm}
-    githubToken={token}
+    githubToken={effectiveToken}
     repoOwner={gitHubUsername}
     {repoName}
     on:success={handleIssueSuccess}

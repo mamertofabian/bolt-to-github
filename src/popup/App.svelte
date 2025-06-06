@@ -110,6 +110,7 @@
 
   // Issues modal state
   let showIssuesModal = false;
+  let effectiveGithubToken = '';
 
   // Add pending popup context state
   let pendingPopupContext = '';
@@ -130,6 +131,25 @@
 
   function handleOpenFileChangesMessage() {
     showStoredFileChanges();
+  }
+
+  async function updateEffectiveToken() {
+    // Get authentication method to determine correct token to use
+    const authSettings = await chrome.storage.local.get(['authenticationMethod']);
+    const authMethod = authSettings.authenticationMethod || 'pat';
+    
+    if (authMethod === 'github_app') {
+      // For GitHub App, use a placeholder token that the store will recognize
+      effectiveGithubToken = 'github_app_token';
+    } else {
+      // For PAT, use the actual token
+      effectiveGithubToken = githubSettings.githubToken || '';
+    }
+  }
+
+  // Update effective token when settings change
+  $: if (githubSettings) {
+    updateEffectiveToken();
   }
 
   async function initializeApp() {
@@ -736,10 +756,10 @@
   />
 
   <!-- Issues modal -->
-  {#if settingsValid && githubSettings.githubToken && githubSettings.repoOwner && githubSettings.repoName}
+  {#if settingsValid && effectiveGithubToken && githubSettings.repoOwner && githubSettings.repoName}
     <IssueManager
       bind:show={showIssuesModal}
-      githubToken={githubSettings.githubToken}
+      githubToken={effectiveGithubToken}
       repoOwner={githubSettings.repoOwner}
       repoName={githubSettings.repoName}
       on:close={() => (showIssuesModal = false)}
