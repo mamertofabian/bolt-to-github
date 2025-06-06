@@ -1,6 +1,7 @@
 /* eslint-disable no-console */
 
 import { SUPABASE_CONFIG } from '../../lib/constants/supabase';
+import { githubSettingsActions } from '../../lib/stores/githubSettings';
 
 export interface SupabaseUser {
   id: string;
@@ -1331,8 +1332,6 @@ export class SupabaseAuthService {
 
           // Trigger settings store sync to auto-populate repoOwner
           try {
-            // Import the githubSettingsActions dynamically to avoid circular imports
-            const { githubSettingsActions } = await import('../../lib/stores/githubSettings');
             await githubSettingsActions.syncGitHubAppFromStorage();
             console.log('✅ GitHub settings store synced with GitHub App data');
           } catch (syncError) {
