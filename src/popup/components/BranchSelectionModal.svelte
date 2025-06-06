@@ -9,7 +9,7 @@
   export let show = false;
   export let owner = '';
   export let repo = '';
-  export let token = '';
+  export let token = ''; // Optional - not required for GitHub App authentication
   export let onBranchSelected: (branch: string) => void;
   export let onCancel: () => void;
 
@@ -22,12 +22,12 @@
   let showUpgrade = false;
 
   onMount(async () => {
-    if (show && owner && repo && token) {
+    if (show && owner && repo) {
       await Promise.all([loadBranches(), checkProAccess()]);
     }
   });
 
-  $: if (show && owner && repo && token && branches.length === 0) {
+  $: if (show && owner && repo && branches.length === 0) {
     Promise.all([loadBranches(), checkProAccess()]);
   }
 
