@@ -89,12 +89,26 @@ export class UnifiedGitHubService {
   }
 
   /**
-   * Get configured authentication method from storage
+   * Get configured authentication method from storage with smart detection
+   * Prioritizes GitHub App authentication when available
    */
   private async getConfiguredAuthMethod(): Promise<'pat' | 'github_app'> {
     try {
+      // First, check if GitHub App authentication is available and valid
+      const userToken = await this.getUserToken();
+      if (userToken) {
+        console.log('🔍 GitHub App authentication detected, prioritizing over PAT');
+        // Update stored preference to reflect reality
+        await chrome.storage.local.set({ authenticationMethod: 'github_app' });
+        return 'github_app';
+      }
+
+      // Fallback to stored preference or PAT
       const result = await chrome.storage.local.get(['authenticationMethod']);
-      return result.authenticationMethod || 'pat';
+      const storedMethod = result.authenticationMethod || 'pat';
+
+      console.log(`🔍 No GitHub App authentication found, using ${storedMethod}`);
+      return storedMethod;
     } catch (error) {
       console.warn('Failed to get authentication method:', error);
       return 'pat';

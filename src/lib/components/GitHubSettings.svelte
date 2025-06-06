@@ -134,21 +134,42 @@
     isRepoNameFromProjectId = true;
   }
 
-  // Helper function to create GitHub service with authentication method detection
+  // Helper function to create GitHub service with smart authentication detection
   async function createGitHubService(): Promise<UnifiedGitHubService> {
     try {
-      const authSettings = await chrome.storage.local.get(['authenticationMethod']);
-      const authMethod = authSettings.authenticationMethod || 'pat';
+      // Create service that will trigger smart authentication detection
+      // The UnifiedGitHubService will check for GitHub App first, then fall back to PAT
 
-      if (authMethod === 'github_app') {
-        return new UnifiedGitHubService({ type: 'github_app' });
-      } else {
-        return new UnifiedGitHubService(githubToken);
+      // First attempt: Try GitHub App authentication (this triggers smart detection)
+      try {
+        const service = new UnifiedGitHubService({ type: 'github_app' });
+
+        // The service will internally detect if GitHub App authentication is available
+        // If not, the getStrategy() method will handle fallback
+        console.log('🔍 Created service with smart authentication detection');
+        return service;
+      } catch (githubAppError) {
+        console.log('⚠️ GitHub App initialization failed, trying PAT fallback');
+
+        // Fallback to PAT if available
+        if (githubToken) {
+          console.log('✅ Using PAT authentication as fallback');
+          return new UnifiedGitHubService(githubToken);
+        }
+
+        throw githubAppError;
       }
     } catch (error) {
-      console.error('Failed to detect authentication method:', error);
-      // Fallback to PAT
-      return new UnifiedGitHubService(githubToken);
+      console.error('Failed to create GitHub service:', error);
+
+      // Final fallback: try PAT if available
+      if (githubToken) {
+        console.log('🔄 Final fallback to PAT authentication');
+        return new UnifiedGitHubService(githubToken);
+      }
+
+      // If all else fails, create empty service that will rely on auto-detection
+      throw new Error('No authentication method available');
     }
   }
 
