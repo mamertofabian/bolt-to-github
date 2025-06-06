@@ -48,8 +48,11 @@
   async function loadIssues(forceRefresh: boolean = false) {
     if (!githubToken || !repoOwner || !repoName) return;
 
+    console.log('🔄 loadIssues called:', { forceRefresh, selectedState, repoOwner, repoName });
+
     try {
       await issuesStore.loadIssues(repoOwner, repoName, githubToken, selectedState, forceRefresh);
+      console.log('✅ loadIssues completed successfully');
     } catch (err) {
       console.error('Error loading issues:', err);
     }
@@ -118,7 +121,12 @@
   }
 
   async function handleRefresh() {
+    console.log('🔄 Refresh button clicked');
+    // Explicitly invalidate cache before forcing refresh
+    issuesStore.invalidateCache(repoOwner, repoName);
+    console.log('🗑️ Cache invalidated');
     await loadIssues(true);
+    console.log('✅ Refresh completed');
   }
 </script>
 

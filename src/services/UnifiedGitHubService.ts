@@ -630,18 +630,31 @@ export class UnifiedGitHubService {
   async getIssues(
     owner: string,
     repo: string,
-    state: 'open' | 'closed' | 'all' = 'open'
+    state: 'open' | 'closed' | 'all' = 'open',
+    forceRefresh: boolean = false
   ): Promise<any[]> {
     const token = await this.getToken();
-    const response = await fetch(
-      `https://api.github.com/repos/${owner}/${repo}/issues?state=${state}`,
-      {
-        headers: {
-          Authorization: `Bearer ${token}`,
-          Accept: 'application/vnd.github.v3+json',
-        },
-      }
-    );
+    
+    // Build URL with cache-busting for force refresh
+    let url = `https://api.github.com/repos/${owner}/${repo}/issues?state=${state}`;
+    if (forceRefresh) {
+      url += `&_t=${Date.now()}`;
+    }
+    
+    const headers: Record<string, string> = {
+      Authorization: `Bearer ${token}`,
+      Accept: 'application/vnd.github.v3+json',
+    };
+    
+    // Add cache-busting headers for force refresh
+    if (forceRefresh) {
+      headers['Cache-Control'] = 'no-cache, no-store, must-revalidate';
+      headers['Pragma'] = 'no-cache';
+    }
+    
+    console.log('🌐 GitHub API call:', { url, forceRefresh });
+    
+    const response = await fetch(url, { headers });
 
     if (!response.ok) {
       throw new Error(`Failed to get issues: ${response.statusText}`);

@@ -82,6 +82,7 @@ function createIssuesStore() {
   }
 
   function invalidateCache(repoKey: string) {
+    console.log('🗑️ Invalidating cache for:', repoKey);
     update((current) => ({
       ...current,
       [repoKey]: {
@@ -100,8 +101,11 @@ function createIssuesStore() {
   ): Promise<Issue[]> {
     const repoKey = getRepoKey(owner, repo);
 
+    console.log('🏪 issuesStore.loadIssues called:', { repoKey, state, forceRefresh });
+
     // Check cache validity
     if (!forceRefresh && isCacheValid(repoKey)) {
+      console.log('📦 Using cached data');
       const currentState = get(issuesState);
       const repoState = currentState[repoKey];
       if (repoState && repoState.issues) {
@@ -110,12 +114,13 @@ function createIssuesStore() {
       }
     }
 
+    console.log('🌐 Making network request for fresh data');
     setLoadingForRepo(repoKey, state, true);
 
     try {
       const githubService = await createGitHubService(githubToken);
       // Always fetch ALL issues to avoid cache inconsistencies
-      const issues = await githubService.getIssues(owner, repo, 'all');
+      const issues = await githubService.getIssues(owner, repo, 'all', forceRefresh);
 
       // Update the store with all issues
       update((current) => ({
