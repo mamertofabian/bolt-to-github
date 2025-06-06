@@ -355,7 +355,14 @@ export class BackgroundService {
             action: 'zip_upload_initiated',
             context: 'content_script',
           });
-          await this.handleZipData(tabId, message.data);
+          // Handle both old and new message formats for backward compatibility
+          if (typeof message.data === 'string') {
+            // Old format: message.data is just the base64 string
+            await this.handleZipData(tabId, message.data, null);
+          } else {
+            // New format: message.data is { data: string, projectId?: string }
+            await this.handleZipData(tabId, message.data.data, message.data.projectId);
+          }
           break;
 
         case 'SET_COMMIT_MESSAGE':
@@ -515,7 +522,11 @@ export class BackgroundService {
     }
   }
 
-  private async handleZipData(tabId: number, base64Data: string): Promise<void> {
+  private async handleZipData(
+    tabId: number,
+    base64Data: string,
+    currentProjectId?: string | null
+  ): Promise<void> {
     console.log('🔄 Handling ZIP data for tab:', tabId);
     const port = this.ports.get(tabId);
     if (!port) return;
@@ -547,10 +558,21 @@ export class BackgroundService {
         throw new Error('Zip handler is not initialized.');
       }
 
-      const projectId = await this.stateManager.getProjectId();
+      // Use the project ID from the message if provided, otherwise fall back to stored project ID
+      let projectId = currentProjectId;
       if (!projectId) {
-        throw new Error('Project ID is not set.');
+        projectId = await this.stateManager.getProjectId();
       }
+
+      if (!projectId) {
+        throw new Error('Project ID is not set. Make sure you are on a Bolt project page.');
+      }
+
+      console.log(
+        '🔍 Using project ID for push:',
+        projectId,
+        currentProjectId ? '(from URL)' : '(from storage)'
+      );
 
       try {
         // Convert base64 to blob

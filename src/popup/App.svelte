@@ -191,6 +191,9 @@
     // Detect current project
     await projectSettingsActions.detectCurrentProject();
 
+    // Auto-create project settings if on Bolt project and have valid auth
+    await autoCreateProjectSettingsIfNeeded();
+
     // Load project-specific settings if we're on a bolt project
     if (projectId) {
       githubSettingsActions.loadProjectSettings(projectId);
@@ -230,6 +233,100 @@
       hasSubscribed = subscription.subscribed;
     } catch (error) {
       console.error('Error loading subscription status:', error);
+    }
+  }
+
+  /**
+   * Automatically create project settings for Bolt projects when popup is opened
+   * This ensures repositories are set to private by default without user intervention
+   */
+  async function autoCreateProjectSettingsIfNeeded() {
+    try {
+      // Only proceed if we're on a Bolt project
+      if (!onBoltProject || !projectId) {
+        return;
+      }
+
+      console.log(
+        '🔧 Checking if auto-creation of project settings is needed for project:',
+        projectId
+      );
+
+      // Check if project settings already exist
+      const existingSettings = await chrome.storage.sync.get(['projectSettings']);
+      const projectSettings = existingSettings.projectSettings || {};
+
+      if (projectSettings[projectId]) {
+        console.log('✅ Project settings already exist for project:', projectId);
+        return;
+      }
+
+      // Check if we have valid authentication
+      const [syncSettings, localSettings] = await Promise.all([
+        chrome.storage.sync.get(['repoOwner']),
+        chrome.storage.local.get(['authenticationMethod', 'githubAppInstallationId']),
+      ]);
+
+      const authMethod = localSettings.authenticationMethod || 'pat';
+      const hasValidAuth =
+        authMethod === 'github_app'
+          ? Boolean(localSettings.githubAppInstallationId)
+          : Boolean(githubSettings.githubToken);
+
+      if (!syncSettings.repoOwner || !hasValidAuth) {
+        console.log('⚠️ No valid authentication or repoOwner found, skipping auto-creation');
+        return;
+      }
+
+      console.log('🚀 Auto-creating project settings for Bolt project:', projectId);
+
+      // Create default project settings with private repository
+      const newProjectSettings = {
+        repoName: projectId,
+        branch: 'main',
+        projectTitle: projectId, // Use project ID as initial title
+      };
+
+      // Update the project settings in storage
+      const updatedProjectSettings = {
+        ...projectSettings,
+        [projectId]: newProjectSettings,
+      };
+
+      await chrome.storage.sync.set({
+        projectSettings: updatedProjectSettings,
+      });
+
+      // Update the stores to reflect the new settings
+      githubSettingsActions.setProjectSettings(
+        projectId,
+        newProjectSettings.repoName,
+        newProjectSettings.branch,
+        newProjectSettings.projectTitle
+      );
+
+      // Load the newly created settings
+      githubSettingsActions.loadProjectSettings(projectId);
+
+      console.log('✅ Auto-created project settings:', newProjectSettings);
+
+      // Store a timestamp to trigger UI updates
+      await chrome.storage.local.set({
+        lastSettingsUpdate: {
+          timestamp: Date.now(),
+          projectId,
+          repoName: newProjectSettings.repoName,
+          branch: newProjectSettings.branch,
+          projectTitle: newProjectSettings.projectTitle,
+          autoCreated: true,
+        },
+      });
+
+      console.log(
+        '🎯 Project settings auto-created successfully. Repository will be private by default.'
+      );
+    } catch (error) {
+      console.error('❌ Error auto-creating project settings:', error);
     }
   }
 
@@ -519,6 +616,15 @@
     });
   };
 
+  // Reactive check for valid authentication for ProjectsList display
+  $: hasValidAuthenticationForProjectsList = !!(
+    githubSettings.hasInitialSettings &&
+    githubSettings.repoOwner &&
+    ((githubSettings.authenticationMethod === 'github_app' &&
+      githubSettings.githubAppInstallationId) ||
+      (githubSettings.authenticationMethod === 'pat' && githubSettings.githubToken))
+  );
+
   onMount(initializeApp);
   onDestroy(cleanup);
 </script>
@@ -669,10 +775,10 @@
             </div>
           </TabsContent>
         </Tabs>
-      {:else if githubSettings.hasInitialSettings && githubSettings.repoOwner && githubSettings.githubToken}
+      {:else if hasValidAuthenticationForProjectsList}
         <ProjectsList
           repoOwner={githubSettings.repoOwner}
-          githubToken={githubSettings.githubToken}
+          githubToken={effectiveGithubToken}
           currentlyLoadedProjectId={projectId}
           isBoltSite={projectSettings.isBoltSite}
         />

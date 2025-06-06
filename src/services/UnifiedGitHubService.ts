@@ -350,7 +350,7 @@ export class UnifiedGitHubService {
    */
   async createRepo(
     repoName: string,
-    isPrivate: boolean = false,
+    isPrivate: boolean = true,
     description?: string
   ): Promise<any> {
     const token = await this.getToken();
@@ -379,7 +379,7 @@ export class UnifiedGitHubService {
   /**
    * Ensure repository exists (create if it doesn't)
    */
-  async ensureRepoExists(owner: string, repo: string, isPrivate: boolean = false): Promise<any> {
+  async ensureRepoExists(owner: string, repo: string, isPrivate: boolean = true): Promise<any> {
     if (await this.repoExists(owner, repo)) {
       return await this.getRepoInfo(owner, repo);
     }
