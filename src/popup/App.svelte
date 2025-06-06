@@ -615,7 +615,8 @@
                 onSave={saveSettings}
                 onError={handleSettingsError}
                 onInput={() => {}}
-                onAuthMethodChange={(method) => githubSettingsActions.setAuthenticationMethod(method)}
+                onAuthMethodChange={(method) =>
+                  githubSettingsActions.setAuthenticationMethod(method)}
               />
 
               <!-- Push Reminder Settings -->
@@ -629,26 +630,21 @@
                 }}
               />
 
-              <!-- Analytics Toggle -->
-              <AnalyticsToggle />
-
               <!-- Premium Status -->
               <PremiumStatus on:upgrade={() => handleUpgradeClick('general')} />
 
-              <!-- Newsletter Subscription -->
-              <NewsletterSection />
+              <!-- Analytics Toggle -->
+              <AnalyticsToggle />
             </div>
           </TabsContent>
 
           <TabsContent value="help">
             <div class="space-y-4">
               <Help />
+              <!-- Newsletter Subscription -->
+              <NewsletterSection />
               <div class="mt-3">
-                <Footer
-                  {hasSubscribed}
-                  version={projectSettings.version}
-                  on:newsletter={handleNewsletterClick}
-                />
+                <Footer version={projectSettings.version} on:newsletter={handleNewsletterClick} />
               </div>
             </div>
           </TabsContent>

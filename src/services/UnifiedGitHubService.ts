@@ -6,12 +6,12 @@
 
 import type { IAuthenticationStrategy } from './interfaces/IAuthenticationStrategy';
 import type { AuthenticationConfig, AuthenticationType } from './types/authentication';
-import { GitHubService } from './GitHubService';
+// Removed GitHubService import to eliminate circular dependency
 import { AuthenticationStrategyFactory } from './AuthenticationStrategyFactory';
 
 export class UnifiedGitHubService {
   private strategy: IAuthenticationStrategy | null = null;
-  private fallbackGitHubService: GitHubService | null = null;
+  // Removed fallbackGitHubService to eliminate circular dependency
   private factory: AuthenticationStrategyFactory;
 
   /**
@@ -24,10 +24,9 @@ export class UnifiedGitHubService {
     if (typeof authConfig === 'string') {
       // Backward compatibility: treat as PAT token
       this.strategy = this.factory.createPATStrategy(authConfig);
-      this.fallbackGitHubService = new GitHubService(authConfig);
     } else {
       // New configuration object - initialize asynchronously
-      this.initializeStrategy(authConfig).catch(error => {
+      this.initializeStrategy(authConfig).catch((error) => {
         console.error('Failed to initialize authentication strategy:', error);
         // Set strategy to null so getStrategy() will try to auto-detect
         this.strategy = null;
@@ -41,17 +40,16 @@ export class UnifiedGitHubService {
   private async initializeStrategy(config: AuthenticationConfig): Promise<void> {
     if (config.type === 'pat' && config.token) {
       this.strategy = this.factory.createPATStrategy(config.token);
-      this.fallbackGitHubService = new GitHubService(config.token);
     } else if (config.type === 'github_app') {
       // Get user token from SupabaseAuthService for GitHub App authentication
       const userToken = await this.getUserToken();
-      
+
       if (userToken) {
         console.log('✅ Found user token for GitHub App authentication');
       } else {
         console.warn('⚠️ No user token found - GitHub App authentication may fail');
       }
-      
+
       this.strategy = this.factory.createGitHubAppStrategy(userToken);
     } else {
       throw new Error('Invalid authentication configuration');
@@ -78,7 +76,7 @@ export class UnifiedGitHubService {
     if (!this.strategy) {
       // Auto-detect current strategy if not explicitly set
       const authMethod = await this.getConfiguredAuthMethod();
-      
+
       if (authMethod === 'github_app') {
         // Create GitHub App strategy with user token
         const userToken = await this.getUserToken();
@@ -116,7 +114,7 @@ export class UnifiedGitHubService {
         `sb-${supabaseProjectRef}-auth-token`,
         `sb-${supabaseProjectRef}-auth-user`,
         'supabase.auth.token',
-        'supabase.session'
+        'supabase.session',
       ];
 
       // Check local storage first
@@ -124,7 +122,7 @@ export class UnifiedGitHubService {
         try {
           const result = await chrome.storage.local.get([key]);
           const data = result[key];
-          
+
           if (data) {
             // Handle different token storage formats
             if (typeof data === 'string') {
@@ -177,7 +175,7 @@ export class UnifiedGitHubService {
     try {
       const strategy = await this.getStrategy();
       const result = await strategy.validateAuth();
-      
+
       if (!result.isValid) {
         return {
           isValid: false,
@@ -204,7 +202,7 @@ export class UnifiedGitHubService {
   async isClassicToken(): Promise<boolean> {
     try {
       const strategy = await this.getStrategy();
-      
+
       if (strategy.type === 'github_app') {
         return false; // GitHub App tokens are not classic PATs
       }
@@ -223,7 +221,7 @@ export class UnifiedGitHubService {
   async isFineGrainedToken(): Promise<boolean> {
     try {
       const strategy = await this.getStrategy();
-      
+
       if (strategy.type === 'github_app') {
         return false; // GitHub App tokens are not fine-grained PATs
       }
@@ -249,7 +247,7 @@ export class UnifiedGitHubService {
     try {
       const strategy = await this.getStrategy();
       const result = await strategy.checkPermissions(repoOwner);
-      
+
       // Simulate progress updates for UI compatibility
       if (onProgress) {
         onProgress({ permission: 'repos', isValid: result.permissions.allRepos });
@@ -277,8 +275,8 @@ export class UnifiedGitHubService {
       const token = await this.getToken();
       const response = await fetch(`https://api.github.com/repos/${owner}/${repo}`, {
         headers: {
-          'Authorization': `Bearer ${token}`,
-          'Accept': 'application/vnd.github.v3+json',
+          Authorization: `Bearer ${token}`,
+          Accept: 'application/vnd.github.v3+json',
         },
       });
       return response.status === 200;
@@ -295,16 +293,16 @@ export class UnifiedGitHubService {
       const token = await this.getToken();
       const response = await fetch(`https://api.github.com/repos/${owner}/${repo}`, {
         headers: {
-          'Authorization': `Bearer ${token}`,
-          'Accept': 'application/vnd.github.v3+json',
+          Authorization: `Bearer ${token}`,
+          Accept: 'application/vnd.github.v3+json',
         },
       });
 
       if (response.status === 404) {
         // Repository doesn't exist
-        return { 
-          name: repo, 
-          exists: false 
+        return {
+          name: repo,
+          exists: false,
         };
       }
 
@@ -319,14 +317,14 @@ export class UnifiedGitHubService {
         private: repoData.private,
         exists: true,
         // Include all original data for backward compatibility
-        ...repoData
+        ...repoData,
       };
     } catch (error) {
       // If it's a network error or other issue, assume repo doesn't exist
       if (error instanceof Error && error.message.includes('404')) {
-        return { 
-          name: repo, 
-          exists: false 
+        return {
+          name: repo,
+          exists: false,
         };
       }
       throw error;
@@ -336,13 +334,17 @@ export class UnifiedGitHubService {
   /**
    * Create repository
    */
-  async createRepo(repoName: string, isPrivate: boolean = false, description?: string): Promise<any> {
+  async createRepo(
+    repoName: string,
+    isPrivate: boolean = false,
+    description?: string
+  ): Promise<any> {
     const token = await this.getToken();
     const response = await fetch('https://api.github.com/user/repos', {
       method: 'POST',
       headers: {
-        'Authorization': `Bearer ${token}`,
-        'Accept': 'application/vnd.github.v3+json',
+        Authorization: `Bearer ${token}`,
+        Accept: 'application/vnd.github.v3+json',
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
@@ -378,16 +380,16 @@ export class UnifiedGitHubService {
       const token = await this.getToken();
       const response = await fetch(`https://api.github.com/repos/${owner}/${repo}/contents`, {
         headers: {
-          'Authorization': `Bearer ${token}`,
-          'Accept': 'application/vnd.github.v3+json',
+          Authorization: `Bearer ${token}`,
+          Accept: 'application/vnd.github.v3+json',
         },
       });
-      
+
       if (response.status === 404) {
         const data = await response.json();
         return data.message === 'This repository is empty.';
       }
-      
+
       return response.status !== 200;
     } catch (error) {
       return false;
@@ -399,21 +401,24 @@ export class UnifiedGitHubService {
    */
   async initializeEmptyRepo(owner: string, repo: string, branch: string = 'main'): Promise<void> {
     const token = await this.getToken();
-    
+
     // Create initial commit with README
-    const response = await fetch(`https://api.github.com/repos/${owner}/${repo}/contents/README.md`, {
-      method: 'PUT',
-      headers: {
-        'Authorization': `Bearer ${token}`,
-        'Accept': 'application/vnd.github.v3+json',
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        message: 'Initial commit',
-        content: btoa(`# ${repo}\n\nInitialized by Bolt to GitHub extension.`),
-        branch,
-      }),
-    });
+    const response = await fetch(
+      `https://api.github.com/repos/${owner}/${repo}/contents/README.md`,
+      {
+        method: 'PUT',
+        headers: {
+          Authorization: `Bearer ${token}`,
+          Accept: 'application/vnd.github.v3+json',
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          message: 'Initial commit',
+          content: btoa(`# ${repo}\n\nInitialized by Bolt to GitHub extension.`),
+          branch,
+        }),
+      }
+    );
 
     if (!response.ok) {
       throw new Error(`Failed to initialize repository: ${response.statusText}`);
@@ -428,8 +433,8 @@ export class UnifiedGitHubService {
     const response = await fetch(`https://api.github.com/repos/${owner}/${repo}`, {
       method: 'DELETE',
       headers: {
-        'Authorization': `Bearer ${token}`,
-        'Accept': 'application/vnd.github.v3+json',
+        Authorization: `Bearer ${token}`,
+        Accept: 'application/vnd.github.v3+json',
       },
     });
 
@@ -446,8 +451,8 @@ export class UnifiedGitHubService {
     const response = await fetch(`https://api.github.com/repos/${owner}/${repo}`, {
       method: 'PATCH',
       headers: {
-        'Authorization': `Bearer ${token}`,
-        'Accept': 'application/vnd.github.v3+json',
+        Authorization: `Bearer ${token}`,
+        Accept: 'application/vnd.github.v3+json',
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
@@ -469,8 +474,8 @@ export class UnifiedGitHubService {
     const token = await this.getToken();
     const response = await fetch('https://api.github.com/user/repos?sort=updated&per_page=100', {
       headers: {
-        'Authorization': `Bearer ${token}`,
-        'Accept': 'application/vnd.github.v3+json',
+        Authorization: `Bearer ${token}`,
+        Accept: 'application/vnd.github.v3+json',
       },
     });
 
@@ -488,8 +493,8 @@ export class UnifiedGitHubService {
     const token = await this.getToken();
     const response = await fetch(`https://api.github.com/repos/${owner}/${repo}/branches`, {
       headers: {
-        'Authorization': `Bearer ${token}`,
-        'Accept': 'application/vnd.github.v3+json',
+        Authorization: `Bearer ${token}`,
+        Accept: 'application/vnd.github.v3+json',
       },
     });
 
@@ -512,15 +517,9 @@ export class UnifiedGitHubService {
     branch: string = 'main',
     sha?: string
   ): Promise<any> {
-    // Use fallback GitHubService for complex file operations if available
-    if (this.fallbackGitHubService) {
-      return await this.fallbackGitHubService.pushFile(owner, repo, path, content, message, branch, sha);
-    }
-
-    // Direct implementation for GitHub App
     const token = await this.getToken();
     const url = `https://api.github.com/repos/${owner}/${repo}/contents/${path}`;
-    
+
     const body: any = {
       message,
       content: btoa(content),
@@ -534,8 +533,8 @@ export class UnifiedGitHubService {
     const response = await fetch(url, {
       method: 'PUT',
       headers: {
-        'Authorization': `Bearer ${token}`,
-        'Accept': 'application/vnd.github.v3+json',
+        Authorization: `Bearer ${token}`,
+        Accept: 'application/vnd.github.v3+json',
         'Content-Type': 'application/json',
       },
       body: JSON.stringify(body),
@@ -552,18 +551,21 @@ export class UnifiedGitHubService {
   // Issue Management Methods
   // ========================================
 
-  async getIssues(owner: string, repo: string, state: 'open' | 'closed' | 'all' = 'open'): Promise<any[]> {
-    if (this.fallbackGitHubService) {
-      return await this.fallbackGitHubService.getIssues(owner, repo, state);
-    }
-
+  async getIssues(
+    owner: string,
+    repo: string,
+    state: 'open' | 'closed' | 'all' = 'open'
+  ): Promise<any[]> {
     const token = await this.getToken();
-    const response = await fetch(`https://api.github.com/repos/${owner}/${repo}/issues?state=${state}`, {
-      headers: {
-        'Authorization': `Bearer ${token}`,
-        'Accept': 'application/vnd.github.v3+json',
-      },
-    });
+    const response = await fetch(
+      `https://api.github.com/repos/${owner}/${repo}/issues?state=${state}`,
+      {
+        headers: {
+          Authorization: `Bearer ${token}`,
+          Accept: 'application/vnd.github.v3+json',
+        },
+      }
+    );
 
     if (!response.ok) {
       throw new Error(`Failed to get issues: ${response.statusText}`);
@@ -573,17 +575,16 @@ export class UnifiedGitHubService {
   }
 
   async getIssue(owner: string, repo: string, issueNumber: number): Promise<any> {
-    if (this.fallbackGitHubService) {
-      return await this.fallbackGitHubService.getIssue(owner, repo, issueNumber);
-    }
-
     const token = await this.getToken();
-    const response = await fetch(`https://api.github.com/repos/${owner}/${repo}/issues/${issueNumber}`, {
-      headers: {
-        'Authorization': `Bearer ${token}`,
-        'Accept': 'application/vnd.github.v3+json',
-      },
-    });
+    const response = await fetch(
+      `https://api.github.com/repos/${owner}/${repo}/issues/${issueNumber}`,
+      {
+        headers: {
+          Authorization: `Bearer ${token}`,
+          Accept: 'application/vnd.github.v3+json',
+        },
+      }
+    );
 
     if (!response.ok) {
       throw new Error(`Failed to get issue: ${response.statusText}`);
@@ -592,17 +593,19 @@ export class UnifiedGitHubService {
     return await response.json();
   }
 
-  async createIssue(owner: string, repo: string, title: string, body?: string, labels?: string[]): Promise<any> {
-    if (this.fallbackGitHubService) {
-      return await this.fallbackGitHubService.createIssue(owner, repo, title, body, labels);
-    }
-
+  async createIssue(
+    owner: string,
+    repo: string,
+    title: string,
+    body?: string,
+    labels?: string[]
+  ): Promise<any> {
     const token = await this.getToken();
     const response = await fetch(`https://api.github.com/repos/${owner}/${repo}/issues`, {
       method: 'POST',
       headers: {
-        'Authorization': `Bearer ${token}`,
-        'Accept': 'application/vnd.github.v3+json',
+        Authorization: `Bearer ${token}`,
+        Accept: 'application/vnd.github.v3+json',
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
@@ -619,27 +622,33 @@ export class UnifiedGitHubService {
     return await response.json();
   }
 
-  async updateIssue(owner: string, repo: string, issueNumber: number, title?: string, body?: string, state?: 'open' | 'closed'): Promise<any> {
-    if (this.fallbackGitHubService) {
-      return await this.fallbackGitHubService.updateIssue(owner, repo, issueNumber, title, body, state);
-    }
-
+  async updateIssue(
+    owner: string,
+    repo: string,
+    issueNumber: number,
+    title?: string,
+    body?: string,
+    state?: 'open' | 'closed'
+  ): Promise<any> {
     const token = await this.getToken();
     const updateData: any = {};
-    
+
     if (title !== undefined) updateData.title = title;
     if (body !== undefined) updateData.body = body;
     if (state !== undefined) updateData.state = state;
 
-    const response = await fetch(`https://api.github.com/repos/${owner}/${repo}/issues/${issueNumber}`, {
-      method: 'PATCH',
-      headers: {
-        'Authorization': `Bearer ${token}`,
-        'Accept': 'application/vnd.github.v3+json',
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify(updateData),
-    });
+    const response = await fetch(
+      `https://api.github.com/repos/${owner}/${repo}/issues/${issueNumber}`,
+      {
+        method: 'PATCH',
+        headers: {
+          Authorization: `Bearer ${token}`,
+          Accept: 'application/vnd.github.v3+json',
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(updateData),
+      }
+    );
 
     if (!response.ok) {
       throw new Error(`Failed to update issue: ${response.statusText}`);
@@ -648,21 +657,25 @@ export class UnifiedGitHubService {
     return await response.json();
   }
 
-  async addIssueComment(owner: string, repo: string, issueNumber: number, body: string): Promise<any> {
-    if (this.fallbackGitHubService) {
-      return await this.fallbackGitHubService.addIssueComment(owner, repo, issueNumber, body);
-    }
-
+  async addIssueComment(
+    owner: string,
+    repo: string,
+    issueNumber: number,
+    body: string
+  ): Promise<any> {
     const token = await this.getToken();
-    const response = await fetch(`https://api.github.com/repos/${owner}/${repo}/issues/${issueNumber}/comments`, {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${token}`,
-        'Accept': 'application/vnd.github.v3+json',
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({ body }),
-    });
+    const response = await fetch(
+      `https://api.github.com/repos/${owner}/${repo}/issues/${issueNumber}/comments`,
+      {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${token}`,
+          Accept: 'application/vnd.github.v3+json',
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ body }),
+      }
+    );
 
     if (!response.ok) {
       throw new Error(`Failed to add issue comment: ${response.statusText}`);
@@ -671,13 +684,41 @@ export class UnifiedGitHubService {
     return await response.json();
   }
 
-  async submitFeedback(title: string, body: string, labels?: string[]): Promise<any> {
-    if (this.fallbackGitHubService) {
-      return await this.fallbackGitHubService.submitFeedback(title, body, labels);
+  async submitFeedback(feedback: {
+    category: 'appreciation' | 'question' | 'bug' | 'feature' | 'other';
+    message: string;
+    email?: string;
+    metadata?: {
+      browserInfo: string;
+      extensionVersion: string;
+      url?: string;
+    };
+  }): Promise<any> {
+    // Convert feedback to GitHub issue format
+    const issueTitle = `[${feedback.category.toUpperCase()}] User Feedback`;
+
+    let issueBody = `## User Feedback\n\n`;
+    issueBody += `**Category:** ${feedback.category}\n\n`;
+    issueBody += `**Message:**\n${feedback.message}\n\n`;
+
+    if (feedback.email) {
+      issueBody += `**Contact:** ${feedback.email}\n\n`;
+    }
+
+    if (feedback.metadata) {
+      issueBody += `## Technical Information\n\n`;
+      issueBody += `**Extension Version:** ${feedback.metadata.extensionVersion}\n`;
+      issueBody += `**Browser Info:** ${feedback.metadata.browserInfo}\n`;
+      if (feedback.metadata.url) {
+        issueBody += `**URL:** ${feedback.metadata.url}\n`;
+      }
     }
 
     // Submit to the extension's feedback repository
-    return await this.createIssue('mamertofabian', 'bolt-to-github', title, body, labels);
+    return await this.createIssue('mamertofabian', 'bolt-to-github', issueTitle, issueBody, [
+      'feedback',
+      feedback.category,
+    ]);
   }
 
   // ========================================
@@ -685,23 +726,15 @@ export class UnifiedGitHubService {
   // ========================================
 
   async cloneRepoContents(owner: string, repo: string, branch: string = 'main'): Promise<any> {
-    if (this.fallbackGitHubService) {
-      return await this.fallbackGitHubService.cloneRepoContents(owner, repo, branch);
-    }
-
-    // Simplified implementation - delegate to existing service for complex operations
-    const token = await this.getToken();
     // This would need full implementation of the cloning logic
-    throw new Error('Repository cloning not yet implemented for GitHub App strategy');
+    throw new Error('Repository cloning not yet fully implemented in UnifiedGitHubService');
   }
 
   async createTemporaryPublicRepo(baseName: string, files: Record<string, string>): Promise<any> {
-    if (this.fallbackGitHubService) {
-      return await this.fallbackGitHubService.createTemporaryPublicRepo(baseName, files);
-    }
-
     // Simplified implementation
-    throw new Error('Temporary repository creation not yet implemented for GitHub App strategy');
+    throw new Error(
+      'Temporary repository creation not yet fully implemented in UnifiedGitHubService'
+    );
   }
 
   // ========================================
@@ -712,12 +745,8 @@ export class UnifiedGitHubService {
    * Legacy request method (marked for removal in original service)
    */
   async request(method: string, endpoint: string, data?: any): Promise<any> {
-    if (this.fallbackGitHubService) {
-      return await this.fallbackGitHubService.request(method, endpoint, data);
-    }
-
     const token = await this.getToken();
-    
+
     // Ensure proper URL construction
     let url: string;
     if (endpoint.startsWith('http')) {
@@ -727,17 +756,22 @@ export class UnifiedGitHubService {
       const normalizedEndpoint = endpoint.startsWith('/') ? endpoint : `/${endpoint}`;
       url = `https://api.github.com${normalizedEndpoint}`;
     }
-    
+
     const options: RequestInit = {
       method: method.toUpperCase(),
       headers: {
-        'Authorization': `Bearer ${token}`,
-        'Accept': 'application/vnd.github.v3+json',
+        Authorization: `Bearer ${token}`,
+        Accept: 'application/vnd.github.v3+json',
         'Content-Type': 'application/json',
       },
     };
 
-    if (data && (method.toUpperCase() === 'POST' || method.toUpperCase() === 'PUT' || method.toUpperCase() === 'PATCH')) {
+    if (
+      data &&
+      (method.toUpperCase() === 'POST' ||
+        method.toUpperCase() === 'PUT' ||
+        method.toUpperCase() === 'PATCH')
+    ) {
       options.body = JSON.stringify(data);
     }
 

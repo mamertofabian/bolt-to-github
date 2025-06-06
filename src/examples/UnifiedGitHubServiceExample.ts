@@ -1,55 +1,47 @@
 /**
  * Example: How to Update Existing Code to Use UnifiedGitHubService
- * 
- * This file demonstrates how to migrate existing code from GitHubService 
+ *
+ * This file demonstrates how to migrate existing code from GitHubService
  * to UnifiedGitHubService while maintaining backward compatibility.
  */
 
 import { UnifiedGitHubService } from '../services/UnifiedGitHubService';
-import { GitHubService } from '../services/GitHubService';
 import { AuthenticationStrategyFactory } from '../services/AuthenticationStrategyFactory';
-import { ChromeStorageService } from '../lib/services/chromeStorage';
 import type { AuthenticationConfig } from '../services/types/authentication';
 
 /**
  * Example 1: Drop-in replacement for existing GitHubService usage
- * 
- * BEFORE: Using GitHubService directly
+ *
+ * This shows how UnifiedGitHubService can be used as a direct replacement
  */
-class ExampleServiceBefore {
-  private githubService: GitHubService | null = null;
 
-  async initializeOld(githubToken: string) {
-    // Old way - direct instantiation with token
-    this.githubService = new GitHubService(githubToken);
-    
-    // All existing methods work the same
-    const isValid = await this.githubService.validateTokenAndUser('username');
-    const repos = await this.githubService.listRepos();
-    
-    return { isValid, repos };
-  }
-}
-
-/**
- * AFTER: Using UnifiedGitHubService (backward compatible)
- */
-class ExampleServiceAfter {
+class ExampleService {
   private githubService: UnifiedGitHubService | null = null;
 
-  async initializeNew(githubToken: string) {
-    // New way - same interface, enhanced functionality
+  // Simple PAT authentication (backward compatible)
+  async initializeWithPAT(githubToken: string) {
     this.githubService = new UnifiedGitHubService(githubToken);
-    
+
     // All existing methods work exactly the same!
     const isValid = await this.githubService.validateTokenAndUser('username');
     const repos = await this.githubService.listRepos();
-    
+
     // NEW: Additional methods available
     const authType = await this.githubService.getAuthenticationType();
     const needsRenewal = await this.githubService.needsRenewal();
-    
+
     return { isValid, repos, authType, needsRenewal };
+  }
+
+  // GitHub App authentication
+  async initializeWithGitHubApp() {
+    this.githubService = new UnifiedGitHubService({ type: 'github_app' });
+
+    // Same API, different authentication method
+    const isValid = await this.githubService.validateTokenAndUser('username');
+    const repos = await this.githubService.listRepos();
+
+    return { isValid, repos };
   }
 }
 
@@ -74,7 +66,7 @@ class SmartGitHubServiceWrapper {
   }> {
     // Get current authentication strategy
     const strategy = await this.factory.getCurrentStrategy();
-    
+
     // Create configuration based on detected method
     const config: AuthenticationConfig = {
       type: strategy.type,
@@ -93,10 +85,10 @@ class SmartGitHubServiceWrapper {
 
     // Create unified service
     this.unifiedService = new UnifiedGitHubService(config);
-    
+
     // Validate authentication
     const validation = await strategy.validateAuth();
-    
+
     return {
       service: this.unifiedService,
       authType: strategy.type,
@@ -117,7 +109,7 @@ class SmartGitHubServiceWrapper {
     try {
       // These operations work the same regardless of authentication method
       const repoExists = await this.unifiedService.repoExists(repoOwner, repoName);
-      
+
       if (!repoExists) {
         const newRepo = await this.unifiedService.createRepo(repoName);
         console.log('Created new repository:', newRepo.html_url);
@@ -125,23 +117,22 @@ class SmartGitHubServiceWrapper {
 
       const repoInfo = await this.unifiedService.getRepoInfo(repoOwner, repoName);
       return repoInfo;
-      
     } catch (error) {
       // Handle authentication renewal if needed
       if (error instanceof Error && error.message.includes('authentication')) {
         console.log('Authentication needs renewal, trying to refresh...');
-        
+
         try {
           await this.unifiedService.refreshAuth();
           console.log('Authentication refreshed successfully');
-          
+
           // Retry the operation
           return await this.performGitHubOperation(repoOwner, repoName);
         } catch (refreshError) {
           throw new Error('Authentication renewal failed. Please re-authenticate.');
         }
       }
-      
+
       throw error;
     }
   }
@@ -154,40 +145,35 @@ export class GitHubServiceMigrationHelper {
   /**
    * Utility to help migrate existing GitHubService instantiations
    */
-  static async createUnifiedService(
-    legacyToken?: string
-  ): Promise<UnifiedGitHubService> {
-    
+  static async createUnifiedService(legacyToken?: string): Promise<UnifiedGitHubService> {
     if (legacyToken) {
       // Direct migration - use provided token
       return new UnifiedGitHubService(legacyToken);
     }
 
     // Smart migration - detect current configuration
-    const settings = await ChromeStorageService.getGitHubSettings();
-    
-    if (settings.authenticationMethod === 'github_app' && settings.githubAppInstallationId) {
-      // User has GitHub App configured
-      return new UnifiedGitHubService({
-        type: 'github_app',
-        githubAppConfig: {
-          installationId: settings.githubAppInstallationId,
-          githubUsername: settings.githubAppUsername || undefined,
-          avatarUrl: settings.githubAppAvatarUrl || undefined,
-        },
-      });
-    } else if (settings.githubToken) {
-      // User has PAT configured
-      return new UnifiedGitHubService({
-        type: 'pat',
-        token: settings.githubToken,
-      });
+    try {
+      const authSettings = await chrome.storage.local.get(['authenticationMethod']);
+      const authMethod = authSettings.authenticationMethod || 'pat';
+
+      if (authMethod === 'github_app') {
+        // User has GitHub App configured
+        return new UnifiedGitHubService({ type: 'github_app' });
+      } else {
+        // Try to get PAT from storage
+        const syncSettings = await chrome.storage.sync.get(['githubToken']);
+        if (syncSettings.githubToken) {
+          return new UnifiedGitHubService(syncSettings.githubToken);
+        }
+      }
+    } catch (error) {
+      console.warn('Failed to detect authentication method:', error);
     }
 
-    // No authentication configured - return default (will use current strategy)
+    // Fallback to auto-detection
     const factory = AuthenticationStrategyFactory.getInstance();
     const currentStrategy = await factory.getCurrentStrategy();
-    
+
     return new UnifiedGitHubService({
       type: currentStrategy.type,
     });
@@ -208,26 +194,25 @@ export class DualAuthTester {
   async testBothMethods(repoOwner: string) {
     const factory = AuthenticationStrategyFactory.getInstance();
     const allStrategies = await factory.getAllConfiguredStrategies();
-    
+
     console.log('Testing configured authentication methods...');
-    
+
     for (const [type, strategy] of Object.entries(allStrategies)) {
       console.log(`\nTesting ${type} authentication:`);
-      
+
       try {
         const service = new UnifiedGitHubService({
           type: type as 'pat' | 'github_app',
         });
-        
+
         const validation = await service.validateTokenAndUser(repoOwner);
         const repos = await service.listRepos();
-        
+
         console.log(`✅ ${type}: Valid (${repos.length} repositories)`);
-        
+
         if (validation.userInfo) {
           console.log(`   User: ${validation.userInfo.login}`);
         }
-        
       } catch (error) {
         console.log(`❌ ${type}: ${error instanceof Error ? error.message : 'Failed'}`);
       }
@@ -236,25 +221,21 @@ export class DualAuthTester {
 }
 
 // Export examples for easy testing
-export {
-  ExampleServiceBefore,
-  ExampleServiceAfter,
-  SmartGitHubServiceWrapper,
-};
+export { ExampleService, SmartGitHubServiceWrapper };
 
 /**
  * Usage Examples:
- * 
+ *
  * // Simple migration (drop-in replacement)
  * const service = new UnifiedGitHubService(githubToken);
- * 
+ *
  * // Smart initialization
  * const wrapper = new SmartGitHubServiceWrapper();
  * const { service, authType } = await wrapper.initialize();
- * 
+ *
  * // Migration helper
  * const service = await GitHubServiceMigrationHelper.createUnifiedService();
- * 
+ *
  * // Testing
  * const tester = new DualAuthTester();
  * await tester.testBothMethods('username');

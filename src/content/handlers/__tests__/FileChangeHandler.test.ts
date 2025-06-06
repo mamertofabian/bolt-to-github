@@ -8,9 +8,9 @@ import { FilePreviewService, type FileChange } from '../../../services/FilePrevi
 
 // Mock external dependencies
 jest.mock('../../../services/FilePreviewService');
-jest.mock('../../../services/GitHubService', () => ({
-  GitHubService: jest.fn().mockImplementation(() => ({
-    // Mock GitHubService methods if needed
+jest.mock('../../../services/UnifiedGitHubService', () => ({
+  UnifiedGitHubService: jest.fn().mockImplementation(() => ({
+    // Mock UnifiedGitHubService methods if needed
   })),
 }));
 
@@ -20,6 +20,7 @@ const mockChromeStorage = {
     get: jest.fn(),
   },
   local: {
+    get: jest.fn(),
     set: jest.fn(),
   },
 };
@@ -95,6 +96,7 @@ describe('FileChangeHandler', () => {
 
     // Reset chrome storage mocks
     mockChromeStorage.sync.get.mockResolvedValue({});
+    mockChromeStorage.local.get.mockResolvedValue({ authenticationMethod: 'pat' });
     mockChromeStorage.local.set.mockResolvedValue(undefined);
     mockChromeTabsCreate.mockResolvedValue(undefined);
 
@@ -356,6 +358,9 @@ describe('FileChangeHandler', () => {
       mockPremiumService.useFileChanges.mockResolvedValue(undefined);
       mockFilePreviewService.loadProjectFiles.mockResolvedValue(new Map());
 
+      // Mock authentication method for local storage
+      mockChromeStorage.local.get.mockResolvedValue({ authenticationMethod: 'pat' });
+
       // Mock GitHub settings
       mockChromeStorage.sync.get.mockResolvedValue({
         repoOwner: 'testowner',
@@ -390,6 +395,9 @@ describe('FileChangeHandler', () => {
     it('should handle GitHub 404 error by treating files as new', async () => {
       mockPremiumService.canUseFileChanges.mockResolvedValue({ allowed: true });
       mockPremiumService.useFileChanges.mockResolvedValue(undefined);
+
+      // Mock authentication method for local storage
+      mockChromeStorage.local.get.mockResolvedValue({ authenticationMethod: 'pat' });
 
       // Mock GitHub settings
       mockChromeStorage.sync.get.mockResolvedValue({
@@ -426,6 +434,9 @@ describe('FileChangeHandler', () => {
       mockPremiumService.canUseFileChanges.mockResolvedValue({ allowed: true });
       mockPremiumService.useFileChanges.mockResolvedValue(undefined);
       mockFilePreviewService.loadProjectFiles.mockResolvedValue(new Map());
+
+      // Mock authentication method for local storage
+      mockChromeStorage.local.get.mockResolvedValue({ authenticationMethod: 'pat' });
 
       // Mock GitHub settings
       mockChromeStorage.sync.get.mockResolvedValue({
@@ -790,6 +801,9 @@ describe('FileChangeHandler', () => {
       mockPremiumService.canUseFileChanges.mockResolvedValue({ allowed: true });
       mockPremiumService.useFileChanges.mockResolvedValue(undefined);
       mockFilePreviewService.loadProjectFiles.mockResolvedValue(new Map());
+
+      // Mock authentication method for local storage
+      mockChromeStorage.local.get.mockResolvedValue({ authenticationMethod: 'pat' });
 
       // Mock GitHub settings without branch
       mockChromeStorage.sync.get.mockResolvedValue({
