@@ -154,7 +154,7 @@
       <!-- Content -->
       <div class="enhanced-dialog-content">
         <p id="dialog-description" class="enhanced-message">
-          {message}
+          {@html message}
         </p>
 
         <!-- File changes summary (if provided) -->
