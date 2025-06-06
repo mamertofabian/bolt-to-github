@@ -1,7 +1,7 @@
 import { DownloadService } from './DownloadService';
 import { CacheService } from './CacheService';
 import { GitHubComparisonService } from './GitHubComparisonService';
-import { GitHubService } from './GitHubService';
+import type { UnifiedGitHubService } from './UnifiedGitHubService';
 import { IdleMonitorService } from './IdleMonitorService';
 import type { ProjectFiles } from '$lib/types';
 import { processFilesWithGitignore } from '$lib/fileUtils';
@@ -592,14 +592,14 @@ export class FilePreviewService {
    * @param repoOwner GitHub repository owner
    * @param repoName GitHub repository name
    * @param targetBranch GitHub repository branch
-   * @param githubService Optional GitHubService instance to use
+   * @param githubService Optional UnifiedGitHubService instance to use
    * @returns Map of file paths to change information
    */
   public async compareWithGitHub(
     repoOwner: string,
     repoName: string,
     targetBranch: string,
-    githubService?: GitHubService
+    githubService?: UnifiedGitHubService
   ): Promise<Map<string, FileChange>> {
     // Get processed files (applying gitignore rules)
     const processedFiles = await this.getProcessedFiles();

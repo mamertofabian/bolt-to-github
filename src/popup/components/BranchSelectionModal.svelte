@@ -3,7 +3,7 @@
   import Modal from '$lib/components/ui/modal/Modal.svelte';
   import UpgradeModal from './UpgradeModal.svelte';
   import { onMount } from 'svelte';
-  import { GitHubService } from '../../services/GitHubService';
+  import { UnifiedGitHubService } from '../../services/UnifiedGitHubService';
   import { PREMIUM_FEATURES } from '$lib/constants/premiumFeatures';
 
   export let show = false;
@@ -49,7 +49,16 @@
     error = null;
 
     try {
-      const githubService = new GitHubService(token);
+      // Create GitHub service with authentication method detection
+      const authSettings = await chrome.storage.local.get(['authenticationMethod']);
+      const authMethod = authSettings.authenticationMethod || 'pat';
+      
+      let githubService: UnifiedGitHubService;
+      if (authMethod === 'github_app') {
+        githubService = new UnifiedGitHubService({ type: 'github_app' });
+      } else {
+        githubService = new UnifiedGitHubService(token);
+      }
       branches = await githubService.listBranches(owner, repo);
 
       // Set the default branch as selected

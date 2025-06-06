@@ -1,4 +1,4 @@
-import { GitHubService } from './GitHubService';
+import type { UnifiedGitHubService } from './UnifiedGitHubService';
 import type { FileChange } from './FilePreviewService';
 import type { ProjectFiles } from '$lib/types';
 import {
@@ -15,7 +15,7 @@ import { OperationStateManager } from '../content/services/OperationStateManager
  */
 export class GitHubComparisonService {
   private static instance: GitHubComparisonService | null = null;
-  private githubService: GitHubService | null = null;
+  private githubService: UnifiedGitHubService | null = null;
   private operationStateManager: OperationStateManager;
 
   private constructor() {
@@ -36,7 +36,7 @@ export class GitHubComparisonService {
    * Set the GitHub service instance
    * @param githubService The GitHub service instance
    */
-  public setGitHubService(githubService: GitHubService): void {
+  public setGitHubService(githubService: UnifiedGitHubService): void {
     this.githubService = githubService;
   }
 

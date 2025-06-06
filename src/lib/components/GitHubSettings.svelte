@@ -13,7 +13,8 @@
     Settings,
   } from 'lucide-svelte';
   import { onMount } from 'svelte';
-  import { CREATE_FINE_GRAINED_TOKEN_URL, GitHubService } from '../../services/GitHubService';
+  import { CREATE_FINE_GRAINED_TOKEN_URL } from '../../services/GitHubService';
+  import { UnifiedGitHubService } from '../../services/UnifiedGitHubService';
   import NewUserGuide from './github/NewUserGuide.svelte';
 
   export let isOnboarding: boolean = false;
@@ -133,12 +134,30 @@
     isRepoNameFromProjectId = true;
   }
 
+  // Helper function to create GitHub service with authentication method detection
+  async function createGitHubService(): Promise<UnifiedGitHubService> {
+    try {
+      const authSettings = await chrome.storage.local.get(['authenticationMethod']);
+      const authMethod = authSettings.authenticationMethod || 'pat';
+      
+      if (authMethod === 'github_app') {
+        return new UnifiedGitHubService({ type: 'github_app' });
+      } else {
+        return new UnifiedGitHubService(githubToken);
+      }
+    } catch (error) {
+      console.error('Failed to detect authentication method:', error);
+      // Fallback to PAT
+      return new UnifiedGitHubService(githubToken);
+    }
+  }
+
   async function loadRepositories() {
     if (!githubToken || !repoOwner || !isTokenValid) return;
 
     try {
       isLoadingRepos = true;
-      const githubService = new GitHubService(githubToken);
+      const githubService = await createGitHubService();
       repositories = await githubService.listRepos();
     } catch (error) {
       console.error('Error loading repositories:', error);
@@ -274,7 +293,7 @@
     try {
       isValidatingToken = true;
       validationError = null;
-      const githubService = new GitHubService(githubToken);
+      const githubService = await createGitHubService();
       const result = await githubService.validateTokenAndUser(repoOwner);
       isTokenValid = result.isValid;
       validationError = result.error || null;
@@ -334,7 +353,7 @@
     };
 
     try {
-      const githubService = new GitHubService(githubToken);
+      const githubService = await createGitHubService();
 
       const result = await githubService.verifyTokenPermissions(
         repoOwner,

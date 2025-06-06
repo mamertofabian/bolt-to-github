@@ -1,6 +1,6 @@
 <script lang="ts">
   import { createEventDispatcher } from 'svelte';
-  import { GitHubService } from '../../services/GitHubService';
+  import { UnifiedGitHubService } from '../../services/UnifiedGitHubService';
   import { Button } from '$lib/components/ui/button';
   import { Input } from '$lib/components/ui/input';
   import Modal from '$lib/components/ui/modal/Modal.svelte';
@@ -128,8 +128,16 @@
         url: currentUrl,
       };
 
-      // Submit feedback using GitHub Issues API
-      const githubService = new GitHubService(githubToken);
+      // Submit feedback using GitHub Issues API with authentication method detection
+      const authSettings = await chrome.storage.local.get(['authenticationMethod']);
+      const authMethod = authSettings.authenticationMethod || 'pat';
+      
+      let githubService: UnifiedGitHubService;
+      if (authMethod === 'github_app') {
+        githubService = new UnifiedGitHubService({ type: 'github_app' });
+      } else {
+        githubService = new UnifiedGitHubService(githubToken);
+      }
       await githubService.submitFeedback({
         category: category as 'appreciation' | 'question' | 'bug' | 'feature' | 'other',
         message: message.trim(),

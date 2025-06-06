@@ -15,7 +15,7 @@
   } from 'lucide-svelte';
   import RepoSettings from '$lib/components/RepoSettings.svelte';
   import ConfirmationDialog from '$lib/components/ui/dialog/ConfirmationDialog.svelte';
-  import { GitHubService } from '../../services/GitHubService';
+  import { UnifiedGitHubService } from '../../services/UnifiedGitHubService';
   import BranchSelectionModal from '../../popup/components/BranchSelectionModal.svelte';
   import { githubSettingsStore } from '$lib/stores';
 
@@ -56,7 +56,28 @@
   let showImportConfirmDialog = false;
   let repoToConfirmImport: { owner: string; repo: string; isPrivate: boolean } | null = null;
 
-  const githubService = new GitHubService(githubToken);
+  // Create GitHub service with authentication method detection
+  let githubService: UnifiedGitHubService;
+  
+  // Initialize GitHub service reactively
+  $: {
+    (async () => {
+      try {
+        const authSettings = await chrome.storage.local.get(['authenticationMethod']);
+        const authMethod = authSettings.authenticationMethod || 'pat';
+        
+        if (authMethod === 'github_app') {
+          githubService = new UnifiedGitHubService({ type: 'github_app' });
+        } else {
+          githubService = new UnifiedGitHubService(githubToken);
+        }
+      } catch (error) {
+        console.error('Failed to initialize GitHub service:', error);
+        // Fallback to PAT
+        githubService = new UnifiedGitHubService(githubToken);
+      }
+    })();
+  }
   let commitCounts: Record<string, number> = {};
   let loadingCommitCounts: Record<string, boolean> = {};
   let allRepos: Array<{

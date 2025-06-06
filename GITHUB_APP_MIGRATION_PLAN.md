@@ -74,7 +74,7 @@ The "Failed to fetch" error in zipHandler is likely due to:
 
 ## Migration Strategy
 
-### Phase 1: Critical Core Services (Day 1) ✅ COMPLETED
+### Phase 1: Critical Core Services ✅ COMPLETED
 **Priority: IMMEDIATE** - These changes will fix authentication issues immediately
 
 #### 1.1 Background Service (`/src/background/BackgroundService.ts`) ✅ COMPLETED
@@ -218,7 +218,7 @@ const githubService = await createGitHubService(token);
 
 #### 1.4 Zip Handler (`/src/services/zipHandler.ts`) ✅ COMPLETED
 **Previous Issue:** Lines 1, 15 used GitHubService type annotation and dependency.
-**Status: FIXED** - Updated to use UnifiedGitHubService type annotations. However, still encountering "Failed to fetch" errors due to authentication token resolution issues that were fixed in UnifiedGitHubService.
+**Status: FIXED** - Updated to use UnifiedGitHubService type annotations. Also fixed malformed URL issue in UnifiedGitHubService.request() method that was causing "Failed to fetch" errors.
 
 **Changes:**
 ```typescript
@@ -231,13 +231,33 @@ constructor(private githubService: UnifiedGitHubService) {
 }
 
 // All method calls remain the same (API compatible)
+// Fixed UnifiedGitHubService.request() method signature and URL construction
 ```
 
-### Phase 2: Content Scripts and Handlers (Day 2)
+### Phase 2: Content Scripts and Handlers ✅ COMPLETED
 **Priority: HIGH** - Fixes file change detection and upload functionality
 
-#### 2.1 File Change Handler (`/src/content/handlers/FileChangeHandler.ts`)
-**Current Issue:** Lines 166-170 create GitHubService without GitHub App support.
+#### 2.1 GitHubComparisonService (`/src/services/GitHubComparisonService.ts`) ✅ COMPLETED
+**Previous Issue:** Service typed to accept GitHubService instead of UnifiedGitHubService, causing type compatibility issues.
+**Status: FIXED** - Updated to use UnifiedGitHubService type annotations. All request calls were already using correct method signature.
+
+**Changes:**
+```typescript
+// Import change
+import type { UnifiedGitHubService } from './UnifiedGitHubService';
+
+// Type updates
+private githubService: UnifiedGitHubService | null = null;
+public setGitHubService(githubService: UnifiedGitHubService): void {
+  this.githubService = githubService;
+}
+
+// All request method calls remain the same (API compatible)
+```
+
+#### 2.2 File Change Handler (`/src/content/handlers/FileChangeHandler.ts`) ✅ COMPLETED
+**Previous Issue:** Lines 166-170 create GitHubService without GitHub App support.
+**Status: FIXED** - Updated to use UnifiedGitHubService with authentication method detection.
 
 **Changes:**
 ```typescript
@@ -285,21 +305,23 @@ try {
 }
 ```
 
-#### 2.2 Supporting Services
+#### 2.3 Supporting Services ✅ COMPLETED
 **Files:** GitHubComparisonService.ts, FilePreviewService.ts, TempRepoManager.ts
+**Status: FIXED** - All supporting services updated to use UnifiedGitHubService type annotations.
 
 **Changes:**
 ```typescript
 // Import updates
-import { UnifiedGitHubService } from './UnifiedGitHubService';
+import type { UnifiedGitHubService } from './UnifiedGitHubService';
 
 // Type annotations
 constructor(private githubService: UnifiedGitHubService)
+public setGitHubService(githubService: UnifiedGitHubService): void
 
 // Method signatures remain the same (API compatible)
 ```
 
-### Phase 3: UI Components (Day 3)
+### Phase 3: UI Components ✅ COMPLETED
 **Priority: MEDIUM** - Improves user experience and settings
 
 #### 3.1 Project Status Component (`/src/lib/components/ProjectStatus.svelte`) ✅ COMPLETED
@@ -345,13 +367,31 @@ export const getProjectStatus = async () => {
 };
 ```
 
-#### 3.2 Other UI Components
+#### 3.2 Other UI Components ✅ COMPLETED
 **Status:**
 - RepoSettings.svelte ✅ COMPLETED - Updated to use UnifiedGitHubService with authentication method detection
-- ProjectsList.svelte ❌ PENDING 
-- GitHubSettings.svelte ❌ PENDING  
-- BranchSelectionModal.svelte ❌ PENDING
-- FeedbackModal.svelte ❌ PENDING
+- ProjectsList.svelte ✅ COMPLETED - Updated with reactive GitHub service initialization
+- GitHubSettings.svelte ✅ COMPLETED - Added createGitHubService() helper function for authentication method detection
+- BranchSelectionModal.svelte ✅ COMPLETED - Updated to use UnifiedGitHubService with authentication method detection
+- FeedbackModal.svelte ✅ COMPLETED - Updated to use UnifiedGitHubService with authentication method detection
+
+**Changes:**
+```typescript
+// Common pattern for all UI components
+async function createGitHubService(): Promise<UnifiedGitHubService> {
+  const authSettings = await chrome.storage.local.get(['authenticationMethod']);
+  const authMethod = authSettings.authenticationMethod || 'pat';
+  
+  if (authMethod === 'github_app') {
+    return new UnifiedGitHubService({ type: 'github_app' });
+  } else {
+    return new UnifiedGitHubService(githubToken);
+  }
+}
+
+// Replace all GitHubService instantiations with:
+const githubService = await createGitHubService();
+```
 
 ### Phase 4: Test Files and Cleanup (Day 4)
 **Priority: LOW** - Maintains test coverage and removes circular dependencies
