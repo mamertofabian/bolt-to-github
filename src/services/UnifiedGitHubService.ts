@@ -819,16 +819,123 @@ export class UnifiedGitHubService {
   // Repository Cloning Methods
   // ========================================
 
-  async cloneRepoContents(owner: string, repo: string, branch: string = 'main'): Promise<any> {
-    // This would need full implementation of the cloning logic
-    throw new Error('Repository cloning not yet fully implemented in UnifiedGitHubService');
+  async cloneRepoContents(
+    sourceOwner: string,
+    sourceRepo: string,
+    targetOwner: string,
+    targetRepo: string,
+    branch: string = 'main',
+    onProgress?: (progress: number) => void
+  ): Promise<void> {
+    try {
+      // Get all files from the source repository
+      const token = await this.getToken();
+
+      if (onProgress) onProgress(10);
+
+      // Get the repository tree
+      const treeResponse = await fetch(
+        `https://api.github.com/repos/${sourceOwner}/${sourceRepo}/git/trees/${branch}?recursive=1`,
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+            Accept: 'application/vnd.github.v3+json',
+          },
+        }
+      );
+
+      if (!treeResponse.ok) {
+        throw new Error(`Failed to get repository tree: ${treeResponse.statusText}`);
+      }
+
+      const tree = await treeResponse.json();
+      const files = tree.tree.filter((item: any) => item.type === 'blob');
+
+      if (onProgress) onProgress(30);
+
+      // Copy files one by one
+      let processedFiles = 0;
+      const totalFiles = files.length;
+
+      for (const file of files) {
+        try {
+          // Get file content
+          const fileResponse = await fetch(file.url, {
+            headers: {
+              Authorization: `Bearer ${token}`,
+              Accept: 'application/vnd.github.v3+json',
+            },
+          });
+
+          if (fileResponse.ok) {
+            const fileData = await fileResponse.json();
+
+            // Decode content if it's base64 encoded
+            let content = fileData.content;
+            if (fileData.encoding === 'base64') {
+              content = atob(content.replace(/\n/g, ''));
+            }
+
+            // Push file to target repository
+            await this.pushFile(
+              targetOwner,
+              targetRepo,
+              file.path,
+              content,
+              `Clone from ${sourceOwner}/${sourceRepo}`,
+              branch
+            );
+          }
+        } catch (error) {
+          console.warn(`Failed to copy file ${file.path}:`, error);
+        }
+
+        processedFiles++;
+        if (onProgress) {
+          const progress = 30 + Math.floor((processedFiles / totalFiles) * 60);
+          onProgress(progress);
+        }
+      }
+
+      if (onProgress) onProgress(100);
+    } catch (error) {
+      console.error('Failed to clone repository contents:', error);
+      throw error;
+    }
   }
 
-  async createTemporaryPublicRepo(baseName: string, files: Record<string, string>): Promise<any> {
-    // Simplified implementation
-    throw new Error(
-      'Temporary repository creation not yet fully implemented in UnifiedGitHubService'
-    );
+  async createTemporaryPublicRepo(
+    ownerName: string,
+    sourceRepoName: string,
+    branch: string = 'main'
+  ): Promise<string> {
+    try {
+      const timestamp = Date.now();
+      const randomStr = Math.random().toString(36).substring(2, 8);
+      const tempRepoName = `temp-${sourceRepoName}-${timestamp}-${randomStr}`;
+
+      // Create the temporary repository as private initially
+      await this.createRepo(
+        tempRepoName,
+        true,
+        'Temporary repository for Bolt import - will be deleted automatically'
+      );
+
+      // Initialize with an empty commit to create the specified branch
+      await this.pushFile(
+        ownerName,
+        tempRepoName,
+        '.gitkeep',
+        '',
+        `Initialize repository with branch '${branch}'`,
+        branch
+      );
+
+      return tempRepoName;
+    } catch (error) {
+      console.error('Failed to create temporary public repository:', error);
+      throw error;
+    }
   }
 
   // ========================================

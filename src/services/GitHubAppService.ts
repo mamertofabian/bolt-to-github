@@ -44,7 +44,7 @@ export class GitHubAppService {
 
       if (authData?.access_token) {
         this.userToken = authData.access_token;
-        return this.userToken;
+        return authData.access_token;
       }
     } catch (error) {
       console.error('Failed to get user token from storage:', error);

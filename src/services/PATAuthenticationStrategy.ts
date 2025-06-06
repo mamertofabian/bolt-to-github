@@ -57,8 +57,8 @@ export class PATAuthenticationStrategy implements IAuthenticationStrategy {
       }
 
       this.token = storage.githubToken;
-      this.githubService = new GitHubService(this.token);
-      return this.token;
+      this.githubService = new GitHubService(storage.githubToken);
+      return storage.githubToken;
     } catch (error) {
       throw new Error('Failed to get GitHub token from storage');
     }
@@ -85,16 +85,19 @@ export class PATAuthenticationStrategy implements IAuthenticationStrategy {
         };
       }
 
+      // Get user info and metadata separately
+      const userInfo = await this.getUserInfo();
+      const metadata = await this.getMetadata();
+
       // Determine token type
-      const token = await this.getToken();
       const isClassic = await this.githubService!.isClassicToken();
       const tokenType = isClassic ? 'classic' : 'fine-grained';
 
       return {
         isValid: true,
-        userInfo: result.userInfo,
+        userInfo: userInfo || undefined,
         type: tokenType,
-        scopes: result.scopes,
+        scopes: metadata.scopes,
       };
     } catch (error) {
       return {

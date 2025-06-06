@@ -169,7 +169,7 @@ export class FileChangeHandler implements IFileChangeHandler {
         const authSettings = await chrome.storage.local.get(['authenticationMethod']);
         const authMethod = authSettings.authenticationMethod || 'pat';
 
-        let githubService: UnifiedGitHubService;
+        let githubService: InstanceType<typeof UnifiedGitHubService>;
 
         if (authMethod === 'github_app') {
           githubService = new UnifiedGitHubService({ type: 'github_app' });
