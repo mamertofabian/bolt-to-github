@@ -520,6 +520,68 @@ export class UnifiedGitHubService {
   }
 
   /**
+   * Get commit count for a repository branch
+   */
+  async getCommitCount(owner: string, repo: string, branch: string = 'main'): Promise<number> {
+    const token = await this.getToken();
+
+    try {
+      // Get all commits by fetching pages until we reach the end
+      let totalCommits = 0;
+      let page = 1;
+      const perPage = 100;
+
+      // eslint-disable-next-line no-constant-condition
+      while (true) {
+        const response = await fetch(
+          `https://api.github.com/repos/${owner}/${repo}/commits?sha=${branch}&per_page=${perPage}&page=${page}`,
+          {
+            headers: {
+              Authorization: `Bearer ${token}`,
+              Accept: 'application/vnd.github.v3+json',
+            },
+          }
+        );
+
+        if (!response.ok) {
+          if (response.status === 404) {
+            // Repository or branch doesn't exist
+            return totalCommits;
+          }
+          throw new Error(`Failed to get commit count: ${response.statusText}`);
+        }
+
+        const commits = await response.json();
+
+        if (!Array.isArray(commits) || commits.length === 0) {
+          // No more commits, we've reached the end
+          break;
+        }
+
+        totalCommits += commits.length;
+
+        // If we got fewer than perPage commits, we've reached the last page
+        if (commits.length < perPage) {
+          break;
+        }
+
+        page++;
+
+        // Safety check to prevent infinite loops (GitHub repos rarely have more than 10k commits)
+        if (page > 100) {
+          console.warn(`Stopped counting commits at page ${page} for ${owner}/${repo}:${branch}`);
+          break;
+        }
+      }
+
+      return totalCommits;
+    } catch (error) {
+      console.warn(`Failed to get commit count for ${owner}/${repo}:${branch}:`, error);
+      return 0;
+    }
+  }
+
+  /**
    * Push file (maintains exact API compatibility)
    */
   async pushFile(
@@ -610,9 +672,12 @@ export class UnifiedGitHubService {
   async createIssue(
     owner: string,
     repo: string,
-    title: string,
-    body?: string,
-    labels?: string[]
+    issue: {
+      title: string;
+      body?: string;
+      labels?: string[];
+      assignees?: string[];
+    }
   ): Promise<any> {
     const token = await this.getToken();
     const response = await fetch(`https://api.github.com/repos/${owner}/${repo}/issues`, {
@@ -623,9 +688,10 @@ export class UnifiedGitHubService {
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        title,
-        body: body || '',
-        labels: labels || [],
+        title: issue.title,
+        body: issue.body || '',
+        labels: issue.labels || [],
+        assignees: issue.assignees || [],
       }),
     });
 
@@ -729,10 +795,11 @@ export class UnifiedGitHubService {
     }
 
     // Submit to the extension's feedback repository
-    return await this.createIssue('mamertofabian', 'bolt-to-github', issueTitle, issueBody, [
-      'feedback',
-      feedback.category,
-    ]);
+    return await this.createIssue('mamertofabian', 'bolt-to-github', {
+      title: issueTitle,
+      body: issueBody,
+      labels: ['feedback', feedback.category],
+    });
   }
 
   // ========================================

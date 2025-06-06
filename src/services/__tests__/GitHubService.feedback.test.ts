@@ -76,10 +76,11 @@ describe('UnifiedGitHubService Feedback', () => {
         json: jest.fn().mockResolvedValue(mockIssueResponse),
       });
 
-      const result = await githubService.createIssue('owner', 'repo', 'Test Issue', 'Test body', [
-        'bug',
-        'feedback',
-      ]);
+      const result = await githubService.createIssue('owner', 'repo', {
+        title: 'Test Issue',
+        body: 'Test body',
+        labels: ['bug', 'feedback'],
+      });
 
       expect(global.fetch).toHaveBeenCalledWith(
         'https://api.github.com/repos/owner/repo/issues',
@@ -94,6 +95,7 @@ describe('UnifiedGitHubService Feedback', () => {
             title: 'Test Issue',
             body: 'Test body',
             labels: ['bug', 'feedback'],
+            assignees: [],
           }),
         })
       );

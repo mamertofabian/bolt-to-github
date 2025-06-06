@@ -56,25 +56,57 @@
   let showImportConfirmDialog = false;
   let repoToConfirmImport: { owner: string; repo: string; isPrivate: boolean } | null = null;
 
-  // Create GitHub service with authentication method detection
+  // Create GitHub service with smart authentication detection
   let githubService: UnifiedGitHubService;
-  
+
+  // Helper function to create GitHub service with smart authentication detection
+  async function createGitHubService(): Promise<UnifiedGitHubService> {
+    try {
+      // Create service that will trigger smart authentication detection
+      // The UnifiedGitHubService will check for GitHub App first, then fall back to PAT
+
+      // First attempt: Try GitHub App authentication (this triggers smart detection)
+      try {
+        const service = new UnifiedGitHubService({ type: 'github_app' });
+
+        // The service will internally detect if GitHub App authentication is available
+        // If not, the getStrategy() method will handle fallback
+        console.log('🔍 ProjectsList: Created service with smart authentication detection');
+        return service;
+      } catch (githubAppError) {
+        console.log('⚠️ ProjectsList: GitHub App initialization failed, trying PAT fallback');
+
+        // Fallback to PAT if available
+        if (githubToken) {
+          console.log('✅ ProjectsList: Using PAT authentication as fallback');
+          return new UnifiedGitHubService(githubToken);
+        }
+
+        throw githubAppError;
+      }
+    } catch (error) {
+      console.error('Failed to create GitHub service:', error);
+
+      // Final fallback: try PAT if available
+      if (githubToken) {
+        console.log('🔄 ProjectsList: Final fallback to PAT authentication');
+        return new UnifiedGitHubService(githubToken);
+      }
+
+      // If all else fails, create empty service that will rely on auto-detection
+      throw new Error('No authentication method available');
+    }
+  }
+
   // Initialize GitHub service reactively
   $: {
     (async () => {
       try {
-        const authSettings = await chrome.storage.local.get(['authenticationMethod']);
-        const authMethod = authSettings.authenticationMethod || 'pat';
-        
-        if (authMethod === 'github_app') {
-          githubService = new UnifiedGitHubService({ type: 'github_app' });
-        } else {
-          githubService = new UnifiedGitHubService(githubToken);
-        }
+        githubService = await createGitHubService();
       } catch (error) {
-        console.error('Failed to initialize GitHub service:', error);
+        console.error('Failed to initialize GitHub service in ProjectsList:', error);
         // Fallback to PAT
-        githubService = new UnifiedGitHubService(githubToken);
+        githubService = new UnifiedGitHubService(githubToken || '');
       }
     })();
   }

@@ -3,9 +3,9 @@
  * Creates and manages authentication strategies for PAT and GitHub App
  */
 
-import type { 
-  IAuthenticationStrategy, 
-  IAuthenticationStrategyFactory 
+import type {
+  IAuthenticationStrategy,
+  IAuthenticationStrategyFactory,
 } from './interfaces/IAuthenticationStrategy';
 import type { AuthenticationType } from './types/authentication';
 import { PATAuthenticationStrategy } from './PATAuthenticationStrategy';
@@ -71,24 +71,28 @@ export class AuthenticationStrategyFactory implements IAuthenticationStrategyFac
     try {
       // Check what authentication method is configured
       const authMethod = await this.getConfiguredAuthMethod();
-      
+
       switch (authMethod) {
-        case 'github_app':
+        case 'github_app': {
           const githubAppStrategy = this.createStrategy('github_app');
           if (await githubAppStrategy.isConfigured()) {
             return githubAppStrategy;
           }
           // Fall through to PAT if GitHub App is not properly configured
+          break;
+        }
         case 'pat':
-        default:
+        default: {
           const patStrategy = this.createStrategy('pat');
           if (await patStrategy.isConfigured()) {
             return patStrategy;
           }
-          
-          // If no strategy is configured, return the default
-          return this.getDefaultStrategy();
+          break;
+        }
       }
+
+      // If no strategy is configured, return the default
+      return this.getDefaultStrategy();
     } catch (error) {
       console.error('Failed to get current strategy:', error);
       // Return PAT as fallback
