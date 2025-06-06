@@ -12,7 +12,7 @@
     ChevronUp,
     Settings,
   } from 'lucide-svelte';
-  import { onMount } from 'svelte';
+  import { onMount, tick } from 'svelte';
   import { CREATE_FINE_GRAINED_TOKEN_URL } from '../../services/GitHubService';
   import { UnifiedGitHubService } from '../../services/UnifiedGitHubService';
   import NewUserGuide from './github/NewUserGuide.svelte';
@@ -69,6 +69,11 @@
     admin: undefined as boolean | undefined,
     contents: undefined as boolean | undefined,
   };
+
+  // Individual permission status variables for better reactivity
+  let reposPermission: boolean | undefined = undefined;
+  let adminPermission: boolean | undefined = undefined;
+  let contentsPermission: boolean | undefined = undefined;
   let permissionError: string | null = null;
   let previousToken: string | null = null;
 
@@ -96,20 +101,53 @@
   }
 
   // Handle authentication method changes
-  function handleAuthMethodChange(method: 'pat' | 'github_app') {
+  async function handleAuthMethodChange(method: 'pat' | 'github_app') {
     authenticationMethod = method;
 
-    // Clear validation state when switching methods
+    // Save the authentication method preference to storage
+    try {
+      await chrome.storage.local.set({ preferredAuthMethod: method });
+      console.log('💾 Saved authentication method preference:', method);
+    } catch (error) {
+      console.error('Failed to save authentication method preference:', error);
+    }
+
+    // Clear all validation state when switching methods
     isTokenValid = null;
     validationError = null;
     githubAppValidationResult = null;
     githubAppConnectionError = null;
+    tokenType = null;
+    permissionError = null;
+    permissionStatus = {
+      allRepos: undefined,
+      admin: undefined,
+      contents: undefined,
+    };
+    reposPermission = undefined;
+    adminPermission = undefined;
+    contentsPermission = undefined;
+    lastPermissionCheck = null;
+    previousToken = null;
+    repositories = [];
+
+    // Clear any ongoing validations
+    if (tokenValidationTimeout) {
+      clearTimeout(tokenValidationTimeout);
+    }
 
     if (onAuthMethodChange) {
       onAuthMethodChange(method);
     }
 
     onInput();
+
+    // Re-validate if we have the necessary credentials for the selected method
+    if (method === 'pat' && githubToken && repoOwner) {
+      validateSettings();
+    } else if (method === 'github_app' && githubAppInstallationId) {
+      validateGitHubApp();
+    }
   }
 
   function toggleExpanded() {
@@ -134,47 +172,56 @@
     isRepoNameFromProjectId = true;
   }
 
-  // Helper function to create GitHub service with smart authentication detection
+  // Helper function to create GitHub service respecting user's authentication method choice
   async function createGitHubService(): Promise<UnifiedGitHubService> {
     try {
-      // Create service that will trigger smart authentication detection
-      // The UnifiedGitHubService will check for GitHub App first, then fall back to PAT
-
-      // First attempt: Try GitHub App authentication (this triggers smart detection)
-      try {
-        const service = new UnifiedGitHubService({ type: 'github_app' });
-
-        // The service will internally detect if GitHub App authentication is available
-        // If not, the getStrategy() method will handle fallback
-        console.log('🔍 Created service with smart authentication detection');
-        return service;
-      } catch (githubAppError) {
-        console.log('⚠️ GitHub App initialization failed, trying PAT fallback');
-
-        // Fallback to PAT if available
-        if (githubToken) {
-          console.log('✅ Using PAT authentication as fallback');
-          return new UnifiedGitHubService(githubToken);
+      // Respect the user's explicit authentication method choice
+      if (authenticationMethod === 'pat') {
+        // User explicitly chose PAT - use it directly
+        if (!githubToken) {
+          throw new Error('GitHub token is required for PAT authentication');
         }
-
-        throw githubAppError;
+        console.log('✅ Using PAT authentication as explicitly chosen by user');
+        return new UnifiedGitHubService(githubToken);
+      } else if (authenticationMethod === 'github_app') {
+        // User explicitly chose GitHub App - try it first
+        try {
+          const service = new UnifiedGitHubService({ type: 'github_app' });
+          console.log('✅ Using GitHub App authentication as explicitly chosen by user');
+          return service;
+        } catch (githubAppError) {
+          console.log('⚠️ GitHub App initialization failed for user-selected method');
+          throw githubAppError;
+        }
+      } else {
+        // Fallback for legacy cases - try smart detection
+        console.log('🔍 Using smart authentication detection for legacy compatibility');
+        try {
+          const service = new UnifiedGitHubService({ type: 'github_app' });
+          return service;
+        } catch (githubAppError) {
+          if (githubToken) {
+            console.log('🔄 Fallback to PAT authentication');
+            return new UnifiedGitHubService(githubToken);
+          }
+          throw githubAppError;
+        }
       }
     } catch (error) {
       console.error('Failed to create GitHub service:', error);
-
-      // Final fallback: try PAT if available
-      if (githubToken) {
-        console.log('🔄 Final fallback to PAT authentication');
-        return new UnifiedGitHubService(githubToken);
-      }
-
-      // If all else fails, create empty service that will rely on auto-detection
-      throw new Error('No authentication method available');
+      throw error;
     }
   }
 
   async function loadRepositories() {
-    if (!githubToken || !repoOwner || !isTokenValid) return;
+    // Check if we have valid authentication for the selected method
+    const hasValidAuth =
+      (authenticationMethod === 'pat' && githubToken && repoOwner && isTokenValid) ||
+      (authenticationMethod === 'github_app' &&
+        githubAppInstallationId &&
+        githubAppValidationResult?.isValid);
+
+    if (!hasValidAuth) return;
 
     try {
       isLoadingRepos = true;
@@ -280,13 +327,37 @@
 
   // Separate async initialization function
   async function initializeSettings() {
-    // Load last permission check timestamp from storage
-    const storage = await chrome.storage.local.get('lastPermissionCheck');
+    // Load last permission check timestamp and authentication method preference from storage
+    const storage = await chrome.storage.local.get(['lastPermissionCheck', 'preferredAuthMethod']);
     lastPermissionCheck = storage.lastPermissionCheck || null;
+
+    // Load saved authentication method preference
+    if (storage.preferredAuthMethod) {
+      authenticationMethod = storage.preferredAuthMethod;
+      console.log('🔄 Loaded authentication method preference:', authenticationMethod);
+    } else {
+      // If no preference saved, smart detect based on available credentials
+      if (githubAppInstallationId) {
+        authenticationMethod = 'github_app';
+        console.log('🤖 Auto-selected GitHub App based on available installation');
+      } else if (githubToken) {
+        authenticationMethod = 'pat';
+        console.log('🔑 Auto-selected PAT based on available token');
+      }
+      // Save the initial choice
+      if (authenticationMethod !== 'pat') {
+        // Only save if different from default
+        await chrome.storage.local.set({ preferredAuthMethod: authenticationMethod });
+      }
+    }
+
     previousToken = githubToken;
 
     // If we have initial valid settings, validate and load repos
-    if (githubToken && repoOwner) {
+    if (
+      (authenticationMethod === 'pat' && githubToken && repoOwner) ||
+      (authenticationMethod === 'github_app' && githubAppInstallationId)
+    ) {
       await validateSettings();
     }
   }
@@ -305,36 +376,48 @@
   });
 
   async function validateSettings() {
-    if (!githubToken) {
-      isTokenValid = null;
-      validationError = null;
-      return;
-    }
-
-    try {
-      isValidatingToken = true;
-      validationError = null;
-      const githubService = await createGitHubService();
-      const result = await githubService.validateTokenAndUser(repoOwner);
-      isTokenValid = result.isValid;
-      validationError = result.error || null;
-
-      if (result.isValid) {
-        // Check token type
-        const isClassic = await githubService.isClassicToken();
-        tokenType = isClassic ? 'classic' : 'fine-grained';
+    // Only validate PAT when PAT method is selected
+    if (authenticationMethod === 'pat') {
+      if (!githubToken) {
+        isTokenValid = null;
+        validationError = null;
+        return;
       }
 
-      // Load repositories after successful validation
-      if (result.isValid) {
-        await loadRepositories();
+      try {
+        isValidatingToken = true;
+        validationError = null;
+        const githubService = await createGitHubService();
+        const result = await githubService.validateTokenAndUser(repoOwner);
+        isTokenValid = result.isValid;
+        validationError = result.error || null;
+
+        if (result.isValid) {
+          // Check token type
+          const isClassic = await githubService.isClassicToken();
+          tokenType = isClassic ? 'classic' : 'fine-grained';
+        }
+
+        // Load repositories after successful validation
+        if (result.isValid) {
+          await loadRepositories();
+        }
+      } catch (error) {
+        console.error('Error validating PAT settings:', error);
+        isTokenValid = false;
+        validationError = error instanceof Error ? error.message : 'Validation failed';
+      } finally {
+        isValidatingToken = false;
       }
-    } catch (error) {
-      console.error('Error validating settings:', error);
-      isTokenValid = false;
-      validationError = 'Validation failed';
-    } finally {
-      isValidatingToken = false;
+    } else if (authenticationMethod === 'github_app') {
+      // For GitHub App, we don't validate tokens the same way
+      if (githubAppInstallationId) {
+        await validateGitHubApp();
+        // Load repositories if GitHub App is valid
+        if (githubAppValidationResult?.isValid) {
+          await loadRepositories();
+        }
+      }
     }
   }
 
@@ -363,8 +446,10 @@
   }
 
   async function checkTokenPermissions() {
-    if (!githubToken || isCheckingPermissions) return;
+    // Only check permissions for PAT authentication
+    if (authenticationMethod !== 'pat' || !githubToken || isCheckingPermissions) return;
 
+    console.log('🔍 Starting token permissions check...');
     isCheckingPermissions = true;
     permissionError = null;
     permissionStatus = {
@@ -372,30 +457,45 @@
       admin: undefined,
       contents: undefined,
     };
+    reposPermission = undefined;
+    adminPermission = undefined;
+    contentsPermission = undefined;
 
     try {
       const githubService = await createGitHubService();
 
       const result = await githubService.verifyTokenPermissions(
         repoOwner,
-        ({ permission, isValid }) => {
+        async ({ permission, isValid }) => {
+          console.log(`✅ Permission check callback: ${permission} = ${isValid}`);
           currentCheck = permission;
+
           // Update the status as each permission is checked
           switch (permission) {
             case 'repos':
               permissionStatus.allRepos = isValid;
+              reposPermission = isValid;
               break;
             case 'admin':
               permissionStatus.admin = isValid;
+              adminPermission = isValid;
               break;
             case 'code':
               permissionStatus.contents = isValid;
+              contentsPermission = isValid;
               break;
           }
-          // Force Svelte to update the UI
+
+          // Force Svelte to update the UI by creating a new object reference
           permissionStatus = { ...permissionStatus };
+          console.log('📊 Updated permission status:', permissionStatus);
+
+          // Force Svelte to process the DOM update
+          await tick();
         }
       );
+
+      console.log('🏁 Permission check completed:', result);
 
       if (result.isValid) {
         lastPermissionCheck = Date.now();
@@ -416,6 +516,7 @@
     } finally {
       isCheckingPermissions = false;
       currentCheck = null;
+      console.log('🔚 Permission check finished');
     }
   }
 
@@ -425,16 +526,19 @@
     // Clear any previous storage errors
     storageQuotaError = null;
 
-    const THIRTY_DAYS = 30 * 24 * 60 * 60 * 1000;
-    const needsCheck =
-      previousToken !== githubToken ||
-      !lastPermissionCheck ||
-      Date.now() - lastPermissionCheck > THIRTY_DAYS;
+    // Only check token permissions for PAT authentication
+    if (authenticationMethod === 'pat') {
+      const THIRTY_DAYS = 30 * 24 * 60 * 60 * 1000;
+      const needsCheck =
+        previousToken !== githubToken ||
+        !lastPermissionCheck ||
+        Date.now() - lastPermissionCheck > THIRTY_DAYS;
 
-    if (needsCheck) {
-      await checkTokenPermissions();
-      if (permissionError) {
-        return; // Don't proceed if permissions check failed
+      if (needsCheck) {
+        await checkTokenPermissions();
+        if (permissionError) {
+          return; // Don't proceed if permissions check failed
+        }
       }
     }
 
@@ -816,8 +920,8 @@
                               <span class="flex items-center gap-0.5">
                                 {#if currentCheck === 'repos'}
                                   <Loader2 class="h-3 w-3 animate-spin text-slate-400" />
-                                {:else if permissionStatus.allRepos !== undefined}
-                                  {#if permissionStatus.allRepos}
+                                {:else if reposPermission !== undefined}
+                                  {#if reposPermission}
                                     <Check class="h-3 w-3 text-green-500" />
                                   {:else}
                                     <X class="h-3 w-3 text-red-500" />
@@ -830,8 +934,8 @@
                               <span class="flex items-center gap-0.5">
                                 {#if currentCheck === 'admin'}
                                   <Loader2 class="h-3 w-3 animate-spin text-slate-400" />
-                                {:else if permissionStatus.admin !== undefined}
-                                  {#if permissionStatus.admin}
+                                {:else if adminPermission !== undefined}
+                                  {#if adminPermission}
                                     <Check class="h-3 w-3 text-green-500" />
                                   {:else}
                                     <X class="h-3 w-3 text-red-500" />
@@ -844,8 +948,8 @@
                               <span class="flex items-center gap-0.5">
                                 {#if currentCheck === 'code'}
                                   <Loader2 class="h-3 w-3 animate-spin text-slate-400" />
-                                {:else if permissionStatus.contents !== undefined}
-                                  {#if permissionStatus.contents}
+                                {:else if contentsPermission !== undefined}
+                                  {#if contentsPermission}
                                     <Check class="h-3 w-3 text-green-500" />
                                   {:else}
                                     <X class="h-3 w-3 text-red-500" />
