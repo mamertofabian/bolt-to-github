@@ -59,7 +59,19 @@
       } else {
         githubService = new UnifiedGitHubService(token);
       }
-      branches = await githubService.listBranches(owner, repo);
+      const rawBranches = await githubService.listBranches(owner, repo);
+
+      // Add isDefault property to branches
+      // Set main or master as default, otherwise use the first branch
+      const defaultBranchName =
+        rawBranches.find((b) => b.name === 'main')?.name ||
+        rawBranches.find((b) => b.name === 'master')?.name ||
+        rawBranches[0]?.name;
+
+      branches = rawBranches.map((branch) => ({
+        name: branch.name,
+        isDefault: branch.name === defaultBranchName,
+      }));
 
       // Set the default branch as selected
       const defaultBranch = branches.find((b) => b.isDefault);
