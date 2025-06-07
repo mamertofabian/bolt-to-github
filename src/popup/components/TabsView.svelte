@@ -12,6 +12,7 @@
   export let projectSettings: any;
   export let projectId: string | null;
   export let settingsValid: boolean;
+  export let isAuthenticationValid: boolean;
   export let isUserPremium: boolean;
   export let projectStatusRef: any;
 
@@ -73,6 +74,7 @@
       {projectId}
       {githubSettings}
       {settingsValid}
+      {isAuthenticationValid}
       on:switchTab={handleSwitchTab}
       on:showFileChanges={handleShowFileChanges}
       on:feedback={handleFeedback}

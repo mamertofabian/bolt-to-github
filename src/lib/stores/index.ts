@@ -2,6 +2,7 @@
 export {
   githubSettingsStore,
   isSettingsValid,
+  isAuthenticationValid,
   githubSettingsActions,
   type GitHubSettingsState,
 } from './githubSettings';

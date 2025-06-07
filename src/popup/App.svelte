@@ -27,6 +27,7 @@
   import {
     githubSettingsStore,
     isSettingsValid,
+    isAuthenticationValid,
     githubSettingsActions,
     projectSettingsStore,
     isOnBoltProject,
@@ -62,6 +63,7 @@
   $: fileChangesState = $fileChangesStore;
   $: uploadState = $uploadStateStore;
   $: settingsValid = $isSettingsValid;
+  $: authenticationValid = $isAuthenticationValid;
   $: onBoltProject = $isOnBoltProject;
   $: projectId = $currentProjectId;
   $: premiumStatus = $premiumStatusStore;
@@ -105,8 +107,7 @@
 
   // Computed display mode
   $: displayMode = (() => {
-    if (onBoltProject) return DISPLAY_MODES.TABS;
-    if (hasValidAuthenticationForProjectsList) return DISPLAY_MODES.PROJECTS_LIST;
+    if (hasValidAuthenticationForProjectsList) return DISPLAY_MODES.TABS;
     return DISPLAY_MODES.ONBOARDING;
   })();
 
@@ -718,6 +719,7 @@
           {projectSettings}
           {projectId}
           {settingsValid}
+          isAuthenticationValid={authenticationValid}
           {isUserPremium}
           bind:projectStatusRef
           on:switchTab={handleSwitchTab}
@@ -730,8 +732,6 @@
           on:authMethodChange={authMethodChangeHandler}
           on:configurePushReminder={handleConfigurePushReminder}
         />
-      {:else if displayMode === DISPLAY_MODES.PROJECTS_LIST}
-        <ProjectsList {...projectsListProps} githubToken={effectiveGithubToken} />
       {:else}
         <OnboardingView
           {githubSettings}

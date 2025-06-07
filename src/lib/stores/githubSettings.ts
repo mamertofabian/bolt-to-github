@@ -41,7 +41,17 @@ const initialState: GitHubSettingsState = {
 // Create the writable store
 export const githubSettingsStore: Writable<GitHubSettingsState> = writable(initialState);
 
-// Derived store for settings validity
+// Derived store for authentication validity (without requiring project-specific settings)
+export const isAuthenticationValid = derived(githubSettingsStore, ($settings) => {
+  const hasValidAuth =
+    $settings.authenticationMethod === 'github_app'
+      ? Boolean($settings.githubAppInstallationId && $settings.repoOwner)
+      : Boolean($settings.githubToken && $settings.isTokenValid === true && $settings.repoOwner);
+
+  return hasValidAuth && !$settings.isValidatingToken;
+});
+
+// Derived store for settings validity (includes project-specific settings)
 export const isSettingsValid = derived(githubSettingsStore, ($settings) => {
   const hasRepoInfo = Boolean($settings.repoOwner && $settings.repoName && $settings.branch);
   const hasValidAuth =

@@ -2,6 +2,7 @@
   import { createEventDispatcher } from 'svelte';
   import StatusAlert from '$lib/components/StatusAlert.svelte';
   import ProjectStatus from '$lib/components/ProjectStatus.svelte';
+  import ProjectGuide from '$lib/components/ProjectGuide.svelte';
   import SocialLinks from '$lib/components/SocialLinks.svelte';
   import { COFFEE_LINK, GITHUB_LINK, YOUTUBE_LINK } from '$lib/constants';
 
@@ -9,6 +10,7 @@
   export let projectId: string | null;
   export let githubSettings: any;
   export let settingsValid: boolean;
+  export let isAuthenticationValid: boolean;
 
   const dispatch = createEventDispatcher<{
     switchTab: string;
@@ -34,8 +36,10 @@
   }
 </script>
 
-{#if !settingsValid || !projectId}
+{#if !isAuthenticationValid}
   <StatusAlert on:switchTab={handleSwitchTab} />
+{:else if !projectId}
+  <ProjectGuide on:switchTab={handleSwitchTab} />
 {:else}
   <ProjectStatus
     bind:this={projectStatusRef}
