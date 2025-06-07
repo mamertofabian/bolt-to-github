@@ -18,6 +18,7 @@
   import { UnifiedGitHubService } from '../../services/UnifiedGitHubService';
   import BranchSelectionModal from '../../popup/components/BranchSelectionModal.svelte';
   import { githubSettingsStore } from '$lib/stores';
+  import ProjectsListGuide from '$lib/components/ProjectsListGuide.svelte';
 
   export let repoOwner: string;
   export let githubToken: string;
@@ -673,6 +674,9 @@
 </script>
 
 <div class="space-y-2">
+  <!-- User Guide Section -->
+  <ProjectsListGuide {isBoltSite} {totalBoltProjects} {totalRepos} />
+
   <div class="flex items-center gap-2 mb-4">
     <div class="flex-1 relative">
       <input
