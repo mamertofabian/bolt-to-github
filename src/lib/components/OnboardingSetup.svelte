@@ -203,7 +203,10 @@
             <span class="text-slate-200 font-medium">Personal Access Token</span>
             <span class="px-2 py-0.5 text-xs bg-slate-700 text-slate-400 rounded">Advanced</span>
           </div>
-          <p class="text-sm text-slate-400 mb-2">Use your own GitHub token for direct API access</p>
+          <p class="text-sm text-slate-400 mb-2">
+            Manually provide your GitHub token. This method requires manual token creation and
+            management.
+          </p>
 
           {#if githubSettings.authenticationMethod === 'pat'}
             <div class="mt-3 space-y-3">
