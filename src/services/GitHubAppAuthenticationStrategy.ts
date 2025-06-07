@@ -62,8 +62,14 @@ export class GitHubAppAuthenticationStrategy implements IAuthenticationStrategy 
 
   /**
    * Validate GitHub App authentication
+   * @param username Optional username parameter (ignored for GitHub App authentication)
    */
-  async validateAuth(): Promise<TokenValidationResult> {
+  async validateAuth(username?: string): Promise<TokenValidationResult> {
+    // Note: The username parameter is intentionally not used here.
+    // GitHub App authentication is tied to the app installation and the authenticated user,
+    // not to a specific username. The username validation happens automatically
+    // through the GitHub App's installation context.
+
     try {
       const result = await this.githubAppService.validateAuth();
       return result;

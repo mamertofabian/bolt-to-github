@@ -67,14 +67,26 @@ export class PATAuthenticationStrategy implements IAuthenticationStrategy {
   /**
    * Validate PAT authentication
    */
-  async validateAuth(): Promise<TokenValidationResult> {
+  async validateAuth(username?: string): Promise<TokenValidationResult> {
     try {
       if (!this.githubService) {
         await this.getToken(); // This will initialize githubService
       }
 
-      const storage = await chrome.storage.sync.get('repoOwner');
-      const repoOwner = storage.repoOwner || '';
+      // Use provided username or fall back to storage
+      let repoOwner = username;
+      if (!repoOwner) {
+        const storage = await chrome.storage.sync.get('repoOwner');
+        repoOwner = storage.repoOwner || '';
+      }
+
+      // Ensure we have a username to validate
+      if (!repoOwner) {
+        return {
+          isValid: false,
+          error: 'Repository owner (username) is required for validation',
+        };
+      }
 
       const result = await this.githubService!.validateTokenAndUser(repoOwner);
 

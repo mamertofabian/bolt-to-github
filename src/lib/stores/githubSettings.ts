@@ -298,11 +298,17 @@ export const githubSettingsActions = {
           };
         }
       } else {
+        console.log(
+          '🚀 Validating token for PAT',
+          currentState!.githubToken,
+          currentState!.repoOwner
+        );
         // For PAT, validate token and username
         isValid = await githubSettingsActions.validateToken(
           currentState!.githubToken,
           currentState!.repoOwner
         );
+        console.log('🚀 Validated token for PAT', isValid);
         if (!isValid) {
           return {
             success: false,

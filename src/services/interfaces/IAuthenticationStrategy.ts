@@ -28,8 +28,9 @@ export interface IAuthenticationStrategy {
 
   /**
    * Validate the current authentication and return user info
+   * @param username Optional username to validate against (for PAT authentication)
    */
-  validateAuth(): Promise<TokenValidationResult>;
+  validateAuth(username?: string): Promise<TokenValidationResult>;
 
   /**
    * Check permissions for the authenticated user

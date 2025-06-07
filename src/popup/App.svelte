@@ -500,6 +500,7 @@
   async function saveSettings() {
     // If we have a current project, update its settings in the store first
     if (projectId) {
+      console.log('🚀 Saving project settings for project:', projectId);
       githubSettingsActions.setProjectSettings(
         projectId,
         githubSettings.repoName,
@@ -507,6 +508,7 @@
       );
     }
 
+    console.log('🚀 Saving settings');
     const result = await githubSettingsActions.saveSettings();
     if (result.success) {
       // Show success toast with potential subscription prompt

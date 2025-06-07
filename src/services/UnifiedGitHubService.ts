@@ -188,7 +188,7 @@ export class UnifiedGitHubService {
   }> {
     try {
       const strategy = await this.getStrategy();
-      const result = await strategy.validateAuth();
+      const result = await strategy.validateAuth(repoOwner);
 
       if (!result.isValid) {
         return {
