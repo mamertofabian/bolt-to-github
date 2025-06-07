@@ -44,11 +44,6 @@
 </script>
 
 <div class="space-y-4">
-  <div>
-    <h2 class="text-xl font-semibold text-slate-200">GitHub Settings</h2>
-    <p class="text-sm text-slate-400">Configure your GitHub repository settings</p>
-  </div>
-
   <GitHubSettings
     bind:githubToken={githubSettings.githubToken}
     bind:repoOwner={githubSettings.repoOwner}
