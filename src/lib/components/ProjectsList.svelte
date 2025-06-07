@@ -800,9 +800,7 @@
                     {#if project.description}
                       <p class="text-slate-300">{project.description}</p>
                     {/if}
-                    {#if project.language}
-                      <p>Language: <span class="text-slate-300">{project.language}</span></p>
-                    {/if}
+                    <p>Language: <span class="text-slate-300">{project.language || '...'}</span></p>
                   </div>
                 </div>
 
@@ -956,9 +954,9 @@
                       {#if project.description}
                         <p class="text-slate-300">{project.description}</p>
                       {/if}
-                      {#if project.language}
-                        <p>Language: <span class="text-slate-300">{project.language}</span></p>
-                      {/if}
+                      <p>
+                        Language: <span class="text-slate-300">{project.language || '...'}</span>
+                      </p>
                     </div>
                   </div>
                 </div>
@@ -1017,9 +1015,7 @@
                     {#if project.description}
                       <p class="text-slate-300">{project.description}</p>
                     {/if}
-                    {#if project.language}
-                      <p>Language: <span class="text-slate-300">{project.language}</span></p>
-                    {/if}
+                    <p>Language: <span class="text-slate-300">{project.language || '...'}</span></p>
                   </div>
                 </div>
 

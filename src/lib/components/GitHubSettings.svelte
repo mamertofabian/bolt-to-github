@@ -13,9 +13,9 @@
     Settings,
   } from 'lucide-svelte';
   import { onMount, tick } from 'svelte';
-  import { CREATE_FINE_GRAINED_TOKEN_URL } from '../../services/GitHubService';
   import { UnifiedGitHubService } from '../../services/UnifiedGitHubService';
   import NewUserGuide from './github/NewUserGuide.svelte';
+  import { GITHUB_APP_AUTH_URL } from '$lib/constants';
 
   export let isOnboarding: boolean = false;
   export let githubToken: string;
@@ -580,8 +580,7 @@
 
     try {
       // Redirect to bolt2github.com for OAuth flow
-      const authUrl = 'https://bolt2github.com/auth/github';
-      window.open(authUrl, '_blank');
+      window.open(GITHUB_APP_AUTH_URL, '_blank');
 
       // Show success message
       githubAppConnectionError = null;
@@ -715,7 +714,7 @@
           <!-- Authentication Method Selection -->
           <div class="p-3 bg-slate-850 border border-slate-700 rounded-md">
             <h3 class="text-slate-200 font-medium mb-3">Authentication Method</h3>
-            <div class="space-y-3">
+            <div class="space-y-3 text-left">
               <label class="flex items-center space-x-3 cursor-pointer">
                 <input
                   type="radio"
@@ -763,7 +762,7 @@
           </div>
 
           <!-- General GitHub Settings Section -->
-          <div class="p-3 bg-slate-850 border border-slate-700 rounded-md">
+          <div class="p-3 bg-slate-850 border border-slate-700 rounded-md text-left">
             <h3 class="text-slate-200 font-medium mb-3 flex items-center">
               <span>General GitHub Settings</span>
               <span class="text-xs text-slate-400 ml-2">(Used across all projects)</span>
@@ -1004,7 +1003,7 @@
 
           {#if !isOnboarding}
             <!-- Project-specific Settings Section -->
-            <div class="p-3 bg-slate-850 border border-slate-700 rounded-md">
+            <div class="p-3 bg-slate-850 border border-slate-700 rounded-md text-left">
               <h3 class="text-slate-200 font-medium mb-3 flex items-center">
                 <span>Project Repository Settings</span>
                 <span class="text-xs text-slate-400 ml-2">
