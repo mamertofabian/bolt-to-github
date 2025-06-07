@@ -737,6 +737,7 @@
           {uiState}
           on:save={saveSettings}
           on:error={(e) => handleSettingsError(e.detail)}
+          on:authMethodChange={authMethodChangeHandler}
         />
       {/if}
     </CardContent>

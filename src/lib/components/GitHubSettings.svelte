@@ -14,7 +14,6 @@
   } from 'lucide-svelte';
   import { onMount, tick } from 'svelte';
   import { UnifiedGitHubService } from '../../services/UnifiedGitHubService';
-  import NewUserGuide from './github/NewUserGuide.svelte';
   import { GITHUB_APP_AUTH_URL } from '$lib/constants';
 
   export let isOnboarding: boolean = false;
@@ -643,9 +642,6 @@
 </script>
 
 <div class="space-y-4">
-  <!-- Quick Links Section -->
-  <NewUserGuide />
-
   <!-- Collapsible GitHub Settings -->
   <div class="border border-slate-700 rounded-lg bg-slate-900/50 overflow-hidden">
     <!-- Header with toggle -->

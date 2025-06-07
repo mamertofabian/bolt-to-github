@@ -32,7 +32,7 @@ const initialState: GitHubSettingsState = {
   validationError: null,
   hasInitialSettings: false,
   // New GitHub App fields
-  authenticationMethod: 'pat',
+  authenticationMethod: 'github_app',
   githubAppInstallationId: null,
   githubAppUsername: null,
   githubAppAvatarUrl: null,

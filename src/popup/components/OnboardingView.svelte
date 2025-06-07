@@ -1,7 +1,8 @@
 <script lang="ts">
   import { createEventDispatcher } from 'svelte';
   import { Button } from '$lib/components/ui/button';
-  import GitHubSettings from '$lib/components/GitHubSettings.svelte';
+  import WelcomeHero from '$lib/components/WelcomeHero.svelte';
+  import OnboardingSetup from '$lib/components/OnboardingSetup.svelte';
 
   export let githubSettings: any;
   export let projectSettings: any;
@@ -10,7 +11,11 @@
   const dispatch = createEventDispatcher<{
     save: void;
     error: string;
+    authMethodChange: string;
   }>();
+
+  // Simple 2-step flow
+  let currentStep: 1 | 2 = 1;
 
   function handleSave() {
     dispatch('save');
@@ -20,44 +25,43 @@
     dispatch('error', error);
   }
 
+  function handleAuthMethodChange(event: CustomEvent<string>) {
+    dispatch('authMethodChange', event.detail);
+  }
+
+  function goToSetup() {
+    currentStep = 2;
+  }
+
   function openBoltSite() {
     window.open('https://bolt.new', '_blank');
   }
 </script>
 
-<div class="flex flex-col items-center justify-center p-4 text-center space-y-6">
-  <div class="space-y-2">
-    {#if !projectSettings.isBoltSite}
+{#if currentStep === 1}
+  <!-- Step 1: Compact Welcome -->
+  <WelcomeHero on:start={goToSetup} />
+
+  <!-- Option to go to bolt.new if not on the site -->
+  {#if !projectSettings.isBoltSite}
+    <div class="text-center mt-4">
       <Button
         variant="outline"
-        class="border-slate-800 hover:bg-slate-800 text-slate-200"
+        size="sm"
+        class="border-slate-700 hover:bg-slate-800 text-slate-400 text-sm"
         on:click={openBoltSite}
       >
-        Go to bolt.new
+        Visit bolt.new to start coding
       </Button>
-    {/if}
-    <p class="text-sm text-green-400">
-      💡 No Bolt projects found. Create or load an existing Bolt project to get started.
-    </p>
-    <p class="text-sm text-green-400 pb-4">
-      🌟 You can also load any of your GitHub repositories by providing your GitHub token and
-      repository owner.
-    </p>
-    <GitHubSettings
-      isOnboarding={true}
-      bind:githubToken={githubSettings.githubToken}
-      bind:repoName={githubSettings.repoName}
-      bind:branch={githubSettings.branch}
-      bind:repoOwner={githubSettings.repoOwner}
-      bind:authenticationMethod={githubSettings.authenticationMethod}
-      bind:githubAppInstallationId={githubSettings.githubAppInstallationId}
-      bind:githubAppUsername={githubSettings.githubAppUsername}
-      bind:githubAppAvatarUrl={githubSettings.githubAppAvatarUrl}
-      status={uiState.status}
-      buttonDisabled={uiState.hasStatus}
-      onSave={handleSave}
-      onError={handleError}
-      onInput={() => {}}
-    />
-  </div>
-</div>
+    </div>
+  {/if}
+{:else}
+  <!-- Step 2: Unified Setup -->
+  <OnboardingSetup
+    {githubSettings}
+    {uiState}
+    on:save={handleSave}
+    on:error={(e) => handleError(e.detail)}
+    on:authMethodChange={handleAuthMethodChange}
+  />
+{/if}
