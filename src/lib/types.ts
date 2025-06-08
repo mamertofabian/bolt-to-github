@@ -9,6 +9,7 @@ export type MessageType =
   | 'DEBUG'
   | 'CONTENT_SCRIPT_READY'
   | 'GITHUB_SETTINGS_CHANGED'
+  | 'OPEN_HOME'
   | 'OPEN_SETTINGS'
   | 'OPEN_FILE_CHANGES'
   | 'OPEN_ISSUES'
