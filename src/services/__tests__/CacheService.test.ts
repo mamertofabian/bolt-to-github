@@ -2,10 +2,6 @@ import { CacheService } from '../CacheService';
 import type { IIdleMonitorService } from '../interfaces/IIdleMonitorService';
 import { expect, jest, describe, it, beforeEach, afterEach } from '@jest/globals';
 
-jest.spyOn(console, 'error').mockImplementation(() => {});
-jest.spyOn(console, 'log').mockImplementation(() => {});
-jest.spyOn(console, 'warn').mockImplementation(() => {});
-
 /**
  * Mock implementation of IIdleMonitorService that maintains internal state
  */

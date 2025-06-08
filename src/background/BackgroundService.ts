@@ -16,6 +16,7 @@ export class BackgroundService {
   private supabaseAuthService: SupabaseAuthService;
   private operationStateManager: OperationStateManager;
   private keepAliveInterval: NodeJS.Timeout | null = null;
+  private authCheckTimeout: NodeJS.Timeout | null = null;
   private storageListener:
     | ((changes: { [key: string]: chrome.storage.StorageChange }, namespace: string) => void)
     | null = null;
@@ -35,7 +36,7 @@ export class BackgroundService {
     this.trackExtensionStartup();
 
     // Force initial auth check
-    setTimeout(() => {
+    this.authCheckTimeout = setTimeout(() => {
       console.log('🔐 Forcing initial Supabase auth check...');
       this.supabaseAuthService.forceCheck();
     }, 2000); // Wait 2 seconds after initialization
@@ -861,6 +862,12 @@ export class BackgroundService {
     if (this.keepAliveInterval) {
       clearInterval(this.keepAliveInterval);
       this.keepAliveInterval = null;
+    }
+
+    // Clean up auth check timeout
+    if (this.authCheckTimeout) {
+      clearTimeout(this.authCheckTimeout);
+      this.authCheckTimeout = null;
     }
 
     if (this.storageListener) {

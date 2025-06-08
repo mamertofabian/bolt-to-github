@@ -21,6 +21,7 @@ export default {
     '<rootDir>/src/test/setup/fetch-mocks.js',
     '<rootDir>/src/test/setup/chrome-mocks.js',
     '<rootDir>/src/test/setup/dom-mocks.js',
+    '<rootDir>/src/test/setup/console-mocks.js',
   ],
   testRegex: '(/__tests__/.*|(\\.|/)(test|spec))\\.tsx?$',
   moduleFileExtensions: ['ts', 'tsx', 'js', 'jsx', 'json', 'node'],

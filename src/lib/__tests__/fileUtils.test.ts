@@ -6,10 +6,6 @@ import {
   normalizeContentForComparison,
 } from '../fileUtils';
 
-// Mock console methods to suppress output during tests
-jest.spyOn(console, 'error').mockImplementation(() => {});
-jest.spyOn(console, 'warn').mockImplementation(() => {});
-
 describe('fileUtils', () => {
   beforeEach(() => {
     jest.clearAllMocks();

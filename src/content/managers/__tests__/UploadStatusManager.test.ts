@@ -35,10 +35,6 @@ describe('UploadStatusManager', () => {
     } as any;
 
     uploadStatusManager = new UploadStatusManager(mockStateManager);
-
-    // Mock console.log to reduce test noise
-    jest.spyOn(console, 'log').mockImplementation(() => {});
-    jest.spyOn(console, 'error').mockImplementation(() => {});
   });
 
   afterEach(() => {

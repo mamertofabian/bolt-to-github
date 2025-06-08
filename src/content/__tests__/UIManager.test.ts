@@ -527,17 +527,10 @@ describe('UIManager', () => {
 
   describe('Error Handling', () => {
     test('handles initialization errors gracefully', () => {
-      // Mock console methods to avoid cluttering test output
-      const consoleError = jest.spyOn(console, 'error').mockImplementation();
-      const consoleLog = jest.spyOn(console, 'log').mockImplementation();
-
       // Don't throw errors during initialization
       expect(() => {
         UIManager.initialize(mockMessageHandler);
       }).not.toThrow();
-
-      consoleError.mockRestore();
-      consoleLog.mockRestore();
     });
 
     test('handles missing DOM elements gracefully', () => {

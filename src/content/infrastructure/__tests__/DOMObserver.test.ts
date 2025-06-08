@@ -39,9 +39,6 @@ describe('DOMObserver', () => {
 
     jest.spyOn(window, 'clearTimeout').mockImplementation(() => {});
 
-    // Mock console.warn to reduce test noise
-    jest.spyOn(console, 'warn').mockImplementation(() => {});
-
     domObserver = new DOMObserver();
   });
 

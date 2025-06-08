@@ -11,10 +11,6 @@ global.fetch = jest.fn().mockImplementation(() =>
   })
 ) as unknown as typeof global.fetch;
 
-jest.spyOn(console, 'error').mockImplementation(() => {});
-jest.spyOn(console, 'log').mockImplementation(() => {});
-jest.spyOn(console, 'warn').mockImplementation(() => {});
-
 // Helper to create mock responses
 const createMockResponse = (status: number, data: any, headers: Record<string, string> = {}) => {
   const headersObj = new Headers();

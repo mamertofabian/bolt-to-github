@@ -49,10 +49,6 @@ describe('DropdownManager', () => {
       mockUpgradeCallback
     );
 
-    // Mock console.log to reduce test noise
-    jest.spyOn(console, 'log').mockImplementation(() => {});
-    jest.spyOn(console, 'error').mockImplementation(() => {});
-
     // Mock setTimeout and addEventListener for proper async handling
     jest.spyOn(window, 'setTimeout').mockImplementation((callback) => {
       if (typeof callback === 'function') {

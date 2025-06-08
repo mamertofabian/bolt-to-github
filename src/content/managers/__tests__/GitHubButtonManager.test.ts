@@ -33,10 +33,6 @@ describe('GitHubButtonManager', () => {
 
     githubButtonManager = new GitHubButtonManager(mockStateManager, mockDropdownCallback);
 
-    // Mock console.log to reduce test noise
-    jest.spyOn(console, 'log').mockImplementation(() => {});
-    jest.spyOn(console, 'error').mockImplementation(() => {});
-
     // Mock SettingsService default response
     (SettingsService.getGitHubSettings as jest.Mock).mockResolvedValue({
       isSettingsValid: true,
