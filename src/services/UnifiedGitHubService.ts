@@ -211,6 +211,20 @@ export class UnifiedGitHubService {
   }
 
   /**
+   * Simple token validation (backward compatibility method)
+   */
+  async validateToken(): Promise<boolean> {
+    try {
+      const strategy = await this.getStrategy();
+      const result = await strategy.validateAuth();
+      return result.isValid;
+    } catch (error) {
+      console.error('Token validation failed:', error);
+      return false;
+    }
+  }
+
+  /**
    * Check if token is classic PAT
    */
   async isClassicToken(): Promise<boolean> {

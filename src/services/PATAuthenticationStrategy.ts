@@ -9,17 +9,14 @@ import type {
   TokenValidationResult,
   PermissionCheckResult,
 } from './types/authentication';
-import { GitHubService } from './GitHubService';
 
 export class PATAuthenticationStrategy implements IAuthenticationStrategy {
   readonly type: AuthenticationType = 'pat';
-  private githubService: GitHubService | null = null;
   private token: string | null = null;
 
   constructor(token?: string) {
     if (token) {
       this.token = token;
-      this.githubService = new GitHubService(token);
     }
   }
 
@@ -57,7 +54,6 @@ export class PATAuthenticationStrategy implements IAuthenticationStrategy {
       }
 
       this.token = storage.githubToken;
-      this.githubService = new GitHubService(storage.githubToken);
       return storage.githubToken;
     } catch (error) {
       throw new Error('Failed to get GitHub token from storage');
@@ -69,9 +65,7 @@ export class PATAuthenticationStrategy implements IAuthenticationStrategy {
    */
   async validateAuth(username?: string): Promise<TokenValidationResult> {
     try {
-      if (!this.githubService) {
-        await this.getToken(); // This will initialize githubService
-      }
+      const token = await this.getToken();
 
       // Use provided username or fall back to storage
       let repoOwner = username;
@@ -88,7 +82,8 @@ export class PATAuthenticationStrategy implements IAuthenticationStrategy {
         };
       }
 
-      const result = await this.githubService!.validateTokenAndUser(repoOwner);
+      // Validate token and username
+      const result = await this.validateTokenAndUser(token, repoOwner);
 
       if (!result.isValid) {
         return {
@@ -102,7 +97,7 @@ export class PATAuthenticationStrategy implements IAuthenticationStrategy {
       const metadata = await this.getMetadata();
 
       // Determine token type
-      const isClassic = await this.githubService!.isClassicToken();
+      const isClassic = this.isClassicToken(token);
       const tokenType = isClassic ? 'classic' : 'fine-grained';
 
       return {
@@ -124,11 +119,7 @@ export class PATAuthenticationStrategy implements IAuthenticationStrategy {
    */
   async checkPermissions(repoOwner: string): Promise<PermissionCheckResult> {
     try {
-      if (!this.githubService) {
-        await this.getToken();
-      }
-
-      const result = await this.githubService!.verifyTokenPermissions(repoOwner);
+      const result = await this.verifyTokenPermissions(repoOwner);
 
       return {
         isValid: result.isValid,
@@ -168,7 +159,6 @@ export class PATAuthenticationStrategy implements IAuthenticationStrategy {
     try {
       await chrome.storage.sync.remove(['githubToken']);
       this.token = null;
-      this.githubService = null;
     } catch (error) {
       console.error('Failed to clear PAT auth:', error);
       throw new Error('Failed to clear PAT authentication');
@@ -184,10 +174,6 @@ export class PATAuthenticationStrategy implements IAuthenticationStrategy {
     avatar_url: string;
   } | null> {
     try {
-      if (!this.githubService) {
-        await this.getToken();
-      }
-
       const token = await this.getToken();
       const response = await fetch('https://api.github.com/user', {
         headers: {
@@ -229,10 +215,6 @@ export class PATAuthenticationStrategy implements IAuthenticationStrategy {
     [key: string]: any;
   }> {
     try {
-      if (!this.githubService) {
-        await this.getToken();
-      }
-
       const token = await this.getToken();
 
       // Get token scopes from GitHub API
@@ -251,7 +233,7 @@ export class PATAuthenticationStrategy implements IAuthenticationStrategy {
         }
       }
 
-      const isClassic = await this.githubService!.isClassicToken();
+      const isClassic = this.isClassicToken(token);
 
       return {
         scopes,
@@ -269,6 +251,81 @@ export class PATAuthenticationStrategy implements IAuthenticationStrategy {
    */
   setToken(token: string): void {
     this.token = token;
-    this.githubService = new GitHubService(token);
+  }
+
+  /**
+   * Check if token is a classic PAT
+   */
+  private isClassicToken(token: string): boolean {
+    return token.startsWith('ghp_');
+  }
+
+  /**
+   * Validate token and username
+   */
+  private async validateTokenAndUser(
+    token: string,
+    username: string
+  ): Promise<{ isValid: boolean; error?: string }> {
+    try {
+      const response = await fetch(`https://api.github.com/users/${username}`, {
+        headers: {
+          Authorization: `Bearer ${token}`,
+          Accept: 'application/vnd.github.v3+json',
+        },
+      });
+
+      if (response.status === 401) {
+        return { isValid: false, error: 'Invalid token' };
+      }
+
+      if (response.status === 404) {
+        return { isValid: false, error: 'User not found' };
+      }
+
+      if (!response.ok) {
+        return { isValid: false, error: `GitHub API error: ${response.status}` };
+      }
+
+      return { isValid: true };
+    } catch (error) {
+      return {
+        isValid: false,
+        error: error instanceof Error ? error.message : 'Token validation failed',
+      };
+    }
+  }
+
+  /**
+   * Verify token permissions
+   */
+  private async verifyTokenPermissions(
+    repoOwner: string
+  ): Promise<{ isValid: boolean; error?: string }> {
+    try {
+      const token = await this.getToken();
+
+      // Check if we can access user's repos
+      const response = await fetch(`https://api.github.com/user/repos`, {
+        headers: {
+          Authorization: `Bearer ${token}`,
+          Accept: 'application/vnd.github.v3+json',
+        },
+      });
+
+      if (!response.ok) {
+        return {
+          isValid: false,
+          error: 'Insufficient permissions. Token needs repo scope.',
+        };
+      }
+
+      return { isValid: true };
+    } catch (error) {
+      return {
+        isValid: false,
+        error: error instanceof Error ? error.message : 'Permission check failed',
+      };
+    }
   }
 }

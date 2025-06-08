@@ -12,8 +12,7 @@
     RefreshCw,
     HelpCircle,
   } from 'lucide-svelte';
-  import { GITHUB_APP_AUTH_URL, TUTORIAL_LINK } from '$lib/constants';
-  import { CREATE_TOKEN_URL } from '../../services/GitHubService';
+  import { GITHUB_APP_AUTH_URL, TUTORIAL_LINK, CREATE_TOKEN_URL } from '$lib/constants';
   import { githubSettingsActions } from '$lib/stores/githubSettings';
 
   const dispatch = createEventDispatcher<{
