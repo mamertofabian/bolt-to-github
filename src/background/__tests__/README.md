@@ -107,16 +107,23 @@ This directory contains comprehensive, realistic test scenarios for BackgroundSe
 ## Test Results Summary
 
 ```
-BackgroundService Critical Scenarios: 16/16 tests passing ✅
+✅ BackgroundService.example.test.ts: 9/9 tests passing
+✅ BackgroundService.critical-scenarios.test.ts: 16/16 tests passing
+✅ BackgroundService.user-journeys.test.ts: 13/13 tests passing
+✅ BackgroundService.edge-cases.test.ts: 14/14 tests passing
+
+Total: 52/52 tests passing ✅
+
+Coverage: 44.1% BackgroundService.ts (focused on critical paths)
+Runtime: ~70 seconds (includes performance/timeout tests)
+
+Critical Scenarios Breakdown:
 - Port lifecycle & recovery: 3/3 ✅
 - Authentication switching: 3/3 ✅
 - Message routing failures: 3/3 ✅
 - ZIP processing resilience: 3/3 ✅
 - Analytics & error propagation: 2/2 ✅
 - Resource management: 2/2 ✅
-
-Total Coverage: 42.73% BackgroundService.ts
-Time: ~85 seconds (includes performance/timeout tests)
 ```
 
 ## Implementation Highlights
