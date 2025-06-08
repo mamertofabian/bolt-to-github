@@ -102,11 +102,12 @@ describe('DropdownManager', () => {
       const content = dropdownManager.createContent();
       const buttons = content.querySelectorAll('button');
 
-      expect(buttons.length).toBe(5); // Push, Files, Issues, Projects, Settings
+      expect(buttons.length).toBe(6); // Push, Dashboard, Files, Issues, Projects, Settings
 
       // Check button texts
       const buttonTexts = Array.from(buttons).map((btn) => btn.textContent?.trim());
       expect(buttonTexts).toContain('Push to GitHub');
+      expect(buttonTexts).toContain('Project Dashboard');
       expect(buttonTexts).toContain('Show Changed Files');
       expect(buttonTexts).toContain('Manage Issues');
       expect(buttonTexts).toContain('Projects');
@@ -406,6 +407,18 @@ describe('DropdownManager', () => {
 
       expect(hideSpy).toHaveBeenCalled();
       expect(mockPushCallback).toHaveBeenCalled();
+    });
+
+    test('handles project dashboard button click', async () => {
+      const hideSpy = jest.spyOn(dropdownManager, 'hide');
+      const dashboardButton = Array.from(content.querySelectorAll('button')).find((btn) =>
+        btn.textContent?.includes('Project Dashboard')
+      );
+
+      dashboardButton?.click();
+
+      expect(hideSpy).toHaveBeenCalled();
+      expect(mockMessageHandler.sendMessage).toHaveBeenCalledWith('OPEN_HOME');
     });
 
     test('handles changed files button for premium users', async () => {

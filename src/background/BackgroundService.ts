@@ -395,6 +395,22 @@ export class BackgroundService {
           }, 10);
           break;
 
+        case 'OPEN_HOME':
+          console.log('Opening home/dashboard popup');
+          await this.sendAnalyticsEvent('user_action', {
+            action: 'dashboard_opened',
+            context: 'content_script',
+          });
+          await chrome.storage.local.set({ popupContext: 'home' });
+          console.log('✅ Storage set: popupContext = home');
+
+          // Small delay to ensure storage is written before opening popup
+          setTimeout(() => {
+            chrome.action.openPopup();
+            console.log('✅ Popup opened for home/dashboard');
+          }, 10);
+          break;
+
         case 'OPEN_ISSUES': {
           console.log('Opening issues popup');
           await this.sendAnalyticsEvent('user_action', {
