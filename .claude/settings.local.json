@@ -5,7 +5,8 @@
       "Bash(grep:*)",
       "Bash(find:*)",
       "Bash(gh issue create:*)",
-      "Bash(mkdir:*)"
+      "Bash(mkdir:*)",
+      "Bash(pnpm test:*)"
     ],
     "deny": []
   }

@@ -85,11 +85,15 @@ describe('DOMObserver', () => {
     });
 
     test('prevents multiple starts', () => {
+      const consoleSpy = jest.spyOn(console, 'warn').mockImplementation(() => {});
+
       domObserver.start(mockCallback);
       domObserver.start(mockCallback);
 
-      expect(console.warn).toHaveBeenCalledWith('DOMObserver is already observing');
+      expect(consoleSpy).toHaveBeenCalledWith('DOMObserver is already observing');
       expect(mockMutationObserver).toHaveBeenCalledTimes(1);
+
+      consoleSpy.mockRestore();
     });
 
     test('stops observing correctly', () => {
@@ -226,6 +230,7 @@ describe('DOMObserver', () => {
 
     test('handles callback failure and sets up retry', () => {
       const customObserver = new DOMObserver(2, 100, 50);
+      const consoleSpy = jest.spyOn(console, 'warn').mockImplementation(() => {});
 
       const failingCallback = jest.fn(() => {
         throw new Error('Test error');
@@ -235,10 +240,9 @@ describe('DOMObserver', () => {
 
       expect(failingCallback).toHaveBeenCalled();
       expect(window.setTimeout).toHaveBeenCalled();
-      expect(console.warn).toHaveBeenCalledWith(
-        'Initialization attempt failed:',
-        expect.any(Error)
-      );
+      expect(consoleSpy).toHaveBeenCalledWith('Initialization attempt failed:', expect.any(Error));
+
+      consoleSpy.mockRestore();
     });
 
     test('handles missing onError callback gracefully', () => {
@@ -345,16 +349,17 @@ describe('DOMObserver', () => {
 
   describe('Error Handling', () => {
     test('handles callback errors gracefully', () => {
+      const consoleSpy = jest.spyOn(console, 'warn').mockImplementation(() => {});
+
       const errorCallback = jest.fn(() => {
         throw new Error('Test error');
       });
 
       domObserver.start(errorCallback, mockOnError);
 
-      expect(console.warn).toHaveBeenCalledWith(
-        'Initialization attempt failed:',
-        expect.any(Error)
-      );
+      expect(consoleSpy).toHaveBeenCalledWith('Initialization attempt failed:', expect.any(Error));
+
+      consoleSpy.mockRestore();
     });
 
     test('continues operating after callback errors', () => {

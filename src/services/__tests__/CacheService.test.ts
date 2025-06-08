@@ -284,6 +284,8 @@ describe('CacheService', () => {
       // Restore original implementation for this test
       refreshAllCachesSpy.mockRestore();
 
+      const consoleSpy = jest.spyOn(console, 'error').mockImplementation(() => {});
+
       const errorCallback = jest.fn().mockImplementation(() => {
         throw new Error('Test error');
       });
@@ -299,7 +301,9 @@ describe('CacheService', () => {
 
       expect(errorCallback).toHaveBeenCalled();
       expect(successCallback).toHaveBeenCalled();
-      expect(console.error).toHaveBeenCalled();
+      expect(consoleSpy).toHaveBeenCalled();
+
+      consoleSpy.mockRestore();
     });
   });
 
