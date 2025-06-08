@@ -1,97 +1,48 @@
-# Current Focus Tracker
+# Current Focus - Active Work by Each Agent
 
-## Active Work Sessions
+## Agent-Core (Business Logic)
 
-### Session 1: 2025-01-06
+**Status**: [TODO/IN_PROGRESS/BLOCKED]
+**Current Task**:
+**Progress**:
+**Next Steps**:
+**Blockers**:
+**Last Updated**:
 
-**Agent**: Primary Claude  
-**Status**: 🟡 ACTIVE  
-**Focus**: Scratchpad System Setup
+## Agent-Integration (Chrome Extension)
 
-#### Current Task
+**Status**: [TODO/IN_PROGRESS/BLOCKED]
+**Current Task**:
+**Progress**:
+**Next Steps**:
+**Blockers**:
+**Last Updated**:
 
-Setting up comprehensive testing coordination system
+## Agent-Discovery (Bug Finding)
 
-#### Immediate Next Steps
+**Status**: [TODO/IN_PROGRESS/BLOCKED]
+**Current Task**:
+**Progress**:
+**Next Steps**:
+**Blockers**:
+**Last Updated**:
 
-- [ ] Complete scratchpad template creation
-- [ ] Analyze existing test infrastructure
-- [ ] Identify critical test gaps
-- [ ] Create initial test inventory
+## Agent-Coord (Coordination)
 
-#### Blockers
+**Status**: [TODO/IN_PROGRESS/BLOCKED]
+**Current Task**:
+**Progress**:
+**Next Steps**:
+**Blockers**:
+**Last Updated**:
 
-- None currently
+## Cross-Agent Dependencies
 
-#### Notes
+- [ ] Dependency 1: Agent X needs Y from Agent Z
+- [ ] Dependency 2: Waiting for decision on approach for Z
 
-- Created master plan structure
-- Establishing coordination patterns
-- Planning systematic approach to testing improvements
+## Immediate Priorities (Next 2 Hours)
 
----
-
-### Session Template (for future agents)
-
-**Agent**: [Agent Name/ID]  
-**Status**: [🟡 ACTIVE | 🔴 BLOCKED | 🟢 COMPLETE | ⚪ WAITING]  
-**Focus**: [High-level task description]
-
-#### Current Task
-
-[Specific task being worked on right now]
-
-#### Immediate Next Steps
-
-- [ ] [Next action item]
-- [ ] [Another action item]
-
-#### Blockers
-
-[Any issues preventing progress]
-
-#### Notes
-
-[Relevant context, decisions, or observations]
-
----
-
-## Coordination Rules
-
-### Before Starting Work
-
-1. Check this file for active sessions
-2. Update your session status to ACTIVE
-3. Note any dependencies on other work
-4. Check for coordination messages
-
-### During Work
-
-1. Update progress every 30 minutes
-2. Log important discoveries immediately
-3. Note any decisions that affect other work
-4. Communicate blockers promptly
-
-### After Completing Work
-
-1. Update session status to COMPLETE
-2. Document final outcomes
-3. Update relevant inventory files
-4. Leave coordination messages for next agent
-
-### Handoff Protocol
-
-1. Summarize current state clearly
-2. List next logical steps
-3. Note any context the next agent needs
-4. Update master plan progress
-
----
-
-## Quick Status Check
-
-**Last Updated**: 2025-01-06  
-**Active Agents**: 1  
-**Blocked Sessions**: 0  
-**Completed Today**: 0  
-**Critical Issues**: None
+1.
+2.
+3.
