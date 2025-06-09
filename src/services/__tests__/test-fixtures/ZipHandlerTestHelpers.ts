@@ -411,7 +411,8 @@ export const TestAssertions = {
     const messages = statusHistory.map(s => s.message || '');
     
     for (const expected of expectedSequence) {
-      expect(messages).toContain(expect.stringContaining(expected));
+      const found = messages.some(msg => msg.includes(expected));
+      expect(found).toBe(true);
     }
   },
 };

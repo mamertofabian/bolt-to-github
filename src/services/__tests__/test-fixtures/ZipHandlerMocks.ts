@@ -17,13 +17,14 @@ export class MockUnifiedGitHubService implements Partial<UnifiedGitHubService> {
   private shouldThrowError: Error | null = null;
   private requestDelay: number = 0;
   private rateLimitState = { ...GITHUB_API_RESPONSES.rateLimit };
+  private rateLimitBehavior: 'normal' | 'limited' | 'exceeded' = 'normal';
 
   constructor() {
     this.setupDefaultResponses();
   }
 
   private setupDefaultResponses() {
-    // Default successful responses
+    // Default successful responses for test-repo
     this.responses.set('GET:/repos/test-owner/test-repo', GITHUB_API_RESPONSES.repository);
     this.responses.set('GET:/repos/test-owner/test-repo/branches/main', GITHUB_API_RESPONSES.branch);
     this.responses.set('GET:/repos/test-owner/test-repo/git/refs/heads/main', {
@@ -31,6 +32,16 @@ export class MockUnifiedGitHubService implements Partial<UnifiedGitHubService> {
     });
     this.responses.set('GET:/repos/test-owner/test-repo/git/commits/abc123def456', GITHUB_API_RESPONSES.commit);
     this.responses.set('GET:/repos/test-owner/test-repo/git/trees/tree123', GITHUB_API_RESPONSES.tree);
+    
+    // Also set up responses for feature-repo
+    this.responses.set('GET:/repos/test-owner/feature-repo', { ...GITHUB_API_RESPONSES.repository, name: 'feature-repo' });
+    this.responses.set('GET:/repos/test-owner/feature-repo/git/refs/heads/main', {
+      object: { sha: GITHUB_API_RESPONSES.commit.sha },
+    });
+    this.responses.set('GET:/repos/test-owner/feature-repo/git/commits/abc123def456', GITHUB_API_RESPONSES.commit);
+    this.responses.set('GET:/repos/test-owner/feature-repo/git/trees/tree123', GITHUB_API_RESPONSES.tree);
+    
+    // Rate limit
     this.responses.set('GET:/rate_limit', this.rateLimitState);
   }
 
@@ -50,19 +61,49 @@ export class MockUnifiedGitHubService implements Partial<UnifiedGitHubService> {
 
     // Handle rate limit checks
     if (path === '/rate_limit') {
+      // Check if we should simulate rate limit reset
+      const now = Math.floor(Date.now() / 1000);
+      if (this.rateLimitState.resources.core.reset <= now && this.rateLimitBehavior !== 'normal') {
+        // Reset has passed, restore rate limit
+        this.resetRateLimit();
+      }
+      
+      // Return rate limit based on configured behavior
+      if (this.rateLimitBehavior === 'exceeded') {
+        return {
+          resources: {
+            core: {
+              limit: 5000,
+              remaining: 0,
+              reset: this.rateLimitState.resources.core.reset
+            }
+          }
+        };
+      } else if (this.rateLimitBehavior === 'limited') {
+        return {
+          resources: {
+            core: {
+              limit: 5000,
+              remaining: Math.max(0, this.rateLimitState.resources.core.remaining),
+              reset: this.rateLimitState.resources.core.reset
+            }
+          }
+        };
+      }
       return this.rateLimitState;
     }
 
     // Handle blob creation
     if (method === 'POST' && path.includes('/git/blobs')) {
-      // Decrement rate limit
-      this.rateLimitState.resources.core.remaining--;
-      
-      // Simulate rate limit error if exhausted
-      if (this.rateLimitState.resources.core.remaining < 0) {
-        const error = new Error('API rate limit exceeded') as Error & { status?: number };
-        error.status = 403;
-        throw error;
+      // Only simulate rate limit if explicitly configured for rate limit testing
+      if (this.rateLimitBehavior === 'limited') {
+        this.rateLimitState.resources.core.remaining--;
+        
+        if (this.rateLimitState.resources.core.remaining < 0) {
+          const error = new Error('API rate limit exceeded') as Error & { status?: number };
+          error.status = 403;
+          throw error;
+        }
       }
 
       return { sha: `blob-${Date.now()}-${Math.random().toString(36).slice(2)}` };
@@ -175,6 +216,19 @@ export class MockUnifiedGitHubService implements Partial<UnifiedGitHubService> {
     if (reset) {
       this.rateLimitState.resources.core.reset = reset;
     }
+    // Set rate limit behavior based on remaining count
+    if (remaining === 0) {
+      this.rateLimitBehavior = 'exceeded';
+    } else if (remaining < 50) {
+      this.rateLimitBehavior = 'limited';
+    } else {
+      this.rateLimitBehavior = 'normal';
+    }
+  }
+
+  resetRateLimit() {
+    this.rateLimitState = { ...GITHUB_API_RESPONSES.rateLimit };
+    this.rateLimitBehavior = 'normal';
   }
 
   getRequestHistory() {
