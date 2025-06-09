@@ -9,7 +9,6 @@
   } from '$lib/components/ui/card';
   import { STORAGE_KEY } from '../background/TempRepoManager';
   import { Button } from '$lib/components/ui/button';
-  import ProjectsList from '$lib/components/ProjectsList.svelte';
   import FileChangesModal from './components/FileChangesModal.svelte';
   import TempRepoModal from './components/TempRepoModal.svelte';
   import PushReminderSettings from './components/PushReminderSettings.svelte';
@@ -718,7 +717,6 @@
           {githubSettings}
           {projectSettings}
           {projectId}
-          {settingsValid}
           isAuthenticationValid={authenticationValid}
           {isUserPremium}
           bind:projectStatusRef

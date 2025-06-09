@@ -9,7 +9,6 @@
   export let projectStatusRef: any;
   export let projectId: string | null;
   export let githubSettings: any;
-  export let settingsValid: boolean;
   export let isAuthenticationValid: boolean;
 
   const dispatch = createEventDispatcher<{
