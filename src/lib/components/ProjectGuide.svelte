@@ -2,11 +2,16 @@
   import { createEventDispatcher } from 'svelte';
   import { Alert, AlertDescription } from '$lib/components/ui/alert';
   import { Button } from '$lib/components/ui/button';
-  import { Zap, Github, ArrowRight, Lightbulb, FileText, Bug, Settings } from 'lucide-svelte';
+  import { Zap, ArrowRight, Lightbulb, FileText, Bug, Settings } from 'lucide-svelte';
+  import { Github } from 'lucide-svelte';
+  import { projectSettingsStore } from '$lib/stores';
 
   const dispatch = createEventDispatcher<{
     switchTab: string;
   }>();
+
+  // Check if we're on bolt.new
+  $: isOnBoltNew = $projectSettingsStore.isBoltSite;
 
   function switchToProjectsTab() {
     dispatch('switchTab', 'projects');
@@ -40,32 +45,50 @@
       </div>
 
       <div class="grid gap-3">
-        <!-- Create New Project -->
-        <div
-          class="flex items-start gap-3 p-3 rounded-lg bg-slate-800/30 border border-slate-700/50"
-        >
-          <div class="flex-shrink-0 mt-0.5">
-            <div class="w-6 h-6 rounded-full bg-emerald-500/20 flex items-center justify-center">
-              <Zap class="h-3 w-3 text-emerald-400" />
+        <!-- Create New Project - Only show if not on bolt.new -->
+        {#if !isOnBoltNew}
+          <div
+            class="flex items-start gap-3 p-3 rounded-lg bg-slate-800/30 border border-slate-700/50"
+          >
+            <div class="flex-shrink-0 mt-0.5">
+              <div class="w-6 h-6 rounded-full bg-emerald-500/20 flex items-center justify-center">
+                <Zap class="h-3 w-3 text-emerald-400" />
+              </div>
+            </div>
+            <div class="flex-1">
+              <h4 class="font-medium text-slate-200 mb-1">Create or Open a Bolt Project</h4>
+              <p class="text-xs text-slate-400 mb-2">
+                Start a new project or open an existing project on bolt.new, then open the extension
+                or use the GitHub button on bolt.new.
+              </p>
+              <Button
+                size="sm"
+                variant="outline"
+                class="h-7 text-xs border-emerald-700 hover:bg-emerald-900/30 text-emerald-300"
+                on:click={openBoltNew}
+              >
+                Go to bolt.new
+                <ArrowRight class="h-3 w-3 ml-1" />
+              </Button>
             </div>
           </div>
-          <div class="flex-1">
-            <h4 class="font-medium text-slate-200 mb-1">Create or Open a Bolt Project</h4>
-            <p class="text-xs text-slate-400 mb-2">
-              Start a new project or open an existing project on bolt.new, then open the extension
-              or use the GitHub button on bolt.new.
-            </p>
-            <Button
-              size="sm"
-              variant="outline"
-              class="h-7 text-xs border-emerald-700 hover:bg-emerald-900/30 text-emerald-300"
-              on:click={openBoltNew}
-            >
-              Go to bolt.new
-              <ArrowRight class="h-3 w-3 ml-1" />
-            </Button>
+        {:else}
+          <div
+            class="flex items-start gap-3 p-3 rounded-lg bg-amber-800/30 border border-amber-700/50"
+          >
+            <div class="flex-shrink-0 mt-0.5">
+              <div class="w-6 h-6 rounded-full bg-amber-500/20 flex items-center justify-center">
+                <Zap class="h-3 w-3 text-amber-400" />
+              </div>
+            </div>
+            <div class="flex-1">
+              <h4 class="font-medium text-amber-200 mb-1">Create or Load a Bolt Project</h4>
+              <p class="text-xs text-amber-300/80">
+                You're on bolt.new! Start a new project or open an existing one, then this extension will automatically detect it.
+              </p>
+            </div>
           </div>
-        </div>
+        {/if}
 
         <!-- Import Existing Project -->
         <div

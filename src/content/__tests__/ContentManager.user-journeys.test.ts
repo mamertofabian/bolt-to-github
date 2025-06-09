@@ -158,7 +158,7 @@ describe('ContentManager - User Journeys', () => {
       await wait(100); // Wait for initialization
       
       // Verify initial state
-      let state = getContentManagerState(contentManager);
+      const state = getContentManagerState(contentManager);
       expect(state.hasPort).toBe(true);
       
       // Simulate extension update (context invalidation)
@@ -217,7 +217,7 @@ describe('ContentManager - User Journeys', () => {
       await wait(100); // Wait for initialization
       
       // Verify initial state
-      let state = getContentManagerState(contentManager);
+      const state = getContentManagerState(contentManager);
       expect(state.isInRecovery).toBe(false);
       
       // User presses Ctrl+Shift+R
