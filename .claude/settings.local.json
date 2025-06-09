@@ -6,7 +6,9 @@
       "Bash(find:*)",
       "Bash(gh issue create:*)",
       "Bash(mkdir:*)",
-      "Bash(pnpm test:*)"
+      "Bash(pnpm test:*)",
+      "Bash(pnpm run test:*)",
+      "Bash(git add:*)"
     ],
     "deny": []
   }
