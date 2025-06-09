@@ -10,7 +10,11 @@
       "Bash(gh issue view:*)",
       "Bash(pnpm run test:*)",
       "Bash(npm test:*)",
-      "Bash(pnpm run lint:*)"
+      "Bash(pnpm run lint:*)",
+      "Bash(git commit:*)",
+      "Bash(ls:*)",
+      "Bash(npx jest:*)",
+      "Bash(git worktree:*)"
     ],
     "deny": []
   }

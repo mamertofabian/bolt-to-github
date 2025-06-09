@@ -22,7 +22,7 @@ export const TempRepoTestData = {
     longSourceRepo: 'a'.repeat(100), // GitHub max repo name is 100 chars
     specialCharsRepo: 'repo-with_special.chars',
     unicodeRepo: 'проект-репозиторий',
-    
+
     validTempRepo: 'temp-my-private-project-20240101-abc123',
     existingTempRepo: 'temp-existing-project-20231215-def456',
     failedDeleteRepo: 'temp-failed-delete-20231220-ghi789',
@@ -59,9 +59,7 @@ export const TempRepoTestData = {
       { name: 'staging', isDefault: false },
     ],
     noBranches: [],
-    singleBranch: [
-      { name: 'main', isDefault: true },
-    ],
+    singleBranch: [{ name: 'main', isDefault: true }],
     multipleBranches: [
       { name: 'main', isDefault: true },
       { name: 'develop', isDefault: false },
@@ -212,10 +210,55 @@ export const TempRepoTestData = {
 
 export class MockUnifiedGitHubService implements Partial<UnifiedGitHubService> {
   private shouldFail = false;
-  private failureMode: 'listBranches' | 'createRepo' | 'cloneContents' | 'updateVisibility' | 'deleteRepo' | 'all' = 'all';
+  private failureMode:
+    | 'listBranches'
+    | 'createRepo'
+    | 'cloneContents'
+    | 'updateVisibility'
+    | 'deleteRepo'
+    | 'all' = 'all';
   private delay = 0;
   private deleteFailureRepos = new Set<string>();
   private progressCallbacks = new Map<string, (progress: number) => void>();
+
+  // Mock method declarations - properly initialized
+  listBranches = jest.fn(async (owner: string, repo: string) => {
+    return this._listBranches(owner, repo);
+  });
+
+  createTemporaryPublicRepo = jest.fn(
+    async (owner: string, sourceRepo: string, branch?: string) => {
+      return this._createTemporaryPublicRepo(owner, sourceRepo, branch);
+    }
+  );
+
+  cloneRepoContents = jest.fn(
+    async (
+      sourceOwner: string,
+      sourceRepo: string,
+      targetOwner: string,
+      targetRepo: string,
+      branch: string,
+      onProgress?: (progress: number) => void
+    ) => {
+      return this._cloneRepoContents(
+        sourceOwner,
+        sourceRepo,
+        targetOwner,
+        targetRepo,
+        branch,
+        onProgress
+      );
+    }
+  );
+
+  updateRepoVisibility = jest.fn(async (owner: string, repo: string, isPrivate: boolean) => {
+    return this._updateRepoVisibility(owner, repo, isPrivate);
+  });
+
+  deleteRepo = jest.fn(async (owner: string, repo: string) => {
+    return this._deleteRepo(owner, repo);
+  });
 
   // Test configuration methods
   setShouldFail(shouldFail: boolean, mode: typeof this.failureMode = 'all'): void {
@@ -233,7 +276,7 @@ export class MockUnifiedGitHubService implements Partial<UnifiedGitHubService> {
 
   private async simulateDelay(): Promise<void> {
     if (this.delay > 0) {
-      await new Promise(resolve => setTimeout(resolve, this.delay));
+      await new Promise((resolve) => setTimeout(resolve, this.delay));
     }
   }
 
@@ -241,9 +284,12 @@ export class MockUnifiedGitHubService implements Partial<UnifiedGitHubService> {
     return this.shouldFail && (this.failureMode === 'all' || this.failureMode === operation);
   }
 
-  async listBranches(owner: string, repo: string): Promise<Array<{name: string, isDefault: boolean}>> {
+  private async _listBranches(
+    owner: string,
+    repo: string
+  ): Promise<Array<{ name: string; isDefault: boolean }>> {
     await this.simulateDelay();
-    
+
     if (this.shouldFailOperation('listBranches')) {
       throw TempRepoTestData.errors.branchNotFoundError;
     }
@@ -258,13 +304,17 @@ export class MockUnifiedGitHubService implements Partial<UnifiedGitHubService> {
     } else if (repo.includes('empty')) {
       return TempRepoTestData.branchResponses.noBranches;
     }
-    
+
     return TempRepoTestData.branchResponses.mainDefault;
   }
 
-  async createTemporaryPublicRepo(owner: string, sourceRepo: string, branch?: string): Promise<string> {
+  private async _createTemporaryPublicRepo(
+    owner: string,
+    sourceRepo: string,
+    branch?: string
+  ): Promise<string> {
     await this.simulateDelay();
-    
+
     if (this.shouldFailOperation('createRepo')) {
       throw TempRepoTestData.errors.repoCreationError;
     }
@@ -275,7 +325,7 @@ export class MockUnifiedGitHubService implements Partial<UnifiedGitHubService> {
     return `temp-${sourceRepo}-${timestamp}-${randomId}`;
   }
 
-  async cloneRepoContents(
+  private async _cloneRepoContents(
     sourceOwner: string,
     sourceRepo: string,
     targetOwner: string,
@@ -284,7 +334,7 @@ export class MockUnifiedGitHubService implements Partial<UnifiedGitHubService> {
     onProgress?: (progress: number) => void
   ): Promise<void> {
     await this.simulateDelay();
-    
+
     if (this.shouldFailOperation('cloneContents')) {
       throw TempRepoTestData.errors.cloneError;
     }
@@ -292,26 +342,30 @@ export class MockUnifiedGitHubService implements Partial<UnifiedGitHubService> {
     // Simulate progress updates
     if (onProgress) {
       this.progressCallbacks.set(targetRepo, onProgress);
-      
+
       // Simulate realistic progress steps
       for (let i = 0; i <= 100; i += 20) {
-        await new Promise(resolve => setTimeout(resolve, 50)); // Small delay between updates
+        await new Promise((resolve) => setTimeout(resolve, 50)); // Small delay between updates
         onProgress(i);
       }
     }
   }
 
-  async updateRepoVisibility(owner: string, repo: string, isPrivate: boolean): Promise<void> {
+  private async _updateRepoVisibility(
+    owner: string,
+    repo: string,
+    isPrivate: boolean
+  ): Promise<void> {
     await this.simulateDelay();
-    
+
     if (this.shouldFailOperation('updateVisibility')) {
       throw TempRepoTestData.errors.repoVisibilityError;
     }
   }
 
-  async deleteRepo(owner: string, repo: string): Promise<void> {
+  private async _deleteRepo(owner: string, repo: string): Promise<void> {
     await this.simulateDelay();
-    
+
     if (this.shouldFailOperation('deleteRepo') || this.deleteFailureRepos.has(repo)) {
       throw TempRepoTestData.errors.repoDeleteError;
     }
@@ -328,14 +382,17 @@ export class MockUnifiedGitHubService implements Partial<UnifiedGitHubService> {
 }
 
 export class MockOperationStateManager implements Partial<OperationStateManager> {
-  private operations = new Map<string, {
-    type: string;
-    status: 'started' | 'completed' | 'failed';
-    description: string;
-    metadata?: any;
-    error?: Error;
-    startTime: number;
-  }>();
+  private operations = new Map<
+    string,
+    {
+      type: string;
+      status: 'started' | 'completed' | 'failed';
+      description: string;
+      metadata?: any;
+      error?: Error;
+      startTime: number;
+    }
+  >();
   private shouldFail = false;
 
   static getInstance = jest.fn(() => new MockOperationStateManager());
@@ -344,24 +401,26 @@ export class MockOperationStateManager implements Partial<OperationStateManager>
     this.shouldFail = shouldFail;
   }
 
-  startOperation = jest.fn(async (
-    type: string,
-    operationId: string,
-    description: string,
-    metadata?: any
-  ): Promise<void> => {
-    if (this.shouldFail) {
-      throw new Error('Failed to start operation tracking');
-    }
+  startOperation = jest.fn(
+    async (
+      type: string,
+      operationId: string,
+      description: string,
+      metadata?: any
+    ): Promise<void> => {
+      if (this.shouldFail) {
+        throw new Error('Failed to start operation tracking');
+      }
 
-    this.operations.set(operationId, {
-      type,
-      status: 'started',
-      description,
-      metadata,
-      startTime: Date.now(),
-    });
-  });
+      this.operations.set(operationId, {
+        type,
+        status: 'started',
+        description,
+        metadata,
+        startTime: Date.now(),
+      });
+    }
+  );
 
   completeOperation = jest.fn(async (operationId: string): Promise<void> => {
     if (this.shouldFail) {
@@ -399,7 +458,9 @@ export class MockOperationStateManager implements Partial<OperationStateManager>
     return this.operations.size;
   }
 
-  getOperationsByStatus(status: 'started' | 'completed' | 'failed'): Array<{ id: string; operation: any }> {
+  getOperationsByStatus(
+    status: 'started' | 'completed' | 'failed'
+  ): Array<{ id: string; operation: any }> {
     return this.getAllOperations().filter(({ operation }) => operation.status === status);
   }
 
@@ -423,14 +484,14 @@ export class TempRepoMockChromeStorage {
 
   private async simulateDelay(): Promise<void> {
     if (this.delay > 0) {
-      await new Promise(resolve => setTimeout(resolve, this.delay));
+      await new Promise((resolve) => setTimeout(resolve, this.delay));
     }
   }
 
   local = {
     get: jest.fn(async (keys?: string | string[] | null) => {
       await this.simulateDelay();
-      
+
       if (this.shouldFail) {
         throw TempRepoTestData.errors.storageError;
       }
@@ -449,7 +510,7 @@ export class TempRepoMockChromeStorage {
 
     set: jest.fn(async (items: Record<string, any>) => {
       await this.simulateDelay();
-      
+
       if (this.shouldFail) {
         throw TempRepoTestData.errors.storageError;
       }
@@ -459,13 +520,13 @@ export class TempRepoMockChromeStorage {
 
     remove: jest.fn(async (keys: string | string[]) => {
       await this.simulateDelay();
-      
+
       if (this.shouldFail) {
         throw TempRepoTestData.errors.storageError;
       }
 
       const keysArray = Array.isArray(keys) ? keys : [keys];
-      keysArray.forEach(key => delete this.localData[key]);
+      keysArray.forEach((key) => delete this.localData[key]);
     }),
   };
 
@@ -493,35 +554,37 @@ export class TempRepoMockChromeTabs {
     this.shouldFail = shouldFail;
   }
 
-  create = jest.fn(async (createProperties: chrome.tabs.CreateProperties): Promise<chrome.tabs.Tab> => {
-    if (this.shouldFail) {
-      throw new Error('Failed to create tab');
+  create = jest.fn(
+    async (createProperties: chrome.tabs.CreateProperties): Promise<chrome.tabs.Tab> => {
+      if (this.shouldFail) {
+        throw new Error('Failed to create tab');
+      }
+
+      const tab: chrome.tabs.Tab = {
+        id: Math.floor(Math.random() * 1000) + 1,
+        url: createProperties.url,
+        active: createProperties.active ?? false,
+        highlighted: false,
+        pinned: false,
+        selected: false,
+        incognito: false,
+        width: 1200,
+        height: 800,
+        index: 0,
+        windowId: 1,
+        discarded: false,
+        autoDiscardable: false,
+        groupId: -1,
+      };
+
+      this.createdTabs.push({
+        url: createProperties.url || '',
+        active: createProperties.active ?? false,
+      });
+
+      return tab;
     }
-
-    const tab: chrome.tabs.Tab = {
-      id: Math.floor(Math.random() * 1000) + 1,
-      url: createProperties.url,
-      active: createProperties.active ?? false,
-      highlighted: false,
-      pinned: false,
-      selected: false,
-      incognito: false,
-      width: 1200,
-      height: 800,
-      index: 0,
-      windowId: 1,
-      discarded: false,
-      autoDiscardable: false,
-      groupId: -1,
-    };
-
-    this.createdTabs.push({
-      url: createProperties.url || '',
-      active: createProperties.active ?? false,
-    });
-
-    return tab;
-  });
+  );
 
   // Test helpers
   getCreatedTabs(): Array<{ url: string; active: boolean }> {
@@ -568,11 +631,11 @@ export class MockStatusBroadcaster {
   }
 
   getStatusByType(status: UploadStatusState['status']): UploadStatusState[] {
-    return this.statusHistory.filter(s => s.status === status);
+    return this.statusHistory.filter((s) => s.status === status);
   }
 
   getProgressSteps(): number[] {
-    return this.statusHistory.map(s => s.progress || 0);
+    return this.statusHistory.map((s) => s.progress || 0);
   }
 
   reset(): void {
@@ -641,7 +704,7 @@ export class TempRepoManagerTestEnvironment {
     // Reset all mocks
     jest.clearAllMocks();
     jest.useRealTimers();
-    
+
     // Reset all mock services
     this.mockGitHubService.clearProgressCallbacks();
     this.mockOperationStateManager.clear();
@@ -675,7 +738,15 @@ export class TempRepoManagerTestEnvironment {
     this.mockStorage.setLocalData(TempRepoTestData.storage.corruptedStorage);
   }
 
-  setupGitHubServiceFailure(operation: 'listBranches' | 'createRepo' | 'cloneContents' | 'updateVisibility' | 'deleteRepo' | 'all' = 'all'): void {
+  setupGitHubServiceFailure(
+    operation:
+      | 'listBranches'
+      | 'createRepo'
+      | 'cloneContents'
+      | 'updateVisibility'
+      | 'deleteRepo'
+      | 'all' = 'all'
+  ): void {
     this.mockGitHubService.setShouldFail(true, operation);
   }
 
@@ -715,8 +786,11 @@ export class TempRepoManagerTestEnvironment {
 // =============================================================================
 
 export const TempRepoAssertionHelpers = {
-  expectStatusSequence(broadcaster: MockStatusBroadcaster, expectedStatuses: UploadStatusState['status'][]): void {
-    const actualStatuses = broadcaster.getStatusHistory().map(s => s.status);
+  expectStatusSequence(
+    broadcaster: MockStatusBroadcaster,
+    expectedStatuses: UploadStatusState['status'][]
+  ): void {
+    const actualStatuses = broadcaster.getStatusHistory().map((s) => s.status);
     expect(actualStatuses).toEqual(expectedStatuses);
   },
 
@@ -727,13 +801,17 @@ export const TempRepoAssertionHelpers = {
     }
   },
 
-  expectStorageContains(storage: TempRepoMockChromeStorage, expectedRepos: Array<{ originalRepo: string; tempRepo: string }>): void {
+  expectStorageContains(
+    storage: TempRepoMockChromeStorage,
+    expectedRepos: Array<{ originalRepo: string; tempRepo: string }>
+  ): void {
     const storageData = storage.getLocalData();
     const tempRepos = storageData[STORAGE_KEY] || [];
-    
-    expectedRepos.forEach(expected => {
-      const found = tempRepos.find((repo: any) => 
-        repo.originalRepo === expected.originalRepo && repo.tempRepo === expected.tempRepo
+
+    expectedRepos.forEach((expected) => {
+      const found = tempRepos.find(
+        (repo: any) =>
+          repo.originalRepo === expected.originalRepo && repo.tempRepo === expected.tempRepo
       );
       expect(found).toBeDefined();
     });
@@ -747,27 +825,34 @@ export const TempRepoAssertionHelpers = {
 
   expectOperationTracked(operationManager: MockOperationStateManager, operationType: string): void {
     const operations = operationManager.getAllOperations();
-    const operation = operations.find(op => op.operation.type === operationType);
+    const operation = operations.find((op) => op.operation.type === operationType);
     expect(operation).toBeDefined();
     expect(operation?.operation.status).toBe('started');
   },
 
-  expectOperationCompleted(operationManager: MockOperationStateManager, operationType: string): void {
+  expectOperationCompleted(
+    operationManager: MockOperationStateManager,
+    operationType: string
+  ): void {
     const operations = operationManager.getAllOperations();
-    const operation = operations.find(op => op.operation.type === operationType);
+    const operation = operations.find((op) => op.operation.type === operationType);
     expect(operation).toBeDefined();
     expect(operation?.operation.status).toBe('completed');
   },
 
   expectOperationFailed(operationManager: MockOperationStateManager, operationType: string): void {
     const operations = operationManager.getAllOperations();
-    const operation = operations.find(op => op.operation.type === operationType);
+    const operation = operations.find((op) => op.operation.type === operationType);
     expect(operation).toBeDefined();
     expect(operation?.operation.status).toBe('failed');
     expect(operation?.operation.error).toBeDefined();
   },
 
-  expectBoltTabCreated(tabs: TempRepoMockChromeTabs, expectedOwner: string, expectedRepo: string): void {
+  expectBoltTabCreated(
+    tabs: TempRepoMockChromeTabs,
+    expectedOwner: string,
+    expectedRepo: string
+  ): void {
     const createdTab = tabs.getLastCreatedTab();
     expect(createdTab).toBeDefined();
     expect(createdTab?.url).toContain('bolt.new');
@@ -819,6 +904,9 @@ export const TempRepoScenarioBuilder = {
   // Resource leak scenario - operations that don't complete cleanup
   resourceLeakScenario(env: TempRepoManagerTestEnvironment): void {
     env.setupExpiredRepos();
-    env.setupDeleteFailures(['temp-old-project-one-20231220-old123', 'temp-old-project-two-20231220-old456']);
+    env.setupDeleteFailures([
+      'temp-old-project-one-20231220-old123',
+      'temp-old-project-two-20231220-old456',
+    ]);
   },
 };
