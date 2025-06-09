@@ -1,31 +1,27 @@
 /**
- * BackgroundService Test Fixtures - Comprehensive Testing Suite
+ * Background Services Test Fixtures - Comprehensive Testing Suite
  *
- * This index file provides a unified interface to all BackgroundService test fixtures,
- * designed to enable behavior-focused testing that reveals real usage patterns and bugs.
+ * This index file provides a unified interface to all Background Service test fixtures,
+ * including BackgroundService and TempRepoManager, designed to enable behavior-focused
+ * testing that reveals real usage patterns and bugs.
  *
  * USAGE GUIDE:
  * ===========
  *
- * 1. BASIC SETUP:
+ * 1. BACKGROUNDSERVICE TESTING:
  *    import { BackgroundServiceTestSuite } from './fixtures';
  *    const testSuite = new BackgroundServiceTestSuite();
  *    await testSuite.setup();
  *
- * 2. BEHAVIOR TESTING:
- *    await testSuite.runUsagePattern('zipUploadFlow');
- *    await testSuite.detectBugs('memoryLeaks');
+ * 2. TEMPREPOMANAGER TESTING:
+ *    import { TempRepoTestLifecycle, TempRepoManagerFactory } from './fixtures';
+ *    const lifecycle = new TempRepoTestLifecycle();
+ *    const env = lifecycle.beforeEach();
+ *    const manager = TempRepoManagerFactory.createForSuccessScenario(env);
  *
- * 3. CUSTOM SCENARIOS:
- *    testSuite.withAuthentication('github_app')
- *             .withNetworkConditions('slow')
- *             .withConcurrentOperations(3)
- *             .execute();
- *
- * 4. PERFORMANCE TESTING:
- *    const metrics = testSuite.measurePerformance('zip_upload', () => {
- *      return testSuite.simulateZipUpload();
- *    });
+ * 3. COMBINED TESTING:
+ *    import { quickSetup, verifyTestExpectations } from './fixtures';
+ *    const { env, manager, cleanup } = quickSetup('success');
  *
  * DESIGN PRINCIPLES:
  * =================
@@ -50,6 +46,15 @@ import {
   BugDetectionScenarios,
   UsagePatterns,
 } from './BackgroundServiceTestSpecification';
+
+// TempRepoManager imports
+import {
+  TempRepoManagerTestEnvironment,
+  TempRepoAssertionHelpers,
+} from './TempRepoManagerTestFixtures';
+import { TempRepoTestLifecycle } from './TempRepoManagerTestHelpers';
+import { MockVerificationUtilities } from './TempRepoManagerMocks';
+import type { UploadStatusState } from '../../lib/types';
 
 // Core fixtures and data
 export {
@@ -77,6 +82,43 @@ export {
   BugDetectionScenarios,
   BackgroundServiceBehaviorTestFramework,
 } from './BackgroundServiceTestSpecification';
+
+// TempRepoManager test fixtures exports
+export {
+  TempRepoTestData,
+  TempRepoManagerTestEnvironment,
+  TempRepoAssertionHelpers,
+  TempRepoScenarioBuilder,
+  MockUnifiedGitHubService,
+  MockOperationStateManager,
+  TempRepoMockChromeStorage,
+  TempRepoMockChromeTabs,
+  MockStatusBroadcaster,
+} from './TempRepoManagerTestFixtures';
+
+// TempRepoManager test helpers exports
+export {
+  TempRepoManagerFactory,
+  TempRepoTestLifecycle,
+  AsyncOperationHelpers,
+  ValidationHelpers,
+  DebuggingHelpers,
+  PerformanceHelpers,
+} from './TempRepoManagerTestHelpers';
+
+// TempRepoManager mock coordination exports
+export {
+  TempRepoMockServiceFactory,
+  MockBehaviorOrchestrator,
+  MockVerificationUtilities,
+} from './TempRepoManagerMocks';
+
+export {
+  TestStrategy as TempRepoTestStrategy,
+  TestScenarios as TempRepoTestScenarios,
+  SuccessCriteria as TempRepoSuccessCriteria,
+  CoverageRequirements as TempRepoCoverageRequirements,
+} from './TempRepoManagerTestSpecification';
 
 // Re-export specific types for easier consumption
 export type { Message, UploadStatusState } from '../../lib/types';
@@ -464,6 +506,87 @@ export const PresetScenarios = {
     return { recoveredFromErrors, failedToRecover };
   },
 };
+
+// =============================================================================
+// TEMPREPOMANAGER CONVENIENCE FUNCTIONS
+// =============================================================================
+
+/**
+ * Quick setup function for TempRepoManager test scenarios
+ *
+ * @param scenario - The test scenario to set up
+ * @returns Configured test environment and TempRepoManager instance
+ */
+export function quickSetupTempRepo(scenario: 'success' | 'failure' | 'existing' = 'success') {
+  const lifecycle = new TempRepoTestLifecycle();
+  const env = lifecycle.beforeEach();
+  const manager = lifecycle.createManager(scenario);
+
+  return {
+    env,
+    manager,
+    cleanup: () => lifecycle.afterEach(),
+  };
+}
+
+/**
+ * Create a fully mocked TempRepoManager test environment
+ *
+ * @returns Complete test environment with all mocks configured
+ */
+export function createTempRepoMockedEnvironment() {
+  const env = new TempRepoManagerTestEnvironment();
+  env.setup();
+  return env;
+}
+
+/**
+ * Verify TempRepoManager test expectations across all mock services
+ *
+ * @param env - Test environment to verify
+ * @param expectations - Expected behaviors to check
+ */
+export function verifyTempRepoExpectations(
+  env: TempRepoManagerTestEnvironment,
+  expectations: {
+    statusSequence?: UploadStatusState['status'][];
+    storageOperations?: { gets?: number; sets?: number };
+    operationTracking?: { started?: number; completed?: number; failed?: number };
+    tabsCreated?: number;
+  }
+) {
+  // Verify status sequence if expected
+  if (expectations.statusSequence) {
+    TempRepoAssertionHelpers.expectStatusSequence(
+      env.mockStatusBroadcaster,
+      expectations.statusSequence
+    );
+  }
+
+  // Verify storage operations if expected
+  if (expectations.storageOperations) {
+    MockVerificationUtilities.verifyStorageOperations(
+      env.mockStorage,
+      expectations.storageOperations
+    );
+  }
+
+  // Verify operation tracking if expected
+  if (expectations.operationTracking) {
+    const { started = 0, completed = 0, failed = 0 } = expectations.operationTracking;
+
+    expect(env.mockOperationStateManager.getOperationsByStatus('started')).toHaveLength(started);
+    expect(env.mockOperationStateManager.getOperationsByStatus('completed')).toHaveLength(
+      completed
+    );
+    expect(env.mockOperationStateManager.getOperationsByStatus('failed')).toHaveLength(failed);
+  }
+
+  // Verify tabs created if expected
+  if (expectations.tabsCreated !== undefined) {
+    expect(env.mockTabs.getCreatedTabs()).toHaveLength(expectations.tabsCreated);
+  }
+}
 
 // =============================================================================
 // QUICK START EXAMPLES
