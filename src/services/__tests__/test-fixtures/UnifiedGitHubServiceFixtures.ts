@@ -1001,6 +1001,14 @@ export class MockPATAuthenticationStrategy implements IAuthenticationStrategy {
       };
     }
 
+    // Also check if the token format is invalid
+    if (!this.token.startsWith('ghp_') && !this.token.startsWith('github_pat_')) {
+      return {
+        isValid: false,
+        error: 'Invalid PAT token format'
+      };
+    }
+
     return {
       isValid: true,
       userInfo: GitHubAPIResponses.user.valid,
