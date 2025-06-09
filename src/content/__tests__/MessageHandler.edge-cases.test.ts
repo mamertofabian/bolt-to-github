@@ -361,42 +361,44 @@ describe('MessageHandler - Edge Cases', () => {
       
       // Start with connected state
       env.sendDebugMessage('Initial message');
+      const initialPort = env.currentPort;
+      
+      // Track total messages sent across all ports
+      let totalMessagesSent = 1; // Initial message
       
       // Create burst scenario
       const burstSize = 100; // Reduced from 1000 for faster tests
-      const operations = [];
       
-      // Disconnect after 10ms
-      operations.push(
-        TimingHelpers.waitForMs(10).then(() => env.simulatePortDisconnection())
-      );
+      // Send some messages while connected
+      for (let i = 0; i < 10; i++) {
+        env.sendDebugMessage(`Pre-disconnect message ${i}`);
+      }
+      totalMessagesSent += 10;
       
-      // Send burst of messages
-      operations.push(
-        Promise.resolve().then(async () => {
-          for (let i = 0; i < burstSize; i++) {
-            env.sendDebugMessage(`Burst message ${i}`);
-            if (i % 100 === 0) {
-              await TimingHelpers.waitForMs(1); // Yield occasionally
-            }
-          }
-        })
-      );
+      // Disconnect the port
+      env.simulatePortDisconnection();
       
-      // Reconnect after 50ms
-      operations.push(
-        TimingHelpers.waitForMs(50).then(() => env.updatePortConnection())
-      );
+      // Send burst of messages while disconnected (these will be queued)
+      for (let i = 0; i < burstSize; i++) {
+        env.sendDebugMessage(`Burst message ${i}`);
+      }
       
-      await Promise.all(operations);
+      // Verify messages are queued
+      expect(env.messageHandler!.getConnectionStatus().queuedMessages).toBe(burstSize);
+      
+      // Reconnect with new port
+      env.updatePortConnection();
       await env.waitForQueueProcessing();
       
       // All messages should eventually be processed
       env.assertQueueLength(0);
       
-      // Check that messages were sent (some on first port, rest on reconnected port)
-      const currentPortCount = env.currentPort?.getPostMessageCallCount() || 0;
-      expect(currentPortCount).toBeGreaterThan(0); // Should have sent queued messages
+      // Verify messages were sent on either the initial port or the reconnected port
+      const initialPortCount = initialPort?.getPostMessageCallCount() || 0;
+      const reconnectedPortCount = env.currentPort?.getPostMessageCallCount() || 0;
+      
+      expect(initialPortCount).toBeGreaterThanOrEqual(11); // Initial + pre-disconnect messages
+      expect(reconnectedPortCount).toBe(burstSize); // All queued messages
     });
 
     it('should handle alternating connection states with continuous messaging', async () => {
