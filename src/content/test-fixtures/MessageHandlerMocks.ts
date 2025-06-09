@@ -73,6 +73,11 @@ export class MockChromePort implements chrome.runtime.Port {
       this.postMessage = jest.fn(() => {
         throw new Error(errorMessage);
       });
+    } else if (options.connected === false) {
+      // For initially disconnected ports, postMessage should throw
+      this.postMessage = jest.fn(() => {
+        throw new Error('Port is disconnected');
+      });
     } else {
       this.postMessage = jest.fn((message: any) => {
         if (!this.connected) {
@@ -157,6 +162,11 @@ export class MockChromeRuntime {
     this.id = options.id ?? 'bolt-to-github-extension-id';
     this.invalidated = options.invalidated ?? false;
     this.shouldThrowOnAccess = options.shouldThrowOnAccess ?? false;
+    
+    // If invalidated, set id to undefined
+    if (this.invalidated) {
+      this.id = undefined;
+    }
   }
 
   // Simulate extension context invalidation
@@ -463,7 +473,24 @@ export class MockChromeEnvironment {
     this.originalConsole = (global as any).console;
 
     // Install mocks
-    (global as any).chrome = this.chrome;
+    if (this.chrome.runtime.wouldThrowOnAccess && this.chrome.runtime.wouldThrowOnAccess()) {
+      // Create a proxy that throws on access
+      (global as any).chrome = new Proxy({}, {
+        get(target, prop) {
+          if (prop === 'runtime') {
+            return new Proxy({}, {
+              get() {
+                throw new Error('Extension context invalidated');
+              }
+            });
+          }
+          return target[prop as keyof typeof target];
+        }
+      });
+    } else {
+      (global as any).chrome = this.chrome;
+    }
+    
     (global as any).window = this.window;
     (global as any).console = this.console;
   }

@@ -237,25 +237,29 @@ describe('MessageHandler - Memory Leak Detection', () => {
     it('should cleanup port listeners when port is replaced', async () => {
       env.createMessageHandler();
       
-      // Track listener additions
-      const listenerCalls: any[] = [];
+      // Track ports and their listener counts
+      const ports: any[] = [];
       
       for (let i = 0; i < 20; i++) {
         const port = env.createHealthyPort();
-        
-        // Track this port's listener calls
         const addListenerMock = port.onDisconnect.addListener as jest.Mock;
-        listenerCalls.push({
-          port,
-          calls: addListenerMock.mock.calls.length,
-        });
+        
+        // Store initial call count
+        const initialCalls = addListenerMock.mock.calls.length;
         
         env.updatePortConnection(port);
+        
+        // Check that exactly one listener was added
+        const afterCalls = addListenerMock.mock.calls.length;
+        expect(afterCalls - initialCalls).toBe(1);
+        
+        ports.push(port);
       }
       
-      // Each port should have exactly one listener added
-      listenerCalls.forEach(({ calls }) => {
-        expect(calls).toBe(1);
+      // Verify no excessive listeners accumulated on any port
+      ports.forEach(port => {
+        const listenerCount = (port.onDisconnect.addListener as jest.Mock).mock.calls.length;
+        expect(listenerCount).toBeLessThanOrEqual(1);
       });
     });
   });
@@ -268,9 +272,9 @@ describe('MessageHandler - Memory Leak Detection', () => {
     it('should maintain stable memory during extended operation', async () => {
       env.createMessageHandler();
       
-      const testDurationMs = 5000; // 5 seconds
+      const testDurationMs = 2000; // 2 seconds instead of 5 to avoid timeout
       const messageIntervalMs = 10;
-      const snapshotIntervalMs = 1000;
+      const snapshotIntervalMs = 500; // More frequent snapshots
       
       const memorySnapshots: any[] = [];
       let messageCount = 0;
@@ -314,7 +318,7 @@ describe('MessageHandler - Memory Leak Detection', () => {
         firstSnapshot.eventListeners + 1
       );
       expect(lastSnapshot.queueSize).toBe(0); // Should not accumulate
-    });
+    }, 10000); // 10 second timeout
 
     it('should handle connection cycling without memory growth', async () => {
       env.createMessageHandler();

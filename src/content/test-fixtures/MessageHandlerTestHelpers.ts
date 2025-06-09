@@ -49,6 +49,11 @@ export class MessageHandlerTestEnvironment {
     this.mockEnvironment.setup();
     this.startPerformanceTracking();
     
+    // Ensure window is properly mocked globally for MessageHandler
+    if (typeof window === 'undefined') {
+      (global as any).window = this.mockEnvironment.window;
+    }
+    
     // Add cleanup for timers
     this.addCleanupTask(() => {
       this.timers.forEach(timer => clearTimeout(timer));
@@ -228,6 +233,13 @@ export class MessageHandlerTestEnvironment {
 
   sendBurstMessages(count: number, type: MessageType = 'DEBUG', intervalMs: number = 1): Promise<void> {
     const messages = MessageFactory.createPerformanceMessages(count, type);
+    
+    if (intervalMs === 0 || intervalMs === 1) {
+      // Send all messages synchronously for performance tests
+      messages.forEach(msg => this.sendTestMessage(msg.type, msg.data));
+      return Promise.resolve();
+    }
+    
     return this.sendMessageSequence(messages, intervalMs);
   }
 
@@ -277,11 +289,14 @@ export class MessageHandlerTestEnvironment {
   }
 
   assertCustomEventDispatched(expectedType: string, expectedDetail?: any): void {
-    BehaviorVerifier.verifyCustomEventDispatched(
-      this.mockEnvironment.window,
-      expectedType,
-      expectedDetail
-    );
+    const events = this.mockEnvironment.window.getDispatchedEvents();
+    const matchingEvent = events.find(e => e.type === expectedType);
+    
+    expect(matchingEvent).toBeDefined();
+    
+    if (expectedDetail !== undefined) {
+      expect(matchingEvent?.detail).toEqual(expectedDetail);
+    }
   }
 
   assertConsoleOutput(level: 'log' | 'warn' | 'error' | 'debug', expectedMessage: string): void {

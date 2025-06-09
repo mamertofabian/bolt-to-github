@@ -11,7 +11,11 @@
       "Bash(pnpm run test:*)",
       "Bash(npm test:*)",
       "Bash(pnpm run lint:*)",
-      "Bash(git add:*)"
+      "Bash(git add:*)",
+      "Bash(git commit:*)",
+      "Bash(time pnpm test:*)",
+      "Bash(ls:*)",
+      "Bash(rm:*)"
     ],
     "deny": []
   }
