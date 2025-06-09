@@ -1,10 +1,10 @@
-# UnifiedGitHubService Test Fixtures
+# Test Fixtures Documentation
 
-Comprehensive test fixtures, mocks, and utilities for testing the `UnifiedGitHubService` across all its functionality areas.
+Comprehensive test fixtures, mocks, and utilities for testing GitHub-related services including `UnifiedGitHubService` and `GitHubAppService`.
 
 ## Overview
 
-This module provides realistic test data, controlled test environments, and helper functions to ensure thorough testing of the UnifiedGitHubService. The fixtures are designed to:
+This directory contains test fixtures for multiple GitHub-related services. The fixtures are designed to:
 
 1. **Cover Normal, Edge, and Error Cases** - Comprehensive scenarios including success paths, failure modes, and boundary conditions
 2. **Reflect Real Usage Patterns** - Fixtures based on actual GitHub API responses and real-world usage scenarios
@@ -320,8 +320,107 @@ When adding new fixtures:
 4. **Test the Fixtures** - Ensure fixtures themselves work correctly
 5. **Maintain Realism** - Base fixtures on actual GitHub API responses
 
+## GitHubAppService Test Fixtures
+
+### Overview
+
+The GitHubAppService test fixtures provide comprehensive testing infrastructure for GitHub App authentication and token management.
+
+### Quick Start
+
+```typescript
+import { 
+  setupGitHubAppServiceTest,
+  createTestScenario,
+  gitHubAppScenarios
+} from './test-fixtures';
+
+// Set up test environment
+const env = setupGitHubAppServiceTest({
+  useRealService: true,
+  withSupabaseToken: true
+});
+
+// Use predefined scenarios
+const scenario = createTestScenario('authenticated');
+
+// Run tests
+const result = await env.service.getAccessToken();
+
+// Clean up
+env.cleanup();
+```
+
+### Available Components
+
+#### GitHubAppServiceTestFixtures.ts
+
+- **Authentication Data**: OAuth responses, token data, installation info
+- **Error Fixtures**: Various error responses from Supabase and GitHub
+- **Storage Data**: Chrome storage configurations
+- **Edge Cases**: Expired tokens, partial data, restricted permissions
+
+#### GitHubAppServiceMocks.ts
+
+- **MockGitHubAppService**: Controllable service implementation
+- **MockChromeStorage**: In-memory Chrome storage
+- **MockFetchHandler**: HTTP response simulation
+- **GitHubAppServiceTestScenario**: Fluent scenario builder
+
+#### GitHubAppServiceTestHelpers.ts
+
+- **setupGitHubAppServiceTest()**: Complete environment setup
+- **createTestScenario()**: Pre-configured scenarios
+- **Assertion Helpers**: `assertFetchCall()`, `assertStorageUpdate()`
+- **Time Utilities**: Token expiry testing
+- **Error Simulation**: Network, auth, rate limit errors
+
+#### GitHubAppServiceTestSpecification.ts
+
+- **Authentication Scenarios**: OAuth flow testing
+- **Token Management**: Renewal, expiry, validation
+- **Installation Scenarios**: GitHub App installations
+- **Permission Scenarios**: Access control testing
+- **Error Scenarios**: Comprehensive error handling
+- **Edge Cases**: Concurrent operations, malformed data
+
+### Usage Examples
+
+#### Testing OAuth Flow
+
+```typescript
+const env = setupGitHubAppServiceTest();
+setupCommonMockResponses(env.fetchMock, 'success');
+
+const result = await env.service.completeOAuthFlow('valid_code', 'state_123');
+expect(result.success).toBe(true);
+expect(result.installation_found).toBe(true);
+```
+
+#### Testing Token Renewal
+
+```typescript
+const env = setupGitHubAppServiceTest({
+  initialConfig: createGitHubAppConfigWithExpiry(-3600000) // Expired
+});
+
+await simulateTokenRenewal(env.service, env.fetchMock);
+const token = await env.service.getAccessToken();
+expect(token.renewed).toBe(true);
+```
+
+#### Testing Error Conditions
+
+```typescript
+const env = setupGitHubAppServiceTest();
+simulateError(env.fetchMock, 'network');
+
+await expect(env.service.getAccessToken()).rejects.toThrow('Network error');
+```
+
 ## Related Files
 
-- `src/services/UnifiedGitHubService.ts` - Service under test
-- `src/services/__tests__/GitHubService.feedback.test.ts` - Existing test file
-- `src/background/test-fixtures/BackgroundServiceMocks.ts` - Similar fixture pattern
+- `src/services/UnifiedGitHubService.ts` - Unified service implementation
+- `src/services/GitHubAppService.ts` - GitHub App service implementation
+- `src/services/__tests__/` - Test files using these fixtures
+- `src/background/test-fixtures/` - Similar fixture pattern for background services
