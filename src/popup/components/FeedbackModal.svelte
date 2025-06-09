@@ -3,7 +3,7 @@
   import { UnifiedGitHubService } from '../../services/UnifiedGitHubService';
   import { Button } from '$lib/components/ui/button';
   import Modal from '$lib/components/ui/modal/Modal.svelte';
-  import { Check, AlertCircle, MessageSquare, Send, ExternalLink } from 'lucide-svelte';
+  import { Check, AlertCircle, MessageSquare, Send, ExternalLink, Mail } from 'lucide-svelte';
 
   export let show = false;
   export let githubToken = '';
@@ -284,12 +284,13 @@
             </div>
           {/if}
 
-          <!-- Direct GitHub Link -->
-          <div class="bg-slate-800/50 p-3 rounded-md border border-slate-700">
-            <p class="text-xs text-slate-400 mb-2">
-              Prefer to submit feedback directly? You can always create an issue on our GitHub
-              repository:
+          <!-- Alternative Contact Options -->
+          <div class="bg-slate-800/50 p-3 rounded-md border border-slate-700 space-y-3">
+            <p class="text-xs text-slate-400">
+              Prefer other ways to submit feedback? Choose an option below:
             </p>
+            
+            <!-- GitHub Option -->
             <Button
               type="button"
               variant="outline"
@@ -309,8 +310,29 @@
               }}
             >
               <ExternalLink class="h-3 w-3" />
-              Open GitHub Issues Page
+              Submit on GitHub (Public)
             </Button>
+            
+            <!-- Email Option -->
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              class="border-slate-600 bg-slate-800 hover:bg-slate-700 text-slate-300 flex items-center gap-2 w-full"
+              on:click={() => {
+                const subject = encodeURIComponent(`Bolt to GitHub Feedback: ${category || 'General'}`);
+                const body = encodeURIComponent(message || 'Please describe your feedback here...');
+                window.location.href = `mailto:aidrivencoder@gmail.com?subject=${subject}&body=${body}`;
+              }}
+              disabled={!category}
+            >
+              <Mail class="h-3 w-3" />
+              Email Support (Private)
+            </Button>
+            
+            <p class="text-xs text-slate-500 mt-2">
+              Email: aidrivencoder@gmail.com for private feedback or direct support
+            </p>
           </div>
 
           <!-- Action Buttons -->
