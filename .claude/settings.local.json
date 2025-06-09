@@ -14,7 +14,8 @@
       "Bash(git commit:*)",
       "Bash(ls:*)",
       "Bash(npx jest:*)",
-      "Bash(git worktree:*)"
+      "Bash(git worktree:*)",
+      "Bash(git add:*)"
     ],
     "deny": []
   }

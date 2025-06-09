@@ -168,19 +168,19 @@ export const TempRepoTestData = {
     },
   },
 
-  // Error scenarios
+  // Error scenarios - Use getters to create fresh instances
   errors: {
-    githubApiError: new Error('GitHub API Error: Repository not found'),
-    rateLimitError: new Error('GitHub API Error: Rate limit exceeded'),
-    authenticationError: new Error('GitHub authentication failed - invalid token'),
-    networkError: new Error('Network request failed - timeout'),
-    storageError: new Error('Chrome storage unavailable'),
-    repoCreationError: new Error('Failed to create temporary repository'),
-    repoDeleteError: new Error('Failed to delete repository - not found'),
-    branchNotFoundError: new Error('Branch not found'),
-    permissionError: new Error('Insufficient permissions to access repository'),
-    repoVisibilityError: new Error('Failed to update repository visibility'),
-    cloneError: new Error('Failed to clone repository contents'),
+    get githubApiError() { return new Error('GitHub API Error: Repository not found'); },
+    get rateLimitError() { return new Error('GitHub API Error: Rate limit exceeded'); },
+    get authenticationError() { return new Error('GitHub authentication failed - invalid token'); },
+    get networkError() { return new Error('Network request failed - timeout'); },
+    get storageError() { return new Error('Chrome storage unavailable'); },
+    get repoCreationError() { return new Error('Failed to create temporary repository'); },
+    get repoDeleteError() { return new Error('Failed to delete repository - not found'); },
+    get branchNotFoundError() { return new Error('Branch not found'); },
+    get permissionError() { return new Error('Insufficient permissions to access repository'); },
+    get repoVisibilityError() { return new Error('Failed to update repository visibility'); },
+    get cloneError() { return new Error('Failed to clone repository contents'); },
   },
 
   // Progress scenarios
@@ -662,10 +662,14 @@ export class TempRepoManagerTestEnvironment {
 
   constructor() {
     this.mockGitHubService = new MockUnifiedGitHubService();
+    // Create a mock instance compatible with the manual mock
     this.mockOperationStateManager = new MockOperationStateManager();
     this.mockStorage = new TempRepoMockChromeStorage();
     this.mockTabs = new TempRepoMockChromeTabs();
     this.mockStatusBroadcaster = new MockStatusBroadcaster();
+    
+    // Update the manual mock to return our instance
+    jest.mocked(require('../../content/services/OperationStateManager')).OperationStateManager.getInstance.mockReturnValue(this.mockOperationStateManager);
   }
 
   setup(): void {
@@ -690,8 +694,8 @@ export class TempRepoManagerTestEnvironment {
       debug: jest.fn(),
     } as any;
 
-    // Mock timers for interval management testing
-    jest.useFakeTimers();
+    // Don't mock timers by default, let individual tests control this
+    // jest.useFakeTimers();
   }
 
   teardown(): void {
@@ -851,12 +855,21 @@ export const TempRepoAssertionHelpers = {
   expectBoltTabCreated(
     tabs: TempRepoMockChromeTabs,
     expectedOwner: string,
-    expectedRepo: string
+    expectedRepo: string | jest.AsymmetricMatcher
   ): void {
     const createdTab = tabs.getLastCreatedTab();
     expect(createdTab).toBeDefined();
     expect(createdTab?.url).toContain('bolt.new');
-    expect(createdTab?.url).toContain(`${expectedOwner}/${expectedRepo}`);
+    if (typeof expectedRepo === 'string') {
+      expect(createdTab?.url).toContain(`${expectedOwner}/${expectedRepo}`);
+    } else {
+      // Handle Jest matchers like expect.stringContaining()
+      expect(createdTab?.url).toContain(expectedOwner);
+      const match = createdTab?.url?.match(/github\.com\/[^/]+\/(.+)$/);
+      if (match) {
+        expect(match[1]).toEqual(expectedRepo);
+      }
+    }
     expect(createdTab?.active).toBe(true);
   },
 };
