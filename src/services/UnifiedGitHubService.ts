@@ -794,11 +794,9 @@ export class UnifiedGitHubService {
   async submitFeedback(feedback: {
     category: 'appreciation' | 'question' | 'bug' | 'feature' | 'other';
     message: string;
-    email?: string;
     metadata?: {
       browserInfo: string;
       extensionVersion: string;
-      url?: string;
     };
   }): Promise<any> {
     // Convert feedback to GitHub issue format
@@ -808,17 +806,10 @@ export class UnifiedGitHubService {
     issueBody += `**Category:** ${feedback.category}\n\n`;
     issueBody += `**Message:**\n${feedback.message}\n\n`;
 
-    if (feedback.email) {
-      issueBody += `**Contact:** ${feedback.email}\n\n`;
-    }
-
     if (feedback.metadata) {
       issueBody += `## Technical Information\n\n`;
       issueBody += `**Extension Version:** ${feedback.metadata.extensionVersion}\n`;
       issueBody += `**Browser Info:** ${feedback.metadata.browserInfo}\n`;
-      if (feedback.metadata.url) {
-        issueBody += `**URL:** ${feedback.metadata.url}\n`;
-      }
     }
 
     // Submit to the extension's feedback repository

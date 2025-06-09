@@ -120,7 +120,6 @@ describe('UnifiedGitHubService Feedback', () => {
       const feedback = {
         category: 'bug' as const,
         message: 'This is a test bug report',
-        email: 'test@example.com',
         metadata: {
           browserInfo: 'Chrome/91.0',
           extensionVersion: '1.0.0',
@@ -149,7 +148,7 @@ describe('UnifiedGitHubService Feedback', () => {
       expect(requestBody.body).toContain('## User Feedback');
       expect(requestBody.body).toContain('**Category:** bug');
       expect(requestBody.body).toContain('**Message:**\nThis is a test bug report');
-      expect(requestBody.body).toContain('**Contact:** test@example.com');
+      expect(requestBody.body).not.toContain('**Contact:**');
       expect(requestBody.body).toContain('**Extension Version:** 1.0.0');
       expect(requestBody.body).toContain('**Browser Info:** Chrome/91.0');
       expect(requestBody.labels).toEqual(['feedback', 'bug']);

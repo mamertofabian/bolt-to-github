@@ -2,7 +2,6 @@
   import { createEventDispatcher } from 'svelte';
   import { UnifiedGitHubService } from '../../services/UnifiedGitHubService';
   import { Button } from '$lib/components/ui/button';
-  import { Input } from '$lib/components/ui/input';
   import Modal from '$lib/components/ui/modal/Modal.svelte';
   import { Check, AlertCircle, MessageSquare, Send, ExternalLink } from 'lucide-svelte';
 
@@ -13,7 +12,6 @@
 
   let category = '';
   let message = '';
-  let email = '';
   let isSubmitting = false;
   let isSuccess = false;
   let error: string | null = null;
@@ -38,10 +36,6 @@
   function resetForm() {
     category = '';
     message = '';
-    // Don't reset email if it was prepopulated from storage
-    if (!email) {
-      loadUserEmail();
-    }
     isSuccess = false;
     error = null;
     showFallbackOption = false;
@@ -69,11 +63,6 @@
     let issueBody = `## User Feedback\n\n`;
     issueBody += `**Category:** ${category}\n\n`;
     issueBody += `**Message:**\n${message.trim()}\n\n`;
-
-    if (email.trim()) {
-      issueBody += `**Contact:** ${email.trim()}\n\n`;
-    }
-
     issueBody += `**Extension Version:** ${manifestData.version}\n`;
     issueBody += `**Browser Info:** ${navigator.userAgent}\n`;
 
@@ -119,13 +108,9 @@
     try {
       // Get browser and extension info
       const manifestData = chrome.runtime.getManifest();
-      const tabs = await chrome.tabs.query({ active: true, currentWindow: true });
-      const currentUrl = tabs[0]?.url;
-
       const metadata = {
         browserInfo: navigator.userAgent,
         extensionVersion: manifestData.version,
-        url: currentUrl,
       };
 
       // Submit feedback using GitHub Issues API with authentication method detection
@@ -141,7 +126,6 @@
       await githubService.submitFeedback({
         category: category as 'appreciation' | 'question' | 'bug' | 'feature' | 'other',
         message: message.trim(),
-        email: email.trim() || undefined,
         metadata,
       });
 
@@ -185,22 +169,6 @@
     }, 100);
   }
 
-  // Load email from Chrome local storage if available
-  async function loadUserEmail() {
-    try {
-      const result = await chrome.storage.local.get('supabaseAuthState');
-      if (result.supabaseAuthState?.user?.email) {
-        email = result.supabaseAuthState.user.email;
-      }
-    } catch (error) {
-      console.error('Error loading email from storage:', error);
-    }
-  }
-
-  // Initialize email when component mounts
-  $: if (show && !email) {
-    loadUserEmail();
-  }
 </script>
 
 <svelte:window on:keydown={handleKeydown} />
@@ -281,18 +249,18 @@
             ></textarea>
           </div>
 
-          <!-- Email Input -->
-          <div class="space-y-2">
-            <label for="email" class="text-sm font-medium text-slate-300">Email (optional)</label>
-            <Input
-              id="email"
-              type="email"
-              bind:value={email}
-              placeholder="your.email@example.com"
-              class="bg-slate-800 border-slate-700 text-slate-200 placeholder-slate-500 focus:ring-blue-500 focus:border-blue-500 text-sm"
-            />
-            <p class="text-xs text-slate-500">
-              Only provide if you'd like a response to your feedback
+          <!-- Privacy Notice -->
+          <div class="bg-blue-500/10 p-3 rounded-md border border-blue-500/30">
+            <p class="text-xs text-blue-400 font-medium mb-1">Privacy Notice</p>
+            <p class="text-xs text-slate-300">
+              Your feedback will be posted publicly on GitHub. We only collect:
+            </p>
+            <ul class="text-xs text-slate-300 mt-1 ml-4 list-disc">
+              <li>Your feedback message and category</li>
+              <li>Extension version and browser information</li>
+            </ul>
+            <p class="text-xs text-slate-300 mt-1">
+              No personal information or project URLs are collected.
             </p>
           </div>
 
