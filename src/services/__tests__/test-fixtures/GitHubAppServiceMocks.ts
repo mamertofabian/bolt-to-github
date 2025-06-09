@@ -79,18 +79,38 @@ export class MockFetchHandler {
         (pattern.startsWith('/') && new RegExp(pattern.slice(1, -1)).test(url)) ||
         url.includes(pattern)
       ) {
-        return new Response(JSON.stringify(response), {
+        // Handle function responses
+        const responseData = typeof response === 'function' ? response() : response;
+        
+        // Create proper Response object
+        return {
+          ok: status >= 200 && status < 300,
           status,
-          headers: { 'Content-Type': 'application/json' },
-        });
+          statusText: status === 200 ? 'OK' : 'Error',
+          headers: new Headers({ 'Content-Type': 'application/json' }),
+          json: async () => responseData,
+          text: async () => JSON.stringify(responseData),
+          blob: async () => new Blob([JSON.stringify(responseData)]),
+          arrayBuffer: async () => new ArrayBuffer(0),
+          formData: async () => new FormData(),
+          clone: () => ({ json: async () => responseData } as any),
+        } as Response;
       }
     }
 
     // Default 404 response
-    return new Response(JSON.stringify({ error: 'Not found' }), {
+    return {
+      ok: false,
       status: 404,
-      headers: { 'Content-Type': 'application/json' },
-    });
+      statusText: 'Not Found',
+      headers: new Headers({ 'Content-Type': 'application/json' }),
+      json: async () => ({ error: 'Not found' }),
+      text: async () => JSON.stringify({ error: 'Not found' }),
+      blob: async () => new Blob([JSON.stringify({ error: 'Not found' })]),
+      arrayBuffer: async () => new ArrayBuffer(0),
+      formData: async () => new FormData(),
+      clone: () => ({ json: async () => ({ error: 'Not found' }) } as any),
+    } as Response;
   }
 
   getCallHistory() {
@@ -375,10 +395,40 @@ export class GitHubAppServiceTestScenario {
 export function createMockChromeStorageAPI(storage: MockChromeStorage) {
   return {
     local: {
-      get: (keys: string | string[]) => storage.get(keys),
-      set: (items: Record<string, any>) => storage.set(items),
-      remove: (keys: string | string[]) => storage.remove(keys),
-      clear: () => storage.clear(),
+      get: jest.fn((keys: string | string[] | null, callback?: (result: any) => void) => {
+        const promise = storage.get(keys || []);
+        if (callback) {
+          promise.then(result => callback(result));
+        }
+        return promise;
+      }),
+      set: jest.fn((items: Record<string, any>, callback?: () => void) => {
+        const promise = storage.set(items);
+        if (callback) {
+          promise.then(() => callback());
+        }
+        return promise;
+      }),
+      remove: jest.fn((keys: string | string[], callback?: () => void) => {
+        const promise = storage.remove(keys);
+        if (callback) {
+          promise.then(() => callback());
+        }
+        return promise;
+      }),
+      clear: jest.fn((callback?: () => void) => {
+        const promise = storage.clear();
+        if (callback) {
+          promise.then(() => callback());
+        }
+        return promise;
+      }),
+    },
+    sync: {
+      get: jest.fn().mockResolvedValue({}),
+      set: jest.fn().mockResolvedValue(undefined),
+      remove: jest.fn().mockResolvedValue(undefined),
+      clear: jest.fn().mockResolvedValue(undefined),
     },
   };
 }

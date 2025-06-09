@@ -359,9 +359,11 @@ export function simulateError(
 ) {
   switch (errorType) {
     case 'network':
-      fetchMock.setResponse('/.*/g', () => {
+      // Override fetch to throw network error
+      const originalFetch = fetchMock.fetch.bind(fetchMock);
+      fetchMock.fetch = async () => {
         throw new Error('Network error');
-      });
+      };
       break;
       
     case 'auth':
