@@ -192,8 +192,8 @@ export class ContentManager {
     // Show notification before cleanup (while UIManager still exists)
     this.notifyUserOfExtensionReload();
 
-    // Clean up current state
-    this.cleanup();
+    // Clean up current state but preserve recovery flag
+    this.cleanup(true);
 
     // Attempt immediate recovery instead of waiting 2 seconds
     // The issue is that background keeps sending messages while we wait
@@ -491,7 +491,7 @@ export class ContentManager {
     });
   }
 
-  private cleanup(): void {
+  private cleanup(preserveRecoveryState = false): void {
     this.isDestroyed = true;
 
     // Clear timers
@@ -525,7 +525,10 @@ export class ContentManager {
 
     // Reset recovery flag in case cleanup is called directly
     // (this ensures we don't get stuck in recovery mode)
-    this.isInRecovery = false;
+    // But preserve recovery state if we're in the middle of recovery
+    if (!preserveRecoveryState) {
+      this.isInRecovery = false;
+    }
   }
 
   /**
