@@ -1,4 +1,3 @@
-import { ZipHandler } from '../../zipHandler';
 import { GitHubComparisonService } from '../../GitHubComparisonService';
 import { 
   MockUnifiedGitHubService, 
@@ -24,7 +23,7 @@ import {
  * Test environment setup for ZipHandler tests
  */
 export interface ZipHandlerTestEnvironment {
-  zipHandler: ZipHandler;
+  zipHandler: any; // Will be set after mocking
   githubService: MockUnifiedGitHubService;
   comparisonService: MockGitHubComparisonService;
   statusCallback: MockStatusCallback;
@@ -32,6 +31,73 @@ export interface ZipHandlerTestEnvironment {
   pushStats: MockPushStatisticsActions;
   originalComparison: GitHubComparisonService;
 }
+
+// Mock modules before importing ZipHandler
+jest.mock('../../../lib/zip', () => ({
+  ZipProcessor: {
+    processZipBlob: jest.fn().mockImplementation(async (blob: any) => {
+      // Check if it's a corrupted blob (our test marker)
+      if (blob.size === 4) {
+        // Check the blob type to see if it's corrupted
+        if (blob.type === 'application/zip') {
+          throw new Error('Failed to process ZIP file: Invalid ZIP data');
+        }
+      }
+      
+      try {
+        // Handle both real Blob and our mock blob
+        let text: string;
+        if (typeof blob.text === 'function') {
+          text = await blob.text();
+        } else if (blob._content) {
+          text = blob._content;
+        } else {
+          text = '[]';
+        }
+        
+        const entries = JSON.parse(text);
+        return new Map(entries);
+      } catch {
+        // Return empty map if JSON parsing fails (for other test cases)
+        return new Map();
+      }
+    })
+  }
+}));
+
+jest.mock('../../../lib/stores');
+
+jest.mock('../../../lib/common', () => ({
+  toBase64: jest.fn().mockImplementation((str: string) => {
+    // Simple base64 encoding for tests
+    return Buffer.from(str).toString('base64');
+  })
+}));
+
+jest.mock('../../../lib/Queue', () => ({
+  Queue: jest.fn().mockImplementation(() => ({
+    add: jest.fn().mockImplementation(async (fn) => {
+      // Execute the function immediately in tests
+      return await fn();
+    })
+  }))
+}));
+
+jest.mock('../../../lib/fileUtils', () => ({
+  processFilesWithGitignore: jest.fn().mockImplementation((files) => {
+    // Simple mock that filters out common ignored patterns
+    const processedFiles = new Map();
+    for (const [path, content] of files.entries()) {
+      if (!path.includes('node_modules/') && 
+          !path.includes('.env') && 
+          !path.includes('dist/') &&
+          !path.includes('.DS_Store')) {
+        processedFiles.set(path, content);
+      }
+    }
+    return processedFiles;
+  })
+}));
 
 /**
  * Create a complete test environment for ZipHandler testing
@@ -62,10 +128,12 @@ export function createTestEnvironment(): ZipHandlerTestEnvironment {
     },
   };
 
-  // Mock push statistics actions
-  jest.mock('../lib/stores', () => ({
-    pushStatisticsActions: pushStats,
-  }));
+  // Set up the push statistics mock
+  const pushStatisticsMock = require('../../../lib/stores');
+  pushStatisticsMock.pushStatisticsActions = pushStats;
+
+  // Import ZipHandler after mocks are set up
+  const { ZipHandler } = require('../../zipHandler');
 
   // Create ZipHandler instance
   const zipHandler = new ZipHandler(githubService as any, statusCallback.getCallback());

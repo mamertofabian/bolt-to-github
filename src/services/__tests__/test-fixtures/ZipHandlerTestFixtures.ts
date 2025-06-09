@@ -86,13 +86,19 @@ export const ZIP_FILE_FIXTURES = {
 export function createTestBlob(files: Map<string, string>, options?: { corrupt?: boolean }): Blob {
   if (options?.corrupt) {
     // Return a corrupted blob that will fail to unzip
-    return new Blob([new Uint8Array([0xFF, 0xFF, 0xFF, 0xFF])], { type: 'application/zip' });
+    const blob = new Blob([new Uint8Array([0xFF, 0xFF, 0xFF, 0xFF])], { type: 'application/zip' });
+    // Add our content for the mock
+    (blob as any)._content = 'corrupted';
+    return blob;
   }
 
   // For testing, we'll create a simple mock blob
   // In real tests, you'd use a proper ZIP library to create actual ZIP data
   const content = JSON.stringify(Array.from(files.entries()));
-  return new Blob([content], { type: 'application/zip' });
+  const blob = new Blob([content], { type: 'text/plain' });
+  // Add our content for the mock
+  (blob as any)._content = content;
+  return blob;
 }
 
 // GitHub API response fixtures

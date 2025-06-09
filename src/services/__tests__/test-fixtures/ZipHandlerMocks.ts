@@ -91,7 +91,11 @@ export class MockUnifiedGitHubService implements Partial<UnifiedGitHubService> {
     // Return configured response
     const key = `${method}:${path}`;
     if (this.responses.has(key)) {
-      return this.responses.get(key);
+      const response = this.responses.get(key);
+      if (typeof response === 'function') {
+        return response(method, path, body);
+      }
+      return response;
     }
 
     // Handle branch not found
@@ -116,23 +120,42 @@ export class MockUnifiedGitHubService implements Partial<UnifiedGitHubService> {
 
   async isRepoEmpty(owner: string, repo: string): Promise<boolean> {
     try {
-      await this.request('GET', `/repos/${owner}/${repo}/git/refs/heads/main`);
-      return false;
+      const result = await this.request('GET', `/repos/${owner}/${repo}/git/refs/heads/main`);
+      return !result || !result.object;
     } catch {
       return true;
     }
   }
 
   async initializeEmptyRepo(owner: string, repo: string, branch: string): Promise<void> {
-    // Simulate repo initialization
+    // Simulate repo initialization - create initial commit
+    const initialCommitSha = 'initial-commit-sha';
+    const initialTreeSha = 'initial-tree-sha';
+    
+    // Set up responses for initialized repo
     this.responses.set(`GET:/repos/${owner}/${repo}/git/refs/heads/${branch}`, {
-      object: { sha: 'initial-sha' },
+      object: { sha: initialCommitSha },
+    });
+    this.responses.set(`GET:/repos/${owner}/${repo}/git/commits/${initialCommitSha}`, {
+      sha: initialCommitSha,
+      tree: { sha: initialTreeSha },
+      parents: [],
+      message: 'Initial commit',
+    });
+    this.responses.set(`GET:/repos/${owner}/${repo}/git/trees/${initialTreeSha}`, {
+      sha: initialTreeSha,
+      tree: [],
     });
   }
 
   // Test helper methods
   setResponse(method: string, path: string, response: any) {
-    this.responses.set(`${method}:${path}`, response);
+    if (typeof response === 'function') {
+      // Store function responses separately
+      this.responses.set(`${method}:${path}`, response);
+    } else {
+      this.responses.set(`${method}:${path}`, response);
+    }
   }
 
   setError(error: Error) {

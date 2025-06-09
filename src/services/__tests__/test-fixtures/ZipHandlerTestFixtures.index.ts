@@ -22,12 +22,19 @@ export {
   cleanupTestEnvironment,
   TestScenarios,
   TestAssertions,
+  setupTestProject,
+  waitForAsync,
+} from './ZipHandlerTestHelpers';
+
+export {
   createTestBlob,
   ZIP_FILE_FIXTURES,
   GITHUB_API_RESPONSES,
   ERROR_SCENARIOS,
   TEST_PROJECTS,
-} from './ZipHandlerTestHelpers';
+  CHROME_STORAGE_FIXTURES,
+  COMPARISON_RESULTS,
+} from './ZipHandlerTestFixtures';
 
 export {
   MockUnifiedGitHubService,
