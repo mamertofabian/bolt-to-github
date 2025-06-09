@@ -1,22 +1,22 @@
 /**
- * ContentManager Test Fixtures - Index
+ * Content Test Fixtures - Index
  * 
- * Centralized export of all test fixtures and utilities for ContentManager testing.
+ * Centralized export of all test fixtures and utilities for content scripts testing.
  * This file provides a single import point for all test fixtures, making them
  * easily reusable across multiple test files.
  */
 
-// Test specifications and scenarios
+// ContentManager Test fixtures
 export * from './ContentManagerTestSpecification';
-
-// Test data and fixtures
 export * from './ContentManagerTestFixtures';
-
-// Mock implementations
 export * from './ContentManagerMocks';
-
-// Test helpers and utilities
 export * from './ContentManagerTestHelpers';
+
+// MessageHandler Test fixtures
+export * from './MessageHandlerTestFixtures';
+export * from './MessageHandlerMocks';
+export * from './MessageHandlerTestHelpers';
+export * from './MessageHandlerTestSpecification';
 
 // Common imports for convenience
 export type {
@@ -35,6 +35,26 @@ export type {
 export type {
   TestEnvironment
 } from './ContentManagerTestHelpers';
+
+// MessageHandler types
+export type {
+  TestScenarioSpec,
+  TestCategorySpec
+} from './MessageHandlerTestSpecification';
+
+export type {
+  MockChromePort,
+  MockChromeRuntime,
+  MockWindow,
+  MockConsole,
+  MockMessageHandler,
+  MockChromeEnvironment,
+  BehaviorVerifier
+} from './MessageHandlerMocks';
+
+export type {
+  MessageHandlerTestEnvironment
+} from './MessageHandlerTestHelpers';
 
 /**
  * Quick setup function for common test scenarios
@@ -63,6 +83,10 @@ import {
   type TestEnvironment,
 } from './ContentManagerTestHelpers';
 
+import {
+  MessageHandlerTestEnvironment,
+} from './MessageHandlerTestHelpers';
+
 export function setupBasicTest(): TestEnvironment {
   const env = createTestEnvironment();
 
@@ -73,6 +97,32 @@ export function setupBasicTest(): TestEnvironment {
 
   setupWindowMocks();
 
+  return env;
+}
+
+/**
+ * Quick setup function for MessageHandler test scenarios
+ * Usage example:
+ * 
+ * ```typescript
+ * import { setupMessageHandlerTest } from './test-fixtures';
+ * 
+ * describe('MessageHandler', () => {
+ *   let testEnv: MessageHandlerTestEnvironment;
+ *   
+ *   beforeEach(async () => {
+ *     testEnv = await setupMessageHandlerTest();
+ *   });
+ *   
+ *   afterEach(async () => {
+ *     await testEnv.teardown();
+ *   });
+ * });
+ * ```
+ */
+export async function setupMessageHandlerTest(): Promise<MessageHandlerTestEnvironment> {
+  const env = new MessageHandlerTestEnvironment();
+  await env.setup();
   return env;
 }
 
