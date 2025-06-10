@@ -157,7 +157,8 @@ export class UIManager {
   private async initializeUI() {
     console.log('🔊 Initializing UI');
     this.uploadStatusManager.initialize();
-    await this.githubButtonManager.initialize();
+    // Don't initialize button here - let DOM observer handle it
+    // to prevent duplicate buttons during recovery
   }
 
   private startDOMObservation() {
