@@ -241,9 +241,14 @@ export class GitHubButtonManager implements IGitHubButtonManager {
   public cleanup(): void {
     console.log('🔊 Cleaning up GitHub button manager');
 
-    if (this.uploadButton) {
-      this.uploadButton.remove();
-      this.uploadButton = null;
-    }
+    // Remove any existing GitHub button from DOM (including orphaned ones)
+    const existingButtons = document.querySelectorAll('[data-github-upload]');
+    existingButtons.forEach(button => {
+      console.log('🧹 Removing GitHub button from DOM');
+      button.remove();
+    });
+
+    // Clear the reference
+    this.uploadButton = null;
   }
 }
