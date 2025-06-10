@@ -1,0 +1,23 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(rg:*)",
+      "Bash(grep:*)",
+      "Bash(find:*)",
+      "Bash(gh issue create:*)",
+      "Bash(mkdir:*)",
+      "Bash(pnpm test:*)",
+      "Bash(gh issue view:*)",
+      "Bash(pnpm run test:*)",
+      "Bash(npm test:*)",
+      "Bash(pnpm run lint:*)",
+      "Bash(git commit:*)",
+      "Bash(ls:*)",
+      "Bash(npx jest:*)",
+      "Bash(git worktree:*)",
+      "Bash(git add:*)",
+      "Bash(gh issue comment:*)"
+    ],
+    "deny": []
+  }
+}

@@ -266,7 +266,9 @@ export class GitHubUploadHandler implements IGitHubUploadHandler {
       // Convert blob to base64 and send to background script
       const base64data = await this.downloadService.blobToBase64(blob);
       if (base64data) {
-        this.messageHandler.sendZipData(base64data);
+        // Get current project ID from URL to ensure we're pushing to the correct project
+        const currentProjectId = this.getCurrentProjectId();
+        this.messageHandler.sendZipData(base64data, currentProjectId || undefined);
       } else {
         throw new Error('Failed to convert ZIP file to base64');
       }
@@ -398,5 +400,14 @@ export class GitHubUploadHandler implements IGitHubUploadHandler {
     // This would typically be managed by a state manager
     // For now, we rely on the button state callback
     return false; // TODO: Implement proper state tracking
+  }
+
+  /**
+   * Get current project ID from URL
+   */
+  private getCurrentProjectId(): string | null {
+    const url = window.location.href;
+    const match = url.match(/bolt\.new\/~\/([^/?#]+)/);
+    return match ? match[1] : null;
   }
 }

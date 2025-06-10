@@ -16,6 +16,7 @@
 
   // Refresh state
   let isRefreshing = false;
+  let isLoggingOut = false;
 
   function handleUpgrade() {
     dispatch('upgrade');
@@ -27,6 +28,27 @@
 
   function handleSignIn() {
     window.open('https://bolt2github.com/login', '_blank');
+  }
+
+  async function handleLogout() {
+    if (isLoggingOut) return;
+
+    try {
+      isLoggingOut = true;
+      console.log('🚪 Logout initiated from premium status component...');
+
+      await premiumStatusActions.logout();
+
+      console.log('✅ Logout completed successfully');
+
+      // Show brief success feedback
+      showLogoutFeedback();
+    } catch (error) {
+      console.error('❌ Error during logout:', error);
+      // Could add error feedback here if needed
+    } finally {
+      isLoggingOut = false;
+    }
   }
 
   async function handleRefreshSubscription() {
@@ -56,11 +78,19 @@
 
   // Feedback state
   let showSuccess = false;
+  let showLogoutSuccess = false;
 
   function showRefreshFeedback() {
     showSuccess = true;
     setTimeout(() => {
       showSuccess = false;
+    }, 2000); // Hide after 2 seconds
+  }
+
+  function showLogoutFeedback() {
+    showLogoutSuccess = true;
+    setTimeout(() => {
+      showLogoutSuccess = false;
     }, 2000); // Hide after 2 seconds
   }
 </script>
@@ -365,6 +395,51 @@
                 ></path>
               </svg>
               {isRefreshing ? 'Refreshing...' : 'Refresh Status'}
+            {/if}
+          </Button>
+        {/if}
+
+        <!-- Logout button for authenticated users -->
+        {#if isUserAuthenticated}
+          <Button
+            variant="outline"
+            size="sm"
+            class="w-full border-slate-700 hover:bg-slate-800/50 text-slate-300 hover:text-slate-200 text-sm py-1.5 transition-all duration-200 {showLogoutSuccess
+              ? 'border-emerald-500/50 bg-emerald-500/10'
+              : ''}"
+            on:click={handleLogout}
+            disabled={isLoggingOut}
+          >
+            {#if showLogoutSuccess}
+              <svg
+                class="w-3 h-3 mr-1.5 text-emerald-400"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  stroke-width="2"
+                  d="M5 13l4 4L19 7"
+                ></path>
+              </svg>
+              <span class="text-emerald-400">Logged out!</span>
+            {:else}
+              <svg
+                class="w-3 h-3 mr-1.5 {isLoggingOut ? 'animate-spin' : ''}"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  stroke-width="2"
+                  d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"
+                ></path>
+              </svg>
+              {isLoggingOut ? 'Logging out...' : 'Logout'}
             {/if}
           </Button>
         {/if}

@@ -3,13 +3,13 @@
   import Modal from '$lib/components/ui/modal/Modal.svelte';
   import UpgradeModal from './UpgradeModal.svelte';
   import { onMount } from 'svelte';
-  import { GitHubService } from '../../services/GitHubService';
+  import { UnifiedGitHubService } from '../../services/UnifiedGitHubService';
   import { PREMIUM_FEATURES } from '$lib/constants/premiumFeatures';
 
   export let show = false;
   export let owner = '';
   export let repo = '';
-  export let token = '';
+  export let token = ''; // Optional - not required for GitHub App authentication
   export let onBranchSelected: (branch: string) => void;
   export let onCancel: () => void;
 
@@ -22,12 +22,12 @@
   let showUpgrade = false;
 
   onMount(async () => {
-    if (show && owner && repo && token) {
+    if (show && owner && repo) {
       await Promise.all([loadBranches(), checkProAccess()]);
     }
   });
 
-  $: if (show && owner && repo && token && branches.length === 0) {
+  $: if (show && owner && repo && branches.length === 0) {
     Promise.all([loadBranches(), checkProAccess()]);
   }
 
@@ -49,8 +49,29 @@
     error = null;
 
     try {
-      const githubService = new GitHubService(token);
-      branches = await githubService.listBranches(owner, repo);
+      // Create GitHub service with authentication method detection
+      const authSettings = await chrome.storage.local.get(['authenticationMethod']);
+      const authMethod = authSettings.authenticationMethod || 'pat';
+
+      let githubService: UnifiedGitHubService;
+      if (authMethod === 'github_app') {
+        githubService = new UnifiedGitHubService({ type: 'github_app' });
+      } else {
+        githubService = new UnifiedGitHubService(token);
+      }
+      const rawBranches = await githubService.listBranches(owner, repo);
+
+      // Add isDefault property to branches
+      // Set main or master as default, otherwise use the first branch
+      const defaultBranchName =
+        rawBranches.find((b) => b.name === 'main')?.name ||
+        rawBranches.find((b) => b.name === 'master')?.name ||
+        rawBranches[0]?.name;
+
+      branches = rawBranches.map((branch) => ({
+        name: branch.name,
+        isDefault: branch.name === defaultBranchName,
+      }));
 
       // Set the default branch as selected
       const defaultBranch = branches.find((b) => b.isDefault);

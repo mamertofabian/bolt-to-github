@@ -14,6 +14,9 @@ export interface INotificationManager {
   showUpgradeNotification(options: UpgradeNotificationOptions): void;
   showConfirmationDialog(options: ConfirmationOptions): Promise<ConfirmationResult>;
   showSettingsNotification(): void;
+  clearReminderNotifications(): void;
+  getReminderNotificationCount(): number;
+  getNotificationDebugInfo(): object;
   cleanup(): void;
 }
 

@@ -15,9 +15,10 @@
   } from 'lucide-svelte';
   import RepoSettings from '$lib/components/RepoSettings.svelte';
   import ConfirmationDialog from '$lib/components/ui/dialog/ConfirmationDialog.svelte';
-  import { GitHubService } from '../../services/GitHubService';
+  import { UnifiedGitHubService } from '../../services/UnifiedGitHubService';
   import BranchSelectionModal from '../../popup/components/BranchSelectionModal.svelte';
   import { githubSettingsStore } from '$lib/stores';
+  import ProjectsListGuide from '$lib/components/ProjectsListGuide.svelte';
 
   export let repoOwner: string;
   export let githubToken: string;
@@ -56,7 +57,60 @@
   let showImportConfirmDialog = false;
   let repoToConfirmImport: { owner: string; repo: string; isPrivate: boolean } | null = null;
 
-  const githubService = new GitHubService(githubToken);
+  // Create GitHub service with smart authentication detection
+  let githubService: UnifiedGitHubService;
+
+  // Helper function to create GitHub service with smart authentication detection
+  async function createGitHubService(): Promise<UnifiedGitHubService> {
+    try {
+      // Create service that will trigger smart authentication detection
+      // The UnifiedGitHubService will check for GitHub App first, then fall back to PAT
+
+      // First attempt: Try GitHub App authentication (this triggers smart detection)
+      try {
+        const service = new UnifiedGitHubService({ type: 'github_app' });
+
+        // The service will internally detect if GitHub App authentication is available
+        // If not, the getStrategy() method will handle fallback
+        console.log('🔍 ProjectsList: Created service with smart authentication detection');
+        return service;
+      } catch (githubAppError) {
+        console.log('⚠️ ProjectsList: GitHub App initialization failed, trying PAT fallback');
+
+        // Fallback to PAT if available
+        if (githubToken) {
+          console.log('✅ ProjectsList: Using PAT authentication as fallback');
+          return new UnifiedGitHubService(githubToken);
+        }
+
+        throw githubAppError;
+      }
+    } catch (error) {
+      console.error('Failed to create GitHub service:', error);
+
+      // Final fallback: try PAT if available
+      if (githubToken) {
+        console.log('🔄 ProjectsList: Final fallback to PAT authentication');
+        return new UnifiedGitHubService(githubToken);
+      }
+
+      // If all else fails, create empty service that will rely on auto-detection
+      throw new Error('No authentication method available');
+    }
+  }
+
+  // Initialize GitHub service reactively
+  $: {
+    (async () => {
+      try {
+        githubService = await createGitHubService();
+      } catch (error) {
+        console.error('Failed to initialize GitHub service in ProjectsList:', error);
+        // Fallback to PAT
+        githubService = new UnifiedGitHubService(githubToken || '');
+      }
+    })();
+  }
   let commitCounts: Record<string, number> = {};
   let loadingCommitCounts: Record<string, boolean> = {};
   let allRepos: Array<{
@@ -216,6 +270,13 @@
     try {
       loadingRepos = true;
 
+      // Check if GitHub service is available
+      if (!githubService) {
+        console.log('GitHub service not yet initialized, skipping repo fetch');
+        loadingRepos = false;
+        return;
+      }
+
       // Try to load from cache first unless force refresh is requested
       if (!forceRefresh) {
         const cachedSuccessfully = await loadReposFromCache();
@@ -249,6 +310,12 @@
   // Function to refresh project data
   async function refreshProjectData(forceRefresh = false) {
     console.log('Refreshing project data in ProjectsList', forceRefresh ? '(force refresh)' : '');
+
+    // Check if GitHub service is available
+    if (!githubService) {
+      console.log('GitHub service not yet initialized, skipping commit count fetch');
+      return;
+    }
 
     // Try to load from cache first unless force refresh is requested
     if (!forceRefresh) {
@@ -313,11 +380,30 @@
       const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
       currentTabIsBolt = tab?.url?.includes('bolt.new') ?? false;
 
-      // Load all repos (will try cache first)
-      await loadAllRepos();
+      // Wait for GitHub service to be initialized
+      const waitForGitHubService = async () => {
+        const maxWaitTime = 5000; // 5 seconds
+        const startTime = Date.now();
 
-      // Initial load of commit counts
-      await refreshProjectData();
+        while (!githubService && Date.now() - startTime < maxWaitTime) {
+          await new Promise((resolve) => setTimeout(resolve, 100));
+        }
+
+        if (!githubService) {
+          console.warn('GitHub service not initialized within timeout period');
+          return false;
+        }
+        return true;
+      };
+
+      const serviceReady = await waitForGitHubService();
+      if (serviceReady) {
+        // Load all repos (will try cache first)
+        await loadAllRepos();
+
+        // Initial load of commit counts
+        await refreshProjectData();
+      }
     };
 
     // Start initialization
@@ -328,7 +414,7 @@
   let previousProjectSettings: typeof projectSettings = {};
 
   // Watch for changes in projectSettings from the store and refresh data
-  $: if (projectSettings && Object.keys(projectSettings).length > 0) {
+  $: if (projectSettings && Object.keys(projectSettings).length > 0 && githubService) {
     // Check if this is a new project or branch change
     const currentKeys = Object.keys(projectSettings);
     const previousKeys = Object.keys(previousProjectSettings);
@@ -588,6 +674,9 @@
 </script>
 
 <div class="space-y-2">
+  <!-- User Guide Section -->
+  <ProjectsListGuide {isBoltSite} {totalBoltProjects} {totalRepos} />
+
   <div class="flex items-center gap-2 mb-4">
     <div class="flex-1 relative">
       <input
@@ -715,9 +804,7 @@
                     {#if project.description}
                       <p class="text-slate-300">{project.description}</p>
                     {/if}
-                    {#if project.language}
-                      <p>Language: <span class="text-slate-300">{project.language}</span></p>
-                    {/if}
+                    <p>Language: <span class="text-slate-300">{project.language || '...'}</span></p>
                   </div>
                 </div>
 
@@ -871,9 +958,9 @@
                       {#if project.description}
                         <p class="text-slate-300">{project.description}</p>
                       {/if}
-                      {#if project.language}
-                        <p>Language: <span class="text-slate-300">{project.language}</span></p>
-                      {/if}
+                      <p>
+                        Language: <span class="text-slate-300">{project.language || '...'}</span>
+                      </p>
                     </div>
                   </div>
                 </div>
@@ -932,9 +1019,7 @@
                     {#if project.description}
                       <p class="text-slate-300">{project.description}</p>
                     {/if}
-                    {#if project.language}
-                      <p>Language: <span class="text-slate-300">{project.language}</span></p>
-                    {/if}
+                    <p>Language: <span class="text-slate-300">{project.language || '...'}</span></p>
                   </div>
                 </div>
 

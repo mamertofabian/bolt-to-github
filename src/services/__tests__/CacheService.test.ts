@@ -2,10 +2,6 @@ import { CacheService } from '../CacheService';
 import type { IIdleMonitorService } from '../interfaces/IIdleMonitorService';
 import { expect, jest, describe, it, beforeEach, afterEach } from '@jest/globals';
 
-jest.spyOn(console, 'error').mockImplementation(() => {});
-jest.spyOn(console, 'log').mockImplementation(() => {});
-jest.spyOn(console, 'warn').mockImplementation(() => {});
-
 /**
  * Mock implementation of IIdleMonitorService that maintains internal state
  */
@@ -288,6 +284,8 @@ describe('CacheService', () => {
       // Restore original implementation for this test
       refreshAllCachesSpy.mockRestore();
 
+      const consoleSpy = jest.spyOn(console, 'error').mockImplementation(() => {});
+
       const errorCallback = jest.fn().mockImplementation(() => {
         throw new Error('Test error');
       });
@@ -303,7 +301,9 @@ describe('CacheService', () => {
 
       expect(errorCallback).toHaveBeenCalled();
       expect(successCallback).toHaveBeenCalled();
-      expect(console.error).toHaveBeenCalled();
+      expect(consoleSpy).toHaveBeenCalled();
+
+      consoleSpy.mockRestore();
     });
   });
 

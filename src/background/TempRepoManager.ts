@@ -1,4 +1,4 @@
-import { GitHubService } from '../services/GitHubService';
+import type { UnifiedGitHubService } from '../services/UnifiedGitHubService';
 import type { UploadStatusState } from '../lib/types';
 import { OperationStateManager } from '../content/services/OperationStateManager';
 
@@ -19,7 +19,7 @@ export class BackgroundTempRepoManager {
   private operationStateManager: OperationStateManager;
 
   constructor(
-    private githubService: GitHubService,
+    private githubService: UnifiedGitHubService,
     private owner: string,
     private broadcastStatus: (status: UploadStatusState) => void
   ) {

@@ -1,4 +1,8 @@
 /* eslint-disable no-console */
+
+import { SUPABASE_CONFIG } from '../../lib/constants/supabase';
+import { githubSettingsActions } from '../../lib/stores/githubSettings';
+
 export interface SupabaseUser {
   id: string;
   email: string;
@@ -39,9 +43,8 @@ export class SupabaseAuthService {
   private checkInterval: NodeJS.Timeout | null = null;
 
   /* Configuration - replace with your actual Supabase project details */
-  private readonly SUPABASE_URL = 'https://gapvjcqybzabnrjnxzhg.supabase.co';
-  private readonly SUPABASE_ANON_KEY =
-    'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImdhcHZqY3F5YnphYm5yam54emhnIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDc3MjMwMzQsImV4cCI6MjA2MzI5OTAzNH0.6bpYH1nccYIEKbQmctojedbrzMVBGcHhgjCyKXVUgzc';
+  private readonly SUPABASE_URL = SUPABASE_CONFIG.URL;
+  private readonly SUPABASE_ANON_KEY = SUPABASE_CONFIG.ANON_KEY;
   private readonly CHECK_INTERVAL_UNAUTHENTICATED = 30000; /* 30 seconds when not authenticated */
   private readonly CHECK_INTERVAL_AUTHENTICATED = 3600000; /* 1 hour when authenticated */
   private readonly CHECK_INTERVAL_PREMIUM = 900000; /* 15 minutes for premium users (more frequent validation) */
@@ -294,6 +297,9 @@ export class SupabaseAuthService {
             user,
             subscription,
           });
+
+          /* Check for GitHub App installation and sync */
+          await this.checkGitHubAppInstallation(token);
         } else {
           console.log('❌ Token verification failed');
           this.updateAuthState({
@@ -912,19 +918,45 @@ export class SupabaseAuthService {
    */
   private async notifyPremiumService(): Promise<void> {
     try {
-      /* Send message to content script to update premium status */
+      const premiumStatusData = {
+        isAuthenticated: this.authState.isAuthenticated,
+        isPremium: this.authState.subscription.isActive,
+        plan: this.authState.subscription.plan,
+        expiresAt: this.authState.subscription.expiresAt,
+      };
+
+      /* Always update popup premium status directly in sync storage */
+      try {
+        await chrome.storage.sync.set({
+          popupPremiumStatus: {
+            isAuthenticated: premiumStatusData.isAuthenticated,
+            isPremium: premiumStatusData.isPremium,
+            plan: this.mapPlanToDisplayName(premiumStatusData.plan),
+            expiresAt: premiumStatusData.expiresAt
+              ? new Date(premiumStatusData.expiresAt).getTime()
+              : undefined,
+            features: {
+              viewFileChanges: premiumStatusData.isPremium,
+              pushReminders: premiumStatusData.isPremium,
+              branchSelector: premiumStatusData.isPremium,
+              githubIssues: premiumStatusData.isPremium,
+            },
+            lastUpdated: Date.now(),
+          },
+        });
+        console.log('✅ Updated popup premium status directly in storage:', premiumStatusData);
+      } catch (storageError) {
+        console.warn('Failed to update popup premium status in storage:', storageError);
+      }
+
+      /* Also send message to content script to update premium status on bolt.new tabs */
       const tabs = await chrome.tabs.query({ url: 'https://bolt.new/*' });
       for (const tab of tabs) {
         if (tab.id) {
           chrome.tabs
             .sendMessage(tab.id, {
               type: 'UPDATE_PREMIUM_STATUS',
-              data: {
-                isAuthenticated: this.authState.isAuthenticated,
-                isPremium: this.authState.subscription.isActive,
-                plan: this.authState.subscription.plan,
-                expiresAt: this.authState.subscription.expiresAt,
-              },
+              data: premiumStatusData,
             })
             .catch(() => {
               /* Tab might not have content script injected */
@@ -937,43 +969,26 @@ export class SupabaseAuthService {
   }
 
   /**
+   * Map internal plan names to display names
+   */
+  private mapPlanToDisplayName(plan: 'free' | 'monthly' | 'yearly'): string {
+    switch (plan) {
+      case 'yearly':
+        return 'pro annual';
+      case 'monthly':
+        return 'pro monthly';
+      case 'free':
+      default:
+        return 'free';
+    }
+  }
+
+  /**
    * Force a manual check of authentication status
    */
   public async forceCheck(): Promise<void> {
     console.log('🔄 Forcing auth status check');
     await this.checkAuthStatus();
-  }
-
-  /**
-   * Get token expiration info for debugging
-   */
-  public async getTokenExpiration(): Promise<{
-    expiresAt: number | null;
-    timeUntilExpiry: number | null;
-    isExpired: boolean;
-  } | null> {
-    try {
-      const tabs = await chrome.tabs.query({ url: 'https://bolt2github.com/*' });
-      if (tabs.length > 0) {
-        const tokenData = await this.extractTokenFromTab(tabs[0].id!);
-        const expiresAt = tokenData?.expires_at;
-
-        if (expiresAt) {
-          const expiresAtMs = expiresAt * 1000; /* Convert to milliseconds */
-          const now = Date.now();
-          const timeUntilExpiry = expiresAtMs - now;
-          return {
-            expiresAt: expiresAtMs,
-            timeUntilExpiry,
-            isExpired: timeUntilExpiry <= 0,
-          };
-        }
-      }
-      return null;
-    } catch (error) {
-      console.error('Error getting token expiration:', error);
-      return null;
-    }
   }
 
   /**
@@ -1177,120 +1192,6 @@ export class SupabaseAuthService {
   }
 
   /**
-   * Debug method to check what's stored in chrome storage
-   */
-  public async debugStoredTokens(): Promise<void> {
-    try {
-      const storage = await chrome.storage.local.get();
-      const tokenKeys = Object.keys(storage).filter(
-        (key) =>
-          key.includes('supabase') ||
-          key.includes('Token') ||
-          key.includes('token') ||
-          key.includes('auth')
-      );
-
-      console.log('🔍 All storage keys:', Object.keys(storage));
-      console.log('🔍 Token-related keys:', tokenKeys);
-
-      const tokenData = await chrome.storage.local.get([
-        'supabaseToken',
-        'supabaseRefreshToken',
-        'supabaseTokenExpiry',
-        'supabaseAuthState',
-      ]);
-
-      console.log('🔍 Current token storage:', {
-        hasAccessToken: !!tokenData.supabaseToken,
-        hasRefreshToken: !!tokenData.supabaseRefreshToken,
-        tokenExpiry: tokenData.supabaseTokenExpiry ? new Date(tokenData.supabaseTokenExpiry) : null,
-        authState: tokenData.supabaseAuthState,
-        accessTokenLength: tokenData.supabaseToken?.length || 0,
-        refreshTokenLength: tokenData.supabaseRefreshToken?.length || 0,
-      });
-
-      if (tokenData.supabaseTokenExpiry) {
-        const now = Date.now();
-        const expiry = tokenData.supabaseTokenExpiry;
-        const timeUntilExpiry = expiry - now;
-        console.log('🕒 Token expiry info:', {
-          expiresAt: new Date(expiry),
-          timeUntilExpiry: Math.round(timeUntilExpiry / 1000 / 60), // minutes
-          isExpired: timeUntilExpiry <= 0,
-          expiresInMinutes: Math.round(timeUntilExpiry / 1000 / 60),
-        });
-      }
-    } catch (error) {
-      console.error('Error debugging stored tokens:', error);
-    }
-  }
-
-  /**
-   * Force token refresh for debugging
-   */
-  public async debugForceTokenRefresh(): Promise<boolean> {
-    try {
-      console.log('🔄 Debug: Forcing token refresh...');
-
-      const refreshedToken = await this.refreshStoredToken();
-      if (refreshedToken) {
-        console.log('✅ Debug: Token refresh successful');
-        await this.debugStoredTokens();
-        return true;
-      } else {
-        console.log('❌ Debug: Token refresh failed');
-        await this.debugStoredTokens();
-        return false;
-      }
-    } catch (error) {
-      console.error('Error in debug token refresh:', error);
-      return false;
-    }
-  }
-
-  /**
-   * Manually extract tokens from bolt2github.com tabs for testing
-   */
-  public async debugExtractTokensFromTabs(): Promise<void> {
-    try {
-      console.log('🔍 Debug: Looking for bolt2github.com tabs...');
-
-      const tabs = await chrome.tabs.query({ url: 'https://bolt2github.com/*' });
-      console.log(`🔍 Found ${tabs.length} bolt2github.com tabs`);
-
-      if (tabs.length === 0) {
-        console.warn(
-          '⚠️ No bolt2github.com tabs found. Please open bolt2github.com and try again.'
-        );
-        return;
-      }
-
-      for (const tab of tabs) {
-        if (tab.id) {
-          console.log(`🔍 Extracting tokens from tab ${tab.id}: ${tab.url}`);
-          const tokenData = await this.extractTokenFromTab(tab.id);
-
-          if (tokenData) {
-            console.log('✅ Successfully extracted tokens, storing...');
-            await this.storeTokenData(tokenData);
-
-            /* Force a status check with the new tokens */
-            await this.checkAuthStatus();
-            break;
-          } else {
-            console.log('❌ No tokens found in this tab');
-          }
-        }
-      }
-
-      /* Show what we have stored now */
-      await this.debugStoredTokens();
-    } catch (error) {
-      console.error('Error in debug token extraction:', error);
-    }
-  }
-
-  /**
    * Initial authentication - manually extract tokens from bolt2github.com
    * This is the ONLY time the extension looks at bolt2github.com
    */
@@ -1398,6 +1299,152 @@ export class SupabaseAuthService {
   }
 
   /**
+   * Check and sync GitHub App installation from web app
+   */
+  private async checkGitHubAppInstallation(token: string): Promise<void> {
+    try {
+      console.log('🔍 Checking for GitHub App installation...');
+
+      // Call the get-github-token endpoint to see if user has GitHub App connected
+      const response = await fetch(`${this.supabaseUrl}/functions/v1/get-github-token`, {
+        method: 'GET',
+        headers: {
+          Authorization: `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+
+        if (data.type === 'github_app' && data.access_token) {
+          console.log('✅ GitHub App installation found, syncing to extension...');
+
+          // Store GitHub App data in extension storage
+          await chrome.storage.local.set({
+            githubAppInstallationId: data.installation_id || Date.now(), // Fallback ID
+            githubAppUsername: data.github_username,
+            githubAppAccessToken: data.access_token,
+            githubAppExpiresAt: data.expires_at,
+            githubAppScopes: data.scopes,
+            authenticationMethod: 'github_app',
+          });
+
+          // Trigger settings store sync to auto-populate repoOwner
+          try {
+            await githubSettingsActions.syncGitHubAppFromStorage();
+            console.log('✅ GitHub settings store synced with GitHub App data');
+          } catch (syncError) {
+            console.warn('Could not sync GitHub settings store:', syncError);
+          }
+
+          // Also get user profile data for avatar
+          try {
+            const userResponse = await fetch('https://api.github.com/user', {
+              headers: {
+                Authorization: `Bearer ${data.access_token}`,
+                Accept: 'application/vnd.github.v3+json',
+              },
+            });
+
+            if (userResponse.ok) {
+              const userData = await userResponse.json();
+              await chrome.storage.local.set({
+                githubAppAvatarUrl: userData.avatar_url,
+                githubAppUserId: userData.id,
+              });
+            }
+          } catch (userError) {
+            console.warn('Could not fetch GitHub user data:', userError);
+          }
+
+          console.log('🎉 GitHub App installation synced successfully!');
+
+          // Notify content scripts about the new authentication method
+          await this.notifyGitHubAppSync();
+        }
+      } else if (response.status === 404) {
+        // User doesn't have GitHub App connected yet
+        console.log('ℹ️ No GitHub App installation found for user');
+      } else {
+        console.warn('Failed to check GitHub App status:', response.status);
+      }
+    } catch (error) {
+      console.warn('Error checking GitHub App installation:', error);
+    }
+  }
+
+  /**
+   * Notify content scripts about GitHub App sync
+   */
+  private async notifyGitHubAppSync(): Promise<void> {
+    try {
+      // Send message to background script to handle tab messaging
+      // Content scripts don't have access to chrome.tabs API
+      chrome.runtime
+        .sendMessage({
+          type: 'NOTIFY_GITHUB_APP_SYNC',
+          data: {
+            message: '🔗 GitHub App authentication synced successfully!',
+            authMethod: 'github_app',
+          },
+        })
+        .catch(() => {
+          // Background script might not be ready
+        });
+      console.log('📢 Sent GitHub App sync notification request to background');
+    } catch (error) {
+      console.warn('Failed to send GitHub App sync notification:', error);
+    }
+  }
+
+  /**
+   * Manually trigger GitHub App sync check (can be called from popup/settings)
+   */
+  public async syncGitHubApp(): Promise<boolean> {
+    try {
+      console.log('🔄 Manually triggered GitHub App sync...');
+
+      const token = await this.getAuthToken();
+      if (!token) {
+        console.warn('❌ No authentication token available for GitHub App sync');
+        return false;
+      }
+
+      await this.checkGitHubAppInstallation(token);
+      return true;
+    } catch (error) {
+      console.error('❌ Error during manual GitHub App sync:', error);
+      return false;
+    }
+  }
+
+  /**
+   * Check if user has GitHub App configured
+   */
+  public async hasGitHubApp(): Promise<boolean> {
+    try {
+      const storage = await chrome.storage.local.get([
+        'githubAppInstallationId',
+        'authenticationMethod',
+      ]);
+      return storage.authenticationMethod === 'github_app' && !!storage.githubAppInstallationId;
+    } catch (error) {
+      console.warn('Error checking GitHub App status:', error);
+      return false;
+    }
+  }
+
+  /**
+   * Force sync authentication status to popup storage
+   * This method can be called directly from popup or background script
+   */
+  public async forceSyncToPopup(): Promise<void> {
+    console.log('🔄 Force syncing authentication status to popup...');
+    await this.notifyPremiumService();
+  }
+
+  /**
    * Clear GitHub Apps cache when user logs out
    */
   private async clearGitHubAppsCache(): Promise<void> {
@@ -1405,6 +1452,20 @@ export class SupabaseAuthService {
       const storage = await chrome.storage.local.get();
       const keysToRemove = Object.keys(storage).filter(
         (key) => key.startsWith('github_app_token_') || key.startsWith('github_app_installation_')
+      );
+
+      // Also clear the new GitHub App storage keys
+      keysToRemove.push(
+        'githubAppInstallationId',
+        'githubAppUsername',
+        'githubAppAccessToken',
+        'githubAppExpiresAt',
+        'githubAppRefreshToken',
+        'githubAppRefreshTokenExpiresAt',
+        'githubAppUserId',
+        'githubAppAvatarUrl',
+        'githubAppScopes',
+        'authenticationMethod'
       );
 
       if (keysToRemove.length > 0) {

@@ -4,10 +4,6 @@ import type { IFileService } from '../interfaces/IFileService';
 import type { IRepoCloneService } from '../interfaces/IRepoCloneService';
 import { expect, jest, describe, it, beforeEach } from '@jest/globals';
 
-jest.spyOn(console, 'error').mockImplementation(() => {});
-jest.spyOn(console, 'log').mockImplementation(() => {});
-jest.spyOn(console, 'warn').mockImplementation(() => {});
-
 describe('RepositoryService', () => {
   let mockApiClient: any;
   let mockFileService: any;

@@ -2,10 +2,6 @@ import { TokenService } from '../TokenService';
 import type { IGitHubApiClient } from '../interfaces/IGitHubApiClient';
 import { expect, jest, describe, it, beforeEach, afterEach } from '@jest/globals';
 
-jest.spyOn(console, 'error').mockImplementation(() => {});
-jest.spyOn(console, 'log').mockImplementation(() => {});
-jest.spyOn(console, 'warn').mockImplementation(() => {});
-
 describe('TokenService', () => {
   let mockApiClient: any;
   let tokenService: TokenService;

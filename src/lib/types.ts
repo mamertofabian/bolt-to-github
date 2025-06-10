@@ -9,6 +9,7 @@ export type MessageType =
   | 'DEBUG'
   | 'CONTENT_SCRIPT_READY'
   | 'GITHUB_SETTINGS_CHANGED'
+  | 'OPEN_HOME'
   | 'OPEN_SETTINGS'
   | 'OPEN_FILE_CHANGES'
   | 'OPEN_ISSUES'
@@ -18,7 +19,9 @@ export type MessageType =
   | 'PUSH_TO_GITHUB'
   | 'USE_CACHED_FILES'
   | 'HEARTBEAT'
-  | 'HEARTBEAT_RESPONSE';
+  | 'HEARTBEAT_RESPONSE'
+  | 'GITHUB_APP_SYNCED'
+  | 'SUBSCRIPTION_UPGRADED';
 
 export interface Message {
   type: MessageType;
@@ -39,6 +42,11 @@ export interface GitHubSettingsInterface {
   githubToken: string;
   repoOwner: string;
   projectSettings?: ProjectSettings;
+  // New authentication method fields
+  authenticationMethod?: 'pat' | 'github_app';
+  githubAppInstallationId?: number;
+  githubAppUsername?: string;
+  githubAppAvatarUrl?: string;
 }
 
 export type ProcessingStatus =
@@ -68,3 +76,38 @@ export interface GithubConfig {
  * Map of file paths to file contents
  */
 export type ProjectFiles = Map<string, string>;
+
+/**
+ * Interface for a single push record
+ */
+export interface PushRecord {
+  timestamp: number;
+  success: boolean;
+  projectId: string;
+  repoOwner: string;
+  repoName: string;
+  branch: string;
+  filesCount: number;
+  commitMessage: string;
+  error?: string;
+}
+
+/**
+ * Interface for push statistics
+ */
+export interface PushStatistics {
+  totalAttempts: number;
+  totalSuccesses: number;
+  totalFailures: number;
+  lastPushTimestamp?: number;
+  lastSuccessTimestamp?: number;
+  records: PushRecord[];
+}
+
+/**
+ * Interface for push statistics state in the store
+ */
+export interface PushStatisticsState {
+  statistics: PushStatistics;
+  isLoading: boolean;
+}

@@ -87,11 +87,11 @@
 
   function getFeatureTitle(): string {
     switch (feature) {
-      case 'fileChanges':
+      case 'file-changes':
         return 'Detailed File Changes';
-      case 'pushReminders':
+      case 'push-reminders':
         return 'Smart Push Reminders';
-      case 'branchSelector':
+      case 'branch-selector':
         return 'Branch Selector';
       case 'issues':
         return 'GitHub Issues Management';
@@ -102,14 +102,14 @@
 
   function getFeatureMessage(): string {
     switch (feature) {
-      case 'fileChanges':
+      case 'file-changes':
         return (
           reason ||
           'Get detailed file change analysis and comparisons with GitHub repositories. Upgrade for full access!'
         );
-      case 'pushReminders':
+      case 'push-reminders':
         return 'Stay on top of your work with intelligent push reminders that notify you when you have unsaved changes.';
-      case 'branchSelector':
+      case 'branch-selector':
         return 'Choose specific branches when importing private repositories for better organization.';
       case 'issues':
         return (
@@ -125,7 +125,7 @@
 {#if show}
   <div class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
     <div
-      class="bg-slate-900 border border-slate-800 rounded-lg p-4 w-80 max-w-[90vw] max-h-[500px] overflow-y-auto"
+      class="bg-slate-900 border border-slate-800 rounded-lg p-4 max-w-[90vw] max-h-[500px] overflow-y-auto"
     >
       <!-- Header -->
       <div class="flex justify-between items-start mb-3">

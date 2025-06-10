@@ -31,11 +31,26 @@ A Chrome extension that automatically captures ZIP file downloads from bolt.new,
   <img src="https://img.shields.io/badge/Install%20from-Chrome%20Web%20Store-blue?style=for-the-badge&logo=google-chrome&logoColor=white" alt="Install from Chrome Web Store" height="40">
 </a>
 
-### Latest stable version (v1.2.3) with v1.3.0 under review:
+### Latest Version: v1.3.2 (Development)
 
-#### 🎉 Version 1.3.0 - Major "Pro" Features Release (Currently Under Review)
+#### 🎉 Version 1.3.2 - GitHub App Authentication Support
 
-**⚠️ Note**: Version 1.3.0 is currently under review in the Chrome Web Store and will be available soon!
+**Major Authentication Enhancement:**
+
+- **GitHub App Authentication** - Modern, secure authentication method as an alternative to Personal Access Tokens
+- **Dual Authentication Support** - Seamlessly supports both PAT and GitHub App authentication
+- **Automatic Configuration** - GitHub App users get automatic repository owner detection
+- **Enhanced Security** - Short-lived tokens with fine-grained permissions through GitHub Apps
+- **Zero Breaking Changes** - Existing PAT users continue to work without any modifications
+
+**Technical Implementation:**
+
+- **UnifiedGitHubService** - New service architecture supporting multiple authentication methods
+- **95% Migration Complete** - Core functionality fully migrated with minor cleanup remaining
+- **Clean Architecture** - Removed circular dependencies and improved modularity
+- **Comprehensive Testing** - All tests updated to support new authentication architecture
+
+#### Version 1.3.0 - Major "Pro" Features Release
 
 **Premium Features & Enhanced Functionality:**
 
@@ -176,10 +191,13 @@ Get started in just 3 simple steps:
 
    - Make sure you have a Bolt.new project loaded
    - Click the extension icon in your Chrome toolbar
-   - Enter your GitHub token (needs repo permissions)
-   - Repository Owner
-   - Repository Name
-   - Branch Name (defaults to 'main')
+   - Choose your authentication method:
+     - **GitHub App** (Recommended): Sign in through bolt2github.com for enhanced security
+     - **Personal Access Token**: Enter your GitHub token (needs repo permissions)
+   - Enter the following details:
+     - Repository Owner (auto-filled for GitHub App users)
+     - Repository Name
+     - Branch Name (defaults to 'main')
    - Save your settings and you're ready to go!
 
 3. **Load your Bolt.new Project**
@@ -362,12 +380,14 @@ See our [Contributing Guide](#contributing) for more details.
 
 ## Security
 
-- **Multiple authentication methods**: Support for both Personal Access Tokens and GitHub Apps (v1.3.0+)
+- **Multiple authentication methods**: Full support for both Personal Access Tokens and GitHub Apps (v1.3.2+)
 - **GitHub Apps integration**: More secure authentication with short-lived tokens and fine-grained permissions
-- **Secure token storage**: GitHub tokens are stored securely using Chrome's storage API
+- **Automatic token management**: GitHub App tokens are automatically refreshed when needed
+- **Secure token storage**: All credentials are stored securely using Chrome's storage API
 - **HTTPS communication**: All communication with GitHub uses HTTPS
 - **Browser-only processing**: ZIP file processing happens entirely in the browser
 - **Premium authentication**: Enhanced security with Supabase integration (v1.3.0+)
+- **Zero credential exposure**: No tokens or credentials are ever logged or exposed
 
 ## Support & Resources
 

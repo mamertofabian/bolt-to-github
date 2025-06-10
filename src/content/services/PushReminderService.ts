@@ -1,10 +1,10 @@
 import type { MessageHandler } from '../MessageHandler';
 import type { INotificationManager } from '../types/ManagerInterfaces';
-import type { NotificationAction } from '../types/UITypes';
-import type { FileChange } from '../../services/FilePreviewService';
 import { ActivityMonitor } from '../infrastructure/ActivityMonitor';
 import type { PremiumService } from './PremiumService';
 import { OperationStateManager } from './OperationStateManager';
+import { isPremium, pushStatisticsActions } from '../../lib/stores';
+import { get } from 'svelte/store';
 
 export interface PushReminderSettings {
   enabled: boolean;
@@ -144,10 +144,20 @@ export class PushReminderService {
       return;
     }
 
-    // Check premium access for push reminders
-    if (!this.premiumService?.hasFeature('pushReminders')) {
-      console.log('❌ Push reminder: Premium feature not available');
-      this.showPremiumUpgradeNotification('pushReminders');
+    // Check if the user is not premium and has no push attempts yet
+    const isUserPremium = get(isPremium);
+    const noPushAttempts = (await pushStatisticsActions.hasPushAttempts()) === false;
+
+    if (!isUserPremium && noPushAttempts) {
+      console.log(
+        '✅ Push reminder: User is not premium and has no push attempts yet - allowing reminder to encourage first GitHub push'
+      );
+      // Continue with the normal reminder flow instead of showing immediately
+      // This allows the user to see reminders that encourage them to push to GitHub
+    } else if (!isUserPremium) {
+      // User is not premium but has made push attempts - show premium upgrade
+      console.log('❌ Push reminder: Premium feature not available, quietly skipping reminder');
+      // this.showPremiumUpgradeNotification('pushReminders');
       return;
     }
 
@@ -325,10 +335,18 @@ export class PushReminderService {
       const message = `💾 You have ${changes.count} unsaved changes. Consider pushing to GitHub! ${changes.summary}`;
       console.log('📢 Push reminder: Showing notification:', message);
 
+      // Log existing reminder count before showing new one
+      const existingReminders = this.notificationManager.getReminderNotificationCount();
+      if (existingReminders > 0) {
+        console.log(
+          `🧹 Push reminder: ${existingReminders} existing reminder(s) will be cleared to prevent stacking`
+        );
+      }
+
       this.notificationManager.showNotification({
         type: 'info',
         message: message,
-        duration: 15000, // 15 seconds
+        duration: 0, // Make reminder persistent - user must take action or close manually
         actions: [
           {
             text: 'Push to GitHub',
@@ -716,10 +734,18 @@ export class PushReminderService {
       const message = `⏰ Scheduled reminder: You have ${changes.count} unsaved changes. Consider pushing to GitHub! ${changes.summary}`;
       console.log('📢 Scheduled reminder: Showing notification:', message);
 
+      // Log existing reminder count before showing new one
+      const existingReminders = this.notificationManager.getReminderNotificationCount();
+      if (existingReminders > 0) {
+        console.log(
+          `🧹 Scheduled reminder: ${existingReminders} existing reminder(s) will be cleared to prevent stacking`
+        );
+      }
+
       this.notificationManager.showNotification({
         type: 'info',
         message: message,
-        duration: 10000, // 10 seconds for scheduled reminders (slightly shorter)
+        duration: 0, // Make reminder persistent - user must take action or close manually
         actions: [
           {
             text: 'Push to GitHub',

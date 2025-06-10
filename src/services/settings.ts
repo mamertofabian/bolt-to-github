@@ -8,24 +8,49 @@ export interface SettingsCheckResult {
 export class SettingsService {
   static async getGitHubSettings(): Promise<SettingsCheckResult> {
     try {
-      const [settings, projectId] = await Promise.all([
+      const [settings, projectId, localSettings] = await Promise.all([
         chrome.storage.sync.get(['githubToken', 'repoOwner', 'projectSettings']),
         chrome.storage.sync.get('projectId'),
+        chrome.storage.local.get(['authenticationMethod', 'githubAppInstallationId']),
       ]);
 
       let projectSettings = settings.projectSettings?.[projectId.projectId];
 
+      // Get authentication method
+      const authMethod = localSettings.authenticationMethod || 'pat';
+
       // Auto-create project settings if needed
-      if (!projectSettings && projectId?.projectId && settings.repoOwner && settings.githubToken) {
-        projectSettings = { repoName: projectId.projectId, branch: 'main' };
-        await chrome.storage.sync.set({
-          [`projectSettings.${projectId.projectId}`]: projectSettings,
-        });
+      if (!projectSettings && projectId?.projectId && settings.repoOwner) {
+        // For GitHub App, we don't need githubToken
+        const hasRequiredAuth =
+          authMethod === 'github_app'
+            ? localSettings.githubAppInstallationId
+            : settings.githubToken;
+
+        if (hasRequiredAuth) {
+          projectSettings = { repoName: projectId.projectId, branch: 'main' };
+          await chrome.storage.sync.set({
+            [`projectSettings.${projectId.projectId}`]: projectSettings,
+          });
+        }
       }
 
-      const isSettingsValid = Boolean(
-        settings.githubToken && settings.repoOwner && settings.projectSettings && projectSettings
-      );
+      // Check settings validity based on authentication method
+      let isSettingsValid = false;
+      if (authMethod === 'github_app') {
+        // For GitHub App: need installation ID, repoOwner, and project settings
+        isSettingsValid = Boolean(
+          localSettings.githubAppInstallationId &&
+            settings.repoOwner &&
+            settings.projectSettings &&
+            projectSettings
+        );
+      } else {
+        // For PAT: need token, repoOwner, and project settings (original logic)
+        isSettingsValid = Boolean(
+          settings.githubToken && settings.repoOwner && settings.projectSettings && projectSettings
+        );
+      }
 
       return {
         isSettingsValid,

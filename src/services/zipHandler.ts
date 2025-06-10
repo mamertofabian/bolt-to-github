@@ -1,4 +1,4 @@
-import type { GitHubService } from './GitHubService';
+import type { UnifiedGitHubService } from './UnifiedGitHubService';
 import { toBase64 } from '../lib/common';
 import { ZipProcessor } from '../lib/zip';
 import type { ProcessingStatus, UploadStatusState } from '$lib/types';
@@ -6,12 +6,13 @@ import { RateLimitHandler } from './RateLimitHandler';
 import { Queue } from '../lib/Queue';
 import { GitHubComparisonService } from './GitHubComparisonService';
 import { processFilesWithGitignore } from '$lib/fileUtils';
+import { pushStatisticsActions } from '../lib/stores';
 
 export class ZipHandler {
   private githubComparisonService: GitHubComparisonService;
 
   constructor(
-    private githubService: GitHubService,
+    private githubService: UnifiedGitHubService,
     private sendStatus: (status: UploadStatusState) => void
   ) {
     this.githubComparisonService = GitHubComparisonService.getInstance();
@@ -157,6 +158,17 @@ export class ZipHandler {
       }
 
       const targetBranch = branch || 'main';
+
+      // Record push attempt
+      await pushStatisticsActions.recordPushAttempt(
+        currentProjectId,
+        repoOwner,
+        repoName,
+        targetBranch,
+        files.size,
+        commitMessage
+      );
+
       // Repository details identified
 
       await this.updateStatus('uploading', 15, 'Checking repository...');
@@ -175,7 +187,14 @@ export class ZipHandler {
 
       await this.updateStatus('uploading', 20, 'Getting repository information...');
 
-      await this.uploadToGitHub(processedFiles, repoOwner, repoName, targetBranch, commitMessage);
+      await this.uploadToGitHub(
+        processedFiles,
+        repoOwner,
+        repoName,
+        targetBranch,
+        commitMessage,
+        currentProjectId
+      );
 
       // Success state will auto-hide in the UI component
       // No need to reset to idle state here as it can cause race conditions
@@ -187,6 +206,25 @@ export class ZipHandler {
         0,
         `Failed to upload files: ${error instanceof Error ? error.message : 'Unknown error'}`
       );
+
+      // Record push failure
+      try {
+        const { repoOwner: errorRepoOwner, projectSettings: errorProjectSettings } =
+          await chrome.storage.sync.get(['repoOwner', 'projectSettings']);
+
+        if (errorRepoOwner && errorProjectSettings?.[currentProjectId]) {
+          await pushStatisticsActions.recordPushFailure(
+            currentProjectId,
+            errorRepoOwner,
+            errorProjectSettings[currentProjectId].repoName,
+            errorProjectSettings[currentProjectId].branch || 'main',
+            error instanceof Error ? error.message : 'Unknown error'
+          );
+        }
+      } catch (trackingError) {
+        console.error('Failed to record push failure:', trackingError);
+      }
+
       throw error;
     }
   };
@@ -196,7 +234,8 @@ export class ZipHandler {
     repoOwner: string,
     repoName: string,
     targetBranch: string,
-    commitMessage: string
+    commitMessage: string,
+    currentProjectId?: string
   ) {
     // Get the current commit SHA for reference
     const baseRef = await this.githubService.request(
@@ -316,6 +355,20 @@ export class ZipHandler {
       100,
       `Successfully uploaded ${changedFiles.size} files to GitHub`
     );
+
+    // Record push success
+    if (currentProjectId) {
+      try {
+        await pushStatisticsActions.recordPushSuccess(
+          currentProjectId,
+          repoOwner,
+          repoName,
+          targetBranch
+        );
+      } catch (trackingError) {
+        console.error('Failed to record push success:', trackingError);
+      }
+    }
   }
 
   private sleep(ms: number): Promise<void> {

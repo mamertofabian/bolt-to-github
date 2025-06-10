@@ -281,6 +281,23 @@ export class DropdownManager implements IDropdownManager {
     });
     items.push(pushButton);
 
+    // Project Dashboard option
+    const dashboardButton = document.createElement('button');
+    dashboardButton.className = 'dropdown-item flex items-center';
+    dashboardButton.innerHTML = `
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <rect x="3" y="3" width="18" height="18" rx="2" ry="2" />
+        <line x1="3" y1="9" x2="21" y2="9" />
+        <line x1="9" y1="21" x2="9" y2="9" />
+      </svg>
+      <span>Project Dashboard</span>
+    `;
+    dashboardButton.addEventListener('click', () => {
+      this.hide();
+      this.messageHandler.sendMessage('OPEN_HOME');
+    });
+    items.push(dashboardButton);
+
     // Show Changed Files option - now premium feature
     const changedFilesButton = document.createElement('button');
     const isPremium = this.premiumService?.isPremiumSync() || false;

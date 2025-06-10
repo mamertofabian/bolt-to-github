@@ -8,38 +8,25 @@
     CardTitle,
   } from '$lib/components/ui/card';
   import { STORAGE_KEY } from '../background/TempRepoManager';
-  import { Tabs, TabsContent } from '$lib/components/ui/tabs';
-  import Header from '$lib/components/Header.svelte';
-  import SocialLinks from '$lib/components/SocialLinks.svelte';
-  import StatusAlert from '$lib/components/StatusAlert.svelte';
-  import GitHubSettings from '$lib/components/GitHubSettings.svelte';
-  import { COFFEE_LINK, GITHUB_LINK, YOUTUBE_LINK } from '$lib/constants';
-  import Footer from '$lib/components/Footer.svelte';
-
-  import ProjectsList from '$lib/components/ProjectsList.svelte';
   import { Button } from '$lib/components/ui/button';
-  import Help from '$lib/components/Help.svelte';
-  import ProjectStatus from '$lib/components/ProjectStatus.svelte';
   import FileChangesModal from './components/FileChangesModal.svelte';
   import TempRepoModal from './components/TempRepoModal.svelte';
   import PushReminderSettings from './components/PushReminderSettings.svelte';
-  import PushReminderSection from './components/PushReminderSection.svelte';
-  import PremiumStatus from './components/PremiumStatus.svelte';
   import UpgradeModal from './components/UpgradeModal.svelte';
   import FeedbackModal from './components/FeedbackModal.svelte';
-  import AnalyticsToggle from '$lib/components/ui/AnalyticsToggle.svelte';
-  import { setUpgradeModalState } from '$lib/utils/upgradeModal';
-  import type { PremiumFeature } from '$lib/constants/premiumFeatures';
   import NewsletterModal from '$lib/components/NewsletterModal.svelte';
-  import NewsletterSection from '$lib/components/NewsletterSection.svelte';
   import SuccessToast from '$lib/components/SuccessToast.svelte';
-  import { SubscriptionService } from '../services/SubscriptionService';
   import IssueManager from '$lib/components/IssueManager.svelte';
+  import TabsView from './components/TabsView.svelte';
+  import OnboardingView from './components/OnboardingView.svelte';
+  import { setUpgradeModalState, type UpgradeModalType } from '$lib/utils/upgradeModal';
+  import { SubscriptionService } from '../services/SubscriptionService';
 
   // Import stores and services
   import {
     githubSettingsStore,
     isSettingsValid,
+    isAuthenticationValid,
     githubSettingsActions,
     projectSettingsStore,
     isOnBoltProject,
@@ -61,6 +48,13 @@
   } from '$lib/stores';
   import { ChromeMessagingService } from '$lib/services/chromeMessaging';
 
+  // Constants for display modes
+  const DISPLAY_MODES = {
+    TABS: 'tabs',
+    PROJECTS_LIST: 'projectsList',
+    ONBOARDING: 'onboarding',
+  } as const;
+
   // Reactive store subscriptions
   $: githubSettings = $githubSettingsStore;
   $: projectSettings = $projectSettingsStore;
@@ -68,6 +62,7 @@
   $: fileChangesState = $fileChangesStore;
   $: uploadState = $uploadStateStore;
   $: settingsValid = $isSettingsValid;
+  $: authenticationValid = $isAuthenticationValid;
   $: onBoltProject = $isOnBoltProject;
   $: projectId = $currentProjectId;
   $: premiumStatus = $premiumStatusStore;
@@ -75,6 +70,61 @@
   $: isUserPremium = $isPremium;
   $: userPlan = $premiumPlan;
   $: userFeatures = $userPremiumFeatures;
+
+  // Component references and modal states
+  let projectStatusRef: any;
+
+  // Modal states grouped together
+  let modalStates = {
+    pushReminderSettings: false,
+    upgrade: false,
+    feedback: false,
+    newsletter: false,
+    issues: false,
+    successToast: false,
+  };
+
+  // Upgrade modal configuration
+  let upgradeModalConfig = {
+    feature: '',
+    reason: '',
+    features: [] as Array<{ id: string; name: string; description: string; icon: string }>,
+  };
+
+  // Newsletter subscription state
+  let hasSubscribed = false;
+  let successToastMessage = '';
+  let showSubscribePrompt = false;
+
+  // Effective GitHub token for different auth methods
+  let effectiveGithubToken = '';
+
+  // Add pending popup context state
+  let pendingPopupContext = '';
+  let pendingUpgradeFeature = '';
+  let hasHandledPendingContext = false;
+
+  // Computed display mode
+  $: displayMode = (() => {
+    if (hasValidAuthenticationForProjectsList) return DISPLAY_MODES.TABS;
+    return DISPLAY_MODES.ONBOARDING;
+  })();
+
+  // Reactive check for valid authentication for ProjectsList display
+  $: hasValidAuthenticationForProjectsList = !!(
+    githubSettings.hasInitialSettings &&
+    githubSettings.repoOwner &&
+    ((githubSettings.authenticationMethod === 'github_app' &&
+      githubSettings.githubAppInstallationId) ||
+      (githubSettings.authenticationMethod === 'pat' && githubSettings.githubToken))
+  );
+
+  // Common props for components
+  $: projectsListProps = {
+    repoOwner: githubSettings.repoOwner,
+    currentlyLoadedProjectId: projectId,
+    isBoltSite: projectSettings.isBoltSite,
+  };
 
   // Handle pending popup context when stores are ready
   $: if (
@@ -94,29 +144,6 @@
     handlePendingPopupContext();
   }
 
-  let projectStatusRef: ProjectStatus;
-  let showPushReminderSettings = false;
-  let showUpgradeModal = false;
-  let showFeedbackModal = false;
-  let upgradeModalFeature = '';
-  let upgradeModalReason = '';
-  let premiumFeatures: Array<{ id: string; name: string; description: string; icon: string }> = [];
-
-  // Newsletter subscription state
-  let showNewsletterModal = false;
-  let hasSubscribed = false;
-  let showSuccessToast = false;
-  let successToastMessage = '';
-  let showSubscribePrompt = false;
-
-  // Issues modal state
-  let showIssuesModal = false;
-
-  // Add pending popup context state
-  let pendingPopupContext = '';
-  let pendingUpgradeFeature = '';
-  let hasHandledPendingContext = false;
-
   // Message handlers
   function handleUploadStatusMessage(message: any) {
     uploadStateActions.handleUploadStatusMessage(message);
@@ -133,6 +160,25 @@
     showStoredFileChanges();
   }
 
+  async function updateEffectiveToken() {
+    // Get authentication method to determine correct token to use
+    const authSettings = await chrome.storage.local.get(['authenticationMethod']);
+    const authMethod = authSettings.authenticationMethod || 'pat';
+
+    if (authMethod === 'github_app') {
+      // For GitHub App, use a placeholder token that the store will recognize
+      effectiveGithubToken = 'github_app_token';
+    } else {
+      // For PAT, use the actual token
+      effectiveGithubToken = githubSettings.githubToken || '';
+    }
+  }
+
+  // Update effective token when settings change
+  $: if (githubSettings) {
+    updateEffectiveToken();
+  }
+
   async function initializeApp() {
     // Add dark mode to the document
     document.documentElement.classList.add('dark');
@@ -142,6 +188,14 @@
     githubSettingsActions.initialize();
     uploadStateActions.initializePort();
     premiumStatusActions.initialize();
+
+    // Force sync authentication status from background service
+    try {
+      await chrome.runtime.sendMessage({ type: 'FORCE_POPUP_SYNC' });
+      console.log('✅ Forced authentication sync from background service');
+    } catch (error) {
+      console.warn('Failed to force sync authentication status:', error);
+    }
 
     // Setup Chrome messaging
     ChromeMessagingService.addPortMessageHandler(handleUploadStatusMessage);
@@ -163,6 +217,9 @@
 
     // Detect current project
     await projectSettingsActions.detectCurrentProject();
+
+    // Auto-create project settings if on Bolt project and have valid auth
+    await autoCreateProjectSettingsIfNeeded();
 
     // Load project-specific settings if we're on a bolt project
     if (projectId) {
@@ -191,11 +248,11 @@
 
     // Listen for upgrade modal triggers from other components
     window.addEventListener('showUpgrade', ((event: CustomEvent) => {
-      upgradeModalFeature = event.detail.feature;
-      upgradeModalReason = event.detail.reason;
-      premiumFeatures = event.detail.features;
-      showUpgradeModal = true;
-    }) as EventListener);
+      upgradeModalConfig.feature = event.detail.feature;
+      upgradeModalConfig.reason = event.detail.reason;
+      upgradeModalConfig.features = event.detail.features;
+      modalStates.upgrade = true;
+    }) as (event: Event) => void);
 
     // Initialize newsletter subscription status
     try {
@@ -203,6 +260,100 @@
       hasSubscribed = subscription.subscribed;
     } catch (error) {
       console.error('Error loading subscription status:', error);
+    }
+  }
+
+  /**
+   * Automatically create project settings for Bolt projects when popup is opened
+   * This ensures repositories are set to private by default without user intervention
+   */
+  async function autoCreateProjectSettingsIfNeeded() {
+    try {
+      // Only proceed if we're on a Bolt project
+      if (!onBoltProject || !projectId) {
+        return;
+      }
+
+      console.log(
+        '🔧 Checking if auto-creation of project settings is needed for project:',
+        projectId
+      );
+
+      // Check if project settings already exist
+      const existingSettings = await chrome.storage.sync.get(['projectSettings']);
+      const projectSettings = existingSettings.projectSettings || {};
+
+      if (projectSettings[projectId]) {
+        console.log('✅ Project settings already exist for project:', projectId);
+        return;
+      }
+
+      // Check if we have valid authentication
+      const [syncSettings, localSettings] = await Promise.all([
+        chrome.storage.sync.get(['repoOwner']),
+        chrome.storage.local.get(['authenticationMethod', 'githubAppInstallationId']),
+      ]);
+
+      const authMethod = localSettings.authenticationMethod || 'pat';
+      const hasValidAuth =
+        authMethod === 'github_app'
+          ? Boolean(localSettings.githubAppInstallationId)
+          : Boolean(githubSettings.githubToken);
+
+      if (!syncSettings.repoOwner || !hasValidAuth) {
+        console.log('⚠️ No valid authentication or repoOwner found, skipping auto-creation');
+        return;
+      }
+
+      console.log('🚀 Auto-creating project settings for Bolt project:', projectId);
+
+      // Create default project settings with private repository
+      const newProjectSettings = {
+        repoName: projectId,
+        branch: 'main',
+        projectTitle: projectId, // Use project ID as initial title
+      };
+
+      // Update the project settings in storage
+      const updatedProjectSettings = {
+        ...projectSettings,
+        [projectId]: newProjectSettings,
+      };
+
+      await chrome.storage.sync.set({
+        projectSettings: updatedProjectSettings,
+      });
+
+      // Update the stores to reflect the new settings
+      githubSettingsActions.setProjectSettings(
+        projectId,
+        newProjectSettings.repoName,
+        newProjectSettings.branch,
+        newProjectSettings.projectTitle
+      );
+
+      // Load the newly created settings
+      githubSettingsActions.loadProjectSettings(projectId);
+
+      console.log('✅ Auto-created project settings:', newProjectSettings);
+
+      // Store a timestamp to trigger UI updates
+      await chrome.storage.local.set({
+        lastSettingsUpdate: {
+          timestamp: Date.now(),
+          projectId,
+          repoName: newProjectSettings.repoName,
+          branch: newProjectSettings.branch,
+          projectTitle: newProjectSettings.projectTitle,
+          autoCreated: true,
+        },
+      });
+
+      console.log(
+        '🎯 Project settings auto-created successfully. Repository will be private by default.'
+      );
+    } catch (error) {
+      console.error('❌ Error auto-creating project settings:', error);
     }
   }
 
@@ -255,7 +406,7 @@
         // Only show issues if we have valid settings and are on a Bolt project
         if (settingsValid && projectId && githubSettings.githubToken) {
           console.log('🎯 Opening issues modal');
-          showIssuesModal = true;
+          modalStates.issues = true;
         } else {
           console.log('🎯 Issues access denied, going to home tab');
           uiStateActions.setActiveTab('home');
@@ -325,17 +476,17 @@
                   | 'branchSelector')
               : ('general' as const);
             const config = getUpgradeModalConfig(validFeature);
-            upgradeModalFeature = config.feature;
-            upgradeModalReason = config.reason;
-            premiumFeatures = config.features;
-            showUpgradeModal = true;
+            upgradeModalConfig.feature = config.feature;
+            upgradeModalConfig.reason = config.reason;
+            upgradeModalConfig.features = config.features;
+            modalStates.upgrade = true;
           } catch (error) {
             console.error('Error loading upgrade modal config:', error);
             // Fallback to general upgrade modal
-            upgradeModalFeature = 'premium';
-            upgradeModalReason = 'Unlock professional features';
-            premiumFeatures = [];
-            showUpgradeModal = true;
+            upgradeModalConfig.feature = 'premium';
+            upgradeModalConfig.reason = 'Unlock professional features';
+            upgradeModalConfig.features = [];
+            modalStates.upgrade = true;
           }
         }
         break;
@@ -349,6 +500,7 @@
   async function saveSettings() {
     // If we have a current project, update its settings in the store first
     if (projectId) {
+      console.log('🚀 Saving project settings for project:', projectId);
       githubSettingsActions.setProjectSettings(
         projectId,
         githubSettings.repoName,
@@ -356,6 +508,7 @@
       );
     }
 
+    console.log('🚀 Saving settings');
     const result = await githubSettingsActions.saveSettings();
     if (result.success) {
       // Show success toast with potential subscription prompt
@@ -379,12 +532,16 @@
     }
   }
 
+  // Event handlers for child components
   function handleSwitchTab(event: CustomEvent<string>) {
     uiStateActions.setActiveTab(event.detail);
   }
 
+  function handleConfigurePushReminder() {
+    modalStates.pushReminderSettings = true;
+  }
+
   function openSignInPage() {
-    // Use browser extension API to open new tab
     if (typeof chrome !== 'undefined' && chrome.tabs) {
       chrome.tabs.create({ url: 'https://bolt2github.com/login' });
     }
@@ -445,11 +602,11 @@
 
   // Newsletter subscription functions
   async function handleNewsletterClick() {
-    showNewsletterModal = true;
+    modalStates.newsletter = true;
   }
 
   async function handleNewsletterModalClose() {
-    showNewsletterModal = false;
+    modalStates.newsletter = false;
     // Refresh subscription status
     try {
       const subscription = await SubscriptionService.getSubscriptionStatus();
@@ -469,25 +626,41 @@
 
       successToastMessage = message;
       showSubscribePrompt = shouldPrompt && !hasSubscribed;
-      showSuccessToast = true;
+      modalStates.successToast = true;
     } catch (error) {
       console.error('Error handling successful action:', error);
       // Still show success toast without subscription prompt
       successToastMessage = message;
-      showSuccessToast = true;
+      modalStates.successToast = true;
     }
   }
 
   async function handleToastSubscribe() {
     await SubscriptionService.updateLastPromptDate();
-    showNewsletterModal = true;
+    modalStates.newsletter = true;
+  }
+
+  const handleUpgradeClick = (upgradeModalType: UpgradeModalType) => {
+    setUpgradeModalState(upgradeModalType, (feature, reason, features) => {
+      upgradeModalConfig.feature = feature;
+      upgradeModalConfig.reason = reason;
+      upgradeModalConfig.features = features;
+      modalStates.upgrade = true;
+    });
+  };
+
+  // Handle authentication method change
+  function authMethodChangeHandler(event: CustomEvent<string>) {
+    const newAuthMethod = event.detail;
+    githubSettingsActions.setAuthenticationMethod(newAuthMethod as 'github_app' | 'pat');
+    updateEffectiveToken();
   }
 
   onMount(initializeApp);
   onDestroy(cleanup);
 </script>
 
-<main class="w-[400px] p-3 bg-slate-950 text-slate-50">
+<main class="w-[400px] h-[600px] p-3 bg-slate-950 text-slate-50">
   <Card class="border-slate-800 bg-slate-900">
     <CardHeader>
       <CardTitle class="flex items-center gap-2">
@@ -517,14 +690,7 @@
             <Button
               size="sm"
               class="text-xs bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white px-3 py-1 h-6"
-              on:click={() => {
-                setUpgradeModalState('general', (feature, reason, features) => {
-                  upgradeModalFeature = feature;
-                  upgradeModalReason = reason;
-                  premiumFeatures = features;
-                  showUpgradeModal = true;
-                });
-              }}
+              on:click={() => handleUpgradeClick('general')}
             >
               ✨ Upgrade
             </Button>
@@ -545,140 +711,34 @@
       </CardDescription>
     </CardHeader>
     <CardContent>
-      {#if onBoltProject}
-        <Tabs bind:value={uiState.activeTab} class="w-full">
-          <Header />
-
-          <TabsContent value="home">
-            {#if !settingsValid || !projectId}
-              <StatusAlert on:switchTab={handleSwitchTab} />
-            {:else}
-              <ProjectStatus
-                bind:this={projectStatusRef}
-                {projectId}
-                gitHubUsername={githubSettings.repoOwner}
-                repoName={githubSettings.repoName}
-                branch={githubSettings.branch}
-                token={githubSettings.githubToken}
-                on:switchTab={handleSwitchTab}
-                on:showFileChanges={showStoredFileChanges}
-              />
-            {/if}
-
-            <div class="mt-6 space-y-4">
-              <SocialLinks
-                {GITHUB_LINK}
-                {YOUTUBE_LINK}
-                {COFFEE_LINK}
-                on:feedback={() => (showFeedbackModal = true)}
-              />
-            </div>
-          </TabsContent>
-
-          <TabsContent value="projects">
-            <ProjectsList
-              repoOwner={githubSettings.repoOwner}
-              githubToken={githubSettings.githubToken}
-              currentlyLoadedProjectId={projectId}
-              isBoltSite={projectSettings.isBoltSite}
-            />
-          </TabsContent>
-
-          <TabsContent value="settings">
-            <div class="space-y-4">
-              <div>
-                <h2 class="text-xl font-semibold text-slate-200">GitHub Settings</h2>
-                <p class="text-sm text-slate-400">Configure your GitHub repository settings</p>
-              </div>
-              <GitHubSettings
-                bind:githubToken={githubSettings.githubToken}
-                bind:repoOwner={githubSettings.repoOwner}
-                bind:repoName={githubSettings.repoName}
-                bind:branch={githubSettings.branch}
-                {projectId}
-                status={uiState.status}
-                buttonDisabled={uiState.hasStatus}
-                onSave={saveSettings}
-                onError={handleSettingsError}
-                onInput={() => {}}
-              />
-
-              <!-- Push Reminder Settings -->
-              <PushReminderSection on:configure={() => (showPushReminderSettings = true)} />
-
-              <!-- Analytics Toggle -->
-              <AnalyticsToggle />
-
-              <!-- Premium Status -->
-              <PremiumStatus
-                on:upgrade={() => {
-                  setUpgradeModalState('general', (feature, reason, features) => {
-                    upgradeModalFeature = feature;
-                    upgradeModalReason = reason;
-                    premiumFeatures = features;
-                    showUpgradeModal = true;
-                  });
-                }}
-              />
-
-              <!-- Newsletter Subscription -->
-              <NewsletterSection />
-            </div>
-          </TabsContent>
-
-          <TabsContent value="help">
-            <div class="space-y-4">
-              <Help />
-              <div class="mt-3">
-                <Footer
-                  {hasSubscribed}
-                  version={projectSettings.version}
-                  on:newsletter={handleNewsletterClick}
-                />
-              </div>
-            </div>
-          </TabsContent>
-        </Tabs>
-      {:else if githubSettings.hasInitialSettings && githubSettings.repoOwner && githubSettings.githubToken}
-        <ProjectsList
-          repoOwner={githubSettings.repoOwner}
-          githubToken={githubSettings.githubToken}
-          currentlyLoadedProjectId={projectId}
-          isBoltSite={projectSettings.isBoltSite}
+      {#if displayMode === DISPLAY_MODES.TABS}
+        <TabsView
+          {uiState}
+          {githubSettings}
+          {projectSettings}
+          {projectId}
+          isAuthenticationValid={authenticationValid}
+          {isUserPremium}
+          bind:projectStatusRef
+          on:switchTab={handleSwitchTab}
+          on:showFileChanges={showStoredFileChanges}
+          on:feedback={() => (modalStates.feedback = true)}
+          on:upgradeClick={(e) => handleUpgradeClick(e.detail)}
+          on:newsletter={handleNewsletterClick}
+          on:save={saveSettings}
+          on:error={(e) => handleSettingsError(e.detail)}
+          on:authMethodChange={authMethodChangeHandler}
+          on:configurePushReminder={handleConfigurePushReminder}
         />
       {:else}
-        <div class="flex flex-col items-center justify-center p-4 text-center space-y-6">
-          <div class="space-y-2">
-            {#if !projectSettings.isBoltSite}
-              <Button
-                variant="outline"
-                class="border-slate-800 hover:bg-slate-800 text-slate-200"
-                on:click={() => window.open('https://bolt.new', '_blank')}
-              >
-                Go to bolt.new
-              </Button>
-            {/if}
-            <p class="text-sm text-green-400">
-              💡 No Bolt projects found. Create or load an existing Bolt project to get started.
-            </p>
-            <p class="text-sm text-green-400 pb-4">
-              🌟 You can also load any of your GitHub repositories by providing your GitHub token
-              and repository owner.
-            </p>
-            <GitHubSettings
-              isOnboarding={true}
-              bind:githubToken={githubSettings.githubToken}
-              bind:repoName={githubSettings.repoName}
-              bind:branch={githubSettings.branch}
-              bind:repoOwner={githubSettings.repoOwner}
-              status={uiState.status}
-              buttonDisabled={uiState.hasStatus}
-              onSave={saveSettings}
-              onError={handleSettingsError}
-              onInput={() => {}}
-            />
-          </div>
-        </div>
+        <OnboardingView
+          {githubSettings}
+          {projectSettings}
+          {uiState}
+          on:save={saveSettings}
+          on:error={(e) => handleSettingsError(e.detail)}
+          on:authMethodChange={authMethodChangeHandler}
+        />
       {/if}
     </CardContent>
   </Card>
@@ -698,41 +758,41 @@
     onDismiss={() => uiStateActions.hideTempRepoModal()}
   />
 
-  <PushReminderSettings bind:show={showPushReminderSettings} />
+  <PushReminderSettings bind:show={modalStates.pushReminderSettings} />
 
   <UpgradeModal
-    bind:show={showUpgradeModal}
-    feature={upgradeModalFeature}
-    reason={upgradeModalReason}
-    features={premiumFeatures}
+    bind:show={modalStates.upgrade}
+    feature={upgradeModalConfig.feature}
+    reason={upgradeModalConfig.reason}
+    features={upgradeModalConfig.features}
   />
 
-  <FeedbackModal bind:show={showFeedbackModal} githubToken={githubSettings.githubToken} />
+  <FeedbackModal bind:show={modalStates.feedback} githubToken={githubSettings.githubToken} />
 
   <!-- Newsletter subscription modal -->
-  <NewsletterModal bind:show={showNewsletterModal} on:close={handleNewsletterModalClose} />
+  <NewsletterModal bind:show={modalStates.newsletter} on:close={handleNewsletterModalClose} />
 
   <!-- Success toast with optional subscription prompt -->
   <SuccessToast
-    bind:show={showSuccessToast}
+    bind:show={modalStates.successToast}
     message={successToastMessage}
     {showSubscribePrompt}
     {hasSubscribed}
     on:subscribe={handleToastSubscribe}
     on:hide={() => {
-      showSuccessToast = false;
+      modalStates.successToast = false;
       showSubscribePrompt = false;
     }}
   />
 
   <!-- Issues modal -->
-  {#if settingsValid && githubSettings.githubToken && githubSettings.repoOwner && githubSettings.repoName}
+  {#if settingsValid && effectiveGithubToken && githubSettings.repoOwner && githubSettings.repoName}
     <IssueManager
-      bind:show={showIssuesModal}
-      githubToken={githubSettings.githubToken}
+      bind:show={modalStates.issues}
+      githubToken={effectiveGithubToken}
       repoOwner={githubSettings.repoOwner}
       repoName={githubSettings.repoName}
-      on:close={() => (showIssuesModal = false)}
+      on:close={() => (modalStates.issues = false)}
     />
   {/if}
 </main>

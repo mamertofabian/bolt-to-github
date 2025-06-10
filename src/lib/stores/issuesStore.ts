@@ -1,5 +1,5 @@
 import { writable, derived, get } from 'svelte/store';
-import { GitHubService } from '../../services/GitHubService';
+import { UnifiedGitHubService } from '../../services/UnifiedGitHubService';
 
 export interface Issue {
   number: number;
@@ -38,6 +38,18 @@ interface LoadingState {
 const CACHE_DURATION = 30000; // 30 seconds
 const FORCE_REFRESH_AFTER_ACTION = 2000; // 2 seconds after create/update/close
 
+// Helper function to create UnifiedGitHubService with proper authentication
+async function createGitHubService(token: string): Promise<UnifiedGitHubService> {
+  const authSettings = await chrome.storage.local.get(['authenticationMethod']);
+  const authMethod = authSettings.authenticationMethod || 'pat';
+
+  if (authMethod === 'github_app') {
+    return new UnifiedGitHubService({ type: 'github_app' });
+  } else {
+    return new UnifiedGitHubService(token);
+  }
+}
+
 // Create the main store
 const issuesState = writable<IssuesState>({});
 const loadingState = writable<LoadingState>({});
@@ -70,6 +82,7 @@ function createIssuesStore() {
   }
 
   function invalidateCache(repoKey: string) {
+    console.log('🗑️ Invalidating cache for:', repoKey);
     update((current) => ({
       ...current,
       [repoKey]: {
@@ -88,8 +101,11 @@ function createIssuesStore() {
   ): Promise<Issue[]> {
     const repoKey = getRepoKey(owner, repo);
 
+    console.log('🏪 issuesStore.loadIssues called:', { repoKey, state, forceRefresh });
+
     // Check cache validity
     if (!forceRefresh && isCacheValid(repoKey)) {
+      console.log('📦 Using cached data');
       const currentState = get(issuesState);
       const repoState = currentState[repoKey];
       if (repoState && repoState.issues) {
@@ -98,13 +114,15 @@ function createIssuesStore() {
       }
     }
 
+    console.log('🌐 Making network request for fresh data');
     setLoadingForRepo(repoKey, state, true);
 
     try {
-      const githubService = new GitHubService(githubToken);
-      const issues = await githubService.getIssues(owner, repo, state, forceRefresh);
+      const githubService = await createGitHubService(githubToken);
+      // Always fetch ALL issues to avoid cache inconsistencies
+      const issues = await githubService.getIssues(owner, repo, 'all', forceRefresh);
 
-      // Update the store
+      // Update the store with all issues
       update((current) => ({
         ...current,
         [repoKey]: {
@@ -116,7 +134,8 @@ function createIssuesStore() {
       }));
 
       setLoadingForRepo(repoKey, state, false);
-      return issues;
+      // Return filtered issues based on requested state
+      return filterIssuesByState(issues, state);
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : 'Failed to load issues';
 
@@ -149,7 +168,7 @@ function createIssuesStore() {
     const repoKey = getRepoKey(owner, repo);
 
     try {
-      const githubService = new GitHubService(githubToken);
+      const githubService = await createGitHubService(githubToken);
       const newIssue = await githubService.createIssue(owner, repo, issueData);
 
       // Immediately add the new issue to the store for instant UI update
@@ -208,9 +227,18 @@ function createIssuesStore() {
   ): Promise<Issue> {
     const repoKey = getRepoKey(owner, repo);
 
+    const { title, body, state } = updateData;
+
     try {
-      const githubService = new GitHubService(githubToken);
-      const updatedIssue = await githubService.updateIssue(owner, repo, issueNumber, updateData);
+      const githubService = await createGitHubService(githubToken);
+      const updatedIssue = await githubService.updateIssue(
+        owner,
+        repo,
+        issueNumber,
+        title,
+        body,
+        state
+      );
 
       // Immediately update the issue in the store
       update((current) => {

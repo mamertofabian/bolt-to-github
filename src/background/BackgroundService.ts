@@ -1,4 +1,4 @@
-import { GitHubService } from '../services/GitHubService';
+import { UnifiedGitHubService } from '../services/UnifiedGitHubService';
 import type { Message, MessageType, Port, UploadStatusState } from '../lib/types';
 import { StateManager } from './StateManager';
 import { ZipHandler } from '../services/zipHandler';
@@ -10,12 +10,13 @@ export class BackgroundService {
   private stateManager: StateManager;
   private zipHandler: ZipHandler | null;
   private ports: Map<number, Port>;
-  private githubService: GitHubService | null;
+  private githubService: UnifiedGitHubService | null;
   private tempRepoManager: BackgroundTempRepoManager | null = null;
   private pendingCommitMessage: string;
   private supabaseAuthService: SupabaseAuthService;
   private operationStateManager: OperationStateManager;
   private keepAliveInterval: NodeJS.Timeout | null = null;
+  private authCheckTimeout: NodeJS.Timeout | null = null;
   private storageListener:
     | ((changes: { [key: string]: chrome.storage.StorageChange }, namespace: string) => void)
     | null = null;
@@ -35,7 +36,7 @@ export class BackgroundService {
     this.trackExtensionStartup();
 
     // Force initial auth check
-    setTimeout(() => {
+    this.authCheckTimeout = setTimeout(() => {
       console.log('🔐 Forcing initial Supabase auth check...');
       this.supabaseAuthService.forceCheck();
     }, 2000); // Wait 2 seconds after initialization
@@ -160,20 +161,29 @@ export class BackgroundService {
     console.log('👂 Background service initialized');
   }
 
-  private async initializeGitHubService(): Promise<GitHubService | null> {
+  private async initializeGitHubService(): Promise<UnifiedGitHubService | null> {
     try {
       const settings = await this.stateManager.getGitHubSettings();
+      const localSettings = await chrome.storage.local.get(['authenticationMethod']);
 
-      if (
+      const authMethod = localSettings.authenticationMethod || 'pat';
+
+      if (authMethod === 'github_app') {
+        // Initialize with GitHub App authentication
+        console.log('✅ GitHub App authentication detected, initializing GitHub App service');
+        this.githubService = new UnifiedGitHubService({
+          type: 'github_app',
+        });
+      } else if (
         settings &&
         settings.gitHubSettings &&
         settings.gitHubSettings.githubToken &&
         settings.gitHubSettings.repoOwner
       ) {
-        console.log('✅ Valid settings found, initializing GitHub service', settings);
-        this.githubService = new GitHubService(settings.gitHubSettings.githubToken);
+        console.log('✅ PAT authentication detected, initializing PAT service', settings);
+        this.githubService = new UnifiedGitHubService(settings.gitHubSettings.githubToken);
       } else {
-        console.log('❌ Invalid or incomplete settings');
+        console.log('❌ No valid authentication configuration found');
         this.githubService = null;
       }
     } catch (error) {
@@ -183,7 +193,7 @@ export class BackgroundService {
     return this.githubService;
   }
 
-  private setupZipHandler(githubService: GitHubService) {
+  private setupZipHandler(githubService: UnifiedGitHubService) {
     this.zipHandler = new ZipHandler(githubService, (status) => this.broadcastStatus(status));
   }
 
@@ -241,6 +251,18 @@ export class BackgroundService {
         console.log('💰 Forcing subscription refresh via message');
         this.supabaseAuthService.forceSubscriptionRevalidation();
         sendResponse({ success: true });
+      } else if (message.type === 'FORCE_POPUP_SYNC') {
+        console.log('🔄 Forcing popup sync via message');
+        await this.supabaseAuthService.forceSyncToPopup();
+        sendResponse({ success: true });
+      } else if (message.type === 'USER_LOGOUT') {
+        console.log('🚪 User logout requested from popup');
+        await this.sendAnalyticsEvent('user_action', {
+          action: 'user_logout',
+          context: 'popup',
+        });
+        await this.supabaseAuthService.logout();
+        sendResponse({ success: true });
       } else if (message.type === 'ANALYTICS_EVENT') {
         console.log('📊 Received analytics event:', message.eventType, message.eventData);
         this.handleAnalyticsEvent(message.eventType, message.eventData);
@@ -258,6 +280,10 @@ export class BackgroundService {
           upgradeModalFeature: message.feature,
         });
         chrome.action.openPopup();
+        sendResponse({ success: true });
+      } else if (message.type === 'NOTIFY_GITHUB_APP_SYNC') {
+        console.log('📢 Received NOTIFY_GITHUB_APP_SYNC message:', message.data);
+        await this.handleGitHubAppSyncNotification(message.data);
         sendResponse({ success: true });
       }
 
@@ -330,7 +356,14 @@ export class BackgroundService {
             action: 'zip_upload_initiated',
             context: 'content_script',
           });
-          await this.handleZipData(tabId, message.data);
+          // Handle both old and new message formats for backward compatibility
+          if (typeof message.data === 'string') {
+            // Old format: message.data is just the base64 string
+            await this.handleZipData(tabId, message.data, null);
+          } else {
+            // New format: message.data is { data: string, projectId?: string }
+            await this.handleZipData(tabId, message.data.data, message.data.projectId);
+          }
           break;
 
         case 'SET_COMMIT_MESSAGE':
@@ -359,6 +392,22 @@ export class BackgroundService {
           setTimeout(() => {
             chrome.action.openPopup();
             console.log('✅ Popup opened for settings');
+          }, 10);
+          break;
+
+        case 'OPEN_HOME':
+          console.log('Opening home/dashboard popup');
+          await this.sendAnalyticsEvent('user_action', {
+            action: 'dashboard_opened',
+            context: 'content_script',
+          });
+          await chrome.storage.local.set({ popupContext: 'home' });
+          console.log('✅ Storage set: popupContext = home');
+
+          // Small delay to ensure storage is written before opening popup
+          setTimeout(() => {
+            chrome.action.openPopup();
+            console.log('✅ Popup opened for home/dashboard');
           }, 10);
           break;
 
@@ -490,7 +539,11 @@ export class BackgroundService {
     }
   }
 
-  private async handleZipData(tabId: number, base64Data: string): Promise<void> {
+  private async handleZipData(
+    tabId: number,
+    base64Data: string,
+    currentProjectId?: string | null
+  ): Promise<void> {
     console.log('🔄 Handling ZIP data for tab:', tabId);
     const port = this.ports.get(tabId);
     if (!port) return;
@@ -522,10 +575,21 @@ export class BackgroundService {
         throw new Error('Zip handler is not initialized.');
       }
 
-      const projectId = await this.stateManager.getProjectId();
+      // Use the project ID from the message if provided, otherwise fall back to stored project ID
+      let projectId = currentProjectId;
       if (!projectId) {
-        throw new Error('Project ID is not set.');
+        projectId = await this.stateManager.getProjectId();
       }
+
+      if (!projectId) {
+        throw new Error('Project ID is not set. Make sure you are on a Bolt project page.');
+      }
+
+      console.log(
+        '🔍 Using project ID for push:',
+        projectId,
+        currentProjectId ? '(from URL)' : '(from storage)'
+      );
 
       try {
         // Convert base64 to blob
@@ -775,6 +839,30 @@ export class BackgroundService {
     }
   }
 
+  private async handleGitHubAppSyncNotification(data: any): Promise<void> {
+    try {
+      console.log('📢 Handling GitHub App sync notification to all bolt.new tabs');
+
+      // Send message to all bolt.new tabs about GitHub App sync
+      const tabs = await chrome.tabs.query({ url: 'https://bolt.new/*' });
+      for (const tab of tabs) {
+        if (tab.id) {
+          chrome.tabs
+            .sendMessage(tab.id, {
+              type: 'GITHUB_APP_SYNCED',
+              data,
+            })
+            .catch(() => {
+              // Tab might not have content script injected
+            });
+        }
+      }
+      console.log('📢 Sent GitHub App sync notifications to all bolt.new tabs');
+    } catch (error) {
+      console.warn('Failed to send GitHub App sync notification:', error);
+    }
+  }
+
   private startKeepAlive(): void {
     // Keep the service worker alive by sending periodic messages to itself
     this.keepAliveInterval = setInterval(() => {
@@ -790,6 +878,12 @@ export class BackgroundService {
     if (this.keepAliveInterval) {
       clearInterval(this.keepAliveInterval);
       this.keepAliveInterval = null;
+    }
+
+    // Clean up auth check timeout
+    if (this.authCheckTimeout) {
+      clearTimeout(this.authCheckTimeout);
+      this.authCheckTimeout = null;
     }
 
     if (this.storageListener) {

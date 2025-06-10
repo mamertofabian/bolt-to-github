@@ -374,7 +374,7 @@ describe('GitHubUploadHandler', () => {
       });
       expect(mockDownloadService.downloadProjectZip).toHaveBeenCalled();
       expect(mockDownloadService.blobToBase64).toHaveBeenCalledWith(mockBlob);
-      expect(mockMessageHandler.sendZipData).toHaveBeenCalledWith(mockBase64);
+      expect(mockMessageHandler.sendZipData).toHaveBeenCalledWith(mockBase64, undefined);
     });
 
     test('uses default commit message when none provided', async () => {
@@ -434,7 +434,7 @@ describe('GitHubUploadHandler', () => {
 
       expect(mockDownloadService.downloadProjectZip).toHaveBeenCalled();
       expect(mockDownloadService.blobToBase64).toHaveBeenCalledWith(mockBlob);
-      expect(mockMessageHandler.sendZipData).toHaveBeenCalledWith(mockBase64);
+      expect(mockMessageHandler.sendZipData).toHaveBeenCalledWith(mockBase64, undefined);
     });
 
     test('falls back to cached files on download failure', async () => {

@@ -11,10 +11,6 @@ jest.mock('$lib/fileUtils', () => ({
 import { decodeBase64ToUtf8 } from '$lib/fileUtils';
 const mockDecodeBase64ToUtf8 = decodeBase64ToUtf8 as jest.MockedFunction<typeof decodeBase64ToUtf8>;
 
-jest.spyOn(console, 'error').mockImplementation(() => {});
-jest.spyOn(console, 'log').mockImplementation(() => {});
-jest.spyOn(console, 'warn').mockImplementation(() => {});
-
 describe('FileService', () => {
   let mockApiClient: any;
   let fileService: FileService;

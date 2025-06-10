@@ -1,6 +1,12 @@
 <script lang="ts">
   import { onMount, onDestroy } from 'svelte';
   import type { UploadStatusState } from '../lib/types';
+  import {
+    getRotatingMessage,
+    getContextualMessage,
+    resetMessageRotation,
+    type ReassuringMessageContext,
+  } from '../lib/utils/reassuringMessages';
 
   // Props with default state
   export let status: UploadStatusState = {
@@ -14,9 +20,20 @@
   let hideTimeout: number | null = null;
   let animationClass = '';
   let progressBarRef: HTMLElement;
+  let reassuringMessage = '';
+  let contextualMessage = '';
+  let messageUpdateInterval: number | null = null;
 
   // Watch for status changes and update UI accordingly
   $: if (mounted) updateNotificationUI(status);
+
+  // Update messages when progress changes
+  $: if (
+    status.progress !== undefined &&
+    (status.status === 'uploading' || status.status === 'loading' || status.status === 'analyzing')
+  ) {
+    updateReassuringMessages(status);
+  }
 
   // Respect user's motion preferences
   const prefersReducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
@@ -37,12 +54,20 @@
       hideTimeout = null;
     }
 
+    // Clear message update interval
+    if (messageUpdateInterval) {
+      clearInterval(messageUpdateInterval);
+      messageUpdateInterval = null;
+    }
+
     if (newStatus.status === 'idle') {
       animationClass = 'notification-exit';
       setTimeout(
         () => {
           notificationVisible = false;
           animationClass = '';
+          reassuringMessage = '';
+          contextualMessage = '';
         },
         prefersReducedMotion ? 0 : 300
       );
@@ -61,6 +86,23 @@
       prefersReducedMotion ? 0 : 400
     );
 
+    // Setup reassuring messages for long-running operations
+    if (
+      newStatus.status === 'uploading' ||
+      newStatus.status === 'loading' ||
+      newStatus.status === 'analyzing'
+    ) {
+      updateReassuringMessages(newStatus);
+
+      // Set up interval to check for stale progress
+      messageUpdateInterval = window.setInterval(() => {
+        updateReassuringMessages(status);
+      }, 500); // Check every 500ms for more responsive updates
+    } else {
+      reassuringMessage = '';
+      contextualMessage = '';
+    }
+
     // Auto-hide for success/error/complete states
     if (
       newStatus.status === 'success' ||
@@ -76,9 +118,26 @@
     }
   }
 
+  function updateReassuringMessages(currentStatus: UploadStatusState) {
+    const context: ReassuringMessageContext = {
+      operation: currentStatus.status as any,
+      progress: currentStatus.progress,
+      // You can add filename and filesCount if available in the status
+    };
+
+    reassuringMessage = getRotatingMessage(context);
+    contextualMessage = getContextualMessage(context);
+  }
+
   function closeNotification(source?: string) {
     console.log('🔄 Closing notification', source);
     animationClass = 'notification-exit';
+
+    // Clear message update interval
+    if (messageUpdateInterval) {
+      clearInterval(messageUpdateInterval);
+      messageUpdateInterval = null;
+    }
 
     // Reset state after animation completes
     setTimeout(
@@ -86,6 +145,9 @@
         notificationVisible = false;
         animationClass = '';
         status = { status: 'idle' };
+        reassuringMessage = '';
+        contextualMessage = '';
+        resetMessageRotation();
       },
       prefersReducedMotion ? 0 : 300
     );
@@ -103,6 +165,9 @@
     console.log('🧹 Cleaning up upload status component');
     if (hideTimeout) {
       clearTimeout(hideTimeout);
+    }
+    if (messageUpdateInterval) {
+      clearInterval(messageUpdateInterval);
     }
   });
 
@@ -211,6 +276,17 @@
           </div>
         </div>
       </div>
+
+      {#if reassuringMessage || contextualMessage}
+        <div class="reassuring-messages">
+          {#if reassuringMessage}
+            <p class="reassuring-message primary">{reassuringMessage}</p>
+          {/if}
+          {#if contextualMessage}
+            <p class="reassuring-message secondary">{contextualMessage}</p>
+          {/if}
+        </div>
+      {/if}
 
       {#if status.message}
         <p class="status-message">{status.message}</p>
@@ -509,6 +585,49 @@
     margin: 0;
   }
 
+  /* Reassuring messages styling */
+  .reassuring-messages {
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+    margin-top: 0.5rem;
+    margin-bottom: 0.5rem;
+  }
+
+  .reassuring-message {
+    font-size: 0.8125rem;
+    line-height: 1.3;
+    margin: 0;
+    transition:
+      opacity 0.3s ease,
+      transform 0.3s ease;
+    animation: fadeInUp 0.4s ease-out;
+  }
+
+  .reassuring-message.primary {
+    color: var(--upload-text-primary);
+    font-weight: 500;
+    opacity: 0.95;
+  }
+
+  .reassuring-message.secondary {
+    color: var(--upload-text-secondary);
+    font-weight: 400;
+    opacity: 0.85;
+    font-style: italic;
+  }
+
+  @keyframes fadeInUp {
+    0% {
+      opacity: 0;
+      transform: translateY(4px);
+    }
+    100% {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+
   /* Status-specific animations */
   .status-uploading {
     animation: pulse 2s infinite;
@@ -605,6 +724,17 @@
     .close-icon {
       width: 1rem;
       height: 1rem;
+    }
+
+    .reassuring-message {
+      font-size: 0.75rem;
+      line-height: 1.2;
+    }
+
+    .reassuring-messages {
+      gap: 0.125rem;
+      margin-top: 0.375rem;
+      margin-bottom: 0.375rem;
     }
   }
 

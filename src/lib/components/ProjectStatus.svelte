@@ -1,11 +1,12 @@
 <script lang="ts">
   import { createEventDispatcher, onMount } from 'svelte';
-  import { GitHubService } from '../../services/GitHubService';
+  import { UnifiedGitHubService } from '../../services/UnifiedGitHubService';
   import RepoSettings from '$lib/components/RepoSettings.svelte';
   import IssueManager from '$lib/components/IssueManager.svelte';
   import QuickIssueForm from '$lib/components/QuickIssueForm.svelte';
   import { isPremium } from '$lib/stores/premiumStore';
   import { issuesStore } from '$lib/stores/issuesStore';
+  import type { UpgradeModalType } from '$lib/utils/upgradeModal';
 
   export let projectId: string;
   export let gitHubUsername: string;
@@ -13,11 +14,13 @@
   export let branch: string;
   export let token: string;
   export let projectTitle: string = 'My Project';
+  export let handleUpgradeClick: (upgradeModalType: UpgradeModalType) => void;
 
   let showSettingsModal = false;
   let hasFileChanges = false;
   let showIssueManager = false;
   let showQuickIssueForm = false;
+  let effectiveToken = '';
 
   // Premium status
   $: isUserPremium = $isPremium;
@@ -25,6 +28,26 @@
   // Issues count from store
   $: openIssuesCountStore = issuesStore.getOpenIssuesCount(gitHubUsername, repoName);
   $: openIssuesCount = $openIssuesCountStore;
+
+  // Update effective token when component initializes or token changes
+  async function updateEffectiveToken() {
+    // Get authentication method to determine correct token to use
+    const authSettings = await chrome.storage.local.get(['authenticationMethod']);
+    const authMethod = authSettings.authenticationMethod || 'pat';
+
+    if (authMethod === 'github_app') {
+      // For GitHub App, use a placeholder token that the store will recognize
+      effectiveToken = 'github_app_token';
+    } else {
+      // For PAT, use the actual token
+      effectiveToken = token || '';
+    }
+  }
+
+  // Update effective token when token prop changes
+  $: if (token !== undefined) {
+    updateEffectiveToken();
+  }
 
   let isLoading = {
     repoStatus: true,
@@ -45,7 +68,19 @@
 
   export const getProjectStatus = async () => {
     try {
-      const githubService = new GitHubService(token);
+      // Get authentication method to determine how to create the service
+      const authSettings = await chrome.storage.local.get(['authenticationMethod']);
+      const authMethod = authSettings.authenticationMethod || 'pat';
+
+      let githubService: UnifiedGitHubService;
+
+      if (authMethod === 'github_app') {
+        // Use GitHub App authentication
+        githubService = new UnifiedGitHubService({ type: 'github_app' });
+      } else {
+        // Use PAT authentication (backward compatible)
+        githubService = new UnifiedGitHubService(token);
+      }
 
       // Get repo info
       const repoInfo = await githubService.getRepoInfo(gitHubUsername, repoName);
@@ -83,9 +118,10 @@
         }
         isLoading.latestCommit = false;
 
-        // Load issues into store
+        // Load issues into store - for GitHub App we pass a placeholder token
+        const tokenToUse = authMethod === 'github_app' ? 'github_app_token' : token;
         try {
-          await issuesStore.loadIssues(gitHubUsername, repoName, token, 'all');
+          await issuesStore.loadIssues(gitHubUsername, repoName, tokenToUse, 'all');
         } catch (err) {
           console.log('Error fetching issues:', err);
         }
@@ -100,6 +136,10 @@
       }
     } catch (error) {
       console.log('Error fetching repo details:', error);
+      // Enhanced error handling for better UX
+      if (error instanceof Error && error.message.includes('no github settings')) {
+        console.log('GitHub App not configured - show setup guidance');
+      }
       // Reset loading states on error
       Object.keys(isLoading).forEach((key) => (isLoading[key as keyof typeof isLoading] = false));
     }
@@ -206,11 +246,7 @@
 
     // Check if user has premium access
     if (!isUserPremium) {
-      // Send message to show upgrade modal
-      chrome.runtime.sendMessage({
-        type: 'SHOW_UPGRADE_MODAL',
-        feature: 'file-changes',
-      });
+      handleUpgradeClick('fileChanges');
       return;
     }
 
@@ -224,11 +260,7 @@
 
     // Check if user has premium access
     if (!isUserPremium) {
-      // Send message to show upgrade modal
-      chrome.runtime.sendMessage({
-        type: 'SHOW_UPGRADE_MODAL',
-        feature: 'github-issues',
-      });
+      handleUpgradeClick('issues');
       return;
     }
 
@@ -237,6 +269,13 @@
 
   function openQuickIssueForm(event: MouseEvent | KeyboardEvent) {
     event.stopPropagation();
+
+    // Check if user has premium access
+    if (!isUserPremium) {
+      handleUpgradeClick('issues');
+      return;
+    }
+
     showQuickIssueForm = true;
   }
 
@@ -373,27 +412,35 @@
         </div>
 
         <!-- Quick Issue button -->
-        <button
-          class="tooltip-container w-8 h-8 flex items-center justify-center border border-slate-700 rounded-full text-slate-400 hover:bg-slate-800 hover:text-slate-300 transition-colors"
-          on:click|stopPropagation={openQuickIssueForm}
-          disabled={isLoading.repoStatus || !repoExists}
-          aria-label="Quick Issue"
-        >
-          <svg
-            width="16"
-            height="16"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            stroke-width="2"
-            stroke-linecap="round"
-            stroke-linejoin="round"
+        <div class="relative">
+          <button
+            class="tooltip-container w-8 h-8 flex items-center justify-center border border-slate-700 rounded-full text-slate-400 hover:bg-slate-800 hover:text-slate-300 transition-colors"
+            on:click|stopPropagation={openQuickIssueForm}
+            disabled={isLoading.repoStatus || !repoExists}
+            aria-label="Quick Issue"
           >
-            <line x1="12" y1="5" x2="12" y2="19"></line>
-            <line x1="5" y1="12" x2="19" y2="12"></line>
-          </svg>
-          <span class="tooltip">Quick Issue</span>
-        </button>
+            <svg
+              width="16"
+              height="16"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+            >
+              <line x1="12" y1="5" x2="12" y2="19"></line>
+              <line x1="5" y1="12" x2="19" y2="12"></line>
+            </svg>
+            <span class="tooltip">Quick Issue{!isUserPremium ? ' (Pro)' : ''}</span>
+          </button>
+          {#if !isUserPremium}
+            <span
+              class="absolute -top-1 -right-1 text-[8px] bg-gradient-to-r from-blue-500 to-purple-600 text-white px-1 py-0.5 rounded-full font-bold leading-none"
+              >PRO</span
+            >
+          {/if}
+        </div>
 
         <!-- View File Changes button - only show if there are changes -->
         {#if hasFileChanges}
@@ -480,7 +527,7 @@
 {#if showIssueManager}
   <IssueManager
     show={showIssueManager}
-    githubToken={token}
+    githubToken={effectiveToken}
     repoOwner={gitHubUsername}
     {repoName}
     on:close={handleIssueManagerClose}
@@ -490,7 +537,7 @@
 {#if showQuickIssueForm}
   <QuickIssueForm
     show={showQuickIssueForm}
-    githubToken={token}
+    githubToken={effectiveToken}
     repoOwner={gitHubUsername}
     {repoName}
     on:success={handleIssueSuccess}

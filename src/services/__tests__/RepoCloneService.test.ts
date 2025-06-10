@@ -18,10 +18,6 @@ jest.mock('../RateLimitHandler', () => {
   };
 });
 
-jest.spyOn(console, 'error').mockImplementation(() => {});
-jest.spyOn(console, 'log').mockImplementation(() => {});
-jest.spyOn(console, 'warn').mockImplementation(() => {});
-
 describe('RepoCloneService', () => {
   let mockApiClient: any;
   let mockFileService: any;

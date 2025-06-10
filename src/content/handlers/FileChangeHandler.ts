@@ -162,12 +162,22 @@ export class FileChangeHandler implements IFileChangeHandler {
 
       // Use GitHub comparison
       try {
-        // Import GitHubService dynamically to avoid circular dependencies
-        const { GitHubService } = await import('../../services/GitHubService');
+        // Import UnifiedGitHubService dynamically to avoid circular dependencies
+        const { UnifiedGitHubService } = await import('../../services/UnifiedGitHubService');
 
-        // Create a new instance of GitHubService
-        const token = await chrome.storage.sync.get(['githubToken']);
-        const githubService = new GitHubService(token.githubToken);
+        // Get authentication method
+        const authSettings = await chrome.storage.local.get(['authenticationMethod']);
+        const authMethod = authSettings.authenticationMethod || 'pat';
+
+        let githubService: InstanceType<typeof UnifiedGitHubService>;
+
+        if (authMethod === 'github_app') {
+          githubService = new UnifiedGitHubService({ type: 'github_app' });
+        } else {
+          // Create with PAT
+          const token = await chrome.storage.sync.get(['githubToken']);
+          githubService = new UnifiedGitHubService(token.githubToken);
+        }
 
         // Compare with GitHub
         changedFiles = await this.filePreviewService.compareWithGitHub(

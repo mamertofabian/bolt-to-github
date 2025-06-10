@@ -14,6 +14,8 @@ export class ContentManager {
   private reconnectTimer: NodeJS.Timeout | null = null;
   private heartbeatInterval: NodeJS.Timeout | null = null;
   private isDestroyed = false;
+  private isInRecovery = false;
+  private lastDisconnectTime = 0;
 
   constructor() {
     if (!this.shouldInitialize()) {
@@ -38,6 +40,7 @@ export class ContentManager {
 
       console.log('🎉 ContentManager initialized successfully with MessageHandler');
       console.log('💡 Press Ctrl+Shift+D to test notification systems');
+      console.log('🔧 Press Ctrl+Shift+R to test recovery mechanism');
     } catch (error) {
       console.error('Error initializing ContentManager:', error);
       this.handleInitializationError(error);
@@ -102,13 +105,25 @@ export class ContentManager {
 
     this.port.onDisconnect.addListener(() => {
       const error = chrome.runtime.lastError;
+      const now = Date.now();
       console.log('Port disconnected:', error?.message || 'No error message');
 
+      // Check for quick successive disconnections (within 3 seconds)
+      // This often indicates context invalidation even without specific error messages
+      const isQuickSuccessiveDisconnect = now - this.lastDisconnectTime < 3000;
+      this.lastDisconnectTime = now;
+
       // Check if this is true extension context invalidation vs normal disconnect
-      const contextInvalidated = this.isExtensionContextInvalidated(error) || !chrome.runtime?.id;
+      const contextInvalidated =
+        this.isExtensionContextInvalidated(error) ||
+        !chrome.runtime?.id ||
+        isQuickSuccessiveDisconnect;
 
       if (contextInvalidated) {
-        console.log('🔴 Extension context invalidation detected');
+        console.log(
+          '🔴 Extension context invalidation detected',
+          isQuickSuccessiveDisconnect ? '(quick successive disconnect)' : ''
+        );
         this.handleExtensionContextInvalidated();
       } else {
         console.log('🟡 Normal port disconnect, attempting reconnection');
@@ -125,53 +140,97 @@ export class ContentManager {
 
     if (!error?.message) return false;
 
-    const invalidationPatterns = [
+    // These patterns indicate TRUE context invalidation (unrecoverable)
+    const trueInvalidationPatterns = [
       'Extension context invalidated',
       'Extension context was invalidated',
-      'Could not establish connection',
-      'Receiving end does not exist',
-      'The message port closed before a response was received',
       'chrome-extension://invalid/',
       'net::ERR_FAILED',
     ];
 
-    return invalidationPatterns.some((pattern) => error.message.includes(pattern));
+    // These patterns might indicate service worker issues (potentially recoverable)
+    const serviceWorkerPatterns = [
+      'Could not establish connection',
+      'Receiving end does not exist',
+      'The message port closed before a response was received',
+    ];
+
+    const isTrueInvalidation = trueInvalidationPatterns.some((pattern) =>
+      error.message.includes(pattern)
+    );
+
+    const isServiceWorkerIssue = serviceWorkerPatterns.some((pattern) =>
+      error.message.includes(pattern)
+    );
+
+    // If it's a service worker issue, check if runtime is still available
+    if (isServiceWorkerIssue && chrome.runtime?.id) {
+      console.log(
+        '🟡 Service worker issue detected, but runtime still available - attempting recovery'
+      );
+      return false; // Try normal reconnection first
+    }
+
+    return isTrueInvalidation || isServiceWorkerIssue;
   }
 
   private handleExtensionContextInvalidated(): void {
     console.log('Extension context invalidated, attempting recovery...');
 
+    // Set a recovery flag to prevent processing messages during recovery
+    this.isInRecovery = true;
+
+    // Set a safety timeout to clear recovery flag after 30 seconds max
+    // This prevents getting stuck in recovery mode indefinitely
+    setTimeout(() => {
+      if (this.isInRecovery) {
+        console.warn('⚠️ Recovery timeout reached, clearing recovery flag');
+        this.isInRecovery = false;
+      }
+    }, 30000);
+
     // Show notification before cleanup (while UIManager still exists)
     this.notifyUserOfExtensionReload();
 
-    // Clean up current state
-    this.cleanup();
+    // Clean up current state but preserve recovery flag
+    this.cleanup(true);
 
-    // Attempt to reinitialize after a short delay
-    setTimeout(() => {
-      if (!this.isDestroyed) {
-        console.log('🔄 Attempting to reinitialize after context invalidation...');
-        this.attemptRecovery();
-      }
-    }, 2000); // Wait 2 seconds before attempting recovery
+    // Attempt immediate recovery instead of waiting 2 seconds
+    // The issue is that background keeps sending messages while we wait
+    console.log('🔄 Starting immediate recovery after context invalidation...');
+    this.attemptRecovery();
   }
 
   private attemptRecovery(): void {
     try {
       // Check if Chrome runtime is available for recovery
       if (!chrome.runtime?.id) {
-        console.warn('🔄 Recovery failed: Chrome runtime still not available');
-        // Try again in 5 seconds
+        console.warn(
+          '🔄 Recovery failed: Chrome runtime not available - likely true context invalidation'
+        );
+
+        // If runtime is not available, this is likely true context invalidation
+        // Don't keep retrying indefinitely - show user notification and stop
+        if (this.reconnectAttempts >= 2) {
+          console.error(
+            '💀 True context invalidation detected - recovery impossible without page refresh'
+          );
+          this.handleUnrecoverableContextInvalidation();
+          return;
+        }
+
+        // Try once more in case it's a timing issue
+        this.reconnectAttempts++;
         setTimeout(() => {
-          if (!this.isDestroyed) {
-            console.log('🔄 Retrying recovery...');
+          if (!this.isDestroyed && this.isInRecovery) {
+            console.log('🔄 Final retry attempt for context recovery...');
             this.attemptRecovery();
           }
         }, 5000);
         return;
       }
 
-      console.log('✅ Chrome runtime available, attempting full reinitialization...');
+      console.log('✅ Chrome runtime available, attempting service worker reconnection...');
 
       // Reset the destroyed flag since we're recovering
       this.isDestroyed = false;
@@ -180,7 +239,7 @@ export class ContentManager {
       this.initializeConnection();
 
       if (!this.port) {
-        throw new Error('Failed to establish port connection during recovery');
+        throw new Error('Failed to establish port connection - service worker may not be ready');
       }
 
       // Recreate MessageHandler with new port
@@ -188,7 +247,7 @@ export class ContentManager {
 
       // Recreate UIManager
       this.uiManager = UIManager.getInstance(this.messageHandler);
-      console.log('🔧 Recovery: Recreated UIManager after context invalidation');
+      console.log('🔧 Recovery: Recreated UIManager after service worker restart');
 
       // Re-setup event listeners
       this.setupEventListeners();
@@ -197,26 +256,126 @@ export class ContentManager {
       // Clear any stale stored file changes
       this.clearStaleStoredChanges();
 
+      // Clear recovery flag before sending ready message
+      this.isInRecovery = false;
+      this.reconnectAttempts = 0; // Reset attempts on successful recovery
+
       this.messageHandler.sendMessage('CONTENT_SCRIPT_READY');
 
-      console.log('🎉 Recovery successful! GitHub button should be restored.');
+      console.log('🎉 Recovery successful! Service worker reconnected.');
     } catch (error) {
       console.error('❌ Recovery failed:', error);
 
-      // If recovery fails, try again in 10 seconds (up to 3 attempts)
-      if (this.reconnectAttempts < 3) {
+      // If recovery fails multiple times, this is likely true context invalidation
+      if (this.reconnectAttempts >= 3) {
+        console.error('💀 Multiple recovery attempts failed - likely true context invalidation');
+        this.handleUnrecoverableContextInvalidation();
+      } else {
         this.reconnectAttempts++;
-        console.log(`🔄 Scheduling recovery retry ${this.reconnectAttempts}/3 in 10 seconds...`);
+        console.log(`🔄 Scheduling recovery retry ${this.reconnectAttempts}/3 in 5 seconds...`);
         setTimeout(() => {
-          if (!this.isDestroyed) {
+          if (!this.isDestroyed && this.isInRecovery) {
             this.attemptRecovery();
           }
-        }, 10000);
-      } else {
-        console.error('💀 Recovery failed after 3 attempts. Extension needs manual refresh.');
-        this.notifyUserOfError();
+        }, 5000);
       }
     }
+  }
+
+  /**
+   * Handle truly unrecoverable context invalidation
+   * The only solution is to notify the user gracefully without interrupting their work
+   */
+  private handleUnrecoverableContextInvalidation(): void {
+    console.error('💀 Unrecoverable context invalidation detected');
+
+    this.isInRecovery = false;
+    this.isDestroyed = true;
+
+    // Try to use the existing graceful notification system first
+    if (this.uiManager) {
+      this.notifyUserOfExtensionReload();
+    } else {
+      // Fallback: Create a simple, non-intrusive notification that doesn't auto-refresh
+      this.showFallbackContextInvalidationNotification();
+    }
+
+    // Stop all timers and cleanup
+    this.cleanup();
+  }
+
+  /**
+   * Fallback notification for context invalidation when UIManager is not available
+   * This creates a simple notification that doesn't interrupt the user's work and never auto-refreshes
+   */
+  private showFallbackContextInvalidationNotification(): void {
+    // Create a simple, non-intrusive notification that doesn't depend on UIManager
+    const notification = document.createElement('div');
+    notification.id = 'bolt-github-context-invalidation-notice';
+    notification.style.cssText = `
+      position: fixed;
+      top: 20px;
+      right: 20px;
+      background: #f59e0b;
+      color: white;
+      padding: 12px 16px;
+      border-radius: 6px;
+      font-family: system-ui, -apple-system, sans-serif;
+      font-size: 13px;
+      font-weight: 500;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+      z-index: 10000;
+      max-width: 320px;
+      line-height: 1.4;
+      border: 1px solid #d97706;
+      cursor: default;
+    `;
+
+    notification.innerHTML = `
+      <div style="margin-bottom: 6px;">⚠️ Bolt to GitHub Extension</div>
+      <div>Extension connection lost. Please manually refresh the page when convenient to restore GitHub features.</div>
+    `;
+
+    // Remove any existing notifications
+    const existing = document.getElementById('bolt-github-context-invalidation-notice');
+    if (existing) {
+      existing.remove();
+    }
+
+    document.body.appendChild(notification);
+
+    // Make notification dismissible but NO AUTO-REFRESH
+    notification.addEventListener('click', () => {
+      notification.remove();
+    });
+
+    // Add hover effect to indicate it's dismissible
+    notification.addEventListener('mouseenter', () => {
+      notification.style.opacity = '0.8';
+      notification.style.cursor = 'pointer';
+    });
+
+    notification.addEventListener('mouseleave', () => {
+      notification.style.opacity = '1';
+      notification.style.cursor = 'default';
+    });
+
+    console.log(
+      '📢 Fallback notification shown for context invalidation - user can dismiss manually'
+    );
+  }
+
+  /**
+   * Show notification about context invalidation requiring manual refresh
+   * Note: Using existing graceful notification system - NO AUTO-REFRESH to avoid interrupting user's work
+   */
+  private showContextInvalidationNotification(): void {
+    // This method is now deprecated in favor of using the existing notifyUserOfExtensionReload()
+    // Keeping it for backward compatibility but it should not be used
+    console.warn(
+      'showContextInvalidationNotification() is deprecated - use notifyUserOfExtensionReload() instead'
+    );
+    this.notifyUserOfExtensionReload();
   }
 
   private scheduleReconnection(): void {
@@ -332,7 +491,7 @@ export class ContentManager {
     });
   }
 
-  private cleanup(): void {
+  private cleanup(preserveRecoveryState = false): void {
     this.isDestroyed = true;
 
     // Clear timers
@@ -363,6 +522,13 @@ export class ContentManager {
     // Reset UIManager singleton to ensure clean recreation
     UIManager.resetInstance();
     this.uiManager = undefined; // Clear reference to cleaned up UIManager
+
+    // Reset recovery flag in case cleanup is called directly
+    // (this ensures we don't get stuck in recovery mode)
+    // But preserve recovery state if we're in the middle of recovery
+    if (!preserveRecoveryState) {
+      this.isInRecovery = false;
+    }
   }
 
   /**
@@ -406,6 +572,12 @@ export class ContentManager {
       // Ctrl+Shift+D = Test Notifications
       if (event.ctrlKey && event.shiftKey && event.key === 'D') {
         this.debugNotifications();
+        event.preventDefault();
+      }
+
+      // Ctrl+Shift+R = Test Recovery
+      if (event.ctrlKey && event.shiftKey && event.key === 'R') {
+        this.debugRecovery();
         event.preventDefault();
       }
     });
@@ -500,6 +672,14 @@ export class ContentManager {
 
           if (message.type === 'UPDATE_PREMIUM_STATUS') {
             console.log('📨 Received UPDATE_PREMIUM_STATUS message from background:', message.data);
+
+            // Check if we're in recovery mode - if so, ignore this message to prevent errors
+            if (this.isInRecovery) {
+              console.log('🔄 Ignoring UPDATE_PREMIUM_STATUS during recovery');
+              sendResponse({ success: true, ignored: true });
+              return;
+            }
+
             // Forward to premium service through UIManager
             if (this.uiManager) {
               const premiumService = this.uiManager.getPremiumService();
@@ -519,6 +699,14 @@ export class ContentManager {
           }
           if (message.type === 'SHOW_REAUTHENTICATION_MODAL') {
             console.log('📨 Received SHOW_REAUTHENTICATION_MODAL message:', message.data);
+
+            // Check if we're in recovery mode - if so, ignore this message to prevent errors
+            if (this.isInRecovery) {
+              console.log('🔄 Ignoring SHOW_REAUTHENTICATION_MODAL during recovery');
+              sendResponse({ success: true, ignored: true });
+              return;
+            }
+
             /* Show re-authentication modal via UIManager */
             if (this.uiManager) {
               this.uiManager.showReauthenticationModal(message.data);
@@ -532,6 +720,14 @@ export class ContentManager {
 
           if (message.type === 'SHOW_SUBSCRIPTION_DOWNGRADE') {
             console.log('📨 Received SHOW_SUBSCRIPTION_DOWNGRADE message:', message.data);
+
+            // Check if we're in recovery mode - if so, ignore this message to prevent errors
+            if (this.isInRecovery) {
+              console.log('🔄 Ignoring SHOW_SUBSCRIPTION_DOWNGRADE during recovery');
+              sendResponse({ success: true, ignored: true });
+              return;
+            }
+
             /* Show subscription downgrade notification via UIManager */
             if (this.uiManager) {
               this.uiManager.showNotification({
@@ -557,6 +753,15 @@ export class ContentManager {
   }
 
   private handleBackgroundMessage(message: Message): void {
+    // Check if we're in recovery mode - if so, ignore messages that depend on UIManager
+    if (
+      this.isInRecovery &&
+      ['UPLOAD_STATUS', 'GITHUB_SETTINGS_CHANGED', 'PUSH_TO_GITHUB'].includes(message.type)
+    ) {
+      console.log(`🔄 Ignoring ${message.type} during recovery`);
+      return;
+    }
+
     switch (message.type) {
       case 'UPLOAD_STATUS':
         this.uiManager?.updateUploadStatus(message.status!);
@@ -711,5 +916,16 @@ export class ContentManager {
         });
       });
     }, 5000);
+  }
+
+  /**
+   * Debug method to test recovery mechanism
+   * Triggered by Ctrl+Shift+R
+   */
+  private debugRecovery(): void {
+    console.log('🔧 Debug: Testing recovery mechanism...');
+
+    // Simulate extension context invalidation
+    this.handleExtensionContextInvalidated();
   }
 }

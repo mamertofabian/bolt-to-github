@@ -21,3 +21,5 @@ vite.config.ts.timestamp*
 .history
 .qodo
 coverage/
+.idea
+

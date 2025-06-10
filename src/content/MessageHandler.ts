@@ -107,8 +107,8 @@ export class MessageHandler {
     );
   }
 
-  public sendZipData(data: string) {
-    this.sendMessage('ZIP_DATA', data);
+  public sendZipData(data: string, currentProjectId?: string) {
+    this.sendMessage('ZIP_DATA', { data, projectId: currentProjectId });
   }
 
   public sendDebugMessage(message: string) {

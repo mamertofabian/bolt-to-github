@@ -22,7 +22,7 @@
 >
   <Alert
     variant="destructive"
-    class="mb-4 border-red-900 bg-red-900/20 hover:bg-red-900/30 transition-colors"
+    class="my-4 border-red-900 bg-red-900/20 hover:bg-red-900/30 transition-colors"
   >
     <AlertTriangle class="h-4 w-4 text-red-400" />
     <AlertTitle class="text-red-200">Missing Configuration</AlertTitle>
