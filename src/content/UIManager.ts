@@ -15,6 +15,8 @@ import { ComponentLifecycleManager } from './infrastructure/ComponentLifecycleMa
 import { UIStateManager } from './services/UIStateManager';
 import { PushReminderService } from './services/PushReminderService';
 import { PremiumService } from './services/PremiumService';
+import { WhatsNewManager } from './managers/WhatsNewManager';
+import { UIElementFactory } from './infrastructure/UIElementFactory';
 
 export class UIManager {
   private static instance: UIManager | null = null;
@@ -40,6 +42,7 @@ export class UIManager {
   // Add services
   private pushReminderService: PushReminderService;
   private premiumService: PremiumService;
+  private whatsNewManager: WhatsNewManager;
 
   // Store original history functions for cleanup
   private originalPushState: typeof history.pushState | null = null;
@@ -97,6 +100,24 @@ export class UIManager {
     // Initialize PremiumService
     console.log('🔊 Initializing PremiumService');
     this.premiumService = new PremiumService();
+
+    // Initialize WhatsNewManager
+    console.log('🔊 Initializing WhatsNewManager');
+    this.whatsNewManager = new WhatsNewManager(this.componentLifecycleManager, {
+      createRootContainer: (id: string) =>
+        UIElementFactory.createContainer({
+          id,
+          styles: {
+            position: 'fixed',
+            top: '0',
+            left: '0',
+            width: '100%',
+            height: '100%',
+            pointerEvents: 'none',
+            zIndex: '9999',
+          },
+        }),
+    });
 
     // Set UIManager reference in PremiumService for component updates
     this.premiumService.setUIManager(this);
@@ -159,6 +180,9 @@ export class UIManager {
     this.uploadStatusManager.initialize();
     // Don't initialize button here - let DOM observer handle it
     // to prevent duplicate buttons during recovery
+
+    // Check and show What's New modal if needed
+    await this.whatsNewManager.checkAndShow();
   }
 
   private startDOMObservation() {
@@ -471,6 +495,7 @@ export class UIManager {
 
     // Cleanup services
     this.pushReminderService.cleanup();
+    this.whatsNewManager.cleanup();
 
     // Restore original history functions
     if (this.originalPushState && this.originalReplaceState) {
@@ -588,6 +613,13 @@ export class UIManager {
    */
   public getPremiumService(): PremiumService {
     return this.premiumService;
+  }
+
+  /**
+   * Get WhatsNewManager for external access
+   */
+  public getWhatsNewManager(): WhatsNewManager {
+    return this.whatsNewManager;
   }
 
   /**

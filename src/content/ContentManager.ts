@@ -742,6 +742,33 @@ export class ContentManager {
             }
             return;
           }
+
+          if (message.type === 'SHOW_WHATS_NEW_MODAL') {
+            console.log('📨 Received SHOW_WHATS_NEW_MODAL message');
+
+            // Check if we're in recovery mode - if so, ignore this message to prevent errors
+            if (this.isInRecovery) {
+              console.log('🔄 Ignoring SHOW_WHATS_NEW_MODAL during recovery');
+              sendResponse({ success: true, ignored: true });
+              return;
+            }
+
+            /* Show What's New modal via UIManager */
+            if (this.uiManager) {
+              const whatsNewManager = this.uiManager.getWhatsNewManager();
+              if (whatsNewManager) {
+                await whatsNewManager.showManually();
+                sendResponse({ success: true });
+              } else {
+                console.warn('❌ WhatsNewManager not available');
+                sendResponse({ error: 'WhatsNewManager not available' });
+              }
+            } else {
+              console.warn('❌ UI manager not available');
+              sendResponse({ error: 'UI manager not available' });
+            }
+            return;
+          }
         } catch (error) {
           console.error('Error handling message:', error);
           sendResponse({ error: error instanceof Error ? error.message : 'Unknown error' });

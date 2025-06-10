@@ -7,7 +7,7 @@
     CardTitle,
   } from '$lib/components/ui/card';
   import { CREATE_TOKEN_URL, CREATE_FINE_GRAINED_TOKEN_URL } from '$lib/constants';
-  import { ChevronDown } from 'lucide-svelte';
+  import { ChevronDown, Sparkles } from 'lucide-svelte';
 
   let openSections = {
     gettingStarted: false,
@@ -21,14 +21,39 @@
   function toggleSection(section: SectionKey) {
     openSections[section] = !openSections[section];
   }
+
+  async function showWhatsNew() {
+    try {
+      // Send message to content script to show What's New modal
+      const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
+      if (tab?.id) {
+        await chrome.tabs.sendMessage(tab.id, {
+          type: 'SHOW_WHATS_NEW_MODAL',
+        });
+        // Close the popup after triggering the modal
+        window.close();
+      }
+    } catch (error) {
+      console.error("Failed to show What's New modal:", error);
+    }
+  }
 </script>
 
 <div class="space-y-4">
   <div>
-    <h2 class="text-lg font-semibold text-slate-200 flex items-center gap-2">
-      <span>✨</span>
-      <span>Help & Documentation</span>
-    </h2>
+    <div class="flex items-center justify-between mb-2">
+      <h2 class="text-lg font-semibold text-slate-200 flex items-center gap-2">
+        <span>✨</span>
+        <span>Help & Documentation</span>
+      </h2>
+      <button
+        on:click={showWhatsNew}
+        class="flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium text-white bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 rounded-md transition-colors"
+      >
+        <Sparkles size={16} />
+        What's New
+      </button>
+    </div>
     <p class="text-sm text-slate-400">Learn how to use Bolt to GitHub effectively</p>
   </div>
 
