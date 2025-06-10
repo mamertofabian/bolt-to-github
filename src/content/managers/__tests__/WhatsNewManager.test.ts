@@ -38,6 +38,13 @@ jest.mock('$lib/components/WhatsNewModal.svelte', () => {
   };
 });
 
+// Mock DOMPurify
+jest.mock('dompurify', () => ({
+  default: {
+    sanitize: jest.fn((content) => content),
+  },
+}));
+
 // Mock whatsNewContent
 jest.mock('$lib/constants/whatsNewContent', () => ({
   whatsNewContent: {

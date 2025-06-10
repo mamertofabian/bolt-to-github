@@ -2,6 +2,7 @@
   import { fade, fly } from 'svelte/transition';
   import { onMount, onDestroy } from 'svelte';
   import { marked } from 'marked';
+  import DOMPurify from 'dompurify';
   import { whatsNewContent } from '$lib/constants/whatsNewContent';
 
   export let version: string;
@@ -29,7 +30,8 @@ ${versionData.highlights.map((h) => `- ${h}`).join('\n')}
 
 ${versionData.details || ''}
       `.trim();
-      renderedContent = marked(fullContent, { breaks: true }) as string;
+      const rawHtml = marked(fullContent, { breaks: true }) as string;
+      renderedContent = DOMPurify.sanitize(rawHtml);
     }
 
     // Remove enter animation class after animation completes
@@ -106,7 +108,7 @@ ${versionData.details || ''}
           <div class="whats-new-title-wrapper">
             <span class="whats-new-icon" aria-hidden="true">🎉</span>
             <h2 id="whats-new-title" class="whats-new-title">
-              What's New in v{version}
+              What's New in Bolt to GitHub v{version}
             </h2>
           </div>
 

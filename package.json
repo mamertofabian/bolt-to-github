@@ -23,6 +23,8 @@
   },
   "dependencies": {
     "@testing-library/jest-dom": "^6.6.3",
+    "@types/dompurify": "^3.2.0",
+    "dompurify": "^3.2.6",
     "fflate": "^0.8.2",
     "ignore": "^6.0.2",
     "jest-environment-jsdom": "^29.7.0",

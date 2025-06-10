@@ -84,8 +84,6 @@ export class WhatsNewManager implements IWhatsNewManager {
       portalTarget.style.pointerEvents = 'auto';
       container.appendChild(portalTarget);
 
-      document.body.appendChild(container);
-
       this.component = new WhatsNewModal({
         target: portalTarget,
         props: {
@@ -94,6 +92,8 @@ export class WhatsNewManager implements IWhatsNewManager {
           onDontShowAgain: () => this.handleDontShowAgain(),
         },
       });
+
+      document.body.appendChild(container);
 
       this.componentLifecycleManager.register('WhatsNewModal', this.component);
 
@@ -121,6 +121,8 @@ export class WhatsNewManager implements IWhatsNewManager {
     } catch (error) {
       console.error('Error saving dismissed version:', error);
     }
+    // Close the modal after saving the preference
+    this.cleanup();
   }
 
   private async markAsShown(): Promise<void> {
