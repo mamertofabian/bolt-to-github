@@ -24,6 +24,7 @@ export default {
     '<rootDir>/src/test/setup/console-mocks.js',
   ],
   testRegex: '(/__tests__/.*|(\\.|/)(test|spec))\\.tsx?$',
+  testPathIgnorePatterns: ['<rootDir>/node_modules/', '<rootDir>/.*/__tests__/.*test-fixtures/.*'],
   moduleFileExtensions: ['ts', 'tsx', 'js', 'jsx', 'json', 'node'],
   collectCoverage: true,
   coverageDirectory: 'coverage',

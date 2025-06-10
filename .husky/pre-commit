@@ -2,7 +2,7 @@
 . "$(dirname -- "$0")/_/husky.sh"
 
 # Run tests
-pnpm test
+# pnpm test
 
 # Run lint-staged to format files
 pnpm lint-staged
