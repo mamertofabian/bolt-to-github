@@ -23,14 +23,18 @@ global.chrome = {
 
 // Mock WhatsNewModal component
 jest.mock('$lib/components/WhatsNewModal.svelte', () => {
+  const MockComponent = jest.fn().mockImplementation(function (this: any, options: any) {
+    this.target = options.target;
+    this.props = options.props;
+    this.$destroy = jest.fn();
+    this.$set = jest.fn();
+    // Important: return this to ensure the component instance is created
+    return this;
+  });
+
   return {
-    default: jest.fn().mockImplementation(function (options: any) {
-      this.target = options.target;
-      this.props = options.props;
-      this.$destroy = jest.fn();
-      this.$set = jest.fn();
-      return this;
-    }),
+    __esModule: true,
+    default: MockComponent,
   };
 });
 
@@ -78,6 +82,10 @@ describe('WhatsNewManager', () => {
     mockUIElementFactory = {
       createRootContainer: jest.fn().mockImplementation((id: string) => {
         mockContainer.id = id;
+        // Simulate what the real implementation does - append to body
+        if (!document.getElementById(id)) {
+          document.body.appendChild(mockContainer);
+        }
         return mockContainer;
       }),
     };
@@ -108,11 +116,8 @@ describe('WhatsNewManager', () => {
       // Should schedule showing after delay
       expect(setTimeoutSpy).toHaveBeenCalledWith(expect.any(Function), 2000);
 
-      // Fast-forward timers
-      jest.runAllTimers();
-
-      // Wait for async operations
-      await new Promise((resolve) => process.nextTick(resolve));
+      // Fast-forward timers and run all async operations
+      await jest.runAllTimersAsync();
 
       // Should have created container
       expect(mockUIElementFactory.createRootContainer).toHaveBeenCalledWith('whats-new-container');
@@ -193,8 +198,11 @@ describe('WhatsNewManager', () => {
 
       // Should create container immediately
       expect(mockUIElementFactory.createRootContainer).toHaveBeenCalledWith('whats-new-container');
+
+      // Verify container is in DOM
       const containerInDom = document.getElementById('whats-new-container');
       expect(containerInDom).toBeTruthy();
+      expect(containerInDom?.id).toBe('whats-new-container');
 
       // Should register component
       expect(mockComponentLifecycleManager.register).toHaveBeenCalledWith(
@@ -226,10 +234,14 @@ describe('WhatsNewManager', () => {
       // Show modal manually first
       await whatsNewManager.showManually();
 
-      // Get the onDontShowAgain callback from the component props
-      const componentCall = mockComponentLifecycleManager.register.mock.calls[0];
-      const component = componentCall[1];
-      const onDontShowAgain = component.props.onDontShowAgain;
+      // Get the WhatsNewModal mock
+      const WhatsNewModal = require('$lib/components/WhatsNewModal.svelte').default;
+      expect(WhatsNewModal).toHaveBeenCalled();
+
+      // Get the props passed to the component
+      const componentInstance = WhatsNewModal.mock.calls[0];
+      const props = WhatsNewModal.mock.calls[0][0].props;
+      const onDontShowAgain = props.onDontShowAgain;
 
       // Call the handler
       await onDontShowAgain();
@@ -260,11 +272,18 @@ describe('WhatsNewManager', () => {
     });
 
     it('should clear timeout if pending', async () => {
+      // Mock storage to return no previous data so timeout will be set
+      mockChromeStorageLocal.get.mockResolvedValue({});
+
       jest.useFakeTimers();
+      const setTimeoutSpy = jest.spyOn(window, 'setTimeout');
       const clearTimeoutSpy = jest.spyOn(global, 'clearTimeout');
 
       // Start check which sets timeout
       await whatsNewManager.checkAndShow();
+
+      // Verify timeout was set
+      expect(setTimeoutSpy).toHaveBeenCalledWith(expect.any(Function), 2000);
 
       // Cleanup before timeout fires
       whatsNewManager.cleanup();
@@ -285,11 +304,8 @@ describe('WhatsNewManager', () => {
 
       await whatsNewManager.checkAndShow();
 
-      // Fast-forward to show modal
-      jest.runAllTimers();
-
-      // Wait for async operations
-      await new Promise((resolve) => process.nextTick(resolve));
+      // Fast-forward to show modal and run all async operations
+      await jest.runAllTimersAsync();
 
       // Should save state with current version
       expect(mockChromeStorageLocal.set).toHaveBeenCalledWith({
