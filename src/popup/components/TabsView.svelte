@@ -73,6 +73,7 @@
       {projectId}
       {githubSettings}
       {isAuthenticationValid}
+      isLoading={!githubSettings.hasInitialSettings}
       on:switchTab={handleSwitchTab}
       on:showFileChanges={handleShowFileChanges}
       on:feedback={handleFeedback}
