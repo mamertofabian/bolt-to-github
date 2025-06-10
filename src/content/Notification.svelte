@@ -1,19 +1,33 @@
 <script lang="ts">
   import { fade, fly } from 'svelte/transition';
-  import { onMount } from 'svelte';
+  import { onMount, onDestroy } from 'svelte';
   import type { NotificationAction } from './types/UITypes';
+  import {
+    getRotatingMessage,
+    getContextualMessage,
+    resetMessageRotation,
+    type ReassuringMessageContext,
+  } from '../lib/utils/reassuringMessages';
 
   export let type: 'info' | 'error' | 'success' = 'info';
   export let message: string = '';
   export let duration: number = 5000;
   export let onClose: () => void;
   export let actions: NotificationAction[] = [];
+  export let progress: number | null = null;
+  export let operation: 'analyzing' | 'uploading' | 'loading' | 'importing' | 'cloning' | null =
+    null;
+  export let filename: string | null = null;
+  export let filesCount: number | null = null;
 
   let visible = true;
   let autoCloseTimer: ReturnType<typeof setTimeout> | null = null;
   let mounted = false;
   let animationClass = '';
   let showStartTime = 0;
+  let reassuringMessage = '';
+  let contextualMessage = '';
+  let messageUpdateInterval: number | null = null;
 
   // Respect user's motion preferences
   const prefersReducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
@@ -35,6 +49,16 @@
       startAutoCloseTimer();
     }
 
+    // Setup reassuring messages for long-running operations
+    if (operation && progress !== null) {
+      updateReassuringMessages();
+
+      // Set up interval to update messages
+      messageUpdateInterval = window.setInterval(() => {
+        updateReassuringMessages();
+      }, 1000); // Update every second to check for rotation
+    }
+
     // Remove enter animation class after animation completes
     setTimeout(
       () => {
@@ -42,6 +66,15 @@
       },
       prefersReducedMotion ? 0 : 400
     );
+  });
+
+  onDestroy(() => {
+    if (autoCloseTimer) {
+      clearTimeout(autoCloseTimer);
+    }
+    if (messageUpdateInterval) {
+      clearInterval(messageUpdateInterval);
+    }
   });
 
   const startAutoCloseTimer = () => {
@@ -100,6 +133,10 @@
     if (autoCloseTimer) {
       clearTimeout(autoCloseTimer);
     }
+    if (messageUpdateInterval) {
+      clearInterval(messageUpdateInterval);
+      messageUpdateInterval = null;
+    }
     animationClass = 'notification-exit';
 
     // Call onClose after animation completes
@@ -107,10 +144,27 @@
       () => {
         visible = false;
         onClose();
+        reassuringMessage = '';
+        contextualMessage = '';
+        resetMessageRotation();
       },
       prefersReducedMotion ? 0 : 300
     );
   };
+
+  function updateReassuringMessages() {
+    if (!operation) return;
+
+    const context: ReassuringMessageContext = {
+      operation,
+      progress: progress ?? undefined,
+      filename: filename ?? undefined,
+      filesCount: filesCount ?? undefined,
+    };
+
+    reassuringMessage = getRotatingMessage(context);
+    contextualMessage = getContextualMessage(context);
+  }
 
   const handleActionClick = async (action: NotificationAction) => {
     if (action.disabled) return;
@@ -199,6 +253,30 @@
           </svg>
         </button>
       </div>
+
+      <!-- Progress bar for long-running operations -->
+      {#if progress !== null && operation}
+        <div class="enhanced-progress-container">
+          <div class="enhanced-progress-track">
+            <div class="enhanced-progress-bar" style="width: {progress}%">
+              <div class="enhanced-progress-shimmer"></div>
+            </div>
+          </div>
+          <span class="enhanced-progress-percentage">{progress}%</span>
+        </div>
+      {/if}
+
+      <!-- Reassuring messages -->
+      {#if reassuringMessage || contextualMessage}
+        <div class="enhanced-reassuring-messages">
+          {#if reassuringMessage}
+            <p class="enhanced-reassuring-message primary">{reassuringMessage}</p>
+          {/if}
+          {#if contextualMessage}
+            <p class="enhanced-reassuring-message secondary">{contextualMessage}</p>
+          {/if}
+        </div>
+      {/if}
 
       <!-- Bottom row: Action buttons (if any) -->
       {#if actions && actions.length > 0}
@@ -466,6 +544,120 @@
     border-color: rgba(248, 113, 113, 0.3);
   }
 
+  /* Progress bar styling */
+  .enhanced-progress-container {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    margin: 0.75rem 0;
+  }
+
+  .enhanced-progress-track {
+    flex: 1;
+    height: 0.375rem;
+    background: rgba(255, 255, 255, 0.1);
+    border-radius: 0.375rem;
+    overflow: hidden;
+    position: relative;
+  }
+
+  .enhanced-progress-bar {
+    height: 100%;
+    border-radius: 0.375rem;
+    position: relative;
+    overflow: hidden;
+    transition: width 0.3s ease;
+    background: var(--notification-info);
+    background-size: 200% 100%;
+    animation: shimmer 2s infinite;
+  }
+
+  .notification-success .enhanced-progress-bar {
+    background: var(--notification-success);
+  }
+
+  .notification-error .enhanced-progress-bar {
+    background: var(--notification-error);
+  }
+
+  .enhanced-progress-shimmer {
+    position: absolute;
+    top: 0;
+    left: -100%;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.3), transparent);
+    animation: slide 1.5s infinite;
+  }
+
+  .enhanced-progress-percentage {
+    font-size: 0.75rem;
+    font-weight: 500;
+    color: var(--notification-text-secondary);
+    min-width: 2.5rem;
+    text-align: right;
+  }
+
+  /* Reassuring messages styling */
+  .enhanced-reassuring-messages {
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+    margin: 0.5rem 0;
+  }
+
+  .enhanced-reassuring-message {
+    font-size: 0.8125rem;
+    line-height: 1.3;
+    margin: 0;
+    transition:
+      opacity 0.3s ease,
+      transform 0.3s ease;
+    animation: fadeInUp 0.4s ease-out;
+  }
+
+  .enhanced-reassuring-message.primary {
+    color: var(--notification-text-primary);
+    font-weight: 500;
+    opacity: 0.95;
+  }
+
+  .enhanced-reassuring-message.secondary {
+    color: var(--notification-text-secondary);
+    font-weight: 400;
+    opacity: 0.85;
+    font-style: italic;
+  }
+
+  @keyframes shimmer {
+    0% {
+      background-position: 200% 0;
+    }
+    100% {
+      background-position: -200% 0;
+    }
+  }
+
+  @keyframes slide {
+    0% {
+      left: -100%;
+    }
+    100% {
+      left: 100%;
+    }
+  }
+
+  @keyframes fadeInUp {
+    0% {
+      opacity: 0;
+      transform: translateY(4px);
+    }
+    100% {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+
   /* Type-specific animations */
   .notification-success .enhanced-notification-content {
     animation: success-celebration 0.6s ease-out;
@@ -556,6 +748,30 @@
       gap: 0.5rem;
       justify-content: center;
       margin-top: 0.5rem;
+    }
+
+    .enhanced-progress-container {
+      gap: 0.5rem;
+      margin: 0.5rem 0;
+    }
+
+    .enhanced-progress-track {
+      height: 0.3125rem;
+    }
+
+    .enhanced-progress-percentage {
+      font-size: 0.6875rem;
+      min-width: 2rem;
+    }
+
+    .enhanced-reassuring-message {
+      font-size: 0.75rem;
+      line-height: 1.2;
+    }
+
+    .enhanced-reassuring-messages {
+      gap: 0.125rem;
+      margin: 0.375rem 0;
     }
   }
 
