@@ -12,7 +12,22 @@ export interface UpgradeModalData {
  * Get upgrade modal configuration by type
  */
 export function getUpgradeModalConfig(type: UpgradeModalType): UpgradeModalData {
-  return UPGRADE_MODAL_CONFIGS[type];
+  const config = UPGRADE_MODAL_CONFIGS[type];
+  if (!config) {
+    console.error(
+      'Invalid upgrade modal type:',
+      type,
+      'Available types:',
+      Object.keys(UPGRADE_MODAL_CONFIGS)
+    );
+    // Return a default config to prevent errors
+    return {
+      feature: 'premium',
+      reason: 'Unlock premium features',
+      features: [],
+    };
+  }
+  return config;
 }
 
 /**
@@ -35,6 +50,8 @@ export function setUpgradeModalState(
   type: UpgradeModalType,
   setState: (feature: string, reason: string, features: PremiumFeature[]) => void
 ): void {
+  console.log('setUpgradeModalState called with type:', type);
   const config = getUpgradeModalConfig(type);
+  console.log('Retrieved config:', config);
   setState(config.feature, config.reason, config.features);
 }

@@ -35,9 +35,11 @@
   }
 
   function handleConfigurePushReminder() {
+    console.log('handleConfigurePushReminder called, isUserPremium:', isUserPremium);
     if (isUserPremium) {
       dispatch('configurePushReminder');
     } else {
+      console.log('User is not premium, calling handleUpgradeClick with pushReminders');
       handleUpgradeClick('pushReminders');
     }
   }

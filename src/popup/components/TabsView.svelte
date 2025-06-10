@@ -39,8 +39,8 @@
     dispatch('feedback');
   }
 
-  function handleUpgradeClick(type: any) {
-    dispatch('upgradeClick', type);
+  function handleUpgradeClick(event: CustomEvent<any>) {
+    dispatch('upgradeClick', event.detail);
   }
 
   function handleNewsletter() {
