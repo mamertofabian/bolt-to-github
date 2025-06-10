@@ -39,6 +39,11 @@
   const isReminderNotification =
     message.includes('unsaved changes') || message.includes('Consider pushing to GitHub');
 
+  // Update messages when progress changes
+  $: if (progress !== null && operation && mounted) {
+    updateReassuringMessages();
+  }
+
   onMount(() => {
     mounted = true;
     showStartTime = Date.now();
@@ -53,10 +58,10 @@
     if (operation && progress !== null) {
       updateReassuringMessages();
 
-      // Set up interval to update messages
+      // Set up interval to check for stale progress
       messageUpdateInterval = window.setInterval(() => {
         updateReassuringMessages();
-      }, 1000); // Update every second to check for rotation
+      }, 500); // Check every 500ms for more responsive updates
     }
 
     // Remove enter animation class after animation completes

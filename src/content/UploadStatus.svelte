@@ -27,6 +27,14 @@
   // Watch for status changes and update UI accordingly
   $: if (mounted) updateNotificationUI(status);
 
+  // Update messages when progress changes
+  $: if (
+    status.progress !== undefined &&
+    (status.status === 'uploading' || status.status === 'loading' || status.status === 'analyzing')
+  ) {
+    updateReassuringMessages(status);
+  }
+
   // Respect user's motion preferences
   const prefersReducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 
@@ -86,10 +94,10 @@
     ) {
       updateReassuringMessages(newStatus);
 
-      // Set up interval to update messages
+      // Set up interval to check for stale progress
       messageUpdateInterval = window.setInterval(() => {
-        updateReassuringMessages(newStatus);
-      }, 1000); // Update every second to check for rotation
+        updateReassuringMessages(status);
+      }, 500); // Check every 500ms for more responsive updates
     } else {
       reassuringMessage = '';
       contextualMessage = '';
