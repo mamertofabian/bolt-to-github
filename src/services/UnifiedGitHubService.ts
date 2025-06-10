@@ -544,9 +544,10 @@ export class UnifiedGitHubService {
       let totalCommits = 0;
       let page = 1;
       const perPage = 100;
+      const maxPages = 100;
+      let hasNextPage = true;
 
-      // eslint-disable-next-line no-constant-condition
-      while (true) {
+      while (hasNextPage && page <= maxPages) {
         const response = await fetch(
           `https://api.github.com/repos/${owner}/${repo}/commits?sha=${branch}&per_page=${perPage}&page=${page}`,
           {
@@ -559,7 +560,6 @@ export class UnifiedGitHubService {
 
         if (!response.ok) {
           if (response.status === 404) {
-            // Repository or branch doesn't exist
             return totalCommits;
           }
           throw new Error(`Failed to get commit count: ${response.statusText}`);
@@ -568,24 +568,12 @@ export class UnifiedGitHubService {
         const commits = await response.json();
 
         if (!Array.isArray(commits) || commits.length === 0) {
-          // No more commits, we've reached the end
           break;
         }
 
         totalCommits += commits.length;
-
-        // If we got fewer than perPage commits, we've reached the last page
-        if (commits.length < perPage) {
-          break;
-        }
-
+        hasNextPage = commits.length === perPage;
         page++;
-
-        // Safety check to prevent infinite loops (GitHub repos rarely have more than 10k commits)
-        if (page > 100) {
-          console.warn(`Stopped counting commits at page ${page} for ${owner}/${repo}:${branch}`);
-          break;
-        }
       }
 
       return totalCommits;
@@ -878,7 +866,12 @@ export class UnifiedGitHubService {
             // Decode content if it's base64 encoded
             let content = fileData.content;
             if (fileData.encoding === 'base64') {
-              content = atob(content.replace(/\n/g, ''));
+              try {
+                content = atob(content.replace(/\n/g, ''));
+              } catch (error) {
+                console.warn(`Failed to decode base64 content for ${file.path}:`, error);
+                continue; // Skip this file and continue with the next one
+              }
             }
 
             // Push file to target repository

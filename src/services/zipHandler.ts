@@ -358,12 +358,16 @@ export class ZipHandler {
 
     // Record push success
     if (currentProjectId) {
-      await pushStatisticsActions.recordPushSuccess(
-        currentProjectId,
-        repoOwner,
-        repoName,
-        targetBranch
-      );
+      try {
+        await pushStatisticsActions.recordPushSuccess(
+          currentProjectId,
+          repoOwner,
+          repoName,
+          targetBranch
+        );
+      } catch (trackingError) {
+        console.error('Failed to record push success:', trackingError);
+      }
     }
   }
 
