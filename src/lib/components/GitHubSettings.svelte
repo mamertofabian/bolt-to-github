@@ -309,7 +309,7 @@
 
       logger.debug(
         'Storage changes detected in GitHubSettings:',
-        Object.keys(filteredChanges),
+        relevantChanges,
         'in area:',
         areaName
       );

@@ -180,7 +180,12 @@
 
     // Set up storage change listener
     const storageChangeListener = (changes: any, areaName: string) => {
-      logger.info('Storage changes detected in ProjectStatus:', changes, 'in area:', areaName);
+      logger.info(
+        'Storage changes detected in ProjectStatus:',
+        Object.keys(changes),
+        'in area:',
+        areaName
+      );
 
       // Check if lastSettingsUpdate changed in local storage
       if (areaName === 'local' && changes.lastSettingsUpdate) {

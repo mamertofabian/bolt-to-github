@@ -14,6 +14,10 @@
   let autoRefresh = true;
   let refreshInterval: number | null = null;
   let isExporting = false;
+  let autoScroll = true;
+  let logsContainer: HTMLDivElement;
+  let isUserScrolling = false;
+  let scrollTimeout: number | null = null;
 
   const levelColors = {
     debug: 'bg-gray-600 dark:bg-gray-500',
@@ -33,6 +37,13 @@
     const logStorage = getLogStorage();
     logs = await logStorage.getAllLogs();
     applyFilters();
+
+    // Auto-scroll to bottom if enabled and user is not manually scrolling
+    if (autoScroll && !isUserScrolling && logsContainer) {
+      setTimeout(() => {
+        scrollToBottom();
+      }, 50);
+    }
   }
 
   function applyFilters() {
@@ -60,8 +71,8 @@
       return true;
     });
 
-    // Sort by timestamp descending (newest first)
-    filteredLogs.sort((a, b) => b.timestamp.localeCompare(a.timestamp));
+    // Sort by timestamp ascending (oldest first, newest at bottom)
+    filteredLogs.sort((a, b) => a.timestamp.localeCompare(b.timestamp));
   }
 
   async function handleClearLogs() {
@@ -133,6 +144,46 @@
     }
   }
 
+  function toggleAutoScroll() {
+    autoScroll = !autoScroll;
+    if (autoScroll) {
+      scrollToBottom();
+    }
+  }
+
+  function scrollToBottom() {
+    if (logsContainer) {
+      logsContainer.scrollTop = logsContainer.scrollHeight;
+    }
+  }
+
+  function handleScroll() {
+    if (!logsContainer) return;
+
+    // Check if user is at the bottom (with 50px tolerance)
+    const isAtBottom =
+      logsContainer.scrollHeight - logsContainer.scrollTop - logsContainer.clientHeight < 50;
+
+    // If user scrolled up manually, disable auto-scroll temporarily
+    if (!isAtBottom) {
+      isUserScrolling = true;
+
+      // Clear existing timeout
+      if (scrollTimeout) {
+        clearTimeout(scrollTimeout);
+      }
+
+      // Re-enable auto-scroll after 5 seconds of no scrolling if auto-scroll is on
+      if (autoScroll) {
+        scrollTimeout = window.setTimeout(() => {
+          isUserScrolling = false;
+        }, 5000);
+      }
+    } else {
+      isUserScrolling = false;
+    }
+  }
+
   function startAutoRefresh() {
     if (refreshInterval) return;
     refreshInterval = window.setInterval(() => {
@@ -201,6 +252,10 @@
         {autoRefresh ? 'Auto-refresh ON' : 'Auto-refresh OFF'}
       </Button>
 
+      <Button on:click={toggleAutoScroll} variant={autoScroll ? 'default' : 'outline'}>
+        {autoScroll ? 'Auto-scroll ON' : 'Auto-scroll OFF'}
+      </Button>
+
       <Button on:click={loadLogs} variant="outline">Refresh</Button>
 
       <Button on:click={handleExport} variant="outline" disabled={isExporting}>
@@ -219,6 +274,8 @@
 
   <!-- Log entries -->
   <div
+    bind:this={logsContainer}
+    on:scroll={handleScroll}
     class="logs-container flex-1 overflow-y-auto border border-slate-700 rounded-md p-2 bg-slate-800"
   >
     {#if filteredLogs.length === 0}
