@@ -5,6 +5,7 @@ import { ZipHandler } from '../services/zipHandler';
 import { BackgroundTempRepoManager } from './TempRepoManager';
 import { SupabaseAuthService } from '../content/services/SupabaseAuthService';
 import { OperationStateManager } from '../content/services/OperationStateManager';
+import { logger, getLogStorage } from '../lib/utils/logger';
 
 export class BackgroundService {
   private stateManager: StateManager;
@@ -22,7 +23,7 @@ export class BackgroundService {
     | null = null;
 
   constructor() {
-    console.log('🚀 Background service initializing...');
+    logger.info('🚀 Background service initializing...');
     this.stateManager = StateManager.getInstance();
     this.ports = new Map();
     this.githubService = null;
@@ -37,14 +38,17 @@ export class BackgroundService {
 
     // Force initial auth check
     this.authCheckTimeout = setTimeout(() => {
-      console.log('🔐 Forcing initial Supabase auth check...');
+      logger.info('🔐 Forcing initial Supabase auth check...');
       this.supabaseAuthService.forceCheck();
     }, 2000); // Wait 2 seconds after initialization
+
+    // Set up log rotation alarm
+    this.setupLogRotation();
   }
 
   private async trackExtensionStartup(): Promise<void> {
     try {
-      console.log('📊 Tracking extension startup...');
+      logger.info('📊 Tracking extension startup...');
 
       // Check if this is first install or update
       const manifest = chrome.runtime.getManifest();
@@ -65,7 +69,7 @@ export class BackgroundService {
         await this.sendAnalyticsEvent('extension_updated', { version });
       }
     } catch (error) {
-      console.error('Failed to track extension startup:', error);
+      logger.error('Failed to track extension startup:', error);
     }
   }
 
@@ -91,7 +95,7 @@ export class BackgroundService {
         const result = await chrome.storage.sync.get(['analyticsEnabled']);
         enabled = result.analyticsEnabled !== false;
       } catch (error) {
-        console.debug('Could not check analytics preference:', error);
+        logger.debug('Could not check analytics preference:', error);
       }
 
       if (!enabled) {
@@ -120,9 +124,9 @@ export class BackgroundService {
         mode: 'no-cors',
       });
 
-      console.log('📊 Analytics event sent:', eventName, params);
+      logger.info('📊 Analytics event sent:', eventName, params);
     } catch (error) {
-      console.debug('Analytics event failed (expected in some contexts):', error);
+      logger.debug('Analytics event failed (expected in some contexts):', error);
     }
   }
 
@@ -137,6 +141,26 @@ export class BackgroundService {
       const v = c === 'x' ? r : (r & 0x3) | 0x8;
       return v.toString(16);
     });
+  }
+
+  private setupLogRotation(): void {
+    // Set up log rotation alarm to run every 6 hours
+    chrome.alarms.create('logRotation', {
+      periodInMinutes: 360, // 6 hours
+    });
+
+    // Listen for the alarm
+    chrome.alarms.onAlarm.addListener((alarm) => {
+      if (alarm.name === 'logRotation') {
+        logger.info('Running scheduled log rotation');
+        const logStorage = getLogStorage();
+        logStorage.rotateLogs();
+      }
+    });
+
+    // Also run rotation on startup
+    const logStorage = getLogStorage();
+    logStorage.rotateLogs();
   }
 
   // this.initializeListeners();

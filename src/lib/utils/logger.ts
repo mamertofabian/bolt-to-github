@@ -1,13 +1,16 @@
 /**
  * Logger utility for development and production environments
  * Provides centralized logging with configurable levels based on environment
+ * Enhanced with persistent storage and log management capabilities
  */
 
+import { LogStorageManager } from './logStorage';
+
 export interface Logger {
-  debug(...args: any[]): void;
-  info(...args: any[]): void;
-  warn(...args: any[]): void;
-  error(...args: any[]): void;
+  debug(...args: unknown[]): void;
+  info(...args: unknown[]): void;
+  warn(...args: unknown[]): void;
+  error(...args: unknown[]): void;
 }
 
 export interface LoggerConfig {
@@ -15,16 +18,21 @@ export interface LoggerConfig {
   enableDebugInProduction?: boolean;
   enableTimestamps?: boolean;
   modulePrefix?: string;
+  enablePersistence?: boolean;
 }
 
 class LoggerImpl implements Logger {
   private config: LoggerConfig;
+  private storageManager: LogStorageManager | null = null;
 
   constructor(config: LoggerConfig) {
     this.config = config;
+    if (config.enablePersistence && typeof chrome !== 'undefined' && chrome.storage) {
+      this.storageManager = LogStorageManager.getInstance();
+    }
   }
 
-  private formatMessage(level: string, args: any[]): any[] {
+  private formatMessage(level: string, args: unknown[]): unknown[] {
     const prefix = this.config.modulePrefix ? `[${this.config.modulePrefix}]` : '';
     const timestamp = this.config.enableTimestamps ? new Date().toISOString() : '';
     const levelLabel = `[${level.toUpperCase()}]`;
@@ -39,23 +47,46 @@ class LoggerImpl implements Logger {
     return [levelLabel, ...args];
   }
 
-  debug(...args: any[]): void {
-    // Only log debug in development unless explicitly enabled in production
-    if (this.config.isDevelopment || this.config.enableDebugInProduction) {
-      console.log(...this.formatMessage('debug', args));
+  private async persistLog(level: string, args: unknown[]): Promise<void> {
+    if (!this.storageManager) return;
+
+    try {
+      const message = args
+        .map((arg) => (typeof arg === 'object' ? JSON.stringify(arg) : String(arg)))
+        .join(' ');
+
+      await this.storageManager.addLog(
+        level as 'debug' | 'info' | 'warn' | 'error',
+        this.config.modulePrefix || 'default',
+        message,
+        args.length > 1 ? args.slice(1) : undefined
+      );
+    } catch (error) {
+      // Silently fail to avoid infinite loops
     }
   }
 
-  info(...args: any[]): void {
+  debug(...args: unknown[]): void {
+    // Only log debug in development unless explicitly enabled in production
+    if (this.config.isDevelopment || this.config.enableDebugInProduction) {
+      console.log(...this.formatMessage('debug', args));
+      this.persistLog('debug', args);
+    }
+  }
+
+  info(...args: unknown[]): void {
     console.info(...this.formatMessage('info', args));
+    this.persistLog('info', args);
   }
 
-  warn(...args: any[]): void {
+  warn(...args: unknown[]): void {
     console.warn(...this.formatMessage('warn', args));
+    this.persistLog('warn', args);
   }
 
-  error(...args: any[]): void {
+  error(...args: unknown[]): void {
     console.error(...this.formatMessage('error', args));
+    this.persistLog('error', args);
   }
 }
 
@@ -98,12 +129,13 @@ function getDefaultConfig() {
     isDevelopment,
     enableDebugInProduction,
     enableTimestamps: isDevelopment,
+    enablePersistence: true, // Enable by default for all environments
   };
 }
 
 // Default logger instance with lazy initialization
 export const logger: Logger = new Proxy({} as Logger, {
-  get(target, prop) {
+  get(_target, prop) {
     if (!_logger) {
       _logger = new LoggerImpl(getDefaultConfig());
     }
@@ -149,4 +181,58 @@ export function disableProductionDebug(): void {
       logger.warn('Failed to disable production debug logging: localStorage unavailable');
     }
   }
+}
+
+/**
+ * Get the log storage manager instance
+ */
+export function getLogStorage(): LogStorageManager {
+  return LogStorageManager.getInstance();
+}
+
+/**
+ * Export logs for bug reports
+ */
+export async function exportLogsForBugReport(): Promise<{
+  logs: string;
+  metadata: {
+    extensionVersion: string;
+    browser: string;
+    timestamp: string;
+    logsCount: number;
+  };
+}> {
+  const storage = getLogStorage();
+  const logs = await storage.exportLogs('text');
+  const allLogs = await storage.getAllLogs();
+
+  // Get extension version from manifest
+  const manifest = chrome.runtime.getManifest();
+
+  return {
+    logs,
+    metadata: {
+      extensionVersion: manifest.version,
+      browser: navigator.userAgent,
+      timestamp: new Date().toISOString(),
+      logsCount: allLogs.length,
+    },
+  };
+}
+
+/**
+ * Clear all stored logs
+ */
+export async function clearLogs(): Promise<void> {
+  const storage = getLogStorage();
+  await storage.clearAllLogs();
+  logger.info('All logs have been cleared');
+}
+
+/**
+ * Get recent logs from memory buffer
+ */
+export function getRecentLogs(count: number = 100): ReturnType<LogStorageManager['getRecentLogs']> {
+  const storage = getLogStorage();
+  return storage.getRecentLogs(count);
 }

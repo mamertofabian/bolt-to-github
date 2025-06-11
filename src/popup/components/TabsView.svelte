@@ -5,6 +5,7 @@
   import SettingsTabContent from './SettingsTabContent.svelte';
   import HelpTabContent from './HelpTabContent.svelte';
   import ProjectsList from '$lib/components/ProjectsList.svelte';
+  import LogViewer from '$lib/components/LogViewer.svelte';
   import { createEventDispatcher } from 'svelte';
 
   export let uiState: any;
@@ -106,5 +107,9 @@
 
   <TabsContent value="help">
     <HelpTabContent {projectSettings} on:newsletter={handleNewsletter} />
+  </TabsContent>
+
+  <TabsContent value="logs">
+    <LogViewer />
   </TabsContent>
 </Tabs>

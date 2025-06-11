@@ -19,7 +19,8 @@
       "Bash(gh issue comment:*)",
       "Bash(git restore:*)",
       "Bash(gh pr view:*)",
-      "Bash(pnpm run:*)"
+      "Bash(pnpm run:*)",
+      "Bash(gh pr diff:*)"
     ],
     "deny": []
   }
