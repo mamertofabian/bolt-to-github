@@ -4,6 +4,8 @@
   import PushReminderSection from './PushReminderSection.svelte';
   import PremiumStatus from './PremiumStatus.svelte';
   import AnalyticsToggle from '$lib/components/ui/AnalyticsToggle.svelte';
+  import { Button } from '$lib/components/ui/button';
+  import { FileText } from 'lucide-svelte';
   import { createLogger } from '$lib/utils/logger';
 
   const logger = createLogger('SettingsTabContent');
@@ -46,6 +48,10 @@
       handleUpgradeClick('pushReminders');
     }
   }
+
+  function openLogsPage() {
+    chrome.tabs.create({ url: chrome.runtime.getURL('pages/logs.html') });
+  }
 </script>
 
 <div class="space-y-4">
@@ -75,4 +81,11 @@
 
   <!-- Analytics Toggle -->
   <AnalyticsToggle />
+
+  <div class="border-t pt-4">
+    <Button variant="outline" class="w-full gap-2" on:click={openLogsPage}>
+      <FileText class="h-4 w-4" />
+      View Developer Logs
+    </Button>
+  </div>
 </div>

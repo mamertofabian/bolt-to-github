@@ -5,11 +5,7 @@
   import SettingsTabContent from './SettingsTabContent.svelte';
   import HelpTabContent from './HelpTabContent.svelte';
   import ProjectsList from '$lib/components/ProjectsList.svelte';
-  import LogViewer from '$lib/components/LogViewer.svelte';
   import { createEventDispatcher } from 'svelte';
-
-  // Only show logs tab in development mode
-  const isDevelopment = import.meta.env.DEV;
 
   export let uiState: any;
   export let githubSettings: any;
@@ -111,10 +107,4 @@
   <TabsContent value="help">
     <HelpTabContent {projectSettings} on:newsletter={handleNewsletter} />
   </TabsContent>
-
-  {#if isDevelopment}
-    <TabsContent value="logs">
-      <LogViewer />
-    </TabsContent>
-  {/if}
 </Tabs>
