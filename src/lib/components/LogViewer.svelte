@@ -5,10 +5,13 @@
   import { Button } from '$lib/components/ui/button';
   import { Input } from '$lib/components/ui/input';
   import { Badge } from '$lib/components/ui/badge';
+  import { X } from 'lucide-svelte';
 
   let logs: LogEntry[] = [];
   let filteredLogs: LogEntry[] = [];
   let searchTerm = '';
+  let debouncedSearchTerm = '';
+  let searchDebounceTimeout: number | null = null;
   let selectedLevel: string = 'all';
   let selectedContext: string = 'all';
   let autoRefresh = true;
@@ -59,8 +62,8 @@
       }
 
       // Search filter
-      if (searchTerm) {
-        const searchLower = searchTerm.toLowerCase();
+      if (debouncedSearchTerm) {
+        const searchLower = debouncedSearchTerm.toLowerCase();
         return (
           log.message.toLowerCase().includes(searchLower) ||
           log.module.toLowerCase().includes(searchLower) ||
@@ -157,6 +160,23 @@
     }
   }
 
+  function clearSearch() {
+    searchTerm = '';
+    debouncedSearchTerm = '';
+  }
+
+  function handleSearchInput() {
+    // Clear existing timeout
+    if (searchDebounceTimeout) {
+      clearTimeout(searchDebounceTimeout);
+    }
+
+    // Set new timeout for debounce (300ms)
+    searchDebounceTimeout = window.setTimeout(() => {
+      debouncedSearchTerm = searchTerm;
+    }, 300);
+  }
+
   function handleScroll() {
     if (!logsContainer) return;
 
@@ -207,10 +227,19 @@
 
   onDestroy(() => {
     stopAutoRefresh();
+    if (searchDebounceTimeout) {
+      clearTimeout(searchDebounceTimeout);
+    }
+    if (scrollTimeout) {
+      clearTimeout(scrollTimeout);
+    }
   });
 
   // React to filter changes
-  $: selectedLevel, selectedContext, searchTerm, applyFilters();
+  $: selectedLevel, selectedContext, debouncedSearchTerm, applyFilters();
+
+  // React to search term changes
+  $: searchTerm, handleSearchInput();
 </script>
 
 <div class="log-viewer p-4 h-full flex flex-col bg-slate-900 text-slate-100">
@@ -219,12 +248,23 @@
 
     <!-- Controls -->
     <div class="controls flex flex-wrap gap-2 mb-4">
-      <Input
-        type="text"
-        placeholder="Search logs..."
-        bind:value={searchTerm}
-        class="w-64 bg-slate-800 border-slate-700 text-slate-200 placeholder-slate-500"
-      />
+      <div class="relative">
+        <Input
+          type="text"
+          placeholder="Search logs..."
+          bind:value={searchTerm}
+          class="w-64 bg-slate-800 border-slate-700 text-slate-200 placeholder-slate-500 pr-8"
+        />
+        {#if searchTerm}
+          <button
+            on:click={clearSearch}
+            class="absolute right-2 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-200 transition-colors"
+            aria-label="Clear search"
+          >
+            <X size={16} />
+          </button>
+        {/if}
+      </div>
 
       <select
         bind:value={selectedLevel}
