@@ -74,16 +74,29 @@ export class LogStorageManager {
 
   private getContext(): LogEntry['context'] {
     if (typeof chrome !== 'undefined' && chrome.runtime) {
-      // Check if we're in a content script
-      if (!chrome.runtime.getBackgroundPage) {
-        return 'content';
+      // Check if we're in a service worker (background script in Manifest V3)
+      if (typeof self !== 'undefined' && 'ServiceWorkerGlobalScope' in self) {
+        return 'background';
       }
+
       // Check if we're in the popup
-      if (window.location.href.includes('popup.html')) {
+      if (typeof window !== 'undefined' && window.location?.href?.includes('popup.html')) {
         return 'popup';
       }
-      // Otherwise we're in background
-      return 'background';
+
+      // Check if we're in the logs page
+      if (typeof window !== 'undefined' && window.location?.href?.includes('logs.html')) {
+        return 'popup'; // Treat logs page as popup context
+      }
+
+      // Check if we're in a content script by checking for window.chrome.tabs absence
+      // Content scripts don't have access to most chrome APIs
+      if (typeof window !== 'undefined' && !chrome.tabs) {
+        return 'content';
+      }
+
+      // Default to content if we can't determine
+      return 'content';
     }
     return 'unknown';
   }
@@ -121,11 +134,14 @@ export class LogStorageManager {
   private scheduleWrite(): void {
     if (this.writeTimer) return;
 
-    this.writeTimer = window.setTimeout(() => {
+    // Use global setTimeout which works in both window and service worker contexts
+    const timeoutFn = typeof window !== 'undefined' ? window.setTimeout : setTimeout;
+
+    this.writeTimer = timeoutFn(() => {
       this.writeTimer = null;
       this.flushPendingWrites();
       this.scheduleWrite();
-    }, this.WRITE_INTERVAL);
+    }, this.WRITE_INTERVAL) as unknown as number;
   }
 
   private async flushPendingWrites(): Promise<void> {
