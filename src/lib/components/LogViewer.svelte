@@ -16,17 +16,17 @@
   let isExporting = false;
 
   const levelColors = {
-    debug: 'bg-gray-500',
-    info: 'bg-blue-500',
-    warn: 'bg-yellow-500',
-    error: 'bg-red-500',
+    debug: 'bg-gray-600 dark:bg-gray-500',
+    info: 'bg-blue-600 dark:bg-blue-500',
+    warn: 'bg-yellow-600 dark:bg-yellow-500',
+    error: 'bg-red-600 dark:bg-red-500',
   };
 
   const contextColors = {
-    background: 'bg-purple-500',
-    content: 'bg-green-500',
-    popup: 'bg-indigo-500',
-    unknown: 'bg-gray-500',
+    background: 'bg-purple-600 dark:bg-purple-500',
+    content: 'bg-green-600 dark:bg-green-500',
+    popup: 'bg-indigo-600 dark:bg-indigo-500',
+    unknown: 'bg-gray-600 dark:bg-gray-500',
   };
 
   async function loadLogs() {
@@ -162,17 +162,22 @@
   $: selectedLevel, selectedContext, searchTerm, applyFilters();
 </script>
 
-<div class="log-viewer p-4 h-full flex flex-col">
+<div class="log-viewer p-4 h-full flex flex-col bg-slate-900 text-slate-100">
   <div class="header mb-4">
-    <h2 class="text-2xl font-bold mb-4">Log Viewer</h2>
+    <h2 class="text-2xl font-bold mb-4 text-slate-100">Bolt to GitHub - Log Viewer</h2>
 
     <!-- Controls -->
     <div class="controls flex flex-wrap gap-2 mb-4">
-      <Input type="text" placeholder="Search logs..." bind:value={searchTerm} class="w-64" />
+      <Input
+        type="text"
+        placeholder="Search logs..."
+        bind:value={searchTerm}
+        class="w-64 bg-slate-800 border-slate-700 text-slate-200 placeholder-slate-500"
+      />
 
       <select
         bind:value={selectedLevel}
-        class="px-3 py-2 border rounded-md bg-white dark:bg-gray-800"
+        class="px-3 py-2 border border-slate-700 rounded-md bg-slate-800 text-slate-200 focus:border-blue-500 focus:outline-none"
       >
         <option value="all">All Levels</option>
         <option value="debug">Debug</option>
@@ -183,7 +188,7 @@
 
       <select
         bind:value={selectedContext}
-        class="px-3 py-2 border rounded-md bg-white dark:bg-gray-800"
+        class="px-3 py-2 border border-slate-700 rounded-md bg-slate-800 text-slate-200 focus:border-blue-500 focus:outline-none"
       >
         <option value="all">All Contexts</option>
         <option value="background">Background</option>
@@ -207,25 +212,23 @@
       <Button on:click={handleClearLogs} variant="destructive">Clear All Logs</Button>
     </div>
 
-    <div class="stats text-sm text-gray-600 dark:text-gray-400">
+    <div class="stats text-sm text-slate-400">
       Showing {filteredLogs.length} of {logs.length} logs
     </div>
   </div>
 
   <!-- Log entries -->
   <div
-    class="logs-container flex-1 overflow-y-auto border rounded-md p-2 bg-gray-50 dark:bg-gray-900"
+    class="logs-container flex-1 overflow-y-auto border border-slate-700 rounded-md p-2 bg-slate-800"
   >
     {#if filteredLogs.length === 0}
-      <div class="text-center text-gray-500 py-8">No logs found</div>
+      <div class="text-center text-slate-500 py-8">No logs found</div>
     {:else}
       <div class="space-y-1">
         {#each filteredLogs as log}
-          <div
-            class="log-entry p-2 rounded hover:bg-gray-100 dark:hover:bg-gray-800 font-mono text-sm"
-          >
+          <div class="log-entry p-2 rounded hover:bg-slate-700 font-mono text-sm transition-colors">
             <div class="flex items-start gap-2">
-              <span class="timestamp text-gray-500 whitespace-nowrap">
+              <span class="timestamp text-slate-500 whitespace-nowrap text-xs">
                 {formatTimestamp(log.timestamp)}
               </span>
 
@@ -237,17 +240,17 @@
                 {log.context}
               </Badge>
 
-              <span class="module text-blue-600 dark:text-blue-400">
+              <span class="module text-blue-400">
                 [{log.module}]
               </span>
 
-              <span class="message flex-1">
+              <span class="message flex-1 text-slate-200">
                 {log.message}
               </span>
             </div>
 
             {#if log.data}
-              <div class="data mt-1 ml-4 text-gray-600 dark:text-gray-400 text-xs">
+              <div class="data mt-1 ml-4 text-slate-400 text-xs">
                 Data: {JSON.stringify(log.data)}
               </div>
             {/if}
@@ -273,6 +276,25 @@
   }
 
   .log-entry:hover {
-    border-left-color: var(--color-primary);
+    border-left-color: #3b82f6;
+  }
+
+  /* Custom scrollbar for dark theme */
+  .logs-container::-webkit-scrollbar {
+    width: 8px;
+  }
+
+  .logs-container::-webkit-scrollbar-track {
+    background: #1e293b;
+    border-radius: 4px;
+  }
+
+  .logs-container::-webkit-scrollbar-thumb {
+    background: #475569;
+    border-radius: 4px;
+  }
+
+  .logs-container::-webkit-scrollbar-thumb:hover {
+    background: #64748b;
   }
 </style>
