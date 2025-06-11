@@ -1,6 +1,6 @@
 /**
  * ZipHandler Test Fixtures Index
- * 
+ *
  * Central export point for all ZipHandler test fixtures, mocks, and helpers
  */
 
@@ -17,7 +17,7 @@ export * from './ZipHandlerTestHelpers';
 export * from './ZipHandlerTestSpecification';
 
 // Re-export commonly used items for convenience
-export { 
+export {
   createTestEnvironment,
   cleanupTestEnvironment,
   TestScenarios,

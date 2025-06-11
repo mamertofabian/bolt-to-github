@@ -1,5 +1,8 @@
 import { writable, derived, get } from 'svelte/store';
 import { UnifiedGitHubService } from '../../services/UnifiedGitHubService';
+import { createLogger } from '../utils/logger';
+
+const logger = createLogger('IssuesStore');
 
 export interface Issue {
   number: number;
@@ -82,7 +85,7 @@ function createIssuesStore() {
   }
 
   function invalidateCache(repoKey: string) {
-    console.log('🗑️ Invalidating cache for:', repoKey);
+    logger.info('🗑️ Invalidating cache for:', repoKey);
     update((current) => ({
       ...current,
       [repoKey]: {
@@ -101,11 +104,11 @@ function createIssuesStore() {
   ): Promise<Issue[]> {
     const repoKey = getRepoKey(owner, repo);
 
-    console.log('🏪 issuesStore.loadIssues called:', { repoKey, state, forceRefresh });
+    logger.info('🏪 issuesStore.loadIssues called:', { repoKey, state, forceRefresh });
 
     // Check cache validity
     if (!forceRefresh && isCacheValid(repoKey)) {
-      console.log('📦 Using cached data');
+      logger.info('📦 Using cached data');
       const currentState = get(issuesState);
       const repoState = currentState[repoKey];
       if (repoState && repoState.issues) {
@@ -114,7 +117,7 @@ function createIssuesStore() {
       }
     }
 
-    console.log('🌐 Making network request for fresh data');
+    logger.info('🌐 Making network request for fresh data');
     setLoadingForRepo(repoKey, state, true);
 
     try {

@@ -1,3 +1,7 @@
+import { createLogger } from '../../lib/utils/logger';
+
+const logger = createLogger('PremiumService');
+
 export interface PremiumStatus {
   isPremium: boolean;
   isAuthenticated: boolean;
@@ -51,9 +55,9 @@ export class PremiumService {
     try {
       // Message handling is now done through ContentManager
       // to avoid conflicts with multiple message listeners
-      console.log('🔐 Supabase auth integration initialized (messages handled by ContentManager)');
+      logger.info('🔐 Supabase auth integration initialized (messages handled by ContentManager)');
     } catch (error) {
-      console.warn('Failed to initialize Supabase auth integration:', error);
+      logger.warn('Failed to initialize Supabase auth integration:', error);
     }
   }
 
@@ -88,7 +92,7 @@ export class PremiumService {
       this.uiManager.updateDropdownPremiumStatus();
     }
 
-    console.log(
+    logger.info(
       `🔐 Premium status updated from auth: authenticated=${authData.isAuthenticated}, premium=${authData.isPremium} (${authData.plan})`
     );
   }
@@ -109,7 +113,7 @@ export class PremiumService {
         };
       }
     } catch (error) {
-      console.warn('Failed to load premium data:', error);
+      logger.warn('Failed to load premium data:', error);
     }
   }
 
@@ -134,7 +138,7 @@ export class PremiumService {
         },
       });
     } catch (error) {
-      console.warn('Failed to save premium data:', error);
+      logger.warn('Failed to save premium data:', error);
     }
   }
 
@@ -162,7 +166,7 @@ export class PremiumService {
   public async isPremium(): Promise<boolean> {
     /* Check if premium has expired locally first */
     if (this.premiumStatus.expiresAt && Date.now() > this.premiumStatus.expiresAt) {
-      console.log('⏰ Premium subscription expired locally');
+      logger.info('⏰ Premium subscription expired locally');
       this.premiumStatus.isPremium = false;
       this.updateFeatureAccess();
       this.saveData();
@@ -295,13 +299,13 @@ export class PremiumService {
    * Currently triggers auth service to re-check Supabase status
    */
   public async checkPremiumStatusFromServer(): Promise<void> {
-    console.log('🔄 Triggering premium status refresh...');
+    logger.info('🔄 Triggering premium status refresh...');
 
     // Force auth service to check again
     try {
       await chrome.runtime.sendMessage({ type: 'FORCE_AUTH_CHECK' });
     } catch (error) {
-      console.warn('Failed to trigger auth check:', error);
+      logger.warn('Failed to trigger auth check:', error);
     }
   }
 
@@ -330,7 +334,7 @@ export class PremiumService {
         chrome.tabs.create({ url: 'https://bolt2github.com/register' });
       }
     } catch (error) {
-      console.warn('Error checking authentication status, redirecting to signup:', error);
+      logger.warn('Error checking authentication status, redirecting to signup:', error);
       // Default to signup if we can't determine auth status
       chrome.tabs.create({ url: 'https://bolt2github.com/register' });
     }
@@ -344,7 +348,7 @@ export class PremiumService {
       // Use cache to avoid too frequent server calls
       const now = Date.now();
       if (now - this.lastSubscriptionCheck < this.SUBSCRIPTION_CHECK_CACHE_DURATION) {
-        console.log('✅ Using cached subscription status (within 5 minutes)');
+        logger.info('✅ Using cached subscription status (within 5 minutes)');
         return this.premiumStatus.isPremium;
       }
 
@@ -356,13 +360,13 @@ export class PremiumService {
       this.lastSubscriptionCheck = now;
 
       if (!isSubscriptionValid && this.premiumStatus.isPremium) {
-        console.log('📉 Server validation failed - subscription is no longer active');
+        logger.info('📉 Server validation failed - subscription is no longer active');
         await this.handleSubscriptionInvalidation();
       }
 
       return isSubscriptionValid;
     } catch (error) {
-      console.warn('Failed to validate subscription with server:', error);
+      logger.warn('Failed to validate subscription with server:', error);
       // Fall back to current status if server validation fails
       return this.premiumStatus.isPremium;
     }
@@ -372,7 +376,7 @@ export class PremiumService {
    * Handle subscription invalidation (expired/cancelled)
    */
   private async handleSubscriptionInvalidation(): Promise<void> {
-    console.log('🚫 Handling subscription invalidation...');
+    logger.info('🚫 Handling subscription invalidation...');
 
     // Update premium status to inactive
     await this.updatePremiumStatus({

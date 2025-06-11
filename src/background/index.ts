@@ -1,3 +1,11 @@
 import { BackgroundService } from './BackgroundService';
+import { createLogger } from '../lib/utils/logger';
 
-new BackgroundService();
+const logger = createLogger('BackgroundIndex');
+logger.info('🎯 Background script entry point loaded');
+
+try {
+  new BackgroundService();
+} catch (error) {
+  logger.error('Failed to initialize BackgroundService:', error);
+}

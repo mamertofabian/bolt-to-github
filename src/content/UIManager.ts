@@ -1,4 +1,3 @@
-/* eslint-disable no-console */
 import type { UploadStatusState } from '$lib/types';
 import type { MessageHandler } from './MessageHandler';
 
@@ -282,7 +281,7 @@ export class UIManager {
 
       logger.info('✅ Upgrade modal request sent for feature:', feature);
     } catch (error) {
-      console.error('❌ Failed to trigger upgrade modal:', error);
+      logger.error('❌ Failed to trigger upgrade modal:', error);
 
       // Fallback: show notification with upgrade button
       this.notificationManager.showUpgradeNotification({
@@ -297,7 +296,7 @@ export class UIManager {
             try {
               chrome.tabs.create({ url: 'https://bolt2github.com/upgrade' });
             } catch (tabsError) {
-              console.error('❌ All upgrade URL methods failed:', tabsError);
+              logger.error('❌ All upgrade URL methods failed:', tabsError);
             }
           }
         },

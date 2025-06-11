@@ -3,6 +3,9 @@
   import type { PremiumFeature } from '$lib/constants/premiumFeatures';
   import { isAuthenticated } from '$lib/stores';
   import premiumStatusStore, { premiumStatusActions } from '$lib/stores/premiumStore';
+  import { createLogger } from '$lib/utils/logger';
+
+  const logger = createLogger('UpgradeModal');
 
   export let show = false;
   export let feature: string = ''; // Which feature triggered the modal
@@ -29,7 +32,7 @@
 
     try {
       isRefreshing = true;
-      console.log('🔄 Manually refreshing subscription status from upgrade modal...');
+      logger.info('🔄 Manually refreshing subscription status from upgrade modal...');
 
       // Send message to background script to force subscription check
       await chrome.runtime.sendMessage({ type: 'FORCE_SUBSCRIPTION_REFRESH' });
@@ -37,7 +40,7 @@
       // Also refresh the local premium store
       await premiumStatusActions.refresh();
 
-      console.log('✅ Subscription status refreshed');
+      logger.info('✅ Subscription status refreshed');
 
       // Show brief success feedback
       showRefreshFeedback();
@@ -45,12 +48,12 @@
       // If user is now premium, close the modal
       setTimeout(() => {
         if (premiumStatus.isPremium) {
-          console.log('🎉 User is now premium, closing upgrade modal');
+          logger.info('🎉 User is now premium, closing upgrade modal');
           handleClose();
         }
       }, 1500);
     } catch (error) {
-      console.error('Error refreshing subscription:', error);
+      logger.error('Error refreshing subscription:', error);
     } finally {
       isRefreshing = false;
     }

@@ -7,6 +7,9 @@
   import { createEventDispatcher } from 'svelte';
   import { githubSettingsActions } from '$lib/stores';
   import Modal from '$lib/components/ui/modal/Modal.svelte';
+  import { createLogger } from '$lib/utils/logger';
+
+  const logger = createLogger('RepoSettings');
 
   const dispatch = createEventDispatcher();
 
@@ -70,7 +73,7 @@
 
       repositories = await githubService.listRepos();
     } catch (error) {
-      console.error('Error loading repositories:', error);
+      logger.error('Error loading repositories:', error);
       repositories = [];
     } finally {
       isLoadingRepos = false;
@@ -131,7 +134,7 @@
 
     try {
       isSaving = true;
-      console.log('Saving repository settings for project:', projectId);
+      logger.info('Saving repository settings for project:', projectId);
 
       // Get current settings
       const settings = await chrome.storage.sync.get([
@@ -169,12 +172,12 @@
         },
       });
 
-      console.log('Settings saved successfully with timestamp');
+      logger.info('Settings saved successfully with timestamp');
 
       // Notify parent that settings were saved
       dispatch('close');
     } catch (error) {
-      console.error('Failed to save settings:', error);
+      logger.error('Failed to save settings:', error);
       errorMessage = 'Failed to save settings. Please try again.';
       showErrorModal = true;
     } finally {

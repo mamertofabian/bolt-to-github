@@ -1,17 +1,17 @@
 import { GitHubComparisonService } from '../../GitHubComparisonService';
-import { 
-  MockUnifiedGitHubService, 
-  MockGitHubComparisonService, 
+import {
+  MockUnifiedGitHubService,
+  MockGitHubComparisonService,
   MockStatusCallback,
   MockChromeStorage,
-  MockPushStatisticsActions
+  MockPushStatisticsActions,
 } from './ZipHandlerMocks';
 import {
   ZIP_FILE_FIXTURES,
   createTestBlob,
   CHROME_STORAGE_FIXTURES,
   TEST_PROJECTS,
-  ERROR_SCENARIOS
+  ERROR_SCENARIOS,
 } from './ZipHandlerTestFixtures';
 
 /**
@@ -43,7 +43,7 @@ jest.mock('../../../lib/zip', () => ({
           throw new Error('Failed to process ZIP file: Invalid ZIP data');
         }
       }
-      
+
       try {
         // Handle both real Blob and our mock blob
         let text: string;
@@ -54,15 +54,15 @@ jest.mock('../../../lib/zip', () => ({
         } else {
           text = '[]';
         }
-        
+
         const entries = JSON.parse(text);
         return new Map(entries);
       } catch {
         // Return empty map if JSON parsing fails (for other test cases)
         return new Map();
       }
-    })
-  }
+    }),
+  },
 }));
 
 jest.mock('../../../lib/stores');
@@ -71,7 +71,7 @@ jest.mock('../../../lib/common', () => ({
   toBase64: jest.fn().mockImplementation((str: string) => {
     // Simple base64 encoding for tests
     return Buffer.from(str).toString('base64');
-  })
+  }),
 }));
 
 jest.mock('../../../lib/Queue', () => ({
@@ -79,8 +79,8 @@ jest.mock('../../../lib/Queue', () => ({
     add: jest.fn().mockImplementation(async (fn) => {
       // Execute the function immediately in tests
       return await fn();
-    })
-  }))
+    }),
+  })),
 }));
 
 jest.mock('../../../lib/fileUtils', () => ({
@@ -88,15 +88,17 @@ jest.mock('../../../lib/fileUtils', () => ({
     // Simple mock that filters out common ignored patterns
     const processedFiles = new Map();
     for (const [path, content] of files.entries()) {
-      if (!path.includes('node_modules/') && 
-          !path.includes('.env') && 
-          !path.includes('dist/') &&
-          !path.includes('.DS_Store')) {
+      if (
+        !path.includes('node_modules/') &&
+        !path.includes('.env') &&
+        !path.includes('dist/') &&
+        !path.includes('.DS_Store')
+      ) {
         processedFiles.set(path, content);
       }
     }
     return processedFiles;
-  })
+  }),
 }));
 
 /**
@@ -155,10 +157,10 @@ export function createTestEnvironment(): ZipHandlerTestEnvironment {
 export function cleanupTestEnvironment(env: ZipHandlerTestEnvironment) {
   // Restore GitHubComparisonService
   jest.spyOn(GitHubComparisonService, 'getInstance').mockRestore();
-  
+
   // Clear all mocks
   jest.clearAllMocks();
-  
+
   // Clear mock data
   env.githubService.clearHistory();
   env.comparisonService.clearHistory();
@@ -195,7 +197,7 @@ export const TestScenarios = {
   async simpleUpload(env: ZipHandlerTestEnvironment) {
     setupTestProject(env, TEST_PROJECTS.default);
     const blob = createTestBlob(ZIP_FILE_FIXTURES.simpleProject);
-    
+
     await env.zipHandler.processZipFile(
       blob,
       TEST_PROJECTS.default.projectId,
@@ -216,7 +218,7 @@ export const TestScenarios = {
         existingFiles: new Map([['index.js', 'blob123']]),
       },
     });
-    
+
     const blob = createTestBlob(ZIP_FILE_FIXTURES.simpleProject);
     await env.zipHandler.processZipFile(
       blob,
@@ -231,7 +233,7 @@ export const TestScenarios = {
   async uploadWithRateLimit(env: ZipHandlerTestEnvironment) {
     setupTestProject(env, TEST_PROJECTS.default);
     env.githubService.setRateLimit(5); // Low rate limit
-    
+
     const blob = createTestBlob(ZIP_FILE_FIXTURES.simpleProject);
     await env.zipHandler.processZipFile(
       blob,
@@ -246,7 +248,7 @@ export const TestScenarios = {
   async uploadWithNetworkError(env: ZipHandlerTestEnvironment) {
     setupTestProject(env, TEST_PROJECTS.default);
     env.githubService.setError(ERROR_SCENARIOS.networkError);
-    
+
     const blob = createTestBlob(ZIP_FILE_FIXTURES.simpleProject);
     await expect(
       env.zipHandler.processZipFile(
@@ -263,7 +265,7 @@ export const TestScenarios = {
   async uploadLargeProject(env: ZipHandlerTestEnvironment) {
     setupTestProject(env, TEST_PROJECTS.default);
     const blob = createTestBlob(ZIP_FILE_FIXTURES.largeProject);
-    
+
     await env.zipHandler.processZipFile(
       blob,
       TEST_PROJECTS.default.projectId,
@@ -277,7 +279,7 @@ export const TestScenarios = {
   async uploadToNewBranch(env: ZipHandlerTestEnvironment) {
     setupTestProject(env, TEST_PROJECTS.withBranch);
     const blob = createTestBlob(ZIP_FILE_FIXTURES.simpleProject);
-    
+
     await env.zipHandler.processZipFile(
       blob,
       TEST_PROJECTS.withBranch.projectId,
@@ -291,7 +293,7 @@ export const TestScenarios = {
   async uploadToEmptyRepo(env: ZipHandlerTestEnvironment) {
     setupTestProject(env, TEST_PROJECTS.default);
     env.githubService.setResponse('GET', '/repos/test-owner/test-repo/git/refs/heads/main', null);
-    
+
     const blob = createTestBlob(ZIP_FILE_FIXTURES.simpleProject);
     await env.zipHandler.processZipFile(
       blob,
@@ -318,24 +320,23 @@ export const TestAssertions = {
 
     // Verify push statistics recorded
     const pushRecords = env.pushStats.getRecords();
-    expect(pushRecords).toContainEqual(
-      expect.objectContaining({ action: 'attempt' })
-    );
-    expect(pushRecords).toContainEqual(
-      expect.objectContaining({ action: 'success' })
-    );
+    expect(pushRecords).toContainEqual(expect.objectContaining({ action: 'attempt' }));
+    expect(pushRecords).toContainEqual(expect.objectContaining({ action: 'success' }));
   },
 
   /**
    * Assert that the correct API calls were made
    */
-  expectGitHubApiCalls(env: ZipHandlerTestEnvironment, options: {
-    repoChecks?: boolean;
-    blobCreation?: boolean;
-    treeCreation?: boolean;
-    commitCreation?: boolean;
-    branchUpdate?: boolean;
-  }) {
+  expectGitHubApiCalls(
+    env: ZipHandlerTestEnvironment,
+    options: {
+      repoChecks?: boolean;
+      blobCreation?: boolean;
+      treeCreation?: boolean;
+      commitCreation?: boolean;
+      branchUpdate?: boolean;
+    }
+  ) {
     const history = env.githubService.getRequestHistory();
 
     if (options.repoChecks) {
@@ -408,10 +409,10 @@ export const TestAssertions = {
    */
   expectStatusSequence(env: ZipHandlerTestEnvironment, expectedSequence: string[]) {
     const statusHistory = env.statusCallback.getHistory();
-    const messages = statusHistory.map(s => s.message || '');
-    
+    const messages = statusHistory.map((s) => s.message || '');
+
     for (const expected of expectedSequence) {
-      const found = messages.some(msg => msg.includes(expected));
+      const found = messages.some((msg) => msg.includes(expected));
       expect(found).toBe(true);
     }
   },
@@ -421,7 +422,7 @@ export const TestAssertions = {
  * Wait for async operations to complete
  */
 export function waitForAsync(ms: number = 0): Promise<void> {
-  return new Promise(resolve => setTimeout(resolve, ms));
+  return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
 /**
@@ -451,7 +452,7 @@ export function applyNetworkCondition(
   condition: typeof NetworkConditions.normal
 ) {
   env.githubService.setDelay(condition.delay);
-  
+
   if ('errorRate' in condition && Math.random() < condition.errorRate) {
     env.githubService.setError(ERROR_SCENARIOS.networkError);
   }

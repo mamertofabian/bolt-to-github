@@ -277,6 +277,8 @@ export class MockChromeRuntime {
   private messageHandlers: Array<(message: any, sender: any, sendResponse: any) => boolean | void> =
     [];
   private connectHandlers: Array<(port: chrome.runtime.Port) => void> = [];
+  private startupHandlers: Array<() => void> = [];
+  private installedHandlers: Array<(details: any) => void> = [];
 
   onMessage = {
     addListener: (callback: any) => this.messageHandlers.push(callback),
@@ -294,6 +296,22 @@ export class MockChromeRuntime {
     },
   };
 
+  onStartup = {
+    addListener: (callback: any) => this.startupHandlers.push(callback),
+    removeListener: (callback: any) => {
+      const index = this.startupHandlers.indexOf(callback);
+      if (index > -1) this.startupHandlers.splice(index, 1);
+    },
+  };
+
+  onInstalled = {
+    addListener: (callback: any) => this.installedHandlers.push(callback),
+    removeListener: (callback: any) => {
+      const index = this.installedHandlers.indexOf(callback);
+      if (index > -1) this.installedHandlers.splice(index, 1);
+    },
+  };
+
   getManifest = jest.fn(() => TestData.chrome.manifest);
   sendMessage = jest.fn();
 
@@ -303,6 +321,14 @@ export class MockChromeRuntime {
 
   simulateConnection(port: MockPort): void {
     this.connectHandlers.forEach((handler) => handler(port));
+  }
+
+  simulateStartup(): void {
+    this.startupHandlers.forEach((handler) => handler());
+  }
+
+  simulateInstalled(details: any = {}): void {
+    this.installedHandlers.forEach((handler) => handler(details));
   }
 }
 

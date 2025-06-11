@@ -8,6 +8,9 @@ import {
   decodeBase64ToUtf8,
 } from '$lib/fileUtils';
 import { OperationStateManager } from '../content/services/OperationStateManager';
+import { createLogger } from '../lib/utils/logger';
+
+const logger = createLogger('GitHubComparisonService');
 
 /**
  * Service for comparing local files with GitHub repository files
@@ -187,7 +190,7 @@ export class GitHubComparisonService {
                 isActuallyModified = true;
               }
             } catch (error) {
-              console.warn(`Failed to fetch GitHub content for ${path}:`, error);
+              logger.warn(`Failed to fetch GitHub content for ${path}:`, error);
               // If we can't fetch content, consider it modified to be safe
               isActuallyModified = true;
             }
@@ -243,7 +246,7 @@ export class GitHubComparisonService {
           })
         );
       } catch (error) {
-        console.error('Error determining ignored files:', error);
+        logger.error('Error determining ignored files:', error);
       }
 
       notifyProgress('Checking for deleted files...', 90);

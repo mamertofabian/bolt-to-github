@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { createLogger } from '$lib/utils/logger';
   import { Button } from '$lib/components/ui/button';
   import { Input } from '$lib/components/ui/input';
   import { Label } from '$lib/components/ui/label';
@@ -15,6 +16,8 @@
   import { onMount, tick } from 'svelte';
   import { UnifiedGitHubService } from '../../services/UnifiedGitHubService';
   import { GITHUB_APP_AUTH_URL } from '$lib/constants';
+
+  const logger = createLogger('GitHubSettings');
 
   export let isOnboarding: boolean = false;
   export let githubToken: string;
@@ -106,9 +109,9 @@
     // Save the authentication method preference to storage
     try {
       await chrome.storage.local.set({ preferredAuthMethod: method });
-      console.log('💾 Saved authentication method preference:', method);
+      logger.info('💾 Saved authentication method preference:', method);
     } catch (error) {
-      console.error('Failed to save authentication method preference:', error);
+      logger.error('Failed to save authentication method preference:', error);
     }
 
     // Clear all validation state when switching methods
@@ -180,34 +183,34 @@
         if (!githubToken) {
           throw new Error('GitHub token is required for PAT authentication');
         }
-        console.log('✅ Using PAT authentication as explicitly chosen by user');
+        logger.info('✅ Using PAT authentication as explicitly chosen by user');
         return new UnifiedGitHubService(githubToken);
       } else if (authenticationMethod === 'github_app') {
         // User explicitly chose GitHub App - try it first
         try {
           const service = new UnifiedGitHubService({ type: 'github_app' });
-          console.log('✅ Using GitHub App authentication as explicitly chosen by user');
+          logger.info('✅ Using GitHub App authentication as explicitly chosen by user');
           return service;
         } catch (githubAppError) {
-          console.log('⚠️ GitHub App initialization failed for user-selected method');
+          logger.warn('⚠️ GitHub App initialization failed for user-selected method');
           throw githubAppError;
         }
       } else {
         // Fallback for legacy cases - try smart detection
-        console.log('🔍 Using smart authentication detection for legacy compatibility');
+        logger.info('🔍 Using smart authentication detection for legacy compatibility');
         try {
           const service = new UnifiedGitHubService({ type: 'github_app' });
           return service;
         } catch (githubAppError) {
           if (githubToken) {
-            console.log('🔄 Fallback to PAT authentication');
+            logger.info('🔄 Fallback to PAT authentication');
             return new UnifiedGitHubService(githubToken);
           }
           throw githubAppError;
         }
       }
     } catch (error) {
-      console.error('Failed to create GitHub service:', error);
+      logger.error('Failed to create GitHub service:', error);
       throw error;
     }
   }
@@ -227,7 +230,7 @@
       const githubService = await createGitHubService();
       repositories = await githubService.listRepos();
     } catch (error) {
-      console.error('Error loading repositories:', error);
+      logger.error('Error loading repositories:', error);
       repositories = [];
     } finally {
       isLoadingRepos = false;
@@ -290,7 +293,27 @@
     changes: Record<string, chrome.storage.StorageChange>,
     areaName: string
   ) => {
-    console.log('Storage changes detected in GitHubSettings:', changes, 'in area:', areaName);
+    // Filter out log-related changes to avoid logging massive amounts of data
+    const relevantChanges = Object.keys(changes).filter(
+      (key) => !key.startsWith('logs_') && key !== 'currentLogBatch' && key !== 'logMetadata'
+    );
+
+    if (relevantChanges.length > 0) {
+      const filteredChanges = relevantChanges.reduce(
+        (acc, key) => {
+          acc[key] = changes[key];
+          return acc;
+        },
+        {} as Record<string, chrome.storage.StorageChange>
+      );
+
+      logger.debug(
+        'Storage changes detected in GitHubSettings:',
+        relevantChanges,
+        'in area:',
+        areaName
+      );
+    }
 
     // Check if lastSettingsUpdate changed in local storage
     if (areaName === 'local' && changes.lastSettingsUpdate) {
@@ -300,13 +323,13 @@
         repoName: string;
         branch: string;
       };
-      console.log('Settings update detected:', updateInfo);
+      logger.info('Settings update detected:', updateInfo);
 
       // If the update is for the current project, update the local state
       if (projectId && updateInfo && updateInfo.projectId === projectId) {
         repoName = updateInfo.repoName;
         branch = updateInfo.branch;
-        console.log('Updated local state with new project settings:', repoName, branch);
+        logger.info('Updated local state with new project settings:', repoName, branch);
       }
     }
 
@@ -319,7 +342,7 @@
       if (newSettings[projectId]) {
         repoName = newSettings[projectId].repoName;
         branch = newSettings[projectId].branch;
-        console.log('Updated from sync storage:', repoName, branch);
+        logger.info('Updated from sync storage:', repoName, branch);
       }
     }
   };
@@ -333,15 +356,15 @@
     // Load saved authentication method preference
     if (storage.preferredAuthMethod) {
       authenticationMethod = storage.preferredAuthMethod;
-      console.log('🔄 Loaded authentication method preference:', authenticationMethod);
+      logger.info('🔄 Loaded authentication method preference:', authenticationMethod);
     } else {
       // If no preference saved, smart detect based on available credentials
       if (githubAppInstallationId) {
         authenticationMethod = 'github_app';
-        console.log('🤖 Auto-selected GitHub App based on available installation');
+        logger.info('🤖 Auto-selected GitHub App based on available installation');
       } else if (githubToken) {
         authenticationMethod = 'pat';
-        console.log('🔑 Auto-selected PAT based on available token');
+        logger.info('🔑 Auto-selected PAT based on available token');
       }
       // Save the initial choice
       if (authenticationMethod !== 'pat') {
@@ -402,7 +425,7 @@
           await loadRepositories();
         }
       } catch (error) {
-        console.error('Error validating PAT settings:', error);
+        logger.error('Error validating PAT settings:', error);
         isTokenValid = false;
         validationError = error instanceof Error ? error.message : 'Validation failed';
       } finally {
@@ -448,7 +471,7 @@
     // Only check permissions for PAT authentication
     if (authenticationMethod !== 'pat' || !githubToken || isCheckingPermissions) return;
 
-    console.log('🔍 Starting token permissions check...');
+    logger.info('🔍 Starting token permissions check...');
     isCheckingPermissions = true;
     permissionError = null;
     permissionStatus = {
@@ -466,7 +489,7 @@
       const result = await githubService.verifyTokenPermissions(
         repoOwner,
         async ({ permission, isValid }) => {
-          console.log(`✅ Permission check callback: ${permission} = ${isValid}`);
+          logger.info(`✅ Permission check callback: ${permission} = ${isValid}`);
           currentCheck = permission;
 
           // Update the status as each permission is checked
@@ -487,14 +510,14 @@
 
           // Force Svelte to update the UI by creating a new object reference
           permissionStatus = { ...permissionStatus };
-          console.log('📊 Updated permission status:', permissionStatus);
+          logger.info('📊 Updated permission status:', permissionStatus);
 
           // Force Svelte to process the DOM update
           await tick();
         }
       );
 
-      console.log('🏁 Permission check completed:', result);
+      logger.info('🏁 Permission check completed:', result);
 
       if (result.isValid) {
         lastPermissionCheck = Date.now();
@@ -510,12 +533,12 @@
         permissionError = result.error || 'Permission verification failed';
       }
     } catch (error) {
-      console.error('Permission check failed:', error);
+      logger.error('Permission check failed:', error);
       permissionError = 'Failed to verify permissions';
     } finally {
       isCheckingPermissions = false;
       currentCheck = null;
-      console.log('🔚 Permission check finished');
+      logger.info('🔚 Permission check finished');
     }
   }
 
@@ -584,7 +607,7 @@
       // Show success message
       githubAppConnectionError = null;
     } catch (error) {
-      console.error('Error connecting GitHub App:', error);
+      logger.error('Error connecting GitHub App:', error);
       githubAppConnectionError =
         error instanceof Error ? error.message : 'Failed to connect GitHub App';
     } finally {

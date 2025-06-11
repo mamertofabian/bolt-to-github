@@ -101,7 +101,6 @@ export class MockMessageHandler implements MessageHandlerInterface {
     this.messageQueue = [];
   }
 
-
   // Test helpers
   simulateDisconnection(): void {
     this.isConnected = false;
@@ -345,11 +344,12 @@ export class MockPort implements chrome.runtime.Port {
     // Set chrome.runtime.lastError for the disconnect event
     // In tests, the lastError should persist for the test environment to use
     if (typeof chrome !== 'undefined' && chrome.runtime) {
-      (chrome.runtime as typeof chrome.runtime & { lastError?: chrome.runtime.LastError }).lastError =
-        this.disconnectError || null;
+      (
+        chrome.runtime as typeof chrome.runtime & { lastError?: chrome.runtime.LastError }
+      ).lastError = this.disconnectError || null;
 
       this.disconnectListeners.forEach((listener) => listener());
-      
+
       // Note: We don't restore lastError here, let the test environment manage it
     } else {
       // If chrome is not available, just call the listeners

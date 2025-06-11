@@ -1,4 +1,7 @@
 import { writable, derived, type Writable } from 'svelte/store';
+import { createLogger } from '../utils/logger';
+
+const logger = createLogger('ProjectSettingsStore');
 
 // Project Settings State Interface
 export interface ProjectSettingsState {
@@ -110,7 +113,7 @@ export const projectSettingsActions = {
         this.setProjectTitle('');
       }
     } catch (error) {
-      console.error('Error loading project title:', error);
+      logger.error('Error loading project title:', error);
       this.setProjectTitle('');
     }
   },
@@ -148,7 +151,7 @@ export const projectSettingsActions = {
         }
       }
     } catch (error) {
-      console.error('Error detecting current project:', error);
+      logger.error('Error detecting current project:', error);
     }
   },
 

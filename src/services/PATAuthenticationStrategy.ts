@@ -9,6 +9,9 @@ import type {
   TokenValidationResult,
   PermissionCheckResult,
 } from './types/authentication';
+import { createLogger } from '../lib/utils/logger';
+
+const logger = createLogger('PATAuthenticationStrategy');
 
 export class PATAuthenticationStrategy implements IAuthenticationStrategy {
   readonly type: AuthenticationType = 'pat';
@@ -33,7 +36,7 @@ export class PATAuthenticationStrategy implements IAuthenticationStrategy {
       const storage = await chrome.storage.sync.get('githubToken');
       return !!storage.githubToken;
     } catch (error) {
-      console.error('Failed to check PAT configuration:', error);
+      logger.error('Failed to check PAT configuration:', error);
       return false;
     }
   }
@@ -160,7 +163,7 @@ export class PATAuthenticationStrategy implements IAuthenticationStrategy {
       await chrome.storage.sync.remove(['githubToken']);
       this.token = null;
     } catch (error) {
-      console.error('Failed to clear PAT auth:', error);
+      logger.error('Failed to clear PAT auth:', error);
       throw new Error('Failed to clear PAT authentication');
     }
   }
@@ -193,7 +196,7 @@ export class PATAuthenticationStrategy implements IAuthenticationStrategy {
         avatar_url: userData.avatar_url,
       };
     } catch (error) {
-      console.error('Failed to get user info:', error);
+      logger.error('Failed to get user info:', error);
       return null;
     }
   }
@@ -241,7 +244,7 @@ export class PATAuthenticationStrategy implements IAuthenticationStrategy {
         lastUsed: new Date().toISOString(),
       };
     } catch (error) {
-      console.error('Failed to get PAT metadata:', error);
+      logger.error('Failed to get PAT metadata:', error);
       return {};
     }
   }

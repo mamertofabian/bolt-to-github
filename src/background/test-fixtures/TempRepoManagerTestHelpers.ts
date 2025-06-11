@@ -7,9 +7,9 @@
 
 import { BackgroundTempRepoManager } from '../TempRepoManager';
 import type { UnifiedGitHubService } from '../../services/UnifiedGitHubService';
-import { 
-  TempRepoManagerTestEnvironment, 
-  MockUnifiedGitHubService, 
+import {
+  TempRepoManagerTestEnvironment,
+  MockUnifiedGitHubService,
   MockOperationStateManager,
   TempRepoTestData,
   TempRepoScenarioBuilder,
@@ -23,7 +23,10 @@ export class TempRepoManagerFactory {
   /**
    * Creates a TempRepoManager instance with all dependencies mocked
    */
-  static createWithMocks(env: TempRepoManagerTestEnvironment, owner: string = TempRepoTestData.owners.validOwner): BackgroundTempRepoManager {
+  static createWithMocks(
+    env: TempRepoManagerTestEnvironment,
+    owner: string = TempRepoTestData.owners.validOwner
+  ): BackgroundTempRepoManager {
     return new BackgroundTempRepoManager(
       env.mockGitHubService as unknown as UnifiedGitHubService,
       owner,
@@ -87,7 +90,10 @@ export class TempRepoTestLifecycle {
   /**
    * Create and return a TempRepoManager instance for testing
    */
-  createManager(scenario: 'success' | 'failure' | 'existing' | 'custom' = 'success', owner?: string): BackgroundTempRepoManager {
+  createManager(
+    scenario: 'success' | 'failure' | 'existing' | 'custom' = 'success',
+    owner?: string
+  ): BackgroundTempRepoManager {
     switch (scenario) {
       case 'success':
         this.tempRepoManager = TempRepoManagerFactory.createForSuccessScenario(this.env);
@@ -128,15 +134,12 @@ export class AsyncOperationHelpers {
   /**
    * Wait for an async operation to complete and verify its outcome
    */
-  static async waitForOperation<T>(
-    operation: Promise<T>,
-    timeoutMs: number = 5000
-  ): Promise<T> {
+  static async waitForOperation<T>(operation: Promise<T>, timeoutMs: number = 5000): Promise<T> {
     return Promise.race([
       operation,
-      new Promise<never>((_, reject) => 
+      new Promise<never>((_, reject) =>
         setTimeout(() => reject(new Error('Operation timed out')), timeoutMs)
-      )
+      ),
     ]);
   }
 
@@ -149,14 +152,16 @@ export class AsyncOperationHelpers {
     timeoutMs: number = 3000
   ): Promise<void> {
     const startTime = Date.now();
-    
+
     while (env.mockStatusBroadcaster.getStatusHistory().length < expectedCount) {
       if (Date.now() - startTime > timeoutMs) {
-        throw new Error(`Timeout waiting for ${expectedCount} status broadcasts. Got ${env.mockStatusBroadcaster.getStatusHistory().length}`);
+        throw new Error(
+          `Timeout waiting for ${expectedCount} status broadcasts. Got ${env.mockStatusBroadcaster.getStatusHistory().length}`
+        );
       }
-      
+
       // Small delay to prevent busy waiting
-      await new Promise(resolve => setTimeout(resolve, 10));
+      await new Promise((resolve) => setTimeout(resolve, 10));
     }
   }
 
@@ -168,10 +173,10 @@ export class AsyncOperationHelpers {
     cycles: number = 1
   ): Promise<void> {
     const cleanupInterval = 30 * 1000; // 30 seconds as defined in TempRepoManager
-    
+
     for (let i = 0; i < cycles; i++) {
       env.advanceTime(cleanupInterval);
-      await new Promise(resolve => setTimeout(resolve, 0)); // Allow promises to resolve
+      await new Promise((resolve) => setTimeout(resolve, 0)); // Allow promises to resolve
     }
   }
 
@@ -184,10 +189,10 @@ export class AsyncOperationHelpers {
     steps: number[] = TempRepoTestData.progress.progressSteps
   ): Promise<void> {
     const callback = env.mockGitHubService.getProgressCallback(repoName);
-    
+
     if (callback) {
       for (const step of steps) {
-        await new Promise(resolve => setTimeout(resolve, 10)); // Small delay between steps
+        await new Promise((resolve) => setTimeout(resolve, 10)); // Small delay between steps
         callback(step);
       }
     }
@@ -203,7 +208,9 @@ export class ValidationHelpers {
    * Validate that a temp repo name follows the expected format
    */
   static validateTempRepoName(tempRepoName: string, originalRepo: string): boolean {
-    const pattern = new RegExp(`^temp-${originalRepo.replace(/[^a-zA-Z0-9-]/g, '-')}-\\d{8}-[a-f0-9]{6}$`);
+    const pattern = new RegExp(
+      `^temp-${originalRepo.replace(/[^a-zA-Z0-9-]/g, '-')}-\\d{8}-[a-f0-9]{6}$`
+    );
     return pattern.test(tempRepoName);
   }
 
@@ -220,7 +227,7 @@ export class ValidationHelpers {
    */
   static validateRepoMetadata(metadata: any): boolean {
     const requiredFields = ['originalRepo', 'tempRepo', 'createdAt', 'owner', 'branch'];
-    return requiredFields.every(field => field in metadata && metadata[field] !== undefined);
+    return requiredFields.every((field) => field in metadata && metadata[field] !== undefined);
   }
 
   /**
@@ -237,8 +244,8 @@ export class ValidationHelpers {
     statuses: Array<{ status: string; progress?: number }>,
     expectedFlow: string[] = ['uploading', 'success']
   ): boolean {
-    const statusSequence = statuses.map(s => s.status);
-    
+    const statusSequence = statuses.map((s) => s.status);
+
     // Check if the sequence contains all expected statuses in order
     let expectedIndex = 0;
     for (const status of statusSequence) {
@@ -246,7 +253,7 @@ export class ValidationHelpers {
         expectedIndex++;
       }
     }
-    
+
     return expectedIndex === expectedFlow.length;
   }
 }
@@ -261,12 +268,12 @@ export class DebuggingHelpers {
    */
   static printMockState(env: TempRepoManagerTestEnvironment): void {
     console.log('=== MOCK STATE DEBUG ===');
-    
+
     console.log('Storage:', env.mockStorage.getLocalData());
     console.log('Status History:', env.mockStatusBroadcaster.getStatusHistory());
     console.log('Created Tabs:', env.mockTabs.getCreatedTabs());
     console.log('Operations:', env.mockOperationStateManager.getAllOperations());
-    
+
     console.log('========================');
   }
 
@@ -292,11 +299,13 @@ export class DebuggingHelpers {
       `- Operations Tracked: ${env.mockOperationStateManager.getOperationCount()}`,
       `- Tabs Created: ${env.mockTabs.getCreatedTabs().length}`,
       '',
-      'Last Status:', JSON.stringify(env.mockStatusBroadcaster.getLastStatus(), null, 2),
+      'Last Status:',
+      JSON.stringify(env.mockStatusBroadcaster.getLastStatus(), null, 2),
       '',
-      'Storage Data:', JSON.stringify(env.mockStorage.getLocalData(), null, 2),
+      'Storage Data:',
+      JSON.stringify(env.mockStorage.getLocalData(), null, 2),
     ];
-    
+
     return report.join('\n');
   }
 
@@ -318,7 +327,7 @@ export class DebuggingHelpers {
   } {
     // Note: This would need to be implemented based on your specific mock tracking needs
     // You might want to add call tracking to your mocks for this functionality
-    
+
     return {
       storageInteractions: {
         gets: env.mockStorage.local.get.mock.calls.length,
@@ -346,11 +355,13 @@ export class PerformanceHelpers {
   /**
    * Measure execution time of an operation
    */
-  static async measureExecutionTime<T>(operation: () => Promise<T>): Promise<{ result: T; timeMs: number }> {
+  static async measureExecutionTime<T>(
+    operation: () => Promise<T>
+  ): Promise<{ result: T; timeMs: number }> {
     const startTime = Date.now();
     const result = await operation();
     const timeMs = Date.now() - startTime;
-    
+
     return { result, timeMs };
   }
 
@@ -362,23 +373,23 @@ export class PerformanceHelpers {
     variations: { name: string; setup: () => void }[]
   ): Promise<Array<{ name: string; timeMs: number; success: boolean; error?: Error }>> {
     const results = [];
-    
+
     for (const variation of variations) {
       variation.setup();
-      
+
       try {
         const { timeMs } = await this.measureExecutionTime(operation);
         results.push({ name: variation.name, timeMs, success: true });
       } catch (error) {
-        results.push({ 
-          name: variation.name, 
-          timeMs: -1, 
-          success: false, 
-          error: error as Error 
+        results.push({
+          name: variation.name,
+          timeMs: -1,
+          success: false,
+          error: error as Error,
         });
       }
     }
-    
+
     return results;
   }
 
@@ -387,10 +398,10 @@ export class PerformanceHelpers {
    */
   static simulateMemoryPressure<T>(operation: () => Promise<T>): Promise<T> {
     // Create large objects to simulate memory pressure
-    const memoryPressure = Array.from({ length: 1000 }, () => 
+    const memoryPressure = Array.from({ length: 1000 }, () =>
       new Array(1000).fill('memory-pressure-data')
     );
-    
+
     return operation().finally(() => {
       // Clear memory pressure
       memoryPressure.length = 0;

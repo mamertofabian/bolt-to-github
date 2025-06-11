@@ -1,5 +1,6 @@
 <script lang="ts">
   import { onMount, onDestroy } from 'svelte';
+  import { createLogger } from '$lib/utils/logger';
   import type { UploadStatusState } from '../lib/types';
   import {
     getRotatingMessage,
@@ -7,6 +8,8 @@
     resetMessageRotation,
     type ReassuringMessageContext,
   } from '../lib/utils/reassuringMessages';
+
+  const logger = createLogger('UploadStatus');
 
   // Props with default state
   export let status: UploadStatusState = {
@@ -39,14 +42,14 @@
   const prefersReducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 
   onMount(() => {
-    console.log('🔄 UploadStatus component mounted');
+    logger.info('🔄 UploadStatus component mounted');
     mounted = true;
     // Process any status that might have been set before mounting
     updateNotificationUI(status);
   });
 
   function updateNotificationUI(newStatus: UploadStatusState) {
-    console.log('🔄 Updating notification:', newStatus);
+    logger.info('🔄 Updating notification:', newStatus);
 
     // Clear any existing timeout to prevent race conditions
     if (hideTimeout) {
@@ -109,9 +112,9 @@
       newStatus.status === 'error' ||
       newStatus.status === 'complete'
     ) {
-      console.log(`🔄 Setting auto-hide for ${newStatus.status} status`);
+      logger.info(`🔄 Setting auto-hide for ${newStatus.status} status`);
       hideTimeout = window.setTimeout(() => {
-        console.log('🔄 Auto-hiding notification');
+        logger.info('🔄 Auto-hiding notification');
         closeNotification('Auto-hide');
         hideTimeout = null;
       }, 5000);
@@ -130,7 +133,7 @@
   }
 
   function closeNotification(source?: string) {
-    console.log('🔄 Closing notification', source);
+    logger.info('🔄 Closing notification', source);
     animationClass = 'notification-exit';
 
     // Clear message update interval
@@ -162,7 +165,7 @@
 
   // Clean up timers on destroy
   onDestroy(() => {
-    console.log('🧹 Cleaning up upload status component');
+    logger.info('🧹 Cleaning up upload status component');
     if (hideTimeout) {
       clearTimeout(hideTimeout);
     }

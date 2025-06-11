@@ -44,7 +44,7 @@ export class MockChromeStorage {
 
   remove(keys: string | string[]): Promise<void> {
     const keysToRemove = Array.isArray(keys) ? keys : [keys];
-    keysToRemove.forEach(key => delete this.storage[key]);
+    keysToRemove.forEach((key) => delete this.storage[key]);
     return Promise.resolve();
   }
 
@@ -81,7 +81,7 @@ export class MockFetchHandler {
       ) {
         // Handle function responses
         const responseData = typeof response === 'function' ? response() : response;
-        
+
         // Create proper Response object
         return {
           ok: status >= 200 && status < 300,
@@ -93,7 +93,7 @@ export class MockFetchHandler {
           blob: async () => new Blob([JSON.stringify(responseData)]),
           arrayBuffer: async () => new ArrayBuffer(0),
           formData: async () => new FormData(),
-          clone: () => ({ json: async () => responseData } as any),
+          clone: () => ({ json: async () => responseData }) as any,
         } as Response;
       }
     }
@@ -109,7 +109,7 @@ export class MockFetchHandler {
       blob: async () => new Blob([JSON.stringify({ error: 'Not found' })]),
       arrayBuffer: async () => new ArrayBuffer(0),
       formData: async () => new FormData(),
-      clone: () => ({ json: async () => ({ error: 'Not found' }) } as any),
+      clone: () => ({ json: async () => ({ error: 'Not found' }) }) as any,
     } as Response;
   }
 
@@ -155,16 +155,16 @@ export class MockGitHubAppService implements Partial<GitHubAppService> {
 
   async getAccessToken() {
     this.tokenRenewalCount++;
-    
+
     if (this.shouldFailAuth) {
       throw new Error('Re-authentication required: No GitHub App configuration found');
     }
-    
+
     if (this.shouldFailTokenRenewal && this.tokenRenewalCount > 1) {
       throw new Error('Re-authentication required: Failed to renew access token');
     }
-    
-    return this.tokenRenewalCount > 1 
+
+    return this.tokenRenewalCount > 1
       ? { ...validTokenResponse, renewed: true }
       : validTokenResponse;
   }
@@ -177,9 +177,9 @@ export class MockGitHubAppService implements Partial<GitHubAppService> {
   }
 
   async validateAuth() {
-    return this.shouldFailAuth ? 
-      { isValid: false, error: 'Authentication validation failed' } :
-      validTokenValidationResult;
+    return this.shouldFailAuth
+      ? { isValid: false, error: 'Authentication validation failed' }
+      : validTokenValidationResult;
   }
 
   async checkPermissions(repoOwner: string) {
@@ -242,18 +242,10 @@ export class MockGitHubAppService implements Partial<GitHubAppService> {
 
 export function createSupabaseMockResponses(fetchMock: MockFetchHandler) {
   // OAuth completion endpoint
-  fetchMock.setResponse(
-    '/functions/v1/github-app-auth',
-    validOAuthFlowResponse,
-    200
-  );
+  fetchMock.setResponse('/functions/v1/github-app-auth', validOAuthFlowResponse, 200);
 
   // Get GitHub token endpoint
-  fetchMock.setResponse(
-    '/functions/v1/get-github-token',
-    validTokenResponse,
-    200
-  );
+  fetchMock.setResponse('/functions/v1/get-github-token', validTokenResponse, 200);
 
   // Get installation token endpoint
   fetchMock.setResponse(
@@ -265,18 +257,10 @@ export function createSupabaseMockResponses(fetchMock: MockFetchHandler) {
 
 export function createSupabaseErrorResponses(fetchMock: MockFetchHandler) {
   // No GitHub App error
-  fetchMock.setResponse(
-    '/functions/v1/get-github-token',
-    noGitHubAppError,
-    401
-  );
+  fetchMock.setResponse('/functions/v1/get-github-token', noGitHubAppError, 401);
 
   // Token expired error
-  fetchMock.setResponse(
-    '/functions/v1/get-github-token',
-    tokenExpiredNoRefreshError,
-    401
-  );
+  fetchMock.setResponse('/functions/v1/get-github-token', tokenExpiredNoRefreshError, 401);
 }
 
 // ===========================
@@ -285,26 +269,24 @@ export function createSupabaseErrorResponses(fetchMock: MockFetchHandler) {
 
 export function createGitHubMockResponses(fetchMock: MockFetchHandler) {
   // User endpoint
-  fetchMock.setResponse(
-    'https://api.github.com/user',
-    validGitHubUserResponse,
-    200
-  );
+  fetchMock.setResponse('https://api.github.com/user', validGitHubUserResponse, 200);
 
   // Installations endpoint
   fetchMock.setResponse(
     'https://api.github.com/user/installations',
     {
       total_count: 1,
-      installations: [{
-        id: 12345678,
-        account: {
-          login: 'testuser',
-          id: 1234567,
-          avatar_url: 'https://avatars.githubusercontent.com/u/1234567?v=4',
-          type: 'User',
+      installations: [
+        {
+          id: 12345678,
+          account: {
+            login: 'testuser',
+            id: 1234567,
+            avatar_url: 'https://avatars.githubusercontent.com/u/1234567?v=4',
+            type: 'User',
+          },
         },
-      }],
+      ],
     },
     200
   );
@@ -398,7 +380,7 @@ export function createMockChromeStorageAPI(storage: MockChromeStorage) {
       get: jest.fn((keys: string | string[] | null, callback?: (result: any) => void) => {
         const promise = storage.get(keys || []);
         if (callback) {
-          promise.then(result => callback(result));
+          promise.then((result) => callback(result));
         }
         return promise;
       }),
@@ -448,14 +430,14 @@ export function createMethodSpy<T extends (...args: any[]) => any>(
   name: string = 'method'
 ): T & { calls: Array<Parameters<T>>; resetCalls: () => void } {
   const calls: Array<Parameters<T>> = [];
-  
+
   const spy = ((...args: Parameters<T>) => {
     calls.push(args);
     return originalMethod(...args);
   }) as T & { calls: Array<Parameters<T>>; resetCalls: () => void };
-  
+
   spy.calls = calls;
-  spy.resetCalls = () => calls.length = 0;
-  
+  spy.resetCalls = () => (calls.length = 0);
+
   return spy;
 }

@@ -7,6 +7,9 @@ import type {
 } from './interfaces/IRepositoryService';
 import type { IFileService } from './interfaces/IFileService';
 import type { IRepoCloneService } from './interfaces/IRepoCloneService';
+import { createLogger } from '../lib/utils/logger';
+
+const logger = createLogger('RepositoryService');
 
 /**
  * Service for GitHub repository management operations
@@ -197,7 +200,7 @@ This repository was automatically initialized by the Bolt to GitHub extension.
       // If no pagination, count the commits manually
       return commits.length;
     } catch (error) {
-      console.error('Failed to fetch commit count:', error);
+      logger.error('Failed to fetch commit count:', error);
       return 0;
     }
   }
@@ -298,11 +301,11 @@ This repository was automatically initialized by the Bolt to GitHub extension.
             );
             repos = repos.concat(orgRepos);
           } catch (error) {
-            console.warn(`Failed to fetch repos for organization ${org.login}:`, error);
+            logger.warn(`Failed to fetch repos for organization ${org.login}:`, error);
           }
         }
       } catch (error) {
-        console.warn('Failed to fetch organizations:', error);
+        logger.warn('Failed to fetch organizations:', error);
       }
 
       return repos.map((repo: any) => ({
@@ -394,7 +397,7 @@ This repository was automatically initialized by the Bolt to GitHub extension.
       return ownerInfo.type === 'Organization';
     } catch (error) {
       // If we can't determine, proceed assuming it's a user
-      console.warn(`Could not determine if ${owner} is an organization:`, error);
+      logger.warn(`Could not determine if ${owner} is an organization:`, error);
       return false;
     }
   }
@@ -407,7 +410,7 @@ This repository was automatically initialized by the Bolt to GitHub extension.
    * @private
    */
   private createServiceError(message: string, error: unknown): Error {
-    console.error(`${message}:`, error);
+    logger.error(`${message}:`, error);
     return new Error(`${message}: ${error instanceof Error ? error.message : 'Unknown error'}`);
   }
 }

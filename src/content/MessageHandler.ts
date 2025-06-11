@@ -1,4 +1,7 @@
 import type { MessageType } from '$lib/types';
+import { createLogger } from '$lib/utils/logger';
+
+const logger = createLogger('MessageHandler');
 
 export class MessageHandler {
   private port: chrome.runtime.Port | null;
@@ -16,7 +19,7 @@ export class MessageHandler {
 
     this.port.onDisconnect.addListener(() => {
       this.isConnected = false;
-      console.log('🔌 MessageHandler: Port disconnected');
+      logger.info('🔌 MessageHandler: Port disconnected');
     });
   }
 
@@ -24,7 +27,7 @@ export class MessageHandler {
     this.port = newPort;
     this.isConnected = true;
     this.setupPortListeners();
-    console.log('🔄 MessageHandler: Port updated, processing queued messages');
+    logger.info('🔄 MessageHandler: Port updated, processing queued messages');
 
     // Process any queued messages
     this.processQueuedMessages();
@@ -39,20 +42,20 @@ export class MessageHandler {
     }
 
     if (queuedMessages.length > 0) {
-      console.log(`📤 MessageHandler: Processed ${queuedMessages.length} queued messages`);
+      logger.info(`📤 MessageHandler: Processed ${queuedMessages.length} queued messages`);
     }
   }
 
   private isPortConnected(): boolean {
     if (!this.port) {
-      console.debug('🔌 MessageHandler: No port available');
+      logger.debug('🔌 MessageHandler: No port available');
       return false;
     }
 
     try {
       // Check if chrome runtime is available
       if (!chrome.runtime?.id) {
-        console.debug('🔌 MessageHandler: Chrome runtime not available');
+        logger.debug('🔌 MessageHandler: Chrome runtime not available');
         this.isConnected = false;
         return false;
       }
@@ -60,14 +63,14 @@ export class MessageHandler {
       // Additional check for port validity by trying to access port properties
       const portName = this.port.name;
       if (!portName) {
-        console.debug('🔌 MessageHandler: Port appears to be invalid');
+        logger.debug('🔌 MessageHandler: Port appears to be invalid');
         this.isConnected = false;
         return false;
       }
 
       return this.isConnected;
     } catch (error) {
-      console.debug('🔌 MessageHandler: Port connection check failed:', error);
+      logger.debug('🔌 MessageHandler: Port connection check failed:', error);
       this.isConnected = false;
       return false;
     }
@@ -78,16 +81,16 @@ export class MessageHandler {
 
     // If port is not connected, queue the message
     if (!this.isPortConnected()) {
-      console.warn(`⏳ MessageHandler: Port disconnected, queuing message: ${type}`);
+      logger.warn(`⏳ MessageHandler: Port disconnected, queuing message: ${type}`);
       this.messageQueue.push(message);
       return;
     }
 
     try {
       this.port!.postMessage(message);
-      // console.log('📤 MessageHandler: Message sent:', { type, data });
+      logger.debug('📤 MessageHandler: Message sent:', { type, data });
     } catch (error) {
-      console.error('❌ MessageHandler: Error sending message:', error);
+      logger.error('❌ MessageHandler: Error sending message:', error);
 
       // If sending failed, mark as disconnected and queue the message
       this.isConnected = false;
@@ -128,6 +131,6 @@ export class MessageHandler {
 
   public clearQueue(): void {
     this.messageQueue = [];
-    console.log('🗑️ MessageHandler: Message queue cleared');
+    logger.info('🗑️ MessageHandler: Message queue cleared');
   }
 }

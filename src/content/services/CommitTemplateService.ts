@@ -1,4 +1,7 @@
 import { SettingsService } from '../../services/settings';
+import { createLogger } from '../../lib/utils/logger';
+
+const logger = createLogger('CommitTemplateService');
 
 export interface CommitTemplate {
   id: string;
@@ -122,7 +125,7 @@ export class CommitTemplateService {
       const result = await chrome.storage.sync.get('commitTemplates');
       return result.commitTemplates || [];
     } catch (error) {
-      console.warn('Error loading custom templates:', error);
+      logger.warn('Error loading custom templates:', error);
       return [];
     }
   }
@@ -146,7 +149,7 @@ export class CommitTemplateService {
 
       await chrome.storage.sync.set({ commitTemplates: templates });
     } catch (error) {
-      console.error('Error saving custom template:', error);
+      logger.error('Error saving custom template:', error);
       throw error;
     }
   }
@@ -158,7 +161,7 @@ export class CommitTemplateService {
 
       await chrome.storage.sync.set({ commitTemplates: filtered });
     } catch (error) {
-      console.error('Error deleting custom template:', error);
+      logger.error('Error deleting custom template:', error);
       throw error;
     }
   }
@@ -173,7 +176,7 @@ export class CommitTemplateService {
         await chrome.storage.sync.set({ commitTemplates: templates });
       }
     } catch (error) {
-      console.error('Error updating last used:', error);
+      logger.error('Error updating last used:', error);
     }
   }
 
@@ -217,7 +220,7 @@ export class CommitTemplateService {
 
       return suggestions;
     } catch (error) {
-      console.warn('Error getting template suggestions:', error);
+      logger.warn('Error getting template suggestions:', error);
       // Return basic default suggestions as fallback
       return ['feat: ', 'fix: ', 'docs: ', 'refactor: ', 'chore: ', 'style: '];
     }
@@ -239,7 +242,7 @@ export class CommitTemplateService {
       // Could also track usage analytics here for default templates
       // to improve future suggestions
     } catch (error) {
-      console.warn('Error recording template usage:', error);
+      logger.warn('Error recording template usage:', error);
     }
   }
 }

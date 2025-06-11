@@ -1,5 +1,9 @@
 import '../styles/gb.css';
 import App from './App.svelte';
+import { createLogger } from '$lib/utils/logger';
+
+const logger = createLogger('PopupMain');
+logger.info('🎯 Popup entry point loaded');
 
 // Track popup opening via background script
 chrome.runtime.sendMessage({
@@ -14,5 +18,7 @@ chrome.runtime.sendMessage({
 const app = new App({
   target: document.getElementById('app')!,
 });
+
+logger.info('🚀 Popup App component mounted');
 
 export default app;

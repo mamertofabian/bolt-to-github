@@ -6,6 +6,10 @@
   import IssueCard from './IssueCard.svelte';
   import NewIssueForm from './NewIssueForm.svelte';
   import { issuesStore } from '$lib/stores/issuesStore';
+  import { createLogger } from '$lib/utils/logger';
+
+  const logger = createLogger('IssueManager');
+
   export let githubToken: string;
   export let repoOwner: string;
   export let repoName: string;
@@ -48,13 +52,13 @@
   async function loadIssues(forceRefresh: boolean = false) {
     if (!githubToken || !repoOwner || !repoName) return;
 
-    console.log('🔄 loadIssues called:', { forceRefresh, selectedState, repoOwner, repoName });
+    logger.info('🔄 loadIssues called:', { forceRefresh, selectedState, repoOwner, repoName });
 
     try {
       await issuesStore.loadIssues(repoOwner, repoName, githubToken, selectedState, forceRefresh);
-      console.log('✅ loadIssues completed successfully');
+      logger.info('✅ loadIssues completed successfully');
     } catch (err) {
-      console.error('Error loading issues:', err);
+      logger.error('Error loading issues:', err);
     }
   }
 
@@ -86,7 +90,7 @@
     if (!githubToken || !repoOwner || !repoName || issueToClose === null) return;
 
     try {
-      console.log('Closing issue:', issueToClose);
+      logger.info('Closing issue:', issueToClose);
       isClosingIssue = true;
       await issuesStore.updateIssue(repoOwner, repoName, githubToken, issueToClose, {
         state: 'closed',
@@ -95,7 +99,7 @@
       issueToClose = null;
       isClosingIssue = false;
     } catch (err) {
-      console.error('Error closing issue:', err);
+      logger.error('Error closing issue:', err);
       showCloseConfirmation = false;
       issueToClose = null;
       isClosingIssue = false;
@@ -121,12 +125,12 @@
   }
 
   async function handleRefresh() {
-    console.log('🔄 Refresh button clicked');
+    logger.info('🔄 Refresh button clicked');
     // Explicitly invalidate cache before forcing refresh
     issuesStore.invalidateCache(repoOwner, repoName);
-    console.log('🗑️ Cache invalidated');
+    logger.info('🗑️ Cache invalidated');
     await loadIssues(true);
-    console.log('✅ Refresh completed');
+    logger.info('✅ Refresh completed');
   }
 </script>
 

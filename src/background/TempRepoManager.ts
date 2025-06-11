@@ -1,6 +1,9 @@
 import type { UnifiedGitHubService } from '../services/UnifiedGitHubService';
 import type { UploadStatusState } from '../lib/types';
 import { OperationStateManager } from '../content/services/OperationStateManager';
+import { createLogger } from '$lib/utils/logger';
+
+const logger = createLogger('TempRepoManager');
 
 export const STORAGE_KEY = 'bolt_temp_repos';
 
@@ -30,11 +33,11 @@ export class BackgroundTempRepoManager {
 
   private async initializeCleanup(): Promise<void> {
     const tempRepos = await this.getTempRepos();
-    console.log(
+    logger.info(
       `🔍 TempRepoManager: Found ${tempRepos.length} temporary repositories on initialization`
     );
     if (tempRepos.length > 0) {
-      console.log('⏰ TempRepoManager: Starting cleanup interval');
+      logger.info('⏰ TempRepoManager: Starting cleanup interval');
       this.startCleanupInterval();
     }
   }
@@ -68,9 +71,9 @@ export class BackgroundTempRepoManager {
             (b: { name: string; isDefault: boolean }) => b.isDefault
           );
           branchToUse = defaultBranch ? defaultBranch.name : 'main';
-          console.log(`Using detected default branch: ${branchToUse}`);
+          logger.info(`Using detected default branch: ${branchToUse}`);
         } catch (error) {
-          console.warn('Failed to detect default branch, falling back to main:', error);
+          logger.warn('Failed to detect default branch, falling back to main:', error);
           branchToUse = 'main';
         }
       }
@@ -138,7 +141,7 @@ export class BackgroundTempRepoManager {
         this.startCleanupInterval();
       }
     } catch (error) {
-      console.error('Failed to import private repository:', error);
+      logger.error('Failed to import private repository:', error);
 
       // Mark operation as failed
       await this.operationStateManager.failOperation(
@@ -171,7 +174,7 @@ export class BackgroundTempRepoManager {
     await chrome.storage.local.set({
       [STORAGE_KEY]: tempRepos,
     });
-    console.log(
+    logger.info(
       `💾 TempRepoManager: Saved temporary repo ${tempRepo} (created at ${new Date(newRepo.createdAt).toISOString()})`
     );
   }
@@ -186,7 +189,7 @@ export class BackgroundTempRepoManager {
     const now = Date.now();
     const remaining = [];
 
-    console.log(
+    logger.info(
       `🧹 TempRepoManager: Cleanup check - found ${tempRepos.length} repositories${forceCleanUp ? ' (forced)' : ''}`
     );
 
@@ -196,13 +199,13 @@ export class BackgroundTempRepoManager {
 
       if (shouldDelete) {
         try {
-          console.log(
+          logger.info(
             `🗑️ TempRepoManager: Deleting temporary repo ${repo.tempRepo} (age: ${Math.floor(age / 1000)}s, max: ${BackgroundTempRepoManager.MAX_AGE / 1000}s)`
           );
           await this.githubService.deleteRepo(repo.owner, repo.tempRepo);
-          console.log(`✅ TempRepoManager: Successfully deleted ${repo.tempRepo}`);
+          logger.info(`✅ TempRepoManager: Successfully deleted ${repo.tempRepo}`);
         } catch (error) {
-          console.error(
+          logger.error(
             `❌ TempRepoManager: Failed to delete temporary repo ${repo.tempRepo}:`,
             error
           );
@@ -210,7 +213,7 @@ export class BackgroundTempRepoManager {
           remaining.push(repo);
         }
       } else {
-        console.log(
+        logger.info(
           `⏳ TempRepoManager: Keeping ${repo.tempRepo} (age: ${Math.floor(age / 1000)}s, max: ${BackgroundTempRepoManager.MAX_AGE / 1000}s)`
         );
         remaining.push(repo);
@@ -221,24 +224,24 @@ export class BackgroundTempRepoManager {
       [STORAGE_KEY]: remaining,
     });
 
-    console.log(
+    logger.info(
       `📊 TempRepoManager: Cleanup complete - ${tempRepos.length - remaining.length} deleted, ${remaining.length} remaining`
     );
 
     // Only stop the cleanup interval if there are no more repos to clean up
     if (remaining.length === 0) {
-      console.log('🛑 TempRepoManager: No more temporary repos - stopping cleanup interval');
+      logger.info('🛑 TempRepoManager: No more temporary repos - stopping cleanup interval');
       this.stopCleanupInterval();
     }
   }
 
   private startCleanupInterval(): void {
     if (this.cleanupInterval) {
-      console.log('⚠️  TempRepoManager: Cleanup interval already running');
+      logger.info('⚠️  TempRepoManager: Cleanup interval already running');
       return;
     }
 
-    console.log(
+    logger.info(
       `⏰ TempRepoManager: Starting cleanup interval (every ${BackgroundTempRepoManager.CLEANUP_INTERVAL / 1000}s)`
     );
     this.cleanupInterval = setInterval(
@@ -249,7 +252,7 @@ export class BackgroundTempRepoManager {
 
   private stopCleanupInterval(): void {
     if (this.cleanupInterval) {
-      console.log('🛑 TempRepoManager: Stopping cleanup interval');
+      logger.info('🛑 TempRepoManager: Stopping cleanup interval');
       clearInterval(this.cleanupInterval);
       this.cleanupInterval = null;
     }

@@ -5,6 +5,9 @@ import type { PremiumService } from './PremiumService';
 import { OperationStateManager } from './OperationStateManager';
 import { isPremium, pushStatisticsActions } from '../../lib/stores';
 import { get } from 'svelte/store';
+import { createLogger } from '../../lib/utils/logger';
+
+const logger = createLogger('PushReminderService');
 
 export interface PushReminderSettings {
   enabled: boolean;
@@ -74,9 +77,9 @@ export class PushReminderService {
       scheduledReminderCount: 0,
     };
 
-    console.log('🔧 Push reminder: Service initializing with settings:', this.settings);
-    console.log('🔧 Push reminder: Debug mode:', this.debugMode);
-    console.log('🔧 Push reminder: Initial state:', this.state);
+    logger.info('🔧 Push reminder: Service initializing with settings:', this.settings);
+    logger.info('🔧 Push reminder: Debug mode:', this.debugMode);
+    logger.info('🔧 Push reminder: Initial state:', this.state);
 
     this.loadSettings();
     this.setupActivityMonitoring();
@@ -92,7 +95,7 @@ export class PushReminderService {
         this.settings = { ...this.settings, ...result.pushReminderSettings };
       }
     } catch (error) {
-      console.warn('Failed to load push reminder settings:', error);
+      logger.warn('Failed to load push reminder settings:', error);
     }
   }
 
@@ -103,7 +106,7 @@ export class PushReminderService {
     try {
       await chrome.storage.local.set({ pushReminderSettings: this.settings });
     } catch (error) {
-      console.warn('Failed to save push reminder settings:', error);
+      logger.warn('Failed to save push reminder settings:', error);
     }
   }
 
@@ -115,7 +118,7 @@ export class PushReminderService {
 
     // Check every 2 minutes for reminder opportunities (or 10 seconds in debug mode)
     const checkInterval = this.debugMode ? 10 * 1000 : 2 * 60 * 1000;
-    console.log(
+    logger.info(
       `🔧 Push reminder: Setting up monitoring with ${checkInterval / 1000}s check interval (debug: ${this.debugMode})`
     );
 
@@ -131,10 +134,10 @@ export class PushReminderService {
    * Main logic to determine if we should show a reminder
    */
   private async checkForReminderOpportunity(): Promise<void> {
-    console.log('🔍 Push reminder: Checking for reminder opportunity...');
+    logger.info('🔍 Push reminder: Checking for reminder opportunity...');
 
     if (!this.settings.enabled || !this.isEnabled) {
-      console.log(
+      logger.info(
         '❌ Push reminder: Disabled (settings.enabled:',
         this.settings.enabled,
         ', isEnabled:',
@@ -149,23 +152,23 @@ export class PushReminderService {
     const noPushAttempts = (await pushStatisticsActions.hasPushAttempts()) === false;
 
     if (!isUserPremium && noPushAttempts) {
-      console.log(
+      logger.info(
         '✅ Push reminder: User is not premium and has no push attempts yet - allowing reminder to encourage first GitHub push'
       );
       // Continue with the normal reminder flow instead of showing immediately
       // This allows the user to see reminders that encourage them to push to GitHub
     } else if (!isUserPremium) {
       // User is not premium but has made push attempts - show premium upgrade
-      console.log('❌ Push reminder: Premium feature not available, quietly skipping reminder');
+      logger.info('❌ Push reminder: Premium feature not available, quietly skipping reminder');
       // this.showPremiumUpgradeNotification('pushReminders');
       return;
     }
 
-    console.log('✅ Push reminder: Service is enabled');
+    logger.info('✅ Push reminder: Service is enabled');
 
     // Check if we've reached max reminders for this session
     if (this.state.reminderCount >= this.settings.maxRemindersPerSession) {
-      console.log(
+      logger.info(
         '❌ Push reminder: Max reminders reached for session (',
         this.state.reminderCount,
         '/',
@@ -174,7 +177,7 @@ export class PushReminderService {
       );
       return;
     }
-    console.log(
+    logger.info(
       '✅ Push reminder: Under reminder limit (',
       this.state.reminderCount,
       '/',
@@ -187,17 +190,17 @@ export class PushReminderService {
       const snoozeUntil = new Date(
         this.state.lastSnoozeTime + this.settings.snoozeInterval * 60 * 1000
       );
-      console.log('❌ Push reminder: In snooze period until', snoozeUntil.toLocaleTimeString());
+      logger.info('❌ Push reminder: In snooze period until', snoozeUntil.toLocaleTimeString());
       return;
     }
-    console.log('✅ Push reminder: Not in snooze period');
+    logger.info('✅ Push reminder: Not in snooze period');
 
     // Check for ongoing operations that should suppress reminders
     if (await this.hasOngoingOperations()) {
-      console.log('❌ Push reminder: Skipping due to ongoing operations');
+      logger.info('❌ Push reminder: Skipping due to ongoing operations');
       return;
     }
-    console.log('✅ Push reminder: No conflicting operations in progress');
+    logger.info('✅ Push reminder: No conflicting operations in progress');
 
     // Check if enough time has passed since last reminder
     if (!this.hasReminderIntervalPassed()) {
@@ -205,17 +208,17 @@ export class PushReminderService {
         this.state.lastReminderTime +
           (this.debugMode ? 30 * 1000 : this.settings.reminderInterval * 60 * 1000)
       );
-      console.log(
+      logger.info(
         '❌ Push reminder: Too soon since last reminder. Next reminder at:',
         nextReminderTime.toLocaleTimeString()
       );
       return;
     }
-    console.log('✅ Push reminder: Enough time has passed since last reminder');
+    logger.info('✅ Push reminder: Enough time has passed since last reminder');
 
     // Check if system is idle (user and Bolt not active)
     const activityInfo = this.activityMonitor.getDebugInfo();
-    console.log('🔍 Push reminder: Activity status:', {
+    logger.info('🔍 Push reminder: Activity status:', {
       isUserIdle: this.activityMonitor.isUserIdle(),
       isBoltIdle: this.activityMonitor.isBoltIdle(),
       isSystemIdle: this.activityMonitor.isSystemIdle(),
@@ -224,22 +227,22 @@ export class PushReminderService {
     });
 
     if (!this.activityMonitor.isSystemIdle()) {
-      console.log('❌ Push reminder: System not idle (user or Bolt still active)');
+      logger.info('❌ Push reminder: System not idle (user or Bolt still active)');
       return;
     }
-    console.log('✅ Push reminder: System is idle');
+    logger.info('✅ Push reminder: System is idle');
 
     // Check if there are enough changes to warrant a reminder
-    console.log('🔍 Push reminder: Checking for significant changes...');
+    logger.info('🔍 Push reminder: Checking for significant changes...');
     const hasSignificantChanges = await this.hasSignificantChanges();
     if (!hasSignificantChanges) {
-      console.log('❌ Push reminder: Not enough significant changes');
+      logger.info('❌ Push reminder: Not enough significant changes');
       return;
     }
-    console.log('✅ Push reminder: Has significant changes');
+    logger.info('✅ Push reminder: Has significant changes');
 
     // All conditions met - show reminder
-    console.log('🎯 Push reminder: ALL CONDITIONS MET - Showing reminder!');
+    logger.info('🎯 Push reminder: ALL CONDITIONS MET - Showing reminder!');
     await this.showPushReminder();
   }
 
@@ -272,7 +275,7 @@ export class PushReminderService {
    */
   private async hasSignificantChanges(): Promise<boolean> {
     try {
-      console.log('🔍 Push reminder: Importing FileChangeHandler...');
+      logger.info('🔍 Push reminder: Importing FileChangeHandler...');
       // Import FileChangeHandler to check for changes
       const { FileChangeHandler } = await import('../handlers/FileChangeHandler');
       const fileChangeHandler = new FileChangeHandler(
@@ -280,7 +283,7 @@ export class PushReminderService {
         this.notificationManager
       );
 
-      console.log('🔍 Push reminder: Getting changed files...');
+      logger.info('🔍 Push reminder: Getting changed files...');
       // Get current changes with lightweight check
       const changes = await fileChangeHandler.getChangedFiles(false);
 
@@ -298,28 +301,28 @@ export class PushReminderService {
         deleted: meaningfulChanges.filter((c) => c.status === 'deleted').length,
       };
 
-      console.log('📊 Push reminder: Change breakdown:', changeBreakdown);
-      console.log(
+      logger.info('📊 Push reminder: Change breakdown:', changeBreakdown);
+      logger.info(
         `📊 Push reminder: Found ${meaningfulChanges.length} meaningful changes (need ${this.settings.minimumChanges})`
       );
 
       // Provide context for why files are considered changed
       if (changeBreakdown.added === changeBreakdown.meaningful && changeBreakdown.added > 0) {
-        console.log(
+        logger.info(
           '📊 Push reminder: All meaningful changes are "added" files - likely new project or non-existent GitHub repo'
         );
       } else if (changeBreakdown.meaningful > 0) {
-        console.log('📊 Push reminder: Mix of changes detected - active development session');
+        logger.info('📊 Push reminder: Mix of changes detected - active development session');
       } else {
-        console.log('📊 Push reminder: No meaningful changes detected');
+        logger.info('📊 Push reminder: No meaningful changes detected');
       }
 
       const hasEnough = meaningfulChanges.length >= this.settings.minimumChanges;
-      console.log(`📊 Push reminder: Has enough changes: ${hasEnough}`);
+      logger.info(`📊 Push reminder: Has enough changes: ${hasEnough}`);
 
       return hasEnough;
     } catch (error) {
-      console.warn('❌ Push reminder: Failed to check for changes:', error);
+      logger.warn('❌ Push reminder: Failed to check for changes:', error);
       return false;
     }
   }
@@ -329,16 +332,16 @@ export class PushReminderService {
    */
   private async showPushReminder(): Promise<void> {
     try {
-      console.log('🎯 Push reminder: Generating reminder message...');
+      logger.info('🎯 Push reminder: Generating reminder message...');
       const changes = await this.getChangesSummary();
 
       const message = `💾 You have ${changes.count} unsaved changes. Consider pushing to GitHub! ${changes.summary}`;
-      console.log('📢 Push reminder: Showing notification:', message);
+      logger.info('📢 Push reminder: Showing notification:', message);
 
       // Log existing reminder count before showing new one
       const existingReminders = this.notificationManager.getReminderNotificationCount();
       if (existingReminders > 0) {
-        console.log(
+        logger.info(
           `🧹 Push reminder: ${existingReminders} existing reminder(s) will be cleared to prevent stacking`
         );
       }
@@ -352,7 +355,7 @@ export class PushReminderService {
             text: 'Push to GitHub',
             variant: 'primary',
             action: async () => {
-              console.log('🚀 Push reminder: User clicked "Push to GitHub" button');
+              logger.info('🚀 Push reminder: User clicked "Push to GitHub" button');
               try {
                 // Send message to runtime to trigger GitHub push
                 chrome.runtime.sendMessage({ action: 'PUSH_TO_GITHUB' });
@@ -360,9 +363,9 @@ export class PushReminderService {
                 // Reset reminder state since user is taking action
                 this.resetReminderState();
 
-                console.log('✅ Push reminder: GitHub push initiated from notification');
+                logger.info('✅ Push reminder: GitHub push initiated from notification');
               } catch (error) {
-                console.error('❌ Push reminder: Failed to initiate GitHub push:', error);
+                logger.error('❌ Push reminder: Failed to initiate GitHub push:', error);
               }
             },
           },
@@ -370,7 +373,7 @@ export class PushReminderService {
             text: 'Snooze',
             variant: 'ghost',
             action: () => {
-              console.log('😴 Push reminder: User snoozed reminders');
+              logger.info('😴 Push reminder: User snoozed reminders');
               this.snoozeReminders();
             },
           },
@@ -382,18 +385,18 @@ export class PushReminderService {
       this.state.lastReminderTime = Date.now();
       this.state.reminderCount++;
 
-      console.log('📊 Push reminder: State updated:', {
+      logger.info('📊 Push reminder: State updated:', {
         oldReminderCount: oldState.reminderCount,
         newReminderCount: this.state.reminderCount,
         maxReminders: this.settings.maxRemindersPerSession,
         lastReminderTime: new Date(this.state.lastReminderTime).toLocaleTimeString(),
       });
 
-      console.log(
+      logger.info(
         `🎉 Push reminder: Successfully shown reminder ${this.state.reminderCount}/${this.settings.maxRemindersPerSession}`
       );
     } catch (error) {
-      console.error('❌ Push reminder: Failed to show reminder:', error);
+      logger.error('❌ Push reminder: Failed to show reminder:', error);
     }
   }
 
@@ -438,7 +441,7 @@ export class PushReminderService {
    */
   public snoozeReminders(): void {
     this.state.lastSnoozeTime = Date.now();
-    console.log(`🔊 Push reminders snoozed for ${this.settings.snoozeInterval} minutes`);
+    logger.info(`🔊 Push reminders snoozed for ${this.settings.snoozeInterval} minutes`);
   }
 
   /**
@@ -446,7 +449,7 @@ export class PushReminderService {
    */
   public enable(): void {
     this.isEnabled = true;
-    console.log('🔊 Push reminders enabled');
+    logger.info('🔊 Push reminders enabled');
   }
 
   /**
@@ -454,7 +457,7 @@ export class PushReminderService {
    */
   public disable(): void {
     this.isEnabled = false;
-    console.log('🔊 Push reminders disabled');
+    logger.info('🔊 Push reminders disabled');
   }
 
   /**
@@ -463,7 +466,7 @@ export class PushReminderService {
   public async updateSettings(newSettings: Partial<PushReminderSettings>): Promise<void> {
     this.settings = { ...this.settings, ...newSettings };
     await this.saveSettings();
-    console.log('🔊 Push reminder settings updated:', this.settings);
+    logger.info('🔊 Push reminder settings updated:', this.settings);
 
     // Restart scheduled reminders if settings changed
     if (newSettings.scheduledEnabled !== undefined || newSettings.scheduledInterval !== undefined) {
@@ -480,7 +483,7 @@ export class PushReminderService {
     // Also reset scheduled reminder count when user pushes
     this.state.scheduledReminderCount = 0;
     this.state.lastScheduledReminderTime = Date.now();
-    console.log('🔊 Push reminder state reset (both idle and scheduled)');
+    logger.info('🔊 Push reminder state reset (both idle and scheduled)');
   }
 
   /**
@@ -517,7 +520,7 @@ export class PushReminderService {
    * Enable debug mode for faster testing (shorter intervals)
    */
   public enableDebugMode(): void {
-    console.log('🔊 Push reminder DEBUG MODE enabled - using shorter intervals for testing');
+    logger.info('🔊 Push reminder DEBUG MODE enabled - using shorter intervals for testing');
     this.debugMode = true;
 
     // Restart monitoring with new intervals
@@ -534,7 +537,7 @@ export class PushReminderService {
    * Disable debug mode (back to normal intervals)
    */
   public disableDebugMode(): void {
-    console.log('🔊 Push reminder debug mode disabled - using normal intervals');
+    logger.info('🔊 Push reminder debug mode disabled - using normal intervals');
     this.debugMode = false;
 
     // Restart monitoring with normal intervals
@@ -551,7 +554,7 @@ export class PushReminderService {
    * Force a reminder check (for testing)
    */
   public async forceReminderCheck(): Promise<void> {
-    console.log('🔊 Forcing push reminder check...');
+    logger.info('🔊 Forcing push reminder check...');
     await this.checkForReminderOpportunity();
   }
 
@@ -559,7 +562,7 @@ export class PushReminderService {
    * Force show a reminder (bypass all checks, for testing)
    */
   public async forceShowReminder(): Promise<void> {
-    console.log('🔊 Forcing push reminder display...');
+    logger.info('🔊 Forcing push reminder display...');
     await this.showPushReminder();
   }
 
@@ -567,7 +570,7 @@ export class PushReminderService {
    * Force a scheduled reminder check (for testing)
    */
   public async forceScheduledReminderCheck(): Promise<void> {
-    console.log('🔊 Forcing scheduled reminder check...');
+    logger.info('🔊 Forcing scheduled reminder check...');
     await this.checkForScheduledReminder();
   }
 
@@ -575,7 +578,7 @@ export class PushReminderService {
    * Force show a scheduled reminder (for testing)
    */
   public async forceShowScheduledReminder(): Promise<void> {
-    console.log('🔊 Forcing scheduled reminder display...');
+    logger.info('🔊 Forcing scheduled reminder display...');
     await this.showScheduledReminder();
   }
 
@@ -605,23 +608,23 @@ export class PushReminderService {
    * Clean up resources
    */
   public cleanup(): void {
-    console.log('🔊 Cleaning up push reminder service');
-    console.trace('🔍 Push reminder cleanup stack trace:');
+    logger.info('🔊 Cleaning up push reminder service');
+    logger.info('🔍 Push reminder cleanup stack trace:');
 
     if (this.checkInterval) {
       clearInterval(this.checkInterval);
       this.checkInterval = null;
-      console.log('🔧 Push reminder: Cleared check interval');
+      logger.info('🔧 Push reminder: Cleared check interval');
     }
 
     if (this.scheduledInterval) {
       clearInterval(this.scheduledInterval);
       this.scheduledInterval = null;
-      console.log('🔧 Push reminder: Cleared scheduled interval');
+      logger.info('🔧 Push reminder: Cleared scheduled interval');
     }
 
     this.activityMonitor.stop();
-    console.log('🔧 Push reminder: Stopped activity monitor');
+    logger.info('🔧 Push reminder: Stopped activity monitor');
   }
 
   /**
@@ -629,7 +632,7 @@ export class PushReminderService {
    */
   private setupScheduledReminders(): void {
     if (!this.settings.scheduledEnabled) {
-      console.log('🔧 Push reminder: Scheduled reminders disabled');
+      logger.info('🔧 Push reminder: Scheduled reminders disabled');
       return;
     }
 
@@ -643,7 +646,7 @@ export class PushReminderService {
       ? 60 * 1000 // 1 minute in debug mode
       : this.settings.scheduledInterval * 60 * 1000;
 
-    console.log(
+    logger.info(
       `🔧 Push reminder: Setting up scheduled reminders with ${scheduledInterval / 1000}s interval (debug: ${this.debugMode})`
     );
 
@@ -656,10 +659,10 @@ export class PushReminderService {
    * Check if we should show a scheduled reminder (ignores activity state)
    */
   private async checkForScheduledReminder(): Promise<void> {
-    console.log('⏰ Push reminder: Checking for scheduled reminder...');
+    logger.info('⏰ Push reminder: Checking for scheduled reminder...');
 
     if (!this.settings.scheduledEnabled || !this.isEnabled) {
-      console.log(
+      logger.info(
         '❌ Scheduled reminder: Disabled (scheduledEnabled:',
         this.settings.scheduledEnabled,
         ', isEnabled:',
@@ -668,11 +671,11 @@ export class PushReminderService {
       );
       return;
     }
-    console.log('✅ Scheduled reminder: Service is enabled');
+    logger.info('✅ Scheduled reminder: Service is enabled');
 
     // Check if we've reached max scheduled reminders for this session
     if (this.state.scheduledReminderCount >= this.settings.maxScheduledPerSession) {
-      console.log(
+      logger.info(
         '❌ Scheduled reminder: Max scheduled reminders reached for session (',
         this.state.scheduledReminderCount,
         '/',
@@ -681,7 +684,7 @@ export class PushReminderService {
       );
       return;
     }
-    console.log(
+    logger.info(
       '✅ Scheduled reminder: Under scheduled reminder limit (',
       this.state.scheduledReminderCount,
       '/',
@@ -694,32 +697,32 @@ export class PushReminderService {
       const snoozeUntil = new Date(
         this.state.lastSnoozeTime + this.settings.snoozeInterval * 60 * 1000
       );
-      console.log(
+      logger.info(
         '❌ Scheduled reminder: In snooze period until',
         snoozeUntil.toLocaleTimeString()
       );
       return;
     }
-    console.log('✅ Scheduled reminder: Not in snooze period');
+    logger.info('✅ Scheduled reminder: Not in snooze period');
 
     // Check for ongoing operations that should suppress reminders
     if (await this.hasOngoingOperations()) {
-      console.log('❌ Scheduled reminder: Skipping due to ongoing operations');
+      logger.info('❌ Scheduled reminder: Skipping due to ongoing operations');
       return;
     }
-    console.log('✅ Scheduled reminder: No conflicting operations in progress');
+    logger.info('✅ Scheduled reminder: No conflicting operations in progress');
 
     // Check if there are enough changes to warrant a reminder
-    console.log('🔍 Scheduled reminder: Checking for significant changes...');
+    logger.info('🔍 Scheduled reminder: Checking for significant changes...');
     const hasSignificantChanges = await this.hasSignificantChanges();
     if (!hasSignificantChanges) {
-      console.log('❌ Scheduled reminder: Not enough significant changes');
+      logger.info('❌ Scheduled reminder: Not enough significant changes');
       return;
     }
-    console.log('✅ Scheduled reminder: Has significant changes');
+    logger.info('✅ Scheduled reminder: Has significant changes');
 
     // All conditions met - show scheduled reminder
-    console.log('⏰ Scheduled reminder: ALL CONDITIONS MET - Showing scheduled reminder!');
+    logger.info('⏰ Scheduled reminder: ALL CONDITIONS MET - Showing scheduled reminder!');
     await this.showScheduledReminder();
   }
 
@@ -728,16 +731,16 @@ export class PushReminderService {
    */
   private async showScheduledReminder(): Promise<void> {
     try {
-      console.log('⏰ Scheduled reminder: Generating scheduled reminder message...');
+      logger.info('⏰ Scheduled reminder: Generating scheduled reminder message...');
       const changes = await this.getChangesSummary();
 
       const message = `⏰ Scheduled reminder: You have ${changes.count} unsaved changes. Consider pushing to GitHub! ${changes.summary}`;
-      console.log('📢 Scheduled reminder: Showing notification:', message);
+      logger.info('📢 Scheduled reminder: Showing notification:', message);
 
       // Log existing reminder count before showing new one
       const existingReminders = this.notificationManager.getReminderNotificationCount();
       if (existingReminders > 0) {
-        console.log(
+        logger.info(
           `🧹 Scheduled reminder: ${existingReminders} existing reminder(s) will be cleared to prevent stacking`
         );
       }
@@ -751,7 +754,7 @@ export class PushReminderService {
             text: 'Push to GitHub',
             variant: 'primary',
             action: async () => {
-              console.log('🚀 Scheduled reminder: User clicked "Push to GitHub" button');
+              logger.info('🚀 Scheduled reminder: User clicked "Push to GitHub" button');
               try {
                 // Send message to runtime to trigger GitHub push
                 chrome.runtime.sendMessage({ action: 'PUSH_TO_GITHUB' });
@@ -759,9 +762,9 @@ export class PushReminderService {
                 // Reset reminder state since user is taking action
                 this.resetReminderState();
 
-                console.log('✅ Scheduled reminder: GitHub push initiated from notification');
+                logger.info('✅ Scheduled reminder: GitHub push initiated from notification');
               } catch (error) {
-                console.error('❌ Scheduled reminder: Failed to initiate GitHub push:', error);
+                logger.error('❌ Scheduled reminder: Failed to initiate GitHub push:', error);
               }
             },
           },
@@ -769,7 +772,7 @@ export class PushReminderService {
             text: 'Snooze',
             variant: 'ghost',
             action: () => {
-              console.log('😴 Scheduled reminder: User snoozed reminders');
+              logger.info('😴 Scheduled reminder: User snoozed reminders');
               this.snoozeReminders();
             },
           },
@@ -781,18 +784,18 @@ export class PushReminderService {
       this.state.lastScheduledReminderTime = Date.now();
       this.state.scheduledReminderCount++;
 
-      console.log('📊 Scheduled reminder: State updated:', {
+      logger.info('📊 Scheduled reminder: State updated:', {
         oldScheduledCount: oldState.scheduledReminderCount,
         newScheduledCount: this.state.scheduledReminderCount,
         maxScheduled: this.settings.maxScheduledPerSession,
         lastScheduledTime: new Date(this.state.lastScheduledReminderTime).toLocaleTimeString(),
       });
 
-      console.log(
+      logger.info(
         `⏰ Scheduled reminder: Successfully shown reminder ${this.state.scheduledReminderCount}/${this.settings.maxScheduledPerSession}`
       );
     } catch (error) {
-      console.error('❌ Scheduled reminder: Failed to show reminder:', error);
+      logger.error('❌ Scheduled reminder: Failed to show reminder:', error);
     }
   }
 
@@ -815,7 +818,7 @@ export class PushReminderService {
     if (hasConflictingOps) {
       const ongoingOps =
         this.operationStateManager.getOngoingOperationsByType(conflictingOperationTypes);
-      console.log(
+      logger.info(
         '🔍 Push reminder: Found ongoing operations:',
         ongoingOps.map((op) => ({
           type: op.type,
@@ -833,11 +836,11 @@ export class PushReminderService {
       // This covers cases where operations might not be tracked by OperationStateManager
       const uiState = await this.checkUIUploadState();
       if (uiState.isUploading) {
-        console.log('🔍 Push reminder: Found active upload through UI state check');
+        logger.info('🔍 Push reminder: Found active upload through UI state check');
         return true;
       }
     } catch (error) {
-      console.warn('❌ Push reminder: Failed to check UI upload state:', error);
+      logger.warn('❌ Push reminder: Failed to check UI upload state:', error);
     }
 
     return false;
@@ -864,20 +867,20 @@ export class PushReminderService {
    * Test operation state functionality (for debugging)
    */
   public testOperationState(): void {
-    console.log('🧪 Testing operation state functionality...');
+    logger.info('🧪 Testing operation state functionality...');
 
     // Start a test operation
     const testId = 'test-operation-' + Date.now();
     this.operationStateManager.startOperation('push', testId, 'Test push operation');
 
-    console.log('✅ Started test operation:', testId);
-    console.log('📊 Current operations:', this.operationStateManager.getDebugInfo());
+    logger.info('✅ Started test operation:', testId);
+    logger.info('📊 Current operations:', this.operationStateManager.getDebugInfo());
 
     // Complete it after 5 seconds
     setTimeout(() => {
       this.operationStateManager.completeOperation(testId);
-      console.log('✅ Completed test operation:', testId);
-      console.log('📊 Operations after completion:', this.operationStateManager.getDebugInfo());
+      logger.info('✅ Completed test operation:', testId);
+      logger.info('📊 Operations after completion:', this.operationStateManager.getDebugInfo());
     }, 5000);
   }
 
@@ -885,34 +888,34 @@ export class PushReminderService {
    * Test operation suppression (for debugging)
    */
   public async testOperationSuppression(): Promise<void> {
-    console.log('🧪 Testing operation suppression...');
+    logger.info('🧪 Testing operation suppression...');
 
     // Start a test operation
     const testId = 'test-suppression-' + Date.now();
     this.operationStateManager.startOperation('push', testId, 'Test suppression operation');
 
-    console.log('✅ Started test operation for suppression test:', testId);
+    logger.info('✅ Started test operation for suppression test:', testId);
 
     // Try to check for reminders (should be suppressed)
     const hasOngoing = await this.hasOngoingOperations();
-    console.log('🔍 Has ongoing operations:', hasOngoing);
+    logger.info('🔍 Has ongoing operations:', hasOngoing);
 
     if (hasOngoing) {
-      console.log('✅ Operation suppression working correctly!');
+      logger.info('✅ Operation suppression working correctly!');
     } else {
-      console.log('❌ Operation suppression not working!');
+      logger.info('❌ Operation suppression not working!');
     }
 
     // Clean up
     this.operationStateManager.completeOperation(testId);
-    console.log('🧹 Cleaned up test operation');
+    logger.info('🧹 Cleaned up test operation');
   }
 
   /**
    * Test comparison operation suppression (for debugging)
    */
   public async testComparisonSuppression(): Promise<void> {
-    console.log('🧪 Testing comparison operation suppression...');
+    logger.info('🧪 Testing comparison operation suppression...');
 
     // Start a test comparison operation
     const testId = 'test-comparison-' + Date.now();
@@ -922,20 +925,20 @@ export class PushReminderService {
       targetBranch: 'main',
     });
 
-    console.log('✅ Started test comparison operation:', testId);
+    logger.info('✅ Started test comparison operation:', testId);
 
     // Try to check for reminders (should be suppressed)
     const hasOngoing = await this.hasOngoingOperations();
-    console.log('🔍 Has ongoing operations (should include comparison):', hasOngoing);
+    logger.info('🔍 Has ongoing operations (should include comparison):', hasOngoing);
 
     if (hasOngoing) {
-      console.log('✅ Comparison operation suppression working correctly!');
+      logger.info('✅ Comparison operation suppression working correctly!');
     } else {
-      console.log('❌ Comparison operation suppression not working!');
+      logger.info('❌ Comparison operation suppression not working!');
     }
 
     // Clean up
     this.operationStateManager.completeOperation(testId);
-    console.log('🧹 Cleaned up test comparison operation');
+    logger.info('🧹 Cleaned up test comparison operation');
   }
 }

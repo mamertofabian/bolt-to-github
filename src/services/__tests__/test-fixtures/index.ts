@@ -34,15 +34,9 @@ export {
 } from './UnifiedGitHubServiceFixtures';
 
 // Export GitHubAppService specific utilities
-export {
-  MockGitHubAppService,
-  GitHubAppServiceTestScenario,
-} from './GitHubAppServiceMocks';
+export { MockGitHubAppService, GitHubAppServiceTestScenario } from './GitHubAppServiceMocks';
 
-export {
-  setupGitHubAppServiceTest,
-  createTestScenario,
-} from './GitHubAppServiceTestHelpers';
+export { setupGitHubAppServiceTest, createTestScenario } from './GitHubAppServiceTestHelpers';
 
 export {
   allScenarios as gitHubAppScenarios,

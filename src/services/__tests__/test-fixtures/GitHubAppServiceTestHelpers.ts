@@ -44,7 +44,7 @@ export function setupGitHubAppServiceTest(
 ): GitHubAppServiceTestEnvironment {
   const storage = new MockChromeStorage(options.initialStorage);
   const fetchMock = new MockFetchHandler();
-  
+
   // Mock global chrome.storage
   const originalChrome = global.chrome;
   global.chrome = {
@@ -62,7 +62,7 @@ export function setupGitHubAppServiceTest(
   if (options.useRealService) {
     service = new GitHubAppService();
     mockService = new MockGitHubAppService();
-    
+
     if (options.withSupabaseToken) {
       const authKey = `sb-gapvjcqybzabnrjnxzhg-auth-token`;
       storage.set({
@@ -117,7 +117,9 @@ export function setupGitHubAppServiceTest(
 /**
  * Create a test scenario with pre-configured state
  */
-export function createTestScenario(scenario: 'authenticated' | 'expired' | 'unauthenticated' | 'partial') {
+export function createTestScenario(
+  scenario: 'authenticated' | 'expired' | 'unauthenticated' | 'partial'
+) {
   const builder = new GitHubAppServiceTestScenario();
 
   switch (scenario) {
@@ -137,7 +139,10 @@ export function createTestScenario(scenario: 'authenticated' | 'expired' | 'unau
 /**
  * Set up mock responses for common API patterns
  */
-export function setupCommonMockResponses(fetchMock: MockFetchHandler, scenario: 'success' | 'error' | 'mixed') {
+export function setupCommonMockResponses(
+  fetchMock: MockFetchHandler,
+  scenario: 'success' | 'error' | 'mixed'
+) {
   switch (scenario) {
     case 'success':
       // Supabase endpoints
@@ -149,7 +154,7 @@ export function setupCommonMockResponses(fetchMock: MockFetchHandler, scenario: 
         installation_id: 12345678,
         installation_found: true,
       });
-      
+
       fetchMock.setResponse('/functions/v1/get-github-token', {
         access_token: 'ghs_1234567890abcdefghijklmnopqrstuvwxyz12',
         github_username: 'testuser',
@@ -158,7 +163,7 @@ export function setupCommonMockResponses(fetchMock: MockFetchHandler, scenario: 
         type: 'github_app',
         renewed: false,
       });
-      
+
       fetchMock.setResponse('/functions/v1/get-installation-token', {
         github_username: 'testuser',
         token: 'ghs_installation567890abcdefghijklmnopqrstuv',
@@ -168,7 +173,7 @@ export function setupCommonMockResponses(fetchMock: MockFetchHandler, scenario: 
         permissions: { contents: 'write', metadata: 'read' },
         repositories: 'all',
       });
-      
+
       // GitHub API endpoints
       fetchMock.setResponse('https://api.github.com/user', {
         login: 'testuser',
@@ -178,16 +183,24 @@ export function setupCommonMockResponses(fetchMock: MockFetchHandler, scenario: 
       break;
 
     case 'error':
-      fetchMock.setResponse('/functions/v1/get-github-token', {
-        error: 'No GitHub App configuration found',
-        code: 'NO_GITHUB_APP',
-        requires_auth: true,
-      }, 401);
-      
-      fetchMock.setResponse('https://api.github.com/user', {
-        message: 'Bad credentials',
-        documentation_url: 'https://docs.github.com/rest',
-      }, 401);
+      fetchMock.setResponse(
+        '/functions/v1/get-github-token',
+        {
+          error: 'No GitHub App configuration found',
+          code: 'NO_GITHUB_APP',
+          requires_auth: true,
+        },
+        401
+      );
+
+      fetchMock.setResponse(
+        'https://api.github.com/user',
+        {
+          message: 'Bad credentials',
+          documentation_url: 'https://docs.github.com/rest',
+        },
+        401
+      );
       break;
 
     case 'mixed':
@@ -236,25 +249,24 @@ export function assertFetchCall(
   }
 ) {
   const calls = fetchMock.getCallHistory();
-  const matchingCall = calls.find(call => {
-    const urlMatches = expectedUrl instanceof RegExp ? 
-      expectedUrl.test(call.url) : 
-      call.url.includes(expectedUrl);
-    
+  const matchingCall = calls.find((call) => {
+    const urlMatches =
+      expectedUrl instanceof RegExp ? expectedUrl.test(call.url) : call.url.includes(expectedUrl);
+
     if (!urlMatches) return false;
-    
+
     if (expectedOptions) {
       if (expectedOptions.method && call.options?.method !== expectedOptions.method) {
         return false;
       }
-      
+
       if (expectedOptions.headers) {
         const headers = call.options?.headers as Record<string, string>;
         for (const [key, value] of Object.entries(expectedOptions.headers)) {
           if (headers?.[key] !== value) return false;
         }
       }
-      
+
       if (expectedOptions.body) {
         const body = call.options?.body ? JSON.parse(call.options.body as string) : null;
         if (JSON.stringify(body) !== JSON.stringify(expectedOptions.body)) {
@@ -262,29 +274,26 @@ export function assertFetchCall(
         }
       }
     }
-    
+
     return true;
   });
-  
+
   if (!matchingCall) {
     throw new Error(`No fetch call found matching: ${expectedUrl}`);
   }
-  
+
   return matchingCall;
 }
 
 /**
  * Assert that storage was updated with expected values
  */
-export function assertStorageUpdate(
-  storage: MockChromeStorage,
-  expectedKeys: Record<string, any>
-) {
+export function assertStorageUpdate(storage: MockChromeStorage, expectedKeys: Record<string, any>) {
   const currentStorage = storage.getAll();
-  
+
   for (const [key, expectedValue] of Object.entries(expectedKeys)) {
     const actualValue = currentStorage[key];
-    
+
     if (expectedValue === undefined) {
       if (key in currentStorage) {
         throw new Error(`Expected storage key "${key}" to be removed, but it exists`);
@@ -307,9 +316,9 @@ export function assertStorageUpdate(
 export function advanceTime(ms: number) {
   const originalDateNow = Date.now;
   const currentTime = Date.now();
-  
+
   Date.now = () => currentTime + ms;
-  
+
   return () => {
     Date.now = originalDateNow;
   };
@@ -342,7 +351,7 @@ export async function simulateTokenRenewal(
     type: 'github_app',
     renewed: true,
   });
-  
+
   return await service.getAccessToken();
 }
 
@@ -365,25 +374,38 @@ export function simulateError(
         throw new Error('Network error');
       };
       break;
-      
+
     case 'auth':
-      fetchMock.setResponse('/.*/g', {
-        error: 'Authentication failed',
-        code: 'NO_GITHUB_APP',
-      }, 401);
+      fetchMock.setResponse(
+        '/.*/g',
+        {
+          error: 'Authentication failed',
+          code: 'NO_GITHUB_APP',
+        },
+        401
+      );
       break;
-      
+
     case 'rate-limit':
-      fetchMock.setResponse('https://api.github.com/.*', {
-        message: 'API rate limit exceeded',
-        documentation_url: 'https://docs.github.com/rest/overview/resources-in-the-rest-api#rate-limiting',
-      }, 403);
+      fetchMock.setResponse(
+        'https://api.github.com/.*',
+        {
+          message: 'API rate limit exceeded',
+          documentation_url:
+            'https://docs.github.com/rest/overview/resources-in-the-rest-api#rate-limiting',
+        },
+        403
+      );
       break;
-      
+
     case 'server':
-      fetchMock.setResponse('/.*/g', {
-        error: 'Internal server error',
-      }, 500);
+      fetchMock.setResponse(
+        '/.*/g',
+        {
+          error: 'Internal server error',
+        },
+        500
+      );
       break;
   }
 }

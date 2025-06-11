@@ -1,4 +1,7 @@
 import { writable, derived } from 'svelte/store';
+import { createLogger } from '../utils/logger';
+
+const logger = createLogger('premiumStore');
 
 /**
  * Premium Store for Popup UI
@@ -60,10 +63,10 @@ export const premiumStatusActions = {
           isAuthenticated: result.popupPremiumStatus.isAuthenticated ?? false,
         };
         premiumStatusStore.set(status);
-        console.log('📊 Loaded premium status:', status);
+        logger.info('📊 Loaded premium status:', status);
       }
     } catch (error) {
-      console.error('Failed to load premium status:', error);
+      logger.error('Failed to load premium status:', error);
     }
   },
 
@@ -80,7 +83,7 @@ export const premiumStatusActions = {
         const newStatus = changes.popupPremiumStatus.newValue;
         if (newStatus) {
           premiumStatusStore.set(newStatus);
-          console.log('📊 Premium status updated from storage:', newStatus);
+          logger.info('📊 Premium status updated from storage:', newStatus);
         }
       }
     });
@@ -110,7 +113,7 @@ export const premiumStatusActions = {
    */
   async logout() {
     try {
-      console.log('🚪 Logout initiated from popup...');
+      logger.info('🚪 Logout initiated from popup...');
 
       // Send message to background script to trigger logout
       await chrome.runtime.sendMessage({ type: 'USER_LOGOUT' });
@@ -132,9 +135,9 @@ export const premiumStatusActions = {
         lastUpdated: Date.now(),
       });
 
-      console.log('✅ Logout completed from popup');
+      logger.info('✅ Logout completed from popup');
     } catch (error) {
-      console.error('❌ Error during logout:', error);
+      logger.error('❌ Error during logout:', error);
       throw error;
     }
   },

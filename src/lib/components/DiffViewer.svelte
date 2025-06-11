@@ -6,6 +6,9 @@
   import { onMount } from 'svelte';
   import type { DiffResult, FileChange } from '../../services/FilePreviewService';
   import { normalizeContentForComparison } from '$lib/fileUtils';
+  import { createLogger } from '$lib/utils/logger';
+
+  const logger = createLogger('DiffViewer');
 
   export let path: string;
   export let show = false;
@@ -38,13 +41,13 @@
     debugInfo = '';
 
     try {
-      console.log('Loading diff for:', path);
-      console.log('File change data:', fileChange);
+      logger.info('Loading diff for:', path);
+      logger.info('File change data:', fileChange);
 
       // First check if we have file change data passed as prop
       if (fileChange) {
         debugInfo = `Status: ${fileChange.status}, Has content: ${Boolean(fileChange.content)}, Has previous: ${Boolean(fileChange.previousContent)}`;
-        console.log(debugInfo);
+        logger.info(debugInfo);
 
         // Extract content directly from the fileChange object
         if (fileChange.status === 'added') {
@@ -117,7 +120,7 @@
                 );
                 debugInfo += `, Using FilePreviewService calculateLineDiff (context: ${contextLinesToUse})`;
               } catch (error) {
-                console.warn(
+                logger.warn(
                   'Error using FilePreviewService diff, falling back to basic diff:',
                   error
                 );
@@ -169,7 +172,7 @@
           };
         }
 
-        console.log('Calculated diff:', diffResult);
+        logger.info('Calculated diff:', diffResult);
       } else {
         // Fall back to FilePreviewService if we don't have the data
         diffResult = await filePreviewService.getFileDiff(path);
@@ -180,7 +183,7 @@
         error = 'No changes could be calculated for this file.';
       }
     } catch (err) {
-      console.error('Error loading diff:', err);
+      logger.error('Error loading diff:', err);
       error = err instanceof Error ? err.message : 'Failed to load diff';
       diffResult = null;
     } finally {

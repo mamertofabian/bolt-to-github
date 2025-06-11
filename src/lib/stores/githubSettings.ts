@@ -1,6 +1,9 @@
 import { writable, derived, type Writable } from 'svelte/store';
 import { UnifiedGitHubService } from '../../services/UnifiedGitHubService';
 import type { GitHubSettingsInterface, ProjectSettings } from '../types';
+import { createLogger } from '../utils/logger';
+
+const logger = createLogger('githubSettings');
 
 // GitHub Settings State Interface
 export interface GitHubSettingsState {
@@ -119,7 +122,7 @@ export const githubSettingsActions = {
         }));
       }
     } catch (error) {
-      console.error('Error initializing GitHub settings:', error);
+      logger.error('Error initializing GitHub settings:', error);
     }
   },
 
@@ -272,7 +275,7 @@ export const githubSettingsActions = {
 
       return result.isValid;
     } catch (error) {
-      console.error('Error validating GitHub token:', error);
+      logger.error('Error validating GitHub token:', error);
       githubSettingsStore.update((state) => ({
         ...state,
         isTokenValid: false,
@@ -308,7 +311,7 @@ export const githubSettingsActions = {
           };
         }
       } else {
-        console.log(
+        logger.info(
           '🚀 Validating token for PAT',
           currentState!.githubToken,
           currentState!.repoOwner
@@ -318,7 +321,7 @@ export const githubSettingsActions = {
           currentState!.githubToken,
           currentState!.repoOwner
         );
-        console.log('🚀 Validated token for PAT', isValid);
+        logger.info('🚀 Validated token for PAT', isValid);
         if (!isValid) {
           return {
             success: false,
@@ -342,7 +345,7 @@ export const githubSettingsActions = {
 
       return { success: true };
     } catch (error) {
-      console.error('Error saving GitHub settings:', error);
+      logger.error('Error saving GitHub settings:', error);
       return {
         success: false,
         error: error instanceof Error ? error.message : 'Unknown error',
@@ -417,7 +420,7 @@ export const githubSettingsActions = {
         await this.initialize();
       }
     } catch (error) {
-      console.error('Error syncing GitHub App from storage:', error);
+      logger.error('Error syncing GitHub App from storage:', error);
     }
   },
 

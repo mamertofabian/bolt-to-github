@@ -19,7 +19,7 @@ function sendAnalyticsToBackground(eventType: string, eventData: any) {
       eventData,
     });
   } catch (error) {
-    console.error('Failed to send analytics to background:', error);
+    logger.error('Failed to send analytics to background:', error);
   }
 }
 
@@ -46,7 +46,7 @@ async function initializeAnalytics() {
     analyticsInitialized = true;
     logger.info('📊 Analytics initialized in content script');
   } catch (error) {
-    console.error('Failed to initialize analytics:', error);
+    logger.error('Failed to initialize analytics:', error);
   }
 }
 
@@ -57,14 +57,14 @@ function initializeContentManager() {
   try {
     // Ensure we have the minimum DOM elements needed
     if (!document.body) {
-      console.warn('🔊 document.body not available yet, retrying...');
+      logger.warn('🔊 document.body not available yet, retrying...');
       setTimeout(initializeContentManager, 100);
       return;
     }
 
     // Check if chrome runtime is available to avoid context invalidation errors
     if (!chrome.runtime?.id) {
-      console.warn('🔊 Chrome runtime not available, extension context may be invalidated');
+      logger.warn('🔊 Chrome runtime not available, extension context may be invalidated');
       return;
     }
 
@@ -74,7 +74,7 @@ function initializeContentManager() {
     // Initialize analytics after content manager is ready
     initializeAnalytics();
   } catch (error) {
-    console.error('🔊 Error initializing ContentManager:', error);
+    logger.error('🔊 Error initializing ContentManager:', error);
 
     // Check if this is an extension context error
     if (
@@ -110,14 +110,12 @@ document.addEventListener('visibilitychange', () => {
     // Check if extension context is still valid when page becomes visible
     try {
       if (!chrome.runtime?.id) {
-        console.warn(
-          '🔊 Extension context invalid after visibility change - manager needs refresh'
-        );
+        logger.warn('🔊 Extension context invalid after visibility change - manager needs refresh');
         manager = null;
         initializeContentManager();
       }
     } catch (error) {
-      console.warn('🔊 Extension context check failed after visibility change:', error);
+      logger.warn('🔊 Extension context check failed after visibility change:', error);
     }
   }
 });

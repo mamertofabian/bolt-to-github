@@ -1,6 +1,9 @@
 import { writable, type Writable } from 'svelte/store';
 import type { PushStatistics, PushStatisticsState, PushRecord } from '../types';
 import { ChromeStorageService } from '../services/chromeStorage';
+import { createLogger } from '../utils/logger';
+
+const logger = createLogger('PushStatisticsStore');
 
 // Initial state
 const initialState: PushStatisticsState = {
@@ -34,9 +37,9 @@ export const pushStatisticsActions = {
         statistics,
         isLoading: false,
       }));
-      console.log('📊 Loaded push statistics:', statistics);
+      logger.info('📊 Loaded push statistics:', statistics);
     } catch (error) {
-      console.error('Failed to load push statistics:', error);
+      logger.error('Failed to load push statistics:', error);
       pushStatisticsStore.update((state) => ({
         ...state,
         isLoading: false,
@@ -84,9 +87,9 @@ export const pushStatisticsActions = {
         statistics: updatedStats,
       }));
 
-      console.log('📊 Recorded push attempt:', newRecord);
+      logger.info('📊 Recorded push attempt:', newRecord);
     } catch (error) {
-      console.error('Failed to record push attempt:', error);
+      logger.error('Failed to record push attempt:', error);
     }
   },
 
@@ -136,9 +139,9 @@ export const pushStatisticsActions = {
         statistics: updatedStats,
       }));
 
-      console.log('📊 Recorded push success for:', { projectId, repoOwner, repoName, branch });
+      logger.info('📊 Recorded push success for:', { projectId, repoOwner, repoName, branch });
     } catch (error) {
-      console.error('Failed to record push success:', error);
+      logger.error('Failed to record push success:', error);
     }
   },
 
@@ -186,7 +189,7 @@ export const pushStatisticsActions = {
         statistics: updatedStats,
       }));
 
-      console.log('📊 Recorded push failure for:', {
+      logger.info('📊 Recorded push failure for:', {
         projectId,
         repoOwner,
         repoName,
@@ -194,7 +197,7 @@ export const pushStatisticsActions = {
         error,
       });
     } catch (error) {
-      console.error('Failed to record push failure:', error);
+      logger.error('Failed to record push failure:', error);
     }
   },
 
@@ -229,7 +232,7 @@ export const pushStatisticsActions = {
           : undefined,
       };
     } catch (error) {
-      console.error('Failed to get statistics summary:', error);
+      logger.error('Failed to get statistics summary:', error);
       return {
         totalAttempts: 0,
         totalSuccesses: 0,
@@ -247,7 +250,7 @@ export const pushStatisticsActions = {
       const statistics = await ChromeStorageService.getPushStatistics();
       return statistics.records.slice(0, limit);
     } catch (error) {
-      console.error('Failed to get recent push records:', error);
+      logger.error('Failed to get recent push records:', error);
       return [];
     }
   },
@@ -259,9 +262,9 @@ export const pushStatisticsActions = {
     try {
       await ChromeStorageService.clearPushStatistics();
       pushStatisticsStore.set(initialState);
-      console.log('📊 Cleared push statistics');
+      logger.info('📊 Cleared push statistics');
     } catch (error) {
-      console.error('Failed to clear push statistics:', error);
+      logger.error('Failed to clear push statistics:', error);
     }
   },
 
@@ -292,7 +295,7 @@ export const pushStatisticsActions = {
             ...state,
             statistics: newStatistics,
           }));
-          console.log('📊 Push statistics updated from storage:', newStatistics);
+          logger.info('📊 Push statistics updated from storage:', newStatistics);
         }
       }
     });
@@ -306,7 +309,7 @@ export const pushStatisticsActions = {
       const statistics = await ChromeStorageService.getPushStatistics();
       return statistics.totalAttempts > 0;
     } catch (error) {
-      console.error('Failed to check push attempts:', error);
+      logger.error('Failed to check push attempts:', error);
       return false;
     }
   },

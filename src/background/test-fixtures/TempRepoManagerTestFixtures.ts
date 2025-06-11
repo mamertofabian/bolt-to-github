@@ -170,17 +170,39 @@ export const TempRepoTestData = {
 
   // Error scenarios - Use getters to create fresh instances
   errors: {
-    get githubApiError() { return new Error('GitHub API Error: Repository not found'); },
-    get rateLimitError() { return new Error('GitHub API Error: Rate limit exceeded'); },
-    get authenticationError() { return new Error('GitHub authentication failed - invalid token'); },
-    get networkError() { return new Error('Network request failed - timeout'); },
-    get storageError() { return new Error('Chrome storage unavailable'); },
-    get repoCreationError() { return new Error('Failed to create temporary repository'); },
-    get repoDeleteError() { return new Error('Failed to delete repository - not found'); },
-    get branchNotFoundError() { return new Error('Branch not found'); },
-    get permissionError() { return new Error('Insufficient permissions to access repository'); },
-    get repoVisibilityError() { return new Error('Failed to update repository visibility'); },
-    get cloneError() { return new Error('Failed to clone repository contents'); },
+    get githubApiError() {
+      return new Error('GitHub API Error: Repository not found');
+    },
+    get rateLimitError() {
+      return new Error('GitHub API Error: Rate limit exceeded');
+    },
+    get authenticationError() {
+      return new Error('GitHub authentication failed - invalid token');
+    },
+    get networkError() {
+      return new Error('Network request failed - timeout');
+    },
+    get storageError() {
+      return new Error('Chrome storage unavailable');
+    },
+    get repoCreationError() {
+      return new Error('Failed to create temporary repository');
+    },
+    get repoDeleteError() {
+      return new Error('Failed to delete repository - not found');
+    },
+    get branchNotFoundError() {
+      return new Error('Branch not found');
+    },
+    get permissionError() {
+      return new Error('Insufficient permissions to access repository');
+    },
+    get repoVisibilityError() {
+      return new Error('Failed to update repository visibility');
+    },
+    get cloneError() {
+      return new Error('Failed to clone repository contents');
+    },
   },
 
   // Progress scenarios
@@ -667,9 +689,11 @@ export class TempRepoManagerTestEnvironment {
     this.mockStorage = new TempRepoMockChromeStorage();
     this.mockTabs = new TempRepoMockChromeTabs();
     this.mockStatusBroadcaster = new MockStatusBroadcaster();
-    
+
     // Update the manual mock to return our instance
-    jest.mocked(require('../../content/services/OperationStateManager')).OperationStateManager.getInstance.mockReturnValue(this.mockOperationStateManager);
+    jest
+      .mocked(require('../../content/services/OperationStateManager'))
+      .OperationStateManager.getInstance.mockReturnValue(this.mockOperationStateManager);
   }
 
   setup(): void {
