@@ -1,7 +1,9 @@
 // src/content/index.ts
 import { ContentManager } from './ContentManager';
+import { createLogger } from '$lib/utils/logger';
 
-console.log('🚀 Content script initializing...');
+const logger = createLogger('ContentScript');
+logger.info('🚀 Content script initializing...');
 
 let manager: ContentManager | null = null;
 let analyticsInitialized = false;
@@ -42,7 +44,7 @@ async function initializeAnalytics() {
     }
 
     analyticsInitialized = true;
-    console.log('📊 Analytics initialized in content script');
+    logger.info('📊 Analytics initialized in content script');
   } catch (error) {
     console.error('Failed to initialize analytics:', error);
   }
@@ -67,7 +69,7 @@ function initializeContentManager() {
     }
 
     manager = new ContentManager();
-    console.log('🔊 ContentManager initialized successfully');
+    logger.info('🔊 ContentManager initialized successfully');
 
     // Initialize analytics after content manager is ready
     initializeAnalytics();
@@ -80,7 +82,7 @@ function initializeContentManager() {
       (error.message.includes('Extension context invalidated') ||
         error.message.includes('chrome-extension://invalid/'))
     ) {
-      console.log(
+      logger.info(
         '🔊 Extension context invalidated during initialization - user should refresh page'
       );
     }
@@ -123,7 +125,7 @@ document.addEventListener('visibilitychange', () => {
 // Listen for extension lifecycle events
 if (chrome.runtime?.onStartup) {
   chrome.runtime.onStartup.addListener(() => {
-    console.log('🔊 Extension startup detected, reinitializing...');
+    logger.info('🔊 Extension startup detected, reinitializing...');
     manager = null;
     initializeContentManager();
   });
@@ -132,14 +134,14 @@ if (chrome.runtime?.onStartup) {
 // Handle browser focus events which can indicate service worker restart
 window.addEventListener('focus', () => {
   if (!manager) {
-    console.log('🔊 Window focus detected without manager, reinitializing...');
+    logger.info('🔊 Window focus detected without manager, reinitializing...');
     initializeContentManager();
   }
 });
 
 // Export for extension updates/reloads if needed
 export const onExecute = ({ perf }: { perf: { injectTime: number; loadTime: number } }) => {
-  console.log('🚀 Content script reinitializing...', perf);
+  logger.info('🚀 Content script reinitializing...', perf);
   if (manager) {
     manager.reinitialize();
   } else {

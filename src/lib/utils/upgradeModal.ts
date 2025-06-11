@@ -1,4 +1,7 @@
 import { UPGRADE_MODAL_CONFIGS, type PremiumFeature } from '../constants/premiumFeatures';
+import { createLogger } from './logger';
+
+const logger = createLogger('UpgradeModal');
 
 export type UpgradeModalType = keyof typeof UPGRADE_MODAL_CONFIGS;
 
@@ -14,7 +17,7 @@ export interface UpgradeModalData {
 export function getUpgradeModalConfig(type: UpgradeModalType): UpgradeModalData {
   const config = UPGRADE_MODAL_CONFIGS[type];
   if (!config) {
-    console.error(
+    logger.error(
       'Invalid upgrade modal type:',
       type,
       'Available types:',
@@ -50,8 +53,8 @@ export function setUpgradeModalState(
   type: UpgradeModalType,
   setState: (feature: string, reason: string, features: PremiumFeature[]) => void
 ): void {
-  console.log('setUpgradeModalState called with type:', type);
+  logger.debug('setUpgradeModalState called with type:', type);
   const config = getUpgradeModalConfig(type);
-  console.log('Retrieved config:', config);
+  logger.debug('Retrieved config:', config);
   setState(config.feature, config.reason, config.features);
 }

@@ -4,6 +4,11 @@
   import PushReminderSection from './PushReminderSection.svelte';
   import PremiumStatus from './PremiumStatus.svelte';
   import AnalyticsToggle from '$lib/components/ui/AnalyticsToggle.svelte';
+  import { Button } from '$lib/components/ui/button';
+  import { FileText } from 'lucide-svelte';
+  import { createLogger } from '$lib/utils/logger';
+
+  const logger = createLogger('SettingsTabContent');
 
   export let githubSettings: any;
   export let projectId: string | null;
@@ -35,13 +40,17 @@
   }
 
   function handleConfigurePushReminder() {
-    console.log('handleConfigurePushReminder called, isUserPremium:', isUserPremium);
+    logger.debug('handleConfigurePushReminder called, isUserPremium:', isUserPremium);
     if (isUserPremium) {
       dispatch('configurePushReminder');
     } else {
-      console.log('User is not premium, calling handleUpgradeClick with pushReminders');
+      logger.debug('User is not premium, calling handleUpgradeClick with pushReminders');
       handleUpgradeClick('pushReminders');
     }
+  }
+
+  function openLogsPage() {
+    chrome.tabs.create({ url: chrome.runtime.getURL('src/pages/logs.html') });
   }
 </script>
 
@@ -72,4 +81,11 @@
 
   <!-- Analytics Toggle -->
   <AnalyticsToggle />
+
+  <div class="border-t pt-4">
+    <Button variant="outline" class="w-full gap-2" on:click={openLogsPage}>
+      <FileText class="h-4 w-4" />
+      View Developer Logs
+    </Button>
+  </div>
 </div>
