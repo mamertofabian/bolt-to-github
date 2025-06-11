@@ -1,3 +1,18 @@
+## 2025-01-06 - Version 1.3.4
+
+### 🐛 Bug Fixes & Improvements
+
+This release enhances the feedback system with better logging capabilities for improved bug reporting.
+
+### Added
+
+- **Enhanced bug reporting** - Option to include application logs when submitting bug reports
+- **Comprehensive log inclusion** - All log levels (debug, info, warn, error) are now included in bug reports for better diagnostics
+
+### Fixed
+
+- **Log level filtering** - Fixed issue where only error logs were being attached to bug reports, now includes all log levels for more comprehensive debugging information
+
 ## 2025-05-26 - Version 1.3.0 (PR #76)
 
 ### 🎉 Major Release: "Pro" Features & Comprehensive Refactoring
