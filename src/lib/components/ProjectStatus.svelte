@@ -7,6 +7,9 @@
   import { isPremium } from '$lib/stores/premiumStore';
   import { issuesStore } from '$lib/stores/issuesStore';
   import type { UpgradeModalType } from '$lib/utils/upgradeModal';
+  import { createLogger } from '$lib/utils/logger';
+
+  const logger = createLogger('ProjectStatus');
 
   export let projectId: string;
   export let gitHubUsername: string;
@@ -98,7 +101,7 @@
           branchExists = branches.some((b) => b.name === branch);
           isLoading.branchStatus = false;
         } catch (error) {
-          console.log('Error fetching branches:', error);
+          logger.error('Error fetching branches:', error);
           branchExists = false;
           isLoading.branchStatus = false;
         }
@@ -123,7 +126,7 @@
         try {
           await issuesStore.loadIssues(gitHubUsername, repoName, tokenToUse, 'all');
         } catch (err) {
-          console.log('Error fetching issues:', err);
+          logger.error('Error fetching issues:', err);
         }
         isLoading.issues = false;
       } else {
@@ -135,10 +138,10 @@
         isLoading.issues = false;
       }
     } catch (error) {
-      console.log('Error fetching repo details:', error);
+      logger.error('Error fetching repo details:', error);
       // Enhanced error handling for better UX
       if (error instanceof Error && error.message.includes('no github settings')) {
-        console.log('GitHub App not configured - show setup guidance');
+        logger.info('GitHub App not configured - show setup guidance');
       }
       // Reset loading states on error
       Object.keys(isLoading).forEach((key) => (isLoading[key as keyof typeof isLoading] = false));
@@ -151,7 +154,7 @@
       const result = await chrome.storage.local.get(['storedFileChanges', 'pendingFileChanges']);
       hasFileChanges = !!(result.storedFileChanges || result.pendingFileChanges);
     } catch (error) {
-      console.error('Error checking for stored file changes:', error);
+      logger.error('Error checking for stored file changes:', error);
       hasFileChanges = false;
     }
   }
@@ -167,7 +170,7 @@
         projectTitle = currentProject.projectTitle;
       }
     } catch (error) {
-      console.error('Error loading project title:', error);
+      logger.error('Error loading project title:', error);
     }
   }
 
@@ -177,16 +180,16 @@
 
     // Set up storage change listener
     const storageChangeListener = (changes: any, areaName: string) => {
-      console.log('Storage changes detected in ProjectStatus:', changes, 'in area:', areaName);
+      logger.info('Storage changes detected in ProjectStatus:', changes, 'in area:', areaName);
 
       // Check if lastSettingsUpdate changed in local storage
       if (areaName === 'local' && changes.lastSettingsUpdate) {
         const updateInfo = changes.lastSettingsUpdate.newValue;
-        console.log('Settings update detected in ProjectStatus:', updateInfo);
+        logger.info('Settings update detected in ProjectStatus:', updateInfo);
 
         // Only update if this is the current project
         if (updateInfo.projectId === projectId) {
-          console.log('Updating current project status with:', updateInfo);
+          logger.info('Updating current project status with:', updateInfo);
 
           // Update local variables if they've changed
           if (repoName !== updateInfo.repoName) {

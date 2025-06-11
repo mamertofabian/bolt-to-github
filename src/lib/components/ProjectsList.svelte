@@ -19,6 +19,9 @@
   import BranchSelectionModal from '../../popup/components/BranchSelectionModal.svelte';
   import { githubSettingsStore } from '$lib/stores';
   import ProjectsListGuide from '$lib/components/ProjectsListGuide.svelte';
+  import { createLogger } from '$lib/utils/logger';
+
+  const logger = createLogger('ProjectsList');
 
   export let repoOwner: string;
   export let githubToken: string;
@@ -72,25 +75,25 @@
 
         // The service will internally detect if GitHub App authentication is available
         // If not, the getStrategy() method will handle fallback
-        console.log('🔍 ProjectsList: Created service with smart authentication detection');
+        logger.info('🔍 ProjectsList: Created service with smart authentication detection');
         return service;
       } catch (githubAppError) {
-        console.log('⚠️ ProjectsList: GitHub App initialization failed, trying PAT fallback');
+        logger.info('⚠️ ProjectsList: GitHub App initialization failed, trying PAT fallback');
 
         // Fallback to PAT if available
         if (githubToken) {
-          console.log('✅ ProjectsList: Using PAT authentication as fallback');
+          logger.info('✅ ProjectsList: Using PAT authentication as fallback');
           return new UnifiedGitHubService(githubToken);
         }
 
         throw githubAppError;
       }
     } catch (error) {
-      console.error('Failed to create GitHub service:', error);
+      logger.error('Failed to create GitHub service:', error);
 
       // Final fallback: try PAT if available
       if (githubToken) {
-        console.log('🔄 ProjectsList: Final fallback to PAT authentication');
+        logger.info('🔄 ProjectsList: Final fallback to PAT authentication');
         return new UnifiedGitHubService(githubToken);
       }
 
@@ -105,7 +108,7 @@
       try {
         githubService = await createGitHubService();
       } catch (error) {
-        console.error('Failed to initialize GitHub service in ProjectsList:', error);
+        logger.error('Failed to initialize GitHub service in ProjectsList:', error);
         // Fallback to PAT
         githubService = new UnifiedGitHubService(githubToken || '');
       }
@@ -208,13 +211,13 @@
       const timestamp = cached[`${REPOS_CACHE_KEY}_timestamp`];
 
       if (cachedRepos && timestamp && Date.now() - timestamp < REPOS_CACHE_DURATION) {
-        console.log('Loading repos from cache for', repoOwner);
+        logger.info('Loading repos from cache for', repoOwner);
         allRepos = cachedRepos;
         return true;
       }
       return false;
     } catch (error) {
-      console.error('Failed to load repos from cache:', error);
+      logger.error('Failed to load repos from cache:', error);
       return false;
     }
   }
@@ -225,9 +228,9 @@
         [REPOS_CACHE_KEY]: repos,
         [`${REPOS_CACHE_KEY}_timestamp`]: Date.now(),
       });
-      console.log('Repos cached for', repoOwner);
+      logger.info('Repos cached for', repoOwner);
     } catch (error) {
-      console.error('Failed to cache repos:', error);
+      logger.error('Failed to cache repos:', error);
     }
   }
 
@@ -241,13 +244,13 @@
       const timestamp = cached[`${COMMITS_CACHE_KEY}_timestamp`];
 
       if (cachedCommits && timestamp && Date.now() - timestamp < COMMITS_CACHE_DURATION) {
-        console.log('Loading commit counts from cache for', repoOwner);
+        logger.info('Loading commit counts from cache for', repoOwner);
         commitCounts = { ...cachedCommits };
         return true;
       }
       return false;
     } catch (error) {
-      console.error('Failed to load commit counts from cache:', error);
+      logger.error('Failed to load commit counts from cache:', error);
       return false;
     }
   }
@@ -258,21 +261,21 @@
         [COMMITS_CACHE_KEY]: counts,
         [`${COMMITS_CACHE_KEY}_timestamp`]: Date.now(),
       });
-      console.log('Commit counts cached for', repoOwner);
+      logger.info('Commit counts cached for', repoOwner);
     } catch (error) {
-      console.error('Failed to cache commit counts:', error);
+      logger.error('Failed to cache commit counts:', error);
     }
   }
 
   async function loadAllRepos(forceRefresh = false) {
-    console.log('Loading repos for', repoOwner, forceRefresh ? '(force refresh)' : '');
+    logger.info('Loading repos for', repoOwner, forceRefresh ? '(force refresh)' : '');
 
     try {
       loadingRepos = true;
 
       // Check if GitHub service is available
       if (!githubService) {
-        console.log('GitHub service not yet initialized, skipping repo fetch');
+        logger.info('GitHub service not yet initialized, skipping repo fetch');
         loadingRepos = false;
         return;
       }
@@ -303,17 +306,17 @@
     } catch (error) {
       initialLoadingRepos = false;
       loadingRepos = false;
-      console.error('Failed to load repos:', error);
+      logger.error('Failed to load repos:', error);
     }
   }
 
   // Function to refresh project data
   async function refreshProjectData(forceRefresh = false) {
-    console.log('Refreshing project data in ProjectsList', forceRefresh ? '(force refresh)' : '');
+    logger.info('Refreshing project data in ProjectsList', forceRefresh ? '(force refresh)' : '');
 
     // Check if GitHub service is available
     if (!githubService) {
-      console.log('GitHub service not yet initialized, skipping commit count fetch');
+      logger.info('GitHub service not yet initialized, skipping commit count fetch');
       return;
     }
 
@@ -327,7 +330,7 @@
         const hasAllCounts = projectIds.every((id) => cachedIds.includes(id));
 
         if (hasAllCounts) {
-          console.log('All commit counts loaded from cache');
+          logger.info('All commit counts loaded from cache');
           return;
         }
       }
@@ -356,7 +359,7 @@
           settings.branch
         );
       } catch (error) {
-        console.error(`Failed to fetch commit count for ${projectId}:`, error);
+        logger.error(`Failed to fetch commit count for ${projectId}:`, error);
         // Keep existing count if available
         if (commitCounts[projectId] !== undefined) {
           newCommitCounts[projectId] = commitCounts[projectId];
@@ -390,7 +393,7 @@
         }
 
         if (!githubService) {
-          console.warn('GitHub service not initialized within timeout period');
+          logger.warn('GitHub service not initialized within timeout period');
           return false;
         }
         return true;
@@ -551,7 +554,7 @@
       showDeleteModal = false;
       projectToDelete = null;
     } catch (error) {
-      console.error('Failed to delete project(s):', error);
+      logger.error('Failed to delete project(s):', error);
     }
   }
 
@@ -594,7 +597,7 @@
     showBranchSelectionModal = false;
 
     try {
-      console.log(`🔄 Sending message to import private repo: ${repo} from branch: ${branch}`);
+      logger.info(`🔄 Sending message to import private repo: ${repo} from branch: ${branch}`);
 
       // Only show progress if we're not on bolt.new
       if (!currentTabIsBolt) {
@@ -607,13 +610,13 @@
       // Set up listener first
       port.onMessage.addListener((message) => {
         if (message.type === 'UPLOAD_STATUS') {
-          console.log('📥 Import status update:', message.status);
+          logger.info('📥 Import status update:', message.status);
         }
       });
 
       port.onMessage.addListener((message) => {
         if (message.type === 'UPLOAD_STATUS') {
-          console.log('📥 Import status update:', message.status);
+          logger.info('📥 Import status update:', message.status);
 
           if (!currentTabIsBolt) {
             importProgress = {
@@ -646,7 +649,7 @@
         window.close();
       }
     } catch (error) {
-      console.error('❌ Failed to import private repository:', error);
+      logger.error('❌ Failed to import private repository:', error);
       alert('Failed to import private repository. Please try again later.');
       repoToImport = null;
     }
