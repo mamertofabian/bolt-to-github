@@ -1,4 +1,10 @@
-import { logger, createLogger, enableProductionDebug, disableProductionDebug } from '../logger';
+import {
+  logger,
+  createLogger,
+  enableProductionDebug,
+  disableProductionDebug,
+  resetLogger,
+} from '../logger';
 
 // Mock console methods
 const mockConsole = {
@@ -31,8 +37,11 @@ describe('Logger', () => {
       writable: true,
     });
 
-    // Mock process.env for testing
-    process.env.NODE_ENV = 'test';
+    // Mock process.env for testing (set to production by default)
+    process.env.NODE_ENV = 'production';
+
+    // Reset logger to pick up new environment
+    resetLogger();
   });
 
   describe('default logger', () => {
@@ -129,6 +138,28 @@ describe('Logger', () => {
 
       // Restore window
       global.window = originalWindow;
+    });
+
+    it('should handle localStorage errors gracefully', () => {
+      // Mock localStorage to throw an error
+      mockLocalStorage.setItem.mockImplementation(() => {
+        throw new Error('localStorage access denied');
+      });
+      mockLocalStorage.removeItem.mockImplementation(() => {
+        throw new Error('localStorage access denied');
+      });
+
+      expect(() => enableProductionDebug()).not.toThrow();
+      expect(() => disableProductionDebug()).not.toThrow();
+
+      expect(mockConsole.warn).toHaveBeenCalledWith(
+        '[WARN]',
+        'Failed to enable production debug logging: localStorage unavailable'
+      );
+      expect(mockConsole.warn).toHaveBeenCalledWith(
+        '[WARN]',
+        'Failed to disable production debug logging: localStorage unavailable'
+      );
     });
   });
 

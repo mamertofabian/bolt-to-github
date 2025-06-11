@@ -61,19 +61,12 @@ class LoggerImpl implements Logger {
 
 // Detect environment - use simple approach to avoid import.meta issues in tests
 function detectEnvironment(): boolean {
-  // Try Vite environment first
-  try {
-    // @ts-ignore - ignore TypeScript error for import.meta in test environments
-    if (typeof window !== 'undefined' && window.import?.meta?.env) {
-      // @ts-ignore
-      return window.import.meta.env.MODE === 'development' || window.import.meta.env.DEV === true;
-    }
-  } catch (e) {
-    // Ignore and continue
-  }
+  // For Vite environments, check for development indicators
+  // Note: Skipping localhost check as it can be unreliable in test environments
 
   // Try process.env for Node.js environments
   if (typeof process !== 'undefined' && process.env) {
+    // Don't consider 'test' as development
     return process.env.NODE_ENV === 'development';
   }
 
@@ -81,27 +74,50 @@ function detectEnvironment(): boolean {
   return false;
 }
 
-const isDevelopment = detectEnvironment();
+// Lazy initialization for better testability
+let _logger: Logger | null = null;
 
-// Check for debug override in localStorage (for production debugging)
-const enableDebugInProduction =
-  typeof window !== 'undefined' ? localStorage.getItem('bolt-to-github-debug') === 'true' : false;
+// Reset function for testing
+export function resetLogger(): void {
+  _logger = null;
+}
 
-// Default logger instance
-export const logger = new LoggerImpl({
-  isDevelopment,
-  enableDebugInProduction,
-  enableTimestamps: isDevelopment,
+function getDefaultConfig() {
+  const isDevelopment = detectEnvironment();
+  const enableDebugInProduction = (() => {
+    try {
+      return typeof window !== 'undefined'
+        ? localStorage.getItem('bolt-to-github-debug') === 'true'
+        : false;
+    } catch (e) {
+      return false;
+    }
+  })();
+
+  return {
+    isDevelopment,
+    enableDebugInProduction,
+    enableTimestamps: isDevelopment,
+  };
+}
+
+// Default logger instance with lazy initialization
+export const logger: Logger = new Proxy({} as Logger, {
+  get(target, prop) {
+    if (!_logger) {
+      _logger = new LoggerImpl(getDefaultConfig());
+    }
+    return (_logger as any)[prop];
+  },
 });
 
 /**
  * Create a logger with module-specific prefix
  */
 export function createLogger(modulePrefix: string, config?: Partial<LoggerConfig>): Logger {
+  const defaultConfig = getDefaultConfig();
   return new LoggerImpl({
-    isDevelopment,
-    enableDebugInProduction,
-    enableTimestamps: isDevelopment,
+    ...defaultConfig,
     ...config,
     modulePrefix,
   });
@@ -112,8 +128,12 @@ export function createLogger(modulePrefix: string, config?: Partial<LoggerConfig
  */
 export function enableProductionDebug(): void {
   if (typeof window !== 'undefined') {
-    localStorage.setItem('bolt-to-github-debug', 'true');
-    logger.info('Production debug logging enabled. Reload the page to take effect.');
+    try {
+      localStorage.setItem('bolt-to-github-debug', 'true');
+      logger.info('Production debug logging enabled. Reload the page to take effect.');
+    } catch (e) {
+      logger.warn('Failed to enable production debug logging: localStorage unavailable');
+    }
   }
 }
 
@@ -122,7 +142,11 @@ export function enableProductionDebug(): void {
  */
 export function disableProductionDebug(): void {
   if (typeof window !== 'undefined') {
-    localStorage.removeItem('bolt-to-github-debug');
-    logger.info('Production debug logging disabled. Reload the page to take effect.');
+    try {
+      localStorage.removeItem('bolt-to-github-debug');
+      logger.info('Production debug logging disabled. Reload the page to take effect.');
+    } catch (e) {
+      logger.warn('Failed to disable production debug logging: localStorage unavailable');
+    }
   }
 }
