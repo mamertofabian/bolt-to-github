@@ -24,10 +24,13 @@
 
     // Render markdown content
     if (showAllVersions) {
-      // Show all versions when opened manually
-      const versions = Object.entries(whatsNewContent)
+      // Show current and previous version (total 2 versions)
+      const sortedVersions = Object.entries(whatsNewContent)
         .sort(([a], [b]) => b.localeCompare(a)) // Sort by version descending
-        .map(([ver, data]) => {
+        .slice(0, 2); // Take only the first 2 versions
+
+      const versions = sortedVersions
+        .map(([ver, data], index) => {
           const versionContent = `
 ## Version ${ver} - ${data.date}
 

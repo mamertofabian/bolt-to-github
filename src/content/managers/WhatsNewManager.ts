@@ -57,13 +57,18 @@ export class WhatsNewManager implements IWhatsNewManager {
   async showManually(): Promise<void> {
     // Close any existing modal first
     if (this.component) {
+      console.log('WhatsNewManager: Cleaning up existing modal before showing new one');
       this.cleanup();
+      // Add a small delay to ensure cleanup completes
+      await new Promise((resolve) => setTimeout(resolve, 100));
     }
+    console.log('WhatsNewManager: Showing modal manually');
     await this.show(true);
   }
 
   private async show(isManual: boolean): Promise<void> {
     if (this.component) {
+      console.warn('WhatsNewManager: Component already exists, skipping show');
       return; // Already showing
     }
 
@@ -191,6 +196,10 @@ export class WhatsNewManager implements IWhatsNewManager {
     }
 
     if (this.component) {
+      // Properly destroy the Svelte component
+      if (this.component.$destroy) {
+        this.component.$destroy();
+      }
       this.componentLifecycleManager.unregister('WhatsNewModal');
       const container = document.getElementById('whats-new-container');
       if (container) {
