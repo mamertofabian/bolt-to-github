@@ -681,7 +681,9 @@ export class ContentManager {
 
           if (message.type === 'UPDATE_PREMIUM_STATUS') {
             // Check for message deduplication
-            const messageId = message.messageId || `fallback-${Date.now()}`;
+            const messageId =
+              message.messageId ||
+              `fallback-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
 
             if (this.recentMessageIds.has(messageId)) {
               logger.debug('🔄 Duplicate UPDATE_PREMIUM_STATUS message ignored:', messageId);
@@ -889,11 +891,26 @@ export class ContentManager {
    * Clean up old message IDs to prevent memory leaks
    */
   private cleanupOldMessageIds(): void {
-    // For simplicity, clear all message IDs every 100 messages
-    // In a real implementation, you might want to use timestamps
-    if (this.recentMessageIds.size > 100) {
-      this.recentMessageIds.clear();
-      logger.debug('🧹 Cleared old message IDs to prevent memory leak');
+    // Time-based cleanup to prevent memory leaks while maintaining deduplication
+    const now = Date.now();
+    const expiredIds: string[] = [];
+
+    // Find expired message IDs based on the deduplication window
+    this.recentMessageIds.forEach((messageId) => {
+      // Extract timestamp from message ID (format: "prefix-timestamp" or "premium-timestamp")
+      const parts = messageId.split('-');
+      const timestamp = parseInt(parts[parts.length - 1] || '0');
+
+      if (!isNaN(timestamp) && now - timestamp > this.MESSAGE_DEDUP_WINDOW) {
+        expiredIds.push(messageId);
+      }
+    });
+
+    // Remove expired IDs
+    expiredIds.forEach((id) => this.recentMessageIds.delete(id));
+
+    if (expiredIds.length > 0) {
+      logger.debug(`🧹 Cleaned up ${expiredIds.length} expired message IDs`);
     }
   }
 

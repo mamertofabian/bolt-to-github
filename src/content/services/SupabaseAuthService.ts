@@ -1014,7 +1014,7 @@ export class SupabaseAuthService {
 
       // Check if status has actually changed or if we're within cooldown period
       if (
-        statusHash === this.lastPremiumStatusHash &&
+        statusHash === this.lastPremiumStatusHash ||
         now - this.lastPremiumStatusUpdate < this.PREMIUM_STATUS_UPDATE_COOLDOWN
       ) {
         logger.debug('Premium status unchanged or within cooldown period, skipping update');
@@ -1056,7 +1056,7 @@ export class SupabaseAuthService {
           .sendMessage(tabs[0].id, {
             type: 'UPDATE_PREMIUM_STATUS',
             data: premiumStatusData,
-            messageId: `premium-${Date.now()}`, // Add unique message ID
+            messageId: `premium-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`, // Add unique message ID with random component
           })
           .catch(() => {
             /* Tab might not have content script injected */

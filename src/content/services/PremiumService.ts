@@ -30,6 +30,7 @@ export class PremiumService {
   private lastSavedData: string = '';
   private debouncedSaveData: () => void;
   private throttledUpdatePremiumStatus: (status: Partial<PremiumStatus>) => void;
+  private isSaving: boolean = false;
 
   constructor() {
     this.premiumStatus = {
@@ -147,7 +148,14 @@ export class PremiumService {
    * Save premium status and usage to storage immediately
    */
   private async saveDataImmediate(): Promise<void> {
+    // Prevent concurrent saves
+    if (this.isSaving) {
+      logger.debug('Save already in progress, skipping');
+      return;
+    }
+
     try {
+      this.isSaving = true;
       const currentData = JSON.stringify(this.premiumStatus);
 
       // Double-check if data has changed since debounce started
@@ -176,6 +184,8 @@ export class PremiumService {
       logger.debug('Premium data saved successfully');
     } catch (error) {
       logger.warn('Failed to save premium data:', error);
+    } finally {
+      this.isSaving = false;
     }
   }
 
