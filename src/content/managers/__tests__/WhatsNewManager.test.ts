@@ -216,6 +216,16 @@ describe('WhatsNewManager', () => {
         'WhatsNewModal',
         expect.any(Object)
       );
+
+      // Should show all versions when manual
+      const WhatsNewModal = require('$lib/components/WhatsNewModal.svelte').default;
+      expect(WhatsNewModal).toHaveBeenCalledWith(
+        expect.objectContaining({
+          props: expect.objectContaining({
+            showAllVersions: true,
+          }),
+        })
+      );
     });
 
     it('should not update state when showing manually', async () => {

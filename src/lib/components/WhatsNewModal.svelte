@@ -8,6 +8,7 @@
   export let version: string;
   export let onClose: () => void;
   export let onDontShowAgain: () => void;
+  export let showAllVersions: boolean = false;
 
   let visible = true;
   let mounted = false;
@@ -22,16 +23,38 @@
     animationClass = 'whats-new-enter';
 
     // Render markdown content
-    const versionData = whatsNewContent[version];
-    if (versionData) {
-      const fullContent = `
+    if (showAllVersions) {
+      // Show all versions when opened manually
+      const versions = Object.entries(whatsNewContent)
+        .sort(([a], [b]) => b.localeCompare(a)) // Sort by version descending
+        .map(([ver, data]) => {
+          const versionContent = `
+## Version ${ver} - ${data.date}
+
+### Highlights
+${data.highlights.map((h) => `- ${h}`).join('\n')}
+
+${data.details || ''}
+`;
+          return versionContent;
+        })
+        .join('\n---\n');
+
+      const rawHtml = marked(versions, { breaks: true }) as string;
+      renderedContent = DOMPurify.sanitize(rawHtml);
+    } else {
+      // Show only current version for automatic display
+      const versionData = whatsNewContent[version];
+      if (versionData) {
+        const fullContent = `
 ## Highlights
 ${versionData.highlights.map((h) => `- ${h}`).join('\n')}
 
 ${versionData.details || ''}
-      `.trim();
-      const rawHtml = marked(fullContent, { breaks: true }) as string;
-      renderedContent = DOMPurify.sanitize(rawHtml);
+        `.trim();
+        const rawHtml = marked(fullContent, { breaks: true }) as string;
+        renderedContent = DOMPurify.sanitize(rawHtml);
+      }
     }
 
     // Remove enter animation class after animation completes
@@ -108,7 +131,9 @@ ${versionData.details || ''}
           <div class="whats-new-title-wrapper">
             <span class="whats-new-icon" aria-hidden="true">🎉</span>
             <h2 id="whats-new-title" class="whats-new-title">
-              What's New in Bolt to GitHub v{version}
+              {showAllVersions
+                ? "What's New in Bolt to GitHub"
+                : `What's New in Bolt to GitHub v${version}`}
             </h2>
           </div>
 
@@ -385,6 +410,13 @@ ${versionData.details || ''}
 
   .whats-new-body :global(a:hover) {
     color: #93bbfc;
+  }
+
+  /* Version separator styling */
+  .whats-new-body :global(hr) {
+    border: none;
+    border-top: 1px solid rgba(255, 255, 255, 0.1);
+    margin: 2rem 0;
   }
 
   /* Custom scrollbar */

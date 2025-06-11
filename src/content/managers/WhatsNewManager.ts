@@ -55,6 +55,10 @@ export class WhatsNewManager implements IWhatsNewManager {
   }
 
   async showManually(): Promise<void> {
+    // Close any existing modal first
+    if (this.component) {
+      this.cleanup();
+    }
     await this.show(true);
   }
 
@@ -90,6 +94,7 @@ export class WhatsNewManager implements IWhatsNewManager {
           version: this.currentVersion,
           onClose: () => this.handleClose(isManual),
           onDontShowAgain: () => this.handleDontShowAgain(),
+          showAllVersions: isManual, // Show all versions when manually triggered
         },
       });
 
