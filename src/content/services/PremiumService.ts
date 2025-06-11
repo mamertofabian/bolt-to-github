@@ -45,7 +45,7 @@ export class PremiumService {
     };
 
     // Initialize debounced and throttled functions
-    this.debouncedSaveData = debounce(() => this.saveDataImmediate(), 500);
+    this.debouncedSaveData = debounce(() => this.saveDataImmediate(), 100); // 100ms as per ticket spec
     this.throttledUpdatePremiumStatus = throttle((status: Partial<PremiumStatus>) => {
       this.updatePremiumStatusImmediate(status);
     }, 1000);

@@ -1050,6 +1050,7 @@ export class SupabaseAuthService {
 
       /* Send message to content script to update premium status on bolt.new tabs */
       /* Only send to active tab to reduce message flooding */
+      /* Note: This is intentional - inactive tabs will get the update when they become active */
       const tabs = await chrome.tabs.query({ active: true, url: 'https://bolt.new/*' });
       if (tabs.length > 0 && tabs[0].id) {
         chrome.tabs

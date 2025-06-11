@@ -919,7 +919,8 @@ export class BackgroundService {
     }
 
     // Use Chrome alarms API for reliable keep-alive
-    chrome.alarms.create('keepAlive', { periodInMinutes: 0.5 }); // Every 30 seconds
+    // Note: Chrome enforces a minimum period of 1 minute for alarms
+    chrome.alarms.create('keepAlive', { periodInMinutes: 1 }); // Every 60 seconds (Chrome minimum)
 
     // Also use a regular interval as backup
     this.keepAliveInterval = setInterval(() => {

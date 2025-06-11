@@ -898,9 +898,10 @@ export class ContentManager {
 
     // Find expired message IDs based on the deduplication window
     this.recentMessageIds.forEach((messageId) => {
-      // Extract timestamp from message ID (format: "prefix-timestamp" or "premium-timestamp")
+      // Extract timestamp from message ID (format: "prefix-timestamp-random")
       const parts = messageId.split('-');
-      const timestamp = parseInt(parts[parts.length - 1] || '0');
+      // For "fallback-timestamp-random" or "premium-timestamp-random", timestamp is at index 1
+      const timestamp = parseInt(parts[1] || '0');
 
       if (!isNaN(timestamp) && now - timestamp > this.MESSAGE_DEDUP_WINDOW) {
         expiredIds.push(messageId);
