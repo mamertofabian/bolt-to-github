@@ -8,6 +8,9 @@ import type { IAuthenticationStrategy } from './interfaces/IAuthenticationStrate
 import type { AuthenticationConfig, AuthenticationType } from './types/authentication';
 // Removed GitHubService import to eliminate circular dependency
 import { AuthenticationStrategyFactory } from './AuthenticationStrategyFactory';
+import { createLogger } from '$lib/utils/logger';
+
+const logger = createLogger('UnifiedGitHubService');
 
 export class UnifiedGitHubService {
   private strategy: IAuthenticationStrategy | null = null;
@@ -27,7 +30,7 @@ export class UnifiedGitHubService {
     } else {
       // New configuration object - initialize asynchronously
       this.initializeStrategy(authConfig).catch((error) => {
-        console.error('Failed to initialize authentication strategy:', error);
+        logger.error('Failed to initialize authentication strategy:', error);
         // Set strategy to null so getStrategy() will try to auto-detect
         this.strategy = null;
       });
@@ -45,9 +48,9 @@ export class UnifiedGitHubService {
       const userToken = await this.getUserToken();
 
       if (userToken) {
-        console.log('✅ Found user token for GitHub App authentication');
+        logger.info('✅ Found user token for GitHub App authentication');
       } else {
-        console.warn('⚠️ No user token found - GitHub App authentication may fail');
+        logger.warn('⚠️ No user token found - GitHub App authentication may fail');
       }
 
       this.strategy = this.factory.createGitHubAppStrategy(userToken);
@@ -64,7 +67,7 @@ export class UnifiedGitHubService {
       const { SUPABASE_CONFIG } = await import('../lib/constants/supabase');
       return SUPABASE_CONFIG.URL.split('://')[1].split('.')[0];
     } catch (error) {
-      console.warn('Failed to get Supabase project ref:', error);
+      logger.warn('Failed to get Supabase project ref:', error);
       return 'unknown';
     }
   }
@@ -97,7 +100,7 @@ export class UnifiedGitHubService {
       // First, check if GitHub App authentication is available and valid
       const userToken = await this.getUserToken();
       if (userToken) {
-        console.log('🔍 GitHub App authentication detected, prioritizing over PAT');
+        logger.info('🔍 GitHub App authentication detected, prioritizing over PAT');
         // Update stored preference to reflect reality
         await chrome.storage.local.set({ authenticationMethod: 'github_app' });
         return 'github_app';
@@ -107,10 +110,10 @@ export class UnifiedGitHubService {
       const result = await chrome.storage.local.get(['authenticationMethod']);
       const storedMethod = result.authenticationMethod || 'pat';
 
-      console.log(`🔍 No GitHub App authentication found, using ${storedMethod}`);
+      logger.info(`🔍 No GitHub App authentication found, using ${storedMethod}`);
       return storedMethod;
     } catch (error) {
-      console.warn('Failed to get authentication method:', error);
+      logger.warn('Failed to get authentication method:', error);
       return 'pat';
     }
   }
@@ -148,14 +151,14 @@ export class UnifiedGitHubService {
             }
           }
         } catch (error) {
-          console.debug(`Failed to get token from key ${key}:`, error);
+          logger.debug(`Failed to get token from key ${key}:`, error);
         }
       }
 
-      console.warn('⚠️ No user token found in any storage location');
+      logger.warn('⚠️ No user token found in any storage location');
       return undefined;
     } catch (error) {
-      console.warn('Failed to get user token:', error);
+      logger.warn('Failed to get user token:', error);
       return undefined;
     }
   }
@@ -219,7 +222,7 @@ export class UnifiedGitHubService {
       const result = await strategy.validateAuth();
       return result.isValid;
     } catch (error) {
-      console.error('Token validation failed:', error);
+      logger.error('Token validation failed:', error);
       return false;
     }
   }
@@ -578,7 +581,7 @@ export class UnifiedGitHubService {
 
       return totalCommits;
     } catch (error) {
-      console.warn(`Failed to get commit count for ${owner}/${repo}:${branch}:`, error);
+      logger.warn(`Failed to get commit count for ${owner}/${repo}:${branch}:`, error);
       return 0;
     }
   }
@@ -654,7 +657,7 @@ export class UnifiedGitHubService {
       headers['Pragma'] = 'no-cache';
     }
 
-    console.log('🌐 GitHub API call:', { url, forceRefresh });
+    logger.info('🌐 GitHub API call:', { url, forceRefresh });
 
     const response = await fetch(url, { headers });
 
@@ -869,7 +872,7 @@ export class UnifiedGitHubService {
               try {
                 content = atob(content.replace(/\n/g, ''));
               } catch (error) {
-                console.warn(`Failed to decode base64 content for ${file.path}:`, error);
+                logger.warn(`Failed to decode base64 content for ${file.path}:`, error);
                 continue; // Skip this file and continue with the next one
               }
             }
@@ -885,7 +888,7 @@ export class UnifiedGitHubService {
             );
           }
         } catch (error) {
-          console.warn(`Failed to copy file ${file.path}:`, error);
+          logger.warn(`Failed to copy file ${file.path}:`, error);
         }
 
         processedFiles++;
@@ -897,7 +900,7 @@ export class UnifiedGitHubService {
 
       if (onProgress) onProgress(100);
     } catch (error) {
-      console.error('Failed to clone repository contents:', error);
+      logger.error('Failed to clone repository contents:', error);
       throw error;
     }
   }
@@ -931,7 +934,7 @@ export class UnifiedGitHubService {
 
       return tempRepoName;
     } catch (error) {
-      console.error('Failed to create temporary public repository:', error);
+      logger.error('Failed to create temporary public repository:', error);
       throw error;
     }
   }

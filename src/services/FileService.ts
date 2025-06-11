@@ -1,6 +1,9 @@
 import type { IGitHubApiClient } from './interfaces/IGitHubApiClient';
 import type { IFileService, FileInfo } from './interfaces/IFileService';
 import { decodeBase64ToUtf8 } from '$lib/fileUtils';
+import { createLogger } from '../lib/utils/logger';
+
+const logger = createLogger('FileService');
 
 /**
  * Service for GitHub file operations
@@ -34,7 +37,7 @@ export class FileService implements IFileService {
       // GitHub API returns base64 encoded content - decode properly as UTF-8
       return decodeBase64ToUtf8(response.content.replace(/\s/g, ''));
     } catch (error) {
-      console.error(`Failed to read file ${path}:`, error);
+      logger.error(`Failed to read file ${path}:`, error);
       throw new Error(
         `Failed to read file ${path}: ${error instanceof Error ? error.message : 'Unknown error'}`
       );
@@ -78,11 +81,11 @@ export class FileService implements IFileService {
     } catch (error) {
       // If error is not 404 (file not found), propagate it
       if (error instanceof Error && !error.message.includes('404')) {
-        console.error(`Failed to check if file exists: ${path}`, error);
+        logger.error(`Failed to check if file exists: ${path}`, error);
         throw new Error(`Failed to write file ${path}: ${error.message}`);
       }
       // File doesn't exist, which is fine for creating a new file
-      console.log(`File ${path} does not exist yet, will create new`);
+      logger.info(`File ${path} does not exist yet, will create new`);
     }
 
     try {
@@ -99,7 +102,7 @@ export class FileService implements IFileService {
 
       return await this.apiClient.request('PUT', `/repos/${owner}/${repo}/contents/${path}`, body);
     } catch (error) {
-      console.error(`Failed to write file ${path}:`, error);
+      logger.error(`Failed to write file ${path}:`, error);
       throw new Error(
         `Failed to write file ${path}: ${error instanceof Error ? error.message : 'Unknown error'}`
       );
@@ -126,7 +129,7 @@ export class FileService implements IFileService {
       // Check if file exists first
       const exists = await this.fileExists(owner, repo, path, branch);
       if (!exists) {
-        console.warn(`File ${path} doesn't exist, considering deletion successful`);
+        logger.warn(`File ${path} doesn't exist, considering deletion successful`);
         return;
       }
 
@@ -149,11 +152,11 @@ export class FileService implements IFileService {
     } catch (error) {
       // If file doesn't exist (404), consider the deletion successful
       if (error instanceof Error && error.message.includes('404')) {
-        console.warn(`File ${path} doesn't exist, considering deletion successful`);
+        logger.warn(`File ${path} doesn't exist, considering deletion successful`);
         return;
       }
 
-      console.error(`Failed to delete file ${path}:`, error);
+      logger.error(`Failed to delete file ${path}:`, error);
       throw new Error(
         `Failed to delete file ${path}: ${error instanceof Error ? error.message : 'Unknown error'}`
       );
@@ -195,7 +198,7 @@ export class FileService implements IFileService {
         html_url: item.html_url,
       }));
     } catch (error) {
-      console.error(`Failed to list files in ${path}:`, error);
+      logger.error(`Failed to list files in ${path}:`, error);
       throw new Error(
         `Failed to list files in ${path}: ${error instanceof Error ? error.message : 'Unknown error'}`
       );
@@ -233,7 +236,7 @@ export class FileService implements IFileService {
         html_url: response.html_url,
       };
     } catch (error) {
-      console.error(`Failed to get file info for ${path}:`, error);
+      logger.error(`Failed to get file info for ${path}:`, error);
       throw new Error(
         `Failed to get file info for ${path}: ${error instanceof Error ? error.message : 'Unknown error'}`
       );

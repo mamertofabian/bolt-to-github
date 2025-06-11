@@ -6,6 +6,9 @@ import type { FileChange } from '../../services/FilePreviewService';
 import { SettingsService } from '../../services/settings';
 import { DownloadService } from '../../services/DownloadService';
 import { CommitTemplateService } from '../services/CommitTemplateService';
+import { createLogger } from '../../lib/utils/logger';
+
+const logger = createLogger('GitHubUploadHandler');
 
 // Local interface to match actual structure returned by SettingsService
 interface CurrentProjectSettings {
@@ -73,7 +76,7 @@ export class GitHubUploadHandler implements IGitHubUploadHandler {
     useStoredChanges: boolean = true,
     skipChangeDetection: boolean = false
   ): Promise<void> {
-    console.log('🔊 Handling GitHub push action');
+    logger.info('🔊 Handling GitHub push action');
 
     // Validate settings first
     const settings = (await SettingsService.getGitHubSettings()) as LocalSettingsResult;
@@ -84,7 +87,7 @@ export class GitHubUploadHandler implements IGitHubUploadHandler {
 
     // Skip change detection for direct pushes (GitHub button, Project Status)
     if (skipChangeDetection) {
-      console.log('Skipping change detection for direct push');
+      logger.info('Skipping change detection for direct push');
 
       // Get commit message templates for the dialog
       const commitMessageTemplates = await this.commitTemplateService.getTemplateSuggestions();
@@ -135,13 +138,13 @@ export class GitHubUploadHandler implements IGitHubUploadHandler {
       if (useStoredChanges) {
         changes = await this.getStoredFileChanges();
         if (changes) {
-          console.log('Using stored file changes (from recent comparison)');
+          logger.info('Using stored file changes (from recent comparison)');
         }
       }
 
       // If no stored changes found or not using stored changes, do fresh comparison
       if (!changes) {
-        console.log('No stored changes found, performing fresh comparison');
+        logger.info('No stored changes found, performing fresh comparison');
         // Import FileChangeHandler to check for changes
         const { FileChangeHandler } = await import('./FileChangeHandler');
         const fileChangeHandler = new FileChangeHandler(
@@ -174,7 +177,7 @@ export class GitHubUploadHandler implements IGitHubUploadHandler {
         changesSummary = 'No changes detected - all files are up to date';
       }
     } catch (error) {
-      console.warn('Could not check for file changes:', error);
+      logger.warn('Could not check for file changes:', error);
       changesSummary = 'Unable to detect changes';
     }
 
@@ -239,7 +242,7 @@ export class GitHubUploadHandler implements IGitHubUploadHandler {
       // Handle file download and upload
       await this.handleFileDownloadAndUpload();
     } catch (error) {
-      console.error('Error during GitHub upload:', error);
+      logger.error('Error during GitHub upload:', error);
 
       // Show error notification
       this.notificationManager.showNotification({
@@ -274,7 +277,7 @@ export class GitHubUploadHandler implements IGitHubUploadHandler {
       }
     } catch (error) {
       // If download fails, try to use cached files as fallback
-      console.warn('Download failed, trying to use cached files:', error);
+      logger.warn('Download failed, trying to use cached files:', error);
       await this.handleCachedFilesFallback();
     }
   }
@@ -332,7 +335,7 @@ export class GitHubUploadHandler implements IGitHubUploadHandler {
       const storedData = result.storedFileChanges;
 
       if (!storedData || !storedData.changes || !storedData.timestamp) {
-        console.log('No valid stored file changes found');
+        logger.info('No valid stored file changes found');
         return null;
       }
 
@@ -342,14 +345,14 @@ export class GitHubUploadHandler implements IGitHubUploadHandler {
 
       // Check if project ID matches
       if (storedData.projectId !== currentProjectId) {
-        console.log('Stored changes are for different project, ignoring');
+        logger.info('Stored changes are for different project, ignoring');
         await this.clearStoredFileChanges();
         return null;
       }
 
       // Check if URL has changed (different project or navigation)
       if (storedData.url !== currentUrl) {
-        console.log('URL changed since storing changes, invalidating cache');
+        logger.info('URL changed since storing changes, invalidating cache');
         await this.clearStoredFileChanges();
         return null;
       }
@@ -359,7 +362,7 @@ export class GitHubUploadHandler implements IGitHubUploadHandler {
       const age = Date.now() - storedData.timestamp;
 
       if (age > CACHE_DURATION) {
-        console.log(`Stored changes are too old (${Math.round(age / 60000)} minutes), ignoring`);
+        logger.info(`Stored changes are too old (${Math.round(age / 60000)} minutes), ignoring`);
         await this.clearStoredFileChanges();
         return null;
       }
@@ -371,12 +374,12 @@ export class GitHubUploadHandler implements IGitHubUploadHandler {
       });
 
       const ageMinutes = Math.round(age / 60000);
-      console.log(
+      logger.info(
         `Retrieved ${changesMap.size} stored file changes for project ${currentProjectId} (${ageMinutes} min old)`
       );
       return changesMap;
     } catch (error) {
-      console.warn('Error retrieving stored file changes:', error);
+      logger.warn('Error retrieving stored file changes:', error);
       return null;
     }
   }
@@ -387,9 +390,9 @@ export class GitHubUploadHandler implements IGitHubUploadHandler {
   private async clearStoredFileChanges(): Promise<void> {
     try {
       await chrome.storage.local.remove(['storedFileChanges']);
-      console.log('Cleared stored file changes');
+      logger.info('Cleared stored file changes');
     } catch (error) {
-      console.warn('Error clearing stored file changes:', error);
+      logger.warn('Error clearing stored file changes:', error);
     }
   }
 

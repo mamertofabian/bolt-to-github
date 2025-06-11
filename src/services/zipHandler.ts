@@ -7,6 +7,9 @@ import { Queue } from '../lib/Queue';
 import { GitHubComparisonService } from './GitHubComparisonService';
 import { processFilesWithGitignore } from '$lib/fileUtils';
 import { pushStatisticsActions } from '../lib/stores';
+import { createLogger } from '$lib/utils/logger';
+
+const logger = createLogger('ZipHandler');
 
 export class ZipHandler {
   private githubComparisonService: GitHubComparisonService;
@@ -25,7 +28,7 @@ export class ZipHandler {
     message: string = ''
   ) => {
     // Send status update to UI
-    console.log(`ZipHandler: Sending status update: ${status}, ${progress}%, ${message}`);
+    logger.info(`Sending status update: ${status}, ${progress}%, ${message}`);
 
     // Send the status update and ensure it's properly dispatched
     try {
@@ -45,7 +48,7 @@ export class ZipHandler {
         }, 100);
       }
     } catch (error) {
-      console.error('Error sending status update:', error);
+      logger.error('Error sending status update:', error);
     }
   };
 
@@ -131,7 +134,7 @@ export class ZipHandler {
       let branch: string;
 
       if (!projectSettings?.[currentProjectId]) {
-        console.log('Project settings not found, creating default settings for:', currentProjectId);
+        logger.info('Project settings not found, creating default settings for:', currentProjectId);
 
         // Create a mutable copy of the project settings
         const updatedProjectSettings = projectSettings ? { ...projectSettings } : {};
@@ -142,7 +145,7 @@ export class ZipHandler {
         // Save the updated settings
         await chrome.storage.sync.set({ projectSettings: updatedProjectSettings });
 
-        console.log('Created default project settings:', updatedProjectSettings[currentProjectId]);
+        logger.info('Created default project settings:', updatedProjectSettings[currentProjectId]);
 
         // Use the newly created settings
         repoName = currentProjectId;
@@ -222,7 +225,7 @@ export class ZipHandler {
           );
         }
       } catch (trackingError) {
-        console.error('Failed to record push failure:', trackingError);
+        logger.error('Failed to record push failure:', trackingError);
       }
 
       throw error;
@@ -255,8 +258,8 @@ export class ZipHandler {
 
     // Create a progress callback for the comparison service
     const progressCallback = (message: string, progress: number) => {
-      // Only log to console, don't update UI status for intermediate steps
-      console.log(`GitHub comparison: ${message} (${progress}%)`);
+      // Only log, don't update UI status for intermediate steps
+      logger.info(`GitHub comparison: ${message} (${progress}%)`);
     };
 
     // Compare local files with GitHub repository
@@ -366,7 +369,7 @@ export class ZipHandler {
           targetBranch
         );
       } catch (trackingError) {
-        console.error('Failed to record push success:', trackingError);
+        logger.error('Failed to record push success:', trackingError);
       }
     }
   }

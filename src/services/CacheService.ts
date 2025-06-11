@@ -1,6 +1,9 @@
 import type { IIdleMonitorService } from './interfaces/IIdleMonitorService';
 import type { ICacheService } from './interfaces/ICacheService';
 import type { ProjectFiles } from '$lib/types';
+import { createLogger } from '../lib/utils/logger';
+
+const logger = createLogger('CacheService');
 
 interface CachedProject {
   files: ProjectFiles;
@@ -29,7 +32,7 @@ export class CacheService implements ICacheService {
     if (this.idleMonitor) {
       this.setupUserIdleDetection();
     } else {
-      console.warn('No idle monitor provided, user idle detection disabled');
+      logger.warn('No idle monitor provided, user idle detection disabled');
     }
   }
 
@@ -53,37 +56,37 @@ export class CacheService implements ICacheService {
       timestamp: Date.now(),
       projectId,
     });
-    console.log(`Cached ${files.size} files for project ${projectId}`);
+    logger.info(`Cached ${files.size} files for project ${projectId}`);
   }
 
   public getCachedProjectFiles(projectId: string): ProjectFiles | null {
     const cached = this.cache.get(projectId);
 
     if (!cached) {
-      console.log(`No cache found for project ${projectId}`);
+      logger.info(`No cache found for project ${projectId}`);
       return null;
     }
 
     const age = Date.now() - cached.timestamp;
     if (age > this.maxCacheAge) {
-      console.log(`Cache for project ${projectId} is stale (${Math.round(age / 1000)}s old)`);
+      logger.info(`Cache for project ${projectId} is stale (${Math.round(age / 1000)}s old)`);
       return null;
     }
 
-    console.log(`Using cached files for project ${projectId} (${Math.round(age / 1000)}s old)`);
+    logger.info(`Using cached files for project ${projectId} (${Math.round(age / 1000)}s old)`);
     return cached.files;
   }
 
   public invalidateCache(projectId: string): void {
     if (this.cache.has(projectId)) {
       this.cache.delete(projectId);
-      console.log(`Cache invalidated for project ${projectId}`);
+      logger.info(`Cache invalidated for project ${projectId}`);
     }
   }
 
   public clearAllCaches(): void {
     this.cache.clear();
-    console.log('All caches cleared');
+    logger.info('All caches cleared');
   }
 
   public onCacheRefreshNeeded(callback: (projectId: string) => void): void {
@@ -112,7 +115,7 @@ export class CacheService implements ICacheService {
   private setupBrowserIdleDetection(): void {
     // Only proceed if the browser supports idle callbacks
     if (typeof this.window.requestIdleCallback !== 'function') {
-      console.warn('requestIdleCallback not supported, browser idle cache refresh disabled');
+      logger.warn('requestIdleCallback not supported, browser idle cache refresh disabled');
       return;
     }
 
@@ -142,19 +145,19 @@ export class CacheService implements ICacheService {
 
   private setupUserIdleDetection(): void {
     if (!this.idleMonitor) {
-      console.warn('IdleMonitor not available, user idle detection disabled');
+      logger.warn('IdleMonitor not available, user idle detection disabled');
       return;
     }
 
     try {
       this.idleMonitor.addListener((state) => {
         if (state === 'idle' || state === 'locked') {
-          console.log('User is idle, refreshing all caches proactively');
+          logger.info('User is idle, refreshing all caches proactively');
           this.refreshAllCaches();
         }
       });
     } catch (error) {
-      console.warn('Error setting up user idle detection:', error);
+      logger.warn('Error setting up user idle detection:', error);
     }
   }
 
@@ -172,7 +175,7 @@ export class CacheService implements ICacheService {
 
     // Trigger refresh callbacks for stale caches
     if (staleCaches.length > 0) {
-      console.log(`Refreshing ${staleCaches.length} stale caches during browser idle time`);
+      logger.info(`Refreshing ${staleCaches.length} stale caches during browser idle time`);
       this.refreshCaches(staleCaches);
     }
   }
@@ -180,7 +183,7 @@ export class CacheService implements ICacheService {
   private refreshAllCaches(): void {
     if (!this.idleRefreshEnabled || this.cache.size === 0) return;
 
-    console.log(`Refreshing all ${this.cache.size} caches during user idle time`);
+    logger.info(`Refreshing all ${this.cache.size} caches during user idle time`);
     const allProjectIds = Array.from(this.cache.keys());
     this.refreshCaches(allProjectIds);
   }
@@ -192,7 +195,7 @@ export class CacheService implements ICacheService {
         try {
           callback(projectId);
         } catch (error) {
-          console.error(`Error in cache refresh callback for project ${projectId}:`, error);
+          logger.error(`Error in cache refresh callback for project ${projectId}:`, error);
         }
       }
     }

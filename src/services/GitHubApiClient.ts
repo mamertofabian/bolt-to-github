@@ -1,5 +1,8 @@
 import type { IGitHubApiClient } from './interfaces/IGitHubApiClient';
 import { RateLimitHandler } from './RateLimitHandler';
+import { createLogger } from '../lib/utils/logger';
+
+const logger = createLogger('GitHubApiClient');
 
 /**
  * Error class for GitHub API errors
@@ -136,7 +139,7 @@ export class GitHubApiClient implements IGitHubApiClient {
 
         // For network errors or other unexpected errors
         const errorMessage = error instanceof Error ? error.message : String(error);
-        console.error('GitHub API request failed:', errorMessage);
+        logger.error('GitHub API request failed:', errorMessage);
         throw new GitHubApiError(
           `GitHub API request failed: ${errorMessage}`,
           0, // No status code for network errors

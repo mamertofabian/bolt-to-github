@@ -1,5 +1,8 @@
 import { writable, type Writable } from 'svelte/store';
 import type { FileChange } from '../../services/FilePreviewService';
+import { createLogger } from '../utils/logger';
+
+const logger = createLogger('FileChangesStore');
 
 // File Changes State Interface
 export interface FileChangesState {
@@ -102,7 +105,7 @@ export const fileChangesActions = {
 
       return false;
     } catch (error) {
-      console.error('Error loading stored file changes:', error);
+      logger.error('Error loading stored file changes:', error);
       return false;
     }
   },
@@ -116,7 +119,7 @@ export const fileChangesActions = {
       if (tabs[0]?.id) {
         chrome.tabs.sendMessage(tabs[0].id, { action: 'REQUEST_FILE_CHANGES' }, (response) => {
           if (response && response.success) {
-            console.log(
+            logger.info(
               'Received response from content script with projectId:',
               response.projectId
             );
@@ -126,7 +129,7 @@ export const fileChangesActions = {
         throw new Error('No active tab found');
       }
     } catch (error) {
-      console.error('Error requesting file changes:', error);
+      logger.error('Error requesting file changes:', error);
       throw error; // Re-throw so caller can handle
     }
   },
@@ -156,7 +159,7 @@ export const fileChangesActions = {
   debugFileChanges(): void {
     fileChangesStore.subscribe((state) => {
       if (state.fileChanges) {
-        console.log('Current file changes:', {
+        logger.info('Current file changes:', {
           totalFiles: state.fileChanges.size,
           byStatus: {
             added: Array.from(state.fileChanges.values()).filter((f) => f.status === 'added')

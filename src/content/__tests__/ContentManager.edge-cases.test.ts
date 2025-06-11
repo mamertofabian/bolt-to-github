@@ -8,6 +8,17 @@
  * - Error injection and fault tolerance
  */
 
+// Mock WhatsNewModal component
+jest.mock('$lib/components/WhatsNewModal.svelte', () => ({
+  default: jest.fn().mockImplementation(function (this: any, options: any) {
+    this.target = options.target;
+    this.props = options.props;
+    this.$destroy = jest.fn();
+    this.$set = jest.fn();
+    return this;
+  }),
+}));
+
 import { ContentManager } from '../ContentManager';
 import {
   setupBasicTest,

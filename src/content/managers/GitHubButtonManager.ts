@@ -1,6 +1,9 @@
 import type { IGitHubButtonManager } from '../types/ManagerInterfaces';
 import type { UIStateManager } from '../services/UIStateManager';
 import { SettingsService } from '../../services/settings';
+import { createLogger } from '$lib/utils/logger';
+
+const logger = createLogger('GitHubButtonManager');
 
 /**
  * GitHubButtonManager handles the GitHub button creation, lifecycle, and state management
@@ -24,16 +27,16 @@ export class GitHubButtonManager implements IGitHubButtonManager {
    * Replaces the previous initializeUploadButton method from UIManager
    */
   public async initialize(): Promise<void> {
-    console.log('🔊 Initializing GitHub upload button');
+    logger.info('🔊 Initializing GitHub upload button');
 
     const buttonContainer = document.querySelector('div.flex.grow-1.basis-60 div.flex.gap-2');
-    console.log('Button container found:', !!buttonContainer);
+    logger.debug('Button container found:', !!buttonContainer);
 
     const existingButton = document.querySelector('[data-github-upload]');
-    console.log('Existing GitHub button found:', !!existingButton);
+    logger.debug('Existing GitHub button found:', !!existingButton);
 
     if (!buttonContainer || existingButton) {
-      console.log('Exiting initializeUploadButton early');
+      logger.debug('Exiting initializeUploadButton early');
       return;
     }
 
@@ -47,7 +50,7 @@ export class GitHubButtonManager implements IGitHubButtonManager {
       deployButton.before(button);
     }
 
-    console.log('GitHub upload button initialized');
+    logger.info('GitHub upload button initialized');
   }
 
   /**
@@ -55,7 +58,7 @@ export class GitHubButtonManager implements IGitHubButtonManager {
    * Replaces the previous createGitHubButton method from UIManager
    */
   private createGitHubButton(): HTMLButtonElement {
-    console.log('Creating GitHub button');
+    logger.debug('Creating GitHub button');
 
     const button = document.createElement('button');
     button.setAttribute('data-github-upload', 'true');
@@ -87,7 +90,7 @@ export class GitHubButtonManager implements IGitHubButtonManager {
       }
     });
 
-    console.log('GitHub button created');
+    logger.info('GitHub button created');
     return button;
   }
 
@@ -239,12 +242,12 @@ export class GitHubButtonManager implements IGitHubButtonManager {
    * Cleanup the button and resources
    */
   public cleanup(): void {
-    console.log('🔊 Cleaning up GitHub button manager');
+    logger.info('🔊 Cleaning up GitHub button manager');
 
     // Remove any existing GitHub button from DOM (including orphaned ones)
     const existingButtons = document.querySelectorAll('[data-github-upload]');
-    existingButtons.forEach(button => {
-      console.log('🧹 Removing GitHub button from DOM');
+    existingButtons.forEach((button) => {
+      logger.debug('🧹 Removing GitHub button from DOM');
       button.remove();
     });
 

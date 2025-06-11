@@ -10,6 +10,9 @@ import type { MessageHandler } from '../MessageHandler';
 import type { UIStateManager } from '../services/UIStateManager';
 import Notification from '../Notification.svelte';
 import { EnhancedConfirmationDialog } from '../../lib/components/ui/dialog';
+import { createLogger } from '../../lib/utils/logger';
+
+const logger = createLogger('NotificationManager');
 
 interface NotificationInstance {
   component: SvelteComponent;
@@ -256,7 +259,7 @@ export class NotificationManager implements INotificationManager {
    */
   public cleanup(): void {
     const debugInfo = this.getNotificationDebugInfo();
-    console.log('🧹 NotificationManager cleanup:', debugInfo);
+    logger.info('🧹 NotificationManager cleanup:', debugInfo);
 
     // Cleanup all notification components
     this.notifications.forEach((notification) => {
@@ -285,7 +288,7 @@ export class NotificationManager implements INotificationManager {
     const reminderNotifications = this.notifications.filter((n) => n.type === 'reminder');
 
     if (reminderNotifications.length > 0) {
-      console.log(
+      logger.info(
         `🧹 Removing ${reminderNotifications.length} existing reminder notification(s) to prevent stacking`
       );
 

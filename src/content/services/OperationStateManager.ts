@@ -8,6 +8,10 @@
  * service and content scripts using Chrome storage API.
  */
 
+import { createLogger } from '../../lib/utils/logger';
+
+const logger = createLogger('OperationStateManager');
+
 export interface OngoingOperation {
   type: 'push' | 'import' | 'clone' | 'sync' | 'comparison' | 'auth' | 'api';
   id: string;
@@ -46,7 +50,7 @@ export class OperationStateManager {
   private constructor() {
     // Identify the context where this instance is running
     this.context = this.detectContext();
-    console.log(`🔧 OperationStateManager: Initializing in ${this.context} context`);
+    logger.info(`🔧 OperationStateManager: Initializing in ${this.context} context`);
 
     // Set up storage listener for cross-context synchronization
     this.setupStorageListener();
@@ -89,13 +93,13 @@ export class OperationStateManager {
       chrome.storage.onChanged.addListener(
         (changes: { [key: string]: chrome.storage.StorageChange }, namespace: string) => {
           if (namespace === 'local' && changes[this.STORAGE_KEY] && !this.isSyncing) {
-            console.log(`🔄 OperationStateManager [${this.context}]: Syncing from storage`);
+            logger.info(`🔄 OperationStateManager [${this.context}]: Syncing from storage`);
             this.syncFromStorage(changes[this.STORAGE_KEY].newValue);
           }
         }
       );
     } catch (error) {
-      console.warn(
+      logger.warn(
         `⚠️ OperationStateManager [${this.context}]: Storage listener setup failed:`,
         error
       );
@@ -109,13 +113,13 @@ export class OperationStateManager {
     try {
       const result = await chrome.storage.local.get([this.STORAGE_KEY]);
       if (result[this.STORAGE_KEY]) {
-        console.log(
+        logger.info(
           `📥 OperationStateManager [${this.context}]: Loading initial state from storage`
         );
         this.syncFromStorage(result[this.STORAGE_KEY]);
       }
     } catch (error) {
-      console.warn(
+      logger.warn(
         `⚠️ OperationStateManager [${this.context}]: Failed to load initial state:`,
         error
       );
@@ -145,7 +149,7 @@ export class OperationStateManager {
         const remainingTime = Math.max(0, op.startTime + this.OPERATION_TIMEOUT_MS - Date.now());
         if (remainingTime > 0) {
           const timeout = setTimeout(() => {
-            console.warn(
+            logger.warn(
               `⏰ OperationStateManager [${this.context}]: Operation ${op.type}:${op.id} timed out after sync`
             );
             this.completeOperation(op.id);
@@ -157,7 +161,7 @@ export class OperationStateManager {
         }
       });
 
-      console.log(
+      logger.info(
         `🔄 OperationStateManager [${this.context}]: Synced ${this.operations.size} operations from storage`
       );
     } finally {
@@ -181,9 +185,9 @@ export class OperationStateManager {
       };
 
       await chrome.storage.local.set({ [this.STORAGE_KEY]: storageData });
-      console.log(`💾 OperationStateManager [${this.context}]: Saved state to storage`);
+      logger.info(`💾 OperationStateManager [${this.context}]: Saved state to storage`);
     } catch (error) {
-      console.warn(`⚠️ OperationStateManager [${this.context}]: Failed to save state:`, error);
+      logger.warn(`⚠️ OperationStateManager [${this.context}]: Failed to save state:`, error);
     }
   }
 
@@ -214,7 +218,7 @@ export class OperationStateManager {
       metadata,
     };
 
-    console.log(`🏃 OperationStateManager [${this.context}]: Starting operation ${type}:${id}`, {
+    logger.info(`🏃 OperationStateManager [${this.context}]: Starting operation ${type}:${id}`, {
       description,
       metadata,
     });
@@ -223,7 +227,7 @@ export class OperationStateManager {
 
     // Set up timeout to auto-complete stuck operations
     const timeout = setTimeout(() => {
-      console.warn(
+      logger.warn(
         `⏰ OperationStateManager [${this.context}]: Operation ${type}:${id} timed out after ${this.OPERATION_TIMEOUT_MS / 1000}s`
       );
       this.completeOperation(id);
@@ -245,7 +249,7 @@ export class OperationStateManager {
     const operation = this.operations.get(id);
     if (operation) {
       const duration = Date.now() - operation.startTime;
-      console.log(
+      logger.info(
         `✅ OperationStateManager [${this.context}]: Completed operation ${operation.type}:${id} after ${Math.round(duration / 1000)}s`
       );
 
@@ -267,7 +271,7 @@ export class OperationStateManager {
     const operation = this.operations.get(id);
     if (operation) {
       const duration = Date.now() - operation.startTime;
-      console.log(
+      logger.info(
         `❌ OperationStateManager [${this.context}]: Failed operation ${operation.type}:${id} after ${Math.round(duration / 1000)}s`,
         error
       );
@@ -381,7 +385,7 @@ export class OperationStateManager {
    * Clean up all operations and timeouts
    */
   public async cleanup(): Promise<void> {
-    console.log(`🧹 OperationStateManager [${this.context}]: Cleaning up all operations`);
+    logger.info(`🧹 OperationStateManager [${this.context}]: Cleaning up all operations`);
 
     // Clear all timeouts
     this.clearAllTimeouts();
@@ -393,7 +397,7 @@ export class OperationStateManager {
     try {
       await chrome.storage.local.remove([this.STORAGE_KEY]);
     } catch (error) {
-      console.warn(`⚠️ OperationStateManager [${this.context}]: Failed to clear storage:`, error);
+      logger.warn(`⚠️ OperationStateManager [${this.context}]: Failed to clear storage:`, error);
     }
   }
 
@@ -401,7 +405,7 @@ export class OperationStateManager {
    * Force clear all operations (for testing or emergency reset)
    */
   public async clearAllOperations(): Promise<void> {
-    console.log(`🧹 OperationStateManager [${this.context}]: Force clearing all operations`);
+    logger.info(`🧹 OperationStateManager [${this.context}]: Force clearing all operations`);
     await this.cleanup();
   }
 
@@ -409,7 +413,7 @@ export class OperationStateManager {
    * Force refresh state from storage (for testing)
    */
   public async forceRefreshFromStorage(): Promise<void> {
-    console.log(`🔄 OperationStateManager [${this.context}]: Force refreshing from storage`);
+    logger.info(`🔄 OperationStateManager [${this.context}]: Force refreshing from storage`);
     await this.loadStateFromStorage();
   }
 }

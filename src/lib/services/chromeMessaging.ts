@@ -1,4 +1,7 @@
 import type { Message, MessageType } from '../types';
+import { createLogger } from '../utils/logger';
+
+const logger = createLogger('chromeMessaging');
 
 // Message handlers type
 type MessageHandler = (message: any, sender?: chrome.runtime.MessageSender) => void;
@@ -22,20 +25,20 @@ export class ChromeMessagingService {
           try {
             handler(message);
           } catch (error) {
-            console.error('Error in port message handler:', error);
+            logger.error('Error in port message handler:', error);
           }
         });
       });
 
       // Handle port disconnect
       this.port.onDisconnect.addListener(() => {
-        console.log('Chrome runtime port disconnected');
+        logger.info('Chrome runtime port disconnected');
         this.port = null;
       });
 
       return this.port;
     } catch (error) {
-      console.error('Error initializing Chrome runtime port:', error);
+      logger.error('Error initializing Chrome runtime port:', error);
       throw error;
     }
   }
@@ -45,14 +48,14 @@ export class ChromeMessagingService {
    */
   static sendPortMessage(message: any): void {
     if (!this.port) {
-      console.warn('No port connection available. Initializing...');
+      logger.warn('No port connection available. Initializing...');
       this.initializePort();
     }
 
     try {
       this.port?.postMessage(message);
     } catch (error) {
-      console.error('Error sending port message:', error);
+      logger.error('Error sending port message:', error);
       // Try to reinitialize port on error
       this.initializePort();
       this.port?.postMessage(message);
@@ -84,7 +87,7 @@ export class ChromeMessagingService {
       try {
         this.port.disconnect();
       } catch (error) {
-        console.error('Error disconnecting port:', error);
+        logger.error('Error disconnecting port:', error);
       }
       this.port = null;
     }
@@ -110,7 +113,7 @@ export class ChromeMessagingService {
         });
       });
     } catch (error) {
-      console.error('Error sending message to active tab:', error);
+      logger.error('Error sending message to active tab:', error);
       throw error;
     }
   }
@@ -130,7 +133,7 @@ export class ChromeMessagingService {
         });
       });
     } catch (error) {
-      console.error(`Error sending message to tab ${tabId}:`, error);
+      logger.error(`Error sending message to tab ${tabId}:`, error);
       throw error;
     }
   }
@@ -150,7 +153,7 @@ export class ChromeMessagingService {
         });
       });
     } catch (error) {
-      console.error('Error sending message to background:', error);
+      logger.error('Error sending message to background:', error);
       throw error;
     }
   }
@@ -189,7 +192,7 @@ export class ChromeMessagingService {
           try {
             handler(message, sender);
           } catch (error) {
-            console.error(`Error in message handler for ${message.type}:`, error);
+            logger.error(`Error in message handler for ${message.type}:`, error);
           }
         });
       }
@@ -221,13 +224,13 @@ export class ChromeMessagingService {
       });
 
       if (response && response.success) {
-        console.log('File changes requested successfully:', response.projectId);
+        logger.info('File changes requested successfully:', response.projectId);
         return response;
       } else {
         throw new Error('Failed to request file changes');
       }
     } catch (error) {
-      console.error('Error requesting file changes:', error);
+      logger.error('Error requesting file changes:', error);
       throw error;
     }
   }

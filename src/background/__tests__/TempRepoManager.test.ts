@@ -41,20 +41,20 @@ describe('TempRepoManager', () => {
       // Assert
       // Verify operation tracking
       TempRepoAssertionHelpers.expectOperationCompleted(env.mockOperationStateManager, 'import');
-      
+
       // Verify status progression
       const statusHistory = env.mockStatusBroadcaster.getStatusHistory();
       expect(statusHistory.length).toBeGreaterThan(4); // Multiple status updates
       expect(statusHistory[statusHistory.length - 1].status).toBe('success');
-      
+
       // Verify progress increases monotonically
       TempRepoAssertionHelpers.expectProgressionIncreases(env.mockStatusBroadcaster);
-      
+
       // Verify temp repo was saved to storage
       const storageData = env.mockStorage.getLocalData();
       expect(storageData[STORAGE_KEY]).toHaveLength(1);
       expect(storageData[STORAGE_KEY][0].originalRepo).toBe(sourceRepo);
-      
+
       // Verify Bolt tab was created
       TempRepoAssertionHelpers.expectBoltTabCreated(
         env.mockTabs,
@@ -67,7 +67,7 @@ describe('TempRepoManager', () => {
       // Arrange
       manager = lifecycle.createManager('success');
       const sourceRepo = TempRepoTestData.repositories.validSourceRepo;
-      
+
       // Act
       await manager.handlePrivateRepoImport(sourceRepo); // No branch specified
 
@@ -77,7 +77,7 @@ describe('TempRepoManager', () => {
         TempRepoTestData.owners.validOwner,
         sourceRepo
       );
-      
+
       // Verify default branch was used
       const storageData = env.mockStorage.getLocalData();
       expect(storageData[STORAGE_KEY][0].branch).toBe('main'); // Default branch from mock
@@ -87,7 +87,7 @@ describe('TempRepoManager', () => {
       // Arrange
       manager = lifecycle.createManager('success');
       const sourceRepo = TempRepoTestData.repositories.validSourceRepo;
-      
+
       // Act
       await manager.handlePrivateRepoImport(sourceRepo);
 
@@ -250,8 +250,12 @@ describe('TempRepoManager', () => {
       // Should have made appropriate number of delete calls
       const expiredCount = largeRepoList.filter((r) => Date.now() - r.createdAt > 60000).length;
       // Allow for small timing differences
-      expect(env.mockGitHubService.deleteRepo.mock.calls.length).toBeGreaterThanOrEqual(expiredCount - 1);
-      expect(env.mockGitHubService.deleteRepo.mock.calls.length).toBeLessThanOrEqual(expiredCount + 1);
+      expect(env.mockGitHubService.deleteRepo.mock.calls.length).toBeGreaterThanOrEqual(
+        expiredCount - 1
+      );
+      expect(env.mockGitHubService.deleteRepo.mock.calls.length).toBeLessThanOrEqual(
+        expiredCount + 1
+      );
     });
 
     it('should not accumulate memory from progress callbacks', async () => {

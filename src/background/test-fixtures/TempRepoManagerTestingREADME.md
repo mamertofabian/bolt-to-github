@@ -5,6 +5,7 @@ This directory contains comprehensive test fixtures for the `TempRepoManager` cl
 ## Overview
 
 The `TempRepoManager` is responsible for:
+
 - Managing temporary GitHub repositories created during private repository imports
 - Automatic cleanup of expired temporary repositories
 - Progress tracking and status broadcasting during import operations
@@ -39,10 +40,10 @@ import { quickSetupTempRepo } from '../test-fixtures';
 describe('TempRepoManager', () => {
   it('should successfully import a private repository', async () => {
     const { env, manager, cleanup } = quickSetupTempRepo('success');
-    
+
     try {
       await manager.handlePrivateRepoImport('my-private-repo');
-      
+
       // Verify successful import
       expect(env.mockStatusBroadcaster.getLastStatus()?.status).toBe('success');
       expect(env.mockTabs.getCreatedTabs()).toHaveLength(1);
@@ -56,10 +57,10 @@ describe('TempRepoManager', () => {
 ### Advanced Test Setup
 
 ```typescript
-import { 
-  TempRepoTestLifecycle, 
+import {
+  TempRepoTestLifecycle,
   TempRepoManagerFactory,
-  TempRepoScenarioBuilder 
+  TempRepoScenarioBuilder,
 } from '../test-fixtures';
 
 describe('TempRepoManager Advanced', () => {
@@ -79,9 +80,9 @@ describe('TempRepoManager Advanced', () => {
     // Setup scenario with mixed-age repos and some delete failures
     TempRepoScenarioBuilder.partialFailureScenario(env);
     const manager = TempRepoManagerFactory.createWithExistingRepos(env);
-    
+
     await manager.cleanupTempRepos();
-    
+
     // Verify partial cleanup behavior
     const remainingRepos = await manager.getTempRepos();
     expect(remainingRepos.length).toBeGreaterThan(0); // Some repos remain due to failures
@@ -101,19 +102,19 @@ const TempRepoTestData = {
     unicodeRepo: 'проект-репозиторий',
     // ... more test cases
   },
-  
+
   branches: {
     main: 'main',
     featureBranch: 'feature/new-authentication',
     // ... branch variations
   },
-  
+
   timestamps: {
     justCreated: Date.now() - 5 * 1000,
     aboutToExpire: Date.now() - 55 * 1000,
     expired: Date.now() - 65 * 1000,
     // ... timing scenarios
-  }
+  },
 };
 ```
 
@@ -236,6 +237,7 @@ const result = await PerformanceHelpers.simulateMemoryPressure(async () => {
 Tests should verify:
 
 ### Functional Requirements
+
 - All import steps complete in correct order
 - Progress updates are monotonic and reach 100%
 - Status broadcasts follow expected sequence
@@ -243,12 +245,14 @@ Tests should verify:
 - Cleanup only removes expired repositories
 
 ### Performance Requirements
+
 - Import operations complete within 30 seconds
 - Cleanup cycles complete within 5 seconds
 - No memory leaks during extended operation
 - Progress updates are timely and responsive
 
 ### Reliability Requirements
+
 - Storage state remains consistent
 - System recovers gracefully from failures
 - No race conditions in concurrent scenarios

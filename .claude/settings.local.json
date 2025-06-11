@@ -16,7 +16,12 @@
       "Bash(npx jest:*)",
       "Bash(git worktree:*)",
       "Bash(git add:*)",
-      "Bash(gh issue comment:*)"
+      "Bash(gh issue comment:*)",
+      "Bash(git restore:*)",
+      "Bash(gh pr view:*)",
+      "Bash(pnpm run:*)",
+      "Bash(gh pr diff:*)",
+      "Bash(gh pr comment:*)"
     ],
     "deny": []
   }

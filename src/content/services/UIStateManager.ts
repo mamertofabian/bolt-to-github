@@ -1,6 +1,9 @@
 import type { UploadStatusState } from '../../lib/types';
 import type { IUIStateManager } from '../types/ManagerInterfaces';
 import type { UIState } from '../types/UITypes';
+import { createLogger } from '../../lib/utils/logger';
+
+const logger = createLogger('UIStateManager');
 
 /**
  * State change listener type
@@ -197,7 +200,7 @@ export class UIStateManager implements IUIStateManager {
       try {
         return structuredClone(this.state);
       } catch (error) {
-        console.warn('structuredClone failed, using manual copy:', error);
+        logger.warn('structuredClone failed, using manual copy:', error);
       }
     }
 
@@ -254,7 +257,7 @@ export class UIStateManager implements IUIStateManager {
   private notifyListeners(previousState: UIState): void {
     // Prevent infinite loops
     if (this.notificationDepth >= this.MAX_NOTIFICATION_DEPTH) {
-      console.warn('Maximum notification depth reached, preventing infinite loop');
+      logger.warn('Maximum notification depth reached, preventing infinite loop');
       return;
     }
 
@@ -266,7 +269,7 @@ export class UIStateManager implements IUIStateManager {
         try {
           listener(currentState, previousState);
         } catch (error) {
-          console.error('Error in state change listener:', error);
+          logger.error('Error in state change listener:', error);
         }
       });
     } finally {

@@ -5,6 +5,9 @@ import { ZipHandler } from '../services/zipHandler';
 import { BackgroundTempRepoManager } from './TempRepoManager';
 import { SupabaseAuthService } from '../content/services/SupabaseAuthService';
 import { OperationStateManager } from '../content/services/OperationStateManager';
+import { createLogger, getLogStorage } from '../lib/utils/logger';
+
+const logger = createLogger('BackgroundService');
 
 export class BackgroundService {
   private stateManager: StateManager;
@@ -22,7 +25,7 @@ export class BackgroundService {
     | null = null;
 
   constructor() {
-    console.log('🚀 Background service initializing...');
+    logger.info('🚀 Background service initializing...');
     this.stateManager = StateManager.getInstance();
     this.ports = new Map();
     this.githubService = null;
@@ -37,14 +40,17 @@ export class BackgroundService {
 
     // Force initial auth check
     this.authCheckTimeout = setTimeout(() => {
-      console.log('🔐 Forcing initial Supabase auth check...');
+      logger.info('🔐 Forcing initial Supabase auth check...');
       this.supabaseAuthService.forceCheck();
     }, 2000); // Wait 2 seconds after initialization
+
+    // Set up log rotation alarm
+    this.setupLogRotation();
   }
 
   private async trackExtensionStartup(): Promise<void> {
     try {
-      console.log('📊 Tracking extension startup...');
+      logger.info('📊 Tracking extension startup...');
 
       // Check if this is first install or update
       const manifest = chrome.runtime.getManifest();
@@ -65,7 +71,7 @@ export class BackgroundService {
         await this.sendAnalyticsEvent('extension_updated', { version });
       }
     } catch (error) {
-      console.error('Failed to track extension startup:', error);
+      logger.error('Failed to track extension startup:', error);
     }
   }
 
@@ -91,7 +97,7 @@ export class BackgroundService {
         const result = await chrome.storage.sync.get(['analyticsEnabled']);
         enabled = result.analyticsEnabled !== false;
       } catch (error) {
-        console.debug('Could not check analytics preference:', error);
+        logger.debug('Could not check analytics preference:', error);
       }
 
       if (!enabled) {
@@ -120,9 +126,9 @@ export class BackgroundService {
         mode: 'no-cors',
       });
 
-      console.log('📊 Analytics event sent:', eventName, params);
+      logger.info('📊 Analytics event sent:', eventName, params);
     } catch (error) {
-      console.debug('Analytics event failed (expected in some contexts):', error);
+      logger.debug('Analytics event failed (expected in some contexts):', error);
     }
   }
 
@@ -136,6 +142,35 @@ export class BackgroundService {
       const r = (Math.random() * 16) | 0;
       const v = c === 'x' ? r : (r & 0x3) | 0x8;
       return v.toString(16);
+    });
+  }
+
+  private setupLogRotation(): void {
+    // Run rotation on startup
+    const logStorage = getLogStorage();
+    logStorage.rotateLogs();
+
+    // Set up rotation using JavaScript timer instead of chrome.alarms
+    // This avoids requiring new permissions
+    const SIX_HOURS_MS = 6 * 60 * 60 * 1000;
+
+    // Use setInterval for periodic rotation
+    setInterval(() => {
+      logger.info('Running scheduled log rotation');
+      logStorage.rotateLogs();
+    }, SIX_HOURS_MS);
+
+    // Also check and rotate logs when the service worker wakes up
+    // This handles cases where the interval might be cleared
+    chrome.runtime.onStartup.addListener(() => {
+      logger.info('Extension started, checking log rotation');
+      logStorage.rotateLogs();
+    });
+
+    // Check on installation/update
+    chrome.runtime.onInstalled.addListener(() => {
+      logger.info('Extension installed/updated, checking log rotation');
+      logStorage.rotateLogs();
     });
   }
 
@@ -158,7 +193,7 @@ export class BackgroundService {
     this.setupConnectionHandlers();
     this.setupStorageListener();
     this.startKeepAlive();
-    console.log('👂 Background service initialized');
+    logger.info('👂 Background service initialized');
   }
 
   private async initializeGitHubService(): Promise<UnifiedGitHubService | null> {
@@ -170,7 +205,7 @@ export class BackgroundService {
 
       if (authMethod === 'github_app') {
         // Initialize with GitHub App authentication
-        console.log('✅ GitHub App authentication detected, initializing GitHub App service');
+        logger.info('✅ GitHub App authentication detected, initializing GitHub App service');
         this.githubService = new UnifiedGitHubService({
           type: 'github_app',
         });
@@ -180,14 +215,14 @@ export class BackgroundService {
         settings.gitHubSettings.githubToken &&
         settings.gitHubSettings.repoOwner
       ) {
-        console.log('✅ PAT authentication detected, initializing PAT service', settings);
+        logger.info('✅ PAT authentication detected, initializing PAT service', settings);
         this.githubService = new UnifiedGitHubService(settings.gitHubSettings.githubToken);
       } else {
-        console.log('❌ No valid authentication configuration found');
+        logger.warn('❌ No valid authentication configuration found');
         this.githubService = null;
       }
     } catch (error) {
-      console.error('Failed to initialize GitHub service:', error);
+      logger.error('Failed to initialize GitHub service:', error);
       this.githubService = null;
     }
     return this.githubService;
@@ -214,29 +249,29 @@ export class BackgroundService {
         return;
       }
 
-      console.log('📝 New connection from:', port.name, 'tabId:', tabId);
+      logger.info('📝 New connection from:', port.name, 'tabId:', tabId);
       this.ports.set(tabId, port);
 
       port.onDisconnect.addListener(() => {
-        console.log('🔌 Port disconnected:', tabId);
+        logger.info('🔌 Port disconnected:', tabId);
         this.ports.delete(tabId);
       });
 
       port.onMessage.addListener(async (message: Message) => {
-        console.log('📥 Received port message:', { source: port.name, type: message.type });
+        logger.info('📥 Received port message:', { source: port.name, type: message.type });
         await this.handlePortMessage(tabId, message);
       });
     });
 
     // Setup runtime message listener for direct messages (not using ports)
     chrome.runtime.onMessage.addListener(async (message, sender, sendResponse) => {
-      console.log('📥 Received runtime message:', message);
+      logger.info('📥 Received runtime message:', message);
 
       if (message.action === 'PUSH_TO_GITHUB') {
         this.handlePushToGitHub();
         sendResponse({ success: true });
       } else if (message.type === 'FILE_CHANGES') {
-        console.log('📄 Received file changes, forwarding to popup');
+        logger.info('📄 Received file changes, forwarding to popup');
         // Forward file changes to popup
         chrome.runtime.sendMessage(message);
         sendResponse({ success: true });
@@ -244,19 +279,19 @@ export class BackgroundService {
         this.handleCheckPremiumFeature(message.feature, sendResponse);
         return true; // Will respond asynchronously
       } else if (message.type === 'FORCE_AUTH_CHECK') {
-        console.log('🔐 Forcing auth check via message');
+        logger.info('🔐 Forcing auth check via message');
         this.supabaseAuthService.forceCheck();
         sendResponse({ success: true });
       } else if (message.type === 'FORCE_SUBSCRIPTION_REFRESH') {
-        console.log('💰 Forcing subscription refresh via message');
+        logger.info('💰 Forcing subscription refresh via message');
         this.supabaseAuthService.forceSubscriptionRevalidation();
         sendResponse({ success: true });
       } else if (message.type === 'FORCE_POPUP_SYNC') {
-        console.log('🔄 Forcing popup sync via message');
+        logger.info('🔄 Forcing popup sync via message');
         await this.supabaseAuthService.forceSyncToPopup();
         sendResponse({ success: true });
       } else if (message.type === 'USER_LOGOUT') {
-        console.log('🚪 User logout requested from popup');
+        logger.info('🚪 User logout requested from popup');
         await this.sendAnalyticsEvent('user_action', {
           action: 'user_logout',
           context: 'popup',
@@ -264,11 +299,11 @@ export class BackgroundService {
         await this.supabaseAuthService.logout();
         sendResponse({ success: true });
       } else if (message.type === 'ANALYTICS_EVENT') {
-        console.log('📊 Received analytics event:', message.eventType, message.eventData);
+        logger.info('📊 Received analytics event:', message.eventType, message.eventData);
         this.handleAnalyticsEvent(message.eventType, message.eventData);
         sendResponse({ success: true });
       } else if (message.type === 'SHOW_UPGRADE_MODAL') {
-        console.log('🔊 Received SHOW_UPGRADE_MODAL message:', message.feature);
+        logger.info('🔊 Received SHOW_UPGRADE_MODAL message:', message.feature);
         await this.sendAnalyticsEvent('user_action', {
           action: 'upgrade_modal_requested',
           feature: message.feature,
@@ -282,7 +317,7 @@ export class BackgroundService {
         chrome.action.openPopup();
         sendResponse({ success: true });
       } else if (message.type === 'NOTIFY_GITHUB_APP_SYNC') {
-        console.log('📢 Received NOTIFY_GITHUB_APP_SYNC message:', message.data);
+        logger.info('📢 Received NOTIFY_GITHUB_APP_SYNC message:', message.data);
         await this.handleGitHubAppSyncNotification(message.data);
         sendResponse({ success: true });
       }
@@ -321,10 +356,10 @@ export class BackgroundService {
         );
 
         if (settingsChanged) {
-          console.log('🔄 GitHub settings changed, reinitializing GitHub service...');
+          logger.info('🔄 GitHub settings changed, reinitializing GitHub service...');
           const githubService = await this.initializeGitHubService();
           if (githubService) {
-            console.log('🔄 GitHub service reinitialized, reinitializing ZipHandler...');
+            logger.info('🔄 GitHub service reinitialized, reinitializing ZipHandler...');
             this.setupZipHandler(githubService);
           }
         }
@@ -342,7 +377,7 @@ export class BackgroundService {
     try {
       // Debug premium user message handling
       if (message.type === 'HEARTBEAT') {
-        console.debug('🔍 HEARTBEAT message received:', {
+        logger.debug('🔍 HEARTBEAT message received:', {
           type: message.type,
           typeOf: typeof message.type,
           isPremium: this.supabaseAuthService?.isPremium(),
@@ -367,7 +402,7 @@ export class BackgroundService {
           break;
 
         case 'SET_COMMIT_MESSAGE':
-          console.log('Setting commit message:', message.data.message);
+          logger.info('Setting commit message:', message.data.message);
           await this.sendAnalyticsEvent('user_action', {
             action: 'commit_message_customized',
             has_custom_message: Boolean(
@@ -380,39 +415,39 @@ export class BackgroundService {
           break;
 
         case 'OPEN_SETTINGS':
-          console.log('Opening settings popup');
+          logger.info('Opening settings popup');
           await this.sendAnalyticsEvent('user_action', {
             action: 'settings_opened',
             context: 'content_script',
           });
           await chrome.storage.local.set({ popupContext: 'settings' });
-          console.log('✅ Storage set: popupContext = settings');
+          logger.info('✅ Storage set: popupContext = settings');
 
           // Small delay to ensure storage is written before opening popup
           setTimeout(() => {
             chrome.action.openPopup();
-            console.log('✅ Popup opened for settings');
+            logger.info('✅ Popup opened for settings');
           }, 10);
           break;
 
         case 'OPEN_HOME':
-          console.log('Opening home/dashboard popup');
+          logger.info('Opening home/dashboard popup');
           await this.sendAnalyticsEvent('user_action', {
             action: 'dashboard_opened',
             context: 'content_script',
           });
           await chrome.storage.local.set({ popupContext: 'home' });
-          console.log('✅ Storage set: popupContext = home');
+          logger.info('✅ Storage set: popupContext = home');
 
           // Small delay to ensure storage is written before opening popup
           setTimeout(() => {
             chrome.action.openPopup();
-            console.log('✅ Popup opened for home/dashboard');
+            logger.info('✅ Popup opened for home/dashboard');
           }, 10);
           break;
 
         case 'OPEN_ISSUES': {
-          console.log('Opening issues popup');
+          logger.info('Opening issues popup');
           await this.sendAnalyticsEvent('user_action', {
             action: 'issues_opened',
             context: 'content_script',
@@ -421,34 +456,34 @@ export class BackgroundService {
           const hasIssuesAccess = this.supabaseAuthService.isPremium();
           const context = hasIssuesAccess ? 'issues' : 'home';
           await chrome.storage.local.set({ popupContext: context });
-          console.log(`✅ Storage set: popupContext = ${context}`);
+          logger.info(`✅ Storage set: popupContext = ${context}`);
 
           // Small delay to ensure storage is written before opening popup
           setTimeout(() => {
             chrome.action.openPopup();
-            console.log(`✅ Popup opened for ${context}`);
+            logger.info(`✅ Popup opened for ${context}`);
           }, 10);
           break;
         }
 
         case 'OPEN_PROJECTS':
-          console.log('Opening projects popup');
+          logger.info('Opening projects popup');
           await this.sendAnalyticsEvent('user_action', {
             action: 'projects_opened',
             context: 'content_script',
           });
           await chrome.storage.local.set({ popupContext: 'projects' });
-          console.log('✅ Storage set: popupContext = projects');
+          logger.info('✅ Storage set: popupContext = projects');
 
           // Small delay to ensure storage is written before opening popup
           setTimeout(() => {
             chrome.action.openPopup();
-            console.log('✅ Popup opened for projects');
+            logger.info('✅ Popup opened for projects');
           }, 10);
           break;
 
         case 'OPEN_FILE_CHANGES':
-          console.log('Opening file changes popup');
+          logger.info('Opening file changes popup');
           await this.sendAnalyticsEvent('user_action', {
             action: 'file_changes_viewed',
             file_count: Object.keys(message.data?.changes || {}).length,
@@ -457,14 +492,14 @@ export class BackgroundService {
           await chrome.storage.local.set({
             pendingFileChanges: message.data?.changes || {},
           });
-          console.log('Stored file changes in local storage');
+          logger.info('Stored file changes in local storage');
 
           // Open the popup - it will check for pendingFileChanges when it loads
           chrome.action.openPopup();
           break;
 
         case 'IMPORT_PRIVATE_REPO':
-          console.log('🔄 Processing private repo import:', message.data.repoName);
+          logger.info('🔄 Processing private repo import:', message.data.repoName);
           await this.sendAnalyticsEvent('user_action', {
             action: 'private_repo_import_started',
             has_custom_branch: Boolean(message.data.branch),
@@ -479,7 +514,7 @@ export class BackgroundService {
           await this.sendAnalyticsEvent('user_action', {
             action: 'private_repo_import_completed',
           });
-          console.log(
+          logger.info(
             `✅ Private repo import completed from branch '${message.data.branch || 'default'}'`
           );
           break;
@@ -488,15 +523,15 @@ export class BackgroundService {
             action: 'temp_repo_cleanup',
           });
           await this.tempRepoManager?.cleanupTempRepos(true);
-          console.log('✅ Temp repo cleaned up');
+          logger.info('✅ Temp repo cleaned up');
           break;
 
         case 'DEBUG':
-          console.log(`[Content Debug] ${message.message}`);
+          logger.debug(`[Content Debug] ${message.message}`);
           break;
 
         case 'CONTENT_SCRIPT_READY':
-          console.log('Content script is ready');
+          logger.info('Content script is ready');
           await this.sendAnalyticsEvent('extension_event', {
             action: 'content_script_ready',
             context: 'bolt_page',
@@ -512,7 +547,7 @@ export class BackgroundService {
           break;
 
         default:
-          console.warn(
+          logger.warn(
             'Unknown message type:',
             message.type,
             'Full message:',
@@ -520,7 +555,7 @@ export class BackgroundService {
           );
       }
     } catch (error: unknown) {
-      console.error(`Error handling message ${message.type}:`, error);
+      logger.error(`Error handling message ${message.type}:`, error);
 
       // Track errors for debugging
       await this.sendAnalyticsEvent('extension_error', {
@@ -544,7 +579,7 @@ export class BackgroundService {
     base64Data: string,
     currentProjectId?: string | null
   ): Promise<void> {
-    console.log('🔄 Handling ZIP data for tab:', tabId);
+    logger.info('🔄 Handling ZIP data for tab:', tabId);
     const port = this.ports.get(tabId);
     if (!port) return;
 
@@ -585,7 +620,7 @@ export class BackgroundService {
         throw new Error('Project ID is not set. Make sure you are on a Bolt project page.');
       }
 
-      console.log(
+      logger.info(
         '🔍 Using project ID for push:',
         projectId,
         currentProjectId ? '(from URL)' : '(from storage)'
@@ -677,7 +712,7 @@ export class BackgroundService {
         }
       }
     } catch (error) {
-      console.error('Error processing ZIP:', error);
+      logger.error('Error processing ZIP:', error);
 
       if (!uploadSuccess) {
         const duration = Date.now() - startTime;
@@ -729,7 +764,7 @@ export class BackgroundService {
     try {
       port.postMessage(message);
     } catch (error) {
-      console.error('Error sending response:', error);
+      logger.error('Error sending response:', error);
     }
   }
 
@@ -749,11 +784,11 @@ export class BackgroundService {
       // Check premium status from Supabase auth service
       const hasAccess = this.supabaseAuthService.isPremium();
 
-      console.log(`🔍 Checking premium feature: ${feature}, hasAccess: ${hasAccess}`);
+      logger.info(`🔍 Checking premium feature: ${feature}, hasAccess: ${hasAccess}`);
 
       sendResponse({ hasAccess });
     } catch (error) {
-      console.error('Error checking premium feature:', error);
+      logger.error('Error checking premium feature:', error);
       sendResponse({ hasAccess: false });
     }
   }
@@ -800,15 +835,15 @@ export class BackgroundService {
           break;
 
         default:
-          console.warn('Unknown analytics event type:', eventType);
+          logger.warn('Unknown analytics event type:', eventType);
       }
     } catch (error) {
-      console.error('Failed to handle analytics event:', error);
+      logger.error('Failed to handle analytics event:', error);
     }
   }
 
   private async handlePushToGitHub(): Promise<void> {
-    console.log('🔄 Handling Push to GitHub action');
+    logger.info('🔄 Handling Push to GitHub action');
 
     try {
       // Find the active tab with bolt.new URL
@@ -816,7 +851,7 @@ export class BackgroundService {
       const boltTab = tabs.find((tab) => tab.url?.includes('bolt.new'));
 
       if (!boltTab || !boltTab.id) {
-        console.error('No active Bolt tab found');
+        logger.error('No active Bolt tab found');
         return;
       }
 
@@ -824,7 +859,7 @@ export class BackgroundService {
       const port = this.ports.get(tabId);
 
       if (!port) {
-        console.error('No connected port for tab:', tabId);
+        logger.error('No connected port for tab:', tabId);
         return;
       }
 
@@ -833,15 +868,15 @@ export class BackgroundService {
         type: 'PUSH_TO_GITHUB',
       });
 
-      console.log('✅ Push to GitHub message sent to content script');
+      logger.info('✅ Push to GitHub message sent to content script');
     } catch (error) {
-      console.error('Error handling Push to GitHub action:', error);
+      logger.error('Error handling Push to GitHub action:', error);
     }
   }
 
   private async handleGitHubAppSyncNotification(data: any): Promise<void> {
     try {
-      console.log('📢 Handling GitHub App sync notification to all bolt.new tabs');
+      logger.info('📢 Handling GitHub App sync notification to all bolt.new tabs');
 
       // Send message to all bolt.new tabs about GitHub App sync
       const tabs = await chrome.tabs.query({ url: 'https://bolt.new/*' });
@@ -857,9 +892,9 @@ export class BackgroundService {
             });
         }
       }
-      console.log('📢 Sent GitHub App sync notifications to all bolt.new tabs');
+      logger.info('📢 Sent GitHub App sync notifications to all bolt.new tabs');
     } catch (error) {
-      console.warn('Failed to send GitHub App sync notification:', error);
+      logger.warn('Failed to send GitHub App sync notification:', error);
     }
   }
 
@@ -868,7 +903,7 @@ export class BackgroundService {
     this.keepAliveInterval = setInterval(() => {
       // Check if there are any active ports
       if (this.ports.size > 0) {
-        console.debug('🫀 Service worker keep-alive heartbeat');
+        logger.debug('🫀 Service worker keep-alive heartbeat');
       }
     }, 20000); // Every 20 seconds
   }

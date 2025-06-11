@@ -5,6 +5,7 @@ This directory contains comprehensive test fixtures for `ContentManager.ts` test
 ## Overview
 
 The test fixtures follow the pattern established in the BackgroundService test fixtures, focusing on:
+
 - **Realistic test data** covering normal, edge, and error cases
 - **Minimal mocking** with accurate behavior simulation
 - **Controlled test environments** for reliable testing
@@ -28,6 +29,7 @@ test-fixtures/
 ### 1. Test Specifications (`ContentManagerTestSpecification.ts`)
 
 Defines comprehensive test scenarios categorized by:
+
 - **Normal operations**: Successful initialization, message routing, heartbeat maintenance
 - **Edge cases**: Rapid reconnection, concurrent messages, quick successive disconnects
 - **Error scenarios**: Context invalidation, port disconnections, runtime unavailability
@@ -36,6 +38,7 @@ Defines comprehensive test scenarios categorized by:
 ### 2. Test Fixtures (`ContentManagerTestFixtures.ts`)
 
 Provides realistic test data including:
+
 - **Chrome runtime errors** for different failure modes
 - **Test URLs** for various bolt.new scenarios
 - **Test messages** for all supported message types
@@ -46,6 +49,7 @@ Provides realistic test data including:
 ### 3. Mock Implementations (`ContentManagerMocks.ts`)
 
 Accurate test doubles for:
+
 - **MockMessageHandler**: Simulates real MessageHandler behavior with connection state and queuing
 - **MockUIManager**: Tracks UI interactions and state changes
 - **MockPort**: Full chrome.runtime.Port simulation with event handling
@@ -54,6 +58,7 @@ Accurate test doubles for:
 ### 4. Test Helpers (`ContentManagerTestHelpers.ts`)
 
 Utility functions for:
+
 - **Test environment setup** with controlled Chrome API mocking
 - **Resource tracking** for memory leak detection
 - **State validation** and assertion helpers
@@ -69,11 +74,11 @@ import { setupBasicTest, validateCleanup } from './test-fixtures';
 
 describe('ContentManager', () => {
   let testEnv: TestEnvironment;
-  
+
   beforeEach(() => {
     testEnv = setupBasicTest();
   });
-  
+
   afterEach(() => {
     const cleanupResult = validateCleanup(testEnv);
     expect(cleanupResult.valid).toBe(true);
@@ -85,25 +90,25 @@ describe('ContentManager', () => {
 ### Context Invalidation Testing
 
 ```typescript
-import { 
-  createTestEnvironment, 
-  setupChromeAPIMocks, 
+import {
+  createTestEnvironment,
+  setupChromeAPIMocks,
   simulatePortState,
   TestPortStates,
-  ChromeRuntimeErrors 
+  ChromeRuntimeErrors,
 } from './test-fixtures';
 
 it('should handle context invalidation gracefully', async () => {
   const env = createTestEnvironment();
   setupChromeAPIMocks(env, { hasRuntimeId: false });
-  
+
   const contentManager = new ContentManager();
-  
+
   await simulatePortState(env, TestPortStates.DISCONNECTED_CONTEXT_INVALIDATED);
-  
+
   // Verify graceful handling without errors
   expect(getContentManagerState(contentManager).isInRecovery).toBe(true);
-  
+
   env.cleanup();
 });
 ```
@@ -111,19 +116,15 @@ it('should handle context invalidation gracefully', async () => {
 ### Recovery Testing
 
 ```typescript
-import { 
-  waitForState, 
-  PerformanceMonitor,
-  ComplexEventSequences 
-} from './test-fixtures';
+import { waitForState, PerformanceMonitor, ComplexEventSequences } from './test-fixtures';
 
 it('should recover from service worker restart', async () => {
   const monitor = new PerformanceMonitor();
   monitor.start();
-  
+
   // Execute recovery sequence
-  const sequence = ComplexEventSequences.find(s => s.name === 'context_invalidation_recovery');
-  
+  const sequence = ComplexEventSequences.find((s) => s.name === 'context_invalidation_recovery');
+
   for (const event of sequence.events) {
     if (event.type === 'wait') {
       await wait(event.delay!);
@@ -132,15 +133,15 @@ it('should recover from service worker restart', async () => {
     }
     // ... handle other event types
   }
-  
+
   monitor.mark('recovery_complete');
-  
+
   await waitForState(
-    contentManager, 
+    contentManager,
     () => !getContentManagerState(contentManager).isInRecovery,
     5000
   );
-  
+
   expect(monitor.getMetrics().recovery_complete).toBeLessThan(5000);
 });
 ```
@@ -152,7 +153,7 @@ import { ResourceTracker, MemoryThresholds } from './test-fixtures';
 
 it('should not leak resources during rapid reconnections', async () => {
   const tracker = env.resourceTracker;
-  
+
   // Perform rapid reconnections
   for (let i = 0; i < 10; i++) {
     await simulatePortState(env, TestPortStates.DISCONNECTED_NORMAL);
@@ -160,7 +161,7 @@ it('should not leak resources during rapid reconnections', async () => {
     await simulatePortState(env, TestPortStates.CONNECTED);
     await wait(100);
   }
-  
+
   const resources = tracker.getActiveResources();
   expect(resources.timers).toBeLessThanOrEqual(MemoryThresholds.MAX_TIMERS);
   expect(resources.eventListeners).toBeLessThanOrEqual(MemoryThresholds.MAX_EVENT_LISTENERS);
@@ -180,6 +181,7 @@ Based on the analysis in `CRITICAL_TESTING_ANALYSIS.md`, the fixtures prioritize
 ## Performance Considerations
 
 The fixtures include performance monitoring capabilities to track:
+
 - Initialization time
 - Reconnection duration
 - Message processing latency
@@ -198,6 +200,7 @@ The fixtures include performance monitoring capabilities to track:
 ## Integration with Existing Tests
 
 These fixtures complement the existing test infrastructure and can be used alongside:
+
 - BackgroundService test fixtures (similar pattern)
 - Existing Chrome API mocks in `src/test/setup/`
 - Jest configuration in `jest.config.js`

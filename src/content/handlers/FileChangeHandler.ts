@@ -3,6 +3,9 @@ import type { INotificationManager, IUploadStatusManager } from '../types/Manage
 import type { MessageHandler } from '../MessageHandler';
 import { FilePreviewService, type FileChange } from '../../services/FilePreviewService';
 import type { PremiumService } from '../services/PremiumService';
+import { createLogger } from '$lib/utils/logger';
+
+const logger = createLogger('FileChangeHandler');
 
 /**
  * FileChangeHandler handles file change detection, comparison, and display
@@ -55,7 +58,7 @@ export class FileChangeHandler implements IFileChangeHandler {
   public async showChangedFiles(): Promise<void> {
     /* Check premium status */
     if (!this.premiumService) {
-      console.warn('PremiumService not available for file changes check');
+      logger.warn('PremiumService not available for file changes check');
       this.showPremiumRequiredNotification();
       return;
     }
@@ -87,15 +90,15 @@ export class FileChangeHandler implements IFileChangeHandler {
         });
       }
 
-      console.group('Changed Files');
-      console.log('Refreshing and loading project files...');
+      logger.info('Changed Files');
+      logger.info('Refreshing and loading project files...');
 
       /* Load the current project files with a forced refresh (invalidate cache) */
       /* since this is a user-driven action, we always want the latest files */
       const startTime = performance.now();
       await this.filePreviewService.loadProjectFiles(true); /* Pass true to force refresh */
       const loadTime = performance.now() - startTime;
-      console.log(`Files loaded in ${loadTime.toFixed(2)}ms`);
+      logger.info(`Files loaded in ${loadTime.toFixed(2)}ms`);
 
       /* Update to analyzing status */
       if (this.uploadStatusManager) {
@@ -119,7 +122,7 @@ export class FileChangeHandler implements IFileChangeHandler {
       /* Process and display results */
       await this.processAndDisplayChanges(changedFiles);
     } catch (error) {
-      console.error('Error showing changed files:', error);
+      logger.error('Error showing changed files:', error);
       if (this.uploadStatusManager) {
         this.uploadStatusManager.updateStatus({
           status: 'error',
@@ -157,8 +160,8 @@ export class FileChangeHandler implements IFileChangeHandler {
       const { repoName, branch } = projectSettings[projectId];
       const targetBranch = branch || 'main';
 
-      console.log('Comparing with GitHub repository...');
-      console.log(`Repository: ${repoOwner}/${repoName}, Branch: ${targetBranch}`);
+      logger.info('Comparing with GitHub repository...');
+      logger.info(`Repository: ${repoOwner}/${repoName}, Branch: ${targetBranch}`);
 
       // Use GitHub comparison
       try {
@@ -187,9 +190,9 @@ export class FileChangeHandler implements IFileChangeHandler {
           githubService
         );
 
-        console.log('Successfully compared with GitHub repository');
+        logger.info('Successfully compared with GitHub repository');
       } catch (githubError) {
-        console.warn(
+        logger.warn(
           'Failed to compare with GitHub, falling back based on error type:',
           githubError
         );
@@ -200,18 +203,18 @@ export class FileChangeHandler implements IFileChangeHandler {
           (githubError.message.includes('404') || githubError.message.includes('Not Found'));
 
         if (is404Error) {
-          console.log('Repository does not exist - treating all files as new for push purposes');
+          logger.info('Repository does not exist - treating all files as new for push purposes');
           // For non-existent repositories, get current files and mark them as 'added'
           // This is appropriate for push reminders since the user needs to create the repo
           changedFiles = await this.getChangedFilesForNonExistentRepo();
         } else {
           // For other GitHub errors (network, auth, etc.), fall back to local comparison
-          console.log('GitHub error (not 404) - falling back to local comparison');
+          logger.info('GitHub error (not 404) - falling back to local comparison');
           changedFiles = await this.filePreviewService.getChangedFiles();
         }
       }
     } else {
-      console.log('No GitHub settings found - treating all files as new for push purposes');
+      logger.info('No GitHub settings found - treating all files as new for push purposes');
       // If no GitHub settings are configured, this project has never been associated with GitHub
       // All files should be considered as 'added' since they need to be pushed for the first time
       // This ensures push reminders work correctly for projects that haven't been set up with GitHub yet
@@ -248,7 +251,7 @@ export class FileChangeHandler implements IFileChangeHandler {
       });
     });
 
-    console.log(`Marked ${changes.size} files as 'added' for non-existent repository`);
+    logger.info(`Marked ${changes.size} files as 'added' for non-existent repository`);
     return changes;
   }
 
@@ -330,34 +333,32 @@ export class FileChangeHandler implements IFileChangeHandler {
     changedFiles: Map<string, FileChange>
   ): void {
     // Log summary
-    console.log('Change Summary:');
-    console.log(`- Total files: ${changedFiles.size}`);
-    console.log(`- Added: ${counts.addedCount}`);
-    console.log(`- Modified: ${counts.modifiedCount}`);
-    console.log(`- Unchanged: ${counts.unchangedCount}`);
-    console.log(`- Deleted: ${counts.deletedCount}`);
+    logger.info('Change Summary:');
+    logger.info(`- Total files: ${changedFiles.size}`);
+    logger.info(`- Added: ${counts.addedCount}`);
+    logger.info(`- Modified: ${counts.modifiedCount}`);
+    logger.info(`- Unchanged: ${counts.unchangedCount}`);
+    logger.info(`- Deleted: ${counts.deletedCount}`);
 
     // Log details of changed files (added and modified)
     if (counts.addedCount > 0 || counts.modifiedCount > 0) {
-      console.log('\nChanged Files:');
+      logger.info('\nChanged Files:');
       changedFiles.forEach((file, path) => {
         if (file.status === 'added' || file.status === 'modified') {
-          console.log(`${file.status === 'added' ? '➕' : '✏️'} ${path}`);
+          logger.info(`${file.status === 'added' ? '➕' : '✏️'} ${path}`);
         }
       });
     }
 
     // Log deleted files if any
     if (counts.deletedCount > 0) {
-      console.log('\nDeleted Files:');
+      logger.info('\nDeleted Files:');
       changedFiles.forEach((file, path) => {
         if (file.status === 'deleted') {
-          console.log(`❌ ${path}`);
+          logger.info(`❌ ${path}`);
         }
       });
     }
-
-    console.groupEnd();
   }
 
   /**
@@ -389,9 +390,9 @@ export class FileChangeHandler implements IFileChangeHandler {
           url: window.location.href, // Store URL to detect navigation changes
         },
       });
-      console.log('File changes stored in local storage for future retrieval with timestamp');
+      logger.info('File changes stored in local storage for future retrieval with timestamp');
     } catch (storageError) {
-      console.error('Failed to store file changes in local storage:', storageError);
+      logger.error('Failed to store file changes in local storage:', storageError);
     }
   }
 
@@ -406,23 +407,23 @@ export class FileChangeHandler implements IFileChangeHandler {
       duration: 10000,
       upgradeText: 'Upgrade Now',
       onUpgrade: () => {
-        console.log('🔊 Upgrade button clicked for file changes feature');
+        logger.info('🔊 Upgrade button clicked for file changes feature');
 
         // Primary approach: try to open upgrade URL directly
         try {
-          console.log('🔊 Opening upgrade URL...');
+          logger.info('🔊 Opening upgrade URL...');
           window.open('https://bolt2github.com/upgrade', '_blank');
-          console.log('✅ Upgrade URL opened successfully');
+          logger.info('✅ Upgrade URL opened successfully');
         } catch (openError) {
-          console.error('❌ Could not open upgrade URL:', openError);
+          logger.error('❌ Could not open upgrade URL:', openError);
 
           // Fallback: try Chrome extension URLs if direct URL fails
           try {
-            console.log('🔊 Trying Chrome tabs API fallback...');
+            logger.info('🔊 Trying Chrome tabs API fallback...');
             chrome.tabs.create({ url: 'https://bolt2github.com/upgrade' });
-            console.log('✅ Chrome tabs API worked');
+            logger.info('✅ Chrome tabs API worked');
           } catch (tabsError) {
-            console.error('❌ Chrome tabs API also failed:', tabsError);
+            logger.error('❌ Chrome tabs API also failed:', tabsError);
           }
         }
       },

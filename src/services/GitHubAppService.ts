@@ -12,6 +12,9 @@ import type {
   PermissionCheckResult,
 } from './types/authentication';
 import { SUPABASE_CONFIG } from '../lib/constants/supabase';
+import { createLogger } from '../lib/utils/logger';
+
+const logger = createLogger('GitHubAppService');
 
 export class GitHubAppService {
   private readonly supabaseUrl: string;
@@ -47,7 +50,7 @@ export class GitHubAppService {
         return authData.access_token;
       }
     } catch (error) {
-      console.error('Failed to get user token from storage:', error);
+      logger.error('Failed to get user token from storage:', error);
     }
 
     throw new Error('No user token available. Please authenticate with bolt2github.com first.');
@@ -261,7 +264,7 @@ export class GitHubAppService {
         scopes: storage.githubAppScopes,
       };
     } catch (error) {
-      console.error('Failed to get GitHub App config:', error);
+      logger.error('Failed to get GitHub App config:', error);
       return null;
     }
   }
@@ -283,7 +286,7 @@ export class GitHubAppService {
         githubAppScopes: config.scopes,
       });
     } catch (error) {
-      console.error('Failed to store GitHub App config:', error);
+      logger.error('Failed to store GitHub App config:', error);
       throw new Error('Failed to store GitHub App configuration');
     }
   }
@@ -305,7 +308,7 @@ export class GitHubAppService {
         'githubAppScopes',
       ]);
     } catch (error) {
-      console.error('Failed to clear GitHub App config:', error);
+      logger.error('Failed to clear GitHub App config:', error);
       throw new Error('Failed to clear GitHub App configuration');
     }
   }

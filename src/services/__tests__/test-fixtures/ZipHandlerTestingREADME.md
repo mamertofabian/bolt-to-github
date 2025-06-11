@@ -5,6 +5,7 @@ This directory contains comprehensive test fixtures for testing the ZipHandler c
 ## Overview
 
 The test fixtures are designed to:
+
 - Provide realistic test data covering normal, edge, and error cases
 - Build test doubles that accurately reflect real behavior
 - Create controlled test environments instead of extensive mocking
@@ -14,7 +15,9 @@ The test fixtures are designed to:
 ## File Structure
 
 ### ZipHandlerTestFixtures.ts
+
 Contains realistic test data including:
+
 - **ZIP_FILE_FIXTURES**: Various project structures (simple, TypeScript, large, with gitignore, etc.)
 - **GITHUB_API_RESPONSES**: Mock GitHub API responses for different scenarios
 - **CHROME_STORAGE_FIXTURES**: Chrome storage configurations
@@ -24,7 +27,9 @@ Contains realistic test data including:
 - **TEST_PROJECTS**: Project configurations for testing
 
 ### ZipHandlerMocks.ts
+
 Provides test doubles for dependencies:
+
 - **MockUnifiedGitHubService**: Controllable GitHub API client
 - **MockGitHubComparisonService**: File comparison service mock
 - **MockStatusCallback**: Status update tracker
@@ -32,7 +37,9 @@ Provides test doubles for dependencies:
 - **MockPushStatisticsActions**: Push statistics recorder
 
 ### ZipHandlerTestHelpers.ts
+
 Helper functions for test setup:
+
 - **createTestEnvironment()**: Sets up complete test environment
 - **cleanupTestEnvironment()**: Cleans up after tests
 - **TestScenarios**: Pre-built test scenarios
@@ -40,7 +47,9 @@ Helper functions for test setup:
 - **NetworkConditions**: Simulate different network conditions
 
 ### ZipHandlerTestSpecification.ts
+
 Comprehensive test specifications:
+
 - Categorized test scenarios
 - Expected behaviors
 - Edge cases
@@ -50,13 +59,13 @@ Comprehensive test specifications:
 ## Usage Example
 
 ```typescript
-import { 
-  createTestEnvironment, 
+import {
+  createTestEnvironment,
   cleanupTestEnvironment,
   TestScenarios,
   TestAssertions,
   ZIP_FILE_FIXTURES,
-  createTestBlob
+  createTestBlob,
 } from './test-fixtures/ZipHandlerTestFixtures.index';
 
 describe('ZipHandler', () => {
@@ -78,12 +87,10 @@ describe('ZipHandler', () => {
   it('should handle rate limiting gracefully', async () => {
     env.githubService.setRateLimit(2);
     const blob = createTestBlob(ZIP_FILE_FIXTURES.simpleProject);
-    
+
     await env.zipHandler.processZipFile(blob, 'project-123', 'Test commit');
-    
-    expect(env.statusCallback.findStatus(s => 
-      s.message?.includes('Rate limit')
-    )).toBeDefined();
+
+    expect(env.statusCallback.findStatus((s) => s.message?.includes('Rate limit'))).toBeDefined();
   });
 });
 ```
@@ -91,12 +98,14 @@ describe('ZipHandler', () => {
 ## Key Features
 
 ### Realistic Test Data
+
 - Various project types (HTML/CSS/JS, TypeScript, etc.)
 - Edge cases (empty projects, special characters, binary files)
 - Large projects for performance testing
 - Projects with .gitignore rules
 
 ### Controlled Test Doubles
+
 - Configurable responses and behaviors
 - Request history tracking
 - Error simulation
@@ -104,7 +113,9 @@ describe('ZipHandler', () => {
 - Rate limit simulation
 
 ### Test Scenarios
+
 Pre-built scenarios for common testing needs:
+
 - Simple uploads
 - No-change detection
 - Rate limit handling
@@ -113,7 +124,9 @@ Pre-built scenarios for common testing needs:
 - Empty repository initialization
 
 ### Assertion Helpers
+
 Common assertions for:
+
 - Successful uploads
 - API call verification
 - Error conditions
@@ -139,6 +152,7 @@ Common assertions for:
 ## Performance Considerations
 
 The fixtures are designed to be lightweight while still being realistic:
+
 - Mock services return immediately by default
 - Network delays can be simulated when needed
 - Large file sets are generated efficiently
@@ -147,6 +161,7 @@ The fixtures are designed to be lightweight while still being realistic:
 ## Extending the Fixtures
 
 To add new test scenarios:
+
 1. Add test data to `ZipHandlerTestFixtures.ts`
 2. Create helper methods in `ZipHandlerTestHelpers.ts`
 3. Document in `ZipHandlerTestSpecification.ts`

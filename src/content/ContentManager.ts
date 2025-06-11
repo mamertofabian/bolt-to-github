@@ -1,7 +1,9 @@
-/* eslint-disable no-console */
 import type { Message } from '$lib/types';
 import { MessageHandler } from './MessageHandler';
 import { UIManager } from './UIManager';
+import { createLogger } from '$lib/utils/logger';
+
+const logger = createLogger('ContentManager');
 
 export class ContentManager {
   private uiManager: UIManager | undefined;
@@ -19,7 +21,7 @@ export class ContentManager {
 
   constructor() {
     if (!this.shouldInitialize()) {
-      console.log('Not initializing ContentManager - URL does not match bolt.new pattern');
+      logger.info('Not initializing ContentManager - URL does not match bolt.new pattern');
       return;
     }
 
@@ -38,11 +40,11 @@ export class ContentManager {
       // Clear any stale stored file changes on initialization
       this.clearStaleStoredChanges();
 
-      console.log('🎉 ContentManager initialized successfully with MessageHandler');
-      console.log('💡 Press Ctrl+Shift+D to test notification systems');
-      console.log('🔧 Press Ctrl+Shift+R to test recovery mechanism');
+      logger.info('🎉 ContentManager initialized successfully with MessageHandler');
+      logger.debug('💡 Press Ctrl+Shift+D to test notification systems');
+      logger.debug('🔧 Press Ctrl+Shift+R to test recovery mechanism');
     } catch (error) {
-      console.error('Error initializing ContentManager:', error);
+      logger.error('Error initializing ContentManager:', error);
       this.handleInitializationError(error);
     }
   }
@@ -62,7 +64,7 @@ export class ContentManager {
       }
 
       this.port = chrome.runtime.connect({ name: 'bolt-content' });
-      console.log('🔊 Connected to background service with port:', this.port);
+      logger.info('🔊 Connected to background service with port:', this.port);
 
       if (!this.port) {
         throw new Error('Failed to establish connection with background service');
@@ -79,10 +81,10 @@ export class ContentManager {
       }
     } catch (error) {
       if (this.isExtensionContextInvalidated(error)) {
-        console.warn('Extension context invalidated, attempting reconnection...');
+        logger.warn('Extension context invalidated, attempting reconnection...');
         this.handleExtensionContextInvalidated();
       } else {
-        console.error('Error initializing connection:', error);
+        logger.error('Error initializing connection:', error);
         throw error;
       }
     }
@@ -90,7 +92,7 @@ export class ContentManager {
 
   private setupPortListeners(): void {
     if (!this.port) {
-      console.error('Port is not initialized');
+      logger.error('Port is not initialized');
       this.scheduleReconnection();
       return;
     }
@@ -99,14 +101,14 @@ export class ContentManager {
       try {
         this.handleBackgroundMessage(message);
       } catch (error) {
-        console.error('Error handling message:', error);
+        logger.error('Error handling message:', error);
       }
     });
 
     this.port.onDisconnect.addListener(() => {
       const error = chrome.runtime.lastError;
       const now = Date.now();
-      console.log('Port disconnected:', error?.message || 'No error message');
+      logger.info('Port disconnected:', error?.message || 'No error message');
 
       // Check for quick successive disconnections (within 3 seconds)
       // This often indicates context invalidation even without specific error messages
@@ -120,13 +122,13 @@ export class ContentManager {
         isQuickSuccessiveDisconnect;
 
       if (contextInvalidated) {
-        console.log(
+        logger.info(
           '🔴 Extension context invalidation detected',
           isQuickSuccessiveDisconnect ? '(quick successive disconnect)' : ''
         );
         this.handleExtensionContextInvalidated();
       } else {
-        console.log('🟡 Normal port disconnect, attempting reconnection');
+        logger.info('🟡 Normal port disconnect, attempting reconnection');
         this.scheduleReconnection();
       }
     });
@@ -165,7 +167,7 @@ export class ContentManager {
 
     // If it's a service worker issue, check if runtime is still available
     if (isServiceWorkerIssue && chrome.runtime?.id) {
-      console.log(
+      logger.info(
         '🟡 Service worker issue detected, but runtime still available - attempting recovery'
       );
       return false; // Try normal reconnection first
@@ -175,7 +177,7 @@ export class ContentManager {
   }
 
   private handleExtensionContextInvalidated(): void {
-    console.log('Extension context invalidated, attempting recovery...');
+    logger.info('Extension context invalidated, attempting recovery...');
 
     // Set a recovery flag to prevent processing messages during recovery
     this.isInRecovery = true;
@@ -184,7 +186,7 @@ export class ContentManager {
     // This prevents getting stuck in recovery mode indefinitely
     setTimeout(() => {
       if (this.isInRecovery) {
-        console.warn('⚠️ Recovery timeout reached, clearing recovery flag');
+        logger.warn('⚠️ Recovery timeout reached, clearing recovery flag');
         this.isInRecovery = false;
       }
     }, 30000);
@@ -197,7 +199,7 @@ export class ContentManager {
 
     // Attempt immediate recovery instead of waiting 2 seconds
     // The issue is that background keeps sending messages while we wait
-    console.log('🔄 Starting immediate recovery after context invalidation...');
+    logger.info('🔄 Starting immediate recovery after context invalidation...');
     this.attemptRecovery();
   }
 
@@ -205,14 +207,14 @@ export class ContentManager {
     try {
       // Check if Chrome runtime is available for recovery
       if (!chrome.runtime?.id) {
-        console.warn(
+        logger.warn(
           '🔄 Recovery failed: Chrome runtime not available - likely true context invalidation'
         );
 
         // If runtime is not available, this is likely true context invalidation
         // Don't keep retrying indefinitely - show user notification and stop
         if (this.reconnectAttempts >= 2) {
-          console.error(
+          logger.error(
             '💀 True context invalidation detected - recovery impossible without page refresh'
           );
           this.handleUnrecoverableContextInvalidation();
@@ -223,14 +225,14 @@ export class ContentManager {
         this.reconnectAttempts++;
         setTimeout(() => {
           if (!this.isDestroyed && this.isInRecovery) {
-            console.log('🔄 Final retry attempt for context recovery...');
+            logger.info('🔄 Final retry attempt for context recovery...');
             this.attemptRecovery();
           }
         }, 5000);
         return;
       }
 
-      console.log('✅ Chrome runtime available, attempting service worker reconnection...');
+      logger.info('✅ Chrome runtime available, attempting service worker reconnection...');
 
       // Reset the destroyed flag since we're recovering
       this.isDestroyed = false;
@@ -247,7 +249,7 @@ export class ContentManager {
 
       // Recreate UIManager
       this.uiManager = UIManager.getInstance(this.messageHandler);
-      console.log('🔧 Recovery: Recreated UIManager after service worker restart');
+      logger.info('🔧 Recovery: Recreated UIManager after service worker restart');
 
       // Re-setup event listeners
       this.setupEventListeners();
@@ -262,17 +264,17 @@ export class ContentManager {
 
       this.messageHandler.sendMessage('CONTENT_SCRIPT_READY');
 
-      console.log('🎉 Recovery successful! Service worker reconnected.');
+      logger.info('🎉 Recovery successful! Service worker reconnected.');
     } catch (error) {
-      console.error('❌ Recovery failed:', error);
+      logger.error('❌ Recovery failed:', error);
 
       // If recovery fails multiple times, this is likely true context invalidation
       if (this.reconnectAttempts >= 3) {
-        console.error('💀 Multiple recovery attempts failed - likely true context invalidation');
+        logger.error('💀 Multiple recovery attempts failed - likely true context invalidation');
         this.handleUnrecoverableContextInvalidation();
       } else {
         this.reconnectAttempts++;
-        console.log(`🔄 Scheduling recovery retry ${this.reconnectAttempts}/3 in 5 seconds...`);
+        logger.info(`🔄 Scheduling recovery retry ${this.reconnectAttempts}/3 in 5 seconds...`);
         setTimeout(() => {
           if (!this.isDestroyed && this.isInRecovery) {
             this.attemptRecovery();
@@ -287,7 +289,7 @@ export class ContentManager {
    * The only solution is to notify the user gracefully without interrupting their work
    */
   private handleUnrecoverableContextInvalidation(): void {
-    console.error('💀 Unrecoverable context invalidation detected');
+    logger.error('💀 Unrecoverable context invalidation detected');
 
     this.isInRecovery = false;
     this.isDestroyed = true;
@@ -360,7 +362,7 @@ export class ContentManager {
       notification.style.cursor = 'default';
     });
 
-    console.log(
+    logger.info(
       '📢 Fallback notification shown for context invalidation - user can dismiss manually'
     );
   }
@@ -372,7 +374,7 @@ export class ContentManager {
   private showContextInvalidationNotification(): void {
     // This method is now deprecated in favor of using the existing notifyUserOfExtensionReload()
     // Keeping it for backward compatibility but it should not be used
-    console.warn(
+    logger.warn(
       'showContextInvalidationNotification() is deprecated - use notifyUserOfExtensionReload() instead'
     );
     this.notifyUserOfExtensionReload();
@@ -390,7 +392,7 @@ export class ContentManager {
     this.isReconnecting = true;
     this.reconnectAttempts++;
 
-    console.log(
+    logger.info(
       `Attempting reconnection (${this.reconnectAttempts}/${this.MAX_RECONNECT_ATTEMPTS})...`
     );
 
@@ -415,7 +417,7 @@ export class ContentManager {
     try {
       // Check if extension context is still invalid
       if (!chrome.runtime?.id) {
-        console.warn('Extension context still invalid, scheduling another reconnection...');
+        logger.warn('Extension context still invalid, scheduling another reconnection...');
         this.scheduleReconnection();
         return;
       }
@@ -433,10 +435,10 @@ export class ContentManager {
 
         // Check connection status
         const connectionStatus = this.messageHandler?.getConnectionStatus();
-        console.log('Successfully reconnected - MessageHandler status:', connectionStatus);
+        logger.info('Successfully reconnected - MessageHandler status:', connectionStatus);
       }
     } catch (error) {
-      console.error('Reconnection failed:', error);
+      logger.error('Reconnection failed:', error);
       this.scheduleReconnection();
     }
   }
@@ -452,14 +454,14 @@ export class ContentManager {
       if (this.port && chrome.runtime?.id) {
         try {
           const heartbeatMessage = { type: 'HEARTBEAT' as const };
-          console.debug('💓 Sending heartbeat:', JSON.stringify(heartbeatMessage));
+          logger.debug('💓 Sending heartbeat:', JSON.stringify(heartbeatMessage));
           this.port.postMessage(heartbeatMessage);
         } catch (error) {
-          console.warn('Heartbeat failed, connection may be broken:', error);
+          logger.warn('Heartbeat failed, connection may be broken:', error);
           this.scheduleReconnection();
         }
       } else {
-        console.warn('No port or runtime available during heartbeat');
+        logger.warn('No port or runtime available during heartbeat');
         this.scheduleReconnection();
       }
 
@@ -469,7 +471,7 @@ export class ContentManager {
   }
 
   private handleInitializationError(error: any): void {
-    console.error('Initialization error:', error);
+    logger.error('Initialization error:', error);
     this.notifyUserOfError();
   }
 
@@ -549,10 +551,10 @@ export class ContentManager {
       // Clear if URL changed or project ID changed
       if (storedData.url !== currentUrl || storedData.projectId !== currentProjectId) {
         await chrome.storage.local.remove(['storedFileChanges']);
-        console.log('Cleared stale stored file changes due to navigation');
+        logger.info('Cleared stale stored file changes due to navigation');
       }
     } catch (error) {
-      console.warn('Error checking/clearing stale stored changes:', error);
+      logger.warn('Error checking/clearing stale stored changes:', error);
     }
   }
 
@@ -584,9 +586,9 @@ export class ContentManager {
 
     // Listen for MessageHandler connection issues
     window.addEventListener('messageHandlerDisconnected', ((event: CustomEvent) => {
-      console.warn('🔌 MessageHandler reported connection issue:', event.detail);
+      logger.warn('🔌 MessageHandler reported connection issue:', event.detail);
       if (!this.isReconnecting && !this.isDestroyed) {
-        console.log('🔄 Initiating immediate reconnection due to MessageHandler issue');
+        logger.info('🔄 Initiating immediate reconnection due to MessageHandler issue');
         this.scheduleReconnection();
       }
     }) as EventListener);
@@ -600,18 +602,18 @@ export class ContentManager {
     chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
       // Handle legacy file changes requests
       if (message.action === 'REQUEST_FILE_CHANGES') {
-        console.log('Received request for file changes from popup');
+        logger.info('Received request for file changes from popup');
         const projectId = window.location.pathname.split('/').pop() || '';
-        console.log('Current project ID:', projectId);
+        logger.debug('Current project ID:', projectId);
         this.uiManager?.handleShowChangedFiles();
         sendResponse({ success: true, projectId });
         return;
       }
 
       if (message.action === 'REFRESH_FILE_CHANGES') {
-        console.log('Received refresh file changes request from popup');
+        logger.info('Received refresh file changes request from popup');
         const projectId = window.location.pathname.split('/').pop() || '';
-        console.log('Refreshing file changes for project ID:', projectId);
+        logger.debug('Refreshing file changes for project ID:', projectId);
 
         this.uiManager
           ?.handleShowChangedFiles()
@@ -619,7 +621,7 @@ export class ContentManager {
             sendResponse({ success: true, projectId });
           })
           .catch((error) => {
-            console.error('Error refreshing file changes:', error);
+            logger.error('Error refreshing file changes:', error);
             sendResponse({
               success: false,
               error: error instanceof Error ? error.message : 'Unknown error',
@@ -671,11 +673,11 @@ export class ContentManager {
           }
 
           if (message.type === 'UPDATE_PREMIUM_STATUS') {
-            console.log('📨 Received UPDATE_PREMIUM_STATUS message from background:', message.data);
+            logger.info('📨 Received UPDATE_PREMIUM_STATUS message from background:', message.data);
 
             // Check if we're in recovery mode - if so, ignore this message to prevent errors
             if (this.isInRecovery) {
-              console.log('🔄 Ignoring UPDATE_PREMIUM_STATUS during recovery');
+              logger.debug('🔄 Ignoring UPDATE_PREMIUM_STATUS during recovery');
               sendResponse({ success: true, ignored: true });
               return;
             }
@@ -685,24 +687,24 @@ export class ContentManager {
               const premiumService = this.uiManager.getPremiumService();
               if (premiumService) {
                 await premiumService.updatePremiumStatusFromAuth(message.data);
-                console.log('✅ Premium status updated successfully');
+                logger.info('✅ Premium status updated successfully');
                 sendResponse({ success: true });
               } else {
-                console.warn('❌ Premium service not available');
+                logger.warn('❌ Premium service not available');
                 sendResponse({ error: 'Premium service not available' });
               }
             } else {
-              console.warn('❌ UI manager not available');
+              logger.warn('❌ UI manager not available');
               sendResponse({ error: 'UI manager not available' });
             }
             return;
           }
           if (message.type === 'SHOW_REAUTHENTICATION_MODAL') {
-            console.log('📨 Received SHOW_REAUTHENTICATION_MODAL message:', message.data);
+            logger.info('📨 Received SHOW_REAUTHENTICATION_MODAL message:', message.data);
 
             // Check if we're in recovery mode - if so, ignore this message to prevent errors
             if (this.isInRecovery) {
-              console.log('🔄 Ignoring SHOW_REAUTHENTICATION_MODAL during recovery');
+              logger.debug('🔄 Ignoring SHOW_REAUTHENTICATION_MODAL during recovery');
               sendResponse({ success: true, ignored: true });
               return;
             }
@@ -712,18 +714,18 @@ export class ContentManager {
               this.uiManager.showReauthenticationModal(message.data);
               sendResponse({ success: true });
             } else {
-              console.warn('❌ UI manager not available');
+              logger.warn('❌ UI manager not available');
               sendResponse({ error: 'UI manager not available' });
             }
             return;
           }
 
           if (message.type === 'SHOW_SUBSCRIPTION_DOWNGRADE') {
-            console.log('📨 Received SHOW_SUBSCRIPTION_DOWNGRADE message:', message.data);
+            logger.info('📨 Received SHOW_SUBSCRIPTION_DOWNGRADE message:', message.data);
 
             // Check if we're in recovery mode - if so, ignore this message to prevent errors
             if (this.isInRecovery) {
-              console.log('🔄 Ignoring SHOW_SUBSCRIPTION_DOWNGRADE during recovery');
+              logger.debug('🔄 Ignoring SHOW_SUBSCRIPTION_DOWNGRADE during recovery');
               sendResponse({ success: true, ignored: true });
               return;
             }
@@ -737,13 +739,40 @@ export class ContentManager {
               });
               sendResponse({ success: true });
             } else {
-              console.warn('❌ UI manager not available');
+              logger.warn('❌ UI manager not available');
+              sendResponse({ error: 'UI manager not available' });
+            }
+            return;
+          }
+
+          if (message.type === 'SHOW_WHATS_NEW_MODAL') {
+            logger.info('📨 Received SHOW_WHATS_NEW_MODAL message');
+
+            // Check if we're in recovery mode - if so, ignore this message to prevent errors
+            if (this.isInRecovery) {
+              logger.debug('🔄 Ignoring SHOW_WHATS_NEW_MODAL during recovery');
+              sendResponse({ success: true, ignored: true });
+              return;
+            }
+
+            /* Show What's New modal via UIManager */
+            if (this.uiManager) {
+              const whatsNewManager = this.uiManager.getWhatsNewManager();
+              if (whatsNewManager) {
+                await whatsNewManager.showManually();
+                sendResponse({ success: true });
+              } else {
+                logger.warn('❌ WhatsNewManager not available');
+                sendResponse({ error: 'WhatsNewManager not available' });
+              }
+            } else {
+              logger.warn('❌ UI manager not available');
               sendResponse({ error: 'UI manager not available' });
             }
             return;
           }
         } catch (error) {
-          console.error('Error handling message:', error);
+          logger.error('Error handling message:', error);
           sendResponse({ error: error instanceof Error ? error.message : 'Unknown error' });
         }
       })();
@@ -758,7 +787,7 @@ export class ContentManager {
       this.isInRecovery &&
       ['UPLOAD_STATUS', 'GITHUB_SETTINGS_CHANGED', 'PUSH_TO_GITHUB'].includes(message.type)
     ) {
-      console.log(`🔄 Ignoring ${message.type} during recovery`);
+      logger.debug(`🔄 Ignoring ${message.type} during recovery`);
       return;
     }
 
@@ -767,36 +796,36 @@ export class ContentManager {
         this.uiManager?.updateUploadStatus(message.status!);
         break;
       case 'GITHUB_SETTINGS_CHANGED':
-        console.log('🔊 Received GitHub settings changed:', message.data.isValid);
+        logger.info('🔊 Received GitHub settings changed:', message.data.isValid);
         this.uiManager?.updateButtonState(message.data.isValid);
         break;
       case 'PUSH_TO_GITHUB':
-        console.log('🔊 Received Push to GitHub message');
+        logger.info('🔊 Received Push to GitHub message');
         this.uiManager?.handleGitHubPushAction();
         break;
       case 'HEARTBEAT_RESPONSE':
         // Heartbeat response received - connection is healthy
-        console.debug('💓 Heartbeat response received');
+        logger.debug('💓 Heartbeat response received');
         break;
       default:
-        console.warn('Unhandled message type:', message.type);
+        logger.warn('Unhandled message type:', message.type);
     }
   }
 
   public checkMessageHandlerHealth(): void {
     if (!this.messageHandler) {
-      console.warn('🔌 MessageHandler is not available');
+      logger.warn('🔌 MessageHandler is not available');
       return;
     }
 
     const status = this.messageHandler.getConnectionStatus();
     // Only log health check if there are issues or queued messages
     if (!status.connected || status.queuedMessages > 0) {
-      console.log('🔍 MessageHandler health check:', status);
+      logger.debug('🔍 MessageHandler health check:', status);
     }
 
     if (!status.connected && status.queuedMessages > 0) {
-      console.warn(
+      logger.warn(
         `🔌 MessageHandler disconnected with ${status.queuedMessages} queued messages, triggering reconnection`
       );
       if (!this.isReconnecting && !this.isDestroyed) {
@@ -806,7 +835,7 @@ export class ContentManager {
   }
 
   public reinitialize(): void {
-    console.log('🔊 Reinitializing content script');
+    logger.info('🔊 Reinitializing content script');
     try {
       this.cleanup();
       this.initializeConnection();
@@ -820,7 +849,7 @@ export class ContentManager {
 
       // Recreate UIManager since cleanup destroyed the previous instance
       this.uiManager = UIManager.initialize(this.messageHandler);
-      console.log('🔧 ContentManager: Recreated UIManager after cleanup');
+      logger.info('🔧 ContentManager: Recreated UIManager after cleanup');
 
       // Re-setup event listeners
       this.setupEventListeners();
@@ -828,7 +857,7 @@ export class ContentManager {
 
       this.messageHandler.sendMessage('CONTENT_SCRIPT_READY');
     } catch (error) {
-      console.error('Error reinitializing content script:', error);
+      logger.error('Error reinitializing content script:', error);
       this.handleInitializationError(error);
     }
   }
@@ -838,15 +867,15 @@ export class ContentManager {
    * Triggered by Ctrl+Shift+D
    */
   private debugNotifications(): void {
-    console.log('🔧 Debug: Testing notification systems...');
+    logger.debug('🔧 Debug: Testing notification systems...');
 
     if (!this.uiManager) {
-      console.error('🔧 Debug: UIManager not available');
+      logger.error('🔧 Debug: UIManager not available');
       return;
     }
 
     // Test regular notification
-    console.log('🔧 Debug: Testing regular notification...');
+    logger.debug('🔧 Debug: Testing regular notification...');
     this.uiManager.showNotification({
       type: 'info',
       message: '🔧 Debug: Regular notification test',
@@ -855,7 +884,7 @@ export class ContentManager {
 
     // Test upload status notification
     setTimeout(() => {
-      console.log('🔧 Debug: Testing upload status notification...');
+      logger.debug('🔧 Debug: Testing upload status notification...');
       this.uiManager?.updateUploadStatus({
         status: 'uploading',
         progress: 50,
@@ -865,7 +894,7 @@ export class ContentManager {
 
     // Test success notification
     setTimeout(() => {
-      console.log('🔧 Debug: Testing success notification...');
+      logger.debug('🔧 Debug: Testing success notification...');
       this.uiManager?.showNotification({
         type: 'success',
         message: '🔧 Debug: Success notification test',
@@ -875,7 +904,7 @@ export class ContentManager {
 
     // Test upload completion
     setTimeout(() => {
-      console.log('🔧 Debug: Testing upload completion...');
+      logger.debug('🔧 Debug: Testing upload completion...');
       this.uiManager?.updateUploadStatus({
         status: 'success',
         progress: 100,
@@ -885,18 +914,18 @@ export class ContentManager {
 
     // Check DOM for notification containers
     setTimeout(() => {
-      console.log('🔧 Debug: Checking DOM for notification containers...');
+      logger.debug('🔧 Debug: Checking DOM for notification containers...');
       const notificationContainers = document.querySelectorAll(
         '[id*="bolt-to-github-notification-container"]'
       );
       const uploadContainers = document.querySelectorAll('#bolt-to-github-upload-status-container');
 
-      console.log('🔧 Debug: Found notification containers:', notificationContainers.length);
-      console.log('🔧 Debug: Found upload containers:', uploadContainers.length);
+      logger.debug('🔧 Debug: Found notification containers:', notificationContainers.length);
+      logger.debug('🔧 Debug: Found upload containers:', uploadContainers.length);
 
       notificationContainers.forEach((container, index) => {
         const rect = container.getBoundingClientRect();
-        console.log(`🔧 Debug: Notification container ${index}:`, {
+        logger.debug(`🔧 Debug: Notification container ${index}:`, {
           id: container.id,
           visible: rect.width > 0 && rect.height > 0,
           position: { top: rect.top, right: rect.right, width: rect.width, height: rect.height },
@@ -907,7 +936,7 @@ export class ContentManager {
 
       uploadContainers.forEach((container, index) => {
         const rect = container.getBoundingClientRect();
-        console.log(`🔧 Debug: Upload container ${index}:`, {
+        logger.debug(`🔧 Debug: Upload container ${index}:`, {
           id: container.id,
           visible: rect.width > 0 && rect.height > 0,
           position: { top: rect.top, right: rect.right, width: rect.width, height: rect.height },
@@ -923,7 +952,7 @@ export class ContentManager {
    * Triggered by Ctrl+Shift+R
    */
   private debugRecovery(): void {
-    console.log('🔧 Debug: Testing recovery mechanism...');
+    logger.debug('🔧 Debug: Testing recovery mechanism...');
 
     // Simulate extension context invalidation
     this.handleExtensionContextInvalidated();

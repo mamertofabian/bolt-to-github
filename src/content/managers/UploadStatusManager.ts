@@ -3,6 +3,9 @@ import type { SvelteComponent, ComponentPosition } from '../types/UITypes';
 import type { IUploadStatusManager } from '../types/ManagerInterfaces';
 import type { UIStateManager } from '../services/UIStateManager';
 import UploadStatus from '../UploadStatus.svelte';
+import { createLogger } from '../../lib/utils/logger';
+
+const logger = createLogger('UploadStatusManager');
 
 /**
  * UploadStatusManager handles the UploadStatus component lifecycle and state management
@@ -28,11 +31,11 @@ export class UploadStatusManager implements IUploadStatusManager {
    * Replaces the previous initializeUploadStatus method from UIManager
    */
   public initialize(): void {
-    console.log('🔊 Initializing upload status');
+    logger.info('🔊 Initializing upload status');
 
     // Clean up existing instance if any
     if (this.uploadStatusComponent) {
-      console.log('Destroying existing upload status component');
+      logger.info('Destroying existing upload status component');
       this.uploadStatusComponent.$destroy();
       this.uploadStatusComponent = null;
     }
@@ -40,7 +43,7 @@ export class UploadStatusManager implements IUploadStatusManager {
     // Remove existing container if any
     const existingContainer = document.getElementById('bolt-to-github-upload-status-container');
     if (existingContainer) {
-      console.log('Removing existing upload status container');
+      logger.info('Removing existing upload status container');
       existingContainer.remove();
     }
 
@@ -51,7 +54,7 @@ export class UploadStatusManager implements IUploadStatusManager {
 
     const initComponent = () => {
       if (!document.body.contains(target)) {
-        console.log('Appending upload status container to body');
+        logger.info('Appending upload status container to body');
         document.body.appendChild(target);
       }
 
@@ -67,9 +70,9 @@ export class UploadStatusManager implements IUploadStatusManager {
           },
         }) as SvelteComponent;
 
-        console.log('🔊 Upload status component created successfully');
+        logger.info('🔊 Upload status component created successfully');
       } catch (error) {
-        console.error('🔊 Error creating upload status component:', error);
+        logger.error('🔊 Error creating upload status component:', error);
       }
     };
 
@@ -78,7 +81,7 @@ export class UploadStatusManager implements IUploadStatusManager {
       initComponent();
     } else {
       // If body isn't available, wait for it
-      console.log('Waiting for body to be available');
+      logger.info('Waiting for body to be available');
       document.addEventListener('DOMContentLoaded', initComponent);
     }
   }
@@ -88,11 +91,11 @@ export class UploadStatusManager implements IUploadStatusManager {
    * Replaces the previous updateUploadStatus and updateUploadStatusInternal methods from UIManager
    */
   public updateStatus(status: UploadStatusState): void {
-    console.log('🔊 Updating upload status:', status);
+    logger.info('🔊 Updating upload status:', status);
 
     // If component doesn't exist, initialize it first
     if (!this.uploadStatusComponent) {
-      console.log('🔊 Upload status component not found, initializing');
+      logger.info('🔊 Upload status component not found, initializing');
       this.initialize();
 
       // Add a small delay to ensure component is mounted before updating
@@ -113,20 +116,20 @@ export class UploadStatusManager implements IUploadStatusManager {
     // Ensure the container is visible in the DOM
     const container = document.getElementById('bolt-to-github-upload-status-container');
     if (!container || !document.body.contains(container)) {
-      console.log('🔊 Upload status container not in DOM, reinitializing');
+      logger.info('🔊 Upload status container not in DOM, reinitializing');
       this.initialize();
 
       // Add a slightly longer delay to ensure component is fully mounted
       setTimeout(() => {
         if (this.uploadStatusComponent) {
-          console.log('🔊 Setting upload status after initialization:', status);
+          logger.info('🔊 Setting upload status after initialization:', status);
           this.uploadStatusComponent.$set({ status });
         }
       }, 100);
       return;
     }
 
-    console.log('🔊 Setting upload status:', status);
+    logger.info('🔊 Setting upload status:', status);
 
     // Update the component immediately if it exists
     if (this.uploadStatusComponent) {
@@ -184,7 +187,7 @@ export class UploadStatusManager implements IUploadStatusManager {
    * Cleanup the upload status component and resources
    */
   public cleanup(): void {
-    console.log('🔊 Cleaning up upload status manager');
+    logger.info('🔊 Cleaning up upload status manager');
 
     // Cleanup upload status component
     if (this.uploadStatusComponent) {

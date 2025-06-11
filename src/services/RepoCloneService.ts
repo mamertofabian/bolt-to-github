@@ -3,6 +3,9 @@ import type { IFileService } from './interfaces/IFileService';
 import type { IRepoCloneService } from './interfaces/IRepoCloneService';
 import { Queue } from '../lib/Queue';
 import { RateLimitHandler } from './RateLimitHandler';
+import { createLogger } from '../lib/utils/logger';
+
+const logger = createLogger('RepoCloneService');
 
 /**
  * Service for cloning repository contents
@@ -64,7 +67,7 @@ export class RepoCloneService implements IRepoCloneService {
         totalFiles
       );
     } catch (error) {
-      console.error('Failed to clone repository contents:', error);
+      logger.error('Failed to clone repository contents:', error);
       throw new Error(
         `Failed to clone repository contents: ${error instanceof Error ? error.message : 'Unknown error'}`
       );
@@ -87,7 +90,7 @@ export class RepoCloneService implements IRepoCloneService {
 
       // If reset is happening soon (within 2 minutes), wait for it
       if (waitTime <= 120) {
-        console.log(`Waiting ${waitTime} seconds for rate limit reset...`);
+        logger.info(`Waiting ${waitTime} seconds for rate limit reset...`);
         await rateLimitHandler.sleep(waitTime * 1000);
         // Recheck rate limit after waiting
         const newRateLimit = await this.apiClient.request('GET', '/rate_limit');

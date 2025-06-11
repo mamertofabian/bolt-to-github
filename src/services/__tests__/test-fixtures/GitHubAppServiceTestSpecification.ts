@@ -52,9 +52,13 @@ export const authenticationScenarios: TestScenario[] = [
     description: 'Should handle invalid authorization code gracefully',
     category: 'auth',
     setup: (env) => {
-      env.fetchMock.setResponse('/functions/v1/github-app-auth', {
-        error: 'Invalid authorization code',
-      }, 400);
+      env.fetchMock.setResponse(
+        '/functions/v1/github-app-auth',
+        {
+          error: 'Invalid authorization code',
+        },
+        400
+      );
     },
     execute: (service) => service.completeOAuthFlow('code_invalid_xxxxxxxxxxxx'),
     assertions: (result) => {
@@ -152,13 +156,17 @@ export const tokenManagementScenarios: TestScenario[] = [
           access_token: 'sb_access_token_1234567890',
         },
       });
-      env.fetchMock.setResponse('/functions/v1/get-github-token', {
-        error: 'Failed to renew access token',
-        code: 'TOKEN_RENEWAL_FAILED',
-        details: 'Refresh token is invalid or expired',
-      }, 401);
+      env.fetchMock.setResponse(
+        '/functions/v1/get-github-token',
+        {
+          error: 'Failed to renew access token',
+          code: 'TOKEN_RENEWAL_FAILED',
+          details: 'Refresh token is invalid or expired',
+        },
+        401
+      );
     },
-    execute: (service) => service.getAccessToken().catch(e => e),
+    execute: (service) => service.getAccessToken().catch((e) => e),
     assertions: (result) => {
       expect(result).toBeInstanceOf(Error);
       expect(result.message).toContain('Re-authentication required');
@@ -238,9 +246,7 @@ export const installationScenarios: TestScenario[] = [
           contents: 'write',
           metadata: 'read',
         },
-        repositories: [
-          { id: 987654321, name: 'allowed-repo', full_name: 'testuser/allowed-repo' },
-        ],
+        repositories: [{ id: 987654321, name: 'allowed-repo', full_name: 'testuser/allowed-repo' }],
       });
     },
     execute: (service) => service.getInstallationToken(),
@@ -342,7 +348,7 @@ export const errorScenarios: TestScenario[] = [
         throw new Error('Network error: Failed to fetch');
       });
     },
-    execute: (service) => service.getAccessToken().catch(e => e),
+    execute: (service) => service.getAccessToken().catch((e) => e),
     assertions: (result) => {
       expect(result).toBeInstanceOf(Error);
       expect(result.message).toContain('Network error');
@@ -355,7 +361,7 @@ export const errorScenarios: TestScenario[] = [
     setup: (env) => {
       env.storage.clear();
     },
-    execute: (service) => service.getAccessToken().catch(e => e),
+    execute: (service) => service.getAccessToken().catch((e) => e),
     assertions: (result) => {
       expect(result).toBeInstanceOf(Error);
       expect(result.message).toContain('No user token available');
@@ -381,10 +387,15 @@ export const errorScenarios: TestScenario[] = [
         type: 'github_app',
         renewed: false,
       });
-      env.fetchMock.setResponse('https://api.github.com/user', {
-        message: 'API rate limit exceeded',
-        documentation_url: 'https://docs.github.com/rest/overview/resources-in-the-rest-api#rate-limiting',
-      }, 403);
+      env.fetchMock.setResponse(
+        'https://api.github.com/user',
+        {
+          message: 'API rate limit exceeded',
+          documentation_url:
+            'https://docs.github.com/rest/overview/resources-in-the-rest-api#rate-limiting',
+        },
+        403
+      );
     },
     execute: (service) => service.validateAuth(),
     assertions: (result) => {
@@ -424,13 +435,15 @@ export const edgeCaseScenarios: TestScenario[] = [
       });
     },
     execute: async (service) => {
-      const promises = Array(5).fill(null).map(() => service.getAccessToken());
+      const promises = Array(5)
+        .fill(null)
+        .map(() => service.getAccessToken());
       return Promise.all(promises);
     },
     assertions: (results) => {
       expect(results).toHaveLength(5);
       // All calls should return a valid token
-      results.forEach(result => {
+      results.forEach((result) => {
         expect(result.access_token).toMatch(/^ghs_renewed_/);
         expect(result.renewed).toBe(true);
       });
@@ -444,10 +457,13 @@ export const edgeCaseScenarios: TestScenario[] = [
       const originalSet = env.storage.set;
       env.storage.set = () => Promise.reject(new Error('QUOTA_BYTES_PER_ITEM quota exceeded'));
     },
-    execute: (service) => service.storeConfig({
-      installationId: 12345678,
-      accessToken: 'ghs_'.padEnd(10000, 'x'), // Very large token
-    }).catch(e => e),
+    execute: (service) =>
+      service
+        .storeConfig({
+          installationId: 12345678,
+          accessToken: 'ghs_'.padEnd(10000, 'x'), // Very large token
+        })
+        .catch((e) => e),
     assertions: (result) => {
       expect(result).toBeInstanceOf(Error);
       expect(result.message).toContain('Failed to store GitHub App configuration');
@@ -469,7 +485,7 @@ export const edgeCaseScenarios: TestScenario[] = [
         token: 'ghs_1234567890',
       });
     },
-    execute: (service) => service.getAccessToken().catch(e => e),
+    execute: (service) => service.getAccessToken().catch((e) => e),
     assertions: (result) => {
       // Should either handle gracefully or throw appropriate error
       expect(result.access_token || result.message).toBeTruthy();
@@ -482,7 +498,7 @@ export const edgeCaseScenarios: TestScenario[] = [
 // ===========================
 
 export function buildTestSuite(scenarios: TestScenario[]) {
-  return scenarios.map(scenario => ({
+  return scenarios.map((scenario) => ({
     ...scenario,
     test: async (env: GitHubAppServiceTestEnvironment) => {
       try {

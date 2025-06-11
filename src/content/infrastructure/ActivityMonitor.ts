@@ -2,6 +2,10 @@
  * ActivityMonitor detects user and Bolt AI activity to determine when it's appropriate
  * to show push reminders without interrupting active work.
  */
+import { createLogger } from '../../lib/utils/logger';
+
+const logger = createLogger('ActivityMonitor');
+
 export class ActivityMonitor {
   private lastUserActivity: number = Date.now();
   private lastBoltActivity: number = Date.now();
@@ -104,12 +108,12 @@ export class ActivityMonitor {
             attributes: true,
             attributeFilter: ['class', 'data-testid'],
           });
-          console.log('🔊 ActivityMonitor: Started observing document.body for Bolt activity');
+          logger.info('🔊 ActivityMonitor: Started observing document.body for Bolt activity');
         } catch (error) {
-          console.error('ActivityMonitor: Failed to observe document.body:', error);
+          logger.error('ActivityMonitor: Failed to observe document.body:', error);
         }
       } else {
-        console.warn('ActivityMonitor: document.body not available, retrying...');
+        logger.warn('ActivityMonitor: document.body not available, retrying...');
         // Retry after a short delay
         setTimeout(startObserving, 100);
       }
@@ -218,7 +222,7 @@ export class ActivityMonitor {
       try {
         listener();
       } catch (error) {
-        console.error('Error in activity listener:', error);
+        logger.error('Error in activity listener:', error);
       }
     });
   }
@@ -228,7 +232,7 @@ export class ActivityMonitor {
    */
   public start(): void {
     this.isMonitoring = true;
-    console.log(
+    logger.info(
       '🔊 Activity monitor started - thresholds: user',
       this.USER_IDLE_THRESHOLD / 60000,
       'min, bolt',
@@ -250,7 +254,7 @@ export class ActivityMonitor {
       this.boltActivityObserver = null;
     }
 
-    console.log('🔊 Activity monitor stopped');
+    logger.info('🔊 Activity monitor stopped');
   }
 
   /**

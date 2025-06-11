@@ -1,5 +1,8 @@
 import type { GitHubSettingsInterface, ProjectSettings } from '../types';
 import type { PushStatistics } from '../types';
+import { createLogger } from '../utils/logger';
+
+const logger = createLogger('chromeStorage');
 
 // Storage Keys
 export const STORAGE_KEYS = {
@@ -55,7 +58,7 @@ export class ChromeStorageService {
         githubAppAvatarUrl: localResult[STORAGE_KEYS.GITHUB_APP_AVATAR_URL],
       };
     } catch (error) {
-      console.error('Error getting GitHub settings from storage:', error);
+      logger.error('Error getting GitHub settings from storage:', error);
       return {
         githubToken: '',
         repoOwner: '',
@@ -104,7 +107,7 @@ export class ChromeStorageService {
           : Promise.resolve(),
       ]);
     } catch (error) {
-      console.error('Error saving GitHub settings to storage:', error);
+      logger.error('Error saving GitHub settings to storage:', error);
       throw error;
     }
   }
@@ -120,7 +123,7 @@ export class ChromeStorageService {
       const projectSettings: ProjectSettings = result[STORAGE_KEYS.PROJECT_SETTINGS] || {};
       return projectSettings[projectId] || null;
     } catch (error) {
-      console.error('Error getting project settings from storage:', error);
+      logger.error('Error getting project settings from storage:', error);
       return null;
     }
   }
@@ -143,7 +146,7 @@ export class ChromeStorageService {
         [STORAGE_KEYS.PROJECT_SETTINGS]: projectSettings,
       });
     } catch (error) {
-      console.error('Error saving project settings to storage:', error);
+      logger.error('Error saving project settings to storage:', error);
       throw error;
     }
   }
@@ -156,7 +159,7 @@ export class ChromeStorageService {
       const result = await chrome.storage.sync.get(STORAGE_KEYS.PROJECT_ID);
       return result[STORAGE_KEYS.PROJECT_ID] || null;
     } catch (error) {
-      console.error('Error getting current project ID from storage:', error);
+      logger.error('Error getting current project ID from storage:', error);
       return null;
     }
   }
@@ -170,7 +173,7 @@ export class ChromeStorageService {
         [STORAGE_KEYS.PROJECT_ID]: projectId,
       });
     } catch (error) {
-      console.error('Error saving current project ID to storage:', error);
+      logger.error('Error saving current project ID to storage:', error);
       throw error;
     }
   }
@@ -183,7 +186,7 @@ export class ChromeStorageService {
       const result = await chrome.storage.local.get(STORAGE_KEYS.PENDING_FILE_CHANGES);
       return result[STORAGE_KEYS.PENDING_FILE_CHANGES] || null;
     } catch (error) {
-      console.error('Error getting pending file changes from storage:', error);
+      logger.error('Error getting pending file changes from storage:', error);
       return null;
     }
   }
@@ -197,7 +200,7 @@ export class ChromeStorageService {
         [STORAGE_KEYS.PENDING_FILE_CHANGES]: fileChanges,
       });
     } catch (error) {
-      console.error('Error saving pending file changes to storage:', error);
+      logger.error('Error saving pending file changes to storage:', error);
       throw error;
     }
   }
@@ -209,7 +212,7 @@ export class ChromeStorageService {
     try {
       await chrome.storage.local.remove(STORAGE_KEYS.PENDING_FILE_CHANGES);
     } catch (error) {
-      console.error('Error clearing pending file changes from storage:', error);
+      logger.error('Error clearing pending file changes from storage:', error);
       throw error;
     }
   }
@@ -222,7 +225,7 @@ export class ChromeStorageService {
       const result = await chrome.storage.local.get(STORAGE_KEYS.STORED_FILE_CHANGES);
       return result[STORAGE_KEYS.STORED_FILE_CHANGES] || null;
     } catch (error) {
-      console.error('Error getting stored file changes from storage:', error);
+      logger.error('Error getting stored file changes from storage:', error);
       return null;
     }
   }
@@ -238,7 +241,7 @@ export class ChromeStorageService {
         [STORAGE_KEYS.STORED_FILE_CHANGES]: dataToSave,
       });
     } catch (error) {
-      console.error('Error saving stored file changes to storage:', error);
+      logger.error('Error saving stored file changes to storage:', error);
       throw error;
     }
   }
@@ -250,7 +253,7 @@ export class ChromeStorageService {
     try {
       await chrome.storage.local.remove(STORAGE_KEYS.STORED_FILE_CHANGES);
     } catch (error) {
-      console.error('Error clearing stored file changes from storage:', error);
+      logger.error('Error clearing stored file changes from storage:', error);
       throw error;
     }
   }
@@ -263,7 +266,7 @@ export class ChromeStorageService {
       const storage = useLocal ? chrome.storage.local : chrome.storage.sync;
       return await storage.get(keys);
     } catch (error) {
-      console.error('Error getting data from storage:', error);
+      logger.error('Error getting data from storage:', error);
       return {};
     }
   }
@@ -276,7 +279,7 @@ export class ChromeStorageService {
       const storage = useLocal ? chrome.storage.local : chrome.storage.sync;
       await storage.set(data);
     } catch (error) {
-      console.error('Error setting data in storage:', error);
+      logger.error('Error setting data in storage:', error);
       throw error;
     }
   }
@@ -289,7 +292,7 @@ export class ChromeStorageService {
       const storage = useLocal ? chrome.storage.local : chrome.storage.sync;
       await storage.remove(keys);
     } catch (error) {
-      console.error('Error removing data from storage:', error);
+      logger.error('Error removing data from storage:', error);
       throw error;
     }
   }
@@ -302,7 +305,7 @@ export class ChromeStorageService {
       const storage = useLocal ? chrome.storage.local : chrome.storage.sync;
       await storage.clear();
     } catch (error) {
-      console.error('Error clearing storage:', error);
+      logger.error('Error clearing storage:', error);
       throw error;
     }
   }
@@ -322,7 +325,7 @@ export class ChromeStorageService {
         }
       );
     } catch (error) {
-      console.error('Error getting push statistics from storage:', error);
+      logger.error('Error getting push statistics from storage:', error);
       return {
         totalAttempts: 0,
         totalSuccesses: 0,
@@ -341,7 +344,7 @@ export class ChromeStorageService {
         [STORAGE_KEYS.PUSH_STATISTICS]: statistics,
       });
     } catch (error) {
-      console.error('Error saving push statistics to storage:', error);
+      logger.error('Error saving push statistics to storage:', error);
       throw error;
     }
   }
@@ -353,7 +356,7 @@ export class ChromeStorageService {
     try {
       await chrome.storage.local.remove(STORAGE_KEYS.PUSH_STATISTICS);
     } catch (error) {
-      console.error('Error clearing push statistics from storage:', error);
+      logger.error('Error clearing push statistics from storage:', error);
       throw error;
     }
   }
@@ -370,7 +373,7 @@ export class ChromeStorageService {
       const result = await chrome.storage.local.get(STORAGE_KEYS.AUTHENTICATION_METHOD);
       return result[STORAGE_KEYS.AUTHENTICATION_METHOD] || 'pat';
     } catch (error) {
-      console.error('Error getting authentication method from storage:', error);
+      logger.error('Error getting authentication method from storage:', error);
       return 'pat';
     }
   }
@@ -384,7 +387,7 @@ export class ChromeStorageService {
         [STORAGE_KEYS.AUTHENTICATION_METHOD]: method,
       });
     } catch (error) {
-      console.error('Error setting authentication method in storage:', error);
+      logger.error('Error setting authentication method in storage:', error);
       throw error;
     }
   }
@@ -410,7 +413,7 @@ export class ChromeStorageService {
         hasMultiple: hasPAT && hasGitHubApp,
       };
     } catch (error) {
-      console.error('Error checking multiple auth methods:', error);
+      logger.error('Error checking multiple auth methods:', error);
       return {
         hasPAT: false,
         hasGitHubApp: false,
@@ -462,7 +465,7 @@ export class ChromeStorageService {
         scopes: result[STORAGE_KEYS.GITHUB_APP_SCOPES],
       };
     } catch (error) {
-      console.error('Error getting GitHub App config from storage:', error);
+      logger.error('Error getting GitHub App config from storage:', error);
       return {};
     }
   }
@@ -516,7 +519,7 @@ export class ChromeStorageService {
         await chrome.storage.local.set(dataToSave);
       }
     } catch (error) {
-      console.error('Error saving GitHub App config to storage:', error);
+      logger.error('Error saving GitHub App config to storage:', error);
       throw error;
     }
   }
@@ -538,7 +541,7 @@ export class ChromeStorageService {
         STORAGE_KEYS.GITHUB_APP_SCOPES,
       ]);
     } catch (error) {
-      console.error('Error clearing GitHub App config from storage:', error);
+      logger.error('Error clearing GitHub App config from storage:', error);
       throw error;
     }
   }
@@ -565,7 +568,7 @@ export class ChromeStorageService {
         lastPrompt: result[STORAGE_KEYS.LAST_MIGRATION_PROMPT],
       };
     } catch (error) {
-      console.error('Error getting migration prompt status:', error);
+      logger.error('Error getting migration prompt status:', error);
       return { shown: false };
     }
   }
@@ -580,7 +583,7 @@ export class ChromeStorageService {
         [STORAGE_KEYS.LAST_MIGRATION_PROMPT]: new Date().toISOString(),
       });
     } catch (error) {
-      console.error('Error marking migration prompt as shown:', error);
+      logger.error('Error marking migration prompt as shown:', error);
       throw error;
     }
   }
@@ -595,7 +598,7 @@ export class ChromeStorageService {
         STORAGE_KEYS.LAST_MIGRATION_PROMPT,
       ]);
     } catch (error) {
-      console.error('Error resetting migration prompt status:', error);
+      logger.error('Error resetting migration prompt status:', error);
       throw error;
     }
   }

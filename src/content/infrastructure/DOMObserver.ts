@@ -2,6 +2,10 @@
  * DOMObserver handles DOM mutation observation and initialization retry logic
  * Previously part of UIManager
  */
+import { createLogger } from '../../lib/utils/logger';
+
+const logger = createLogger('DOMObserver');
+
 export class DOMObserver {
   private observer: MutationObserver | null = null;
   private timeoutId: number | null = null;
@@ -24,7 +28,7 @@ export class DOMObserver {
    */
   public start(callback: () => void, onError?: () => void): void {
     if (this.isObserving) {
-      console.warn('DOMObserver is already observing');
+      logger.warn('DOMObserver is already observing');
       return;
     }
 
@@ -33,7 +37,7 @@ export class DOMObserver {
         callback();
         this.retryCount = 0; // Reset count on success
       } catch (error) {
-        console.warn('Initialization attempt failed:', error);
+        logger.warn('Initialization attempt failed:', error);
         if (this.retryCount < this.maxRetries) {
           this.retryCount++;
           this.timeoutId = window.setTimeout(attemptInitialization, this.retryDelay);

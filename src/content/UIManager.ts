@@ -1,4 +1,3 @@
-/* eslint-disable no-console */
 import type { UploadStatusState } from '$lib/types';
 import type { MessageHandler } from './MessageHandler';
 
@@ -15,6 +14,11 @@ import { ComponentLifecycleManager } from './infrastructure/ComponentLifecycleMa
 import { UIStateManager } from './services/UIStateManager';
 import { PushReminderService } from './services/PushReminderService';
 import { PremiumService } from './services/PremiumService';
+import { WhatsNewManager } from './managers/WhatsNewManager';
+import { UIElementFactory } from './infrastructure/UIElementFactory';
+import { createLogger } from '$lib/utils/logger';
+
+const logger = createLogger('UIManager');
 
 export class UIManager {
   private static instance: UIManager | null = null;
@@ -40,6 +44,7 @@ export class UIManager {
   // Add services
   private pushReminderService: PushReminderService;
   private premiumService: PremiumService;
+  private whatsNewManager: WhatsNewManager;
 
   // Store original history functions for cleanup
   private originalPushState: typeof history.pushState | null = null;
@@ -91,12 +96,30 @@ export class UIManager {
     );
 
     // Initialize PushReminderService
-    console.log('🔊 Initializing PushReminderService');
+    logger.info('🔊 Initializing PushReminderService');
     this.pushReminderService = new PushReminderService(messageHandler, this.notificationManager);
 
     // Initialize PremiumService
-    console.log('🔊 Initializing PremiumService');
+    logger.info('🔊 Initializing PremiumService');
     this.premiumService = new PremiumService();
+
+    // Initialize WhatsNewManager
+    logger.info('🔊 Initializing WhatsNewManager');
+    this.whatsNewManager = new WhatsNewManager(this.componentLifecycleManager, {
+      createRootContainer: (id: string) =>
+        UIElementFactory.createContainer({
+          id,
+          styles: {
+            position: 'fixed',
+            top: '0',
+            left: '0',
+            width: '100%',
+            height: '100%',
+            pointerEvents: 'none',
+            zIndex: '9999',
+          },
+        }),
+    });
 
     // Set UIManager reference in PremiumService for component updates
     this.premiumService.setUIManager(this);
@@ -143,7 +166,7 @@ export class UIManager {
   // Reset instance (useful for testing or cleanup)
   static resetInstance(): void {
     if (UIManager.instance) {
-      console.log('🔧 UIManager: Resetting singleton instance');
+      logger.info('🔧 UIManager: Resetting singleton instance');
       UIManager.instance.cleanup();
       UIManager.instance = null;
     }
@@ -155,10 +178,13 @@ export class UIManager {
   }
 
   private async initializeUI() {
-    console.log('🔊 Initializing UI');
+    logger.info('🔊 Initializing UI');
     this.uploadStatusManager.initialize();
     // Don't initialize button here - let DOM observer handle it
     // to prevent duplicate buttons during recovery
+
+    // Check and show What's New modal if needed
+    await this.whatsNewManager.checkAndShow();
   }
 
   private startDOMObservation() {
@@ -171,7 +197,7 @@ export class UIManager {
         // Enhanced detection: Check if we're on a project page
         const isProjectPage = this.isOnProjectPage();
 
-        console.log('🔊 DOM change detected:', {
+        logger.info('🔊 DOM change detected:', {
           hasButton: !!button,
           hasContainer: !!buttonContainer,
           isProjectPage,
@@ -183,11 +209,11 @@ export class UIManager {
         // 2. We have a button container (indicating project UI is loaded)
         // 3. We're actually on a project page
         if (!button && buttonContainer && isProjectPage) {
-          console.log('🔊 Initializing GitHub button for new project');
+          logger.info('🔊 Initializing GitHub button for new project');
           this.githubButtonManager.initialize();
         } else if (!button && !buttonContainer && isProjectPage) {
           // Project page detected but container not ready yet - this is normal during page load
-          console.log('🔊 Project page detected, waiting for container to be ready');
+          logger.info('🔊 Project page detected, waiting for container to be ready');
         }
       },
       () => {
@@ -224,7 +250,7 @@ export class UIManager {
    * Handle upgrade prompt for premium features
    */
   public async handleUpgradePrompt(feature: string): Promise<void> {
-    console.log('🔊 Handling upgrade prompt for feature:', feature);
+    logger.info('🔊 Handling upgrade prompt for feature:', feature);
 
     try {
       // Map feature names to upgrade modal types
@@ -253,9 +279,9 @@ export class UIManager {
         feature: modalType,
       });
 
-      console.log('✅ Upgrade modal request sent for feature:', feature);
+      logger.info('✅ Upgrade modal request sent for feature:', feature);
     } catch (error) {
-      console.error('❌ Failed to trigger upgrade modal:', error);
+      logger.error('❌ Failed to trigger upgrade modal:', error);
 
       // Fallback: show notification with upgrade button
       this.notificationManager.showUpgradeNotification({
@@ -270,7 +296,7 @@ export class UIManager {
             try {
               chrome.tabs.create({ url: 'https://bolt2github.com/upgrade' });
             } catch (tabsError) {
-              console.error('❌ All upgrade URL methods failed:', tabsError);
+              logger.error('❌ All upgrade URL methods failed:', tabsError);
             }
           }
         },
@@ -286,7 +312,7 @@ export class UIManager {
     actionText: string;
     actionUrl: string;
   }): void {
-    console.log('🔐 Showing re-authentication modal:', data);
+    logger.info('🔐 Showing re-authentication modal:', data);
 
     /* Create and show a styled modal notification with action button */
     const modalElement = document.createElement('div');
@@ -471,6 +497,7 @@ export class UIManager {
 
     // Cleanup services
     this.pushReminderService.cleanup();
+    this.whatsNewManager.cleanup();
 
     // Restore original history functions
     if (this.originalPushState && this.originalReplaceState) {
@@ -482,7 +509,7 @@ export class UIManager {
   }
 
   public reinitialize() {
-    console.log('🔊 Reinitializing UI manager');
+    logger.info('🔊 Reinitializing UI manager');
     this.cleanup();
     this.setupURLChangeDetection();
     this.initializeUI();
@@ -591,6 +618,13 @@ export class UIManager {
   }
 
   /**
+   * Get WhatsNewManager for external access
+   */
+  public getWhatsNewManager(): WhatsNewManager {
+    return this.whatsNewManager;
+  }
+
+  /**
    * Check if user has premium access (for UI display)
    */
   public isPremium(): boolean {
@@ -655,7 +689,7 @@ export class UIManager {
       setTimeout(() => this.handleUrlChange(), 0);
     };
 
-    console.log('🔊 URL change detection set up for SPA navigation');
+    logger.info('🔊 URL change detection set up for SPA navigation');
   }
 
   /**
@@ -666,7 +700,7 @@ export class UIManager {
     const newProjectId = this.extractProjectIdFromUrl(newUrl);
     const isProjectPage = this.isOnProjectPage();
 
-    console.log('🔊 URL changed:', {
+    logger.info('🔊 URL changed:', {
       newUrl,
       newProjectId,
       isProjectPage,
@@ -675,20 +709,20 @@ export class UIManager {
 
     // If we're now on a project page and don't have a button, try to initialize
     if (isProjectPage && !document.querySelector('[data-github-upload]')) {
-      console.log('🔊 New project detected via URL change, attempting button initialization');
+      logger.info('🔊 New project detected via URL change, attempting button initialization');
 
       // Use a small delay to let the DOM settle after navigation
       setTimeout(() => {
         const buttonContainer = document.querySelector('div.flex.grow-1.basis-60 div.flex.gap-2');
         if (buttonContainer && !document.querySelector('[data-github-upload]')) {
-          console.log('🔊 Initializing GitHub button after URL change');
+          logger.info('🔊 Initializing GitHub button after URL change');
           this.githubButtonManager.initialize();
         }
       }, 250);
     }
     // If we're no longer on a project page and have a button, clean it up
     else if (!isProjectPage && document.querySelector('[data-github-upload]')) {
-      console.log('🔊 Left project page, cleaning up GitHub button');
+      logger.info('🔊 Left project page, cleaning up GitHub button');
       const button = document.querySelector('[data-github-upload]');
       if (button) {
         button.remove();

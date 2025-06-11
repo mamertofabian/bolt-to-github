@@ -2,9 +2,12 @@
  * Utility functions for file operations
  */
 import type { ProjectFiles } from './types';
+import { createLogger } from './utils/logger';
 
 // Import ignore package statically instead of dynamically to work in service workers
 import ignore from 'ignore';
+
+const logger = createLogger('FileUtils');
 
 /**
  * Process files according to gitignore rules
@@ -68,7 +71,7 @@ export function processFilesWithGitignore(files: ProjectFiles): ProjectFiles {
       processedFiles.set(normalizedPath, content);
     }
   } catch (error) {
-    console.error('Error processing files with gitignore:', error);
+    logger.error('Error processing files with gitignore:', error);
     // If error occurs with ignore package, return files as-is
     return new Map(files);
   }
@@ -96,7 +99,7 @@ export function decodeBase64ToUtf8(base64Content: string): string {
     const decoder = new TextDecoder('utf-8');
     return decoder.decode(bytes);
   } catch (error) {
-    console.warn('Failed to decode base64 content as UTF-8, falling back to atob:', error);
+    logger.warn('Failed to decode base64 content as UTF-8, falling back to atob:', error);
     // Fallback to atob if UTF-8 decoding fails
     return atob(base64Content);
   }

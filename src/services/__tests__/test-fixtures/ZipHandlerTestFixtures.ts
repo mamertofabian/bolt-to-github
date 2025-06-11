@@ -1,9 +1,4 @@
-import type { 
-  ProcessingStatus, 
-  UploadStatusState, 
-  ProjectSettings,
-  PushRecord 
-} from '$lib/types';
+import type { ProcessingStatus, UploadStatusState, ProjectSettings, PushRecord } from '$lib/types';
 import type { UnifiedGitHubService } from '../../UnifiedGitHubService';
 import type { GitHubComparisonService } from '../../GitHubComparisonService';
 
@@ -16,29 +11,52 @@ import type { GitHubComparisonService } from '../../GitHubComparisonService';
 export const ZIP_FILE_FIXTURES = {
   // Normal cases
   simpleProject: new Map<string, string>([
-    ['project/index.html', '<!DOCTYPE html><html><head><title>Test</title></head><body><h1>Hello World</h1></body></html>'],
+    [
+      'project/index.html',
+      '<!DOCTYPE html><html><head><title>Test</title></head><body><h1>Hello World</h1></body></html>',
+    ],
     ['project/style.css', 'body { margin: 0; padding: 0; font-family: Arial, sans-serif; }'],
     ['project/script.js', 'console.log("Hello from Bolt!");'],
     ['project/README.md', '# Test Project\n\nThis is a test project created with Bolt.'],
   ]),
 
   typescriptProject: new Map<string, string>([
-    ['project/src/index.ts', 'export function greet(name: string): string {\n  return `Hello, ${name}!`;\n}'],
-    ['project/src/types.ts', 'export interface User {\n  id: number;\n  name: string;\n  email: string;\n}'],
-    ['project/tsconfig.json', JSON.stringify({
-      compilerOptions: {
-        target: 'es2020',
-        module: 'commonjs',
-        strict: true,
-        esModuleInterop: true,
-      }
-    }, null, 2)],
-    ['project/package.json', JSON.stringify({
-      name: 'test-project',
-      version: '1.0.0',
-      main: 'dist/index.js',
-      scripts: { build: 'tsc' }
-    }, null, 2)],
+    [
+      'project/src/index.ts',
+      'export function greet(name: string): string {\n  return `Hello, ${name}!`;\n}',
+    ],
+    [
+      'project/src/types.ts',
+      'export interface User {\n  id: number;\n  name: string;\n  email: string;\n}',
+    ],
+    [
+      'project/tsconfig.json',
+      JSON.stringify(
+        {
+          compilerOptions: {
+            target: 'es2020',
+            module: 'commonjs',
+            strict: true,
+            esModuleInterop: true,
+          },
+        },
+        null,
+        2
+      ),
+    ],
+    [
+      'project/package.json',
+      JSON.stringify(
+        {
+          name: 'test-project',
+          version: '1.0.0',
+          main: 'dist/index.js',
+          scripts: { build: 'tsc' },
+        },
+        null,
+        2
+      ),
+    ],
   ]),
 
   // Edge cases
@@ -46,7 +64,10 @@ export const ZIP_FILE_FIXTURES = {
     const files = new Map<string, string>();
     // Create 100 files to test batch processing
     for (let i = 0; i < 100; i++) {
-      files.set(`project/src/component${i}.js`, `export const Component${i} = () => { return 'Component ${i}'; };`);
+      files.set(
+        `project/src/component${i}.js`,
+        `export const Component${i} = () => { return 'Component ${i}'; };`
+      );
     }
     files.set('project/index.js', 'console.log("Large project");');
     return files;
@@ -78,7 +99,10 @@ export const ZIP_FILE_FIXTURES = {
 
   projectWithDeeplyNested: new Map<string, string>([
     ['project/a/b/c/d/e/f/g/h/i/j/k/file.txt', 'Deeply nested file'],
-    ['project/src/components/ui/buttons/primary/PrimaryButton.tsx', 'export const PrimaryButton = () => <button>Click</button>;'],
+    [
+      'project/src/components/ui/buttons/primary/PrimaryButton.tsx',
+      'export const PrimaryButton = () => <button>Click</button>;',
+    ],
   ]),
 };
 
@@ -86,7 +110,7 @@ export const ZIP_FILE_FIXTURES = {
 export function createTestBlob(files: Map<string, string>, options?: { corrupt?: boolean }): Blob {
   if (options?.corrupt) {
     // Return a corrupted blob that will fail to unzip
-    const blob = new Blob([new Uint8Array([0xFF, 0xFF, 0xFF, 0xFF])], { type: 'application/zip' });
+    const blob = new Blob([new Uint8Array([0xff, 0xff, 0xff, 0xff])], { type: 'application/zip' });
     // Add our content for the mock
     (blob as any)._content = 'corrupted';
     return blob;
@@ -121,7 +145,10 @@ export const GITHUB_API_RESPONSES = {
 
   commit: {
     sha: 'abc123def456',
-    tree: { sha: 'tree123', url: 'https://api.github.com/repos/test-owner/test-repo/git/trees/tree123' },
+    tree: {
+      sha: 'tree123',
+      url: 'https://api.github.com/repos/test-owner/test-repo/git/trees/tree123',
+    },
     parents: [{ sha: 'parent123' }],
     message: 'Initial commit',
   },
@@ -168,7 +195,8 @@ export const GITHUB_API_RESPONSES = {
 
   error403: {
     message: 'API rate limit exceeded',
-    documentation_url: 'https://docs.github.com/rest/overview/resources-in-the-rest-api#rate-limiting',
+    documentation_url:
+      'https://docs.github.com/rest/overview/resources-in-the-rest-api#rate-limiting',
   },
 };
 
@@ -198,12 +226,20 @@ export const STATUS_UPDATE_FIXTURES: UploadStatusState[] = [
   { status: 'idle' as ProcessingStatus, progress: 0, message: '' },
   { status: 'uploading' as ProcessingStatus, progress: 0, message: 'Processing ZIP file...' },
   { status: 'uploading' as ProcessingStatus, progress: 10, message: 'Preparing files...' },
-  { status: 'uploading' as ProcessingStatus, progress: 30, message: 'Analyzing repository changes...' },
+  {
+    status: 'uploading' as ProcessingStatus,
+    progress: 30,
+    message: 'Analyzing repository changes...',
+  },
   { status: 'uploading' as ProcessingStatus, progress: 40, message: 'Creating file blobs...' },
   { status: 'uploading' as ProcessingStatus, progress: 70, message: 'Creating tree...' },
   { status: 'uploading' as ProcessingStatus, progress: 80, message: 'Creating commit...' },
   { status: 'uploading' as ProcessingStatus, progress: 90, message: 'Updating branch...' },
-  { status: 'success' as ProcessingStatus, progress: 100, message: 'Successfully uploaded files to GitHub' },
+  {
+    status: 'success' as ProcessingStatus,
+    progress: 100,
+    message: 'Successfully uploaded files to GitHub',
+  },
   { status: 'error' as ProcessingStatus, progress: 0, message: 'Failed to upload files' },
 ];
 

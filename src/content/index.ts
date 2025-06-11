@@ -1,7 +1,9 @@
 // src/content/index.ts
 import { ContentManager } from './ContentManager';
+import { createLogger } from '$lib/utils/logger';
 
-console.log('🚀 Content script initializing...');
+const logger = createLogger('ContentScript');
+logger.info('🚀 Content script initializing...');
 
 let manager: ContentManager | null = null;
 let analyticsInitialized = false;
@@ -17,7 +19,7 @@ function sendAnalyticsToBackground(eventType: string, eventData: any) {
       eventData,
     });
   } catch (error) {
-    console.error('Failed to send analytics to background:', error);
+    logger.error('Failed to send analytics to background:', error);
   }
 }
 
@@ -42,9 +44,9 @@ async function initializeAnalytics() {
     }
 
     analyticsInitialized = true;
-    console.log('📊 Analytics initialized in content script');
+    logger.info('📊 Analytics initialized in content script');
   } catch (error) {
-    console.error('Failed to initialize analytics:', error);
+    logger.error('Failed to initialize analytics:', error);
   }
 }
 
@@ -55,24 +57,24 @@ function initializeContentManager() {
   try {
     // Ensure we have the minimum DOM elements needed
     if (!document.body) {
-      console.warn('🔊 document.body not available yet, retrying...');
+      logger.warn('🔊 document.body not available yet, retrying...');
       setTimeout(initializeContentManager, 100);
       return;
     }
 
     // Check if chrome runtime is available to avoid context invalidation errors
     if (!chrome.runtime?.id) {
-      console.warn('🔊 Chrome runtime not available, extension context may be invalidated');
+      logger.warn('🔊 Chrome runtime not available, extension context may be invalidated');
       return;
     }
 
     manager = new ContentManager();
-    console.log('🔊 ContentManager initialized successfully');
+    logger.info('🔊 ContentManager initialized successfully');
 
     // Initialize analytics after content manager is ready
     initializeAnalytics();
   } catch (error) {
-    console.error('🔊 Error initializing ContentManager:', error);
+    logger.error('🔊 Error initializing ContentManager:', error);
 
     // Check if this is an extension context error
     if (
@@ -80,7 +82,7 @@ function initializeContentManager() {
       (error.message.includes('Extension context invalidated') ||
         error.message.includes('chrome-extension://invalid/'))
     ) {
-      console.log(
+      logger.info(
         '🔊 Extension context invalidated during initialization - user should refresh page'
       );
     }
@@ -108,14 +110,12 @@ document.addEventListener('visibilitychange', () => {
     // Check if extension context is still valid when page becomes visible
     try {
       if (!chrome.runtime?.id) {
-        console.warn(
-          '🔊 Extension context invalid after visibility change - manager needs refresh'
-        );
+        logger.warn('🔊 Extension context invalid after visibility change - manager needs refresh');
         manager = null;
         initializeContentManager();
       }
     } catch (error) {
-      console.warn('🔊 Extension context check failed after visibility change:', error);
+      logger.warn('🔊 Extension context check failed after visibility change:', error);
     }
   }
 });
@@ -123,7 +123,7 @@ document.addEventListener('visibilitychange', () => {
 // Listen for extension lifecycle events
 if (chrome.runtime?.onStartup) {
   chrome.runtime.onStartup.addListener(() => {
-    console.log('🔊 Extension startup detected, reinitializing...');
+    logger.info('🔊 Extension startup detected, reinitializing...');
     manager = null;
     initializeContentManager();
   });
@@ -132,14 +132,14 @@ if (chrome.runtime?.onStartup) {
 // Handle browser focus events which can indicate service worker restart
 window.addEventListener('focus', () => {
   if (!manager) {
-    console.log('🔊 Window focus detected without manager, reinitializing...');
+    logger.info('🔊 Window focus detected without manager, reinitializing...');
     initializeContentManager();
   }
 });
 
 // Export for extension updates/reloads if needed
 export const onExecute = ({ perf }: { perf: { injectTime: number; loadTime: number } }) => {
-  console.log('🚀 Content script reinitializing...', perf);
+  logger.info('🚀 Content script reinitializing...', perf);
   if (manager) {
     manager.reinitialize();
   } else {

@@ -2,6 +2,9 @@
 
 import { SUPABASE_CONFIG } from '../../lib/constants/supabase';
 import { githubSettingsActions } from '../../lib/stores/githubSettings';
+import { createLogger } from '../../lib/utils/logger';
+
+const logger = createLogger('SupabaseAuthService');
 
 export interface SupabaseUser {
   id: string;
@@ -76,7 +79,7 @@ export class SupabaseAuthService {
    * Initialize the service and start checking for authentication
    */
   private async initialize(): Promise<void> {
-    console.log('🔐 Initializing Supabase auth service (hybrid mode)');
+    logger.info('🔐 Initializing Supabase auth service (hybrid mode)');
 
     /* Load cached auth state */
     await this.loadCachedAuthState();
@@ -102,10 +105,10 @@ export class SupabaseAuthService {
       const result = await chrome.storage.local.get(['supabaseAuthState']);
       if (result.supabaseAuthState) {
         this.authState = { ...this.authState, ...result.supabaseAuthState };
-        console.log('📋 Loaded cached auth state:', this.authState.isAuthenticated);
+        logger.info('📋 Loaded cached auth state:', this.authState.isAuthenticated);
       }
     } catch (error) {
-      console.warn('Failed to load cached auth state:', error);
+      logger.error('Failed to load cached auth state:', error);
     }
   }
 
@@ -116,7 +119,7 @@ export class SupabaseAuthService {
     try {
       await chrome.storage.local.set({ supabaseAuthState: this.authState });
     } catch (error) {
-      console.warn('Failed to save auth state:', error);
+      logger.error('Failed to save auth state:', error);
     }
   }
 
@@ -142,7 +145,7 @@ export class SupabaseAuthService {
     this.checkInterval = setInterval(() => {
       this.checkAuthStatus();
     }, interval);
-    console.log(
+    logger.info(
       `🔄 Started auth checks every ${interval / 1000}s (${this.authState.subscription.isActive ? 'premium' : this.authState.isAuthenticated ? 'authenticated' : 'unauthenticated'})`
     );
   }
@@ -155,11 +158,11 @@ export class SupabaseAuthService {
     try {
       /* Only monitor if user is not authenticated */
       if (this.authState.isAuthenticated) {
-        console.log('🔐 User already authenticated, skipping initial auth detection');
+        logger.info('🔐 User already authenticated, skipping initial auth detection');
         return;
       }
 
-      console.log('🔍 Setting up initial authentication detection for bolt2github.com');
+      logger.info('🔍 Setting up initial authentication detection for bolt2github.com');
 
       /* Listen for bolt2github.com tab loads to capture initial authentication */
       chrome.tabs.onUpdated.addListener(async (tabId, changeInfo, tab) => {
@@ -170,13 +173,13 @@ export class SupabaseAuthService {
           tab.url &&
           tab.url.includes('bolt2github.com')
         ) {
-          console.log('🔍 Detected bolt2github.com page load, checking for authentication...');
+          logger.info('🔍 Detected bolt2github.com page load, checking for authentication...');
 
           /* Give a moment for the page to fully load and set localStorage */
           setTimeout(async () => {
             const tokenData = await this.extractTokenFromTab(tabId);
             if (tokenData?.access_token) {
-              console.log('✅ Found authentication tokens on bolt2github.com, storing...');
+              logger.info('✅ Found authentication tokens on bolt2github.com, storing...');
               await this.storeTokenData(tokenData);
 
               /* Force immediate auth check with new tokens */
@@ -184,16 +187,16 @@ export class SupabaseAuthService {
 
               /* If now authenticated, we can stop monitoring bolt2github.com */
               if (this.authState.isAuthenticated) {
-                console.log('🎉 Initial authentication successful - extension now independent');
+                logger.info('🎉 Initial authentication successful - extension now independent');
               }
             }
           }, 1000); /* 1 second delay for page load */
         }
       });
 
-      console.log('🔍 Initial authentication detection active (monitoring bolt2github.com)');
+      logger.info('🔍 Initial authentication detection active (monitoring bolt2github.com)');
     } catch (error) {
-      console.warn('Failed to setup initial authentication detection:', error);
+      logger.error('Failed to setup initial authentication detection:', error);
     }
   }
 
@@ -215,7 +218,7 @@ export class SupabaseAuthService {
             tab.url.includes('bolt2github.com/checkout') ||
             tab.url.includes('bolt2github.com/subscription'))
         ) {
-          console.log('💰 Detected upgrade/billing page, checking subscription status...');
+          logger.info('💰 Detected upgrade/billing page, checking subscription status...');
 
           /* Give a moment for any backend processing to complete */
           setTimeout(async () => {
@@ -224,16 +227,16 @@ export class SupabaseAuthService {
 
             /* If subscription status changed, notify user immediately */
             if (!wasActive && this.authState.subscription.isActive) {
-              console.log('🎉 Subscription upgraded! Notifying user...');
+              logger.info('🎉 Subscription upgraded! Notifying user...');
               await this.notifySubscriptionUpgrade();
             }
           }, 2000); /* 2 second delay for backend processing */
         }
       });
 
-      console.log('💰 Setup subscription upgrade detection for billing pages');
+      logger.info('💰 Setup subscription upgrade detection for billing pages');
     } catch (error) {
-      console.warn('Failed to setup subscription upgrade detection:', error);
+      logger.error('Failed to setup subscription upgrade detection:', error);
     }
   }
 
@@ -261,9 +264,9 @@ export class SupabaseAuthService {
             });
         }
       }
-      console.log('📢 Sent subscription upgrade notifications');
+      logger.info('📢 Sent subscription upgrade notifications');
     } catch (error) {
-      console.warn('Failed to send subscription upgrade notification:', error);
+      logger.error('Failed to send subscription upgrade notification:', error);
     }
   }
 
@@ -272,23 +275,23 @@ export class SupabaseAuthService {
    */
   private async checkAuthStatus(): Promise<void> {
     try {
-      console.log('🔄 Checking authentication status...');
+      logger.info('🔄 Checking authentication status...');
 
       /* Try to get authentication token from various sources */
       const token = await this.getAuthToken();
 
       if (token) {
-        console.log('🔐 Found authentication token');
+        logger.info('🔐 Found authentication token');
 
         /* Verify token and get user info */
         const user = await this.verifyTokenAndGetUser(token);
         if (user) {
-          console.log(`👤 Verified user: ${user.email}`);
+          logger.info(`👤 Verified user: ${user.email}`);
 
           /* Get subscription status using the user info */
           const subscription = await this.getSubscriptionStatus(token, user);
 
-          console.log(
+          logger.info(
             `💰 Subscription status: ${subscription.isActive ? 'active' : 'inactive'} (${subscription.plan})`
           );
 
@@ -301,7 +304,7 @@ export class SupabaseAuthService {
           /* Check for GitHub App installation and sync */
           await this.checkGitHubAppInstallation(token);
         } else {
-          console.log('❌ Token verification failed');
+          logger.error('❌ Token verification failed');
           this.updateAuthState({
             isAuthenticated: false,
             user: null,
@@ -309,7 +312,7 @@ export class SupabaseAuthService {
           });
         }
       } else {
-        console.log('❌ No authentication token found');
+        logger.error('❌ No authentication token found');
         this.updateAuthState({
           isAuthenticated: false,
           user: null,
@@ -317,7 +320,7 @@ export class SupabaseAuthService {
         });
       }
     } catch (error) {
-      console.error('Error checking auth status:', error);
+      logger.error('Error checking auth status:', error);
     }
   }
 
@@ -326,7 +329,7 @@ export class SupabaseAuthService {
    */
   private async getAuthToken(): Promise<string | null> {
     try {
-      console.log('🔐 Getting auth token (hybrid mode)');
+      logger.info('🔐 Getting auth token (hybrid mode)');
 
       /* Method 1: Check stored tokens first */
       const storedToken = await this.getValidStoredToken();
@@ -342,20 +345,20 @@ export class SupabaseAuthService {
 
       /* Method 3: If not authenticated, check bolt2github.com tabs as fallback */
       if (!this.authState.isAuthenticated) {
-        console.log('🔍 No stored tokens found, checking bolt2github.com tabs...');
+        logger.info('🔍 No stored tokens found, checking bolt2github.com tabs...');
         const tabToken = await this.extractTokenFromActiveTabs();
         if (tabToken) {
-          console.log('✅ Found token in bolt2github.com tab, storing for future use');
+          logger.info('✅ Found token in bolt2github.com tab, storing for future use');
           await this.storeTokenData(tabToken);
           return tabToken.access_token;
         }
       }
 
       /* No tokens available - user needs to authenticate */
-      console.log('❌ No authentication tokens available - user needs to authenticate');
+      logger.error('❌ No authentication tokens available - user needs to authenticate');
       return null;
     } catch (error) {
-      console.warn('Error getting auth token:', error);
+      logger.error('Error getting auth token:', error);
       return null;
     }
   }
@@ -381,17 +384,17 @@ export class SupabaseAuthService {
 
       if (expiry > now + 5 * 60 * 1000) {
         /* Token valid for more than 5 minutes */
-        console.log('✅ Using stored access token (valid)');
+        logger.info('✅ Using stored access token (valid)');
         return storedTokens.supabaseToken;
       } else if (storedTokens.supabaseRefreshToken) {
         /* Token expired or expires soon, try to refresh */
-        console.log('🔄 Stored token expired/expiring, refreshing...');
+        logger.info('🔄 Stored token expired/expiring, refreshing...');
         return await this.refreshStoredToken();
       }
 
       return null;
     } catch (error) {
-      console.warn('Error getting valid stored token:', error);
+      logger.error('Error getting valid stored token:', error);
       return null;
     }
   }
@@ -413,20 +416,20 @@ export class SupabaseAuthService {
       /* Only store refresh token if it exists and is not empty */
       if (tokenData.refresh_token && tokenData.refresh_token.trim() !== '') {
         storageData.supabaseRefreshToken = tokenData.refresh_token;
-        console.log('💾 Storing refresh token (length:', tokenData.refresh_token.length, ')');
+        logger.info('💾 Storing refresh token (length:', tokenData.refresh_token.length, ')');
       } else {
-        console.warn('⚠️ No valid refresh token to store');
+        logger.error('⚠️ No valid refresh token to store');
       }
 
       await chrome.storage.local.set(storageData);
 
-      console.log('💾 Stored token data in chrome storage:', {
+      logger.info('💾 Stored token data in chrome storage:', {
         hasAccessToken: !!tokenData.access_token,
         hasRefreshToken: !!tokenData.refresh_token,
         expiresAt: new Date(expiresAt),
       });
     } catch (error) {
-      console.warn('Failed to store token data:', error);
+      logger.error('Failed to store token data:', error);
     }
   }
 
@@ -435,32 +438,32 @@ export class SupabaseAuthService {
    */
   private async extractTokenFromActiveTabs(): Promise<TokenData | null> {
     try {
-      console.log('🔍 Looking for authentication tokens in bolt2github.com tabs...');
+      logger.info('🔍 Looking for authentication tokens in bolt2github.com tabs...');
 
       const tabs = await chrome.tabs.query({ url: 'https://bolt2github.com/*' });
-      console.log(`🔍 Found ${tabs.length} bolt2github.com tabs`);
+      logger.info(`🔍 Found ${tabs.length} bolt2github.com tabs`);
 
       if (tabs.length === 0) {
-        console.log('❌ No bolt2github.com tabs found');
+        logger.error('❌ No bolt2github.com tabs found');
         return null;
       }
 
       for (const tab of tabs) {
         if (tab.id) {
-          console.log(`🔍 Checking tab ${tab.id}: ${tab.url}`);
+          logger.info(`🔍 Checking tab ${tab.id}: ${tab.url}`);
           const tokenData = await this.extractTokenFromTab(tab.id);
 
           if (tokenData?.access_token) {
-            console.log('✅ Found valid tokens in tab');
+            logger.info('✅ Found valid tokens in tab');
             return tokenData;
           }
         }
       }
 
-      console.log('❌ No valid tokens found in any bolt2github.com tabs');
+      logger.error('❌ No valid tokens found in any bolt2github.com tabs');
       return null;
     } catch (error) {
-      console.warn('Error extracting tokens from active tabs:', error);
+      logger.error('Error extracting tokens from active tabs:', error);
       return null;
     }
   }
@@ -473,17 +476,48 @@ export class SupabaseAuthService {
       /* Extract project reference from Supabase URL */
       const projectRef = this.supabaseUrl.split('://')[1].split('.')[0];
 
+      /* Context Separation: chrome.scripting.executeScript runs the function 
+      in the target web page's JavaScript context, not in the Chrome extension's context. 
+      Missing Dependencies: The logger object is created in the extension context 
+      with createLogger('SupabaseAuthService') but doesn't exist in the web page context. */
       const result = await chrome.scripting.executeScript({
         target: { tabId },
         func: (projectRef: string) => {
-          console.log(`🔍 Starting token extraction for project: ${projectRef}`);
+          /* Collect logs to return to extension */
+          const logs: Array<{ level: 'info' | 'error'; message: string; data?: any }> = [];
+          const log = (message: string, data?: any) => {
+            const logEntry: any = { level: 'info', message };
+            if (data !== undefined) {
+              logEntry.data = data;
+            }
+            logs.push(logEntry);
+            if (data !== undefined) {
+              console.log(message, data);
+            } else {
+              console.log(message);
+            }
+          };
+          const logError = (message: string, data?: any) => {
+            const logEntry: any = { level: 'error', message };
+            if (data !== undefined) {
+              logEntry.data = data;
+            }
+            logs.push(logEntry);
+            if (data !== undefined) {
+              console.error(message, data);
+            } else {
+              console.error(message);
+            }
+          };
+
+          log(`🔍 Starting token extraction for project: ${projectRef}`);
 
           /* List all localStorage keys for debugging */
           const allKeys = Object.keys(localStorage);
           const supabaseKeys = allKeys.filter(
             (key) => key.includes('supabase') || key.includes('sb-') || key.includes('auth')
           );
-          console.log(
+          log(
             `🔍 Found ${allKeys.length} localStorage keys, ${supabaseKeys.length} Supabase-related:`,
             supabaseKeys
           );
@@ -491,30 +525,36 @@ export class SupabaseAuthService {
           /* Method 1: Check for project-specific auth token */
           const sessionKey = `sb-${projectRef}-auth-token`;
           let session = localStorage.getItem(sessionKey);
-          console.log(`🔍 Checking key: ${sessionKey}`, session ? 'Found' : 'Not found');
+          log(`🔍 Checking key: ${sessionKey}`, session ? 'Found' : 'Not found');
 
           if (session) {
-            console.log('✅ Found auth token with project-specific key');
+            log('✅ Found auth token with project-specific key');
             try {
               const parsed = JSON.parse(session);
-              console.log('📋 Parsed session structure:', Object.keys(parsed));
+              log('📋 Parsed session structure:', Object.keys(parsed));
 
               return {
-                access_token: parsed.access_token || parsed.token,
-                refresh_token: parsed.refresh_token,
-                expires_at: parsed.expires_at,
-                expires_in: parsed.expires_in,
+                tokenData: {
+                  access_token: parsed.access_token || parsed.token,
+                  refresh_token: parsed.refresh_token,
+                  expires_at: parsed.expires_at,
+                  expires_in: parsed.expires_in,
+                },
+                logs,
               };
             } catch (error) {
-              console.warn('❌ Failed to parse project-specific session:', error);
-              return { access_token: session, refresh_token: undefined };
+              logError('❌ Failed to parse project-specific session:', error);
+              return {
+                tokenData: { access_token: session, refresh_token: undefined },
+                logs,
+              };
             }
           }
 
           /* Method 2: Check for session in user object format */
           const userSessionKey = `sb-${projectRef}-auth-user`;
           const userSession = localStorage.getItem(userSessionKey);
-          console.log(
+          log(
             `🔍 Checking user session key: ${userSessionKey}`,
             userSession ? 'Found' : 'Not found'
           );
@@ -522,21 +562,24 @@ export class SupabaseAuthService {
           if (userSession) {
             try {
               const userParsed = JSON.parse(userSession);
-              console.log('📋 User session structure:', Object.keys(userParsed));
+              log('📋 User session structure:', Object.keys(userParsed));
 
               if (userParsed.session) {
                 const sessionData = userParsed.session;
-                console.log('📋 Session data structure:', Object.keys(sessionData));
+                log('📋 Session data structure:', Object.keys(sessionData));
 
                 return {
-                  access_token: sessionData.access_token,
-                  refresh_token: sessionData.refresh_token,
-                  expires_at: sessionData.expires_at,
-                  expires_in: sessionData.expires_in,
+                  tokenData: {
+                    access_token: sessionData.access_token,
+                    refresh_token: sessionData.refresh_token,
+                    expires_at: sessionData.expires_at,
+                    expires_in: sessionData.expires_in,
+                  },
+                  logs,
                 };
               }
             } catch (error) {
-              console.warn('❌ Failed to parse user session:', error);
+              logError('❌ Failed to parse user session:', error);
             }
           }
 
@@ -550,36 +593,42 @@ export class SupabaseAuthService {
 
           for (const key of genericKeys) {
             session = localStorage.getItem(key);
-            console.log(`🔍 Checking generic key: ${key}`, session ? 'Found' : 'Not found');
+            log(`🔍 Checking generic key: ${key}`, session ? 'Found' : 'Not found');
 
             if (session) {
               try {
                 const parsed = JSON.parse(session);
-                console.log('📋 Generic session structure:', Object.keys(parsed));
+                log('📋 Generic session structure:', Object.keys(parsed));
 
                 /* Handle different session structures */
                 const sessionData = parsed.session || parsed;
 
                 if (sessionData.access_token || sessionData.token) {
                   return {
-                    access_token: sessionData.access_token || sessionData.token,
-                    refresh_token: sessionData.refresh_token,
-                    expires_at: sessionData.expires_at,
-                    expires_in: sessionData.expires_in,
+                    tokenData: {
+                      access_token: sessionData.access_token || sessionData.token,
+                      refresh_token: sessionData.refresh_token,
+                      expires_at: sessionData.expires_at,
+                      expires_in: sessionData.expires_in,
+                    },
+                    logs,
                   };
                 }
               } catch (error) {
-                console.warn(`❌ Failed to parse session for key ${key}:`, error);
+                logError(`❌ Failed to parse session for key ${key}:`, error);
                 /* If JSON parsing fails but we have a string, treat as direct token */
                 if (typeof session === 'string' && session.length > 20) {
-                  return { access_token: session, refresh_token: undefined };
+                  return {
+                    tokenData: { access_token: session, refresh_token: undefined },
+                    logs,
+                  };
                 }
               }
             }
           }
 
           /* Method 4: Search through all localStorage for Supabase patterns */
-          console.log('🔍 Searching all localStorage keys for Supabase sessions...');
+          log('🔍 Searching all localStorage keys for Supabase sessions...');
           for (const key of allKeys) {
             if ((key.includes('supabase') || key.includes('sb-')) && key.includes('auth')) {
               const value = localStorage.getItem(key);
@@ -587,15 +636,18 @@ export class SupabaseAuthService {
                 try {
                   const parsed = JSON.parse(value);
                   if (parsed && (parsed.access_token || parsed.token || parsed.session)) {
-                    console.log(`✅ Found potential session in key: ${key}`);
+                    log(`✅ Found potential session in key: ${key}`);
 
                     const sessionData = parsed.session || parsed;
                     if (sessionData.access_token || sessionData.token) {
                       return {
-                        access_token: sessionData.access_token || sessionData.token,
-                        refresh_token: sessionData.refresh_token,
-                        expires_at: sessionData.expires_at,
-                        expires_in: sessionData.expires_in,
+                        tokenData: {
+                          access_token: sessionData.access_token || sessionData.token,
+                          refresh_token: sessionData.refresh_token,
+                          expires_at: sessionData.expires_at,
+                          expires_in: sessionData.expires_in,
+                        },
+                        logs,
                       };
                     }
                   }
@@ -606,25 +658,51 @@ export class SupabaseAuthService {
             }
           }
 
-          console.log('❌ No auth token found in localStorage after exhaustive search');
-          return null;
+          logError('❌ No auth token found in localStorage after exhaustive search');
+          return { tokenData: null, logs };
         },
         args: [projectRef],
       });
 
-      const tokenData = result[0]?.result || null;
+      const scriptResult = result[0]?.result || null;
 
-      if (tokenData) {
-        console.log('🎯 Successfully extracted token data:', {
-          hasAccessToken: !!tokenData.access_token,
-          hasRefreshToken: !!tokenData.refresh_token,
-          expiresAt: tokenData.expires_at,
-        });
+      if (scriptResult) {
+        /* Process logs from injected script */
+        if (scriptResult.logs) {
+          for (const logEntry of scriptResult.logs) {
+            if (logEntry.level === 'error') {
+              if (logEntry.data !== undefined) {
+                logger.error(logEntry.message, logEntry.data);
+              } else {
+                logger.error(logEntry.message);
+              }
+            } else {
+              if (logEntry.data !== undefined) {
+                logger.info(logEntry.message, logEntry.data);
+              } else {
+                logger.info(logEntry.message);
+              }
+            }
+          }
+        }
+
+        /* Extract token data */
+        const tokenData = scriptResult.tokenData;
+
+        if (tokenData) {
+          logger.info('🎯 Successfully extracted token data:', {
+            hasAccessToken: !!tokenData.access_token,
+            hasRefreshToken: !!tokenData.refresh_token,
+            expiresAt: tokenData.expires_at,
+          });
+        }
+
+        return tokenData;
       }
 
-      return tokenData;
+      return null;
     } catch (error) {
-      console.warn('Failed to extract token from tab:', error);
+      logger.error('Failed to extract token from tab:', error);
       return null;
     }
   }
@@ -638,14 +716,14 @@ export class SupabaseAuthService {
       const refreshToken = result.supabaseRefreshToken;
 
       if (!refreshToken) {
-        console.warn('❌ No stored refresh token available');
+        logger.warn('❌ No stored refresh token available');
         return null;
       }
 
-      console.log('🔄 Attempting to refresh stored token...');
+      logger.info('🔄 Attempting to refresh stored token...');
       return await this.performTokenRefresh(refreshToken);
     } catch (error) {
-      console.error('❌ Error refreshing stored token:', error);
+      logger.error('❌ Error refreshing stored token:', error);
       return null;
     }
   }
@@ -668,7 +746,7 @@ export class SupabaseAuthService {
 
       if (response.ok) {
         const data = await response.json();
-        console.log('✅ Token refresh successful');
+        logger.info('✅ Token refresh successful');
 
         /* Store the new tokens */
         if (data.access_token) {
@@ -684,7 +762,7 @@ export class SupabaseAuthService {
         return data.access_token;
       } else {
         const errorData = await response.json().catch(() => ({}));
-        console.warn('❌ Token refresh failed:', response.status, errorData);
+        logger.warn('❌ Token refresh failed:', response.status, errorData);
 
         /* If refresh failed, clear stored tokens */
         await chrome.storage.local.remove([
@@ -695,7 +773,7 @@ export class SupabaseAuthService {
         return null;
       }
     } catch (error) {
-      console.error('❌ Error performing token refresh:', error);
+      logger.error('❌ Error performing token refresh:', error);
       return null;
     }
   }
@@ -726,21 +804,21 @@ export class SupabaseAuthService {
         };
       } else if (response.status === 403) {
         const errorData = await response.json().catch(() => ({}));
-        console.warn('🔐 Token verification failed (403):', errorData);
+        logger.warn('🔐 Token verification failed (403):', errorData);
 
         /* Check if session is completely invalidated (user logged out) */
         if (errorData.error_code === 'session_not_found') {
-          console.log('🚫 Session invalidated - user logged out from bolt2github.com');
+          logger.info('🚫 Session invalidated - user logged out from bolt2github.com');
           await this.handleSessionInvalidation();
           return null;
         }
 
         /* Check if it's an expired token error that can be refreshed */
         if (errorData.error_code === 'bad_jwt' || errorData.msg?.includes('expired')) {
-          console.log('🔄 Token expired, attempting to refresh...');
+          logger.info('🔄 Token expired, attempting to refresh...');
           const refreshedToken = await this.refreshStoredToken();
           if (refreshedToken) {
-            console.log('✅ Token refreshed successfully, retrying verification');
+            logger.info('✅ Token refreshed successfully, retrying verification');
             return this.verifyTokenAndGetUser(refreshedToken);
           }
         }
@@ -748,7 +826,7 @@ export class SupabaseAuthService {
 
       return null;
     } catch (error) {
-      console.error('Error verifying token:', error);
+      logger.error('Error verifying token:', error);
       return null;
     }
   }
@@ -785,23 +863,23 @@ export class SupabaseAuthService {
 
       if (response.ok) {
         const data = await response.json();
-        console.log('🔍 Raw subscription response:', data);
+        logger.info('🔍 Raw subscription response:', data);
 
         /* Handle array response from RPC function */
         const subscriptionData = Array.isArray(data) ? data[0] : data;
 
         if (!subscriptionData) {
-          console.log('⚠️ No subscription data found in response');
+          logger.warn('⚠️ No subscription data found in response');
           return { isActive: false, plan: 'free' };
         }
 
-        console.log('📋 Parsed subscription data:', subscriptionData);
+        logger.info('📋 Parsed subscription data:', subscriptionData);
 
         /* Map the response to our SubscriptionStatus interface */
         const isActive = subscriptionData.subscription_status === 'active';
         const plan = this.mapPlanName(subscriptionData.plan_name);
 
-        console.log(`💰 Subscription parsed: isActive=${isActive}, plan=${plan}`);
+        logger.info(`💰 Subscription parsed: isActive=${isActive}, plan=${plan}`);
 
         return {
           isActive,
@@ -812,21 +890,21 @@ export class SupabaseAuthService {
         };
       } else if (response.status === 403) {
         const errorData = await response.json().catch(() => ({}));
-        console.warn('🔐 Subscription check failed (403):', errorData);
+        logger.warn('🔐 Subscription check failed (403):', errorData);
 
         /* Check if session is completely invalidated */
         if (errorData.error_code === 'session_not_found') {
-          console.log('🚫 Session invalidated during subscription check');
+          logger.info('🚫 Session invalidated during subscription check');
           await this.handleSessionInvalidation();
           return { isActive: false, plan: 'free' };
         }
 
         /* Check if it's an expired token error that can be refreshed */
         if (errorData.error_code === 'bad_jwt' || errorData.msg?.includes('expired')) {
-          console.log('🔄 Token expired during subscription check, attempting to refresh...');
+          logger.info('🔄 Token expired during subscription check, attempting to refresh...');
           const refreshedToken = await this.refreshStoredToken();
           if (refreshedToken) {
-            console.log('✅ Token refreshed, retrying subscription check');
+            logger.info('✅ Token refreshed, retrying subscription check');
             return this.getSubscriptionStatus(refreshedToken, user);
           }
         }
@@ -834,7 +912,7 @@ export class SupabaseAuthService {
 
       return { isActive: false, plan: 'free' };
     } catch (error) {
-      console.error('Error getting subscription status:', error);
+      logger.error('Error getting subscription status:', error);
       return { isActive: false, plan: 'free' };
     }
   }
@@ -856,21 +934,21 @@ export class SupabaseAuthService {
     if (!planName) return 'free';
 
     const lowerPlan = planName.toLowerCase();
-    console.log(`🔍 Mapping plan name: "${planName}" -> "${lowerPlan}"`);
+    logger.info(`🔍 Mapping plan name: "${planName}" -> "${lowerPlan}"`);
 
     if (
       lowerPlan.includes('yearly') ||
       lowerPlan.includes('annual') ||
       lowerPlan.includes('pro annual')
     ) {
-      console.log('📅 Mapped to yearly plan');
+      logger.info('📅 Mapped to yearly plan');
       return 'yearly';
     } else if (lowerPlan.includes('monthly') || lowerPlan.includes('pro monthly')) {
-      console.log('📅 Mapped to monthly plan');
+      logger.info('📅 Mapped to monthly plan');
       return 'monthly';
     }
 
-    console.log('📅 Mapped to free plan (fallback)');
+    logger.info('📅 Mapped to free plan (fallback)');
     return 'free';
   }
 
@@ -886,7 +964,7 @@ export class SupabaseAuthService {
 
     /* Log changes */
     if (previousState.isAuthenticated !== this.authState.isAuthenticated) {
-      console.log(
+      logger.info(
         `🔐 Auth status changed: ${this.authState.isAuthenticated ? 'authenticated' : 'unauthenticated'}`
       );
 
@@ -896,15 +974,15 @@ export class SupabaseAuthService {
       /* If user became authenticated, they no longer need initial auth detection */
       /* If user became unauthenticated, restart initial auth detection */
       if (this.authState.isAuthenticated && !previousState.isAuthenticated) {
-        console.log('🎉 User authenticated - extension now independent from bolt2github.com');
+        logger.info('🎉 User authenticated - extension now independent from bolt2github.com');
       } else if (!this.authState.isAuthenticated && previousState.isAuthenticated) {
-        console.log('🔄 User unauthenticated - restarting initial auth detection');
+        logger.info('🔄 User unauthenticated - restarting initial auth detection');
         this.setupInitialAuthDetection();
       }
     }
 
     if (previousState.subscription.isActive !== this.authState.subscription.isActive) {
-      console.log(
+      logger.info(
         `💰 Subscription status changed: ${this.authState.subscription.isActive ? 'active' : 'inactive'} (${this.authState.subscription.plan})`
       );
     }
@@ -944,9 +1022,9 @@ export class SupabaseAuthService {
             lastUpdated: Date.now(),
           },
         });
-        console.log('✅ Updated popup premium status directly in storage:', premiumStatusData);
+        logger.info('✅ Updated popup premium status directly in storage:', premiumStatusData);
       } catch (storageError) {
-        console.warn('Failed to update popup premium status in storage:', storageError);
+        logger.warn('Failed to update popup premium status in storage:', storageError);
       }
 
       /* Also send message to content script to update premium status on bolt.new tabs */
@@ -964,7 +1042,7 @@ export class SupabaseAuthService {
         }
       }
     } catch (error) {
-      console.warn('Error notifying premium service:', error);
+      logger.error('Error notifying premium service:', error);
     }
   }
 
@@ -987,7 +1065,7 @@ export class SupabaseAuthService {
    * Force a manual check of authentication status
    */
   public async forceCheck(): Promise<void> {
-    console.log('🔄 Forcing auth status check');
+    logger.info('🔄 Forcing auth status check');
     await this.checkAuthStatus();
   }
 
@@ -1049,9 +1127,9 @@ export class SupabaseAuthService {
         subscription: { isActive: false, plan: 'free' },
       };
 
-      console.log('🧹 Cleared all stored tokens and auth state');
+      logger.info('🧹 Cleared all stored tokens and auth state');
     } catch (error) {
-      console.warn('Failed to clear stored tokens:', error);
+      logger.warn('Failed to clear stored tokens:', error);
     }
   }
 
@@ -1079,9 +1157,9 @@ export class SupabaseAuthService {
             });
         }
       }
-      console.log('📢 Sent re-authentication modal requests to bolt.new tabs');
+      logger.info('📢 Sent re-authentication modal requests to bolt.new tabs');
     } catch (error) {
-      console.warn('Failed to show re-authentication modal:', error);
+      logger.warn('Failed to show re-authentication modal:', error);
     }
   }
 
@@ -1101,17 +1179,17 @@ export class SupabaseAuthService {
    */
   public async validateSubscriptionStatus(): Promise<boolean> {
     try {
-      console.log('🔍 Validating subscription status with server...');
+      logger.info('🔍 Validating subscription status with server...');
 
       const token = await this.getAuthToken();
       if (!token) {
-        console.log('❌ No auth token available for subscription validation');
+        logger.warn('❌ No auth token available for subscription validation');
         return false;
       }
 
       const user = await this.verifyTokenAndGetUser(token);
       if (!user) {
-        console.log('❌ Token verification failed during subscription validation');
+        logger.warn('❌ Token verification failed during subscription validation');
         return false;
       }
 
@@ -1119,7 +1197,7 @@ export class SupabaseAuthService {
 
       /* Check if subscription status has changed */
       if (subscription.isActive !== this.authState.subscription.isActive) {
-        console.log(
+        logger.info(
           `💰 Subscription status changed during validation: ${subscription.isActive ? 'activated' : 'deactivated'}`
         );
 
@@ -1135,7 +1213,7 @@ export class SupabaseAuthService {
 
       return subscription.isActive;
     } catch (error) {
-      console.error('Error validating subscription status:', error);
+      logger.error('Error validating subscription status:', error);
       return false;
     }
   }
@@ -1144,7 +1222,7 @@ export class SupabaseAuthService {
    * Handle subscription downgrade (expired/cancelled)
    */
   private async handleSubscriptionDowngrade(): Promise<void> {
-    console.log('📉 Handling subscription downgrade...');
+    logger.info('📉 Handling subscription downgrade...');
 
     /* Show notification to user about subscription change */
     await this.notifySubscriptionDowngrade();
@@ -1177,9 +1255,9 @@ export class SupabaseAuthService {
             });
         }
       }
-      console.log('📢 Sent subscription downgrade notifications to bolt.new tabs');
+      logger.info('📢 Sent subscription downgrade notifications to bolt.new tabs');
     } catch (error) {
-      console.warn('Failed to send subscription downgrade notification:', error);
+      logger.warn('Failed to send subscription downgrade notification:', error);
     }
   }
 
@@ -1187,7 +1265,7 @@ export class SupabaseAuthService {
    * Force subscription revalidation (for immediate checks)
    */
   public async forceSubscriptionRevalidation(): Promise<boolean> {
-    console.log('🔄 Forcing subscription revalidation...');
+    logger.info('🔄 Forcing subscription revalidation...');
     return await this.validateSubscriptionStatus();
   }
 
@@ -1197,28 +1275,28 @@ export class SupabaseAuthService {
    */
   public async authenticateFromBolt2GitHub(): Promise<boolean> {
     try {
-      console.log('🔐 Starting initial authentication from bolt2github.com...');
+      logger.info('🔐 Starting initial authentication from bolt2github.com...');
 
       const tabs = await chrome.tabs.query({ url: 'https://bolt2github.com/*' });
       if (tabs.length === 0) {
-        console.warn('❌ No bolt2github.com tabs found. Please open bolt2github.com and sign in.');
+        logger.warn('❌ No bolt2github.com tabs found. Please open bolt2github.com and sign in.');
         return false;
       }
 
       for (const tab of tabs) {
         if (tab.id) {
-          console.log(`🔍 Checking tab ${tab.id}: ${tab.url}`);
+          logger.info(`🔍 Checking tab ${tab.id}: ${tab.url}`);
           const tokenData = await this.extractTokenFromTab(tab.id);
 
           if (tokenData?.access_token) {
-            console.log('✅ Successfully extracted tokens from bolt2github.com');
+            logger.info('✅ Successfully extracted tokens from bolt2github.com');
             await this.storeTokenData(tokenData);
 
             /* Verify the tokens work */
             await this.checkAuthStatus();
 
             if (this.authState.isAuthenticated) {
-              console.log('✅ Initial authentication successful - extension is now independent');
+              logger.info('✅ Initial authentication successful - extension is now independent');
               /* Switch to authenticated interval */
               this.startPeriodicChecks();
               return true;
@@ -1227,10 +1305,10 @@ export class SupabaseAuthService {
         }
       }
 
-      console.log('❌ Failed to extract valid tokens from bolt2github.com');
+      logger.warn('❌ Failed to extract valid tokens from bolt2github.com');
       return false;
     } catch (error) {
-      console.error('Error in initial authentication:', error);
+      logger.error('Error in initial authentication:', error);
       return false;
     }
   }
@@ -1240,7 +1318,7 @@ export class SupabaseAuthService {
    */
   public async logout(): Promise<void> {
     try {
-      console.log('🚪 User initiated logout - clearing all authentication data');
+      logger.info('🚪 User initiated logout - clearing all authentication data');
 
       /* Clear all stored tokens and auth state */
       await this.clearStoredTokens();
@@ -1260,9 +1338,9 @@ export class SupabaseAuthService {
       /* Notify all content scripts about logout */
       await this.notifyLogout();
 
-      console.log('✅ Logout completed successfully - extension back to unauthenticated state');
+      logger.info('✅ Logout completed successfully - extension back to unauthenticated state');
     } catch (error) {
-      console.error('Error during logout:', error);
+      logger.error('Error during logout:', error);
     }
   }
 
@@ -1292,9 +1370,9 @@ export class SupabaseAuthService {
       /* Also clear any GitHub Apps cache since user changed */
       await this.clearGitHubAppsCache();
 
-      console.log('📢 Sent logout notifications to all tabs');
+      logger.info('📢 Sent logout notifications to all tabs');
     } catch (error) {
-      console.warn('Error sending logout notifications:', error);
+      logger.warn('Error sending logout notifications:', error);
     }
   }
 
@@ -1303,7 +1381,7 @@ export class SupabaseAuthService {
    */
   private async checkGitHubAppInstallation(token: string): Promise<void> {
     try {
-      console.log('🔍 Checking for GitHub App installation...');
+      logger.info('🔍 Checking for GitHub App installation...');
 
       // Call the get-github-token endpoint to see if user has GitHub App connected
       const response = await fetch(`${this.supabaseUrl}/functions/v1/get-github-token`, {
@@ -1318,7 +1396,7 @@ export class SupabaseAuthService {
         const data = await response.json();
 
         if (data.type === 'github_app' && data.access_token) {
-          console.log('✅ GitHub App installation found, syncing to extension...');
+          logger.info('✅ GitHub App installation found, syncing to extension...');
 
           // Store GitHub App data in extension storage
           await chrome.storage.local.set({
@@ -1333,9 +1411,9 @@ export class SupabaseAuthService {
           // Trigger settings store sync to auto-populate repoOwner
           try {
             await githubSettingsActions.syncGitHubAppFromStorage();
-            console.log('✅ GitHub settings store synced with GitHub App data');
+            logger.info('✅ GitHub settings store synced with GitHub App data');
           } catch (syncError) {
-            console.warn('Could not sync GitHub settings store:', syncError);
+            logger.warn('Could not sync GitHub settings store:', syncError);
           }
 
           // Also get user profile data for avatar
@@ -1355,22 +1433,22 @@ export class SupabaseAuthService {
               });
             }
           } catch (userError) {
-            console.warn('Could not fetch GitHub user data:', userError);
+            logger.warn('Could not fetch GitHub user data:', userError);
           }
 
-          console.log('🎉 GitHub App installation synced successfully!');
+          logger.info('🎉 GitHub App installation synced successfully!');
 
           // Notify content scripts about the new authentication method
           await this.notifyGitHubAppSync();
         }
       } else if (response.status === 404) {
         // User doesn't have GitHub App connected yet
-        console.log('ℹ️ No GitHub App installation found for user');
+        logger.info('ℹ️ No GitHub App installation found for user');
       } else {
-        console.warn('Failed to check GitHub App status:', response.status);
+        logger.warn('Failed to check GitHub App status:', response.status);
       }
     } catch (error) {
-      console.warn('Error checking GitHub App installation:', error);
+      logger.warn('Error checking GitHub App installation:', error);
     }
   }
 
@@ -1392,9 +1470,9 @@ export class SupabaseAuthService {
         .catch(() => {
           // Background script might not be ready
         });
-      console.log('📢 Sent GitHub App sync notification request to background');
+      logger.info('📢 Sent GitHub App sync notification request to background');
     } catch (error) {
-      console.warn('Failed to send GitHub App sync notification:', error);
+      logger.warn('Failed to send GitHub App sync notification:', error);
     }
   }
 
@@ -1403,18 +1481,18 @@ export class SupabaseAuthService {
    */
   public async syncGitHubApp(): Promise<boolean> {
     try {
-      console.log('🔄 Manually triggered GitHub App sync...');
+      logger.info('🔄 Manually triggered GitHub App sync...');
 
       const token = await this.getAuthToken();
       if (!token) {
-        console.warn('❌ No authentication token available for GitHub App sync');
+        logger.warn('❌ No authentication token available for GitHub App sync');
         return false;
       }
 
       await this.checkGitHubAppInstallation(token);
       return true;
     } catch (error) {
-      console.error('❌ Error during manual GitHub App sync:', error);
+      logger.error('❌ Error during manual GitHub App sync:', error);
       return false;
     }
   }
@@ -1430,7 +1508,7 @@ export class SupabaseAuthService {
       ]);
       return storage.authenticationMethod === 'github_app' && !!storage.githubAppInstallationId;
     } catch (error) {
-      console.warn('Error checking GitHub App status:', error);
+      logger.warn('Error checking GitHub App status:', error);
       return false;
     }
   }
@@ -1440,7 +1518,7 @@ export class SupabaseAuthService {
    * This method can be called directly from popup or background script
    */
   public async forceSyncToPopup(): Promise<void> {
-    console.log('🔄 Force syncing authentication status to popup...');
+    logger.info('🔄 Force syncing authentication status to popup...');
     await this.notifyPremiumService();
   }
 
@@ -1470,10 +1548,10 @@ export class SupabaseAuthService {
 
       if (keysToRemove.length > 0) {
         await chrome.storage.local.remove(keysToRemove);
-        console.log('🧹 Cleared GitHub Apps cache on logout');
+        logger.info('🧹 Cleared GitHub Apps cache on logout');
       }
     } catch (error) {
-      console.warn('Error clearing GitHub Apps cache:', error);
+      logger.warn('Error clearing GitHub Apps cache:', error);
     }
   }
 }

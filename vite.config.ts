@@ -43,10 +43,14 @@ export default defineConfig(({ mode }) => {
         input: {
           background: resolve(__dirname, 'src/background/index.ts'),
           content: resolve(__dirname, 'src/content/index.ts'),
+          logs: resolve(__dirname, 'src/pages/logs.html'),
         },
         output: {
           format: 'esm',
           entryFileNames: (chunkInfo) => {
+            if (chunkInfo.name === 'logs') {
+              return 'pages/[name].js';
+            }
             const folder = chunkInfo.name.includes('background') ? 'background' : 'content';
             return `${folder}/[name].js`;
           },

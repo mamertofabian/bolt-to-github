@@ -6,6 +6,9 @@
     premiumStatusActions,
   } from '$lib/stores/premiumStore';
   import { createEventDispatcher } from 'svelte';
+  import { createLogger } from '$lib/utils/logger';
+
+  const logger = createLogger('PremiumStatus');
 
   const dispatch = createEventDispatcher();
 
@@ -35,16 +38,16 @@
 
     try {
       isLoggingOut = true;
-      console.log('🚪 Logout initiated from premium status component...');
+      logger.info('🚪 Logout initiated from premium status component...');
 
       await premiumStatusActions.logout();
 
-      console.log('✅ Logout completed successfully');
+      logger.info('✅ Logout completed successfully');
 
       // Show brief success feedback
       showLogoutFeedback();
     } catch (error) {
-      console.error('❌ Error during logout:', error);
+      logger.error('❌ Error during logout:', error);
       // Could add error feedback here if needed
     } finally {
       isLoggingOut = false;
@@ -56,7 +59,7 @@
 
     try {
       isRefreshing = true;
-      console.log('🔄 Manually refreshing subscription status...');
+      logger.info('🔄 Manually refreshing subscription status...');
 
       // Send message to background script to force subscription check
       await chrome.runtime.sendMessage({ type: 'FORCE_SUBSCRIPTION_REFRESH' });
@@ -64,12 +67,12 @@
       // Also refresh the local premium store
       await premiumStatusActions.refresh();
 
-      console.log('✅ Subscription status refreshed');
+      logger.info('✅ Subscription status refreshed');
 
       // Show brief success feedback
       showRefreshFeedback();
     } catch (error) {
-      console.error('Error refreshing subscription:', error);
+      logger.error('Error refreshing subscription:', error);
       // Could add error feedback here if needed
     } finally {
       isRefreshing = false;
