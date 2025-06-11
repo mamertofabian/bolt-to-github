@@ -50,7 +50,7 @@
   }
 
   function openLogsPage() {
-    chrome.tabs.create({ url: chrome.runtime.getURL('pages/logs.html') });
+    chrome.tabs.create({ url: chrome.runtime.getURL('src/pages/logs.html') });
   }
 </script>
 

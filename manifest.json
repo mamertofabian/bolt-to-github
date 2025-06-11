@@ -39,6 +39,10 @@
     {
       "resources": ["assets/*.js", "assets/*.css", "content/*.js", "src/content/*.js"],
       "matches": ["https://bolt.new/*"]
+    },
+    {
+      "resources": ["src/pages/*.html", "pages/*.js"],
+      "matches": ["<all_urls>"]
     }
   ]
 }
