@@ -1,4 +1,7 @@
 import type { GitHubSettingsInterface, ProjectSettings } from '$lib/types';
+import { createLogger } from '../lib/utils/logger';
+
+const logger = createLogger('SettingsService');
 
 export interface SettingsCheckResult {
   isSettingsValid: boolean;
@@ -61,7 +64,7 @@ export class SettingsService {
         },
       };
     } catch (error) {
-      console.error('Error checking GitHub settings:', error);
+      logger.error('Error checking GitHub settings:', error);
       return { isSettingsValid: false };
     }
   }
@@ -71,7 +74,7 @@ export class SettingsService {
       const { projectId } = await chrome.storage.sync.get('projectId');
       return projectId || null;
     } catch (error) {
-      console.error('Failed to get project ID:', error);
+      logger.error('Failed to get project ID:', error);
       return null;
     }
   }
@@ -80,7 +83,7 @@ export class SettingsService {
     try {
       await chrome.storage.sync.set({ projectId });
     } catch (error) {
-      console.error('Failed to set project ID:', error);
+      logger.error('Failed to set project ID:', error);
     }
   }
 }

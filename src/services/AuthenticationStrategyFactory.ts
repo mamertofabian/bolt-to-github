@@ -10,6 +10,9 @@ import type {
 import type { AuthenticationType } from './types/authentication';
 import { PATAuthenticationStrategy } from './PATAuthenticationStrategy';
 import { GitHubAppAuthenticationStrategy } from './GitHubAppAuthenticationStrategy';
+import { createLogger } from '../lib/utils/logger';
+
+const logger = createLogger('AuthenticationStrategyFactory');
 
 export class AuthenticationStrategyFactory implements IAuthenticationStrategyFactory {
   private static instance: AuthenticationStrategyFactory | null = null;
@@ -94,7 +97,7 @@ export class AuthenticationStrategyFactory implements IAuthenticationStrategyFac
       // If no strategy is configured, return the default
       return this.getDefaultStrategy();
     } catch (error) {
-      console.error('Failed to get current strategy:', error);
+      logger.error('Failed to get current strategy:', error);
       // Return PAT as fallback
       return this.createStrategy('pat');
     }
@@ -108,7 +111,7 @@ export class AuthenticationStrategyFactory implements IAuthenticationStrategyFac
       const storage = await chrome.storage.local.get('authenticationMethod');
       return storage.authenticationMethod || 'pat'; // Default to PAT for existing users
     } catch (error) {
-      console.error('Failed to get authentication method:', error);
+      logger.error('Failed to get authentication method:', error);
       return 'pat';
     }
   }
@@ -120,7 +123,7 @@ export class AuthenticationStrategyFactory implements IAuthenticationStrategyFac
     try {
       await chrome.storage.local.set({ authenticationMethod: type });
     } catch (error) {
-      console.error('Failed to set authentication method:', error);
+      logger.error('Failed to set authentication method:', error);
       throw new Error('Failed to save authentication method preference');
     }
   }
@@ -148,7 +151,7 @@ export class AuthenticationStrategyFactory implements IAuthenticationStrategyFac
         result.github_app = githubAppStrategy;
       }
     } catch (error) {
-      console.error('Failed to get all configured strategies:', error);
+      logger.error('Failed to get all configured strategies:', error);
     }
 
     return result;

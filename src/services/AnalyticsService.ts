@@ -5,6 +5,10 @@
  * Service Worker Compatible - No DOM dependencies
  */
 
+import { createLogger } from '../lib/utils/logger';
+
+const logger = createLogger('AnalyticsService');
+
 interface AnalyticsEvent {
   action: string;
   category: string;
@@ -32,7 +36,7 @@ export class AnalyticsService {
     try {
       this.API_SECRET = import.meta.env?.VITE_GA4_API_SECRET || 'SDSrX58bTAmEqVg2awosDA';
     } catch (error) {
-      console.debug('Could not access environment variables:', error);
+      logger.debug('Could not access environment variables:', error);
       this.API_SECRET = 'SDSrX58bTAmEqVg2awosDA';
     }
   }
@@ -70,7 +74,7 @@ export class AnalyticsService {
           enabled = Boolean(result.analyticsEnabled);
         }
       } catch (error) {
-        console.debug('Could not access storage for analytics preference:', error);
+        logger.debug('Could not access storage for analytics preference:', error);
       }
 
       this.config = {
@@ -79,7 +83,7 @@ export class AnalyticsService {
         enabled,
       };
     } catch (error) {
-      console.error('Failed to initialize analytics config:', error);
+      logger.error('Failed to initialize analytics config:', error);
       // Fallback config
       this.config = {
         trackingId: this.GA4_MEASUREMENT_ID,
@@ -102,7 +106,7 @@ export class AnalyticsService {
       await chrome.storage.local.set({ analyticsClientId: clientId });
       return clientId;
     } catch (error) {
-      console.error('Failed to get/create client ID:', error);
+      logger.error('Failed to get/create client ID:', error);
       return this.generateClientId();
     }
   }
@@ -144,11 +148,11 @@ export class AnalyticsService {
             },
           });
         } catch (error) {
-          console.debug('Could not send analytics enabled event:', error);
+          logger.debug('Could not send analytics enabled event:', error);
         }
       }
     } catch (error) {
-      console.error('Failed to set analytics preference:', error);
+      logger.error('Failed to set analytics preference:', error);
       throw error; // Re-throw so the UI can handle it
     }
   }
@@ -178,7 +182,7 @@ export class AnalyticsService {
 
       await this.sendEvent(eventData);
     } catch (error) {
-      console.error('Failed to track page view:', error);
+      logger.error('Failed to track page view:', error);
     }
   }
 
@@ -201,7 +205,7 @@ export class AnalyticsService {
 
       await this.sendEvent(eventData);
     } catch (error) {
-      console.error('Failed to track event:', error);
+      logger.error('Failed to track event:', error);
     }
   }
 
@@ -294,7 +298,7 @@ export class AnalyticsService {
       });
     } catch (error) {
       // Silently fail to not disrupt extension functionality
-      console.debug('Analytics event send failed (this is expected in some contexts):', error);
+      logger.debug('Analytics event send failed (this is expected in some contexts):', error);
     }
   }
 
@@ -305,15 +309,15 @@ export class AnalyticsService {
     try {
       // Test basic functionality without DOM access
       const clientId = this.generateClientId();
-      console.log('Analytics service worker test - Client ID generated:', clientId);
+      logger.info('Analytics service worker test - Client ID generated:', clientId);
 
       // Test config initialization
       await this.initializeConfig();
-      console.log('Analytics service worker test - Config initialized');
+      logger.info('Analytics service worker test - Config initialized');
 
       return true;
     } catch (error) {
-      console.error('Analytics service worker compatibility test failed:', error);
+      logger.error('Analytics service worker compatibility test failed:', error);
       return false;
     }
   }
@@ -330,7 +334,7 @@ export class AnalyticsService {
         enabled: await this.isAnalyticsEnabled(),
       };
     } catch (error) {
-      console.error('Failed to get analytics summary:', error);
+      logger.error('Failed to get analytics summary:', error);
       return {};
     }
   }

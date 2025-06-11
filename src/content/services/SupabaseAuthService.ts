@@ -2,6 +2,9 @@
 
 import { SUPABASE_CONFIG } from '../../lib/constants/supabase';
 import { githubSettingsActions } from '../../lib/stores/githubSettings';
+import { createLogger } from '../../lib/utils/logger';
+
+const logger = createLogger('SupabaseAuthService');
 
 export interface SupabaseUser {
   id: string;
@@ -76,7 +79,7 @@ export class SupabaseAuthService {
    * Initialize the service and start checking for authentication
    */
   private async initialize(): Promise<void> {
-    console.log('🔐 Initializing Supabase auth service (hybrid mode)');
+    logger.info('🔐 Initializing Supabase auth service (hybrid mode)');
 
     /* Load cached auth state */
     await this.loadCachedAuthState();
@@ -102,10 +105,10 @@ export class SupabaseAuthService {
       const result = await chrome.storage.local.get(['supabaseAuthState']);
       if (result.supabaseAuthState) {
         this.authState = { ...this.authState, ...result.supabaseAuthState };
-        console.log('📋 Loaded cached auth state:', this.authState.isAuthenticated);
+        logger.info('📋 Loaded cached auth state:', this.authState.isAuthenticated);
       }
     } catch (error) {
-      console.warn('Failed to load cached auth state:', error);
+      logger.error('Failed to load cached auth state:', error);
     }
   }
 
@@ -116,7 +119,7 @@ export class SupabaseAuthService {
     try {
       await chrome.storage.local.set({ supabaseAuthState: this.authState });
     } catch (error) {
-      console.warn('Failed to save auth state:', error);
+      logger.error('Failed to save auth state:', error);
     }
   }
 
@@ -142,7 +145,7 @@ export class SupabaseAuthService {
     this.checkInterval = setInterval(() => {
       this.checkAuthStatus();
     }, interval);
-    console.log(
+    logger.info(
       `🔄 Started auth checks every ${interval / 1000}s (${this.authState.subscription.isActive ? 'premium' : this.authState.isAuthenticated ? 'authenticated' : 'unauthenticated'})`
     );
   }
@@ -155,11 +158,11 @@ export class SupabaseAuthService {
     try {
       /* Only monitor if user is not authenticated */
       if (this.authState.isAuthenticated) {
-        console.log('🔐 User already authenticated, skipping initial auth detection');
+        logger.info('🔐 User already authenticated, skipping initial auth detection');
         return;
       }
 
-      console.log('🔍 Setting up initial authentication detection for bolt2github.com');
+      logger.info('🔍 Setting up initial authentication detection for bolt2github.com');
 
       /* Listen for bolt2github.com tab loads to capture initial authentication */
       chrome.tabs.onUpdated.addListener(async (tabId, changeInfo, tab) => {
@@ -170,13 +173,13 @@ export class SupabaseAuthService {
           tab.url &&
           tab.url.includes('bolt2github.com')
         ) {
-          console.log('🔍 Detected bolt2github.com page load, checking for authentication...');
+          logger.info('🔍 Detected bolt2github.com page load, checking for authentication...');
 
           /* Give a moment for the page to fully load and set localStorage */
           setTimeout(async () => {
             const tokenData = await this.extractTokenFromTab(tabId);
             if (tokenData?.access_token) {
-              console.log('✅ Found authentication tokens on bolt2github.com, storing...');
+              logger.info('✅ Found authentication tokens on bolt2github.com, storing...');
               await this.storeTokenData(tokenData);
 
               /* Force immediate auth check with new tokens */
@@ -184,16 +187,16 @@ export class SupabaseAuthService {
 
               /* If now authenticated, we can stop monitoring bolt2github.com */
               if (this.authState.isAuthenticated) {
-                console.log('🎉 Initial authentication successful - extension now independent');
+                logger.info('🎉 Initial authentication successful - extension now independent');
               }
             }
           }, 1000); /* 1 second delay for page load */
         }
       });
 
-      console.log('🔍 Initial authentication detection active (monitoring bolt2github.com)');
+      logger.info('🔍 Initial authentication detection active (monitoring bolt2github.com)');
     } catch (error) {
-      console.warn('Failed to setup initial authentication detection:', error);
+      logger.error('Failed to setup initial authentication detection:', error);
     }
   }
 
@@ -215,7 +218,7 @@ export class SupabaseAuthService {
             tab.url.includes('bolt2github.com/checkout') ||
             tab.url.includes('bolt2github.com/subscription'))
         ) {
-          console.log('💰 Detected upgrade/billing page, checking subscription status...');
+          logger.info('💰 Detected upgrade/billing page, checking subscription status...');
 
           /* Give a moment for any backend processing to complete */
           setTimeout(async () => {
@@ -224,16 +227,16 @@ export class SupabaseAuthService {
 
             /* If subscription status changed, notify user immediately */
             if (!wasActive && this.authState.subscription.isActive) {
-              console.log('🎉 Subscription upgraded! Notifying user...');
+              logger.info('🎉 Subscription upgraded! Notifying user...');
               await this.notifySubscriptionUpgrade();
             }
           }, 2000); /* 2 second delay for backend processing */
         }
       });
 
-      console.log('💰 Setup subscription upgrade detection for billing pages');
+      logger.info('💰 Setup subscription upgrade detection for billing pages');
     } catch (error) {
-      console.warn('Failed to setup subscription upgrade detection:', error);
+      logger.error('Failed to setup subscription upgrade detection:', error);
     }
   }
 
@@ -261,9 +264,9 @@ export class SupabaseAuthService {
             });
         }
       }
-      console.log('📢 Sent subscription upgrade notifications');
+      logger.info('📢 Sent subscription upgrade notifications');
     } catch (error) {
-      console.warn('Failed to send subscription upgrade notification:', error);
+      logger.error('Failed to send subscription upgrade notification:', error);
     }
   }
 
@@ -272,23 +275,23 @@ export class SupabaseAuthService {
    */
   private async checkAuthStatus(): Promise<void> {
     try {
-      console.log('🔄 Checking authentication status...');
+      logger.info('🔄 Checking authentication status...');
 
       /* Try to get authentication token from various sources */
       const token = await this.getAuthToken();
 
       if (token) {
-        console.log('🔐 Found authentication token');
+        logger.info('🔐 Found authentication token');
 
         /* Verify token and get user info */
         const user = await this.verifyTokenAndGetUser(token);
         if (user) {
-          console.log(`👤 Verified user: ${user.email}`);
+          logger.info(`👤 Verified user: ${user.email}`);
 
           /* Get subscription status using the user info */
           const subscription = await this.getSubscriptionStatus(token, user);
 
-          console.log(
+          logger.info(
             `💰 Subscription status: ${subscription.isActive ? 'active' : 'inactive'} (${subscription.plan})`
           );
 
@@ -301,7 +304,7 @@ export class SupabaseAuthService {
           /* Check for GitHub App installation and sync */
           await this.checkGitHubAppInstallation(token);
         } else {
-          console.log('❌ Token verification failed');
+          logger.error('❌ Token verification failed');
           this.updateAuthState({
             isAuthenticated: false,
             user: null,
@@ -309,7 +312,7 @@ export class SupabaseAuthService {
           });
         }
       } else {
-        console.log('❌ No authentication token found');
+        logger.error('❌ No authentication token found');
         this.updateAuthState({
           isAuthenticated: false,
           user: null,
@@ -317,7 +320,7 @@ export class SupabaseAuthService {
         });
       }
     } catch (error) {
-      console.error('Error checking auth status:', error);
+      logger.error('Error checking auth status:', error);
     }
   }
 
@@ -326,7 +329,7 @@ export class SupabaseAuthService {
    */
   private async getAuthToken(): Promise<string | null> {
     try {
-      console.log('🔐 Getting auth token (hybrid mode)');
+      logger.info('🔐 Getting auth token (hybrid mode)');
 
       /* Method 1: Check stored tokens first */
       const storedToken = await this.getValidStoredToken();
@@ -342,20 +345,20 @@ export class SupabaseAuthService {
 
       /* Method 3: If not authenticated, check bolt2github.com tabs as fallback */
       if (!this.authState.isAuthenticated) {
-        console.log('🔍 No stored tokens found, checking bolt2github.com tabs...');
+        logger.info('🔍 No stored tokens found, checking bolt2github.com tabs...');
         const tabToken = await this.extractTokenFromActiveTabs();
         if (tabToken) {
-          console.log('✅ Found token in bolt2github.com tab, storing for future use');
+          logger.info('✅ Found token in bolt2github.com tab, storing for future use');
           await this.storeTokenData(tabToken);
           return tabToken.access_token;
         }
       }
 
       /* No tokens available - user needs to authenticate */
-      console.log('❌ No authentication tokens available - user needs to authenticate');
+      logger.error('❌ No authentication tokens available - user needs to authenticate');
       return null;
     } catch (error) {
-      console.warn('Error getting auth token:', error);
+      logger.error('Error getting auth token:', error);
       return null;
     }
   }
@@ -381,17 +384,17 @@ export class SupabaseAuthService {
 
       if (expiry > now + 5 * 60 * 1000) {
         /* Token valid for more than 5 minutes */
-        console.log('✅ Using stored access token (valid)');
+        logger.info('✅ Using stored access token (valid)');
         return storedTokens.supabaseToken;
       } else if (storedTokens.supabaseRefreshToken) {
         /* Token expired or expires soon, try to refresh */
-        console.log('🔄 Stored token expired/expiring, refreshing...');
+        logger.info('🔄 Stored token expired/expiring, refreshing...');
         return await this.refreshStoredToken();
       }
 
       return null;
     } catch (error) {
-      console.warn('Error getting valid stored token:', error);
+      logger.error('Error getting valid stored token:', error);
       return null;
     }
   }
@@ -413,20 +416,20 @@ export class SupabaseAuthService {
       /* Only store refresh token if it exists and is not empty */
       if (tokenData.refresh_token && tokenData.refresh_token.trim() !== '') {
         storageData.supabaseRefreshToken = tokenData.refresh_token;
-        console.log('💾 Storing refresh token (length:', tokenData.refresh_token.length, ')');
+        logger.info('💾 Storing refresh token (length:', tokenData.refresh_token.length, ')');
       } else {
-        console.warn('⚠️ No valid refresh token to store');
+        logger.error('⚠️ No valid refresh token to store');
       }
 
       await chrome.storage.local.set(storageData);
 
-      console.log('💾 Stored token data in chrome storage:', {
+      logger.info('💾 Stored token data in chrome storage:', {
         hasAccessToken: !!tokenData.access_token,
         hasRefreshToken: !!tokenData.refresh_token,
         expiresAt: new Date(expiresAt),
       });
     } catch (error) {
-      console.warn('Failed to store token data:', error);
+      logger;
     }
   }
 
@@ -438,29 +441,29 @@ export class SupabaseAuthService {
       console.log('🔍 Looking for authentication tokens in bolt2github.com tabs...');
 
       const tabs = await chrome.tabs.query({ url: 'https://bolt2github.com/*' });
-      console.log(`🔍 Found ${tabs.length} bolt2github.com tabs`);
+      logger.info(`🔍 Found ${tabs.length} bolt2github.com tabs`);
 
       if (tabs.length === 0) {
-        console.log('❌ No bolt2github.com tabs found');
+        logger.error('❌ No bolt2github.com tabs found');
         return null;
       }
 
       for (const tab of tabs) {
         if (tab.id) {
-          console.log(`🔍 Checking tab ${tab.id}: ${tab.url}`);
+          logger.info(`🔍 Checking tab ${tab.id}: ${tab.url}`);
           const tokenData = await this.extractTokenFromTab(tab.id);
 
           if (tokenData?.access_token) {
-            console.log('✅ Found valid tokens in tab');
+            logger.info('✅ Found valid tokens in tab');
             return tokenData;
           }
         }
       }
 
-      console.log('❌ No valid tokens found in any bolt2github.com tabs');
+      logger.error('❌ No valid tokens found in any bolt2github.com tabs');
       return null;
     } catch (error) {
-      console.warn('Error extracting tokens from active tabs:', error);
+      logger.error('Error extracting tokens from active tabs:', error);
       return null;
     }
   }

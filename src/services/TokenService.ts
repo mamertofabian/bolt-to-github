@@ -1,6 +1,9 @@
 import type { IGitHubApiClient } from './interfaces/IGitHubApiClient';
 import type { ITokenService } from './interfaces/ITokenService';
 import type { ProgressCallback } from './types/common';
+import { createLogger } from '../lib/utils/logger';
+
+const logger = createLogger('TokenService');
 
 /**
  * Service for GitHub token validation and management
@@ -21,7 +24,7 @@ export class TokenService implements ITokenService {
       await this.apiClient.request('GET', '/user');
       return true;
     } catch (error) {
-      console.error('Token validation failed:', error);
+      logger.error('Token validation failed:', error);
       return false;
     }
   }
@@ -65,7 +68,7 @@ export class TokenService implements ITokenService {
     try {
       return await this.validateClassicToken(username);
     } catch (error) {
-      console.error('Validation failed:', error);
+      logger.error('Validation failed:', error);
       return { isValid: false, error: 'Validation failed' };
     }
   }
@@ -203,7 +206,7 @@ export class TokenService implements ITokenService {
         onProgress?.({ permission: 'repos', isValid: true });
       } catch (error) {
         onProgress?.({ permission: 'repos', isValid: false });
-        console.error('Repository creation failed:', error);
+        logger.error('Repository creation failed:', error);
         return {
           isValid: false,
           error: `Token lacks repository creation permission${isOrg ? ' for this organization' : ''}`,
@@ -219,12 +222,12 @@ export class TokenService implements ITokenService {
         onProgress?.({ permission: 'admin', isValid: true });
       } catch (error) {
         onProgress?.({ permission: 'admin', isValid: false });
-        console.error('Repo visibility change failed:', error);
+        logger.error('Repo visibility change failed:', error);
         // Cleanup repo before returning
         try {
           await this.apiClient.request('DELETE', `/repos/${username}/${repoName}`);
         } catch (cleanupError) {
-          console.error('Failed to cleanup repository after admin check:', cleanupError);
+          logger.error('Failed to cleanup repository after admin check:', cleanupError);
         }
         return {
           isValid: false,
@@ -245,12 +248,12 @@ export class TokenService implements ITokenService {
         onProgress?.({ permission: 'code', isValid: true });
       } catch (error) {
         onProgress?.({ permission: 'code', isValid: false });
-        console.error('Content read/write check failed:', error);
+        logger.error('Content read/write check failed:', error);
         // Cleanup repo before returning
         try {
           await this.apiClient.request('DELETE', `/repos/${username}/${repoName}`);
         } catch (cleanupError) {
-          console.error('Failed to cleanup repository after contents check:', cleanupError);
+          logger.error('Failed to cleanup repository after contents check:', cleanupError);
         }
         return {
           isValid: false,
@@ -267,13 +270,13 @@ export class TokenService implements ITokenService {
           },
         });
       } catch (error) {
-        console.error('Failed to cleanup test repository:', error);
+        logger.error('Failed to cleanup test repository:', error);
         // Don't return error here as permissions were already verified
       }
 
       return { isValid: true };
     } catch (error) {
-      console.error('Permission verification failed:', error);
+      logger.error('Permission verification failed:', error);
       return {
         isValid: false,
         error: `Permission verification failed: ${error instanceof Error ? error.message : String(error)}`,

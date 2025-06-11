@@ -4,6 +4,9 @@
  */
 
 import { analytics } from '../../services/AnalyticsService';
+import { createLogger } from './logger';
+
+const logger = createLogger('Analytics');
 
 /**
  * Send analytics event to background script (useful for content scripts and popup)
@@ -16,7 +19,7 @@ export function sendAnalyticsToBackground(eventType: string, eventData: any): vo
       eventData,
     });
   } catch (error) {
-    console.debug('Failed to send analytics to background:', error);
+    logger.debug('Failed to send analytics to background:', error);
   }
 }
 

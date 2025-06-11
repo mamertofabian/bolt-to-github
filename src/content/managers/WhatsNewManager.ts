@@ -1,6 +1,9 @@
 import { whatsNewContent } from '$lib/constants/whatsNewContent';
 import WhatsNewModal from '$lib/components/WhatsNewModal.svelte';
 import type { SvelteComponent } from 'svelte';
+import { createLogger } from '../../lib/utils/logger';
+
+const logger = createLogger('WhatsNewManager');
 
 export interface IComponentLifecycleManager {
   createComponent?<T extends SvelteComponent>(id: string, config: any): Promise<T>;
@@ -52,7 +55,7 @@ export class WhatsNewManager implements IWhatsNewManager {
         }, SHOW_DELAY);
       }
     } catch (error) {
-      console.error("Error checking what's new:", error);
+      logger.error("Error checking what's new:", error);
     }
   }
 
@@ -66,7 +69,7 @@ export class WhatsNewManager implements IWhatsNewManager {
       }
       await this.show(true);
     } catch (error) {
-      console.error('WhatsNewManager: Error showing modal manually:', error);
+      logger.error('WhatsNewManager: Error showing modal manually:', error);
     }
   }
 
@@ -78,7 +81,7 @@ export class WhatsNewManager implements IWhatsNewManager {
     try {
       // Check if version exists in content
       if (!whatsNewContent[this.currentVersion]) {
-        console.warn(`No what's new content for version ${this.currentVersion}`);
+        logger.warn(`No what's new content for version ${this.currentVersion}`);
         return;
       }
 
@@ -126,7 +129,7 @@ export class WhatsNewManager implements IWhatsNewManager {
         await this.markAsShown();
       }
     } catch (error) {
-      console.error("Error showing what's new modal:", error);
+      logger.error("Error showing what's new modal:", error);
       this.cleanup();
     }
   }
@@ -143,7 +146,7 @@ export class WhatsNewManager implements IWhatsNewManager {
       }
       await this.saveWhatsNewState(state);
     } catch (error) {
-      console.error('Error saving dismissed version:', error);
+      logger.error('Error saving dismissed version:', error);
     }
     // Close the modal after saving the preference
     this.cleanup();
@@ -156,7 +159,7 @@ export class WhatsNewManager implements IWhatsNewManager {
       state.lastCheckTime = Date.now();
       await this.saveWhatsNewState(state);
     } catch (error) {
-      console.error('Error marking version as shown:', error);
+      logger.error('Error marking version as shown:', error);
     }
   }
 
@@ -186,7 +189,7 @@ export class WhatsNewManager implements IWhatsNewManager {
         }
       );
     } catch (error) {
-      console.error("Error getting what's new state:", error);
+      logger.error("Error getting what's new state:", error);
       return {
         lastShownVersion: '',
         dismissedVersions: [],
@@ -199,7 +202,7 @@ export class WhatsNewManager implements IWhatsNewManager {
     try {
       await chrome.storage.local.set({ [STORAGE_KEY]: state });
     } catch (error) {
-      console.error("Error saving what's new state:", error);
+      logger.error("Error saving what's new state:", error);
     }
   }
 

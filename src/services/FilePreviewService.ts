@@ -5,6 +5,9 @@ import type { UnifiedGitHubService } from './UnifiedGitHubService';
 import { IdleMonitorService } from './IdleMonitorService';
 import type { ProjectFiles } from '$lib/types';
 import { processFilesWithGitignore } from '$lib/fileUtils';
+import { createLogger } from '../lib/utils/logger';
+
+const logger = createLogger('FilePreviewService');
 
 export interface FileChange {
   path: string;
@@ -43,7 +46,7 @@ export class FilePreviewService {
       // Get idle monitor service, but handle cases where it might not be available
       this.cacheService = CacheService.getInstance(IdleMonitorService.getInstance());
     } catch (error) {
-      console.warn('Error initializing idle monitor or cache service:', error);
+      logger.warn('Error initializing idle monitor or cache service:', error);
       // Create cache service with null idle monitor as fallback
       this.cacheService = CacheService.getInstance(null as any);
     }
@@ -618,7 +621,7 @@ export class FilePreviewService {
       // Only log progress info in development environment
       if (process.env.NODE_ENV === 'development') {
         // eslint-disable-next-line no-console
-        console.log(`GitHub comparison: ${message} (${progress}%)`);
+        logger.info(`GitHub comparison: ${message} (${progress}%)`);
       }
     };
 

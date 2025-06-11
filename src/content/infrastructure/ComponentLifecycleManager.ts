@@ -1,4 +1,7 @@
 import type { SvelteComponent } from '../types/UITypes';
+import { createLogger } from '../../lib/utils/logger';
+
+const logger = createLogger('ComponentLifecycleManager');
 
 /**
  * Component configuration for creating Svelte components
@@ -49,17 +52,17 @@ export class ComponentLifecycleManager {
             }) as T;
 
             this.components.set(id, component);
-            console.log(`🔊 Component '${id}' created successfully`);
+            logger.info(`🔊 Component '${id}' created successfully`);
             resolve(component);
           } catch (error) {
-            console.error(`🔊 Error creating component '${id}':`, error);
+            logger.error(`🔊 Error creating component '${id}':`, error);
             reject(error);
           }
         };
 
         // Wait for document.body if needed
         if (config.waitForBody && !document.body) {
-          console.log(`Waiting for body to be available for component '${id}'`);
+          logger.info(`Waiting for body to be available for component '${id}'`);
           document.addEventListener('DOMContentLoaded', createAndMountComponent);
         } else {
           createAndMountComponent();
@@ -98,7 +101,7 @@ export class ComponentLifecycleManager {
       if (document.body) {
         document.body.appendChild(container);
       } else {
-        console.warn(`Cannot append container '${containerId}' - document.body not available`);
+        logger.warn(`Cannot append container '${containerId}' - document.body not available`);
       }
     }
 
@@ -115,7 +118,7 @@ export class ComponentLifecycleManager {
     if (component && component.$set) {
       component.$set(props);
     } else {
-      console.warn(`Component '${id}' not found or doesn't support $set`);
+      logger.warn(`Component '${id}' not found or doesn't support $set`);
     }
   }
 
@@ -130,14 +133,14 @@ export class ComponentLifecycleManager {
         component.$destroy();
       }
       this.components.delete(id);
-      console.log(`🔊 Component '${id}' destroyed`);
+      logger.info(`🔊 Component '${id}' destroyed`);
     }
 
     const container = this.containers.get(id);
     if (container && container.parentNode) {
       container.parentNode.removeChild(container);
       this.containers.delete(id);
-      console.log(`🔊 Container for component '${id}' removed`);
+      logger.info(`🔊 Container for component '${id}' removed`);
     }
   }
 
@@ -176,7 +179,7 @@ export class ComponentLifecycleManager {
    * Clean up all components and containers
    */
   public cleanupAll(): void {
-    console.log('🔊 Cleaning up all components');
+    logger.info('🔊 Cleaning up all components');
 
     // Destroy all components
     for (const [id] of this.components) {

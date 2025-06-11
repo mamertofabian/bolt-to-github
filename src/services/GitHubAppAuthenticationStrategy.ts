@@ -10,6 +10,9 @@ import type {
   PermissionCheckResult,
 } from './types/authentication';
 import { GitHubAppService } from './GitHubAppService';
+import { createLogger } from '../lib/utils/logger';
+
+const logger = createLogger('GitHubAppAuthenticationStrategy');
 
 export class GitHubAppAuthenticationStrategy implements IAuthenticationStrategy {
   readonly type: AuthenticationType = 'github_app';
@@ -132,7 +135,7 @@ export class GitHubAppAuthenticationStrategy implements IAuthenticationStrategy 
       this.cachedToken = null;
       this.tokenExpiresAt = null;
     } catch (error) {
-      console.error('Failed to clear GitHub App auth:', error);
+      logger.error('Failed to clear GitHub App auth:', error);
       throw new Error('Failed to clear GitHub App authentication');
     }
   }
@@ -188,7 +191,7 @@ export class GitHubAppAuthenticationStrategy implements IAuthenticationStrategy 
         avatar_url: userData.avatar_url,
       };
     } catch (error) {
-      console.error('Failed to get user info:', error);
+      logger.error('Failed to get user info:', error);
       return null;
     }
   }
@@ -225,7 +228,7 @@ export class GitHubAppAuthenticationStrategy implements IAuthenticationStrategy 
         tokenType: 'github_app',
       };
     } catch (error) {
-      console.error('Failed to get GitHub App metadata:', error);
+      logger.error('Failed to get GitHub App metadata:', error);
       return {};
     }
   }

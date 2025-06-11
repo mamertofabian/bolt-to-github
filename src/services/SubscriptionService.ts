@@ -1,4 +1,7 @@
 import { SUPABASE_CONFIG } from '../lib/constants/supabase';
+import { createLogger } from '../lib/utils/logger';
+
+const logger = createLogger('SubscriptionService');
 
 export interface SubscriptionData {
   email: string;
@@ -80,7 +83,7 @@ export class SubscriptionService {
         subscriptionId: result.subscriber?.id || 'unknown',
       };
     } catch (error) {
-      console.error('Subscription error:', error);
+      logger.error('Subscription error:', error);
 
       // Handle network errors gracefully
       if (error instanceof TypeError && error.message.includes('fetch')) {

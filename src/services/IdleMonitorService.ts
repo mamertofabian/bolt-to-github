@@ -1,4 +1,7 @@
 import type { IIdleMonitorService } from './interfaces/IIdleMonitorService';
+import { createLogger } from '../lib/utils/logger';
+
+const logger = createLogger('IdleMonitorService');
 
 /**
  * Service to monitor user idle state using Chrome's idle API
@@ -27,7 +30,7 @@ export class IdleMonitorService implements IIdleMonitorService {
 
   private initialize(): void {
     if (!this.chromeIdle) {
-      console.warn('Chrome idle API not available, using fallback implementation');
+      logger.warn('Chrome idle API not available, using fallback implementation');
       this.initialized = true;
       return;
     }
@@ -52,7 +55,7 @@ export class IdleMonitorService implements IIdleMonitorService {
         this.notifyListeners(state);
       });
     } catch (error) {
-      console.error('Error initializing idle monitor:', error);
+      logger.error('Error initializing idle monitor:', error);
       // Continue with fallback behavior
     }
   }

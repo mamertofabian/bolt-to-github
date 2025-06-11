@@ -2,6 +2,9 @@ import { ZipProcessor } from '../lib/zip';
 import { CacheService } from './CacheService';
 import { IdleMonitorService } from './IdleMonitorService';
 import type { ProjectFiles } from '$lib/types';
+import { createLogger } from '../lib/utils/logger';
+
+const logger = createLogger('DownloadService');
 
 /**
  * Service responsible for downloading project ZIP files from Bolt
@@ -68,7 +71,7 @@ export class DownloadService {
       this.cleanupDownloadInterception();
       this.currentDownloadPromise = null;
 
-      console.error('Error downloading project ZIP:', error);
+      logger.error('Error downloading project ZIP:', error);
       throw new Error(
         `Failed to download project ZIP: ${error instanceof Error ? error.message : 'Unknown error'}`
       );
@@ -99,7 +102,7 @@ export class DownloadService {
     // Get current project ID
     this.currentProjectId = this.getCurrentProjectId();
     if (!this.currentProjectId) {
-      console.warn('Could not determine project ID from URL');
+      logger.warn('Could not determine project ID from URL');
       // Fall back to direct download without caching
       const blob = await this.downloadProjectZip();
       return ZipProcessor.processZipBlob(blob);
@@ -114,7 +117,7 @@ export class DownloadService {
     }
 
     // Cache miss or forced refresh, download and cache
-    console.log(
+    logger.info(
       `Downloading project files for ${this.currentProjectId}${forceRefresh ? ' (forced refresh)' : ''}`
     );
     const blob = await this.downloadProjectZip();
@@ -165,7 +168,7 @@ export class DownloadService {
               resolve(blob);
             }
           } catch (error) {
-            console.error('Error intercepting download:', error);
+            logger.error('Error intercepting download:', error);
             reject(
               new Error(
                 `Failed to intercept download: ${error instanceof Error ? error.message : 'Unknown error'}`
@@ -202,7 +205,7 @@ export class DownloadService {
     if (!exportButton) {
       throw new Error('Export button not found');
     }
-    console.log('Found export button:', exportButton);
+    logger.info('Found export button:', exportButton);
 
     // Dispatch keydown event to open dropdown
     const keydownEvent = new KeyboardEvent('keydown', {
@@ -211,7 +214,7 @@ export class DownloadService {
       cancelable: true,
     });
     exportButton.dispatchEvent(keydownEvent);
-    console.log('Dispatched keydown to export button');
+    logger.info('Dispatched keydown to export button');
 
     // Wait for the dropdown to appear
     await new Promise((resolve) => setTimeout(resolve, 200));
@@ -229,7 +232,7 @@ export class DownloadService {
     while (attempts < maxAttempts && !exportDropdown) {
       // Increase wait time with each attempt
       const waitTime = 200 * (attempts + 1);
-      console.log(
+      logger.info(
         `Waiting ${waitTime}ms for dropdown to appear (attempt ${attempts + 1}/${maxAttempts})`
       );
       await new Promise((resolve) => setTimeout(resolve, waitTime));
@@ -238,10 +241,10 @@ export class DownloadService {
       const allDropdowns = Array.from(
         document.querySelectorAll('[role="menu"], [data-radix-menu-content]')
       );
-      console.log('Found dropdowns:', allDropdowns.length);
+      logger.info('Found dropdowns:', allDropdowns.length);
 
       if (allDropdowns.length === 0) {
-        console.log('No dropdowns found, will retry');
+        logger.info('No dropdowns found, will retry');
         attempts++;
         continue;
       }
@@ -249,7 +252,7 @@ export class DownloadService {
       // Find the dropdown that contains download-related buttons
       exportDropdown = allDropdowns.find((dropdown) => {
         const buttons = dropdown.querySelectorAll('button');
-        console.log('Checking dropdown with buttons:', buttons.length);
+        logger.info('Checking dropdown with buttons:', buttons.length);
 
         // Check if any button in this dropdown has download text or icon
         return Array.from(buttons).some((button) => {
@@ -260,7 +263,7 @@ export class DownloadService {
       });
 
       if (!exportDropdown) {
-        console.log('No export dropdown found in this attempt, will retry');
+        logger.info('No export dropdown found in this attempt, will retry');
         attempts++;
       }
     }
@@ -268,7 +271,7 @@ export class DownloadService {
     if (!exportDropdown) {
       throw new Error('Export dropdown content not found after multiple attempts');
     }
-    console.log('Found export dropdown:', exportDropdown);
+    logger.info('Found export dropdown:', exportDropdown);
 
     // Find download button within the identified export dropdown
     const downloadButton = Array.from(exportDropdown.querySelectorAll('button')).find((button) => {
@@ -282,7 +285,7 @@ export class DownloadService {
       throw new Error('Download button not found in dropdown');
     }
 
-    console.log('Found download button, clicking...');
+    logger.info('Found download button, clicking...');
 
     // Click the download button - the click will be intercepted by our event listener
     downloadButton.click();
@@ -290,7 +293,7 @@ export class DownloadService {
     // Close the dropdown by clicking outside or pressing Escape
     setTimeout(() => {
       try {
-        console.log('Closing export dropdown...');
+        logger.info('Closing export dropdown...');
         // Method 1: Try to dispatch Escape key to close the dropdown
         const escapeEvent = new KeyboardEvent('keydown', {
           key: 'Escape',
@@ -305,7 +308,7 @@ export class DownloadService {
           // If dropdown is still open, click on the body element to close it
           const dropdowns = document.querySelectorAll('[role="menu"], [data-radix-menu-content]');
           if (dropdowns.length > 0) {
-            console.log('Dropdown still open, clicking outside to close it');
+            logger.info('Dropdown still open, clicking outside to close it');
             // Click in an empty area of the page
             const clickEvent = new MouseEvent('click', {
               bubbles: true,
@@ -316,7 +319,7 @@ export class DownloadService {
           }
         }, 100);
       } catch (closeError) {
-        console.warn('Error while trying to close dropdown:', closeError);
+        logger.warn('Error while trying to close dropdown:', closeError);
         // Non-critical error, don't throw
       }
     }, 300);

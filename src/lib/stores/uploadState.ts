@@ -1,5 +1,8 @@
 import { writable, type Writable } from 'svelte/store';
 import type { ProcessingStatus } from '../types';
+import { createLogger } from '../utils/logger';
+
+const logger = createLogger('UploadStateStore');
 
 // Upload State Interface
 export interface UploadState {
@@ -33,7 +36,7 @@ export const uploadStateActions = {
         port,
       }));
     } catch (error) {
-      console.error('Error initializing Chrome runtime port:', error);
+      logger.error('Error initializing Chrome runtime port:', error);
     }
   },
 
@@ -89,10 +92,10 @@ export const uploadStateActions = {
         try {
           state.port.postMessage(message);
         } catch (error) {
-          console.error('Error sending message to background script:', error);
+          logger.error('Error sending message to background script:', error);
         }
       } else {
-        console.warn('No port connection available to send message');
+        logger.warn('No port connection available to send message');
       }
       return state;
     });
@@ -140,7 +143,7 @@ export const uploadStateActions = {
         try {
           state.port.disconnect();
         } catch (error) {
-          console.error('Error disconnecting port:', error);
+          logger.error('Error disconnecting port:', error);
         }
       }
       return {

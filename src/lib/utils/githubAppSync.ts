@@ -5,6 +5,9 @@
 
 import { SupabaseAuthService } from '../../content/services/SupabaseAuthService';
 import { ChromeStorageService } from '../services/chromeStorage';
+import { createLogger } from './logger';
+
+const logger = createLogger('GitHubAppSync');
 
 /**
  * Manually trigger GitHub App sync from web app
@@ -15,7 +18,7 @@ export async function syncGitHubAppFromWebApp(): Promise<{
   message: string;
 }> {
   try {
-    console.log('🔄 Starting manual GitHub App sync...');
+    logger.info('🔄 Starting manual GitHub App sync...');
 
     const authService = SupabaseAuthService.getInstance();
 
@@ -58,7 +61,7 @@ export async function syncGitHubAppFromWebApp(): Promise<{
       };
     }
   } catch (error) {
-    console.error('Error syncing GitHub App:', error);
+    logger.error('Error syncing GitHub App:', error);
     return {
       success: false,
       hasGitHubApp: false,
@@ -89,7 +92,7 @@ export async function checkGitHubAppStatus(): Promise<{
       installationId: storage.installationId,
     };
   } catch (error) {
-    console.error('Error checking GitHub App status:', error);
+    logger.error('Error checking GitHub App status:', error);
     return { isConfigured: false };
   }
 }
@@ -124,7 +127,7 @@ export async function switchToGitHubApp(): Promise<{
       message: 'Switched to GitHub App authentication successfully!',
     };
   } catch (error) {
-    console.error('Error switching to GitHub App:', error);
+    logger.error('Error switching to GitHub App:', error);
     return {
       success: false,
       message: error instanceof Error ? error.message : 'Failed to switch authentication method',
@@ -162,7 +165,7 @@ export async function refreshGitHubAppToken(): Promise<{
       };
     }
   } catch (error) {
-    console.error('Error refreshing GitHub App token:', error);
+    logger.error('Error refreshing GitHub App token:', error);
     return {
       success: false,
       message: error instanceof Error ? error.message : 'Failed to refresh token',
@@ -206,7 +209,7 @@ export async function getGitHubAppInfo(): Promise<{
       needsRefresh,
     };
   } catch (error) {
-    console.error('Error getting GitHub App info:', error);
+    logger.error('Error getting GitHub App info:', error);
     return {
       isConfigured: false,
       authMethod: 'pat',
