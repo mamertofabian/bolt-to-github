@@ -831,7 +831,7 @@ export class ContentManager {
         break;
       case 'HEARTBEAT_RESPONSE':
         // Heartbeat response received - connection is healthy
-        logger.debug('💓 Heartbeat response received');
+        logger.info('💓 Heartbeat response received');
         break;
       default:
         logger.warn('Unhandled message type:', message.type);

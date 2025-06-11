@@ -381,7 +381,10 @@ export class BackgroundService {
 
   private async handlePortMessage(tabId: number, message: Message): Promise<void> {
     const port = this.ports.get(tabId);
-    if (!port) return;
+    if (!port) {
+      logger.warn('No port found for tabId:', tabId);
+      return;
+    }
 
     try {
       // Debug premium user message handling
@@ -549,10 +552,12 @@ export class BackgroundService {
 
         case 'HEARTBEAT':
           // Respond to heartbeat to keep connection alive
-          this.sendResponse(port, {
-            type: 'HEARTBEAT_RESPONSE',
+          const heartbeatResponse = {
+            type: 'HEARTBEAT_RESPONSE' as const,
             timestamp: Date.now(),
-          });
+          };
+          logger.info('💓 Sending HEARTBEAT_RESPONSE');
+          this.sendResponse(port, heartbeatResponse);
           break;
 
         default:
