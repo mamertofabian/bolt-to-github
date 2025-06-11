@@ -982,4 +982,13 @@ export class BackgroundService {
       }
     });
   }
+
+  /**
+   * Rotate old logs
+   */
+  private rotateOldLogs(): void {
+    const logStorage = getLogStorage();
+    logStorage.rotateLogs();
+    logger.info('Log rotation completed');
+  }
 }
