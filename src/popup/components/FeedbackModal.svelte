@@ -64,21 +64,20 @@
     try {
       const logManager = LogStorageManager.getInstance();
       const recentLogs = await logManager.getAllLogs({
-        levels: ['error', 'warn'],
-        // Get logs from the last 24 hours
+        // Get logs from the last 24 hours, all levels
         startTime: new Date(Date.now() - 24 * 60 * 60 * 1000),
       });
 
       // Handle null/undefined logs
       if (!recentLogs || !Array.isArray(recentLogs)) {
-        return 'No recent error or warning logs found.';
+        return 'No recent logs found.';
       }
 
       // Limit to most recent 50 entries to avoid making the issue too large
       const logsToInclude = recentLogs.slice(-50);
 
       if (logsToInclude.length === 0) {
-        return 'No recent error or warning logs found.';
+        return 'No recent logs found.';
       }
 
       // Format logs for readability with validation
@@ -321,8 +320,8 @@
               <label for="includeLogs" class="text-sm text-slate-300 cursor-pointer">
                 <span class="font-medium">Include recent logs to help diagnose the issue</span>
                 <p class="text-xs text-slate-400 mt-1">
-                  Automatically attach recent error and warning logs to help diagnose the issue.
-                  This may include technical information about your browser and extension activity.
+                  Automatically attach recent logs to help diagnose the issue. This may include
+                  technical information about your browser and extension activity.
                 </p>
               </label>
             </div>
