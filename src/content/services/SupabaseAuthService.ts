@@ -45,6 +45,11 @@ export class SupabaseAuthService {
   private anonKey: string;
   private checkInterval: NodeJS.Timeout | null = null;
 
+  // Message flooding prevention
+  private lastPremiumStatusHash: string = '';
+  private lastPremiumStatusUpdate: number = 0;
+  private readonly PREMIUM_STATUS_UPDATE_COOLDOWN = 1000; // 1 second cooldown
+
   /* Configuration - replace with your actual Supabase project details */
   private readonly SUPABASE_URL = SUPABASE_CONFIG.URL;
   private readonly SUPABASE_ANON_KEY = SUPABASE_CONFIG.ANON_KEY;
@@ -992,7 +997,7 @@ export class SupabaseAuthService {
   }
 
   /**
-   * Notify premium service of subscription status changes
+   * Notify premium service of subscription status changes (with flooding prevention)
    */
   private async notifyPremiumService(): Promise<void> {
     try {
@@ -1002,6 +1007,22 @@ export class SupabaseAuthService {
         plan: this.authState.subscription.plan,
         expiresAt: this.authState.subscription.expiresAt,
       };
+
+      // Create hash to detect actual changes
+      const statusHash = JSON.stringify(premiumStatusData);
+      const now = Date.now();
+
+      // Check if status has actually changed or if we're within cooldown period
+      if (
+        statusHash === this.lastPremiumStatusHash ||
+        now - this.lastPremiumStatusUpdate < this.PREMIUM_STATUS_UPDATE_COOLDOWN
+      ) {
+        logger.debug('Premium status unchanged or within cooldown period, skipping update');
+        return;
+      }
+
+      this.lastPremiumStatusHash = statusHash;
+      this.lastPremiumStatusUpdate = now;
 
       /* Always update popup premium status directly in sync storage */
       try {
@@ -1027,19 +1048,25 @@ export class SupabaseAuthService {
         logger.warn('Failed to update popup premium status in storage:', storageError);
       }
 
-      /* Also send message to content script to update premium status on bolt.new tabs */
-      const tabs = await chrome.tabs.query({ url: 'https://bolt.new/*' });
-      for (const tab of tabs) {
-        if (tab.id) {
-          chrome.tabs
-            .sendMessage(tab.id, {
-              type: 'UPDATE_PREMIUM_STATUS',
-              data: premiumStatusData,
-            })
-            .catch(() => {
-              /* Tab might not have content script injected */
-            });
-        }
+      /* Send message to content script to update premium status on bolt.new tabs */
+      /* Only send to active tab to reduce message flooding */
+      /* Note: This is intentional - inactive tabs will get the update when they become active */
+      const tabs = await chrome.tabs.query({ active: true, url: 'https://bolt.new/*' });
+      if (tabs.length > 0 && tabs[0].id) {
+        chrome.tabs
+          .sendMessage(tabs[0].id, {
+            type: 'UPDATE_PREMIUM_STATUS',
+            data: premiumStatusData,
+            messageId: `premium-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`, // Add unique message ID with random component
+          })
+          .catch(() => {
+            /* Tab might not have content script injected */
+            logger.debug('Could not send premium status update to active tab');
+          });
+
+        logger.debug('Premium status update sent to active tab only');
+      } else {
+        logger.debug('No active bolt.new tabs found for premium status update');
       }
     } catch (error) {
       logger.error('Error notifying premium service:', error);

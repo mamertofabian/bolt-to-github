@@ -19,6 +19,10 @@ export class ContentManager {
   private isInRecovery = false;
   private lastDisconnectTime = 0;
 
+  // Message deduplication for premium status updates
+  private recentMessageIds: Set<string> = new Set();
+  private readonly MESSAGE_DEDUP_WINDOW = 5000; // 5 seconds
+
   constructor() {
     if (!this.shouldInitialize()) {
       logger.info('Not initializing ContentManager - URL does not match bolt.new pattern');
@@ -110,9 +114,9 @@ export class ContentManager {
       const now = Date.now();
       logger.info('Port disconnected:', error?.message || 'No error message');
 
-      // Check for quick successive disconnections (within 3 seconds)
+      // Check for quick successive disconnections (within 1 second)
       // This often indicates context invalidation even without specific error messages
-      const isQuickSuccessiveDisconnect = now - this.lastDisconnectTime < 3000;
+      const isQuickSuccessiveDisconnect = now - this.lastDisconnectTime < 1000;
       this.lastDisconnectTime = now;
 
       // Check if this is true extension context invalidation vs normal disconnect
@@ -401,12 +405,13 @@ export class ContentManager {
       clearTimeout(this.reconnectTimer);
     }
 
-    this.reconnectTimer = setTimeout(
-      () => {
-        this.reconnect();
-      },
-      this.RECONNECT_DELAY * Math.pow(2, this.reconnectAttempts - 1)
-    ); // Exponential backoff
+    // Add minimum delay to allow service worker to fully initialize
+    const baseDelay = Math.max(this.RECONNECT_DELAY, 1500); // At least 1.5 seconds
+    const delay = baseDelay * Math.pow(2, this.reconnectAttempts - 1);
+
+    this.reconnectTimer = setTimeout(() => {
+      this.reconnect();
+    }, delay); // Exponential backoff with minimum delay
   }
 
   private reconnect(): void {
@@ -495,6 +500,9 @@ export class ContentManager {
 
   private cleanup(preserveRecoveryState = false): void {
     this.isDestroyed = true;
+
+    // Clear message deduplication cache
+    this.recentMessageIds.clear();
 
     // Clear timers
     if (this.reconnectTimer) {
@@ -673,7 +681,25 @@ export class ContentManager {
           }
 
           if (message.type === 'UPDATE_PREMIUM_STATUS') {
-            logger.info('📨 Received UPDATE_PREMIUM_STATUS message from background:', message.data);
+            // Check for message deduplication
+            const messageId =
+              message.messageId ||
+              `fallback-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+
+            if (this.recentMessageIds.has(messageId)) {
+              logger.debug('🔄 Duplicate UPDATE_PREMIUM_STATUS message ignored:', messageId);
+              sendResponse({ success: true, ignored: true, reason: 'duplicate' });
+              return;
+            }
+
+            // Add to recent messages and clean up old ones
+            this.recentMessageIds.add(messageId);
+            this.cleanupOldMessageIds();
+
+            logger.info('📨 Received UPDATE_PREMIUM_STATUS message from background:', {
+              messageId,
+              data: message.data,
+            });
 
             // Check if we're in recovery mode - if so, ignore this message to prevent errors
             if (this.isInRecovery) {
@@ -805,7 +831,7 @@ export class ContentManager {
         break;
       case 'HEARTBEAT_RESPONSE':
         // Heartbeat response received - connection is healthy
-        logger.debug('💓 Heartbeat response received');
+        logger.info('💓 Heartbeat response received');
         break;
       default:
         logger.warn('Unhandled message type:', message.type);
@@ -859,6 +885,34 @@ export class ContentManager {
     } catch (error) {
       logger.error('Error reinitializing content script:', error);
       this.handleInitializationError(error);
+    }
+  }
+
+  /**
+   * Clean up old message IDs to prevent memory leaks
+   */
+  private cleanupOldMessageIds(): void {
+    // Time-based cleanup to prevent memory leaks while maintaining deduplication
+    const now = Date.now();
+    const expiredIds: string[] = [];
+
+    // Find expired message IDs based on the deduplication window
+    this.recentMessageIds.forEach((messageId) => {
+      // Extract timestamp from message ID (format: "prefix-timestamp-random")
+      const parts = messageId.split('-');
+      // For "fallback-timestamp-random" or "premium-timestamp-random", timestamp is at index 1
+      const timestamp = parseInt(parts[1] || '0');
+
+      if (!isNaN(timestamp) && now - timestamp > this.MESSAGE_DEDUP_WINDOW) {
+        expiredIds.push(messageId);
+      }
+    });
+
+    // Remove expired IDs
+    expiredIds.forEach((id) => this.recentMessageIds.delete(id));
+
+    if (expiredIds.length > 0) {
+      logger.debug(`🧹 Cleaned up ${expiredIds.length} expired message IDs`);
     }
   }
 

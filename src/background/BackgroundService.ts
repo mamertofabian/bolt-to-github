@@ -19,6 +19,7 @@ export class BackgroundService {
   private supabaseAuthService: SupabaseAuthService;
   private operationStateManager: OperationStateManager;
   private keepAliveInterval: NodeJS.Timeout | null = null;
+  private lastActivityTime: number = Date.now();
   private authCheckTimeout: NodeJS.Timeout | null = null;
   private storageListener:
     | ((changes: { [key: string]: chrome.storage.StorageChange }, namespace: string) => void)
@@ -46,6 +47,12 @@ export class BackgroundService {
 
     // Set up log rotation alarm
     this.setupLogRotation();
+
+    // Set up Chrome alarms (for keep-alive and log rotation)
+    this.setupAlarms();
+
+    // Start service worker keep-alive mechanism
+    this.startKeepAlive();
   }
 
   private async trackExtensionStartup(): Promise<void> {
@@ -259,6 +266,7 @@ export class BackgroundService {
 
       port.onMessage.addListener(async (message: Message) => {
         logger.info('📥 Received port message:', { source: port.name, type: message.type });
+        this.updateLastActivity();
         await this.handlePortMessage(tabId, message);
       });
     });
@@ -266,6 +274,7 @@ export class BackgroundService {
     // Setup runtime message listener for direct messages (not using ports)
     chrome.runtime.onMessage.addListener(async (message, sender, sendResponse) => {
       logger.info('📥 Received runtime message:', message);
+      this.updateLastActivity();
 
       if (message.action === 'PUSH_TO_GITHUB') {
         this.handlePushToGitHub();
@@ -372,7 +381,10 @@ export class BackgroundService {
 
   private async handlePortMessage(tabId: number, message: Message): Promise<void> {
     const port = this.ports.get(tabId);
-    if (!port) return;
+    if (!port) {
+      logger.warn('No port found for tabId:', tabId);
+      return;
+    }
 
     try {
       // Debug premium user message handling
@@ -540,10 +552,12 @@ export class BackgroundService {
 
         case 'HEARTBEAT':
           // Respond to heartbeat to keep connection alive
-          this.sendResponse(port, {
-            type: 'HEARTBEAT_RESPONSE',
+          const heartbeatResponse = {
+            type: 'HEARTBEAT_RESPONSE' as const,
             timestamp: Date.now(),
-          });
+          };
+          logger.info('💓 Sending HEARTBEAT_RESPONSE');
+          this.sendResponse(port, heartbeatResponse);
           break;
 
         default:
@@ -899,13 +913,33 @@ export class BackgroundService {
   }
 
   private startKeepAlive(): void {
-    // Keep the service worker alive by sending periodic messages to itself
+    // Clear any existing interval
+    if (this.keepAliveInterval) {
+      clearInterval(this.keepAliveInterval);
+    }
+
+    // Use Chrome alarms API for reliable keep-alive
+    // Note: Chrome enforces a minimum period of 1 minute for alarms
+    chrome.alarms.create('keepAlive', { periodInMinutes: 1 }); // Every 60 seconds (Chrome minimum)
+
+    // Also use a regular interval as backup
     this.keepAliveInterval = setInterval(() => {
-      // Check if there are any active ports
-      if (this.ports.size > 0) {
-        logger.debug('🫀 Service worker keep-alive heartbeat');
+      // Check if we have any active connections
+      const hasActiveConnections = this.ports.size > 0;
+      const timeSinceLastActivity = Date.now() - this.lastActivityTime;
+
+      // Only log if there's something interesting
+      if (hasActiveConnections || timeSinceLastActivity < 60000) {
+        logger.debug(
+          `💓 Keep-alive: ${this.ports.size} active connections, last activity ${Math.round(timeSinceLastActivity / 1000)}s ago`
+        );
       }
-    }, 20000); // Every 20 seconds
+
+      // Perform a simple async operation to keep the service worker active
+      chrome.storage.local.get(['keepAliveTimestamp'], (result) => {
+        chrome.storage.local.set({ keepAliveTimestamp: Date.now() });
+      });
+    }, 25000); // Every 25 seconds
   }
 
   public destroy(): void {
@@ -925,5 +959,36 @@ export class BackgroundService {
       chrome.storage.onChanged.removeListener(this.storageListener);
       this.storageListener = null;
     }
+  }
+
+  /**
+   * Update last activity timestamp
+   */
+  private updateLastActivity(): void {
+    this.lastActivityTime = Date.now();
+  }
+
+  /**
+   * Set up Chrome alarms for keep-alive
+   */
+  private setupAlarms(): void {
+    chrome.alarms.onAlarm.addListener((alarm) => {
+      if (alarm.name === 'keepAlive') {
+        // Simple operation to keep service worker active
+        this.updateLastActivity();
+        chrome.storage.local.set({ lastKeepAlive: Date.now() });
+      } else if (alarm.name === 'logRotation') {
+        this.rotateOldLogs();
+      }
+    });
+  }
+
+  /**
+   * Rotate old logs
+   */
+  private rotateOldLogs(): void {
+    const logStorage = getLogStorage();
+    logStorage.rotateLogs();
+    logger.info('Log rotation completed');
   }
 }
