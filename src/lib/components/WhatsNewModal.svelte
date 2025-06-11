@@ -290,6 +290,7 @@ ${versionData.details || ''}
     display: flex;
     flex-direction: column;
     height: 100%;
+    min-height: 0; /* Important for nested flexbox */
   }
 
   .whats-new-header {
@@ -354,9 +355,11 @@ ${versionData.details || ''}
   .whats-new-body {
     flex: 1;
     overflow-y: auto;
+    overflow-x: hidden;
     padding: 1.5rem;
     color: var(--whats-new-text-primary);
     line-height: 1.6;
+    min-height: 0; /* Important for flexbox scrolling */
   }
 
   /* Markdown content styling */
@@ -422,23 +425,23 @@ ${versionData.details || ''}
     margin: 2rem 0;
   }
 
-  /* Custom scrollbar */
+  /* Custom scrollbar - more visible */
   .whats-new-body::-webkit-scrollbar {
     width: 0.5rem;
   }
 
   .whats-new-body::-webkit-scrollbar-track {
-    background: rgba(255, 255, 255, 0.05);
+    background: rgba(255, 255, 255, 0.1);
     border-radius: 0.25rem;
   }
 
   .whats-new-body::-webkit-scrollbar-thumb {
-    background: rgba(255, 255, 255, 0.2);
+    background: rgba(255, 255, 255, 0.3);
     border-radius: 0.25rem;
   }
 
   .whats-new-body::-webkit-scrollbar-thumb:hover {
-    background: rgba(255, 255, 255, 0.3);
+    background: rgba(255, 255, 255, 0.4);
   }
 
   .whats-new-footer {
