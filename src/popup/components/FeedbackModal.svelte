@@ -69,6 +69,11 @@
         startTime: new Date(Date.now() - 24 * 60 * 60 * 1000),
       });
 
+      // Handle null/undefined logs
+      if (!recentLogs || !Array.isArray(recentLogs)) {
+        return 'No recent error or warning logs found.';
+      }
+
       // Limit to most recent 50 entries to avoid making the issue too large
       const logsToInclude = recentLogs.slice(-50);
 
@@ -76,11 +81,16 @@
         return 'No recent error or warning logs found.';
       }
 
-      // Format logs for readability
+      // Format logs for readability with validation
       const formattedLogs = logsToInclude
         .map((log) => {
+          const timestamp = log.timestamp || 'Unknown time';
+          const level = log.level ? log.level.toUpperCase() : 'UNKNOWN';
+          const context = log.context || 'Unknown context';
+          const module = log.module || 'Unknown module';
+          const message = log.message || 'No message';
           const dataStr = log.data ? `\n  Data: ${JSON.stringify(log.data, null, 2)}` : '';
-          return `[${log.timestamp}] [${log.level.toUpperCase()}] [${log.context}] [${log.module}]\n  ${log.message}${dataStr}`;
+          return `[${timestamp}] [${level}] [${context}] [${module}]\n  ${message}${dataStr}`;
         })
         .join('\n\n');
 
@@ -309,7 +319,7 @@
                 class="mt-1 h-4 w-4 text-blue-600 bg-slate-800 border-slate-600 rounded focus:ring-blue-500 focus:ring-offset-0 focus:ring-offset-slate-900"
               />
               <label for="includeLogs" class="text-sm text-slate-300 cursor-pointer">
-                <span class="font-medium">Include recent error logs</span>
+                <span class="font-medium">Include recent logs to help diagnose the issue</span>
                 <p class="text-xs text-slate-400 mt-1">
                   Automatically attach recent error and warning logs to help diagnose the issue.
                   This may include technical information about your browser and extension activity.
@@ -399,8 +409,14 @@
                 if (includeLogs && category === 'bug') {
                   emailBody += '\n\n--- Recent Logs ---\n';
                   const logs = await getFormattedLogs();
-                  // Remove markdown formatting for email
-                  emailBody += logs.replace(/```/g, '');
+                  // Remove markdown formatting for email and limit size
+                  const cleanLogs = logs.replace(/```/g, '');
+                  const maxEmailSize = 5000; // Reasonable email size limit
+                  emailBody +=
+                    cleanLogs.length > maxEmailSize
+                      ? cleanLogs.substring(0, maxEmailSize) +
+                        '\n\n[Logs truncated due to size limit]'
+                      : cleanLogs;
                 }
 
                 const body = encodeURIComponent(emailBody);
