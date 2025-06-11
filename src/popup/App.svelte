@@ -1,5 +1,6 @@
 <script lang="ts">
   import { onMount, onDestroy } from 'svelte';
+  import { createLogger } from '$lib/utils/logger';
   import {
     Card,
     CardContent,
@@ -21,6 +22,8 @@
   import OnboardingView from './components/OnboardingView.svelte';
   import { setUpgradeModalState, type UpgradeModalType } from '$lib/utils/upgradeModal';
   import { SubscriptionService } from '../services/SubscriptionService';
+
+  const logger = createLogger('App');
 
   // Import stores and services
   import {
@@ -134,7 +137,7 @@
     typeof settingsValid !== 'undefined' &&
     typeof onBoltProject !== 'undefined'
   ) {
-    console.log('🎯 Triggering handlePendingPopupContext with:', {
+    logger.info('🎯 Triggering handlePendingPopupContext with:', {
       pendingPopupContext,
       onBoltProject,
       settingsValid,
@@ -151,7 +154,7 @@
 
   function handleFileChangesMessage(message: any) {
     if (message.type === 'FILE_CHANGES') {
-      console.log('Received file changes:', message.changes, 'for project:', message.projectId);
+      logger.info('Received file changes:', message.changes, 'for project:', message.projectId);
       fileChangesActions.processFileChangesMessage(message.changes, message.projectId);
     }
   }
@@ -192,9 +195,9 @@
     // Force sync authentication status from background service
     try {
       await chrome.runtime.sendMessage({ type: 'FORCE_POPUP_SYNC' });
-      console.log('✅ Forced authentication sync from background service');
+      logger.info('✅ Forced authentication sync from background service');
     } catch (error) {
-      console.warn('Failed to force sync authentication status:', error);
+      logger.warn('Failed to force sync authentication status:', error);
     }
 
     // Setup Chrome messaging
@@ -204,7 +207,7 @@
     // Check for pending file changes first
     const pendingChanges = await chrome.storage.local.get('pendingFileChanges');
     if (pendingChanges.pendingFileChanges) {
-      console.log('Found pending file changes:', pendingChanges.pendingFileChanges);
+      logger.info('Found pending file changes:', pendingChanges.pendingFileChanges);
       const fileChangesMap = new Map(Object.entries(pendingChanges.pendingFileChanges)) as Map<
         string,
         import('../services/FilePreviewService').FileChange
@@ -212,7 +215,7 @@
       fileChangesActions.setFileChanges(fileChangesMap);
       fileChangesActions.showModal();
       await chrome.storage.local.remove('pendingFileChanges');
-      console.log('Cleared pending file changes from storage');
+      logger.info('Cleared pending file changes from storage');
     }
 
     // Detect current project
@@ -259,7 +262,7 @@
       const subscription = await SubscriptionService.getSubscriptionStatus();
       hasSubscribed = subscription.subscribed;
     } catch (error) {
-      console.error('Error loading subscription status:', error);
+      logger.error('Error loading subscription status:', error);
     }
   }
 
@@ -274,7 +277,7 @@
         return;
       }
 
-      console.log(
+      logger.info(
         '🔧 Checking if auto-creation of project settings is needed for project:',
         projectId
       );
@@ -284,7 +287,7 @@
       const projectSettings = existingSettings.projectSettings || {};
 
       if (projectSettings[projectId]) {
-        console.log('✅ Project settings already exist for project:', projectId);
+        logger.info('✅ Project settings already exist for project:', projectId);
         return;
       }
 
@@ -301,11 +304,11 @@
           : Boolean(githubSettings.githubToken);
 
       if (!syncSettings.repoOwner || !hasValidAuth) {
-        console.log('⚠️ No valid authentication or repoOwner found, skipping auto-creation');
+        logger.warn('⚠️ No valid authentication or repoOwner found, skipping auto-creation');
         return;
       }
 
-      console.log('🚀 Auto-creating project settings for Bolt project:', projectId);
+      logger.info('🚀 Auto-creating project settings for Bolt project:', projectId);
 
       // Create default project settings with private repository
       const newProjectSettings = {
@@ -335,7 +338,7 @@
       // Load the newly created settings
       githubSettingsActions.loadProjectSettings(projectId);
 
-      console.log('✅ Auto-created project settings:', newProjectSettings);
+      logger.info('✅ Auto-created project settings:', newProjectSettings);
 
       // Store a timestamp to trigger UI updates
       await chrome.storage.local.set({
@@ -349,11 +352,11 @@
         },
       });
 
-      console.log(
+      logger.info(
         '🎯 Project settings auto-created successfully. Repository will be private by default.'
       );
     } catch (error) {
-      console.error('❌ Error auto-creating project settings:', error);
+      logger.error('❌ Error auto-creating project settings:', error);
     }
   }
 
@@ -374,7 +377,7 @@
       const upgradeFeature = result.upgradeModalFeature;
 
       if (context) {
-        console.log('Popup opened with context:', context);
+        logger.info('Popup opened with context:', context);
         pendingPopupContext = context;
         pendingUpgradeFeature = upgradeFeature || '';
 
@@ -382,7 +385,7 @@
         await chrome.storage.local.remove(['popupContext', 'upgradeModalFeature']);
       }
     } catch (error) {
-      console.error('Error checking popup context:', error);
+      logger.error('Error checking popup context:', error);
     }
   }
 
@@ -393,7 +396,7 @@
     const context = pendingPopupContext;
     const upgradeFeature = pendingUpgradeFeature;
 
-    console.log('🎯 Handling pending popup context:', context, {
+    logger.info('🎯 Handling pending popup context:', context, {
       onBoltProject,
       settingsValid,
       projectId,
@@ -405,36 +408,36 @@
       case 'issues':
         // Only show issues if we have valid settings and are on a Bolt project
         if (settingsValid && projectId && githubSettings.githubToken) {
-          console.log('🎯 Opening issues modal');
+          logger.info('🎯 Opening issues modal');
           modalStates.issues = true;
         } else {
-          console.log('🎯 Issues access denied, going to home tab');
+          logger.info('🎯 Issues access denied, going to home tab');
           uiStateActions.setActiveTab('home');
         }
         break;
 
       case 'projects':
-        console.log('🎯 Processing projects context...');
+        logger.info('🎯 Processing projects context...');
         // Switch to projects tab if on bolt project
         if (onBoltProject) {
-          console.log('🎯 On bolt project, setting active tab to projects');
+          logger.info('🎯 On bolt project, setting active tab to projects');
           // Small delay to ensure UI is rendered
           setTimeout(() => {
             uiStateActions.setActiveTab('projects');
-            console.log('🎯 Projects tab activated');
+            logger.info('🎯 Projects tab activated');
           }, 10);
         } else if (
           githubSettings?.hasInitialSettings &&
           githubSettings?.repoOwner &&
           githubSettings?.githubToken
         ) {
-          console.log(
+          logger.info(
             '🎯 Not on bolt project but has settings - projects list should already be visible'
           );
           // Projects list is already shown as main content when not on bolt project but has settings
           // No tab switching needed as we're not in tabbed interface
         } else {
-          console.log('🎯 No valid settings, redirecting to settings');
+          logger.info('🎯 No valid settings, redirecting to settings');
           // If no valid settings, the onboarding UI should be shown
           // No explicit action needed as the template handles this
         }
@@ -443,14 +446,14 @@
       case 'settings':
         // Switch to settings tab
         if (onBoltProject) {
-          console.log('🎯 Setting active tab to settings');
+          logger.info('🎯 Setting active tab to settings');
           // Small delay to ensure UI is rendered
           setTimeout(() => {
             uiStateActions.setActiveTab('settings');
-            console.log('🎯 Settings tab activated');
+            logger.info('🎯 Settings tab activated');
           }, 10);
         } else {
-          console.log('🎯 Not on bolt project, settings handled by onboarding UI');
+          logger.info('🎯 Not on bolt project, settings handled by onboarding UI');
         }
         break;
 
@@ -481,7 +484,7 @@
             upgradeModalConfig.features = config.features;
             modalStates.upgrade = true;
           } catch (error) {
-            console.error('Error loading upgrade modal config:', error);
+            logger.error('Error loading upgrade modal config:', error);
             // Fallback to general upgrade modal
             upgradeModalConfig.feature = 'premium';
             upgradeModalConfig.reason = 'Unlock professional features';
@@ -500,7 +503,7 @@
   async function saveSettings() {
     // If we have a current project, update its settings in the store first
     if (projectId) {
-      console.log('🚀 Saving project settings for project:', projectId);
+      logger.info('🚀 Saving project settings for project:', projectId);
       githubSettingsActions.setProjectSettings(
         projectId,
         githubSettings.repoName,
@@ -508,7 +511,7 @@
       );
     }
 
-    console.log('🚀 Saving settings');
+    logger.info('🚀 Saving settings');
     const result = await githubSettingsActions.saveSettings();
     if (result.success) {
       // Show success toast with potential subscription prompt
@@ -517,7 +520,7 @@
       // Check if it's a storage quota error
       if (result.error && result.error.includes('MAX_WRITE_OPERATIONS_PER_H')) {
         // Don't show on button, this will be handled in GitHubSettings component
-        console.error('Storage quota exceeded:', result.error);
+        logger.error('Storage quota exceeded:', result.error);
       } else {
         uiStateActions.showStatus(result.error || 'Error saving settings');
       }
@@ -592,11 +595,11 @@
   async function cleanup() {
     try {
       await chrome.storage.local.remove('storedFileChanges');
-      console.log('Cleared stored file changes on popup close');
+      logger.info('Cleared stored file changes on popup close');
       ChromeMessagingService.cleanup();
       uploadStateActions.disconnect();
     } catch (error) {
-      console.error('Error during cleanup:', error);
+      logger.error('Error during cleanup:', error);
     }
   }
 
@@ -612,7 +615,7 @@
       const subscription = await SubscriptionService.getSubscriptionStatus();
       hasSubscribed = subscription.subscribed;
     } catch (error) {
-      console.error('Error refreshing subscription status:', error);
+      logger.error('Error refreshing subscription status:', error);
     }
   }
 
@@ -628,7 +631,7 @@
       showSubscribePrompt = shouldPrompt && !hasSubscribed;
       modalStates.successToast = true;
     } catch (error) {
-      console.error('Error handling successful action:', error);
+      logger.error('Error handling successful action:', error);
       // Still show success toast without subscription prompt
       successToastMessage = message;
       modalStates.successToast = true;

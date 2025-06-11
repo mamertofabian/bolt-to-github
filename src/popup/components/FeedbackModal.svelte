@@ -1,9 +1,12 @@
 <script lang="ts">
   import { createEventDispatcher } from 'svelte';
+  import { createLogger } from '$lib/utils/logger';
   import { UnifiedGitHubService } from '../../services/UnifiedGitHubService';
   import { Button } from '$lib/components/ui/button';
   import Modal from '$lib/components/ui/modal/Modal.svelte';
   import { Check, AlertCircle, MessageSquare, Send, ExternalLink, Mail } from 'lucide-svelte';
+
+  const logger = createLogger('FeedbackModal');
 
   export let show = false;
   export let githubToken = '';
@@ -134,7 +137,7 @@
         if (isSuccess) closeModal();
       }, 3000);
     } catch (err) {
-      console.error('Error submitting feedback:', err);
+      logger.error('Error submitting feedback:', err);
 
       if (err instanceof Error && isAuthenticationError(err)) {
         error =
@@ -168,7 +171,6 @@
       }
     }, 100);
   }
-
 </script>
 
 <svelte:window on:keydown={handleKeydown} />
@@ -289,7 +291,7 @@
             <p class="text-xs text-slate-400">
               Prefer other ways to submit feedback? Choose an option below:
             </p>
-            
+
             <!-- GitHub Option -->
             <Button
               type="button"
@@ -312,7 +314,7 @@
               <ExternalLink class="h-3 w-3" />
               Submit on GitHub (Public)
             </Button>
-            
+
             <!-- Email Option -->
             <Button
               type="button"
@@ -320,7 +322,9 @@
               size="sm"
               class="border-slate-600 bg-slate-800 hover:bg-slate-700 text-slate-300 flex items-center gap-2 w-full"
               on:click={() => {
-                const subject = encodeURIComponent(`Bolt to GitHub Feedback: ${category || 'General'}`);
+                const subject = encodeURIComponent(
+                  `Bolt to GitHub Feedback: ${category || 'General'}`
+                );
                 const body = encodeURIComponent(message || 'Please describe your feedback here...');
                 window.location.href = `mailto:aidrivencoder@gmail.com?subject=${subject}&body=${body}`;
               }}
@@ -329,7 +333,7 @@
               <Mail class="h-3 w-3" />
               Email Support (Private)
             </Button>
-            
+
             <p class="text-xs text-slate-500 mt-2">
               Email: aidrivencoder@gmail.com for private feedback or direct support
             </p>

@@ -13,6 +13,14 @@ global.chrome = {
       addListener: jest.fn(),
       removeListener: jest.fn(),
     },
+    onStartup: {
+      addListener: jest.fn(),
+      removeListener: jest.fn(),
+    },
+    onInstalled: {
+      addListener: jest.fn(),
+      removeListener: jest.fn(),
+    },
     sendMessage: jest.fn(),
     getURL: jest.fn((path) => `chrome-extension://test/${path}`),
     lastError: null,
