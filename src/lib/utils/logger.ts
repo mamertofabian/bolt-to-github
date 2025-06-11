@@ -61,7 +61,7 @@ class LoggerImpl implements Logger {
         message,
         args.length > 1 ? args.slice(1) : undefined
       );
-    } catch (error) {
+    } catch (_error) {
       // Silently fail to avoid infinite loops
     }
   }
@@ -120,7 +120,7 @@ function getDefaultConfig() {
       return typeof window !== 'undefined'
         ? localStorage.getItem('bolt-to-github-debug') === 'true'
         : false;
-    } catch (e) {
+    } catch (_e) {
       return false;
     }
   })();

@@ -15,7 +15,7 @@ const mockChromeStorage = {
 
 global.chrome = {
   storage: mockChromeStorage,
-} as any;
+} as unknown as typeof chrome;
 
 describe('LogStorageManager', () => {
   let storageManager: LogStorageManager;
@@ -23,6 +23,7 @@ describe('LogStorageManager', () => {
   beforeEach(() => {
     jest.clearAllMocks();
     // Reset singleton
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     (LogStorageManager as any).instance = null;
 
     // Reset chrome storage mocks

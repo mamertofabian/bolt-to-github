@@ -156,7 +156,7 @@ export class LogStorageManager {
   private async updateMetadata(includeRotation = false): Promise<void> {
     if (!chrome.storage || !chrome.storage.local) return;
 
-    const metadata: any = {
+    const metadata: Record<string, unknown> = {
       lastWrite: new Date().toISOString(),
       totalEntries: this.memoryBuffer.length,
     };
