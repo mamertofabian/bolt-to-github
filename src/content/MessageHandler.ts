@@ -88,7 +88,7 @@ export class MessageHandler {
 
     try {
       this.port!.postMessage(message);
-      logger.info('📤 MessageHandler: Message sent:', { type, data });
+      logger.debug('📤 MessageHandler: Message sent:', { type, data });
     } catch (error) {
       logger.error('❌ MessageHandler: Error sending message:', error);
 

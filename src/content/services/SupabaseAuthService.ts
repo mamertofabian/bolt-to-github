@@ -429,7 +429,7 @@ export class SupabaseAuthService {
         expiresAt: new Date(expiresAt),
       });
     } catch (error) {
-      logger;
+      logger.error('Failed to store token data:', error);
     }
   }
 

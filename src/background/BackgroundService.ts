@@ -218,7 +218,7 @@ export class BackgroundService {
         logger.info('✅ PAT authentication detected, initializing PAT service', settings);
         this.githubService = new UnifiedGitHubService(settings.gitHubSettings.githubToken);
       } else {
-        logger.info('❌ No valid authentication configuration found');
+        logger.warn('❌ No valid authentication configuration found');
         this.githubService = null;
       }
     } catch (error) {
