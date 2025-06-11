@@ -79,19 +79,31 @@ export class LogStorageManager {
         return 'background';
       }
 
-      // Check if we're in the popup
-      if (typeof window !== 'undefined' && window.location?.href?.includes('popup.html')) {
-        return 'popup';
+      // Check if we're in the popup or other extension pages
+      if (typeof window !== 'undefined' && window.location?.href) {
+        const url = window.location.href;
+
+        // Check for popup.html in the URL
+        if (url.includes('popup.html') || url.includes('/popup/')) {
+          return 'popup';
+        }
+
+        // Check for logs.html
+        if (url.includes('logs.html') || url.includes('/pages/')) {
+          return 'popup'; // Treat logs page as popup context
+        }
+
+        // Check if it's a chrome-extension:// URL (popup or options page)
+        if (url.startsWith('chrome-extension://')) {
+          return 'popup';
+        }
       }
 
-      // Check if we're in the logs page
-      if (typeof window !== 'undefined' && window.location?.href?.includes('logs.html')) {
-        return 'popup'; // Treat logs page as popup context
-      }
-
-      // Check if we're in a content script by checking for window.chrome.tabs absence
-      // Content scripts don't have access to most chrome APIs
-      if (typeof window !== 'undefined' && !chrome.tabs) {
+      // If we're in a window context without chrome-extension:// URL, it's likely content script
+      if (
+        typeof window !== 'undefined' &&
+        !window.location?.href?.startsWith('chrome-extension://')
+      ) {
         return 'content';
       }
 

@@ -293,7 +293,27 @@
     changes: Record<string, chrome.storage.StorageChange>,
     areaName: string
   ) => {
-    logger.info('Storage changes detected in GitHubSettings:', changes, 'in area:', areaName);
+    // Filter out log-related changes to avoid logging massive amounts of data
+    const relevantChanges = Object.keys(changes).filter(
+      (key) => !key.startsWith('logs_') && key !== 'currentLogBatch' && key !== 'logMetadata'
+    );
+
+    if (relevantChanges.length > 0) {
+      const filteredChanges = relevantChanges.reduce(
+        (acc, key) => {
+          acc[key] = changes[key];
+          return acc;
+        },
+        {} as Record<string, chrome.storage.StorageChange>
+      );
+
+      logger.debug(
+        'Storage changes detected in GitHubSettings:',
+        Object.keys(filteredChanges),
+        'in area:',
+        areaName
+      );
+    }
 
     // Check if lastSettingsUpdate changed in local storage
     if (areaName === 'local' && changes.lastSettingsUpdate) {
