@@ -1,6 +1,7 @@
 <script lang="ts">
   import { createEventDispatcher } from 'svelte';
   import { createLogger } from '$lib/utils/logger';
+  import { LogStorageManager } from '$lib/utils/logStorage';
   import { UnifiedGitHubService } from '../../services/UnifiedGitHubService';
   import { Button } from '$lib/components/ui/button';
   import Modal from '$lib/components/ui/modal/Modal.svelte';
@@ -19,6 +20,7 @@
   let isSuccess = false;
   let error: string | null = null;
   let showFallbackOption = false;
+  let includeLogs = false;
 
   const feedbackCategories = [
     {
@@ -42,6 +44,7 @@
     isSuccess = false;
     error = null;
     showFallbackOption = false;
+    includeLogs = false;
   }
 
   function closeModal() {
@@ -56,8 +59,50 @@
     }
   }
 
+  // Fetch and format logs for inclusion in feedback
+  async function getFormattedLogs(): Promise<string> {
+    try {
+      const logManager = LogStorageManager.getInstance();
+      const recentLogs = await logManager.getAllLogs({
+        levels: ['error', 'warn'],
+        // Get logs from the last 24 hours
+        startTime: new Date(Date.now() - 24 * 60 * 60 * 1000),
+      });
+
+      // Handle null/undefined logs
+      if (!recentLogs || !Array.isArray(recentLogs)) {
+        return 'No recent error or warning logs found.';
+      }
+
+      // Limit to most recent 50 entries to avoid making the issue too large
+      const logsToInclude = recentLogs.slice(-50);
+
+      if (logsToInclude.length === 0) {
+        return 'No recent error or warning logs found.';
+      }
+
+      // Format logs for readability with validation
+      const formattedLogs = logsToInclude
+        .map((log) => {
+          const timestamp = log.timestamp || 'Unknown time';
+          const level = log.level ? log.level.toUpperCase() : 'UNKNOWN';
+          const context = log.context || 'Unknown context';
+          const module = log.module || 'Unknown module';
+          const message = log.message || 'No message';
+          const dataStr = log.data ? `\n  Data: ${JSON.stringify(log.data, null, 2)}` : '';
+          return `[${timestamp}] [${level}] [${context}] [${module}]\n  ${message}${dataStr}`;
+        })
+        .join('\n\n');
+
+      return `\`\`\`\n${formattedLogs}\n\`\`\``;
+    } catch (err) {
+      logger.error('Failed to fetch logs for feedback:', err);
+      return 'Failed to fetch logs.';
+    }
+  }
+
   // Generate GitHub issue URL for manual submission
-  function generateGitHubIssueUrl(): string {
+  async function generateGitHubIssueUrl(): Promise<string> {
     if (!category || !message.trim()) return '';
 
     const manifestData = chrome.runtime.getManifest();
@@ -69,6 +114,13 @@
     issueBody += `**Extension Version:** ${manifestData.version}\n`;
     issueBody += `**Browser Info:** ${navigator.userAgent}\n`;
 
+    // Include logs if requested
+    if (includeLogs && category === 'bug') {
+      issueBody += `\n\n## Recent Logs\n`;
+      const logs = await getFormattedLogs();
+      issueBody += logs;
+    }
+
     const params = new URLSearchParams({
       title: issueTitle,
       body: issueBody,
@@ -78,8 +130,8 @@
     return `https://github.com/mamertofabian/bolt-to-github/issues/new?${params.toString()}`;
   }
 
-  function openGitHubIssueInNewTab() {
-    const url = generateGitHubIssueUrl();
+  async function openGitHubIssueInNewTab() {
+    const url = await generateGitHubIssueUrl();
     if (url) {
       if (typeof chrome !== 'undefined' && chrome.tabs) {
         chrome.tabs.create({ url });
@@ -116,6 +168,12 @@
         extensionVersion: manifestData.version,
       };
 
+      // Include logs if requested for bug reports
+      let logsSection = '';
+      if (includeLogs && category === 'bug') {
+        logsSection = '\n\n## Recent Logs\n' + (await getFormattedLogs());
+      }
+
       // Submit feedback using GitHub Issues API with authentication method detection
       const authSettings = await chrome.storage.local.get(['authenticationMethod']);
       const authMethod = authSettings.authenticationMethod || 'pat';
@@ -128,7 +186,7 @@
       }
       await githubService.submitFeedback({
         category: category as 'appreciation' | 'question' | 'bug' | 'feature' | 'other',
-        message: message.trim(),
+        message: message.trim() + logsSection,
         metadata,
       });
 
@@ -251,6 +309,25 @@
             ></textarea>
           </div>
 
+          <!-- Include Logs Option (only for bug reports) -->
+          {#if category === 'bug'}
+            <div class="flex items-start gap-2">
+              <input
+                type="checkbox"
+                id="includeLogs"
+                bind:checked={includeLogs}
+                class="mt-1 h-4 w-4 text-blue-600 bg-slate-800 border-slate-600 rounded focus:ring-blue-500 focus:ring-offset-0 focus:ring-offset-slate-900"
+              />
+              <label for="includeLogs" class="text-sm text-slate-300 cursor-pointer">
+                <span class="font-medium">Include recent logs to help diagnose the issue</span>
+                <p class="text-xs text-slate-400 mt-1">
+                  Automatically attach recent error and warning logs to help diagnose the issue.
+                  This may include technical information about your browser and extension activity.
+                </p>
+              </label>
+            </div>
+          {/if}
+
           <!-- Privacy Notice -->
           <div class="bg-blue-500/10 p-3 rounded-md border border-blue-500/30">
             <p class="text-xs text-blue-400 font-medium mb-1">Privacy Notice</p>
@@ -321,11 +398,28 @@
               variant="outline"
               size="sm"
               class="border-slate-600 bg-slate-800 hover:bg-slate-700 text-slate-300 flex items-center gap-2 w-full"
-              on:click={() => {
+              on:click={async () => {
                 const subject = encodeURIComponent(
                   `Bolt to GitHub Feedback: ${category || 'General'}`
                 );
-                const body = encodeURIComponent(message || 'Please describe your feedback here...');
+
+                let emailBody = message || 'Please describe your feedback here...';
+
+                // Include logs if requested for bug reports
+                if (includeLogs && category === 'bug') {
+                  emailBody += '\n\n--- Recent Logs ---\n';
+                  const logs = await getFormattedLogs();
+                  // Remove markdown formatting for email and limit size
+                  const cleanLogs = logs.replace(/```/g, '');
+                  const maxEmailSize = 5000; // Reasonable email size limit
+                  emailBody +=
+                    cleanLogs.length > maxEmailSize
+                      ? cleanLogs.substring(0, maxEmailSize) +
+                        '\n\n[Logs truncated due to size limit]'
+                      : cleanLogs;
+                }
+
+                const body = encodeURIComponent(emailBody);
                 window.location.href = `mailto:aidrivencoder@gmail.com?subject=${subject}&body=${body}`;
               }}
               disabled={!category}
