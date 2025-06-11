@@ -1,6 +1,9 @@
 import type { IDropdownManager } from '../types/ManagerInterfaces';
 import type { MessageHandler } from '../MessageHandler';
 import type { UIStateManager } from '../services/UIStateManager';
+import { createLogger } from '$lib/utils/logger';
+
+const logger = createLogger('DropdownManager');
 
 /**
  * DropdownManager handles the GitHub dropdown creation, positioning, and interaction
@@ -42,11 +45,11 @@ export class DropdownManager implements IDropdownManager {
    * Update premium status and refresh dropdown if it's currently shown
    */
   public updatePremiumStatus(): void {
-    console.log('🔄 Updating dropdown premium status...');
+    logger.info('🔄 Updating dropdown premium status...');
 
     /* If dropdown is currently shown, refresh its content */
     if (this.currentDropdown && this.currentDropdown.style.display === 'block') {
-      console.log('✅ Refreshing visible dropdown content');
+      logger.info('✅ Refreshing visible dropdown content');
       this.refreshDropdownContent();
     }
   }
@@ -66,7 +69,7 @@ export class DropdownManager implements IDropdownManager {
     const items = this.createDropdownItems();
     items.forEach((item) => this.currentDropdown!.appendChild(item));
 
-    console.log('🔄 Dropdown content refreshed with current premium status');
+    logger.info('🔄 Dropdown content refreshed with current premium status');
   }
 
   /**
@@ -74,7 +77,7 @@ export class DropdownManager implements IDropdownManager {
    * Replaces the previous handleGitHubDropdownClick method from UIManager
    */
   public async show(button: HTMLButtonElement): Promise<void> {
-    console.log('Handling GitHub dropdown click');
+    logger.debug('Handling GitHub dropdown click');
 
     // Dispatch keydown event to open dropdown
     const keydownEvent = new KeyboardEvent('keydown', {
@@ -83,7 +86,7 @@ export class DropdownManager implements IDropdownManager {
       cancelable: true,
     });
     button.dispatchEvent(keydownEvent);
-    console.log('Dispatched keydown to GitHub button');
+    logger.debug('Dispatched keydown to GitHub button');
 
     // Wait a bit for the dropdown content to render
     await new Promise((resolve) => setTimeout(resolve, 200));
@@ -325,7 +328,7 @@ export class DropdownManager implements IDropdownManager {
           await this.onUpgradePromptCallback('file-changes');
         } else {
           /* Fallback notification */
-          console.log('Upgrade required for file changes feature');
+          logger.info('Upgrade required for file changes feature');
         }
         return;
       }
@@ -363,7 +366,7 @@ export class DropdownManager implements IDropdownManager {
           await this.onUpgradePromptCallback('issues');
         } else {
           /* Fallback notification */
-          console.log('Upgrade required for issues feature');
+          logger.info('Upgrade required for issues feature');
         }
         return;
       }
@@ -413,7 +416,7 @@ export class DropdownManager implements IDropdownManager {
    * Cleanup the dropdown and resources
    */
   public cleanup(): void {
-    console.log('🔊 Cleaning up dropdown manager');
+    logger.info('🔊 Cleaning up dropdown manager');
 
     // Hide dropdown if currently shown
     this.hide();

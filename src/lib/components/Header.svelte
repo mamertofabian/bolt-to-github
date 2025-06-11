@@ -1,9 +1,13 @@
 <script lang="ts">
   import { Home, Settings, FolderGit2, HelpCircle, FileText } from 'lucide-svelte';
   import { TabsList, TabsTrigger } from '$lib/components/ui/tabs';
+
+  // Only show logs tab in development mode
+  const isDevelopment = import.meta.env.DEV;
+  const gridCols = isDevelopment ? 'grid-cols-5' : 'grid-cols-4';
 </script>
 
-<TabsList class="grid w-full grid-cols-5">
+<TabsList class="grid w-full {gridCols}">
   <TabsTrigger value="home" class="gap-2">
     <Home class="h-4 w-4" />
     Home
@@ -20,8 +24,10 @@
     <HelpCircle class="h-4 w-4" />
     Help
   </TabsTrigger>
-  <TabsTrigger value="logs" class="gap-2">
-    <FileText class="h-4 w-4" />
-    Logs
-  </TabsTrigger>
+  {#if isDevelopment}
+    <TabsTrigger value="logs" class="gap-2">
+      <FileText class="h-4 w-4" />
+      Logs
+    </TabsTrigger>
+  {/if}
 </TabsList>
