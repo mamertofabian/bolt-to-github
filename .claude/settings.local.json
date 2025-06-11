@@ -20,7 +20,8 @@
       "Bash(git restore:*)",
       "Bash(gh pr view:*)",
       "Bash(pnpm run:*)",
-      "Bash(gh pr diff:*)"
+      "Bash(gh pr diff:*)",
+      "Bash(gh pr comment:*)"
     ],
     "deny": []
   }
