@@ -5,7 +5,9 @@ import { ZipHandler } from '../services/zipHandler';
 import { BackgroundTempRepoManager } from './TempRepoManager';
 import { SupabaseAuthService } from '../content/services/SupabaseAuthService';
 import { OperationStateManager } from '../content/services/OperationStateManager';
-import { logger, getLogStorage } from '../lib/utils/logger';
+import { createLogger, getLogStorage } from '../lib/utils/logger';
+
+const logger = createLogger('BackgroundService');
 
 export class BackgroundService {
   private stateManager: StateManager;
