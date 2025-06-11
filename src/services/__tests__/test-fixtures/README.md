@@ -329,16 +329,12 @@ The GitHubAppService test fixtures provide comprehensive testing infrastructure 
 ### Quick Start
 
 ```typescript
-import { 
-  setupGitHubAppServiceTest,
-  createTestScenario,
-  gitHubAppScenarios
-} from './test-fixtures';
+import { setupGitHubAppServiceTest, createTestScenario, gitHubAppScenarios } from './test-fixtures';
 
 // Set up test environment
 const env = setupGitHubAppServiceTest({
   useRealService: true,
-  withSupabaseToken: true
+  withSupabaseToken: true,
 });
 
 // Use predefined scenarios
@@ -401,7 +397,7 @@ expect(result.installation_found).toBe(true);
 
 ```typescript
 const env = setupGitHubAppServiceTest({
-  initialConfig: createGitHubAppConfigWithExpiry(-3600000) // Expired
+  initialConfig: createGitHubAppConfigWithExpiry(-3600000), // Expired
 });
 
 await simulateTokenRenewal(env.service, env.fetchMock);

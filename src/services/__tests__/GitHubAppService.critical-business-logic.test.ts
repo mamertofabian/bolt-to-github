@@ -1,6 +1,6 @@
 /**
  * Critical Business Logic Tests for GitHubAppService
- * 
+ *
  * Tests focusing on high-risk areas:
  * - OAuth Flow Management
  * - Token Lifecycle with Automatic Refresh
@@ -83,36 +83,46 @@ describe('GitHubAppService - Critical Business Logic', () => {
       });
 
       it('should handle invalid authorization code', async () => {
-        env.fetchMock.setResponse('/functions/v1/github-app-auth', {
-          error: 'Invalid authorization code',
-        }, 400);
+        env.fetchMock.setResponse(
+          '/functions/v1/github-app-auth',
+          {
+            error: 'Invalid authorization code',
+          },
+          400
+        );
 
-        await expect(env.service.completeOAuthFlow('invalid_code'))
-          .rejects.toThrow('Invalid authorization code');
+        await expect(env.service.completeOAuthFlow('invalid_code')).rejects.toThrow(
+          'Invalid authorization code'
+        );
       });
 
       it('should handle network errors during OAuth flow', async () => {
         simulateError(env.fetchMock, 'network');
 
-        await expect(env.service.completeOAuthFlow('valid_code'))
-          .rejects.toThrow('Network error');
+        await expect(env.service.completeOAuthFlow('valid_code')).rejects.toThrow('Network error');
       });
 
       it('should handle missing user token during OAuth', async () => {
         env.storage.clear(); // Remove Supabase token
         env.service.setUserToken(null as any);
 
-        await expect(env.service.completeOAuthFlow('valid_code'))
-          .rejects.toThrow('No user token available');
+        await expect(env.service.completeOAuthFlow('valid_code')).rejects.toThrow(
+          'No user token available'
+        );
       });
 
       it('should handle server errors gracefully', async () => {
-        env.fetchMock.setResponse('/functions/v1/github-app-auth', {
-          error: 'Internal server error',
-        }, 500);
+        env.fetchMock.setResponse(
+          '/functions/v1/github-app-auth',
+          {
+            error: 'Internal server error',
+          },
+          500
+        );
 
-        await expect(env.service.completeOAuthFlow('valid_code'))
-          .rejects.toThrow('Internal server error');
+        await expect(env.service.completeOAuthFlow('valid_code')).rejects.toThrow(
+          'Internal server error'
+        );
       });
     });
   });
@@ -147,22 +157,29 @@ describe('GitHubAppService - Critical Business Logic', () => {
       it('should handle token renewal failure', async () => {
         env.fetchMock.setResponse('/functions/v1/get-github-token', tokenRenewalFailedError, 401);
 
-        await expect(env.service.getAccessToken())
-          .rejects.toThrow('Re-authentication required: Failed to renew access token');
+        await expect(env.service.getAccessToken()).rejects.toThrow(
+          'Re-authentication required: Failed to renew access token'
+        );
       });
 
       it('should handle missing GitHub App configuration', async () => {
         env.fetchMock.setResponse('/functions/v1/get-github-token', noGitHubAppError, 401);
 
-        await expect(env.service.getAccessToken())
-          .rejects.toThrow('Re-authentication required: No GitHub App configuration found');
+        await expect(env.service.getAccessToken()).rejects.toThrow(
+          'Re-authentication required: No GitHub App configuration found'
+        );
       });
 
       it('should handle expired token with no refresh token', async () => {
-        env.fetchMock.setResponse('/functions/v1/get-github-token', tokenExpiredNoRefreshError, 401);
+        env.fetchMock.setResponse(
+          '/functions/v1/get-github-token',
+          tokenExpiredNoRefreshError,
+          401
+        );
 
-        await expect(env.service.getAccessToken())
-          .rejects.toThrow('Re-authentication required: Access token expired and no refresh token available');
+        await expect(env.service.getAccessToken()).rejects.toThrow(
+          'Re-authentication required: Access token expired and no refresh token available'
+        );
       });
 
       it('should handle concurrent token refresh requests', async () => {
@@ -186,11 +203,13 @@ describe('GitHubAppService - Critical Business Logic', () => {
         });
 
         // Make concurrent requests
-        const promises = Array(5).fill(null).map(() => env.service.getAccessToken());
+        const promises = Array(5)
+          .fill(null)
+          .map(() => env.service.getAccessToken());
         const results = await Promise.all(promises);
 
         // All should get valid tokens
-        results.forEach(token => {
+        results.forEach((token) => {
           expect(token.access_token).toMatch(/^ghs_renewed_/);
           expect(token.renewed).toBe(true);
         });
@@ -239,17 +258,17 @@ describe('GitHubAppService - Critical Business Logic', () => {
 
       it('should handle time drift correctly', async () => {
         const restoreTime = advanceTime(0);
-        
+
         try {
           // Set token to expire in exactly 5 minutes
           await env.service.storeConfig(createGitHubAppConfigWithExpiry(300000));
-          
+
           // Should not need renewal yet
           expect(await env.service.needsRenewal()).toBe(false);
-          
+
           // Advance time by 1 second
           advanceTime(1000);
-          
+
           // Now should need renewal
           expect(await env.service.needsRenewal()).toBe(true);
         } finally {
@@ -261,12 +280,16 @@ describe('GitHubAppService - Critical Business Logic', () => {
 
   describe('Error Classification', () => {
     it('should classify NO_GITHUB_APP error correctly', async () => {
-      env.fetchMock.setResponse('/functions/v1/get-github-token', {
-        error: 'No GitHub App configuration found',
-        code: 'NO_GITHUB_APP',
-        requires_auth: true,
-        has_installation: false,
-      }, 401);
+      env.fetchMock.setResponse(
+        '/functions/v1/get-github-token',
+        {
+          error: 'No GitHub App configuration found',
+          code: 'NO_GITHUB_APP',
+          requires_auth: true,
+          has_installation: false,
+        },
+        401
+      );
 
       try {
         await env.service.getAccessToken();
@@ -278,12 +301,16 @@ describe('GitHubAppService - Critical Business Logic', () => {
     });
 
     it('should classify TOKEN_EXPIRED_NO_REFRESH error correctly', async () => {
-      env.fetchMock.setResponse('/functions/v1/get-github-token', {
-        error: 'Access token expired and no refresh token available',
-        code: 'TOKEN_EXPIRED_NO_REFRESH',
-        requires_auth: true,
-        expired_at: new Date(Date.now() - 3600000).toISOString(),
-      }, 401);
+      env.fetchMock.setResponse(
+        '/functions/v1/get-github-token',
+        {
+          error: 'Access token expired and no refresh token available',
+          code: 'TOKEN_EXPIRED_NO_REFRESH',
+          requires_auth: true,
+          expired_at: new Date(Date.now() - 3600000).toISOString(),
+        },
+        401
+      );
 
       try {
         await env.service.getAccessToken();
@@ -295,11 +322,15 @@ describe('GitHubAppService - Critical Business Logic', () => {
     });
 
     it('should classify TOKEN_RENEWAL_FAILED error correctly', async () => {
-      env.fetchMock.setResponse('/functions/v1/get-github-token', {
-        error: 'Failed to renew access token',
-        code: 'TOKEN_RENEWAL_FAILED',
-        details: 'Refresh token is invalid or expired',
-      }, 401);
+      env.fetchMock.setResponse(
+        '/functions/v1/get-github-token',
+        {
+          error: 'Failed to renew access token',
+          code: 'TOKEN_RENEWAL_FAILED',
+          details: 'Refresh token is invalid or expired',
+        },
+        401
+      );
 
       try {
         await env.service.getAccessToken();
@@ -311,10 +342,14 @@ describe('GitHubAppService - Critical Business Logic', () => {
     });
 
     it('should handle unknown error codes gracefully', async () => {
-      env.fetchMock.setResponse('/functions/v1/get-github-token', {
-        error: 'Unknown error occurred',
-        code: 'UNKNOWN_ERROR' as any,
-      }, 401);
+      env.fetchMock.setResponse(
+        '/functions/v1/get-github-token',
+        {
+          error: 'Unknown error occurred',
+          code: 'UNKNOWN_ERROR' as any,
+        },
+        401
+      );
 
       try {
         await env.service.getAccessToken();
@@ -325,10 +360,14 @@ describe('GitHubAppService - Critical Business Logic', () => {
     });
 
     it('should handle missing error message', async () => {
-      env.fetchMock.setResponse('/functions/v1/get-github-token', {
-        code: 'NO_GITHUB_APP',
-        // error field is missing
-      }, 401);
+      env.fetchMock.setResponse(
+        '/functions/v1/get-github-token',
+        {
+          code: 'NO_GITHUB_APP',
+          // error field is missing
+        },
+        401
+      );
 
       try {
         await env.service.getAccessToken();
@@ -377,8 +416,9 @@ describe('GitHubAppService - Critical Business Logic', () => {
         const originalSet = env.storage.set;
         env.storage.set = jest.fn().mockRejectedValue(new Error('QUOTA_EXCEEDED'));
 
-        await expect(env.service.storeConfig(validGitHubAppConfig))
-          .rejects.toThrow('Failed to store GitHub App configuration');
+        await expect(env.service.storeConfig(validGitHubAppConfig)).rejects.toThrow(
+          'Failed to store GitHub App configuration'
+        );
 
         env.storage.set = originalSet;
       });
@@ -391,7 +431,7 @@ describe('GitHubAppService - Critical Business Logic', () => {
         ];
 
         // Store configs concurrently
-        await Promise.all(configs.map(config => env.service.storeConfig(config)));
+        await Promise.all(configs.map((config) => env.service.storeConfig(config)));
 
         // Last write should win
         const stored = env.storage.getAll();
@@ -403,7 +443,7 @@ describe('GitHubAppService - Critical Business Logic', () => {
       it('should remove all GitHub App configuration', async () => {
         // First store config
         await env.service.storeConfig(validGitHubAppConfig);
-        
+
         // Then clear it
         await env.service.clearConfig();
 
@@ -424,8 +464,9 @@ describe('GitHubAppService - Critical Business Logic', () => {
         const originalRemove = env.storage.remove;
         env.storage.remove = jest.fn().mockRejectedValue(new Error('Storage error'));
 
-        await expect(env.service.clearConfig())
-          .rejects.toThrow('Failed to clear GitHub App configuration');
+        await expect(env.service.clearConfig()).rejects.toThrow(
+          'Failed to clear GitHub App configuration'
+        );
 
         env.storage.remove = originalRemove;
       });
@@ -495,10 +536,7 @@ describe('GitHubAppService - Critical Business Logic', () => {
       env.storage.clear();
 
       // Try different key formats
-      const keys = [
-        'sb-gapvjcqybzabnrjnxzhg-auth-token',
-        'sb-differentproject-auth-token',
-      ];
+      const keys = ['sb-gapvjcqybzabnrjnxzhg-auth-token', 'sb-differentproject-auth-token'];
 
       for (const key of keys) {
         await env.storage.set({

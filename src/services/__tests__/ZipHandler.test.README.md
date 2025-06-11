@@ -3,6 +3,7 @@
 ## Test Coverage Summary
 
 Created comprehensive behavioral tests for the ZipHandler class with:
+
 - **34 main tests** covering core functionality
 - **31 critical scenario tests** for edge cases and resilience
 - **30 edge case tests** for unusual patterns
@@ -10,47 +11,56 @@ Created comprehensive behavioral tests for the ZipHandler class with:
 ## Current Test Status
 
 As of the initial test run:
+
 - ✅ **17 tests passing**
 - ❌ **17 tests failing**
 
 ## Key Findings and Potential Bugs
 
 ### 1. **Empty Repository Initialization**
+
 - **Issue**: Code assumes `baseRef.object.sha` exists, but it can be null for empty repos
 - **Location**: `zipHandler.ts:245`
 - **Impact**: Crashes when uploading to newly created repositories
 
 ### 2. **Rate Limit Handling**
+
 - **Issue**: Rate limit warnings and wait logic may not trigger correctly
 - **Location**: Rate limit checking in `createBlobs()` method
 - **Impact**: May exhaust rate limits without proper warnings
 
 ### 3. **Progress Tracking**
+
 - **Issue**: Progress updates are not always sent in the expected sequence
 - **Location**: Various `updateStatus()` calls
 - **Impact**: UI may not accurately reflect upload progress
 
 ### 4. **File Path Normalization**
+
 - **Issue**: The test revealed that file paths need proper normalization
 - **Location**: File processing in `createBlobs()`
 - **Impact**: Files with 'project/' prefix may not be handled correctly
 
 ### 5. **Batch Processing**
+
 - **Issue**: Large file batching logic needs verification
 - **Location**: Batch processing in `createBlobs()`
 - **Impact**: Large uploads may not be properly batched
 
 ### 6. **Error Recovery**
+
 - **Issue**: Retry logic for failed blob uploads needs improvement
 - **Location**: Error handling in blob creation loop
 - **Impact**: Transient failures may not be properly recovered
 
 ### 7. **Status Callback Resilience**
+
 - **Issue**: Status callback errors can propagate and break uploads
 - **Location**: `updateStatus()` method
 - **Impact**: UI errors could fail entire upload
 
 ### 8. **Push Statistics Recording**
+
 - **Issue**: Push statistics may not be recorded correctly in all scenarios
 - **Location**: Push statistics calls throughout the code
 - **Impact**: Analytics data may be incomplete
@@ -58,6 +68,7 @@ As of the initial test run:
 ## Passing Tests
 
 The following functionality is working correctly:
+
 - Basic ZIP file processing
 - File size validation
 - Repository existence checking
@@ -79,6 +90,7 @@ The following functionality is working correctly:
 ## Test Philosophy
 
 These tests follow the principle of **testing behavior, not implementation**:
+
 - Tests verify what the system does, not how it does it
 - Mock implementations are minimal and realistic
 - Tests expose actual bugs rather than just achieving coverage

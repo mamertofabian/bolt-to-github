@@ -1,11 +1,11 @@
-import { 
-  createTestEnvironment, 
+import {
+  createTestEnvironment,
   cleanupTestEnvironment,
   ZIP_FILE_FIXTURES,
   createTestBlob,
   TEST_PROJECTS,
   setupTestProject,
-  type ZipHandlerTestEnvironment
+  type ZipHandlerTestEnvironment,
 } from './test-fixtures/ZipHandlerTestFixtures.index';
 
 describe('ZipHandler - Critical Scenarios', () => {
@@ -27,8 +27,8 @@ describe('ZipHandler - Critical Scenarios', () => {
         projectSettings: {
           'project-1': { repoName: 'repo-1', branch: 'main' },
           'project-2': { repoName: 'repo-2', branch: 'main' },
-          'project-3': { repoName: 'repo-3', branch: 'main' }
-        }
+          'project-3': { repoName: 'repo-3', branch: 'main' },
+        },
       });
 
       const blob1 = createTestBlob(new Map([['file1.js', 'content1']]));
@@ -39,48 +39,38 @@ describe('ZipHandler - Critical Scenarios', () => {
       const uploads = Promise.all([
         env.zipHandler.processZipFile(blob1, 'project-1', 'Commit 1'),
         env.zipHandler.processZipFile(blob2, 'project-2', 'Commit 2'),
-        env.zipHandler.processZipFile(blob3, 'project-3', 'Commit 3')
+        env.zipHandler.processZipFile(blob3, 'project-3', 'Commit 3'),
       ]);
 
       await uploads;
 
       // Verify all uploads succeeded
-      const successStatuses = env.statusCallback.getHistory()
-        .filter(s => s.status === 'success');
+      const successStatuses = env.statusCallback.getHistory().filter((s) => s.status === 'success');
       expect(successStatuses.length).toBeGreaterThanOrEqual(3);
 
       // Verify push statistics for all projects
       const pushRecords = env.pushStats.getRecords();
-      const successRecords = pushRecords.filter(r => r.action === 'success');
+      const successRecords = pushRecords.filter((r) => r.action === 'success');
       expect(successRecords).toHaveLength(3);
-      expect(new Set(successRecords.map(r => r.projectId))).toEqual(
+      expect(new Set(successRecords.map((r) => r.projectId))).toEqual(
         new Set(['project-1', 'project-2', 'project-3'])
       );
     });
 
     it('should handle rapid successive uploads to the same project', async () => {
       setupTestProject(env, TEST_PROJECTS.default);
-      
+
       const blob1 = createTestBlob(new Map([['v1.js', 'version 1']]));
       const blob2 = createTestBlob(new Map([['v2.js', 'version 2']]));
 
       // First upload
-      await env.zipHandler.processZipFile(
-        blob1,
-        TEST_PROJECTS.default.projectId,
-        'First commit'
-      );
+      await env.zipHandler.processZipFile(blob1, TEST_PROJECTS.default.projectId, 'First commit');
 
       // Immediate second upload
-      await env.zipHandler.processZipFile(
-        blob2,
-        TEST_PROJECTS.default.projectId,
-        'Second commit'
-      );
+      await env.zipHandler.processZipFile(blob2, TEST_PROJECTS.default.projectId, 'Second commit');
 
       // Both should succeed
-      const successStatuses = env.statusCallback.getHistory()
-        .filter(s => s.status === 'success');
+      const successStatuses = env.statusCallback.getHistory().filter((s) => s.status === 'success');
       expect(successStatuses.length).toBeGreaterThanOrEqual(2);
     });
   });
@@ -88,7 +78,7 @@ describe('ZipHandler - Critical Scenarios', () => {
   describe('Network Resilience', () => {
     it('should recover from intermittent network failures', async () => {
       setupTestProject(env, TEST_PROJECTS.default);
-      
+
       let requestCount = 0;
       let failureCount = 0;
       const maxFailures = 3;
@@ -123,7 +113,7 @@ describe('ZipHandler - Critical Scenarios', () => {
 
     it('should handle complete network outage during upload', async () => {
       setupTestProject(env, TEST_PROJECTS.default);
-      
+
       let blobsCreated = 0;
       env.githubService.setResponse('POST', '/repos/test-owner/test-repo/git/blobs', () => {
         blobsCreated++;
@@ -151,7 +141,7 @@ describe('ZipHandler - Critical Scenarios', () => {
       const failureRecord = env.pushStats.getLastRecord();
       expect(failureRecord).toMatchObject({
         action: 'failure',
-        error: expect.stringContaining('Network unreachable')
+        error: expect.stringContaining('Network unreachable'),
       });
     });
   });
@@ -159,22 +149,26 @@ describe('ZipHandler - Critical Scenarios', () => {
   describe('Data Integrity', () => {
     it('should maintain file content integrity through the upload process', async () => {
       setupTestProject(env, TEST_PROJECTS.default);
-      
+
       const testContent = {
         'test.js': 'const x = 42;\nconsole.log(x);',
         'data.json': JSON.stringify({ nested: { value: true } }, null, 2),
-        'unicode.txt': '🚀 Unicode test: αβγ δεζ 中文字符'
+        'unicode.txt': '🚀 Unicode test: αβγ δεζ 中文字符',
       };
-      
+
       const files = new Map(Object.entries(testContent));
       const blob = createTestBlob(files);
 
       // Track blob creations to verify content
       const createdBlobs: any[] = [];
-      env.githubService.setResponse('POST', '/repos/test-owner/test-repo/git/blobs', (_, __, body) => {
-        createdBlobs.push(body);
-        return { sha: `blob-${createdBlobs.length}` };
-      });
+      env.githubService.setResponse(
+        'POST',
+        '/repos/test-owner/test-repo/git/blobs',
+        (_, __, body) => {
+          createdBlobs.push(body);
+          return { sha: `blob-${createdBlobs.length}` };
+        }
+      );
 
       await env.zipHandler.processZipFile(
         blob,
@@ -187,7 +181,7 @@ describe('ZipHandler - Critical Scenarios', () => {
       for (const blob of createdBlobs) {
         expect(blob.encoding).toBe('base64');
         expect(blob.content).toBeTruthy();
-        
+
         // Verify content can be decoded
         const decoded = Buffer.from(blob.content, 'base64').toString('utf-8');
         expect(Object.values(testContent)).toContain(decoded);
@@ -196,13 +190,13 @@ describe('ZipHandler - Critical Scenarios', () => {
 
     it('should handle files with CRLF and LF line endings consistently', async () => {
       setupTestProject(env, TEST_PROJECTS.default);
-      
+
       const files = new Map([
         ['unix.txt', 'Line 1\nLine 2\nLine 3'],
         ['windows.txt', 'Line 1\r\nLine 2\r\nLine 3'],
-        ['mixed.txt', 'Line 1\nLine 2\r\nLine 3']
+        ['mixed.txt', 'Line 1\nLine 2\r\nLine 3'],
       ]);
-      
+
       const blob = createTestBlob(files);
 
       await env.zipHandler.processZipFile(
@@ -221,18 +215,22 @@ describe('ZipHandler - Critical Scenarios', () => {
   describe('Repository State Management', () => {
     it('should handle force push scenarios correctly', async () => {
       setupTestProject(env, TEST_PROJECTS.default);
-      
+
       // Simulate a conflict where ref update fails
       let updateAttempts = 0;
-      env.githubService.setResponse('PATCH', '/repos/test-owner/test-repo/git/refs/heads/main', () => {
-        updateAttempts++;
-        if (updateAttempts === 1) {
-          const error = new Error('Update is not a fast forward') as Error & { status?: number };
-          error.status = 422;
-          throw error;
+      env.githubService.setResponse(
+        'PATCH',
+        '/repos/test-owner/test-repo/git/refs/heads/main',
+        () => {
+          updateAttempts++;
+          if (updateAttempts === 1) {
+            const error = new Error('Update is not a fast forward') as Error & { status?: number };
+            error.status = 422;
+            throw error;
+          }
+          return { object: { sha: 'updated-sha' } };
         }
-        return { object: { sha: 'updated-sha' } };
-      });
+      );
 
       const blob = createTestBlob(ZIP_FILE_FIXTURES.simpleProject);
 
@@ -249,7 +247,7 @@ describe('ZipHandler - Critical Scenarios', () => {
 
     it('should handle repository deletion during upload', async () => {
       setupTestProject(env, TEST_PROJECTS.default);
-      
+
       let checkCount = 0;
       env.githubService.setResponse('GET', '/repos/test-owner/test-repo', () => {
         checkCount++;
@@ -277,14 +275,14 @@ describe('ZipHandler - Critical Scenarios', () => {
   describe('Performance and Resource Management', () => {
     it('should handle extremely large individual files', async () => {
       setupTestProject(env, TEST_PROJECTS.default);
-      
+
       // Create a file with 10MB of content
       const largeContent = 'x'.repeat(10 * 1024 * 1024);
       const files = new Map([
         ['large-file.txt', largeContent],
-        ['small-file.txt', 'small content']
+        ['small-file.txt', 'small content'],
       ]);
-      
+
       const blob = createTestBlob(files);
 
       await env.zipHandler.processZipFile(
@@ -300,7 +298,7 @@ describe('ZipHandler - Critical Scenarios', () => {
 
     it('should clean up resources on failure', async () => {
       setupTestProject(env, TEST_PROJECTS.default);
-      
+
       // Fail during tree creation
       env.githubService.setResponse('POST', '/repos/test-owner/test-repo/git/trees', () => {
         throw new Error('Tree creation failed');
@@ -330,7 +328,7 @@ describe('ZipHandler - Critical Scenarios', () => {
   describe('Authentication and Authorization', () => {
     it('should handle token expiration during upload', async () => {
       setupTestProject(env, TEST_PROJECTS.default);
-      
+
       let requestCount = 0;
       env.githubService.setResponse('POST', '/repos/test-owner/test-repo/git/blobs', () => {
         requestCount++;
@@ -358,10 +356,12 @@ describe('ZipHandler - Critical Scenarios', () => {
 
     it('should handle insufficient permissions', async () => {
       setupTestProject(env, TEST_PROJECTS.default);
-      
+
       // Simulate permission error on commit creation
       env.githubService.setResponse('POST', '/repos/test-owner/test-repo/git/commits', () => {
-        const error = new Error('Resource not accessible by integration') as Error & { status?: number };
+        const error = new Error('Resource not accessible by integration') as Error & {
+          status?: number;
+        };
         error.status = 403;
         throw error;
       });
@@ -385,13 +385,13 @@ describe('ZipHandler - Critical Scenarios', () => {
   describe('Edge Case File Handling', () => {
     it('should handle files with no extension', async () => {
       setupTestProject(env, TEST_PROJECTS.default);
-      
+
       const files = new Map([
         ['LICENSE', 'MIT License...'],
         ['README', 'Project documentation'],
-        ['Makefile', 'build:\n\techo "Building..."']
+        ['Makefile', 'build:\n\techo "Building..."'],
       ]);
-      
+
       const blob = createTestBlob(files);
 
       await env.zipHandler.processZipFile(
@@ -407,12 +407,12 @@ describe('ZipHandler - Critical Scenarios', () => {
 
     it('should handle deeply nested directory structures', async () => {
       setupTestProject(env, TEST_PROJECTS.default);
-      
+
       const files = new Map([
         ['a/b/c/d/e/f/g/h/i/j/k/l/m/n/deep.txt', 'Very deep file'],
-        ['shallow.txt', 'Shallow file']
+        ['shallow.txt', 'Shallow file'],
       ]);
-      
+
       const blob = createTestBlob(files);
 
       await env.zipHandler.processZipFile(
@@ -422,26 +422,27 @@ describe('ZipHandler - Critical Scenarios', () => {
       );
 
       // Should preserve directory structure
-      const treeCreation = env.githubService.getRequestHistory()
-        .find(req => req.method === 'POST' && req.path.includes('/git/trees'));
-      
+      const treeCreation = env.githubService
+        .getRequestHistory()
+        .find((req) => req.method === 'POST' && req.path.includes('/git/trees'));
+
       expect(treeCreation?.body?.tree).toContainEqual(
         expect.objectContaining({
-          path: 'a/b/c/d/e/f/g/h/i/j/k/l/m/n/deep.txt'
+          path: 'a/b/c/d/e/f/g/h/i/j/k/l/m/n/deep.txt',
         })
       );
     });
 
     it('should handle files with identical content but different names', async () => {
       setupTestProject(env, TEST_PROJECTS.default);
-      
+
       const identicalContent = 'console.log("Same content");';
       const files = new Map([
         ['file1.js', identicalContent],
         ['file2.js', identicalContent],
-        ['backup/file1.js', identicalContent]
+        ['backup/file1.js', identicalContent],
       ]);
-      
+
       const blob = createTestBlob(files);
 
       await env.zipHandler.processZipFile(
@@ -455,9 +456,10 @@ describe('ZipHandler - Critical Scenarios', () => {
       expect(blobCreations).toBe(3);
 
       // Tree should contain all files
-      const treeCreation = env.githubService.getRequestHistory()
-        .find(req => req.method === 'POST' && req.path.includes('/git/trees'));
-      
+      const treeCreation = env.githubService
+        .getRequestHistory()
+        .find((req) => req.method === 'POST' && req.path.includes('/git/trees'));
+
       expect(treeCreation?.body?.tree).toHaveLength(3);
     });
   });

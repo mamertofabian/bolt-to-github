@@ -26,21 +26,39 @@ export class MockUnifiedGitHubService implements Partial<UnifiedGitHubService> {
   private setupDefaultResponses() {
     // Default successful responses for test-repo
     this.responses.set('GET:/repos/test-owner/test-repo', GITHUB_API_RESPONSES.repository);
-    this.responses.set('GET:/repos/test-owner/test-repo/branches/main', GITHUB_API_RESPONSES.branch);
+    this.responses.set(
+      'GET:/repos/test-owner/test-repo/branches/main',
+      GITHUB_API_RESPONSES.branch
+    );
     this.responses.set('GET:/repos/test-owner/test-repo/git/refs/heads/main', {
       object: { sha: GITHUB_API_RESPONSES.commit.sha },
     });
-    this.responses.set('GET:/repos/test-owner/test-repo/git/commits/abc123def456', GITHUB_API_RESPONSES.commit);
-    this.responses.set('GET:/repos/test-owner/test-repo/git/trees/tree123', GITHUB_API_RESPONSES.tree);
-    
+    this.responses.set(
+      'GET:/repos/test-owner/test-repo/git/commits/abc123def456',
+      GITHUB_API_RESPONSES.commit
+    );
+    this.responses.set(
+      'GET:/repos/test-owner/test-repo/git/trees/tree123',
+      GITHUB_API_RESPONSES.tree
+    );
+
     // Also set up responses for feature-repo
-    this.responses.set('GET:/repos/test-owner/feature-repo', { ...GITHUB_API_RESPONSES.repository, name: 'feature-repo' });
+    this.responses.set('GET:/repos/test-owner/feature-repo', {
+      ...GITHUB_API_RESPONSES.repository,
+      name: 'feature-repo',
+    });
     this.responses.set('GET:/repos/test-owner/feature-repo/git/refs/heads/main', {
       object: { sha: GITHUB_API_RESPONSES.commit.sha },
     });
-    this.responses.set('GET:/repos/test-owner/feature-repo/git/commits/abc123def456', GITHUB_API_RESPONSES.commit);
-    this.responses.set('GET:/repos/test-owner/feature-repo/git/trees/tree123', GITHUB_API_RESPONSES.tree);
-    
+    this.responses.set(
+      'GET:/repos/test-owner/feature-repo/git/commits/abc123def456',
+      GITHUB_API_RESPONSES.commit
+    );
+    this.responses.set(
+      'GET:/repos/test-owner/feature-repo/git/trees/tree123',
+      GITHUB_API_RESPONSES.tree
+    );
+
     // Rate limit
     this.responses.set('GET:/rate_limit', this.rateLimitState);
   }
@@ -51,7 +69,7 @@ export class MockUnifiedGitHubService implements Partial<UnifiedGitHubService> {
 
     // Simulate network delay if configured
     if (this.requestDelay > 0) {
-      await new Promise(resolve => setTimeout(resolve, this.requestDelay));
+      await new Promise((resolve) => setTimeout(resolve, this.requestDelay));
     }
 
     // Throw error if configured
@@ -67,7 +85,7 @@ export class MockUnifiedGitHubService implements Partial<UnifiedGitHubService> {
         // Reset has passed, restore rate limit
         this.resetRateLimit();
       }
-      
+
       // Return rate limit based on configured behavior
       if (this.rateLimitBehavior === 'exceeded') {
         return {
@@ -75,9 +93,9 @@ export class MockUnifiedGitHubService implements Partial<UnifiedGitHubService> {
             core: {
               limit: 5000,
               remaining: 0,
-              reset: this.rateLimitState.resources.core.reset
-            }
-          }
+              reset: this.rateLimitState.resources.core.reset,
+            },
+          },
         };
       } else if (this.rateLimitBehavior === 'limited') {
         return {
@@ -85,9 +103,9 @@ export class MockUnifiedGitHubService implements Partial<UnifiedGitHubService> {
             core: {
               limit: 5000,
               remaining: Math.max(0, this.rateLimitState.resources.core.remaining),
-              reset: this.rateLimitState.resources.core.reset
-            }
-          }
+              reset: this.rateLimitState.resources.core.reset,
+            },
+          },
         };
       }
       return this.rateLimitState;
@@ -98,7 +116,7 @@ export class MockUnifiedGitHubService implements Partial<UnifiedGitHubService> {
       // Only simulate rate limit if explicitly configured for rate limit testing
       if (this.rateLimitBehavior === 'limited') {
         this.rateLimitState.resources.core.remaining--;
-        
+
         if (this.rateLimitState.resources.core.remaining < 0) {
           const error = new Error('API rate limit exceeded') as Error & { status?: number };
           error.status = 403;
@@ -172,7 +190,7 @@ export class MockUnifiedGitHubService implements Partial<UnifiedGitHubService> {
     // Simulate repo initialization - create initial commit
     const initialCommitSha = 'initial-commit-sha';
     const initialTreeSha = 'initial-tree-sha';
-    
+
     // Set up responses for initialized repo
     this.responses.set(`GET:/repos/${owner}/${repo}/git/refs/heads/${branch}`, {
       object: { sha: initialCommitSha },
@@ -240,7 +258,7 @@ export class MockUnifiedGitHubService implements Partial<UnifiedGitHubService> {
   }
 
   getRequestCount(method?: string, pathPattern?: string) {
-    return this.requestHistory.filter(req => {
+    return this.requestHistory.filter((req) => {
       const methodMatch = !method || req.method === method;
       const pathMatch = !pathPattern || req.path.includes(pathPattern);
       return methodMatch && pathMatch;
@@ -344,15 +362,15 @@ export class MockStatusCallback {
 
   expectSequence(expectedStatuses: Partial<UploadStatusState>[]) {
     const actualStatuses = this.statusHistory;
-    
+
     for (let i = 0; i < expectedStatuses.length; i++) {
       const expected = expectedStatuses[i];
       const actual = actualStatuses[i];
-      
+
       if (!actual) {
         throw new Error(`Expected status at index ${i} but got undefined`);
       }
-      
+
       for (const [key, value] of Object.entries(expected)) {
         if (actual[key as keyof UploadStatusState] !== value) {
           throw new Error(
@@ -374,7 +392,7 @@ export class MockChromeStorage {
     if (typeof keys === 'string') {
       return { [keys]: this.data[keys] };
     }
-    
+
     const result: Record<string, any> = {};
     for (const key of keys) {
       if (key in this.data) {
@@ -462,12 +480,7 @@ export class MockPushStatisticsActions {
     });
   }
 
-  async recordPushSuccess(
-    projectId: string,
-    repoOwner: string,
-    repoName: string,
-    branch: string
-  ) {
+  async recordPushSuccess(projectId: string, repoOwner: string, repoName: string, branch: string) {
     this.records.push({
       action: 'success',
       projectId,

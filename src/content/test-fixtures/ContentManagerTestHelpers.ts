@@ -190,17 +190,23 @@ export function setupChromeAPIMocks(
         removeListener: jest.fn(),
         hasListener: jest.fn(() => false),
         // Add dispatch method for testing
-        dispatch: jest.fn((message: unknown, sender?: chrome.runtime.MessageSender, sendResponse?: (response?: unknown) => void) => {
-          const mockSender = sender || {};
-          const mockSendResponse = sendResponse || (() => {});
-          messageListeners.forEach(listener => {
-            try {
-              listener(message, mockSender, mockSendResponse);
-            } catch (error) {
-              console.error('Error in message listener:', error);
-            }
-          });
-        }),
+        dispatch: jest.fn(
+          (
+            message: unknown,
+            sender?: chrome.runtime.MessageSender,
+            sendResponse?: (response?: unknown) => void
+          ) => {
+            const mockSender = sender || {};
+            const mockSendResponse = sendResponse || (() => {});
+            messageListeners.forEach((listener) => {
+              try {
+                listener(message, mockSender, mockSendResponse);
+              } catch (error) {
+                console.error('Error in message listener:', error);
+              }
+            });
+          }
+        ),
       },
       onConnect: {
         addListener: jest.fn(),
@@ -262,7 +268,7 @@ export function setupWindowMocks(url: string = 'https://bolt.new/project/abc123'
       Object.defineProperty(document, 'body', {
         value: body,
         writable: true,
-        configurable: true
+        configurable: true,
       });
     } catch (error) {
       // If we can't set document.body, create a mock
@@ -271,13 +277,20 @@ export function setupWindowMocks(url: string = 'https://bolt.new/project/abc123'
         removeChild: jest.fn(),
         querySelector: jest.fn(),
         querySelectorAll: jest.fn(() => []),
-        getBoundingClientRect: jest.fn(() => ({ width: 0, height: 0, top: 0, left: 0, right: 0, bottom: 0 })),
-        contains: jest.fn(() => false)
+        getBoundingClientRect: jest.fn(() => ({
+          width: 0,
+          height: 0,
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+        })),
+        contains: jest.fn(() => false),
       };
       Object.defineProperty(document, 'body', {
         value: mockBody,
         writable: true,
-        configurable: true
+        configurable: true,
       });
     }
   }

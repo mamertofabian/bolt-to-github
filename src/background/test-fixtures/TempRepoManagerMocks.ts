@@ -5,13 +5,13 @@
  * for TempRepoManager testing, ensuring consistent mock behavior across tests.
  */
 
-import { 
+import {
   MockUnifiedGitHubService,
   MockOperationStateManager,
   TempRepoMockChromeStorage,
   TempRepoMockChromeTabs,
   MockStatusBroadcaster,
-  TempRepoTestData
+  TempRepoTestData,
 } from './TempRepoManagerTestFixtures';
 import { STORAGE_KEY } from '../TempRepoManager';
 
@@ -21,7 +21,7 @@ import { STORAGE_KEY } from '../TempRepoManager';
 
 export class TempRepoMockServiceFactory {
   private static instance: TempRepoMockServiceFactory;
-  
+
   private mockServices: {
     githubService: MockUnifiedGitHubService;
     operationStateManager: MockOperationStateManager;
@@ -84,12 +84,14 @@ export class TempRepoMockServiceFactory {
   /**
    * Configure mocks for specific failure scenarios
    */
-  configureForPartialFailure(failingServices: Array<'github' | 'operations' | 'storage' | 'tabs' | 'status'>): void {
+  configureForPartialFailure(
+    failingServices: Array<'github' | 'operations' | 'storage' | 'tabs' | 'status'>
+  ): void {
     // Reset all to success first
     this.configureForSuccess();
-    
+
     // Then set specific failures
-    failingServices.forEach(service => {
+    failingServices.forEach((service) => {
       switch (service) {
         case 'github':
           this.mockServices.githubService.setShouldFail(true);
@@ -113,16 +115,18 @@ export class TempRepoMockServiceFactory {
   /**
    * Configure mocks for performance testing with delays
    */
-  configureForPerformance(delays: {
-    github?: number;
-    storage?: number;
-  } = {}): void {
+  configureForPerformance(
+    delays: {
+      github?: number;
+      storage?: number;
+    } = {}
+  ): void {
     this.configureForSuccess();
-    
+
     if (delays.github) {
       this.mockServices.githubService.setDelay(delays.github);
     }
-    
+
     if (delays.storage) {
       this.mockServices.storage.setDelay(delays.storage);
     }
@@ -133,20 +137,20 @@ export class TempRepoMockServiceFactory {
    */
   configureForCleanupTesting(scenario: 'all-succeed' | 'some-fail' | 'all-fail'): void {
     this.configureForSuccess();
-    
+
     switch (scenario) {
       case 'all-succeed':
         // Default success configuration
         break;
-        
+
       case 'some-fail':
         // Configure some repos to fail deletion
         this.mockServices.githubService.setDeleteFailureRepos([
           'temp-project-two-20240101-def456',
-          'temp-old-project-one-20231220-old123'
+          'temp-old-project-one-20231220-old123',
         ]);
         break;
-        
+
       case 'all-fail':
         // Configure all delete operations to fail
         this.mockServices.githubService.setShouldFail(true, 'deleteRepo');
@@ -189,14 +193,14 @@ export class MockBehaviorOrchestrator {
     progressSteps: number[];
   }> {
     const mocks = this.factory.getMocks();
-    
+
     // Pre-configure expected responses
     const tempRepoName = `temp-${sourceRepo}-20240101-abc123`;
     const operationId = `import-${Date.now()}-abc123`;
-    
+
     // Set up storage for empty state
     mocks.storage.setLocalData(TempRepoTestData.storage.empty);
-    
+
     return {
       tempRepoName,
       operationId,
@@ -213,7 +217,7 @@ export class MockBehaviorOrchestrator {
     expectedRemaining: number;
   }> {
     const mocks = this.factory.getMocks();
-    
+
     switch (scenario) {
       case 'mixed-results':
         mocks.storage.setLocalData(TempRepoTestData.storage.mixedAgeRepos);
@@ -223,7 +227,7 @@ export class MockBehaviorOrchestrator {
           expectedDeletions: 1, // Only one expired repo should be deleted successfully
           expectedRemaining: 2, // One fresh repo + one failed deletion
         };
-        
+
       case 'all-success':
         mocks.storage.setLocalData(TempRepoTestData.storage.expiredRepos);
         this.factory.configureForCleanupTesting('all-succeed');
@@ -232,7 +236,7 @@ export class MockBehaviorOrchestrator {
           expectedDeletions: 2, // Both expired repos should be deleted
           expectedRemaining: 0,
         };
-        
+
       case 'all-fail':
         mocks.storage.setLocalData(TempRepoTestData.storage.expiredRepos);
         this.factory.configureForCleanupTesting('all-fail');
@@ -241,7 +245,7 @@ export class MockBehaviorOrchestrator {
           expectedDeletions: 0, // No repos should be deleted
           expectedRemaining: 2, // Both repos remain due to failures
         };
-        
+
       default:
         throw new Error(`Unknown cleanup scenario: ${scenario}`);
     }
@@ -258,19 +262,19 @@ export class MockBehaviorOrchestrator {
     }>;
   }> {
     const operations = [];
-    
+
     for (let i = 0; i < operationCount; i++) {
       const sourceRepo = `concurrent-repo-${i}`;
       const branch = i % 2 === 0 ? 'main' : 'develop';
       const expectedTempRepo = `temp-${sourceRepo}-20240101-abc${i.toString().padStart(3, '0')}`;
-      
+
       operations.push({
         sourceRepo,
         branch,
         expectedTempRepo,
       });
     }
-    
+
     return { operations };
   }
 
@@ -285,10 +289,10 @@ export class MockBehaviorOrchestrator {
     shouldCleanupPartialState: boolean;
   }> {
     const mocks = this.factory.getMocks();
-    
+
     // Set up for specific failure
     mocks.githubService.setShouldFail(true, failurePoint);
-    
+
     return {
       sourceRepo: TempRepoTestData.repositories.validSourceRepo,
       expectedFailurePoint: failurePoint,
@@ -307,12 +311,12 @@ export class MockVerificationUtilities {
     expectedCalls: {
       listBranches?: { owner: string; repo: string };
       createTemporaryPublicRepo?: { owner: string; sourceRepo: string; branch?: string };
-      cloneRepoContents?: { 
-        sourceOwner: string; 
-        sourceRepo: string; 
-        targetOwner: string; 
-        targetRepo: string; 
-        branch: string; 
+      cloneRepoContents?: {
+        sourceOwner: string;
+        sourceRepo: string;
+        targetOwner: string;
+        targetRepo: string;
+        branch: string;
       };
       updateRepoVisibility?: { owner: string; repo: string; isPrivate: boolean };
       deleteRepo?: Array<{ owner: string; repo: string }>;
@@ -331,15 +335,14 @@ export class MockVerificationUtilities {
     }>
   ): void {
     const allOperations = mockOperationManager.getAllOperations();
-    
-    expectedOperations.forEach(expected => {
-      const found = allOperations.find(op => 
-        op.operation.type === expected.type && 
-        op.operation.status === expected.status
+
+    expectedOperations.forEach((expected) => {
+      const found = allOperations.find(
+        (op) => op.operation.type === expected.type && op.operation.status === expected.status
       );
-      
+
       expect(found).toBeDefined();
-      
+
       if (expected.hasMetadata) {
         expect(found?.operation.metadata).toBeDefined();
       }
@@ -355,18 +358,18 @@ export class MockVerificationUtilities {
     }>
   ): void {
     const statusHistory = mockBroadcaster.getStatusHistory();
-    
+
     expect(statusHistory).toHaveLength(expectedSequence.length);
-    
+
     expectedSequence.forEach((expected, index) => {
       const actual = statusHistory[index];
-      
+
       expect(actual.status).toBe(expected.status);
-      
+
       if (expected.messageContains) {
         expect(actual.message).toContain(expected.messageContains);
       }
-      
+
       if (expected.progressRange) {
         expect(actual.progress).toBeGreaterThanOrEqual(expected.progressRange.min);
         expect(actual.progress).toBeLessThanOrEqual(expected.progressRange.max);
@@ -385,11 +388,11 @@ export class MockVerificationUtilities {
     if (expectedOperations.gets !== undefined) {
       expect(mockStorage.local.get).toHaveBeenCalledTimes(expectedOperations.gets);
     }
-    
+
     if (expectedOperations.sets !== undefined) {
       expect(mockStorage.local.set).toHaveBeenCalledTimes(expectedOperations.sets);
     }
-    
+
     if (expectedOperations.finalDataCheck) {
       const finalData = mockStorage.getLocalData();
       expect(expectedOperations.finalDataCheck(finalData)).toBe(true);

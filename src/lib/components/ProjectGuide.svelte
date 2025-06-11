@@ -84,7 +84,8 @@
             <div class="flex-1">
               <h4 class="font-medium text-amber-200 mb-1">Create or Load a Bolt Project</h4>
               <p class="text-xs text-amber-300/80">
-                You're on bolt.new! Start a new project or open an existing one, then this extension will automatically detect it.
+                You're on bolt.new! Start a new project or open an existing one, then this extension
+                will automatically detect it.
               </p>
             </div>
           </div>

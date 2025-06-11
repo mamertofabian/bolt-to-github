@@ -26,16 +26,16 @@ export const TestStrategy = {
     'Cleanup behavior under API failures and network issues',
     'Storage consistency during concurrent operations',
     'Interval management during rapid start/stop cycles',
-    'Memory usage during prolonged operations'
+    'Memory usage during prolonged operations',
   ],
 
   riskAreas: [
     'Orphaned repositories due to cleanup failures',
-    'Storage corruption during concurrent operations', 
+    'Storage corruption during concurrent operations',
     'Memory leaks from uncleared intervals',
     'GitHub API failures during repository operations',
-    'Race conditions in cleanup scheduling'
-  ]
+    'Race conditions in cleanup scheduling',
+  ],
 };
 
 // =============================================================================
@@ -55,7 +55,7 @@ export const TestScenarios = {
         'Verify content cloning with progress updates',
         'Verify repository visibility update',
         'Verify Bolt tab creation',
-        'Verify cleanup interval starts'
+        'Verify cleanup interval starts',
       ],
       expectations: [
         'Operation tracking starts and completes successfully',
@@ -63,8 +63,8 @@ export const TestScenarios = {
         'Progress increases monotonically from 10 to 100',
         'Temp repo metadata saved to storage',
         'Bolt tab created with correct URL and active state',
-        'Cleanup interval is running'
-      ]
+        'Cleanup interval is running',
+      ],
     },
 
     'cleanup-cycle': {
@@ -75,14 +75,14 @@ export const TestScenarios = {
         'Verify expired repos are deleted',
         'Verify fresh repos are kept',
         'Verify storage is updated correctly',
-        'Verify cleanup interval behavior'
+        'Verify cleanup interval behavior',
       ],
       expectations: [
         'Only expired repos are deleted via GitHub API',
         'Fresh repos remain in storage',
         'Storage reflects deletions',
-        'Cleanup interval stops when no repos remain'
-      ]
+        'Cleanup interval stops when no repos remain',
+      ],
     },
 
     'initialization-with-existing-repos': {
@@ -91,14 +91,14 @@ export const TestScenarios = {
       steps: [
         'Create new TempRepoManager instance',
         'Verify initialization cleanup check',
-        'Verify cleanup interval starts automatically'
+        'Verify cleanup interval starts automatically',
       ],
       expectations: [
         'Initialization detects existing repos',
         'Cleanup interval starts immediately',
-        'No premature deletions during initialization'
-      ]
-    }
+        'No premature deletions during initialization',
+      ],
+    },
   },
 
   // Error handling scenarios
@@ -109,29 +109,29 @@ export const TestScenarios = {
         {
           name: 'branch-detection-failure',
           setup: 'GitHub API listBranches fails',
-          expectation: 'Falls back to "main" branch and continues'
+          expectation: 'Falls back to "main" branch and continues',
         },
         {
-          name: 'repo-creation-failure', 
+          name: 'repo-creation-failure',
           setup: 'GitHub API createTemporaryPublicRepo fails',
-          expectation: 'Operation fails with proper error handling and status broadcast'
+          expectation: 'Operation fails with proper error handling and status broadcast',
         },
         {
           name: 'content-cloning-failure',
           setup: 'GitHub API cloneRepoContents fails',
-          expectation: 'Operation fails after temp repo creation, repo should be cleaned up'
+          expectation: 'Operation fails after temp repo creation, repo should be cleaned up',
         },
         {
           name: 'visibility-update-failure',
           setup: 'GitHub API updateRepoVisibility fails',
-          expectation: 'Operation fails but temp repo exists privately'
+          expectation: 'Operation fails but temp repo exists privately',
         },
         {
           name: 'rate-limit-errors',
           setup: 'GitHub API returns rate limit errors',
-          expectation: 'Proper error messaging and operation failure'
-        }
-      ]
+          expectation: 'Proper error messaging and operation failure',
+        },
+      ],
     },
 
     'storage-failures': {
@@ -140,29 +140,29 @@ export const TestScenarios = {
         {
           name: 'storage-unavailable-during-save',
           setup: 'Chrome storage.local.set fails during repo metadata save',
-          expectation: 'Import continues but cleanup may be affected'
+          expectation: 'Import continues but cleanup may be affected',
         },
         {
           name: 'storage-unavailable-during-cleanup',
           setup: 'Chrome storage fails during cleanup operations',
-          expectation: 'Cleanup retries on next cycle'
+          expectation: 'Cleanup retries on next cycle',
         },
         {
           name: 'corrupted-storage-data',
           setup: 'Storage contains invalid/corrupted temp repo data',
-          expectation: 'Manager handles gracefully and resets storage'
-        }
-      ]
+          expectation: 'Manager handles gracefully and resets storage',
+        },
+      ],
     },
 
     'cleanup-failures': {
       description: 'Cleanup operations with various failure modes',
       scenarios: [
         'Some repos fail to delete (network errors)',
-        'All repos fail to delete (authentication issues)', 
+        'All repos fail to delete (authentication issues)',
         'Partial failures during batch cleanup',
-        'Storage failures during cleanup updates'
-      ]
+        'Storage failures during cleanup updates',
+      ],
     },
 
     'concurrent-operations': {
@@ -171,9 +171,9 @@ export const TestScenarios = {
         'Two imports of same repository',
         'Multiple imports of different repositories',
         'Import during active cleanup cycle',
-        'Rapid start/stop of cleanup intervals'
-      ]
-    }
+        'Rapid start/stop of cleanup intervals',
+      ],
+    },
   },
 
   // Edge cases
@@ -184,29 +184,29 @@ export const TestScenarios = {
         {
           name: 'empty-repo-name',
           input: '',
-          expectation: 'Proper validation and error handling'
+          expectation: 'Proper validation and error handling',
         },
         {
           name: 'very-long-repo-name',
           input: 'a'.repeat(100),
-          expectation: 'GitHub API handles or rejects appropriately'
+          expectation: 'GitHub API handles or rejects appropriately',
         },
         {
           name: 'special-characters-in-repo-name',
           input: 'repo-with_special.chars',
-          expectation: 'Proper URL encoding and handling'
+          expectation: 'Proper URL encoding and handling',
         },
         {
           name: 'unicode-repo-name',
           input: 'проект-репозиторий',
-          expectation: 'Proper Unicode handling'
+          expectation: 'Proper Unicode handling',
         },
         {
           name: 'non-existent-branch',
           input: { repo: 'valid-repo', branch: 'non-existent-branch' },
-          expectation: 'Graceful fallback to default branch'
-        }
-      ]
+          expectation: 'Graceful fallback to default branch',
+        },
+      ],
     },
 
     'timing-edge-cases': {
@@ -215,8 +215,8 @@ export const TestScenarios = {
         'Repo created exactly at cleanup interval boundary',
         'Very rapid cleanup cycles',
         'Cleanup during system clock changes',
-        'Long-running operations spanning multiple cleanup cycles'
-      ]
+        'Long-running operations spanning multiple cleanup cycles',
+      ],
     },
 
     'resource-management': {
@@ -225,9 +225,9 @@ export const TestScenarios = {
         'Many temp repos created rapidly',
         'Cleanup interval memory usage over time',
         'Progress callback memory management',
-        'Operation state tracking memory usage'
-      ]
-    }
+        'Operation state tracking memory usage',
+      ],
+    },
   },
 
   // Performance scenarios
@@ -238,8 +238,8 @@ export const TestScenarios = {
         'Multiple concurrent imports (10+ simultaneous)',
         'Large number of existing temp repos (100+)',
         'Cleanup of many expired repos simultaneously',
-        'Progress callbacks with high frequency updates'
-      ]
+        'Progress callbacks with high frequency updates',
+      ],
     },
 
     'network-conditions': {
@@ -248,8 +248,8 @@ export const TestScenarios = {
         'Slow network with timeouts',
         'Intermittent connectivity',
         'High latency operations',
-        'Bandwidth-limited scenarios'
-      ]
+        'Bandwidth-limited scenarios',
+      ],
     },
 
     'memory-usage': {
@@ -258,10 +258,10 @@ export const TestScenarios = {
         'Long-running cleanup intervals',
         'Progress callback accumulation',
         'Storage data growth over time',
-        'Error object accumulation'
-      ]
-    }
-  }
+        'Error object accumulation',
+      ],
+    },
+  },
 };
 
 // =============================================================================
@@ -276,7 +276,7 @@ export const SuccessCriteria = {
       'Status broadcasts follow expected sequence',
       'Temp repo metadata is correctly stored',
       'Bolt tab opens with correct URL',
-      'Operation tracking works end-to-end'
+      'Operation tracking works end-to-end',
     ],
 
     'cleanup-operation': [
@@ -284,7 +284,7 @@ export const SuccessCriteria = {
       'Storage is updated to reflect deletions',
       'Failed deletions are retried on next cycle',
       'Cleanup interval manages its lifecycle correctly',
-      'No orphaned repositories remain after successful cleanup'
+      'No orphaned repositories remain after successful cleanup',
     ],
 
     'error-handling': [
@@ -292,41 +292,41 @@ export const SuccessCriteria = {
       'Error status broadcasts are sent',
       'Operation tracking records failures',
       'Partial failures leave system in consistent state',
-      'Recovery mechanisms work as expected'
-    ]
+      'Recovery mechanisms work as expected',
+    ],
   },
 
   performance: {
-    'timing': [
+    timing: [
       'Import operations complete within reasonable time (< 30s normal case)',
       'Cleanup cycles complete efficiently (< 5s for typical load)',
       'No memory leaks during extended operation',
-      'Progress updates are timely and responsive'
+      'Progress updates are timely and responsive',
     ],
 
     'resource-usage': [
       'Memory usage remains stable over time',
       'No resource leaks from intervals or callbacks',
       'Storage usage grows predictably',
-      'CPU usage remains reasonable during operations'
-    ]
+      'CPU usage remains reasonable during operations',
+    ],
   },
 
   reliability: {
-    'consistency': [
+    consistency: [
       'Storage state remains consistent across operations',
       'Cleanup scheduling is reliable and predictable',
       'No race conditions in concurrent scenarios',
-      'System recovers gracefully from failures'
+      'System recovers gracefully from failures',
     ],
 
-    'robustness': [
+    robustness: [
       'Handles network failures gracefully',
       'Survives extension context invalidation',
       'Works across browser restarts',
-      'Handles corrupted storage data'
-    ]
-  }
+      'Handles corrupted storage data',
+    ],
+  },
 };
 
 // =============================================================================
@@ -341,10 +341,10 @@ export const CoverageRequirements = {
 
   criticalPaths: [
     'handlePrivateRepoImport - complete flow',
-    'cleanupTempRepos - all cleanup scenarios', 
+    'cleanupTempRepos - all cleanup scenarios',
     'initializeCleanup - startup scenarios',
     'startCleanupInterval/stopCleanupInterval - lifecycle',
-    'saveTempRepo/getTempRepos - storage operations'
+    'saveTempRepo/getTempRepos - storage operations',
   ],
 
   errorPaths: [
@@ -352,8 +352,8 @@ export const CoverageRequirements = {
     'All Chrome storage error scenarios',
     'All operation state manager error scenarios',
     'All tab creation error scenarios',
-    'All timing and race condition scenarios'
-  ]
+    'All timing and race condition scenarios',
+  ],
 };
 
 // =============================================================================
@@ -367,7 +367,7 @@ export const TestDataRequirements = {
     'very long names (boundary testing)',
     'empty/null names',
     'unicode names',
-    'names that could cause URL encoding issues'
+    'names that could cause URL encoding issues',
   ],
 
   branchNames: [
@@ -375,7 +375,7 @@ export const TestDataRequirements = {
     'feature branch names with slashes',
     'branch names with special characters',
     'very long branch names',
-    'non-existent branch names'
+    'non-existent branch names',
   ],
 
   timeScenarios: [
@@ -383,7 +383,7 @@ export const TestDataRequirements = {
     'repos about to expire',
     'already expired repos',
     'repos with mixed ages',
-    'repos created during clock changes'
+    'repos created during clock changes',
   ],
 
   storageStates: [
@@ -391,12 +391,12 @@ export const TestDataRequirements = {
     'storage with single repo',
     'storage with multiple repos',
     'storage with corrupted data',
-    'storage with mixed valid/invalid data'
-  ]
+    'storage with mixed valid/invalid data',
+  ],
 };
 
 // =============================================================================
-// MOCK BEHAVIOR REQUIREMENTS  
+// MOCK BEHAVIOR REQUIREMENTS
 // =============================================================================
 
 export const MockBehaviorRequirements = {
@@ -406,15 +406,15 @@ export const MockBehaviorRequirements = {
       'intermittent failures',
       'rate limiting simulation',
       'network timeout simulation',
-      'authentication failures'
+      'authentication failures',
     ],
-    
+
     realisticResponses: [
       'actual branch structure responses',
       'realistic progress callback behavior',
       'appropriate error messages and types',
-      'timing that matches real API behavior'
-    ]
+      'timing that matches real API behavior',
+    ],
   },
 
   operationStateManager: {
@@ -422,8 +422,8 @@ export const MockBehaviorRequirements = {
       'correct operation lifecycle tracking',
       'proper error recording',
       'metadata preservation',
-      'timing information accuracy'
-    ]
+      'timing information accuracy',
+    ],
   },
 
   chromeAPIs: {
@@ -431,23 +431,19 @@ export const MockBehaviorRequirements = {
       'realistic storage latency',
       'storage quota simulation',
       'concurrent access handling',
-      'failure modes (unavailable, quota exceeded, etc.)'
+      'failure modes (unavailable, quota exceeded, etc.)',
     ],
-    
-    tabsSimulation: [
-      'tab creation success/failure',
-      'proper tab properties',
-      'focus behavior'
-    ]
-  }
+
+    tabsSimulation: ['tab creation success/failure', 'proper tab properties', 'focus behavior'],
+  },
 };
 
 // Export the complete test specification
 export default {
   TestStrategy,
-  TestScenarios, 
+  TestScenarios,
   SuccessCriteria,
   CoverageRequirements,
   TestDataRequirements,
-  MockBehaviorRequirements
+  MockBehaviorRequirements,
 };
