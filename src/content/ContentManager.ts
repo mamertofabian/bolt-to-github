@@ -114,9 +114,9 @@ export class ContentManager {
       const now = Date.now();
       logger.info('Port disconnected:', error?.message || 'No error message');
 
-      // Check for quick successive disconnections (within 3 seconds)
+      // Check for quick successive disconnections (within 1 second)
       // This often indicates context invalidation even without specific error messages
-      const isQuickSuccessiveDisconnect = now - this.lastDisconnectTime < 3000;
+      const isQuickSuccessiveDisconnect = now - this.lastDisconnectTime < 1000;
       this.lastDisconnectTime = now;
 
       // Check if this is true extension context invalidation vs normal disconnect
@@ -405,12 +405,13 @@ export class ContentManager {
       clearTimeout(this.reconnectTimer);
     }
 
-    this.reconnectTimer = setTimeout(
-      () => {
-        this.reconnect();
-      },
-      this.RECONNECT_DELAY * Math.pow(2, this.reconnectAttempts - 1)
-    ); // Exponential backoff
+    // Add minimum delay to allow service worker to fully initialize
+    const baseDelay = Math.max(this.RECONNECT_DELAY, 1500); // At least 1.5 seconds
+    const delay = baseDelay * Math.pow(2, this.reconnectAttempts - 1);
+
+    this.reconnectTimer = setTimeout(() => {
+      this.reconnect();
+    }, delay); // Exponential backoff with minimum delay
   }
 
   private reconnect(): void {

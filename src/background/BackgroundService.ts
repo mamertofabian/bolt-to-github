@@ -19,6 +19,7 @@ export class BackgroundService {
   private supabaseAuthService: SupabaseAuthService;
   private operationStateManager: OperationStateManager;
   private keepAliveInterval: NodeJS.Timeout | null = null;
+  private lastActivityTime: number = Date.now();
   private authCheckTimeout: NodeJS.Timeout | null = null;
   private storageListener:
     | ((changes: { [key: string]: chrome.storage.StorageChange }, namespace: string) => void)
@@ -46,6 +47,12 @@ export class BackgroundService {
 
     // Set up log rotation alarm
     this.setupLogRotation();
+
+    // Set up Chrome alarms (for keep-alive and log rotation)
+    this.setupAlarms();
+
+    // Start service worker keep-alive mechanism
+    this.startKeepAlive();
   }
 
   private async trackExtensionStartup(): Promise<void> {
@@ -259,6 +266,7 @@ export class BackgroundService {
 
       port.onMessage.addListener(async (message: Message) => {
         logger.info('📥 Received port message:', { source: port.name, type: message.type });
+        this.updateLastActivity();
         await this.handlePortMessage(tabId, message);
       });
     });
@@ -266,6 +274,7 @@ export class BackgroundService {
     // Setup runtime message listener for direct messages (not using ports)
     chrome.runtime.onMessage.addListener(async (message, sender, sendResponse) => {
       logger.info('📥 Received runtime message:', message);
+      this.updateLastActivity();
 
       if (message.action === 'PUSH_TO_GITHUB') {
         this.handlePushToGitHub();
@@ -899,13 +908,32 @@ export class BackgroundService {
   }
 
   private startKeepAlive(): void {
-    // Keep the service worker alive by sending periodic messages to itself
+    // Clear any existing interval
+    if (this.keepAliveInterval) {
+      clearInterval(this.keepAliveInterval);
+    }
+
+    // Use Chrome alarms API for reliable keep-alive
+    chrome.alarms.create('keepAlive', { periodInMinutes: 0.5 }); // Every 30 seconds
+
+    // Also use a regular interval as backup
     this.keepAliveInterval = setInterval(() => {
-      // Check if there are any active ports
-      if (this.ports.size > 0) {
-        logger.debug('🫀 Service worker keep-alive heartbeat');
+      // Check if we have any active connections
+      const hasActiveConnections = this.ports.size > 0;
+      const timeSinceLastActivity = Date.now() - this.lastActivityTime;
+
+      // Only log if there's something interesting
+      if (hasActiveConnections || timeSinceLastActivity < 60000) {
+        logger.debug(
+          `💓 Keep-alive: ${this.ports.size} active connections, last activity ${Math.round(timeSinceLastActivity / 1000)}s ago`
+        );
       }
-    }, 20000); // Every 20 seconds
+
+      // Perform a simple async operation to keep the service worker active
+      chrome.storage.local.get(['keepAliveTimestamp'], (result) => {
+        chrome.storage.local.set({ keepAliveTimestamp: Date.now() });
+      });
+    }, 25000); // Every 25 seconds
   }
 
   public destroy(): void {
@@ -925,5 +953,27 @@ export class BackgroundService {
       chrome.storage.onChanged.removeListener(this.storageListener);
       this.storageListener = null;
     }
+  }
+
+  /**
+   * Update last activity timestamp
+   */
+  private updateLastActivity(): void {
+    this.lastActivityTime = Date.now();
+  }
+
+  /**
+   * Set up Chrome alarms for keep-alive
+   */
+  private setupAlarms(): void {
+    chrome.alarms.onAlarm.addListener((alarm) => {
+      if (alarm.name === 'keepAlive') {
+        // Simple operation to keep service worker active
+        this.updateLastActivity();
+        chrome.storage.local.set({ lastKeepAlive: Date.now() });
+      } else if (alarm.name === 'logRotation') {
+        this.rotateOldLogs();
+      }
+    });
   }
 }
