@@ -19,6 +19,10 @@ export class ContentManager {
   private isInRecovery = false;
   private lastDisconnectTime = 0;
 
+  // Message deduplication for premium status updates
+  private recentMessageIds: Set<string> = new Set();
+  private readonly MESSAGE_DEDUP_WINDOW = 5000; // 5 seconds
+
   constructor() {
     if (!this.shouldInitialize()) {
       logger.info('Not initializing ContentManager - URL does not match bolt.new pattern');
@@ -496,6 +500,9 @@ export class ContentManager {
   private cleanup(preserveRecoveryState = false): void {
     this.isDestroyed = true;
 
+    // Clear message deduplication cache
+    this.recentMessageIds.clear();
+
     // Clear timers
     if (this.reconnectTimer) {
       clearTimeout(this.reconnectTimer);
@@ -673,7 +680,23 @@ export class ContentManager {
           }
 
           if (message.type === 'UPDATE_PREMIUM_STATUS') {
-            logger.info('📨 Received UPDATE_PREMIUM_STATUS message from background:', message.data);
+            // Check for message deduplication
+            const messageId = message.messageId || `fallback-${Date.now()}`;
+
+            if (this.recentMessageIds.has(messageId)) {
+              logger.debug('🔄 Duplicate UPDATE_PREMIUM_STATUS message ignored:', messageId);
+              sendResponse({ success: true, ignored: true, reason: 'duplicate' });
+              return;
+            }
+
+            // Add to recent messages and clean up old ones
+            this.recentMessageIds.add(messageId);
+            this.cleanupOldMessageIds();
+
+            logger.info('📨 Received UPDATE_PREMIUM_STATUS message from background:', {
+              messageId,
+              data: message.data,
+            });
 
             // Check if we're in recovery mode - if so, ignore this message to prevent errors
             if (this.isInRecovery) {
@@ -859,6 +882,18 @@ export class ContentManager {
     } catch (error) {
       logger.error('Error reinitializing content script:', error);
       this.handleInitializationError(error);
+    }
+  }
+
+  /**
+   * Clean up old message IDs to prevent memory leaks
+   */
+  private cleanupOldMessageIds(): void {
+    // For simplicity, clear all message IDs every 100 messages
+    // In a real implementation, you might want to use timestamps
+    if (this.recentMessageIds.size > 100) {
+      this.recentMessageIds.clear();
+      logger.debug('🧹 Cleared old message IDs to prevent memory leak');
     }
   }
 

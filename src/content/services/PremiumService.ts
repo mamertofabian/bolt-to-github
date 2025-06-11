@@ -1,4 +1,5 @@
 import { createLogger } from '../../lib/utils/logger';
+import { debounce, throttle } from '../../lib/utils/debounce';
 
 const logger = createLogger('PremiumService');
 
@@ -25,6 +26,11 @@ export class PremiumService {
   private lastSubscriptionCheck: number = 0;
   private readonly SUBSCRIPTION_CHECK_CACHE_DURATION = 300000; // 5 minutes cache for subscription checks
 
+  // Message flooding prevention
+  private lastSavedData: string = '';
+  private debouncedSaveData: () => void;
+  private throttledUpdatePremiumStatus: (status: Partial<PremiumStatus>) => void;
+
   constructor() {
     this.premiumStatus = {
       isPremium: false,
@@ -36,6 +42,12 @@ export class PremiumService {
         githubIssues: false,
       },
     };
+
+    // Initialize debounced and throttled functions
+    this.debouncedSaveData = debounce(() => this.saveDataImmediate(), 500);
+    this.throttledUpdatePremiumStatus = throttle((status: Partial<PremiumStatus>) => {
+      this.updatePremiumStatusImmediate(status);
+    }, 1000);
 
     this.loadStoredData();
     this.initializeSupabaseAuth();
@@ -118,10 +130,32 @@ export class PremiumService {
   }
 
   /**
-   * Save premium status and usage to storage
+   * Save premium status and usage to storage (debounced)
    */
   private async saveData(): Promise<void> {
+    // Check if data has actually changed to prevent unnecessary saves
+    const currentData = JSON.stringify(this.premiumStatus);
+    if (currentData === this.lastSavedData) {
+      logger.debug('Premium data unchanged, skipping save');
+      return;
+    }
+
+    this.debouncedSaveData();
+  }
+
+  /**
+   * Save premium status and usage to storage immediately
+   */
+  private async saveDataImmediate(): Promise<void> {
     try {
+      const currentData = JSON.stringify(this.premiumStatus);
+
+      // Double-check if data has changed since debounce started
+      if (currentData === this.lastSavedData) {
+        logger.debug('Premium data unchanged during debounce, skipping save');
+        return;
+      }
+
       await chrome.storage.local.set({
         premiumStatus: this.premiumStatus,
       });
@@ -137,6 +171,9 @@ export class PremiumService {
           lastUpdated: Date.now(),
         },
       });
+
+      this.lastSavedData = currentData;
+      logger.debug('Premium data saved successfully');
     } catch (error) {
       logger.warn('Failed to save premium data:', error);
     }
@@ -258,9 +295,16 @@ export class PremiumService {
   }
 
   /**
-   * Update premium status (called when user upgrades/downgrades)
+   * Update premium status (called when user upgrades/downgrades) - throttled
    */
   public async updatePremiumStatus(status: Partial<PremiumStatus>): Promise<void> {
+    this.throttledUpdatePremiumStatus(status);
+  }
+
+  /**
+   * Update premium status immediately (internal method)
+   */
+  private async updatePremiumStatusImmediate(status: Partial<PremiumStatus>): Promise<void> {
     this.premiumStatus = { ...this.premiumStatus, ...status };
     this.updateFeatureAccess();
     await this.saveData();
