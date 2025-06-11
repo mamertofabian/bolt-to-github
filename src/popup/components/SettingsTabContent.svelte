@@ -4,6 +4,9 @@
   import PushReminderSection from './PushReminderSection.svelte';
   import PremiumStatus from './PremiumStatus.svelte';
   import AnalyticsToggle from '$lib/components/ui/AnalyticsToggle.svelte';
+  import { createLogger } from '$lib/utils/logger';
+
+  const logger = createLogger('SettingsTabContent');
 
   export let githubSettings: any;
   export let projectId: string | null;
@@ -35,11 +38,11 @@
   }
 
   function handleConfigurePushReminder() {
-    console.log('handleConfigurePushReminder called, isUserPremium:', isUserPremium);
+    logger.debug('handleConfigurePushReminder called, isUserPremium:', isUserPremium);
     if (isUserPremium) {
       dispatch('configurePushReminder');
     } else {
-      console.log('User is not premium, calling handleUpgradeClick with pushReminders');
+      logger.debug('User is not premium, calling handleUpgradeClick with pushReminders');
       handleUpgradeClick('pushReminders');
     }
   }
