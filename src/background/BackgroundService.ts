@@ -144,23 +144,32 @@ export class BackgroundService {
   }
 
   private setupLogRotation(): void {
-    // Set up log rotation alarm to run every 6 hours
-    chrome.alarms.create('logRotation', {
-      periodInMinutes: 360, // 6 hours
-    });
-
-    // Listen for the alarm
-    chrome.alarms.onAlarm.addListener((alarm) => {
-      if (alarm.name === 'logRotation') {
-        logger.info('Running scheduled log rotation');
-        const logStorage = getLogStorage();
-        logStorage.rotateLogs();
-      }
-    });
-
-    // Also run rotation on startup
+    // Run rotation on startup
     const logStorage = getLogStorage();
     logStorage.rotateLogs();
+
+    // Set up rotation using JavaScript timer instead of chrome.alarms
+    // This avoids requiring new permissions
+    const SIX_HOURS_MS = 6 * 60 * 60 * 1000;
+
+    // Use setInterval for periodic rotation
+    setInterval(() => {
+      logger.info('Running scheduled log rotation');
+      logStorage.rotateLogs();
+    }, SIX_HOURS_MS);
+
+    // Also check and rotate logs when the service worker wakes up
+    // This handles cases where the interval might be cleared
+    chrome.runtime.onStartup.addListener(() => {
+      logger.info('Extension started, checking log rotation');
+      logStorage.rotateLogs();
+    });
+
+    // Check on installation/update
+    chrome.runtime.onInstalled.addListener(() => {
+      logger.info('Extension installed/updated, checking log rotation');
+      logStorage.rotateLogs();
+    });
   }
 
   // this.initializeListeners();

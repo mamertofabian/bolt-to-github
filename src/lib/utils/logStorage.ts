@@ -48,10 +48,23 @@ export class LogStorageManager {
   private async initializeStorage(): Promise<void> {
     // Load current batch into memory
     if (chrome.storage && chrome.storage.local) {
-      const result = await chrome.storage.local.get(this.CURRENT_BATCH_KEY);
+      const result = await chrome.storage.local.get([this.CURRENT_BATCH_KEY, this.METADATA_KEY]);
       const currentBatch = result[this.CURRENT_BATCH_KEY] as LogEntry[] | undefined;
       if (currentBatch) {
         this.memoryBuffer = currentBatch.slice(-this.MAX_MEMORY_ENTRIES);
+      }
+
+      // Check if rotation is needed based on last rotation time
+      const metadata = result[this.METADATA_KEY] as { lastRotation?: string } | undefined;
+      if (metadata?.lastRotation) {
+        const lastRotation = new Date(metadata.lastRotation);
+        const now = new Date();
+        const hoursSinceRotation = (now.getTime() - lastRotation.getTime()) / (1000 * 60 * 60);
+
+        if (hoursSinceRotation >= this.LOG_RETENTION_HOURS) {
+          // Rotation is overdue
+          this.rotateLogs();
+        }
       }
     }
 
@@ -140,13 +153,18 @@ export class LogStorageManager {
     }
   }
 
-  private async updateMetadata(): Promise<void> {
+  private async updateMetadata(includeRotation = false): Promise<void> {
     if (!chrome.storage || !chrome.storage.local) return;
 
-    const metadata = {
+    const metadata: any = {
       lastWrite: new Date().toISOString(),
       totalEntries: this.memoryBuffer.length,
     };
+
+    if (includeRotation) {
+      metadata.lastRotation = new Date().toISOString();
+    }
+
     await chrome.storage.local.set({ [this.METADATA_KEY]: metadata });
   }
 
@@ -189,6 +207,9 @@ export class LogStorageManager {
       this.memoryBuffer = this.memoryBuffer.filter(
         (entry) => new Date(entry.timestamp) >= cutoffTime
       );
+
+      // Update metadata with rotation timestamp
+      await this.updateMetadata(true);
     } catch (error) {
       console.error('Failed to rotate logs:', error);
     }
