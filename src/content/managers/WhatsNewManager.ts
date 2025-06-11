@@ -3,12 +3,14 @@ import WhatsNewModal from '$lib/components/WhatsNewModal.svelte';
 import type { SvelteComponent } from 'svelte';
 
 export interface IComponentLifecycleManager {
-  register(id: string, component: SvelteComponent): void;
-  unregister(id: string): void;
+  createComponent?<T extends SvelteComponent>(id: string, config: any): Promise<T>;
+  destroyComponent?(id: string): void;
+  hasComponent?(id: string): boolean;
 }
 
 export interface IUIElementFactory {
-  createRootContainer(id: string): HTMLElement;
+  createRootContainer?(id: string): HTMLElement;
+  createContainer?(config: { id: string }): HTMLElement;
 }
 
 export interface WhatsNewState {
@@ -55,20 +57,21 @@ export class WhatsNewManager implements IWhatsNewManager {
   }
 
   async showManually(): Promise<void> {
-    // Close any existing modal first
-    if (this.component) {
-      console.log('WhatsNewManager: Cleaning up existing modal before showing new one');
-      this.cleanup();
-      // Add a small delay to ensure cleanup completes
-      await new Promise((resolve) => setTimeout(resolve, 100));
+    try {
+      // Close any existing modal first
+      if (this.component) {
+        this.cleanup();
+        // Add a small delay to ensure cleanup completes
+        await new Promise((resolve) => setTimeout(resolve, 100));
+      }
+      await this.show(true);
+    } catch (error) {
+      console.error('WhatsNewManager: Error showing modal manually:', error);
     }
-    console.log('WhatsNewManager: Showing modal manually');
-    await this.show(true);
   }
 
   private async show(isManual: boolean): Promise<void> {
     if (this.component) {
-      console.warn('WhatsNewManager: Component already exists, skipping show');
       return; // Already showing
     }
 
@@ -79,7 +82,18 @@ export class WhatsNewManager implements IWhatsNewManager {
         return;
       }
 
-      const container = this.uiElementFactory.createRootContainer('whats-new-container');
+      // Create container using factory or fallback to direct creation
+      let container: HTMLElement;
+      if (this.uiElementFactory.createRootContainer) {
+        container = this.uiElementFactory.createRootContainer('whats-new-container');
+      } else if (this.uiElementFactory.createContainer) {
+        container = this.uiElementFactory.createContainer({ id: 'whats-new-container' });
+      } else {
+        container = document.createElement('div');
+        container.id = 'whats-new-container';
+      }
+
+      // Apply styles
       container.style.position = 'fixed';
       container.style.top = '0';
       container.style.left = '0';
@@ -105,7 +119,7 @@ export class WhatsNewManager implements IWhatsNewManager {
 
       document.body.appendChild(container);
 
-      this.componentLifecycleManager.register('WhatsNewModal', this.component);
+      // Component is already created, no need to register
 
       // Update state to mark as shown (unless manual)
       if (!isManual) {
@@ -196,11 +210,12 @@ export class WhatsNewManager implements IWhatsNewManager {
     }
 
     if (this.component) {
-      // Properly destroy the Svelte component
-      if (this.component.$destroy) {
+      // Destroy the component
+      if (this.componentLifecycleManager.destroyComponent) {
+        this.componentLifecycleManager.destroyComponent('WhatsNewModal');
+      } else if (this.component && this.component.$destroy) {
         this.component.$destroy();
       }
-      this.componentLifecycleManager.unregister('WhatsNewModal');
       const container = document.getElementById('whats-new-container');
       if (container) {
         container.remove();

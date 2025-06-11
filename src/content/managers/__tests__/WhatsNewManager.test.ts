@@ -79,11 +79,9 @@ describe('WhatsNewManager', () => {
 
     // Setup mock implementations
     mockComponentLifecycleManager = {
-      register: jest.fn(),
-      unregister: jest.fn(),
-      get: jest.fn(),
-      has: jest.fn(),
-      cleanupAll: jest.fn(),
+      createComponent: jest.fn(),
+      destroyComponent: jest.fn(),
+      hasComponent: jest.fn().mockReturnValue(false),
     };
 
     mockUIElementFactory = {
@@ -93,6 +91,10 @@ describe('WhatsNewManager', () => {
         if (!document.getElementById(id)) {
           document.body.appendChild(mockContainer);
         }
+        return mockContainer;
+      }),
+      createContainer: jest.fn().mockImplementation((config: { id: string }) => {
+        mockContainer.id = config.id;
         return mockContainer;
       }),
     };
@@ -211,11 +213,8 @@ describe('WhatsNewManager', () => {
       expect(containerInDom).toBeTruthy();
       expect(containerInDom?.id).toBe('whats-new-container');
 
-      // Should register component
-      expect(mockComponentLifecycleManager.register).toHaveBeenCalledWith(
-        'WhatsNewModal',
-        expect.any(Object)
-      );
+      // Should create container
+      expect(mockUIElementFactory.createRootContainer).toHaveBeenCalledWith('whats-new-container');
 
       // Should show all versions when manual
       const WhatsNewModal = require('$lib/components/WhatsNewModal.svelte').default;
@@ -280,8 +279,8 @@ describe('WhatsNewManager', () => {
       // Cleanup
       whatsNewManager.cleanup();
 
-      // Should unregister component
-      expect(mockComponentLifecycleManager.unregister).toHaveBeenCalledWith('WhatsNewModal');
+      // Should destroy component
+      expect(mockComponentLifecycleManager.destroyComponent).toHaveBeenCalledWith('WhatsNewModal');
 
       // Should remove container from DOM
       const containerInDom = document.getElementById('whats-new-container');
@@ -356,7 +355,7 @@ describe('WhatsNewManager', () => {
       await expect(whatsNewManager.showManually()).resolves.not.toThrow();
 
       // Should cleanup on error
-      expect(mockComponentLifecycleManager.unregister).not.toHaveBeenCalled();
+      expect(mockComponentLifecycleManager.destroyComponent).not.toHaveBeenCalled();
     });
   });
 });
