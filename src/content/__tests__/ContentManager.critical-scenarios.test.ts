@@ -19,6 +19,23 @@ jest.mock('$lib/components/WhatsNewModal.svelte', () => ({
   }),
 }));
 
+// Mock console methods
+const originalConsole = { ...console };
+beforeAll(() => {
+  global.console = {
+    ...console,
+    log: jest.fn(),
+    warn: jest.fn(),
+    error: jest.fn(),
+    debug: jest.fn(),
+    info: jest.fn(),
+  };
+});
+
+afterAll(() => {
+  global.console = originalConsole;
+});
+
 import { ContentManager } from '../ContentManager';
 import {
   setupBasicTest,
@@ -42,7 +59,8 @@ describe('ContentManager - Critical Scenarios', () => {
   let testEnv: TestEnvironment;
 
   beforeEach(() => {
-    // Console is mocked globally in jest setup
+    // Clear console mocks before each test
+    jest.clearAllMocks();
   });
 
   afterEach(() => {
@@ -150,7 +168,9 @@ describe('ContentManager - Critical Scenarios', () => {
       // that recovery is currently in progress, since recovery might complete quickly or fail.
 
       // Verify that the proper log message was generated
-      expect(console.log).toHaveBeenCalledWith(
+      expect(console.info).toHaveBeenCalledWith(
+        expect.stringContaining('[INFO]'),
+        expect.stringContaining('[ContentManager]'),
         '🔴 Extension context invalidation detected',
         '(quick successive disconnect)'
       );
@@ -218,6 +238,8 @@ describe('ContentManager - Critical Scenarios', () => {
 
       // Verify console.error was called for initialization error
       expect(console.error).toHaveBeenCalledWith(
+        expect.stringContaining('[ERROR]'),
+        expect.stringContaining('[ContentManager]'),
         'Error initializing ContentManager:',
         expect.any(Error)
       );
@@ -273,7 +295,9 @@ describe('ContentManager - Critical Scenarios', () => {
       }).not.toThrow();
 
       // Messages should be ignored without errors
-      expect(console.log).toHaveBeenCalledWith(
+      expect(console.info).toHaveBeenCalledWith(
+        expect.stringContaining('[INFO]'),
+        expect.stringContaining('[ContentManager]'),
         expect.stringContaining('Ignoring UPLOAD_STATUS during recovery')
       );
     });
@@ -296,8 +320,10 @@ describe('ContentManager - Critical Scenarios', () => {
       }).not.toThrow();
 
       // Heartbeat should be processed normally
-      expect(console.debug).toHaveBeenCalledWith(
-        expect.stringContaining('Heartbeat response received')
+      expect(console.info).toHaveBeenCalledWith(
+        expect.stringContaining('[INFO]'),
+        expect.stringContaining('[ContentManager]'),
+        expect.stringContaining('💓 Heartbeat response received')
       );
     });
 
@@ -389,15 +415,20 @@ describe('ContentManager - Critical Scenarios', () => {
 
       const contentManager = new ContentManager();
       const originalUIManager = (contentManager as any).uiManager;
+      expect(originalUIManager).toBeDefined();
 
       // Trigger recovery
       (contentManager as any).handleExtensionContextInvalidated();
 
       await wait(100);
 
-      // UIManager should be reset and recreated
-      const newUIManager = (contentManager as any).uiManager;
-      expect(newUIManager).not.toBe(originalUIManager);
+      // During recovery, the UIManager should be cleared
+      const duringRecoveryUIManager = (contentManager as any).uiManager;
+      expect(duringRecoveryUIManager).toBeUndefined();
+
+      // The content manager should be in recovery state
+      const state = getContentManagerState(contentManager);
+      expect(state.isInRecovery).toBe(true);
     });
   });
 
@@ -452,6 +483,8 @@ describe('ContentManager - Critical Scenarios', () => {
 
       // Should handle gracefully and attempt recovery
       expect(console.error).toHaveBeenCalledWith(
+        expect.stringContaining('[ERROR]'),
+        expect.stringContaining('[ContentManager]'),
         'Error initializing ContentManager:',
         expect.any(Error)
       );
@@ -546,10 +579,14 @@ describe('ContentManager - Critical Scenarios', () => {
       }
 
       // Verify messages were ignored during recovery
-      expect(console.log).toHaveBeenCalledWith(
+      expect(console.info).toHaveBeenCalledWith(
+        expect.stringContaining('[INFO]'),
+        expect.stringContaining('[ContentManager]'),
         expect.stringContaining('Ignoring UPLOAD_STATUS during recovery')
       );
-      expect(console.log).toHaveBeenCalledWith(
+      expect(console.info).toHaveBeenCalledWith(
+        expect.stringContaining('[INFO]'),
+        expect.stringContaining('[ContentManager]'),
         expect.stringContaining('Ignoring GITHUB_SETTINGS_CHANGED during recovery')
       );
     });

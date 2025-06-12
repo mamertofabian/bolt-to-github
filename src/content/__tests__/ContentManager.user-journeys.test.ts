@@ -8,6 +8,23 @@
  * - Debug features and keyboard shortcuts
  */
 
+// Mock console methods
+const originalConsole = { ...console };
+beforeAll(() => {
+  global.console = {
+    ...console,
+    log: jest.fn(),
+    warn: jest.fn(),
+    error: jest.fn(),
+    debug: jest.fn(),
+    info: jest.fn(),
+  };
+});
+
+afterAll(() => {
+  global.console = originalConsole;
+});
+
 import { ContentManager } from '../ContentManager';
 import {
   createTestEnvironment,
@@ -34,6 +51,8 @@ describe('ContentManager - User Journeys', () => {
   let performanceMonitor: PerformanceMonitor;
 
   beforeEach(() => {
+    // Clear all mocks before each test
+    jest.clearAllMocks();
     performanceMonitor = new PerformanceMonitor();
     performanceMonitor.start();
 

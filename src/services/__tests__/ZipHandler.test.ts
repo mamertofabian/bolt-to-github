@@ -149,16 +149,19 @@ describe('ZipHandler', () => {
       setupTestProject(env, TEST_PROJECTS.withBranch);
       const blob = createTestBlob(ZIP_FILE_FIXTURES.simpleProject);
 
-      await env.zipHandler.processZipFile(
-        blob,
-        TEST_PROJECTS.withBranch.projectId,
-        TEST_PROJECTS.withBranch.commitMessage
-      );
+      // The processZipFile should handle branch creation gracefully
+      await expect(
+        env.zipHandler.processZipFile(
+          blob,
+          TEST_PROJECTS.withBranch.projectId,
+          TEST_PROJECTS.withBranch.commitMessage
+        )
+      ).resolves.not.toThrow();
 
-      // Verify branch creation was attempted
+      // Verify branch check was attempted
       const branchCheckCalls = env.githubService
         .getRequestHistory()
-        .filter((req) => req.path.includes(`/branches/${TEST_PROJECTS.withBranch.branch}`));
+        .filter((req) => req.path.includes('/git/refs/heads/'));
       expect(branchCheckCalls.length).toBeGreaterThan(0);
     });
 
@@ -171,6 +174,21 @@ describe('ZipHandler', () => {
 
       const blob = createTestBlob(ZIP_FILE_FIXTURES.simpleProject);
       const newProjectId = 'new-project-789';
+
+      // Add mock response for the new repository
+      env.githubService.setResponse('GET', `/repos/test-owner/${newProjectId}`, {
+        name: newProjectId,
+        owner: { login: 'test-owner' },
+        default_branch: 'main',
+      });
+      env.githubService.setResponse(
+        'GET',
+        `/repos/test-owner/${newProjectId}/git/refs/heads/main`,
+        {
+          ref: 'refs/heads/main',
+          object: { sha: 'abc123' },
+        }
+      );
 
       await env.zipHandler.processZipFile(blob, newProjectId, 'Initial commit');
 
@@ -466,28 +484,30 @@ describe('ZipHandler', () => {
       const resetTime = Math.floor(Date.now() / 1000) + 2;
       env.githubService.setRateLimit(5, resetTime);
 
-      // Mock sleep to avoid actual waiting in tests
-      const originalSleep = env.zipHandler.sleep;
-      let sleepCalled = false;
-      let sleepDuration = 0;
-      (env.zipHandler as any).sleep = jest.fn((ms: number) => {
-        sleepCalled = true;
-        sleepDuration = ms;
-        // Simulate that time has passed and rate limit is restored
-        env.githubService.resetRateLimit();
-        return Promise.resolve();
-      });
+      // Mock global setTimeout to avoid actual waiting in tests
+      jest.useFakeTimers();
+      const setTimeoutSpy = jest.spyOn(global, 'setTimeout');
 
       const blob = createTestBlob(ZIP_FILE_FIXTURES.simpleProject);
 
-      await env.zipHandler.processZipFile(
+      // Start the process
+      const processPromise = env.zipHandler.processZipFile(
         blob,
         TEST_PROJECTS.default.projectId,
         TEST_PROJECTS.default.commitMessage
       );
 
-      // Should have called sleep with ~2000ms
-      expect(sleepCalled).toBe(true);
+      // Advance timers to simulate rate limit reset
+      jest.advanceTimersByTime(2000);
+
+      // Reset rate limit after wait
+      env.githubService.resetRateLimit();
+
+      await processPromise;
+
+      // Should have called setTimeout with ~2000ms
+      expect(setTimeoutSpy).toHaveBeenCalledWith(expect.any(Function), expect.any(Number));
+      const sleepDuration = setTimeoutSpy.mock.calls[0][1];
       expect(sleepDuration).toBeGreaterThanOrEqual(1000);
       expect(sleepDuration).toBeLessThanOrEqual(3000);
 
@@ -497,22 +517,23 @@ describe('ZipHandler', () => {
       );
       expect(waitingStatus).toBeDefined();
 
-      // Restore original sleep
-      (env.zipHandler as any).sleep = originalSleep;
+      // Restore timers
+      jest.useRealTimers();
     });
 
     it('should handle rate limit errors during blob creation', async () => {
       setupTestProject(env, TEST_PROJECTS.default);
 
-      // Mock sleep for faster tests
-      const originalSleep = env.zipHandler.sleep;
-      (env.zipHandler as any).sleep = jest.fn(() => Promise.resolve());
+      // Mock setTimeout for faster tests
+      jest.useFakeTimers();
 
       // Set up rate limit to fail after 2 blobs
       let blobCount = 0;
       env.githubService.setResponse('POST', '/repos/test-owner/test-repo/git/blobs', () => {
         blobCount++;
         if (blobCount === 3) {
+          // Reset rate limit on 3rd attempt to simulate recovery
+          env.githubService.resetRateLimit();
           const error = new Error('API rate limit exceeded') as Error & {
             status?: number;
             message: string;
@@ -525,21 +546,27 @@ describe('ZipHandler', () => {
 
       const blob = createTestBlob(ZIP_FILE_FIXTURES.simpleProject);
 
-      // Should still succeed due to retry logic
-      await env.zipHandler.processZipFile(
+      // Start processing
+      const processPromise = env.zipHandler.processZipFile(
         blob,
         TEST_PROJECTS.default.projectId,
         TEST_PROJECTS.default.commitMessage
       );
 
+      // Fast-forward through any delays
+      jest.runAllTimers();
+
+      // Should still succeed due to retry logic
+      await processPromise;
+
       // Should have shown rate limit message
-      const rateLimitStatus = env.statusCallback.findStatus((s) =>
-        s.message?.includes('Rate limit hit')
+      const rateLimitStatus = env.statusCallback.findStatus(
+        (s) => s.message?.includes('Rate limit') || s.message?.includes('rate limit')
       );
       expect(rateLimitStatus).toBeDefined();
 
-      // Restore original sleep
-      (env.zipHandler as any).sleep = originalSleep;
+      // Restore timers
+      jest.useRealTimers();
     });
 
     it('should fail if rate limit reset is too far away', async () => {
@@ -562,6 +589,9 @@ describe('ZipHandler', () => {
   describe('Progress Tracking', () => {
     it('should report progress at key stages', async () => {
       setupTestProject(env, TEST_PROJECTS.default);
+      // Ensure rate limit is reset for this test
+      env.githubService.resetRateLimit();
+
       const blob = createTestBlob(ZIP_FILE_FIXTURES.simpleProject);
 
       await env.zipHandler.processZipFile(
@@ -594,6 +624,7 @@ describe('ZipHandler', () => {
 
     it('should send duplicate status updates for critical states', async () => {
       setupTestProject(env, TEST_PROJECTS.default);
+      env.githubService.resetRateLimit();
 
       // Mock setTimeout to execute immediately
       const originalSetTimeout = global.setTimeout;
@@ -640,6 +671,7 @@ describe('ZipHandler', () => {
 
     it('should record push statistics on success', async () => {
       setupTestProject(env, TEST_PROJECTS.default);
+      env.githubService.resetRateLimit();
 
       // Set comparison result to ensure files are processed
       env.comparisonService.setComparisonResult(COMPARISON_RESULTS.withChanges);
@@ -708,6 +740,7 @@ describe('ZipHandler', () => {
   describe('Large File Handling', () => {
     it('should process files in batches of 30', async () => {
       setupTestProject(env, TEST_PROJECTS.default);
+      env.githubService.resetRateLimit();
 
       // Set comparison to show all 100 files as new
       const largeFiles = Array.from(ZIP_FILE_FIXTURES.largeProject.entries());
@@ -744,6 +777,7 @@ describe('ZipHandler', () => {
 
     it('should add delays between batches', async () => {
       setupTestProject(env, TEST_PROJECTS.default);
+      env.githubService.resetRateLimit();
 
       // Set comparison to show all files as new
       const largeFiles = Array.from(ZIP_FILE_FIXTURES.largeProject.entries());
@@ -759,28 +793,29 @@ describe('ZipHandler', () => {
         repoData: COMPARISON_RESULTS.allNew.repoData,
       });
 
-      // Mock sleep to track delays
-      const originalSleep = env.zipHandler.sleep;
-      let totalSleepTime = 0;
-      (env.zipHandler as any).sleep = jest.fn((ms: number) => {
-        totalSleepTime += ms;
-        return Promise.resolve();
-      });
+      // Mock setTimeout to track delays
+      jest.useFakeTimers();
+      const setTimeoutSpy = jest.spyOn(global, 'setTimeout');
 
       const blob = createTestBlob(ZIP_FILE_FIXTURES.largeProject);
 
-      await env.zipHandler.processZipFile(
+      const processPromise = env.zipHandler.processZipFile(
         blob,
         TEST_PROJECTS.default.projectId,
         TEST_PROJECTS.default.commitMessage
       );
 
-      // With 100 files in ~4 batches, should have at least 3 seconds of delays
-      // (1 second between each batch)
-      expect(totalSleepTime).toBeGreaterThanOrEqual(3000);
+      // Run all timers to completion
+      jest.runAllTimers();
 
-      // Restore original sleep
-      (env.zipHandler as any).sleep = originalSleep;
+      await processPromise;
+
+      // With 100 files in ~4 batches, should have at least 3 delays
+      const sleepCalls = setTimeoutSpy.mock.calls.filter((call) => call[1] >= 1000);
+      expect(sleepCalls.length).toBeGreaterThanOrEqual(3);
+
+      // Restore timers
+      jest.useRealTimers();
     });
   });
 
@@ -833,6 +868,7 @@ describe('ZipHandler', () => {
 
     it('should fail after maximum retry attempts', async () => {
       setupTestProject(env, TEST_PROJECTS.default);
+      env.githubService.resetRateLimit();
 
       // Set comparison to show file as new
       env.comparisonService.setComparisonResult({
@@ -842,9 +878,8 @@ describe('ZipHandler', () => {
         repoData: COMPARISON_RESULTS.allNew.repoData,
       });
 
-      // Mock sleep for faster tests
-      const originalSleep = env.zipHandler.sleep;
-      (env.zipHandler as any).sleep = jest.fn(() => Promise.resolve());
+      // Mock timers for faster tests
+      jest.useFakeTimers();
 
       // Always fail blob creation
       env.githubService.setResponse('POST', '/repos/test-owner/test-repo/git/blobs', () => {

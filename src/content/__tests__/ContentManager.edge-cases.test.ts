@@ -19,6 +19,23 @@ jest.mock('$lib/components/WhatsNewModal.svelte', () => ({
   }),
 }));
 
+// Mock console methods
+const originalConsole = { ...console };
+beforeAll(() => {
+  global.console = {
+    ...console,
+    log: jest.fn(),
+    warn: jest.fn(),
+    error: jest.fn(),
+    debug: jest.fn(),
+    info: jest.fn(),
+  };
+});
+
+afterAll(() => {
+  global.console = originalConsole;
+});
+
 import { ContentManager } from '../ContentManager';
 import {
   setupBasicTest,
@@ -41,8 +58,8 @@ describe('ContentManager - Edge Cases', () => {
   let testEnv: TestEnvironment;
 
   beforeEach(() => {
-    // Reset console to capture output
-    jest.spyOn(console, 'log').mockImplementation(() => {});
+    // Clear all mocks before each test
+    jest.clearAllMocks();
     jest.spyOn(console, 'warn').mockImplementation(() => {});
     jest.spyOn(console, 'error').mockImplementation(() => {});
     jest.spyOn(console, 'debug').mockImplementation(() => {});

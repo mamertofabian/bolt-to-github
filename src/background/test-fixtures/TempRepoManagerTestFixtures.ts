@@ -684,16 +684,18 @@ export class TempRepoManagerTestEnvironment {
 
   constructor() {
     this.mockGitHubService = new MockUnifiedGitHubService();
-    // Create a mock instance compatible with the manual mock
-    this.mockOperationStateManager = new MockOperationStateManager();
     this.mockStorage = new TempRepoMockChromeStorage();
     this.mockTabs = new TempRepoMockChromeTabs();
     this.mockStatusBroadcaster = new MockStatusBroadcaster();
 
-    // Update the manual mock to return our instance
-    jest
-      .mocked(require('../../content/services/OperationStateManager'))
-      .OperationStateManager.getInstance.mockReturnValue(this.mockOperationStateManager);
+    // Get the mocked OperationStateManager module
+    const { OperationStateManager: MockedOperationStateManager } = jest.requireMock(
+      '../../content/services/OperationStateManager'
+    );
+
+    // Create our test instance and configure the mock to return it
+    this.mockOperationStateManager = new MockOperationStateManager();
+    MockedOperationStateManager.getInstance = jest.fn(() => this.mockOperationStateManager);
   }
 
   setup(): void {
