@@ -1,3 +1,9 @@
+## 2025-01-06 - Version 1.3.5
+
+### 🎉 New Features
+
+- **Post-installation welcome flow** - Added welcome page with onboarding for new users installing the extension
+
 ## 2025-01-06 - Version 1.3.4
 
 ### 🐛 Bug Fixes & Improvements

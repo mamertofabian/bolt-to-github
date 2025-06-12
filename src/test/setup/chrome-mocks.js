@@ -21,8 +21,13 @@ global.chrome = {
       addListener: jest.fn(),
       removeListener: jest.fn(),
     },
+    onConnect: {
+      addListener: jest.fn(),
+      removeListener: jest.fn(),
+    },
     sendMessage: jest.fn(),
     getURL: jest.fn((path) => `chrome-extension://test/${path}`),
+    getManifest: jest.fn(() => ({ version: '1.0.0', name: 'Test Extension' })),
     lastError: null,
   },
   storage: {
@@ -45,6 +50,14 @@ global.chrome = {
     getCurrent: jest.fn(),
     create: jest.fn(),
     update: jest.fn(),
+    onRemoved: {
+      addListener: jest.fn(),
+      removeListener: jest.fn(),
+    },
+    onUpdated: {
+      addListener: jest.fn(),
+      removeListener: jest.fn(),
+    },
   },
   action: {
     setBadgeText: jest.fn(),
@@ -60,6 +73,17 @@ global.chrome = {
     request: jest.fn().mockResolvedValue(true),
     contains: jest.fn().mockResolvedValue(true),
     remove: jest.fn().mockResolvedValue(true),
+  },
+  alarms: {
+    create: jest.fn(),
+    clear: jest.fn(),
+    clearAll: jest.fn(),
+    get: jest.fn(),
+    getAll: jest.fn(),
+    onAlarm: {
+      addListener: jest.fn(),
+      removeListener: jest.fn(),
+    },
   },
 };
 
