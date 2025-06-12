@@ -78,7 +78,7 @@ describe('WelcomePageContentScript', () => {
 
       // Verify no script was injected that exposes extension ID
       const scriptElement = document.querySelector('script[data-extension-id]');
-      expect(scriptElement).toBeFalsy();
+      expect(scriptElement).toBeNull();
     });
 
     it('should listen for messages from the welcome page', () => {

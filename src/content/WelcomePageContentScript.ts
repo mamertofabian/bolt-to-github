@@ -9,6 +9,9 @@ import { createLogger } from '../lib/utils/logger';
 
 const logger = createLogger('WelcomePageContentScript');
 
+// Allowed origins for welcome page communication
+const ALLOWED_ORIGINS = ['https://bolt2github.com', 'https://staging.bolt2github.com'];
+
 // Initialize content script
 logger.info('Welcome page content script initialized', {
   url: window.location.href,
@@ -16,8 +19,8 @@ logger.info('Welcome page content script initialized', {
 
 // Listen for messages from the welcome page
 window.addEventListener('message', async (event) => {
-  // Only accept messages from the same origin
-  if (event.origin !== 'https://bolt2github.com') {
+  // Only accept messages from allowed origins
+  if (!ALLOWED_ORIGINS.includes(event.origin)) {
     return;
   }
 

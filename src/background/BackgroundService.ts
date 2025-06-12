@@ -175,10 +175,10 @@ export class BackgroundService {
     });
 
     // Check on installation/update
-    chrome.runtime.onInstalled.addListener((details) => {
+    chrome.runtime.onInstalled.addListener(async (details) => {
       logger.info('Extension installed/updated, checking log rotation');
       logStorage.rotateLogs();
-      this.handleExtensionInstalled(details);
+      await this.handleExtensionInstalled(details);
     });
   }
 
@@ -332,6 +332,7 @@ export class BackgroundService {
         sendResponse({ success: true });
       } else if (
         message.type === 'getExtensionStatus' &&
+        sender.tab &&
         this.isValidBolt2GitHubOrigin(sender.url)
       ) {
         // Handle welcome page status request
@@ -339,6 +340,7 @@ export class BackgroundService {
         return true; // Will respond asynchronously
       } else if (
         message.type === 'completeOnboardingStep' &&
+        sender.tab &&
         this.isValidBolt2GitHubOrigin(sender.url)
       ) {
         // Handle onboarding step completion
@@ -346,6 +348,7 @@ export class BackgroundService {
         return true; // Will respond asynchronously
       } else if (
         message.type === 'initiateGitHubAuth' &&
+        sender.tab &&
         this.isValidBolt2GitHubOrigin(sender.url)
       ) {
         // Handle GitHub authentication initiation

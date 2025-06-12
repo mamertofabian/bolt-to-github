@@ -267,7 +267,7 @@ describe('BackgroundService - Welcome Flow', () => {
       // Simulate message from welcome page
       const result = await onMessageHandler(
         { type: 'getExtensionStatus' },
-        { url: 'https://bolt2github.com/welcome' },
+        { url: 'https://bolt2github.com/welcome', tab: { id: 123 } },
         sendResponse
       );
 
@@ -302,7 +302,7 @@ describe('BackgroundService - Welcome Flow', () => {
       // Simulate message from welcome page
       const result = await onMessageHandler(
         { type: 'completeOnboardingStep', step: 'authentication' },
-        { url: 'https://bolt2github.com/welcome' },
+        { url: 'https://bolt2github.com/welcome', tab: { id: 123 } },
         sendResponse
       );
 
@@ -335,11 +335,35 @@ describe('BackgroundService - Welcome Flow', () => {
       // Simulate message from malicious site
       await onMessageHandler(
         { type: 'getExtensionStatus' },
-        { url: 'https://malicious-site.com' },
+        { url: 'https://malicious-site.com', tab: { id: 123 } },
         sendResponse
       );
 
       // Verify no response was sent for getExtensionStatus
+      expect(sendResponse).not.toHaveBeenCalledWith(
+        expect.objectContaining({
+          data: expect.objectContaining({
+            installed: true,
+          }),
+        })
+      );
+    });
+
+    it('should ignore messages not from tabs', async () => {
+      // Get the onMessage handler
+      const onMessageHandler = (chrome.runtime.onMessage.addListener as jest.Mock).mock.calls[0][0];
+
+      // Create a mock sendResponse function
+      const sendResponse = jest.fn();
+
+      // Simulate message without tab (e.g., from popup or other extension context)
+      await onMessageHandler(
+        { type: 'getExtensionStatus' },
+        { url: 'https://bolt2github.com/welcome' }, // No tab property
+        sendResponse
+      );
+
+      // Verify no response was sent
       expect(sendResponse).not.toHaveBeenCalledWith(
         expect.objectContaining({
           data: expect.objectContaining({
@@ -359,7 +383,7 @@ describe('BackgroundService - Welcome Flow', () => {
       // Simulate message with invalid step
       await onMessageHandler(
         { type: 'completeOnboardingStep', step: 'invalid_step' },
-        { url: 'https://bolt2github.com/welcome' },
+        { url: 'https://bolt2github.com/welcome', tab: { id: 123 } },
         sendResponse
       );
 
@@ -383,7 +407,7 @@ describe('BackgroundService - Welcome Flow', () => {
       // Simulate GitHub App auth request
       await onMessageHandler(
         { type: 'initiateGitHubAuth', method: 'github_app' },
-        { url: 'https://bolt2github.com/welcome' },
+        { url: 'https://bolt2github.com/welcome', tab: { id: 123 } },
         sendResponse
       );
 
