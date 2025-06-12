@@ -111,3 +111,14 @@ export interface PushStatisticsState {
   statistics: PushStatistics;
   isLoading: boolean;
 }
+
+/**
+ * Interface for onboarding data storage
+ */
+export interface OnboardingData {
+  installDate: string;
+  onboardingCompleted: boolean;
+  completedSteps: string[];
+  installedVersion: string;
+  welcomePageViewed: boolean;
+}

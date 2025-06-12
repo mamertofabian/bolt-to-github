@@ -33,6 +33,11 @@
       "matches": ["https://bolt.new/*"],
       "js": ["src/content/index.ts"],
       "run_at": "document_start"
+    },
+    {
+      "matches": ["https://bolt2github.com/*"],
+      "js": ["src/content/WelcomePageContentScript.ts"],
+      "run_at": "document_start"
     }
   ],
   "web_accessible_resources": [
@@ -44,5 +49,8 @@
       "resources": ["src/pages/*.html", "pages/*.js"],
       "matches": ["<all_urls>"]
     }
-  ]
+  ],
+  "externally_connectable": {
+    "matches": ["https://bolt2github.com/*"]
+  }
 }
