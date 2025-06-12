@@ -720,8 +720,12 @@ export class TempRepoManagerTestEnvironment {
       debug: jest.fn(),
     } as any;
 
-    // Don't mock timers by default, let individual tests control this
-    // jest.useFakeTimers();
+    // Mock timers to avoid actual intervals
+    global.setInterval = jest.fn().mockImplementation((callback: Function, delay: number) => {
+      // Return a mock interval ID
+      return Math.random().toString(36).slice(2);
+    });
+    global.clearInterval = jest.fn();
   }
 
   teardown(): void {

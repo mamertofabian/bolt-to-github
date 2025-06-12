@@ -30,6 +30,17 @@ describe('ZipHandler - Edge Cases', () => {
         ['file.name.with.many.dots.txt', 'content'],
       ]);
 
+      // Configure comparison service to return all files as new
+      env.comparisonService.setComparisonResult({
+        changes: new Map([
+          ['app.min.js', { status: 'added' as const, content: 'minified code' }],
+          ['data.backup.2024.json', { status: 'added' as const, content: '{"backup": true}' }],
+          ['jquery-3.6.0.min.js', { status: 'added' as const, content: '/* jQuery v3.6.0 */' }],
+          ['file.name.with.many.dots.txt', { status: 'added' as const, content: 'content' }],
+        ]),
+        repoData: COMPARISON_RESULTS.allNew.repoData,
+      });
+
       const blob = createTestBlob(files);
 
       await env.zipHandler.processZipFile(
@@ -105,9 +116,17 @@ describe('ZipHandler - Edge Cases', () => {
       setupTestProject(env, TEST_PROJECTS.default);
 
       const files = new Map();
+      const changes = new Map();
       for (let i = 0; i < 30; i++) {
         files.set(`file${i}.js`, `content ${i}`);
+        changes.set(`file${i}.js`, { status: 'added' as const, content: `content ${i}` });
       }
+
+      // Configure comparison service to return all files as new
+      env.comparisonService.setComparisonResult({
+        changes,
+        repoData: COMPARISON_RESULTS.allNew.repoData,
+      });
 
       const blob = createTestBlob(files);
 
@@ -130,9 +149,17 @@ describe('ZipHandler - Edge Cases', () => {
       setupTestProject(env, TEST_PROJECTS.default);
 
       const files = new Map();
+      const changes = new Map();
       for (let i = 0; i < 31; i++) {
         files.set(`file${i}.js`, `content ${i}`);
+        changes.set(`file${i}.js`, { status: 'added' as const, content: `content ${i}` });
       }
+
+      // Configure comparison service to return all files as new
+      env.comparisonService.setComparisonResult({
+        changes,
+        repoData: COMPARISON_RESULTS.allNew.repoData,
+      });
 
       const blob = createTestBlob(files);
 
