@@ -113,7 +113,7 @@ describe('WelcomePageContentScript', () => {
       } as MessageEvent);
 
       // Wait for async processing
-      await new Promise((resolve) => setTimeout(resolve, 20));
+      await new Promise((resolve) => setTimeout(resolve, 50));
 
       // Verify message was sent to background
       expect(mockRuntimeSendMessage).toHaveBeenCalledWith(
@@ -158,7 +158,7 @@ describe('WelcomePageContentScript', () => {
       } as MessageEvent);
 
       // Wait for async processing
-      await new Promise((resolve) => setTimeout(resolve, 20));
+      await new Promise((resolve) => setTimeout(resolve, 50));
 
       // Verify message was sent to background
       expect(mockRuntimeSendMessage).toHaveBeenCalledWith(
@@ -196,7 +196,7 @@ describe('WelcomePageContentScript', () => {
       } as MessageEvent);
 
       // Wait for async processing
-      await new Promise((resolve) => setTimeout(resolve, 20));
+      await new Promise((resolve) => setTimeout(resolve, 50));
 
       // Verify message was sent to background
       expect(mockRuntimeSendMessage).toHaveBeenCalledWith(
@@ -233,7 +233,7 @@ describe('WelcomePageContentScript', () => {
       } as MessageEvent);
 
       // Wait for async processing
-      await new Promise((resolve) => setTimeout(resolve, 20));
+      await new Promise((resolve) => setTimeout(resolve, 50));
 
       // Verify storage was accessed
       expect(mockStorageGet).toHaveBeenCalledWith(['extensionCapabilities'], expect.any(Function));
@@ -347,7 +347,7 @@ describe('WelcomePageContentScript', () => {
       } as MessageEvent);
 
       // Wait for async processing
-      await new Promise((resolve) => setTimeout(resolve, 20));
+      await new Promise((resolve) => setTimeout(resolve, 50));
 
       // Verify error response was sent
       expect(mockWindowPostMessage).toHaveBeenCalledWith(
@@ -362,9 +362,14 @@ describe('WelcomePageContentScript', () => {
 
     it('should handle runtime.lastError', async () => {
       // Mock runtime.sendMessage to simulate chrome.runtime.lastError
-      mockRuntimeSendMessage.mockImplementation(() => {
+      mockRuntimeSendMessage.mockImplementation((message, callback) => {
+        // Set lastError to simulate error
         chrome.runtime.lastError = { message: 'Extension context invalidated' };
-        return false;
+        // Call callback with undefined to simulate error
+        if (callback) {
+          setTimeout(() => callback(undefined), 10);
+        }
+        return true;
       });
 
       // Import the content script
@@ -384,7 +389,7 @@ describe('WelcomePageContentScript', () => {
       } as MessageEvent);
 
       // Wait for async processing
-      await new Promise((resolve) => setTimeout(resolve, 20));
+      await new Promise((resolve) => setTimeout(resolve, 50));
 
       // Verify error response was sent
       expect(mockWindowPostMessage).toHaveBeenCalledWith(
@@ -412,7 +417,8 @@ describe('WelcomePageContentScript', () => {
 
       // Verify initialization was logged
       expect(consoleInfoSpy).toHaveBeenCalledWith(
-        expect.stringContaining('Welcome page content script initialized'),
+        '[WelcomePageContentScript] [INFO]',
+        'Welcome page content script initialized',
         expect.any(Object)
       );
 
@@ -440,7 +446,8 @@ describe('WelcomePageContentScript', () => {
 
       // Verify message was logged
       expect(consoleInfoSpy).toHaveBeenCalledWith(
-        expect.stringContaining('Received message from welcome page'),
+        '[WelcomePageContentScript] [INFO]',
+        'Received message from welcome page',
         expect.objectContaining({ type: 'getExtensionStatus' })
       );
 

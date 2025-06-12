@@ -49,6 +49,15 @@ This work addresses GitHub issue #112: "Systematically fix all failing tests acr
 - Added correct DOM structure for button initialization tests
 - Fixed console.info mock in ComponentLifecycleManager test
 
+### 6. Additional Logger Prefix Fixes (Second Pass)
+
+**Problem**: More tests were expecting exact console output without logger prefixes.
+**Solution**:
+
+- ComponentLifecycleManager tests: Updated to use mocked logger instead of console
+- WelcomePageContentScript tests: Added `[WelcomePageContentScript] [INFO]` prefixes
+- Fixed async callback handling for runtime.lastError test
+
 ## Test Results
 
 ### Before:
@@ -56,16 +65,21 @@ This work addresses GitHub issue #112: "Systematically fix all failing tests acr
 - Test Suites: 22 failed, 28 passed, 50 total
 - Tests: 126 failed, 684 passed, 810 total
 
-### After:
+### After (First Pass):
 
 - Test Suites: 10 failed, 40 passed, 50 total
 - Tests: 120 failed, 853 passed, 973 total
 
-### Improvement:
+### After (Second Pass):
 
-- Fixed 12 test suites (54.5% of failures)
+- Test Suites: 8 failed, 42 passed, 50 total
+- Tests: 108 failed, 865 passed, 973 total
+
+### Overall Improvement:
+
+- Fixed 14 test suites (63.6% of failures)
 - Tests now running increased from 810 to 973 (163 additional tests now executing)
-- Net reduction of 6 test failures despite 163 more tests running
+- Net reduction of 18 test failures despite 163 more tests running
 
 ## Remaining Issues
 
@@ -89,6 +103,8 @@ The following test suites still have failures that require additional investigat
 
 All changes were made to test files and test infrastructure only:
 
+### First Pass:
+
 - `/src/test/setup/svelte-mock.js` - Fixed ES module exports
 - `/src/test/setup/svelte-store-mock.js` - Fixed ES module exports
 - `/src/test/setup/fileUtils-mock.js` - Fixed ES module exports
@@ -102,3 +118,9 @@ All changes were made to test files and test infrastructure only:
 - `/src/content/__tests__/WelcomePageContentScript.test.ts` - Fixed storage mock callback handling
 - `/src/background/test-fixtures/BackgroundServiceTestHelpers.ts` - Added chrome.alarms mock
 - `/home/atomrem/projects/codefrost-dev/bolt-to-github/jest.config.js` - Updated for better ESM support
+
+### Second Pass:
+
+- `/src/content/infrastructure/__tests__/ComponentLifecycleManager.test.ts` - Replaced console mocks with logger mocks
+- `/src/content/__tests__/WelcomePageContentScript.test.ts` - Added logger prefixes and fixed async timing
+- `/src/services/__tests__/test-fixtures/ZipHandlerMocks.ts` - Updated mock responses for better branch handling

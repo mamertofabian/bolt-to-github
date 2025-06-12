@@ -157,11 +157,38 @@ export class MockUnifiedGitHubService implements Partial<UnifiedGitHubService> {
       return response;
     }
 
-    // Handle branch not found
-    if (path.includes('/branches/') && !path.includes('/main')) {
+    // Handle branch checks - return 404 for non-main branches to simulate branch creation scenario
+    if (method === 'GET' && path.includes('/branches/') && !path.includes('/main')) {
       const error = new Error('Not Found') as Error & { status?: number };
       error.status = 404;
       throw error;
+    }
+
+    // Handle branch existence check via refs API
+    if (method === 'GET' && path.includes('/git/refs/heads/') && !path.includes('/main')) {
+      // Return 404 to simulate branch doesn't exist, but don't break the flow
+      const error = new Error('Not Found') as Error & { status?: number };
+      error.status = 404;
+      throw error;
+    }
+
+    // Handle successful ref checks for main branch
+    if (method === 'GET' && path.includes('/git/refs/heads/main')) {
+      return { ref: 'refs/heads/main', object: { sha: 'abc123' } };
+    }
+
+    // Handle repo checks
+    if (method === 'GET' && path.match(/^\/repos\/[^\/]+\/[^\/]+$/)) {
+      return {
+        name: path.split('/').pop(),
+        owner: { login: path.split('/')[2] },
+        default_branch: 'main',
+      };
+    }
+
+    // Handle contents checks (for empty repo detection)
+    if (method === 'GET' && path.includes('/contents/')) {
+      return []; // Empty contents
     }
 
     // Default 404 for unknown paths
