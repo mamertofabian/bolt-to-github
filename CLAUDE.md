@@ -4,9 +4,130 @@
 
 Bolt to GitHub is a Chrome Extension (Manifest v3) that automatically captures ZIP file downloads from bolt.new, extracts them, and pushes contents to GitHub repositories. Built with Svelte v4.2.x, TypeScript v5.6.x, and TailwindCSS.
 
-**Current Version**: v1.3.3  
+**Current Version**: v1.3.4  
 **Repository**: mamertofabian/bolt-to-github  
 **Package Manager**: pnpm (required)
+
+## Memories and Branching Guidelines
+
+- Follow @docs/unit-testing-rules.md .
+  **CRITICAL**: Always follow the versioned development branch strategy below - NEVER branch directly off main for features/fixes.
+
+### Versioned Development Branch Strategy
+
+When starting new development work:
+
+1. **Check for Development Version Branch**: Look for existing `dev-v{NEXT_VERSION}` branch (e.g., if main is v1.3.3, check for `dev-v1.3.4`)
+2. **Branch Creation Logic**:
+   - **If dev version branch EXISTS**: Create your feature/fix branch from `dev-v{NEXT_VERSION}`
+   - **If dev version branch DOES NOT exist**:
+     - First create `dev-v{NEXT_VERSION}` from `main`
+     - Then create your feature/fix branch from the new dev version branch
+3. **Pull Request Targets**:
+   - **Default**: All PRs target the `dev-v{NEXT_VERSION}` branch
+   - **Exception**: Only target `main` when deploying/releasing the new version
+
+### Branch Naming Convention
+
+- Development version: `dev-v1.3.4`
+- Feature branches: `feature/your-feature-name`
+- Fix branches: `fix/your-fix-name`
+- Hotfix branches: `hotfix/your-hotfix-name`
+
+## IMPORTANT RULES
+
+- YOU MUST write tests before implementation
+- YOU MUST follow existing authentication patterns
+- YOU MUST use existing error handling patterns
+- YOU MUST document all new API endpoints (Edge Functions)
+
+## Git Workflow
+
+- **NEVER** branch directly from `main` for features/fixes - follow versioned development strategy above
+- **ALWAYS** run tests, build, and lint before considering work complete:
+  1. `pnpm test:ci` - Ensure all tests pass (`pnpm test:ci` is for running with test coverage, use `pnpm test` to include test coverage)
+  2. `pnpm build` - Verify no TypeScript errors
+  3. `pnpm lint` - Check for code style issues
+
+## Test-Driven Development (TDD) Workflow
+
+Follow this Anthropic-recommended workflow for all changes:
+
+1. **Write Tests First**
+
+   - Write tests based on expected input/output pairs
+   - Avoid creating mock implementations for non-existent functionality
+   - Focus on what the code SHOULD do, not how it does it
+
+2. **Verify Tests Fail**
+
+   - Run the tests and confirm they fail
+   - DO NOT write any implementation code at this stage
+   - Ensure tests are testing the right things
+
+3. **Commit Tests**
+
+   - Commit the tests when satisfied with their coverage
+   - Use descriptive commit messages like "test: add tests for X functionality"
+
+4. **Write Implementation**
+
+   - Write code that passes the tests
+   - DO NOT modify the tests during implementation
+   - Keep iterating until all tests pass
+   - Run tests after each change to track progress
+
+5. **Verify Implementation**
+
+   - Use a subagent to verify the implementation isn't overfitting
+   - Ensure code follows existing patterns and conventions
+   - Check that implementation is minimal but complete
+
+6. **Commit Implementation**
+   - Commit the code once all tests pass
+   - Use descriptive commit messages like "feat: implement X functionality"
+
+### Workflow Summary:
+
+- Write tests, commit
+- Write code, iterate until tests pass, commit
+- Keep tests and implementation in separate commits for clarity
+
+## GitHub Issue Workflow
+
+When working on GitHub issues, follow this structured approach:
+
+1. **Get Issue Details**
+
+   ```bash
+   gh issue view <issue-number>
+   ```
+
+2. **Plan Implementation**
+
+   - Review acceptance criteria
+   - Create a comprehensive todo list
+   - Identify which existing patterns to follow
+
+3. **Follow TDD Workflow**
+
+   - Write comprehensive tests first
+   - Verify tests fail
+   - Commit tests
+   - Implement solution
+   - Ensure all tests pass
+   - Commit implementation
+
+4. **Testing**
+
+   - Use Jest with Testing Library for frontend tests
+   - Run tests with: `pnpm test <test_file_or_pattern>`
+   - Ensure TypeScript compilation passes: `pnpm build`
+
+5. **Close Issue**
+   - Verify all acceptance criteria are met
+   - Add completion comment with summary
+   - Close issue with: `gh issue close <issue-number>`
 
 ## Commands
 
