@@ -106,3 +106,13 @@ global.chrome.tabs.sendMessage = jest.fn().mockImplementation((tabId, message, c
     return Promise.resolve({});
   }
 });
+
+// Mock chrome.alarms API
+global.chrome.alarms = {
+  create: jest.fn(),
+  clear: jest.fn(),
+  onAlarm: {
+    addListener: jest.fn(),
+    removeListener: jest.fn(),
+  },
+};

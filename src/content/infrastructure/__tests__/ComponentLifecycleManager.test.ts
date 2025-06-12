@@ -38,6 +38,7 @@ const mockConsole = {
   log: jest.fn(),
   error: jest.fn(),
   warn: jest.fn(),
+  info: jest.fn(),
 };
 
 // Replace console methods for testing

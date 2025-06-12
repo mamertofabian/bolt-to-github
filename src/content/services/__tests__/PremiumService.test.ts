@@ -165,15 +165,14 @@ describe('PremiumService', () => {
   });
 
   describe('Upgrade Flow', () => {
-    test('opens upgrade/signup page', () => {
+    test('opens upgrade/signup page', async () => {
       premiumService.openUpgradePage();
 
       // The openUpgradePage method calls checkAuthenticationAndRedirect internally,
-      // which is async and creates tabs, so we verify chrome.tabs.create was called
-      // in one of the upgrade flows
-      setTimeout(() => {
-        expect(chrome.tabs.create).toHaveBeenCalled();
-      }, 0);
+      // which is async and creates tabs, so we need to wait for the next tick
+      await new Promise((resolve) => setTimeout(resolve, 0));
+
+      expect(chrome.tabs.create).toHaveBeenCalled();
     });
   });
 
@@ -184,6 +183,10 @@ describe('PremiumService', () => {
       await premiumService.updatePremiumStatus({
         isPremium: true,
       });
+
+      // Wait for throttled update (1000ms) and debounced save (100ms)
+      // Wait for throttled update (1000ms) and debounced save (100ms)
+      await new Promise((resolve) => setTimeout(resolve, 1200));
 
       expect(mockSet).toHaveBeenCalled();
     });

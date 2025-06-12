@@ -1,4 +1,5 @@
 export default {
+  preset: 'ts-jest/presets/default-esm',
   testEnvironment: 'jsdom',
   roots: ['<rootDir>/src'],
   transform: {
@@ -6,6 +7,11 @@ export default {
       'ts-jest',
       {
         useESM: true,
+        tsconfig: {
+          verbatimModuleSyntax: false,
+          allowSyntheticDefaultImports: true,
+          esModuleInterop: true,
+        },
       },
     ],
   },
@@ -29,6 +35,11 @@ export default {
   collectCoverage: true,
   coverageDirectory: 'coverage',
   collectCoverageFrom: ['src/**/*.{ts,tsx}', '!src/**/*.d.ts'],
+  globals: {
+    'ts-jest': {
+      useESM: true,
+    },
+  },
   // Temporary disabled until the threshold is met
   // coverageThreshold: {
   //   global: {

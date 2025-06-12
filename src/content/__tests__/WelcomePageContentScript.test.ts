@@ -42,10 +42,14 @@ describe('WelcomePageContentScript', () => {
     });
 
     mockStorageGet = jest.fn().mockImplementation((keys, callback) => {
-      callback({
+      const result = {
         extensionCapabilities: ['zip_upload', 'issue_management', 'branch_management'],
-      });
-      return Promise.resolve();
+      };
+      if (callback) {
+        callback(result);
+        return undefined;
+      }
+      return Promise.resolve(result);
     });
 
     // Mock window.postMessage

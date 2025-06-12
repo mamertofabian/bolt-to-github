@@ -528,6 +528,7 @@ describe('FileChangeHandler', () => {
       await fileChangeHandler.showChangedFiles();
 
       expect(consoleSpy).toHaveBeenCalledWith(
+        '[FileChangeHandler] [ERROR]',
         'Failed to store file changes in local storage:',
         expect.any(Error)
       );
@@ -646,8 +647,16 @@ describe('FileChangeHandler', () => {
       // Call the upgrade function
       onUpgrade?.();
 
-      expect(consoleSpy).toHaveBeenCalledWith('❌ Could not open upgrade URL:', expect.any(Error));
-      expect(consoleSpy).toHaveBeenCalledWith('❌ Chrome tabs API also failed:', expect.any(Error));
+      expect(consoleSpy).toHaveBeenCalledWith(
+        '[FileChangeHandler] [ERROR]',
+        '❌ Could not open upgrade URL:',
+        expect.any(Error)
+      );
+      expect(consoleSpy).toHaveBeenCalledWith(
+        '[FileChangeHandler] [ERROR]',
+        '❌ Chrome tabs API also failed:',
+        expect.any(Error)
+      );
       consoleSpy.mockRestore();
     });
   });
@@ -676,24 +685,18 @@ describe('FileChangeHandler', () => {
         ])
       );
 
-      const consoleSpy = jest.spyOn(console, 'log').mockImplementation();
-      const consoleGroupSpy = jest.spyOn(console, 'group').mockImplementation();
-      const consoleGroupEndSpy = jest.spyOn(console, 'groupEnd').mockImplementation();
+      const consoleSpy = jest.spyOn(console, 'info').mockImplementation();
 
       await fileChangeHandler.showChangedFiles();
 
-      expect(consoleGroupSpy).toHaveBeenCalledWith('Changed Files');
-      expect(consoleSpy).toHaveBeenCalledWith('Change Summary:');
-      expect(consoleSpy).toHaveBeenCalledWith('- Total files: 3');
-      expect(consoleSpy).toHaveBeenCalledWith('- Added: 3');
-      expect(consoleSpy).toHaveBeenCalledWith('- Modified: 0');
-      expect(consoleSpy).toHaveBeenCalledWith('- Unchanged: 0');
-      expect(consoleSpy).toHaveBeenCalledWith('- Deleted: 0');
-      expect(consoleGroupEndSpy).toHaveBeenCalled();
-
+      expect(consoleSpy).toHaveBeenCalledWith('[FileChangeHandler] [INFO]', 'Changed Files');
+      expect(consoleSpy).toHaveBeenCalledWith('[FileChangeHandler] [INFO]', 'Change Summary:');
+      expect(consoleSpy).toHaveBeenCalledWith('[FileChangeHandler] [INFO]', '- Total files: 3');
+      expect(consoleSpy).toHaveBeenCalledWith('[FileChangeHandler] [INFO]', '- Added: 3');
+      expect(consoleSpy).toHaveBeenCalledWith('[FileChangeHandler] [INFO]', '- Modified: 0');
+      expect(consoleSpy).toHaveBeenCalledWith('[FileChangeHandler] [INFO]', '- Unchanged: 0');
+      expect(consoleSpy).toHaveBeenCalledWith('[FileChangeHandler] [INFO]', '- Deleted: 0');
       consoleSpy.mockRestore();
-      consoleGroupSpy.mockRestore();
-      consoleGroupEndSpy.mockRestore();
     });
 
     it('should skip directory entries when processing files', async () => {
@@ -745,11 +748,14 @@ describe('FileChangeHandler', () => {
       mockChromeStorage.sync.get.mockResolvedValue({});
       mockFilePreviewService.getProcessedFiles.mockResolvedValue(new Map());
 
-      const consoleSpy = jest.spyOn(console, 'log').mockImplementation();
+      const consoleSpy = jest.spyOn(console, 'info').mockImplementation();
 
       await fileChangeHandler.showChangedFiles();
 
-      expect(consoleSpy).toHaveBeenCalledWith('Files loaded in 250.00ms');
+      expect(consoleSpy).toHaveBeenCalledWith(
+        '[FileChangeHandler] [INFO]',
+        'Files loaded in 250.00ms'
+      );
       consoleSpy.mockRestore();
     });
   });
