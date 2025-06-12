@@ -147,6 +147,16 @@ describe('ZipHandler', () => {
 
     it('should create branch if it does not exist', async () => {
       setupTestProject(env, TEST_PROJECTS.withBranch);
+
+      // Configure comparison service for simple project files
+      env.comparisonService.setComparisonResult({
+        changes: new Map([
+          ['index.html', { status: 'added' as const, content: '<html></html>' }],
+          ['app.js', { status: 'added' as const, content: 'console.log("app");' }],
+        ]),
+        repoData: COMPARISON_RESULTS.allNew.repoData,
+      });
+
       const blob = createTestBlob(ZIP_FILE_FIXTURES.simpleProject);
 
       // The processZipFile should handle branch creation gracefully
@@ -170,6 +180,15 @@ describe('ZipHandler', () => {
       env.chromeStorage.setData({
         repoOwner: 'test-owner',
         projectSettings: {},
+      });
+
+      // Configure comparison service for simple project files
+      env.comparisonService.setComparisonResult({
+        changes: new Map([
+          ['index.html', { status: 'added' as const, content: '<html></html>' }],
+          ['app.js', { status: 'added' as const, content: 'console.log("app");' }],
+        ]),
+        repoData: COMPARISON_RESULTS.allNew.repoData,
       });
 
       const blob = createTestBlob(ZIP_FILE_FIXTURES.simpleProject);

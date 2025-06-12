@@ -7,6 +7,7 @@ import {
   COMPARISON_RESULTS,
   type ZipHandlerTestEnvironment,
 } from './test-fixtures/ZipHandlerTestFixtures.index';
+import { ZipHandler } from '../zipHandler';
 
 describe('ZipHandler - Edge Cases', () => {
   let env: ZipHandlerTestEnvironment;
@@ -205,6 +206,16 @@ describe('ZipHandler - Edge Cases', () => {
         ['has-content.txt', 'some content'],
       ]);
 
+      // Configure comparison service to return all files as new
+      env.comparisonService.setComparisonResult({
+        changes: new Map([
+          ['empty.txt', { status: 'added' as const, content: '' }],
+          ['also-empty.js', { status: 'added' as const, content: '' }],
+          ['has-content.txt', { status: 'added' as const, content: 'some content' }],
+        ]),
+        repoData: COMPARISON_RESULTS.allNew.repoData,
+      });
+
       const blob = createTestBlob(files);
 
       await env.zipHandler.processZipFile(
@@ -222,6 +233,12 @@ describe('ZipHandler - Edge Cases', () => {
   describe('Timing and State Issues', () => {
     it('should handle status callback errors gracefully', async () => {
       setupTestProject(env, TEST_PROJECTS.default);
+
+      // Configure comparison service
+      env.comparisonService.setComparisonResult({
+        changes: new Map([['test.js', { status: 'added' as const, content: 'content' }]]),
+        repoData: COMPARISON_RESULTS.allNew.repoData,
+      });
 
       // Create a failing status callback
       let callCount = 0;
@@ -270,6 +287,12 @@ describe('ZipHandler - Edge Cases', () => {
     it('should handle rate limit reset time in the past', async () => {
       setupTestProject(env, TEST_PROJECTS.default);
 
+      // Configure comparison service first
+      env.comparisonService.setComparisonResult({
+        changes: new Map([['test.js', { status: 'added' as const, content: 'content' }]]),
+        repoData: COMPARISON_RESULTS.allNew.repoData,
+      });
+
       // Set rate limit with reset time in the past
       env.githubService.setRateLimit(0, Math.floor(Date.now() / 1000) - 60);
 
@@ -284,6 +307,9 @@ describe('ZipHandler - Edge Cases', () => {
 
       // Should check rate limit again after seeing it's in the past
       expect(env.githubService.getRequestCount('GET', '/rate_limit')).toBeGreaterThan(1);
+
+      // Reset rate limit for subsequent tests
+      env.githubService.setRateLimit(5000, Math.floor(Date.now() / 1000) + 3600);
     });
   });
 
@@ -295,6 +321,15 @@ describe('ZipHandler - Edge Cases', () => {
         ['binary-like.txt', 'before\x00after'],
         ['normal.txt', 'normal content'],
       ]);
+
+      // Configure comparison service to return files as new
+      env.comparisonService.setComparisonResult({
+        changes: new Map([
+          ['binary-like.txt', { status: 'added' as const, content: 'before\x00after' }],
+          ['normal.txt', { status: 'added' as const, content: 'normal content' }],
+        ]),
+        repoData: COMPARISON_RESULTS.allNew.repoData,
+      });
 
       const blob = createTestBlob(files);
 
@@ -319,6 +354,18 @@ describe('ZipHandler - Edge Cases', () => {
         ['normal.txt', 'normal\ncontent\nwith\nlinebreaks'],
       ]);
 
+      // Configure comparison service to return files as new
+      env.comparisonService.setComparisonResult({
+        changes: new Map([
+          ['long-line.txt', { status: 'added' as const, content: longLine }],
+          [
+            'normal.txt',
+            { status: 'added' as const, content: 'normal\ncontent\nwith\nlinebreaks' },
+          ],
+        ]),
+        repoData: COMPARISON_RESULTS.allNew.repoData,
+      });
+
       const blob = createTestBlob(files);
 
       await env.zipHandler.processZipFile(
@@ -342,6 +389,19 @@ describe('ZipHandler - Edge Cases', () => {
         ['test-emoji.txt', '👨‍👩‍👧‍👦 Family emoji with ZWJ sequences'],
       ]);
 
+      // Configure comparison service to return files as new
+      env.comparisonService.setComparisonResult({
+        changes: new Map([
+          ['café-nfc.txt', { status: 'added' as const, content: 'café' }],
+          ['café-nfd.txt', { status: 'added' as const, content: 'café' }],
+          [
+            'test-emoji.txt',
+            { status: 'added' as const, content: '👨‍👩‍👧‍👦 Family emoji with ZWJ sequences' },
+          ],
+        ]),
+        repoData: COMPARISON_RESULTS.allNew.repoData,
+      });
+
       const blob = createTestBlob(files);
 
       await env.zipHandler.processZipFile(
@@ -360,11 +420,11 @@ describe('ZipHandler - Edge Cases', () => {
     it('should handle comparison returning undefined for some files', async () => {
       setupTestProject(env, TEST_PROJECTS.default);
 
-      // Mock comparison to return partial results
+      // Mock comparison to return partial results (realistic scenario)
       env.comparisonService.setComparisonResult({
         changes: new Map([
           ['file1.js', { status: 'added' as const, content: 'new file' }],
-          // file2.js exists locally but comparison doesn't return it
+          // file2.js exists locally but comparison doesn't return it (unchanged)
         ]),
         repoData: COMPARISON_RESULTS.withChanges.repoData,
       });
