@@ -23,7 +23,10 @@
       "Bash(gh pr diff:*)",
       "Bash(gh pr comment:*)",
       "Bash(gh repo view:*)",
-      "Bash(pnpm jest:*)"
+      "Bash(pnpm jest:*)",
+      "Bash(pnpm build:*)",
+      "Bash(pnpm lint:*)",
+      "Bash(npx tsc:*)"
     ],
     "deny": []
   }

@@ -70,16 +70,15 @@ describe('WelcomePageContentScript', () => {
   });
 
   describe('Page Communication', () => {
-    it('should inject script into the welcome page', () => {
+    it('should initialize content script without exposing extension ID', () => {
       // Import the content script
       jest.isolateModules(() => {
         require('../WelcomePageContentScript');
       });
 
-      // Verify script injection
+      // Verify no script was injected that exposes extension ID
       const scriptElement = document.querySelector('script[data-extension-id]');
-      expect(scriptElement).toBeTruthy();
-      expect(scriptElement?.getAttribute('data-extension-id')).toBe(chrome.runtime.id);
+      expect(scriptElement).toBeFalsy();
     });
 
     it('should listen for messages from the welcome page', () => {

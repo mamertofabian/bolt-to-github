@@ -12,16 +12,7 @@ const logger = createLogger('WelcomePageContentScript');
 // Initialize content script
 logger.info('Welcome page content script initialized', {
   url: window.location.href,
-  extensionId: chrome.runtime.id,
 });
-
-// Inject a script to make extension ID available to the page
-const script = document.createElement('script');
-script.setAttribute('data-extension-id', chrome.runtime.id);
-script.textContent = `
-  window.BOLT2GITHUB_EXTENSION_ID = '${chrome.runtime.id}';
-`;
-document.documentElement.appendChild(script);
 
 // Listen for messages from the welcome page
 window.addEventListener('message', async (event) => {

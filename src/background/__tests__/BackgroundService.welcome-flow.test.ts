@@ -301,7 +301,7 @@ describe('BackgroundService - Welcome Flow', () => {
 
       // Simulate message from welcome page
       const result = await onMessageHandler(
-        { type: 'completeOnboardingStep', step: 'step2' },
+        { type: 'completeOnboardingStep', step: 'authentication' },
         { url: 'https://bolt2github.com/welcome' },
         sendResponse
       );
@@ -315,7 +315,7 @@ describe('BackgroundService - Welcome Flow', () => {
       // Verify storage was updated
       expect(mockStorageSet).toHaveBeenCalledWith(
         expect.objectContaining({
-          completedSteps: ['step1', 'step2'],
+          completedSteps: ['step1', 'authentication'],
         })
       );
 
@@ -347,6 +347,55 @@ describe('BackgroundService - Welcome Flow', () => {
           }),
         })
       );
+    });
+
+    it('should validate onboarding steps', async () => {
+      // Get the onMessage handler
+      const onMessageHandler = (chrome.runtime.onMessage.addListener as jest.Mock).mock.calls[0][0];
+
+      // Create a mock sendResponse function
+      const sendResponse = jest.fn();
+
+      // Simulate message with invalid step
+      await onMessageHandler(
+        { type: 'completeOnboardingStep', step: 'invalid_step' },
+        { url: 'https://bolt2github.com/welcome' },
+        sendResponse
+      );
+
+      // Wait a bit for async processing
+      await new Promise((resolve) => setTimeout(resolve, 10));
+
+      // Verify error response
+      expect(sendResponse).toHaveBeenCalledWith({
+        success: false,
+        error: 'Invalid onboarding step: invalid_step',
+      });
+    });
+
+    it('should handle GitHub auth initiation', async () => {
+      // Get the onMessage handler
+      const onMessageHandler = (chrome.runtime.onMessage.addListener as jest.Mock).mock.calls[0][0];
+
+      // Create a mock sendResponse function
+      const sendResponse = jest.fn();
+
+      // Simulate GitHub App auth request
+      await onMessageHandler(
+        { type: 'initiateGitHubAuth', method: 'github_app' },
+        { url: 'https://bolt2github.com/welcome' },
+        sendResponse
+      );
+
+      // Wait a bit for async processing
+      await new Promise((resolve) => setTimeout(resolve, 10));
+
+      // Verify auth URL response
+      expect(sendResponse).toHaveBeenCalledWith({
+        success: true,
+        authUrl: 'https://github.com/apps/bolt-to-github/installations/new',
+        method: 'github_app',
+      });
     });
   });
 

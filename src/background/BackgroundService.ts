@@ -330,16 +330,26 @@ export class BackgroundService {
         logger.info('📢 Received NOTIFY_GITHUB_APP_SYNC message:', message.data);
         await this.handleGitHubAppSyncNotification(message.data);
         sendResponse({ success: true });
-      } else if (message.type === 'getExtensionStatus' && sender.url?.includes('bolt2github.com')) {
+      } else if (
+        message.type === 'getExtensionStatus' &&
+        this.isValidBolt2GitHubOrigin(sender.url)
+      ) {
         // Handle welcome page status request
         this.handleGetExtensionStatus(sendResponse);
         return true; // Will respond asynchronously
       } else if (
         message.type === 'completeOnboardingStep' &&
-        sender.url?.includes('bolt2github.com')
+        this.isValidBolt2GitHubOrigin(sender.url)
       ) {
         // Handle onboarding step completion
         this.handleCompleteOnboardingStep(message.step, sendResponse);
+        return true; // Will respond asynchronously
+      } else if (
+        message.type === 'initiateGitHubAuth' &&
+        this.isValidBolt2GitHubOrigin(sender.url)
+      ) {
+        // Handle GitHub authentication initiation
+        this.handleInitiateGitHubAuth(message.method, sendResponse);
         return true; // Will respond asynchronously
       }
 
@@ -1027,6 +1037,21 @@ export class BackgroundService {
     sendResponse: (response: any) => void
   ): Promise<void> {
     try {
+      // Validate step parameter
+      const validSteps = [
+        'authentication',
+        'repository_setup',
+        'first_upload',
+        'tutorial_complete',
+      ];
+      if (!validSteps.includes(step)) {
+        sendResponse({
+          success: false,
+          error: `Invalid onboarding step: ${step}`,
+        });
+        return;
+      }
+
       // Get current completed steps
       const storageData = await chrome.storage.local.get(['completedSteps']);
       const completedSteps = storageData.completedSteps || [];
@@ -1041,6 +1066,57 @@ export class BackgroundService {
       sendResponse({ success: true });
     } catch (error) {
       logger.error('Error completing onboarding step:', error);
+      sendResponse({
+        success: false,
+        error: error instanceof Error ? error.message : 'Unknown error',
+      });
+    }
+  }
+
+  private isValidBolt2GitHubOrigin(url?: string): boolean {
+    if (!url) return false;
+
+    try {
+      const parsedUrl = new URL(url);
+      return parsedUrl.hostname === 'bolt2github.com' && parsedUrl.protocol === 'https:';
+    } catch {
+      return false;
+    }
+  }
+
+  private async handleInitiateGitHubAuth(
+    method: string,
+    sendResponse: (response: any) => void
+  ): Promise<void> {
+    try {
+      // Validate authentication method
+      const validMethods = ['github_app', 'pat'];
+      if (!validMethods.includes(method)) {
+        sendResponse({
+          success: false,
+          error: `Invalid authentication method: ${method}`,
+        });
+        return;
+      }
+
+      if (method === 'github_app') {
+        // Use the existing GitHub App auth flow
+        const authUrl = 'https://github.com/apps/bolt-to-github/installations/new';
+        sendResponse({
+          success: true,
+          authUrl,
+          method: 'github_app',
+        });
+      } else if (method === 'pat') {
+        // PAT authentication is handled in the popup
+        sendResponse({
+          success: true,
+          message: 'Please configure PAT in extension popup',
+          method: 'pat',
+        });
+      }
+    } catch (error) {
+      logger.error('Error initiating GitHub auth:', error);
       sendResponse({
         success: false,
         error: error instanceof Error ? error.message : 'Unknown error',
