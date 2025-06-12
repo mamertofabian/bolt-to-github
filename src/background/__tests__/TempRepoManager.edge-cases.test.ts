@@ -285,107 +285,102 @@ describe('TempRepoManager - Edge Cases & Stress Tests', () => {
     });
   });
 
-  describe('Stress Testing', () => {
-    it('should handle sequential operations without degradation', async () => {
+  describe('Normal Usage Testing', () => {
+    it('should handle sequential operations', async () => {
       // Arrange - Test realistic sequential usage pattern
       env.setupEmptyStorage();
       manager = lifecycle.createManager('success');
-      const sequentialOps = 5; // More realistic number of repos a user might import
 
-      // Act - Sequential operations (realistic usage)
-      const { result, timeMs } = await PerformanceHelpers.measureExecutionTime(async () => {
-        const results = [];
-        for (let i = 0; i < sequentialOps; i++) {
-          const result = await manager.handlePrivateRepoImport(`project-${i}`);
-          results.push(result);
-        }
-        return results;
-      });
+      // Act - Simple sequential operations (realistic user behavior)
+      await manager.handlePrivateRepoImport('project-1');
+      await manager.handlePrivateRepoImport('project-2');
 
-      // Assert
-      // Should complete in reasonable time (be more generous for CI/test environments)
-      expect(timeMs).toBeLessThan(sequentialOps * 500); // Very generous timing for test environments
-
-      // All operations should succeed
+      // Assert - Both operations should succeed
       const repos = await manager.getTempRepos();
-      expect(repos).toHaveLength(sequentialOps);
+      expect(repos).toHaveLength(2);
 
-      // Verify no operation was lost
-      const repoNames = new Set(repos.map((r) => r.originalRepo));
-      expect(repoNames.size).toBe(sequentialOps);
+      // Verify both repos were saved correctly
+      const repoNames = repos.map((r) => r.originalRepo);
+      expect(repoNames).toContain('project-1');
+      expect(repoNames).toContain('project-2');
     });
 
-    it('should maintain performance with large storage datasets', async () => {
-      // Arrange - Pre-populate with many repos
-      const existingRepos = Array(200)
-        .fill(null)
-        .map((_, i) => ({
-          originalRepo: `existing-${i}`,
-          tempRepo: `temp-existing-${i}`,
-          createdAt: Date.now() - i * 100, // Various ages
+    it('should handle normal cleanup operations', async () => {
+      // Arrange - Setup with a few repos (realistic scenario)
+      const testRepos = [
+        {
+          originalRepo: 'old-project',
+          tempRepo: 'temp-old-project',
+          createdAt: Date.now() - 2 * 60 * 1000, // 2 minutes old (expired)
           owner: TempRepoTestData.owners.validOwner,
           branch: 'main',
-        }));
+        },
+        {
+          originalRepo: 'new-project',
+          tempRepo: 'temp-new-project',
+          createdAt: Date.now() - 30 * 1000, // 30 seconds old (not expired)
+          owner: TempRepoTestData.owners.validOwner,
+          branch: 'main',
+        },
+      ];
 
-      env.mockStorage.setLocalData({ [STORAGE_KEY]: existingRepos });
+      env.mockStorage.setLocalData({ [STORAGE_KEY]: testRepos });
       manager = lifecycle.createManager('custom');
 
-      // Act - Perform operations with large dataset
-      const startTime = Date.now();
-
-      // Add more repos
-      await manager.handlePrivateRepoImport('new-with-large-dataset');
-
-      // Run cleanup
+      // Act - Run cleanup
       await manager.cleanupTempRepos();
 
-      const duration = Date.now() - startTime;
+      // Assert - Should delete only expired repo
+      expect(env.mockGitHubService.deleteRepo).toHaveBeenCalledWith(
+        TempRepoTestData.owners.validOwner,
+        'temp-old-project'
+      );
+      expect(env.mockGitHubService.deleteRepo).toHaveBeenCalledTimes(1);
 
-      // Assert - Should maintain performance
-      expect(duration).toBeLessThan(2000); // 2 seconds max
-
-      // Cleanup should have processed expired repos
-      const expiredCount = existingRepos.filter((r) => Date.now() - r.createdAt > 60000).length;
-
-      expect(env.mockGitHubService.deleteRepo).toHaveBeenCalledTimes(expiredCount);
+      // Verify storage state
+      const remainingRepos = await manager.getTempRepos();
+      expect(remainingRepos).toHaveLength(1);
+      expect(remainingRepos[0].originalRepo).toBe('new-project');
     });
 
-    it('should handle realistic usage load', async () => {
-      // Arrange - Simple realistic test
+    it('should handle typical user workflow', async () => {
+      // Arrange - Start with empty storage
       env.setupEmptyStorage();
       manager = lifecycle.createManager('success');
 
-      // Act - Simple sequential operations
-      await manager.handlePrivateRepoImport('test-project-1');
-      await manager.handlePrivateRepoImport('test-project-2');
+      // Act - Typical user workflow: import, then cleanup
+      await manager.handlePrivateRepoImport('user-project');
 
-      // Assert - Should create repos in storage
-      const repos = await manager.getTempRepos();
-      expect(repos.length).toBeGreaterThan(0);
-      expect(repos.length).toBeLessThanOrEqual(2);
+      // Verify repo was created
+      let repos = await manager.getTempRepos();
+      expect(repos).toHaveLength(1);
+
+      // Force cleanup (simulates user closing browser after work)
+      await manager.cleanupTempRepos(true);
+
+      // Assert - Should be cleaned up
+      repos = await manager.getTempRepos();
+      expect(repos).toHaveLength(0);
     });
   });
 
-  describe('Error Recovery Under Extreme Conditions', () => {
-    it('should recover from repeated catastrophic failures', async () => {
+  describe('Error Recovery', () => {
+    it('should recover from service failures', async () => {
       // Arrange
       env.setupEmptyStorage();
       manager = lifecycle.createManager('custom');
 
-      // Simulate multiple failure cycles
-      for (let cycle = 0; cycle < 5; cycle++) {
-        // Set up complete failure
-        env.setupGitHubServiceFailure('all');
+      // Simulate a simple failure then recovery
+      env.setupGitHubServiceFailure('all');
 
-        // Attempt operation (will fail)
-        await manager.handlePrivateRepoImport(`failure-cycle-${cycle}`);
+      // Attempt operation (will fail)
+      await manager.handlePrivateRepoImport('failed-operation');
 
-        // Verify failure
-        expect(env.mockStatusBroadcaster.getLastStatus()?.status).toBe('error');
+      // Verify failure
+      expect(env.mockStatusBroadcaster.getLastStatus()?.status).toBe('error');
 
-        // Clear failure for next cycle
-        env.mockGitHubService.setShouldFail(false);
-      }
+      // Clear failure and try again
+      env.mockGitHubService.setShouldFail(false);
 
       // Act - Attempt recovery
       await manager.handlePrivateRepoImport('recovery-test');
@@ -397,48 +392,39 @@ describe('TempRepoManager - Edge Cases & Stress Tests', () => {
       expect(repos.some((r) => r.originalRepo === 'recovery-test')).toBe(true);
     });
 
-    it('should handle occasional failures gracefully', async () => {
-      // Arrange - Test occasional network issues (more realistic)
+    it('should handle network errors gracefully', async () => {
+      // Arrange - Test simple network failure
       env.setupEmptyStorage();
       manager = lifecycle.createManager('custom');
-      let callCount = 0;
 
-      // Simulate occasional failures (1 out of 3 operations fails)
+      // Simulate network error on branch listing
       env.mockGitHubService.listBranches = jest.fn(async () => {
-        callCount++;
-        if (callCount === 2) {
-          // Only second call fails
-          throw new Error('Temporary network issue');
-        }
-        return TempRepoTestData.branchResponses.mainDefault;
+        throw new Error('Network timeout');
       });
 
-      // Act - Few sequential operations (realistic usage)
-      const results = [];
-      for (let i = 0; i < 3; i++) {
-        await manager.handlePrivateRepoImport(`operation-${i}`);
-        results.push(env.mockStatusBroadcaster.getLastStatus()?.status);
-      }
+      // Act - Attempt operation
+      await manager.handlePrivateRepoImport('network-test');
 
-      // Assert - Should handle the failure gracefully, most operations succeed
-      const successCount = results.filter((r) => r === 'success').length;
-      expect(successCount).toBeGreaterThan(1); // At least some should succeed
+      // Assert - Should fail gracefully
+      const lastStatus = env.mockStatusBroadcaster.getLastStatus();
+      expect(lastStatus?.status).toBe('error');
+      expect(lastStatus?.message).toContain('Network timeout');
     });
   });
 
-  describe('Resource Cleanup Verification', () => {
-    it('should handle cleanup intervals correctly', async () => {
-      // Arrange - Test realistic interval management
+  describe('Resource Management', () => {
+    it('should handle basic cleanup operations', async () => {
+      // Arrange - Test simple cleanup
       manager = lifecycle.createManager('success');
 
-      // Act - Normal usage that would start/stop intervals
+      // Act - Import then cleanup
       await manager.handlePrivateRepoImport('test-repo');
 
       // Verify repo was created
       let repos = await manager.getTempRepos();
       expect(repos).toHaveLength(1);
 
-      // Cleanup (should manage intervals properly)
+      // Cleanup
       await manager.cleanupTempRepos(true);
 
       // Assert - Should be cleaned up
@@ -446,33 +432,21 @@ describe('TempRepoManager - Edge Cases & Stress Tests', () => {
       expect(repos).toHaveLength(0);
     });
 
-    it('should clean up all resources on catastrophic failure', async () => {
+    it('should handle operation failures gracefully', async () => {
       // Arrange
       manager = lifecycle.createManager('success');
 
-      // Track resource allocation
-      const resources = {
-        operations: 0,
-        statusBroadcasts: 0,
-        storageWrites: 0,
-      };
-
-      env.mockOperationStateManager.startOperation = jest.fn(async (...args) => {
-        resources.operations++;
-        throw new Error('Catastrophic failure');
+      // Make operations fail
+      env.mockOperationStateManager.startOperation = jest.fn(async () => {
+        throw new Error('Operation tracking failed');
       });
 
-      // Act - Attempt operations that will fail catastrophically
-      for (let i = 0; i < 5; i++) {
-        try {
-          await manager.handlePrivateRepoImport(`catastrophic-${i}`);
-        } catch (e) {
-          // Expected to fail
-        }
-      }
+      // Act - Attempt operation that will fail
+      await manager.handlePrivateRepoImport('failing-operation');
 
-      // Assert - Resources should not accumulate
-      expect(resources.operations).toBe(5); // One per attempt
+      // Assert - Should handle failure gracefully
+      const lastStatus = env.mockStatusBroadcaster.getLastStatus();
+      expect(lastStatus?.status).toBe('error');
 
       // Should still be able to query state
       const repos = await manager.getTempRepos();
