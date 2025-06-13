@@ -223,14 +223,19 @@ export class BackgroundService {
       const authMethod = localSettings.authenticationMethod || 'pat';
 
       // Track authentication method
-      await this.usageTracker.updateUsageStats('auth_method_changed', {
-        authMethod:
-          authMethod === 'github_app'
-            ? 'github-app'
-            : settings?.gitHubSettings?.githubToken
-              ? 'pat'
-              : 'none',
-      });
+      try {
+        await this.usageTracker.updateUsageStats('auth_method_changed', {
+          authMethod:
+            authMethod === 'github_app'
+              ? 'github-app'
+              : settings?.gitHubSettings?.githubToken
+                ? 'pat'
+                : 'none',
+        });
+      } catch (error) {
+        logger.warn('Failed to track auth method change:', error);
+        // Continue without tracking - don't break the main flow
+      }
 
       if (authMethod === 'github_app') {
         // Initialize with GitHub App authentication
@@ -254,10 +259,15 @@ export class BackgroundService {
       logger.error('Failed to initialize GitHub service:', error);
 
       // Track initialization error
-      await this.usageTracker.trackError(
-        error instanceof Error ? error : new Error('Failed to initialize GitHub service'),
-        'github_service_init'
-      );
+      try {
+        await this.usageTracker.trackError(
+          error instanceof Error ? error : new Error('Failed to initialize GitHub service'),
+          'github_service_init'
+        );
+      } catch (trackingError) {
+        logger.warn('Failed to track GitHub service init error:', trackingError);
+        // Continue without tracking - don't break the main flow
+      }
 
       this.githubService = null;
     }
@@ -416,7 +426,12 @@ export class BackgroundService {
         // Check for analytics preference changes
         if ('analyticsEnabled' in changes) {
           logger.info('📊 Analytics preference changed, updating uninstall URL...');
-          await this.usageTracker.setUninstallURL();
+          try {
+            await this.usageTracker.setUninstallURL();
+          } catch (error) {
+            logger.warn('Failed to update uninstall URL:', error);
+            // Continue without tracking - don't break the main flow
+          }
         }
 
         const settingsChanged = ['githubToken', 'repoOwner', 'repoName', 'branch'].some(
@@ -743,7 +758,12 @@ export class BackgroundService {
         await this.operationStateManager.completeOperation(operationId);
 
         // Track successful push
-        await this.usageTracker.updateUsageStats('push_completed');
+        try {
+          await this.usageTracker.updateUsageStats('push_completed');
+        } catch (error) {
+          logger.warn('Failed to track push completion:', error);
+          // Continue without tracking - don't break the main flow
+        }
 
         this.sendResponse(port, {
           type: 'UPLOAD_STATUS',
@@ -776,10 +796,15 @@ export class BackgroundService {
         );
 
         // Track error
-        await this.usageTracker.trackError(
-          decodeError instanceof Error ? decodeError : new Error(errorMessage),
-          'push_failed'
-        );
+        try {
+          await this.usageTracker.trackError(
+            decodeError instanceof Error ? decodeError : new Error(errorMessage),
+            'push_failed'
+          );
+        } catch (trackingError) {
+          logger.warn('Failed to track push error:', trackingError);
+          // Continue without tracking - don't break the main flow
+        }
 
         if (isGitHubError) {
           // Extract the original GitHub error message if available
@@ -819,10 +844,15 @@ export class BackgroundService {
         );
 
         // Track error
-        await this.usageTracker.trackError(
-          error instanceof Error ? error : new Error('Unknown error occurred'),
-          'push_failed_outer'
-        );
+        try {
+          await this.usageTracker.trackError(
+            error instanceof Error ? error : new Error('Unknown error occurred'),
+            'push_failed_outer'
+          );
+        } catch (trackingError) {
+          logger.warn('Failed to track outer push error:', trackingError);
+          // Continue without tracking - don't break the main flow
+        }
       }
 
       this.sendResponse(port, {
