@@ -389,6 +389,32 @@ export class MockOperationStateManager {
 }
 
 // =============================================================================
+// USAGE TRACKER MOCK
+// =============================================================================
+
+export class MockUsageTracker {
+  initializeUsageData = jest.fn(async (): Promise<void> => {
+    // Mock implementation - does nothing
+  });
+
+  updateUsageStats = jest.fn(async (eventType: string, data?: any): Promise<void> => {
+    // Mock implementation - does nothing
+  });
+
+  trackError = jest.fn(async (error: Error, context: string): Promise<void> => {
+    // Mock implementation - does nothing
+  });
+
+  setUninstallURL = jest.fn(async (): Promise<void> => {
+    // Mock implementation - does nothing
+  });
+
+  reset(): void {
+    jest.clearAllMocks();
+  }
+}
+
+// =============================================================================
 // MOCK FACTORY
 // =============================================================================
 
@@ -399,6 +425,7 @@ export class MockServiceFactory {
   public tempRepoManager: MockBackgroundTempRepoManager;
   public supabaseAuthService: MockSupabaseAuthService;
   public operationStateManager: MockOperationStateManager;
+  public usageTracker: MockUsageTracker;
 
   constructor() {
     this.stateManager = new MockStateManager();
@@ -411,6 +438,7 @@ export class MockServiceFactory {
     );
     this.supabaseAuthService = new MockSupabaseAuthService();
     this.operationStateManager = new MockOperationStateManager();
+    this.usageTracker = new MockUsageTracker();
   }
 
   setupMocks(): void {
@@ -444,6 +472,10 @@ export class MockServiceFactory {
         getInstance: () => this.operationStateManager,
       },
     }));
+
+    jest.doMock('../UsageTracker', () => ({
+      UsageTracker: jest.fn(() => this.usageTracker),
+    }));
   }
 
   resetAllMocks(): void {
@@ -453,6 +485,7 @@ export class MockServiceFactory {
     this.tempRepoManager.reset();
     this.supabaseAuthService.reset();
     this.operationStateManager.reset();
+    this.usageTracker.reset();
   }
 
   // Scenario setup methods
@@ -503,5 +536,6 @@ export const ServiceMocks = {
   MockBackgroundTempRepoManager,
   MockSupabaseAuthService,
   MockOperationStateManager,
+  MockUsageTracker,
   MockServiceFactory,
 };
