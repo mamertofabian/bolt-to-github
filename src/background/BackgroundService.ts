@@ -6,6 +6,7 @@ import { BackgroundTempRepoManager } from './TempRepoManager';
 import { SupabaseAuthService } from '../content/services/SupabaseAuthService';
 import { OperationStateManager } from '../content/services/OperationStateManager';
 import { createLogger, getLogStorage } from '../lib/utils/logger';
+import { UsageTracker } from './UsageTracker';
 
 const logger = createLogger('BackgroundService');
 
@@ -18,6 +19,7 @@ export class BackgroundService {
   private pendingCommitMessage: string;
   private supabaseAuthService: SupabaseAuthService;
   private operationStateManager: OperationStateManager;
+  private usageTracker: UsageTracker;
   private keepAliveInterval: NodeJS.Timeout | null = null;
   private lastActivityTime: number = Date.now();
   private authCheckTimeout: NodeJS.Timeout | null = null;
@@ -34,6 +36,7 @@ export class BackgroundService {
     this.pendingCommitMessage = 'Commit from Bolt to GitHub';
     this.supabaseAuthService = SupabaseAuthService.getInstance();
     this.operationStateManager = OperationStateManager.getInstance();
+    this.usageTracker = new UsageTracker();
     this.initialize();
 
     // Track extension lifecycle
@@ -186,6 +189,9 @@ export class BackgroundService {
   // this.initializeStorageListener();
 
   private async initialize(): Promise<void> {
+    // Initialize usage tracking
+    await this.usageTracker.initializeUsageData();
+
     const githubService = await this.initializeGitHubService();
     this.setupZipHandler(githubService!);
     if (githubService) {
@@ -211,6 +217,16 @@ export class BackgroundService {
 
       const authMethod = localSettings.authenticationMethod || 'pat';
 
+      // Track authentication method
+      await this.usageTracker.updateUsageStats('auth_method_changed', {
+        authMethod:
+          authMethod === 'github_app'
+            ? 'github-app'
+            : settings?.gitHubSettings?.githubToken
+              ? 'pat'
+              : 'none',
+      });
+
       if (authMethod === 'github_app') {
         // Initialize with GitHub App authentication
         logger.info('✅ GitHub App authentication detected, initializing GitHub App service');
@@ -231,6 +247,13 @@ export class BackgroundService {
       }
     } catch (error) {
       logger.error('Failed to initialize GitHub service:', error);
+
+      // Track initialization error
+      await this.usageTracker.trackError(
+        error instanceof Error ? error : new Error('Failed to initialize GitHub service'),
+        'github_service_init'
+      );
+
       this.githubService = null;
     }
     return this.githubService;
@@ -385,6 +408,12 @@ export class BackgroundService {
     // Create new listener and store reference
     this.storageListener = async (changes, namespace) => {
       if (namespace === 'sync') {
+        // Check for analytics preference changes
+        if ('analyticsEnabled' in changes) {
+          logger.info('📊 Analytics preference changed, updating uninstall URL...');
+          await this.usageTracker.setUninstallURL();
+        }
+
         const settingsChanged = ['githubToken', 'repoOwner', 'repoName', 'branch'].some(
           (key) => key in changes
         );
@@ -708,6 +737,9 @@ export class BackgroundService {
         // Mark operation as completed - push successful
         await this.operationStateManager.completeOperation(operationId);
 
+        // Track successful push
+        await this.usageTracker.updateUsageStats('push_completed');
+
         this.sendResponse(port, {
           type: 'UPLOAD_STATUS',
           status: { status: 'success', message: 'Upload completed successfully', progress: 100 },
@@ -736,6 +768,12 @@ export class BackgroundService {
         await this.operationStateManager.failOperation(
           operationId,
           decodeError instanceof Error ? decodeError : new Error(errorMessage)
+        );
+
+        // Track error
+        await this.usageTracker.trackError(
+          decodeError instanceof Error ? decodeError : new Error(errorMessage),
+          'push_failed'
         );
 
         if (isGitHubError) {
@@ -773,6 +811,12 @@ export class BackgroundService {
         await this.operationStateManager.failOperation(
           operationId,
           error instanceof Error ? error : new Error('Unknown error occurred')
+        );
+
+        // Track error
+        await this.usageTracker.trackError(
+          error instanceof Error ? error : new Error('Unknown error occurred'),
+          'push_failed_outer'
         );
       }
 
