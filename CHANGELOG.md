@@ -1,10 +1,27 @@
-## 2025-01-06 - Version 1.3.5
+## 2025-06-13 - Version 1.3.5
 
 ### 🎉 New Features
 
 - **Post-installation welcome flow** - Added welcome page with onboarding for new users installing the extension
 
-## 2025-01-06 - Version 1.3.4
+### 🧪 Testing & Quality Improvements
+
+- **Comprehensive test suite overhaul** - Systematically fixed all failing tests following unit testing best practices
+- **Test coverage refinement** - Excluded test-fixtures directories from coverage calculations to focus metrics on production code
+- **Enhanced test infrastructure** - Improved mocks for Chrome APIs, DOM, and ES module support
+
+### 🔧 Performance & Stability
+
+- **Service worker stability** - Added keep-alive mechanism with Chrome alarms API to prevent service worker timeout
+- **Message flooding prevention** - Implemented debouncing and throttling in PremiumService and SupabaseAuthService
+- **Enhanced error handling** - Improved reconnection logic and message deduplication in ContentManager
+
+### 📚 Documentation
+
+- **Unit testing best practices guide** - Added comprehensive testing rules and guidelines
+- **Updated development workflow** - Enhanced CLAUDE.md with TDD workflow and versioned branching strategy
+
+## 2025-06-12 - Version 1.3.4
 
 ### 🐛 Bug Fixes & Improvements
 
