@@ -111,3 +111,45 @@ export interface PushStatisticsState {
   statistics: PushStatistics;
   isLoading: boolean;
 }
+
+/**
+ * Interface for onboarding data storage
+ */
+export interface OnboardingData {
+  installDate: string;
+  onboardingCompleted: boolean;
+  completedSteps: string[];
+  installedVersion: string;
+  welcomePageViewed: boolean;
+}
+
+/**
+ * Interface for usage data tracking
+ */
+export interface UsageData {
+  installDate: string;
+  lastActiveDate: string;
+  totalPushes: number;
+  authMethod: 'github-app' | 'pat' | 'none';
+  extensionVersion: string;
+  errorCount: number;
+  lastError?: string;
+}
+
+/**
+ * Interface for error log entry
+ */
+export interface ErrorLogEntry {
+  timestamp: string;
+  message: string;
+  context: string;
+  stack?: string;
+}
+
+/**
+ * Interface for telemetry settings
+ */
+export interface TelemetrySettings {
+  enabled: boolean;
+  anonymousId?: string;
+}

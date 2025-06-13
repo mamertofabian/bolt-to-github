@@ -6,6 +6,7 @@ import { BackgroundTempRepoManager } from './TempRepoManager';
 import { SupabaseAuthService } from '../content/services/SupabaseAuthService';
 import { OperationStateManager } from '../content/services/OperationStateManager';
 import { createLogger, getLogStorage } from '../lib/utils/logger';
+import { UsageTracker } from './UsageTracker';
 
 const logger = createLogger('BackgroundService');
 
@@ -18,6 +19,7 @@ export class BackgroundService {
   private pendingCommitMessage: string;
   private supabaseAuthService: SupabaseAuthService;
   private operationStateManager: OperationStateManager;
+  private usageTracker: UsageTracker;
   private keepAliveInterval: NodeJS.Timeout | null = null;
   private lastActivityTime: number = Date.now();
   private authCheckTimeout: NodeJS.Timeout | null = null;
@@ -34,6 +36,7 @@ export class BackgroundService {
     this.pendingCommitMessage = 'Commit from Bolt to GitHub';
     this.supabaseAuthService = SupabaseAuthService.getInstance();
     this.operationStateManager = OperationStateManager.getInstance();
+    this.usageTracker = new UsageTracker();
     this.initialize();
 
     // Track extension lifecycle
@@ -175,9 +178,10 @@ export class BackgroundService {
     });
 
     // Check on installation/update
-    chrome.runtime.onInstalled.addListener(() => {
+    chrome.runtime.onInstalled.addListener(async (details) => {
       logger.info('Extension installed/updated, checking log rotation');
       logStorage.rotateLogs();
+      await this.handleExtensionInstalled(details);
     });
   }
 
@@ -185,6 +189,18 @@ export class BackgroundService {
   // this.initializeStorageListener();
 
   private async initialize(): Promise<void> {
+    // Initialize usage tracking asynchronously (non-blocking)
+    // We continue even if usage tracking fails to ensure the extension remains functional
+    this.usageTracker
+      .initializeUsageData()
+      .catch((error) => {
+        logger.error('Failed to initialize usage tracking, continuing without it:', error);
+      })
+      .finally(() => {
+        // Ensure initialization completion is tracked regardless of success/failure
+        logger.debug('Usage tracker initialization attempt completed');
+      });
+
     const githubService = await this.initializeGitHubService();
     this.setupZipHandler(githubService!);
     if (githubService) {
@@ -210,6 +226,16 @@ export class BackgroundService {
 
       const authMethod = localSettings.authenticationMethod || 'pat';
 
+      // Track authentication method
+      await this.usageTracker.updateUsageStats('auth_method_changed', {
+        authMethod:
+          authMethod === 'github_app'
+            ? 'github-app'
+            : settings?.gitHubSettings?.githubToken
+              ? 'pat'
+              : 'none',
+      });
+
       if (authMethod === 'github_app') {
         // Initialize with GitHub App authentication
         logger.info('✅ GitHub App authentication detected, initializing GitHub App service');
@@ -230,6 +256,13 @@ export class BackgroundService {
       }
     } catch (error) {
       logger.error('Failed to initialize GitHub service:', error);
+
+      // Track initialization error
+      await this.usageTracker.trackError(
+        error instanceof Error ? error : new Error('Failed to initialize GitHub service'),
+        'github_service_init'
+      );
+
       this.githubService = null;
     }
     return this.githubService;
@@ -329,6 +362,30 @@ export class BackgroundService {
         logger.info('📢 Received NOTIFY_GITHUB_APP_SYNC message:', message.data);
         await this.handleGitHubAppSyncNotification(message.data);
         sendResponse({ success: true });
+      } else if (
+        message.type === 'getExtensionStatus' &&
+        sender.tab &&
+        this.isValidBolt2GitHubOrigin(sender.url)
+      ) {
+        // Handle welcome page status request
+        this.handleGetExtensionStatus(sendResponse);
+        return true; // Will respond asynchronously
+      } else if (
+        message.type === 'completeOnboardingStep' &&
+        sender.tab &&
+        this.isValidBolt2GitHubOrigin(sender.url)
+      ) {
+        // Handle onboarding step completion
+        this.handleCompleteOnboardingStep(message.step, sendResponse);
+        return true; // Will respond asynchronously
+      } else if (
+        message.type === 'initiateGitHubAuth' &&
+        sender.tab &&
+        this.isValidBolt2GitHubOrigin(sender.url)
+      ) {
+        // Handle GitHub authentication initiation
+        this.handleInitiateGitHubAuth(message.method, sendResponse);
+        return true; // Will respond asynchronously
       }
 
       // Return true to indicate we'll send a response asynchronously
@@ -360,6 +417,12 @@ export class BackgroundService {
     // Create new listener and store reference
     this.storageListener = async (changes, namespace) => {
       if (namespace === 'sync') {
+        // Check for analytics preference changes
+        if ('analyticsEnabled' in changes) {
+          logger.info('📊 Analytics preference changed, updating uninstall URL...');
+          await this.usageTracker.setUninstallURL();
+        }
+
         const settingsChanged = ['githubToken', 'repoOwner', 'repoName', 'branch'].some(
           (key) => key in changes
         );
@@ -550,7 +613,7 @@ export class BackgroundService {
           });
           break;
 
-        case 'HEARTBEAT':
+        case 'HEARTBEAT': {
           // Respond to heartbeat to keep connection alive
           const heartbeatResponse = {
             type: 'HEARTBEAT_RESPONSE' as const,
@@ -559,6 +622,7 @@ export class BackgroundService {
           logger.info('💓 Sending HEARTBEAT_RESPONSE');
           this.sendResponse(port, heartbeatResponse);
           break;
+        }
 
         default:
           logger.warn(
@@ -682,6 +746,9 @@ export class BackgroundService {
         // Mark operation as completed - push successful
         await this.operationStateManager.completeOperation(operationId);
 
+        // Track successful push
+        await this.usageTracker.updateUsageStats('push_completed');
+
         this.sendResponse(port, {
           type: 'UPLOAD_STATUS',
           status: { status: 'success', message: 'Upload completed successfully', progress: 100 },
@@ -710,6 +777,12 @@ export class BackgroundService {
         await this.operationStateManager.failOperation(
           operationId,
           decodeError instanceof Error ? decodeError : new Error(errorMessage)
+        );
+
+        // Track error
+        await this.usageTracker.trackError(
+          decodeError instanceof Error ? decodeError : new Error(errorMessage),
+          'push_failed'
         );
 
         if (isGitHubError) {
@@ -747,6 +820,12 @@ export class BackgroundService {
         await this.operationStateManager.failOperation(
           operationId,
           error instanceof Error ? error : new Error('Unknown error occurred')
+        );
+
+        // Track error
+        await this.usageTracker.trackError(
+          error instanceof Error ? error : new Error('Unknown error occurred'),
+          'push_failed_outer'
         );
       }
 
@@ -940,6 +1019,165 @@ export class BackgroundService {
         chrome.storage.local.set({ keepAliveTimestamp: Date.now() });
       });
     }, 25000); // Every 25 seconds
+  }
+
+  private async handleExtensionInstalled(details: chrome.runtime.InstalledDetails): Promise<void> {
+    try {
+      if (details.reason === 'install') {
+        logger.info('Extension installed for the first time', {
+          version: chrome.runtime.getManifest().version,
+        });
+
+        // Open welcome page
+        logger.info('Opening welcome page for new installation');
+        await chrome.tabs.create({
+          url: 'https://bolt2github.com/welcome?utm_source=extension_install',
+        });
+
+        // Initialize onboarding data
+        const onboardingData = {
+          installDate: new Date().toISOString(),
+          onboardingCompleted: false,
+          installedVersion: chrome.runtime.getManifest().version,
+          completedSteps: [] as string[],
+          welcomePageViewed: false,
+        };
+
+        await chrome.storage.local.set(onboardingData);
+        logger.info('Initialized onboarding data', onboardingData);
+      }
+    } catch (error) {
+      logger.error('Error handling extension installation:', error);
+    }
+  }
+
+  private async handleGetExtensionStatus(sendResponse: (response: any) => void): Promise<void> {
+    try {
+      // Get onboarding data from storage
+      const storageData = await chrome.storage.local.get([
+        'installDate',
+        'onboardingCompleted',
+        'installedVersion',
+        'completedSteps',
+      ]);
+
+      // Check authentication status
+      const authState = await this.supabaseAuthService.getCurrentAuthState();
+
+      const response = {
+        success: true,
+        data: {
+          installed: true,
+          version: chrome.runtime.getManifest().version,
+          authenticated: authState.isAuthenticated,
+          authMethod: authState.authMethod || 'none',
+          installDate: storageData.installDate,
+          onboardingCompleted: storageData.onboardingCompleted || false,
+          installedVersion: storageData.installedVersion,
+        },
+      };
+
+      logger.info('Sending extension status to welcome page:', response);
+      sendResponse(response);
+    } catch (error) {
+      logger.error('Error getting extension status:', error);
+      sendResponse({
+        success: false,
+        error: error instanceof Error ? error.message : 'Unknown error',
+      });
+    }
+  }
+
+  private async handleCompleteOnboardingStep(
+    step: string,
+    sendResponse: (response: any) => void
+  ): Promise<void> {
+    try {
+      // Validate step parameter
+      const validSteps = [
+        'authentication',
+        'repository_setup',
+        'first_upload',
+        'tutorial_complete',
+      ];
+      if (!validSteps.includes(step)) {
+        sendResponse({
+          success: false,
+          error: `Invalid onboarding step: ${step}`,
+        });
+        return;
+      }
+
+      // Get current completed steps
+      const storageData = await chrome.storage.local.get(['completedSteps']);
+      const completedSteps = storageData.completedSteps || [];
+
+      // Add the new step if not already completed
+      if (!completedSteps.includes(step)) {
+        completedSteps.push(step);
+        await chrome.storage.local.set({ completedSteps });
+        logger.info(`Onboarding step completed: ${step}`, { completedSteps });
+      }
+
+      sendResponse({ success: true });
+    } catch (error) {
+      logger.error('Error completing onboarding step:', error);
+      sendResponse({
+        success: false,
+        error: error instanceof Error ? error.message : 'Unknown error',
+      });
+    }
+  }
+
+  private isValidBolt2GitHubOrigin(url?: string): boolean {
+    if (!url) return false;
+
+    try {
+      const parsedUrl = new URL(url);
+      return parsedUrl.hostname === 'bolt2github.com' && parsedUrl.protocol === 'https:';
+    } catch {
+      return false;
+    }
+  }
+
+  private async handleInitiateGitHubAuth(
+    method: string,
+    sendResponse: (response: any) => void
+  ): Promise<void> {
+    try {
+      // Validate authentication method
+      const validMethods = ['github_app', 'pat'];
+      if (!validMethods.includes(method)) {
+        sendResponse({
+          success: false,
+          error: `Invalid authentication method: ${method}`,
+        });
+        return;
+      }
+
+      if (method === 'github_app') {
+        // Use the existing GitHub App auth flow
+        const authUrl = 'https://github.com/apps/bolt-to-github/installations/new';
+        sendResponse({
+          success: true,
+          authUrl,
+          method: 'github_app',
+        });
+      } else if (method === 'pat') {
+        // PAT authentication is handled in the popup
+        sendResponse({
+          success: true,
+          message: 'Please configure PAT in extension popup',
+          method: 'pat',
+        });
+      }
+    } catch (error) {
+      logger.error('Error initiating GitHub auth:', error);
+      sendResponse({
+        success: false,
+        error: error instanceof Error ? error.message : 'Unknown error',
+      });
+    }
   }
 
   public destroy(): void {

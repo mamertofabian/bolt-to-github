@@ -15,6 +15,9 @@ const mockChromeStorage = {
 
 global.chrome = {
   storage: mockChromeStorage,
+  runtime: {
+    lastError: null,
+  },
 } as unknown as typeof chrome;
 
 describe('LogStorageManager', () => {
@@ -26,13 +29,8 @@ describe('LogStorageManager', () => {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     (LogStorageManager as any).instance = null;
 
-    // Reset chrome storage mocks
-    mockChromeStorage.local.get.mockImplementation((keys, callback) => {
-      if (callback) {
-        callback({});
-      }
-      return Promise.resolve({});
-    });
+    // Reset chrome storage mocks to return empty by default
+    mockChromeStorage.local.get.mockResolvedValue({});
     mockChromeStorage.local.set.mockResolvedValue(undefined);
     mockChromeStorage.local.remove.mockResolvedValue(undefined);
 
@@ -62,14 +60,14 @@ describe('LogStorageManager', () => {
     });
 
     it('should include timestamp and context in log entry', async () => {
-      const beforeTime = new Date().toISOString();
+      const beforeTime = new Date().getTime();
       await storageManager.addLog('error', 'TestModule', 'Error message');
-      const afterTime = new Date().toISOString();
+      const afterTime = new Date().getTime();
 
       const recentLogs = storageManager.getRecentLogs(1);
       expect(recentLogs[0].timestamp).toBeDefined();
-      expect(new Date(recentLogs[0].timestamp).toISOString()).toBeGreaterThanOrEqual(beforeTime);
-      expect(new Date(recentLogs[0].timestamp).toISOString()).toBeLessThanOrEqual(afterTime);
+      expect(new Date(recentLogs[0].timestamp).getTime()).toBeGreaterThanOrEqual(beforeTime);
+      expect(new Date(recentLogs[0].timestamp).getTime()).toBeLessThanOrEqual(afterTime);
       expect(recentLogs[0].context).toBeDefined();
     });
 
@@ -85,10 +83,54 @@ describe('LogStorageManager', () => {
   });
 
   describe('getAllLogs', () => {
+    let storedLogs: any[] = [];
+
+    beforeEach(() => {
+      storedLogs = [];
+
+      // Mock storage.local.get to work with both callback and promise patterns
+      mockChromeStorage.local.get.mockImplementation((keys: any, callback?: any) => {
+        const result: any = {};
+
+        // Handle get(null) for getting all keys
+        if (keys === null) {
+          result['bolt_logs_current'] = storedLogs;
+          result['bolt_logs_metadata'] = {};
+        } else if (Array.isArray(keys)) {
+          if (keys.includes('bolt_logs_current')) {
+            result['bolt_logs_current'] = storedLogs;
+          }
+          if (keys.includes('bolt_logs_metadata')) {
+            result['bolt_logs_metadata'] = {};
+          }
+        } else if (keys === 'bolt_logs_current') {
+          result['bolt_logs_current'] = storedLogs;
+        }
+
+        // Support both callback and promise patterns
+        if (callback) {
+          callback(result);
+          return undefined;
+        }
+        return Promise.resolve(result);
+      });
+
+      // Intercept set calls to update stored logs
+      mockChromeStorage.local.set.mockImplementation((items) => {
+        if (items['bolt_logs_current']) {
+          storedLogs = [...items['bolt_logs_current']];
+        }
+        return Promise.resolve();
+      });
+    });
+
     it('should return filtered logs by level', async () => {
       await storageManager.addLog('debug', 'Module1', 'Debug message');
       await storageManager.addLog('info', 'Module2', 'Info message');
       await storageManager.addLog('error', 'Module3', 'Error message');
+
+      // Force flush to storage
+      await (storageManager as any).flushPendingWrites();
 
       const errorLogs = await storageManager.getAllLogs({ levels: ['error'] });
       expect(errorLogs).toHaveLength(1);
@@ -98,6 +140,9 @@ describe('LogStorageManager', () => {
     it('should return filtered logs by module', async () => {
       await storageManager.addLog('info', 'ModuleA', 'Message A');
       await storageManager.addLog('info', 'ModuleB', 'Message B');
+
+      // Force flush to storage
+      await (storageManager as any).flushPendingWrites();
 
       const moduleALogs = await storageManager.getAllLogs({ modules: ['ModuleA'] });
       expect(moduleALogs).toHaveLength(1);
@@ -109,7 +154,11 @@ describe('LogStorageManager', () => {
       await new Promise((resolve) => setTimeout(resolve, 10));
       await storageManager.addLog('info', 'Module', 'Message 2');
 
+      // Force flush to storage
+      await (storageManager as any).flushPendingWrites();
+
       const allLogs = await storageManager.getAllLogs();
+      expect(allLogs).toHaveLength(2);
       expect(allLogs[0].message).toBe('Message 1');
       expect(allLogs[1].message).toBe('Message 2');
     });
@@ -117,6 +166,22 @@ describe('LogStorageManager', () => {
 
   describe('clearAllLogs', () => {
     it('should clear all logs from memory and storage', async () => {
+      // Mock getAllLogKeys to return some keys
+      mockChromeStorage.local.get.mockImplementation((keys: any, callback?: any) => {
+        const result: any = {};
+        if (keys === null) {
+          result['bolt_logs_current'] = [];
+          result['bolt_logs_metadata'] = {};
+          result['bolt_logs_12345'] = [];
+        }
+
+        if (callback) {
+          callback(result);
+          return undefined;
+        }
+        return Promise.resolve(result);
+      });
+
       await storageManager.addLog('info', 'Module', 'Message');
       expect(storageManager.getRecentLogs()).toHaveLength(1);
 
@@ -128,13 +193,55 @@ describe('LogStorageManager', () => {
   });
 
   describe('exportLogs', () => {
+    let storedLogs: any[] = [];
+
+    beforeEach(() => {
+      storedLogs = [];
+
+      // Mock storage for exportLogs tests
+      mockChromeStorage.local.get.mockImplementation((keys: any, callback?: any) => {
+        const result: any = {};
+
+        if (keys === null) {
+          result['bolt_logs_current'] = storedLogs;
+          result['bolt_logs_metadata'] = {};
+        } else if (Array.isArray(keys)) {
+          if (keys.includes('bolt_logs_current')) {
+            result['bolt_logs_current'] = storedLogs;
+          }
+          if (keys.includes('bolt_logs_metadata')) {
+            result['bolt_logs_metadata'] = {};
+          }
+        } else if (keys === 'bolt_logs_current') {
+          result['bolt_logs_current'] = storedLogs;
+        }
+
+        if (callback) {
+          callback(result);
+          return undefined;
+        }
+        return Promise.resolve(result);
+      });
+
+      mockChromeStorage.local.set.mockImplementation((items) => {
+        if (items['bolt_logs_current']) {
+          storedLogs = [...items['bolt_logs_current']];
+        }
+        return Promise.resolve();
+      });
+    });
+
     it('should export logs as JSON', async () => {
       await storageManager.addLog('info', 'TestModule', 'Test message', { extra: 'data' });
+
+      // Force flush to storage
+      await (storageManager as any).flushPendingWrites();
 
       const exported = await storageManager.exportLogs('json');
       const parsed = JSON.parse(exported);
 
       expect(Array.isArray(parsed)).toBe(true);
+      expect(parsed).toHaveLength(1);
       expect(parsed[0]).toMatchObject({
         level: 'info',
         module: 'TestModule',
@@ -145,6 +252,9 @@ describe('LogStorageManager', () => {
 
     it('should export logs as text', async () => {
       await storageManager.addLog('error', 'TestModule', 'Error occurred');
+
+      // Force flush to storage
+      await (storageManager as any).flushPendingWrites();
 
       const exported = await storageManager.exportLogs('text');
 
@@ -160,13 +270,78 @@ describe('LogStorageManager', () => {
       const recentTimestamp = new Date().toISOString();
 
       // Mock storage to return old and new logs
-      mockChromeStorage.local.get.mockImplementation((keys, callback) => {
-        callback({
-          bolt_logs_current: [
-            { timestamp: oldTimestamp, level: 'info', module: 'Old', message: 'Old message' },
-            { timestamp: recentTimestamp, level: 'info', module: 'New', message: 'New message' },
-          ],
-        });
+      mockChromeStorage.local.get.mockImplementation((keys: any, callback?: any) => {
+        let result: any = {};
+
+        if (keys === null) {
+          // Return all keys for getAllLogKeys
+          result = {
+            bolt_logs_current: [
+              {
+                timestamp: oldTimestamp,
+                level: 'info',
+                module: 'Old',
+                message: 'Old message',
+                context: 'unknown',
+              },
+              {
+                timestamp: recentTimestamp,
+                level: 'info',
+                module: 'New',
+                message: 'New message',
+                context: 'unknown',
+              },
+            ],
+            bolt_logs_metadata: {},
+          };
+        } else if (Array.isArray(keys)) {
+          if (keys.includes('bolt_logs_current')) {
+            result['bolt_logs_current'] = [
+              {
+                timestamp: oldTimestamp,
+                level: 'info',
+                module: 'Old',
+                message: 'Old message',
+                context: 'unknown',
+              },
+              {
+                timestamp: recentTimestamp,
+                level: 'info',
+                module: 'New',
+                message: 'New message',
+                context: 'unknown',
+              },
+            ];
+          }
+          if (keys.includes('bolt_logs_metadata')) {
+            result['bolt_logs_metadata'] = {};
+          }
+        } else if (keys === 'bolt_logs_current') {
+          result = {
+            bolt_logs_current: [
+              {
+                timestamp: oldTimestamp,
+                level: 'info',
+                module: 'Old',
+                message: 'Old message',
+                context: 'unknown',
+              },
+              {
+                timestamp: recentTimestamp,
+                level: 'info',
+                module: 'New',
+                message: 'New message',
+                context: 'unknown',
+              },
+            ],
+          };
+        }
+
+        if (callback) {
+          callback(result);
+          return undefined;
+        }
+        return Promise.resolve(result);
       });
 
       await storageManager.rotateLogs();
