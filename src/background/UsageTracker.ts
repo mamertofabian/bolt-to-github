@@ -76,6 +76,7 @@ export class UsageTracker {
 
   /**
    * Track errors for uninstall feedback
+   * Sanitizes error messages to prevent exposure of sensitive information
    */
   async trackError(error: Error, context: string): Promise<void> {
     return new Promise((resolve) => {
@@ -85,9 +86,9 @@ export class UsageTracker {
 
         const errorEntry: ErrorLogEntry = {
           timestamp: new Date().toISOString(),
-          message: error.message,
+          message: this.sanitizeErrorMessage(error.message),
           context: context,
-          stack: error.stack,
+          stack: this.sanitizeStackTrace(error.stack),
         };
 
         errorLog.push(errorEntry);
@@ -97,7 +98,7 @@ export class UsageTracker {
 
         // Update usage data error count
         usageData.errorCount++;
-        usageData.lastError = error.message;
+        usageData.lastError = this.sanitizeErrorMessage(error.message);
 
         chrome.storage.local.set(
           {
@@ -148,6 +149,62 @@ export class UsageTracker {
         });
       });
     });
+  }
+
+  /**
+   * Sanitize error messages to remove sensitive information
+   */
+  private sanitizeErrorMessage(message: string): string {
+    if (!message) return '';
+
+    // Remove file paths (Windows and Unix-like)
+    let sanitized = message.replace(/[C-Z]:[\\\/][^:\s]+/g, '[FILE_PATH]');
+    sanitized = sanitized.replace(/\/[^:\s]+/g, '[FILE_PATH]');
+
+    // Remove tokens and keys (patterns like token=, key=, etc.)
+    sanitized = sanitized.replace(
+      /\b(token|key|password|secret|auth|bearer|api[_-]?key)[=:]\s*[^\s,;]+/gi,
+      '$1=[REDACTED]'
+    );
+
+    // Remove GitHub URLs with tokens
+    sanitized = sanitized.replace(
+      /https:\/\/[^@\s]+@github\.com/g,
+      'https://[REDACTED]@github.com'
+    );
+
+    // Remove URLs with credentials
+    sanitized = sanitized.replace(/https?:\/\/[^:\s]+:[^@\s]+@/g, 'https://[REDACTED]:[REDACTED]@');
+
+    // Remove hash-like strings (potential tokens)
+    sanitized = sanitized.replace(/\b[a-fA-F0-9]{20,}\b/g, '[HASH]');
+
+    // Remove email addresses
+    sanitized = sanitized.replace(/[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}/g, '[EMAIL]');
+
+    return sanitized;
+  }
+
+  /**
+   * Sanitize stack traces to remove sensitive information
+   */
+  private sanitizeStackTrace(stack?: string): string | undefined {
+    if (!stack) return undefined;
+
+    // Split stack trace into lines and sanitize each line
+    const lines = stack.split('\n');
+    const sanitizedLines = lines.map((line) => {
+      // Remove file paths from stack trace lines
+      let sanitized = line.replace(/[C-Z]:[\\\/][^:\s)]+/g, '[FILE_PATH]');
+      sanitized = sanitized.replace(/\/[^:\s)]+/g, '[FILE_PATH]');
+
+      // Keep function names and line numbers but remove paths
+      sanitized = sanitized.replace(/(at\s+[^(]+\()[^)]+(\))/g, '$1[FILE_PATH]$2');
+
+      return sanitized;
+    });
+
+    return sanitizedLines.join('\n');
   }
 
   /**

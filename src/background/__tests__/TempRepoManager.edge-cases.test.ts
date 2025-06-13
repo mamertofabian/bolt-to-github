@@ -132,7 +132,7 @@ describe('TempRepoManager - Edge Cases & Stress Tests', () => {
         // Act
         await manager.cleanupTempRepos();
 
-        // Assert - Should NOT be deleted (exactly 60 seconds is not expired, > 60 seconds is)
+        // Assert - Should NOT be deleted (exactly 60 seconds is not yet expired)
         expect(env.mockGitHubService.deleteRepo).not.toHaveBeenCalled();
       });
 

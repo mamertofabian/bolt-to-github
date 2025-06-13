@@ -13,8 +13,10 @@ import { ComponentLifecycleManager, type ComponentConfig } from '../ComponentLif
 import type { SvelteComponent } from '../../types/UITypes';
 import { createLogger } from '../../../lib/utils/logger';
 
-// Get the mocked logger
-const mockLogger = createLogger('ComponentLifecycleManager') as any;
+// Get the mocked logger with proper typing
+const mockLogger = createLogger('ComponentLifecycleManager') as jest.Mocked<
+  ReturnType<typeof createLogger>
+>;
 
 // Mock Svelte component constructor
 class MockSvelteComponent implements SvelteComponent {
