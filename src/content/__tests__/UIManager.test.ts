@@ -270,9 +270,32 @@ describe('UIManager', () => {
     });
 
     test('initializes GitHub button manager', () => {
-      const uiManager = UIManager.initialize(mockMessageHandler);
-      const githubButtonManager = (uiManager as any).githubButtonManager;
+      // Mock location to be on a project page
+      Object.defineProperty(window, 'location', {
+        value: {
+          href: 'https://bolt.new/~/test-project',
+        },
+        writable: true,
+      });
 
+      // Mock DOM state for button initialization
+      document.body.innerHTML = `
+        <div class="flex grow-1 basis-60">
+          <div class="flex gap-2"></div>
+        </div>
+      `;
+
+      const uiManager = UIManager.initialize(mockMessageHandler);
+
+      // Get the DOM observer callback and trigger it
+      const domObserver = (uiManager as any).domObserver;
+      const startCall = domObserver.start.mock.calls[0];
+      const observerCallback = startCall[0];
+
+      // Trigger the callback to simulate DOM change
+      observerCallback();
+
+      const githubButtonManager = (uiManager as any).githubButtonManager;
       expect(githubButtonManager.initialize).toHaveBeenCalled();
     });
   });
@@ -525,14 +548,16 @@ describe('UIManager', () => {
       uiManager.cleanup();
 
       const uploadStatusManager = (uiManager as any).uploadStatusManager;
-      const githubButtonManager = (uiManager as any).githubButtonManager;
       const reinitializeSpy = jest.spyOn(uploadStatusManager, 'initialize');
-      const buttonSpy = jest.spyOn(githubButtonManager, 'initialize');
 
       uiManager.reinitialize();
 
       expect(reinitializeSpy).toHaveBeenCalled();
-      expect(buttonSpy).toHaveBeenCalled();
+
+      // GitHub button manager initialize is called conditionally via DOM observer
+      // Let's verify the DOM observer was restarted instead
+      const domObserver = (uiManager as any).domObserver;
+      expect(domObserver.start).toHaveBeenCalled();
     });
   });
 

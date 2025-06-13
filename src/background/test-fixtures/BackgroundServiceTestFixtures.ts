@@ -474,6 +474,7 @@ export class BackgroundServiceTestEnvironment {
     storage: MockChromeStorage;
     tabs: MockChromeTabs;
     action: any;
+    alarms: any;
   };
 
   private originalChrome: any;
@@ -486,6 +487,14 @@ export class BackgroundServiceTestEnvironment {
       tabs: new MockChromeTabs(),
       action: {
         openPopup: jest.fn(),
+      },
+      alarms: {
+        create: jest.fn(),
+        clear: jest.fn(),
+        onAlarm: {
+          addListener: jest.fn(),
+          removeListener: jest.fn(),
+        },
       },
     };
   }

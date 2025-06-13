@@ -90,7 +90,10 @@ describe('DOMObserver', () => {
       domObserver.start(mockCallback);
       domObserver.start(mockCallback);
 
-      expect(consoleSpy).toHaveBeenCalledWith('DOMObserver is already observing');
+      expect(consoleSpy).toHaveBeenCalledWith(
+        '[DOMObserver] [WARN]',
+        'DOMObserver is already observing'
+      );
       expect(mockMutationObserver).toHaveBeenCalledTimes(1);
 
       consoleSpy.mockRestore();
@@ -240,7 +243,11 @@ describe('DOMObserver', () => {
 
       expect(failingCallback).toHaveBeenCalled();
       expect(window.setTimeout).toHaveBeenCalled();
-      expect(consoleSpy).toHaveBeenCalledWith('Initialization attempt failed:', expect.any(Error));
+      expect(consoleSpy).toHaveBeenCalledWith(
+        '[DOMObserver] [WARN]',
+        'Initialization attempt failed:',
+        expect.any(Error)
+      );
 
       consoleSpy.mockRestore();
     });
@@ -357,7 +364,11 @@ describe('DOMObserver', () => {
 
       domObserver.start(errorCallback, mockOnError);
 
-      expect(consoleSpy).toHaveBeenCalledWith('Initialization attempt failed:', expect.any(Error));
+      expect(consoleSpy).toHaveBeenCalledWith(
+        '[DOMObserver] [WARN]',
+        'Initialization attempt failed:',
+        expect.any(Error)
+      );
 
       consoleSpy.mockRestore();
     });

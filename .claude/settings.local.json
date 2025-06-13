@@ -26,7 +26,8 @@
       "Bash(pnpm jest:*)",
       "Bash(pnpm build:*)",
       "Bash(pnpm lint:*)",
-      "Bash(npx tsc:*)"
+      "Bash(npx tsc:*)",
+      "Bash(gh auth:*)"
     ],
     "deny": []
   }

@@ -5,6 +5,8 @@
  * while preserving the ability to test console behavior when needed.
  */
 
+/* eslint-env jest */
+
 // Store original console methods
 const originalConsole = {
   log: console.log,
