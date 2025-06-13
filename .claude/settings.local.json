@@ -27,7 +27,9 @@
       "Bash(pnpm build:*)",
       "Bash(pnpm lint:*)",
       "Bash(npx tsc:*)",
-      "Bash(gh auth:*)"
+      "Bash(gh auth:*)",
+      "Bash(cat:*)",
+      "Bash(npx eslint:*)"
     ],
     "deny": []
   }
