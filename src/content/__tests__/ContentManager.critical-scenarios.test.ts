@@ -22,21 +22,20 @@ jest.mock('$lib/components/WhatsNewModal.svelte', () => ({
 // Mock UIManager
 jest.mock('../UIManager');
 
-// Mock console methods
-const originalConsole = { ...console };
+// Mock console methods using jest.spyOn for better isolation
+let consoleSpy: { [key: string]: jest.SpyInstance };
 beforeAll(() => {
-  global.console = {
-    ...console,
-    log: jest.fn(),
-    warn: jest.fn(),
-    error: jest.fn(),
-    debug: jest.fn(),
-    info: jest.fn(),
+  consoleSpy = {
+    log: jest.spyOn(console, 'log').mockImplementation(),
+    warn: jest.spyOn(console, 'warn').mockImplementation(),
+    error: jest.spyOn(console, 'error').mockImplementation(),
+    debug: jest.spyOn(console, 'debug').mockImplementation(),
+    info: jest.spyOn(console, 'info').mockImplementation(),
   };
 });
 
 afterAll(() => {
-  global.console = originalConsole;
+  Object.values(consoleSpy).forEach((spy) => spy.mockRestore());
 });
 
 import { ContentManager } from '../ContentManager';

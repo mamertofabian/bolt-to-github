@@ -191,9 +191,15 @@ export class BackgroundService {
   private async initialize(): Promise<void> {
     // Initialize usage tracking asynchronously (non-blocking)
     // We continue even if usage tracking fails to ensure the extension remains functional
-    this.usageTracker.initializeUsageData().catch((error) => {
-      logger.error('Failed to initialize usage tracking, continuing without it:', error);
-    });
+    this.usageTracker
+      .initializeUsageData()
+      .catch((error) => {
+        logger.error('Failed to initialize usage tracking, continuing without it:', error);
+      })
+      .finally(() => {
+        // Ensure initialization completion is tracked regardless of success/failure
+        logger.debug('Usage tracker initialization attempt completed');
+      });
 
     const githubService = await this.initializeGitHubService();
     this.setupZipHandler(githubService!);

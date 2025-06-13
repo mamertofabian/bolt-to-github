@@ -13,10 +13,8 @@ import { ComponentLifecycleManager, type ComponentConfig } from '../ComponentLif
 import type { SvelteComponent } from '../../types/UITypes';
 import { createLogger } from '../../../lib/utils/logger';
 
-// Get the mocked logger with proper typing
-const mockLogger = createLogger('ComponentLifecycleManager') as jest.Mocked<
-  ReturnType<typeof createLogger>
->;
+// Get fresh mocked logger instance in beforeEach
+let mockLogger: jest.Mocked<ReturnType<typeof createLogger>>;
 
 // Mock Svelte component constructor
 class MockSvelteComponent implements SvelteComponent {
@@ -62,6 +60,10 @@ describe('ComponentLifecycleManager', () => {
   });
 
   beforeEach(() => {
+    mockLogger = createLogger('ComponentLifecycleManager') as jest.Mocked<
+      ReturnType<typeof createLogger>
+    >;
+
     lifecycleManager = new ComponentLifecycleManager();
 
     // Reset all mocks

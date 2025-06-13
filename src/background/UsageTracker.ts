@@ -159,7 +159,7 @@ export class UsageTracker {
 
     // Remove file paths (Windows and Unix-like)
     let sanitized = message.replace(/[C-Z]:[\\\/][^:\s]+/g, '[FILE_PATH]');
-    sanitized = sanitized.replace(/\/[^:\s]+/g, '[FILE_PATH]');
+    sanitized = sanitized.replace(/\/(?:[^\/\s:]+\/)*[^\/\s:]+/g, '[FILE_PATH]');
 
     // Remove tokens and keys (patterns like token=, key=, etc.)
     sanitized = sanitized.replace(

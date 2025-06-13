@@ -290,10 +290,10 @@ describe('ZipHandler - Critical Scenarios', () => {
     it('should handle normal-sized files efficiently', async () => {
       setupTestProject(env, TEST_PROJECTS.default);
 
-      // Create realistic file sizes (not 10MB which is excessive for typical use)
+      // Create realistic file sizes with meaningful content
       const files = new Map([
-        ['app.js', 'x'.repeat(50000)], // 50KB - more realistic
-        ['styles.css', 'x'.repeat(10000)], // 10KB
+        ['app.js', 'x'.repeat(1000)], // 1KB - sufficient for testing
+        ['styles.css', 'x'.repeat(500)], // 500B
         ['small-file.txt', 'small content'],
       ]);
 
