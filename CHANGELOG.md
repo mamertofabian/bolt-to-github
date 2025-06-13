@@ -3,6 +3,7 @@
 ### 🎉 New Features
 
 - **Post-installation welcome flow** - Added welcome page with onboarding for new users installing the extension
+- **Uninstall feedback integration** - Track anonymous usage statistics and redirect to feedback page on uninstall
 
 ### 🧪 Testing & Quality Improvements
 
