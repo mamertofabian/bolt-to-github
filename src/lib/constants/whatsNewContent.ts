@@ -6,8 +6,18 @@ export interface WhatsNewVersion {
 }
 
 export const whatsNewContent: Record<string, WhatsNewVersion> = {
+  '1.3.5': {
+    date: '2025-06-13',
+    highlights: [
+      '🎉 Welcome page for new users with onboarding guide',
+      '⚡ Enhanced stability - Service worker improvements prevent timeouts',
+      '🛡️ Better error handling and reconnection logic',
+    ],
+    details: `Performance boost with message throttling and improved reliability. New users get a helpful welcome flow!`,
+    type: 'minor',
+  },
   '1.3.4': {
-    date: '2025-01-11',
+    date: '2025-06-12',
     highlights: [
       "✨ What's New modal - Stay updated with new features automatically",
       '📚 Access version history from Help tab',
@@ -17,7 +27,7 @@ export const whatsNewContent: Record<string, WhatsNewVersion> = {
     type: 'minor',
   },
   '1.3.3': {
-    date: '2025-01-10',
+    date: '2025-06-10',
     highlights: [
       '🔧 Fixed push reminder configuration',
       '💬 Progress messages for long operations',
@@ -27,7 +37,7 @@ export const whatsNewContent: Record<string, WhatsNewVersion> = {
     type: 'patch',
   },
   '1.3.2': {
-    date: '2024-12-20',
+    date: '2025-06-10',
     highlights: [
       '🔐 GitHub App Authentication support',
       '🚀 Dual auth - PAT or GitHub App',
