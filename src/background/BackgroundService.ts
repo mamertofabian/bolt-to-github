@@ -223,19 +223,14 @@ export class BackgroundService {
       const authMethod = localSettings.authenticationMethod || 'pat';
 
       // Track authentication method
-      try {
-        await this.usageTracker.updateUsageStats('auth_method_changed', {
-          authMethod:
-            authMethod === 'github_app'
-              ? 'github-app'
-              : settings?.gitHubSettings?.githubToken
-                ? 'pat'
-                : 'none',
-        });
-      } catch (error) {
-        logger.warn('Failed to track auth method change:', error);
-        // Continue without tracking - don't break the main flow
-      }
+      await this.usageTracker.updateUsageStats('auth_method_changed', {
+        authMethod:
+          authMethod === 'github_app'
+            ? 'github-app'
+            : settings?.gitHubSettings?.githubToken
+              ? 'pat'
+              : 'none',
+      });
 
       if (authMethod === 'github_app') {
         // Initialize with GitHub App authentication
@@ -259,15 +254,10 @@ export class BackgroundService {
       logger.error('Failed to initialize GitHub service:', error);
 
       // Track initialization error
-      try {
-        await this.usageTracker.trackError(
-          error instanceof Error ? error : new Error('Failed to initialize GitHub service'),
-          'github_service_init'
-        );
-      } catch (trackingError) {
-        logger.warn('Failed to track GitHub service init error:', trackingError);
-        // Continue without tracking - don't break the main flow
-      }
+      await this.usageTracker.trackError(
+        error instanceof Error ? error : new Error('Failed to initialize GitHub service'),
+        'github_service_init'
+      );
 
       this.githubService = null;
     }
@@ -426,12 +416,7 @@ export class BackgroundService {
         // Check for analytics preference changes
         if ('analyticsEnabled' in changes) {
           logger.info('📊 Analytics preference changed, updating uninstall URL...');
-          try {
-            await this.usageTracker.setUninstallURL();
-          } catch (error) {
-            logger.warn('Failed to update uninstall URL:', error);
-            // Continue without tracking - don't break the main flow
-          }
+          await this.usageTracker.setUninstallURL();
         }
 
         const settingsChanged = ['githubToken', 'repoOwner', 'repoName', 'branch'].some(
@@ -758,12 +743,7 @@ export class BackgroundService {
         await this.operationStateManager.completeOperation(operationId);
 
         // Track successful push
-        try {
-          await this.usageTracker.updateUsageStats('push_completed');
-        } catch (error) {
-          logger.warn('Failed to track push completion:', error);
-          // Continue without tracking - don't break the main flow
-        }
+        await this.usageTracker.updateUsageStats('push_completed');
 
         this.sendResponse(port, {
           type: 'UPLOAD_STATUS',
@@ -796,15 +776,10 @@ export class BackgroundService {
         );
 
         // Track error
-        try {
-          await this.usageTracker.trackError(
-            decodeError instanceof Error ? decodeError : new Error(errorMessage),
-            'push_failed'
-          );
-        } catch (trackingError) {
-          logger.warn('Failed to track push error:', trackingError);
-          // Continue without tracking - don't break the main flow
-        }
+        await this.usageTracker.trackError(
+          decodeError instanceof Error ? decodeError : new Error(errorMessage),
+          'push_failed'
+        );
 
         if (isGitHubError) {
           // Extract the original GitHub error message if available
@@ -844,15 +819,10 @@ export class BackgroundService {
         );
 
         // Track error
-        try {
-          await this.usageTracker.trackError(
-            error instanceof Error ? error : new Error('Unknown error occurred'),
-            'push_failed_outer'
-          );
-        } catch (trackingError) {
-          logger.warn('Failed to track outer push error:', trackingError);
-          // Continue without tracking - don't break the main flow
-        }
+        await this.usageTracker.trackError(
+          error instanceof Error ? error : new Error('Unknown error occurred'),
+          'push_failed_outer'
+        );
       }
 
       this.sendResponse(port, {

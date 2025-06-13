@@ -17,13 +17,8 @@ export class UsageTracker {
    * Initialize usage data on extension install or update
    */
   async initializeUsageData(): Promise<void> {
-    return new Promise((resolve, reject) => {
+    return new Promise((resolve) => {
       chrome.storage.local.get(['usageData'], (result) => {
-        if (chrome.runtime.lastError) {
-          reject(new Error(`Failed to get usage data: ${chrome.runtime.lastError.message}`));
-          return;
-        }
-
         const now = new Date().toISOString();
         const manifest = chrome.runtime.getManifest();
 
@@ -39,17 +34,9 @@ export class UsageTracker {
         // Update version if it changed
         usageData.extensionVersion = manifest.version;
 
-        chrome.storage.local.set({ usageData }, async () => {
-          if (chrome.runtime.lastError) {
-            reject(new Error(`Failed to set usage data: ${chrome.runtime.lastError.message}`));
-            return;
-          }
-          try {
-            await this.setUninstallURL();
-            resolve();
-          } catch (error) {
-            reject(error);
-          }
+        chrome.storage.local.set({ usageData }, () => {
+          this.setUninstallURL();
+          resolve();
         });
       });
     });
@@ -62,13 +49,8 @@ export class UsageTracker {
     eventType: string,
     data?: { authMethod?: UsageData['authMethod'] }
   ): Promise<void> {
-    return new Promise((resolve, reject) => {
+    return new Promise((resolve) => {
       chrome.storage.local.get(['usageData'], (result) => {
-        if (chrome.runtime.lastError) {
-          reject(new Error(`Failed to get usage data: ${chrome.runtime.lastError.message}`));
-          return;
-        }
-
         const usageData: UsageData = result.usageData || this.getDefaultUsageData();
 
         usageData.lastActiveDate = new Date().toISOString();
@@ -84,17 +66,9 @@ export class UsageTracker {
             break;
         }
 
-        chrome.storage.local.set({ usageData }, async () => {
-          if (chrome.runtime.lastError) {
-            reject(new Error(`Failed to set usage data: ${chrome.runtime.lastError.message}`));
-            return;
-          }
-          try {
-            await this.setUninstallURL();
-            resolve();
-          } catch (error) {
-            reject(error);
-          }
+        chrome.storage.local.set({ usageData }, () => {
+          this.setUninstallURL();
+          resolve();
         });
       });
     });
@@ -104,13 +78,8 @@ export class UsageTracker {
    * Track errors for uninstall feedback
    */
   async trackError(error: Error, context: string): Promise<void> {
-    return new Promise((resolve, reject) => {
+    return new Promise((resolve) => {
       chrome.storage.local.get(['errorLog', 'usageData'], (result) => {
-        if (chrome.runtime.lastError) {
-          reject(new Error(`Failed to get error data: ${chrome.runtime.lastError.message}`));
-          return;
-        }
-
         const errorLog: ErrorLogEntry[] = result.errorLog || [];
         const usageData: UsageData = result.usageData || this.getDefaultUsageData();
 
@@ -135,17 +104,9 @@ export class UsageTracker {
             errorLog: recentErrors,
             usageData,
           },
-          async () => {
-            if (chrome.runtime.lastError) {
-              reject(new Error(`Failed to set error data: ${chrome.runtime.lastError.message}`));
-              return;
-            }
-            try {
-              await this.setUninstallURL();
-              resolve();
-            } catch (error) {
-              reject(error);
-            }
+          () => {
+            this.setUninstallURL();
+            resolve();
           }
         );
       });
@@ -156,39 +117,20 @@ export class UsageTracker {
    * Set the uninstall URL with anonymous usage parameters
    */
   async setUninstallURL(): Promise<void> {
-    return new Promise((resolve, reject) => {
+    return new Promise((resolve) => {
       // Get analytics preference from sync storage (same as AnalyticsToggle component)
       chrome.storage.sync.get(['analyticsEnabled'], (syncResult) => {
-        if (chrome.runtime.lastError) {
-          reject(
-            new Error(`Failed to get analytics preference: ${chrome.runtime.lastError.message}`)
-          );
-          return;
-        }
-
         const analyticsEnabled = syncResult.analyticsEnabled ?? true; // Default to true if not set
 
         // If analytics is disabled, clear the uninstall URL
         if (!analyticsEnabled) {
-          chrome.runtime.setUninstallURL('', () => {
-            if (chrome.runtime.lastError) {
-              reject(
-                new Error(`Failed to clear uninstall URL: ${chrome.runtime.lastError.message}`)
-              );
-              return;
-            }
-            resolve();
-          });
+          chrome.runtime.setUninstallURL('');
+          resolve();
           return;
         }
 
         // Get usage data from local storage
         chrome.storage.local.get(['usageData'], (localResult) => {
-          if (chrome.runtime.lastError) {
-            reject(new Error(`Failed to get usage data: ${chrome.runtime.lastError.message}`));
-            return;
-          }
-
           const usageData: UsageData = localResult.usageData || this.getDefaultUsageData();
           const manifest = chrome.runtime.getManifest();
 
@@ -201,13 +143,8 @@ export class UsageTracker {
           });
 
           const uninstallUrl = `${this.UNINSTALL_FEEDBACK_BASE_URL}?${params.toString()}`;
-          chrome.runtime.setUninstallURL(uninstallUrl, () => {
-            if (chrome.runtime.lastError) {
-              reject(new Error(`Failed to set uninstall URL: ${chrome.runtime.lastError.message}`));
-              return;
-            }
-            resolve();
-          });
+          chrome.runtime.setUninstallURL(uninstallUrl);
+          resolve();
         });
       });
     });
