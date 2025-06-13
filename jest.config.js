@@ -35,6 +35,12 @@ export default {
   collectCoverage: true,
   coverageDirectory: 'coverage',
   collectCoverageFrom: ['src/**/*.{ts,tsx}', '!src/**/*.d.ts'],
+  coveragePathIgnorePatterns: [
+    '<rootDir>/node_modules/',
+    '<rootDir>/src/background/test-fixtures/',
+    '<rootDir>/src/content/test-fixtures/',
+    '<rootDir>/src/services/__tests__/test-fixtures/',
+  ],
   globals: {
     'ts-jest': {
       useESM: true,
