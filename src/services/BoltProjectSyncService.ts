@@ -77,6 +77,42 @@ export class BoltProjectSyncService {
   }
 
   /**
+   * Get auth token from storage - similar pattern to UnifiedGitHubService
+   */
+  private async getAuthToken(): Promise<string | null> {
+    try {
+      // Check if SupabaseAuthService has a stored token
+      const potentialKeys = ['supabaseToken', 'supabaseAuthState'];
+
+      for (const key of potentialKeys) {
+        try {
+          const result = await chrome.storage.local.get([key]);
+          const data = result[key];
+
+          if (data) {
+            // Handle different token storage formats
+            if (typeof data === 'string') {
+              return data;
+            } else if (data.access_token) {
+              return data.access_token;
+            } else if (data.session?.access_token) {
+              return data.session.access_token;
+            }
+          }
+        } catch (error) {
+          logger.debug(`Failed to get token from key ${key}:`, error);
+        }
+      }
+
+      logger.warn('No auth token found in storage');
+      return null;
+    } catch (error) {
+      logger.error('Failed to get auth token:', error);
+      return null;
+    }
+  }
+
+  /**
    * Sync projects with backend
    */
   async syncWithBackend(
@@ -84,7 +120,7 @@ export class BoltProjectSyncService {
   ): Promise<SyncResponse> {
     logger.info('🚀 Starting backend sync operation', { conflictResolution });
 
-    const authToken = await this.authService.getAuthToken();
+    const authToken = await this.getAuthToken();
     if (!authToken) {
       logger.error('❌ Sync failed - user not authenticated');
       throw new Error('User not authenticated');
@@ -295,7 +331,7 @@ export class BoltProjectSyncService {
       logger.info('🔐 Skipping outward sync - user not authenticated', {
         authState: {
           isAuthenticated: authState.isAuthenticated,
-          authMethod: authState.authMethod,
+          isPremium: authState.subscription.isActive,
         },
       });
       return null;
@@ -303,7 +339,7 @@ export class BoltProjectSyncService {
 
     try {
       logger.info('⬆️ Performing outward sync to server', {
-        authMethod: authState.authMethod,
+        isAuthenticated: authState.isAuthenticated,
         localProjectCount: localProjects.length,
       });
       const result = await this.syncWithBackend();
@@ -344,7 +380,7 @@ export class BoltProjectSyncService {
       logger.info('🔐 Skipping inward sync - user not authenticated', {
         authState: {
           isAuthenticated: authState.isAuthenticated,
-          authMethod: authState.authMethod,
+          isPremium: authState.subscription.isActive,
         },
       });
       return null;
@@ -352,7 +388,7 @@ export class BoltProjectSyncService {
 
     try {
       logger.info('⬇️ Performing inward sync from server', {
-        authMethod: authState.authMethod,
+        isAuthenticated: authState.isAuthenticated,
       });
       const result = await this.syncWithBackend();
 

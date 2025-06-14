@@ -42,6 +42,15 @@ describe('BoltProjectSyncService', () => {
     };
     (SupabaseAuthService.getInstance as jest.Mock).mockReturnValue(mockAuthInstance);
 
+    // Mock chrome storage for auth token
+    global.chrome = {
+      storage: {
+        local: {
+          get: jest.fn().mockResolvedValue({ supabaseToken: 'mock-auth-token' }),
+        },
+      },
+    } as any;
+
     service = new BoltProjectSyncService();
   });
 
@@ -122,8 +131,16 @@ describe('BoltProjectSyncService', () => {
       mockAuthGetToken.mockResolvedValue(mockToken);
       mockAuthGetState.mockReturnValue({
         isAuthenticated: true,
-        userId: 'test-user',
-        email: 'test@example.com',
+        user: {
+          id: 'test-user',
+          email: 'test@example.com',
+          created_at: '2024-01-01T00:00:00Z',
+          updated_at: '2024-01-01T00:00:00Z',
+        },
+        subscription: {
+          isActive: false,
+          plan: 'free',
+        },
       });
     });
 
@@ -170,7 +187,8 @@ describe('BoltProjectSyncService', () => {
     });
 
     it('should handle authentication errors', async () => {
-      mockAuthGetToken.mockResolvedValue(null);
+      // Mock chrome storage to return no token
+      (global.chrome.storage.local.get as jest.Mock).mockResolvedValue({});
 
       await expect(service.syncWithBackend()).rejects.toThrow('User not authenticated');
     });
@@ -231,8 +249,11 @@ describe('BoltProjectSyncService', () => {
     it('should only sync if user is authenticated', async () => {
       mockAuthGetState.mockReturnValue({
         isAuthenticated: false,
-        userId: null,
-        email: null,
+        user: null,
+        subscription: {
+          isActive: false,
+          plan: 'free',
+        },
       });
 
       const result = await service.performOutwardSync();
@@ -251,8 +272,16 @@ describe('BoltProjectSyncService', () => {
 
       mockAuthGetState.mockReturnValue({
         isAuthenticated: true,
-        userId: 'test-user',
-        email: 'test@example.com',
+        user: {
+          id: 'test-user',
+          email: 'test@example.com',
+          created_at: '2024-01-01T00:00:00Z',
+          updated_at: '2024-01-01T00:00:00Z',
+        },
+        subscription: {
+          isActive: false,
+          plan: 'free',
+        },
       });
 
       mockAuthGetToken.mockResolvedValue('mock-token');
@@ -481,8 +510,16 @@ describe('BoltProjectSyncService', () => {
 
       mockAuthGetState.mockReturnValue({
         isAuthenticated: true,
-        userId: 'test-user',
-        email: 'test@example.com',
+        user: {
+          id: 'test-user',
+          email: 'test@example.com',
+          created_at: '2024-01-01T00:00:00Z',
+          updated_at: '2024-01-01T00:00:00Z',
+        },
+        subscription: {
+          isActive: false,
+          plan: 'free',
+        },
       });
 
       mockAuthGetToken.mockResolvedValue('mock-token');
