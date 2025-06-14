@@ -32,6 +32,7 @@ describe('BoltProjectSyncService', () => {
       repoOwner: '',
       projectSettings: {},
     });
+    (ChromeStorageService.saveGitHubSettings as jest.Mock) = jest.fn().mockResolvedValue(undefined);
 
     // Setup SupabaseAuthService mock
     mockAuthGetToken = jest.fn();
@@ -435,6 +436,207 @@ describe('BoltProjectSyncService', () => {
 
       // Should not throw - migration failure should be handled gracefully
       await expect(service.performOutwardSync()).resolves.not.toThrow();
+    });
+  });
+
+  describe('syncBackToActiveStorage', () => {
+    it('should sync bolt projects back to project settings format', async () => {
+      // Setup: Bolt projects exist
+      const mockBoltProjects: BoltProject[] = [
+        {
+          id: 'project-1',
+          bolt_project_id: 'bolt-1',
+          github_repo_name: 'test-repo-1',
+          github_repo_owner: 'test-owner',
+          is_private: false,
+          repoName: 'test-repo-1',
+          branch: 'main',
+        },
+        {
+          id: 'project-2',
+          bolt_project_id: 'bolt-2',
+          github_repo_name: 'test-repo-2',
+          is_private: true,
+          repoName: 'test-repo-2',
+          branch: 'develop',
+        },
+      ];
+
+      mockStorageGet.mockResolvedValue({ boltProjects: mockBoltProjects });
+
+      // Setup: Current active storage
+      (ChromeStorageService.getGitHubSettings as jest.Mock).mockResolvedValue({
+        githubToken: 'test-token',
+        repoOwner: 'test-owner',
+        projectSettings: {
+          'old-project': {
+            repoName: 'old-repo',
+            branch: 'old-branch',
+          },
+        },
+      });
+
+      const mockSaveGitHubSettings = jest.fn();
+      (ChromeStorageService.saveGitHubSettings as jest.Mock) = mockSaveGitHubSettings;
+
+      // Trigger sync back by calling performInwardSync
+      mockAuthGetState.mockReturnValue({
+        isAuthenticated: true,
+        user: {
+          id: 'test-user',
+          email: 'test@example.com',
+          created_at: '2024-01-01T00:00:00Z',
+          updated_at: '2024-01-01T00:00:00Z',
+        },
+        subscription: {
+          isActive: false,
+          plan: 'free',
+        },
+      });
+
+      const mockResponse: SyncResponse = {
+        success: true,
+        updatedProjects: [],
+        conflicts: [],
+        deletedProjectIds: [],
+      };
+
+      (global.fetch as jest.Mock).mockResolvedValue({
+        ok: true,
+        json: () => Promise.resolve(mockResponse),
+      });
+
+      // Mock shouldPerformInwardSync to return true
+      const spyShouldPerformInwardSync = jest.spyOn(service, 'shouldPerformInwardSync');
+      spyShouldPerformInwardSync.mockResolvedValue(true);
+
+      await service.performInwardSync();
+
+      // Verify that saveGitHubSettings was called with updated project settings
+      expect(mockSaveGitHubSettings).toHaveBeenCalledWith(
+        expect.objectContaining({
+          githubToken: 'test-token',
+          repoOwner: 'test-owner',
+          projectSettings: expect.objectContaining({
+            'project-1': {
+              repoName: 'test-repo-1',
+              branch: 'main',
+              projectTitle: 'project-1',
+            },
+            'project-2': {
+              repoName: 'test-repo-2',
+              branch: 'develop',
+              projectTitle: 'project-2',
+            },
+            // Should preserve existing projects
+            'old-project': {
+              repoName: 'old-repo',
+              branch: 'old-branch',
+            },
+          }),
+        })
+      );
+
+      spyShouldPerformInwardSync.mockRestore();
+    });
+
+    it('should handle reverse sync failure gracefully', async () => {
+      // Setup: Bolt projects exist
+      mockStorageGet.mockResolvedValue({
+        boltProjects: [
+          {
+            id: 'project-1',
+            bolt_project_id: 'bolt-1',
+            github_repo_name: 'test-repo-1',
+            is_private: false,
+          },
+        ],
+      });
+
+      // Setup: ChromeStorageService.getGitHubSettings throws
+      (ChromeStorageService.getGitHubSettings as jest.Mock).mockRejectedValue(
+        new Error('Storage error')
+      );
+
+      mockAuthGetState.mockReturnValue({
+        isAuthenticated: true,
+        user: {
+          id: 'test-user',
+          email: 'test@example.com',
+          created_at: '2024-01-01T00:00:00Z',
+          updated_at: '2024-01-01T00:00:00Z',
+        },
+        subscription: {
+          isActive: false,
+          plan: 'free',
+        },
+      });
+
+      const mockResponse: SyncResponse = {
+        success: true,
+        updatedProjects: [],
+        conflicts: [],
+        deletedProjectIds: [],
+      };
+
+      (global.fetch as jest.Mock).mockResolvedValue({
+        ok: true,
+        json: () => Promise.resolve(mockResponse),
+      });
+
+      // Mock shouldPerformInwardSync to return true
+      const spyShouldPerformInwardSync = jest.spyOn(service, 'shouldPerformInwardSync');
+      spyShouldPerformInwardSync.mockResolvedValue(true);
+
+      // Should not throw - reverse sync failure should be handled gracefully
+      await expect(service.performInwardSync()).resolves.not.toThrow();
+
+      spyShouldPerformInwardSync.mockRestore();
+    });
+
+    it('should skip reverse sync when no bolt projects exist', async () => {
+      // Setup: No bolt projects
+      mockStorageGet.mockResolvedValue({ boltProjects: [] });
+
+      mockAuthGetState.mockReturnValue({
+        isAuthenticated: true,
+        user: {
+          id: 'test-user',
+          email: 'test@example.com',
+          created_at: '2024-01-01T00:00:00Z',
+          updated_at: '2024-01-01T00:00:00Z',
+        },
+        subscription: {
+          isActive: false,
+          plan: 'free',
+        },
+      });
+
+      const mockResponse: SyncResponse = {
+        success: true,
+        updatedProjects: [],
+        conflicts: [],
+        deletedProjectIds: [],
+      };
+
+      (global.fetch as jest.Mock).mockResolvedValue({
+        ok: true,
+        json: () => Promise.resolve(mockResponse),
+      });
+
+      const mockSaveGitHubSettings = jest.fn();
+      (ChromeStorageService.saveGitHubSettings as jest.Mock) = mockSaveGitHubSettings;
+
+      // Mock shouldPerformInwardSync to return true
+      const spyShouldPerformInwardSync = jest.spyOn(service, 'shouldPerformInwardSync');
+      spyShouldPerformInwardSync.mockResolvedValue(true);
+
+      await service.performInwardSync();
+
+      // Verify that saveGitHubSettings was not called (no projects to sync back)
+      expect(mockSaveGitHubSettings).not.toHaveBeenCalled();
+
+      spyShouldPerformInwardSync.mockRestore();
     });
   });
 

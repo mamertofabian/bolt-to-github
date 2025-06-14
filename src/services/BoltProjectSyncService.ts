@@ -409,6 +409,9 @@ export class BoltProjectSyncService {
       });
       const result = await this.syncWithBackend();
 
+      // Sync back to active storage format (reverse bridge)
+      await this.syncBackToActiveStorage();
+
       // Update last sync timestamp
       const syncTimestamp = new Date().toISOString();
       await this.setLastSyncTimestamp(syncTimestamp);
@@ -424,6 +427,55 @@ export class BoltProjectSyncService {
     } catch (error) {
       logger.error('💥 Outward sync failed', { error });
       throw error;
+    }
+  }
+
+  /**
+   * Sync back from boltProjects to active storage format (reverse bridge)
+   * This ensures the extension continues to work with existing project data
+   */
+  private async syncBackToActiveStorage(): Promise<void> {
+    try {
+      const boltProjects = await this.getLocalProjects();
+
+      if (boltProjects.length === 0) {
+        logger.debug('🔄 No bolt projects to sync back to active storage');
+        return;
+      }
+
+      logger.info('🔄 Syncing bolt projects back to active storage format', {
+        projectCount: boltProjects.length,
+        projectIds: boltProjects.map((p) => p.id),
+      });
+
+      // Get current active storage
+      const gitHubSettings = await ChromeStorageService.getGitHubSettings();
+      const updatedProjectSettings = { ...gitHubSettings.projectSettings };
+
+      // Convert bolt projects back to project settings format
+      for (const boltProject of boltProjects) {
+        updatedProjectSettings[boltProject.id] = {
+          repoName: boltProject.github_repo_name,
+          branch: boltProject.branch || 'main',
+          projectTitle: boltProject.id, // Use ID as title if not available
+        };
+      }
+
+      // Update the active storage with converted projects
+      const updatedGitHubSettings = {
+        ...gitHubSettings,
+        projectSettings: updatedProjectSettings,
+      };
+
+      await ChromeStorageService.saveGitHubSettings(updatedGitHubSettings);
+
+      logger.info('✅ Successfully synced projects back to active storage format', {
+        updatedProjectCount: boltProjects.length,
+        totalActiveProjects: Object.keys(updatedProjectSettings).length,
+      });
+    } catch (error) {
+      logger.error('💥 Failed to sync back to active storage format', { error });
+      // Don't throw - reverse sync failure shouldn't block the main sync operation
     }
   }
 
@@ -456,6 +508,9 @@ export class BoltProjectSyncService {
         isAuthenticated: authState.isAuthenticated,
       });
       const result = await this.syncWithBackend();
+
+      // Sync back to active storage format (reverse bridge)
+      await this.syncBackToActiveStorage();
 
       // Update last sync timestamp
       const syncTimestamp = new Date().toISOString();
