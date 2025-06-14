@@ -1234,11 +1234,6 @@ export class BackgroundService {
 
     // Clean up sync alarm
     chrome.alarms.clear('bolt-project-sync');
-  }
-
-  private cleanup(): void {
-    // Clean up sync alarm
-    chrome.alarms.clear('bolt-project-sync');
 
     // Remove sync alarm handler if it exists
     if (this.syncAlarmHandler) {
@@ -1281,10 +1276,12 @@ export class BackgroundService {
     // Create sync alarm (every 5 minutes)
     chrome.alarms.create('bolt-project-sync', { periodInMinutes: 5 });
 
-    // Perform initial inward sync on startup
-    this.syncService.performInwardSync().catch((error) => {
-      logger.error('Initial inward sync failed:', error);
-    });
+    // Perform initial inward sync on startup (non-blocking)
+    setTimeout(() => {
+      this.syncService.performInwardSync().catch((error) => {
+        logger.error('Initial inward sync failed:', error);
+      });
+    }, 0);
   }
 
   /**

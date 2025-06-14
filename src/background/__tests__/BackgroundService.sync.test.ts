@@ -289,8 +289,11 @@ describe('BackgroundService - Sync Functionality', () => {
     it('should perform initial inward sync on startup', async () => {
       service = new BackgroundService();
 
-      // Wait for initialization and initial sync
+      // Wait for initialization
       await jest.runOnlyPendingTimersAsync();
+
+      // Advance timers by 1ms to execute the setTimeout
+      jest.advanceTimersByTime(1);
 
       expect(mockSyncService.performInwardSync).toHaveBeenCalled();
     });
@@ -301,8 +304,8 @@ describe('BackgroundService - Sync Functionality', () => {
       service = new BackgroundService();
       await jest.runOnlyPendingTimersAsync();
 
-      // Simulate cleanup
-      (service as any).cleanup();
+      // Simulate cleanup via destroy
+      service.destroy();
 
       expect(mockAlarms.clear).toHaveBeenCalledWith('bolt-project-sync');
     });
@@ -316,8 +319,8 @@ describe('BackgroundService - Sync Functionality', () => {
       service = new BackgroundService();
       await jest.runOnlyPendingTimersAsync();
 
-      // Simulate cleanup
-      (service as any).cleanup();
+      // Simulate cleanup via destroy
+      service.destroy();
 
       expect(mockAlarms.onAlarm.removeListener).toHaveBeenCalledWith(alarmHandler);
     });
