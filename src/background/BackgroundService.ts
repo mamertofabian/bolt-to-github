@@ -7,6 +7,7 @@ import { SupabaseAuthService } from '../content/services/SupabaseAuthService';
 import { OperationStateManager } from '../content/services/OperationStateManager';
 import { createLogger, getLogStorage } from '../lib/utils/logger';
 import { UsageTracker } from './UsageTracker';
+import { BoltProjectSyncService } from '../services/BoltProjectSyncService';
 
 const logger = createLogger('BackgroundService');
 
@@ -20,12 +21,14 @@ export class BackgroundService {
   private supabaseAuthService: SupabaseAuthService;
   private operationStateManager: OperationStateManager;
   private usageTracker: UsageTracker;
+  private syncService: BoltProjectSyncService;
   private keepAliveInterval: NodeJS.Timeout | null = null;
   private lastActivityTime: number = Date.now();
   private authCheckTimeout: NodeJS.Timeout | null = null;
   private storageListener:
     | ((changes: { [key: string]: chrome.storage.StorageChange }, namespace: string) => void)
     | null = null;
+  private syncAlarmHandler: ((alarm: chrome.alarms.Alarm) => void) | null = null;
 
   constructor() {
     logger.info('🚀 Background service initializing...');
@@ -37,6 +40,7 @@ export class BackgroundService {
     this.supabaseAuthService = SupabaseAuthService.getInstance();
     this.operationStateManager = OperationStateManager.getInstance();
     this.usageTracker = new UsageTracker();
+    this.syncService = new BoltProjectSyncService();
     this.initialize();
 
     // Track extension lifecycle
@@ -56,6 +60,9 @@ export class BackgroundService {
 
     // Start service worker keep-alive mechanism
     this.startKeepAlive();
+
+    // Set up sync alarm and perform initial sync
+    this.setupSyncAlarm();
   }
 
   private async trackExtensionStartup(): Promise<void> {
@@ -85,7 +92,10 @@ export class BackgroundService {
     }
   }
 
-  private async sendAnalyticsEvent(eventName: string, params: any = {}): Promise<void> {
+  private async sendAnalyticsEvent(
+    eventName: string,
+    params: Record<string, any> = {}
+  ): Promise<void> {
     try {
       // Get or generate client ID
       let clientId = '';
@@ -385,6 +395,10 @@ export class BackgroundService {
       ) {
         // Handle GitHub authentication initiation
         this.handleInitiateGitHubAuth(message.method, sendResponse);
+        return true; // Will respond asynchronously
+      } else if (message.type === 'SYNC_BOLT_PROJECTS') {
+        // Handle manual sync trigger
+        this.handleManualSync(sendResponse);
         return true; // Will respond asynchronously
       }
 
@@ -1180,6 +1194,26 @@ export class BackgroundService {
     }
   }
 
+  private async handleManualSync(sendResponse: (response: any) => void): Promise<void> {
+    try {
+      logger.info('📱 Manual sync triggered via message');
+
+      // Perform outward sync
+      await this.syncService.performOutwardSync();
+
+      sendResponse({
+        success: true,
+        message: 'Sync completed',
+      });
+    } catch (error) {
+      logger.error('Manual sync failed:', error);
+      sendResponse({
+        success: false,
+        error: error instanceof Error ? error.message : 'Sync failed',
+      });
+    }
+  }
+
   public destroy(): void {
     // Clean up keep-alive interval
     if (this.keepAliveInterval) {
@@ -1197,6 +1231,20 @@ export class BackgroundService {
       chrome.storage.onChanged.removeListener(this.storageListener);
       this.storageListener = null;
     }
+
+    // Clean up sync alarm
+    chrome.alarms.clear('bolt-project-sync');
+  }
+
+  private cleanup(): void {
+    // Clean up sync alarm
+    chrome.alarms.clear('bolt-project-sync');
+
+    // Remove sync alarm handler if it exists
+    if (this.syncAlarmHandler) {
+      chrome.alarms.onAlarm.removeListener(this.syncAlarmHandler);
+      this.syncAlarmHandler = null;
+    }
   }
 
   /**
@@ -1210,15 +1258,52 @@ export class BackgroundService {
    * Set up Chrome alarms for keep-alive
    */
   private setupAlarms(): void {
-    chrome.alarms.onAlarm.addListener((alarm) => {
+    // Store the alarm handler so we can remove it later
+    this.syncAlarmHandler = (alarm: chrome.alarms.Alarm) => {
       if (alarm.name === 'keepAlive') {
         // Simple operation to keep service worker active
         this.updateLastActivity();
         chrome.storage.local.set({ lastKeepAlive: Date.now() });
       } else if (alarm.name === 'logRotation') {
         this.rotateOldLogs();
+      } else if (alarm.name === 'bolt-project-sync') {
+        this.handleSyncAlarm();
       }
+    };
+
+    chrome.alarms.onAlarm.addListener(this.syncAlarmHandler);
+  }
+
+  /**
+   * Set up sync alarm for periodic bolt project syncing
+   */
+  private setupSyncAlarm(): void {
+    // Create sync alarm (every 5 minutes)
+    chrome.alarms.create('bolt-project-sync', { periodInMinutes: 5 });
+
+    // Perform initial inward sync on startup
+    this.syncService.performInwardSync().catch((error) => {
+      logger.error('Initial inward sync failed:', error);
     });
+  }
+
+  /**
+   * Handle sync alarm
+   */
+  private async handleSyncAlarm(): Promise<void> {
+    try {
+      logger.info('🔄 Sync alarm fired, performing sync...');
+
+      // Perform outward sync
+      await this.syncService.performOutwardSync();
+
+      // Perform inward sync
+      await this.syncService.performInwardSync();
+
+      logger.info('✅ Sync completed successfully');
+    } catch (error) {
+      logger.error('Sync failed:', error);
+    }
   }
 
   /**

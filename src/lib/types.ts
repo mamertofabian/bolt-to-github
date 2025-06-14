@@ -21,7 +21,8 @@ export type MessageType =
   | 'HEARTBEAT'
   | 'HEARTBEAT_RESPONSE'
   | 'GITHUB_APP_SYNCED'
-  | 'SUBSCRIPTION_UPGRADED';
+  | 'SUBSCRIPTION_UPGRADED'
+  | 'SYNC_BOLT_PROJECTS';
 
 export interface Message {
   type: MessageType;
