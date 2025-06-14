@@ -182,6 +182,7 @@ export class BoltProjectSyncService {
    * Check if inward sync should be performed
    * Original behavior: sync if projects.length <= 1
    * New behavior: also prevent sync if single project has existing GitHub repository
+   * Enhanced: also check existing ProjectSettings storage format
    */
   async shouldPerformInwardSync(): Promise<boolean> {
     const projects = await this.getLocalProjects();
@@ -190,6 +191,38 @@ export class BoltProjectSyncService {
       projectCount: projects.length,
       projectIds: projects.map((p) => p.id),
     });
+
+    // Also check existing ProjectSettings storage format (current active format)
+    let existingProjectCount = 0;
+    try {
+      const gitHubSettings = await ChromeStorageService.getGitHubSettings();
+      const existingProjects = gitHubSettings.projectSettings || {};
+      existingProjectCount = Object.keys(existingProjects).length;
+
+      logger.debug('🗂️ Found existing projects in current storage format', {
+        existingProjectCount,
+        existingProjectIds: Object.keys(existingProjects),
+      });
+    } catch (error) {
+      logger.warn('Failed to check existing project storage:', error);
+    }
+
+    const totalProjectCount = projects.length + existingProjectCount;
+
+    logger.debug('📊 Total project count analysis', {
+      syncFormatProjects: projects.length,
+      currentFormatProjects: existingProjectCount,
+      totalProjects: totalProjectCount,
+    });
+
+    // If we have existing projects in current format, don't perform inward sync to avoid conflicts
+    if (existingProjectCount > 0) {
+      logger.info('🛡️ Inward sync prevented - existing projects found in current storage format', {
+        existingProjectCount,
+        syncProjectCount: projects.length,
+      });
+      return false;
+    }
 
     // Original behavior: sync from server if no projects exist
     if (projects.length === 0) {

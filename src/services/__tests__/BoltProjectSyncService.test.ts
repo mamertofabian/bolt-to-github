@@ -26,6 +26,13 @@ describe('BoltProjectSyncService', () => {
     ChromeStorageService.prototype.get = mockStorageGet;
     ChromeStorageService.prototype.set = mockStorageSet;
 
+    // Setup static ChromeStorageService methods
+    (ChromeStorageService.getGitHubSettings as jest.Mock) = jest.fn().mockResolvedValue({
+      githubToken: '',
+      repoOwner: '',
+      projectSettings: {},
+    });
+
     // Setup SupabaseAuthService mock
     mockAuthGetToken = jest.fn();
     mockAuthGetState = jest.fn();
@@ -381,6 +388,44 @@ describe('BoltProjectSyncService', () => {
       const result = await service.shouldPerformInwardSync();
 
       expect(result).toBe(false);
+    });
+
+    it('should return false when existing projects in current storage format exist', async () => {
+      // No sync format projects
+      mockStorageGet.mockResolvedValue({ boltProjects: [] });
+
+      // Mock existing project settings in current format
+      (ChromeStorageService.getGitHubSettings as jest.Mock).mockResolvedValue({
+        githubToken: 'test-token',
+        repoOwner: 'test-owner',
+        projectSettings: {
+          'github-5q8boznj': {
+            repoName: 'github-5q8boznj',
+            branch: 'main',
+            projectTitle: 'github-5q8boznj',
+          },
+        },
+      });
+
+      const result = await service.shouldPerformInwardSync();
+
+      expect(result).toBe(false);
+    });
+
+    it('should return true when no existing projects and no sync projects exist', async () => {
+      // No sync format projects
+      mockStorageGet.mockResolvedValue({ boltProjects: [] });
+
+      // No existing projects in current format
+      (ChromeStorageService.getGitHubSettings as jest.Mock).mockResolvedValue({
+        githubToken: 'test-token',
+        repoOwner: 'test-owner',
+        projectSettings: {},
+      });
+
+      const result = await service.shouldPerformInwardSync();
+
+      expect(result).toBe(true);
     });
   });
 
