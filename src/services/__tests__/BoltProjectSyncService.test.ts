@@ -12,14 +12,30 @@ global.fetch = jest.fn();
 
 describe('BoltProjectSyncService', () => {
   let service: BoltProjectSyncService;
-  let mockStorage: jest.Mocked<ChromeStorageService>;
-  let mockAuth: jest.Mocked<SupabaseAuthService>;
+  let mockStorageGet: jest.Mock;
+  let mockStorageSet: jest.Mock;
+  let mockAuthGetToken: jest.Mock;
+  let mockAuthGetState: jest.Mock;
 
   beforeEach(() => {
     jest.clearAllMocks();
+
+    // Setup ChromeStorageService mock
+    mockStorageGet = jest.fn();
+    mockStorageSet = jest.fn();
+    ChromeStorageService.prototype.get = mockStorageGet;
+    ChromeStorageService.prototype.set = mockStorageSet;
+
+    // Setup SupabaseAuthService mock
+    mockAuthGetToken = jest.fn();
+    mockAuthGetState = jest.fn();
+    const mockAuthInstance = {
+      getAuthToken: mockAuthGetToken,
+      getAuthState: mockAuthGetState,
+    };
+    (SupabaseAuthService.getInstance as jest.Mock).mockReturnValue(mockAuthInstance);
+
     service = new BoltProjectSyncService();
-    mockStorage = ChromeStorageService as jest.Mocked<ChromeStorageService>;
-    mockAuth = SupabaseAuthService.getInstance() as jest.Mocked<SupabaseAuthService>;
   });
 
   describe('getLocalProjects', () => {
@@ -38,16 +54,16 @@ describe('BoltProjectSyncService', () => {
         },
       ];
 
-      mockStorage.get.mockResolvedValue({ boltProjects: mockProjects });
+      mockStorageGet.mockResolvedValue({ boltProjects: mockProjects });
 
       const projects = await service.getLocalProjects();
 
-      expect(mockStorage.get).toHaveBeenCalledWith('boltProjects');
+      expect(mockStorageGet).toHaveBeenCalledWith('boltProjects');
       expect(projects).toEqual(mockProjects);
     });
 
     it('should return empty array if no projects stored', async () => {
-      mockStorage.get.mockResolvedValue({ boltProjects: null });
+      mockStorageGet.mockResolvedValue({ boltProjects: null });
 
       const projects = await service.getLocalProjects();
 
@@ -71,11 +87,11 @@ describe('BoltProjectSyncService', () => {
         },
       ];
 
-      mockStorage.set.mockResolvedValue(undefined);
+      mockStorageSet.mockResolvedValue(undefined);
 
       await service.saveLocalProjects(mockProjects);
 
-      expect(mockStorage.set).toHaveBeenCalledWith({ boltProjects: mockProjects });
+      expect(mockStorageSet).toHaveBeenCalledWith({ boltProjects: mockProjects });
     });
   });
 
@@ -96,8 +112,8 @@ describe('BoltProjectSyncService', () => {
     ];
 
     beforeEach(() => {
-      mockAuth.getAuthToken.mockResolvedValue(mockToken);
-      mockAuth.getAuthState.mockReturnValue({
+      mockAuthGetToken.mockResolvedValue(mockToken);
+      mockAuthGetState.mockReturnValue({
         isAuthenticated: true,
         userId: 'test-user',
         email: 'test@example.com',
@@ -117,7 +133,7 @@ describe('BoltProjectSyncService', () => {
         json: async () => mockResponse,
       });
 
-      mockStorage.get.mockResolvedValue({
+      mockStorageGet.mockResolvedValue({
         boltProjects: mockProjects,
         lastSyncTimestamp: '2024-01-01T00:00:00Z',
       });
@@ -141,20 +157,20 @@ describe('BoltProjectSyncService', () => {
       );
 
       expect(result).toEqual(mockResponse);
-      expect(mockStorage.set).toHaveBeenCalledWith({
+      expect(mockStorageSet).toHaveBeenCalledWith({
         boltProjects: mockProjects,
       });
     });
 
     it('should handle authentication errors', async () => {
-      mockAuth.getAuthToken.mockResolvedValue(null);
+      mockAuthGetToken.mockResolvedValue(null);
 
       await expect(service.syncWithBackend()).rejects.toThrow('User not authenticated');
     });
 
     it('should handle network errors gracefully', async () => {
       (global.fetch as jest.Mock).mockRejectedValue(new TypeError('Failed to fetch'));
-      mockStorage.get.mockResolvedValue({ boltProjects: mockProjects });
+      mockStorageGet.mockResolvedValue({ boltProjects: mockProjects });
 
       await expect(service.syncWithBackend()).rejects.toThrow('Network error');
     });
@@ -171,7 +187,7 @@ describe('BoltProjectSyncService', () => {
         json: async () => errorResponse,
       });
 
-      mockStorage.get.mockResolvedValue({ boltProjects: mockProjects });
+      mockStorageGet.mockResolvedValue({ boltProjects: mockProjects });
 
       await expect(service.syncWithBackend()).rejects.toThrow('Sync failed: Server error');
     });
@@ -195,7 +211,7 @@ describe('BoltProjectSyncService', () => {
         json: async () => mockResponse,
       });
 
-      mockStorage.get.mockResolvedValue({ boltProjects: mockProjects });
+      mockStorageGet.mockResolvedValue({ boltProjects: mockProjects });
 
       const result = await service.syncWithBackend();
 
@@ -206,7 +222,7 @@ describe('BoltProjectSyncService', () => {
 
   describe('performOutwardSync', () => {
     it('should only sync if user is authenticated', async () => {
-      mockAuth.getAuthState.mockReturnValue({
+      mockAuthGetState.mockReturnValue({
         isAuthenticated: false,
         userId: null,
         email: null,
@@ -226,26 +242,26 @@ describe('BoltProjectSyncService', () => {
         deletedProjectIds: [],
       };
 
-      mockAuth.getAuthState.mockReturnValue({
+      mockAuthGetState.mockReturnValue({
         isAuthenticated: true,
         userId: 'test-user',
         email: 'test@example.com',
       });
 
-      mockAuth.getAuthToken.mockResolvedValue('mock-token');
+      mockAuthGetToken.mockResolvedValue('mock-token');
 
       (global.fetch as jest.Mock).mockResolvedValue({
         ok: true,
         json: async () => mockResponse,
       });
 
-      mockStorage.get.mockResolvedValue({ boltProjects: [] });
-      mockStorage.set.mockResolvedValue(undefined);
+      mockStorageGet.mockResolvedValue({ boltProjects: [] });
+      mockStorageSet.mockResolvedValue(undefined);
 
       const result = await service.performOutwardSync();
 
       expect(result).toEqual(mockResponse);
-      expect(mockStorage.set).toHaveBeenCalledWith({
+      expect(mockStorageSet).toHaveBeenCalledWith({
         lastSyncTimestamp: expect.any(String),
       });
     });
@@ -253,7 +269,7 @@ describe('BoltProjectSyncService', () => {
 
   describe('shouldPerformInwardSync', () => {
     it('should return true when projects are empty', async () => {
-      mockStorage.get.mockResolvedValue({ boltProjects: [] });
+      mockStorageGet.mockResolvedValue({ boltProjects: [] });
 
       const result = await service.shouldPerformInwardSync();
 
@@ -261,7 +277,7 @@ describe('BoltProjectSyncService', () => {
     });
 
     it('should return true when only one project exists', async () => {
-      mockStorage.get.mockResolvedValue({
+      mockStorageGet.mockResolvedValue({
         boltProjects: [
           {
             id: 'project-1',
@@ -280,7 +296,7 @@ describe('BoltProjectSyncService', () => {
     });
 
     it('should return false when multiple projects exist', async () => {
-      mockStorage.get.mockResolvedValue({
+      mockStorageGet.mockResolvedValue({
         boltProjects: [
           {
             id: 'project-1',
@@ -310,7 +326,7 @@ describe('BoltProjectSyncService', () => {
   describe('performInwardSync', () => {
     it('should only sync if conditions are met', async () => {
       // Multiple projects exist - should not sync
-      mockStorage.get.mockResolvedValue({
+      mockStorageGet.mockResolvedValue({
         boltProjects: [
           {
             id: '1',
@@ -357,15 +373,15 @@ describe('BoltProjectSyncService', () => {
         deletedProjectIds: [],
       };
 
-      mockAuth.getAuthState.mockReturnValue({
+      mockAuthGetState.mockReturnValue({
         isAuthenticated: true,
         userId: 'test-user',
         email: 'test@example.com',
       });
 
-      mockAuth.getAuthToken.mockResolvedValue('mock-token');
+      mockAuthGetToken.mockResolvedValue('mock-token');
 
-      mockStorage.get.mockResolvedValue({ boltProjects: [] });
+      mockStorageGet.mockResolvedValue({ boltProjects: [] });
 
       (global.fetch as jest.Mock).mockResolvedValue({
         ok: true,
@@ -375,7 +391,7 @@ describe('BoltProjectSyncService', () => {
       const result = await service.performInwardSync();
 
       expect(result).toEqual(mockResponse);
-      expect(mockStorage.set).toHaveBeenCalledWith({
+      expect(mockStorageSet).toHaveBeenCalledWith({
         boltProjects: mockResponse.updatedProjects,
       });
     });
@@ -384,7 +400,7 @@ describe('BoltProjectSyncService', () => {
   describe('getLastSyncTimestamp', () => {
     it('should retrieve last sync timestamp from storage', async () => {
       const timestamp = '2024-01-01T00:00:00Z';
-      mockStorage.get.mockResolvedValue({ lastSyncTimestamp: timestamp });
+      mockStorageGet.mockResolvedValue({ lastSyncTimestamp: timestamp });
 
       const result = await service.getLastSyncTimestamp();
 
@@ -392,7 +408,7 @@ describe('BoltProjectSyncService', () => {
     });
 
     it('should return null if no timestamp stored', async () => {
-      mockStorage.get.mockResolvedValue({ lastSyncTimestamp: null });
+      mockStorageGet.mockResolvedValue({ lastSyncTimestamp: null });
 
       const result = await service.getLastSyncTimestamp();
 
@@ -403,11 +419,11 @@ describe('BoltProjectSyncService', () => {
   describe('setLastSyncTimestamp', () => {
     it('should save timestamp to storage', async () => {
       const timestamp = '2024-01-01T00:00:00Z';
-      mockStorage.set.mockResolvedValue(undefined);
+      mockStorageSet.mockResolvedValue(undefined);
 
       await service.setLastSyncTimestamp(timestamp);
 
-      expect(mockStorage.set).toHaveBeenCalledWith({ lastSyncTimestamp: timestamp });
+      expect(mockStorageSet).toHaveBeenCalledWith({ lastSyncTimestamp: timestamp });
     });
   });
 });
