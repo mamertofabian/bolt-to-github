@@ -50,7 +50,7 @@ describe('BoltProjectSyncService', () => {
           get: jest.fn().mockResolvedValue({ supabaseToken: 'mock.auth.token' }),
         },
       },
-    } as Partial<typeof chrome> as typeof chrome;
+    } as unknown as typeof chrome;
 
     service = new BoltProjectSyncService();
   });
@@ -611,12 +611,12 @@ describe('BoltProjectSyncService', () => {
           githubToken: 'test-token',
           repoOwner: 'test-owner',
           projectSettings: expect.objectContaining({
-            'project-1': {
+            'bolt-1': {
               repoName: 'test-repo-1',
               branch: 'main',
               projectTitle: 'test-project-1', // Uses project_name from BoltProject
             },
-            'project-2': {
+            'bolt-2': {
               repoName: 'test-repo-2',
               branch: 'develop',
               projectTitle: 'test-project-2', // Uses project_name from BoltProject
@@ -888,6 +888,7 @@ describe('BoltProjectSyncService', () => {
           {
             id: 'project-1',
             bolt_project_id: 'bolt-1',
+            project_name: 'test-project-1',
             github_repo_name: 'test-repo-1',
             is_private: false,
             repoName: 'test-repo-1',
@@ -896,6 +897,7 @@ describe('BoltProjectSyncService', () => {
           {
             id: 'project-2',
             bolt_project_id: 'bolt-2',
+            project_name: 'test-project-2',
             github_repo_name: 'test-repo-2',
             is_private: false,
             repoName: 'test-repo-2',
@@ -985,6 +987,7 @@ describe('BoltProjectSyncService', () => {
           {
             id: 'project-1',
             bolt_project_id: 'bolt-1',
+            project_name: 'synced-project',
             github_repo_name: 'synced-repo',
             github_repo_owner: 'test-user',
             is_private: false,

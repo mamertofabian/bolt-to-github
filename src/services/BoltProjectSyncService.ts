@@ -514,10 +514,11 @@ export class BoltProjectSyncService {
 
       // Convert bolt projects back to project settings format
       for (const boltProject of boltProjects) {
-        updatedProjectSettings[boltProject.id] = {
-          repoName: boltProject.github_repo_name || boltProject.repoName || boltProject.id,
+        updatedProjectSettings[boltProject.bolt_project_id] = {
+          repoName:
+            boltProject.github_repo_name || boltProject.repoName || boltProject.bolt_project_id,
           branch: boltProject.github_branch || boltProject.branch || 'main',
-          projectTitle: boltProject.project_name || boltProject.id,
+          projectTitle: boltProject.project_name || boltProject.bolt_project_id,
         };
       }
 
