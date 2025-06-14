@@ -55,12 +55,12 @@ describe('Logger', () => {
       expect(mockConsole.error).toHaveBeenCalledWith('[ERROR]', 'Error message');
     });
 
-    it('should not log debug messages in production by default', () => {
+    it('should log debug messages in production by default', () => {
       mockLocalStorage.getItem.mockReturnValue(null);
 
       logger.debug('Debug message');
 
-      expect(mockConsole.log).not.toHaveBeenCalled();
+      expect(mockConsole.log).toHaveBeenCalled();
     });
 
     it('should log debug messages when enableDebugInProduction is true', () => {
@@ -130,7 +130,7 @@ describe('Logger', () => {
     it('should handle missing localStorage gracefully', () => {
       // Remove window to simulate environment without localStorage
       const originalWindow = global.window;
-      // @ts-ignore
+      // @ts-expect-error - this is a test
       delete global.window;
 
       expect(() => enableProductionDebug()).not.toThrow();

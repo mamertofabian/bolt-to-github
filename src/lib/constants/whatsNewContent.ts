@@ -6,6 +6,12 @@ export interface WhatsNewVersion {
 }
 
 export const whatsNewContent: Record<string, WhatsNewVersion> = {
+  '1.3.6': {
+    date: '2025-06-14',
+    highlights: ['🔄 Project Sync - Your Bolt projects now sync automatically across devices'],
+    details: `Never lose your Bolt projects mapping to GitHub repositories again! Your projects now sync automatically between devices and browsers.`,
+    type: 'minor',
+  },
   '1.3.5': {
     date: '2025-06-13',
     highlights: [

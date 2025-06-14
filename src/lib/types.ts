@@ -21,7 +21,8 @@ export type MessageType =
   | 'HEARTBEAT'
   | 'HEARTBEAT_RESPONSE'
   | 'GITHUB_APP_SYNCED'
-  | 'SUBSCRIPTION_UPGRADED';
+  | 'SUBSCRIPTION_UPGRADED'
+  | 'SYNC_BOLT_PROJECTS';
 
 export interface Message {
   type: MessageType;
@@ -152,4 +153,54 @@ export interface ErrorLogEntry {
 export interface TelemetrySettings {
   enabled: boolean;
   anonymousId?: string;
+}
+
+/**
+ * Extended interface for Bolt projects with sync metadata
+ * Matches backend ExtensionProject schema
+ */
+export interface BoltProject extends ProjectSetting {
+  // Local extension fields
+  id: string;
+
+  // Backend schema fields (from ExtensionProject interface)
+  bolt_project_id: string;
+  project_name: string; // Required by backend
+  project_description?: string;
+  github_repo_owner?: string;
+  github_repo_name?: string;
+  github_branch?: string; // Backend uses github_branch, not branch
+  github_repo_url?: string;
+  is_private?: boolean;
+  last_modified?: string;
+
+  // Local sync metadata (not sent to backend)
+  version?: number;
+  sync_status?: 'pending' | 'synced' | 'error';
+}
+
+/**
+ * Interface for sync request to backend
+ */
+export interface SyncRequest {
+  localProjects: BoltProject[];
+  lastSyncTimestamp?: string;
+  conflictResolution?: 'auto-resolve' | 'keep-local' | 'keep-remote';
+}
+
+/**
+ * Interface for sync response from backend
+ */
+export interface SyncResponse {
+  success: boolean;
+  updatedProjects: BoltProject[];
+  conflicts: Array<{
+    project: BoltProject;
+    error?: string;
+    dbProject?: BoltProject;
+    conflict?: string;
+    message?: string;
+  }>;
+  deletedProjects: string[];
+  error?: string;
 }

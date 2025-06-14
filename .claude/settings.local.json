@@ -29,7 +29,8 @@
       "Bash(npx tsc:*)",
       "Bash(gh auth:*)",
       "Bash(cat:*)",
-      "Bash(npx eslint:*)"
+      "Bash(npx eslint:*)",
+      "Bash(gh label create:*)"
     ],
     "deny": []
   }
