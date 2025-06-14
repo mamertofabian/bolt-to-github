@@ -1,4 +1,4 @@
-import type { GitHubSettingsInterface, ProjectSettings } from '../types';
+import type { GitHubSettingsInterface, ProjectSettings, BoltProject } from '../types';
 import type { PushStatistics } from '../types';
 import { createLogger } from '../utils/logger';
 
@@ -599,6 +599,141 @@ export class ChromeStorageService {
       ]);
     } catch (error) {
       logger.error('Error resetting migration prompt status:', error);
+      throw error;
+    }
+  }
+
+  // ========================================
+  // Instance Methods for Generic Storage
+  // ========================================
+
+  /**
+   * Generic get method for chrome.storage.local
+   */
+  async get(key: string): Promise<any> {
+    return new Promise((resolve, reject) => {
+      chrome.storage.local.get([key], (result) => {
+        if (chrome.runtime.lastError) {
+          reject(new Error(chrome.runtime.lastError.message));
+        } else {
+          resolve(result);
+        }
+      });
+    });
+  }
+
+  /**
+   * Generic set method for chrome.storage.local
+   */
+  async set(data: Record<string, any>): Promise<void> {
+    return new Promise((resolve, reject) => {
+      chrome.storage.local.set(data, () => {
+        if (chrome.runtime.lastError) {
+          reject(new Error(chrome.runtime.lastError.message));
+        } else {
+          resolve();
+        }
+      });
+    });
+  }
+
+  // ========================================
+  // BoltProject Management
+  // ========================================
+
+  /**
+   * Get all bolt projects from storage
+   */
+  async getBoltProjects(): Promise<BoltProject[]> {
+    try {
+      const result = await this.get('boltProjects');
+      return result.boltProjects || [];
+    } catch (error) {
+      logger.error('Error getting bolt projects:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Save bolt projects to storage
+   */
+  async saveBoltProjects(projects: BoltProject[]): Promise<void> {
+    try {
+      await this.set({ boltProjects: projects });
+    } catch (error) {
+      logger.error('Error saving bolt projects:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Get a specific bolt project by id
+   */
+  async getBoltProject(id: string): Promise<BoltProject | null> {
+    try {
+      const projects = await this.getBoltProjects();
+      return projects.find((p) => p.id === id) || null;
+    } catch (error) {
+      logger.error(`Error getting bolt project ${id}:`, error);
+      throw error;
+    }
+  }
+
+  /**
+   * Update a specific bolt project
+   */
+  async updateBoltProject(id: string, updates: Partial<BoltProject>): Promise<void> {
+    try {
+      const projects = await this.getBoltProjects();
+      const index = projects.findIndex((p) => p.id === id);
+
+      if (index === -1) {
+        throw new Error(`Project with id ${id} not found`);
+      }
+
+      projects[index] = { ...projects[index], ...updates };
+      await this.saveBoltProjects(projects);
+    } catch (error) {
+      logger.error(`Error updating bolt project ${id}:`, error);
+      throw error;
+    }
+  }
+
+  /**
+   * Delete a bolt project by id
+   */
+  async deleteBoltProject(id: string): Promise<void> {
+    try {
+      const projects = await this.getBoltProjects();
+      const filteredProjects = projects.filter((p) => p.id !== id);
+      await this.saveBoltProjects(filteredProjects);
+    } catch (error) {
+      logger.error(`Error deleting bolt project ${id}:`, error);
+      throw error;
+    }
+  }
+
+  /**
+   * Get last sync timestamp
+   */
+  async getLastSyncTimestamp(): Promise<string | null> {
+    try {
+      const result = await this.get('lastSyncTimestamp');
+      return result.lastSyncTimestamp || null;
+    } catch (error) {
+      logger.error('Error getting last sync timestamp:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Set last sync timestamp
+   */
+  async setLastSyncTimestamp(timestamp: string): Promise<void> {
+    try {
+      await this.set({ lastSyncTimestamp: timestamp });
+    } catch (error) {
+      logger.error('Error setting last sync timestamp:', error);
       throw error;
     }
   }
