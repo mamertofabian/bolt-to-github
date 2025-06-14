@@ -90,13 +90,20 @@ export class BoltProjectSyncService {
           const data = result[key];
 
           if (data) {
+            let token: string | null = null;
+
             // Handle different token storage formats
             if (typeof data === 'string') {
-              return data;
+              token = data;
             } else if (data.access_token) {
-              return data.access_token;
+              token = data.access_token;
             } else if (data.session?.access_token) {
-              return data.session.access_token;
+              token = data.session.access_token;
+            }
+
+            // Validate token format (basic JWT check)
+            if (token && token.split('.').length === 3) {
+              return token;
             }
           }
         } catch (error) {

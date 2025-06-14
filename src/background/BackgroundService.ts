@@ -1309,30 +1309,37 @@ export class BackgroundService {
    * Handle sync alarm
    */
   private async handleSyncAlarm(): Promise<void> {
-    try {
-      logger.info('⏰ Sync alarm fired, performing periodic sync operation...');
+    logger.info('⏰ Sync alarm fired, performing periodic sync operation...');
 
-      // Perform outward sync first (extension → server)
+    let outwardResult = null;
+    let inwardResult = null;
+
+    // Perform outward sync first (extension → server)
+    try {
       logger.debug('🔄 Starting outward sync phase...');
-      const outwardResult = await this.syncService.performOutwardSync();
+      outwardResult = await this.syncService.performOutwardSync();
       logger.debug('📤 Outward sync phase completed', {
         result: outwardResult ? 'success' : 'skipped',
       });
+    } catch (error) {
+      logger.error('💥 Outward sync phase failed:', error);
+    }
 
-      // Perform inward sync second (server → extension)
+    // Perform inward sync second (server → extension)
+    try {
       logger.debug('🔄 Starting inward sync phase...');
-      const inwardResult = await this.syncService.performInwardSync();
+      inwardResult = await this.syncService.performInwardSync();
       logger.debug('📥 Inward sync phase completed', {
         result: inwardResult ? 'success' : 'skipped',
       });
-
-      logger.info('✅ Periodic sync operation completed successfully', {
-        outwardSyncPerformed: !!outwardResult,
-        inwardSyncPerformed: !!inwardResult,
-      });
     } catch (error) {
-      logger.error('💥 Periodic sync operation failed:', error);
+      logger.error('💥 Inward sync phase failed:', error);
     }
+
+    logger.info('✅ Periodic sync operation completed', {
+      outwardSyncPerformed: !!outwardResult,
+      inwardSyncPerformed: !!inwardResult,
+    });
   }
 
   /**

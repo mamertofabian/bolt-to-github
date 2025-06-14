@@ -27,12 +27,12 @@ describe('BoltProjectSyncService', () => {
     ChromeStorageService.prototype.set = mockStorageSet;
 
     // Setup static ChromeStorageService methods
-    (ChromeStorageService.getGitHubSettings as jest.Mock) = jest.fn().mockResolvedValue({
+    jest.mocked(ChromeStorageService.getGitHubSettings).mockResolvedValue({
       githubToken: '',
       repoOwner: '',
       projectSettings: {},
     });
-    (ChromeStorageService.saveGitHubSettings as jest.Mock) = jest.fn().mockResolvedValue(undefined);
+    jest.mocked(ChromeStorageService.saveGitHubSettings).mockResolvedValue(undefined);
 
     // Setup SupabaseAuthService mock
     mockAuthGetToken = jest.fn();
@@ -47,10 +47,10 @@ describe('BoltProjectSyncService', () => {
     global.chrome = {
       storage: {
         local: {
-          get: jest.fn().mockResolvedValue({ supabaseToken: 'mock-auth-token' }),
+          get: jest.fn().mockResolvedValue({ supabaseToken: 'mock.auth.token' }),
         },
       },
-    } as any;
+    } as Partial<typeof chrome> as typeof chrome;
 
     service = new BoltProjectSyncService();
   });
@@ -119,7 +119,7 @@ describe('BoltProjectSyncService', () => {
   });
 
   describe('syncWithBackend', () => {
-    const mockToken = 'mock-auth-token';
+    const mockToken = 'mock.auth.token';
     const mockProjects: BoltProject[] = [
       {
         id: 'project-1',
@@ -270,7 +270,7 @@ describe('BoltProjectSyncService', () => {
       mockStorageGet.mockResolvedValue({ boltProjects: [] });
 
       // Setup: Legacy projects exist
-      (ChromeStorageService.getGitHubSettings as jest.Mock).mockResolvedValue({
+      jest.mocked(ChromeStorageService.getGitHubSettings).mockResolvedValue({
         githubToken: 'test-token',
         repoOwner: 'test-owner',
         projectSettings: {
@@ -425,7 +425,7 @@ describe('BoltProjectSyncService', () => {
       });
 
       // Setup: Legacy projects exist (should be ignored)
-      (ChromeStorageService.getGitHubSettings as jest.Mock).mockResolvedValue({
+      jest.mocked(ChromeStorageService.getGitHubSettings).mockResolvedValue({
         githubToken: 'test-token',
         repoOwner: 'test-owner',
         projectSettings: {
@@ -489,9 +489,9 @@ describe('BoltProjectSyncService', () => {
       mockStorageGet.mockResolvedValue({ boltProjects: [] });
 
       // Setup: ChromeStorageService.getGitHubSettings throws
-      (ChromeStorageService.getGitHubSettings as jest.Mock).mockRejectedValue(
-        new Error('Storage error')
-      );
+      jest
+        .mocked(ChromeStorageService.getGitHubSettings)
+        .mockRejectedValue(new Error('Storage error'));
 
       mockAuthGetState.mockReturnValue({
         isAuthenticated: true,
@@ -556,7 +556,7 @@ describe('BoltProjectSyncService', () => {
       mockStorageGet.mockResolvedValue({ boltProjects: mockBoltProjects });
 
       // Setup: Current active storage
-      (ChromeStorageService.getGitHubSettings as jest.Mock).mockResolvedValue({
+      jest.mocked(ChromeStorageService.getGitHubSettings).mockResolvedValue({
         githubToken: 'test-token',
         repoOwner: 'test-owner',
         projectSettings: {
@@ -568,7 +568,9 @@ describe('BoltProjectSyncService', () => {
       });
 
       const mockSaveGitHubSettings = jest.fn();
-      (ChromeStorageService.saveGitHubSettings as jest.Mock) = mockSaveGitHubSettings;
+      jest
+        .mocked(ChromeStorageService.saveGitHubSettings)
+        .mockImplementation(mockSaveGitHubSettings);
 
       // Trigger sync back by calling performInwardSync
       mockAuthGetState.mockReturnValue({
@@ -645,9 +647,9 @@ describe('BoltProjectSyncService', () => {
       });
 
       // Setup: ChromeStorageService.getGitHubSettings throws
-      (ChromeStorageService.getGitHubSettings as jest.Mock).mockRejectedValue(
-        new Error('Storage error')
-      );
+      jest
+        .mocked(ChromeStorageService.getGitHubSettings)
+        .mockRejectedValue(new Error('Storage error'));
 
       mockAuthGetState.mockReturnValue({
         isAuthenticated: true,
@@ -716,7 +718,9 @@ describe('BoltProjectSyncService', () => {
       });
 
       const mockSaveGitHubSettings = jest.fn();
-      (ChromeStorageService.saveGitHubSettings as jest.Mock) = mockSaveGitHubSettings;
+      jest
+        .mocked(ChromeStorageService.saveGitHubSettings)
+        .mockImplementation(mockSaveGitHubSettings);
 
       // Mock shouldPerformInwardSync to return true
       const spyShouldPerformInwardSync = jest.spyOn(service, 'shouldPerformInwardSync');
@@ -910,7 +914,7 @@ describe('BoltProjectSyncService', () => {
       mockStorageGet.mockResolvedValue({ boltProjects: [] });
 
       // Mock existing project settings in current format
-      (ChromeStorageService.getGitHubSettings as jest.Mock).mockResolvedValue({
+      jest.mocked(ChromeStorageService.getGitHubSettings).mockResolvedValue({
         githubToken: 'test-token',
         repoOwner: 'test-owner',
         projectSettings: {
@@ -932,7 +936,7 @@ describe('BoltProjectSyncService', () => {
       mockStorageGet.mockResolvedValue({ boltProjects: [] });
 
       // No existing projects in current format
-      (ChromeStorageService.getGitHubSettings as jest.Mock).mockResolvedValue({
+      jest.mocked(ChromeStorageService.getGitHubSettings).mockResolvedValue({
         githubToken: 'test-token',
         repoOwner: 'test-owner',
         projectSettings: {},
