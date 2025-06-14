@@ -308,11 +308,76 @@ export class BoltProjectSyncService {
   }
 
   /**
+   * Migrate existing projects from old storage format to new sync format
+   * This bridges the gap between projectSettings and boltProjects
+   */
+  private async migrateExistingProjects(): Promise<void> {
+    try {
+      // Check if we already have projects in the new format
+      const existingBoltProjects = await this.getLocalProjects();
+      if (existingBoltProjects.length > 0) {
+        logger.debug('🔄 Sync format already has projects, skipping migration', {
+          existingCount: existingBoltProjects.length,
+        });
+        return;
+      }
+
+      // Check for projects in the old format
+      const gitHubSettings = await ChromeStorageService.getGitHubSettings();
+      const legacyProjects = gitHubSettings.projectSettings || {};
+      const legacyProjectIds = Object.keys(legacyProjects);
+
+      if (legacyProjectIds.length === 0) {
+        logger.debug('🔄 No legacy projects found, migration not needed');
+        return;
+      }
+
+      logger.info('🔄 Migrating legacy projects to sync format', {
+        legacyProjectCount: legacyProjectIds.length,
+        legacyProjectIds,
+      });
+
+      // Convert legacy projects to new format
+      const migratedProjects: BoltProject[] = legacyProjectIds.map((projectId) => {
+        const legacyProject = legacyProjects[projectId];
+
+        // Create a new BoltProject from the legacy ProjectSetting
+        return {
+          id: projectId, // Use the project ID as the ID
+          bolt_project_id: projectId, // Same for bolt project ID
+          github_repo_name: legacyProject.repoName || projectId,
+          github_repo_owner: gitHubSettings.repoOwner || undefined,
+          is_private: false, // Default assumption
+          repoName: legacyProject.repoName || projectId, // Keep for compatibility
+          branch: legacyProject.branch || 'main', // Keep for compatibility
+          last_modified: new Date().toISOString(),
+          version: 1,
+          sync_status: 'pending',
+        };
+      });
+
+      // Save migrated projects to new format
+      await this.saveLocalProjects(migratedProjects);
+
+      logger.info('✅ Successfully migrated legacy projects to sync format', {
+        migratedCount: migratedProjects.length,
+        migratedProjectIds: migratedProjects.map((p) => p.id),
+      });
+    } catch (error) {
+      logger.error('💥 Failed to migrate existing projects', { error });
+      // Don't throw - migration failure shouldn't block sync
+    }
+  }
+
+  /**
    * Perform outward sync (extension to server)
    * Only syncs if user is authenticated
    */
   async performOutwardSync(): Promise<SyncResponse | null> {
     logger.info('🔄 Starting outward sync operation');
+
+    // First, migrate existing projects if needed
+    await this.migrateExistingProjects();
 
     const localProjects = await this.getLocalProjects();
     logger.debug('📦 Local projects state', {

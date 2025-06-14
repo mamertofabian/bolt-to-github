@@ -245,6 +245,199 @@ describe('BoltProjectSyncService', () => {
     });
   });
 
+  describe('migrateExistingProjects', () => {
+    it('should migrate legacy projects to sync format', async () => {
+      // Setup: No existing bolt projects
+      mockStorageGet.mockResolvedValue({ boltProjects: [] });
+
+      // Setup: Legacy projects exist
+      (ChromeStorageService.getGitHubSettings as jest.Mock).mockResolvedValue({
+        githubToken: 'test-token',
+        repoOwner: 'test-owner',
+        projectSettings: {
+          'github-5q8boznj': {
+            repoName: 'github-5q8boznj',
+            branch: 'main',
+            projectTitle: 'github-5q8boznj',
+          },
+          'project-2': {
+            repoName: 'my-project',
+            branch: 'develop',
+          },
+        },
+      });
+
+      // Trigger migration by calling performOutwardSync
+      mockAuthGetState.mockReturnValue({
+        isAuthenticated: true,
+        user: {
+          id: 'test-user',
+          email: 'test@example.com',
+          created_at: '2024-01-01T00:00:00Z',
+          updated_at: '2024-01-01T00:00:00Z',
+        },
+        subscription: {
+          isActive: false,
+          plan: 'free',
+        },
+      });
+
+      const mockResponse: SyncResponse = {
+        success: true,
+        updatedProjects: [],
+        conflicts: [],
+        deletedProjectIds: [],
+      };
+
+      (global.fetch as jest.Mock).mockResolvedValue({
+        ok: true,
+        json: () => Promise.resolve(mockResponse),
+      });
+
+      await service.performOutwardSync();
+
+      // Verify migration occurred - saveLocalProjects should be called with migrated data
+      expect(mockStorageSet).toHaveBeenCalledWith(
+        expect.objectContaining({
+          boltProjects: expect.arrayContaining([
+            expect.objectContaining({
+              id: 'github-5q8boznj',
+              bolt_project_id: 'github-5q8boznj',
+              github_repo_name: 'github-5q8boznj',
+              github_repo_owner: 'test-owner',
+              is_private: false,
+              repoName: 'github-5q8boznj',
+              branch: 'main',
+              sync_status: 'pending',
+            }),
+            expect.objectContaining({
+              id: 'project-2',
+              bolt_project_id: 'project-2',
+              github_repo_name: 'my-project',
+              github_repo_owner: 'test-owner',
+              is_private: false,
+              repoName: 'my-project',
+              branch: 'develop',
+              sync_status: 'pending',
+            }),
+          ]),
+        })
+      );
+    });
+
+    it('should skip migration if sync format already has projects', async () => {
+      // Setup: Existing bolt projects
+      mockStorageGet.mockResolvedValue({
+        boltProjects: [
+          {
+            id: 'existing-project',
+            bolt_project_id: 'existing-project',
+            github_repo_name: 'existing-repo',
+            is_private: false,
+          },
+        ],
+      });
+
+      // Setup: Legacy projects exist (should be ignored)
+      (ChromeStorageService.getGitHubSettings as jest.Mock).mockResolvedValue({
+        githubToken: 'test-token',
+        repoOwner: 'test-owner',
+        projectSettings: {
+          'legacy-project': {
+            repoName: 'legacy-repo',
+            branch: 'main',
+          },
+        },
+      });
+
+      mockAuthGetState.mockReturnValue({
+        isAuthenticated: true,
+        user: {
+          id: 'test-user',
+          email: 'test@example.com',
+          created_at: '2024-01-01T00:00:00Z',
+          updated_at: '2024-01-01T00:00:00Z',
+        },
+        subscription: {
+          isActive: false,
+          plan: 'free',
+        },
+      });
+
+      const mockResponse: SyncResponse = {
+        success: true,
+        updatedProjects: [],
+        conflicts: [],
+        deletedProjectIds: [],
+      };
+
+      (global.fetch as jest.Mock).mockResolvedValue({
+        ok: true,
+        json: () => Promise.resolve(mockResponse),
+      });
+
+      await service.performOutwardSync();
+
+      // Verify migration was skipped - no migration-specific storage save should happen
+      // The calls should be for timestamp save only, not migration data
+      expect(mockStorageSet).toHaveBeenCalledWith(
+        expect.objectContaining({
+          lastSyncTimestamp: expect.any(String),
+        })
+      );
+
+      // Verify no migration data was saved
+      expect(mockStorageSet).not.toHaveBeenCalledWith(
+        expect.objectContaining({
+          boltProjects: expect.arrayContaining([
+            expect.objectContaining({
+              id: 'legacy-project',
+            }),
+          ]),
+        })
+      );
+    });
+
+    it('should handle migration failure gracefully', async () => {
+      // Setup: No existing bolt projects
+      mockStorageGet.mockResolvedValue({ boltProjects: [] });
+
+      // Setup: ChromeStorageService.getGitHubSettings throws
+      (ChromeStorageService.getGitHubSettings as jest.Mock).mockRejectedValue(
+        new Error('Storage error')
+      );
+
+      mockAuthGetState.mockReturnValue({
+        isAuthenticated: true,
+        user: {
+          id: 'test-user',
+          email: 'test@example.com',
+          created_at: '2024-01-01T00:00:00Z',
+          updated_at: '2024-01-01T00:00:00Z',
+        },
+        subscription: {
+          isActive: false,
+          plan: 'free',
+        },
+      });
+
+      const mockResponse: SyncResponse = {
+        success: true,
+        updatedProjects: [],
+        conflicts: [],
+        deletedProjectIds: [],
+      };
+
+      (global.fetch as jest.Mock).mockResolvedValue({
+        ok: true,
+        json: () => Promise.resolve(mockResponse),
+      });
+
+      // Should not throw - migration failure should be handled gracefully
+      await expect(service.performOutwardSync()).resolves.not.toThrow();
+    });
+  });
+
   describe('performOutwardSync', () => {
     it('should only sync if user is authenticated', async () => {
       mockAuthGetState.mockReturnValue({
