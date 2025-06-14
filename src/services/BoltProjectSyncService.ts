@@ -371,13 +371,6 @@ export class BoltProjectSyncService {
         return;
       }
 
-      if (existingBoltProjects.length > 0) {
-        logger.debug('🔄 Sync format already has complete projects, skipping migration', {
-          existingCount: existingBoltProjects.length,
-        });
-        return;
-      }
-
       // Check for projects in the old format
       const gitHubSettings = await ChromeStorageService.getGitHubSettings();
       const legacyProjects = gitHubSettings.projectSettings || {};
@@ -388,13 +381,27 @@ export class BoltProjectSyncService {
         return;
       }
 
+      // Check which legacy projects are not yet in boltProjects
+      const existingBoltProjectIds = new Set(existingBoltProjects.map((p) => p.bolt_project_id));
+      const unmigrated = legacyProjectIds.filter((id) => !existingBoltProjectIds.has(id));
+
+      if (unmigrated.length === 0) {
+        logger.debug('🔄 All legacy projects already migrated, no migration needed', {
+          existingBoltProjects: existingBoltProjects.length,
+          legacyProjects: legacyProjectIds.length,
+        });
+        return;
+      }
+
       logger.info('🔄 Migrating legacy projects to sync format', {
         legacyProjectCount: legacyProjectIds.length,
+        unmigratedProjectCount: unmigrated.length,
         legacyProjectIds,
+        unmigratedProjectIds: unmigrated,
       });
 
-      // Convert legacy projects to new format
-      const migratedProjects: BoltProject[] = legacyProjectIds.map((projectId) => {
+      // Convert unmigrated legacy projects to new format
+      const newlyMigratedProjects: BoltProject[] = unmigrated.map((projectId) => {
         const legacyProject = legacyProjects[projectId];
 
         // Create a new BoltProject from the legacy ProjectSetting
@@ -416,12 +423,17 @@ export class BoltProjectSyncService {
         };
       });
 
-      // Save migrated projects to new format
-      await this.saveLocalProjects(migratedProjects);
+      // Combine existing and newly migrated projects
+      const allBoltProjects = [...existingBoltProjects, ...newlyMigratedProjects];
+
+      // Save all projects to new format
+      await this.saveLocalProjects(allBoltProjects);
 
       logger.info('✅ Successfully migrated legacy projects to sync format', {
-        migratedCount: migratedProjects.length,
-        migratedProjectIds: migratedProjects.map((p) => p.id),
+        existingCount: existingBoltProjects.length,
+        newlyMigratedCount: newlyMigratedProjects.length,
+        totalCount: allBoltProjects.length,
+        newlyMigratedProjectIds: newlyMigratedProjects.map((p: BoltProject) => p.id),
       });
     } catch (error) {
       logger.error('💥 Failed to migrate existing projects', { error });

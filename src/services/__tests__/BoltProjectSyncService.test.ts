@@ -410,7 +410,7 @@ describe('BoltProjectSyncService', () => {
       );
     });
 
-    it('should skip migration if sync format already has complete projects', async () => {
+    it('should migrate unmigrated legacy projects when existing bolt projects exist', async () => {
       // Setup: Existing bolt projects
       mockStorageGet.mockResolvedValue({
         boltProjects: [
@@ -424,7 +424,7 @@ describe('BoltProjectSyncService', () => {
         ],
       });
 
-      // Setup: Legacy projects exist (should be ignored)
+      // Setup: Legacy projects exist (should be migrated if not already in boltProjects)
       jest.mocked(ChromeStorageService.getGitHubSettings).mockResolvedValue({
         githubToken: 'test-token',
         repoOwner: 'test-owner',
@@ -464,20 +464,17 @@ describe('BoltProjectSyncService', () => {
 
       await service.performOutwardSync();
 
-      // Verify migration was skipped - no migration-specific storage save should happen
-      // The calls should be for timestamp save only, not migration data
+      // Verify migration happened - both existing and legacy projects should be saved
       expect(mockStorageSet).toHaveBeenCalledWith(
-        expect.objectContaining({
-          lastSyncTimestamp: expect.any(String),
-        })
-      );
-
-      // Verify no migration data was saved
-      expect(mockStorageSet).not.toHaveBeenCalledWith(
         expect.objectContaining({
           boltProjects: expect.arrayContaining([
             expect.objectContaining({
+              id: 'existing-project',
+              bolt_project_id: 'existing-project',
+            }),
+            expect.objectContaining({
               id: 'legacy-project',
+              bolt_project_id: 'legacy-project',
             }),
           ]),
         })
