@@ -64,10 +64,12 @@ describe('BoltProjectSyncService', () => {
           project_name: 'test-project',
           github_repo_name: 'test-repo',
           github_repo_owner: 'test-user',
+          github_branch: 'main', // Backend field
           is_private: false,
+          last_modified: '2024-01-01T00:00:00Z',
+          // Local compatibility fields
           repoName: 'test-repo',
           branch: 'main',
-          last_modified: '2024-01-01T00:00:00Z',
           version: 1,
         },
       ];
@@ -98,10 +100,12 @@ describe('BoltProjectSyncService', () => {
           project_name: 'test-project',
           github_repo_name: 'test-repo',
           github_repo_owner: 'test-user',
+          github_branch: 'main', // Backend field
           is_private: false,
+          last_modified: '2024-01-01T00:00:00Z',
+          // Local compatibility fields
           repoName: 'test-repo',
           branch: 'main',
-          last_modified: '2024-01-01T00:00:00Z',
           version: 1,
         },
       ];
@@ -177,10 +181,21 @@ describe('BoltProjectSyncService', () => {
             'Content-Type': 'application/json',
           },
           body: JSON.stringify({
-            localProjects: mockProjects,
+            localProjects: [
+              {
+                // Only backend-compatible fields should be sent
+                bolt_project_id: 'bolt-1',
+                project_name: 'test-project',
+                github_repo_owner: 'test-user',
+                github_repo_name: 'test-repo',
+                is_private: false,
+                last_modified: '2024-01-01T00:00:00Z',
+                // Local fields should be excluded: id, repoName, branch, version
+              },
+            ],
             lastSyncTimestamp: '2024-01-01T00:00:00Z',
             conflictResolution: 'auto-resolve',
-          } as SyncRequest),
+          }),
         })
       );
 
@@ -519,7 +534,9 @@ describe('BoltProjectSyncService', () => {
           project_name: 'test-project-1',
           github_repo_name: 'test-repo-1',
           github_repo_owner: 'test-owner',
+          github_branch: 'main', // Backend field
           is_private: false,
+          // Local compatibility fields
           repoName: 'test-repo-1',
           branch: 'main',
         },
@@ -528,7 +545,9 @@ describe('BoltProjectSyncService', () => {
           bolt_project_id: 'bolt-2',
           project_name: 'test-project-2',
           github_repo_name: 'test-repo-2',
+          github_branch: 'develop', // Backend field
           is_private: true,
+          // Local compatibility fields
           repoName: 'test-repo-2',
           branch: 'develop',
         },
@@ -593,12 +612,12 @@ describe('BoltProjectSyncService', () => {
             'project-1': {
               repoName: 'test-repo-1',
               branch: 'main',
-              projectTitle: 'project-1',
+              projectTitle: 'test-project-1', // Uses project_name from BoltProject
             },
             'project-2': {
               repoName: 'test-repo-2',
               branch: 'develop',
-              projectTitle: 'project-2',
+              projectTitle: 'test-project-2', // Uses project_name from BoltProject
             },
             // Should preserve existing projects
             'old-project': {

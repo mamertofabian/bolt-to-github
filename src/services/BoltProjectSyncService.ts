@@ -113,6 +113,26 @@ export class BoltProjectSyncService {
   }
 
   /**
+   * Convert BoltProject to backend-compatible format
+   * Removes local-only fields and ensures compatibility with ExtensionProject schema
+   */
+  private prepareProjectForBackend(project: BoltProject): any {
+    // Only include fields that match the backend ExtensionProject schema
+    return {
+      bolt_project_id: project.bolt_project_id,
+      project_name: project.project_name,
+      project_description: project.project_description,
+      github_repo_owner: project.github_repo_owner,
+      github_repo_name: project.github_repo_name,
+      github_branch: project.github_branch,
+      github_repo_url: project.github_repo_url,
+      is_private: project.is_private,
+      last_modified: project.last_modified,
+      // Exclude local-only fields: id, repoName, branch, version, sync_status
+    };
+  }
+
+  /**
    * Sync projects with backend
    */
   async syncWithBackend(
@@ -129,15 +149,19 @@ export class BoltProjectSyncService {
     const localProjects = await this.getLocalProjects();
     const lastSyncTimestamp = await this.getLastSyncTimestamp();
 
+    // Prepare projects for backend (remove local-only fields)
+    const backendProjects = localProjects.map((project) => this.prepareProjectForBackend(project));
+
     logger.debug('📋 Preparing sync request', {
       localProjectCount: localProjects.length,
       localProjectIds: localProjects.map((p) => p.id),
       lastSyncTimestamp: lastSyncTimestamp || 'none',
       conflictResolution,
+      backendProjectSample: backendProjects[0] || 'none',
     });
 
     const syncRequest: SyncRequest = {
-      localProjects,
+      localProjects: backendProjects,
       lastSyncTimestamp: lastSyncTimestamp || undefined,
       conflictResolution,
     };
@@ -368,15 +392,18 @@ export class BoltProjectSyncService {
 
         // Create a new BoltProject from the legacy ProjectSetting
         return {
-          id: projectId, // Use the project ID as the ID
-          bolt_project_id: projectId, // Same for bolt project ID
-          project_name: legacyProject.projectTitle || projectId, // Required by backend
-          github_repo_name: legacyProject.repoName || projectId,
-          github_repo_owner: gitHubSettings.repoOwner || undefined,
-          is_private: false, // Default assumption
-          repoName: legacyProject.repoName || projectId, // Keep for compatibility
-          branch: legacyProject.branch || 'main', // Keep for compatibility
-          last_modified: new Date().toISOString(),
+          id: projectId, // Local extension field
+          bolt_project_id: projectId, // Backend field
+          project_name: legacyProject.projectTitle || projectId, // Backend field
+          github_repo_name: legacyProject.repoName || projectId, // Backend field
+          github_repo_owner: gitHubSettings.repoOwner || undefined, // Backend field
+          github_branch: legacyProject.branch || 'main', // Backend field (was 'branch')
+          is_private: false, // Backend field - default assumption
+          last_modified: new Date().toISOString(), // Backend field
+          // Local compatibility fields (for ProjectSetting inheritance)
+          repoName: legacyProject.repoName || projectId,
+          branch: legacyProject.branch || 'main',
+          // Local sync metadata
           version: 1,
           sync_status: 'pending',
         };
@@ -481,9 +508,9 @@ export class BoltProjectSyncService {
       // Convert bolt projects back to project settings format
       for (const boltProject of boltProjects) {
         updatedProjectSettings[boltProject.id] = {
-          repoName: boltProject.github_repo_name,
-          branch: boltProject.branch || 'main',
-          projectTitle: boltProject.id, // Use ID as title if not available
+          repoName: boltProject.github_repo_name || boltProject.repoName || boltProject.id,
+          branch: boltProject.github_branch || boltProject.branch || 'main',
+          projectTitle: boltProject.project_name || boltProject.id,
         };
       }
 

@@ -157,16 +157,24 @@ export interface TelemetrySettings {
 
 /**
  * Extended interface for Bolt projects with sync metadata
+ * Matches backend ExtensionProject schema
  */
 export interface BoltProject extends ProjectSetting {
+  // Local extension fields
   id: string;
+
+  // Backend schema fields (from ExtensionProject interface)
   bolt_project_id: string;
   project_name: string; // Required by backend
-  github_repo_name: string;
+  project_description?: string;
   github_repo_owner?: string;
-  github_repo_description?: string;
-  is_private: boolean;
+  github_repo_name?: string;
+  github_branch?: string; // Backend uses github_branch, not branch
+  github_repo_url?: string;
+  is_private?: boolean;
   last_modified?: string;
+
+  // Local sync metadata (not sent to backend)
   version?: number;
   sync_status?: 'pending' | 'synced' | 'error';
 }
