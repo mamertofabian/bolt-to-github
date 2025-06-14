@@ -153,3 +153,44 @@ export interface TelemetrySettings {
   enabled: boolean;
   anonymousId?: string;
 }
+
+/**
+ * Extended interface for Bolt projects with sync metadata
+ */
+export interface BoltProject extends ProjectSetting {
+  id: string;
+  bolt_project_id: string;
+  github_repo_name: string;
+  github_repo_owner?: string;
+  github_repo_description?: string;
+  is_private: boolean;
+  last_modified?: string;
+  version?: number;
+  sync_status?: 'pending' | 'synced' | 'error';
+}
+
+/**
+ * Interface for sync request to backend
+ */
+export interface SyncRequest {
+  localProjects: BoltProject[];
+  lastSyncTimestamp?: string;
+  conflictResolution?: 'auto-resolve' | 'keep-local' | 'keep-remote';
+}
+
+/**
+ * Interface for sync response from backend
+ */
+export interface SyncResponse {
+  success: boolean;
+  updatedProjects: BoltProject[];
+  conflicts: Array<{
+    project: BoltProject;
+    error?: string;
+    dbProject?: BoltProject;
+    conflict?: string;
+    message?: string;
+  }>;
+  deletedProjectIds: string[];
+  error?: string;
+}
