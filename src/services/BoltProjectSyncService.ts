@@ -117,11 +117,36 @@ export class BoltProjectSyncService {
 
   /**
    * Check if inward sync should be performed
+   * Original behavior: sync if projects.length <= 1
+   * New behavior: also prevent sync if single project has existing GitHub repository
    */
   async shouldPerformInwardSync(): Promise<boolean> {
     const projects = await this.getLocalProjects();
-    // Sync from server if projects are empty or only contain current project
-    return projects.length <= 1;
+
+    // Original behavior: sync from server if no projects exist
+    if (projects.length === 0) {
+      return true;
+    }
+
+    // Original behavior: don't sync if multiple projects exist
+    if (projects.length > 1) {
+      return false;
+    }
+
+    // NEW: For single project, check if it has an existing GitHub repository
+    // If it has both repo name and owner, it's linked to GitHub - don't sync to protect it
+    const singleProject = projects[0];
+    const hasLinkedGitHubRepo = !!(
+      singleProject.github_repo_name && singleProject.github_repo_owner
+    );
+
+    if (hasLinkedGitHubRepo) {
+      // Don't perform inward sync to protect user's important project
+      return false;
+    }
+
+    // Original behavior: sync if single project has no GitHub repository
+    return true;
   }
 
   /**

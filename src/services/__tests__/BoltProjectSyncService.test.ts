@@ -276,13 +276,74 @@ describe('BoltProjectSyncService', () => {
       expect(result).toBe(true);
     });
 
-    it('should return true when only one project exists', async () => {
+    it('should return true when only one project exists without GitHub repo', async () => {
+      mockStorageGet.mockResolvedValue({
+        boltProjects: [
+          {
+            id: 'project-1',
+            bolt_project_id: 'bolt-1',
+            github_repo_name: '',
+            github_repo_owner: '',
+            is_private: false,
+            repoName: 'test-repo',
+            branch: 'main',
+          },
+        ],
+      });
+
+      const result = await service.shouldPerformInwardSync();
+
+      expect(result).toBe(true);
+    });
+
+    it('should return false when only one project exists with GitHub repo', async () => {
       mockStorageGet.mockResolvedValue({
         boltProjects: [
           {
             id: 'project-1',
             bolt_project_id: 'bolt-1',
             github_repo_name: 'test-repo',
+            github_repo_owner: 'test-user',
+            is_private: false,
+            repoName: 'test-repo',
+            branch: 'main',
+          },
+        ],
+      });
+
+      const result = await service.shouldPerformInwardSync();
+
+      expect(result).toBe(false);
+    });
+
+    it('should return false when only one project exists with partial GitHub repo info (repo name only)', async () => {
+      mockStorageGet.mockResolvedValue({
+        boltProjects: [
+          {
+            id: 'project-1',
+            bolt_project_id: 'bolt-1',
+            github_repo_name: 'test-repo',
+            github_repo_owner: '',
+            is_private: false,
+            repoName: 'test-repo',
+            branch: 'main',
+          },
+        ],
+      });
+
+      const result = await service.shouldPerformInwardSync();
+
+      expect(result).toBe(true);
+    });
+
+    it('should return false when only one project exists with partial GitHub repo info (owner only)', async () => {
+      mockStorageGet.mockResolvedValue({
+        boltProjects: [
+          {
+            id: 'project-1',
+            bolt_project_id: 'bolt-1',
+            github_repo_name: '',
+            github_repo_owner: 'test-user',
             is_private: false,
             repoName: 'test-repo',
             branch: 'main',
