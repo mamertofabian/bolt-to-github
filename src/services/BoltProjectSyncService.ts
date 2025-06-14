@@ -315,8 +315,33 @@ export class BoltProjectSyncService {
     try {
       // Check if we already have projects in the new format
       const existingBoltProjects = await this.getLocalProjects();
+
+      // Check if existing bolt projects need project_name field update
+      const incompleteProjects = existingBoltProjects.filter((project) => !project.project_name);
+      if (incompleteProjects.length > 0) {
+        logger.info('🔄 Updating existing bolt projects with missing project_name field', {
+          incompleteCount: incompleteProjects.length,
+          incompleteProjectIds: incompleteProjects.map((p) => p.id),
+        });
+
+        // Add project_name field to incomplete projects
+        const updatedProjects = existingBoltProjects.map((project) => {
+          if (!project.project_name) {
+            return {
+              ...project,
+              project_name: project.id, // Use ID as project name fallback
+            };
+          }
+          return project;
+        });
+
+        await this.saveLocalProjects(updatedProjects);
+        logger.info('✅ Successfully updated bolt projects with project_name field');
+        return;
+      }
+
       if (existingBoltProjects.length > 0) {
-        logger.debug('🔄 Sync format already has projects, skipping migration', {
+        logger.debug('🔄 Sync format already has complete projects, skipping migration', {
           existingCount: existingBoltProjects.length,
         });
         return;

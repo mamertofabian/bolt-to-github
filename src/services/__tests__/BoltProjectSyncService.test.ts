@@ -331,7 +331,71 @@ describe('BoltProjectSyncService', () => {
       );
     });
 
-    it('should skip migration if sync format already has projects', async () => {
+    it('should update existing bolt projects missing project_name field', async () => {
+      // Setup: Existing bolt projects without project_name field
+      const incompleteProject = {
+        id: 'incomplete-project',
+        bolt_project_id: 'incomplete-project',
+        // project_name is missing!
+        github_repo_name: 'incomplete-repo',
+        github_repo_owner: 'test-owner',
+        is_private: false,
+        repoName: 'incomplete-repo',
+        branch: 'main',
+      };
+
+      mockStorageGet.mockResolvedValue({
+        boltProjects: [incompleteProject],
+      });
+
+      mockAuthGetState.mockReturnValue({
+        isAuthenticated: true,
+        user: {
+          id: 'test-user',
+          email: 'test@example.com',
+          created_at: '2024-01-01T00:00:00Z',
+          updated_at: '2024-01-01T00:00:00Z',
+        },
+        subscription: {
+          isActive: false,
+          plan: 'free',
+        },
+      });
+
+      const mockResponse: SyncResponse = {
+        success: true,
+        updatedProjects: [],
+        conflicts: [],
+        deletedProjectIds: [],
+      };
+
+      (global.fetch as jest.Mock).mockResolvedValue({
+        ok: true,
+        json: () => Promise.resolve(mockResponse),
+      });
+
+      await service.performOutwardSync();
+
+      // Verify that saveLocalProjects was called to update the incomplete project
+      expect(mockStorageSet).toHaveBeenCalledWith(
+        expect.objectContaining({
+          boltProjects: expect.arrayContaining([
+            expect.objectContaining({
+              id: 'incomplete-project',
+              bolt_project_id: 'incomplete-project',
+              project_name: 'incomplete-project', // Should be added
+              github_repo_name: 'incomplete-repo',
+              github_repo_owner: 'test-owner',
+              is_private: false,
+              repoName: 'incomplete-repo',
+              branch: 'main',
+            }),
+          ]),
+        })
+      );
+    });
+
+    it('should skip migration if sync format already has complete projects', async () => {
       // Setup: Existing bolt projects
       mockStorageGet.mockResolvedValue({
         boltProjects: [
