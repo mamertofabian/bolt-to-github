@@ -161,6 +161,7 @@ export interface TelemetrySettings {
 export interface BoltProject extends ProjectSetting {
   id: string;
   bolt_project_id: string;
+  project_name: string; // Required by backend
   github_repo_name: string;
   github_repo_owner?: string;
   github_repo_description?: string;

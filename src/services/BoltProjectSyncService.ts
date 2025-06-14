@@ -345,6 +345,7 @@ export class BoltProjectSyncService {
         return {
           id: projectId, // Use the project ID as the ID
           bolt_project_id: projectId, // Same for bolt project ID
+          project_name: legacyProject.projectTitle || projectId, // Required by backend
           github_repo_name: legacyProject.repoName || projectId,
           github_repo_owner: gitHubSettings.repoOwner || undefined,
           is_private: false, // Default assumption

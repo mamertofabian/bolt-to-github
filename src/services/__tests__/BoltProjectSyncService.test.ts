@@ -61,6 +61,7 @@ describe('BoltProjectSyncService', () => {
         {
           id: 'project-1',
           bolt_project_id: 'bolt-1',
+          project_name: 'test-project',
           github_repo_name: 'test-repo',
           github_repo_owner: 'test-user',
           is_private: false,
@@ -94,6 +95,7 @@ describe('BoltProjectSyncService', () => {
         {
           id: 'project-1',
           bolt_project_id: 'bolt-1',
+          project_name: 'test-project',
           github_repo_name: 'test-repo',
           github_repo_owner: 'test-user',
           is_private: false,
@@ -118,6 +120,7 @@ describe('BoltProjectSyncService', () => {
       {
         id: 'project-1',
         bolt_project_id: 'bolt-1',
+        project_name: 'test-project',
         github_repo_name: 'test-repo',
         github_repo_owner: 'test-user',
         is_private: false,
@@ -304,6 +307,7 @@ describe('BoltProjectSyncService', () => {
             expect.objectContaining({
               id: 'github-5q8boznj',
               bolt_project_id: 'github-5q8boznj',
+              project_name: 'github-5q8boznj',
               github_repo_name: 'github-5q8boznj',
               github_repo_owner: 'test-owner',
               is_private: false,
@@ -314,6 +318,7 @@ describe('BoltProjectSyncService', () => {
             expect.objectContaining({
               id: 'project-2',
               bolt_project_id: 'project-2',
+              project_name: 'project-2',
               github_repo_name: 'my-project',
               github_repo_owner: 'test-owner',
               is_private: false,
@@ -333,6 +338,7 @@ describe('BoltProjectSyncService', () => {
           {
             id: 'existing-project',
             bolt_project_id: 'existing-project',
+            project_name: 'existing-project',
             github_repo_name: 'existing-repo',
             is_private: false,
           },
@@ -446,6 +452,7 @@ describe('BoltProjectSyncService', () => {
         {
           id: 'project-1',
           bolt_project_id: 'bolt-1',
+          project_name: 'test-project-1',
           github_repo_name: 'test-repo-1',
           github_repo_owner: 'test-owner',
           is_private: false,
@@ -455,6 +462,7 @@ describe('BoltProjectSyncService', () => {
         {
           id: 'project-2',
           bolt_project_id: 'bolt-2',
+          project_name: 'test-project-2',
           github_repo_name: 'test-repo-2',
           is_private: true,
           repoName: 'test-repo-2',
