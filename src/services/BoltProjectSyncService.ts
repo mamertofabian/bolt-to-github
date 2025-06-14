@@ -1,8 +1,10 @@
 import { ChromeStorageService } from '$lib/services/chromeStorage';
 import { SupabaseAuthService } from '../content/services/SupabaseAuthService';
 import { SUPABASE_CONFIG } from '$lib/constants/supabase';
-import { logger } from '$lib/utils/logger';
+import { createLogger } from '$lib/utils/logger';
 import type { BoltProject, SyncRequest, SyncResponse } from '$lib/types';
+
+const logger = createLogger('BoltProjectSyncService');
 
 export class BoltProjectSyncService {
   private storageService: ChromeStorageService;
