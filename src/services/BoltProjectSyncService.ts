@@ -143,7 +143,8 @@ export class BoltProjectSyncService {
    * Sync projects with backend
    */
   async syncWithBackend(
-    conflictResolution: 'auto-resolve' | 'keep-local' | 'keep-remote' = 'auto-resolve'
+    conflictResolution: 'auto-resolve' | 'keep-local' | 'keep-remote' = 'auto-resolve',
+    updateLocalStorage: boolean = true
   ): Promise<SyncResponse> {
     logger.info('🚀 Starting backend sync operation', { conflictResolution });
 
@@ -225,12 +226,21 @@ export class BoltProjectSyncService {
         });
       }
 
-      // Update local projects with server response
-      if (syncResponse.updatedProjects && syncResponse.updatedProjects.length > 0) {
+      // Update local projects with server response (if requested)
+      if (
+        updateLocalStorage &&
+        syncResponse.updatedProjects &&
+        syncResponse.updatedProjects.length > 0
+      ) {
         logger.debug('💾 Updating local projects with server response', {
           updatedProjectIds: syncResponse.updatedProjects.map((p) => p.id),
+          updateLocalStorage,
         });
         await this.saveLocalProjects(syncResponse.updatedProjects);
+      } else if (!updateLocalStorage) {
+        logger.debug('⏭️ Skipping local storage update (updateLocalStorage=false)', {
+          serverProjectCount: syncResponse.updatedProjects?.length || 0,
+        });
       }
 
       logger.info('✅ Backend sync completed successfully');
@@ -479,7 +489,7 @@ export class BoltProjectSyncService {
         isAuthenticated: authState.isAuthenticated,
         localProjectCount: localProjects.length,
       });
-      const result = await this.syncWithBackend();
+      const result = await this.syncWithBackend('auto-resolve', false);
 
       // Sync back to active storage format (reverse bridge)
       await this.syncBackToActiveStorage();
@@ -580,7 +590,7 @@ export class BoltProjectSyncService {
       logger.info('⬇️ Performing inward sync from server', {
         isAuthenticated: authState.isAuthenticated,
       });
-      const result = await this.syncWithBackend();
+      const result = await this.syncWithBackend('auto-resolve', true);
 
       // Sync back to active storage format (reverse bridge)
       await this.syncBackToActiveStorage();
