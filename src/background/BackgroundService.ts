@@ -1207,7 +1207,7 @@ export class BackgroundService {
           ? {
               updatedCount: result.updatedProjects.length,
               conflictCount: result.conflicts.length,
-              deletedCount: result.deletedProjectIds.length,
+              deletedCount: result.deletedProjects.length,
             }
           : 'skipped',
       });
@@ -1221,7 +1221,7 @@ export class BackgroundService {
             ? {
                 updatedCount: result.updatedProjects.length,
                 conflictCount: result.conflicts.length,
-                deletedCount: result.deletedProjectIds.length,
+                deletedCount: result.deletedProjects.length,
               }
             : {}),
         },

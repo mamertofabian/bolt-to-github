@@ -203,7 +203,7 @@ export class BoltProjectSyncService {
         success: syncResponse.success,
         updatedProjectCount: syncResponse.updatedProjects?.length || 0,
         conflictCount: syncResponse.conflicts?.length || 0,
-        deletedProjectCount: syncResponse.deletedProjectIds?.length || 0,
+        deletedProjectCount: syncResponse.deletedProjects?.length || 0,
         hasError: !!syncResponse.error,
       });
 
@@ -219,7 +219,7 @@ export class BoltProjectSyncService {
       }
 
       // Update local projects with server response
-      if (syncResponse.updatedProjects) {
+      if (syncResponse.updatedProjects && syncResponse.updatedProjects.length > 0) {
         logger.debug('💾 Updating local projects with server response', {
           updatedProjectIds: syncResponse.updatedProjects.map((p) => p.id),
         });
@@ -470,9 +470,9 @@ export class BoltProjectSyncService {
       await this.setLastSyncTimestamp(syncTimestamp);
 
       logger.info('🎉 Outward sync completed successfully', {
-        updatedCount: result.updatedProjects.length,
-        conflictCount: result.conflicts.length,
-        deletedCount: result.deletedProjectIds.length,
+        updatedCount: result.updatedProjects?.length || 0,
+        conflictCount: result.conflicts?.length || 0,
+        deletedCount: result.deletedProjects?.length || 0,
         syncTimestamp,
       });
 
@@ -570,9 +570,9 @@ export class BoltProjectSyncService {
       await this.setLastSyncTimestamp(syncTimestamp);
 
       logger.info('🎉 Inward sync completed successfully', {
-        projectCount: result.updatedProjects.length,
-        conflictCount: result.conflicts.length,
-        deletedCount: result.deletedProjectIds.length,
+        projectCount: result.updatedProjects?.length || 0,
+        conflictCount: result.conflicts?.length || 0,
+        deletedCount: result.deletedProjects?.length || 0,
         syncTimestamp,
       });
 

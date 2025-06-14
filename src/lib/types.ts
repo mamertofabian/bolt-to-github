@@ -201,6 +201,6 @@ export interface SyncResponse {
     conflict?: string;
     message?: string;
   }>;
-  deletedProjectIds: string[];
+  deletedProjects: string[];
   error?: string;
 }

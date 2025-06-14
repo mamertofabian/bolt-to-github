@@ -157,7 +157,7 @@ describe('BoltProjectSyncService', () => {
         success: true,
         updatedProjects: mockProjects,
         conflicts: [],
-        deletedProjectIds: [],
+        deletedProjects: [],
       };
 
       (global.fetch as jest.Mock).mockResolvedValue({
@@ -247,7 +247,7 @@ describe('BoltProjectSyncService', () => {
             message: 'Project version mismatch',
           },
         ],
-        deletedProjectIds: [],
+        deletedProjects: [],
       };
 
       (global.fetch as jest.Mock).mockResolvedValue({
@@ -305,7 +305,7 @@ describe('BoltProjectSyncService', () => {
         success: true,
         updatedProjects: [],
         conflicts: [],
-        deletedProjectIds: [],
+        deletedProjects: [],
       };
 
       (global.fetch as jest.Mock).mockResolvedValue({
@@ -381,7 +381,7 @@ describe('BoltProjectSyncService', () => {
         success: true,
         updatedProjects: [],
         conflicts: [],
-        deletedProjectIds: [],
+        deletedProjects: [],
       };
 
       (global.fetch as jest.Mock).mockResolvedValue({
@@ -454,7 +454,7 @@ describe('BoltProjectSyncService', () => {
         success: true,
         updatedProjects: [],
         conflicts: [],
-        deletedProjectIds: [],
+        deletedProjects: [],
       };
 
       (global.fetch as jest.Mock).mockResolvedValue({
@@ -511,7 +511,7 @@ describe('BoltProjectSyncService', () => {
         success: true,
         updatedProjects: [],
         conflicts: [],
-        deletedProjectIds: [],
+        deletedProjects: [],
       };
 
       (global.fetch as jest.Mock).mockResolvedValue({
@@ -589,7 +589,7 @@ describe('BoltProjectSyncService', () => {
         success: true,
         updatedProjects: [],
         conflicts: [],
-        deletedProjectIds: [],
+        deletedProjects: [],
       };
 
       (global.fetch as jest.Mock).mockResolvedValue({
@@ -667,7 +667,7 @@ describe('BoltProjectSyncService', () => {
         success: true,
         updatedProjects: [],
         conflicts: [],
-        deletedProjectIds: [],
+        deletedProjects: [],
       };
 
       (global.fetch as jest.Mock).mockResolvedValue({
@@ -707,7 +707,7 @@ describe('BoltProjectSyncService', () => {
         success: true,
         updatedProjects: [],
         conflicts: [],
-        deletedProjectIds: [],
+        deletedProjects: [],
       };
 
       (global.fetch as jest.Mock).mockResolvedValue({
@@ -753,7 +753,7 @@ describe('BoltProjectSyncService', () => {
         success: true,
         updatedProjects: [],
         conflicts: [],
-        deletedProjectIds: [],
+        deletedProjects: [],
       };
 
       mockAuthGetState.mockReturnValue({
@@ -991,7 +991,7 @@ describe('BoltProjectSyncService', () => {
           },
         ],
         conflicts: [],
-        deletedProjectIds: [],
+        deletedProjects: [],
       };
 
       mockAuthGetState.mockReturnValue({
