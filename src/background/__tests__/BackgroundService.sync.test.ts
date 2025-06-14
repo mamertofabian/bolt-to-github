@@ -256,6 +256,9 @@ describe('BackgroundService - Sync Functionality', () => {
       expect(sendResponse).toHaveBeenCalledWith({
         success: true,
         message: 'Sync completed',
+        result: {
+          syncPerformed: false,
+        },
       });
     });
 
