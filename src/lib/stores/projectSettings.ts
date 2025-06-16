@@ -155,7 +155,7 @@ export const projectSettingsActions = {
           // Clear project ID if not on a project page
           projectSettingsStore.update((state) => ({
             ...state,
-            projectId: null,
+            parsedProjectId: null,
           }));
         }
       }

@@ -430,8 +430,12 @@ export class BackgroundService {
           }
         }
       } else if (changeInfo.url) {
-        // Clear project association if navigating away from bolt.new
-        this.tabProjectMap.delete(tabId);
+        // Clear project association if navigating away from a project page
+        if (!changeInfo.url.includes('bolt.new/~/')) {
+          // Clear if navigating away from a project page (including bolt.new home)
+          this.tabProjectMap.delete(tabId);
+          logger.info(`🧹 Cleared project association for tab ${tabId}`);
+        }
       }
     });
   }
@@ -714,6 +718,19 @@ export class BackgroundService {
 
       if (!this.zipHandler) {
         throw new Error('Zip handler is not initialized.');
+      }
+
+      // Validate project ID against tab URL to prevent spoofing
+      if (currentProjectId && tabId) {
+        const tab = await chrome.tabs.get(tabId);
+        const tabProjectId = tab.url?.match(/bolt\.new\/~\/([^/]+)/)?.[1];
+        if (tabProjectId && tabProjectId !== currentProjectId) {
+          logger.warn(
+            `⚠️ Project ID mismatch! Tab URL has ${tabProjectId} but message has ${currentProjectId}`
+          );
+          // Use the tab's actual project ID for security
+          currentProjectId = tabProjectId;
+        }
       }
 
       // Always prefer the project ID from the current tab's URL

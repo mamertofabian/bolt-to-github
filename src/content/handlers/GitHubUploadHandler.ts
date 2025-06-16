@@ -271,6 +271,7 @@ export class GitHubUploadHandler implements IGitHubUploadHandler {
       if (base64data) {
         // Get current project ID from URL to ensure we're pushing to the correct project
         const currentProjectId = this.getCurrentProjectId();
+        logger.info(`📤 Sending ZIP data for project: ${currentProjectId || 'unknown'}`);
         this.messageHandler.sendZipData(base64data, currentProjectId || undefined);
       } else {
         throw new Error('Failed to convert ZIP file to base64');
