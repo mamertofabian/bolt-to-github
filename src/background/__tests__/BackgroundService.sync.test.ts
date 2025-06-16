@@ -87,10 +87,14 @@ const mockRuntime = {
 };
 
 const mockTabs = {
+  get: jest.fn(),
   onUpdated: {
     addListener: jest.fn(),
   },
   onRemoved: {
+    addListener: jest.fn(),
+  },
+  onActivated: {
     addListener: jest.fn(),
   },
 };

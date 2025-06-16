@@ -420,6 +420,7 @@ export class MockChromeTabs {
   private updateHandlers: Array<(tabId: number, changeInfo: any, tab: chrome.tabs.Tab) => void> =
     [];
   private removeHandlers: Array<(tabId: number, removeInfo: any) => void> = [];
+  private activatedHandlers: Array<(activeInfo: chrome.tabs.TabActiveInfo) => void> = [];
 
   query = jest.fn(async (queryInfo: chrome.tabs.QueryInfo) => {
     return this.tabs.filter((tab) => {
@@ -433,6 +434,10 @@ export class MockChromeTabs {
   });
 
   sendMessage = jest.fn();
+
+  get = jest.fn(async (tabId: number) => {
+    return this.tabs.find((tab) => tab.id === tabId) || null;
+  });
 
   onUpdated = {
     addListener: (callback: any) => this.updateHandlers.push(callback),
@@ -450,6 +455,14 @@ export class MockChromeTabs {
     },
   };
 
+  onActivated = {
+    addListener: (callback: any) => this.activatedHandlers.push(callback),
+    removeListener: (callback: any) => {
+      const index = this.activatedHandlers.indexOf(callback);
+      if (index > -1) this.activatedHandlers.splice(index, 1);
+    },
+  };
+
   // Test helpers
   setTabs(tabs: chrome.tabs.Tab[]): void {
     this.tabs = tabs;
@@ -461,6 +474,11 @@ export class MockChromeTabs {
 
   simulateTabRemoved(tabId: number): void {
     this.removeHandlers.forEach((handler) => handler(tabId, {}));
+  }
+
+  simulateTabActivated(tabId: number, windowId: number = 1): void {
+    const activeInfo: chrome.tabs.TabActiveInfo = { tabId, windowId };
+    this.activatedHandlers.forEach((handler) => handler(activeInfo));
   }
 }
 

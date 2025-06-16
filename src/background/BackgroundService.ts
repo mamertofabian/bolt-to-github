@@ -8,6 +8,7 @@ import { OperationStateManager } from '../content/services/OperationStateManager
 import { createLogger, getLogStorage } from '../lib/utils/logger';
 import { UsageTracker } from './UsageTracker';
 import { BoltProjectSyncService } from '../services/BoltProjectSyncService';
+import { extractProjectIdFromUrl } from '../lib/utils/projectId';
 
 const logger = createLogger('BackgroundService');
 
@@ -417,17 +418,11 @@ export class BackgroundService {
     // Track project IDs per tab to prevent cross-tab confusion
     chrome.tabs.onUpdated.addListener(async (tabId, changeInfo, tab) => {
       if (tab.url?.includes('bolt.new/~/')) {
-        const projectId = tab.url.match(/bolt\.new\/~\/([^/]+)/)?.[1] || null;
+        const projectId = extractProjectIdFromUrl(tab.url);
         if (projectId) {
           // Store project ID for this specific tab
           this.tabProjectMap.set(tabId, projectId);
           logger.info(`📌 Tab ${tabId} is now associated with project: ${projectId}`);
-
-          // Only update global projectId if this is the active tab
-          const [activeTab] = await chrome.tabs.query({ active: true, currentWindow: true });
-          if (activeTab && activeTab.id === tabId) {
-            await this.stateManager.setProjectId(projectId);
-          }
         }
       } else if (changeInfo.url) {
         // Clear project association if navigating away from a project page
@@ -436,6 +431,17 @@ export class BackgroundService {
           this.tabProjectMap.delete(tabId);
           logger.info(`🧹 Cleared project association for tab ${tabId}`);
         }
+      }
+    });
+
+    // Update global project ID when user switches to a tab with a project
+    chrome.tabs.onActivated.addListener(async (activeInfo) => {
+      const projectId = this.tabProjectMap.get(activeInfo.tabId);
+      if (projectId) {
+        await this.stateManager.setProjectId(projectId);
+        logger.info(
+          `🎯 Switched to tab ${activeInfo.tabId}, updated global project ID: ${projectId}`
+        );
       }
     });
   }
@@ -723,13 +729,28 @@ export class BackgroundService {
       // Validate project ID against tab URL to prevent spoofing
       if (currentProjectId && tabId) {
         const tab = await chrome.tabs.get(tabId);
-        const tabProjectId = tab.url?.match(/bolt\.new\/~\/([^/]+)/)?.[1];
+        const tabProjectId = extractProjectIdFromUrl(tab.url || '');
+
+        logger.debug(`🔍 Project ID validation - Tab ${tabId} URL: ${tab.url}`);
+        logger.debug(
+          `🔍 Project ID validation - Tab project ID: ${tabProjectId}, Message project ID: ${currentProjectId}`
+        );
+
         if (tabProjectId && tabProjectId !== currentProjectId) {
           logger.warn(
-            `⚠️ Project ID mismatch! Tab URL has ${tabProjectId} but message has ${currentProjectId}`
+            `⚠️ Security: Project ID mismatch detected! Tab ${tabId} is on project '${tabProjectId}' but ZIP message contains '${currentProjectId}'. This could indicate a timing issue or potential spoofing attempt.`
+          );
+          logger.warn(
+            `⚠️ Using tab's actual project ID '${tabProjectId}' for security. Tab URL: ${tab.url}`
           );
           // Use the tab's actual project ID for security
           currentProjectId = tabProjectId;
+        } else if (tabProjectId) {
+          logger.debug(
+            `✅ Project ID validation passed - tab and message both use: ${currentProjectId}`
+          );
+        } else {
+          logger.warn(`⚠️ Could not extract project ID from tab URL: ${tab.url}`);
         }
       }
 
