@@ -2,7 +2,6 @@ import type { IDropdownManager } from '../types/ManagerInterfaces';
 import type { MessageHandler } from '../MessageHandler';
 import type { UIStateManager } from '../services/UIStateManager';
 import { createLogger } from '$lib/utils/logger';
-import { getCurrentProjectId } from '$lib/utils/projectId';
 
 const logger = createLogger('DropdownManager');
 
