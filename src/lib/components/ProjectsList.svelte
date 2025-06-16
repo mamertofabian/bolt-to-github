@@ -20,6 +20,7 @@
   import { githubSettingsStore } from '$lib/stores';
   import ProjectsListGuide from '$lib/components/ProjectsListGuide.svelte';
   import { createLogger } from '$lib/utils/logger';
+  import { ChromeStorageService } from '$lib/services/chromeStorage';
 
   const logger = createLogger('ProjectsList');
 
@@ -522,20 +523,16 @@
   async function deleteProject() {
     try {
       if (projectToDelete) {
-        // Get current settings
-        const settings = await chrome.storage.sync.get(['projectSettings']);
-        let updatedProjectSettings = { ...(settings.projectSettings || {}) };
+        // Use thread-safe delete method
+        await ChromeStorageService.deleteProjectSettings(projectToDelete.projectId);
 
-        // Delete single project
-        delete updatedProjectSettings[projectToDelete.projectId];
-
-        // Save updated settings to Chrome storage
-        await chrome.storage.sync.set({ projectSettings: updatedProjectSettings });
+        // Get updated settings for store update
+        const updatedSettings = await ChromeStorageService.getGitHubSettings();
 
         // Update the store to trigger reactivity
         githubSettingsStore.update((state) => ({
           ...state,
-          projectSettings: updatedProjectSettings,
+          projectSettings: updatedSettings.projectSettings || {},
         }));
 
         // Remove from commit counts and loading states, then update cache

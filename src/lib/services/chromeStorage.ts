@@ -238,6 +238,42 @@ export class ChromeStorageService {
   }
 
   /**
+   * Delete project settings for a specific project (thread-safe)
+   */
+  static async deleteProjectSettings(projectId: string): Promise<void> {
+    return this.writeQueue.enqueue(async () => {
+      try {
+        logger.debug('Deleting project settings for:', projectId);
+
+        const result = await chrome.storage.sync.get(STORAGE_KEYS.PROJECT_SETTINGS);
+        const projectSettings: ProjectSettings = result[STORAGE_KEYS.PROJECT_SETTINGS] || {};
+
+        if (projectId in projectSettings) {
+          delete projectSettings[projectId];
+
+          await chrome.storage.sync.set({
+            [STORAGE_KEYS.PROJECT_SETTINGS]: projectSettings,
+          });
+
+          // Save timestamp for race condition detection
+          await chrome.storage.local.set({
+            lastSettingsUpdate: {
+              timestamp: Date.now(),
+              projectId,
+              action: 'delete',
+            },
+          });
+
+          logger.info(`Project settings deleted successfully for ${projectId}`);
+        }
+      } catch (error) {
+        logger.error('Error deleting project settings from storage:', error);
+        throw error;
+      }
+    });
+  }
+
+  /**
    * Set up storage change listener for reactive updates across tabs
    * Note: This is for READING changes, not writing - no write queue needed here
    */

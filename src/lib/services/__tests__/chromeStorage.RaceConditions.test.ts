@@ -424,4 +424,77 @@ describe('ChromeStorageService Race Condition Tests', () => {
       });
     });
   });
+
+  describe('deleteProjectSettings thread safety', () => {
+    it('should serialize project deletion operations', async () => {
+      // Mock initial state with multiple projects
+      mockChromeStorage.sync.get.mockResolvedValue({
+        projectSettings: {
+          project1: { repoName: 'repo1', branch: 'main' },
+          project2: { repoName: 'repo2', branch: 'main' },
+          project3: { repoName: 'repo3', branch: 'main' },
+        },
+      });
+
+      const deletedProjects: string[] = [];
+      mockChromeStorage.sync.set.mockImplementation(async (data) => {
+        // Track which projects remain after each delete
+        const remainingProjects = Object.keys(data.projectSettings || {});
+        deletedProjects.push(`delete-op-${3 - remainingProjects.length}`);
+        await new Promise((resolve) => setTimeout(resolve, 10));
+      });
+
+      // Delete projects concurrently
+      await Promise.all([
+        ChromeStorageService.deleteProjectSettings('project1'),
+        ChromeStorageService.deleteProjectSettings('project2'),
+        ChromeStorageService.deleteProjectSettings('project3'),
+      ]);
+
+      // Verify operations were serialized
+      expect(deletedProjects).toEqual(['delete-op-1', 'delete-op-2', 'delete-op-3']);
+      expect(mockChromeStorage.sync.set).toHaveBeenCalledTimes(3);
+    });
+
+    it('should save deletion timestamp for race condition detection', async () => {
+      mockChromeStorage.sync.get.mockResolvedValue({
+        projectSettings: {
+          project1: { repoName: 'repo1', branch: 'main' },
+        },
+      });
+
+      const timestampData: any[] = [];
+      mockChromeStorage.local.set.mockImplementation(async (data) => {
+        if (data.lastSettingsUpdate) {
+          timestampData.push(data.lastSettingsUpdate);
+        }
+      });
+
+      const beforeTime = Date.now();
+      await ChromeStorageService.deleteProjectSettings('project1');
+      const afterTime = Date.now();
+
+      expect(timestampData).toHaveLength(1);
+      expect(timestampData[0]).toMatchObject({
+        projectId: 'project1',
+        action: 'delete',
+      });
+      expect(timestampData[0].timestamp).toBeGreaterThanOrEqual(beforeTime);
+      expect(timestampData[0].timestamp).toBeLessThanOrEqual(afterTime);
+    });
+
+    it('should handle deletion of non-existent project gracefully', async () => {
+      mockChromeStorage.sync.get.mockResolvedValue({
+        projectSettings: {
+          project1: { repoName: 'repo1', branch: 'main' },
+        },
+      });
+
+      await ChromeStorageService.deleteProjectSettings('non-existent-project');
+
+      // Should not attempt to save if project doesn't exist
+      expect(mockChromeStorage.sync.set).not.toHaveBeenCalled();
+      expect(mockChromeStorage.local.set).not.toHaveBeenCalled();
+    });
+  });
 });

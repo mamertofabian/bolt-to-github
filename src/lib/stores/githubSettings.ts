@@ -96,7 +96,16 @@ export const githubSettingsActions = {
         repoOwner = localSettings.githubAppUsername;
         // Save the detected repoOwner to sync storage for consistency
         if (repoOwner && repoOwner !== storedSettings.repoOwner) {
-          await chrome.storage.sync.set({ repoOwner });
+          // Use thread-safe method to update settings
+          await ChromeStorageService.saveGitHubSettings({
+            githubToken: storedSettings.githubToken || '',
+            repoOwner,
+            projectSettings: storedSettings.projectSettings || {},
+            authenticationMethod: authMethod,
+            githubAppInstallationId: localSettings.githubAppInstallationId || null,
+            githubAppUsername: localSettings.githubAppUsername,
+            githubAppAvatarUrl: localSettings.githubAppAvatarUrl,
+          });
         }
       }
 
