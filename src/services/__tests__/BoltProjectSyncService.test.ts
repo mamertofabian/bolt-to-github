@@ -264,7 +264,7 @@ describe('BoltProjectSyncService', () => {
     });
   });
 
-  describe('migrateExistingProjects', () => {
+  describe('syncProjectsFromLegacyFormat', () => {
     it('should migrate legacy projects to sync format', async () => {
       // Setup: No existing bolt projects
       mockStorageGet.mockResolvedValue({ boltProjects: [] });
@@ -410,7 +410,7 @@ describe('BoltProjectSyncService', () => {
       );
     });
 
-    it('should migrate unmigrated legacy projects when existing bolt projects exist', async () => {
+    it('should sync only projects that exist in projectSettings', async () => {
       // Setup: Existing bolt projects
       mockStorageGet.mockResolvedValue({
         boltProjects: [
@@ -464,19 +464,17 @@ describe('BoltProjectSyncService', () => {
 
       await service.performOutwardSync();
 
-      // Verify migration happened - both existing and legacy projects should be saved
+      // Verify migration happened - only projects in projectSettings should be saved
       expect(mockStorageSet).toHaveBeenCalledWith(
         expect.objectContaining({
-          boltProjects: expect.arrayContaining([
-            expect.objectContaining({
-              id: 'existing-project',
-              bolt_project_id: 'existing-project',
-            }),
+          boltProjects: [
             expect.objectContaining({
               id: 'legacy-project',
               bolt_project_id: 'legacy-project',
+              github_repo_name: 'legacy-repo',
+              github_branch: 'main',
             }),
-          ]),
+          ],
         })
       );
     });

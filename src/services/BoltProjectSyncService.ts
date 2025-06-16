@@ -349,10 +349,11 @@ export class BoltProjectSyncService {
   }
 
   /**
-   * Migrate existing projects from old storage format to new sync format
+   * Sync existing projects from old storage format to new sync format
    * This bridges the gap between projectSettings and boltProjects
+   * Updates existing projects and migrates new ones
    */
-  private async migrateExistingProjects(): Promise<void> {
+  private async syncProjectsFromLegacyFormat(): Promise<void> {
     try {
       // Check if we already have projects in the new format
       const existingBoltProjects = await this.getLocalProjects();
@@ -387,67 +388,88 @@ export class BoltProjectSyncService {
       const legacyProjectIds = Object.keys(legacyProjects);
 
       if (legacyProjectIds.length === 0) {
-        logger.debug('🔄 No legacy projects found, migration not needed');
+        logger.debug('🔄 No legacy projects found, sync not needed');
         return;
       }
 
-      // Check which legacy projects are not yet in boltProjects
-      const existingBoltProjectIds = new Set(existingBoltProjects.map((p) => p.bolt_project_id));
-      const unmigrated = legacyProjectIds.filter((id) => !existingBoltProjectIds.has(id));
-
-      if (unmigrated.length === 0) {
-        logger.debug('🔄 All legacy projects already migrated, no migration needed', {
-          existingBoltProjects: existingBoltProjects.length,
-          legacyProjects: legacyProjectIds.length,
-        });
-        return;
-      }
-
-      logger.info('🔄 Migrating legacy projects to sync format', {
-        legacyProjectCount: legacyProjectIds.length,
-        unmigratedProjectCount: unmigrated.length,
-        legacyProjectIds,
-        unmigratedProjectIds: unmigrated,
+      // Create a map of existing bolt projects for easier lookup
+      const existingBoltProjectsMap = new Map<string, BoltProject>();
+      existingBoltProjects.forEach((project) => {
+        existingBoltProjectsMap.set(project.bolt_project_id, project);
       });
 
-      // Convert unmigrated legacy projects to new format
-      const newlyMigratedProjects: BoltProject[] = unmigrated.map((projectId) => {
+      // Process all legacy projects - update existing ones and create new ones
+      const updatedProjects: BoltProject[] = [];
+      const newProjects: BoltProject[] = [];
+      const allBoltProjects: BoltProject[] = [];
+
+      for (const projectId of legacyProjectIds) {
         const legacyProject = legacyProjects[projectId];
+        const existingBoltProject = existingBoltProjectsMap.get(projectId);
 
-        // Create a new BoltProject from the legacy ProjectSetting
-        return {
-          id: projectId, // Local extension field
-          bolt_project_id: projectId, // Backend field
-          project_name: legacyProject.projectTitle || projectId, // Backend field
-          github_repo_name: legacyProject.repoName || projectId, // Backend field
-          github_repo_owner: gitHubSettings.repoOwner || undefined, // Backend field
-          github_branch: legacyProject.branch || 'main', // Backend field (was 'branch')
-          is_private: false, // Backend field - default assumption
-          last_modified: new Date().toISOString(), // Backend field
-          // Local compatibility fields (for ProjectSetting inheritance)
-          repoName: legacyProject.repoName || projectId,
-          branch: legacyProject.branch || 'main',
-          // Local sync metadata
-          version: 1,
-          sync_status: 'pending',
-        };
-      });
+        if (existingBoltProject) {
+          // Update existing project with latest values from projectSettings
+          const updatedProject: BoltProject = {
+            ...existingBoltProject,
+            // Update with latest values from legacy format
+            project_name:
+              legacyProject.projectTitle || existingBoltProject.project_name || projectId,
+            github_repo_name:
+              legacyProject.repoName || existingBoltProject.github_repo_name || projectId,
+            github_repo_owner: gitHubSettings.repoOwner || existingBoltProject.github_repo_owner,
+            github_branch: legacyProject.branch || existingBoltProject.github_branch || 'main',
+            last_modified: new Date().toISOString(),
+            // Update local compatibility fields
+            repoName: legacyProject.repoName || projectId,
+            branch: legacyProject.branch || 'main',
+          };
+          updatedProjects.push(updatedProject);
+          allBoltProjects.push(updatedProject);
+        } else {
+          // Create new project (migration)
+          const newProject: BoltProject = {
+            id: projectId, // Local extension field
+            bolt_project_id: projectId, // Backend field
+            project_name: legacyProject.projectTitle || projectId, // Backend field
+            github_repo_name: legacyProject.repoName || projectId, // Backend field
+            github_repo_owner: gitHubSettings.repoOwner || undefined, // Backend field
+            github_branch: legacyProject.branch || 'main', // Backend field (was 'branch')
+            is_private: false, // Backend field - default assumption
+            last_modified: new Date().toISOString(), // Backend field
+            // Local compatibility fields (for ProjectSetting inheritance)
+            repoName: legacyProject.repoName || projectId,
+            branch: legacyProject.branch || 'main',
+            // Local sync metadata
+            version: 1,
+            sync_status: 'pending',
+          };
+          newProjects.push(newProject);
+          allBoltProjects.push(newProject);
+        }
+      }
 
-      // Combine existing and newly migrated projects
-      const allBoltProjects = [...existingBoltProjects, ...newlyMigratedProjects];
+      // Track deleted projects
+      const deletedProjects = existingBoltProjects.filter(
+        (project) => !legacyProjectIds.includes(project.bolt_project_id)
+      );
 
       // Save all projects to new format
       await this.saveLocalProjects(allBoltProjects);
 
-      logger.info('✅ Successfully migrated legacy projects to sync format', {
-        existingCount: existingBoltProjects.length,
-        newlyMigratedCount: newlyMigratedProjects.length,
-        totalCount: allBoltProjects.length,
-        newlyMigratedProjectIds: newlyMigratedProjects.map((p: BoltProject) => p.id),
+      logger.info('✅ Successfully synced legacy projects to bolt format', {
+        totalLegacyProjects: legacyProjectIds.length,
+        previousBoltProjects: existingBoltProjects.length,
+        updatedCount: updatedProjects.length,
+        newlyMigratedCount: newProjects.length,
+        deletedCount: deletedProjects.length,
+        totalBoltProjects: allBoltProjects.length,
+        updatedProjectIds: updatedProjects.map((p) => p.id),
+        newProjectIds: newProjects.map((p) => p.id),
+        deletedProjectIds: deletedProjects.map((p) => p.id),
       });
     } catch (error) {
-      logger.error('💥 Failed to migrate existing projects', { error });
-      // Don't throw - migration failure shouldn't block sync
+      logger.error('💥 Failed to sync projects from legacy format', { error });
+      // Don't throw - sync failure shouldn't block the main operation
     }
   }
 
@@ -458,8 +480,8 @@ export class BoltProjectSyncService {
   async performOutwardSync(): Promise<SyncResponse | null> {
     logger.info('🔄 Starting outward sync operation');
 
-    // First, migrate existing projects if needed
-    await this.migrateExistingProjects();
+    // First, sync projects from legacy format to ensure we have latest data
+    await this.syncProjectsFromLegacyFormat();
 
     const localProjects = await this.getLocalProjects();
     logger.debug('📦 Local projects state', {

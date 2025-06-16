@@ -8,6 +8,7 @@
   import { githubSettingsActions } from '$lib/stores';
   import Modal from '$lib/components/ui/modal/Modal.svelte';
   import { createLogger } from '$lib/utils/logger';
+  import { ChromeMessagingService } from '$lib/services/chromeMessaging';
 
   const logger = createLogger('RepoSettings');
 
@@ -173,6 +174,23 @@
       });
 
       logger.info('Settings saved successfully with timestamp');
+
+      // Trigger outward sync to push changes to backend immediately
+      try {
+        logger.info('Triggering manual sync to push changes to backend');
+        const syncResponse = await ChromeMessagingService.sendMessageToBackground({
+          type: 'SYNC_BOLT_PROJECTS' as any,
+        });
+
+        if (syncResponse?.success) {
+          logger.info('Manual sync completed successfully', syncResponse.result);
+        } else {
+          logger.warn('Manual sync completed with issues', syncResponse);
+        }
+      } catch (syncError) {
+        // Don't fail the save operation if sync fails
+        logger.error('Failed to trigger manual sync, changes saved locally', syncError);
+      }
 
       // Notify parent that settings were saved
       dispatch('close');
