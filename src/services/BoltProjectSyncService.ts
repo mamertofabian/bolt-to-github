@@ -491,8 +491,9 @@ export class BoltProjectSyncService {
       });
       const result = await this.syncWithBackend('auto-resolve', false);
 
-      // Sync back to active storage format (reverse bridge)
-      await this.syncBackToActiveStorage();
+      // Do NOT sync back to active storage during outward sync
+      // The extension data is the source of truth and should not be overwritten
+      // await this.syncBackToActiveStorage();
 
       // Update last sync timestamp
       const syncTimestamp = new Date().toISOString();
