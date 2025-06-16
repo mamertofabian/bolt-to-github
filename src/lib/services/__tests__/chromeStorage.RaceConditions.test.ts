@@ -115,6 +115,33 @@ describe('ChromeStorageService Race Condition Tests', () => {
         projectTitle: 'Title 2',
       });
     });
+
+    it('should save timestamp for race condition detection', async () => {
+      const projectId = 'test-project';
+      const timestampData: any[] = [];
+
+      mockChromeStorage.local.set.mockImplementation(async (data) => {
+        if (data.lastSettingsUpdate) {
+          timestampData.push(data.lastSettingsUpdate);
+        }
+      });
+
+      const beforeTime = Date.now();
+      await ChromeStorageService.saveProjectSettings(projectId, 'test-repo', 'main', 'Test Title');
+      const afterTime = Date.now();
+
+      expect(timestampData).toHaveLength(1);
+      expect(timestampData[0]).toMatchObject({
+        projectId: 'test-project',
+        repoName: 'test-repo',
+        branch: 'main',
+        projectTitle: 'Test Title',
+      });
+
+      // Verify timestamp is within expected range
+      expect(timestampData[0].timestamp).toBeGreaterThanOrEqual(beforeTime);
+      expect(timestampData[0].timestamp).toBeLessThanOrEqual(afterTime);
+    });
   });
 
   describe('Concurrent saveGitHubSettings calls', () => {
@@ -242,6 +269,30 @@ describe('ChromeStorageService Race Condition Tests', () => {
 
       // Despite different delays, operations should execute in queue order
       expect(executionOrder).toEqual(['first', 'second', 'third']);
+    });
+
+    it('should provide queue statistics for monitoring', async () => {
+      // Get initial stats
+      const initialStats = ChromeStorageService.getQueueStats();
+      expect(initialStats.pendingOperations).toBe(0);
+      expect(typeof initialStats.totalOperations).toBe('number');
+
+      // Start some operations but don't await them yet
+      const promises = [
+        ChromeStorageService.saveProjectSettings('project1', 'repo1', 'main'),
+        ChromeStorageService.saveProjectSettings('project2', 'repo2', 'main'),
+      ];
+
+      // Stats should show pending operations
+      const statsWithPending = ChromeStorageService.getQueueStats();
+      expect(statsWithPending.totalOperations).toBeGreaterThan(initialStats.totalOperations);
+
+      // Wait for completion
+      await Promise.all(promises);
+
+      // Pending operations should be back to 0
+      const finalStats = ChromeStorageService.getQueueStats();
+      expect(finalStats.pendingOperations).toBe(0);
     });
 
     it('should continue queue processing after an error', async () => {

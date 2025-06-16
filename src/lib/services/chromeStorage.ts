@@ -9,6 +9,8 @@ const logger = createLogger('chromeStorage');
  */
 class StorageWriteQueue {
   private queue: Promise<void> = Promise.resolve();
+  private pendingOperations = 0;
+  private totalOperations = 0;
 
   /**
    * Enqueue an async operation to be executed serially
@@ -16,10 +18,36 @@ class StorageWriteQueue {
    * @returns Promise resolving to the operation result
    */
   async enqueue<T>(operation: () => Promise<T>): Promise<T> {
-    const result = this.queue.then(operation);
-    // Continue queue even if an operation fails
+    this.pendingOperations++;
+    this.totalOperations++;
+
+    // Log queue depth if it gets large (potential performance issue)
+    if (this.pendingOperations > 10) {
+      logger.warn(`Storage write queue depth: ${this.pendingOperations} operations pending`);
+    }
+
+    const wrappedOperation = async () => {
+      try {
+        return await operation();
+      } finally {
+        this.pendingOperations--;
+      }
+    };
+
+    const result = this.queue.then(wrappedOperation);
+    // Continue queue even if an operation fails, but preserve the chain for GC
     this.queue = result.catch(() => {});
     return result;
+  }
+
+  /**
+   * Get current queue statistics for monitoring
+   */
+  getStats() {
+    return {
+      pendingOperations: this.pendingOperations,
+      totalOperations: this.totalOperations,
+    };
   }
 }
 
@@ -51,6 +79,13 @@ export const STORAGE_KEYS = {
 export class ChromeStorageService {
   // Singleton write queue instance to serialize all storage writes
   private static writeQueue = new StorageWriteQueue();
+
+  /**
+   * Get write queue statistics for monitoring and debugging
+   */
+  static getQueueStats() {
+    return this.writeQueue.getStats();
+  }
 
   /**
    * Get GitHub settings from sync storage (enhanced with authentication method)
@@ -183,6 +218,17 @@ export class ChromeStorageService {
           [STORAGE_KEYS.PROJECT_SETTINGS]: projectSettings,
         });
 
+        // Save timestamp for race condition detection by BoltProjectSyncService
+        await chrome.storage.local.set({
+          lastSettingsUpdate: {
+            timestamp: Date.now(),
+            projectId,
+            repoName,
+            branch,
+            projectTitle,
+          },
+        });
+
         logger.info(`Project settings saved successfully for ${projectId}`);
       } catch (error) {
         logger.error('Error saving project settings to storage:', error);
@@ -192,31 +238,40 @@ export class ChromeStorageService {
   }
 
   /**
-   * Set up storage change listener for reactive updates
+   * Set up storage change listener for reactive updates across tabs
+   * Note: This is for READING changes, not writing - no write queue needed here
    */
   static setupStorageListener(
     callback: (changes: Record<string, chrome.storage.StorageChange>) => void
   ): void {
     if (chrome.storage.onChanged) {
-      chrome.storage.onChanged.addListener((changes, namespace) => {
+      const listener = (
+        changes: Record<string, chrome.storage.StorageChange>,
+        namespace: string
+      ) => {
         // Only listen to sync storage changes for projectSettings
         if (namespace === 'sync' && changes.projectSettings) {
           logger.debug('Storage change detected for projectSettings');
           callback(changes);
         }
-      });
+      };
+
+      chrome.storage.onChanged.addListener(listener);
+
+      // Store reference for potential cleanup (though rarely needed in extensions)
+      (this as any)._storageListener = listener;
     }
   }
 
   /**
-   * Remove all storage change listeners
-   * Note: This is a placeholder implementation. In practice, you would need to
-   * store the listener reference to properly remove it.
+   * Remove storage change listeners (if needed for cleanup)
    */
   static removeStorageListeners(): void {
-    // Implementation would require storing listener references
-    // For now, this is just a placeholder for the API
-    logger.debug('Storage listener removal requested');
+    if (chrome.storage.onChanged && (this as any)._storageListener) {
+      chrome.storage.onChanged.removeListener((this as any)._storageListener);
+      delete (this as any)._storageListener;
+      logger.debug('Storage listener removed');
+    }
   }
 
   /**
