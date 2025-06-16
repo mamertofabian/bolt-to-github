@@ -80,6 +80,12 @@ export class ChromeStorageService {
   // Singleton write queue instance to serialize all storage writes
   private static writeQueue = new StorageWriteQueue();
 
+  // Storage listener reference for cleanup
+  private static _storageListener?: (
+    changes: Record<string, chrome.storage.StorageChange>,
+    namespace: string
+  ) => void;
+
   /**
    * Get write queue statistics for monitoring and debugging
    */
@@ -295,7 +301,7 @@ export class ChromeStorageService {
       chrome.storage.onChanged.addListener(listener);
 
       // Store reference for potential cleanup (though rarely needed in extensions)
-      (this as any)._storageListener = listener;
+      ChromeStorageService._storageListener = listener;
     }
   }
 
@@ -303,9 +309,9 @@ export class ChromeStorageService {
    * Remove storage change listeners (if needed for cleanup)
    */
   static removeStorageListeners(): void {
-    if (chrome.storage.onChanged && (this as any)._storageListener) {
-      chrome.storage.onChanged.removeListener((this as any)._storageListener);
-      delete (this as any)._storageListener;
+    if (chrome.storage.onChanged && ChromeStorageService._storageListener) {
+      chrome.storage.onChanged.removeListener(ChromeStorageService._storageListener);
+      ChromeStorageService._storageListener = undefined;
       logger.debug('Storage listener removed');
     }
   }

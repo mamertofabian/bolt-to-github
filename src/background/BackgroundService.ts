@@ -438,10 +438,14 @@ export class BackgroundService {
     chrome.tabs.onActivated.addListener(async (activeInfo) => {
       const projectId = this.tabProjectMap.get(activeInfo.tabId);
       if (projectId) {
-        await this.stateManager.setProjectId(projectId);
-        logger.info(
-          `🎯 Switched to tab ${activeInfo.tabId}, updated global project ID: ${projectId}`
-        );
+        try {
+          await this.stateManager.setProjectId(projectId);
+          logger.info(
+            `🎯 Switched to tab ${activeInfo.tabId}, updated global project ID: ${projectId}`
+          );
+        } catch (error) {
+          logger.error(`Failed to update project ID for tab ${activeInfo.tabId}:`, error);
+        }
       }
     });
   }
@@ -728,29 +732,38 @@ export class BackgroundService {
 
       // Validate project ID against tab URL to prevent spoofing
       if (currentProjectId && tabId) {
-        const tab = await chrome.tabs.get(tabId);
-        const tabProjectId = extractProjectIdFromUrl(tab.url || '');
+        try {
+          const tab = await chrome.tabs.get(tabId);
+          const tabProjectId = extractProjectIdFromUrl(tab.url || '');
 
-        logger.debug(`🔍 Project ID validation - Tab ${tabId} URL: ${tab.url}`);
-        logger.debug(
-          `🔍 Project ID validation - Tab project ID: ${tabProjectId}, Message project ID: ${currentProjectId}`
-        );
-
-        if (tabProjectId && tabProjectId !== currentProjectId) {
-          logger.warn(
-            `⚠️ Security: Project ID mismatch detected! Tab ${tabId} is on project '${tabProjectId}' but ZIP message contains '${currentProjectId}'. This could indicate a timing issue or potential spoofing attempt.`
-          );
-          logger.warn(
-            `⚠️ Using tab's actual project ID '${tabProjectId}' for security. Tab URL: ${tab.url}`
-          );
-          // Use the tab's actual project ID for security
-          currentProjectId = tabProjectId;
-        } else if (tabProjectId) {
+          logger.debug(`🔍 Project ID validation - Tab ${tabId} URL: ${tab.url}`);
           logger.debug(
-            `✅ Project ID validation passed - tab and message both use: ${currentProjectId}`
+            `🔍 Project ID validation - Tab project ID: ${tabProjectId}, Message project ID: ${currentProjectId}`
           );
-        } else {
-          logger.warn(`⚠️ Could not extract project ID from tab URL: ${tab.url}`);
+
+          if (tabProjectId && tabProjectId !== currentProjectId) {
+            // Validate that the tab URL actually contains a valid project pattern
+            if (tab.url && tab.url.includes('bolt.new/~/') && tab.url.includes(tabProjectId)) {
+              logger.warn(
+                `⚠️ Security: Project ID mismatch detected! Tab ${tabId} is on project '${tabProjectId}' but ZIP message contains '${currentProjectId}'. Using tab's project ID for security.`
+              );
+              currentProjectId = tabProjectId;
+            } else {
+              logger.error(`🚨 Invalid project ID extraction from tab URL: ${tab.url}`);
+              throw new Error('Invalid project ID - security validation failed');
+            }
+          } else if (tabProjectId) {
+            logger.debug(
+              `✅ Project ID validation passed - tab and message both use: ${currentProjectId}`
+            );
+          } else {
+            logger.warn(`⚠️ Could not extract project ID from tab URL: ${tab.url}`);
+          }
+        } catch (error) {
+          logger.warn(
+            `⚠️ Failed to validate project ID against tab ${tabId}: ${error instanceof Error ? error.message : 'Unknown error'}`
+          );
+          // Continue with the provided project ID if tab validation fails
         }
       }
 

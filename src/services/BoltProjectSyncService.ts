@@ -108,6 +108,7 @@ export class BoltProjectSyncService {
           }
         } catch (error) {
           logger.debug(`Failed to get token from key ${key}:`, error);
+          // Continue to next key instead of failing completely
         }
       }
 
@@ -115,7 +116,7 @@ export class BoltProjectSyncService {
       return null;
     } catch (error) {
       logger.error('Failed to get auth token:', error);
-      return null;
+      throw new Error('Authentication token retrieval failed');
     }
   }
 
@@ -170,7 +171,7 @@ export class BoltProjectSyncService {
 
     const syncRequest: SyncRequest = {
       localProjects: backendProjects,
-      lastSyncTimestamp: lastSyncTimestamp || undefined,
+      lastSyncTimestamp,
       conflictResolution,
     };
 
