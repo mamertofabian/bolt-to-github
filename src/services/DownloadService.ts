@@ -3,6 +3,7 @@ import { CacheService } from './CacheService';
 import { IdleMonitorService } from './IdleMonitorService';
 import type { ProjectFiles } from '$lib/types';
 import { createLogger } from '../lib/utils/logger';
+import { getCurrentProjectId as getProjectIdFromUrl } from '../lib/utils/projectId';
 
 const logger = createLogger('DownloadService');
 
@@ -83,14 +84,7 @@ export class DownloadService {
    * @returns The project ID or null if not found
    */
   private getCurrentProjectId(): string | null {
-    // Extract project ID from URL
-    // URL format is typically: https://bolt.dev/project/{projectId}/...
-    const url = window.location.href;
-    const projectMatch = url.match(/\/project\/([^/]+)/);
-    if (projectMatch && projectMatch[1]) {
-      return projectMatch[1];
-    }
-    return null;
+    return getProjectIdFromUrl();
   }
 
   /**

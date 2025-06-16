@@ -2,6 +2,7 @@ import type { Message } from '$lib/types';
 import { MessageHandler } from './MessageHandler';
 import { UIManager } from './UIManager';
 import { createLogger } from '$lib/utils/logger';
+import { extractProjectIdFromUrl } from '$lib/utils/projectId';
 
 const logger = createLogger('ContentManager');
 
@@ -554,7 +555,7 @@ export class ContentManager {
       }
 
       const currentUrl = window.location.href;
-      const currentProjectId = window.location.pathname.split('/').pop() || '';
+      const currentProjectId = extractProjectIdFromUrl(currentUrl) || '';
 
       // Clear if URL changed or project ID changed
       if (storedData.url !== currentUrl || storedData.projectId !== currentProjectId) {
@@ -611,7 +612,7 @@ export class ContentManager {
       // Handle legacy file changes requests
       if (message.action === 'REQUEST_FILE_CHANGES') {
         logger.info('Received request for file changes from popup');
-        const projectId = window.location.pathname.split('/').pop() || '';
+        const projectId = extractProjectIdFromUrl() || '';
         logger.debug('Current project ID:', projectId);
         this.uiManager?.handleShowChangedFiles();
         sendResponse({ success: true, projectId });
@@ -620,7 +621,7 @@ export class ContentManager {
 
       if (message.action === 'REFRESH_FILE_CHANGES') {
         logger.info('Received refresh file changes request from popup');
-        const projectId = window.location.pathname.split('/').pop() || '';
+        const projectId = extractProjectIdFromUrl() || '';
         logger.debug('Refreshing file changes for project ID:', projectId);
 
         this.uiManager

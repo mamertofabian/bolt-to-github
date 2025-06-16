@@ -10,13 +10,16 @@ export interface SettingsCheckResult {
 }
 
 export class SettingsService {
-  static async getGitHubSettings(): Promise<SettingsCheckResult> {
+  static async getGitHubSettings(currentProjectId?: string): Promise<SettingsCheckResult> {
     try {
       // Use ChromeStorageService for thread-safe reads
-      const [gitHubSettings, projectId] = await Promise.all([
+      const [gitHubSettings, storedProjectId] = await Promise.all([
         ChromeStorageService.getGitHubSettings(),
         ChromeStorageService.getCurrentProjectId(),
       ]);
+
+      // Use provided project ID or fall back to stored one
+      const projectId = currentProjectId || storedProjectId;
 
       let projectSettings = projectId ? gitHubSettings.projectSettings?.[projectId] : undefined;
 
