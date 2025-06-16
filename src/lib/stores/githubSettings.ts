@@ -2,6 +2,7 @@ import { writable, derived, type Writable } from 'svelte/store';
 import { UnifiedGitHubService } from '../../services/UnifiedGitHubService';
 import type { GitHubSettingsInterface, ProjectSettings } from '../types';
 import { createLogger } from '../utils/logger';
+import { ChromeStorageService } from '../services/chromeStorage';
 
 const logger = createLogger('githubSettings');
 
@@ -330,13 +331,17 @@ export const githubSettingsActions = {
         }
       }
 
-      const settings = {
+      const settings: GitHubSettingsInterface = {
         githubToken: currentState!.githubToken,
         repoOwner: currentState!.repoOwner,
         projectSettings: currentState!.projectSettings,
+        authenticationMethod: currentState!.authenticationMethod,
+        githubAppInstallationId: currentState!.githubAppInstallationId,
+        githubAppUsername: currentState!.githubAppUsername,
+        githubAppAvatarUrl: currentState!.githubAppAvatarUrl,
       };
 
-      await chrome.storage.sync.set(settings);
+      await ChromeStorageService.saveGitHubSettings(settings);
 
       githubSettingsStore.update((state) => ({
         ...state,

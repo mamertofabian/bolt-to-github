@@ -410,8 +410,8 @@ describe('BoltProjectSyncService', () => {
       );
     });
 
-    it('should sync only projects that exist in projectSettings', async () => {
-      // Setup: Existing bolt projects
+    it('should sync projects from projectSettings and preserve server-only projects', async () => {
+      // Setup: Existing bolt projects (server-only project)
       mockStorageGet.mockResolvedValue({
         boltProjects: [
           {
@@ -464,17 +464,23 @@ describe('BoltProjectSyncService', () => {
 
       await service.performOutwardSync();
 
-      // Verify migration happened - only projects in projectSettings should be saved
+      // Verify migration happened - both legacy and server-only projects should be saved
       expect(mockStorageSet).toHaveBeenCalledWith(
         expect.objectContaining({
-          boltProjects: [
+          boltProjects: expect.arrayContaining([
             expect.objectContaining({
               id: 'legacy-project',
               bolt_project_id: 'legacy-project',
               github_repo_name: 'legacy-repo',
               github_branch: 'main',
             }),
-          ],
+            expect.objectContaining({
+              id: 'existing-project',
+              bolt_project_id: 'existing-project',
+              project_name: 'existing-project',
+              github_repo_name: 'existing-repo',
+            }),
+          ]),
         })
       );
     });

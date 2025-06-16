@@ -9,6 +9,7 @@
   import Modal from '$lib/components/ui/modal/Modal.svelte';
   import { createLogger } from '$lib/utils/logger';
   import { ChromeMessagingService } from '$lib/services/chromeMessaging';
+  import { ChromeStorageService } from '$lib/services/chromeStorage';
 
   const logger = createLogger('RepoSettings');
 
@@ -137,43 +138,13 @@
       isSaving = true;
       logger.info('Saving repository settings for project:', projectId);
 
-      // Get current settings
-      const settings = await chrome.storage.sync.get([
-        'projectSettings',
-        'githubToken',
-        'repoOwner',
-      ]);
-      let updatedProjectSettings = { ...(settings.projectSettings || {}) };
-
-      // Update project settings
-      updatedProjectSettings[projectId] = {
-        repoName,
-        branch,
-        projectTitle,
-      };
-
-      // Save updated settings
-      await chrome.storage.sync.set({
-        projectSettings: updatedProjectSettings,
-        githubToken: settings.githubToken,
-        repoOwner: settings.repoOwner,
-      });
+      // Save project settings using ChromeStorageService (thread-safe)
+      await ChromeStorageService.saveProjectSettings(projectId, repoName, branch, projectTitle);
 
       // Update the stores to trigger immediate reactivity
       githubSettingsActions.setProjectSettings(projectId, repoName, branch, projectTitle);
 
-      // Store a timestamp in local storage to trigger refresh in other components
-      await chrome.storage.local.set({
-        lastSettingsUpdate: {
-          timestamp: Date.now(),
-          projectId,
-          repoName,
-          branch,
-          projectTitle,
-        },
-      });
-
-      logger.info('Settings saved successfully with timestamp');
+      logger.info('Settings saved successfully');
 
       // Trigger outward sync to push changes to backend immediately
       try {

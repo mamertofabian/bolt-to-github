@@ -4,6 +4,25 @@ import { createLogger } from '../utils/logger';
 
 const logger = createLogger('chromeStorage');
 
+/**
+ * Queue for serializing storage write operations to prevent race conditions
+ */
+class StorageWriteQueue {
+  private queue: Promise<void> = Promise.resolve();
+
+  /**
+   * Enqueue an async operation to be executed serially
+   * @param operation The async operation to execute
+   * @returns Promise resolving to the operation result
+   */
+  async enqueue<T>(operation: () => Promise<T>): Promise<T> {
+    const result = this.queue.then(operation);
+    // Continue queue even if an operation fails
+    this.queue = result.catch(() => {});
+    return result;
+  }
+}
+
 // Storage Keys
 export const STORAGE_KEYS = {
   GITHUB_TOKEN: 'githubToken',
@@ -30,6 +49,9 @@ export const STORAGE_KEYS = {
 
 // Chrome Storage Service
 export class ChromeStorageService {
+  // Singleton write queue instance to serialize all storage writes
+  private static writeQueue = new StorageWriteQueue();
+
   /**
    * Get GitHub settings from sync storage (enhanced with authentication method)
    */
@@ -69,47 +91,54 @@ export class ChromeStorageService {
   }
 
   /**
-   * Save GitHub settings to sync storage (enhanced with authentication method)
+   * Save GitHub settings to sync storage (enhanced with authentication method, thread-safe)
    */
   static async saveGitHubSettings(settings: GitHubSettingsInterface): Promise<void> {
-    try {
-      // Save sync data (shared across devices)
-      const syncDataToSave = {
-        [STORAGE_KEYS.GITHUB_TOKEN]: settings.githubToken,
-        [STORAGE_KEYS.REPO_OWNER]: settings.repoOwner,
-        [STORAGE_KEYS.PROJECT_SETTINGS]: settings.projectSettings || {},
-      };
+    return this.writeQueue.enqueue(async () => {
+      try {
+        logger.debug('Saving GitHub settings');
 
-      // Save local data (device-specific)
-      const localDataToSave: Record<string, any> = {};
+        // Save sync data (shared across devices)
+        const syncDataToSave = {
+          [STORAGE_KEYS.GITHUB_TOKEN]: settings.githubToken,
+          [STORAGE_KEYS.REPO_OWNER]: settings.repoOwner,
+          [STORAGE_KEYS.PROJECT_SETTINGS]: settings.projectSettings || {},
+        };
 
-      if (settings.authenticationMethod !== undefined) {
-        localDataToSave[STORAGE_KEYS.AUTHENTICATION_METHOD] = settings.authenticationMethod;
+        // Save local data (device-specific)
+        const localDataToSave: Record<string, any> = {};
+
+        if (settings.authenticationMethod !== undefined) {
+          localDataToSave[STORAGE_KEYS.AUTHENTICATION_METHOD] = settings.authenticationMethod;
+        }
+
+        if (settings.githubAppInstallationId !== undefined) {
+          localDataToSave[STORAGE_KEYS.GITHUB_APP_INSTALLATION_ID] =
+            settings.githubAppInstallationId;
+        }
+
+        if (settings.githubAppUsername !== undefined) {
+          localDataToSave[STORAGE_KEYS.GITHUB_APP_USERNAME] = settings.githubAppUsername;
+        }
+
+        if (settings.githubAppAvatarUrl !== undefined) {
+          localDataToSave[STORAGE_KEYS.GITHUB_APP_AVATAR_URL] = settings.githubAppAvatarUrl;
+        }
+
+        // Save to both storages atomically
+        await Promise.all([
+          chrome.storage.sync.set(syncDataToSave),
+          Object.keys(localDataToSave).length > 0
+            ? chrome.storage.local.set(localDataToSave)
+            : Promise.resolve(),
+        ]);
+
+        logger.info('GitHub settings saved successfully');
+      } catch (error) {
+        logger.error('Error saving GitHub settings to storage:', error);
+        throw error;
       }
-
-      if (settings.githubAppInstallationId !== undefined) {
-        localDataToSave[STORAGE_KEYS.GITHUB_APP_INSTALLATION_ID] = settings.githubAppInstallationId;
-      }
-
-      if (settings.githubAppUsername !== undefined) {
-        localDataToSave[STORAGE_KEYS.GITHUB_APP_USERNAME] = settings.githubAppUsername;
-      }
-
-      if (settings.githubAppAvatarUrl !== undefined) {
-        localDataToSave[STORAGE_KEYS.GITHUB_APP_AVATAR_URL] = settings.githubAppAvatarUrl;
-      }
-
-      // Save to both storages
-      await Promise.all([
-        chrome.storage.sync.set(syncDataToSave),
-        Object.keys(localDataToSave).length > 0
-          ? chrome.storage.local.set(localDataToSave)
-          : Promise.resolve(),
-      ]);
-    } catch (error) {
-      logger.error('Error saving GitHub settings to storage:', error);
-      throw error;
-    }
+    });
   }
 
   /**
@@ -129,26 +158,65 @@ export class ChromeStorageService {
   }
 
   /**
-   * Save project settings for a specific project
+   * Save project settings for a specific project (thread-safe)
    */
   static async saveProjectSettings(
     projectId: string,
     repoName: string,
-    branch: string
+    branch: string,
+    projectTitle?: string
   ): Promise<void> {
-    try {
-      const result = await chrome.storage.sync.get(STORAGE_KEYS.PROJECT_SETTINGS);
-      const projectSettings: ProjectSettings = result[STORAGE_KEYS.PROJECT_SETTINGS] || {};
+    return this.writeQueue.enqueue(async () => {
+      try {
+        logger.debug('Saving project settings for:', projectId);
 
-      projectSettings[projectId] = { repoName, branch };
+        const result = await chrome.storage.sync.get(STORAGE_KEYS.PROJECT_SETTINGS);
+        const projectSettings: ProjectSettings = result[STORAGE_KEYS.PROJECT_SETTINGS] || {};
 
-      await chrome.storage.sync.set({
-        [STORAGE_KEYS.PROJECT_SETTINGS]: projectSettings,
+        projectSettings[projectId] = {
+          repoName,
+          branch,
+          ...(projectTitle && { projectTitle }),
+        };
+
+        await chrome.storage.sync.set({
+          [STORAGE_KEYS.PROJECT_SETTINGS]: projectSettings,
+        });
+
+        logger.info(`Project settings saved successfully for ${projectId}`);
+      } catch (error) {
+        logger.error('Error saving project settings to storage:', error);
+        throw error;
+      }
+    });
+  }
+
+  /**
+   * Set up storage change listener for reactive updates
+   */
+  static setupStorageListener(
+    callback: (changes: Record<string, chrome.storage.StorageChange>) => void
+  ): void {
+    if (chrome.storage.onChanged) {
+      chrome.storage.onChanged.addListener((changes, namespace) => {
+        // Only listen to sync storage changes for projectSettings
+        if (namespace === 'sync' && changes.projectSettings) {
+          logger.debug('Storage change detected for projectSettings');
+          callback(changes);
+        }
       });
-    } catch (error) {
-      logger.error('Error saving project settings to storage:', error);
-      throw error;
     }
+  }
+
+  /**
+   * Remove all storage change listeners
+   * Note: This is a placeholder implementation. In practice, you would need to
+   * store the listener reference to properly remove it.
+   */
+  static removeStorageListeners(): void {
+    // Implementation would require storing listener references
+    // For now, this is just a placeholder for the API
+    logger.debug('Storage listener removal requested');
   }
 
   /**

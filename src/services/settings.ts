@@ -1,5 +1,6 @@
 import type { GitHubSettingsInterface, ProjectSettings } from '$lib/types';
 import { createLogger } from '../lib/utils/logger';
+import { ChromeStorageService } from '../lib/services/chromeStorage';
 
 const logger = createLogger('SettingsService');
 
@@ -32,9 +33,12 @@ export class SettingsService {
 
         if (hasRequiredAuth) {
           projectSettings = { repoName: projectId.projectId, branch: 'main' };
-          await chrome.storage.sync.set({
-            [`projectSettings.${projectId.projectId}`]: projectSettings,
-          });
+          // Use ChromeStorageService for thread-safe writes to bundled format
+          await ChromeStorageService.saveProjectSettings(
+            projectId.projectId,
+            projectSettings.repoName,
+            projectSettings.branch
+          );
         }
       }
 

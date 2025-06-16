@@ -352,6 +352,7 @@ export class BoltProjectSyncService {
    * Sync existing projects from old storage format to new sync format
    * This bridges the gap between projectSettings and boltProjects
    * Updates existing projects and migrates new ones
+   * IMPORTANT: This is a one-way sync from projectSettings -> boltProjects
    */
   private async syncProjectsFromLegacyFormat(): Promise<void> {
     try {
@@ -382,7 +383,7 @@ export class BoltProjectSyncService {
         return;
       }
 
-      // Check for projects in the old format
+      // ALWAYS read fresh projectSettings to ensure we have the latest user changes
       const gitHubSettings = await ChromeStorageService.getGitHubSettings();
       const legacyProjects = gitHubSettings.projectSettings || {};
       const legacyProjectIds = Object.keys(legacyProjects);
@@ -390,6 +391,15 @@ export class BoltProjectSyncService {
       if (legacyProjectIds.length === 0) {
         logger.debug('🔄 No legacy projects found, sync not needed');
         return;
+      }
+
+      // Check for recent changes to ensure we're working with fresh data
+      const recentChanges = await this.getRecentProjectChanges();
+      if (recentChanges.size > 0) {
+        logger.info('📝 Detected recent project changes during legacy sync', {
+          recentChangeCount: recentChanges.size,
+          recentProjectIds: Array.from(recentChanges.keys()),
+        });
       }
 
       // Create a map of existing bolt projects for easier lookup
@@ -411,7 +421,7 @@ export class BoltProjectSyncService {
           // Update existing project with latest values from projectSettings
           const updatedProject: BoltProject = {
             ...existingBoltProject,
-            // Update with latest values from legacy format
+            // ALWAYS use latest values from projectSettings (source of truth)
             project_name:
               legacyProject.projectTitle || existingBoltProject.project_name || projectId,
             github_repo_name:
@@ -448,10 +458,18 @@ export class BoltProjectSyncService {
         }
       }
 
-      // Track deleted projects
+      // Track deleted projects (projects in bolt format but not in legacy format)
       const deletedProjects = existingBoltProjects.filter(
         (project) => !legacyProjectIds.includes(project.bolt_project_id)
       );
+
+      // Add bolt projects that don't exist in legacy format (server-only projects)
+      for (const boltProject of existingBoltProjects) {
+        if (!legacyProjectIds.includes(boltProject.bolt_project_id)) {
+          // Keep server-only projects in the bolt format
+          allBoltProjects.push(boltProject);
+        }
+      }
 
       // Save all projects to new format
       await this.saveLocalProjects(allBoltProjects);
@@ -461,11 +479,11 @@ export class BoltProjectSyncService {
         previousBoltProjects: existingBoltProjects.length,
         updatedCount: updatedProjects.length,
         newlyMigratedCount: newProjects.length,
-        deletedCount: deletedProjects.length,
+        deletedFromLegacy: deletedProjects.length,
         totalBoltProjects: allBoltProjects.length,
         updatedProjectIds: updatedProjects.map((p) => p.id),
         newProjectIds: newProjects.map((p) => p.id),
-        deletedProjectIds: deletedProjects.map((p) => p.id),
+        preservedServerProjects: deletedProjects.map((p) => p.id),
       });
     } catch (error) {
       logger.error('💥 Failed to sync projects from legacy format', { error });
@@ -538,6 +556,7 @@ export class BoltProjectSyncService {
   /**
    * Sync back from boltProjects to active storage format (reverse bridge)
    * This ensures the extension continues to work with existing project data
+   * Implements race condition prevention by checking for recent user changes
    */
   private async syncBackToActiveStorage(): Promise<void> {
     try {
@@ -548,18 +567,49 @@ export class BoltProjectSyncService {
         return;
       }
 
+      // Check for recent user changes to prevent race conditions
+      const recentChanges = await this.getRecentProjectChanges();
+      const hasRecentChanges = recentChanges.size > 0;
+
+      if (hasRecentChanges) {
+        logger.info('⏸️ Detected recent user changes, using merge strategy for sync back', {
+          recentChangeCount: recentChanges.size,
+          recentProjectIds: Array.from(recentChanges.keys()),
+        });
+      }
+
       logger.info('🔄 Syncing bolt projects back to active storage format', {
         projectCount: boltProjects.length,
         projectIds: boltProjects.map((p) => p.id),
+        mergeMode: hasRecentChanges,
       });
 
       // Get current active storage
       const gitHubSettings = await ChromeStorageService.getGitHubSettings();
       const updatedProjectSettings = { ...gitHubSettings.projectSettings };
 
-      // Convert bolt projects back to project settings format
+      // Convert bolt projects back to project settings format with merge logic
       for (const boltProject of boltProjects) {
-        updatedProjectSettings[boltProject.bolt_project_id] = {
+        const projectId = boltProject.bolt_project_id;
+        const hasRecentChange = recentChanges.has(projectId);
+
+        if (hasRecentChange) {
+          // Preserve recent user changes for this project
+          const recentChange = recentChanges.get(projectId)!;
+          logger.debug(`🛡️ Preserving recent user changes for project ${projectId}`, {
+            userValues: recentChange,
+            serverValues: {
+              repoName: boltProject.github_repo_name,
+              branch: boltProject.github_branch,
+              projectTitle: boltProject.project_name,
+            },
+          });
+          // Skip updating this project to preserve user changes
+          continue;
+        }
+
+        // No recent changes, safe to update from bolt project
+        updatedProjectSettings[projectId] = {
           repoName:
             boltProject.github_repo_name || boltProject.repoName || boltProject.bolt_project_id,
           branch: boltProject.github_branch || boltProject.branch || 'main',
@@ -578,10 +628,65 @@ export class BoltProjectSyncService {
       logger.info('✅ Successfully synced projects back to active storage format', {
         updatedProjectCount: boltProjects.length,
         totalActiveProjects: Object.keys(updatedProjectSettings).length,
+        preservedProjects: Array.from(recentChanges.keys()),
       });
     } catch (error) {
       logger.error('💥 Failed to sync back to active storage format', { error });
       // Don't throw - reverse sync failure shouldn't block the main sync operation
+    }
+  }
+
+  /**
+   * Get recent project changes from storage to detect potential race conditions
+   * Returns a map of projectId -> recent change data for changes within the last 30 seconds
+   */
+  private async getRecentProjectChanges(): Promise<Map<string, any>> {
+    const recentChanges = new Map<string, any>();
+    const RECENT_CHANGE_THRESHOLD = 30000; // 30 seconds
+
+    try {
+      // Check for the lastSettingsUpdate timestamp
+      const result = await chrome.storage.local.get(['lastSettingsUpdate', 'recentProjectChanges']);
+      const now = Date.now();
+
+      // Check single project update (from RepoSettings save)
+      if (result.lastSettingsUpdate) {
+        const { timestamp, projectId, repoName, branch, projectTitle } = result.lastSettingsUpdate;
+        const age = now - timestamp;
+
+        if (age < RECENT_CHANGE_THRESHOLD && projectId) {
+          recentChanges.set(projectId, {
+            repoName,
+            branch,
+            projectTitle,
+            timestamp,
+            age: Math.round(age / 1000),
+          });
+
+          logger.debug(`🕒 Found recent change for project ${projectId}`, {
+            age: `${Math.round(age / 1000)}s`,
+            data: { repoName, branch, projectTitle },
+          });
+        }
+      }
+
+      // Check for multiple project updates (future enhancement)
+      if (result.recentProjectChanges && Array.isArray(result.recentProjectChanges)) {
+        for (const change of result.recentProjectChanges) {
+          const age = now - change.timestamp;
+          if (age < RECENT_CHANGE_THRESHOLD && change.projectId) {
+            recentChanges.set(change.projectId, {
+              ...change,
+              age: Math.round(age / 1000),
+            });
+          }
+        }
+      }
+
+      return recentChanges;
+    } catch (error) {
+      logger.warn('Failed to check for recent project changes', { error });
+      return recentChanges;
     }
   }
 
