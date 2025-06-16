@@ -142,12 +142,21 @@ export const projectSettingsActions = {
       if (tabs[0]?.url) {
         this.setCurrentUrl(tabs[0].url);
 
-        // Also check stored project ID to match with current URL
-        const storedProject = await chrome.storage.sync.get('projectId');
+        // Always set the project ID from the current tab's URL
         const currentProjectId = this.parseProjectIdFromUrl(tabs[0].url);
 
-        if (currentProjectId && storedProject.projectId === currentProjectId) {
+        if (currentProjectId) {
           this.setProjectId(currentProjectId);
+          logger.info(`🎯 Detected project ID from active tab: ${currentProjectId}`);
+
+          // Update the stored project ID to match the current tab
+          await chrome.storage.sync.set({ projectId: currentProjectId });
+        } else {
+          // Clear project ID if not on a project page
+          projectSettingsStore.update((state) => ({
+            ...state,
+            projectId: null,
+          }));
         }
       }
     } catch (error) {

@@ -29,6 +29,8 @@ export class BackgroundService {
     | ((changes: { [key: string]: chrome.storage.StorageChange }, namespace: string) => void)
     | null = null;
   private syncAlarmHandler: ((alarm: chrome.alarms.Alarm) => void) | null = null;
+  // Tab-based project tracking to prevent wrong project pushes
+  private tabProjectMap: Map<number, string> = new Map();
 
   constructor() {
     logger.info('🚀 Background service initializing...');
@@ -409,15 +411,27 @@ export class BackgroundService {
     // Clean up when tabs are closed
     chrome.tabs.onRemoved.addListener((tabId) => {
       this.ports.delete(tabId);
+      this.tabProjectMap.delete(tabId);
     });
 
-    // Handle URL updates for project ID
+    // Track project IDs per tab to prevent cross-tab confusion
     chrome.tabs.onUpdated.addListener(async (tabId, changeInfo, tab) => {
       if (tab.url?.includes('bolt.new/~/')) {
         const projectId = tab.url.match(/bolt\.new\/~\/([^/]+)/)?.[1] || null;
         if (projectId) {
-          await this.stateManager.setProjectId(projectId);
+          // Store project ID for this specific tab
+          this.tabProjectMap.set(tabId, projectId);
+          logger.info(`📌 Tab ${tabId} is now associated with project: ${projectId}`);
+
+          // Only update global projectId if this is the active tab
+          const [activeTab] = await chrome.tabs.query({ active: true, currentWindow: true });
+          if (activeTab && activeTab.id === tabId) {
+            await this.stateManager.setProjectId(projectId);
+          }
         }
+      } else if (changeInfo.url) {
+        // Clear project association if navigating away from bolt.new
+        this.tabProjectMap.delete(tabId);
       }
     });
   }
@@ -702,10 +716,21 @@ export class BackgroundService {
         throw new Error('Zip handler is not initialized.');
       }
 
-      // Use the project ID from the message if provided, otherwise fall back to stored project ID
+      // Always prefer the project ID from the current tab's URL
       let projectId = currentProjectId;
+
+      // If no project ID from message, try to get it from the tab map
+      if (!projectId && tabId) {
+        projectId = this.tabProjectMap.get(tabId);
+        if (projectId) {
+          logger.info(`📌 Using project ID from tab ${tabId}: ${projectId}`);
+        }
+      }
+
+      // Only fall back to stored project ID as last resort
       if (!projectId) {
         projectId = await this.stateManager.getProjectId();
+        logger.warn('⚠️ Using fallback project ID from storage - this may be incorrect!');
       }
 
       if (!projectId) {
@@ -715,7 +740,11 @@ export class BackgroundService {
       logger.info(
         '🔍 Using project ID for push:',
         projectId,
-        currentProjectId ? '(from URL)' : '(from storage)'
+        currentProjectId
+          ? '(from URL)'
+          : projectId === this.tabProjectMap.get(tabId)
+            ? '(from tab map)'
+            : '(from storage)'
       );
 
       try {
