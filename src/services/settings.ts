@@ -1,4 +1,4 @@
-import type { GitHubSettingsInterface, ProjectSettings } from '$lib/types';
+import type { GitHubSettingsInterface } from '$lib/types';
 import { createLogger } from '../lib/utils/logger';
 import { ChromeStorageService } from '../lib/services/chromeStorage';
 
@@ -12,30 +12,30 @@ export interface SettingsCheckResult {
 export class SettingsService {
   static async getGitHubSettings(): Promise<SettingsCheckResult> {
     try {
-      const [settings, projectId, localSettings] = await Promise.all([
-        chrome.storage.sync.get(['githubToken', 'repoOwner', 'projectSettings']),
-        chrome.storage.sync.get('projectId'),
-        chrome.storage.local.get(['authenticationMethod', 'githubAppInstallationId']),
+      // Use ChromeStorageService for thread-safe reads
+      const [gitHubSettings, projectId] = await Promise.all([
+        ChromeStorageService.getGitHubSettings(),
+        ChromeStorageService.getCurrentProjectId(),
       ]);
 
-      let projectSettings = settings.projectSettings?.[projectId.projectId];
+      let projectSettings = projectId ? gitHubSettings.projectSettings?.[projectId] : undefined;
 
       // Get authentication method
-      const authMethod = localSettings.authenticationMethod || 'pat';
+      const authMethod = gitHubSettings.authenticationMethod || 'pat';
 
       // Auto-create project settings if needed
-      if (!projectSettings && projectId?.projectId && settings.repoOwner) {
+      if (!projectSettings && projectId && gitHubSettings.repoOwner) {
         // For GitHub App, we don't need githubToken
         const hasRequiredAuth =
           authMethod === 'github_app'
-            ? localSettings.githubAppInstallationId
-            : settings.githubToken;
+            ? gitHubSettings.githubAppInstallationId
+            : gitHubSettings.githubToken;
 
         if (hasRequiredAuth) {
-          projectSettings = { repoName: projectId.projectId, branch: 'main' };
+          projectSettings = { repoName: projectId, branch: 'main' };
           // Use ChromeStorageService for thread-safe writes to bundled format
           await ChromeStorageService.saveProjectSettings(
-            projectId.projectId,
+            projectId,
             projectSettings.repoName,
             projectSettings.branch
           );
@@ -47,23 +47,26 @@ export class SettingsService {
       if (authMethod === 'github_app') {
         // For GitHub App: need installation ID, repoOwner, and project settings
         isSettingsValid = Boolean(
-          localSettings.githubAppInstallationId &&
-            settings.repoOwner &&
-            settings.projectSettings &&
+          gitHubSettings.githubAppInstallationId &&
+            gitHubSettings.repoOwner &&
+            gitHubSettings.projectSettings &&
             projectSettings
         );
       } else {
         // For PAT: need token, repoOwner, and project settings (original logic)
         isSettingsValid = Boolean(
-          settings.githubToken && settings.repoOwner && settings.projectSettings && projectSettings
+          gitHubSettings.githubToken &&
+            gitHubSettings.repoOwner &&
+            gitHubSettings.projectSettings &&
+            projectSettings
         );
       }
 
       return {
         isSettingsValid,
         gitHubSettings: {
-          githubToken: settings.githubToken,
-          repoOwner: settings.repoOwner,
+          githubToken: gitHubSettings.githubToken,
+          repoOwner: gitHubSettings.repoOwner,
           projectSettings: projectSettings || undefined,
         },
       };
@@ -75,8 +78,8 @@ export class SettingsService {
 
   static async getProjectId(): Promise<string | null> {
     try {
-      const { projectId } = await chrome.storage.sync.get('projectId');
-      return projectId || null;
+      // Use ChromeStorageService for thread-safe reads
+      return await ChromeStorageService.getCurrentProjectId();
     } catch (error) {
       logger.error('Failed to get project ID:', error);
       return null;
@@ -85,7 +88,8 @@ export class SettingsService {
 
   static async setProjectId(projectId: string): Promise<void> {
     try {
-      await chrome.storage.sync.set({ projectId });
+      // Use ChromeStorageService for thread-safe writes
+      await ChromeStorageService.saveCurrentProjectId(projectId);
     } catch (error) {
       logger.error('Failed to set project ID:', error);
     }
