@@ -17,6 +17,8 @@ jest.mock('../../content/services/SupabaseAuthService', () => ({
     getInstance: jest.fn(() => ({
       forceCheck: jest.fn(),
       getAuthState: jest.fn().mockReturnValue({ isAuthenticated: true }),
+      addAuthStateListener: jest.fn(),
+      removeAuthStateListener: jest.fn(),
     })),
   },
 }));

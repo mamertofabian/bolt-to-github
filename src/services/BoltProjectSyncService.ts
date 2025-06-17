@@ -171,7 +171,7 @@ export class BoltProjectSyncService {
 
     const syncRequest: SyncRequest = {
       localProjects: backendProjects,
-      lastSyncTimestamp,
+      lastSyncTimestamp: lastSyncTimestamp || undefined,
       conflictResolution,
     };
 

@@ -4,6 +4,7 @@ import { StateManager } from './StateManager';
 import { ZipHandler } from '../services/zipHandler';
 import { BackgroundTempRepoManager } from './TempRepoManager';
 import { SupabaseAuthService } from '../content/services/SupabaseAuthService';
+import type { AuthState } from '../content/services/SupabaseAuthService';
 import { OperationStateManager } from '../content/services/OperationStateManager';
 import { createLogger, getLogStorage } from '../lib/utils/logger';
 import { UsageTracker } from './UsageTracker';
@@ -32,6 +33,15 @@ export class BackgroundService {
   private syncAlarmHandler: ((alarm: chrome.alarms.Alarm) => void) | null = null;
   // Tab-based project tracking to prevent wrong project pushes
   private tabProjectMap: Map<number, string> = new Map();
+  // Auth state change listener
+  private authStateListener: ((authState: AuthState, previousState: AuthState) => void) | null =
+    null;
+  // Track initial auth check completion
+  private initialAuthCheckCompleted: boolean = false;
+  // Track delayed sync timeout for cancellation
+  private delayedSyncTimeout: NodeJS.Timeout | null = null;
+  // Prevent concurrent sync operations
+  private syncInProgress: boolean = false;
 
   constructor() {
     logger.info('🚀 Background service initializing...');
@@ -64,7 +74,10 @@ export class BackgroundService {
     // Start service worker keep-alive mechanism
     this.startKeepAlive();
 
-    // Set up sync alarm and perform initial sync
+    // Set up auth state listener for sync retry mechanism
+    this.setupAuthStateListener();
+
+    // Set up sync alarm with improved timing
     this.setupSyncAlarm();
   }
 
@@ -1156,7 +1169,7 @@ export class BackgroundService {
       ]);
 
       // Check authentication status
-      const authState = await this.supabaseAuthService.getCurrentAuthState();
+      const authState = this.supabaseAuthService.getAuthState();
 
       const response = {
         success: true,
@@ -1164,7 +1177,6 @@ export class BackgroundService {
           installed: true,
           version: chrome.runtime.getManifest().version,
           authenticated: authState.isAuthenticated,
-          authMethod: authState.authMethod || 'none',
           installDate: storageData.installDate,
           onboardingCompleted: storageData.onboardingCompleted || false,
           installedVersion: storageData.installedVersion,
@@ -1328,9 +1340,21 @@ export class BackgroundService {
       this.authCheckTimeout = null;
     }
 
+    // Clean up delayed sync timeout
+    if (this.delayedSyncTimeout) {
+      clearTimeout(this.delayedSyncTimeout);
+      this.delayedSyncTimeout = null;
+    }
+
     if (this.storageListener) {
       chrome.storage.onChanged.removeListener(this.storageListener);
       this.storageListener = null;
+    }
+
+    // Clean up auth state listener
+    if (this.authStateListener) {
+      this.supabaseAuthService.removeAuthStateListener(this.authStateListener);
+      this.authStateListener = null;
     }
 
     // Clean up sync alarm
@@ -1371,18 +1395,100 @@ export class BackgroundService {
   }
 
   /**
+   * Safely perform inward sync with concurrency protection
+   */
+  private async safePerformInwardSync(context: string): Promise<void> {
+    if (this.syncInProgress) {
+      logger.info(`⏸️ Sync already in progress, skipping ${context} sync request`);
+      return;
+    }
+
+    this.syncInProgress = true;
+    logger.info(`🔄 Starting ${context} inward sync`);
+
+    try {
+      await this.syncService.performInwardSync();
+      logger.info(`✅ Completed ${context} inward sync`);
+    } catch (error) {
+      logger.error(`💥 ${context} inward sync failed:`, error);
+    } finally {
+      this.syncInProgress = false;
+    }
+  }
+
+  /**
+   * Set up auth state listener for sync retry mechanism
+   */
+  private setupAuthStateListener(): void {
+    this.authStateListener = (authState: AuthState, previousState: AuthState) => {
+      logger.info('🔐 Auth state change detected for sync', {
+        wasAuthenticated: previousState.isAuthenticated,
+        nowAuthenticated: authState.isAuthenticated,
+      });
+
+      // If user just became authenticated, trigger immediate inward sync
+      if (authState.isAuthenticated && !previousState.isAuthenticated) {
+        logger.info('🎉 User authenticated - triggering immediate inward sync');
+
+        // Cancel any pending delayed sync since we're doing immediate sync
+        if (this.delayedSyncTimeout) {
+          logger.debug('⏹️ Cancelling delayed sync due to authentication');
+          clearTimeout(this.delayedSyncTimeout);
+          this.delayedSyncTimeout = null;
+        }
+
+        // Use safe sync to prevent concurrent operations
+        this.safePerformInwardSync('auth-triggered').catch((error) => {
+          logger.error('Safe auth-triggered sync wrapper failed:', error);
+        });
+      }
+    };
+
+    // Add listener to auth service
+    this.supabaseAuthService.addAuthStateListener(this.authStateListener);
+  }
+
+  /**
    * Set up sync alarm for periodic bolt project syncing
    */
   private setupSyncAlarm(): void {
     // Create sync alarm (every 5 minutes)
     chrome.alarms.create('bolt-project-sync', { periodInMinutes: 5 });
 
-    // Perform initial inward sync on startup (non-blocking)
-    setTimeout(() => {
-      this.syncService.performInwardSync().catch((error) => {
-        logger.error('Initial inward sync failed:', error);
+    // Perform delayed initial inward sync with better timing
+    this.performDelayedInitialSync();
+  }
+
+  /**
+   * Perform delayed initial sync that waits for auth check completion
+   */
+  private performDelayedInitialSync(): void {
+    // Wait for initial auth check to complete before running sync
+    this.delayedSyncTimeout = setTimeout(() => {
+      logger.info('🔄 Performing delayed initial inward sync after auth check window');
+      this.delayedSyncTimeout = null; // Clear reference since timeout has fired
+      this.safePerformInwardSync('delayed-initial').catch((error) => {
+        logger.error('Safe delayed initial sync wrapper failed:', error);
       });
-    }, 0);
+    }, 3000); // Wait 3 seconds to allow auth check to complete
+
+    // Also try sync immediately if already authenticated
+    setTimeout(() => {
+      const authState = this.supabaseAuthService.getAuthState();
+      if (authState.isAuthenticated) {
+        logger.info('✅ User already authenticated - triggering immediate initial sync');
+
+        // Cancel delayed sync since we're doing immediate sync
+        if (this.delayedSyncTimeout) {
+          clearTimeout(this.delayedSyncTimeout);
+          this.delayedSyncTimeout = null;
+        }
+
+        this.safePerformInwardSync('immediate-initial').catch((error) => {
+          logger.error('Safe immediate initial sync wrapper failed:', error);
+        });
+      }
+    }, 100); // Quick check after 100ms
   }
 
   /**
@@ -1408,10 +1514,9 @@ export class BackgroundService {
     // Perform inward sync second (server → extension)
     try {
       logger.debug('🔄 Starting inward sync phase...');
-      inwardResult = await this.syncService.performInwardSync();
-      logger.debug('📥 Inward sync phase completed', {
-        result: inwardResult ? 'success' : 'skipped',
-      });
+      await this.safePerformInwardSync('periodic-alarm');
+      inwardResult = true; // Indicate that we attempted the sync
+      logger.debug('📥 Inward sync phase completed');
     } catch (error) {
       logger.error('💥 Inward sync phase failed:', error);
     }
