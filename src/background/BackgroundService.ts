@@ -488,6 +488,20 @@ export class BackgroundService {
           if (githubService) {
             logger.info('🔄 GitHub service reinitialized, reinitializing ZipHandler...');
             this.setupZipHandler(githubService);
+
+            // Also reinitialize TempRepoManager with new settings
+            const settings = await this.stateManager.getGitHubSettings();
+            if (settings?.gitHubSettings?.repoOwner) {
+              logger.info('🔄 Reinitializing TempRepoManager with updated settings...');
+              this.tempRepoManager = new BackgroundTempRepoManager(
+                githubService,
+                settings.gitHubSettings.repoOwner,
+                (status) => this.broadcastStatus(status)
+              );
+            } else {
+              logger.warn('⚠️ No repoOwner found, TempRepoManager will remain uninitialized');
+              this.tempRepoManager = null;
+            }
           }
         }
       }
@@ -634,9 +648,32 @@ export class BackgroundService {
             action: 'private_repo_import_started',
             has_custom_branch: Boolean(message.data.branch),
           });
+
+          // Ensure TempRepoManager is initialized before proceeding
           if (!this.tempRepoManager) {
-            throw new Error('Temp repo manager not initialized');
+            logger.warn('⚠️ TempRepoManager not initialized, attempting to initialize...');
+            const githubService = await this.initializeGitHubService();
+            if (githubService) {
+              const settings = await this.stateManager.getGitHubSettings();
+              if (settings?.gitHubSettings?.repoOwner) {
+                logger.info('🔄 Initializing TempRepoManager for private repo import...');
+                this.tempRepoManager = new BackgroundTempRepoManager(
+                  githubService,
+                  settings.gitHubSettings.repoOwner,
+                  (status) => this.broadcastStatus(status)
+                );
+              } else {
+                throw new Error(
+                  'GitHub repository owner not configured. Please set up your GitHub settings first.'
+                );
+              }
+            } else {
+              throw new Error(
+                'GitHub service not available. Please check your GitHub authentication.'
+              );
+            }
           }
+
           await this.tempRepoManager.handlePrivateRepoImport(
             message.data.repoName,
             message.data.branch
