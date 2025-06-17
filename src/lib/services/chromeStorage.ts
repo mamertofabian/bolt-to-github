@@ -35,8 +35,8 @@ class StorageWriteQueue {
     };
 
     const result = this.queue.then(wrappedOperation);
-    // Continue queue even if an operation fails, but preserve the chain for GC
-    this.queue = result.catch(() => {}) as Promise<void>;
+    // Continue queue even if an operation fails, ensuring proper chain continuation
+    this.queue = result.then(() => {}, () => {});
     return result;
   }
 

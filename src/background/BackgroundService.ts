@@ -41,6 +41,8 @@ export class BackgroundService {
   private initialAuthCheckCompleted: boolean = false;
   // Track delayed sync timeout for cancellation
   private delayedSyncTimeout: NodeJS.Timeout | null = null;
+  // Track startup cleanup timeout for cancellation
+  private startupCleanupTimeout: NodeJS.Timeout | null = null;
   // Prevent concurrent sync operations
   private syncInProgress: boolean = false;
 
@@ -837,12 +839,14 @@ export class BackgroundService {
             );
           } else {
             logger.warn(`⚠️ Could not extract project ID from tab URL: ${tab.url}`);
+            // For security, require valid project ID extraction from tab URL
+            throw new Error('Could not validate project ID from tab URL - security check failed');
           }
         } catch (error) {
-          logger.warn(
-            `⚠️ Failed to validate project ID against tab ${tabId}: ${error instanceof Error ? error.message : 'Unknown error'}`
+          logger.error(
+            `🚨 Project ID validation failed for tab ${tabId}: ${error instanceof Error ? error.message : 'Unknown error'}`
           );
-          // Continue with the provided project ID if tab validation fails
+          throw error; // Don't continue with potentially invalid project ID
         }
       }
 
@@ -1454,7 +1458,7 @@ export class BackgroundService {
   private async cleanupGitHubComProjectsOnStartup(): Promise<void> {
     try {
       // Add small delay to allow initialization to complete
-      setTimeout(async () => {
+      this.startupCleanupTimeout = setTimeout(async () => {
         try {
           logger.info('🧹 Starting startup cleanup of github.com projects...');
           const cleanedCount = await ChromeStorageService.cleanupGitHubComProjects();
@@ -1465,6 +1469,8 @@ export class BackgroundService {
           }
         } catch (error) {
           logger.error('❌ Startup cleanup of github.com projects failed:', error);
+        } finally {
+          this.startupCleanupTimeout = null;
         }
       }, 3000); // Wait 3 seconds after startup
     } catch (error) {
@@ -1489,6 +1495,12 @@ export class BackgroundService {
     if (this.delayedSyncTimeout) {
       clearTimeout(this.delayedSyncTimeout);
       this.delayedSyncTimeout = null;
+    }
+
+    // Clean up startup cleanup timeout
+    if (this.startupCleanupTimeout) {
+      clearTimeout(this.startupCleanupTimeout);
+      this.startupCleanupTimeout = null;
     }
 
     if (this.storageListener) {
@@ -1608,20 +1620,14 @@ export class BackgroundService {
    * Perform delayed initial sync that waits for auth check completion
    */
   private performDelayedInitialSync(): void {
-    // Wait for initial auth check to complete before running sync
-    this.delayedSyncTimeout = setTimeout(() => {
-      logger.info('🔄 Performing delayed initial inward sync after auth check window');
-      this.delayedSyncTimeout = null; // Clear reference since timeout has fired
-      this.safePerformInwardSync('delayed-initial').catch((error) => {
-        logger.error('Safe delayed initial sync wrapper failed:', error);
-      });
-    }, 3000); // Wait 3 seconds to allow auth check to complete
-
+    let immediateCheckCompleted = false;
+    
     // Also try sync immediately if already authenticated
     setTimeout(() => {
       const authState = this.supabaseAuthService.getAuthState();
       if (authState.isAuthenticated) {
         logger.info('✅ User already authenticated - triggering immediate initial sync');
+        immediateCheckCompleted = true;
 
         // Cancel delayed sync since we're doing immediate sync
         if (this.delayedSyncTimeout) {
@@ -1634,6 +1640,18 @@ export class BackgroundService {
         });
       }
     }, 100); // Quick check after 100ms
+
+    // Wait for initial auth check to complete before running sync
+    this.delayedSyncTimeout = setTimeout(() => {
+      // Only perform delayed sync if immediate sync hasn't already run
+      if (!immediateCheckCompleted) {
+        logger.info('🔄 Performing delayed initial inward sync after auth check window');
+        this.safePerformInwardSync('delayed-initial').catch((error) => {
+          logger.error('Safe delayed initial sync wrapper failed:', error);
+        });
+      }
+      this.delayedSyncTimeout = null; // Clear reference since timeout has fired
+    }, 3000); // Wait 3 seconds to allow auth check to complete
   }
 
   /**

@@ -101,8 +101,8 @@ export class BoltProjectSyncService {
               token = data.session.access_token;
             }
 
-            // Validate token format (basic JWT check)
-            if (token && token.split('.').length === 3) {
+            // Validate token format and expiration
+            if (token && this.isValidJWT(token)) {
               return token;
             }
           }
@@ -120,14 +120,35 @@ export class BoltProjectSyncService {
     }
   }
 
+  private isValidJWT(token: string): boolean {
+    try {
+      const parts = token.split('.');
+      if (parts.length !== 3) return false;
+      
+      // Decode payload to check expiration
+      const payload = JSON.parse(atob(parts[1].replace(/-/g, '+').replace(/_/g, '/')));
+      const now = Math.floor(Date.now() / 1000);
+      
+      return payload.exp && payload.exp > now;
+    } catch {
+      return false;
+    }
+  }
+
   /**
    * Validate if a project ID is compatible with backend requirements
    * Backend only accepts alphanumeric characters, hyphens, and underscores
    */
   private isValidProjectId(projectId: string): boolean {
     // Backend validation pattern: only alphanumeric, hyphens, and underscores
+    // Also validate length to prevent backend issues
     const validPattern = /^[a-zA-Z0-9_-]+$/;
-    return validPattern.test(projectId);
+    const minLength = 1;
+    const maxLength = 100; // Reasonable limit for project IDs
+    
+    return validPattern.test(projectId) && 
+           projectId.length >= minLength && 
+           projectId.length <= maxLength;
   }
 
   /**
