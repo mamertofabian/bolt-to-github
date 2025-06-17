@@ -121,6 +121,16 @@ export class BoltProjectSyncService {
   }
 
   /**
+   * Validate if a project ID is compatible with backend requirements
+   * Backend only accepts alphanumeric characters, hyphens, and underscores
+   */
+  private isValidProjectId(projectId: string): boolean {
+    // Backend validation pattern: only alphanumeric, hyphens, and underscores
+    const validPattern = /^[a-zA-Z0-9_-]+$/;
+    return validPattern.test(projectId);
+  }
+
+  /**
    * Convert BoltProject to backend-compatible format
    * Removes local-only fields and ensures compatibility with ExtensionProject schema
    */
@@ -158,12 +168,39 @@ export class BoltProjectSyncService {
     const localProjects = await this.getLocalProjects();
     const lastSyncTimestamp = await this.getLastSyncTimestamp();
 
+    // Filter out projects with invalid IDs (e.g., temporary import projects like "github.com")
+    const validProjects = localProjects.filter((project) => {
+      const isValid = this.isValidProjectId(project.bolt_project_id);
+      if (!isValid) {
+        logger.debug('🚫 Skipping project with invalid ID during sync', {
+          projectId: project.id,
+          boltProjectId: project.bolt_project_id,
+          reason:
+            'Contains invalid characters (backend only accepts alphanumeric, hyphens, underscores)',
+        });
+      }
+      return isValid;
+    });
+
+    if (validProjects.length !== localProjects.length) {
+      logger.info('🔍 Filtered out invalid projects from sync', {
+        totalProjects: localProjects.length,
+        validProjects: validProjects.length,
+        filteredOut: localProjects.length - validProjects.length,
+        invalidProjectIds: localProjects
+          .filter((p) => !this.isValidProjectId(p.bolt_project_id))
+          .map((p) => p.bolt_project_id),
+      });
+    }
+
     // Prepare projects for backend (remove local-only fields)
-    const backendProjects = localProjects.map((project) => this.prepareProjectForBackend(project));
+    const backendProjects = validProjects.map((project) => this.prepareProjectForBackend(project));
 
     logger.debug('📋 Preparing sync request', {
       localProjectCount: localProjects.length,
+      validProjectCount: validProjects.length,
       localProjectIds: localProjects.map((p) => p.id),
+      validProjectIds: validProjects.map((p) => p.id),
       lastSyncTimestamp: lastSyncTimestamp || 'none',
       conflictResolution,
       backendProjectSample: backendProjects[0] || 'none',

@@ -433,6 +433,19 @@ export class BackgroundService {
       if (tab.url?.includes('bolt.new/~/')) {
         const projectId = extractProjectIdFromUrl(tab.url);
         if (projectId) {
+          // Check if URL changed from temporary format to final format
+          const previousProjectId = this.tabProjectMap.get(tabId);
+          if (
+            previousProjectId &&
+            this.isTempRepoUrl(previousProjectId) &&
+            !this.isTempRepoUrl(projectId)
+          ) {
+            logger.info(
+              `🎯 URL changed from temp format '${previousProjectId}' to final format '${projectId}' - triggering temp repo cleanup`
+            );
+            await this.triggerTempRepoCleanup();
+          }
+
           // Store project ID for this specific tab
           this.tabProjectMap.set(tabId, projectId);
           logger.info(`📌 Tab ${tabId} is now associated with project: ${projectId}`);
@@ -1280,6 +1293,30 @@ export class BackgroundService {
       return parsedUrl.hostname === 'bolt2github.com' && parsedUrl.protocol === 'https:';
     } catch {
       return false;
+    }
+  }
+
+  /**
+   * Check if a project ID represents a temporary repository (contains github.com)
+   */
+  private isTempRepoUrl(projectId: string): boolean {
+    return projectId.includes('github.com');
+  }
+
+  /**
+   * Trigger immediate cleanup of temporary repositories
+   */
+  private async triggerTempRepoCleanup(): Promise<void> {
+    if (!this.tempRepoManager) {
+      logger.info('⚠️ TempRepoManager not initialized - skipping cleanup trigger');
+      return;
+    }
+
+    try {
+      logger.info('🧹 Triggering immediate temp repo cleanup due to URL change');
+      await this.tempRepoManager.cleanupTempRepos(true); // Force cleanup regardless of age
+    } catch (error) {
+      logger.error('❌ Failed to trigger temp repo cleanup:', error);
     }
   }
 
