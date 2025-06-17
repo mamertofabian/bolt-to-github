@@ -410,8 +410,8 @@ describe('BoltProjectSyncService', () => {
       );
     });
 
-    it('should sync projects from projectSettings and preserve server-only projects', async () => {
-      // Setup: Existing bolt projects (server-only project)
+    it('should sync projects from projectSettings and remove server-only projects for outward sync', async () => {
+      // Setup: Existing bolt projects (server-only project that should be removed during outward sync)
       mockStorageGet.mockResolvedValue({
         boltProjects: [
           {
@@ -464,7 +464,93 @@ describe('BoltProjectSyncService', () => {
 
       await service.performOutwardSync();
 
-      // Verify migration happened - both legacy and server-only projects should be saved
+      // Verify migration happened - only legacy projects should be saved for outward sync (extension is king)
+      // Server-only projects should be removed to sync deletions properly
+      expect(mockStorageSet).toHaveBeenCalledWith(
+        expect.objectContaining({
+          boltProjects: expect.arrayContaining([
+            expect.objectContaining({
+              id: 'legacy-project',
+              bolt_project_id: 'legacy-project',
+              github_repo_name: 'legacy-repo',
+              github_branch: 'main',
+            }),
+          ]),
+        })
+      );
+
+      // Verify that the server-only project was NOT included (extension is source of truth)
+      const savedProjects =
+        mockStorageSet.mock.calls.find((call) => call[0]?.boltProjects)?.[0]?.boltProjects || [];
+
+      expect(savedProjects).not.toEqual(
+        expect.arrayContaining([
+          expect.objectContaining({
+            bolt_project_id: 'existing-project',
+          }),
+        ])
+      );
+    });
+
+    it('should preserve server-only projects for non-outward sync operations', async () => {
+      // Setup: Existing bolt projects (server-only project that should be preserved for inward sync)
+      mockStorageGet.mockResolvedValue({
+        boltProjects: [
+          {
+            id: 'server-only-project',
+            bolt_project_id: 'server-only-project',
+            project_name: 'server-only-project',
+            github_repo_name: 'server-repo',
+            is_private: false,
+          },
+        ],
+      });
+
+      // Setup: Legacy projects exist (should be migrated)
+      jest.mocked(ChromeStorageService.getGitHubSettings).mockResolvedValue({
+        githubToken: 'test-token',
+        repoOwner: 'test-owner',
+        projectSettings: {
+          'legacy-project': {
+            repoName: 'legacy-repo',
+            branch: 'main',
+          },
+        },
+      });
+
+      mockAuthGetState.mockReturnValue({
+        isAuthenticated: true,
+        user: {
+          id: 'test-user',
+          email: 'test@example.com',
+          created_at: '2024-01-01T00:00:00Z',
+          updated_at: '2024-01-01T00:00:00Z',
+        },
+        subscription: {
+          isActive: false,
+          plan: 'free',
+        },
+      });
+
+      const mockResponse: SyncResponse = {
+        success: true,
+        updatedProjects: [],
+        conflicts: [],
+        deletedProjects: [],
+      };
+
+      (global.fetch as jest.Mock).mockResolvedValue({
+        ok: true,
+        json: () => Promise.resolve(mockResponse),
+      });
+
+      // Mock shouldPerformInwardSync to return true for inward sync
+      const spyShouldPerformInwardSync = jest.spyOn(service, 'shouldPerformInwardSync');
+      spyShouldPerformInwardSync.mockResolvedValue(true);
+
+      await service.performInwardSync();
+
+      // Verify migration happened - both legacy and server-only projects should be saved for inward sync
       expect(mockStorageSet).toHaveBeenCalledWith(
         expect.objectContaining({
           boltProjects: expect.arrayContaining([
@@ -475,14 +561,16 @@ describe('BoltProjectSyncService', () => {
               github_branch: 'main',
             }),
             expect.objectContaining({
-              id: 'existing-project',
-              bolt_project_id: 'existing-project',
-              project_name: 'existing-project',
-              github_repo_name: 'existing-repo',
+              id: 'server-only-project',
+              bolt_project_id: 'server-only-project',
+              project_name: 'server-only-project',
+              github_repo_name: 'server-repo',
             }),
           ]),
         })
       );
+
+      spyShouldPerformInwardSync.mockRestore();
     });
 
     it('should handle migration failure gracefully', async () => {

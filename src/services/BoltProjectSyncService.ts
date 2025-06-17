@@ -352,9 +352,10 @@ export class BoltProjectSyncService {
    * Sync existing projects from old storage format to new sync format
    * This bridges the gap between projectSettings and boltProjects
    * Updates existing projects and migrates new ones
+   * @param forOutwardSync - If true, treats extension as source of truth and removes server-only projects
    * IMPORTANT: This is a one-way sync from projectSettings -> boltProjects
    */
-  private async syncProjectsFromLegacyFormat(): Promise<void> {
+  private async syncProjectsFromLegacyFormat(forOutwardSync: boolean = false): Promise<void> {
     try {
       // Check if we already have projects in the new format
       const existingBoltProjects = await this.getLocalProjects();
@@ -389,7 +390,16 @@ export class BoltProjectSyncService {
       const legacyProjectIds = Object.keys(legacyProjects);
 
       if (legacyProjectIds.length === 0) {
-        logger.debug('🔄 No legacy projects found, sync not needed');
+        // For outward sync with no legacy projects, clear bolt projects to sync deletions
+        if (forOutwardSync && existingBoltProjects.length > 0) {
+          logger.info('🗑️ Clearing bolt projects for outward sync (no legacy projects found)', {
+            removedProjectCount: existingBoltProjects.length,
+            removedProjectIds: existingBoltProjects.map((p) => p.id),
+          });
+          await this.saveLocalProjects([]);
+        } else {
+          logger.debug('🔄 No legacy projects found, sync not needed');
+        }
         return;
       }
 
@@ -463,18 +473,36 @@ export class BoltProjectSyncService {
         (project) => !legacyProjectIds.includes(project.bolt_project_id)
       );
 
-      // Add bolt projects that don't exist in legacy format (server-only projects)
-      for (const boltProject of existingBoltProjects) {
-        if (!legacyProjectIds.includes(boltProject.bolt_project_id)) {
-          // Keep server-only projects in the bolt format
-          allBoltProjects.push(boltProject);
+      // Handle server-only projects based on sync direction
+      if (!forOutwardSync) {
+        // For inward sync or general operations: preserve server-only projects
+        for (const boltProject of existingBoltProjects) {
+          if (!legacyProjectIds.includes(boltProject.bolt_project_id)) {
+            // Keep server-only projects in the bolt format
+            allBoltProjects.push(boltProject);
+          }
         }
+        logger.debug('🔄 Preserved server-only projects for non-outward sync', {
+          preservedCount: deletedProjects.length,
+          preservedProjectIds: deletedProjects.map((p) => p.id),
+        });
+      } else {
+        // For outward sync: extension is king, remove server-only projects to sync deletions
+        logger.info(
+          '👑 Extension is source of truth for outward sync - removing server-only projects',
+          {
+            removedCount: deletedProjects.length,
+            removedProjectIds: deletedProjects.map((p) => p.id),
+            reason: 'Projects not found in legacy storage will be deleted from server',
+          }
+        );
       }
 
       // Save all projects to new format
       await this.saveLocalProjects(allBoltProjects);
 
       logger.info('✅ Successfully synced legacy projects to bolt format', {
+        syncDirection: forOutwardSync ? 'outward (extension is king)' : 'general (preserve server)',
         totalLegacyProjects: legacyProjectIds.length,
         previousBoltProjects: existingBoltProjects.length,
         updatedCount: updatedProjects.length,
@@ -483,7 +511,7 @@ export class BoltProjectSyncService {
         totalBoltProjects: allBoltProjects.length,
         updatedProjectIds: updatedProjects.map((p) => p.id),
         newProjectIds: newProjects.map((p) => p.id),
-        preservedServerProjects: deletedProjects.map((p) => p.id),
+        handledServerProjects: forOutwardSync ? 'removed for deletion sync' : 'preserved',
       });
     } catch (error) {
       logger.error('💥 Failed to sync projects from legacy format', { error });
@@ -499,7 +527,7 @@ export class BoltProjectSyncService {
     logger.info('🔄 Starting outward sync operation');
 
     // First, sync projects from legacy format to ensure we have latest data
-    await this.syncProjectsFromLegacyFormat();
+    await this.syncProjectsFromLegacyFormat(true);
 
     const localProjects = await this.getLocalProjects();
     logger.debug('📦 Local projects state', {
@@ -717,7 +745,7 @@ export class BoltProjectSyncService {
 
     try {
       // First, sync projects from legacy format to ensure we have latest local data
-      await this.syncProjectsFromLegacyFormat();
+      await this.syncProjectsFromLegacyFormat(false);
 
       logger.info('⬇️ Performing inward sync from server', {
         isAuthenticated: authState.isAuthenticated,
