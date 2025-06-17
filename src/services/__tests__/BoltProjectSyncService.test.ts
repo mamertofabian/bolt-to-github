@@ -823,7 +823,7 @@ describe('BoltProjectSyncService', () => {
       expect(result).toBe(true);
     });
 
-    it('should return false when only one project exists with GitHub repo', async () => {
+    it('should return true when only one project exists with GitHub repo (simplified approach)', async () => {
       mockStorageGet.mockResolvedValue({
         boltProjects: [
           {
@@ -840,7 +840,7 @@ describe('BoltProjectSyncService', () => {
 
       const result = await service.shouldPerformInwardSync();
 
-      expect(result).toBe(false);
+      expect(result).toBe(true);
     });
 
     it('should return false when only one project exists with partial GitHub repo info (repo name only)', async () => {
@@ -912,11 +912,11 @@ describe('BoltProjectSyncService', () => {
       expect(result).toBe(false);
     });
 
-    it('should return false when existing projects in current storage format exist', async () => {
+    it('should return true when only one project exists in current storage format (simplified approach)', async () => {
       // No sync format projects
       mockStorageGet.mockResolvedValue({ boltProjects: [] });
 
-      // Mock existing project settings in current format
+      // Mock existing project settings in current format (1 project = allow sync)
       jest.mocked(ChromeStorageService.getGitHubSettings).mockResolvedValue({
         githubToken: 'test-token',
         repoOwner: 'test-owner',
@@ -925,6 +925,33 @@ describe('BoltProjectSyncService', () => {
             repoName: 'github-5q8boznj',
             branch: 'main',
             projectTitle: 'github-5q8boznj',
+          },
+        },
+      });
+
+      const result = await service.shouldPerformInwardSync();
+
+      expect(result).toBe(true);
+    });
+
+    it('should return false when multiple projects exist in current storage format', async () => {
+      // No sync format projects
+      mockStorageGet.mockResolvedValue({ boltProjects: [] });
+
+      // Mock multiple existing project settings in current format (2+ projects = block sync)
+      jest.mocked(ChromeStorageService.getGitHubSettings).mockResolvedValue({
+        githubToken: 'test-token',
+        repoOwner: 'test-owner',
+        projectSettings: {
+          'project-1': {
+            repoName: 'repo-1',
+            branch: 'main',
+            projectTitle: 'Project 1',
+          },
+          'project-2': {
+            repoName: 'repo-2',
+            branch: 'main',
+            projectTitle: 'Project 2',
           },
         },
       });
@@ -1028,9 +1055,213 @@ describe('BoltProjectSyncService', () => {
       const result = await service.performInwardSync();
 
       expect(result).toEqual(mockResponse);
-      expect(mockStorageSet).toHaveBeenCalledWith({
-        boltProjects: mockResponse.updatedProjects,
+
+      // Verify that projects were saved (with corrected ID for new implementation)
+      const projectSaveCall = mockStorageSet.mock.calls.find(
+        (call) => call[0].boltProjects && Array.isArray(call[0].boltProjects)
+      );
+      expect(projectSaveCall).toBeDefined();
+      expect(projectSaveCall[0].boltProjects).toEqual([
+        expect.objectContaining({
+          bolt_project_id: 'bolt-1',
+          project_name: 'synced-project',
+          github_repo_name: 'synced-repo',
+          id: 'bolt-1', // New implementation uses bolt_project_id as id for new projects
+        }),
+      ]);
+    });
+
+    it('should ADD server projects to existing local projects (not replace)', async () => {
+      // Setup: User has NO existing projects - this should ensure sync is allowed
+      mockStorageGet.mockResolvedValue({ boltProjects: [] });
+
+      // Mock empty project settings for shouldPerformInwardSync check
+      jest.mocked(ChromeStorageService.getGitHubSettings).mockResolvedValue({
+        githubToken: 'test-token',
+        repoOwner: 'test-owner',
+        projectSettings: {},
       });
+
+      // Server returns 2 projects
+      const serverResponse: SyncResponse = {
+        success: true,
+        updatedProjects: [
+          {
+            id: 'server-1',
+            bolt_project_id: 'server-1',
+            project_name: 'Server Project 1',
+            github_repo_name: 'server-repo-1',
+            github_repo_owner: 'test-user',
+            is_private: false,
+            repoName: 'server-repo-1',
+            branch: 'main',
+            last_modified: '2024-01-02T00:00:00Z',
+            version: 1,
+          },
+          {
+            id: 'server-2',
+            bolt_project_id: 'server-2',
+            project_name: 'Server Project 2',
+            github_repo_name: 'server-repo-2',
+            github_repo_owner: 'test-user',
+            is_private: false,
+            repoName: 'server-repo-2',
+            branch: 'main',
+            last_modified: '2024-01-02T00:00:00Z',
+            version: 1,
+          },
+        ],
+        conflicts: [],
+        deletedProjects: [],
+      };
+
+      mockAuthGetState.mockReturnValue({
+        isAuthenticated: true,
+        user: {
+          id: 'test-user',
+          email: 'test@example.com',
+          created_at: '2024-01-01T00:00:00Z',
+          updated_at: '2024-01-01T00:00:00Z',
+        },
+        subscription: {
+          isActive: false,
+          plan: 'free',
+        },
+      });
+
+      mockAuthGetToken.mockResolvedValue('mock-token');
+
+      (global.fetch as jest.Mock).mockResolvedValue({
+        ok: true,
+        json: async () => serverResponse,
+      });
+
+      const result = await service.performInwardSync();
+
+      expect(result).toEqual(serverResponse);
+
+      // Verify that projects were saved with additive behavior
+      const projectSaveCall = mockStorageSet.mock.calls.find(
+        (call) => call[0].boltProjects && Array.isArray(call[0].boltProjects)
+      );
+
+      expect(projectSaveCall).toBeDefined();
+      expect(projectSaveCall[0].boltProjects).toHaveLength(2);
+
+      // Should contain both server projects
+      expect(projectSaveCall[0].boltProjects).toEqual(
+        expect.arrayContaining([
+          expect.objectContaining({
+            bolt_project_id: 'server-1',
+            project_name: 'Server Project 1',
+          }),
+          expect.objectContaining({
+            bolt_project_id: 'server-2',
+            project_name: 'Server Project 2',
+          }),
+        ])
+      );
+    });
+
+    it('should merge existing local projects with server projects (integration test)', async () => {
+      // Setup: User has 1 existing local project
+      const existingLocalProject: BoltProject = {
+        id: 'local-1',
+        bolt_project_id: 'local-1',
+        project_name: 'Local Project',
+        github_repo_name: 'local-repo',
+        github_repo_owner: 'test-user',
+        is_private: false,
+        repoName: 'local-repo',
+        branch: 'main',
+        last_modified: '2024-01-01T00:00:00Z',
+        version: 1,
+      };
+
+      // Start with 1 existing project (conditions allow sync: count <= 1)
+      mockStorageGet.mockImplementation(() =>
+        Promise.resolve({ boltProjects: [existingLocalProject] })
+      );
+
+      // Mock empty project settings for shouldPerformInwardSync check
+      jest.mocked(ChromeStorageService.getGitHubSettings).mockResolvedValue({
+        githubToken: 'test-token',
+        repoOwner: 'test-owner',
+        projectSettings: {},
+      });
+
+      // Server returns 1 new project
+      const serverResponse: SyncResponse = {
+        success: true,
+        updatedProjects: [
+          {
+            id: 'server-1',
+            bolt_project_id: 'server-1',
+            project_name: 'Server Project 1',
+            github_repo_name: 'server-repo-1',
+            github_repo_owner: 'test-user',
+            is_private: false,
+            repoName: 'server-repo-1',
+            branch: 'main',
+            last_modified: '2024-01-02T00:00:00Z',
+            version: 1,
+          },
+        ],
+        conflicts: [],
+        deletedProjects: [],
+      };
+
+      mockAuthGetState.mockReturnValue({
+        isAuthenticated: true,
+        user: {
+          id: 'test-user',
+          email: 'test@example.com',
+          created_at: '2024-01-01T00:00:00Z',
+          updated_at: '2024-01-01T00:00:00Z',
+        },
+        subscription: {
+          isActive: false,
+          plan: 'free',
+        },
+      });
+
+      mockAuthGetToken.mockResolvedValue('mock-token');
+
+      (global.fetch as jest.Mock).mockResolvedValue({
+        ok: true,
+        json: async () => serverResponse,
+      });
+
+      const result = await service.performInwardSync();
+
+      expect(result).toEqual(serverResponse);
+
+      // Check the final save call for merged projects (local + server = 2 total)
+      const projectSaveCalls = mockStorageSet.mock.calls.filter(
+        (call) =>
+          call[0].boltProjects &&
+          Array.isArray(call[0].boltProjects) &&
+          call[0].boltProjects.length === 2
+      );
+
+      expect(projectSaveCalls.length).toBeGreaterThan(0);
+
+      const mergedSaveCall = projectSaveCalls[projectSaveCalls.length - 1]; // Get the last one
+      expect(mergedSaveCall[0].boltProjects).toHaveLength(2);
+
+      // Should contain both local and server projects
+      expect(mergedSaveCall[0].boltProjects).toEqual(
+        expect.arrayContaining([
+          expect.objectContaining({
+            bolt_project_id: 'local-1',
+            project_name: 'Local Project',
+          }),
+          expect.objectContaining({
+            bolt_project_id: 'server-1',
+            project_name: 'Server Project 1',
+          }),
+        ])
+      );
     });
   });
 

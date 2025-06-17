@@ -258,10 +258,8 @@ export class BoltProjectSyncService {
 
   /**
    * Check if inward sync should be performed
-   * Original behavior: sync if projects.length <= 1
-   * New behavior: also prevent sync if single project has existing GitHub repository
-   * Enhanced: also check existing ProjectSettings storage format
-   * Race condition fix: allow sync if only auto-created projects exist
+   * Simplified approach: allow sync if user has 0-1 projects total
+   * Let backend handle duplicates/conflicts, user can delete duplicates manually
    */
   async shouldPerformInwardSync(): Promise<boolean> {
     const projects = await this.getLocalProjects();
@@ -273,10 +271,9 @@ export class BoltProjectSyncService {
 
     // Also check existing ProjectSettings storage format (current active format)
     let existingProjectCount = 0;
-    let existingProjects: any = {};
     try {
       const gitHubSettings = await ChromeStorageService.getGitHubSettings();
-      existingProjects = gitHubSettings.projectSettings || {};
+      const existingProjects = gitHubSettings.projectSettings || {};
       existingProjectCount = Object.keys(existingProjects).length;
 
       logger.debug('🗂️ Found existing projects in current storage format', {
@@ -295,74 +292,23 @@ export class BoltProjectSyncService {
       totalProjects: totalProjectCount,
     });
 
-    // Check if existing projects are recently auto-created (race condition fix)
-    if (existingProjectCount > 0) {
-      const shouldAllowSyncForAutoCreated =
-        await this.shouldAllowSyncForAutoCreatedProjects(existingProjects);
-
-      if (shouldAllowSyncForAutoCreated) {
-        logger.info('✅ Inward sync allowed - only auto-created projects detected', {
-          existingProjectCount,
-          autoCreatedProjects: Object.keys(existingProjects),
-        });
-        // Continue with sync logic below
-      } else {
-        logger.info(
-          '🛡️ Inward sync prevented - existing projects found in current storage format',
-          {
-            existingProjectCount,
-            syncProjectCount: projects.length,
-          }
-        );
-        return false;
-      }
-    }
-
-    // Original behavior: sync from server if no projects exist
-    if (projects.length === 0) {
-      logger.info('✅ Inward sync allowed - no projects exist locally');
+    // Simple rule: allow sync if user has 0-1 projects total
+    // Let backend handle conflicts/duplicates intelligently
+    if (totalProjectCount <= 1) {
+      logger.info('✅ Inward sync allowed - user has 0-1 projects total', {
+        totalProjectCount,
+        syncProjects: projects.length,
+        activeProjects: existingProjectCount,
+      });
       return true;
     }
 
-    // Original behavior: don't sync if multiple projects exist
-    if (projects.length > 1) {
-      logger.info('🚫 Inward sync prevented - multiple projects exist locally', {
-        projectCount: projects.length,
-      });
-      return false;
-    }
-
-    // NEW: For single project, check if it has an existing GitHub repository
-    // If it has both repo name and owner, it's linked to GitHub - don't sync to protect it
-    const singleProject = projects[0];
-    const hasLinkedGitHubRepo = !!(
-      singleProject.github_repo_name && singleProject.github_repo_owner
-    );
-
-    logger.debug('🔍 Analyzing single project for GitHub linkage', {
-      projectId: singleProject.id,
-      boltProjectId: singleProject.bolt_project_id,
-      hasRepoName: !!singleProject.github_repo_name,
-      hasRepoOwner: !!singleProject.github_repo_owner,
-      hasLinkedGitHubRepo,
-      repoName: singleProject.github_repo_name || 'none',
-      repoOwner: singleProject.github_repo_owner || 'none',
+    // Block sync if user has multiple projects to avoid overwhelming them
+    logger.info('🚫 Inward sync prevented - user has multiple projects', {
+      totalProjectCount,
+      reason: 'User can manually import projects if needed',
     });
-
-    if (hasLinkedGitHubRepo) {
-      // Don't perform inward sync to protect user's important project
-      logger.info('🛡️ Inward sync prevented - single project has linked GitHub repository', {
-        projectId: singleProject.id,
-        githubRepo: `${singleProject.github_repo_owner}/${singleProject.github_repo_name}`,
-      });
-      return false;
-    }
-
-    // Original behavior: sync if single project has no GitHub repository
-    logger.info('✅ Inward sync allowed - single project has no GitHub repository', {
-      projectId: singleProject.id,
-    });
-    return true;
+    return false;
   }
 
   /**
@@ -654,66 +600,6 @@ export class BoltProjectSyncService {
   }
 
   /**
-   * Check if existing projects are recently auto-created (race condition fix)
-   * Returns true if only auto-created projects exist and inward sync should be allowed
-   */
-  private async shouldAllowSyncForAutoCreatedProjects(existingProjects: any): Promise<boolean> {
-    try {
-      // Check for auto-creation metadata in storage
-      const result = await chrome.storage.local.get(['autoCreatedProjects', 'lastAutoCreation']);
-      const autoCreatedProjects = result.autoCreatedProjects || {};
-      const lastAutoCreation = result.lastAutoCreation || 0;
-
-      // Consider projects auto-created if they were created within the last 2 minutes
-      const AUTO_CREATION_WINDOW = 2 * 60 * 1000; // 2 minutes
-      const now = Date.now();
-      const isRecentAutoCreation = now - lastAutoCreation < AUTO_CREATION_WINDOW;
-
-      if (!isRecentAutoCreation) {
-        logger.debug('🔍 No recent auto-creation detected, rejecting sync');
-        return false;
-      }
-
-      // Check if all existing projects are marked as auto-created
-      const existingProjectIds = Object.keys(existingProjects);
-      const allProjectsAutoCreated = existingProjectIds.every(
-        (projectId) =>
-          autoCreatedProjects[projectId] && autoCreatedProjects[projectId].isAutoCreated
-      );
-
-      if (allProjectsAutoCreated) {
-        logger.info('🎯 All existing projects are auto-created, allowing inward sync', {
-          autoCreatedProjectIds: existingProjectIds,
-          autoCreationTime: new Date(lastAutoCreation).toISOString(),
-        });
-        return true;
-      }
-
-      logger.debug('🔍 Some projects are not auto-created, rejecting sync', {
-        existingProjectIds,
-        autoCreatedProjectIds: Object.keys(autoCreatedProjects),
-      });
-      return false;
-    } catch (error) {
-      logger.warn('Failed to check auto-created projects, defaulting to reject sync', { error });
-      return false;
-    }
-  }
-
-  /**
-   * Clean up auto-creation metadata after successful sync
-   */
-  private async cleanupAutoCreationMetadata(): Promise<void> {
-    try {
-      // Clear auto-creation metadata since sync was successful
-      await chrome.storage.local.remove(['autoCreatedProjects', 'lastAutoCreation']);
-      logger.debug('🧹 Cleaned up auto-creation metadata after successful sync');
-    } catch (error) {
-      logger.warn('Failed to clean up auto-creation metadata:', error);
-    }
-  }
-
-  /**
    * Get recent project changes from storage to detect potential race conditions
    * Returns a map of projectId -> recent change data for changes within the last 30 seconds
    */
@@ -770,6 +656,7 @@ export class BoltProjectSyncService {
   /**
    * Perform inward sync (server to extension)
    * Only syncs if conditions are met (empty or single project)
+   * IMPORTANT: This ADDS server projects to existing local projects (does not replace)
    */
   async performInwardSync(): Promise<SyncResponse | null> {
     logger.info('🔄 Starting inward sync operation');
@@ -792,16 +679,28 @@ export class BoltProjectSyncService {
     }
 
     try {
+      // First, sync projects from legacy format to ensure we have latest local data
+      await this.syncProjectsFromLegacyFormat();
+
       logger.info('⬇️ Performing inward sync from server', {
         isAuthenticated: authState.isAuthenticated,
       });
-      const result = await this.syncWithBackend('auto-resolve', true);
+
+      // Get server projects but DON'T update local storage yet
+      const result = await this.syncWithBackend('keep-remote', false);
+
+      if (result.success && result.updatedProjects && result.updatedProjects.length > 0) {
+        // Merge server projects with existing local projects
+        await this.addServerProjectsToLocal(result.updatedProjects);
+
+        logger.info('✅ Added server projects to local storage', {
+          serverProjectCount: result.updatedProjects.length,
+          serverProjectIds: result.updatedProjects.map((p) => p.bolt_project_id),
+        });
+      }
 
       // Sync back to active storage format (reverse bridge)
       await this.syncBackToActiveStorage();
-
-      // Clean up auto-creation metadata after successful sync
-      await this.cleanupAutoCreationMetadata();
 
       // Update last sync timestamp
       const syncTimestamp = new Date().toISOString();
@@ -817,6 +716,70 @@ export class BoltProjectSyncService {
       return result;
     } catch (error) {
       logger.error('💥 Inward sync failed', { error });
+      throw error;
+    }
+  }
+
+  /**
+   * Add server projects to existing local projects (merge, don't replace)
+   * Handles duplicates by preferring server data for existing projects
+   */
+  private async addServerProjectsToLocal(serverProjects: BoltProject[]): Promise<void> {
+    try {
+      const existingLocalProjects = await this.getLocalProjects();
+      const mergedProjects = new Map<string, BoltProject>();
+
+      // Add existing local projects first
+      for (const localProject of existingLocalProjects) {
+        mergedProjects.set(localProject.bolt_project_id, localProject);
+      }
+
+      // Add/merge server projects (server data takes precedence for duplicates)
+      for (const serverProject of serverProjects) {
+        const projectId = serverProject.bolt_project_id;
+        const existingProject = mergedProjects.get(projectId);
+
+        if (existingProject) {
+          // Merge: preserve local ID but use server data
+          const mergedProject: BoltProject = {
+            ...serverProject,
+            id: existingProject.id, // Keep local ID for consistency
+            repoName: serverProject.github_repo_name || existingProject.repoName,
+            branch: serverProject.github_branch || existingProject.branch,
+          };
+          mergedProjects.set(projectId, mergedProject);
+
+          logger.debug(`🔀 Merged server project with existing local project: ${projectId}`);
+        } else {
+          // Add: new server project
+          const newProject: BoltProject = {
+            ...serverProject,
+            id: serverProject.bolt_project_id, // Use server ID for new projects
+            repoName: serverProject.github_repo_name || serverProject.bolt_project_id,
+            branch: serverProject.github_branch || 'main',
+          };
+          mergedProjects.set(projectId, newProject);
+
+          logger.debug(`➕ Added new server project: ${projectId}`);
+        }
+      }
+
+      const finalProjects = Array.from(mergedProjects.values());
+      await this.saveLocalProjects(finalProjects);
+
+      logger.info('✅ Successfully merged server projects with local projects', {
+        originalLocalCount: existingLocalProjects.length,
+        serverProjectCount: serverProjects.length,
+        finalProjectCount: finalProjects.length,
+        addedProjects: serverProjects.filter(
+          (sp) => !existingLocalProjects.some((lp) => lp.bolt_project_id === sp.bolt_project_id)
+        ).length,
+        updatedProjects: serverProjects.filter((sp) =>
+          existingLocalProjects.some((lp) => lp.bolt_project_id === sp.bolt_project_id)
+        ).length,
+      });
+    } catch (error) {
+      logger.error('💥 Failed to add server projects to local storage', { error });
       throw error;
     }
   }

@@ -271,36 +271,6 @@
    * Automatically create project settings for Bolt projects when popup is opened
    * This ensures repositories are set to private by default without user intervention
    */
-  /**
-   * Mark a project as auto-created for race condition detection
-   */
-  async function markProjectAsAutoCreated(projectId: string) {
-    try {
-      // Get existing auto-created projects metadata
-      const result = await chrome.storage.local.get(['autoCreatedProjects']);
-      const autoCreatedProjects = result.autoCreatedProjects || {};
-
-      // Mark this project as auto-created
-      autoCreatedProjects[projectId] = {
-        isAutoCreated: true,
-        timestamp: Date.now(),
-        createdBy: 'popup-auto-creation',
-      };
-
-      // Save updated metadata
-      await chrome.storage.local.set({
-        autoCreatedProjects,
-        lastAutoCreation: Date.now(),
-      });
-
-      logger.info('📝 Marked project as auto-created for race condition detection', {
-        projectId,
-        timestamp: new Date().toISOString(),
-      });
-    } catch (error) {
-      logger.warn('Failed to mark project as auto-created:', error);
-    }
-  }
 
   async function autoCreateProjectSettingsIfNeeded() {
     try {
@@ -356,9 +326,6 @@
         newProjectSettings.branch,
         newProjectSettings.projectTitle
       );
-
-      // Mark this project as auto-created for race condition detection
-      await markProjectAsAutoCreated(projectId);
 
       // Update the stores to reflect the new settings
       githubSettingsActions.setProjectSettings(
