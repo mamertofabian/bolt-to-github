@@ -244,6 +244,55 @@ export class ChromeStorageService {
   }
 
   /**
+   * Clean up temporary GitHub.com projects (projects with repoName = 'github.com')
+   * These are typically temporary import projects that shouldn't persist
+   */
+  static async cleanupGitHubComProjects(): Promise<number> {
+    return this.writeQueue.enqueue(async () => {
+      try {
+        logger.debug('🧹 Starting cleanup of github.com projects...');
+
+        const result = await chrome.storage.sync.get(STORAGE_KEYS.PROJECT_SETTINGS);
+        const projectSettings: ProjectSettings = result[STORAGE_KEYS.PROJECT_SETTINGS] || {};
+
+        const projectIds = Object.keys(projectSettings);
+        const projectsToDelete: string[] = [];
+
+        // Find projects with repoName = 'github.com'
+        for (const projectId of projectIds) {
+          const project = projectSettings[projectId];
+          if (project && project.repoName === 'github.com') {
+            projectsToDelete.push(projectId);
+            logger.debug(`🗑️ Found github.com project to cleanup: ${projectId}`);
+          }
+        }
+
+        // Delete the problematic projects
+        for (const projectId of projectsToDelete) {
+          delete projectSettings[projectId];
+        }
+
+        if (projectsToDelete.length > 0) {
+          await chrome.storage.sync.set({
+            [STORAGE_KEYS.PROJECT_SETTINGS]: projectSettings,
+          });
+
+          logger.info(`✅ Cleaned up ${projectsToDelete.length} github.com projects:`, {
+            deletedProjects: projectsToDelete,
+          });
+        } else {
+          logger.debug('✅ No github.com projects found to cleanup');
+        }
+
+        return projectsToDelete.length;
+      } catch (error) {
+        logger.error('❌ Error cleaning up github.com projects:', error);
+        throw error;
+      }
+    });
+  }
+
+  /**
    * Delete project settings for a specific project (thread-safe)
    */
   static async deleteProjectSettings(projectId: string): Promise<void> {

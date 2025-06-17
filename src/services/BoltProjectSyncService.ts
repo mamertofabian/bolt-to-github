@@ -425,6 +425,17 @@ export class BoltProjectSyncService {
 
       for (const projectId of legacyProjectIds) {
         const legacyProject = legacyProjects[projectId];
+
+        // Skip github.com projects - these are temporary import projects that shouldn't be synced
+        if (legacyProject.repoName === 'github.com') {
+          logger.debug(`🚫 Skipping github.com project during sync: ${projectId}`, {
+            projectId,
+            repoName: legacyProject.repoName,
+            reason: 'Temporary import project - not suitable for sync',
+          });
+          continue;
+        }
+
         const existingBoltProject = existingBoltProjectsMap.get(projectId);
 
         if (existingBoltProject) {

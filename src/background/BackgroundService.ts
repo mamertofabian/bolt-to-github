@@ -10,6 +10,7 @@ import { createLogger, getLogStorage } from '../lib/utils/logger';
 import { UsageTracker } from './UsageTracker';
 import { BoltProjectSyncService } from '../services/BoltProjectSyncService';
 import { extractProjectIdFromUrl } from '../lib/utils/projectId';
+import { ChromeStorageService } from '../lib/services/chromeStorage';
 
 const logger = createLogger('BackgroundService');
 
@@ -79,6 +80,9 @@ export class BackgroundService {
 
     // Set up sync alarm with improved timing
     this.setupSyncAlarm();
+
+    // Clean up github.com projects on startup
+    this.cleanupGitHubComProjectsOnStartup();
   }
 
   private async trackExtensionStartup(): Promise<void> {
@@ -704,6 +708,16 @@ export class BackgroundService {
           });
           await this.tempRepoManager?.cleanupTempRepos(true);
           logger.info('✅ Temp repo cleaned up');
+
+          // Clean up github.com projects after temp repo cleanup
+          try {
+            const cleanedCount = await ChromeStorageService.cleanupGitHubComProjects();
+            if (cleanedCount > 0) {
+              logger.info(`✅ Cleaned up ${cleanedCount} github.com projects`);
+            }
+          } catch (error) {
+            logger.error('❌ Failed to cleanup github.com projects:', error);
+          }
           break;
 
         case 'DEBUG':
@@ -1315,6 +1329,18 @@ export class BackgroundService {
     try {
       logger.info('🧹 Triggering immediate temp repo cleanup due to URL change');
       await this.tempRepoManager.cleanupTempRepos(true); // Force cleanup regardless of age
+
+      // Clean up github.com projects after temp repo cleanup
+      try {
+        const cleanedCount = await ChromeStorageService.cleanupGitHubComProjects();
+        if (cleanedCount > 0) {
+          logger.info(
+            `✅ Cleaned up ${cleanedCount} github.com projects during URL change cleanup`
+          );
+        }
+      } catch (cleanupError) {
+        logger.error('❌ Failed to cleanup github.com projects during URL change:', cleanupError);
+      }
     } catch (error) {
       logger.error('❌ Failed to trigger temp repo cleanup:', error);
     }
@@ -1398,6 +1424,30 @@ export class BackgroundService {
         success: false,
         error: error instanceof Error ? error.message : 'Sync failed',
       });
+    }
+  }
+
+  /**
+   * Clean up github.com projects on extension startup
+   */
+  private async cleanupGitHubComProjectsOnStartup(): Promise<void> {
+    try {
+      // Add small delay to allow initialization to complete
+      setTimeout(async () => {
+        try {
+          logger.info('🧹 Starting startup cleanup of github.com projects...');
+          const cleanedCount = await ChromeStorageService.cleanupGitHubComProjects();
+          if (cleanedCount > 0) {
+            logger.info(`✅ Startup cleanup removed ${cleanedCount} github.com projects`);
+          } else {
+            logger.debug('✅ No github.com projects found during startup cleanup');
+          }
+        } catch (error) {
+          logger.error('❌ Startup cleanup of github.com projects failed:', error);
+        }
+      }, 3000); // Wait 3 seconds after startup
+    } catch (error) {
+      logger.error('❌ Failed to schedule startup cleanup:', error);
     }
   }
 
