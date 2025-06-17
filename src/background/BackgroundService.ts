@@ -100,6 +100,8 @@ export class BackgroundService {
         await chrome.storage.local.set({
           installDate: Date.now(),
           lastVersion: version,
+          extensionInstallDate: Date.now(), // For fresh install detection
+          totalProjectsCreated: 0, // Track project creation for fresh install detection
         });
         await this.sendAnalyticsEvent('extension_installed', { version });
       } else if (result.lastVersion !== version) {
@@ -902,6 +904,9 @@ export class BackgroundService {
           'Processing ZIP file timed out'
         );
 
+        // Track project creation for fresh install detection
+        await this.trackProjectCreation();
+
         const duration = Date.now() - startTime;
         uploadSuccess = true;
 
@@ -1424,6 +1429,22 @@ export class BackgroundService {
         success: false,
         error: error instanceof Error ? error.message : 'Sync failed',
       });
+    }
+  }
+
+  /**
+   * Track project creation for fresh install detection
+   */
+  private async trackProjectCreation(): Promise<void> {
+    try {
+      const result = await chrome.storage.local.get(['totalProjectsCreated']);
+      const currentCount = result.totalProjectsCreated || 0;
+      await chrome.storage.local.set({
+        totalProjectsCreated: currentCount + 1,
+      });
+      logger.debug('📊 Project creation tracked', { totalCreated: currentCount + 1 });
+    } catch (error) {
+      logger.error('❌ Failed to track project creation:', error);
     }
   }
 

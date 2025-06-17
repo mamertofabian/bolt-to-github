@@ -349,6 +349,56 @@ export class BoltProjectSyncService {
   }
 
   /**
+   * Detect if this is a fresh install where server data should take precedence
+   * Returns true if extension appears to be freshly installed and has minimal data
+   */
+  private async isFreshInstall(): Promise<boolean> {
+    try {
+      // Check multiple indicators of fresh install
+      const [gitHubSettings, lastSync, installCheckResult] = await Promise.all([
+        ChromeStorageService.getGitHubSettings(),
+        this.getLastSyncTimestamp(),
+        chrome.storage.local.get(['extensionInstallDate', 'totalProjectsCreated']),
+      ]);
+
+      const legacyProjects = gitHubSettings.projectSettings || {};
+      const legacyProjectCount = Object.keys(legacyProjects).length;
+      const boltProjects = await this.getLocalProjects();
+      const boltProjectCount = boltProjects.length;
+
+      // Indicators of fresh install:
+      const hasNeverSynced = !lastSync;
+      const hasMinimalProjects = legacyProjectCount + boltProjectCount <= 1;
+      const isRecentInstall = installCheckResult.extensionInstallDate
+        ? Date.now() - installCheckResult.extensionInstallDate < 7 * 24 * 60 * 60 * 1000 // 7 days
+        : false;
+      const hasLowUsage = (installCheckResult.totalProjectsCreated || 0) <= 2;
+
+      const isFresh = hasNeverSynced && hasMinimalProjects && (isRecentInstall || hasLowUsage);
+
+      logger.info('🔍 Fresh install detection', {
+        hasNeverSynced,
+        hasMinimalProjects,
+        isRecentInstall,
+        hasLowUsage,
+        legacyProjectCount,
+        boltProjectCount,
+        installDate: installCheckResult.extensionInstallDate,
+        totalCreated: installCheckResult.totalProjectsCreated,
+        decision: isFresh ? 'FRESH_INSTALL' : 'ESTABLISHED_EXTENSION',
+      });
+
+      return isFresh;
+    } catch (error) {
+      logger.error(
+        '❌ Failed to detect fresh install, defaulting to established extension:',
+        error
+      );
+      return false; // Default to established extension to be safe
+    }
+  }
+
+  /**
    * Sync existing projects from old storage format to new sync format
    * This bridges the gap between projectSettings and boltProjects
    * Updates existing projects and migrates new ones
@@ -390,13 +440,31 @@ export class BoltProjectSyncService {
       const legacyProjectIds = Object.keys(legacyProjects);
 
       if (legacyProjectIds.length === 0) {
-        // For outward sync with no legacy projects, clear bolt projects to sync deletions
+        // For outward sync with no legacy projects, check if this is a fresh install first
         if (forOutwardSync && existingBoltProjects.length > 0) {
-          logger.info('🗑️ Clearing bolt projects for outward sync (no legacy projects found)', {
-            removedProjectCount: existingBoltProjects.length,
-            removedProjectIds: existingBoltProjects.map((p) => p.id),
-          });
-          await this.saveLocalProjects([]);
+          const isFresh = await this.isFreshInstall();
+
+          if (isFresh) {
+            // Fresh install: preserve existing server projects, don't clear them
+            logger.info(
+              '🍼 Fresh install detected - preserving existing projects despite empty legacy storage',
+              {
+                preservedProjectCount: existingBoltProjects.length,
+                preservedProjectIds: existingBoltProjects.map((p) => p.id),
+                reason: 'Extension is too new to be authoritative - server data takes precedence',
+              }
+            );
+            // No need to save - projects are already preserved
+            return;
+          } else {
+            // Established extension: clear bolt projects to sync deletions
+            logger.info('🗑️ Clearing bolt projects for outward sync (no legacy projects found)', {
+              removedProjectCount: existingBoltProjects.length,
+              removedProjectIds: existingBoltProjects.map((p) => p.id),
+              reason: 'Established extension with empty legacy storage - syncing deletions',
+            });
+            await this.saveLocalProjects([]);
+          }
         } else {
           logger.debug('🔄 No legacy projects found, sync not needed');
         }
@@ -484,7 +552,7 @@ export class BoltProjectSyncService {
         (project) => !legacyProjectIds.includes(project.bolt_project_id)
       );
 
-      // Handle server-only projects based on sync direction
+      // Handle server-only projects based on sync direction and fresh install status
       if (!forOutwardSync) {
         // For inward sync or general operations: preserve server-only projects
         for (const boltProject of existingBoltProjects) {
@@ -498,22 +566,57 @@ export class BoltProjectSyncService {
           preservedProjectIds: deletedProjects.map((p) => p.id),
         });
       } else {
-        // For outward sync: extension is king, remove server-only projects to sync deletions
-        logger.info(
-          '👑 Extension is source of truth for outward sync - removing server-only projects',
-          {
-            removedCount: deletedProjects.length,
-            removedProjectIds: deletedProjects.map((p) => p.id),
-            reason: 'Projects not found in legacy storage will be deleted from server',
+        // For outward sync: check if this is a fresh install
+        const isFresh = await this.isFreshInstall();
+
+        if (isFresh) {
+          // Fresh install: preserve server projects, don't let empty extension be king yet
+          for (const boltProject of existingBoltProjects) {
+            if (!legacyProjectIds.includes(boltProject.bolt_project_id)) {
+              allBoltProjects.push(boltProject);
+            }
           }
-        );
+          logger.info(
+            '🍼 Fresh install detected - preserving server projects during outward sync',
+            {
+              preservedCount: deletedProjects.length,
+              preservedProjectIds: deletedProjects.map((p) => p.id),
+              reason: 'Extension is too new to be authoritative - server data takes precedence',
+              totalLegacyProjects: legacyProjectIds.length,
+              totalServerProjects: existingBoltProjects.length,
+            }
+          );
+        } else {
+          // Established extension: extension is king, remove server-only projects to sync deletions
+          logger.info(
+            '👑 Established extension is source of truth for outward sync - removing server-only projects',
+            {
+              removedCount: deletedProjects.length,
+              removedProjectIds: deletedProjects.map((p) => p.id),
+              reason: 'Projects not found in legacy storage will be deleted from server',
+              totalLegacyProjects: legacyProjectIds.length,
+            }
+          );
+        }
       }
 
       // Save all projects to new format
       await this.saveLocalProjects(allBoltProjects);
 
+      const syncDirectionLabel = forOutwardSync
+        ? (await this.isFreshInstall())
+          ? 'outward (fresh install - server preserved)'
+          : 'outward (established extension is king)'
+        : 'general (preserve server)';
+
+      const serverProjectsHandling = forOutwardSync
+        ? (await this.isFreshInstall())
+          ? 'preserved (fresh install protection)'
+          : 'removed for deletion sync'
+        : 'preserved';
+
       logger.info('✅ Successfully synced legacy projects to bolt format', {
-        syncDirection: forOutwardSync ? 'outward (extension is king)' : 'general (preserve server)',
+        syncDirection: syncDirectionLabel,
         totalLegacyProjects: legacyProjectIds.length,
         previousBoltProjects: existingBoltProjects.length,
         updatedCount: updatedProjects.length,
@@ -522,7 +625,7 @@ export class BoltProjectSyncService {
         totalBoltProjects: allBoltProjects.length,
         updatedProjectIds: updatedProjects.map((p) => p.id),
         newProjectIds: newProjects.map((p) => p.id),
-        handledServerProjects: forOutwardSync ? 'removed for deletion sync' : 'preserved',
+        handledServerProjects: serverProjectsHandling,
       });
     } catch (error) {
       logger.error('💥 Failed to sync projects from legacy format', { error });

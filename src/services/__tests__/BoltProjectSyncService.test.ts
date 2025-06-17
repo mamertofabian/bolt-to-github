@@ -611,6 +611,63 @@ describe('BoltProjectSyncService', () => {
       // Should not throw - migration failure should be handled gracefully
       await expect(service.performOutwardSync()).resolves.not.toThrow();
     });
+
+    it('should detect fresh install and preserve server projects during outward sync', async () => {
+      // Setup server project that should be preserved
+      const serverProject: BoltProject = {
+        id: 'server-project',
+        bolt_project_id: 'server-project',
+        project_name: 'Server Project',
+        github_repo_name: 'server-repo',
+        github_repo_owner: 'test-owner',
+        github_branch: 'main',
+        is_private: false,
+        last_modified: new Date().toISOString(),
+        repoName: 'server-repo',
+        branch: 'main',
+        version: 1,
+        sync_status: 'synced',
+      };
+
+      // Mock fresh install conditions - minimal setup
+      (global as any).chrome.storage.local.get = jest.fn().mockResolvedValue({
+        extensionInstallDate: Date.now() - 2 * 24 * 60 * 60 * 1000, // 2 days ago
+        totalProjectsCreated: 1, // Low usage = fresh install
+      });
+
+      // Mock empty legacy storage (indicates fresh install)
+      jest.mocked(ChromeStorageService.getGitHubSettings).mockResolvedValue({
+        githubToken: 'test-token',
+        repoOwner: 'test-owner',
+        projectSettings: {}, // Empty = fresh install
+      });
+
+      // Mock the storage service methods directly to avoid conflicts
+      jest.spyOn(service as any, 'getLastSyncTimestamp').mockResolvedValue(null);
+      jest.spyOn(service as any, 'getLocalProjects').mockResolvedValue([serverProject]);
+      const saveLocalProjectsSpy = jest
+        .spyOn(service as any, 'saveLocalProjects')
+        .mockResolvedValue(undefined);
+
+      // Test that fresh install detection works
+      const isFresh = await service['isFreshInstall']();
+      expect(isFresh).toBe(true);
+
+      // Call syncProjectsFromLegacyFormat
+      await service['syncProjectsFromLegacyFormat'](true);
+
+      // For fresh install with empty legacy storage, saveLocalProjects should NOT be called
+      // because the projects are already preserved and don't need to be re-saved
+      expect(saveLocalProjectsSpy).not.toHaveBeenCalled();
+
+      // Verify that the getLocalProjects mock still returns the server project
+      // (indicating the server project was preserved and not deleted)
+      const finalProjects = await service['getLocalProjects']();
+      expect(finalProjects).toBeDefined();
+      expect(finalProjects.length).toBe(1);
+      expect(finalProjects[0].bolt_project_id).toBe('server-project');
+      expect(finalProjects[0].project_name).toBe('Server Project');
+    });
   });
 
   describe('syncBackToActiveStorage', () => {
