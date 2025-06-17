@@ -261,6 +261,7 @@ export class BoltProjectSyncService {
    * Original behavior: sync if projects.length <= 1
    * New behavior: also prevent sync if single project has existing GitHub repository
    * Enhanced: also check existing ProjectSettings storage format
+   * Race condition fix: allow sync if only auto-created projects exist
    */
   async shouldPerformInwardSync(): Promise<boolean> {
     const projects = await this.getLocalProjects();
@@ -272,9 +273,10 @@ export class BoltProjectSyncService {
 
     // Also check existing ProjectSettings storage format (current active format)
     let existingProjectCount = 0;
+    let existingProjects: any = {};
     try {
       const gitHubSettings = await ChromeStorageService.getGitHubSettings();
-      const existingProjects = gitHubSettings.projectSettings || {};
+      existingProjects = gitHubSettings.projectSettings || {};
       existingProjectCount = Object.keys(existingProjects).length;
 
       logger.debug('🗂️ Found existing projects in current storage format', {
@@ -293,13 +295,27 @@ export class BoltProjectSyncService {
       totalProjects: totalProjectCount,
     });
 
-    // If we have existing projects in current format, don't perform inward sync to avoid conflicts
+    // Check if existing projects are recently auto-created (race condition fix)
     if (existingProjectCount > 0) {
-      logger.info('🛡️ Inward sync prevented - existing projects found in current storage format', {
-        existingProjectCount,
-        syncProjectCount: projects.length,
-      });
-      return false;
+      const shouldAllowSyncForAutoCreated =
+        await this.shouldAllowSyncForAutoCreatedProjects(existingProjects);
+
+      if (shouldAllowSyncForAutoCreated) {
+        logger.info('✅ Inward sync allowed - only auto-created projects detected', {
+          existingProjectCount,
+          autoCreatedProjects: Object.keys(existingProjects),
+        });
+        // Continue with sync logic below
+      } else {
+        logger.info(
+          '🛡️ Inward sync prevented - existing projects found in current storage format',
+          {
+            existingProjectCount,
+            syncProjectCount: projects.length,
+          }
+        );
+        return false;
+      }
     }
 
     // Original behavior: sync from server if no projects exist
@@ -638,6 +654,66 @@ export class BoltProjectSyncService {
   }
 
   /**
+   * Check if existing projects are recently auto-created (race condition fix)
+   * Returns true if only auto-created projects exist and inward sync should be allowed
+   */
+  private async shouldAllowSyncForAutoCreatedProjects(existingProjects: any): Promise<boolean> {
+    try {
+      // Check for auto-creation metadata in storage
+      const result = await chrome.storage.local.get(['autoCreatedProjects', 'lastAutoCreation']);
+      const autoCreatedProjects = result.autoCreatedProjects || {};
+      const lastAutoCreation = result.lastAutoCreation || 0;
+
+      // Consider projects auto-created if they were created within the last 2 minutes
+      const AUTO_CREATION_WINDOW = 2 * 60 * 1000; // 2 minutes
+      const now = Date.now();
+      const isRecentAutoCreation = now - lastAutoCreation < AUTO_CREATION_WINDOW;
+
+      if (!isRecentAutoCreation) {
+        logger.debug('🔍 No recent auto-creation detected, rejecting sync');
+        return false;
+      }
+
+      // Check if all existing projects are marked as auto-created
+      const existingProjectIds = Object.keys(existingProjects);
+      const allProjectsAutoCreated = existingProjectIds.every(
+        (projectId) =>
+          autoCreatedProjects[projectId] && autoCreatedProjects[projectId].isAutoCreated
+      );
+
+      if (allProjectsAutoCreated) {
+        logger.info('🎯 All existing projects are auto-created, allowing inward sync', {
+          autoCreatedProjectIds: existingProjectIds,
+          autoCreationTime: new Date(lastAutoCreation).toISOString(),
+        });
+        return true;
+      }
+
+      logger.debug('🔍 Some projects are not auto-created, rejecting sync', {
+        existingProjectIds,
+        autoCreatedProjectIds: Object.keys(autoCreatedProjects),
+      });
+      return false;
+    } catch (error) {
+      logger.warn('Failed to check auto-created projects, defaulting to reject sync', { error });
+      return false;
+    }
+  }
+
+  /**
+   * Clean up auto-creation metadata after successful sync
+   */
+  private async cleanupAutoCreationMetadata(): Promise<void> {
+    try {
+      // Clear auto-creation metadata since sync was successful
+      await chrome.storage.local.remove(['autoCreatedProjects', 'lastAutoCreation']);
+      logger.debug('🧹 Cleaned up auto-creation metadata after successful sync');
+    } catch (error) {
+      logger.warn('Failed to clean up auto-creation metadata:', error);
+    }
+  }
+
+  /**
    * Get recent project changes from storage to detect potential race conditions
    * Returns a map of projectId -> recent change data for changes within the last 30 seconds
    */
@@ -723,6 +799,9 @@ export class BoltProjectSyncService {
 
       // Sync back to active storage format (reverse bridge)
       await this.syncBackToActiveStorage();
+
+      // Clean up auto-creation metadata after successful sync
+      await this.cleanupAutoCreationMetadata();
 
       // Update last sync timestamp
       const syncTimestamp = new Date().toISOString();
