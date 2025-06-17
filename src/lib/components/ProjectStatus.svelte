@@ -71,6 +71,69 @@
 
   export const getProjectStatus = async () => {
     try {
+      // Step 1: Try to load from enhanced projectSettings cache first
+      const { ChromeStorageService } = await import('../services/chromeStorage');
+      const cachedProjectSettings =
+        await ChromeStorageService.getProjectSettingsWithMetadata(projectId);
+
+      // Step 2: Try to load from GitHubCacheService
+      const { GitHubCacheService } = await import('../services/GitHubCacheService');
+      const cachedRepo = await GitHubCacheService.getRepoMetadata(gitHubUsername, repoName);
+
+      // Step 3: Check if we have sufficient cached data
+      const hasCachedProjectData =
+        cachedProjectSettings && cachedProjectSettings.metadata_last_updated;
+      const hasCachedRepoData =
+        cachedRepo && !(await GitHubCacheService.isCacheStale(gitHubUsername));
+
+      logger.info(
+        `Cache status - Project: ${!!hasCachedProjectData}, Repo: ${!!hasCachedRepoData}`
+      );
+
+      // Step 4: Use cached data if available and fresh
+      if (hasCachedProjectData && hasCachedRepoData) {
+        logger.info('Using cached data for project status');
+
+        // Populate from cached project settings
+        if (cachedProjectSettings.is_private !== undefined) {
+          isPrivate = cachedProjectSettings.is_private;
+          isLoading.visibility = false;
+        }
+
+        if (cachedProjectSettings.latest_commit_date) {
+          latestCommit = {
+            date: cachedProjectSettings.latest_commit_date,
+            message:
+              cachedProjectSettings.latest_commit_message?.slice(0, 50) +
+                (cachedProjectSettings.latest_commit_message &&
+                cachedProjectSettings.latest_commit_message.length > 50
+                  ? '...'
+                  : '') || 'No message',
+          };
+          isLoading.latestCommit = false;
+        }
+
+        // Assume repo exists if we have cached metadata
+        repoExists = true;
+        isLoading.repoStatus = false;
+
+        // Check branch existence from cached default branch or assume it exists
+        branchExists = branch === cachedProjectSettings.default_branch || branch === 'main';
+        isLoading.branchStatus = false;
+
+        // Load issues from cache/store
+        if (cachedProjectSettings.open_issues_count !== undefined) {
+          // Issues count will be updated via store, but we can stop loading
+          isLoading.issues = false;
+        }
+
+        logger.info('Successfully loaded project status from cache');
+        return;
+      }
+
+      // Step 5: Cache is stale or missing, fall back to API calls
+      logger.info('Cache stale or missing, fetching from GitHub API');
+
       // Get authentication method to determine how to create the service
       const authSettings = await chrome.storage.local.get(['authenticationMethod']);
       const authMethod = authSettings.authenticationMethod || 'pat';
@@ -111,6 +174,7 @@
           'GET',
           `/repos/${gitHubUsername}/${repoName}/commits?per_page=1`
         );
+        let commitCount;
         if (commits[0]?.commit) {
           latestCommit = {
             date: commits[0].commit.committer.date,
@@ -118,6 +182,13 @@
               commits[0].commit.message.split('\n')[0].slice(0, 50) +
               (commits[0].commit.message.length > 50 ? '...' : ''),
           };
+
+          // Get commit count for caching
+          try {
+            commitCount = await githubService.getCommitCount(gitHubUsername, repoName, branch);
+          } catch (err) {
+            logger.warn('Could not fetch commit count:', err);
+          }
         }
         isLoading.latestCommit = false;
 
@@ -129,6 +200,57 @@
           logger.error('Error fetching issues:', err);
         }
         isLoading.issues = false;
+
+        // Step 6: Update cache with fresh data
+        try {
+          // Create enhanced repo data for cache
+          const enhancedRepo = GitHubCacheService.createEnhancedRepo(
+            {
+              name: repoName,
+              private: isPrivate ?? false,
+              description: repoInfo.description,
+              language: repoInfo.language,
+              html_url: `https://github.com/${gitHubUsername}/${repoName}`,
+              created_at: repoInfo.created_at,
+              updated_at: repoInfo.updated_at,
+              default_branch: repoInfo.default_branch || 'main',
+              open_issues_count: repoInfo.open_issues_count || 0,
+            },
+            commitCount,
+            latestCommit
+              ? {
+                  sha: commits[0]?.sha || '',
+                  message: commits[0]?.commit?.message || '',
+                  date: latestCommit.date,
+                  author: commits[0]?.commit?.author?.name || '',
+                }
+              : undefined
+          );
+
+          // Cache the repo metadata
+          await GitHubCacheService.cacheRepoMetadata(gitHubUsername, repoName, enhancedRepo);
+
+          // Update project settings with GitHub metadata
+          await ChromeStorageService.updateProjectMetadata(projectId, {
+            is_private: isPrivate ?? undefined,
+            language: repoInfo.language || undefined,
+            description: repoInfo.description || undefined,
+            commit_count: commitCount,
+            latest_commit_date: latestCommit?.date,
+            latest_commit_message: latestCommit?.message,
+            latest_commit_sha: commits[0]?.sha,
+            latest_commit_author: commits[0]?.commit?.author?.name,
+            open_issues_count: repoInfo.open_issues_count || 0,
+            github_updated_at: repoInfo.updated_at,
+            default_branch: repoInfo.default_branch || 'main',
+            github_repo_url: `https://github.com/${gitHubUsername}/${repoName}`,
+          });
+
+          logger.info('Updated cache and project metadata with fresh GitHub data');
+        } catch (cacheError) {
+          logger.error('Error updating cache:', cacheError);
+          // Don't fail the whole operation if cache update fails
+        }
       } else {
         branchExists = false;
         isLoading.branchStatus = false;

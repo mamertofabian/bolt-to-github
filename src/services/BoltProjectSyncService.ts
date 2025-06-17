@@ -517,7 +517,12 @@ export class BoltProjectSyncService {
               legacyProject.repoName || existingBoltProject.github_repo_name || projectId,
             github_repo_owner: gitHubSettings.repoOwner || existingBoltProject.github_repo_owner,
             github_branch: legacyProject.branch || existingBoltProject.github_branch || 'main',
+            is_private: legacyProject.is_private ?? existingBoltProject.is_private ?? true,
             last_modified: new Date().toISOString(),
+            // Enhanced metadata fields from projectSettings
+            project_description:
+              legacyProject.description || existingBoltProject.project_description,
+            github_repo_url: legacyProject.github_repo_url || existingBoltProject.github_repo_url,
             // Update local compatibility fields
             repoName: legacyProject.repoName || projectId,
             branch: legacyProject.branch || 'main',
@@ -533,8 +538,11 @@ export class BoltProjectSyncService {
             github_repo_name: legacyProject.repoName || projectId, // Backend field
             github_repo_owner: gitHubSettings.repoOwner || undefined, // Backend field
             github_branch: legacyProject.branch || 'main', // Backend field (was 'branch')
-            is_private: false, // Backend field - default assumption
+            is_private: legacyProject.is_private ?? true, // Backend field - from projectSettings or default to true for new repos
             last_modified: new Date().toISOString(), // Backend field
+            // Enhanced metadata fields from projectSettings
+            project_description: legacyProject.description,
+            github_repo_url: legacyProject.github_repo_url,
             // Local compatibility fields (for ProjectSetting inheritance)
             repoName: legacyProject.repoName || projectId,
             branch: legacyProject.branch || 'main',
@@ -756,6 +764,22 @@ export class BoltProjectSyncService {
             boltProject.github_repo_name || boltProject.repoName || boltProject.bolt_project_id,
           branch: boltProject.github_branch || boltProject.branch || 'main',
           projectTitle: boltProject.project_name || boltProject.bolt_project_id,
+          is_private: boltProject.is_private,
+          // Include any additional metadata fields that might be in the enhanced format
+          ...(gitHubSettings.projectSettings?.[projectId] && {
+            language: gitHubSettings.projectSettings[projectId].language,
+            description: gitHubSettings.projectSettings[projectId].description,
+            commit_count: gitHubSettings.projectSettings[projectId].commit_count,
+            latest_commit_date: gitHubSettings.projectSettings[projectId].latest_commit_date,
+            latest_commit_message: gitHubSettings.projectSettings[projectId].latest_commit_message,
+            latest_commit_sha: gitHubSettings.projectSettings[projectId].latest_commit_sha,
+            latest_commit_author: gitHubSettings.projectSettings[projectId].latest_commit_author,
+            open_issues_count: gitHubSettings.projectSettings[projectId].open_issues_count,
+            github_updated_at: gitHubSettings.projectSettings[projectId].github_updated_at,
+            default_branch: gitHubSettings.projectSettings[projectId].default_branch,
+            github_repo_url: gitHubSettings.projectSettings[projectId].github_repo_url,
+            metadata_last_updated: gitHubSettings.projectSettings[projectId].metadata_last_updated,
+          }),
         };
       }
 

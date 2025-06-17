@@ -30,7 +30,10 @@
       "Bash(gh auth:*)",
       "Bash(cat:*)",
       "Bash(npx eslint:*)",
-      "Bash(gh label create:*)"
+      "Bash(gh label create:*)",
+      "Bash(npm run lint)",
+      "Bash(npm run check:*)",
+      "Bash(npm run build:*)"
     ],
     "deny": []
   }

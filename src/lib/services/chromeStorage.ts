@@ -36,7 +36,7 @@ class StorageWriteQueue {
 
     const result = this.queue.then(wrappedOperation);
     // Continue queue even if an operation fails, but preserve the chain for GC
-    this.queue = result.catch(() => {});
+    this.queue = result.catch(() => {}) as Promise<void>;
     return result;
   }
 
@@ -814,6 +814,179 @@ export class ChromeStorageService {
     } catch (error) {
       logger.error('Error resetting migration prompt status:', error);
       throw error;
+    }
+  }
+
+  // ========================================
+  // Enhanced GitHub Metadata Methods
+  // ========================================
+
+  /**
+   * Save project settings with enhanced GitHub metadata (thread-safe)
+   */
+  static async saveProjectSettingsWithMetadata(
+    projectId: string,
+    repoName: string,
+    branch: string,
+    projectTitle?: string,
+    metadata?: {
+      is_private?: boolean;
+      language?: string;
+      description?: string;
+      commit_count?: number;
+      latest_commit_date?: string;
+      latest_commit_message?: string;
+      latest_commit_sha?: string;
+      latest_commit_author?: string;
+      open_issues_count?: number;
+      github_updated_at?: string;
+      default_branch?: string;
+      github_repo_url?: string;
+    }
+  ): Promise<void> {
+    return this.writeQueue.enqueue(async () => {
+      try {
+        logger.debug('Saving project settings with metadata for:', projectId);
+
+        const result = await chrome.storage.sync.get(STORAGE_KEYS.PROJECT_SETTINGS);
+        const projectSettings: ProjectSettings = result[STORAGE_KEYS.PROJECT_SETTINGS] || {};
+
+        projectSettings[projectId] = {
+          repoName,
+          branch,
+          ...(projectTitle && { projectTitle }),
+          ...(metadata && {
+            ...metadata,
+            metadata_last_updated: new Date().toISOString(),
+          }),
+        };
+
+        await chrome.storage.sync.set({
+          [STORAGE_KEYS.PROJECT_SETTINGS]: projectSettings,
+        });
+
+        // Save timestamp for race condition detection
+        await chrome.storage.local.set({
+          lastSettingsUpdate: {
+            timestamp: Date.now(),
+            projectId,
+            repoName,
+            branch,
+            projectTitle,
+            metadata_updated: !!metadata,
+          },
+        });
+
+        logger.info(`Project settings with metadata saved successfully for ${projectId}`);
+      } catch (error) {
+        logger.error('Error saving project settings with metadata:', error);
+        throw error;
+      }
+    });
+  }
+
+  /**
+   * Update only the GitHub metadata for a project (thread-safe)
+   */
+  static async updateProjectMetadata(
+    projectId: string,
+    metadata: {
+      is_private?: boolean;
+      language?: string;
+      description?: string;
+      commit_count?: number;
+      latest_commit_date?: string;
+      latest_commit_message?: string;
+      latest_commit_sha?: string;
+      latest_commit_author?: string;
+      open_issues_count?: number;
+      github_updated_at?: string;
+      default_branch?: string;
+      github_repo_url?: string;
+    }
+  ): Promise<void> {
+    return this.writeQueue.enqueue(async () => {
+      try {
+        logger.debug('Updating project metadata for:', projectId);
+
+        const result = await chrome.storage.sync.get(STORAGE_KEYS.PROJECT_SETTINGS);
+        const projectSettings: ProjectSettings = result[STORAGE_KEYS.PROJECT_SETTINGS] || {};
+
+        if (projectId in projectSettings) {
+          projectSettings[projectId] = {
+            ...projectSettings[projectId],
+            ...metadata,
+            metadata_last_updated: new Date().toISOString(),
+          };
+
+          await chrome.storage.sync.set({
+            [STORAGE_KEYS.PROJECT_SETTINGS]: projectSettings,
+          });
+
+          logger.info(`Project metadata updated successfully for ${projectId}`);
+        } else {
+          logger.warn(`Project ${projectId} not found, cannot update metadata`);
+        }
+      } catch (error) {
+        logger.error('Error updating project metadata:', error);
+        throw error;
+      }
+    });
+  }
+
+  /**
+   * Sync project metadata from GitHub cache
+   */
+  static async syncProjectWithGitHubCache(
+    projectId: string,
+    owner: string,
+    repoName: string
+  ): Promise<void> {
+    return this.writeQueue.enqueue(async () => {
+      try {
+        // Import here to avoid circular dependency
+        const { GitHubCacheService } = await import('./GitHubCacheService');
+
+        const cachedRepo = await GitHubCacheService.getRepoMetadata(owner, repoName);
+        if (cachedRepo) {
+          const metadata = {
+            is_private: cachedRepo.private,
+            language: cachedRepo.language || undefined,
+            description: cachedRepo.description || undefined,
+            commit_count: cachedRepo.commit_count,
+            latest_commit_date: cachedRepo.latest_commit?.date,
+            latest_commit_message: cachedRepo.latest_commit?.message,
+            latest_commit_sha: cachedRepo.latest_commit?.sha,
+            latest_commit_author: cachedRepo.latest_commit?.author,
+            open_issues_count: cachedRepo.open_issues_count,
+            github_updated_at: cachedRepo.updated_at,
+            default_branch: cachedRepo.default_branch,
+            github_repo_url: cachedRepo.html_url,
+          };
+
+          await this.updateProjectMetadata(projectId, metadata);
+          logger.info(`Synced project ${projectId} with GitHub cache`);
+        }
+      } catch (error) {
+        logger.error(`Error syncing project ${projectId} with GitHub cache:`, error);
+        throw error;
+      }
+    });
+  }
+
+  /**
+   * Get enhanced project settings with metadata
+   */
+  static async getProjectSettingsWithMetadata(
+    projectId: string
+  ): Promise<ProjectSettings[string] | null> {
+    try {
+      const result = await chrome.storage.sync.get(STORAGE_KEYS.PROJECT_SETTINGS);
+      const projectSettings: ProjectSettings = result[STORAGE_KEYS.PROJECT_SETTINGS] || {};
+      return projectSettings[projectId] || null;
+    } catch (error) {
+      logger.error('Error getting project settings with metadata:', error);
+      return null;
     }
   }
 

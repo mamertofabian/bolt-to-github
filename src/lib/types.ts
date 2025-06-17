@@ -35,6 +35,21 @@ export interface ProjectSetting {
   repoName: string;
   branch: string;
   projectTitle?: string;
+  // Enhanced GitHub metadata fields for migration readiness
+  is_private?: boolean;
+  language?: string;
+  description?: string;
+  commit_count?: number;
+  latest_commit_date?: string;
+  latest_commit_message?: string;
+  latest_commit_sha?: string;
+  latest_commit_author?: string;
+  open_issues_count?: number;
+  github_updated_at?: string;
+  default_branch?: string;
+  // Cache metadata
+  metadata_last_updated?: string;
+  github_repo_url?: string;
 }
 
 export type ProjectSettings = Record<string, ProjectSetting>;

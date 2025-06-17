@@ -325,7 +325,7 @@ describe('BoltProjectSyncService', () => {
               project_name: 'github-5q8boznj',
               github_repo_name: 'github-5q8boznj',
               github_repo_owner: 'test-owner',
-              is_private: false,
+              is_private: true,
               repoName: 'github-5q8boznj',
               branch: 'main',
               sync_status: 'pending',
@@ -336,7 +336,7 @@ describe('BoltProjectSyncService', () => {
               project_name: 'project-2',
               github_repo_name: 'my-project',
               github_repo_owner: 'test-owner',
-              is_private: false,
+              is_private: true,
               repoName: 'my-project',
               branch: 'develop',
               sync_status: 'pending',
@@ -761,11 +761,13 @@ describe('BoltProjectSyncService', () => {
               repoName: 'test-repo-1',
               branch: 'main',
               projectTitle: 'test-project-1', // Uses project_name from BoltProject
+              is_private: false,
             },
             'bolt-2': {
               repoName: 'test-repo-2',
               branch: 'develop',
               projectTitle: 'test-project-2', // Uses project_name from BoltProject
+              is_private: true,
             },
             // Should preserve existing projects
             'old-project': {
