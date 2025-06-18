@@ -70,7 +70,7 @@ export class GitHubCacheService {
       const result = await chrome.storage.local.get([cacheKey]);
       const cache: GitHubRepoCache | undefined = result[cacheKey];
 
-      if (!cache || !cache.timestamp) {
+      if (!cache || typeof cache.timestamp !== 'number' || cache.timestamp <= 0) {
         return true;
       }
 

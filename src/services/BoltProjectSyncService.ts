@@ -2,7 +2,13 @@ import { ChromeStorageService } from '$lib/services/chromeStorage';
 import { SupabaseAuthService } from '../content/services/SupabaseAuthService';
 import { SUPABASE_CONFIG } from '$lib/constants/supabase';
 import { createLogger } from '$lib/utils/logger';
-import type { BoltProject, SyncRequest, SyncResponse } from '$lib/types';
+import type {
+  BoltProject,
+  SyncRequest,
+  SyncResponse,
+  GitHubSettingsInterface,
+  ProjectSettings,
+} from '$lib/types';
 
 const logger = createLogger('BoltProjectSyncService');
 
@@ -102,7 +108,7 @@ export class BoltProjectSyncService {
             }
 
             // Validate token format (basic JWT check)
-            if (token && token.split('.').length === 3) {
+            if (token && token.trim().length > 0 && token.split('.').length === 3) {
               return token;
             }
           }
@@ -399,38 +405,229 @@ export class BoltProjectSyncService {
   }
 
   /**
+   * Update projects that are missing the project_name field
+   */
+  private async updateIncompleteProjects(existingBoltProjects: BoltProject[]): Promise<boolean> {
+    const incompleteProjects = existingBoltProjects.filter((project) => !project.project_name);
+    if (incompleteProjects.length > 0) {
+      logger.info('🔄 Updating existing bolt projects with missing project_name field', {
+        incompleteCount: incompleteProjects.length,
+        incompleteProjectIds: incompleteProjects.map((p) => p.id),
+      });
+
+      // Add project_name field to incomplete projects
+      const updatedProjects = existingBoltProjects.map((project) => {
+        if (!project.project_name) {
+          return {
+            ...project,
+            project_name: project.id, // Use ID as project name fallback
+          };
+        }
+        return project;
+      });
+
+      await this.saveLocalProjects(updatedProjects);
+      logger.info('✅ Successfully updated bolt projects with project_name field');
+      return true;
+    }
+    return false;
+  }
+
+  /**
+   * Handle the case when no legacy projects exist
+   */
+  private async handleEmptyLegacyProjects(
+    forOutwardSync: boolean,
+    existingBoltProjects: BoltProject[]
+  ): Promise<boolean> {
+    if (forOutwardSync && existingBoltProjects.length > 0) {
+      const isFresh = await this.isFreshInstall();
+
+      if (isFresh) {
+        // Fresh install: preserve existing server projects, don't clear them
+        logger.info(
+          '🍼 Fresh install detected - preserving existing projects despite empty legacy storage',
+          {
+            preservedProjectCount: existingBoltProjects.length,
+            preservedProjectIds: existingBoltProjects.map((p) => p.id),
+            reason: 'Extension is too new to be authoritative - server data takes precedence',
+          }
+        );
+        // No need to save - projects are already preserved
+      } else {
+        // Established extension: clear bolt projects to sync deletions
+        logger.info('🗑️ Clearing bolt projects for outward sync (no legacy projects found)', {
+          removedProjectCount: existingBoltProjects.length,
+          removedProjectIds: existingBoltProjects.map((p) => p.id),
+          reason: 'Established extension with empty legacy storage - syncing deletions',
+        });
+        await this.saveLocalProjects([]);
+      }
+    } else {
+      logger.debug('🔄 No legacy projects found, sync not needed');
+    }
+    return true;
+  }
+
+  /**
+   * Process legacy projects and convert them to BoltProject format
+   */
+  private async processLegacyProjects(
+    legacyProjects: ProjectSettings,
+    existingBoltProjectsMap: Map<string, BoltProject>,
+    gitHubSettings: GitHubSettingsInterface
+  ): Promise<{
+    updatedProjects: BoltProject[];
+    newProjects: BoltProject[];
+    allBoltProjects: BoltProject[];
+  }> {
+    const updatedProjects: BoltProject[] = [];
+    const newProjects: BoltProject[] = [];
+    const allBoltProjects: BoltProject[] = [];
+
+    for (const projectId of Object.keys(legacyProjects)) {
+      const legacyProject = legacyProjects[projectId];
+
+      // Skip github.com projects - these are temporary import projects that shouldn't be synced
+      if (legacyProject.repoName === 'github.com') {
+        logger.debug(`🚫 Skipping github.com project during sync: ${projectId}`, {
+          projectId,
+          repoName: legacyProject.repoName,
+          reason: 'Temporary import project - not suitable for sync',
+        });
+        continue;
+      }
+
+      const existingBoltProject = existingBoltProjectsMap.get(projectId);
+
+      if (existingBoltProject) {
+        // Update existing project with latest values from projectSettings
+        const updatedProject: BoltProject = {
+          ...existingBoltProject,
+          // ALWAYS use latest values from projectSettings (source of truth)
+          project_name: legacyProject.projectTitle || existingBoltProject.project_name || projectId,
+          github_repo_name:
+            legacyProject.repoName || existingBoltProject.github_repo_name || projectId,
+          github_repo_owner: gitHubSettings.repoOwner || existingBoltProject.github_repo_owner,
+          github_branch: legacyProject.branch || existingBoltProject.github_branch || 'main',
+          is_private: legacyProject.is_private ?? existingBoltProject.is_private ?? true,
+          last_modified: new Date().toISOString(),
+          // Enhanced metadata fields from projectSettings
+          project_description: legacyProject.description || existingBoltProject.project_description,
+          github_repo_url: legacyProject.github_repo_url || existingBoltProject.github_repo_url,
+          // Update local compatibility fields
+          repoName: legacyProject.repoName || projectId,
+          branch: legacyProject.branch || 'main',
+        };
+        updatedProjects.push(updatedProject);
+        allBoltProjects.push(updatedProject);
+      } else {
+        // Create new project (migration)
+        const newProject: BoltProject = {
+          id: projectId, // Local extension field
+          bolt_project_id: projectId, // Backend field
+          project_name: legacyProject.projectTitle || projectId, // Backend field
+          github_repo_name: legacyProject.repoName || projectId, // Backend field
+          github_repo_owner: gitHubSettings.repoOwner || undefined, // Backend field
+          github_branch: legacyProject.branch || 'main', // Backend field (was 'branch')
+          is_private: legacyProject.is_private ?? true, // Backend field - from projectSettings or default to true for new repos
+          last_modified: new Date().toISOString(), // Backend field
+          // Enhanced metadata fields from projectSettings
+          project_description: legacyProject.description,
+          github_repo_url: legacyProject.github_repo_url,
+          // Local compatibility fields (for ProjectSetting inheritance)
+          repoName: legacyProject.repoName || projectId,
+          branch: legacyProject.branch || 'main',
+          // Local sync metadata
+          version: 1,
+          sync_status: 'pending',
+        };
+        newProjects.push(newProject);
+        allBoltProjects.push(newProject);
+      }
+    }
+
+    return { updatedProjects, newProjects, allBoltProjects };
+  }
+
+  /**
+   * Handle server-only projects based on sync direction and fresh install status
+   */
+  private async handleServerOnlyProjects(
+    forOutwardSync: boolean,
+    existingBoltProjects: BoltProject[],
+    legacyProjectIds: string[],
+    allBoltProjects: BoltProject[]
+  ): Promise<BoltProject[]> {
+    const deletedProjects = existingBoltProjects.filter(
+      (project) => !legacyProjectIds.includes(project.bolt_project_id)
+    );
+
+    if (!forOutwardSync) {
+      // For inward sync or general operations: preserve server-only projects
+      for (const boltProject of existingBoltProjects) {
+        if (!legacyProjectIds.includes(boltProject.bolt_project_id)) {
+          // Keep server-only projects in the bolt format
+          allBoltProjects.push(boltProject);
+        }
+      }
+      logger.debug('🔄 Preserved server-only projects for non-outward sync', {
+        preservedCount: deletedProjects.length,
+        preservedProjectIds: deletedProjects.map((p) => p.id),
+      });
+    } else {
+      // For outward sync: check if this is a fresh install
+      const isFresh = await this.isFreshInstall();
+
+      if (isFresh) {
+        // Fresh install: preserve server projects, don't let empty extension be king yet
+        for (const boltProject of existingBoltProjects) {
+          if (!legacyProjectIds.includes(boltProject.bolt_project_id)) {
+            allBoltProjects.push(boltProject);
+          }
+        }
+        logger.info('🍼 Fresh install detected - preserving server projects during outward sync', {
+          preservedCount: deletedProjects.length,
+          preservedProjectIds: deletedProjects.map((p) => p.id),
+          reason: 'Extension is too new to be authoritative - server data takes precedence',
+          totalLegacyProjects: legacyProjectIds.length,
+          totalServerProjects: existingBoltProjects.length,
+        });
+      } else {
+        // Established extension: extension is king, remove server-only projects to sync deletions
+        logger.info(
+          '👑 Established extension is source of truth for outward sync - removing server-only projects',
+          {
+            removedCount: deletedProjects.length,
+            removedProjectIds: deletedProjects.map((p) => p.id),
+            reason: 'Projects not found in legacy storage will be deleted from server',
+            totalLegacyProjects: legacyProjectIds.length,
+          }
+        );
+      }
+    }
+
+    return deletedProjects;
+  }
+
+  /**
    * Sync existing projects from old storage format to new sync format
    * This bridges the gap between projectSettings and boltProjects
    * Updates existing projects and migrates new ones
    * @param forOutwardSync - If true, treats extension as source of truth and removes server-only projects
    * IMPORTANT: This is a one-way sync from projectSettings -> boltProjects
    */
-  private async syncProjectsFromLegacyFormat(forOutwardSync: boolean = false): Promise<void> {
+  private async syncProjectsFromLegacyFormat(
+    forOutwardSync: boolean = false,
+    options: { propagateErrors?: boolean } = {}
+  ): Promise<void> {
     try {
       // Check if we already have projects in the new format
       const existingBoltProjects = await this.getLocalProjects();
 
       // Check if existing bolt projects need project_name field update
-      const incompleteProjects = existingBoltProjects.filter((project) => !project.project_name);
-      if (incompleteProjects.length > 0) {
-        logger.info('🔄 Updating existing bolt projects with missing project_name field', {
-          incompleteCount: incompleteProjects.length,
-          incompleteProjectIds: incompleteProjects.map((p) => p.id),
-        });
-
-        // Add project_name field to incomplete projects
-        const updatedProjects = existingBoltProjects.map((project) => {
-          if (!project.project_name) {
-            return {
-              ...project,
-              project_name: project.id, // Use ID as project name fallback
-            };
-          }
-          return project;
-        });
-
-        await this.saveLocalProjects(updatedProjects);
-        logger.info('✅ Successfully updated bolt projects with project_name field');
+      const wasUpdated = await this.updateIncompleteProjects(existingBoltProjects);
+      if (wasUpdated) {
         return;
       }
 
@@ -440,34 +637,7 @@ export class BoltProjectSyncService {
       const legacyProjectIds = Object.keys(legacyProjects);
 
       if (legacyProjectIds.length === 0) {
-        // For outward sync with no legacy projects, check if this is a fresh install first
-        if (forOutwardSync && existingBoltProjects.length > 0) {
-          const isFresh = await this.isFreshInstall();
-
-          if (isFresh) {
-            // Fresh install: preserve existing server projects, don't clear them
-            logger.info(
-              '🍼 Fresh install detected - preserving existing projects despite empty legacy storage',
-              {
-                preservedProjectCount: existingBoltProjects.length,
-                preservedProjectIds: existingBoltProjects.map((p) => p.id),
-                reason: 'Extension is too new to be authoritative - server data takes precedence',
-              }
-            );
-            // No need to save - projects are already preserved
-            return;
-          } else {
-            // Established extension: clear bolt projects to sync deletions
-            logger.info('🗑️ Clearing bolt projects for outward sync (no legacy projects found)', {
-              removedProjectCount: existingBoltProjects.length,
-              removedProjectIds: existingBoltProjects.map((p) => p.id),
-              reason: 'Established extension with empty legacy storage - syncing deletions',
-            });
-            await this.saveLocalProjects([]);
-          }
-        } else {
-          logger.debug('🔄 No legacy projects found, sync not needed');
-        }
+        await this.handleEmptyLegacyProjects(forOutwardSync, existingBoltProjects);
         return;
       }
 
@@ -487,126 +657,19 @@ export class BoltProjectSyncService {
       });
 
       // Process all legacy projects - update existing ones and create new ones
-      const updatedProjects: BoltProject[] = [];
-      const newProjects: BoltProject[] = [];
-      const allBoltProjects: BoltProject[] = [];
-
-      for (const projectId of legacyProjectIds) {
-        const legacyProject = legacyProjects[projectId];
-
-        // Skip github.com projects - these are temporary import projects that shouldn't be synced
-        if (legacyProject.repoName === 'github.com') {
-          logger.debug(`🚫 Skipping github.com project during sync: ${projectId}`, {
-            projectId,
-            repoName: legacyProject.repoName,
-            reason: 'Temporary import project - not suitable for sync',
-          });
-          continue;
-        }
-
-        const existingBoltProject = existingBoltProjectsMap.get(projectId);
-
-        if (existingBoltProject) {
-          // Update existing project with latest values from projectSettings
-          const updatedProject: BoltProject = {
-            ...existingBoltProject,
-            // ALWAYS use latest values from projectSettings (source of truth)
-            project_name:
-              legacyProject.projectTitle || existingBoltProject.project_name || projectId,
-            github_repo_name:
-              legacyProject.repoName || existingBoltProject.github_repo_name || projectId,
-            github_repo_owner: gitHubSettings.repoOwner || existingBoltProject.github_repo_owner,
-            github_branch: legacyProject.branch || existingBoltProject.github_branch || 'main',
-            is_private: legacyProject.is_private ?? existingBoltProject.is_private ?? true,
-            last_modified: new Date().toISOString(),
-            // Enhanced metadata fields from projectSettings
-            project_description:
-              legacyProject.description || existingBoltProject.project_description,
-            github_repo_url: legacyProject.github_repo_url || existingBoltProject.github_repo_url,
-            // Update local compatibility fields
-            repoName: legacyProject.repoName || projectId,
-            branch: legacyProject.branch || 'main',
-          };
-          updatedProjects.push(updatedProject);
-          allBoltProjects.push(updatedProject);
-        } else {
-          // Create new project (migration)
-          const newProject: BoltProject = {
-            id: projectId, // Local extension field
-            bolt_project_id: projectId, // Backend field
-            project_name: legacyProject.projectTitle || projectId, // Backend field
-            github_repo_name: legacyProject.repoName || projectId, // Backend field
-            github_repo_owner: gitHubSettings.repoOwner || undefined, // Backend field
-            github_branch: legacyProject.branch || 'main', // Backend field (was 'branch')
-            is_private: legacyProject.is_private ?? true, // Backend field - from projectSettings or default to true for new repos
-            last_modified: new Date().toISOString(), // Backend field
-            // Enhanced metadata fields from projectSettings
-            project_description: legacyProject.description,
-            github_repo_url: legacyProject.github_repo_url,
-            // Local compatibility fields (for ProjectSetting inheritance)
-            repoName: legacyProject.repoName || projectId,
-            branch: legacyProject.branch || 'main',
-            // Local sync metadata
-            version: 1,
-            sync_status: 'pending',
-          };
-          newProjects.push(newProject);
-          allBoltProjects.push(newProject);
-        }
-      }
-
-      // Track deleted projects (projects in bolt format but not in legacy format)
-      const deletedProjects = existingBoltProjects.filter(
-        (project) => !legacyProjectIds.includes(project.bolt_project_id)
+      const { updatedProjects, newProjects, allBoltProjects } = await this.processLegacyProjects(
+        legacyProjects,
+        existingBoltProjectsMap,
+        gitHubSettings
       );
 
-      // Handle server-only projects based on sync direction and fresh install status
-      if (!forOutwardSync) {
-        // For inward sync or general operations: preserve server-only projects
-        for (const boltProject of existingBoltProjects) {
-          if (!legacyProjectIds.includes(boltProject.bolt_project_id)) {
-            // Keep server-only projects in the bolt format
-            allBoltProjects.push(boltProject);
-          }
-        }
-        logger.debug('🔄 Preserved server-only projects for non-outward sync', {
-          preservedCount: deletedProjects.length,
-          preservedProjectIds: deletedProjects.map((p) => p.id),
-        });
-      } else {
-        // For outward sync: check if this is a fresh install
-        const isFresh = await this.isFreshInstall();
-
-        if (isFresh) {
-          // Fresh install: preserve server projects, don't let empty extension be king yet
-          for (const boltProject of existingBoltProjects) {
-            if (!legacyProjectIds.includes(boltProject.bolt_project_id)) {
-              allBoltProjects.push(boltProject);
-            }
-          }
-          logger.info(
-            '🍼 Fresh install detected - preserving server projects during outward sync',
-            {
-              preservedCount: deletedProjects.length,
-              preservedProjectIds: deletedProjects.map((p) => p.id),
-              reason: 'Extension is too new to be authoritative - server data takes precedence',
-              totalLegacyProjects: legacyProjectIds.length,
-              totalServerProjects: existingBoltProjects.length,
-            }
-          );
-        } else {
-          // Established extension: extension is king, remove server-only projects to sync deletions
-          logger.info(
-            '👑 Established extension is source of truth for outward sync - removing server-only projects',
-            {
-              removedCount: deletedProjects.length,
-              removedProjectIds: deletedProjects.map((p) => p.id),
-              reason: 'Projects not found in legacy storage will be deleted from server',
-              totalLegacyProjects: legacyProjectIds.length,
-            }
-          );
-        }
-      }
+      // Handle server-only projects based on sync direction
+      const deletedProjects = await this.handleServerOnlyProjects(
+        forOutwardSync,
+        existingBoltProjects,
+        legacyProjectIds,
+        allBoltProjects
+      );
 
       // Save all projects to new format
       await this.saveLocalProjects(allBoltProjects);
@@ -636,8 +699,18 @@ export class BoltProjectSyncService {
         handledServerProjects: serverProjectsHandling,
       });
     } catch (error) {
-      logger.error('💥 Failed to sync projects from legacy format', { error });
-      // Don't throw - sync failure shouldn't block the main operation
+      logger.error('💥 Failed to sync projects from legacy format', {
+        error,
+        forOutwardSync,
+        context: 'Error occurred during legacy format sync',
+      });
+
+      if (options?.propagateErrors) {
+        throw new Error(
+          `Legacy format sync failed: ${error instanceof Error ? error.message : 'Unknown error'}`
+        );
+      }
+      // Otherwise, don't throw - sync failure shouldn't block the main operation
     }
   }
 
@@ -649,7 +722,7 @@ export class BoltProjectSyncService {
     logger.info('🔄 Starting outward sync operation');
 
     // First, sync projects from legacy format to ensure we have latest data
-    await this.syncProjectsFromLegacyFormat(true);
+    await this.syncProjectsFromLegacyFormat(true, { propagateErrors: false });
 
     const localProjects = await this.getLocalProjects();
     logger.debug('📦 Local projects state', {
@@ -707,8 +780,11 @@ export class BoltProjectSyncService {
    * Sync back from boltProjects to active storage format (reverse bridge)
    * This ensures the extension continues to work with existing project data
    * Implements race condition prevention by checking for recent user changes
+   * @param options - Options for error handling
    */
-  private async syncBackToActiveStorage(): Promise<void> {
+  private async syncBackToActiveStorage(
+    options: { propagateErrors?: boolean } = {}
+  ): Promise<void> {
     try {
       const boltProjects = await this.getLocalProjects();
 
@@ -797,8 +873,17 @@ export class BoltProjectSyncService {
         preservedProjects: Array.from(recentChanges.keys()),
       });
     } catch (error) {
-      logger.error('💥 Failed to sync back to active storage format', { error });
-      // Don't throw - reverse sync failure shouldn't block the main sync operation
+      logger.error('💥 Failed to sync back to active storage format', {
+        error,
+        context: 'Error occurred during bolt projects sync back to active storage',
+      });
+
+      if (options?.propagateErrors) {
+        throw new Error(
+          `Active storage sync failed: ${error instanceof Error ? error.message : 'Unknown error'}`
+        );
+      }
+      // Otherwise, don't throw - reverse sync failure shouldn't block the main sync operation
     }
   }
 
@@ -820,7 +905,12 @@ export class BoltProjectSyncService {
         const { timestamp, projectId, repoName, branch, projectTitle } = result.lastSettingsUpdate;
         const age = now - timestamp;
 
-        if (age < RECENT_CHANGE_THRESHOLD && projectId) {
+        if (
+          typeof timestamp === 'number' &&
+          timestamp > 0 &&
+          age < RECENT_CHANGE_THRESHOLD &&
+          projectId
+        ) {
           recentChanges.set(projectId, {
             repoName,
             branch,
@@ -903,7 +993,7 @@ export class BoltProjectSyncService {
       }
 
       // Sync back to active storage format (reverse bridge)
-      await this.syncBackToActiveStorage();
+      await this.syncBackToActiveStorage({ propagateErrors: false });
 
       // Update last sync timestamp
       const syncTimestamp = new Date().toISOString();

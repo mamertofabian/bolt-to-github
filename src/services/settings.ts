@@ -42,6 +42,12 @@ export class SettingsService {
             projectSettings.repoName,
             projectSettings.branch
           );
+
+          // Update the local gitHubSettings object to reflect the new project settings
+          if (!gitHubSettings.projectSettings) {
+            gitHubSettings.projectSettings = {};
+          }
+          gitHubSettings.projectSettings[projectId] = projectSettings;
         }
       }
 

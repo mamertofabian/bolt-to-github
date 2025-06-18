@@ -162,6 +162,8 @@ describe('BackgroundService - Sync Functionality', () => {
 
       // Should still be called, but error is handled gracefully
       expect(mockAlarms.create).toHaveBeenCalled();
+      // Verify service continues to function by checking alarm listener is still added
+      expect(mockAlarms.onAlarm.addListener).toHaveBeenCalled();
     });
   });
 
