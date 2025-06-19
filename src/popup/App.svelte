@@ -22,6 +22,7 @@
   import OnboardingView from './components/OnboardingView.svelte';
   import { setUpgradeModalState, type UpgradeModalType } from '$lib/utils/upgradeModal';
   import { SubscriptionService } from '../services/SubscriptionService';
+  import { ChromeStorageService } from '$lib/services/chromeStorage';
 
   const logger = createLogger('App');
 
@@ -270,6 +271,7 @@
    * Automatically create project settings for Bolt projects when popup is opened
    * This ensures repositories are set to private by default without user intervention
    */
+
   async function autoCreateProjectSettingsIfNeeded() {
     try {
       // Only proceed if we're on a Bolt project
@@ -317,15 +319,13 @@
         projectTitle: projectId, // Use project ID as initial title
       };
 
-      // Update the project settings in storage
-      const updatedProjectSettings = {
-        ...projectSettings,
-        [projectId]: newProjectSettings,
-      };
-
-      await chrome.storage.sync.set({
-        projectSettings: updatedProjectSettings,
-      });
+      // Save project settings using ChromeStorageService (thread-safe)
+      await ChromeStorageService.saveProjectSettings(
+        projectId,
+        newProjectSettings.repoName,
+        newProjectSettings.branch,
+        newProjectSettings.projectTitle
+      );
 
       // Update the stores to reflect the new settings
       githubSettingsActions.setProjectSettings(
@@ -339,18 +339,6 @@
       githubSettingsActions.loadProjectSettings(projectId);
 
       logger.info('✅ Auto-created project settings:', newProjectSettings);
-
-      // Store a timestamp to trigger UI updates
-      await chrome.storage.local.set({
-        lastSettingsUpdate: {
-          timestamp: Date.now(),
-          projectId,
-          repoName: newProjectSettings.repoName,
-          branch: newProjectSettings.branch,
-          projectTitle: newProjectSettings.projectTitle,
-          autoCreated: true,
-        },
-      });
 
       logger.info(
         '🎯 Project settings auto-created successfully. Repository will be private by default.'

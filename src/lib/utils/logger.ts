@@ -115,15 +115,7 @@ export function resetLogger(): void {
 
 function getDefaultConfig() {
   const isDevelopment = detectEnvironment();
-  const enableDebugInProduction = (() => {
-    try {
-      return typeof window !== 'undefined'
-        ? localStorage.getItem('bolt-to-github-debug') === 'true'
-        : false;
-    } catch (_e) {
-      return false;
-    }
-  })();
+  const enableDebugInProduction = true;
 
   return {
     isDevelopment,

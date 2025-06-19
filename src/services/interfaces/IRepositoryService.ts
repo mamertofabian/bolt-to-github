@@ -91,9 +91,10 @@ export interface IRepositoryService {
    * @param owner Repository owner (username or organization)
    * @param repo Repository name
    * @param branch Branch name
+   * @param maxCommits Maximum number of commits to fetch (optional, default: 100)
    * @returns Promise resolving to the commit count
    */
-  getCommitCount(owner: string, repo: string, branch: string): Promise<number>;
+  getCommitCount(owner: string, repo: string, branch: string, maxCommits?: number): Promise<number>;
 
   /**
    * Creates a temporary public repository for migration purposes

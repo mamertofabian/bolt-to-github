@@ -8,6 +8,7 @@ import { GitHubComparisonService } from './GitHubComparisonService';
 import { processFilesWithGitignore } from '$lib/fileUtils';
 import { pushStatisticsActions } from '../lib/stores';
 import { createLogger } from '$lib/utils/logger';
+import { ChromeStorageService } from '../lib/services/chromeStorage';
 
 const logger = createLogger('ZipHandler');
 
@@ -136,16 +137,10 @@ export class ZipHandler {
       if (!projectSettings?.[currentProjectId]) {
         logger.info('Project settings not found, creating default settings for:', currentProjectId);
 
-        // Create a mutable copy of the project settings
-        const updatedProjectSettings = projectSettings ? { ...projectSettings } : {};
+        // Use thread-safe method to save project settings
+        await ChromeStorageService.saveProjectSettings(currentProjectId, currentProjectId, 'main');
 
-        // Use the project ID as the repo name with a default branch of 'main'
-        updatedProjectSettings[currentProjectId] = { repoName: currentProjectId, branch: 'main' };
-
-        // Save the updated settings
-        await chrome.storage.sync.set({ projectSettings: updatedProjectSettings });
-
-        logger.info('Created default project settings:', updatedProjectSettings[currentProjectId]);
+        logger.info('Created default project settings for:', currentProjectId);
 
         // Use the newly created settings
         repoName = currentProjectId;

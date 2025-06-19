@@ -178,9 +178,15 @@ This repository was automatically initialized by the Bolt to GitHub extension.
    * @param owner Repository owner (username or organization)
    * @param repo Repository name
    * @param branch Branch name
+   * @param maxCommits Maximum number of commits to fetch (optional, default: 100)
    * @returns Promise resolving to the commit count
    */
-  async getCommitCount(owner: string, repo: string, branch: string): Promise<number> {
+  async getCommitCount(
+    owner: string,
+    repo: string,
+    branch: string,
+    maxCommits: number = 100
+  ): Promise<number> {
     try {
       const commits = await this.apiClient.request('GET', `/repos/${owner}/${repo}/commits`, null, {
         headers: {
@@ -193,12 +199,13 @@ This repository was automatically initialized by the Bolt to GitHub extension.
       if (linkHeader) {
         const match = linkHeader.match(/page=(\d+)>; rel="last"/);
         if (match) {
-          return parseInt(match[1], 10);
+          const totalCommits = parseInt(match[1], 10);
+          return Math.min(totalCommits, maxCommits); // Respect the maxCommits limit
         }
       }
 
       // If no pagination, count the commits manually
-      return commits.length;
+      return Math.min(commits.length, maxCommits);
     } catch (error) {
       logger.error('Failed to fetch commit count:', error);
       return 0;

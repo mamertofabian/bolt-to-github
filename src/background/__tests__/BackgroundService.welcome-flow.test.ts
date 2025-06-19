@@ -13,7 +13,16 @@ jest.mock('../../services/UnifiedGitHubService');
 jest.mock('../StateManager');
 jest.mock('../../services/zipHandler');
 jest.mock('../TempRepoManager');
-jest.mock('../../content/services/SupabaseAuthService');
+jest.mock('../../content/services/SupabaseAuthService', () => ({
+  SupabaseAuthService: {
+    getInstance: jest.fn(() => ({
+      forceCheck: jest.fn(),
+      getAuthState: jest.fn().mockReturnValue({ isAuthenticated: false }),
+      addAuthStateListener: jest.fn(),
+      removeAuthStateListener: jest.fn(),
+    })),
+  },
+}));
 jest.mock('../../content/services/OperationStateManager');
 jest.mock('../../lib/utils/logger', () => ({
   createLogger: () => ({
@@ -251,9 +260,9 @@ describe('BackgroundService - Welcome Flow', () => {
     it('should respond to getExtensionStatus message', async () => {
       // Mock SupabaseAuthService
       const mockSupabaseAuthService = {
-        getCurrentAuthState: jest.fn().mockResolvedValue({
+        getAuthState: jest.fn().mockReturnValue({
           isAuthenticated: true,
-          authMethod: 'github-app',
+          subscription: { isActive: false },
         }),
       };
       (backgroundService as any).supabaseAuthService = mockSupabaseAuthService;
@@ -284,7 +293,6 @@ describe('BackgroundService - Welcome Flow', () => {
           installed: true,
           version: '1.3.5',
           authenticated: true,
-          authMethod: 'github-app',
           installDate: '2024-01-15T10:00:00.000Z',
           onboardingCompleted: false,
           installedVersion: '1.3.5',

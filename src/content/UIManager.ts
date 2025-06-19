@@ -17,6 +17,7 @@ import { PremiumService } from './services/PremiumService';
 import { WhatsNewManager } from './managers/WhatsNewManager';
 import { UIElementFactory } from './infrastructure/UIElementFactory';
 import { createLogger } from '$lib/utils/logger';
+import { SettingsService } from '../services/settings';
 
 const logger = createLogger('UIManager');
 
@@ -182,6 +183,17 @@ export class UIManager {
     this.uploadStatusManager.initialize();
     // Don't initialize button here - let DOM observer handle it
     // to prevent duplicate buttons during recovery
+
+    // Set current project ID if we're on a project page
+    const currentProjectId = this.extractProjectIdFromUrl(window.location.href);
+    if (currentProjectId && this.isOnProjectPage()) {
+      try {
+        await SettingsService.setProjectId(currentProjectId);
+        logger.info('🔄 Set initial project ID to:', currentProjectId);
+      } catch (error) {
+        logger.warn('Failed to set initial project ID:', error);
+      }
+    }
 
     // Check and show What's New modal if needed
     await this.whatsNewManager.checkAndShow();
@@ -670,7 +682,9 @@ export class UIManager {
   private setupURLChangeDetection(): void {
     // Listen for popstate events (back/forward navigation)
     window.addEventListener('popstate', () => {
-      this.handleUrlChange();
+      this.handleUrlChange().catch((error) => {
+        logger.error('Error handling URL change on popstate:', error);
+      });
     });
 
     // Override pushState and replaceState to catch programmatic navigation
@@ -680,13 +694,21 @@ export class UIManager {
     history.pushState = (...args) => {
       this.originalPushState!.apply(history, args);
       // Use setTimeout to ensure the URL has changed
-      setTimeout(() => this.handleUrlChange(), 0);
+      setTimeout(() => {
+        this.handleUrlChange().catch((error) => {
+          logger.error('Error handling URL change on pushState:', error);
+        });
+      }, 0);
     };
 
     history.replaceState = (...args) => {
       this.originalReplaceState!.apply(history, args);
       // Use setTimeout to ensure the URL has changed
-      setTimeout(() => this.handleUrlChange(), 0);
+      setTimeout(() => {
+        this.handleUrlChange().catch((error) => {
+          logger.error('Error handling URL change on replaceState:', error);
+        });
+      }, 0);
     };
 
     logger.info('🔊 URL change detection set up for SPA navigation');
@@ -695,7 +717,7 @@ export class UIManager {
   /**
    * Handle URL changes and check if we need to initialize the button for a new project
    */
-  private handleUrlChange(): void {
+  private async handleUrlChange(): Promise<void> {
     const newUrl = window.location.href;
     const newProjectId = this.extractProjectIdFromUrl(newUrl);
     const isProjectPage = this.isOnProjectPage();
@@ -706,6 +728,16 @@ export class UIManager {
       isProjectPage,
       hasExistingButton: !!document.querySelector('[data-github-upload]'),
     });
+
+    // Update stored project ID if we've navigated to a different project
+    if (newProjectId && isProjectPage) {
+      try {
+        await SettingsService.setProjectId(newProjectId);
+        logger.info('🔄 Updated stored project ID to:', newProjectId);
+      } catch (error) {
+        logger.warn('Failed to update stored project ID:', error);
+      }
+    }
 
     // If we're now on a project page and don't have a button, try to initialize
     if (isProjectPage && !document.querySelector('[data-github-upload]')) {

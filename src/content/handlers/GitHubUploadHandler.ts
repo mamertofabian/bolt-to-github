@@ -7,6 +7,7 @@ import { SettingsService } from '../../services/settings';
 import { DownloadService } from '../../services/DownloadService';
 import { CommitTemplateService } from '../services/CommitTemplateService';
 import { createLogger } from '../../lib/utils/logger';
+import { getCurrentProjectId } from '../../lib/utils/projectId';
 
 const logger = createLogger('GitHubUploadHandler');
 
@@ -55,7 +56,10 @@ export class GitHubUploadHandler implements IGitHubUploadHandler {
    * Returns true if settings are valid and complete
    */
   public async validateSettings(): Promise<boolean> {
-    const settings = (await SettingsService.getGitHubSettings()) as LocalSettingsResult;
+    const currentProjectId = getCurrentProjectId();
+    const settings = (await SettingsService.getGitHubSettings(
+      currentProjectId
+    )) as LocalSettingsResult;
     return settings.isSettingsValid;
   }
 
@@ -78,8 +82,14 @@ export class GitHubUploadHandler implements IGitHubUploadHandler {
   ): Promise<void> {
     logger.info('🔊 Handling GitHub push action');
 
-    // Validate settings first
-    const settings = (await SettingsService.getGitHubSettings()) as LocalSettingsResult;
+    // Get current project ID from the URL to ensure we're using the tab-specific project
+    const currentProjectId = getCurrentProjectId();
+    logger.info('🔊 Using current project ID from URL:', currentProjectId);
+
+    // Validate settings first with the current project ID
+    const settings = (await SettingsService.getGitHubSettings(
+      currentProjectId
+    )) as LocalSettingsResult;
     if (!settings.isSettingsValid) {
       this.notificationManager.showSettingsNotification();
       return;
@@ -271,6 +281,7 @@ export class GitHubUploadHandler implements IGitHubUploadHandler {
       if (base64data) {
         // Get current project ID from URL to ensure we're pushing to the correct project
         const currentProjectId = this.getCurrentProjectId();
+        logger.info(`📤 Sending ZIP data for project: ${currentProjectId || 'unknown'}`);
         this.messageHandler.sendZipData(base64data, currentProjectId || undefined);
       } else {
         throw new Error('Failed to convert ZIP file to base64');
@@ -316,7 +327,10 @@ export class GitHubUploadHandler implements IGitHubUploadHandler {
    * Get current project settings for display
    */
   public async getProjectInfo(): Promise<{ repoName?: string; branch?: string } | null> {
-    const settings = (await SettingsService.getGitHubSettings()) as LocalSettingsResult;
+    const currentProjectId = getCurrentProjectId();
+    const settings = (await SettingsService.getGitHubSettings(
+      currentProjectId
+    )) as LocalSettingsResult;
     if (settings.isSettingsValid && settings.gitHubSettings?.projectSettings) {
       return {
         repoName: settings.gitHubSettings.projectSettings.repoName,

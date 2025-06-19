@@ -296,6 +296,20 @@ export class MockSupabaseAuthService {
     await new Promise((resolve) => setTimeout(resolve, 100));
   });
 
+  getAuthState = jest.fn(() => ({
+    isAuthenticated: this.isAuthenticated,
+    user: this.isAuthenticated ? { id: 'test-user', email: 'test@example.com' } : null,
+    subscription: { isActive: this.isPremiumUser, plan: 'free' as const },
+  }));
+
+  addAuthStateListener = jest.fn((listener: any): void => {
+    // Mock implementation - store listener for testing
+  });
+
+  removeAuthStateListener = jest.fn((listener: any): void => {
+    // Mock implementation - remove listener for testing
+  });
+
   // Test configuration methods
   setIsPremium(isPremium: boolean): void {
     this.isPremiumUser = isPremium;

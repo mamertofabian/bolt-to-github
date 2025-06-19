@@ -2,6 +2,7 @@ import { writable, derived, type Writable } from 'svelte/store';
 import { UnifiedGitHubService } from '../../services/UnifiedGitHubService';
 import type { GitHubSettingsInterface, ProjectSettings } from '../types';
 import { createLogger } from '../utils/logger';
+import { ChromeStorageService } from '../services/chromeStorage';
 
 const logger = createLogger('githubSettings');
 
@@ -95,7 +96,16 @@ export const githubSettingsActions = {
         repoOwner = localSettings.githubAppUsername;
         // Save the detected repoOwner to sync storage for consistency
         if (repoOwner && repoOwner !== storedSettings.repoOwner) {
-          await chrome.storage.sync.set({ repoOwner });
+          // Use thread-safe method to update settings
+          await ChromeStorageService.saveGitHubSettings({
+            githubToken: storedSettings.githubToken || '',
+            repoOwner,
+            projectSettings: storedSettings.projectSettings || {},
+            authenticationMethod: authMethod,
+            githubAppInstallationId: localSettings.githubAppInstallationId || null,
+            githubAppUsername: localSettings.githubAppUsername,
+            githubAppAvatarUrl: localSettings.githubAppAvatarUrl,
+          });
         }
       }
 
@@ -330,13 +340,17 @@ export const githubSettingsActions = {
         }
       }
 
-      const settings = {
+      const settings: GitHubSettingsInterface = {
         githubToken: currentState!.githubToken,
         repoOwner: currentState!.repoOwner,
         projectSettings: currentState!.projectSettings,
+        authenticationMethod: currentState!.authenticationMethod,
+        githubAppInstallationId: currentState!.githubAppInstallationId,
+        githubAppUsername: currentState!.githubAppUsername,
+        githubAppAvatarUrl: currentState!.githubAppAvatarUrl,
       };
 
-      await chrome.storage.sync.set(settings);
+      await ChromeStorageService.saveGitHubSettings(settings);
 
       githubSettingsStore.update((state) => ({
         ...state,

@@ -20,6 +20,8 @@
   import { githubSettingsStore } from '$lib/stores';
   import ProjectsListGuide from '$lib/components/ProjectsListGuide.svelte';
   import { createLogger } from '$lib/utils/logger';
+  import { ChromeStorageService } from '$lib/services/chromeStorage';
+  import type { EnhancedGitHubRepo } from '$lib/services/GitHubCacheService';
 
   const logger = createLogger('ProjectsList');
 
@@ -280,29 +282,125 @@
         return;
       }
 
-      // Try to load from cache first unless force refresh is requested
+      // Import enhanced caching service
+      const { GitHubCacheService } = await import('../services/GitHubCacheService');
+      const { ChromeStorageService } = await import('../services/chromeStorage');
+
+      // Try to load from enhanced cache first unless force refresh is requested
       if (!forceRefresh) {
-        const cachedSuccessfully = await loadReposFromCache();
-        if (cachedSuccessfully) {
+        const cachedRepos: EnhancedGitHubRepo[] =
+          await GitHubCacheService.getCachedRepos(repoOwner);
+        if (cachedRepos.length > 0) {
+          // Convert enhanced repos to display format
+          allRepos = cachedRepos.map((repo) => ({
+            name: repo.name,
+            description: repo.description,
+            private: repo.private,
+            html_url: repo.html_url,
+            created_at: repo.created_at,
+            updated_at: repo.updated_at,
+            language: repo.language,
+          }));
+
           initialLoadingRepos = false;
           loadingRepos = false;
+          logger.info(`Loaded ${allRepos.length} repos from enhanced cache`);
           return;
         }
       }
 
       // Fetch from API
-      const repos = await githubService.listRepos();
+      const basicRepos = await githubService.listRepos();
 
       // Simulate a brief delay for better UX (only for non-cached loads)
       if (initialLoadingRepos) {
         await new Promise((resolve) => setTimeout(resolve, 800));
       }
 
-      allRepos = repos;
-      await saveReposToCache(repos);
+      // Enhance repos with additional metadata
+      const enhancedRepos = await Promise.all(
+        basicRepos.map(async (repo) => {
+          try {
+            // Get commit count for repositories
+            const commitCount = await githubService.getCommitCount(
+              repoOwner,
+              repo.name,
+              repo.default_branch || 'main'
+            );
+
+            // Get latest commit info
+            let latestCommit = undefined;
+            try {
+              const commits = await githubService.request(
+                'GET',
+                `/repos/${repoOwner}/${repo.name}/commits?per_page=1`
+              );
+              if (commits[0]?.commit) {
+                latestCommit = {
+                  sha: commits[0].sha,
+                  message: commits[0].commit.message,
+                  date: commits[0].commit.committer.date,
+                  author: commits[0].commit.author.name,
+                };
+              }
+            } catch (commitError) {
+              logger.warn(`Could not fetch latest commit for ${repo.name}:`, commitError);
+            }
+
+            // Create enhanced repo metadata
+            return GitHubCacheService.createEnhancedRepo(repo, commitCount, latestCommit);
+          } catch (error) {
+            logger.warn(`Could not enhance metadata for ${repo.name}:`, error);
+            // Fall back to basic enhanced repo without extra metadata
+            return GitHubCacheService.createEnhancedRepo(repo);
+          }
+        })
+      );
+
+      // Cache the enhanced repos
+      await GitHubCacheService.cacheRepos(repoOwner, enhancedRepos);
+
+      // Convert to display format
+      allRepos = enhancedRepos.map((repo) => ({
+        name: repo.name,
+        description: repo.description,
+        private: repo.private,
+        html_url: repo.html_url,
+        created_at: repo.created_at,
+        updated_at: repo.updated_at,
+        language: repo.language,
+      }));
+
+      // Update project settings with GitHub metadata for existing projects
+      const existingProjects = Object.entries(projectSettings);
+      for (const [projectId, settings] of existingProjects) {
+        const repoData = enhancedRepos.find((r) => r.name === settings.repoName);
+        if (repoData) {
+          try {
+            await ChromeStorageService.updateProjectMetadata(projectId, {
+              is_private: repoData.private,
+              language: repoData.language || undefined,
+              description: repoData.description || undefined,
+              commit_count: repoData.commit_count,
+              latest_commit_date: repoData.latest_commit?.date,
+              latest_commit_message: repoData.latest_commit?.message,
+              latest_commit_sha: repoData.latest_commit?.sha,
+              latest_commit_author: repoData.latest_commit?.author,
+              open_issues_count: repoData.open_issues_count,
+              github_updated_at: repoData.updated_at,
+              default_branch: repoData.default_branch,
+              github_repo_url: repoData.html_url,
+            });
+            logger.info(`Updated project ${projectId} with GitHub metadata`);
+          } catch (updateError) {
+            logger.warn(`Could not update project ${projectId} metadata:`, updateError);
+          }
+        }
+      }
 
       initialLoadingRepos = false;
       loadingRepos = false;
+      logger.info(`Successfully loaded and cached ${allRepos.length} enhanced repos`);
     } catch (error) {
       initialLoadingRepos = false;
       loadingRepos = false;
@@ -316,32 +414,44 @@
 
     // Check if GitHub service is available
     if (!githubService) {
-      logger.info('GitHub service not yet initialized, skipping commit count fetch');
+      logger.info('GitHub service not yet initialized, skipping project data refresh');
       return;
     }
 
-    // Try to load from cache first unless force refresh is requested
-    if (!forceRefresh) {
-      const cachedSuccessfully = await loadCommitCountsFromCache();
-      if (cachedSuccessfully) {
-        // Check if we have all the required commit counts
-        const projectIds = Object.keys(projectSettings);
-        const cachedIds = Object.keys(commitCounts);
-        const hasAllCounts = projectIds.every((id) => cachedIds.includes(id));
+    // Import enhanced services
+    const { GitHubCacheService } = await import('../services/GitHubCacheService');
+    const { ChromeStorageService } = await import('../services/chromeStorage');
 
-        if (hasAllCounts) {
-          logger.info('All commit counts loaded from cache');
+    // Try to load from enhanced cache first unless force refresh is requested
+    if (!forceRefresh) {
+      const cachedRepos: EnhancedGitHubRepo[] = await GitHubCacheService.getCachedRepos(repoOwner);
+      if (cachedRepos.length > 0) {
+        // Extract commit counts from cached data
+        const newCommitCounts: Record<string, number> = { ...commitCounts };
+        let hasUpdates = false;
+
+        for (const [projectId, settings] of Object.entries(projectSettings)) {
+          const cachedRepo = cachedRepos.find((r) => r.name === settings.repoName);
+          if (cachedRepo && cachedRepo.commit_count !== undefined) {
+            newCommitCounts[projectId] = cachedRepo.commit_count;
+            hasUpdates = true;
+          }
+        }
+
+        if (hasUpdates) {
+          commitCounts = newCommitCounts;
+          logger.info('Loaded project data from enhanced cache');
           return;
         }
       }
     }
 
-    // Fetch commit counts for projects that have IDs
+    // Fetch fresh data for projects that need updating
     const newCommitCounts: Record<string, number> = { ...commitCounts };
     const newLoadingStates: Record<string, boolean> = { ...loadingCommitCounts };
 
     // Track which projects need loading
-    const projectsToLoad = Object.entries(projectSettings).filter(([projectId]) => {
+    const projectsToLoad = Object.entries(projectSettings).filter(([projectId, settings]) => {
       return forceRefresh || commitCounts[projectId] === undefined;
     });
 
@@ -353,11 +463,86 @@
 
     for (const [projectId, settings] of projectsToLoad) {
       try {
-        newCommitCounts[projectId] = await githubService.getCommitCount(
+        // Get fresh commit count
+        const commitCount = await githubService.getCommitCount(
           repoOwner,
           settings.repoName,
           settings.branch
         );
+        newCommitCounts[projectId] = commitCount;
+
+        // Try to get additional repo metadata if not cached
+        try {
+          const cachedRepo = await GitHubCacheService.getRepoMetadata(repoOwner, settings.repoName);
+          if (
+            !cachedRepo ||
+            (await GitHubCacheService.isRepoMetadataStale(repoOwner, settings.repoName))
+          ) {
+            // Fetch fresh repo info and cache it
+            const repoInfo = await githubService.getRepoInfo(repoOwner, settings.repoName);
+            if (repoInfo.exists) {
+              // Get latest commit
+              let latestCommit = undefined;
+              try {
+                const commits = await githubService.request(
+                  'GET',
+                  `/repos/${repoOwner}/${settings.repoName}/commits?per_page=1`
+                );
+                if (commits[0]?.commit) {
+                  latestCommit = {
+                    sha: commits[0].sha,
+                    message: commits[0].commit.message,
+                    date: commits[0].commit.committer.date,
+                    author: commits[0].commit.author.name,
+                  };
+                }
+              } catch (commitError) {
+                logger.warn(`Could not fetch latest commit for ${settings.repoName}:`, commitError);
+              }
+
+              // Create and cache enhanced repo
+              const enhancedRepo = GitHubCacheService.createEnhancedRepo(
+                {
+                  name: settings.repoName,
+                  private: repoInfo.private,
+                  description: repoInfo.description,
+                  language: repoInfo.language,
+                  html_url: `https://github.com/${repoOwner}/${settings.repoName}`,
+                  created_at: repoInfo.created_at,
+                  updated_at: repoInfo.updated_at,
+                  default_branch: repoInfo.default_branch || 'main',
+                  open_issues_count: repoInfo.open_issues_count || 0,
+                },
+                commitCount,
+                latestCommit
+              );
+
+              await GitHubCacheService.cacheRepoMetadata(
+                repoOwner,
+                settings.repoName,
+                enhancedRepo
+              );
+
+              // Update project settings with fresh metadata
+              await ChromeStorageService.updateProjectMetadata(projectId, {
+                is_private: repoInfo.private,
+                language: repoInfo.language || undefined,
+                description: repoInfo.description || undefined,
+                commit_count: commitCount,
+                latest_commit_date: latestCommit?.date,
+                latest_commit_message: latestCommit?.message,
+                latest_commit_sha: latestCommit?.sha,
+                latest_commit_author: latestCommit?.author,
+                open_issues_count: repoInfo.open_issues_count || 0,
+                github_updated_at: repoInfo.updated_at,
+                default_branch: repoInfo.default_branch || 'main',
+                github_repo_url: `https://github.com/${repoOwner}/${settings.repoName}`,
+              });
+            }
+          }
+        } catch (metadataError) {
+          logger.warn(`Could not refresh metadata for ${settings.repoName}:`, metadataError);
+        }
       } catch (error) {
         logger.error(`Failed to fetch commit count for ${projectId}:`, error);
         // Keep existing count if available
@@ -374,6 +559,7 @@
     commitCounts = newCommitCounts;
     loadingCommitCounts = newLoadingStates;
     await saveCommitCountsToCache(commitCounts);
+    logger.info('Project data refresh completed');
   }
 
   onMount(() => {
@@ -522,20 +708,16 @@
   async function deleteProject() {
     try {
       if (projectToDelete) {
-        // Get current settings
-        const settings = await chrome.storage.sync.get(['projectSettings']);
-        let updatedProjectSettings = { ...(settings.projectSettings || {}) };
+        // Use thread-safe delete method
+        await ChromeStorageService.deleteProjectSettings(projectToDelete.projectId);
 
-        // Delete single project
-        delete updatedProjectSettings[projectToDelete.projectId];
-
-        // Save updated settings to Chrome storage
-        await chrome.storage.sync.set({ projectSettings: updatedProjectSettings });
+        // Get updated settings for store update
+        const updatedSettings = await ChromeStorageService.getGitHubSettings();
 
         // Update the store to trigger reactivity
         githubSettingsStore.update((state) => ({
           ...state,
-          projectSettings: updatedProjectSettings,
+          projectSettings: updatedSettings.projectSettings || {},
         }));
 
         // Remove from commit counts and loading states, then update cache

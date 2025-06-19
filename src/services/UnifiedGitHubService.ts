@@ -538,19 +538,28 @@ export class UnifiedGitHubService {
 
   /**
    * Get commit count for a repository branch
+   * @param owner Repository owner
+   * @param repo Repository name
+   * @param branch Branch name (default: 'main')
+   * @param maxCommits Maximum number of commits to fetch (default: 100)
    */
-  async getCommitCount(owner: string, repo: string, branch: string = 'main'): Promise<number> {
+  async getCommitCount(
+    owner: string,
+    repo: string,
+    branch: string = 'main',
+    maxCommits: number = 100
+  ): Promise<number> {
     const token = await this.getToken();
 
     try {
-      // Get all commits by fetching pages until we reach the end
+      // Get commits by fetching pages until we reach the end or hit the limit
       let totalCommits = 0;
       let page = 1;
       const perPage = 100;
-      const maxPages = 100;
+      const maxPages = Math.min(100, Math.ceil(maxCommits / perPage)); // Don't exceed maxCommits
       let hasNextPage = true;
 
-      while (hasNextPage && page <= maxPages) {
+      while (hasNextPage && page <= maxPages && totalCommits < maxCommits) {
         const response = await fetch(
           `https://api.github.com/repos/${owner}/${repo}/commits?sha=${branch}&per_page=${perPage}&page=${page}`,
           {
@@ -574,7 +583,8 @@ export class UnifiedGitHubService {
           break;
         }
 
-        totalCommits += commits.length;
+        const commitsToAdd = Math.min(commits.length, maxCommits - totalCommits);
+        totalCommits += commitsToAdd;
         hasNextPage = commits.length === perPage;
         page++;
       }

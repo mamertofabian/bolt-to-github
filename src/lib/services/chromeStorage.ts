@@ -1,8 +1,55 @@
-import type { GitHubSettingsInterface, ProjectSettings } from '../types';
+import type { GitHubSettingsInterface, ProjectSettings, BoltProject } from '../types';
 import type { PushStatistics } from '../types';
 import { createLogger } from '../utils/logger';
 
 const logger = createLogger('chromeStorage');
+
+/**
+ * Queue for serializing storage write operations to prevent race conditions
+ */
+class StorageWriteQueue {
+  private queue: Promise<void> = Promise.resolve();
+  private pendingOperations = 0;
+  private totalOperations = 0;
+
+  /**
+   * Enqueue an async operation to be executed serially
+   * @param operation The async operation to execute
+   * @returns Promise resolving to the operation result
+   */
+  async enqueue<T>(operation: () => Promise<T>): Promise<T> {
+    this.pendingOperations++;
+    this.totalOperations++;
+
+    // Log queue depth if it gets large (potential performance issue)
+    if (this.pendingOperations > 10) {
+      logger.warn(`Storage write queue depth: ${this.pendingOperations} operations pending`);
+    }
+
+    const wrappedOperation = async () => {
+      try {
+        return await operation();
+      } finally {
+        this.pendingOperations--;
+      }
+    };
+
+    const result = this.queue.then(wrappedOperation);
+    // Continue queue even if an operation fails, but preserve the chain for GC
+    this.queue = result.catch(() => {}) as Promise<void>;
+    return result;
+  }
+
+  /**
+   * Get current queue statistics for monitoring
+   */
+  getStats() {
+    return {
+      pendingOperations: this.pendingOperations,
+      totalOperations: this.totalOperations,
+    };
+  }
+}
 
 // Storage Keys
 export const STORAGE_KEYS = {
@@ -30,6 +77,22 @@ export const STORAGE_KEYS = {
 
 // Chrome Storage Service
 export class ChromeStorageService {
+  // Singleton write queue instance to serialize all storage writes
+  private static writeQueue = new StorageWriteQueue();
+
+  // Storage listener reference for cleanup
+  private static _storageListener?: (
+    changes: Record<string, chrome.storage.StorageChange>,
+    namespace: string
+  ) => void;
+
+  /**
+   * Get write queue statistics for monitoring and debugging
+   */
+  static getQueueStats() {
+    return this.writeQueue.getStats();
+  }
+
   /**
    * Get GitHub settings from sync storage (enhanced with authentication method)
    */
@@ -69,47 +132,54 @@ export class ChromeStorageService {
   }
 
   /**
-   * Save GitHub settings to sync storage (enhanced with authentication method)
+   * Save GitHub settings to sync storage (enhanced with authentication method, thread-safe)
    */
   static async saveGitHubSettings(settings: GitHubSettingsInterface): Promise<void> {
-    try {
-      // Save sync data (shared across devices)
-      const syncDataToSave = {
-        [STORAGE_KEYS.GITHUB_TOKEN]: settings.githubToken,
-        [STORAGE_KEYS.REPO_OWNER]: settings.repoOwner,
-        [STORAGE_KEYS.PROJECT_SETTINGS]: settings.projectSettings || {},
-      };
+    return this.writeQueue.enqueue(async () => {
+      try {
+        logger.debug('Saving GitHub settings');
 
-      // Save local data (device-specific)
-      const localDataToSave: Record<string, any> = {};
+        // Save sync data (shared across devices)
+        const syncDataToSave = {
+          [STORAGE_KEYS.GITHUB_TOKEN]: settings.githubToken,
+          [STORAGE_KEYS.REPO_OWNER]: settings.repoOwner,
+          [STORAGE_KEYS.PROJECT_SETTINGS]: settings.projectSettings || {},
+        };
 
-      if (settings.authenticationMethod !== undefined) {
-        localDataToSave[STORAGE_KEYS.AUTHENTICATION_METHOD] = settings.authenticationMethod;
+        // Save local data (device-specific)
+        const localDataToSave: Record<string, any> = {};
+
+        if (settings.authenticationMethod !== undefined) {
+          localDataToSave[STORAGE_KEYS.AUTHENTICATION_METHOD] = settings.authenticationMethod;
+        }
+
+        if (settings.githubAppInstallationId !== undefined) {
+          localDataToSave[STORAGE_KEYS.GITHUB_APP_INSTALLATION_ID] =
+            settings.githubAppInstallationId;
+        }
+
+        if (settings.githubAppUsername !== undefined) {
+          localDataToSave[STORAGE_KEYS.GITHUB_APP_USERNAME] = settings.githubAppUsername;
+        }
+
+        if (settings.githubAppAvatarUrl !== undefined) {
+          localDataToSave[STORAGE_KEYS.GITHUB_APP_AVATAR_URL] = settings.githubAppAvatarUrl;
+        }
+
+        // Save to both storages atomically
+        await Promise.all([
+          chrome.storage.sync.set(syncDataToSave),
+          Object.keys(localDataToSave).length > 0
+            ? chrome.storage.local.set(localDataToSave)
+            : Promise.resolve(),
+        ]);
+
+        logger.info('GitHub settings saved successfully');
+      } catch (error) {
+        logger.error('Error saving GitHub settings to storage:', error);
+        throw error;
       }
-
-      if (settings.githubAppInstallationId !== undefined) {
-        localDataToSave[STORAGE_KEYS.GITHUB_APP_INSTALLATION_ID] = settings.githubAppInstallationId;
-      }
-
-      if (settings.githubAppUsername !== undefined) {
-        localDataToSave[STORAGE_KEYS.GITHUB_APP_USERNAME] = settings.githubAppUsername;
-      }
-
-      if (settings.githubAppAvatarUrl !== undefined) {
-        localDataToSave[STORAGE_KEYS.GITHUB_APP_AVATAR_URL] = settings.githubAppAvatarUrl;
-      }
-
-      // Save to both storages
-      await Promise.all([
-        chrome.storage.sync.set(syncDataToSave),
-        Object.keys(localDataToSave).length > 0
-          ? chrome.storage.local.set(localDataToSave)
-          : Promise.resolve(),
-      ]);
-    } catch (error) {
-      logger.error('Error saving GitHub settings to storage:', error);
-      throw error;
-    }
+    });
   }
 
   /**
@@ -129,25 +199,169 @@ export class ChromeStorageService {
   }
 
   /**
-   * Save project settings for a specific project
+   * Save project settings for a specific project (thread-safe)
    */
   static async saveProjectSettings(
     projectId: string,
     repoName: string,
-    branch: string
+    branch: string,
+    projectTitle?: string
   ): Promise<void> {
-    try {
-      const result = await chrome.storage.sync.get(STORAGE_KEYS.PROJECT_SETTINGS);
-      const projectSettings: ProjectSettings = result[STORAGE_KEYS.PROJECT_SETTINGS] || {};
+    return this.writeQueue.enqueue(async () => {
+      try {
+        logger.debug('Saving project settings for:', projectId);
 
-      projectSettings[projectId] = { repoName, branch };
+        const result = await chrome.storage.sync.get(STORAGE_KEYS.PROJECT_SETTINGS);
+        const projectSettings: ProjectSettings = result[STORAGE_KEYS.PROJECT_SETTINGS] || {};
 
-      await chrome.storage.sync.set({
-        [STORAGE_KEYS.PROJECT_SETTINGS]: projectSettings,
-      });
-    } catch (error) {
-      logger.error('Error saving project settings to storage:', error);
-      throw error;
+        projectSettings[projectId] = {
+          repoName,
+          branch,
+          ...(projectTitle && { projectTitle }),
+        };
+
+        await chrome.storage.sync.set({
+          [STORAGE_KEYS.PROJECT_SETTINGS]: projectSettings,
+        });
+
+        // Save timestamp for race condition detection by BoltProjectSyncService
+        await chrome.storage.local.set({
+          lastSettingsUpdate: {
+            timestamp: Date.now(),
+            projectId,
+            repoName,
+            branch,
+            projectTitle,
+          },
+        });
+
+        logger.info(`Project settings saved successfully for ${projectId}`);
+      } catch (error) {
+        logger.error('Error saving project settings to storage:', error);
+        throw error;
+      }
+    });
+  }
+
+  /**
+   * Clean up temporary GitHub.com projects (projects with repoName = 'github.com')
+   * These are typically temporary import projects that shouldn't persist
+   */
+  static async cleanupGitHubComProjects(): Promise<number> {
+    return this.writeQueue.enqueue(async () => {
+      try {
+        logger.debug('🧹 Starting cleanup of github.com projects...');
+
+        const result = await chrome.storage.sync.get(STORAGE_KEYS.PROJECT_SETTINGS);
+        const projectSettings: ProjectSettings = result[STORAGE_KEYS.PROJECT_SETTINGS] || {};
+
+        const projectIds = Object.keys(projectSettings);
+        const projectsToDelete: string[] = [];
+
+        // Find projects with repoName = 'github.com'
+        for (const projectId of projectIds) {
+          const project = projectSettings[projectId];
+          if (project && project.repoName === 'github.com') {
+            projectsToDelete.push(projectId);
+            logger.debug(`🗑️ Found github.com project to cleanup: ${projectId}`);
+          }
+        }
+
+        // Delete the problematic projects
+        for (const projectId of projectsToDelete) {
+          delete projectSettings[projectId];
+        }
+
+        if (projectsToDelete.length > 0) {
+          await chrome.storage.sync.set({
+            [STORAGE_KEYS.PROJECT_SETTINGS]: projectSettings,
+          });
+
+          logger.info(`✅ Cleaned up ${projectsToDelete.length} github.com projects:`, {
+            deletedProjects: projectsToDelete,
+          });
+        } else {
+          logger.debug('✅ No github.com projects found to cleanup');
+        }
+
+        return projectsToDelete.length;
+      } catch (error) {
+        logger.error('❌ Error cleaning up github.com projects:', error);
+        throw error;
+      }
+    });
+  }
+
+  /**
+   * Delete project settings for a specific project (thread-safe)
+   */
+  static async deleteProjectSettings(projectId: string): Promise<void> {
+    return this.writeQueue.enqueue(async () => {
+      try {
+        logger.debug('Deleting project settings for:', projectId);
+
+        const result = await chrome.storage.sync.get(STORAGE_KEYS.PROJECT_SETTINGS);
+        const projectSettings: ProjectSettings = result[STORAGE_KEYS.PROJECT_SETTINGS] || {};
+
+        if (projectId in projectSettings) {
+          delete projectSettings[projectId];
+
+          await chrome.storage.sync.set({
+            [STORAGE_KEYS.PROJECT_SETTINGS]: projectSettings,
+          });
+
+          // Save timestamp for race condition detection
+          await chrome.storage.local.set({
+            lastSettingsUpdate: {
+              timestamp: Date.now(),
+              projectId,
+              action: 'delete',
+            },
+          });
+
+          logger.info(`Project settings deleted successfully for ${projectId}`);
+        }
+      } catch (error) {
+        logger.error('Error deleting project settings from storage:', error);
+        throw error;
+      }
+    });
+  }
+
+  /**
+   * Set up storage change listener for reactive updates across tabs
+   * Note: This is for READING changes, not writing - no write queue needed here
+   */
+  static setupStorageListener(
+    callback: (changes: Record<string, chrome.storage.StorageChange>) => void
+  ): void {
+    if (chrome.storage.onChanged) {
+      const listener = (
+        changes: Record<string, chrome.storage.StorageChange>,
+        namespace: string
+      ) => {
+        // Only listen to sync storage changes for projectSettings
+        if (namespace === 'sync' && changes.projectSettings) {
+          logger.debug('Storage change detected for projectSettings');
+          callback(changes);
+        }
+      };
+
+      chrome.storage.onChanged.addListener(listener);
+
+      // Store reference for potential cleanup (though rarely needed in extensions)
+      ChromeStorageService._storageListener = listener;
+    }
+  }
+
+  /**
+   * Remove storage change listeners (if needed for cleanup)
+   */
+  static removeStorageListeners(): void {
+    if (chrome.storage.onChanged && ChromeStorageService._storageListener) {
+      chrome.storage.onChanged.removeListener(ChromeStorageService._storageListener);
+      ChromeStorageService._storageListener = undefined;
+      logger.debug('Storage listener removed');
     }
   }
 
@@ -599,6 +813,314 @@ export class ChromeStorageService {
       ]);
     } catch (error) {
       logger.error('Error resetting migration prompt status:', error);
+      throw error;
+    }
+  }
+
+  // ========================================
+  // Enhanced GitHub Metadata Methods
+  // ========================================
+
+  /**
+   * Save project settings with enhanced GitHub metadata (thread-safe)
+   */
+  static async saveProjectSettingsWithMetadata(
+    projectId: string,
+    repoName: string,
+    branch: string,
+    projectTitle?: string,
+    metadata?: {
+      is_private?: boolean;
+      language?: string;
+      description?: string;
+      commit_count?: number;
+      latest_commit_date?: string;
+      latest_commit_message?: string;
+      latest_commit_sha?: string;
+      latest_commit_author?: string;
+      open_issues_count?: number;
+      github_updated_at?: string;
+      default_branch?: string;
+      github_repo_url?: string;
+    }
+  ): Promise<void> {
+    return this.writeQueue.enqueue(async () => {
+      try {
+        logger.debug('Saving project settings with metadata for:', projectId);
+
+        const result = await chrome.storage.sync.get(STORAGE_KEYS.PROJECT_SETTINGS);
+        const projectSettings: ProjectSettings = result[STORAGE_KEYS.PROJECT_SETTINGS] || {};
+
+        projectSettings[projectId] = {
+          repoName,
+          branch,
+          ...(projectTitle && { projectTitle }),
+          ...(metadata && {
+            ...metadata,
+            metadata_last_updated: new Date().toISOString(),
+          }),
+        };
+
+        await chrome.storage.sync.set({
+          [STORAGE_KEYS.PROJECT_SETTINGS]: projectSettings,
+        });
+
+        // Save timestamp for race condition detection
+        await chrome.storage.local.set({
+          lastSettingsUpdate: {
+            timestamp: Date.now(),
+            projectId,
+            repoName,
+            branch,
+            projectTitle,
+            metadata_updated: !!metadata,
+          },
+        });
+
+        logger.info(`Project settings with metadata saved successfully for ${projectId}`);
+      } catch (error) {
+        logger.error('Error saving project settings with metadata:', error);
+        throw error;
+      }
+    });
+  }
+
+  /**
+   * Update only the GitHub metadata for a project (thread-safe)
+   */
+  static async updateProjectMetadata(
+    projectId: string,
+    metadata: {
+      is_private?: boolean;
+      language?: string;
+      description?: string;
+      commit_count?: number;
+      latest_commit_date?: string;
+      latest_commit_message?: string;
+      latest_commit_sha?: string;
+      latest_commit_author?: string;
+      open_issues_count?: number;
+      github_updated_at?: string;
+      default_branch?: string;
+      github_repo_url?: string;
+    }
+  ): Promise<void> {
+    return this.writeQueue.enqueue(async () => {
+      try {
+        logger.debug('Updating project metadata for:', projectId);
+
+        const result = await chrome.storage.sync.get(STORAGE_KEYS.PROJECT_SETTINGS);
+        const projectSettings: ProjectSettings = result[STORAGE_KEYS.PROJECT_SETTINGS] || {};
+
+        if (projectId in projectSettings) {
+          projectSettings[projectId] = {
+            ...projectSettings[projectId],
+            ...metadata,
+            metadata_last_updated: new Date().toISOString(),
+          };
+
+          await chrome.storage.sync.set({
+            [STORAGE_KEYS.PROJECT_SETTINGS]: projectSettings,
+          });
+
+          logger.info(`Project metadata updated successfully for ${projectId}`);
+        } else {
+          logger.warn(`Project ${projectId} not found, cannot update metadata`);
+        }
+      } catch (error) {
+        logger.error('Error updating project metadata:', error);
+        throw error;
+      }
+    });
+  }
+
+  /**
+   * Sync project metadata from GitHub cache
+   */
+  static async syncProjectWithGitHubCache(
+    projectId: string,
+    owner: string,
+    repoName: string
+  ): Promise<void> {
+    return this.writeQueue.enqueue(async () => {
+      try {
+        // Import here to avoid circular dependency
+        const { GitHubCacheService } = await import('./GitHubCacheService');
+
+        const cachedRepo = await GitHubCacheService.getRepoMetadata(owner, repoName);
+        if (cachedRepo) {
+          const metadata = {
+            is_private: cachedRepo.private,
+            language: cachedRepo.language || undefined,
+            description: cachedRepo.description || undefined,
+            commit_count: cachedRepo.commit_count,
+            latest_commit_date: cachedRepo.latest_commit?.date,
+            latest_commit_message: cachedRepo.latest_commit?.message,
+            latest_commit_sha: cachedRepo.latest_commit?.sha,
+            latest_commit_author: cachedRepo.latest_commit?.author,
+            open_issues_count: cachedRepo.open_issues_count,
+            github_updated_at: cachedRepo.updated_at,
+            default_branch: cachedRepo.default_branch,
+            github_repo_url: cachedRepo.html_url,
+          };
+
+          await this.updateProjectMetadata(projectId, metadata);
+          logger.info(`Synced project ${projectId} with GitHub cache`);
+        }
+      } catch (error) {
+        logger.error(`Error syncing project ${projectId} with GitHub cache:`, error);
+        throw error;
+      }
+    });
+  }
+
+  /**
+   * Get enhanced project settings with metadata
+   */
+  static async getProjectSettingsWithMetadata(
+    projectId: string
+  ): Promise<ProjectSettings[string] | null> {
+    try {
+      const result = await chrome.storage.sync.get(STORAGE_KEYS.PROJECT_SETTINGS);
+      const projectSettings: ProjectSettings = result[STORAGE_KEYS.PROJECT_SETTINGS] || {};
+      return projectSettings[projectId] || null;
+    } catch (error) {
+      logger.error('Error getting project settings with metadata:', error);
+      return null;
+    }
+  }
+
+  // ========================================
+  // Instance Methods for Generic Storage
+  // ========================================
+
+  /**
+   * Generic get method for chrome.storage.local
+   */
+  async get(key: string): Promise<any> {
+    return new Promise((resolve, reject) => {
+      chrome.storage.local.get([key], (result) => {
+        if (chrome.runtime.lastError) {
+          reject(new Error(chrome.runtime.lastError.message));
+        } else {
+          resolve(result);
+        }
+      });
+    });
+  }
+
+  /**
+   * Generic set method for chrome.storage.local
+   */
+  async set(data: Record<string, any>): Promise<void> {
+    return new Promise((resolve, reject) => {
+      chrome.storage.local.set(data, () => {
+        if (chrome.runtime.lastError) {
+          reject(new Error(chrome.runtime.lastError.message));
+        } else {
+          resolve();
+        }
+      });
+    });
+  }
+
+  // ========================================
+  // BoltProject Management
+  // ========================================
+
+  /**
+   * Get all bolt projects from storage
+   */
+  async getBoltProjects(): Promise<BoltProject[]> {
+    try {
+      const result = await this.get('boltProjects');
+      return result.boltProjects || [];
+    } catch (error) {
+      logger.error('Error getting bolt projects:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Save bolt projects to storage
+   */
+  async saveBoltProjects(projects: BoltProject[]): Promise<void> {
+    try {
+      await this.set({ boltProjects: projects });
+    } catch (error) {
+      logger.error('Error saving bolt projects:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Get a specific bolt project by id
+   */
+  async getBoltProject(id: string): Promise<BoltProject | null> {
+    try {
+      const projects = await this.getBoltProjects();
+      return projects.find((p) => p.id === id) || null;
+    } catch (error) {
+      logger.error(`Error getting bolt project ${id}:`, error);
+      throw error;
+    }
+  }
+
+  /**
+   * Update a specific bolt project
+   */
+  async updateBoltProject(id: string, updates: Partial<BoltProject>): Promise<void> {
+    try {
+      const projects = await this.getBoltProjects();
+      const index = projects.findIndex((p) => p.id === id);
+
+      if (index === -1) {
+        throw new Error(`Project with id ${id} not found`);
+      }
+
+      projects[index] = { ...projects[index], ...updates };
+      await this.saveBoltProjects(projects);
+    } catch (error) {
+      logger.error(`Error updating bolt project ${id}:`, error);
+      throw error;
+    }
+  }
+
+  /**
+   * Delete a bolt project by id
+   */
+  async deleteBoltProject(id: string): Promise<void> {
+    try {
+      const projects = await this.getBoltProjects();
+      const filteredProjects = projects.filter((p) => p.id !== id);
+      await this.saveBoltProjects(filteredProjects);
+    } catch (error) {
+      logger.error(`Error deleting bolt project ${id}:`, error);
+      throw error;
+    }
+  }
+
+  /**
+   * Get last sync timestamp
+   */
+  async getLastSyncTimestamp(): Promise<string | null> {
+    try {
+      const result = await this.get('lastSyncTimestamp');
+      return result.lastSyncTimestamp || null;
+    } catch (error) {
+      logger.error('Error getting last sync timestamp:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Set last sync timestamp
+   */
+  async setLastSyncTimestamp(timestamp: string): Promise<void> {
+    try {
+      await this.set({ lastSyncTimestamp: timestamp });
+    } catch (error) {
+      logger.error('Error setting last sync timestamp:', error);
       throw error;
     }
   }
