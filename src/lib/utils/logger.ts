@@ -155,7 +155,7 @@ export function enableProductionDebug(): void {
     try {
       localStorage.setItem('bolt-to-github-debug', 'true');
       logger.info('Production debug logging enabled. Reload the page to take effect.');
-    } catch (e) {
+    } catch (_e) {
       logger.warn('Failed to enable production debug logging: localStorage unavailable');
     }
   }

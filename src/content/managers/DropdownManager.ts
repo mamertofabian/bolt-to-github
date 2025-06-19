@@ -18,7 +18,7 @@ export class DropdownManager implements IDropdownManager {
   private currentDropdown: HTMLElement | null = null;
   private resizeListener?: () => void;
   private clickOutsideListener?: (e: MouseEvent) => void;
-  private premiumService?: any; // Will be injected from UIManager
+  private premiumService?: import('../services/PremiumService').PremiumService; // Will be injected from UIManager
 
   constructor(
     messageHandler: MessageHandler,
@@ -37,7 +37,9 @@ export class DropdownManager implements IDropdownManager {
   /**
    * Set premium service for checking premium features
    */
-  public setPremiumService(premiumService: any): void {
+  public setPremiumService(
+    premiumService: import('../services/PremiumService').PremiumService
+  ): void {
     this.premiumService = premiumService;
   }
 

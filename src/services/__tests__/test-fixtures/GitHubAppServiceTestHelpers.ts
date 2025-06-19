@@ -203,7 +203,7 @@ export function setupCommonMockResponses(
       );
       break;
 
-    case 'mixed':
+    case 'mixed': {
       // First call fails, second succeeds (for retry scenarios)
       let callCount = 0;
       fetchMock.setResponse('/functions/v1/get-github-token', {
@@ -229,6 +229,7 @@ export function setupCommonMockResponses(
         },
       } as any);
       break;
+    }
   }
 }
 
@@ -367,13 +368,14 @@ export function simulateError(
   errorType: 'network' | 'auth' | 'rate-limit' | 'server'
 ) {
   switch (errorType) {
-    case 'network':
+    case 'network': {
       // Override fetch to throw network error
       const originalFetch = fetchMock.fetch.bind(fetchMock);
       fetchMock.fetch = async () => {
         throw new Error('Network error');
       };
       break;
+    }
 
     case 'auth':
       fetchMock.setResponse(

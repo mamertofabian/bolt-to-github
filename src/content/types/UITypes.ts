@@ -36,6 +36,10 @@ export interface ConfirmationOptions {
   };
   commitMessageTemplates?: string[];
   type?: 'info' | 'warning' | 'error';
+  repoInfo?: {
+    repoName: string;
+    branch: string;
+  };
 }
 
 export interface ConfirmationResult {
@@ -69,7 +73,7 @@ export interface DialogOptions {
 
 // Define proper types for Svelte components
 export type SvelteComponent = {
-  $set: (props: Record<string, any>) => void;
+  $set: (props: Record<string, unknown>) => void;
   $destroy: () => void;
   $on?: (event: string, handler: (event: CustomEvent) => void) => void;
 };

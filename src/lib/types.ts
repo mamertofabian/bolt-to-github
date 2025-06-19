@@ -24,12 +24,65 @@ export type MessageType =
   | 'SUBSCRIPTION_UPGRADED'
   | 'SYNC_BOLT_PROJECTS';
 
-export interface Message {
+// Base message interface
+interface BaseMessage {
   type: MessageType;
-  data?: any;
   status?: UploadStatusState;
   message?: string;
 }
+
+// Specific message types with their data
+export interface ZipDataMessage extends BaseMessage {
+  type: 'ZIP_DATA';
+  data: string | { data: string; projectId?: string };
+}
+
+export interface SetCommitMessage extends BaseMessage {
+  type: 'SET_COMMIT_MESSAGE';
+  data: { message: string };
+}
+
+export interface OpenFileChangesMessage extends BaseMessage {
+  type: 'OPEN_FILE_CHANGES';
+  data: { changes: Record<string, string> };
+}
+
+export interface ImportPrivateRepoMessage extends BaseMessage {
+  type: 'IMPORT_PRIVATE_REPO';
+  data: { repoName: string; branch?: string };
+}
+
+export interface NotifyGitHubAppSyncMessage extends BaseMessage {
+  type: 'NOTIFY_GITHUB_APP_SYNC';
+  data: { installationId?: number; username?: string; avatarUrl?: string };
+}
+
+export interface GenericMessage extends BaseMessage {
+  type: Exclude<
+    MessageType,
+    | 'ZIP_DATA'
+    | 'SET_COMMIT_MESSAGE'
+    | 'OPEN_FILE_CHANGES'
+    | 'IMPORT_PRIVATE_REPO'
+    | 'NOTIFY_GITHUB_APP_SYNC'
+  >;
+  data?: unknown;
+  action?: string;
+  feature?: string;
+  eventType?: string;
+  eventData?: Record<string, unknown>;
+  step?: string;
+  method?: string;
+}
+
+// Union of all message types
+export type Message =
+  | ZipDataMessage
+  | SetCommitMessage
+  | OpenFileChangesMessage
+  | ImportPrivateRepoMessage
+  | NotifyGitHubAppSyncMessage
+  | GenericMessage;
 
 export interface ProjectSetting {
   repoName: string;

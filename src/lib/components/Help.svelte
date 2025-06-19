@@ -1,11 +1,5 @@
 <script lang="ts">
-  import {
-    Card,
-    CardContent,
-    CardDescription,
-    CardHeader,
-    CardTitle,
-  } from '$lib/components/ui/card';
+  import { CardHeader, CardTitle } from '$lib/components/ui/card';
   import { CREATE_TOKEN_URL, CREATE_FINE_GRAINED_TOKEN_URL } from '$lib/constants';
   import { ChevronDown, Sparkles } from 'lucide-svelte';
 

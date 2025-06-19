@@ -139,7 +139,9 @@ export class ContentManager {
     });
   }
 
-  private isExtensionContextInvalidated(error: any): boolean {
+  private isExtensionContextInvalidated(
+    error: Error | chrome.runtime.LastError | null | undefined
+  ): boolean {
     // Check for various extension context invalidation patterns
     if (!error?.message && !chrome.runtime?.id) {
       return true;
@@ -476,7 +478,7 @@ export class ContentManager {
     }, 30000); // Every 30 seconds
   }
 
-  private handleInitializationError(error: any): void {
+  private handleInitializationError(error: unknown): void {
     logger.error('Initialization error:', error);
     this.notifyUserOfError();
   }
@@ -520,7 +522,7 @@ export class ContentManager {
     if (this.port) {
       try {
         this.port.disconnect();
-      } catch (error) {
+      } catch (_error) {
         // Ignore disconnect errors during cleanup
       }
       this.port = null;

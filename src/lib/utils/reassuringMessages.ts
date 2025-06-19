@@ -177,7 +177,7 @@ function getProgressStage(progress: number): 'early' | 'middle' | 'late' {
 }
 
 export function getRotatingMessage(context: ReassuringMessageContext): string {
-  const { operation, progress = 0, currentFile, filesProcessed } = context;
+  const { operation, progress = 0, currentFile } = context;
   const key = operation;
 
   // Initialize state if needed
@@ -312,7 +312,7 @@ export function getContextualMessage(context: ReassuringMessageContext): string 
 }
 
 // Fun, encouraging messages for completion
-export function getCompletionMessage(success: boolean, operation: string): string {
+export function getCompletionMessage(success: boolean, _operation: string): string {
   const successMessages = [
     '🎉 All done! Great work!',
     '✨ Success! Everything went smoothly.',

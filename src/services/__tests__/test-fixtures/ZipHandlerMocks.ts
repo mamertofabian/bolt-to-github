@@ -178,7 +178,7 @@ export class MockUnifiedGitHubService implements Partial<UnifiedGitHubService> {
     }
 
     // Handle repo checks
-    if (method === 'GET' && path.match(/^\/repos\/[^\/]+\/[^\/]+$/)) {
+    if (method === 'GET' && path.match(/^\/repos\/[^/]+\/[^/]+$/)) {
       return {
         name: path.split('/').pop(),
         owner: { login: path.split('/')[2] },

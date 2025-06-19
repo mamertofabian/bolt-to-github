@@ -58,7 +58,7 @@ export class PATAuthenticationStrategy implements IAuthenticationStrategy {
 
       this.token = storage.githubToken;
       return storage.githubToken;
-    } catch (error) {
+    } catch (_error) {
       throw new Error('Failed to get GitHub token from storage');
     }
   }
@@ -303,7 +303,7 @@ export class PATAuthenticationStrategy implements IAuthenticationStrategy {
    * Verify token permissions
    */
   private async verifyTokenPermissions(
-    repoOwner: string
+    _repoOwner: string
   ): Promise<{ isValid: boolean; error?: string }> {
     try {
       const token = await this.getToken();

@@ -3,6 +3,20 @@ import type { MessageHandler } from './MessageHandler';
 
 // Import new types and managers
 import type { NotificationOptions } from './types/UITypes';
+
+// Define the state structure for type safety
+interface UIManagerState {
+  uploadStatus: {
+    status: string;
+    progress?: number;
+    message?: string;
+  };
+  buttonState: {
+    loadingState?: 'detecting-changes' | 'pushing' | 'custom' | null;
+    isProcessing: boolean;
+    loadingText?: string;
+  };
+}
 import { NotificationManager } from './managers/NotificationManager';
 import { UploadStatusManager } from './managers/UploadStatusManager';
 import { GitHubButtonManager } from './managers/GitHubButtonManager';
@@ -304,7 +318,7 @@ export class UIManager {
         onUpgrade: () => {
           try {
             window.open('https://bolt2github.com/upgrade', '_blank');
-          } catch (openError) {
+          } catch (_openError) {
             try {
               chrome.tabs.create({ url: 'https://bolt2github.com/upgrade' });
             } catch (tabsError) {
@@ -441,7 +455,7 @@ export class UIManager {
    * Handle upload status changes - now managed through UIStateManager
    * This method is called by state change listeners
    */
-  private handleUploadStatusChange(newState: any, previousState: any): void {
+  private handleUploadStatusChange(newState: UIManagerState, _previousState: UIManagerState): void {
     const status = newState.uploadStatus;
     const buttonState = newState.buttonState;
 

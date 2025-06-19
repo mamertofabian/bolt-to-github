@@ -5,6 +5,8 @@
  * and facilitates communication between the welcome page and the extension.
  */
 
+/* eslint-disable @typescript-eslint/no-require-imports */
+
 describe('WelcomePageContentScript', () => {
   let mockRuntimeSendMessage: jest.Mock;
   let mockStorageGet: jest.Mock;

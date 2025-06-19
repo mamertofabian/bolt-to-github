@@ -1,3 +1,5 @@
+/* eslint-disable @typescript-eslint/no-require-imports */
+
 import { describe, it, expect, jest, beforeEach, afterEach } from '@jest/globals';
 import { WhatsNewManager } from '../WhatsNewManager';
 import type { IComponentLifecycleManager, IUIElementFactory } from '../WhatsNewManager';

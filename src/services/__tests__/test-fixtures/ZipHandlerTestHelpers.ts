@@ -1,3 +1,5 @@
+/* eslint-disable @typescript-eslint/no-require-imports */
+
 import { GitHubComparisonService } from '../../GitHubComparisonService';
 import {
   MockUnifiedGitHubService,

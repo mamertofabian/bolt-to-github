@@ -12,6 +12,14 @@ import type {
 
 const logger = createLogger('BoltProjectSyncService');
 
+interface RecentProjectChange {
+  timestamp: number;
+  projectId: string;
+  repoName?: string;
+  branch?: string;
+  projectTitle?: string;
+}
+
 export class BoltProjectSyncService {
   private storageService: ChromeStorageService;
   private authService: SupabaseAuthService;
@@ -891,8 +899,8 @@ export class BoltProjectSyncService {
    * Get recent project changes from storage to detect potential race conditions
    * Returns a map of projectId -> recent change data for changes within the last 30 seconds
    */
-  private async getRecentProjectChanges(): Promise<Map<string, any>> {
-    const recentChanges = new Map<string, any>();
+  private async getRecentProjectChanges(): Promise<Map<string, RecentProjectChange>> {
+    const recentChanges = new Map<string, RecentProjectChange>();
     const RECENT_CHANGE_THRESHOLD = 30000; // 30 seconds
 
     try {

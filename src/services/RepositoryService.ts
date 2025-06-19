@@ -4,6 +4,7 @@ import type {
   RepoInfo,
   RepoCreateOptions,
   RepoSummary,
+  GitHubRepository,
 } from './interfaces/IRepositoryService';
 import type { IFileService } from './interfaces/IFileService';
 import type { IRepoCloneService } from './interfaces/IRepoCloneService';
@@ -76,7 +77,7 @@ export class RepositoryService implements IRepositoryService {
    * @param options Repository creation options
    * @returns Promise resolving to the created repository
    */
-  async createRepo(options: RepoCreateOptions): Promise<any> {
+  async createRepo(options: RepoCreateOptions): Promise<GitHubRepository> {
     const { auto_init = true, org, ...repoOptions } = options;
 
     try {

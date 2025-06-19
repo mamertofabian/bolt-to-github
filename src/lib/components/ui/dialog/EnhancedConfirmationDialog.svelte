@@ -17,6 +17,7 @@
   export let fileChangesSummary: { added: number; modified: number; deleted: number } | null = null;
   export let commitMessageTemplates: string[] = [];
   export let isLoading = false;
+  export let repoInfo: { repoName: string; branch: string } | null = null;
 
   const dispatch = createEventDispatcher<{
     confirm: { commitMessage: string };
@@ -153,8 +154,15 @@
 
       <!-- Content -->
       <div class="enhanced-dialog-content">
-        <p id="dialog-description" class="enhanced-message">
-          {@html message}
+        {#if repoInfo}
+          <p class="enhanced-message text-sm mb-2">
+            Repository: <span class="font-mono text-blue-400"
+              >{repoInfo.repoName} / {repoInfo.branch}</span
+            >
+          </p>
+        {/if}
+        <p id="dialog-description" class="enhanced-message whitespace-pre-line">
+          {message}
         </p>
 
         <!-- File changes summary (if provided) -->

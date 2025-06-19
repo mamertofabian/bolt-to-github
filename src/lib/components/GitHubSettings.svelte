@@ -60,9 +60,9 @@
   let isLoadingRepos = false;
   let showRepoDropdown = false;
   let repoSearchQuery = '';
-  let repoInputFocused = false;
   let repoExists = false;
   let selectedIndex = -1;
+  let repoInputFocused = false;
   let isCheckingPermissions = false;
   let lastPermissionCheck: number | null = null;
   let currentCheck: 'repos' | 'admin' | 'code' | null = null;
@@ -83,7 +83,6 @@
   let isConnectingGitHubApp = false;
   let githubAppConnectionError: string | null = null;
   let githubAppValidationResult: { isValid: boolean; error?: string; userInfo?: any } | null = null;
-  let showGitHubAppPermissions = false;
 
   // Collapsible state - add manual toggle state
   let manuallyToggled = false;

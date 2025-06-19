@@ -33,7 +33,10 @@
       "Bash(gh label create:*)",
       "Bash(npm run lint)",
       "Bash(npm run check:*)",
-      "Bash(npm run build:*)"
+      "Bash(npm run build:*)",
+      "Bash(sed:*)",
+      "Bash(pnpm eslint:*)",
+      "Bash(pnpm tsc:*)"
     ],
     "deny": []
   }

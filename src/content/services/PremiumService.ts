@@ -20,9 +20,9 @@ export interface PremiumStatus {
  */
 export class PremiumService {
   private premiumStatus: PremiumStatus;
-  private supabaseAuthService: any; // Will be imported dynamically
+  private supabaseAuthService: unknown; // Will be imported dynamically
   private currentAuthPlan: 'free' | 'monthly' | 'yearly' = 'free';
-  private uiManager?: any; // Reference to UIManager for updating components
+  private uiManager?: import('../UIManager').UIManager; // Reference to UIManager for updating components
   private lastSubscriptionCheck: number = 0;
   private readonly SUBSCRIPTION_CHECK_CACHE_DURATION = 300000; // 5 minutes cache for subscription checks
 
@@ -57,7 +57,7 @@ export class PremiumService {
   /**
    * Set UIManager reference for updating components when premium status changes
    */
-  public setUIManager(uiManager: any): void {
+  public setUIManager(uiManager: import('../UIManager').UIManager): void {
     this.uiManager = uiManager;
   }
 

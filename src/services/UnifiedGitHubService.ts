@@ -10,6 +10,151 @@ import type { AuthenticationConfig, AuthenticationType } from './types/authentic
 import { AuthenticationStrategyFactory } from './AuthenticationStrategyFactory';
 import { createLogger } from '$lib/utils/logger';
 
+// GitHub API Type Definitions
+interface GitHubRepository {
+  id: number;
+  node_id: string;
+  name: string;
+  full_name: string;
+  private: boolean;
+  owner: {
+    login: string;
+    id: number;
+    avatar_url: string;
+    type: string;
+  };
+  html_url: string;
+  description: string | null;
+  fork: boolean;
+  created_at: string;
+  updated_at: string;
+  pushed_at: string;
+  git_url: string;
+  ssh_url: string;
+  clone_url: string;
+  language: string | null;
+  size: number;
+  default_branch: string;
+  // Additional fields for backward compatibility
+  exists?: boolean;
+}
+
+interface GitHubBranch {
+  name: string;
+  commit: {
+    sha: string;
+    url: string;
+  };
+  protected: boolean;
+}
+
+interface GitHubCreateOrUpdateFileRequest {
+  message: string;
+  content: string;
+  branch: string;
+  sha?: string;
+}
+
+interface GitHubFileResponse {
+  content: {
+    name: string;
+    path: string;
+    sha: string;
+    size: number;
+    url: string;
+    html_url: string;
+    git_url: string;
+    download_url: string | null;
+    type: string;
+  };
+  commit: {
+    sha: string;
+    node_id: string;
+    url: string;
+    html_url: string;
+    author: {
+      name: string;
+      email: string;
+      date: string;
+    };
+    committer: {
+      name: string;
+      email: string;
+      date: string;
+    };
+    message: string;
+  };
+}
+
+interface GitHubIssue {
+  id: number;
+  node_id: string;
+  url: string;
+  repository_url: string;
+  labels_url: string;
+  comments_url: string;
+  events_url: string;
+  html_url: string;
+  number: number;
+  state: 'open' | 'closed';
+  title: string;
+  body: string | null;
+  user: {
+    login: string;
+    id: number;
+    avatar_url: string;
+  };
+  labels: Array<{
+    id: number;
+    node_id: string;
+    url: string;
+    name: string;
+    color: string;
+    default: boolean;
+  }>;
+  assignees: Array<{
+    login: string;
+    id: number;
+    avatar_url: string;
+  }>;
+  created_at: string;
+  updated_at: string;
+  closed_at: string | null;
+  comments: number;
+}
+
+interface GitHubIssueUpdate {
+  title: string;
+  body: string;
+  state: 'open' | 'closed';
+  labels: string[];
+  assignees: string[];
+}
+
+interface GitHubComment {
+  id: number;
+  node_id: string;
+  url: string;
+  html_url: string;
+  body: string;
+  user: {
+    login: string;
+    id: number;
+    avatar_url: string;
+  };
+  created_at: string;
+  updated_at: string;
+}
+
+interface GitHubTreeItem {
+  path: string;
+  mode: string;
+  type: 'blob' | 'tree';
+  size?: number;
+  sha: string;
+  url: string;
+}
+
 const logger = createLogger('UnifiedGitHubService');
 
 export class UnifiedGitHubService {
@@ -241,7 +386,7 @@ export class UnifiedGitHubService {
       // For PAT, check token format
       const token = await strategy.getToken();
       return token.startsWith('ghp_');
-    } catch (error) {
+    } catch (_error) {
       return false;
     }
   }
@@ -260,7 +405,7 @@ export class UnifiedGitHubService {
       // For PAT, check token format
       const token = await strategy.getToken();
       return token.startsWith('github_pat_');
-    } catch (error) {
+    } catch (_error) {
       return false;
     }
   }
@@ -311,7 +456,7 @@ export class UnifiedGitHubService {
         },
       });
       return response.status === 200;
-    } catch (error) {
+    } catch (_error) {
       return false;
     }
   }
@@ -319,7 +464,7 @@ export class UnifiedGitHubService {
   /**
    * Get repository information
    */
-  async getRepoInfo(owner: string, repo: string): Promise<any> {
+  async getRepoInfo(owner: string, repo: string): Promise<GitHubRepository> {
     try {
       const token = await this.getToken();
       const response = await fetch(`https://api.github.com/repos/${owner}/${repo}`, {
@@ -334,7 +479,7 @@ export class UnifiedGitHubService {
         return {
           name: repo,
           exists: false,
-        };
+        } as GitHubRepository;
       }
 
       if (!response.ok) {
@@ -356,7 +501,7 @@ export class UnifiedGitHubService {
         return {
           name: repo,
           exists: false,
-        };
+        } as GitHubRepository;
       }
       throw error;
     }
@@ -369,7 +514,7 @@ export class UnifiedGitHubService {
     repoName: string,
     isPrivate: boolean = true,
     description?: string
-  ): Promise<any> {
+  ): Promise<GitHubRepository> {
     const token = await this.getToken();
     const response = await fetch('https://api.github.com/user/repos', {
       method: 'POST',
@@ -396,7 +541,11 @@ export class UnifiedGitHubService {
   /**
    * Ensure repository exists (create if it doesn't)
    */
-  async ensureRepoExists(owner: string, repo: string, isPrivate: boolean = true): Promise<any> {
+  async ensureRepoExists(
+    owner: string,
+    repo: string,
+    isPrivate: boolean = true
+  ): Promise<GitHubRepository> {
     if (await this.repoExists(owner, repo)) {
       return await this.getRepoInfo(owner, repo);
     }
@@ -422,7 +571,7 @@ export class UnifiedGitHubService {
       }
 
       return response.status !== 200;
-    } catch (error) {
+    } catch (_error) {
       return false;
     }
   }
@@ -477,7 +626,11 @@ export class UnifiedGitHubService {
   /**
    * Update repository visibility
    */
-  async updateRepoVisibility(owner: string, repo: string, isPrivate: boolean): Promise<any> {
+  async updateRepoVisibility(
+    owner: string,
+    repo: string,
+    isPrivate: boolean
+  ): Promise<GitHubRepository> {
     const token = await this.getToken();
     const response = await fetch(`https://api.github.com/repos/${owner}/${repo}`, {
       method: 'PATCH',
@@ -501,7 +654,7 @@ export class UnifiedGitHubService {
   /**
    * List repositories
    */
-  async listRepos(): Promise<any[]> {
+  async listRepos(): Promise<GitHubRepository[]> {
     const token = await this.getToken();
     const response = await fetch('https://api.github.com/user/repos?sort=updated&per_page=100', {
       headers: {
@@ -520,7 +673,7 @@ export class UnifiedGitHubService {
   /**
    * List branches
    */
-  async listBranches(owner: string, repo: string): Promise<any[]> {
+  async listBranches(owner: string, repo: string): Promise<GitHubBranch[]> {
     const token = await this.getToken();
     const response = await fetch(`https://api.github.com/repos/${owner}/${repo}/branches`, {
       headers: {
@@ -607,11 +760,11 @@ export class UnifiedGitHubService {
     message: string,
     branch: string = 'main',
     sha?: string
-  ): Promise<any> {
+  ): Promise<GitHubFileResponse> {
     const token = await this.getToken();
     const url = `https://api.github.com/repos/${owner}/${repo}/contents/${path}`;
 
-    const body: any = {
+    const body: GitHubCreateOrUpdateFileRequest = {
       message,
       content: btoa(content),
       branch,
@@ -647,7 +800,7 @@ export class UnifiedGitHubService {
     repo: string,
     state: 'open' | 'closed' | 'all' = 'open',
     forceRefresh: boolean = false
-  ): Promise<any[]> {
+  ): Promise<GitHubIssue[]> {
     const token = await this.getToken();
 
     // Build URL with cache-busting for force refresh
@@ -678,7 +831,7 @@ export class UnifiedGitHubService {
     return await response.json();
   }
 
-  async getIssue(owner: string, repo: string, issueNumber: number): Promise<any> {
+  async getIssue(owner: string, repo: string, issueNumber: number): Promise<GitHubIssue> {
     const token = await this.getToken();
     const response = await fetch(
       `https://api.github.com/repos/${owner}/${repo}/issues/${issueNumber}`,
@@ -706,7 +859,7 @@ export class UnifiedGitHubService {
       labels?: string[];
       assignees?: string[];
     }
-  ): Promise<any> {
+  ): Promise<GitHubIssue> {
     const token = await this.getToken();
     const response = await fetch(`https://api.github.com/repos/${owner}/${repo}/issues`, {
       method: 'POST',
@@ -737,9 +890,9 @@ export class UnifiedGitHubService {
     title?: string,
     body?: string,
     state?: 'open' | 'closed'
-  ): Promise<any> {
+  ): Promise<GitHubIssue> {
     const token = await this.getToken();
-    const updateData: any = {};
+    const updateData: Partial<GitHubIssueUpdate> = {};
 
     if (title !== undefined) updateData.title = title;
     if (body !== undefined) updateData.body = body;
@@ -770,7 +923,7 @@ export class UnifiedGitHubService {
     repo: string,
     issueNumber: number,
     body: string
-  ): Promise<any> {
+  ): Promise<GitHubComment> {
     const token = await this.getToken();
     const response = await fetch(
       `https://api.github.com/repos/${owner}/${repo}/issues/${issueNumber}/comments`,
@@ -799,7 +952,7 @@ export class UnifiedGitHubService {
       browserInfo: string;
       extensionVersion: string;
     };
-  }): Promise<any> {
+  }): Promise<GitHubIssue> {
     // Convert feedback to GitHub issue format
     const issueTitle = `[${feedback.category.toUpperCase()}] User Feedback`;
 
@@ -854,8 +1007,13 @@ export class UnifiedGitHubService {
         throw new Error(`Failed to get repository tree: ${treeResponse.statusText}`);
       }
 
-      const tree = await treeResponse.json();
-      const files = tree.tree.filter((item: any) => item.type === 'blob');
+      const tree = (await treeResponse.json()) as {
+        tree: GitHubTreeItem[];
+        sha: string;
+        url: string;
+        truncated: boolean;
+      };
+      const files = tree.tree.filter((item: GitHubTreeItem) => item.type === 'blob');
 
       if (onProgress) onProgress(30);
 
@@ -956,7 +1114,7 @@ export class UnifiedGitHubService {
   /**
    * Legacy request method (marked for removal in original service)
    */
-  async request(method: string, endpoint: string, data?: any): Promise<any> {
+  async request<T = unknown>(method: string, endpoint: string, data?: unknown): Promise<T> {
     const token = await this.getToken();
 
     // Ensure proper URL construction
@@ -993,7 +1151,7 @@ export class UnifiedGitHubService {
       throw new Error(`Request failed: ${response.statusText}`);
     }
 
-    return await response.json();
+    return (await response.json()) as T;
   }
 
   // ========================================
@@ -1027,7 +1185,7 @@ export class UnifiedGitHubService {
   /**
    * Get authentication metadata
    */
-  async getAuthMetadata(): Promise<any> {
+  async getAuthMetadata(): Promise<Record<string, unknown>> {
     const strategy = await this.getStrategy();
     return await strategy.getMetadata();
   }

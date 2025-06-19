@@ -59,7 +59,7 @@ const loadingState = writable<LoadingState>({});
 
 function createIssuesStore() {
   const { subscribe, set, update } = issuesState;
-  const { subscribe: subscribeLoading, set: setLoading, update: updateLoading } = loadingState;
+  const { set: setLoading, update: updateLoading } = loadingState;
 
   function getRepoKey(owner: string, repo: string): string {
     return `${owner}/${repo}`;

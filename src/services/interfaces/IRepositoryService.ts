@@ -1,6 +1,35 @@
 import type { ProgressCallback } from '../types/common';
 
 /**
+ * GitHub repository response type
+ */
+export interface GitHubRepository {
+  id: number;
+  node_id: string;
+  name: string;
+  full_name: string;
+  private: boolean;
+  owner: {
+    login: string;
+    id: number;
+    avatar_url: string;
+    type: string;
+  };
+  html_url: string;
+  description: string | null;
+  fork: boolean;
+  created_at: string;
+  updated_at: string;
+  pushed_at: string;
+  git_url: string;
+  ssh_url: string;
+  clone_url: string;
+  language: string | null;
+  size: number;
+  default_branch: string;
+}
+
+/**
  * Interface for repository information
  */
 export interface RepoInfo {
@@ -59,7 +88,7 @@ export interface IRepositoryService {
    * @param options Repository creation options
    * @returns Promise resolving to the created repository
    */
-  createRepo(options: RepoCreateOptions): Promise<any>;
+  createRepo(options: RepoCreateOptions): Promise<GitHubRepository>;
 
   /**
    * Ensures a repository exists, creating it if necessary

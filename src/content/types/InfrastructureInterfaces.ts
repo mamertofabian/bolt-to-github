@@ -13,7 +13,7 @@ export interface IDOMObserver {
 
 export interface IComponentLifecycleManager {
   createComponent<T extends SvelteComponent>(id: string, config: ComponentConfig): Promise<T>;
-  updateComponent(id: string, props: Record<string, any>): void;
+  updateComponent(id: string, props: Record<string, unknown>): void;
   destroyComponent(id: string): void;
   getComponent<T extends SvelteComponent>(id: string): T | null;
   getContainer(id: string): HTMLElement | null;

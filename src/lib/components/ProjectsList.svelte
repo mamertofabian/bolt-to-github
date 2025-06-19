@@ -1375,7 +1375,11 @@
     <ConfirmationDialog
       show={showImportConfirmDialog}
       title="Import Private Repository"
-      message="This will temporarily create a <strong>public copy</strong> of your private repository to enable import.<br><br>The temporary repository will be automatically deleted after 1 minute.<br><br>Do you want to continue?"
+      message="This will temporarily create a public copy of your private repository to enable import.
+
+The temporary repository will be automatically deleted after 1 minute.
+
+Do you want to continue?"
       type="warning"
       confirmText="Continue Import"
       cancelText="Cancel"

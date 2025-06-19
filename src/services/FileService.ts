@@ -1,9 +1,24 @@
 import type { IGitHubApiClient } from './interfaces/IGitHubApiClient';
-import type { IFileService, FileInfo } from './interfaces/IFileService';
+import type { IFileService, FileInfo, GitHubFileContentResponse } from './interfaces/IFileService';
 import { decodeBase64ToUtf8 } from '$lib/fileUtils';
 import { createLogger } from '../lib/utils/logger';
 
 const logger = createLogger('FileService');
+
+// GitHub content API response type
+interface GitHubContentResponse {
+  name: string;
+  path: string;
+  sha: string;
+  size: number;
+  url: string;
+  html_url: string;
+  git_url: string;
+  download_url: string | null;
+  type: 'file' | 'dir' | 'symlink' | 'submodule';
+  content?: string;
+  encoding?: string;
+}
 
 /**
  * Service for GitHub file operations
@@ -25,7 +40,7 @@ export class FileService implements IFileService {
    */
   async readFile(owner: string, repo: string, path: string, branch: string): Promise<string> {
     try {
-      const response = await this.apiClient.request(
+      const response = await this.apiClient.request<GitHubContentResponse>(
         'GET',
         `/repos/${owner}/${repo}/contents/${path}?ref=${branch}`
       );
@@ -61,23 +76,22 @@ export class FileService implements IFileService {
     content: string,
     branch: string,
     message: string
-  ): Promise<any> {
+  ): Promise<GitHubFileContentResponse> {
     // Check if file exists to get its SHA
     let sha: string | undefined;
     try {
       // Try to get file info directly from the API instead of using getFileInfo
       // to avoid nested error messages
-      const response = await this.apiClient.request(
-        'GET',
-        `/repos/${owner}/${repo}/contents/${path}?ref=${branch}`
-      );
+      const response = await this.apiClient.request<
+        GitHubContentResponse | GitHubContentResponse[]
+      >('GET', `/repos/${owner}/${repo}/contents/${path}?ref=${branch}`);
 
       // If response is an array, it's a directory, not a file
       if (Array.isArray(response)) {
         throw new Error(`Path ${path} is a directory, not a file`);
       }
 
-      sha = response.sha;
+      sha = (response as GitHubContentResponse).sha;
     } catch (error) {
       // If error is not 404 (file not found), propagate it
       if (error instanceof Error && !error.message.includes('404')) {
@@ -100,7 +114,11 @@ export class FileService implements IFileService {
         ...(sha ? { sha } : {}),
       };
 
-      return await this.apiClient.request('PUT', `/repos/${owner}/${repo}/contents/${path}`, body);
+      return await this.apiClient.request<GitHubFileContentResponse>(
+        'PUT',
+        `/repos/${owner}/${repo}/contents/${path}`,
+        body
+      );
     } catch (error) {
       logger.error(`Failed to write file ${path}:`, error);
       throw new Error(
@@ -134,7 +152,7 @@ export class FileService implements IFileService {
       }
 
       // Get file SHA which is required for deletion
-      const fileInfo = await this.apiClient.request(
+      const fileInfo = await this.apiClient.request<GitHubContentResponse>(
         'GET',
         `/repos/${owner}/${repo}/contents/${path}?ref=${branch}`
       );
@@ -144,7 +162,7 @@ export class FileService implements IFileService {
       }
 
       // Delete file
-      await this.apiClient.request('DELETE', `/repos/${owner}/${repo}/contents/${path}`, {
+      await this.apiClient.request<void>('DELETE', `/repos/${owner}/${repo}/contents/${path}`, {
         message,
         sha: fileInfo.sha,
         branch,
@@ -178,17 +196,16 @@ export class FileService implements IFileService {
     branch: string
   ): Promise<Array<FileInfo>> {
     try {
-      const response = await this.apiClient.request(
-        'GET',
-        `/repos/${owner}/${repo}/contents/${path}?ref=${branch}`
-      );
+      const response = await this.apiClient.request<
+        GitHubContentResponse | GitHubContentResponse[]
+      >('GET', `/repos/${owner}/${repo}/contents/${path}?ref=${branch}`);
 
       // If response is not an array, it's a file, not a directory
       if (!Array.isArray(response)) {
         throw new Error(`Path ${path} is not a directory`);
       }
 
-      return response.map((item: any) => ({
+      return response.map((item: GitHubContentResponse) => ({
         name: item.name,
         path: item.path,
         sha: item.sha,
@@ -215,25 +232,25 @@ export class FileService implements IFileService {
    */
   async getFileInfo(owner: string, repo: string, path: string, branch: string): Promise<FileInfo> {
     try {
-      const response = await this.apiClient.request(
-        'GET',
-        `/repos/${owner}/${repo}/contents/${path}?ref=${branch}`
-      );
+      const response = await this.apiClient.request<
+        GitHubContentResponse | GitHubContentResponse[]
+      >('GET', `/repos/${owner}/${repo}/contents/${path}?ref=${branch}`);
 
       // If response is an array, it's a directory, not a file
       if (Array.isArray(response)) {
         throw new Error(`Path ${path} is a directory, not a file`);
       }
 
+      const file = response as GitHubContentResponse;
       return {
-        name: response.name,
-        path: response.path,
-        sha: response.sha,
-        size: response.size,
-        type: response.type,
-        content: response.content,
-        download_url: response.download_url,
-        html_url: response.html_url,
+        name: file.name,
+        path: file.path,
+        sha: file.sha,
+        size: file.size,
+        type: file.type === 'dir' ? 'dir' : file.type === 'file' ? 'file' : 'symlink',
+        content: file.content,
+        download_url: file.download_url,
+        html_url: file.html_url,
       };
     } catch (error) {
       logger.error(`Failed to get file info for ${path}:`, error);
@@ -253,7 +270,10 @@ export class FileService implements IFileService {
    */
   async fileExists(owner: string, repo: string, path: string, branch: string): Promise<boolean> {
     try {
-      await this.apiClient.request('GET', `/repos/${owner}/${repo}/contents/${path}?ref=${branch}`);
+      await this.apiClient.request<GitHubContentResponse>(
+        'GET',
+        `/repos/${owner}/${repo}/contents/${path}?ref=${branch}`
+      );
       return true;
     } catch (error) {
       if (error instanceof Error && error.message.includes('404')) {
