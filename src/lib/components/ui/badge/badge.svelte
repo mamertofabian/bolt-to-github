@@ -22,13 +22,7 @@
 </script>
 
 <script lang="ts">
-  import type { HTMLAttributes } from 'svelte/elements';
-
   type Variant = VariantProps<typeof badgeVariants>['variant'];
-  type $$Props = HTMLAttributes<HTMLDivElement> & {
-    variant?: Variant;
-    class?: string;
-  };
 
   export let variant: Variant = 'default';
 

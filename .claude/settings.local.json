@@ -38,7 +38,10 @@
       "Bash(pnpm eslint:*)",
       "Bash(pnpm tsc:*)",
       "Bash(pnpm typecheck:*)",
-      "Bash(pnpm check:*)"
+      "Bash(pnpm check:*)",
+      "Bash(pnpm type-check:*)",
+      "Bash(npm run lint:*)",
+      "Bash(./node_modules/.bin/eslint:*)"
     ],
     "deny": []
   }

@@ -3,14 +3,27 @@ import { createLogger } from '../utils/logger';
 
 const logger = createLogger('chromeMessaging');
 
+// Type definitions for messaging
+type MessageResponse = unknown;
+type TabMessage = Message | { action: string; [key: string]: unknown };
+type PortMessage = Message | { type: string; data?: unknown; [key: string]: unknown };
+
 // Message handlers type
-type MessageHandler = (message: any, sender?: chrome.runtime.MessageSender) => void;
+type MessageHandler = (message: Message, sender?: chrome.runtime.MessageSender) => void;
+type PortMessageHandler = (message: PortMessage) => void;
+
+// Response interfaces
+interface FileChangesResponse {
+  success: boolean;
+  projectId?: string;
+  error?: string;
+}
 
 // Chrome Messaging Service
 export class ChromeMessagingService {
   private static messageHandlers = new Map<MessageType, MessageHandler[]>();
   private static port: chrome.runtime.Port | null = null;
-  private static portHandlers: MessageHandler[] = [];
+  private static portHandlers: PortMessageHandler[] = [];
 
   /**
    * Initialize Chrome runtime port connection
@@ -20,7 +33,7 @@ export class ChromeMessagingService {
       this.port = chrome.runtime.connect({ name: portName });
 
       // Set up port message listener
-      this.port.onMessage.addListener((message) => {
+      this.port.onMessage.addListener((message: PortMessage) => {
         this.portHandlers.forEach((handler) => {
           try {
             handler(message);
@@ -46,7 +59,7 @@ export class ChromeMessagingService {
   /**
    * Send message to background script via port
    */
-  static sendPortMessage(message: any): void {
+  static sendPortMessage(message: PortMessage): void {
     if (!this.port) {
       logger.warn('No port connection available. Initializing...');
       this.initializePort();
@@ -65,14 +78,14 @@ export class ChromeMessagingService {
   /**
    * Add handler for port messages
    */
-  static addPortMessageHandler(handler: MessageHandler): void {
+  static addPortMessageHandler(handler: PortMessageHandler): void {
     this.portHandlers.push(handler);
   }
 
   /**
    * Remove handler for port messages
    */
-  static removePortMessageHandler(handler: MessageHandler): void {
+  static removePortMessageHandler(handler: PortMessageHandler): void {
     const index = this.portHandlers.indexOf(handler);
     if (index > -1) {
       this.portHandlers.splice(index, 1);
@@ -96,7 +109,7 @@ export class ChromeMessagingService {
   /**
    * Send message to content script in active tab
    */
-  static async sendMessageToActiveTab(message: any): Promise<any> {
+  static async sendMessageToActiveTab(message: TabMessage): Promise<MessageResponse> {
     try {
       const tabs = await chrome.tabs.query({ active: true, currentWindow: true });
       if (!tabs[0]?.id) {
@@ -121,7 +134,7 @@ export class ChromeMessagingService {
   /**
    * Send message to specific tab
    */
-  static async sendMessageToTab(tabId: number, message: any): Promise<any> {
+  static async sendMessageToTab(tabId: number, message: TabMessage): Promise<MessageResponse> {
     try {
       return new Promise((resolve, reject) => {
         chrome.tabs.sendMessage(tabId, message, (response) => {
@@ -141,7 +154,7 @@ export class ChromeMessagingService {
   /**
    * Send message to background script
    */
-  static async sendMessageToBackground(message: Message): Promise<any> {
+  static async sendMessageToBackground(message: Message): Promise<MessageResponse> {
     try {
       return new Promise((resolve, reject) => {
         chrome.runtime.sendMessage(message, (response) => {
@@ -185,7 +198,7 @@ export class ChromeMessagingService {
    * Initialize runtime message listener
    */
   static initializeMessageListener(): void {
-    chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
+    chrome.runtime.onMessage.addListener((message, sender, _sendResponse) => {
       const handlers = this.messageHandlers.get(message.type);
       if (handlers) {
         handlers.forEach((handler) => {
@@ -217,15 +230,16 @@ export class ChromeMessagingService {
   /**
    * Request file changes from content script
    */
-  static async requestFileChanges(): Promise<any> {
+  static async requestFileChanges(): Promise<FileChangesResponse> {
     try {
       const response = await this.sendMessageToActiveTab({
         action: 'REQUEST_FILE_CHANGES',
       });
 
-      if (response && response.success) {
-        logger.info('File changes requested successfully:', response.projectId);
-        return response;
+      const typedResponse = response as FileChangesResponse;
+      if (typedResponse && typedResponse.success) {
+        logger.info('File changes requested successfully:', typedResponse.projectId);
+        return typedResponse;
       } else {
         throw new Error('Failed to request file changes');
       }

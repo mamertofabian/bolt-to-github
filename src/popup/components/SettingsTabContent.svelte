@@ -7,19 +7,22 @@
   import { Button } from '$lib/components/ui/button';
   import { FileText } from 'lucide-svelte';
   import { createLogger } from '$lib/utils/logger';
+  import type { GitHubSettingsState } from '$lib/stores/githubSettings';
+  import type { UIState } from '$lib/stores/uiState';
 
   const logger = createLogger('SettingsTabContent');
+  import type { UpgradeType } from '../types';
 
-  export let githubSettings: any;
+  export let githubSettings: GitHubSettingsState;
   export let projectId: string | null;
-  export let uiState: any;
+  export let uiState: UIState;
   export let isUserPremium: boolean;
 
   const dispatch = createEventDispatcher<{
     save: void;
     error: string;
     authMethodChange: string;
-    upgradeClick: any;
+    upgradeClick: UpgradeType;
     configurePushReminder: void;
   }>();
 
@@ -35,7 +38,7 @@
     dispatch('authMethodChange', method);
   }
 
-  function handleUpgradeClick(type: any) {
+  function handleUpgradeClick(type: UpgradeType) {
     dispatch('upgradeClick', type);
   }
 

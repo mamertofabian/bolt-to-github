@@ -38,8 +38,20 @@
   let boltProjectsPage = 1;
   let reposPage = 1;
   const itemsPerPage = 5;
-  let paginatedBoltProjects: any[] = [];
-  let paginatedRepos: any[] = [];
+  // Project type definitions
+  interface ProjectItem {
+    projectId?: string;
+    repoName: string;
+    branch?: string;
+    projectTitle?: string;
+    gitHubRepo: boolean;
+    private?: boolean;
+    description?: string | null;
+    language?: string | null;
+  }
+
+  let paginatedBoltProjects: ProjectItem[] = [];
+  let paginatedRepos: ProjectItem[] = [];
   let boltProjectsTotalPages = 0;
   let reposTotalPages = 0;
   let totalBoltProjects = 0;
@@ -134,11 +146,8 @@
   let importProgress: { repoName: string; status: string; progress?: number } | null = null;
   let currentTabIsBolt = false;
 
-  // Cache keys and durations
-  const REPOS_CACHE_KEY = `github_repos_${repoOwner}`;
+  // Cache keys for commit counts
   const COMMITS_CACHE_KEY = `github_commits_${repoOwner}`;
-  const REPOS_CACHE_DURATION = 5 * 60 * 1000; // 5 minutes
-  const COMMITS_CACHE_DURATION = 2 * 60 * 1000; // 2 minutes (commits change more frequently)
 
   // Reset pagination when search changes
   $: if (searchQuery !== undefined) {
@@ -202,60 +211,6 @@
 
     paginatedBoltProjects = boltProjects.slice(boltStartIndex, boltStartIndex + itemsPerPage);
     paginatedRepos = gitHubRepos.slice(reposStartIndex, reposStartIndex + itemsPerPage);
-  }
-
-  async function loadReposFromCache() {
-    try {
-      const cached = await chrome.storage.local.get([
-        REPOS_CACHE_KEY,
-        `${REPOS_CACHE_KEY}_timestamp`,
-      ]);
-      const cachedRepos = cached[REPOS_CACHE_KEY];
-      const timestamp = cached[`${REPOS_CACHE_KEY}_timestamp`];
-
-      if (cachedRepos && timestamp && Date.now() - timestamp < REPOS_CACHE_DURATION) {
-        logger.info('Loading repos from cache for', repoOwner);
-        allRepos = cachedRepos;
-        return true;
-      }
-      return false;
-    } catch (error) {
-      logger.error('Failed to load repos from cache:', error);
-      return false;
-    }
-  }
-
-  async function saveReposToCache(repos: typeof allRepos) {
-    try {
-      await chrome.storage.local.set({
-        [REPOS_CACHE_KEY]: repos,
-        [`${REPOS_CACHE_KEY}_timestamp`]: Date.now(),
-      });
-      logger.info('Repos cached for', repoOwner);
-    } catch (error) {
-      logger.error('Failed to cache repos:', error);
-    }
-  }
-
-  async function loadCommitCountsFromCache() {
-    try {
-      const cached = await chrome.storage.local.get([
-        COMMITS_CACHE_KEY,
-        `${COMMITS_CACHE_KEY}_timestamp`,
-      ]);
-      const cachedCommits = cached[COMMITS_CACHE_KEY];
-      const timestamp = cached[`${COMMITS_CACHE_KEY}_timestamp`];
-
-      if (cachedCommits && timestamp && Date.now() - timestamp < COMMITS_CACHE_DURATION) {
-        logger.info('Loading commit counts from cache for', repoOwner);
-        commitCounts = { ...cachedCommits };
-        return true;
-      }
-      return false;
-    } catch (error) {
-      logger.error('Failed to load commit counts from cache:', error);
-      return false;
-    }
   }
 
   async function saveCommitCountsToCache(counts: Record<string, number>) {
@@ -452,7 +407,7 @@
     const newLoadingStates: Record<string, boolean> = { ...loadingCommitCounts };
 
     // Track which projects need loading
-    const projectsToLoad = Object.entries(projectSettings).filter(([projectId, settings]) => {
+    const projectsToLoad = Object.entries(projectSettings).filter(([projectId, _settings]) => {
       return forceRefresh || commitCounts[projectId] === undefined;
     });
 
@@ -630,7 +585,7 @@
   }
 
   // Helper function to render project actions
-  function renderProjectActions(project: any) {
+  function renderProjectActions(project: ProjectItem) {
     return [
       ...(project.projectId && project.projectId !== currentlyLoadedProjectId
         ? [
@@ -638,7 +593,7 @@
               icon: Zap,
               title: 'Open in Bolt',
               class: 'hover:text-emerald-500',
-              action: () => openBoltProject(project.projectId),
+              action: () => project.projectId && openBoltProject(project.projectId),
             },
           ]
         : []),
@@ -665,6 +620,7 @@
               title: 'Repository Settings',
               class: 'hover:text-amber-500',
               action: () =>
+                project.projectId &&
                 openRepoSettings(
                   project.projectId,
                   project.repoName,
@@ -676,7 +632,8 @@
               icon: Trash2,
               title: 'Delete Project',
               class: 'hover:text-red-500',
-              action: () => confirmDeleteProject(project.projectId, project.repoName),
+              action: () =>
+                project.projectId && confirmDeleteProject(project.projectId, project.repoName),
             },
           ]
         : []),
@@ -776,7 +733,7 @@
   async function handleBranchSelected(branch: string) {
     if (!repoToImport) return;
 
-    const { owner, repo } = repoToImport;
+    const { repo } = repoToImport;
     showBranchSelectionModal = false;
 
     try {

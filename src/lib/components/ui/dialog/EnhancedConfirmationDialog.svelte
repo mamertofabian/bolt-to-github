@@ -3,8 +3,8 @@
   import { Input } from '$lib/components/ui/input';
   import { Github, Upload, X, FileText, Bookmark } from 'lucide-svelte';
   import { onMount, createEventDispatcher } from 'svelte';
-  import { fly, scale, fade } from 'svelte/transition';
-  import { quintOut, backOut } from 'svelte/easing';
+  import { fly, fade } from 'svelte/transition';
+  import { backOut } from 'svelte/easing';
 
   export let show = false;
   export let title: string;

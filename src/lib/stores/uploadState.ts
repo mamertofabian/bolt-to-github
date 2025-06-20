@@ -2,6 +2,19 @@ import { writable, type Writable } from 'svelte/store';
 import type { ProcessingStatus } from '../types';
 import { createLogger } from '../utils/logger';
 
+// Message types for port communication
+interface PortMessage {
+  type: string;
+  [key: string]: unknown;
+}
+
+interface UploadStatusMessage extends PortMessage {
+  type: 'UPLOAD_STATUS';
+  status?: ProcessingStatus;
+  progress?: number;
+  message?: string;
+}
+
 const logger = createLogger('UploadStateStore');
 
 // Upload State Interface
@@ -86,7 +99,7 @@ export const uploadStateActions = {
   /**
    * Send message to background script via port
    */
-  sendMessage(message: any): void {
+  sendMessage(message: PortMessage): void {
     uploadStateStore.update((state) => {
       if (state.port) {
         try {
@@ -104,7 +117,7 @@ export const uploadStateActions = {
   /**
    * Handle upload status messages from background script
    */
-  handleUploadStatusMessage(message: any): void {
+  handleUploadStatusMessage(message: UploadStatusMessage): void {
     if (message.type === 'UPLOAD_STATUS') {
       this.updateUploadState(message.status || 'idle', message.progress, message.message);
     }

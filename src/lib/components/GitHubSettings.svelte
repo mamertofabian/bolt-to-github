@@ -296,14 +296,6 @@
     );
 
     if (relevantChanges.length > 0) {
-      const _filteredChanges = relevantChanges.reduce(
-        (acc, key) => {
-          acc[key] = changes[key];
-          return acc;
-        },
-        {} as Record<string, chrome.storage.StorageChange>
-      );
-
       logger.debug(
         'Storage changes detected in GitHubSettings:',
         relevantChanges,
@@ -562,7 +554,6 @@
     }
 
     // Set up a listener for chrome.runtime.lastError before calling onSave
-    const _originalError = chrome.runtime.lastError;
 
     try {
       await onSave();

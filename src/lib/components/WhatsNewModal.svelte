@@ -30,7 +30,7 @@
         .slice(0, 2); // Take only the first 2 versions
 
       const versions = sortedVersions
-        .map(([ver, data], index) => {
+        .map(([ver, data], _index) => {
           const versionContent = `
 ## Version ${ver} - ${data.date}
 

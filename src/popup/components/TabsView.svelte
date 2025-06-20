@@ -10,7 +10,7 @@
   import type { GitHubSettingsState } from '$lib/stores/githubSettings';
   import type { ProjectSettingsState } from '$lib/stores/projectSettings';
   import type { UpgradeModalType } from '$lib/utils/upgradeModal';
-  import type ProjectStatus from '$lib/components/ProjectStatus.svelte';
+  import type { ProjectStatusRef, UpgradeType } from '../types';
 
   export let uiState: UIState;
   export let githubSettings: GitHubSettingsState;
@@ -18,7 +18,7 @@
   export let projectId: string | null;
   export let isAuthenticationValid: boolean;
   export let isUserPremium: boolean;
-  export let projectStatusRef: ProjectStatus | null = null;
+  export let projectStatusRef: ProjectStatusRef;
 
   const dispatch = createEventDispatcher<{
     switchTab: string;
@@ -44,8 +44,9 @@
     dispatch('feedback');
   }
 
-  function handleUpgradeClick(event: CustomEvent<UpgradeModalType>) {
-    dispatch('upgradeClick', event.detail);
+  function handleUpgradeClick(event: CustomEvent<UpgradeType>) {
+    // Convert UpgradeType to UpgradeModalType
+    dispatch('upgradeClick', event.detail as UpgradeModalType);
   }
 
   function handleNewsletter() {

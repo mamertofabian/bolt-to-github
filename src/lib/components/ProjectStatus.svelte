@@ -302,7 +302,10 @@
     checkStoredFileChanges();
 
     // Set up storage change listener
-    const storageChangeListener = (changes: any, areaName: string) => {
+    const storageChangeListener = (
+      changes: { [key: string]: chrome.storage.StorageChange },
+      areaName: string
+    ) => {
       logger.info(
         'Storage changes detected in ProjectStatus:',
         Object.keys(changes),

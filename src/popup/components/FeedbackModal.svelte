@@ -7,7 +7,7 @@
   import Modal from '$lib/components/ui/modal/Modal.svelte';
   import { Check, AlertCircle, MessageSquare, Send, ExternalLink, Mail } from 'lucide-svelte';
 
-  // Declare chrome as any to avoid TypeScript errors
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const chrome = (window as any).chrome;
 
   const logger = createLogger('FeedbackModal');

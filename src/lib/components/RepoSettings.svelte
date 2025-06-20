@@ -35,7 +35,6 @@
   }> = [];
   let showRepoDropdown = false;
   let repoSearchQuery = '';
-  let repoInputFocused = false;
   let repoExists = false;
   let selectedIndex = -1;
   let isSaving = false;
@@ -118,13 +117,11 @@
   }
 
   function handleRepoFocus() {
-    repoInputFocused = true;
     showRepoDropdown = true;
     repoSearchQuery = repoName;
   }
 
   function handleRepoBlur() {
-    repoInputFocused = false;
     // Delay hiding dropdown to allow click events to register
     setTimeout(() => {
       showRepoDropdown = false;
@@ -150,13 +147,15 @@
       try {
         logger.info('Triggering manual sync to push changes to backend');
         const syncResponse = await ChromeMessagingService.sendMessageToBackground({
-          type: 'SYNC_BOLT_PROJECTS' as any,
+          type: 'SYNC_BOLT_PROJECTS',
         });
 
-        if (syncResponse?.success) {
-          logger.info('Manual sync completed successfully', syncResponse.result);
+        // Type assertion for the response
+        const typedResponse = syncResponse as { success?: boolean; result?: unknown } | null;
+        if (typedResponse?.success) {
+          logger.info('Manual sync completed successfully', typedResponse.result);
         } else {
-          logger.warn('Manual sync completed with issues', syncResponse);
+          logger.warn('Manual sync completed with issues', typedResponse);
         }
       } catch (syncError) {
         // Don't fail the save operation if sync fails
