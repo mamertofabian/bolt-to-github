@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 /**
  * MessageHandler.test.ts
  *
@@ -8,16 +9,8 @@
  * - Edge cases and failure scenarios
  */
 
-import { MessageHandler } from '../MessageHandler';
 import type { MessageType } from '$lib/types';
-import {
-  MessageHandlerTestEnvironment,
-  TestSuiteHelpers,
-  CommonTestPatterns,
-  TestData,
-  MessageFactory,
-  TimingHelpers,
-} from '../test-fixtures';
+import { MessageHandlerTestEnvironment, TestData, TimingHelpers } from '../test-fixtures';
 
 describe('MessageHandler', () => {
   let env: MessageHandlerTestEnvironment;

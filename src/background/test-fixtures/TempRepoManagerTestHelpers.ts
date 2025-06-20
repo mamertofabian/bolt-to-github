@@ -9,8 +9,6 @@ import { BackgroundTempRepoManager } from '../TempRepoManager';
 import type { UnifiedGitHubService } from '../../services/UnifiedGitHubService';
 import {
   TempRepoManagerTestEnvironment,
-  MockUnifiedGitHubService,
-  MockOperationStateManager,
   TempRepoTestData,
   TempRepoScenarioBuilder,
 } from './TempRepoManagerTestFixtures';

@@ -6,20 +6,25 @@
   import HelpTabContent from './HelpTabContent.svelte';
   import ProjectsList from '$lib/components/ProjectsList.svelte';
   import { createEventDispatcher } from 'svelte';
+  import type { UIState } from '$lib/stores/uiState';
+  import type { GitHubSettingsState } from '$lib/stores/githubSettings';
+  import type { ProjectSettingsState } from '$lib/stores/projectSettings';
+  import type { UpgradeModalType } from '$lib/utils/upgradeModal';
+  import type ProjectStatus from '$lib/components/ProjectStatus.svelte';
 
-  export let uiState: any;
-  export let githubSettings: any;
-  export let projectSettings: any;
+  export let uiState: UIState;
+  export let githubSettings: GitHubSettingsState;
+  export let projectSettings: ProjectSettingsState;
   export let projectId: string | null;
   export let isAuthenticationValid: boolean;
   export let isUserPremium: boolean;
-  export let projectStatusRef: any;
+  export let projectStatusRef: ProjectStatus | null = null;
 
   const dispatch = createEventDispatcher<{
     switchTab: string;
     showFileChanges: void;
     feedback: void;
-    upgradeClick: any;
+    upgradeClick: UpgradeModalType;
     newsletter: void;
     save: void;
     error: string;
@@ -39,7 +44,7 @@
     dispatch('feedback');
   }
 
-  function handleUpgradeClick(event: CustomEvent<any>) {
+  function handleUpgradeClick(event: CustomEvent<UpgradeModalType>) {
     dispatch('upgradeClick', event.detail);
   }
 

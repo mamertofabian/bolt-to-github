@@ -569,7 +569,6 @@ describe('DropdownManager', () => {
       await dropdownManager.show(mockButton);
 
       const hideSpy = jest.spyOn(dropdownManager, 'hide');
-      const dropdown = document.getElementById('github-dropdown-content');
 
       // Simulate click outside
       const outsideElement = document.createElement('div');

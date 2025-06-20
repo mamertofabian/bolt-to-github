@@ -11,7 +11,6 @@ import {
   MockUIManager,
   MockPort,
   ResourceTracker,
-  type MessageHandlerInterface,
 } from './ContentManagerMocks';
 import type { MockPortState } from './ContentManagerTestFixtures';
 import { MemoryThresholds } from './ContentManagerTestFixtures';
@@ -270,7 +269,7 @@ export function setupWindowMocks(url: string = 'https://bolt.new/project/abc123'
         writable: true,
         configurable: true,
       });
-    } catch (error) {
+    } catch {
       // If we can't set document.body, create a mock
       const mockBody = {
         appendChild: jest.fn(),

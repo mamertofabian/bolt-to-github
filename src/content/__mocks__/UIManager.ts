@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import type { MessageHandler } from '../MessageHandler';
 
 export class UIManager {
@@ -25,15 +26,15 @@ export class UIManager {
     // Mock cleanup
   }
 
-  handleUploadStatus(status: any): void {
+  handleUploadStatus(_status: any): void {
     // Mock implementation
   }
 
-  updateUploadStatus(status: any): void {
+  updateUploadStatus(_status: any): void {
     // Mock implementation
   }
 
-  handleGitHubSettingsChanged(isValid: boolean): void {
+  handleGitHubSettingsChanged(_isValid: boolean): void {
     // Mock implementation
   }
 
@@ -45,7 +46,7 @@ export class UIManager {
     // Mock implementation
   }
 
-  handlePremiumStatusUpdate(isPremium: boolean): void {
+  handlePremiumStatusUpdate(_isPremium: boolean): void {
     // Mock implementation
   }
 
@@ -53,7 +54,7 @@ export class UIManager {
     // Mock implementation
   }
 
-  showNotification(options: any): void {
+  showNotification(_options: any): void {
     // Mock implementation
   }
 

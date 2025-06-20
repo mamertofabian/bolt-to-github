@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import { BackgroundService } from '../BackgroundService';
 import { BoltProjectSyncService } from '../../services/BoltProjectSyncService';
 

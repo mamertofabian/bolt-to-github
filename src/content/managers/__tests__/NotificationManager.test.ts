@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 /* eslint-env jest */
 
 import { NotificationManager } from '../NotificationManager';
@@ -229,7 +230,7 @@ describe('NotificationManager', () => {
       };
 
       // Start the confirmation dialog
-      const confirmationPromise = notificationManager.showConfirmationDialog(options);
+      notificationManager.showConfirmationDialog(options);
 
       // Check that dialog container was created
       const dialogContainer = document.getElementById(
@@ -282,8 +283,6 @@ describe('NotificationManager', () => {
       const container = document.querySelector(
         '[id^="bolt-to-github-notification-container-"]'
       ) as HTMLElement;
-      const originalTop = container.style.top;
-
       // Trigger resize event
       window.dispatchEvent(new Event('resize'));
 

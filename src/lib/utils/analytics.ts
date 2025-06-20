@@ -8,10 +8,30 @@ import { createLogger } from './logger';
 
 const logger = createLogger('Analytics');
 
+// Define specific types for analytics data
+interface AnalyticsEventData {
+  [key: string]:
+    | string
+    | number
+    | boolean
+    | undefined
+    | { [key: string]: string | number | boolean | undefined };
+}
+
+interface AnalyticsMetadata {
+  [key: string]: string | number | boolean | undefined;
+}
+
+interface UserPreferenceDetails {
+  settingName?: string;
+  oldValue?: string | number | boolean;
+  newValue?: string | number | boolean;
+}
+
 /**
  * Send analytics event to background script (useful for content scripts and popup)
  */
-export function sendAnalyticsToBackground(eventType: string, eventData: any): void {
+export function sendAnalyticsToBackground(eventType: string, eventData: AnalyticsEventData): void {
   try {
     chrome.runtime.sendMessage({
       type: 'ANALYTICS_EVENT',
@@ -95,7 +115,7 @@ export async function trackExtensionOpened(context: 'popup' | 'content_script'):
  */
 export async function trackOnboardingStep(
   step: 'started' | 'token_added' | 'completed',
-  metadata?: Record<string, any>
+  metadata?: AnalyticsMetadata
 ): Promise<void> {
   const eventMap = {
     started: ANALYTICS_EVENTS.SETUP_STARTED,
@@ -157,11 +177,7 @@ export async function trackGitHubRepoOperation(
  */
 export async function trackUserPreference(
   action: 'settings_opened' | 'setting_changed' | 'analytics_toggled',
-  details?: {
-    settingName?: string;
-    oldValue?: any;
-    newValue?: any;
-  }
+  details?: UserPreferenceDetails
 ): Promise<void> {
   await analytics.trackEvent({
     category: 'user_preferences',
@@ -175,7 +191,7 @@ export async function trackUserPreference(
  */
 export async function trackFeatureUsage(
   feature: 'file_preview' | 'diff_comparison' | 'manual_sync' | 'auto_sync',
-  metadata?: Record<string, any>
+  metadata?: AnalyticsMetadata
 ): Promise<void> {
   const eventMap = {
     file_preview: ANALYTICS_EVENTS.FILE_PREVIEW_OPENED,
@@ -196,7 +212,6 @@ export async function trackError(
   context?: string
 ): Promise<void> {
   const errorMessage = typeof error === 'string' ? error : error.message;
-  const errorStack = typeof error === 'string' ? undefined : error.stack;
 
   await analytics.trackError(
     new Error(errorMessage),
@@ -218,7 +233,7 @@ export async function trackError(
 export async function trackPerformance(
   operation: string,
   duration: number,
-  metadata?: Record<string, any>
+  metadata?: AnalyticsMetadata
 ): Promise<void> {
   await analytics.trackEvent({
     category: 'performance',
@@ -240,7 +255,7 @@ export async function trackPerformance(
  */
 export async function trackConversionFunnel(
   stage: 'discovery' | 'installation' | 'first_use' | 'successful_upload' | 'repeat_user',
-  metadata?: Record<string, any>
+  metadata?: AnalyticsMetadata
 ): Promise<void> {
   await analytics.trackMilestone(`conversion_${stage}`, metadata);
 }
@@ -250,7 +265,7 @@ export async function trackConversionFunnel(
  */
 export async function trackPageView(
   page: 'popup' | 'options' | 'onboarding',
-  metadata?: Record<string, any>
+  metadata?: AnalyticsMetadata
 ): Promise<void> {
   await analytics.trackPageView(
     `/${page}`,
@@ -265,10 +280,10 @@ export async function trackPageView(
 /**
  * Utility to wrap async operations with analytics tracking
  */
-export function withAnalytics<T extends any[], R>(
+export function withAnalytics<T extends unknown[], R>(
   operation: (...args: T) => Promise<R>,
   eventName: string,
-  getMetadata?: (...args: T) => Record<string, any>
+  getMetadata?: (...args: T) => AnalyticsMetadata
 ) {
   return async (...args: T): Promise<R> => {
     const startTime = Date.now();
