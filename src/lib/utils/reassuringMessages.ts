@@ -270,6 +270,9 @@ export function getContextualMessage(context: ReassuringMessageContext): string 
   // File-specific messages
   if (currentFile || filename) {
     const file = currentFile || filename;
+    if (!file) {
+      return '';
+    }
     const displayName = file.length > 40 ? '...' + file.slice(-37) : file;
     contextMessages.push(`Working on: ${displayName}`);
   }

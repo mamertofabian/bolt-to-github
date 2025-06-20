@@ -8,6 +8,7 @@
   import { issuesStore } from '$lib/stores/issuesStore';
   import type { UpgradeModalType } from '$lib/utils/upgradeModal';
   import { createLogger } from '$lib/utils/logger';
+  import type { GitHubCommit } from 'src/services/types/repository';
 
   const logger = createLogger('ProjectStatus');
 
@@ -150,7 +151,7 @@
 
       // Get repo info
       const repoInfo = await githubService.getRepoInfo(gitHubUsername, repoName);
-      repoExists = repoInfo.exists;
+      repoExists = repoInfo.exists ?? null;
       isLoading.repoStatus = false;
 
       if (repoExists) {
@@ -170,7 +171,7 @@
         }
 
         // Get latest commit
-        const commits = await githubService.request(
+        const commits = await githubService.request<GitHubCommit[]>(
           'GET',
           `/repos/${gitHubUsername}/${repoName}/commits?per_page=1`
         );

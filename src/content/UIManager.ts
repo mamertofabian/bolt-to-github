@@ -120,7 +120,30 @@ export class UIManager {
 
     // Initialize WhatsNewManager
     logger.info('🔊 Initializing WhatsNewManager');
-    this.whatsNewManager = new WhatsNewManager(this.componentLifecycleManager, {
+    // Create an adapter to match the interface expected by WhatsNewManager
+    const componentLifecycleAdapter = {
+      createComponent: async <T extends import('svelte').SvelteComponent>(
+        id: string,
+        config: {
+          component: typeof import('svelte').SvelteComponent;
+          rootElement: Element | ShadowRoot;
+          target?: Element;
+          props?: Record<string, unknown>;
+        }
+      ): Promise<T> => {
+        // Convert to ComponentConfig format expected by actual implementation
+        return this.componentLifecycleManager.createComponent<T>(id, {
+          constructor: config.component,
+          containerId: id,
+          props: config.props,
+          appendToBody: false, // Since we're providing a rootElement
+        });
+      },
+      destroyComponent: (id: string) => this.componentLifecycleManager.destroyComponent(id),
+      hasComponent: (id: string) => this.componentLifecycleManager.hasComponent(id),
+    };
+
+    this.whatsNewManager = new WhatsNewManager(componentLifecycleAdapter, {
       createRootContainer: (id: string) =>
         UIElementFactory.createContainer({
           id,
@@ -318,7 +341,7 @@ export class UIManager {
         onUpgrade: () => {
           try {
             window.open('https://bolt2github.com/upgrade', '_blank');
-          } catch (_openError) {
+          } catch {
             try {
               chrome.tabs.create({ url: 'https://bolt2github.com/upgrade' });
             } catch (tabsError) {

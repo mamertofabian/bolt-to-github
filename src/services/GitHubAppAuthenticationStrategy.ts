@@ -210,7 +210,7 @@ export class GitHubAppAuthenticationStrategy implements IAuthenticationStrategy 
     scopes?: string[];
     expiresAt?: string;
     lastUsed?: string;
-    [key: string]: any;
+    [key: string]: unknown;
   }> {
     try {
       const config = await this.githubAppService.getConfig();

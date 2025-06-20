@@ -18,6 +18,7 @@ interface RecentProjectChange {
   repoName?: string;
   branch?: string;
   projectTitle?: string;
+  age?: number;
 }
 
 export class BoltProjectSyncService {
@@ -920,6 +921,7 @@ export class BoltProjectSyncService {
           projectId
         ) {
           recentChanges.set(projectId, {
+            projectId,
             repoName,
             branch,
             projectTitle,

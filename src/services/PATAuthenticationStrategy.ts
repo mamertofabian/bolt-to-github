@@ -58,7 +58,8 @@ export class PATAuthenticationStrategy implements IAuthenticationStrategy {
 
       this.token = storage.githubToken;
       return storage.githubToken;
-    } catch (_error) {
+    } catch (error) {
+      logger.error('Failed to get GitHub token from storage', error);
       throw new Error('Failed to get GitHub token from storage');
     }
   }
@@ -215,7 +216,7 @@ export class PATAuthenticationStrategy implements IAuthenticationStrategy {
     scopes?: string[];
     expiresAt?: string;
     lastUsed?: string;
-    [key: string]: any;
+    [key: string]: unknown;
   }> {
     try {
       const token = await this.getToken();

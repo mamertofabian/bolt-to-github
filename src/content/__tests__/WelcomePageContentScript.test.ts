@@ -14,6 +14,40 @@ describe('WelcomePageContentScript', () => {
   let mockAddEventListener: jest.Mock;
   let messageListeners: Array<(event: MessageEvent) => void>;
 
+  // Helper function to create proper MessageEvent mocks
+  const createMessageEvent = (source: Window, origin: string, data: unknown): MessageEvent => {
+    return {
+      source,
+      origin,
+      data,
+      lastEventId: '',
+      ports: [],
+      type: 'message',
+      bubbles: false,
+      cancelBubble: false,
+      cancelable: false,
+      composed: false,
+      currentTarget: window,
+      defaultPrevented: false,
+      eventPhase: Event.AT_TARGET,
+      isTrusted: true,
+      returnValue: true,
+      srcElement: window,
+      target: window,
+      timeStamp: Date.now(),
+      initEvent: jest.fn(),
+      preventDefault: jest.fn(),
+      stopImmediatePropagation: jest.fn(),
+      stopPropagation: jest.fn(),
+      initMessageEvent: jest.fn(),
+      composedPath: jest.fn(() => []),
+      AT_TARGET: Event.AT_TARGET,
+      BUBBLING_PHASE: Event.BUBBLING_PHASE,
+      CAPTURING_PHASE: Event.CAPTURING_PHASE,
+      NONE: Event.NONE,
+    } as MessageEvent;
+  };
+
   beforeEach(() => {
     jest.clearAllMocks();
     messageListeners = [];
@@ -105,14 +139,12 @@ describe('WelcomePageContentScript', () => {
 
       // Simulate message from page
       const messageListener = messageListeners[0];
-      messageListener({
-        source: window,
-        origin: 'https://bolt2github.com',
-        data: {
+      messageListener(
+        createMessageEvent(window, 'https://bolt2github.com', {
           source: 'bolt2github-welcome',
           type: 'getExtensionStatus',
-        },
-      } as MessageEvent);
+        })
+      );
 
       // Wait for async processing
       await new Promise((resolve) => setTimeout(resolve, 50));
@@ -149,15 +181,13 @@ describe('WelcomePageContentScript', () => {
 
       // Simulate message from page
       const messageListener = messageListeners[0];
-      messageListener({
-        source: window,
-        origin: 'https://bolt2github.com',
-        data: {
+      messageListener(
+        createMessageEvent(window, 'https://bolt2github.com', {
           source: 'bolt2github-welcome',
           type: 'completeOnboardingStep',
           step: 'authentication',
-        },
-      } as MessageEvent);
+        })
+      );
 
       // Wait for async processing
       await new Promise((resolve) => setTimeout(resolve, 50));
@@ -187,15 +217,13 @@ describe('WelcomePageContentScript', () => {
 
       // Simulate message from page
       const messageListener = messageListeners[0];
-      messageListener({
-        source: window,
-        origin: 'https://bolt2github.com',
-        data: {
+      messageListener(
+        createMessageEvent(window, 'https://bolt2github.com', {
           source: 'bolt2github-welcome',
           type: 'initiateGitHubAuth',
           method: 'github-app',
-        },
-      } as MessageEvent);
+        })
+      );
 
       // Wait for async processing
       await new Promise((resolve) => setTimeout(resolve, 50));
@@ -225,14 +253,12 @@ describe('WelcomePageContentScript', () => {
 
       // Simulate message from page
       const messageListener = messageListeners[0];
-      messageListener({
-        source: window,
-        origin: 'https://bolt2github.com',
-        data: {
+      messageListener(
+        createMessageEvent(window, 'https://bolt2github.com', {
           source: 'bolt2github-welcome',
           type: 'getExtensionCapabilities',
-        },
-      } as MessageEvent);
+        })
+      );
 
       // Wait for async processing
       await new Promise((resolve) => setTimeout(resolve, 50));
@@ -261,14 +287,12 @@ describe('WelcomePageContentScript', () => {
 
       // Simulate message from malicious origin
       const messageListener = messageListeners[0];
-      messageListener({
-        source: window,
-        origin: 'https://malicious-site.com',
-        data: {
+      messageListener(
+        createMessageEvent(window, 'https://malicious-site.com', {
           source: 'bolt2github-welcome',
           type: 'getExtensionStatus',
-        },
-      } as MessageEvent);
+        })
+      );
 
       // Verify no background message was sent
       expect(mockRuntimeSendMessage).not.toHaveBeenCalled();
@@ -283,13 +307,11 @@ describe('WelcomePageContentScript', () => {
 
       // Simulate message without source
       const messageListener = messageListeners[0];
-      messageListener({
-        source: window,
-        origin: 'https://bolt2github.com',
-        data: {
+      messageListener(
+        createMessageEvent(window, 'https://bolt2github.com', {
           type: 'getExtensionStatus',
-        },
-      } as MessageEvent);
+        })
+      );
 
       // Verify no background message was sent
       expect(mockRuntimeSendMessage).not.toHaveBeenCalled();
@@ -307,14 +329,12 @@ describe('WelcomePageContentScript', () => {
 
       // Simulate message from different source
       const messageListener = messageListeners[0];
-      messageListener({
-        source: iframe.contentWindow,
-        origin: 'https://bolt2github.com',
-        data: {
+      messageListener(
+        createMessageEvent(iframe.contentWindow as Window, 'https://bolt2github.com', {
           source: 'bolt2github-welcome',
           type: 'getExtensionStatus',
-        },
-      } as MessageEvent);
+        })
+      );
 
       // Verify no background message was sent
       expect(mockRuntimeSendMessage).not.toHaveBeenCalled();
@@ -339,14 +359,12 @@ describe('WelcomePageContentScript', () => {
 
       // Simulate message from page
       const messageListener = messageListeners[0];
-      messageListener({
-        source: window,
-        origin: 'https://bolt2github.com',
-        data: {
+      messageListener(
+        createMessageEvent(window, 'https://bolt2github.com', {
           source: 'bolt2github-welcome',
           type: 'getExtensionStatus',
-        },
-      } as MessageEvent);
+        })
+      );
 
       // Wait for async processing
       await new Promise((resolve) => setTimeout(resolve, 50));
@@ -381,14 +399,12 @@ describe('WelcomePageContentScript', () => {
 
       // Simulate message from page
       const messageListener = messageListeners[0];
-      messageListener({
-        source: window,
-        origin: 'https://bolt2github.com',
-        data: {
+      messageListener(
+        createMessageEvent(window, 'https://bolt2github.com', {
           source: 'bolt2github-welcome',
           type: 'getExtensionStatus',
-        },
-      } as MessageEvent);
+        })
+      );
 
       // Wait for async processing
       await new Promise((resolve) => setTimeout(resolve, 50));
@@ -404,7 +420,7 @@ describe('WelcomePageContentScript', () => {
       );
 
       // Clean up
-      chrome.runtime.lastError = null;
+      delete chrome.runtime.lastError;
     });
   });
 
@@ -437,14 +453,12 @@ describe('WelcomePageContentScript', () => {
 
       // Simulate message from page
       const messageListener = messageListeners[0];
-      messageListener({
-        source: window,
-        origin: 'https://bolt2github.com',
-        data: {
+      messageListener(
+        createMessageEvent(window, 'https://bolt2github.com', {
           source: 'bolt2github-welcome',
           type: 'getExtensionStatus',
-        },
-      } as MessageEvent);
+        })
+      );
 
       // Verify message was logged
       expect(consoleInfoSpy).toHaveBeenCalledWith(

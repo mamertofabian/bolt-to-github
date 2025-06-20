@@ -9,6 +9,7 @@ import type { UploadStatusState } from '../../lib/types';
 import type { UnifiedGitHubService } from '../../services/UnifiedGitHubService';
 import type { OperationStateManager } from '../../content/services/OperationStateManager';
 import { STORAGE_KEY } from '../TempRepoManager';
+import type { GitHubRepository } from '../../services/types/repository';
 
 // =============================================================================
 // TYPE DEFINITIONS FOR BETTER TYPE SAFETY
@@ -21,33 +22,6 @@ interface GitHubBranch {
     url: string;
   };
   protected: boolean;
-}
-
-interface GitHubRepository {
-  id: number;
-  node_id: string;
-  name: string;
-  full_name: string;
-  private: boolean;
-  owner: {
-    login: string;
-    id: number;
-    avatar_url: string;
-    type: string;
-  };
-  html_url: string;
-  description: string | null;
-  fork: boolean;
-  created_at: string;
-  updated_at: string;
-  pushed_at: string;
-  git_url: string;
-  ssh_url: string;
-  clone_url: string;
-  language: string | null;
-  size: number;
-  default_branch: string;
-  exists?: boolean;
 }
 
 interface TempRepoData {

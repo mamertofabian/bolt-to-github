@@ -1,13 +1,14 @@
 import { writable, derived, get } from 'svelte/store';
 import { UnifiedGitHubService } from '../../services/UnifiedGitHubService';
 import { createLogger } from '../utils/logger';
+import type { GitHubIssue } from '../../services/types/repository';
 
 const logger = createLogger('IssuesStore');
 
 export interface Issue {
   number: number;
   title: string;
-  body: string;
+  body: string | null;
   state: 'open' | 'closed';
   html_url: string;
   created_at: string;
@@ -51,6 +52,28 @@ async function createGitHubService(token: string): Promise<UnifiedGitHubService>
   } else {
     return new UnifiedGitHubService(token);
   }
+}
+
+// Helper function to convert GitHubIssue to Issue format
+function convertGitHubIssueToIssue(githubIssue: GitHubIssue): Issue {
+  return {
+    number: githubIssue.number,
+    title: githubIssue.title,
+    body: githubIssue.body,
+    state: githubIssue.state,
+    html_url: githubIssue.html_url,
+    created_at: githubIssue.created_at,
+    updated_at: githubIssue.updated_at,
+    comments: githubIssue.comments,
+    user: {
+      login: githubIssue.user.login,
+      avatar_url: githubIssue.user.avatar_url,
+    },
+    labels: githubIssue.labels.map((label) => ({
+      name: label.name,
+      color: label.color,
+    })),
+  };
 }
 
 // Create the main store
@@ -123,7 +146,10 @@ function createIssuesStore() {
     try {
       const githubService = await createGitHubService(githubToken);
       // Always fetch ALL issues to avoid cache inconsistencies
-      const issues = await githubService.getIssues(owner, repo, 'all', forceRefresh);
+      const githubIssues = await githubService.getIssues(owner, repo, 'all', forceRefresh);
+
+      // Convert GitHubIssue[] to Issue[]
+      const issues = githubIssues.map(convertGitHubIssueToIssue);
 
       // Update the store with all issues
       update((current) => ({
@@ -172,7 +198,10 @@ function createIssuesStore() {
 
     try {
       const githubService = await createGitHubService(githubToken);
-      const newIssue = await githubService.createIssue(owner, repo, issueData);
+      const githubIssue = await githubService.createIssue(owner, repo, issueData);
+
+      // Convert GitHubIssue to Issue
+      const newIssue = convertGitHubIssueToIssue(githubIssue);
 
       // Immediately add the new issue to the store for instant UI update
       update((current) => {
@@ -234,7 +263,7 @@ function createIssuesStore() {
 
     try {
       const githubService = await createGitHubService(githubToken);
-      const updatedIssue = await githubService.updateIssue(
+      const githubUpdatedIssue = await githubService.updateIssue(
         owner,
         repo,
         issueNumber,
@@ -242,6 +271,9 @@ function createIssuesStore() {
         body,
         state
       );
+
+      // Convert GitHubIssue to Issue
+      const updatedIssue = convertGitHubIssueToIssue(githubUpdatedIssue);
 
       // Immediately update the issue in the store
       update((current) => {

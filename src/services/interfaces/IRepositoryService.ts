@@ -1,67 +1,9 @@
-import type { ProgressCallback } from '../types/common';
-
-/**
- * GitHub repository response type
- */
-export interface GitHubRepository {
-  id: number;
-  node_id: string;
-  name: string;
-  full_name: string;
-  private: boolean;
-  owner: {
-    login: string;
-    id: number;
-    avatar_url: string;
-    type: string;
-  };
-  html_url: string;
-  description: string | null;
-  fork: boolean;
-  created_at: string;
-  updated_at: string;
-  pushed_at: string;
-  git_url: string;
-  ssh_url: string;
-  clone_url: string;
-  language: string | null;
-  size: number;
-  default_branch: string;
-}
-
-/**
- * Interface for repository information
- */
-export interface RepoInfo {
-  name: string;
-  description?: string;
-  private?: boolean;
-  exists: boolean;
-}
-
-/**
- * Interface for repository creation options
- */
-export interface RepoCreateOptions {
-  name: string;
-  private?: boolean;
-  auto_init?: boolean;
-  description?: string;
-  org?: string;
-}
-
-/**
- * Interface for repository summary information
- */
-export interface RepoSummary {
-  name: string;
-  description: string | null;
-  private: boolean;
-  html_url: string;
-  created_at: string;
-  updated_at: string;
-  language: string | null;
-}
+import type {
+  GitHubRepository,
+  RepoCreateOptions,
+  RepoInfo,
+  RepoSummary,
+} from '../types/repository';
 
 /**
  * Interface for GitHub repository management operations

@@ -9,151 +9,16 @@ import type { AuthenticationConfig, AuthenticationType } from './types/authentic
 // Removed GitHubService import to eliminate circular dependency
 import { AuthenticationStrategyFactory } from './AuthenticationStrategyFactory';
 import { createLogger } from '$lib/utils/logger';
-
-// GitHub API Type Definitions
-interface GitHubRepository {
-  id: number;
-  node_id: string;
-  name: string;
-  full_name: string;
-  private: boolean;
-  owner: {
-    login: string;
-    id: number;
-    avatar_url: string;
-    type: string;
-  };
-  html_url: string;
-  description: string | null;
-  fork: boolean;
-  created_at: string;
-  updated_at: string;
-  pushed_at: string;
-  git_url: string;
-  ssh_url: string;
-  clone_url: string;
-  language: string | null;
-  size: number;
-  default_branch: string;
-  // Additional fields for backward compatibility
-  exists?: boolean;
-}
-
-interface GitHubBranch {
-  name: string;
-  commit: {
-    sha: string;
-    url: string;
-  };
-  protected: boolean;
-}
-
-interface GitHubCreateOrUpdateFileRequest {
-  message: string;
-  content: string;
-  branch: string;
-  sha?: string;
-}
-
-interface GitHubFileResponse {
-  content: {
-    name: string;
-    path: string;
-    sha: string;
-    size: number;
-    url: string;
-    html_url: string;
-    git_url: string;
-    download_url: string | null;
-    type: string;
-  };
-  commit: {
-    sha: string;
-    node_id: string;
-    url: string;
-    html_url: string;
-    author: {
-      name: string;
-      email: string;
-      date: string;
-    };
-    committer: {
-      name: string;
-      email: string;
-      date: string;
-    };
-    message: string;
-  };
-}
-
-interface GitHubIssue {
-  id: number;
-  node_id: string;
-  url: string;
-  repository_url: string;
-  labels_url: string;
-  comments_url: string;
-  events_url: string;
-  html_url: string;
-  number: number;
-  state: 'open' | 'closed';
-  title: string;
-  body: string | null;
-  user: {
-    login: string;
-    id: number;
-    avatar_url: string;
-  };
-  labels: Array<{
-    id: number;
-    node_id: string;
-    url: string;
-    name: string;
-    color: string;
-    default: boolean;
-  }>;
-  assignees: Array<{
-    login: string;
-    id: number;
-    avatar_url: string;
-  }>;
-  created_at: string;
-  updated_at: string;
-  closed_at: string | null;
-  comments: number;
-}
-
-interface GitHubIssueUpdate {
-  title: string;
-  body: string;
-  state: 'open' | 'closed';
-  labels: string[];
-  assignees: string[];
-}
-
-interface GitHubComment {
-  id: number;
-  node_id: string;
-  url: string;
-  html_url: string;
-  body: string;
-  user: {
-    login: string;
-    id: number;
-    avatar_url: string;
-  };
-  created_at: string;
-  updated_at: string;
-}
-
-interface GitHubTreeItem {
-  path: string;
-  mode: string;
-  type: 'blob' | 'tree';
-  size?: number;
-  sha: string;
-  url: string;
-}
+import type {
+  GitHubBranch,
+  GitHubComment,
+  GitHubCreateOrUpdateFileRequest,
+  GitHubFileResponse,
+  GitHubIssue,
+  GitHubIssueUpdate,
+  GitHubRepository,
+  GitHubTreeItem,
+} from './types/repository';
 
 const logger = createLogger('UnifiedGitHubService');
 
@@ -386,7 +251,7 @@ export class UnifiedGitHubService {
       // For PAT, check token format
       const token = await strategy.getToken();
       return token.startsWith('ghp_');
-    } catch (_error) {
+    } catch {
       return false;
     }
   }
@@ -405,7 +270,7 @@ export class UnifiedGitHubService {
       // For PAT, check token format
       const token = await strategy.getToken();
       return token.startsWith('github_pat_');
-    } catch (_error) {
+    } catch {
       return false;
     }
   }
@@ -456,7 +321,7 @@ export class UnifiedGitHubService {
         },
       });
       return response.status === 200;
-    } catch (_error) {
+    } catch {
       return false;
     }
   }
@@ -571,7 +436,7 @@ export class UnifiedGitHubService {
       }
 
       return response.status !== 200;
-    } catch (_error) {
+    } catch {
       return false;
     }
   }

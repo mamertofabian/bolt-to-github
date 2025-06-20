@@ -59,7 +59,7 @@ export class GitHubUploadHandler implements IGitHubUploadHandler {
   public async validateSettings(): Promise<boolean> {
     const currentProjectId = getCurrentProjectId();
     const settings = (await SettingsService.getGitHubSettings(
-      currentProjectId
+      currentProjectId ?? undefined
     )) as LocalSettingsResult;
     return settings.isSettingsValid;
   }
@@ -89,7 +89,7 @@ export class GitHubUploadHandler implements IGitHubUploadHandler {
 
     // Validate settings first with the current project ID
     const settings = (await SettingsService.getGitHubSettings(
-      currentProjectId
+      currentProjectId ?? undefined
     )) as LocalSettingsResult;
     if (!settings.isSettingsValid) {
       this.notificationManager.showSettingsNotification();
@@ -334,7 +334,7 @@ export class GitHubUploadHandler implements IGitHubUploadHandler {
   public async getProjectInfo(): Promise<{ repoName?: string; branch?: string } | null> {
     const currentProjectId = getCurrentProjectId();
     const settings = (await SettingsService.getGitHubSettings(
-      currentProjectId
+      currentProjectId ?? undefined
     )) as LocalSettingsResult;
     if (settings.isSettingsValid && settings.gitHubSettings?.projectSettings) {
       return {

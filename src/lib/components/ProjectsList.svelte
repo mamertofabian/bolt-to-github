@@ -22,6 +22,7 @@
   import { createLogger } from '$lib/utils/logger';
   import { ChromeStorageService } from '$lib/services/chromeStorage';
   import type { EnhancedGitHubRepo } from '$lib/services/GitHubCacheService';
+  import type { GitHubCommit } from 'src/services/types/repository';
 
   const logger = createLogger('ProjectsList');
 
@@ -331,7 +332,7 @@
             // Get latest commit info
             let latestCommit = undefined;
             try {
-              const commits = await githubService.request(
+              const commits = await githubService.request<GitHubCommit[]>(
                 'GET',
                 `/repos/${repoOwner}/${repo.name}/commits?per_page=1`
               );
@@ -484,7 +485,7 @@
               // Get latest commit
               let latestCommit = undefined;
               try {
-                const commits = await githubService.request(
+                const commits = await githubService.request<GitHubCommit[]>(
                   'GET',
                   `/repos/${repoOwner}/${settings.repoName}/commits?per_page=1`
                 );

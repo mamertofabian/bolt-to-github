@@ -22,7 +22,8 @@ export type MessageType =
   | 'HEARTBEAT_RESPONSE'
   | 'GITHUB_APP_SYNCED'
   | 'SUBSCRIPTION_UPGRADED'
-  | 'SYNC_BOLT_PROJECTS';
+  | 'SYNC_BOLT_PROJECTS'
+  | 'NOTIFY_GITHUB_APP_SYNC';
 
 // Base message interface
 interface BaseMessage {

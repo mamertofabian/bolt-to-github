@@ -1,14 +1,18 @@
 import type { IGitHubApiClient } from './interfaces/IGitHubApiClient';
-import type {
-  IRepositoryService,
-  RepoInfo,
-  RepoCreateOptions,
-  RepoSummary,
-  GitHubRepository,
-} from './interfaces/IRepositoryService';
+import type { IRepositoryService } from './interfaces/IRepositoryService';
 import type { IFileService } from './interfaces/IFileService';
 import type { IRepoCloneService } from './interfaces/IRepoCloneService';
 import { createLogger } from '../lib/utils/logger';
+import type {
+  GitHubBranch,
+  GitHubCommit,
+  GitHubOrganization,
+  GitHubRepository,
+  GitHubUser,
+  RepoCreateOptions,
+  RepoInfo,
+  RepoSummary,
+} from './types/repository';
 
 const logger = createLogger('RepositoryService');
 
@@ -132,7 +136,10 @@ export class RepositoryService implements IRepositoryService {
    */
   async isRepoEmpty(owner: string, repo: string): Promise<boolean> {
     try {
-      const commits = await this.apiClient.request('GET', `/repos/${owner}/${repo}/commits`);
+      const commits = await this.apiClient.request<GitHubCommit[]>(
+        'GET',
+        `/repos/${owner}/${repo}/commits`
+      );
       return commits.length === 0;
     } catch (error) {
       if (error instanceof Error && error.message.includes('409')) {
@@ -189,23 +196,20 @@ This repository was automatically initialized by the Bolt to GitHub extension.
     maxCommits: number = 100
   ): Promise<number> {
     try {
-      const commits = await this.apiClient.request('GET', `/repos/${owner}/${repo}/commits`, null, {
-        headers: {
-          per_page: '1', // We only need the count from headers
-        },
-      });
-
-      // GitHub returns the total count in the Link header
-      const linkHeader = commits.headers?.get('link');
-      if (linkHeader) {
-        const match = linkHeader.match(/page=(\d+)>; rel="last"/);
-        if (match) {
-          const totalCommits = parseInt(match[1], 10);
-          return Math.min(totalCommits, maxCommits); // Respect the maxCommits limit
+      // Note: GitHub API doesn't provide a direct way to get total commit count
+      // We'll fetch commits and count them manually, respecting the maxCommits limit
+      const commits = await this.apiClient.request<GitHubCommit[]>(
+        'GET',
+        `/repos/${owner}/${repo}/commits`,
+        null,
+        {
+          headers: {
+            per_page: maxCommits.toString(),
+          },
         }
-      }
+      );
 
-      // If no pagination, count the commits manually
+      // Return the number of commits fetched (limited by maxCommits)
       return Math.min(commits.length, maxCommits);
     } catch (error) {
       logger.error('Failed to fetch commit count:', error);
@@ -295,15 +299,18 @@ This repository was automatically initialized by the Bolt to GitHub extension.
   async listRepos(): Promise<Array<RepoSummary>> {
     try {
       // Get repos from user account
-      let repos = await this.apiClient.request('GET', `/user/repos?per_page=100&sort=updated`);
+      let repos = await this.apiClient.request<GitHubRepository[]>(
+        'GET',
+        `/user/repos?per_page=100&sort=updated`
+      );
 
       // Get org repos the user has access to
       try {
-        const orgs = await this.apiClient.request('GET', '/user/orgs');
+        const orgs = await this.apiClient.request<GitHubOrganization[]>('GET', '/user/orgs');
 
         for (const org of orgs) {
           try {
-            const orgRepos = await this.apiClient.request(
+            const orgRepos = await this.apiClient.request<GitHubRepository[]>(
               'GET',
               `/orgs/${org.login}/repos?per_page=100&sort=updated`
             );
@@ -316,7 +323,7 @@ This repository was automatically initialized by the Bolt to GitHub extension.
         logger.warn('Failed to fetch organizations:', error);
       }
 
-      return repos.map((repo: any) => ({
+      return repos.map((repo) => ({
         name: repo.name,
         description: repo.description,
         private: repo.private,
@@ -342,16 +349,19 @@ This repository was automatically initialized by the Bolt to GitHub extension.
   ): Promise<Array<{ name: string; isDefault: boolean }>> {
     try {
       // Get repository information to determine the default branch
-      const repoInfo = await this.apiClient.request('GET', `/repos/${owner}/${repo}`);
+      const repoInfo = await this.apiClient.request<GitHubRepository>(
+        'GET',
+        `/repos/${owner}/${repo}`
+      );
       const defaultBranch = repoInfo.default_branch;
 
       // Get all branches for the repository
-      const branches = await this.apiClient.request(
+      const branches = await this.apiClient.request<GitHubBranch[]>(
         'GET',
         `/repos/${owner}/${repo}/branches?per_page=100`
       );
 
-      return branches.map((branch: any) => ({
+      return branches.map((branch) => ({
         name: branch.name,
         isDefault: branch.name === defaultBranch,
       }));
@@ -401,7 +411,7 @@ This repository was automatically initialized by the Bolt to GitHub extension.
    */
   private async isOrganization(owner: string): Promise<boolean> {
     try {
-      const ownerInfo = await this.apiClient.request('GET', `/users/${owner}`);
+      const ownerInfo = await this.apiClient.request<GitHubUser>('GET', `/users/${owner}`);
       return ownerInfo.type === 'Organization';
     } catch (error) {
       // If we can't determine, proceed assuming it's a user

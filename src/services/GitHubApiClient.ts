@@ -10,7 +10,7 @@ const logger = createLogger('GitHubApiClient');
 export class GitHubApiError extends Error {
   status: number;
   originalMessage: string;
-  githubErrorResponse: any;
+  githubErrorResponse: unknown;
 
   constructor(message: string, status: number, originalMessage: string, githubErrorResponse: any) {
     super(message);
