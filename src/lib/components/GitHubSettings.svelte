@@ -62,7 +62,6 @@
   let repoSearchQuery = '';
   let repoExists = false;
   let selectedIndex = -1;
-  let repoInputFocused = false;
   let isCheckingPermissions = false;
   let lastPermissionCheck: number | null = null;
   let currentCheck: 'repos' | 'admin' | 'code' | null = null;
@@ -82,7 +81,8 @@
   // GitHub App authentication state
   let isConnectingGitHubApp = false;
   let githubAppConnectionError: string | null = null;
-  let githubAppValidationResult: { isValid: boolean; error?: string; userInfo?: any } | null = null;
+  let githubAppValidationResult: { isValid: boolean; error?: string; userInfo?: unknown } | null =
+    null;
 
   // Collapsible state - add manual toggle state
   let manuallyToggled = false;
@@ -274,13 +274,11 @@
   }
 
   function handleRepoFocus() {
-    repoInputFocused = true;
     showRepoDropdown = true;
     repoSearchQuery = repoName;
   }
 
   function handleRepoBlur() {
-    repoInputFocused = false;
     // Delay hiding dropdown to allow click events to register
     setTimeout(() => {
       showRepoDropdown = false;
@@ -298,7 +296,7 @@
     );
 
     if (relevantChanges.length > 0) {
-      const filteredChanges = relevantChanges.reduce(
+      const _filteredChanges = relevantChanges.reduce(
         (acc, key) => {
           acc[key] = changes[key];
           return acc;
@@ -564,7 +562,7 @@
     }
 
     // Set up a listener for chrome.runtime.lastError before calling onSave
-    const originalError = chrome.runtime.lastError;
+    const _originalError = chrome.runtime.lastError;
 
     try {
       await onSave();

@@ -226,10 +226,6 @@ describe('FileChangeHandler', () => {
     });
 
     it('should get changed files without force refresh', async () => {
-      const mockChanges = new Map([
-        ['file1.js', { path: 'file1.js', status: 'modified' as const, content: 'content1' }],
-      ]);
-
       // Mock the private method behavior
       mockChromeStorage.sync.get.mockResolvedValue({});
       mockFilePreviewService.getProcessedFiles.mockResolvedValue(
@@ -244,10 +240,6 @@ describe('FileChangeHandler', () => {
     });
 
     it('should get changed files with force refresh', async () => {
-      const mockChanges = new Map([
-        ['file1.js', { path: 'file1.js', status: 'modified' as const, content: 'content1' }],
-      ]);
-
       // Mock the private method behavior
       mockChromeStorage.sync.get.mockResolvedValue({});
       mockFilePreviewService.getProcessedFiles.mockResolvedValue(

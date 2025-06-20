@@ -223,7 +223,7 @@ export class ValidationHelpers {
   /**
    * Validate that a repository metadata object has all required fields
    */
-  static validateRepoMetadata(metadata: any): boolean {
+  static validateRepoMetadata(metadata: Record<string, unknown>): boolean {
     const requiredFields = ['originalRepo', 'tempRepo', 'createdAt', 'owner', 'branch'];
     return requiredFields.every((field) => field in metadata && metadata[field] !== undefined);
   }

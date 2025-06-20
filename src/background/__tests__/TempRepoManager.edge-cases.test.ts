@@ -196,7 +196,9 @@ describe('TempRepoManager - Edge Cases & Stress Tests', () => {
 
       // All entries should be valid
       repos.forEach((repo) => {
-        expect(ValidationHelpers.validateRepoMetadata(repo)).toBe(true);
+        expect(
+          ValidationHelpers.validateRepoMetadata(repo as unknown as Record<string, unknown>)
+        ).toBe(true);
       });
     });
 

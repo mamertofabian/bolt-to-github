@@ -21,8 +21,19 @@
     authMethodChange: string;
   }>();
 
-  export let githubSettings: any;
-  export let uiState: any;
+  export let githubSettings: {
+    authenticationMethod?: 'pat' | 'github_app';
+    githubAppInstallationId?: number;
+    githubAppUsername?: string;
+    githubAppAvatarUrl?: string;
+    githubToken?: string;
+    repoOwner?: string;
+  };
+  export let uiState: {
+    status?: string;
+    hasStatus?: boolean;
+    [key: string]: unknown;
+  };
 
   // Default to GitHub App authentication when component mounts
   onMount(() => {
@@ -278,7 +289,7 @@
       class="w-full bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 text-white py-3 text-base font-medium"
       disabled={!isSetupComplete || uiState.hasStatus}
     >
-      {#if uiState.hasStatus && !uiState.status.includes('MAX_WRITE_OPERATIONS')}
+      {#if uiState.hasStatus && uiState.status && !uiState.status.includes('MAX_WRITE_OPERATIONS')}
         {uiState.status}
       {:else}
         Complete Setup

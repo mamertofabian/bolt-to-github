@@ -137,8 +137,6 @@ describe('MessageHandler', () => {
       it('should handle unbounded queue growth gracefully', async () => {
         await env.setupPortDisconnectionScenario();
 
-        const initialMemory = env.getMemorySnapshot();
-
         // Add large number of messages to queue
         const largeMessageCount = 10000;
         for (let i = 0; i < largeMessageCount; i++) {
@@ -479,7 +477,7 @@ describe('MessageHandler', () => {
         let messagesSent = 0;
 
         // Mock postMessage to disconnect after a few messages
-        newPort.postMessage = jest.fn((message) => {
+        newPort.postMessage = jest.fn((_message) => {
           messagesSent++;
           if (messagesSent > 10) {
             // Simulate disconnection by throwing

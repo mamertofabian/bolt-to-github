@@ -21,7 +21,7 @@ import type { Message } from '../../lib/types';
 export class BackgroundServiceIntegrationEnvironment {
   public chromeEnv: BackgroundServiceTestEnvironment;
   public serviceFactory: MockServiceFactory;
-  public backgroundService: any = null;
+  public backgroundService: { destroy?: () => void } | null = null;
 
   constructor() {
     this.chromeEnv = new BackgroundServiceTestEnvironment();
@@ -137,9 +137,7 @@ export class ErrorInjectionHelper {
   }
 
   injectIntermittentNetworkFailure(failureRate: number = 0.5): void {
-    let callCount = 0;
     (global.fetch as jest.Mock).mockImplementation(() => {
-      callCount++;
       if (Math.random() < failureRate) {
         return Promise.reject(new Error('Network error'));
       }
@@ -377,15 +375,17 @@ export class StateValidationHelper {
   }
 
   static validatePortConnections(
-    chromeEnv: BackgroundServiceTestEnvironment,
-    expectedCount: number
+    _chromeEnv: BackgroundServiceTestEnvironment,
+    _expectedCount: number
   ): boolean {
     // This would need to be implemented based on how you track ports
     // in your BackgroundService implementation
     return true; // Placeholder
   }
 
-  static validateAnalyticsEvents(expectedEvents: Array<{ name: string; params?: any }>): boolean {
+  static validateAnalyticsEvents(
+    expectedEvents: Array<{ name: string; params?: unknown }>
+  ): boolean {
     const fetchCalls = (global.fetch as jest.Mock).mock.calls;
     const analyticsCalls = fetchCalls.filter((call) => call[0]?.includes('google-analytics.com'));
 
@@ -488,7 +488,7 @@ export class BackgroundServiceTestSuiteBuilder {
     for (let i = 0; i < 3; i++) {
       try {
         await this.environment.simulateSuccessfulZipUpload(`project-${i}`);
-      } catch (error) {
+      } catch {
         // Expected - some will fail due to network issues
       }
     }
