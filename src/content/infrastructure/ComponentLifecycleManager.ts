@@ -1,5 +1,5 @@
-import type { SvelteComponent } from '../types/UITypes';
 import { createLogger } from '../../lib/utils/logger';
+import type { SvelteComponent } from 'svelte';
 
 const logger = createLogger('ComponentLifecycleManager');
 

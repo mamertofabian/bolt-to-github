@@ -139,7 +139,8 @@ export class BackgroundService {
           clientId = this.generateClientId();
           await chrome.storage.local.set({ analyticsClientId: clientId });
         }
-      } catch (_error) {
+      } catch (error) {
+        logger.debug('Failed to get analytics client ID:', error);
         clientId = this.generateClientId();
       }
 

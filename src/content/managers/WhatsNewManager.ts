@@ -142,7 +142,7 @@ export class WhatsNewManager implements IWhatsNewManager {
     }
   }
 
-  private async handleClose(isManual: boolean): Promise<void> {
+  private async handleClose(_isManual: boolean): Promise<void> {
     this.cleanup();
   }
 

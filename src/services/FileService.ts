@@ -210,8 +210,8 @@ export class FileService implements IFileService {
         path: item.path,
         sha: item.sha,
         size: item.size,
-        type: item.type,
-        download_url: item.download_url,
+        type: item.type === 'submodule' ? 'dir' : (item.type as 'file' | 'dir' | 'symlink'),
+        download_url: item.download_url ?? undefined,
         html_url: item.html_url,
       }));
     } catch (error) {
@@ -249,7 +249,7 @@ export class FileService implements IFileService {
         size: file.size,
         type: file.type === 'dir' ? 'dir' : file.type === 'file' ? 'file' : 'symlink',
         content: file.content,
-        download_url: file.download_url,
+        download_url: file.download_url ?? undefined,
         html_url: file.html_url,
       };
     } catch (error) {

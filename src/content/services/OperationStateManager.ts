@@ -81,6 +81,7 @@ export class OperationStateManager {
 
       return 'unknown';
     } catch (error) {
+      logger.error('Error detecting context:', error);
       return 'unknown';
     }
   }
