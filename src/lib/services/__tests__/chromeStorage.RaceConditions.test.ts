@@ -19,7 +19,7 @@ const mockChromeStorage = {
   onChanged: mockOnChanged,
 };
 
-(global as any).chrome = {
+(global as unknown as { chrome: { storage: typeof mockChromeStorage } }).chrome = {
   storage: mockChromeStorage,
 };
 
@@ -91,7 +91,7 @@ describe('ChromeStorageService Race Condition Tests', () => {
 
     it('should preserve projectTitle in concurrent operations', async () => {
       const projectId = 'test-project';
-      const savedData: any[] = [];
+      const savedData: Record<string, unknown>[] = [];
 
       mockChromeStorage.sync.set.mockImplementation(async (data) => {
         savedData.push(data.projectSettings[projectId]);
@@ -118,7 +118,7 @@ describe('ChromeStorageService Race Condition Tests', () => {
 
     it('should save timestamp for race condition detection', async () => {
       const projectId = 'test-project';
-      const timestampData: any[] = [];
+      const timestampData: Record<string, unknown>[] = [];
 
       mockChromeStorage.local.set.mockImplementation(async (data) => {
         if (data.lastSettingsUpdate) {
@@ -182,7 +182,7 @@ describe('ChromeStorageService Race Condition Tests', () => {
         repoOwner: 'owner1',
         projectSettings: {},
         authenticationMethod: 'github_app',
-        githubAppInstallationId: 'install123',
+        githubAppInstallationId: 123,
         githubAppUsername: 'testuser',
       };
 
@@ -197,7 +197,7 @@ describe('ChromeStorageService Race Condition Tests', () => {
 
       expect(mockChromeStorage.local.set).toHaveBeenCalledWith({
         authenticationMethod: 'github_app',
-        githubAppInstallationId: 'install123',
+        githubAppInstallationId: 123,
         githubAppUsername: 'testuser',
       });
     });
@@ -345,7 +345,7 @@ describe('ChromeStorageService Race Condition Tests', () => {
         },
       });
 
-      const savedData: any[] = [];
+      const savedData: Record<string, unknown>[] = [];
       mockChromeStorage.sync.set.mockImplementation(async (data) => {
         savedData.push(JSON.parse(JSON.stringify(data)));
         await new Promise((resolve) => setTimeout(resolve, 10));
@@ -368,14 +368,18 @@ describe('ChromeStorageService Race Condition Tests', () => {
       expect(savedData).toHaveLength(2);
 
       // First operation (project settings update)
-      expect(savedData[0].projectSettings.project1).toEqual({
+      expect(
+        (savedData[0] as { projectSettings: Record<string, unknown> }).projectSettings.project1
+      ).toEqual({
         repoName: 'user-repo',
         branch: 'main',
         projectTitle: 'User Title',
       });
 
       // Second operation (GitHub settings with project settings)
-      expect(savedData[1].projectSettings.project1).toEqual({
+      expect(
+        (savedData[1] as { projectSettings: Record<string, unknown> }).projectSettings.project1
+      ).toEqual({
         repoName: 'sync-repo',
         branch: 'dev',
       });
@@ -383,13 +387,13 @@ describe('ChromeStorageService Race Condition Tests', () => {
 
     it('should handle multiple tabs saving different projects simultaneously', async () => {
       // Mock that simulates persistent storage across operations
-      let persistentProjectSettings: any = {};
+      let persistentProjectSettings: Record<string, unknown> = {};
 
       mockChromeStorage.sync.get.mockImplementation(async () => ({
         projectSettings: { ...persistentProjectSettings },
       }));
 
-      const savedData: any[] = [];
+      const savedData: Record<string, unknown>[] = [];
       mockChromeStorage.sync.set.mockImplementation(async (data) => {
         // Update persistent storage to simulate real storage behavior
         persistentProjectSettings = { ...persistentProjectSettings, ...data.projectSettings };
@@ -463,7 +467,7 @@ describe('ChromeStorageService Race Condition Tests', () => {
         },
       });
 
-      const timestampData: any[] = [];
+      const timestampData: Record<string, unknown>[] = [];
       mockChromeStorage.local.set.mockImplementation(async (data) => {
         if (data.lastSettingsUpdate) {
           timestampData.push(data.lastSettingsUpdate);

@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 /**
  * Focused Test Suite for UnifiedGitHubService
  *
@@ -324,7 +325,7 @@ describe('UnifiedGitHubService - Focused Tests', () => {
       const comment = await service.addIssueComment('testuser', 'test-repo', 1, 'Test comment');
 
       expect(comment.body).toBeDefined();
-      expect(comment.issue_url).toContain('/issues/1');
+      expect(comment.url).toContain('/comments/');
     });
 
     it('should get issues with force refresh', async () => {
@@ -503,7 +504,7 @@ describe('UnifiedGitHubService - Focused Tests', () => {
       const service = new UnifiedGitHubService(TestFixtures.TokenFixtures.pat.classic);
       const result = await service.request('GET', '/user');
 
-      expect(result.login).toBe('testuser');
+      expect((result as any).login).toBe('testuser');
       expect(global.fetch).toHaveBeenCalledWith(
         'https://api.github.com/user',
         expect.objectContaining({

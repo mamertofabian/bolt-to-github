@@ -20,9 +20,9 @@ const mockStorage = {
 global.chrome = {
   storage: mockStorage,
   runtime: {
-    lastError: null,
+    lastError: undefined,
   },
-} as any;
+} as unknown as typeof chrome;
 
 describe('ChromeStorageService - BoltProjects', () => {
   let service: ChromeStorageService;
@@ -31,7 +31,7 @@ describe('ChromeStorageService - BoltProjects', () => {
     jest.clearAllMocks();
     service = new ChromeStorageService();
     // Reset lastError
-    chrome.runtime.lastError = null;
+    chrome.runtime.lastError = undefined;
   });
 
   describe('getBoltProjects', () => {
@@ -42,7 +42,8 @@ describe('ChromeStorageService - BoltProjects', () => {
           bolt_project_id: 'bolt-1',
           github_repo_name: 'test-repo',
           github_repo_owner: 'test-user',
-          github_repo_description: 'Test repository',
+          project_name: 'Test Project',
+          project_description: 'Test repository',
           is_private: false,
           repoName: 'test-repo',
           branch: 'main',
@@ -89,6 +90,7 @@ describe('ChromeStorageService - BoltProjects', () => {
         {
           id: 'project-1',
           bolt_project_id: 'bolt-1',
+          project_name: 'Test Project',
           github_repo_name: 'test-repo',
           github_repo_owner: 'test-user',
           is_private: false,
@@ -127,6 +129,7 @@ describe('ChromeStorageService - BoltProjects', () => {
         {
           id: 'project-1',
           bolt_project_id: 'bolt-1',
+          project_name: 'Test Project 1',
           github_repo_name: 'test-repo-1',
           is_private: false,
           repoName: 'test-repo-1',
@@ -135,6 +138,7 @@ describe('ChromeStorageService - BoltProjects', () => {
         {
           id: 'project-2',
           bolt_project_id: 'bolt-2',
+          project_name: 'Test Project 2',
           github_repo_name: 'test-repo-2',
           is_private: true,
           repoName: 'test-repo-2',
@@ -168,6 +172,7 @@ describe('ChromeStorageService - BoltProjects', () => {
         {
           id: 'project-1',
           bolt_project_id: 'bolt-1',
+          project_name: 'Test Project 1',
           github_repo_name: 'test-repo-1',
           is_private: false,
           repoName: 'test-repo-1',
@@ -223,6 +228,7 @@ describe('ChromeStorageService - BoltProjects', () => {
         {
           id: 'project-1',
           bolt_project_id: 'bolt-1',
+          project_name: 'Test Project 1',
           github_repo_name: 'test-repo-1',
           is_private: false,
           repoName: 'test-repo-1',
@@ -231,6 +237,7 @@ describe('ChromeStorageService - BoltProjects', () => {
         {
           id: 'project-2',
           bolt_project_id: 'bolt-2',
+          project_name: 'Test Project 2',
           github_repo_name: 'test-repo-2',
           is_private: true,
           repoName: 'test-repo-2',

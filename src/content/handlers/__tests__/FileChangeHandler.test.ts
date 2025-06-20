@@ -1,10 +1,11 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 /* eslint-env jest */
 
 import { FileChangeHandler } from '../FileChangeHandler';
 import type { INotificationManager, IUploadStatusManager } from '../../types/ManagerInterfaces';
 import type { MessageHandler } from '../../MessageHandler';
 import type { PremiumService } from '../../services/PremiumService';
-import { FilePreviewService, type FileChange } from '../../../services/FilePreviewService';
+import { FilePreviewService } from '../../../services/FilePreviewService';
 
 // Mock external dependencies
 jest.mock('../../../services/FilePreviewService');

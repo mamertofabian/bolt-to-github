@@ -94,24 +94,30 @@ describe('WhatsNewManager', () => {
 
     // Setup mock implementations with proper typing
     mockComponentLifecycleManager = {
-      createComponent: jest.fn().mockImplementation(async () => ({}) as SvelteComponent),
+      createComponent: jest
+        .fn()
+        .mockImplementation(async () => ({}) as SvelteComponent) as NonNullable<
+        IComponentLifecycleManager['createComponent']
+      >,
       destroyComponent: jest.fn(),
-      hasComponent: jest.fn().mockReturnValue(false),
+      hasComponent: jest.fn().mockReturnValue(false) as NonNullable<
+        IComponentLifecycleManager['hasComponent']
+      >,
     };
 
     mockUIElementFactory = {
-      createRootContainer: jest.fn().mockImplementation((id: string) => {
+      createRootContainer: jest.fn((id: string) => {
         mockContainer.id = id;
         // Simulate what the real implementation does - append to body
         if (!document.getElementById(id)) {
           document.body.appendChild(mockContainer);
         }
         return mockContainer;
-      }),
-      createContainer: jest.fn().mockImplementation((config: { id: string }) => {
+      }) as NonNullable<IUIElementFactory['createRootContainer']>,
+      createContainer: jest.fn((config: { id: string }) => {
         mockContainer.id = config.id;
         return mockContainer;
-      }),
+      }) as NonNullable<IUIElementFactory['createContainer']>,
     };
 
     // Mock manifest version

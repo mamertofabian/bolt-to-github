@@ -36,7 +36,9 @@
       "Bash(npm run build:*)",
       "Bash(sed:*)",
       "Bash(pnpm eslint:*)",
-      "Bash(pnpm tsc:*)"
+      "Bash(pnpm tsc:*)",
+      "Bash(pnpm typecheck:*)",
+      "Bash(pnpm check:*)"
     ],
     "deny": []
   }

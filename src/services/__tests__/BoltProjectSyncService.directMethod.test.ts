@@ -41,7 +41,7 @@ describe('BoltProjectSyncService - Direct Method Testing', () => {
       storage: {
         local: {
           get: jest.fn().mockImplementation((keys) => {
-            const result: any = {};
+            const result: Record<string, unknown> = {};
             const keyArray = Array.isArray(keys) ? keys : [keys];
 
             if (keyArray.includes('lastSettingsUpdate')) {
@@ -113,6 +113,8 @@ describe('BoltProjectSyncService - Direct Method Testing', () => {
           project_name: 'Server Project 1',
           github_repo_name: 'server-repo-1',
           github_branch: 'server-branch',
+          repoName: 'server-repo-1',
+          branch: 'server-branch',
           last_modified: new Date().toISOString(),
         },
         {
@@ -121,6 +123,8 @@ describe('BoltProjectSyncService - Direct Method Testing', () => {
           project_name: 'Server Project 2',
           github_repo_name: 'server-repo-2',
           github_branch: 'develop',
+          repoName: 'server-repo-2',
+          branch: 'develop',
           last_modified: new Date().toISOString(),
         },
       ];
@@ -128,7 +132,9 @@ describe('BoltProjectSyncService - Direct Method Testing', () => {
       mockStorageGet.mockResolvedValue({ boltProjects });
 
       // Call the method directly
-      await (service as any).syncBackToActiveStorage();
+      await (
+        service as unknown as { syncBackToActiveStorage: () => Promise<void> }
+      ).syncBackToActiveStorage();
 
       // Verify project-1 was preserved (recent change)
       expect(mockSaveGitHubSettings).toHaveBeenCalledWith(
@@ -173,13 +179,17 @@ describe('BoltProjectSyncService - Direct Method Testing', () => {
           project_name: 'New Project 1',
           github_repo_name: 'new-repo-1',
           github_branch: 'develop',
+          repoName: 'new-repo-1',
+          branch: 'develop',
           last_modified: new Date().toISOString(),
         },
       ];
 
       mockStorageGet.mockResolvedValue({ boltProjects });
 
-      await (service as any).syncBackToActiveStorage();
+      await (
+        service as unknown as { syncBackToActiveStorage: () => Promise<void> }
+      ).syncBackToActiveStorage();
 
       // All projects should be updated
       expect(mockSaveGitHubSettings).toHaveBeenCalledWith(
@@ -198,7 +208,9 @@ describe('BoltProjectSyncService - Direct Method Testing', () => {
     it('should handle empty bolt projects gracefully', async () => {
       mockStorageGet.mockResolvedValue({ boltProjects: [] });
 
-      await (service as any).syncBackToActiveStorage();
+      await (
+        service as unknown as { syncBackToActiveStorage: () => Promise<void> }
+      ).syncBackToActiveStorage();
 
       // Should not save anything
       expect(mockSaveGitHubSettings).not.toHaveBeenCalled();
@@ -236,13 +248,17 @@ describe('BoltProjectSyncService - Direct Method Testing', () => {
           project_name: 'New Project',
           github_repo_name: 'new-repo',
           github_branch: 'new-branch',
+          repoName: 'new-repo',
+          branch: 'new-branch',
           last_modified: new Date().toISOString(),
         },
       ];
 
       mockStorageGet.mockResolvedValue({ boltProjects });
 
-      await (service as any).syncBackToActiveStorage();
+      await (
+        service as unknown as { syncBackToActiveStorage: () => Promise<void> }
+      ).syncBackToActiveStorage();
 
       // Old change should be overwritten
       expect(mockSaveGitHubSettings).toHaveBeenCalledWith(
@@ -272,7 +288,9 @@ describe('BoltProjectSyncService - Direct Method Testing', () => {
         },
       });
 
-      const changes = await (service as any).getRecentProjectChanges();
+      const changes = await (
+        service as unknown as { getRecentProjectChanges: () => Promise<Map<string, unknown>> }
+      ).getRecentProjectChanges();
 
       expect(changes.size).toBe(1);
       expect(changes.has('project-1')).toBe(true);
@@ -293,7 +311,9 @@ describe('BoltProjectSyncService - Direct Method Testing', () => {
         },
       });
 
-      const changes = await (service as any).getRecentProjectChanges();
+      const changes = await (
+        service as unknown as { getRecentProjectChanges: () => Promise<Map<string, unknown>> }
+      ).getRecentProjectChanges();
 
       expect(changes.size).toBe(0);
     });
@@ -301,7 +321,9 @@ describe('BoltProjectSyncService - Direct Method Testing', () => {
     it('should handle missing data gracefully', async () => {
       (chrome.storage.local.get as jest.Mock).mockResolvedValue({});
 
-      const changes = await (service as any).getRecentProjectChanges();
+      const changes = await (
+        service as unknown as { getRecentProjectChanges: () => Promise<Map<string, unknown>> }
+      ).getRecentProjectChanges();
 
       expect(changes.size).toBe(0);
     });
@@ -309,7 +331,9 @@ describe('BoltProjectSyncService - Direct Method Testing', () => {
     it('should handle errors gracefully', async () => {
       (chrome.storage.local.get as jest.Mock).mockRejectedValue(new Error('Storage error'));
 
-      const changes = await (service as any).getRecentProjectChanges();
+      const changes = await (
+        service as unknown as { getRecentProjectChanges: () => Promise<Map<string, unknown>> }
+      ).getRecentProjectChanges();
 
       expect(changes.size).toBe(0);
     });

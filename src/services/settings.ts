@@ -76,7 +76,7 @@ export class SettingsService {
         gitHubSettings: {
           githubToken: gitHubSettings.githubToken,
           repoOwner: gitHubSettings.repoOwner,
-          projectSettings: projectSettings || undefined,
+          projectSettings: gitHubSettings.projectSettings,
         },
       };
     } catch (error) {

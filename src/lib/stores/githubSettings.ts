@@ -345,9 +345,9 @@ export const githubSettingsActions = {
         repoOwner: currentState!.repoOwner,
         projectSettings: currentState!.projectSettings,
         authenticationMethod: currentState!.authenticationMethod,
-        githubAppInstallationId: currentState!.githubAppInstallationId,
-        githubAppUsername: currentState!.githubAppUsername,
-        githubAppAvatarUrl: currentState!.githubAppAvatarUrl,
+        githubAppInstallationId: currentState!.githubAppInstallationId ?? undefined,
+        githubAppUsername: currentState!.githubAppUsername ?? undefined,
+        githubAppAvatarUrl: currentState!.githubAppAvatarUrl ?? undefined,
       };
 
       await ChromeStorageService.saveGitHubSettings(settings);

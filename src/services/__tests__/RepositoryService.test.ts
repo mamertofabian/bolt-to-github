@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import { RepositoryService } from '../RepositoryService';
 import type { IGitHubApiClient } from '../interfaces/IGitHubApiClient';
 import type { IFileService } from '../interfaces/IFileService';

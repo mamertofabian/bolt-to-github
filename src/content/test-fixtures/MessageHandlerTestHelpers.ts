@@ -8,13 +8,7 @@
 
 import { MessageHandler } from '../MessageHandler';
 import type { MessageType, Message } from '$lib/types';
-import {
-  MockChromeEnvironment,
-  MockChromePort,
-  MockWindow,
-  MockConsole,
-  BehaviorVerifier,
-} from './MessageHandlerMocks';
+import { MockChromeEnvironment, MockChromePort, BehaviorVerifier } from './MessageHandlerMocks';
 import {
   TestData,
   MessageFactory,
@@ -37,7 +31,11 @@ export class MessageHandlerTestEnvironment {
 
   constructor(
     options: {
-      runtimeOptions?: ConstructorParameters<typeof MockChromeEnvironment>[0]['runtimeOptions'];
+      runtimeOptions?: {
+        id?: string;
+        invalidated?: boolean;
+        shouldThrowOnAccess?: boolean;
+      };
     } = {}
   ) {
     this.mockEnvironment = new MockChromeEnvironment(options);
@@ -53,7 +51,7 @@ export class MessageHandlerTestEnvironment {
 
     // Ensure window is properly mocked globally for MessageHandler
     if (typeof window === 'undefined') {
-      (global as any).window = this.mockEnvironment.window;
+      (global as unknown as { window: unknown }).window = this.mockEnvironment.window;
     }
 
     // Add cleanup for timers
@@ -101,7 +99,7 @@ export class MessageHandlerTestEnvironment {
   createMessageHandler(port?: MockChromePort): MessageHandler {
     const portToUse = port || this.createHealthyPort();
     this.currentPort = portToUse;
-    this.messageHandler = new MessageHandler(portToUse as any);
+    this.messageHandler = new MessageHandler(portToUse as unknown as chrome.runtime.Port);
 
     return this.messageHandler;
   }
@@ -129,7 +127,7 @@ export class MessageHandlerTestEnvironment {
 
     const portToUse = newPort || this.createHealthyPort();
     this.currentPort = portToUse;
-    this.messageHandler.updatePort(portToUse as any);
+    this.messageHandler.updatePort(portToUse as unknown as chrome.runtime.Port);
   }
 
   // =============================================================================
@@ -202,7 +200,7 @@ export class MessageHandlerTestEnvironment {
   // MESSAGE SENDING HELPERS
   // =============================================================================
 
-  sendTestMessage(type: MessageType, data?: any): void {
+  sendTestMessage(type: MessageType, data?: unknown): void {
     if (!this.messageHandler) {
       throw new Error('MessageHandler not initialized');
     }
@@ -286,7 +284,7 @@ export class MessageHandlerTestEnvironment {
     expect(status.queuedMessages).toBe(expectedLength);
   }
 
-  assertPortMessageSent(expectedType: MessageType, expectedData?: any): void {
+  assertPortMessageSent(expectedType: MessageType, expectedData?: unknown): void {
     if (!this.currentPort) {
       throw new Error('No current port to check');
     }
@@ -294,9 +292,9 @@ export class MessageHandlerTestEnvironment {
     BehaviorVerifier.verifyPortMessageSent(this.currentPort, expectedType, expectedData);
   }
 
-  assertCustomEventDispatched(expectedType: string, expectedDetail?: any): void {
+  assertCustomEventDispatched(expectedType: string, expectedDetail?: unknown): void {
     const events = this.mockEnvironment.window.getDispatchedEvents();
-    const matchingEvent = events.find((e) => e.type === expectedType);
+    const matchingEvent = events.find((e: { type: string }) => e.type === expectedType);
 
     expect(matchingEvent).toBeDefined();
 
@@ -463,9 +461,9 @@ export class MessageHandlerTestEnvironment {
       throw new Error('No current port to simulate error on');
     }
 
-    this.currentPort.postMessage = jest.fn(() => {
+    this.currentPort.postMessage = jest.fn((_message: unknown): void => {
       throw new Error(errorMessage);
-    });
+    }) as jest.MockedFunction<(message: unknown) => void>;
   }
 
   simulateExtensionContextInvalidation(): void {
@@ -497,7 +495,7 @@ export class TestSuiteHelpers {
   // Helper to create consistent test descriptions
   static describeScenario(
     scenario: string,
-    tests: (env: MessageHandlerTestEnvironment) => void
+    tests: (getEnv: () => MessageHandlerTestEnvironment) => void
   ): void {
     describe(scenario, () => {
       let env: MessageHandlerTestEnvironment;
@@ -511,7 +509,7 @@ export class TestSuiteHelpers {
         await env.teardown();
       });
 
-      tests(env);
+      tests(() => env);
     });
   }
 

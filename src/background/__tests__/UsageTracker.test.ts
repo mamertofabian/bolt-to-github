@@ -29,7 +29,7 @@ const mockChromeRuntime = {
 global.chrome = {
   storage: mockChromeStorage,
   runtime: mockChromeRuntime,
-} as typeof chrome;
+} as unknown as typeof chrome;
 
 describe('UsageTracker', () => {
   let usageTracker: UsageTracker;
@@ -53,7 +53,7 @@ describe('UsageTracker', () => {
         callback({ analyticsEnabled: true });
       });
 
-      let savedData: Record<string, unknown>;
+      let savedData: Record<string, unknown> = {};
       mockChromeStorage.local.set.mockImplementation((data, callback) => {
         savedData = data;
         if (callback) callback();
@@ -88,7 +88,7 @@ describe('UsageTracker', () => {
         callback({ usageData: existingData });
       });
 
-      let savedData: Record<string, unknown>;
+      let savedData: Record<string, unknown> = {};
       mockChromeStorage.local.set.mockImplementation((data, callback) => {
         savedData = data;
         if (callback) callback();
@@ -118,7 +118,7 @@ describe('UsageTracker', () => {
         callback({ usageData: existingData });
       });
 
-      let savedData: Record<string, unknown>;
+      let savedData: Record<string, unknown> = {};
       mockChromeStorage.local.set.mockImplementation((data, callback) => {
         savedData = data;
         if (callback) callback();
@@ -147,7 +147,8 @@ describe('UsageTracker', () => {
         callback({ usageData: existingData });
       });
 
-      let savedData: Record<string, unknown>;
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      let savedData: Record<string, any> = {};
       mockChromeStorage.local.set.mockImplementation((data, callback) => {
         savedData = data;
         if (callback) callback();
@@ -178,7 +179,8 @@ describe('UsageTracker', () => {
         }
       });
 
-      let savedData: Record<string, unknown>;
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      let savedData: Record<string, any> = {};
       mockChromeStorage.local.set.mockImplementation((data, callback) => {
         savedData = data;
         if (callback) callback();
@@ -220,7 +222,8 @@ describe('UsageTracker', () => {
         });
       });
 
-      let savedData: Record<string, unknown>;
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      let savedData: Record<string, any> = {};
       mockChromeStorage.local.set.mockImplementation((data, callback) => {
         savedData = data;
         if (callback) callback();

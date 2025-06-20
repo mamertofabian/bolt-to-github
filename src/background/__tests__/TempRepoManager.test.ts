@@ -6,6 +6,15 @@
 jest.mock('../../content/services/OperationStateManager');
 
 import { BackgroundTempRepoManager, STORAGE_KEY } from '../TempRepoManager';
+
+// Define TempRepo interface locally since it's not exported from TempRepoManager
+interface TempRepo {
+  originalRepo: string;
+  tempRepo: string;
+  createdAt: number;
+  owner: string;
+  branch: string;
+}
 import {
   TempRepoTestLifecycle,
   TempRepoTestData,
@@ -53,7 +62,7 @@ describe('TempRepoManager', () => {
       // Verify temp repo was saved to storage
       const storageData = env.mockStorage.getLocalData();
       expect(storageData[STORAGE_KEY]).toHaveLength(1);
-      expect(storageData[STORAGE_KEY][0].originalRepo).toBe(sourceRepo);
+      expect((storageData[STORAGE_KEY] as TempRepo[])[0].originalRepo).toBe(sourceRepo);
 
       // Verify Bolt tab was created
       TempRepoAssertionHelpers.expectBoltTabCreated(
@@ -80,7 +89,7 @@ describe('TempRepoManager', () => {
 
       // Verify default branch was used
       const storageData = env.mockStorage.getLocalData();
-      expect(storageData[STORAGE_KEY][0].branch).toBe('main'); // Default branch from mock
+      expect((storageData[STORAGE_KEY] as TempRepo[])[0].branch).toBe('main'); // Default branch from mock
     });
 
     it('should handle progress callbacks during content cloning', async () => {
@@ -119,7 +128,7 @@ describe('TempRepoManager', () => {
       // Assert
       // Should fall back to 'main' branch
       const storageData = env.mockStorage.getLocalData();
-      expect(storageData[STORAGE_KEY][0].branch).toBe('main');
+      expect((storageData[STORAGE_KEY] as TempRepo[])[0].branch).toBe('main');
 
       // Import should still succeed
       expect(env.mockStatusBroadcaster.getLastStatus()?.status).toBe('success');
@@ -220,7 +229,9 @@ describe('TempRepoManager', () => {
       // Both operations should complete successfully
       const storageData = env.mockStorage.getLocalData();
       // Should have the new repo (expired ones deleted)
-      expect(storageData[STORAGE_KEY].some((r: any) => r.originalRepo === 'new-repo')).toBe(true);
+      expect(
+        (storageData[STORAGE_KEY] as TempRepo[]).some((r) => r.originalRepo === 'new-repo')
+      ).toBe(true);
     });
   });
 
@@ -263,7 +274,6 @@ describe('TempRepoManager', () => {
       manager = lifecycle.createManager('success');
 
       // Track memory usage (simplified - in real tests you'd use proper memory profiling)
-      const initialCallbacks = env.mockGitHubService.getProgressCallback('test') ? 1 : 0;
 
       // Act - Multiple imports
       for (let i = 0; i < 10; i++) {

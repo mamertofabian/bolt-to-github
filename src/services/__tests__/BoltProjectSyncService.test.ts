@@ -1,7 +1,8 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import { BoltProjectSyncService } from '../BoltProjectSyncService';
 import { ChromeStorageService } from '$lib/services/chromeStorage';
 import { SupabaseAuthService } from '../../content/services/SupabaseAuthService';
-import type { BoltProject, SyncRequest, SyncResponse } from '$lib/types';
+import type { BoltProject, SyncResponse } from '$lib/types';
 
 // Mock dependencies
 jest.mock('$lib/services/chromeStorage');

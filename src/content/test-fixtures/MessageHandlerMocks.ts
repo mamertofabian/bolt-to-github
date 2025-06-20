@@ -6,7 +6,7 @@
  * provide controlled test environments for various scenarios.
  */
 
-import type { MessageType, Message } from '$lib/types';
+import type { MessageType } from '$lib/types';
 
 // =============================================================================
 // MOCK CHROME RUNTIME PORT
@@ -16,12 +16,12 @@ export class MockChromePort implements chrome.runtime.Port {
   public name: string;
   public sender?: chrome.runtime.MessageSender;
   public onDisconnect: chrome.events.Event<(port: chrome.runtime.Port) => void>;
-  public onMessage: chrome.events.Event<(message: any, port: chrome.runtime.Port) => void>;
+  public onMessage: chrome.events.Event<(message: unknown, port: chrome.runtime.Port) => void>;
 
   private connected = true;
-  private messageHandlers: Array<(message: any, port: chrome.runtime.Port) => void> = [];
+  private messageHandlers: Array<(message: unknown, port: chrome.runtime.Port) => void> = [];
   private disconnectHandlers: Array<(port: chrome.runtime.Port) => void> = [];
-  private postMessageCalls: Array<{ message: any; timestamp: number }> = [];
+  private postMessageCalls: Array<{ message: unknown; timestamp: number }> = [];
   private disconnectError: chrome.runtime.LastError | null = null;
 
   constructor(
@@ -71,25 +71,25 @@ export class MockChromePort implements chrome.runtime.Port {
         typeof options.postMessageShouldThrow === 'string'
           ? options.postMessageShouldThrow
           : 'Port disconnected';
-      this.postMessage = jest.fn(() => {
+      this.postMessage = jest.fn((_message: unknown): void => {
         throw new Error(errorMessage);
-      });
+      }) as jest.MockedFunction<(message: unknown) => void>;
     } else if (options.connected === false) {
       // For initially disconnected ports, postMessage should throw
-      this.postMessage = jest.fn(() => {
+      this.postMessage = jest.fn((_message: unknown): void => {
         throw new Error('Port is disconnected');
-      });
+      }) as jest.MockedFunction<(message: unknown) => void>;
     } else {
-      this.postMessage = jest.fn((message: any) => {
+      this.postMessage = jest.fn((message: unknown): void => {
         if (!this.connected) {
           throw new Error('Port is disconnected');
         }
         this.postMessageCalls.push({ message, timestamp: Date.now() });
-      });
+      }) as jest.MockedFunction<(message: unknown) => void>;
     }
   }
 
-  public postMessage: jest.MockedFunction<(message: any) => void>;
+  public postMessage: jest.MockedFunction<(message: unknown) => void>;
 
   disconnect(): void {
     this.connected = false;
@@ -103,17 +103,17 @@ export class MockChromePort implements chrome.runtime.Port {
     this.disconnectHandlers.forEach((handler) => handler(this));
   }
 
-  simulateMessage(message: any): void {
+  simulateMessage(message: unknown): void {
     if (this.connected) {
       this.messageHandlers.forEach((handler) => handler(message, this));
     }
   }
 
-  getPostMessageCalls(): Array<{ message: any; timestamp: number }> {
+  getPostMessageCalls(): Array<{ message: unknown; timestamp: number }> {
     return [...this.postMessageCalls];
   }
 
-  getLastPostMessage(): any {
+  getLastPostMessage(): unknown {
     return this.postMessageCalls[this.postMessageCalls.length - 1]?.message;
   }
 
@@ -129,6 +129,7 @@ export class MockChromePort implements chrome.runtime.Port {
     return this.disconnectError;
   }
 
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   private createMockEvent<T extends (...args: any[]) => void>(
     handlers: T[]
   ): chrome.events.Event<T> {
@@ -142,7 +143,10 @@ export class MockChromePort implements chrome.runtime.Port {
       }),
       hasListener: jest.fn((callback: T) => handlers.includes(callback)),
       hasListeners: jest.fn(() => handlers.length > 0),
-    } as any;
+      getRules: jest.fn(() => Promise.resolve([])),
+      removeRules: jest.fn(() => Promise.resolve()),
+      addRules: jest.fn(() => Promise.resolve()),
+    } as unknown as chrome.events.Event<T>;
   }
 }
 
@@ -212,12 +216,12 @@ export class MockChromeRuntime {
 
 export class MockWindow {
   private eventListeners: Map<string, EventListenerOrEventListenerObject[]> = new Map();
-  private dispatchedEvents: Array<{ type: string; detail: any; timestamp: number }> = [];
+  private dispatchedEvents: Array<{ type: string; detail: unknown; timestamp: number }> = [];
 
   addEventListener(
     type: string,
     listener: EventListenerOrEventListenerObject,
-    options?: boolean | AddEventListenerOptions
+    _options?: boolean | AddEventListenerOptions
   ): void {
     if (!this.eventListeners.has(type)) {
       this.eventListeners.set(type, []);
@@ -228,7 +232,7 @@ export class MockWindow {
   removeEventListener(
     type: string,
     listener: EventListenerOrEventListenerObject,
-    options?: boolean | EventListenerOptions
+    _options?: boolean | EventListenerOptions
   ): void {
     const listeners = this.eventListeners.get(type);
     if (listeners) {
@@ -262,11 +266,11 @@ export class MockWindow {
   }
 
   // Test helpers
-  getDispatchedEvents(): Array<{ type: string; detail: any; timestamp: number }> {
+  getDispatchedEvents(): Array<{ type: string; detail: unknown; timestamp: number }> {
     return [...this.dispatchedEvents];
   }
 
-  getLastDispatchedEvent(): { type: string; detail: any; timestamp: number } | undefined {
+  getLastDispatchedEvent(): { type: string; detail: unknown; timestamp: number } | undefined {
     return this.dispatchedEvents[this.dispatchedEvents.length - 1];
   }
 
@@ -299,36 +303,36 @@ export class MockConsole {
   public info = jest.fn();
 
   // Test helpers
-  getLogCalls(): any[] {
+  getLogCalls(): unknown[][] {
     return this.log.mock.calls;
   }
 
-  getWarnCalls(): any[] {
+  getWarnCalls(): unknown[][] {
     return this.warn.mock.calls;
   }
 
-  getErrorCalls(): any[] {
+  getErrorCalls(): unknown[][] {
     return this.error.mock.calls;
   }
 
-  getDebugCalls(): any[] {
+  getDebugCalls(): unknown[][] {
     return this.debug.mock.calls;
   }
 
-  getAllCalls(): Array<{ level: string; args: any[] }> {
+  getAllCalls(): Array<{ level: string; args: unknown[] }> {
     return [
-      ...this.log.mock.calls.map((args: any) => ({ level: 'log', args })),
-      ...this.warn.mock.calls.map((args: any) => ({ level: 'warn', args })),
-      ...this.error.mock.calls.map((args: any) => ({ level: 'error', args })),
-      ...this.debug.mock.calls.map((args: any) => ({ level: 'debug', args })),
-      ...this.info.mock.calls.map((args: any) => ({ level: 'info', args })),
-    ].sort((a, b) => {
+      ...this.log.mock.calls.map((args: unknown[]) => ({ level: 'log', args })),
+      ...this.warn.mock.calls.map((args: unknown[]) => ({ level: 'warn', args })),
+      ...this.error.mock.calls.map((args: unknown[]) => ({ level: 'error', args })),
+      ...this.debug.mock.calls.map((args: unknown[]) => ({ level: 'debug', args })),
+      ...this.info.mock.calls.map((args: unknown[]) => ({ level: 'info', args })),
+    ].sort((_a, _b) => {
       // Sort by call order (simplified, assumes sequential calls)
       return 0;
     });
   }
 
-  findCallsContaining(text: string): Array<{ level: string; args: any[] }> {
+  findCallsContaining(text: string): Array<{ level: string; args: unknown[] }> {
     return this.getAllCalls().filter((call) =>
       call.args.some((arg) => typeof arg === 'string' && arg.includes(text))
     );
@@ -349,7 +353,7 @@ export class MockConsole {
 
 export class MockMessageHandler {
   private port: MockChromePort | null;
-  private messageQueue: Array<{ type: MessageType; data?: any }> = [];
+  private messageQueue: Array<{ type: MessageType; data?: unknown }> = [];
   private isConnected = false;
   private connectionCheckResults: boolean[] = [];
 
@@ -364,7 +368,7 @@ export class MockMessageHandler {
     this.processQueuedMessages();
   }
 
-  sendMessage(type: MessageType, data?: any): void {
+  sendMessage(type: MessageType, data?: unknown): void {
     const message = { type, data };
 
     if (!this.isPortConnected()) {
@@ -374,7 +378,7 @@ export class MockMessageHandler {
 
     try {
       this.port!.postMessage(message);
-    } catch (error) {
+    } catch {
       this.isConnected = false;
       this.messageQueue.push(message);
     }
@@ -423,7 +427,7 @@ export class MockMessageHandler {
     return this.port;
   }
 
-  getQueuedMessages(): Array<{ type: MessageType; data?: any }> {
+  getQueuedMessages(): Array<{ type: MessageType; data?: unknown }> {
     return [...this.messageQueue];
   }
 
@@ -447,14 +451,18 @@ export class MockMessageHandler {
 // =============================================================================
 
 export class MockChromeEnvironment {
-  public chrome: {
-    runtime: MockChromeRuntime;
-  };
-  public window: MockWindow;
-  public console: MockConsole;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  public chrome: any;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  public window: any;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  public console: any;
 
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   private originalChrome: any;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   private originalWindow: any;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   private originalConsole: any;
 
   constructor(
@@ -471,13 +479,17 @@ export class MockChromeEnvironment {
 
   setup(): void {
     // Store originals
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     this.originalChrome = (global as any).chrome;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     this.originalWindow = (global as any).window;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     this.originalConsole = (global as any).console;
 
     // Install mocks
     if (this.chrome.runtime.wouldThrowOnAccess && this.chrome.runtime.wouldThrowOnAccess()) {
       // Create a proxy that throws on access
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       (global as any).chrome = new Proxy(
         {},
         {
@@ -497,17 +509,23 @@ export class MockChromeEnvironment {
         }
       );
     } else {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       (global as any).chrome = this.chrome;
     }
 
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     (global as any).window = this.window;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     (global as any).console = this.console;
   }
 
   teardown(): void {
     // Restore originals
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     (global as any).chrome = this.originalChrome;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     (global as any).window = this.originalWindow;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     (global as any).console = this.originalConsole;
   }
 
@@ -571,9 +589,9 @@ export class BehaviorVerifier {
   static verifyPortMessageSent(
     port: MockChromePort,
     expectedType: MessageType,
-    expectedData?: any
+    expectedData?: unknown
   ): void {
-    const lastMessage = port.getLastPostMessage();
+    const lastMessage = port.getLastPostMessage() as { type: MessageType; data?: unknown };
     expect(lastMessage).toBeDefined();
     expect(lastMessage.type).toBe(expectedType);
 
@@ -590,7 +608,7 @@ export class BehaviorVerifier {
   static verifyCustomEventDispatched(
     window: MockWindow,
     expectedType: string,
-    expectedDetail?: any
+    expectedDetail?: unknown
   ): void {
     const lastEvent = window.getLastDispatchedEvent();
     expect(lastEvent).toBeDefined();
@@ -607,7 +625,7 @@ export class BehaviorVerifier {
     expectedMessage: string
   ): void {
     const calls = console[level].mock.calls;
-    const found = calls.some((call: any[]) =>
+    const found = calls.some((call: unknown[]) =>
       call.some((arg) => typeof arg === 'string' && arg.includes(expectedMessage))
     );
     expect(found).toBe(true);
