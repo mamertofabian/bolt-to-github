@@ -1,16 +1,17 @@
 <script lang="ts">
-  import { createEventDispatcher, onMount } from 'svelte';
-  import { UnifiedGitHubService } from '../../services/UnifiedGitHubService';
-  import RepoSettings from '$lib/components/RepoSettings.svelte';
   import IssueManager from '$lib/components/IssueManager.svelte';
   import QuickIssueForm from '$lib/components/QuickIssueForm.svelte';
-  import { isPremium } from '$lib/stores/premiumStore';
+  import RepoSettings from '$lib/components/RepoSettings.svelte';
   import { issuesStore } from '$lib/stores/issuesStore';
-  import type { UpgradeModalType } from '$lib/utils/upgradeModal';
+  import { isPremium } from '$lib/stores/premiumStore';
   import { createLogger } from '$lib/utils/logger';
+  import type { UpgradeModalType } from '$lib/utils/upgradeModal';
   import type { GitHubCommit } from 'src/services/types/repository';
+  import { createEventDispatcher, onMount } from 'svelte';
+  import { UnifiedGitHubService } from '../../services/UnifiedGitHubService';
 
   const logger = createLogger('ProjectStatus');
+  const dispatch = createEventDispatcher();
 
   export let projectId: string;
   export let gitHubUsername: string;
@@ -362,8 +363,6 @@
     };
   });
 
-  const dispatch = createEventDispatcher();
-
   function openGitHub(event: MouseEvent | KeyboardEvent) {
     event.stopPropagation();
     chrome.tabs.create({ url: `https://github.com/${gitHubUsername}/${repoName}/tree/${branch}` });
@@ -398,8 +397,8 @@
       return;
     }
 
-    // Send a message to trigger file change detection and comparison
-    chrome.runtime.sendMessage({ action: 'CHECK_FILE_CHANGES' });
+    // Use the existing showFileChanges mechanism instead of CHECK_FILE_CHANGES
+    dispatch('showFileChanges');
   }
 
   function openIssueManager(event: MouseEvent | KeyboardEvent) {

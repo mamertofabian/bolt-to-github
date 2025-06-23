@@ -1,10 +1,10 @@
 <script lang="ts">
   import { Button } from '$lib/components/ui/button';
-  import Modal from '$lib/components/ui/modal/Modal.svelte';
   import ConfirmationDialog from '$lib/components/ui/dialog/ConfirmationDialog.svelte';
+  import Modal from '$lib/components/ui/modal/Modal.svelte';
+  import { RotateCcw, Upload } from 'lucide-svelte';
   import FileChanges from '../../components/FileChanges.svelte';
   import type { FileChange } from '../../services/FilePreviewService';
-  import { Upload, RotateCcw } from 'lucide-svelte';
 
   export let show = false;
   export let fileChanges: Map<string, FileChange> | null = null;
