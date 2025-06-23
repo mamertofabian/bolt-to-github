@@ -230,6 +230,19 @@ describe('UnifiedGitHubService - Focused Tests', () => {
       );
     });
 
+    it('should create repository without auto_init', async () => {
+      const service = new UnifiedGitHubService(TestFixtures.TokenFixtures.pat.classic);
+      await service.createRepo('new-repo', true, 'Test repository');
+
+      expect(global.fetch).toHaveBeenCalledWith(
+        'https://api.github.com/user/repos',
+        expect.objectContaining({
+          method: 'POST',
+          body: expect.stringContaining('"auto_init":false'),
+        })
+      );
+    });
+
     it('should list user repositories', async () => {
       const service = new UnifiedGitHubService(TestFixtures.TokenFixtures.pat.classic);
       const repos = await service.listRepos();
@@ -272,6 +285,25 @@ describe('UnifiedGitHubService - Focused Tests', () => {
       const isEmpty = await service.isRepoEmpty('testuser', 'test-repo');
 
       expect(typeof isEmpty).toBe('boolean');
+    });
+
+    it('should initialize empty repo with .gitkeep instead of README', async () => {
+      const service = new UnifiedGitHubService(TestFixtures.TokenFixtures.pat.classic);
+      await service.initializeEmptyRepo('testuser', 'test-repo', 'main');
+
+      expect(global.fetch).toHaveBeenCalledWith(
+        'https://api.github.com/repos/testuser/test-repo/contents/.gitkeep',
+        expect.objectContaining({
+          method: 'PUT',
+          body: expect.stringContaining('"message":"Initialize repository"'),
+        })
+      );
+
+      // Verify it's NOT trying to create README.md
+      expect(global.fetch).not.toHaveBeenCalledWith(
+        expect.stringContaining('/contents/README.md'),
+        expect.any(Object)
+      );
     });
   });
 

@@ -544,9 +544,9 @@ describe('RepositoryService', () => {
   });
 
   describe('initializeEmptyRepo', () => {
-    it('should initialize a repository with a README file', async () => {
+    it('should initialize a repository with a .gitkeep file', async () => {
       // Arrange
-      mockFileService.writeFile.mockResolvedValueOnce({ sha: 'mock-sha-readme' });
+      mockFileService.writeFile.mockResolvedValueOnce({ sha: 'mock-sha-gitkeep' });
 
       // Act
       await repositoryService.initializeEmptyRepo('testuser', 'test-repo', 'main');
@@ -555,10 +555,28 @@ describe('RepositoryService', () => {
       expect(mockFileService.writeFile).toHaveBeenCalledWith(
         'testuser',
         'test-repo',
-        'README.md',
-        expect.stringContaining('# test-repo'),
+        '.gitkeep',
+        '',
         'main',
-        'Initialize repository with auto-generated README'
+        "Initialize repository with branch 'main'"
+      );
+    });
+
+    it('should not create a README.md file', async () => {
+      // Arrange
+      mockFileService.writeFile.mockResolvedValueOnce({ sha: 'mock-sha-gitkeep' });
+
+      // Act
+      await repositoryService.initializeEmptyRepo('testuser', 'test-repo', 'main');
+
+      // Assert
+      expect(mockFileService.writeFile).not.toHaveBeenCalledWith(
+        expect.any(String),
+        expect.any(String),
+        'README.md',
+        expect.any(String),
+        expect.any(String),
+        expect.any(String)
       );
     });
   });
