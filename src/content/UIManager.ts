@@ -3,7 +3,6 @@ import type { MessageHandler } from './MessageHandler';
 
 // Import new types and managers
 import type { NotificationOptions } from './types/UITypes';
-import type { IPremiumStatusUpdater } from './types/ManagerInterfaces';
 
 // Define the state structure for type safety
 interface UIManagerState {
@@ -36,7 +35,7 @@ import { SettingsService } from '../services/settings';
 
 const logger = createLogger('UIManager');
 
-export class UIManager implements IPremiumStatusUpdater {
+export class UIManager {
   private static instance: UIManager | null = null;
   private isGitHubUpload = false;
 

@@ -1,6 +1,5 @@
 import { createLogger } from '../../lib/utils/logger';
 import { debounce, throttle } from '../../lib/utils/debounce';
-import type { IPremiumStatusUpdater } from '../types/ManagerInterfaces';
 
 const logger = createLogger('PremiumService');
 
@@ -22,7 +21,6 @@ export interface PremiumStatus {
 export class PremiumService {
   private premiumStatus: PremiumStatus;
   private currentAuthPlan: 'free' | 'monthly' | 'yearly' = 'free';
-  private uiManager?: IPremiumStatusUpdater; // Reference to UIManager for updating components
   private lastSubscriptionCheck: number = 0;
   private readonly SUBSCRIPTION_CHECK_CACHE_DURATION = 300000; // 5 minutes cache for subscription checks
 
@@ -56,9 +54,10 @@ export class PremiumService {
 
   /**
    * Set UIManager reference for updating components when premium status changes
+   * Note: Premium status updates have been simplified, so this is a no-op
    */
-  public setUIManager(uiManager: IPremiumStatusUpdater): void {
-    this.uiManager = uiManager;
+  public setUIManager(_uiManager: unknown): void {
+    // No longer needed since we removed premium status update functionality
   }
 
   /**

@@ -62,8 +62,3 @@ export interface IBaseManager {
   initialize?(): void | Promise<void>;
   cleanup(): void;
 }
-
-// Minimal interface for premium status updates
-export interface IPremiumStatusUpdater {
-  // No methods needed for simplified dropdown
-}
