@@ -23,7 +23,8 @@ export type MessageType =
   | 'GITHUB_APP_SYNCED'
   | 'SUBSCRIPTION_UPGRADED'
   | 'SYNC_BOLT_PROJECTS'
-  | 'NOTIFY_GITHUB_APP_SYNC';
+  | 'NOTIFY_GITHUB_APP_SYNC'
+  | 'SHOW_UPGRADE_MODAL';
 
 // Base message interface
 interface BaseMessage {
@@ -58,6 +59,11 @@ export interface NotifyGitHubAppSyncMessage extends BaseMessage {
   data: { installationId?: number; username?: string; avatarUrl?: string };
 }
 
+export interface ShowUpgradeModalMessage extends BaseMessage {
+  type: 'SHOW_UPGRADE_MODAL';
+  feature?: string;
+}
+
 export interface GenericMessage extends BaseMessage {
   type: Exclude<
     MessageType,
@@ -66,6 +72,7 @@ export interface GenericMessage extends BaseMessage {
     | 'OPEN_FILE_CHANGES'
     | 'IMPORT_PRIVATE_REPO'
     | 'NOTIFY_GITHUB_APP_SYNC'
+    | 'SHOW_UPGRADE_MODAL'
   >;
   data?: unknown;
   action?: string;
@@ -83,6 +90,7 @@ export type Message =
   | OpenFileChangesMessage
   | ImportPrivateRepoMessage
   | NotifyGitHubAppSyncMessage
+  | ShowUpgradeModalMessage
   | GenericMessage;
 
 export interface ProjectSetting {

@@ -218,7 +218,7 @@ export class MessageHandlerTestEnvironment {
         }
 
         const message = messages[index++];
-        this.sendTestMessage(message.type, message.data);
+        this.sendTestMessage(message.type, 'data' in message ? message.data : message.feature);
 
         if (index < messages.length) {
           this.scheduleDelayedAction(sendNext, intervalMs);
@@ -240,7 +240,9 @@ export class MessageHandlerTestEnvironment {
 
     if (intervalMs === 0 || intervalMs === 1) {
       // Send all messages synchronously for performance tests
-      messages.forEach((msg) => this.sendTestMessage(msg.type, msg.data));
+      messages.forEach((msg) =>
+        this.sendTestMessage(msg.type, 'data' in msg ? msg.data : msg.feature)
+      );
       return Promise.resolve();
     }
 
