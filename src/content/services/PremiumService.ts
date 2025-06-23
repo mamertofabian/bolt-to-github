@@ -29,6 +29,10 @@ export class PremiumService {
   private debouncedSaveData: () => void;
   private throttledUpdatePremiumStatus: (status: Partial<PremiumStatus>) => void;
   private isSaving: boolean = false;
+  private storageListener?: (
+    changes: { [key: string]: chrome.storage.StorageChange },
+    namespace: string
+  ) => Promise<void>;
 
   constructor() {
     this.premiumStatus = {
@@ -80,7 +84,7 @@ export class PremiumService {
    * Set up listener to sync premium status from popup to content scripts
    */
   private setupPopupPremiumStatusSync(): void {
-    chrome.storage.onChanged.addListener(async (changes, namespace) => {
+    this.storageListener = async (changes, namespace) => {
       if (namespace === 'sync' && changes.popupPremiumStatus) {
         const newPopupStatus = changes.popupPremiumStatus.newValue;
         if (newPopupStatus) {
@@ -99,7 +103,8 @@ export class PremiumService {
           logger.info('✅ Premium status synced from popup to content script');
         }
       }
-    });
+    };
+    chrome.storage.onChanged.addListener(this.storageListener);
   }
 
   /**
@@ -149,7 +154,8 @@ export class PremiumService {
       // If popup has more recent premium status, use that instead
       if (
         syncResult.popupPremiumStatus &&
-        (!statusToUse || syncResult.popupPremiumStatus.lastUpdated > (statusToUse.lastUpdated || 0))
+        (!statusToUse ||
+          (syncResult.popupPremiumStatus.lastUpdated || 0) > (statusToUse.lastUpdated || 0))
       ) {
         logger.info('🔄 Using more recent premium status from popup');
         statusToUse = {
@@ -486,5 +492,15 @@ export class PremiumService {
         githubIssues: false,
       },
     });
+  }
+
+  /**
+   * Cleanup method to remove listeners and prevent memory leaks
+   */
+  public cleanup(): void {
+    if (this.storageListener) {
+      chrome.storage.onChanged.removeListener(this.storageListener);
+      this.storageListener = undefined;
+    }
   }
 }

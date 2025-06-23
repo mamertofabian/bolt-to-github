@@ -62,7 +62,6 @@ export interface NotifyGitHubAppSyncMessage extends BaseMessage {
 export interface ShowUpgradeModalMessage extends BaseMessage {
   type: 'SHOW_UPGRADE_MODAL';
   data?: { feature?: string };
-  feature?: string;
 }
 
 export interface GenericMessage extends BaseMessage {
