@@ -1,5 +1,16 @@
 ## 2025-06-14 - Version 1.3.6
 
+### ⚠️ Important: This is a Major Stability Release
+
+**Why This Update Matters:**
+
+- **Fixes critical data loss bugs** that could cause your project settings to disappear
+- **Prevents wrong repository pushes** during multi-tab usage
+- **Ensures your projects are never lost** with automatic cross-device synchronization
+- **Eliminates storage race conditions** that caused frustrating data overwrites
+
+**Recommendation:** Update immediately to prevent project data loss.
+
 ### 🎉 New Features
 
 - **Bolt Project Synchronization System** - Comprehensive bidirectional sync between local extension and backend server
@@ -13,10 +24,13 @@
 
 ### 🔧 Performance & Stability
 
+- **Critical Race Condition Fixes** - Eliminated data loss scenarios through thread-safe storage operations
+- **Storage Write Queue** - Serialized all storage operations to prevent concurrent writes and data corruption
 - **Enhanced logging system** - Debug logging now enabled in production environment by default
 - **Comprehensive error handling** - Improved error reporting and recovery mechanisms in sync operations
 - **Storage optimization** - Efficient Chrome storage integration with BoltProject interface
 - **Authentication integration** - Seamless integration with existing Supabase authentication system
+- **Conflict Detection** - Added timestamp tracking and 30-second threshold to prevent overwriting recent changes
 
 ### 🧪 Testing & Quality Improvements
 
@@ -34,11 +48,15 @@
 
 ### 🐛 Bug Fixes
 
+- **CRITICAL: Data Loss Prevention** - Fixed race conditions that could cause project settings to disappear or be overwritten
+- **Project Persistence Issues** - Eliminated scenarios where users would lose their GitHub repository mappings
+- **Dropdown Simplification** - Removed complex premium features from GitHub dropdown for better reliability
 - **TypeScript errors** - Resolved all TypeScript compilation issues in sync service
 - **Storage format alignment** - Fixed inconsistencies between local and backend data formats
 - **Field mapping corrections** - Updated API field names (deletedProjectIds → deletedProjects)
 - **Project name requirements** - Added missing project_name field for backend compatibility
 - **Logging configuration** - Fixed logger initialization patterns across sync service
+- **Tab-based Project Tracking** - Fixed issue where wrong repository could be selected during multi-tab usage
 
 ### 📚 Documentation & Development
 
