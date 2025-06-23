@@ -60,7 +60,6 @@
   let isLoadingRepos = false;
   let showRepoDropdown = false;
   let repoSearchQuery = '';
-  let repoInputFocused = false;
   let repoExists = false;
   let selectedIndex = -1;
   let isCheckingPermissions = false;
@@ -82,8 +81,8 @@
   // GitHub App authentication state
   let isConnectingGitHubApp = false;
   let githubAppConnectionError: string | null = null;
-  let githubAppValidationResult: { isValid: boolean; error?: string; userInfo?: any } | null = null;
-  let showGitHubAppPermissions = false;
+  let githubAppValidationResult: { isValid: boolean; error?: string; userInfo?: unknown } | null =
+    null;
 
   // Collapsible state - add manual toggle state
   let manuallyToggled = false;
@@ -275,13 +274,11 @@
   }
 
   function handleRepoFocus() {
-    repoInputFocused = true;
     showRepoDropdown = true;
     repoSearchQuery = repoName;
   }
 
   function handleRepoBlur() {
-    repoInputFocused = false;
     // Delay hiding dropdown to allow click events to register
     setTimeout(() => {
       showRepoDropdown = false;
@@ -299,14 +296,6 @@
     );
 
     if (relevantChanges.length > 0) {
-      const filteredChanges = relevantChanges.reduce(
-        (acc, key) => {
-          acc[key] = changes[key];
-          return acc;
-        },
-        {} as Record<string, chrome.storage.StorageChange>
-      );
-
       logger.debug(
         'Storage changes detected in GitHubSettings:',
         relevantChanges,
@@ -565,7 +554,6 @@
     }
 
     // Set up a listener for chrome.runtime.lastError before calling onSave
-    const originalError = chrome.runtime.lastError;
 
     try {
       await onSave();

@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 /**
  * Critical Business Logic Tests for GitHubAppService
  *
@@ -8,32 +9,25 @@
  * - Storage Management
  */
 
-import { GitHubAppService } from '../GitHubAppService';
 import {
   setupGitHubAppServiceTest,
-  createTestScenario,
   setupCommonMockResponses,
   assertFetchCall,
   assertStorageUpdate,
   simulateError,
-  simulateTokenRenewal,
   advanceTime,
-  resetMocks,
   type GitHubAppServiceTestEnvironment,
 } from './test-fixtures';
 import {
   validGitHubAppConfig,
   validOAuthFlowResponse,
   oAuthFlowNoInstallationResponse,
-  validTokenResponse,
   renewedTokenResponse,
   noGitHubAppError,
   tokenExpiredNoRefreshError,
   tokenRenewalFailedError,
   validAuthStorageData,
   createGitHubAppConfigWithExpiry,
-  createOAuthTestCodes,
-  createOAuthTestStates,
 } from './test-fixtures';
 
 describe('GitHubAppService - Critical Business Logic', () => {

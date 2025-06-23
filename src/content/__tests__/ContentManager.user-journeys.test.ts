@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 /**
  * ContentManager User Journey Tests
  *
@@ -10,7 +11,10 @@
 
 // Mock WhatsNewModal component
 jest.mock('$lib/components/WhatsNewModal.svelte', () => ({
-  default: jest.fn().mockImplementation(function (this: any, options: any) {
+  default: jest.fn().mockImplementation(function (
+    this: any,
+    options: { target: Element; props: unknown }
+  ) {
     this.target = options.target;
     this.props = options.props;
     this.$destroy = jest.fn();
@@ -50,14 +54,13 @@ import {
   validateCleanup,
   getContentManagerState,
   wait,
-  validateMessageFlow,
   PerformanceMonitor,
-  TestEnvironment,
+  type TestEnvironment,
   TestPortStates,
   TestUrls,
   TestMessages,
   TestProjectIds,
-  TestStorageData,
+  MockUIManager,
 } from '../test-fixtures';
 
 describe('ContentManager - User Journeys', () => {
@@ -118,8 +121,8 @@ describe('ContentManager - User Journeys', () => {
       await wait(50); // Reduced wait time
 
       // 4. User triggers file changes detection
-      if (testEnv.mockUIManager) {
-        const uiManager = testEnv.mockUIManager.getInstance(testEnv.mockMessageHandler!);
+      if (testEnv.mockUIManager && testEnv.mockMessageHandler) {
+        const uiManager = MockUIManager.getInstance(testEnv.mockMessageHandler);
         await uiManager.handleShowChangedFiles();
 
         expect(uiManager.getShowChangedFilesCalls()).toBe(1);
@@ -142,8 +145,8 @@ describe('ContentManager - User Journeys', () => {
       performanceMonitor.mark('workflow_complete');
 
       // Verify complete workflow
-      if (testEnv.mockUIManager) {
-        const uiManager = testEnv.mockUIManager.getInstance(testEnv.mockMessageHandler!);
+      if (testEnv.mockUIManager && testEnv.mockMessageHandler) {
+        const uiManager = MockUIManager.getInstance(testEnv.mockMessageHandler);
         const uploadStatuses = uiManager.getUploadStatuses();
         expect(uploadStatuses).toHaveLength(2);
         expect(uploadStatuses[1].status).toBe('success');
@@ -231,7 +234,7 @@ describe('ContentManager - User Journeys', () => {
       setupChromeAPIMocks(testEnv, { hasRuntimeId: true });
       setupWindowMocks(TestUrls.BOLT_NEW_PROJECT);
 
-      const contentManager = new ContentManager();
+      new ContentManager();
       await wait(100);
 
       // Simulate keyboard shortcuts - should not throw
@@ -251,7 +254,7 @@ describe('ContentManager - User Journeys', () => {
       setupChromeAPIMocks(testEnv, { hasRuntimeId: true });
       setupWindowMocks(TestUrls.BOLT_NEW_PROJECT);
 
-      const contentManager = new ContentManager();
+      const _contentManager = new ContentManager();
 
       // Simulate upload in progress
       if (testEnv.mockPort) {
@@ -265,7 +268,7 @@ describe('ContentManager - User Journeys', () => {
       await wait(100);
 
       // Should maintain state and continue operation
-      const state = getContentManagerState(contentManager);
+      const state = getContentManagerState(_contentManager);
       expect(state.hasPort).toBe(true);
       expect(state.isDestroyed).toBe(false);
     });
@@ -275,7 +278,7 @@ describe('ContentManager - User Journeys', () => {
       setupChromeAPIMocks(testEnv, { hasRuntimeId: true });
       setupWindowMocks(TestUrls.BOLT_NEW_PROJECT);
 
-      const contentManager = new ContentManager();
+      new ContentManager();
 
       // Simulate page unload
       const unloadEvent = new Event('unload');
@@ -290,11 +293,11 @@ describe('ContentManager - User Journeys', () => {
       setupChromeAPIMocks(testEnv, { hasRuntimeId: true });
       setupWindowMocks(TestUrls.BOLT_NEW_PROJECT);
 
-      const contentManager = new ContentManager();
+      const _contentManager = new ContentManager();
       await wait(100);
 
       // Should handle premium status updates without errors
-      expect(contentManager).toBeDefined();
+      expect(_contentManager).toBeDefined();
     });
 
     it('should handle push reminder interactions', async () => {
@@ -302,11 +305,11 @@ describe('ContentManager - User Journeys', () => {
       setupChromeAPIMocks(testEnv, { hasRuntimeId: true });
       setupWindowMocks(TestUrls.BOLT_NEW_PROJECT);
 
-      const contentManager = new ContentManager();
+      const _contentManager = new ContentManager();
       await wait(100);
 
       // Should handle push reminder operations without errors
-      expect(contentManager).toBeDefined();
+      expect(_contentManager).toBeDefined();
     });
   });
 
@@ -329,7 +332,7 @@ describe('ContentManager - User Journeys', () => {
       setupChromeAPIMocks(testEnv, { hasRuntimeId: true });
       setupWindowMocks(TestUrls.BOLT_NEW_PROJECT);
 
-      const contentManager = new ContentManager();
+      new ContentManager();
 
       // Send multiple heartbeat responses
       const startTime = performance.now();
@@ -353,7 +356,7 @@ describe('ContentManager - User Journeys', () => {
       setupChromeAPIMocks(testEnv, { hasRuntimeId: true });
       setupWindowMocks(TestUrls.BOLT_NEW_PROJECT);
 
-      const contentManager = new ContentManager();
+      const _contentManager = new ContentManager();
 
       // Simulate extended session with various activities
       for (let i = 0; i < 5; i++) {
@@ -381,7 +384,7 @@ describe('ContentManager - User Journeys', () => {
       expect(resources.timers).toBeLessThanOrEqual(3); // Should not accumulate resources
 
       // Verify functionality still works
-      const state = getContentManagerState(contentManager);
+      const state = getContentManagerState(_contentManager);
       expect(state.hasPort).toBe(true);
       expect(state.isDestroyed).toBe(false);
     });
@@ -393,12 +396,12 @@ describe('ContentManager - User Journeys', () => {
       setupChromeAPIMocks(testEnv, { hasRuntimeId: true });
       setupWindowMocks(TestUrls.BOLT_NEW_PROJECT);
 
-      const contentManager = new ContentManager();
+      const _contentManager = new ContentManager();
 
       await wait(200);
 
       // Verify that initialization was successful by checking the ContentManager state
-      const state = getContentManagerState(contentManager);
+      const state = getContentManagerState(_contentManager);
       expect(state.hasPort).toBe(true);
       expect(state.hasMessageHandler).toBe(true);
 
@@ -420,7 +423,7 @@ describe('ContentManager - User Journeys', () => {
       setupChromeAPIMocks(testEnv, { hasRuntimeId: true });
       setupWindowMocks(TestUrls.BOLT_NEW_PROJECT);
 
-      const contentManager = new ContentManager();
+      new ContentManager();
 
       // Disconnect temporarily
       await simulatePortState(testEnv, TestPortStates.DISCONNECTED_NORMAL);

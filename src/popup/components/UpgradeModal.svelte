@@ -156,7 +156,7 @@
         <div class="mb-2">
           <h3 class="text-slate-200 font-medium mb-2 text-sm">Pro Features:</h3>
           <div class="space-y-1">
-            {#each features as premiumFeature, index}
+            {#each features as premiumFeature}
               <div
                 class="border border-slate-700/50 rounded-md overflow-hidden bg-slate-800/30 hover:bg-slate-800/50 transition-all duration-200"
               >

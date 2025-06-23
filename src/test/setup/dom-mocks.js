@@ -8,14 +8,14 @@
 /* eslint-env jest */
 
 // Mock MutationObserver
-global.MutationObserver = jest.fn().mockImplementation((callback) => ({
+global.MutationObserver = jest.fn().mockImplementation((_callback) => ({
   observe: jest.fn(),
   disconnect: jest.fn(),
   takeRecords: jest.fn().mockReturnValue([]),
 }));
 
 // Mock IntersectionObserver
-global.IntersectionObserver = jest.fn().mockImplementation((callback) => ({
+global.IntersectionObserver = jest.fn().mockImplementation((_callback) => ({
   observe: jest.fn(),
   unobserve: jest.fn(),
   disconnect: jest.fn(),
@@ -25,7 +25,7 @@ global.IntersectionObserver = jest.fn().mockImplementation((callback) => ({
 }));
 
 // Mock ResizeObserver
-global.ResizeObserver = jest.fn().mockImplementation((callback) => ({
+global.ResizeObserver = jest.fn().mockImplementation((_callback) => ({
   observe: jest.fn(),
   unobserve: jest.fn(),
   disconnect: jest.fn(),
@@ -33,7 +33,7 @@ global.ResizeObserver = jest.fn().mockImplementation((callback) => ({
 
 // Mock window.getComputedStyle
 Object.defineProperty(window, 'getComputedStyle', {
-  value: jest.fn().mockImplementation((element) => ({
+  value: jest.fn().mockImplementation((_element) => ({
     getPropertyValue: jest.fn().mockReturnValue(''),
     display: 'block',
     visibility: 'visible',

@@ -1,6 +1,4 @@
 import type { ProcessingStatus, UploadStatusState, ProjectSettings, PushRecord } from '$lib/types';
-import type { UnifiedGitHubService } from '../../UnifiedGitHubService';
-import type { GitHubComparisonService } from '../../GitHubComparisonService';
 
 /**
  * Comprehensive test fixtures for ZipHandler testing
@@ -112,6 +110,7 @@ export function createTestBlob(files: Map<string, string>, options?: { corrupt?:
     // Return a corrupted blob that will fail to unzip
     const blob = new Blob([new Uint8Array([0xff, 0xff, 0xff, 0xff])], { type: 'application/zip' });
     // Add our content for the mock
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     (blob as any)._content = 'corrupted';
     return blob;
   }
@@ -121,6 +120,7 @@ export function createTestBlob(files: Map<string, string>, options?: { corrupt?:
   const content = JSON.stringify(Array.from(files.entries()));
   const blob = new Blob([content], { type: 'text/plain' });
   // Add our content for the mock
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   (blob as any)._content = content;
   return blob;
 }

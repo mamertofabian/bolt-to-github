@@ -84,7 +84,11 @@ describe('BackgroundService Edge Cases and Boundary Testing', () => {
 
       for (const projectId of edgeCaseProjectIds) {
         try {
-          port.simulateMessage(MessageFixtures.zipDataMessage(projectId));
+          // Handle null/undefined values by converting to string representation
+          const safeProjectId =
+            projectId === null ? 'null' : projectId === undefined ? 'undefined' : projectId;
+
+          port.simulateMessage(MessageFixtures.zipDataMessage(safeProjectId));
           await new Promise((resolve) => setTimeout(resolve, 150));
 
           // Should handle gracefully without crashing
@@ -484,14 +488,8 @@ describe('BackgroundService Edge Cases and Boundary Testing', () => {
 
       // Should handle DNS failures gracefully
       const operations = env.serviceFactory.operationStateManager.getAllOperations();
-      if (operations.length > 0) {
-        const dnsFailure = operations.find(
-          (op) => op.status === 'failed' && op.error?.message.toLowerCase().includes('network')
-        );
-
-        // May or may not detect DNS failure specifically, but should not crash
-        expect(operations.length).toBeGreaterThan(0);
-      }
+      // May or may not detect DNS failure specifically, but should not crash
+      expect(operations.length).toBeGreaterThan(0);
 
       // Service should recover when network is restored
       env.serviceFactory.setupSuccessfulUploadScenario();
@@ -551,14 +549,8 @@ describe('BackgroundService Edge Cases and Boundary Testing', () => {
 
       // Service should detect context invalidation
       const operations = env.serviceFactory.operationStateManager.getAllOperations();
-      if (operations.length > 0) {
-        const contextFailure = operations.find(
-          (op) => op.status === 'failed' && op.error?.message.toLowerCase().includes('context')
-        );
-
-        // May detect context invalidation or just fail - should not crash
-        expect(operations.length).toBeGreaterThan(0);
-      }
+      // May detect context invalidation or just fail - should not crash
+      expect(operations.length).toBeGreaterThan(0);
     });
   });
 });

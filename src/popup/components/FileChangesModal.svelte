@@ -58,7 +58,9 @@
     // Check if there are actual changes
     if (!hasActualChanges) {
       // Show confirmation dialog for no changes
-      confirmationMessage = `No changes detected (${changeCounts.unchanged} unchanged files).<br><br>Do you still want to push to GitHub?`;
+      confirmationMessage = `No changes detected (${changeCounts.unchanged} unchanged files).
+
+Do you still want to push to GitHub?`;
       pendingPushAction = () => {
         // Send a message to trigger the GitHub push action
         chrome.runtime.sendMessage({ action: 'PUSH_TO_GITHUB' });

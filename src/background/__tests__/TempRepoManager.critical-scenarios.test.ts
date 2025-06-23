@@ -5,15 +5,8 @@
  * significant user impact if they fail
  */
 
-import { BackgroundTempRepoManager, STORAGE_KEY } from '../TempRepoManager';
-import {
-  TempRepoTestLifecycle,
-  TempRepoScenarioBuilder,
-  TempRepoTestData,
-  TempRepoAssertionHelpers,
-  AsyncOperationHelpers,
-  DebuggingHelpers,
-} from '../test-fixtures';
+import { BackgroundTempRepoManager } from '../TempRepoManager';
+import { TempRepoTestLifecycle } from '../test-fixtures';
 import type { TempRepoManagerTestEnvironment } from '../test-fixtures';
 
 // Mock the OperationStateManager module

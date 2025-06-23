@@ -12,11 +12,7 @@ import {
   createMockChromeStorageAPI,
   createControlledFetch,
 } from './GitHubAppServiceMocks';
-import {
-  validGitHubAppConfig,
-  validAuthStorageData,
-  createGitHubAppConfigWithExpiry,
-} from './GitHubAppServiceTestFixtures';
+import { validGitHubAppConfig } from './GitHubAppServiceTestFixtures';
 import type { GitHubAppConfig } from '../../types/authentication';
 
 // ===========================
@@ -37,7 +33,7 @@ export interface GitHubAppServiceTestEnvironment {
 export function setupGitHubAppServiceTest(
   options: {
     useRealService?: boolean;
-    initialStorage?: Record<string, any>;
+    initialStorage?: Record<string, unknown>;
     initialConfig?: GitHubAppConfig;
     withSupabaseToken?: boolean;
   } = {}
@@ -50,11 +46,11 @@ export function setupGitHubAppServiceTest(
   global.chrome = {
     ...global.chrome,
     storage: createMockChromeStorageAPI(storage),
-  } as any;
+  } as unknown as typeof global.chrome;
 
   // Mock global fetch
   const originalFetch = global.fetch;
-  global.fetch = createControlledFetch(fetchMock) as any;
+  global.fetch = createControlledFetch(fetchMock) as typeof global.fetch;
 
   let service: GitHubAppService;
   let mockService: MockGitHubAppService;
@@ -76,7 +72,7 @@ export function setupGitHubAppServiceTest(
     }
   } else {
     mockService = new MockGitHubAppService();
-    service = mockService as any;
+    service = mockService as unknown as GitHubAppService;
   }
 
   if (options.initialConfig) {
@@ -203,7 +199,7 @@ export function setupCommonMockResponses(
       );
       break;
 
-    case 'mixed':
+    case 'mixed': {
       // First call fails, second succeeds (for retry scenarios)
       let callCount = 0;
       fetchMock.setResponse('/functions/v1/get-github-token', {
@@ -227,8 +223,9 @@ export function setupCommonMockResponses(
         get status() {
           return callCount === 1 ? 401 : 200;
         },
-      } as any);
+      } as Record<string, unknown>);
       break;
+    }
   }
 }
 
@@ -245,7 +242,7 @@ export function assertFetchCall(
   expectedOptions?: {
     method?: string;
     headers?: Record<string, string>;
-    body?: any;
+    body?: unknown;
   }
 ) {
   const calls = fetchMock.getCallHistory();
@@ -288,7 +285,10 @@ export function assertFetchCall(
 /**
  * Assert that storage was updated with expected values
  */
-export function assertStorageUpdate(storage: MockChromeStorage, expectedKeys: Record<string, any>) {
+export function assertStorageUpdate(
+  storage: MockChromeStorage,
+  expectedKeys: Record<string, unknown>
+) {
   const currentStorage = storage.getAll();
 
   for (const [key, expectedValue] of Object.entries(expectedKeys)) {
@@ -367,13 +367,14 @@ export function simulateError(
   errorType: 'network' | 'auth' | 'rate-limit' | 'server'
 ) {
   switch (errorType) {
-    case 'network':
+    case 'network': {
       // Override fetch to throw network error
-      const originalFetch = fetchMock.fetch.bind(fetchMock);
+      fetchMock.fetch.bind(fetchMock);
       fetchMock.fetch = async () => {
         throw new Error('Network error');
       };
       break;
+    }
 
     case 'auth':
       fetchMock.setResponse(

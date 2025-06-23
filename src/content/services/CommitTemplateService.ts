@@ -1,4 +1,4 @@
-import { SettingsService } from '../../services/settings';
+// import { SettingsService } from '../../services/settings';
 import { createLogger } from '../../lib/utils/logger';
 
 const logger = createLogger('CommitTemplateService');

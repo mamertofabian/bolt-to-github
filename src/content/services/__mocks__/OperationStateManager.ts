@@ -3,7 +3,7 @@ export class MockOperationStateManager {
   private operations = new Map();
 
   startOperation = jest.fn(
-    async (operationId: string, type: string, description: string, metadata?: any) => {
+    async (operationId: string, type: string, description: string, metadata?: unknown) => {
       this.operations.set(operationId, {
         type,
         status: 'started',

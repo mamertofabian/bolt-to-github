@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 /**
  * Background Services Test Fixtures - Comprehensive Testing Suite
  *
@@ -414,7 +415,7 @@ export const PresetScenarios = {
 
       await testSuite.teardown();
       return result;
-    } catch (error) {
+    } catch {
       await testSuite.teardown();
       return false;
     }
@@ -450,7 +451,7 @@ export const PresetScenarios = {
 
       await testSuite.teardown();
       return { success: metrics.result, metrics };
-    } catch (error) {
+    } catch {
       await testSuite.teardown();
       return { success: false, metrics: null };
     }
@@ -480,7 +481,7 @@ export const PresetScenarios = {
               // Try operation (should fail)
               try {
                 await env.simulateSuccessfulZipUpload();
-              } catch (error) {
+              } catch {
                 // Expected to fail
               }
 
@@ -492,13 +493,13 @@ export const PresetScenarios = {
             });
 
           recoveredFromErrors.push(errorType);
-        } catch (error) {
+        } catch {
           failedToRecover.push(errorType);
         }
       }
 
       await testSuite.teardown();
-    } catch (error) {
+    } catch {
       await testSuite.teardown();
       failedToRecover.push(...errorTypes.filter((e) => !recoveredFromErrors.includes(e)));
     }

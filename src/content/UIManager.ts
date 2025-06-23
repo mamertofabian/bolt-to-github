@@ -3,6 +3,21 @@ import type { MessageHandler } from './MessageHandler';
 
 // Import new types and managers
 import type { NotificationOptions } from './types/UITypes';
+import type { IPremiumStatusUpdater } from './types/ManagerInterfaces';
+
+// Define the state structure for type safety
+interface UIManagerState {
+  uploadStatus: {
+    status: string;
+    progress?: number;
+    message?: string;
+  };
+  buttonState: {
+    loadingState?: 'detecting-changes' | 'pushing' | 'custom' | null;
+    isProcessing: boolean;
+    loadingText?: string;
+  };
+}
 import { NotificationManager } from './managers/NotificationManager';
 import { UploadStatusManager } from './managers/UploadStatusManager';
 import { GitHubButtonManager } from './managers/GitHubButtonManager';
@@ -21,7 +36,7 @@ import { SettingsService } from '../services/settings';
 
 const logger = createLogger('UIManager');
 
-export class UIManager {
+export class UIManager implements IPremiumStatusUpdater {
   private static instance: UIManager | null = null;
   private isGitHubUpload = false;
 
@@ -106,7 +121,30 @@ export class UIManager {
 
     // Initialize WhatsNewManager
     logger.info('🔊 Initializing WhatsNewManager');
-    this.whatsNewManager = new WhatsNewManager(this.componentLifecycleManager, {
+    // Create an adapter to match the interface expected by WhatsNewManager
+    const componentLifecycleAdapter = {
+      createComponent: async <T extends import('svelte').SvelteComponent>(
+        id: string,
+        config: {
+          component: typeof import('svelte').SvelteComponent;
+          rootElement: Element | ShadowRoot;
+          target?: Element;
+          props?: Record<string, unknown>;
+        }
+      ): Promise<T> => {
+        // Convert to ComponentConfig format expected by actual implementation
+        return this.componentLifecycleManager.createComponent<T>(id, {
+          constructor: config.component,
+          containerId: id,
+          props: config.props,
+          appendToBody: false, // Since we're providing a rootElement
+        });
+      },
+      destroyComponent: (id: string) => this.componentLifecycleManager.destroyComponent(id),
+      hasComponent: (id: string) => this.componentLifecycleManager.hasComponent(id),
+    };
+
+    this.whatsNewManager = new WhatsNewManager(componentLifecycleAdapter, {
       createRootContainer: (id: string) =>
         UIElementFactory.createContainer({
           id,
@@ -304,7 +342,7 @@ export class UIManager {
         onUpgrade: () => {
           try {
             window.open('https://bolt2github.com/upgrade', '_blank');
-          } catch (openError) {
+          } catch {
             try {
               chrome.tabs.create({ url: 'https://bolt2github.com/upgrade' });
             } catch (tabsError) {
@@ -441,7 +479,7 @@ export class UIManager {
    * Handle upload status changes - now managed through UIStateManager
    * This method is called by state change listeners
    */
-  private handleUploadStatusChange(newState: any, previousState: any): void {
+  private handleUploadStatusChange(newState: UIManagerState, _previousState: UIManagerState): void {
     const status = newState.uploadStatus;
     const buttonState = newState.buttonState;
 

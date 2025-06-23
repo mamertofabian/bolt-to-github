@@ -1013,7 +1013,11 @@ export class MockPATAuthenticationStrategy implements IAuthenticationStrategy {
     return this.token;
   }
 
-  async validateAuth(repoOwner?: string): Promise<{
+  async isConfigured(): Promise<boolean> {
+    return !!this.token;
+  }
+
+  async validateAuth(_repoOwner?: string): Promise<{
     isValid: boolean;
     error?: string;
     userInfo?: { login: string; id: number; avatar_url: string };
@@ -1043,7 +1047,7 @@ export class MockPATAuthenticationStrategy implements IAuthenticationStrategy {
     };
   }
 
-  async checkPermissions(repoOwner?: string): Promise<{
+  async checkPermissions(_repoOwner?: string): Promise<{
     isValid: boolean;
     error?: string;
     permissions: {
@@ -1087,7 +1091,27 @@ export class MockPATAuthenticationStrategy implements IAuthenticationStrategy {
     return this.token; // PAT tokens can't be refreshed
   }
 
-  async getMetadata(): Promise<any> {
+  async clearAuth(): Promise<void> {
+    this.token = '';
+  }
+
+  async getUserInfo(): Promise<{
+    login: string;
+    id: number;
+    avatar_url: string;
+  } | null> {
+    if (this.shouldFail || !this.token) {
+      return null;
+    }
+    return GitHubAPIResponses.user.valid;
+  }
+
+  async getMetadata(): Promise<{
+    scopes?: string[];
+    expiresAt?: string;
+    lastUsed?: string;
+    [key: string]: unknown;
+  }> {
     return {
       tokenType: 'pat',
       scopes: TokenFixtures.validation.valid.scopes,
@@ -1149,7 +1173,11 @@ export class MockGitHubAppAuthenticationStrategy implements IAuthenticationStrat
     return TokenFixtures.githubApp.valid;
   }
 
-  async validateAuth(repoOwner?: string): Promise<{
+  async isConfigured(): Promise<boolean> {
+    return !!this.userToken;
+  }
+
+  async validateAuth(_repoOwner?: string): Promise<{
     isValid: boolean;
     error?: string;
     userInfo?: { login: string; id: number; avatar_url: string };
@@ -1178,7 +1206,7 @@ export class MockGitHubAppAuthenticationStrategy implements IAuthenticationStrat
     };
   }
 
-  async checkPermissions(repoOwner?: string): Promise<{
+  async checkPermissions(_repoOwner?: string): Promise<{
     isValid: boolean;
     error?: string;
     permissions: {
@@ -1223,7 +1251,27 @@ export class MockGitHubAppAuthenticationStrategy implements IAuthenticationStrat
     return TokenFixtures.githubApp.valid;
   }
 
-  async getMetadata(): Promise<any> {
+  async clearAuth(): Promise<void> {
+    this.userToken = undefined;
+  }
+
+  async getUserInfo(): Promise<{
+    login: string;
+    id: number;
+    avatar_url: string;
+  } | null> {
+    if (this.shouldFail || !this.userToken) {
+      return null;
+    }
+    return GitHubAPIResponses.user.valid;
+  }
+
+  async getMetadata(): Promise<{
+    scopes?: string[];
+    expiresAt?: string;
+    lastUsed?: string;
+    [key: string]: unknown;
+  }> {
     return {
       tokenType: 'github_app',
       installationId: 12345,
@@ -1338,8 +1386,11 @@ export class MockAuthenticationStrategyFactory {
 // =============================================================================
 
 export class MockFetchResponseBuilder {
-  private responses: Map<string, { response: any; options?: any }> = new Map();
-  private defaultResponse: any = null;
+  private responses: Map<
+    string,
+    { response: Partial<Response> | Promise<Partial<Response>>; options?: RequestInit }
+  > = new Map();
+  private defaultResponse: Partial<Response> | null = null;
   private callCount = 0;
   private shouldFail = false;
   private delay = 0;
@@ -1368,7 +1419,7 @@ export class MockFetchResponseBuilder {
     return this;
   }
 
-  mockGetRepoInfo(owner: string, repo: string, repoData?: any): this {
+  mockGetRepoInfo(owner: string, repo: string, repoData?: Record<string, unknown>): this {
     const key = `GET:https://api.github.com/repos/${owner}/${repo}`;
     this.responses.set(key, {
       response: {
@@ -1380,7 +1431,7 @@ export class MockFetchResponseBuilder {
     return this;
   }
 
-  mockCreateRepo(repoData?: any): this {
+  mockCreateRepo(repoData?: Record<string, unknown>): this {
     const key = `POST:https://api.github.com/user/repos`;
     this.responses.set(key, {
       response: {
@@ -1403,7 +1454,7 @@ export class MockFetchResponseBuilder {
     return this;
   }
 
-  mockListRepos(repos?: any[]): this {
+  mockListRepos(repos?: Record<string, unknown>[]): this {
     const key = `GET:https://api.github.com/user/repos?sort=updated&per_page=100`;
     this.responses.set(key, {
       response: {
@@ -1415,7 +1466,7 @@ export class MockFetchResponseBuilder {
     return this;
   }
 
-  mockListBranches(owner: string, repo: string, branches?: any[]): this {
+  mockListBranches(owner: string, repo: string, branches?: Record<string, unknown>[]): this {
     const key = `GET:https://api.github.com/repos/${owner}/${repo}/branches`;
     this.responses.set(key, {
       response: {
@@ -1440,7 +1491,12 @@ export class MockFetchResponseBuilder {
   }
 
   // Issue operations
-  mockGetIssues(owner: string, repo: string, state: string = 'open', issues?: any[]): this {
+  mockGetIssues(
+    owner: string,
+    repo: string,
+    state: string = 'open',
+    issues?: Record<string, unknown>[]
+  ): this {
     const key = `GET:https://api.github.com/repos/${owner}/${repo}/issues?state=${state}`;
     this.responses.set(key, {
       response: {
@@ -1455,7 +1511,12 @@ export class MockFetchResponseBuilder {
     return this;
   }
 
-  mockGetIssue(owner: string, repo: string, issueNumber: number, issue?: any): this {
+  mockGetIssue(
+    owner: string,
+    repo: string,
+    issueNumber: number,
+    issue?: Record<string, unknown>
+  ): this {
     const key = `GET:https://api.github.com/repos/${owner}/${repo}/issues/${issueNumber}`;
     this.responses.set(key, {
       response: {
@@ -1467,7 +1528,7 @@ export class MockFetchResponseBuilder {
     return this;
   }
 
-  mockCreateIssue(owner: string, repo: string, issue?: any): this {
+  mockCreateIssue(owner: string, repo: string, issue?: Record<string, unknown>): this {
     const key = `POST:https://api.github.com/repos/${owner}/${repo}/issues`;
     this.responses.set(key, {
       response: {
@@ -1479,7 +1540,12 @@ export class MockFetchResponseBuilder {
     return this;
   }
 
-  mockAddIssueComment(owner: string, repo: string, issueNumber: number, comment?: any): this {
+  mockAddIssueComment(
+    owner: string,
+    repo: string,
+    issueNumber: number,
+    comment?: Record<string, unknown>
+  ): this {
     const key = `POST:https://api.github.com/repos/${owner}/${repo}/issues/${issueNumber}/comments`;
     this.responses.set(key, {
       response: {
@@ -1505,12 +1571,17 @@ export class MockFetchResponseBuilder {
   }
 
   mockRateLimited(endpoint: string): this {
+    const headers = new Headers();
+    Object.entries(ErrorFixtures.rateLimited.headers).forEach(([key, value]) => {
+      headers.set(key, value);
+    });
+
     this.responses.set(endpoint, {
       response: {
         ok: false,
         status: 429,
         statusText: 'Too Many Requests',
-        headers: new Map(Object.entries(ErrorFixtures.rateLimited.headers)),
+        headers,
         json: () => Promise.resolve(ErrorFixtures.rateLimited.error),
       },
     });
@@ -1547,14 +1618,14 @@ export class MockFetchResponseBuilder {
     return this;
   }
 
-  setDefaultResponse(response: any): this {
+  setDefaultResponse(response: Partial<Response>): this {
     this.defaultResponse = response;
     return this;
   }
 
   // Build and install the mock
   build(): jest.MockedFunction<typeof fetch> {
-    const mockFetch = jest.fn(async (url: string | Request, options?: RequestInit) => {
+    const mockFetch = jest.fn(async (input: string | URL | Request, init?: RequestInit) => {
       this.callCount++;
 
       // Simulate delay
@@ -1568,8 +1639,9 @@ export class MockFetchResponseBuilder {
       }
 
       // Determine request key
-      const urlStr = typeof url === 'string' ? url : url.url;
-      const method = options?.method || 'GET';
+      const urlStr =
+        typeof input === 'string' ? input : input instanceof URL ? input.toString() : input.url;
+      const method = init?.method || 'GET';
       const key = `${method}:${urlStr}`;
 
       // Check for exact match
@@ -1606,7 +1678,7 @@ export class MockFetchResponseBuilder {
         statusText: 'Not Found',
         json: () => Promise.resolve(ErrorFixtures.notFound.error),
       };
-    });
+    }) as jest.MockedFunction<typeof fetch>;
 
     global.fetch = mockFetch;
     return mockFetch;
@@ -1638,8 +1710,8 @@ export class MockFetchResponseBuilder {
 // =============================================================================
 
 export class MockChromeStorage {
-  private localStorage: Map<string, any> = new Map();
-  private syncStorage: Map<string, any> = new Map();
+  private localStorage: Map<string, unknown> = new Map();
+  private syncStorage: Map<string, unknown> = new Map();
   private shouldFail = false;
   private delay = 0;
 
@@ -1663,7 +1735,7 @@ export class MockChromeStorage {
             }
 
             const keyArray = Array.isArray(keys) ? keys : [keys];
-            const result: Record<string, any> = {};
+            const result: Record<string, unknown> = {};
 
             for (const key of keyArray) {
               if (this.localStorage.has(key)) {
@@ -1674,7 +1746,7 @@ export class MockChromeStorage {
             return result;
           }),
 
-          set: jest.fn(async (items: Record<string, any>) => {
+          set: jest.fn(async (items: Record<string, unknown>) => {
             await this.simulateDelay();
             if (this.shouldFail) {
               throw new Error('Storage operation failed');
@@ -1718,7 +1790,7 @@ export class MockChromeStorage {
             }
 
             const keyArray = Array.isArray(keys) ? keys : [keys];
-            const result: Record<string, any> = {};
+            const result: Record<string, unknown> = {};
 
             for (const key of keyArray) {
               if (this.syncStorage.has(key)) {
@@ -1729,7 +1801,7 @@ export class MockChromeStorage {
             return result;
           }),
 
-          set: jest.fn(async (items: Record<string, any>) => {
+          set: jest.fn(async (items: Record<string, unknown>) => {
             await this.simulateDelay();
             if (this.shouldFail) {
               throw new Error('Storage operation failed');
@@ -1741,11 +1813,11 @@ export class MockChromeStorage {
           }),
         },
       },
-    } as any;
+    } as unknown as typeof chrome;
   }
 
   // Preset configurations
-  loadGitHubSettings(settings?: any): void {
+  loadGitHubSettings(settings?: Record<string, unknown>): void {
     this.localStorage.set(
       'gitHubSettings',
       settings || StorageFixtures.chromeStorage.githubSettings.gitHubSettings
@@ -1763,7 +1835,7 @@ export class MockChromeStorage {
     );
   }
 
-  loadProjectSettings(settings?: any): void {
+  loadProjectSettings(settings?: Record<string, unknown>): void {
     const projectSettings = settings || StorageFixtures.chromeStorage.projectSettings;
     for (const [key, value] of Object.entries(projectSettings)) {
       this.localStorage.set(key, value);
@@ -1780,7 +1852,7 @@ export class MockChromeStorage {
   }
 
   // Direct storage access for testing
-  setItem(key: string, value: any, useSync: boolean = false): void {
+  setItem(key: string, value: unknown, useSync: boolean = false): void {
     if (useSync) {
       this.syncStorage.set(key, value);
     } else {
@@ -1788,11 +1860,11 @@ export class MockChromeStorage {
     }
   }
 
-  getItem(key: string, useSync: boolean = false): any {
+  getItem(key: string, useSync: boolean = false): unknown {
     return useSync ? this.syncStorage.get(key) : this.localStorage.get(key);
   }
 
-  getAllItems(useSync: boolean = false): Record<string, any> {
+  getAllItems(useSync: boolean = false): Record<string, unknown> {
     const storage = useSync ? this.syncStorage : this.localStorage;
     return Object.fromEntries(storage);
   }
@@ -1977,7 +2049,7 @@ export class UnifiedGitHubServiceTestHelpers {
     return new Promise((resolve) => setTimeout(resolve, ms));
   }
 
-  static createMockResponse(data: any, status: number = 200, ok: boolean = true): Response {
+  static createMockResponse(data: unknown, status: number = 200, ok: boolean = true): Response {
     return {
       ok,
       status,
@@ -2043,28 +2115,35 @@ export class UnifiedGitHubServiceTestHelpers {
     }
   }
 
-  static createTestRepository(overrides: Partial<any> = {}): any {
+  static createTestRepository(
+    overrides: Partial<Record<string, unknown>> = {}
+  ): Record<string, unknown> {
     return {
       ...GitHubAPIResponses.repository.existing,
       ...overrides,
     };
   }
 
-  static createTestIssue(overrides: Partial<any> = {}): any {
+  static createTestIssue(
+    overrides: Partial<Record<string, unknown>> = {}
+  ): Record<string, unknown> {
     return {
       ...IssueFixtures.openIssue,
       ...overrides,
     };
   }
 
-  static verifyErrorStructure(error: any, expectedMessage?: string): void {
+  static verifyErrorStructure(error: unknown, expectedMessage?: string): void {
     expect(error).toBeInstanceOf(Error);
     if (expectedMessage) {
-      expect(error.message).toContain(expectedMessage);
+      expect((error as Error).message).toContain(expectedMessage);
     }
   }
 
-  static async expectAsyncError(promise: Promise<any>, expectedMessage?: string): Promise<Error> {
+  static async expectAsyncError(
+    promise: Promise<unknown>,
+    expectedMessage?: string
+  ): Promise<Error> {
     try {
       await promise;
       throw new Error('Expected promise to reject, but it resolved');

@@ -4,7 +4,6 @@
   import { Input } from '$lib/components/ui/input';
   import { Label } from '$lib/components/ui/label';
   import { SubscriptionService } from '../../services/SubscriptionService';
-  import { isAuthenticated } from '$lib/stores';
 
   // Newsletter subscription variables
   let subscribeToNewsletter = false;
@@ -13,9 +12,6 @@
   let hasSubscribed = false;
   let subscriptionError: string | null = null;
   let emailAutoFilled = false;
-
-  // Reactive store subscriptions
-  $: isUserAuthenticated = $isAuthenticated;
 
   function isValidSubscriberEmail(email: string): boolean {
     return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);

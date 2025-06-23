@@ -1,47 +1,72 @@
 import { UnifiedGitHubService } from '../UnifiedGitHubService';
 import { GitHubApiClient } from '../GitHubApiClient';
 import { beforeEach, describe, expect, it, jest } from '@jest/globals';
+import type { IAuthenticationStrategy } from '../interfaces/IAuthenticationStrategy';
+import type {
+  AuthenticationType,
+  TokenValidationResult,
+  PermissionCheckResult,
+} from '../types/authentication';
 
 // Mock the GitHubApiClient
 jest.mock('../GitHubApiClient');
 const MockedGitHubApiClient = GitHubApiClient as jest.MockedClass<typeof GitHubApiClient>;
 
+// Create proper mock implementations for the authentication strategies
+const createMockPATStrategy = (): IAuthenticationStrategy => ({
+  type: 'pat' as AuthenticationType,
+  isConfigured: jest.fn<() => Promise<boolean>>().mockResolvedValue(true),
+  getToken: jest.fn<() => Promise<string>>().mockResolvedValue('test-token'),
+  validateAuth: jest.fn<(username?: string) => Promise<TokenValidationResult>>().mockResolvedValue({
+    isValid: true,
+    userInfo: { login: 'testuser', id: 123, avatar_url: 'test.jpg' },
+    scopes: ['repo'],
+  } as TokenValidationResult),
+  needsRenewal: jest.fn<() => Promise<boolean>>().mockResolvedValue(false),
+  refreshToken: jest.fn<() => Promise<string>>().mockResolvedValue('refreshed-token'),
+  getMetadata: jest.fn<() => Promise<Record<string, unknown>>>().mockResolvedValue({}),
+  checkPermissions: jest
+    .fn<(repoOwner: string) => Promise<PermissionCheckResult>>()
+    .mockResolvedValue({
+      isValid: true,
+      permissions: { allRepos: true, admin: true, contents: true },
+    } as PermissionCheckResult),
+  clearAuth: jest.fn<() => Promise<void>>().mockResolvedValue(undefined),
+  getUserInfo: jest
+    .fn<() => Promise<{ login: string; id: number; avatar_url: string } | null>>()
+    .mockResolvedValue({ login: 'testuser', id: 123, avatar_url: 'test.jpg' }),
+});
+
+const createMockGitHubAppStrategy = (): IAuthenticationStrategy => ({
+  type: 'github_app' as AuthenticationType,
+  isConfigured: jest.fn<() => Promise<boolean>>().mockResolvedValue(true),
+  getToken: jest.fn<() => Promise<string>>().mockResolvedValue('github-app-token'),
+  validateAuth: jest.fn<(username?: string) => Promise<TokenValidationResult>>().mockResolvedValue({
+    isValid: true,
+    userInfo: { login: 'testuser', id: 123, avatar_url: 'test.jpg' },
+    scopes: ['repo'],
+  } as TokenValidationResult),
+  needsRenewal: jest.fn<() => Promise<boolean>>().mockResolvedValue(false),
+  refreshToken: jest.fn<() => Promise<string>>().mockResolvedValue('refreshed-token'),
+  getMetadata: jest.fn<() => Promise<Record<string, unknown>>>().mockResolvedValue({}),
+  checkPermissions: jest
+    .fn<(repoOwner: string) => Promise<PermissionCheckResult>>()
+    .mockResolvedValue({
+      isValid: true,
+      permissions: { allRepos: true, admin: true, contents: true },
+    } as PermissionCheckResult),
+  clearAuth: jest.fn<() => Promise<void>>().mockResolvedValue(undefined),
+  getUserInfo: jest
+    .fn<() => Promise<{ login: string; id: number; avatar_url: string } | null>>()
+    .mockResolvedValue({ login: 'testuser', id: 123, avatar_url: 'test.jpg' }),
+});
+
 // Mock AuthenticationStrategyFactory
 jest.mock('../AuthenticationStrategyFactory', () => ({
   AuthenticationStrategyFactory: {
     getInstance: jest.fn(() => ({
-      createPATStrategy: jest.fn(() => ({
-        type: 'pat',
-        getToken: jest.fn().mockResolvedValue('test-token'),
-        validateAuth: jest.fn().mockResolvedValue({
-          isValid: true,
-          userInfo: { login: 'testuser', id: 123, avatar_url: 'test.jpg' },
-          scopes: ['repo'],
-        }),
-        needsRenewal: jest.fn().mockResolvedValue(false),
-        refreshToken: jest.fn().mockResolvedValue('refreshed-token'),
-        getMetadata: jest.fn().mockResolvedValue({}),
-        checkPermissions: jest.fn().mockResolvedValue({
-          isValid: true,
-          permissions: { allRepos: true, admin: true, contents: true },
-        }),
-      })),
-      createGitHubAppStrategy: jest.fn(() => ({
-        type: 'github_app',
-        getToken: jest.fn().mockResolvedValue('github-app-token'),
-        validateAuth: jest.fn().mockResolvedValue({
-          isValid: true,
-          userInfo: { login: 'testuser', id: 123, avatar_url: 'test.jpg' },
-          scopes: ['repo'],
-        }),
-        needsRenewal: jest.fn().mockResolvedValue(false),
-        refreshToken: jest.fn().mockResolvedValue('refreshed-token'),
-        getMetadata: jest.fn().mockResolvedValue({}),
-        checkPermissions: jest.fn().mockResolvedValue({
-          isValid: true,
-          permissions: { allRepos: true, admin: true, contents: true },
-        }),
-      })),
+      createPATStrategy: jest.fn(() => createMockPATStrategy()),
+      createGitHubAppStrategy: jest.fn(() => createMockGitHubAppStrategy()),
       getCurrentStrategy: jest.fn(),
     })),
   },
@@ -50,6 +75,7 @@ jest.mock('../AuthenticationStrategyFactory', () => ({
 describe('UnifiedGitHubService Feedback', () => {
   let githubService: UnifiedGitHubService;
   let mockApiClient: jest.Mocked<GitHubApiClient>;
+  let mockFetch: jest.MockedFunction<typeof fetch>;
 
   beforeEach(() => {
     jest.clearAllMocks();
@@ -58,10 +84,14 @@ describe('UnifiedGitHubService Feedback', () => {
     mockApiClient = {
       request: jest.fn(),
       getRateLimit: jest.fn(),
-    } as any;
+    } as unknown as jest.Mocked<GitHubApiClient>;
 
     // Mock the constructor to return our mock instance
     MockedGitHubApiClient.mockImplementation(() => mockApiClient);
+
+    // Setup fetch mock
+    mockFetch = jest.fn() as jest.MockedFunction<typeof fetch>;
+    global.fetch = mockFetch;
 
     githubService = new UnifiedGitHubService('test-token');
   });
@@ -70,11 +100,13 @@ describe('UnifiedGitHubService Feedback', () => {
     it('should create an issue with correct parameters', async () => {
       const mockIssueResponse = { id: 123, number: 1, title: 'Test Issue' };
 
-      // Mock fetch directly since UnifiedGitHubService uses fetch, not GitHubApiClient
-      global.fetch = jest.fn().mockResolvedValue({
+      // Mock fetch to return a proper Response-like object
+      mockFetch.mockResolvedValue({
         ok: true,
-        json: jest.fn().mockResolvedValue(mockIssueResponse),
-      });
+        json: jest
+          .fn<() => Promise<typeof mockIssueResponse>>()
+          .mockResolvedValue(mockIssueResponse),
+      } as unknown as Response);
 
       const result = await githubService.createIssue('owner', 'repo', {
         title: 'Test Issue',
@@ -82,7 +114,7 @@ describe('UnifiedGitHubService Feedback', () => {
         labels: ['bug', 'feedback'],
       });
 
-      expect(global.fetch).toHaveBeenCalledWith(
+      expect(mockFetch).toHaveBeenCalledWith(
         'https://api.github.com/repos/owner/repo/issues',
         expect.objectContaining({
           method: 'POST',
@@ -105,17 +137,19 @@ describe('UnifiedGitHubService Feedback', () => {
 
   describe('submitFeedback', () => {
     beforeEach(() => {
-      // Mock fetch for each test
-      global.fetch = jest.fn();
+      // Reset fetch mock for each test
+      mockFetch.mockClear();
     });
 
     it('should submit feedback as a GitHub issue with correct format', async () => {
       const mockIssueResponse = { id: 123, number: 1, title: '[BUG] User Feedback' };
 
-      (global.fetch as jest.Mock).mockResolvedValue({
+      mockFetch.mockResolvedValue({
         ok: true,
-        json: jest.fn().mockResolvedValue(mockIssueResponse),
-      });
+        json: jest
+          .fn<() => Promise<typeof mockIssueResponse>>()
+          .mockResolvedValue(mockIssueResponse),
+      } as unknown as Response);
 
       const feedback = {
         category: 'bug' as const,
@@ -128,7 +162,7 @@ describe('UnifiedGitHubService Feedback', () => {
 
       const result = await githubService.submitFeedback(feedback);
 
-      expect(global.fetch).toHaveBeenCalledWith(
+      expect(mockFetch).toHaveBeenCalledWith(
         'https://api.github.com/repos/mamertofabian/bolt-to-github/issues',
         expect.objectContaining({
           method: 'POST',
@@ -141,8 +175,8 @@ describe('UnifiedGitHubService Feedback', () => {
         })
       );
 
-      const callArgs = (global.fetch as jest.Mock).mock.calls[0];
-      const requestBody = JSON.parse(callArgs[1].body);
+      const callArgs = mockFetch.mock.calls[0];
+      const requestBody = JSON.parse(callArgs?.[1]?.body as string);
 
       expect(requestBody.title).toBe('[BUG] User Feedback');
       expect(requestBody.body).toContain('## User Feedback');
@@ -159,10 +193,12 @@ describe('UnifiedGitHubService Feedback', () => {
     it('should submit feedback without optional fields', async () => {
       const mockIssueResponse = { id: 124, number: 2, title: '[APPRECIATION] User Feedback' };
 
-      (global.fetch as jest.Mock).mockResolvedValue({
+      mockFetch.mockResolvedValue({
         ok: true,
-        json: jest.fn().mockResolvedValue(mockIssueResponse),
-      });
+        json: jest
+          .fn<() => Promise<typeof mockIssueResponse>>()
+          .mockResolvedValue(mockIssueResponse),
+      } as unknown as Response);
 
       const feedback = {
         category: 'appreciation' as const,
@@ -171,8 +207,8 @@ describe('UnifiedGitHubService Feedback', () => {
 
       const result = await githubService.submitFeedback(feedback);
 
-      const callArgs = (global.fetch as jest.Mock).mock.calls[0];
-      const requestBody = JSON.parse(callArgs[1].body);
+      const callArgs = mockFetch.mock.calls[0];
+      const requestBody = JSON.parse(callArgs?.[1]?.body as string);
 
       expect(requestBody.title).toBe('[APPRECIATION] User Feedback');
       expect(requestBody.body).toContain('## User Feedback');
@@ -189,11 +225,12 @@ describe('UnifiedGitHubService Feedback', () => {
       const categories = ['appreciation', 'question', 'bug', 'feature', 'other'] as const;
 
       for (const category of categories) {
-        (global.fetch as jest.Mock).mockClear();
-        (global.fetch as jest.Mock).mockResolvedValue({
+        mockFetch.mockClear();
+        const mockResponse = { id: 1, number: 1 };
+        mockFetch.mockResolvedValue({
           ok: true,
-          json: jest.fn().mockResolvedValue({ id: 1, number: 1 }),
-        });
+          json: jest.fn<() => Promise<typeof mockResponse>>().mockResolvedValue(mockResponse),
+        } as unknown as Response);
 
         const feedback = {
           category,
@@ -202,8 +239,8 @@ describe('UnifiedGitHubService Feedback', () => {
 
         await githubService.submitFeedback(feedback);
 
-        const callArgs = (global.fetch as jest.Mock).mock.calls[0];
-        const requestBody = JSON.parse(callArgs[1].body);
+        const callArgs = mockFetch.mock.calls[0];
+        const requestBody = JSON.parse(callArgs?.[1]?.body as string);
 
         expect(requestBody.title).toBe(`[${category.toUpperCase()}] User Feedback`);
         expect(requestBody.body).toContain(`**Category:** ${category}`);
@@ -213,7 +250,7 @@ describe('UnifiedGitHubService Feedback', () => {
 
     it('should handle API errors correctly', async () => {
       const apiError = new Error('GitHub API Error');
-      (global.fetch as jest.Mock).mockRejectedValue(apiError);
+      mockFetch.mockRejectedValue(apiError);
 
       const feedback = {
         category: 'bug' as const,
@@ -224,10 +261,10 @@ describe('UnifiedGitHubService Feedback', () => {
     });
 
     it('should handle HTTP errors correctly', async () => {
-      (global.fetch as jest.Mock).mockResolvedValue({
+      mockFetch.mockResolvedValue({
         ok: false,
         statusText: 'Unauthorized',
-      });
+      } as unknown as Response);
 
       const feedback = {
         category: 'bug' as const,

@@ -1,4 +1,4 @@
-import type { IGitHubApiClient } from './interfaces/IGitHubApiClient';
+import type { IGitHubApiClient, GitHubRateLimit } from './interfaces/IGitHubApiClient';
 import { RateLimitHandler } from './RateLimitHandler';
 import { createLogger } from '../lib/utils/logger';
 
@@ -10,9 +10,14 @@ const logger = createLogger('GitHubApiClient');
 export class GitHubApiError extends Error {
   status: number;
   originalMessage: string;
-  githubErrorResponse: any;
+  githubErrorResponse: unknown;
 
-  constructor(message: string, status: number, originalMessage: string, githubErrorResponse: any) {
+  constructor(
+    message: string,
+    status: number,
+    originalMessage: string,
+    githubErrorResponse: unknown
+  ) {
     super(message);
     this.name = 'GitHubApiError';
     this.status = status;
@@ -51,12 +56,12 @@ export class GitHubApiClient implements IGitHubApiClient {
    * @returns Promise resolving to the API response
    * @throws GitHubApiError if the request fails
    */
-  async request(
+  async request<T = unknown>(
     method: string,
     endpoint: string,
-    body?: any,
+    body?: unknown,
     options: RequestInit = {}
-  ): Promise<any> {
+  ): Promise<T> {
     const url = `${this.baseUrl}${endpoint}`;
     let retryCount = 0;
     const maxRetries = 3;
@@ -113,7 +118,7 @@ export class GitHubApiClient implements IGitHubApiClient {
 
         // Return null for 204 No Content responses
         if (response.status === 204) {
-          return null;
+          return null as T;
         }
 
         // Only try to parse JSON if there's actual content
@@ -127,10 +132,10 @@ export class GitHubApiClient implements IGitHubApiClient {
             value: response.headers,
             enumerable: false,
           });
-          return data;
+          return data as T;
         }
 
-        return null;
+        return null as T;
       } catch (error) {
         // If it's already a GitHubApiError, just rethrow it
         if (error instanceof GitHubApiError) {
@@ -154,7 +159,7 @@ export class GitHubApiClient implements IGitHubApiClient {
    * Gets the current rate limit status
    * @returns Promise resolving to rate limit information
    */
-  async getRateLimit(): Promise<any> {
-    return this.request('GET', '/rate_limit');
+  async getRateLimit(): Promise<GitHubRateLimit> {
+    return this.request<GitHubRateLimit>('GET', '/rate_limit');
   }
 }

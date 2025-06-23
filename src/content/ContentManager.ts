@@ -85,7 +85,8 @@ export class ContentManager {
         this.reconnectTimer = null;
       }
     } catch (error) {
-      if (this.isExtensionContextInvalidated(error)) {
+      const errorToCheck = error instanceof Error ? error : null;
+      if (this.isExtensionContextInvalidated(errorToCheck)) {
         logger.warn('Extension context invalidated, attempting reconnection...');
         this.handleExtensionContextInvalidated();
       } else {
@@ -139,7 +140,9 @@ export class ContentManager {
     });
   }
 
-  private isExtensionContextInvalidated(error: any): boolean {
+  private isExtensionContextInvalidated(
+    error: Error | chrome.runtime.LastError | null | undefined
+  ): boolean {
     // Check for various extension context invalidation patterns
     if (!error?.message && !chrome.runtime?.id) {
       return true;
@@ -162,12 +165,12 @@ export class ContentManager {
       'The message port closed before a response was received',
     ];
 
-    const isTrueInvalidation = trueInvalidationPatterns.some((pattern) =>
-      error.message.includes(pattern)
+    const isTrueInvalidation = trueInvalidationPatterns.some(
+      (pattern) => error?.message?.includes(pattern) || false
     );
 
-    const isServiceWorkerIssue = serviceWorkerPatterns.some((pattern) =>
-      error.message.includes(pattern)
+    const isServiceWorkerIssue = serviceWorkerPatterns.some(
+      (pattern) => error?.message?.includes(pattern) || false
     );
 
     // If it's a service worker issue, check if runtime is still available
@@ -476,7 +479,7 @@ export class ContentManager {
     }, 30000); // Every 30 seconds
   }
 
-  private handleInitializationError(error: any): void {
+  private handleInitializationError(error: unknown): void {
     logger.error('Initialization error:', error);
     this.notifyUserOfError();
   }
@@ -520,7 +523,7 @@ export class ContentManager {
     if (this.port) {
       try {
         this.port.disconnect();
-      } catch (error) {
+      } catch {
         // Ignore disconnect errors during cleanup
       }
       this.port = null;
@@ -822,10 +825,12 @@ export class ContentManager {
       case 'UPLOAD_STATUS':
         this.uiManager?.updateUploadStatus(message.status!);
         break;
-      case 'GITHUB_SETTINGS_CHANGED':
-        logger.info('🔊 Received GitHub settings changed:', message.data.isValid);
-        this.uiManager?.updateButtonState(message.data.isValid);
+      case 'GITHUB_SETTINGS_CHANGED': {
+        const settingsData = message.data as { isValid?: boolean } | undefined;
+        logger.info('🔊 Received GitHub settings changed:', settingsData?.isValid);
+        this.uiManager?.updateButtonState(settingsData?.isValid || false);
         break;
+      }
       case 'PUSH_TO_GITHUB':
         logger.info('🔊 Received Push to GitHub message');
         this.uiManager?.handleGitHubPushAction();

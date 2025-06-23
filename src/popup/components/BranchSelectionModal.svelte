@@ -18,7 +18,6 @@
   let isLoading = true;
   let error: string | null = null;
   let hasProAccess = false;
-  let showUpgradeTooltip = false;
   let showUpgrade = false;
 
   onMount(async () => {

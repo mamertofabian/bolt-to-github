@@ -346,7 +346,7 @@ export class MockPort implements chrome.runtime.Port {
     if (typeof chrome !== 'undefined' && chrome.runtime) {
       (
         chrome.runtime as typeof chrome.runtime & { lastError?: chrome.runtime.LastError }
-      ).lastError = this.disconnectError || null;
+      ).lastError = this.disconnectError || undefined;
 
       this.disconnectListeners.forEach((listener) => listener());
 

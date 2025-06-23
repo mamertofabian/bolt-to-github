@@ -1,7 +1,6 @@
 // Mock the logger module
 jest.mock('../../../lib/utils/logger', () => ({
   createLogger: jest.fn().mockReturnValue({
-    log: jest.fn(),
     error: jest.fn(),
     warn: jest.fn(),
     info: jest.fn(),
@@ -10,31 +9,55 @@ jest.mock('../../../lib/utils/logger', () => ({
 }));
 
 import { ComponentLifecycleManager, type ComponentConfig } from '../ComponentLifecycleManager';
-import type { SvelteComponent } from '../../types/UITypes';
+import type { SvelteComponent } from 'svelte';
 import { createLogger } from '../../../lib/utils/logger';
+import type { Logger } from '../../../lib/utils/logger';
 
 // Get fresh mocked logger instance in beforeEach
-let mockLogger: jest.Mocked<ReturnType<typeof createLogger>>;
+let mockLogger: jest.Mocked<Logger>;
 
 // Mock Svelte component constructor
-class MockSvelteComponent implements SvelteComponent {
+class MockSvelteComponent {
   public target: HTMLElement;
-  public props: Record<string, any>;
+  public props: Record<string, unknown>;
   public $setCallCount = 0;
   public $destroyCallCount = 0;
+  // Add required SvelteComponent properties for type checking
+  public $$prop_def: Record<string, unknown> = {};
+  public $$events_def: Record<string, unknown> = {};
+  public $$slot_def: Record<string, unknown> = {};
+  public $$: unknown = {};
+  public $$set: unknown = () => {};
+  public $capture_state = () => ({});
+  public $inject_state = () => {};
+  // Allow any additional properties
+  [prop: string]: unknown;
 
-  constructor({ target, props }: { target: HTMLElement; props?: Record<string, any> }) {
-    this.target = target;
+  constructor({
+    target,
+    props,
+  }: {
+    target: Element | Document | ShadowRoot;
+    props?: Record<string, unknown>;
+  }) {
+    this.target = target as HTMLElement;
     this.props = props || {};
   }
 
-  $set(newProps: Record<string, any>): void {
+  $set(newProps: Record<string, unknown>): void {
     this.props = { ...this.props, ...newProps };
     this.$setCallCount++;
   }
 
   $destroy(): void {
     this.$destroyCallCount++;
+  }
+
+  $on<K extends string>(
+    _type: K,
+    _callback: ((e: unknown) => void) | null | undefined
+  ): () => void {
+    return () => {};
   }
 }
 
@@ -55,23 +78,21 @@ describe('ComponentLifecycleManager', () => {
   let mockElement: HTMLElement;
 
   const createBasicConfig = (): ComponentConfig => ({
-    constructor: MockSvelteComponent,
+    constructor: MockSvelteComponent as unknown as typeof SvelteComponent,
     containerId: 'test-container',
   });
 
   beforeEach(() => {
-    mockLogger = createLogger('ComponentLifecycleManager') as jest.Mocked<
-      ReturnType<typeof createLogger>
-    >;
+    mockLogger = createLogger('ComponentLifecycleManager') as jest.Mocked<Logger>;
 
     lifecycleManager = new ComponentLifecycleManager();
 
     // Reset all mocks
     jest.clearAllMocks();
-    mockLogger.log.mockClear();
     mockLogger.error.mockClear();
     mockLogger.warn.mockClear();
     mockLogger.info.mockClear();
+    mockLogger.debug.mockClear();
 
     // Setup mock document
     mockDocument = global.document as jest.Mocked<typeof document>;
@@ -86,7 +107,7 @@ describe('ComponentLifecycleManager', () => {
       parentNode: {
         removeChild: jest.fn(),
       },
-    } as any;
+    } as unknown as HTMLElement;
 
     mockDocument.createElement.mockReturnValue(mockElement);
     mockDocument.getElementById.mockReturnValue(null);
@@ -111,10 +132,10 @@ describe('ComponentLifecycleManager', () => {
     it('should create and mount a component successfully', async () => {
       const config = createBasicConfig();
 
-      const component = await lifecycleManager.createComponent<MockSvelteComponent>(
+      const component = (await lifecycleManager.createComponent(
         'test-component',
         config
-      );
+      )) as unknown as MockSvelteComponent;
 
       expect(component).toBeInstanceOf(MockSvelteComponent);
       expect(component.target).toBe(mockElement);
@@ -166,10 +187,10 @@ describe('ComponentLifecycleManager', () => {
         props: { testProp: 'value' },
       };
 
-      const component = await lifecycleManager.createComponent<MockSvelteComponent>(
+      const component = (await lifecycleManager.createComponent(
         'test-component',
         config
-      );
+      )) as unknown as MockSvelteComponent;
 
       expect(component.props).toEqual({ testProp: 'value' });
     });
@@ -219,7 +240,7 @@ describe('ComponentLifecycleManager', () => {
         remove: jest.fn(),
       };
 
-      mockDocument.getElementById.mockReturnValue(existingElement as any);
+      mockDocument.getElementById.mockReturnValue(existingElement as unknown as HTMLElement);
 
       const config = createBasicConfig();
       await lifecycleManager.createComponent('test-component', config);
@@ -229,16 +250,10 @@ describe('ComponentLifecycleManager', () => {
 
     it('should clean up existing component with same id before creating new one', async () => {
       const config = createBasicConfig();
-      const firstComponent = await lifecycleManager.createComponent<MockSvelteComponent>(
-        'test-component',
-        config
-      );
+      const firstComponent = await lifecycleManager.createComponent('test-component', config);
 
       // Create new component with same id
-      const secondComponent = await lifecycleManager.createComponent<MockSvelteComponent>(
-        'test-component',
-        config
-      );
+      const secondComponent = await lifecycleManager.createComponent('test-component', config);
 
       expect(firstComponent.$destroyCallCount).toBe(1);
       expect(secondComponent).not.toBe(firstComponent);
@@ -274,7 +289,7 @@ describe('ComponentLifecycleManager', () => {
         value: { appendChild: jest.fn() },
         writable: true,
       });
-      callback();
+      (callback as EventListener)(new Event('DOMContentLoaded'));
 
       await createPromise;
 
@@ -317,10 +332,10 @@ describe('ComponentLifecycleManager', () => {
   describe('updateComponent', () => {
     it('should update component props when component exists and supports $set', async () => {
       const config = createBasicConfig();
-      const component = await lifecycleManager.createComponent<MockSvelteComponent>(
+      const component = (await lifecycleManager.createComponent(
         'test-component',
         config
-      );
+      )) as unknown as MockSvelteComponent;
 
       lifecycleManager.updateComponent('test-component', { newProp: 'newValue' });
 
@@ -360,10 +375,10 @@ describe('ComponentLifecycleManager', () => {
   describe('destroyComponent', () => {
     it('should destroy component and remove container when both exist', async () => {
       const config = createBasicConfig();
-      const component = await lifecycleManager.createComponent<MockSvelteComponent>(
+      const component = (await lifecycleManager.createComponent(
         'test-component',
         config
-      );
+      )) as unknown as MockSvelteComponent;
 
       lifecycleManager.destroyComponent('test-component');
 
@@ -407,7 +422,11 @@ describe('ComponentLifecycleManager', () => {
       await lifecycleManager.createComponent('test-component', config);
 
       // Remove parent node
-      mockElement.parentNode = null;
+      Object.defineProperty(mockElement, 'parentNode', {
+        value: null,
+        writable: true,
+        configurable: true,
+      });
 
       expect(() => {
         lifecycleManager.destroyComponent('test-component');
@@ -418,10 +437,10 @@ describe('ComponentLifecycleManager', () => {
   describe('getComponent', () => {
     it('should return component when it exists', async () => {
       const config = createBasicConfig();
-      const component = await lifecycleManager.createComponent<MockSvelteComponent>(
+      const component = (await lifecycleManager.createComponent(
         'test-component',
         config
-      );
+      )) as unknown as MockSvelteComponent;
 
       expect(lifecycleManager.getComponent('test-component')).toBe(component);
     });
@@ -488,14 +507,14 @@ describe('ComponentLifecycleManager', () => {
   describe('cleanupAll', () => {
     it('should destroy all components and clear all maps', async () => {
       const config = createBasicConfig();
-      const component1 = await lifecycleManager.createComponent<MockSvelteComponent>(
+      const component1 = (await lifecycleManager.createComponent(
         'component-1',
         config
-      );
-      const component2 = await lifecycleManager.createComponent<MockSvelteComponent>(
+      )) as unknown as MockSvelteComponent;
+      const component2 = (await lifecycleManager.createComponent(
         'component-2',
         config
-      );
+      )) as unknown as MockSvelteComponent;
 
       lifecycleManager.cleanupAll();
 
@@ -518,18 +537,9 @@ describe('ComponentLifecycleManager', () => {
   describe('cleanupByPattern', () => {
     it('should destroy only components matching the pattern', async () => {
       const config = createBasicConfig();
-      const component1 = await lifecycleManager.createComponent<MockSvelteComponent>(
-        'prefix-component-1',
-        config
-      );
-      const component2 = await lifecycleManager.createComponent<MockSvelteComponent>(
-        'prefix-component-2',
-        config
-      );
-      const component3 = await lifecycleManager.createComponent<MockSvelteComponent>(
-        'other-component',
-        config
-      );
+      const component1 = await lifecycleManager.createComponent('prefix-component-1', config);
+      const component2 = await lifecycleManager.createComponent('prefix-component-2', config);
+      const component3 = await lifecycleManager.createComponent('other-component', config);
 
       lifecycleManager.cleanupByPattern(/^prefix-/);
 
@@ -566,8 +576,14 @@ describe('ComponentLifecycleManager', () => {
       };
 
       // Create multiple components
-      const comp1 = await lifecycleManager.createComponent<MockSvelteComponent>('comp-1', config1);
-      const comp2 = await lifecycleManager.createComponent<MockSvelteComponent>('comp-2', config2);
+      const comp1 = (await lifecycleManager.createComponent(
+        'comp-1',
+        config1
+      )) as unknown as MockSvelteComponent;
+      const comp2 = (await lifecycleManager.createComponent(
+        'comp-2',
+        config2
+      )) as unknown as MockSvelteComponent;
 
       // Update them
       lifecycleManager.updateComponent('comp-1', { updated: true });
@@ -591,14 +607,14 @@ describe('ComponentLifecycleManager', () => {
     it('should maintain component isolation between different instances', async () => {
       const config = createBasicConfig();
 
-      const comp1 = await lifecycleManager.createComponent<MockSvelteComponent>('comp-1', {
+      const comp1 = (await lifecycleManager.createComponent('comp-1', {
         ...config,
         props: { id: 1 },
-      });
-      const comp2 = await lifecycleManager.createComponent<MockSvelteComponent>('comp-2', {
+      })) as unknown as MockSvelteComponent;
+      const comp2 = (await lifecycleManager.createComponent('comp-2', {
         ...config,
         props: { id: 2 },
-      });
+      })) as unknown as MockSvelteComponent;
 
       expect(comp1.props.id).toBe(1);
       expect(comp2.props.id).toBe(2);

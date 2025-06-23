@@ -4,7 +4,9 @@
   import NewsletterSection from '$lib/components/NewsletterSection.svelte';
   import Footer from '$lib/components/Footer.svelte';
 
-  export let projectSettings: any;
+  import type { HelpTabProps } from '../types';
+
+  export let projectSettings: HelpTabProps['projectSettings'];
 
   const dispatch = createEventDispatcher<{
     newsletter: void;

@@ -1,6 +1,7 @@
 import type { IDropdownManager } from '../types/ManagerInterfaces';
 import type { MessageHandler } from '../MessageHandler';
 import type { UIStateManager } from '../services/UIStateManager';
+import type { PremiumService } from '../services/PremiumService';
 import { createLogger } from '$lib/utils/logger';
 
 const logger = createLogger('DropdownManager');
@@ -18,7 +19,7 @@ export class DropdownManager implements IDropdownManager {
   private currentDropdown: HTMLElement | null = null;
   private resizeListener?: () => void;
   private clickOutsideListener?: (e: MouseEvent) => void;
-  private premiumService?: any; // Will be injected from UIManager
+  private premiumService?: PremiumService;
 
   constructor(
     messageHandler: MessageHandler,
@@ -37,7 +38,7 @@ export class DropdownManager implements IDropdownManager {
   /**
    * Set premium service for checking premium features
    */
-  public setPremiumService(premiumService: any): void {
+  public setPremiumService(premiumService: PremiumService): void {
     this.premiumService = premiumService;
   }
 

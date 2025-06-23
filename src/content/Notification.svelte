@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { fade, fly } from 'svelte/transition';
+  import { fly } from 'svelte/transition';
   import { onMount, onDestroy } from 'svelte';
   import type { NotificationAction } from './types/UITypes';
   import {

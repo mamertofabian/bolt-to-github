@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import { ChromeStorageService } from '../chromeStorage';
 
 // Mock logger to avoid console output during tests

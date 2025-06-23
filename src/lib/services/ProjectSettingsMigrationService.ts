@@ -2,6 +2,7 @@ import { ChromeStorageService } from './chromeStorage';
 import { GitHubCacheService } from './GitHubCacheService';
 import { UnifiedGitHubService } from '../../services/UnifiedGitHubService';
 import { createLogger } from '../utils/logger';
+import type { GitHubCommit } from '../../services/types/repository';
 
 const logger = createLogger('ProjectSettingsMigration');
 
@@ -165,7 +166,7 @@ export class ProjectSettingsMigrationService {
               | undefined;
 
             try {
-              const commits = await githubService.request(
+              const commits = await githubService.request<GitHubCommit[]>(
                 'GET',
                 `/repos/${repoOwner}/${settings.repoName}/commits?per_page=1`
               );

@@ -6,7 +6,15 @@ import { createLogger } from '../../lib/utils/logger';
 const logger = createLogger('WhatsNewManager');
 
 export interface IComponentLifecycleManager {
-  createComponent?<T extends SvelteComponent>(id: string, config: any): Promise<T>;
+  createComponent?<T extends SvelteComponent>(
+    id: string,
+    config: {
+      component: typeof SvelteComponent;
+      rootElement: Element | ShadowRoot;
+      target?: Element;
+      props?: Record<string, unknown>;
+    }
+  ): Promise<T>;
   destroyComponent?(id: string): void;
   hasComponent?(id: string): boolean;
 }
@@ -134,7 +142,7 @@ export class WhatsNewManager implements IWhatsNewManager {
     }
   }
 
-  private async handleClose(isManual: boolean): Promise<void> {
+  private async handleClose(_isManual: boolean): Promise<void> {
     this.cleanup();
   }
 

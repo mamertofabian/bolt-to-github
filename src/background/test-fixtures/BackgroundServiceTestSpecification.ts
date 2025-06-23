@@ -96,7 +96,7 @@ export const UsagePatterns = {
 
       // Wait for completion and measure performance
       await new Promise((resolve) => setTimeout(resolve, 1000));
-      const duration = performanceHelper.endTimer('zip_upload');
+      performanceHelper.endTimer('zip_upload');
 
       // This reveals bugs in:
       // - Progress updates not reaching content script
@@ -335,8 +335,6 @@ export const BugDetectionScenarios = {
     async detectEventListenerLeaks(
       testSuite: InstanceType<typeof TestHelpers.BackgroundServiceTestSuiteBuilder>
     ): Promise<boolean> {
-      const env = testSuite.getEnvironment();
-
       // Add and remove storage listeners multiple times
       for (let i = 0; i < 10; i++) {
         // Simulate service restart

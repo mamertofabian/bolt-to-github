@@ -3,6 +3,7 @@ import type { INotificationManager } from '../types/ManagerInterfaces';
 import type { MessageHandler } from '../MessageHandler';
 import type { UIStateManager } from '../services/UIStateManager';
 import type { FileChange } from '../../services/FilePreviewService';
+import type { UploadStatusState } from '../../lib/types';
 import { SettingsService } from '../../services/settings';
 import { DownloadService } from '../../services/DownloadService';
 import { CommitTemplateService } from '../services/CommitTemplateService';
@@ -58,7 +59,7 @@ export class GitHubUploadHandler implements IGitHubUploadHandler {
   public async validateSettings(): Promise<boolean> {
     const currentProjectId = getCurrentProjectId();
     const settings = (await SettingsService.getGitHubSettings(
-      currentProjectId
+      currentProjectId ?? undefined
     )) as LocalSettingsResult;
     return settings.isSettingsValid;
   }
@@ -88,7 +89,7 @@ export class GitHubUploadHandler implements IGitHubUploadHandler {
 
     // Validate settings first with the current project ID
     const settings = (await SettingsService.getGitHubSettings(
-      currentProjectId
+      currentProjectId ?? undefined
     )) as LocalSettingsResult;
     if (!settings.isSettingsValid) {
       this.notificationManager.showSettingsNotification();
@@ -201,16 +202,20 @@ export class GitHubUploadHandler implements IGitHubUploadHandler {
 
     // Show enhanced confirmation dialog
     const confirmationMessage = hasChanges
-      ? `${changesSummary}<br><br>Do you want to push these changes to GitHub?`
-      : `${changesSummary}<br><br>Do you still want to push to GitHub?`;
+      ? `${changesSummary}\n\nDo you want to push these changes to GitHub?`
+      : `${changesSummary}\n\nDo you still want to push to GitHub?`;
 
     const { confirmed, commitMessage } = await this.notificationManager.showConfirmationDialog({
       title: hasChanges ? 'Confirm GitHub Push' : 'No Changes - Confirm Push',
-      message: `Repository: <span class="font-mono">${settings.gitHubSettings?.projectSettings?.repoName || 'N/A'} / ${settings.gitHubSettings?.projectSettings?.branch || 'N/A'}</span><br><br>${confirmationMessage}`,
+      message: confirmationMessage,
       confirmText: hasChanges ? 'Push Changes' : 'Push Anyway',
       cancelText: 'Cancel',
       type: hasChanges ? 'info' : 'warning',
       commitMessageTemplates,
+      repoInfo: {
+        repoName: settings.gitHubSettings?.projectSettings?.repoName || 'N/A',
+        branch: settings.gitHubSettings?.projectSettings?.branch || 'N/A',
+      },
     });
 
     if (!confirmed) {
@@ -317,7 +322,7 @@ export class GitHubUploadHandler implements IGitHubUploadHandler {
   /**
    * Update upload status through callback
    */
-  private updateUploadStatus(status: any): void {
+  private updateUploadStatus(status: UploadStatusState): void {
     if (this.stateManager) {
       this.stateManager.setUploadStatus(status);
     }
@@ -329,7 +334,7 @@ export class GitHubUploadHandler implements IGitHubUploadHandler {
   public async getProjectInfo(): Promise<{ repoName?: string; branch?: string } | null> {
     const currentProjectId = getCurrentProjectId();
     const settings = (await SettingsService.getGitHubSettings(
-      currentProjectId
+      currentProjectId ?? undefined
     )) as LocalSettingsResult;
     if (settings.isSettingsValid && settings.gitHubSettings?.projectSettings) {
       return {

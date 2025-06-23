@@ -217,7 +217,6 @@ export class PushReminderService {
     logger.info('✅ Push reminder: Enough time has passed since last reminder');
 
     // Check if system is idle (user and Bolt not active)
-    const activityInfo = this.activityMonitor.getDebugInfo();
     logger.info('🔍 Push reminder: Activity status:', {
       isUserIdle: this.activityMonitor.isUserIdle(),
       isBoltIdle: this.activityMonitor.isBoltIdle(),
@@ -431,7 +430,7 @@ export class PushReminderService {
         count: meaningfulChanges.length,
         summary,
       };
-    } catch (error) {
+    } catch {
       return { count: 0, summary: '' };
     }
   }
@@ -839,8 +838,8 @@ export class PushReminderService {
         logger.info('🔍 Push reminder: Found active upload through UI state check');
         return true;
       }
-    } catch (error) {
-      logger.warn('❌ Push reminder: Failed to check UI upload state:', error);
+    } catch {
+      logger.warn('❌ Push reminder: Failed to check UI upload state');
     }
 
     return false;
@@ -856,7 +855,7 @@ export class PushReminderService {
       if (result.uploadState && result.uploadState.uploadStatus === 'uploading') {
         return { isUploading: true };
       }
-    } catch (error) {
+    } catch {
       // Storage access might fail, continue to other checks
     }
 

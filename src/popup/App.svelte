@@ -40,17 +40,14 @@
     uiStateActions,
     fileChangesStore,
     fileChangesActions,
-    uploadStateStore,
     uploadStateActions,
-    premiumStatusStore,
     isAuthenticated,
     isPremium,
-    premiumPlan,
-    premiumFeatures as userPremiumFeatures,
     premiumStatusActions,
     type TempRepoMetadata,
   } from '$lib/stores';
   import { ChromeMessagingService } from '$lib/services/chromeMessaging';
+  import type { PremiumFeature } from './types';
 
   // Constants for display modes
   const DISPLAY_MODES = {
@@ -64,16 +61,12 @@
   $: projectSettings = $projectSettingsStore;
   $: uiState = $uiStateStore;
   $: fileChangesState = $fileChangesStore;
-  $: uploadState = $uploadStateStore;
   $: settingsValid = $isSettingsValid;
   $: authenticationValid = $isAuthenticationValid;
   $: onBoltProject = $isOnBoltProject;
   $: projectId = $currentProjectId;
-  $: premiumStatus = $premiumStatusStore;
   $: isUserAuthenticated = $isAuthenticated;
   $: isUserPremium = $isPremium;
-  $: userPlan = $premiumPlan;
-  $: userFeatures = $userPremiumFeatures;
 
   // Component references and modal states
   let projectStatusRef: any;
@@ -92,7 +85,7 @@
   let upgradeModalConfig = {
     feature: '',
     reason: '',
-    features: [] as Array<{ id: string; name: string; description: string; icon: string }>,
+    features: [] as PremiumFeature[],
   };
 
   // Newsletter subscription state
@@ -122,13 +115,6 @@
       githubSettings.githubAppInstallationId) ||
       (githubSettings.authenticationMethod === 'pat' && githubSettings.githubToken))
   );
-
-  // Common props for components
-  $: projectsListProps = {
-    repoOwner: githubSettings.repoOwner,
-    currentlyLoadedProjectId: projectId,
-    isBoltSite: projectSettings.isBoltSite,
-  };
 
   // Handle pending popup context when stores are ready
   $: if (
@@ -545,7 +531,7 @@
       try {
         await fileChangesActions.requestFileChangesFromContentScript();
         uiStateActions.showStatus('Calculating file changes...', 5000);
-      } catch (error) {
+      } catch {
         uiStateActions.showStatus('Cannot show file changes: Not on a Bolt project page');
       }
     }
@@ -602,15 +588,15 @@
     try {
       const subscription = await SubscriptionService.getSubscriptionStatus();
       hasSubscribed = subscription.subscribed;
-    } catch (error) {
-      logger.error('Error refreshing subscription status:', error);
+    } catch (_error) {
+      logger.error('Error refreshing subscription status:', _error);
     }
   }
 
   async function handleSuccessfulAction(message: string) {
     // Increment interaction count
     try {
-      const count = await SubscriptionService.incrementInteractionCount();
+      await SubscriptionService.incrementInteractionCount();
 
       // Check if we should show subscription prompt
       const shouldPrompt = await SubscriptionService.shouldShowSubscriptionPrompt();

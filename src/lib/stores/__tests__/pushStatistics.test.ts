@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import { expect, jest, describe, it, beforeEach } from '@jest/globals';
 import { get } from 'svelte/store';
 import { pushStatisticsStore, pushStatisticsActions } from '../pushStatistics';

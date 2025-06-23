@@ -5,7 +5,6 @@
 
 import type {
   GitHubAppConfig,
-  GitHubAppInstallation,
   GitHubAppTokenResponse,
   GitHubAppErrorResponse,
   TokenValidationResult,
@@ -202,7 +201,7 @@ export class GitHubAppService {
   /**
    * Check permissions for GitHub App installation
    */
-  async checkPermissions(repoOwner: string): Promise<PermissionCheckResult> {
+  async checkPermissions(_repoOwner: string): Promise<PermissionCheckResult> {
     try {
       const installationToken = await this.getInstallationToken();
 

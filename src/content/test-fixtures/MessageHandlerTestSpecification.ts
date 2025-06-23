@@ -11,8 +11,6 @@
  * 5. Integration test scenarios
  */
 
-import type { MessageType } from '$lib/types';
-
 // =============================================================================
 // TESTING FRAMEWORK SPECIFICATION
 // =============================================================================

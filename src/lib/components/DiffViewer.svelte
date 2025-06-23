@@ -17,7 +17,6 @@
   let diffResult: DiffResult | null = null;
   let isLoading = true;
   let error: string | null = null;
-  let fileExtension = path.split('.').pop() || 'txt';
   let debugInfo = '';
   let showContextualView = true;
   let contextLines = 3;

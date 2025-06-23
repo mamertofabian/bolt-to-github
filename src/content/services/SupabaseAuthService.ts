@@ -416,7 +416,7 @@ export class SupabaseAuthService {
         ? tokenData.expires_at * 1000
         : Date.now() + 3600 * 1000; /* 1 hour default */
 
-      const storageData: any = {
+      const storageData: Record<string, unknown> = {
         supabaseToken: tokenData.access_token,
         supabaseTokenExpiry: expiresAt,
       };
@@ -492,9 +492,12 @@ export class SupabaseAuthService {
         target: { tabId },
         func: (projectRef: string) => {
           /* Collect logs to return to extension */
-          const logs: Array<{ level: 'info' | 'error'; message: string; data?: any }> = [];
-          const log = (message: string, data?: any) => {
-            const logEntry: any = { level: 'info', message };
+          const logs: Array<{ level: 'info' | 'error'; message: string; data?: unknown }> = [];
+          const log = (message: string, data?: unknown) => {
+            const logEntry: { level: 'info' | 'error'; message: string; data?: unknown } = {
+              level: 'info',
+              message,
+            };
             if (data !== undefined) {
               logEntry.data = data;
             }
@@ -505,8 +508,11 @@ export class SupabaseAuthService {
               console.log(message);
             }
           };
-          const logError = (message: string, data?: any) => {
-            const logEntry: any = { level: 'error', message };
+          const logError = (message: string, data?: unknown) => {
+            const logEntry: { level: 'info' | 'error'; message: string; data?: unknown } = {
+              level: 'error',
+              message,
+            };
             if (data !== undefined) {
               logEntry.data = data;
             }

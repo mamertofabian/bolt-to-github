@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 /**
  * Test doubles and mocks for GitHubAppService dependencies
  * Provides controlled test doubles that accurately reflect real behavior
@@ -146,7 +147,7 @@ export class MockGitHubAppService implements Partial<GitHubAppService> {
     this.userToken = token;
   }
 
-  async completeOAuthFlow(code: string, state?: string) {
+  async completeOAuthFlow(code: string, _state?: string) {
     if (code === 'code_invalid_xxxxxxxxxxxx') {
       throw new Error('Invalid authorization code');
     }
@@ -182,7 +183,7 @@ export class MockGitHubAppService implements Partial<GitHubAppService> {
       : validTokenValidationResult;
   }
 
-  async checkPermissions(repoOwner: string) {
+  async checkPermissions(_repoOwner: string) {
     return validPermissionCheckResult;
   }
 
@@ -427,7 +428,7 @@ export function createControlledFetch(handler: MockFetchHandler) {
  */
 export function createMethodSpy<T extends (...args: any[]) => any>(
   originalMethod: T,
-  name: string = 'method'
+  _name: string = 'method'
 ): T & { calls: Array<Parameters<T>>; resetCalls: () => void } {
   const calls: Array<Parameters<T>> = [];
 

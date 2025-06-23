@@ -1,19 +1,34 @@
 import type { UnifiedGitHubService } from '../../UnifiedGitHubService';
-import type { GitHubComparisonService } from '../../GitHubComparisonService';
 import type { UploadStatusState, ProjectFiles } from '$lib/types';
 import { GITHUB_API_RESPONSES, COMPARISON_RESULTS } from './ZipHandlerTestFixtures';
+import type { GitHubRepository } from 'src/services/types/repository';
 
 /**
  * Test doubles for ZipHandler dependencies
  * Provides controlled implementations that accurately reflect real behavior
  */
 
+// Define types for test mock responses and data
+type MockResponse =
+  | Record<string, unknown>
+  | unknown[]
+  | ((method: string, path: string, body?: unknown) => unknown);
+
+type RequestHistoryEntry = {
+  method: string;
+  path: string;
+  body?: unknown;
+};
+
+// Chrome storage types
+type ChromeStorageData = Record<string, unknown>;
+
 /**
  * Mock UnifiedGitHubService with configurable responses
  */
 export class MockUnifiedGitHubService implements Partial<UnifiedGitHubService> {
-  private responses: Map<string, any> = new Map();
-  private requestHistory: Array<{ method: string; path: string; body?: any }> = [];
+  private responses: Map<string, MockResponse> = new Map();
+  private requestHistory: RequestHistoryEntry[] = [];
   private shouldThrowError: Error | null = null;
   private requestDelay: number = 0;
   private rateLimitState = { ...GITHUB_API_RESPONSES.rateLimit };
@@ -63,9 +78,9 @@ export class MockUnifiedGitHubService implements Partial<UnifiedGitHubService> {
     this.responses.set('GET:/rate_limit', this.rateLimitState);
   }
 
-  async request(method: string, path: string, body?: any): Promise<any> {
+  async request<T = unknown>(method: string, endpoint: string, data?: unknown): Promise<T> {
     // Record the request
-    this.requestHistory.push({ method, path, body });
+    this.requestHistory.push({ method, path: endpoint, body: data });
 
     // Simulate network delay if configured
     if (this.requestDelay > 0) {
@@ -78,7 +93,7 @@ export class MockUnifiedGitHubService implements Partial<UnifiedGitHubService> {
     }
 
     // Handle rate limit checks
-    if (path === '/rate_limit') {
+    if (endpoint === '/rate_limit') {
       // Check if we should simulate rate limit reset
       const now = Math.floor(Date.now() / 1000);
       if (this.rateLimitState.resources.core.reset <= now && this.rateLimitBehavior !== 'normal') {
@@ -96,7 +111,7 @@ export class MockUnifiedGitHubService implements Partial<UnifiedGitHubService> {
               reset: this.rateLimitState.resources.core.reset,
             },
           },
-        };
+        } as T;
       } else if (this.rateLimitBehavior === 'limited') {
         return {
           resources: {
@@ -106,13 +121,13 @@ export class MockUnifiedGitHubService implements Partial<UnifiedGitHubService> {
               reset: this.rateLimitState.resources.core.reset,
             },
           },
-        };
+        } as T;
       }
-      return this.rateLimitState;
+      return this.rateLimitState as T;
     }
 
     // Handle blob creation
-    if (method === 'POST' && path.includes('/git/blobs')) {
+    if (method === 'POST' && endpoint.includes('/git/blobs')) {
       // Only simulate rate limit if explicitly configured for rate limit testing
       if (this.rateLimitBehavior === 'limited') {
         this.rateLimitState.resources.core.remaining--;
@@ -124,48 +139,50 @@ export class MockUnifiedGitHubService implements Partial<UnifiedGitHubService> {
         }
       }
 
-      return { sha: `blob-${Date.now()}-${Math.random().toString(36).slice(2)}` };
+      return { sha: `blob-${Date.now()}-${Math.random().toString(36).slice(2)}` } as T;
     }
 
     // Handle tree creation
-    if (method === 'POST' && path.includes('/git/trees')) {
-      return { sha: `tree-${Date.now()}-${Math.random().toString(36).slice(2)}` };
+    if (method === 'POST' && endpoint.includes('/git/trees')) {
+      return { sha: `tree-${Date.now()}-${Math.random().toString(36).slice(2)}` } as T;
     }
 
     // Handle commit creation
-    if (method === 'POST' && path.includes('/git/commits')) {
-      return { sha: `commit-${Date.now()}-${Math.random().toString(36).slice(2)}` };
+    if (method === 'POST' && endpoint.includes('/git/commits')) {
+      return { sha: `commit-${Date.now()}-${Math.random().toString(36).slice(2)}` } as T;
     }
 
     // Handle ref update
-    if (method === 'PATCH' && path.includes('/git/refs/heads/')) {
-      return { object: { sha: body.sha } };
+    if (method === 'PATCH' && endpoint.includes('/git/refs/heads/')) {
+      const requestData = data as Record<string, unknown>;
+      return { object: { sha: requestData?.sha } } as T;
     }
 
     // Handle branch creation
-    if (method === 'POST' && path.includes('/git/refs')) {
-      return { ref: body.ref, object: { sha: body.sha } };
+    if (method === 'POST' && endpoint.includes('/git/refs')) {
+      const requestData = data as Record<string, unknown>;
+      return { ref: requestData?.ref, object: { sha: requestData?.sha } } as T;
     }
 
     // Return configured response
-    const key = `${method}:${path}`;
+    const key = `${method}:${endpoint}`;
     if (this.responses.has(key)) {
       const response = this.responses.get(key);
       if (typeof response === 'function') {
-        return response(method, path, body);
+        return response(method, endpoint, data) as T;
       }
-      return response;
+      return response as T;
     }
 
     // Handle branch checks - return 404 for non-main branches to simulate branch creation scenario
-    if (method === 'GET' && path.includes('/branches/') && !path.includes('/main')) {
+    if (method === 'GET' && endpoint.includes('/branches/') && !endpoint.includes('/main')) {
       const error = new Error('Not Found') as Error & { status?: number };
       error.status = 404;
       throw error;
     }
 
     // Handle branch existence check via refs API
-    if (method === 'GET' && path.includes('/git/refs/heads/') && !path.includes('/main')) {
+    if (method === 'GET' && endpoint.includes('/git/refs/heads/') && !endpoint.includes('/main')) {
       // Return 404 to simulate branch doesn't exist, but don't break the flow
       const error = new Error('Not Found') as Error & { status?: number };
       error.status = 404;
@@ -173,22 +190,22 @@ export class MockUnifiedGitHubService implements Partial<UnifiedGitHubService> {
     }
 
     // Handle successful ref checks for main branch
-    if (method === 'GET' && path.includes('/git/refs/heads/main')) {
-      return { ref: 'refs/heads/main', object: { sha: 'abc123' } };
+    if (method === 'GET' && endpoint.includes('/git/refs/heads/main')) {
+      return { ref: 'refs/heads/main', object: { sha: 'abc123' } } as T;
     }
 
     // Handle repo checks
-    if (method === 'GET' && path.match(/^\/repos\/[^\/]+\/[^\/]+$/)) {
+    if (method === 'GET' && endpoint.match(/^\/repos\/[^/]+\/[^/]+$/)) {
       return {
-        name: path.split('/').pop(),
-        owner: { login: path.split('/')[2] },
+        name: endpoint.split('/').pop(),
+        owner: { login: endpoint.split('/')[2] },
         default_branch: 'main',
-      };
+      } as T;
     }
 
     // Handle contents checks (for empty repo detection)
-    if (method === 'GET' && path.includes('/contents/')) {
-      return []; // Empty contents
+    if (method === 'GET' && endpoint.includes('/contents/')) {
+      return [] as T; // Empty contents
     }
 
     // Default 404 for unknown paths
@@ -197,16 +214,22 @@ export class MockUnifiedGitHubService implements Partial<UnifiedGitHubService> {
     throw error;
   }
 
-  async ensureRepoExists(owner: string, repo: string): Promise<void> {
-    const response = await this.request('GET', `/repos/${owner}/${repo}`);
+  async ensureRepoExists(owner: string, repo: string): Promise<GitHubRepository> {
+    const response = await this.request<GitHubRepository>('GET', `/repos/${owner}/${repo}`);
     if (!response) {
-      throw new Error('Repository not found');
+      const error = new Error('Repository not found') as Error & { status?: number };
+      error.status = 404;
+      throw error;
     }
+    return response;
   }
 
   async isRepoEmpty(owner: string, repo: string): Promise<boolean> {
     try {
-      const result = await this.request('GET', `/repos/${owner}/${repo}/git/refs/heads/main`);
+      const result = await this.request<{ object?: { sha: string } }>(
+        'GET',
+        `/repos/${owner}/${repo}/git/refs/heads/main`
+      );
       return !result || !result.object;
     } catch {
       return true;
@@ -235,13 +258,8 @@ export class MockUnifiedGitHubService implements Partial<UnifiedGitHubService> {
   }
 
   // Test helper methods
-  setResponse(method: string, path: string, response: any) {
-    if (typeof response === 'function') {
-      // Store function responses separately
-      this.responses.set(`${method}:${path}`, response);
-    } else {
-      this.responses.set(`${method}:${path}`, response);
-    }
+  setResponse(method: string, path: string, response: MockResponse) {
+    this.responses.set(`${method}:${path}`, response);
   }
 
   setError(error: Error) {
@@ -301,7 +319,7 @@ export class MockGitHubComparisonService {
   private shouldThrowError: Error | null = null;
   private progressCallbacks: Array<{ message: string; progress: number }> = [];
 
-  setGitHubService(service: any): void {
+  setGitHubService(): void {
     // No-op for mock
   }
 
@@ -413,14 +431,14 @@ export class MockStatusCallback {
  * Mock Chrome storage API
  */
 export class MockChromeStorage {
-  private data: Record<string, any> = {};
+  private data: ChromeStorageData = {};
 
-  async get(keys: string | string[]): Promise<Record<string, any>> {
+  async get(keys: string | string[]): Promise<ChromeStorageData> {
     if (typeof keys === 'string') {
       return { [keys]: this.data[keys] };
     }
 
-    const result: Record<string, any> = {};
+    const result: ChromeStorageData = {};
     for (const key of keys) {
       if (key in this.data) {
         result[key] = this.data[key];
@@ -429,15 +447,15 @@ export class MockChromeStorage {
     return result;
   }
 
-  async set(items: Record<string, any>): Promise<void> {
+  async set(items: ChromeStorageData): Promise<void> {
     Object.assign(this.data, items);
   }
 
-  setData(data: Record<string, any>) {
+  setData(data: ChromeStorageData) {
     this.data = { ...data };
   }
 
-  getData() {
+  getData(): ChromeStorageData {
     return { ...this.data };
   }
 

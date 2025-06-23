@@ -1,3 +1,5 @@
+/* eslint-disable @typescript-eslint/no-require-imports */
+
 import { GitHubComparisonService } from '../../GitHubComparisonService';
 import {
   MockUnifiedGitHubService,
@@ -9,7 +11,6 @@ import {
 import {
   ZIP_FILE_FIXTURES,
   createTestBlob,
-  CHROME_STORAGE_FIXTURES,
   TEST_PROJECTS,
   ERROR_SCENARIOS,
 } from './ZipHandlerTestFixtures';
@@ -19,11 +20,16 @@ import {
  * Provides utilities for test setup, teardown, and common test scenarios
  */
 
+// Define ZipHandler interface to avoid using any
+interface ZipHandlerLike {
+  processZipFile(blob: Blob, projectId: string, commitMessage: string): Promise<void>;
+}
+
 /**
  * Test environment setup for ZipHandler tests
  */
 export interface ZipHandlerTestEnvironment {
-  zipHandler: any; // Will be set after mocking
+  zipHandler: ZipHandlerLike;
   githubService: MockUnifiedGitHubService;
   comparisonService: MockGitHubComparisonService;
   statusCallback: MockStatusCallback;
@@ -35,7 +41,7 @@ export interface ZipHandlerTestEnvironment {
 // Mock modules before importing ZipHandler
 jest.mock('../../../lib/zip', () => ({
   ZipProcessor: {
-    processZipBlob: jest.fn().mockImplementation(async (blob: any) => {
+    processZipBlob: jest.fn().mockImplementation(async (blob: Blob) => {
       // Check if it's a corrupted blob (our test marker)
       if (blob.size === 4) {
         // Check the blob type to see if it's corrupted
@@ -49,7 +55,7 @@ jest.mock('../../../lib/zip', () => ({
         let text: string;
         if (typeof blob.text === 'function') {
           text = await blob.text();
-        } else if (blob._content) {
+        } else if ('_content' in blob && typeof blob._content === 'string') {
           text = blob._content;
         } else {
           text = '[]';
@@ -76,7 +82,7 @@ jest.mock('../../../lib/common', () => ({
 
 jest.mock('../../../lib/Queue', () => ({
   Queue: jest.fn().mockImplementation(() => ({
-    add: jest.fn().mockImplementation(async (fn) => {
+    add: jest.fn().mockImplementation(async (fn: () => Promise<unknown>) => {
       // Execute the function immediately in tests
       return await fn();
     }),
@@ -116,7 +122,9 @@ export function createTestEnvironment(): ZipHandlerTestEnvironment {
   const originalComparison = GitHubComparisonService.getInstance();
 
   // Mock GitHubComparisonService.getInstance()
-  jest.spyOn(GitHubComparisonService, 'getInstance').mockReturnValue(comparisonService as any);
+  jest
+    .spyOn(GitHubComparisonService, 'getInstance')
+    .mockReturnValue(comparisonService as unknown as GitHubComparisonService);
 
   // Mock chrome.storage
   global.chrome = {
@@ -126,7 +134,7 @@ export function createTestEnvironment(): ZipHandlerTestEnvironment {
       sync: {
         get: chromeStorage.get.bind(chromeStorage),
         set: chromeStorage.set.bind(chromeStorage),
-      } as any,
+      } as chrome.storage.SyncStorageArea,
     },
   };
 
@@ -138,7 +146,10 @@ export function createTestEnvironment(): ZipHandlerTestEnvironment {
   const { ZipHandler } = require('../../zipHandler');
 
   // Create ZipHandler instance
-  const zipHandler = new ZipHandler(githubService as any, statusCallback.getCallback());
+  const zipHandler = new ZipHandler(
+    githubService as Parameters<typeof ZipHandler>[0],
+    statusCallback.getCallback()
+  ) as ZipHandlerLike;
 
   return {
     zipHandler,
@@ -292,7 +303,10 @@ export const TestScenarios = {
    */
   async uploadToEmptyRepo(env: ZipHandlerTestEnvironment) {
     setupTestProject(env, TEST_PROJECTS.default);
-    env.githubService.setResponse('GET', '/repos/test-owner/test-repo/git/refs/heads/main', null);
+    env.githubService.setResponse('GET', '/repos/test-owner/test-repo/git/refs/heads/main', {
+      status: 404,
+      data: null,
+    });
 
     const blob = createTestBlob(ZIP_FILE_FIXTURES.simpleProject);
     await env.zipHandler.processZipFile(
@@ -310,7 +324,7 @@ export const TestAssertions = {
   /**
    * Assert that the upload completed successfully
    */
-  expectSuccessfulUpload(env: ZipHandlerTestEnvironment, expectedFileCount: number) {
+  expectSuccessfulUpload(env: ZipHandlerTestEnvironment, _expectedFileCount: number) {
     const lastStatus = env.statusCallback.getLastStatus();
     expect(lastStatus).toMatchObject({
       status: 'success',
@@ -442,15 +456,17 @@ export const NetworkConditions = {
   normal: { delay: 50 },
   slow: { delay: 200 },
   unreliable: { delay: 500, errorRate: 0.1 },
-};
+} as const;
+
+/**
+ * Network condition type
+ */
+type NetworkCondition = (typeof NetworkConditions)[keyof typeof NetworkConditions];
 
 /**
  * Apply network condition to GitHub service mock
  */
-export function applyNetworkCondition(
-  env: ZipHandlerTestEnvironment,
-  condition: typeof NetworkConditions.normal
-) {
+export function applyNetworkCondition(env: ZipHandlerTestEnvironment, condition: NetworkCondition) {
   env.githubService.setDelay(condition.delay);
 
   if ('errorRate' in condition && Math.random() < condition.errorRate) {

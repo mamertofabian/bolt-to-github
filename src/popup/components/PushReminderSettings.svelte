@@ -100,12 +100,6 @@
     }
   }
 
-  function formatTime(timestamp: number): string {
-    if (timestamp === 0) return 'Never';
-    const date = new Date(timestamp);
-    return date.toLocaleTimeString();
-  }
-
   function getTimeAgo(timestamp: number): string {
     if (timestamp === 0) return 'Never';
     const minutes = Math.floor((Date.now() - timestamp) / 60000);

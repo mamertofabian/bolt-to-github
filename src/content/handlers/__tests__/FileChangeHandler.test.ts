@@ -1,10 +1,11 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 /* eslint-env jest */
 
 import { FileChangeHandler } from '../FileChangeHandler';
 import type { INotificationManager, IUploadStatusManager } from '../../types/ManagerInterfaces';
 import type { MessageHandler } from '../../MessageHandler';
 import type { PremiumService } from '../../services/PremiumService';
-import { FilePreviewService, type FileChange } from '../../../services/FilePreviewService';
+import { FilePreviewService } from '../../../services/FilePreviewService';
 
 // Mock external dependencies
 jest.mock('../../../services/FilePreviewService');
@@ -225,10 +226,6 @@ describe('FileChangeHandler', () => {
     });
 
     it('should get changed files without force refresh', async () => {
-      const mockChanges = new Map([
-        ['file1.js', { path: 'file1.js', status: 'modified' as const, content: 'content1' }],
-      ]);
-
       // Mock the private method behavior
       mockChromeStorage.sync.get.mockResolvedValue({});
       mockFilePreviewService.getProcessedFiles.mockResolvedValue(
@@ -243,10 +240,6 @@ describe('FileChangeHandler', () => {
     });
 
     it('should get changed files with force refresh', async () => {
-      const mockChanges = new Map([
-        ['file1.js', { path: 'file1.js', status: 'modified' as const, content: 'content1' }],
-      ]);
-
       // Mock the private method behavior
       mockChromeStorage.sync.get.mockResolvedValue({});
       mockFilePreviewService.getProcessedFiles.mockResolvedValue(

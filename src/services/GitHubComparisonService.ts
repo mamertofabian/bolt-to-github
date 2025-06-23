@@ -12,6 +12,31 @@ import { createLogger } from '../lib/utils/logger';
 
 const logger = createLogger('GitHubComparisonService');
 
+// Type definitions for GitHub API responses
+interface GitHubRef {
+  object: {
+    sha: string;
+  };
+}
+
+interface GitHubCommit {
+  tree: {
+    sha: string;
+  };
+}
+
+interface GitHubTree {
+  tree: Array<{
+    path: string;
+    sha: string;
+    type: string;
+  }>;
+}
+
+interface GitHubFileContent {
+  content: string;
+}
+
 /**
  * Service for comparing local files with GitHub repository files
  * This service extracts the comparison logic from ZipHandler to make it reusable
@@ -76,49 +101,43 @@ export class GitHubComparisonService {
     };
   }> {
     if (!this.githubService) {
-      throw new Error('GitHub service not set. Call setGitHubService first.');
+      throw new Error('GitHub service is not initialized');
     }
 
-    // Generate unique operation ID for this comparison
-    const operationId = `comparison-${Date.now()}-${Math.random().toString(36).substring(2, 8)}`;
+    // Create an operation for tracking
+    const operationId = `github-comparison-${Date.now()}`;
+    await this.operationStateManager.startOperation(
+      'comparison',
+      operationId,
+      'Comparing local files with GitHub repository'
+    );
 
     try {
-      // Start tracking the comparison operation
-      await this.operationStateManager.startOperation(
-        'comparison',
-        operationId,
-        `Comparing files with GitHub repository: ${repoOwner}/${repoName}`,
-        { repoOwner, repoName, targetBranch, fileCount: localFiles.size }
-      );
-
-      // Notify progress if callback provided
       const notifyProgress = (message: string, progress: number) => {
-        if (progressCallback) {
-          progressCallback(message, progress);
-        }
+        progressCallback?.(message, progress);
       };
 
       notifyProgress('Fetching repository data...', 10);
 
       // Get the current commit SHA
-      const baseRef = await this.githubService.request(
+      const baseRef = (await this.githubService.request(
         'GET',
         `/repos/${repoOwner}/${repoName}/git/refs/heads/${targetBranch}`
-      );
+      )) as GitHubRef;
       const baseSha = baseRef.object.sha;
 
-      const baseCommit = await this.githubService.request(
+      const baseCommit = (await this.githubService.request(
         'GET',
         `/repos/${repoOwner}/${repoName}/git/commits/${baseSha}`
-      );
+      )) as GitHubCommit;
       const baseTreeSha = baseCommit.tree.sha;
 
       // Fetch the full tree with content
       notifyProgress('Analyzing repository files...', 30);
-      const existingTree = await this.githubService.request(
+      const existingTree = (await this.githubService.request(
         'GET',
         `/repos/${repoOwner}/${repoName}/git/trees/${baseTreeSha}?recursive=1`
-      );
+      )) as GitHubTree;
 
       // Create a map of existing file paths to their SHAs
       const existingFiles = new Map<string, string>();
@@ -173,10 +192,10 @@ export class GitHubComparisonService {
               );
 
               // Use the FileService through GitHubService to fetch the actual content
-              const response = await this.githubService.request(
+              const response = (await this.githubService.request(
                 'GET',
                 `/repos/${repoOwner}/${repoName}/contents/${path}?ref=${targetBranch}`
-              );
+              )) as GitHubFileContent;
 
               if (response.content) {
                 // Properly decode UTF-8 content from base64

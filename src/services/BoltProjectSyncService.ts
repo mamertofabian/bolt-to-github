@@ -12,6 +12,27 @@ import type {
 
 const logger = createLogger('BoltProjectSyncService');
 
+interface RecentProjectChange {
+  timestamp: number;
+  projectId: string;
+  repoName?: string;
+  branch?: string;
+  projectTitle?: string;
+  age?: number;
+}
+
+interface BackendProject {
+  bolt_project_id: string;
+  project_name: string;
+  project_description?: string;
+  github_repo_owner?: string;
+  github_repo_name?: string;
+  github_branch?: string;
+  github_repo_url?: string;
+  is_private?: boolean;
+  last_modified?: string;
+}
+
 export class BoltProjectSyncService {
   private storageService: ChromeStorageService;
   private authService: SupabaseAuthService;
@@ -27,7 +48,7 @@ export class BoltProjectSyncService {
   async getLocalProjects(): Promise<BoltProject[]> {
     try {
       const result = await this.storageService.get('boltProjects');
-      return result.boltProjects || [];
+      return (result.boltProjects as BoltProject[]) || [];
     } catch (error) {
       logger.error('Failed to get local projects', { error });
       return [];
@@ -62,7 +83,7 @@ export class BoltProjectSyncService {
   async getLastSyncTimestamp(): Promise<string | null> {
     try {
       const result = await this.storageService.get('lastSyncTimestamp');
-      return result.lastSyncTimestamp || null;
+      return (result.lastSyncTimestamp as string) || null;
     } catch (error) {
       logger.error('Failed to get last sync timestamp', { error });
       return null;
@@ -140,7 +161,7 @@ export class BoltProjectSyncService {
    * Convert BoltProject to backend-compatible format
    * Removes local-only fields and ensures compatibility with ExtensionProject schema
    */
-  private prepareProjectForBackend(project: BoltProject): any {
+  private prepareProjectForBackend(project: BoltProject): BackendProject {
     // Only include fields that match the backend ExtensionProject schema
     return {
       bolt_project_id: project.bolt_project_id,
@@ -213,7 +234,7 @@ export class BoltProjectSyncService {
     });
 
     const syncRequest: SyncRequest = {
-      localProjects: backendProjects,
+      localProjects: backendProjects as unknown as BoltProject[],
       lastSyncTimestamp: lastSyncTimestamp || undefined,
       conflictResolution,
     };
@@ -891,8 +912,8 @@ export class BoltProjectSyncService {
    * Get recent project changes from storage to detect potential race conditions
    * Returns a map of projectId -> recent change data for changes within the last 30 seconds
    */
-  private async getRecentProjectChanges(): Promise<Map<string, any>> {
-    const recentChanges = new Map<string, any>();
+  private async getRecentProjectChanges(): Promise<Map<string, RecentProjectChange>> {
+    const recentChanges = new Map<string, RecentProjectChange>();
     const RECENT_CHANGE_THRESHOLD = 30000; // 30 seconds
 
     try {
@@ -912,6 +933,7 @@ export class BoltProjectSyncService {
           projectId
         ) {
           recentChanges.set(projectId, {
+            projectId,
             repoName,
             branch,
             projectTitle,

@@ -1,16 +1,13 @@
 import {
   createTestEnvironment,
   cleanupTestEnvironment,
-  TestScenarios,
   TestAssertions,
   ZIP_FILE_FIXTURES,
   createTestBlob,
   TEST_PROJECTS,
-  CHROME_STORAGE_FIXTURES,
   ERROR_SCENARIOS,
   COMPARISON_RESULTS,
   setupTestProject,
-  waitForAsync,
   type ZipHandlerTestEnvironment,
 } from './test-fixtures/ZipHandlerTestFixtures.index';
 
@@ -78,7 +75,14 @@ describe('ZipHandler', () => {
 
     it('should require GitHub service to be initialized', async () => {
       // Test by setting github service to null after creation
-      const testHandler = env.zipHandler as any;
+      const testHandler = env.zipHandler as unknown as {
+        githubService: typeof env.githubService | null;
+        processZipFile: (
+          blob: Blob,
+          projectId: string | null,
+          commitMessage: string
+        ) => Promise<void>;
+      };
       const originalService = testHandler.githubService;
       testHandler.githubService = null;
 
@@ -98,9 +102,9 @@ describe('ZipHandler', () => {
     it('should require a valid project ID', async () => {
       const blob = createTestBlob(ZIP_FILE_FIXTURES.simpleProject);
 
-      await expect(env.zipHandler.processZipFile(blob, null, 'Test commit')).rejects.toThrow(
-        'Project ID not found'
-      );
+      await expect(
+        env.zipHandler.processZipFile(blob, null as unknown as string, 'Test commit')
+      ).rejects.toThrow('Project ID not found');
 
       const errorStatus = env.statusCallback.findStatus((s) => s.status === 'error');
       expect(errorStatus?.message).toContain('Project ID not found');
@@ -125,7 +129,11 @@ describe('ZipHandler', () => {
     it('should initialize empty repositories before uploading', async () => {
       setupTestProject(env, TEST_PROJECTS.default);
       // Mock empty repository
-      env.githubService.setResponse('GET', '/repos/test-owner/test-repo/git/refs/heads/main', null);
+      env.githubService.setResponse(
+        'GET',
+        '/repos/test-owner/test-repo/git/refs/heads/main',
+        null as unknown as Record<string, unknown>
+      );
 
       const blob = createTestBlob(ZIP_FILE_FIXTURES.simpleProject);
 
@@ -236,7 +244,7 @@ describe('ZipHandler', () => {
       );
 
       // Verify paths were normalized (project/ prefix removed)
-      const blobCreations = env.githubService
+      env.githubService
         .getRequestHistory()
         .filter((req) => req.method === 'POST' && req.path.includes('/git/blobs'));
 
@@ -246,8 +254,13 @@ describe('ZipHandler', () => {
         .find((req) => req.method === 'POST' && req.path.includes('/git/trees'));
 
       expect(treeCreation).toBeDefined();
-      if (treeCreation?.body?.tree) {
-        const paths = treeCreation.body.tree.map((item: any) => item.path);
+      if (
+        treeCreation?.body &&
+        typeof treeCreation.body === 'object' &&
+        'tree' in treeCreation.body
+      ) {
+        const body = treeCreation.body as { tree: Array<{ path: string }> };
+        const paths = body.tree.map((item) => item.path);
         expect(paths).toContain('index.js');
         expect(paths).toContain('src/app.js');
         expect(paths).not.toContain('project/index.js');
@@ -270,8 +283,13 @@ describe('ZipHandler', () => {
         .getRequestHistory()
         .find((req) => req.method === 'POST' && req.path.includes('/git/trees'));
 
-      if (treeCreation?.body?.tree) {
-        const paths = treeCreation.body.tree.map((item: any) => item.path);
+      if (
+        treeCreation?.body &&
+        typeof treeCreation.body === 'object' &&
+        'tree' in treeCreation.body
+      ) {
+        const body = treeCreation.body as { tree: Array<{ path: string }> };
+        const paths = body.tree.map((item) => item.path);
         expect(paths).not.toContain('node_modules/package/index.js');
         expect(paths).not.toContain('.env');
         expect(paths).not.toContain('dist/bundle.js');
@@ -420,7 +438,7 @@ describe('ZipHandler', () => {
 
       // Should have warning about rate limit
       const warningStatus = env.statusCallback.findStatus((s) =>
-        s.message?.includes('Rate limit warning')
+        Boolean(s.message?.includes('Rate limit warning'))
       );
       expect(warningStatus).toBeDefined();
     });

@@ -11,7 +11,15 @@ let analyticsInitialized = false;
 /**
  * Send analytics event to background script
  */
-function sendAnalyticsToBackground(eventType: string, eventData: any) {
+interface AnalyticsEventData {
+  context?: string;
+  eventType?: string;
+  projectMetadata?: {
+    projectName: string;
+  };
+}
+
+function sendAnalyticsToBackground(eventType: string, eventData: AnalyticsEventData) {
   try {
     chrome.runtime.sendMessage({
       type: 'ANALYTICS_EVENT',

@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import { IdleMonitorService } from '../IdleMonitorService';
 import { expect, jest, describe, it, beforeEach, afterEach } from '@jest/globals';
 

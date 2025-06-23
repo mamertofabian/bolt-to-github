@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 /**
  * Service-specific test doubles and dependency mocks for BackgroundService.ts
  *
@@ -55,7 +56,7 @@ export class MockUnifiedGitHubService {
   private rateLimitCount = 0;
   private maxRateLimitRetries = 0;
 
-  constructor(token?: string | { type: string }) {
+  constructor(_token?: string | { type: string }) {
     // Mock constructor behavior
   }
 
@@ -129,12 +130,12 @@ export class MockZipHandler {
   private progressCallbacks: Array<(status: UploadStatusState) => void> = [];
   private processedFiles: string[] = [];
 
-  constructor(githubService: any, statusCallback: (status: UploadStatusState) => void) {
+  constructor(_githubService: any, statusCallback: (status: UploadStatusState) => void) {
     this.progressCallbacks.push(statusCallback);
   }
 
   processZipFile = jest.fn(
-    async (blob: Blob, projectId: string, commitMessage: string): Promise<void> => {
+    async (_blob: Blob, projectId: string, commitMessage: string): Promise<void> => {
       // Simulate processing stages
       this.broadcastStatus({
         status: 'uploading',
@@ -207,14 +208,14 @@ export class MockBackgroundTempRepoManager {
   private shouldFail = false;
 
   constructor(
-    githubService: any,
-    repoOwner: string,
-    statusCallback: (status: UploadStatusState) => void
+    _githubService: any,
+    _repoOwner: string,
+    _statusCallback: (status: UploadStatusState) => void
   ) {
     // Mock constructor
   }
 
-  handlePrivateRepoImport = jest.fn(async (repoName: string, branch?: string): Promise<void> => {
+  handlePrivateRepoImport = jest.fn(async (repoName: string, _branch?: string): Promise<void> => {
     if (this.shouldFail) {
       throw new Error('Failed to import private repository');
     }
@@ -302,11 +303,11 @@ export class MockSupabaseAuthService {
     subscription: { isActive: this.isPremiumUser, plan: 'free' as const },
   }));
 
-  addAuthStateListener = jest.fn((listener: any): void => {
+  addAuthStateListener = jest.fn((_listener: any): void => {
     // Mock implementation - store listener for testing
   });
 
-  removeAuthStateListener = jest.fn((listener: any): void => {
+  removeAuthStateListener = jest.fn((_listener: any): void => {
     // Mock implementation - remove listener for testing
   });
 
@@ -345,8 +346,8 @@ export class MockOperationStateManager {
     async (
       type: string,
       operationId: string,
-      description: string,
-      metadata?: any
+      _description: string,
+      _metadata?: any
     ): Promise<void> => {
       if (this.shouldFail) {
         throw new Error('Failed to start operation');
@@ -411,11 +412,11 @@ export class MockUsageTracker {
     // Mock implementation - does nothing
   });
 
-  updateUsageStats = jest.fn(async (eventType: string, data?: any): Promise<void> => {
+  updateUsageStats = jest.fn(async (_eventType: string, _data?: any): Promise<void> => {
     // Mock implementation - does nothing
   });
 
-  trackError = jest.fn(async (error: Error, context: string): Promise<void> => {
+  trackError = jest.fn(async (_error: Error, _context: string): Promise<void> => {
     // Mock implementation - does nothing
   });
 

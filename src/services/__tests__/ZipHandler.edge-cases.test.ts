@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import {
   createTestEnvironment,
   cleanupTestEnvironment,
@@ -55,8 +56,10 @@ describe('ZipHandler - Edge Cases', () => {
         .getRequestHistory()
         .find((req) => req.method === 'POST' && req.path.includes('/git/trees'));
 
-      expect(treeCreation?.body?.tree).toHaveLength(4);
-      const paths = treeCreation?.body?.tree.map((item: any) => item.path);
+      expect((treeCreation?.body as unknown as { tree: { path: string }[] })?.tree).toHaveLength(4);
+      const paths = (treeCreation?.body as unknown as { tree: { path: string }[] })?.tree.map(
+        (item) => item.path
+      );
       expect(paths).toContain('app.min.js');
       expect(paths).toContain('data.backup.2024.json');
     });
@@ -107,8 +110,10 @@ describe('ZipHandler - Edge Cases', () => {
         .getRequestHistory()
         .find((req) => req.method === 'POST' && req.path.includes('/git/trees'));
 
-      expect(treeCreation?.body?.tree).toBeDefined();
-      expect(treeCreation?.body?.tree.length).toBeGreaterThan(0);
+      expect((treeCreation?.body as unknown as { tree: { path: string }[] })?.tree).toBeDefined();
+      expect(
+        (treeCreation?.body as unknown as { tree: { path: string }[] })?.tree.length
+      ).toBeGreaterThan(0);
     });
   });
 

@@ -5,7 +5,7 @@ const logger = createLogger('MessageHandler');
 
 export class MessageHandler {
   private port: chrome.runtime.Port | null;
-  private messageQueue: { type: MessageType; data?: any }[] = [];
+  private messageQueue: { type: MessageType; data?: unknown }[] = [];
   private isConnected = false;
 
   constructor(port: chrome.runtime.Port) {
@@ -76,7 +76,7 @@ export class MessageHandler {
     }
   }
 
-  public sendMessage(type: MessageType, data?: any) {
+  public sendMessage(type: MessageType, data?: unknown) {
     const message = { type, data };
 
     // If port is not connected, queue the message

@@ -1,6 +1,7 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import { TokenService } from '../TokenService';
 import type { IGitHubApiClient } from '../interfaces/IGitHubApiClient';
-import { expect, jest, describe, it, beforeEach, afterEach } from '@jest/globals';
+import { expect, jest, describe, it, beforeEach } from '@jest/globals';
 
 describe('TokenService', () => {
   let mockApiClient: any;

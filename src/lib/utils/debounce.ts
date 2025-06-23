@@ -1,13 +1,13 @@
 /**
  * Debounce utility for preventing rapid successive function calls
  */
-export function debounce<T extends (...args: any[]) => any>(
-  func: T,
+export function debounce<TArgs extends readonly unknown[], TReturn>(
+  func: (...args: TArgs) => TReturn,
   wait: number
-): (...args: Parameters<T>) => void {
+): (...args: TArgs) => void {
   let timeout: NodeJS.Timeout | null = null;
 
-  return (...args: Parameters<T>) => {
+  return (...args: TArgs) => {
     if (timeout) {
       clearTimeout(timeout);
     }
@@ -18,13 +18,13 @@ export function debounce<T extends (...args: any[]) => any>(
 /**
  * Throttle utility for limiting function execution frequency
  */
-export function throttle<T extends (...args: any[]) => any>(
-  func: T,
+export function throttle<TArgs extends readonly unknown[], TReturn>(
+  func: (...args: TArgs) => TReturn,
   limit: number
-): (...args: Parameters<T>) => ReturnType<T> | void {
+): (...args: TArgs) => TReturn | void {
   let inThrottle: boolean = false;
 
-  return (...args: Parameters<T>) => {
+  return (...args: TArgs) => {
     if (!inThrottle) {
       const result = func(...args);
       inThrottle = true;

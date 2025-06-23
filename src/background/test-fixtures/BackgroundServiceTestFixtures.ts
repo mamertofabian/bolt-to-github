@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 /**
  * Comprehensive test fixtures for BackgroundService.ts
  *
@@ -5,13 +6,7 @@
  * designed to reveal actual usage patterns and potential bugs in BackgroundService.
  */
 
-import type {
-  Message,
-  MessageType,
-  Port,
-  UploadStatusState,
-  GitHubSettingsInterface,
-} from '../../lib/types';
+import type { Message, MessageType, Port } from '../../lib/types';
 
 // =============================================================================
 // REALISTIC TEST DATA
@@ -254,7 +249,7 @@ export class MockPort implements Port {
     } as any;
   }
 
-  postMessage(message: any): void {
+  postMessage(_message: any): void {
     if (!this.connected) {
       throw new Error('Port is disconnected');
     }
@@ -622,7 +617,7 @@ export const AssertionHelpers = {
     }
   },
 
-  expectPortMessage(port: MockPort, messageType: MessageType): void {
+  expectPortMessage(_port: MockPort, _messageType: MessageType): void {
     // This would be implemented based on your mocking strategy
     // You might want to track sent messages in MockPort
   },

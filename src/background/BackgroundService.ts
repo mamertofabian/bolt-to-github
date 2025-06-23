@@ -1,5 +1,15 @@
 import { UnifiedGitHubService } from '../services/UnifiedGitHubService';
-import type { Message, MessageType, Port, UploadStatusState } from '../lib/types';
+import type {
+  Message,
+  MessageType,
+  Port,
+  UploadStatusState,
+  ZipDataMessage,
+  SetCommitMessage,
+  OpenFileChangesMessage,
+  ImportPrivateRepoMessage,
+  NotifyGitHubAppSyncMessage,
+} from '../lib/types';
 import { StateManager } from './StateManager';
 import { ZipHandler } from '../services/zipHandler';
 import { BackgroundTempRepoManager } from './TempRepoManager';
@@ -116,7 +126,7 @@ export class BackgroundService {
 
   private async sendAnalyticsEvent(
     eventName: string,
-    params: Record<string, any> = {}
+    params: Record<string, string | number | boolean> = {}
   ): Promise<void> {
     try {
       // Get or generate client ID
@@ -130,6 +140,7 @@ export class BackgroundService {
           await chrome.storage.local.set({ analyticsClientId: clientId });
         }
       } catch (error) {
+        logger.debug('Failed to get analytics client ID:', error);
         clientId = this.generateClientId();
       }
 
@@ -305,7 +316,7 @@ export class BackgroundService {
   }
 
   private broadcastStatus(status: UploadStatusState) {
-    for (const [tabId, port] of this.ports) {
+    for (const [, port] of this.ports) {
       this.sendResponse(port, {
         type: 'UPLOAD_STATUS',
         status,
@@ -391,8 +402,9 @@ export class BackgroundService {
         chrome.action.openPopup();
         sendResponse({ success: true });
       } else if (message.type === 'NOTIFY_GITHUB_APP_SYNC') {
-        logger.info('📢 Received NOTIFY_GITHUB_APP_SYNC message:', message.data);
-        await this.handleGitHubAppSyncNotification(message.data);
+        const syncMessage = message as NotifyGitHubAppSyncMessage;
+        logger.info('📢 Received NOTIFY_GITHUB_APP_SYNC message:', syncMessage.data);
+        await this.handleGitHubAppSyncNotification(syncMessage.data);
         sendResponse({ success: true });
       } else if (
         message.type === 'getExtensionStatus' &&
@@ -549,33 +561,39 @@ export class BackgroundService {
       }
 
       switch (message.type) {
-        case 'ZIP_DATA':
+        case 'ZIP_DATA': {
           await this.sendAnalyticsEvent('user_action', {
             action: 'zip_upload_initiated',
             context: 'content_script',
           });
+          // Type narrowing for ZIP_DATA message
+          const zipMessage = message as ZipDataMessage;
           // Handle both old and new message formats for backward compatibility
-          if (typeof message.data === 'string') {
+          if (typeof zipMessage.data === 'string') {
             // Old format: message.data is just the base64 string
-            await this.handleZipData(tabId, message.data, null);
+            await this.handleZipData(tabId, zipMessage.data, null);
           } else {
             // New format: message.data is { data: string, projectId?: string }
-            await this.handleZipData(tabId, message.data.data, message.data.projectId);
+            await this.handleZipData(tabId, zipMessage.data.data, zipMessage.data.projectId);
           }
           break;
+        }
 
-        case 'SET_COMMIT_MESSAGE':
-          logger.info('Setting commit message:', message.data.message);
+        case 'SET_COMMIT_MESSAGE': {
+          const commitMessage = message as SetCommitMessage;
+          logger.info('Setting commit message:', commitMessage.data.message);
           await this.sendAnalyticsEvent('user_action', {
             action: 'commit_message_customized',
             has_custom_message: Boolean(
-              message.data?.message && message.data.message !== 'Commit from Bolt to GitHub'
+              commitMessage.data?.message &&
+                commitMessage.data.message !== 'Commit from Bolt to GitHub'
             ),
           });
-          if (message.data && message.data.message) {
-            this.pendingCommitMessage = message.data.message;
+          if (commitMessage.data && commitMessage.data.message) {
+            this.pendingCommitMessage = commitMessage.data.message;
           }
           break;
+        }
 
         case 'OPEN_SETTINGS':
           logger.info('Opening settings popup');
@@ -645,27 +663,30 @@ export class BackgroundService {
           }, 10);
           break;
 
-        case 'OPEN_FILE_CHANGES':
+        case 'OPEN_FILE_CHANGES': {
+          const fileChangesMessage = message as OpenFileChangesMessage;
           logger.info('Opening file changes popup');
           await this.sendAnalyticsEvent('user_action', {
             action: 'file_changes_viewed',
-            file_count: Object.keys(message.data?.changes || {}).length,
+            file_count: Object.keys(fileChangesMessage.data?.changes || {}).length,
           });
           // Store the file changes in local storage for the popup to retrieve
           await chrome.storage.local.set({
-            pendingFileChanges: message.data?.changes || {},
+            pendingFileChanges: fileChangesMessage.data?.changes || {},
           });
           logger.info('Stored file changes in local storage');
 
           // Open the popup - it will check for pendingFileChanges when it loads
           chrome.action.openPopup();
           break;
+        }
 
-        case 'IMPORT_PRIVATE_REPO':
-          logger.info('🔄 Processing private repo import:', message.data.repoName);
+        case 'IMPORT_PRIVATE_REPO': {
+          const importMessage = message as ImportPrivateRepoMessage;
+          logger.info('🔄 Processing private repo import:', importMessage.data.repoName);
           await this.sendAnalyticsEvent('user_action', {
             action: 'private_repo_import_started',
-            has_custom_branch: Boolean(message.data.branch),
+            has_custom_branch: Boolean(importMessage.data.branch),
           });
 
           // Ensure TempRepoManager is initialized before proceeding
@@ -694,16 +715,17 @@ export class BackgroundService {
           }
 
           await this.tempRepoManager.handlePrivateRepoImport(
-            message.data.repoName,
-            message.data.branch
+            importMessage.data.repoName,
+            importMessage.data.branch
           );
           await this.sendAnalyticsEvent('user_action', {
             action: 'private_repo_import_completed',
           });
           logger.info(
-            `✅ Private repo import completed from branch '${message.data.branch || 'default'}'`
+            `✅ Private repo import completed from branch '${importMessage.data.branch || 'default'}'`
           );
           break;
+        }
         case 'DELETE_TEMP_REPO':
           await this.sendAnalyticsEvent('user_action', {
             action: 'temp_repo_cleanup',
@@ -798,7 +820,14 @@ export class BackgroundService {
 
     const startTime = Date.now();
     let uploadSuccess = false;
-    let uploadMetadata: any = {};
+    let uploadMetadata: {
+      projectId?: string;
+      zipSize?: number;
+      commitMessage?: string;
+      duration?: number;
+      error_type?: string;
+      error_message?: string;
+    } = {};
 
     try {
       if (!this.githubService) {
@@ -964,7 +993,8 @@ export class BackgroundService {
         if (isGitHubError) {
           // Extract the original GitHub error message if available
           const originalMessage =
-            (decodeError as any).originalMessage || 'GitHub authentication or API error occurred';
+            (decodeError as Error & { originalMessage?: string }).originalMessage ||
+            'GitHub authentication or API error occurred';
 
           throw new Error(`GitHub Error: ${originalMessage}`);
         } else {
@@ -1039,7 +1069,7 @@ export class BackgroundService {
 
   private async handleCheckPremiumFeature(
     feature: string,
-    sendResponse: (response: any) => void
+    sendResponse: (response: { hasAccess: boolean }) => void
   ): Promise<void> {
     try {
       const premiumFeatures = ['pushReminders', 'branchSelector', 'viewFileChanges', 'issues'];
@@ -1062,44 +1092,70 @@ export class BackgroundService {
     }
   }
 
-  private async handleAnalyticsEvent(eventType: string, eventData: any): Promise<void> {
+  private async handleAnalyticsEvent(
+    eventType: string,
+    eventData: {
+      context?: string;
+      eventType?: string;
+      projectMetadata?: Record<string, string | number | boolean>;
+      details?: Record<string, string | number | boolean>;
+      action?: string;
+      page?: string;
+      metadata?: Record<string, string | number | boolean>;
+      operation?: string;
+      success?: boolean;
+      errorType?: string;
+      error?: string;
+    }
+  ): Promise<void> {
     try {
       switch (eventType) {
         case 'extension_opened':
-          await this.sendAnalyticsEvent('extension_opened', { context: eventData.context });
+          await this.sendAnalyticsEvent('extension_opened', {
+            context: eventData.context || 'unknown',
+          });
           break;
 
         case 'bolt_project_event':
-          await this.sendAnalyticsEvent(eventData.eventType, eventData.projectMetadata);
+          await this.sendAnalyticsEvent(
+            eventData.eventType || 'bolt_project_event',
+            eventData.projectMetadata || {}
+          );
           break;
 
         case 'extension_event':
-          await this.sendAnalyticsEvent(eventData.eventType, eventData.details);
+          await this.sendAnalyticsEvent(
+            eventData.eventType || 'extension_event',
+            eventData.details || {}
+          );
           break;
 
         case 'user_preference':
-          await this.sendAnalyticsEvent(eventData.action, eventData.details);
+          await this.sendAnalyticsEvent(
+            eventData.action || 'user_preference',
+            eventData.details || {}
+          );
           break;
 
         case 'page_view':
           await this.sendAnalyticsEvent('page_view', {
-            page: eventData.page,
-            ...eventData.metadata,
+            page: eventData.page || 'unknown',
+            ...(eventData.metadata || {}),
           });
           break;
 
         case 'github_operation':
-          await this.sendAnalyticsEvent(`github_${eventData.operation}`, {
-            success: eventData.success,
-            ...eventData.metadata,
+          await this.sendAnalyticsEvent(`github_${eventData.operation || 'unknown'}`, {
+            success: Boolean(eventData.success),
+            ...(eventData.metadata || {}),
           });
           break;
 
         case 'error':
           await this.sendAnalyticsEvent('extension_error', {
-            error_type: eventData.errorType,
-            error_message: eventData.error,
-            context: eventData.context,
+            error_type: eventData.errorType || 'unknown',
+            error_message: eventData.error || 'unknown',
+            context: eventData.context || 'unknown',
           });
           break;
 
@@ -1143,7 +1199,11 @@ export class BackgroundService {
     }
   }
 
-  private async handleGitHubAppSyncNotification(data: any): Promise<void> {
+  private async handleGitHubAppSyncNotification(data: {
+    installationId?: number;
+    username?: string;
+    avatarUrl?: string;
+  }): Promise<void> {
     try {
       logger.info('📢 Handling GitHub App sync notification to all bolt.new tabs');
 
@@ -1191,7 +1251,7 @@ export class BackgroundService {
       }
 
       // Perform a simple async operation to keep the service worker active
-      chrome.storage.local.get(['keepAliveTimestamp'], (result) => {
+      chrome.storage.local.get(['keepAliveTimestamp'], (_result) => {
         chrome.storage.local.set({ keepAliveTimestamp: Date.now() });
       });
     }, 25000); // Every 25 seconds
@@ -1227,7 +1287,20 @@ export class BackgroundService {
     }
   }
 
-  private async handleGetExtensionStatus(sendResponse: (response: any) => void): Promise<void> {
+  private async handleGetExtensionStatus(
+    sendResponse: (response: {
+      success: boolean;
+      data?: {
+        installed: boolean;
+        version: string;
+        authenticated: boolean;
+        installDate: string;
+        onboardingCompleted: boolean;
+        installedVersion: string;
+      };
+      error?: string;
+    }) => void
+  ): Promise<void> {
     try {
       // Get onboarding data from storage
       const storageData = await chrome.storage.local.get([
@@ -1265,7 +1338,7 @@ export class BackgroundService {
 
   private async handleCompleteOnboardingStep(
     step: string,
-    sendResponse: (response: any) => void
+    sendResponse: (response: { success: boolean; error?: string }) => void
   ): Promise<void> {
     try {
       // Validate step parameter
@@ -1353,7 +1426,13 @@ export class BackgroundService {
 
   private async handleInitiateGitHubAuth(
     method: string,
-    sendResponse: (response: any) => void
+    sendResponse: (response: {
+      success: boolean;
+      authUrl?: string;
+      method?: string;
+      message?: string;
+      error?: string;
+    }) => void
   ): Promise<void> {
     try {
       // Validate authentication method
@@ -1391,7 +1470,19 @@ export class BackgroundService {
     }
   }
 
-  private async handleManualSync(sendResponse: (response: any) => void): Promise<void> {
+  private async handleManualSync(
+    sendResponse: (response: {
+      success: boolean;
+      message?: string;
+      result?: {
+        syncPerformed: boolean;
+        updatedCount?: number;
+        conflictCount?: number;
+        deletedCount?: number;
+      };
+      error?: string;
+    }) => void
+  ): Promise<void> {
     try {
       logger.info('📱 Manual sync triggered via message - starting sync operation...');
 

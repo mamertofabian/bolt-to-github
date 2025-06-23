@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import { RepoCloneService } from '../RepoCloneService';
 import type { IGitHubApiClient } from '../interfaces/IGitHubApiClient';
 import type { IFileService } from '../interfaces/IFileService';
@@ -12,7 +13,7 @@ jest.mock('../RateLimitHandler', () => {
         handleRateLimit: jest.fn().mockResolvedValue({} as never),
         resetRequestCount: jest.fn(),
         resetRetryCount: jest.fn(),
-        sleep: jest.fn().mockImplementation((ms) => Promise.resolve()),
+        sleep: jest.fn().mockImplementation((_ms) => Promise.resolve()),
       };
     }),
   };

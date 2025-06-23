@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import { FileService } from '../FileService';
 import type { IGitHubApiClient } from '../interfaces/IGitHubApiClient';
 import { expect, jest, describe, it, beforeEach } from '@jest/globals';

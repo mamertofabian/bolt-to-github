@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import { UIElementFactory, type ContainerConfig, type OverlayConfig } from '../UIElementFactory';
 import type { ButtonOptions, DropdownItem, DialogOptions } from '../../types/UITypes';
 

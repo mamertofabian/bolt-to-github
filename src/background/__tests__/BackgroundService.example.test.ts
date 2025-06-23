@@ -55,7 +55,7 @@ describe('BackgroundService Test Fixtures Example', () => {
       } catch (error) {
         // Expected authentication failure
         expect(error).toBeInstanceOf(Error);
-        expect(error.message).toBe('Authentication check failed');
+        expect((error as Error).message).toBe('Authentication check failed');
       }
     });
   });

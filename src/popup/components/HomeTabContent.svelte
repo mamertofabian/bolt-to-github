@@ -5,10 +5,11 @@
   import ProjectGuide from '$lib/components/ProjectGuide.svelte';
   import SocialLinks from '$lib/components/SocialLinks.svelte';
   import { COFFEE_LINK, GITHUB_LINK, YOUTUBE_LINK } from '$lib/constants';
+  import type { HomeTabProps, UpgradeType } from '../types';
 
   export let projectStatusRef: any;
   export let projectId: string | null;
-  export let githubSettings: any;
+  export let githubSettings: HomeTabProps['githubSettings'];
   export let isAuthenticationValid: boolean;
   export let isLoading: boolean = false;
 
@@ -16,7 +17,7 @@
     switchTab: string;
     showFileChanges: void;
     feedback: void;
-    upgradeClick: any;
+    upgradeClick: UpgradeType;
   }>();
 
   function handleSwitchTab(event: CustomEvent<string>) {
@@ -31,7 +32,7 @@
     dispatch('feedback');
   }
 
-  function handleUpgradeClick(type: any) {
+  function handleUpgradeClick(type: UpgradeType) {
     dispatch('upgradeClick', type);
   }
 </script>

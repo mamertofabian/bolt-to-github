@@ -48,7 +48,7 @@ export class FilePreviewService {
     } catch (error) {
       logger.warn('Error initializing idle monitor or cache service:', error);
       // Create cache service with null idle monitor as fallback
-      this.cacheService = CacheService.getInstance(null as any);
+      this.cacheService = CacheService.getInstance(null);
     }
 
     this.githubComparisonService = GitHubComparisonService.getInstance();

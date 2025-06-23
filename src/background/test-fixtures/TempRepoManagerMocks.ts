@@ -186,7 +186,7 @@ export class MockBehaviorOrchestrator {
    */
   async orchestrateSuccessfulImport(
     sourceRepo: string = TempRepoTestData.repositories.validSourceRepo,
-    branch?: string
+    _branch?: string
   ): Promise<{
     tempRepoName: string;
     operationId: string;
@@ -307,8 +307,8 @@ export class MockBehaviorOrchestrator {
 
 export class MockVerificationUtilities {
   static verifyGitHubServiceCalls(
-    mockService: MockUnifiedGitHubService,
-    expectedCalls: {
+    _mockService: MockUnifiedGitHubService,
+    _expectedCalls: {
       listBranches?: { owner: string; repo: string };
       createTemporaryPublicRepo?: { owner: string; sourceRepo: string; branch?: string };
       cloneRepoContents?: {
@@ -382,7 +382,7 @@ export class MockVerificationUtilities {
     expectedOperations: {
       gets?: number;
       sets?: number;
-      finalDataCheck?: (data: any) => boolean;
+      finalDataCheck?: (data: unknown) => boolean;
     }
   ): void {
     if (expectedOperations.gets !== undefined) {

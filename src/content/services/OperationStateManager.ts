@@ -17,7 +17,7 @@ export interface OngoingOperation {
   id: string;
   startTime: number;
   description?: string;
-  metadata?: Record<string, any>;
+  metadata?: Record<string, unknown>;
 }
 
 export interface OperationStateEvents {
@@ -81,6 +81,7 @@ export class OperationStateManager {
 
       return 'unknown';
     } catch (error) {
+      logger.error('Error detecting context:', error);
       return 'unknown';
     }
   }
@@ -129,10 +130,12 @@ export class OperationStateManager {
   /**
    * Sync state from storage
    */
-  private syncFromStorage(storageData: any): void {
-    if (!storageData || !storageData.operations) {
+  private syncFromStorage(storageData: unknown): void {
+    if (!storageData || typeof storageData !== 'object' || !('operations' in storageData)) {
       return;
     }
+
+    const data = storageData as { operations: OngoingOperation[] };
 
     this.isSyncing = true;
 
@@ -142,7 +145,7 @@ export class OperationStateManager {
       this.operations.clear();
 
       // Load operations from storage
-      storageData.operations.forEach((op: OngoingOperation) => {
+      data.operations.forEach((op: OngoingOperation) => {
         this.operations.set(op.id, op);
 
         // Set up timeout for this operation
@@ -208,7 +211,7 @@ export class OperationStateManager {
     type: OngoingOperation['type'],
     id: string,
     description?: string,
-    metadata?: Record<string, any>
+    metadata?: Record<string, unknown>
   ): Promise<void> {
     const operation: OngoingOperation = {
       type,

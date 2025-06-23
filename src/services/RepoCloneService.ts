@@ -1,9 +1,32 @@
-import type { IGitHubApiClient } from './interfaces/IGitHubApiClient';
+import type { IGitHubApiClient, GitHubRateLimit } from './interfaces/IGitHubApiClient';
 import type { IFileService } from './interfaces/IFileService';
 import type { IRepoCloneService } from './interfaces/IRepoCloneService';
+import type { GitHubTreeItem } from './types/repository';
 import { Queue } from '../lib/Queue';
 import { RateLimitHandler } from './RateLimitHandler';
 import { createLogger } from '../lib/utils/logger';
+
+// GitHub API response types
+interface GitHubTreeResponse {
+  sha: string;
+  url: string;
+  tree: GitHubTreeItem[];
+  truncated: boolean;
+}
+
+interface GitHubContentResponse {
+  name: string;
+  path: string;
+  sha: string;
+  size: number;
+  url: string;
+  html_url: string;
+  git_url: string;
+  download_url: string | null;
+  type: 'file' | 'dir' | 'symlink' | 'submodule';
+  content?: string;
+  encoding?: string;
+}
 
 const logger = createLogger('RepoCloneService');
 
@@ -80,7 +103,7 @@ export class RepoCloneService implements IRepoCloneService {
    */
   private async checkRateLimit(rateLimitHandler: RateLimitHandler): Promise<void> {
     await rateLimitHandler.beforeRequest();
-    const rateLimit = await this.apiClient.request('GET', '/rate_limit');
+    const rateLimit = await this.apiClient.request<GitHubRateLimit>('GET', '/rate_limit');
     const remainingRequests = rateLimit.resources.core.remaining;
     const resetTime = rateLimit.resources.core.reset;
 
@@ -93,7 +116,7 @@ export class RepoCloneService implements IRepoCloneService {
         logger.info(`Waiting ${waitTime} seconds for rate limit reset...`);
         await rateLimitHandler.sleep(waitTime * 1000);
         // Recheck rate limit after waiting
-        const newRateLimit = await this.apiClient.request('GET', '/rate_limit');
+        const newRateLimit = await this.apiClient.request<GitHubRateLimit>('GET', '/rate_limit');
         if (newRateLimit.resources.core.remaining < 10) {
           throw new Error('Insufficient API rate limit remaining even after waiting for reset');
         }
@@ -117,12 +140,12 @@ export class RepoCloneService implements IRepoCloneService {
     repo: string,
     branch: string
   ): Promise<Array<{ path: string; type: string }>> {
-    const response = await this.apiClient.request(
+    const response = await this.apiClient.request<GitHubTreeResponse>(
       'GET',
       `/repos/${owner}/${repo}/git/trees/${branch}?recursive=1`
     );
 
-    return response.tree.filter((item: any) => item.type === 'blob');
+    return response.tree.filter((item: GitHubTreeItem) => item.type === 'blob');
   }
 
   /**
@@ -201,7 +224,7 @@ export class RepoCloneService implements IRepoCloneService {
       try {
         // Get file content
         await rateLimitHandler.beforeRequest();
-        const content = await this.apiClient.request(
+        const content = await this.apiClient.request<GitHubContentResponse>(
           'GET',
           `/repos/${sourceOwner}/${sourceRepo}/contents/${file.path}?ref=${branch}`
         );
@@ -212,7 +235,7 @@ export class RepoCloneService implements IRepoCloneService {
           targetOwner,
           targetRepo,
           file.path,
-          atob(content.content),
+          atob(content.content || ''),
           branch,
           `Copy ${file.path} from ${sourceRepo}`
         );

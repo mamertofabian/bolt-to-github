@@ -1,35 +1,50 @@
+/* eslint-disable @typescript-eslint/no-require-imports */
+
 import { describe, it, expect, jest, beforeEach, afterEach } from '@jest/globals';
 import { WhatsNewManager } from '../WhatsNewManager';
-import type { IComponentLifecycleManager, IUIElementFactory } from '../WhatsNewManager';
+import type {
+  IComponentLifecycleManager,
+  IUIElementFactory,
+  WhatsNewState,
+} from '../WhatsNewManager';
+import type { SvelteComponent } from 'svelte';
 
 // Mock chrome storage API
 const mockChromeStorageLocal = {
-  get: jest.fn(),
-  set: jest.fn(),
-  remove: jest.fn(),
+  get: jest.fn<() => Promise<Record<string, unknown>>>(),
+  set: jest.fn<() => Promise<void>>(),
+  remove: jest.fn<() => Promise<void>>(),
+  clear: jest.fn<() => Promise<void>>(),
+  getBytesInUse: jest.fn<() => Promise<number>>(),
+  setAccessLevel: jest.fn<() => Promise<void>>(),
+  onChanged: {} as chrome.storage.StorageChangedEvent,
+  QUOTA_BYTES: 5242880,
 };
 
 const mockChromeRuntime = {
-  getManifest: jest.fn(),
+  getManifest: jest.fn<() => chrome.runtime.Manifest>(),
 };
 
 // Mock global chrome object
 global.chrome = {
   storage: {
-    local: mockChromeStorageLocal as any,
+    local: mockChromeStorageLocal as chrome.storage.LocalStorageArea,
   },
-  runtime: mockChromeRuntime as any,
-} as any;
+  runtime: mockChromeRuntime as unknown as typeof chrome.runtime,
+} as typeof chrome;
 
 // Mock WhatsNewModal component
 jest.mock('$lib/components/WhatsNewModal.svelte', () => {
-  const MockComponent = jest.fn().mockImplementation(function (this: any, options: any) {
-    this.target = options.target;
-    this.props = options.props;
-    this.$destroy = jest.fn();
-    this.$set = jest.fn();
-    // Important: return this to ensure the component instance is created
-    return this;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const MockComponent = jest.fn().mockImplementation((options: any) => {
+    const component = {
+      target: options.target,
+      props: options.props,
+      $destroy: jest.fn(),
+      $set: jest.fn(),
+    };
+    // Important: return component instance
+    return component;
   });
 
   return {
@@ -77,30 +92,36 @@ describe('WhatsNewManager', () => {
     document.body.innerHTML = '';
     mockContainer = document.createElement('div');
 
-    // Setup mock implementations
+    // Setup mock implementations with proper typing
     mockComponentLifecycleManager = {
-      createComponent: jest.fn(),
+      createComponent: jest
+        .fn()
+        .mockImplementation(async () => ({}) as SvelteComponent) as NonNullable<
+        IComponentLifecycleManager['createComponent']
+      >,
       destroyComponent: jest.fn(),
-      hasComponent: jest.fn().mockReturnValue(false),
+      hasComponent: jest.fn().mockReturnValue(false) as NonNullable<
+        IComponentLifecycleManager['hasComponent']
+      >,
     };
 
     mockUIElementFactory = {
-      createRootContainer: jest.fn().mockImplementation((id: string) => {
+      createRootContainer: jest.fn((id: string) => {
         mockContainer.id = id;
         // Simulate what the real implementation does - append to body
         if (!document.getElementById(id)) {
           document.body.appendChild(mockContainer);
         }
         return mockContainer;
-      }),
-      createContainer: jest.fn().mockImplementation((config: { id: string }) => {
+      }) as NonNullable<IUIElementFactory['createRootContainer']>,
+      createContainer: jest.fn((config: { id: string }) => {
         mockContainer.id = config.id;
         return mockContainer;
-      }),
+      }) as NonNullable<IUIElementFactory['createContainer']>,
     };
 
     // Mock manifest version
-    mockChromeRuntime.getManifest.mockReturnValue({ version: '1.3.4' });
+    mockChromeRuntime.getManifest.mockReturnValue({ version: '1.3.4' } as chrome.runtime.Manifest);
 
     // Create instance
     whatsNewManager = new WhatsNewManager(mockComponentLifecycleManager, mockUIElementFactory);
@@ -144,7 +165,7 @@ describe('WhatsNewManager', () => {
           lastShownVersion: '1.3.4',
           dismissedVersions: [],
           lastCheckTime: Date.now(),
-        },
+        } as WhatsNewState,
       });
 
       jest.useFakeTimers();
@@ -165,7 +186,7 @@ describe('WhatsNewManager', () => {
           lastShownVersion: '1.3.3',
           dismissedVersions: ['1.3.4'],
           lastCheckTime: Date.now(),
-        },
+        } as WhatsNewState,
       });
 
       jest.useFakeTimers();
@@ -181,7 +202,9 @@ describe('WhatsNewManager', () => {
 
     it('should not show modal if no content exists for version', async () => {
       // Mock a version with no content
-      mockChromeRuntime.getManifest.mockReturnValue({ version: '1.3.5' });
+      mockChromeRuntime.getManifest.mockReturnValue({
+        version: '1.3.5',
+      } as chrome.runtime.Manifest);
       mockChromeStorageLocal.get.mockResolvedValue({});
 
       // Recreate manager with new version
@@ -244,7 +267,7 @@ describe('WhatsNewManager', () => {
           lastShownVersion: '1.3.3',
           dismissedVersions: ['1.3.2'],
           lastCheckTime: Date.now(),
-        },
+        } as WhatsNewState,
       });
 
       // Show modal manually first
@@ -255,7 +278,6 @@ describe('WhatsNewManager', () => {
       expect(WhatsNewModal).toHaveBeenCalled();
 
       // Get the props passed to the component
-      const componentInstance = WhatsNewModal.mock.calls[0];
       const props = WhatsNewModal.mock.calls[0][0].props;
       const onDontShowAgain = props.onDontShowAgain;
 

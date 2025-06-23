@@ -1,38 +1,9 @@
-import type { ProgressCallback } from '../types/common';
-
-/**
- * Interface for repository information
- */
-export interface RepoInfo {
-  name: string;
-  description?: string;
-  private?: boolean;
-  exists: boolean;
-}
-
-/**
- * Interface for repository creation options
- */
-export interface RepoCreateOptions {
-  name: string;
-  private?: boolean;
-  auto_init?: boolean;
-  description?: string;
-  org?: string;
-}
-
-/**
- * Interface for repository summary information
- */
-export interface RepoSummary {
-  name: string;
-  description: string | null;
-  private: boolean;
-  html_url: string;
-  created_at: string;
-  updated_at: string;
-  language: string | null;
-}
+import type {
+  GitHubRepository,
+  RepoCreateOptions,
+  RepoInfo,
+  RepoSummary,
+} from '../types/repository';
 
 /**
  * Interface for GitHub repository management operations
@@ -59,7 +30,7 @@ export interface IRepositoryService {
    * @param options Repository creation options
    * @returns Promise resolving to the created repository
    */
-  createRepo(options: RepoCreateOptions): Promise<any>;
+  createRepo(options: RepoCreateOptions): Promise<GitHubRepository>;
 
   /**
    * Ensures a repository exists, creating it if necessary

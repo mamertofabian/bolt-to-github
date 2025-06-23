@@ -8,9 +8,19 @@
  * - Resource cleanup and memory leak prevention
  */
 
-// Mock WhatsNewModal component
+// Mock WhatsNewModal component with proper types
+interface MockSvelteComponent {
+  target: Element;
+  props: Record<string, unknown>;
+  $destroy: jest.Mock;
+  $set: jest.Mock;
+}
+
 jest.mock('$lib/components/WhatsNewModal.svelte', () => ({
-  default: jest.fn().mockImplementation(function (this: any, options: any) {
+  default: jest.fn().mockImplementation(function (
+    this: MockSvelteComponent,
+    options: { target: Element; props: Record<string, unknown> }
+  ) {
     this.target = options.target;
     this.props = options.props;
     this.$destroy = jest.fn();
@@ -40,21 +50,17 @@ afterAll(() => {
 
 import { ContentManager } from '../ContentManager';
 import {
-  setupBasicTest,
   createTestEnvironment,
   setupChromeAPIMocks,
   setupWindowMocks,
   simulatePortState,
-  waitForState,
   validateCleanup,
   getContentManagerState,
   wait,
-  TestEnvironment,
   TestPortStates,
-  ChromeRuntimeErrors,
   TestUrls,
   TestMessages,
-  ComplexEventSequences,
+  type TestEnvironment,
 } from '../test-fixtures';
 
 describe('ContentManager - Critical Scenarios', () => {
@@ -206,10 +212,12 @@ describe('ContentManager - Critical Scenarios', () => {
 
       const contentManager = new ContentManager();
 
-      // Put into recovery state
+      // Put into recovery state - accessing private property for testing
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       (contentManager as any).isInRecovery = true;
 
-      // Attempt to process messages
+      // Attempt to process messages - accessing private method for testing
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const messageHandler = (contentManager as any).handleBackgroundMessage;
 
       expect(() => {
@@ -226,7 +234,8 @@ describe('ContentManager - Critical Scenarios', () => {
 
       const contentManager = new ContentManager();
 
-      // Process heartbeat message
+      // Process heartbeat message - accessing private method for testing
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const messageHandler = (contentManager as any).handleBackgroundMessage;
 
       expect(() => {
@@ -261,7 +270,8 @@ describe('ContentManager - Critical Scenarios', () => {
       // Wait for initialization
       await wait(100);
 
-      // Trigger cleanup
+      // Trigger cleanup - accessing private method for testing
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       (contentManager as any).cleanup();
 
       // Should have cleaned up resources
@@ -304,7 +314,8 @@ describe('ContentManager - Critical Scenarios', () => {
       const state = getContentManagerState(contentManager);
       expect(state.hasUIManager).toBe(true);
 
-      // Trigger cleanup
+      // Trigger cleanup - accessing private method for testing
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       (contentManager as any).cleanup();
 
       const cleanedState = getContentManagerState(contentManager);
@@ -355,6 +366,7 @@ describe('ContentManager - Critical Scenarios', () => {
       setupChromeAPIMocks(testEnv, { hasRuntimeId: true });
 
       // Mock chrome.runtime.connect to return null after setup
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       (chrome.runtime as any).connect = jest.fn(() => null);
 
       setupWindowMocks(TestUrls.BOLT_NEW_PROJECT);
@@ -399,7 +411,8 @@ describe('ContentManager - Critical Scenarios', () => {
       // Wait for initialization
       await wait(100);
 
-      // Process a message
+      // Process a message - accessing private method for testing
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const messageHandler = (contentManager as any).handleBackgroundMessage;
 
       expect(() => {

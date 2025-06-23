@@ -8,22 +8,45 @@
  * - Handle various installation scenarios
  */
 
+import { BackgroundService } from '../BackgroundService';
+
 // Mock all dependencies before importing
 jest.mock('../../services/UnifiedGitHubService');
-jest.mock('../StateManager');
-jest.mock('../../services/zipHandler');
-jest.mock('../TempRepoManager');
-jest.mock('../../content/services/SupabaseAuthService', () => ({
-  SupabaseAuthService: {
+jest.mock('../StateManager', () => ({
+  StateManager: {
     getInstance: jest.fn(() => ({
-      forceCheck: jest.fn(),
-      getAuthState: jest.fn().mockReturnValue({ isAuthenticated: false }),
-      addAuthStateListener: jest.fn(),
-      removeAuthStateListener: jest.fn(),
+      getGitHubSettings: jest.fn().mockResolvedValue({ gitHubSettings: {} }),
     })),
   },
 }));
-jest.mock('../../content/services/OperationStateManager');
+jest.mock('../../services/zipHandler');
+jest.mock('../TempRepoManager');
+jest.mock('../UsageTracker', () => ({
+  UsageTracker: jest.fn(() => ({
+    initializeUsageData: jest.fn().mockResolvedValue(undefined),
+    updateUsageStats: jest.fn().mockResolvedValue(undefined),
+  })),
+}));
+jest.mock('../../services/BoltProjectSyncService');
+
+// Create a mock that can be dynamically updated during tests
+const mockSupabaseAuthService = {
+  forceCheck: jest.fn(),
+  getAuthState: jest.fn().mockReturnValue({ isAuthenticated: false }),
+  addAuthStateListener: jest.fn(),
+  removeAuthStateListener: jest.fn(),
+};
+
+jest.mock('../../content/services/SupabaseAuthService', () => ({
+  SupabaseAuthService: {
+    getInstance: jest.fn(() => mockSupabaseAuthService),
+  },
+}));
+jest.mock('../../content/services/OperationStateManager', () => ({
+  OperationStateManager: {
+    getInstance: jest.fn(() => ({})),
+  },
+}));
 jest.mock('../../lib/utils/logger', () => ({
   createLogger: () => ({
     info: jest.fn(),
@@ -37,10 +60,21 @@ jest.mock('../../lib/utils/logger', () => ({
   }),
 }));
 
-import { BackgroundService } from '../BackgroundService';
+// Helper function to create a proper Chrome Event mock
+function createMockChromeEvent<T extends (...args: unknown[]) => void>(): chrome.events.Event<T> {
+  return {
+    addListener: jest.fn(),
+    removeListener: jest.fn(),
+    hasListener: jest.fn(),
+    hasListeners: jest.fn(),
+    getRules: jest.fn(),
+    removeRules: jest.fn(),
+    addRules: jest.fn(),
+  };
+}
 
 describe('BackgroundService - Welcome Flow', () => {
-  let backgroundService: BackgroundService;
+  let service: BackgroundService;
   let mockTabsCreate: jest.Mock;
   let mockStorageSet: jest.Mock;
   let mockStorageGet: jest.Mock;
@@ -75,48 +109,27 @@ describe('BackgroundService - Welcome Flow', () => {
     chrome.storage.local.set = mockStorageSet;
     chrome.storage.local.get = mockStorageGet;
     chrome.runtime.getManifest = mockRuntimeGetManifest;
-    chrome.storage.onChanged = {
-      addListener: jest.fn(),
-      removeListener: jest.fn(),
-    };
+    chrome.storage.onChanged = createMockChromeEvent();
 
     // Mock other Chrome APIs that BackgroundService uses
-    chrome.runtime.onConnect = {
-      addListener: jest.fn(),
-      removeListener: jest.fn(),
-    };
-    chrome.runtime.onStartup = {
-      addListener: jest.fn(),
-      removeListener: jest.fn(),
-    };
-    chrome.runtime.onInstalled = {
-      addListener: jest.fn(),
-      removeListener: jest.fn(),
-    };
-    chrome.runtime.onMessage = {
-      addListener: jest.fn(),
-      removeListener: jest.fn(),
-    };
-    chrome.tabs.onRemoved = {
-      addListener: jest.fn(),
-      removeListener: jest.fn(),
-    };
-    chrome.tabs.onUpdated = {
-      addListener: jest.fn(),
-      removeListener: jest.fn(),
-    };
-    chrome.alarms.onAlarm = {
-      addListener: jest.fn(),
-      removeListener: jest.fn(),
-    };
+    chrome.runtime.onConnect = createMockChromeEvent();
+    chrome.runtime.onStartup = createMockChromeEvent();
+    chrome.runtime.onInstalled = createMockChromeEvent();
+    chrome.runtime.onMessage = createMockChromeEvent();
+    chrome.tabs.onRemoved = createMockChromeEvent();
+    chrome.tabs.onUpdated = createMockChromeEvent();
+    chrome.alarms.onAlarm = createMockChromeEvent();
     chrome.alarms.create = jest.fn();
     chrome.alarms.clear = jest.fn();
 
-    // Create BackgroundService instance
-    backgroundService = new BackgroundService();
+    // Initialize the service to register the event listeners
+    service = new BackgroundService();
   });
 
   afterEach(() => {
+    if (service) {
+      service.destroy();
+    }
     jest.clearAllMocks();
     jest.resetModules();
   });
@@ -258,14 +271,11 @@ describe('BackgroundService - Welcome Flow', () => {
 
   describe('Welcome Page Message Handlers', () => {
     it('should respond to getExtensionStatus message', async () => {
-      // Mock SupabaseAuthService
-      const mockSupabaseAuthService = {
-        getAuthState: jest.fn().mockReturnValue({
-          isAuthenticated: true,
-          subscription: { isActive: false },
-        }),
-      };
-      (backgroundService as any).supabaseAuthService = mockSupabaseAuthService;
+      // Update the global mock for this test
+      mockSupabaseAuthService.getAuthState.mockReturnValue({
+        isAuthenticated: true,
+        subscription: { isActive: false },
+      });
 
       // Get the onMessage handler
       const onMessageHandler = (chrome.runtime.onMessage.addListener as jest.Mock).mock.calls[0][0];

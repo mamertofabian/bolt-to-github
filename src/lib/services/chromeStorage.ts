@@ -1,8 +1,37 @@
 import type { GitHubSettingsInterface, ProjectSettings, BoltProject } from '../types';
 import type { PushStatistics } from '../types';
+import type { FileChange } from '../../services/FilePreviewService';
 import { createLogger } from '../utils/logger';
 
 const logger = createLogger('chromeStorage');
+
+// Type definitions for storage data structures
+type StorageValue = string | number | boolean | object | null | undefined;
+type ChromeStorageData = Record<string, StorageValue>;
+
+// File changes storage types
+interface StoredFileChanges {
+  projectId?: string;
+  changes: Record<string, FileChange>;
+}
+
+type FileChangesData = Record<string, FileChange> | StoredFileChanges;
+
+// Local data types for GitHub app config
+interface LocalGitHubAppData {
+  authenticationMethod?: 'pat' | 'github_app';
+  githubAppInstallationId?: number;
+  githubAppUsername?: string;
+  githubAppAvatarUrl?: string;
+  githubAppAccessToken?: string;
+  githubAppRefreshToken?: string;
+  githubAppExpiresAt?: string;
+  githubAppRefreshTokenExpiresAt?: string;
+  githubAppUserId?: number;
+  githubAppScopes?: string[];
+  migrationPromptShown?: boolean;
+  lastMigrationPrompt?: string;
+}
 
 /**
  * Queue for serializing storage write operations to prevent race conditions
@@ -147,7 +176,7 @@ export class ChromeStorageService {
         };
 
         // Save local data (device-specific)
-        const localDataToSave: Record<string, any> = {};
+        const localDataToSave: Partial<LocalGitHubAppData> = {};
 
         if (settings.authenticationMethod !== undefined) {
           localDataToSave[STORAGE_KEYS.AUTHENTICATION_METHOD] = settings.authenticationMethod;
@@ -395,7 +424,7 @@ export class ChromeStorageService {
   /**
    * Get pending file changes from local storage
    */
-  static async getPendingFileChanges(): Promise<any> {
+  static async getPendingFileChanges(): Promise<Record<string, FileChange> | null> {
     try {
       const result = await chrome.storage.local.get(STORAGE_KEYS.PENDING_FILE_CHANGES);
       return result[STORAGE_KEYS.PENDING_FILE_CHANGES] || null;
@@ -408,7 +437,7 @@ export class ChromeStorageService {
   /**
    * Save pending file changes to local storage
    */
-  static async savePendingFileChanges(fileChanges: any): Promise<void> {
+  static async savePendingFileChanges(fileChanges: Record<string, FileChange>): Promise<void> {
     try {
       await chrome.storage.local.set({
         [STORAGE_KEYS.PENDING_FILE_CHANGES]: fileChanges,
@@ -434,7 +463,7 @@ export class ChromeStorageService {
   /**
    * Get stored file changes from local storage
    */
-  static async getStoredFileChanges(): Promise<any> {
+  static async getStoredFileChanges(): Promise<FileChangesData | null> {
     try {
       const result = await chrome.storage.local.get(STORAGE_KEYS.STORED_FILE_CHANGES);
       return result[STORAGE_KEYS.STORED_FILE_CHANGES] || null;
@@ -447,9 +476,14 @@ export class ChromeStorageService {
   /**
    * Save stored file changes to local storage
    */
-  static async saveStoredFileChanges(fileChanges: any, projectId?: string): Promise<void> {
+  static async saveStoredFileChanges(
+    fileChanges: Record<string, FileChange>,
+    projectId?: string
+  ): Promise<void> {
     try {
-      const dataToSave = projectId ? { projectId, changes: fileChanges } : fileChanges;
+      const dataToSave: FileChangesData = projectId
+        ? { projectId, changes: fileChanges }
+        : fileChanges;
 
       await chrome.storage.local.set({
         [STORAGE_KEYS.STORED_FILE_CHANGES]: dataToSave,
@@ -475,7 +509,7 @@ export class ChromeStorageService {
   /**
    * Get data from storage by key
    */
-  static async get(keys: string | string[], useLocal = false): Promise<any> {
+  static async get(keys: string | string[], useLocal = false): Promise<ChromeStorageData> {
     try {
       const storage = useLocal ? chrome.storage.local : chrome.storage.sync;
       return await storage.get(keys);
@@ -488,7 +522,7 @@ export class ChromeStorageService {
   /**
    * Set data in storage
    */
-  static async set(data: Record<string, any>, useLocal = false): Promise<void> {
+  static async set(data: ChromeStorageData, useLocal = false): Promise<void> {
     try {
       const storage = useLocal ? chrome.storage.local : chrome.storage.sync;
       await storage.set(data);
@@ -699,7 +733,7 @@ export class ChromeStorageService {
     scopes?: string[];
   }): Promise<void> {
     try {
-      const dataToSave: Record<string, any> = {};
+      const dataToSave: Partial<LocalGitHubAppData> = {};
 
       if (config.installationId !== undefined) {
         dataToSave[STORAGE_KEYS.GITHUB_APP_INSTALLATION_ID] = config.installationId;
@@ -997,7 +1031,7 @@ export class ChromeStorageService {
   /**
    * Generic get method for chrome.storage.local
    */
-  async get(key: string): Promise<any> {
+  async get(key: string): Promise<{ [key: string]: unknown }> {
     return new Promise((resolve, reject) => {
       chrome.storage.local.get([key], (result) => {
         if (chrome.runtime.lastError) {
@@ -1012,7 +1046,7 @@ export class ChromeStorageService {
   /**
    * Generic set method for chrome.storage.local
    */
-  async set(data: Record<string, any>): Promise<void> {
+  async set(data: { [key: string]: unknown }): Promise<void> {
     return new Promise((resolve, reject) => {
       chrome.storage.local.set(data, () => {
         if (chrome.runtime.lastError) {
@@ -1034,7 +1068,7 @@ export class ChromeStorageService {
   async getBoltProjects(): Promise<BoltProject[]> {
     try {
       const result = await this.get('boltProjects');
-      return result.boltProjects || [];
+      return (result.boltProjects as BoltProject[]) || [];
     } catch (error) {
       logger.error('Error getting bolt projects:', error);
       throw error;
@@ -1106,7 +1140,7 @@ export class ChromeStorageService {
   async getLastSyncTimestamp(): Promise<string | null> {
     try {
       const result = await this.get('lastSyncTimestamp');
-      return result.lastSyncTimestamp || null;
+      return (result.lastSyncTimestamp as string) || null;
     } catch (error) {
       logger.error('Error getting last sync timestamp:', error);
       throw error;
