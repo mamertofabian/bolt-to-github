@@ -33,6 +33,7 @@ export class PremiumService {
     changes: { [key: string]: chrome.storage.StorageChange },
     namespace: string
   ) => Promise<void>;
+  private syncInProgress: boolean = false;
 
   constructor() {
     this.premiumStatus = {
@@ -87,20 +88,35 @@ export class PremiumService {
     this.storageListener = async (changes, namespace) => {
       if (namespace === 'sync' && changes.popupPremiumStatus) {
         const newPopupStatus = changes.popupPremiumStatus.newValue;
-        if (newPopupStatus) {
-          logger.info('🔄 Syncing premium status from popup to content script:', newPopupStatus);
+        if (newPopupStatus && !this.syncInProgress) {
+          // Prevent race conditions by setting sync flag
+          this.syncInProgress = true;
 
-          // Update content script premium status to match popup status
-          await this.updatePremiumStatusFromAuth({
-            isAuthenticated: newPopupStatus.isAuthenticated,
-            isPremium: newPopupStatus.isPremium,
-            plan: newPopupStatus.plan || 'free',
-            expiresAt: newPopupStatus.expiresAt
-              ? new Date(newPopupStatus.expiresAt).toISOString()
-              : undefined,
-          });
+          try {
+            // Validate popup status data structure
+            if (!this.isValidPopupPremiumStatus(newPopupStatus)) {
+              logger.warn('⚠️ Invalid popup premium status data, skipping sync:', newPopupStatus);
+              return;
+            }
 
-          logger.info('✅ Premium status synced from popup to content script');
+            logger.info('🔄 Syncing premium status from popup to content script:', newPopupStatus);
+
+            // Update content script premium status to match popup status
+            await this.updatePremiumStatusFromAuth({
+              isAuthenticated: newPopupStatus.isAuthenticated,
+              isPremium: newPopupStatus.isPremium,
+              plan: newPopupStatus.plan || 'free',
+              expiresAt: newPopupStatus.expiresAt
+                ? new Date(newPopupStatus.expiresAt).toISOString()
+                : undefined,
+            });
+
+            logger.info('✅ Premium status synced from popup to content script');
+          } catch (error) {
+            logger.error('❌ Error syncing premium status from popup:', error);
+          } finally {
+            this.syncInProgress = false;
+          }
         }
       }
     };
@@ -154,6 +170,7 @@ export class PremiumService {
       // If popup has more recent premium status, use that instead
       if (
         syncResult.popupPremiumStatus &&
+        this.isValidPopupPremiumStatus(syncResult.popupPremiumStatus) &&
         (!statusToUse ||
           (syncResult.popupPremiumStatus.lastUpdated || 0) > (statusToUse.lastUpdated || 0))
       ) {
@@ -492,6 +509,47 @@ export class PremiumService {
         githubIssues: false,
       },
     });
+  }
+
+  /**
+   * Validate popup premium status data structure
+   */
+  private isValidPopupPremiumStatus(data: any): boolean {
+    if (!data || typeof data !== 'object') {
+      return false;
+    }
+
+    // Check required boolean properties
+    if (typeof data.isAuthenticated !== 'boolean' || typeof data.isPremium !== 'boolean') {
+      return false;
+    }
+
+    // Check features object structure
+    if (!data.features || typeof data.features !== 'object') {
+      return false;
+    }
+
+    const requiredFeatures = ['viewFileChanges', 'pushReminders', 'branchSelector', 'githubIssues'];
+    for (const feature of requiredFeatures) {
+      if (typeof data.features[feature] !== 'boolean') {
+        return false;
+      }
+    }
+
+    // Check optional properties have correct types when present
+    if (data.expiresAt !== undefined && typeof data.expiresAt !== 'number') {
+      return false;
+    }
+
+    if (data.plan !== undefined && typeof data.plan !== 'string') {
+      return false;
+    }
+
+    if (data.lastUpdated !== undefined && typeof data.lastUpdated !== 'number') {
+      return false;
+    }
+
+    return true;
   }
 
   /**
