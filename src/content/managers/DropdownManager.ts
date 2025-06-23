@@ -1,7 +1,6 @@
 import type { IDropdownManager } from '../types/ManagerInterfaces';
 import type { MessageHandler } from '../MessageHandler';
 import type { UIStateManager } from '../services/UIStateManager';
-import type { PremiumService } from '../services/PremiumService';
 import { createLogger } from '$lib/utils/logger';
 
 const logger = createLogger('DropdownManager');
@@ -14,63 +13,18 @@ export class DropdownManager implements IDropdownManager {
   private messageHandler: MessageHandler;
   private stateManager?: UIStateManager;
   private onPushActionCallback?: () => Promise<void>;
-  private onShowChangedFilesCallback?: () => Promise<void>;
-  private onUpgradePromptCallback?: (feature: string) => Promise<void>;
   private currentDropdown: HTMLElement | null = null;
   private resizeListener?: () => void;
   private clickOutsideListener?: (e: MouseEvent) => void;
-  private premiumService?: PremiumService;
 
   constructor(
     messageHandler: MessageHandler,
     stateManager?: UIStateManager,
-    onPushActionCallback?: () => Promise<void>,
-    onShowChangedFilesCallback?: () => Promise<void>,
-    onUpgradePromptCallback?: (feature: string) => Promise<void>
+    onPushActionCallback?: () => Promise<void>
   ) {
     this.messageHandler = messageHandler;
     this.stateManager = stateManager;
     this.onPushActionCallback = onPushActionCallback;
-    this.onShowChangedFilesCallback = onShowChangedFilesCallback;
-    this.onUpgradePromptCallback = onUpgradePromptCallback;
-  }
-
-  /**
-   * Set premium service for checking premium features
-   */
-  public setPremiumService(premiumService: PremiumService): void {
-    this.premiumService = premiumService;
-  }
-
-  /**
-   * Update premium status and refresh dropdown if it's currently shown
-   */
-  public updatePremiumStatus(): void {
-    logger.info('🔄 Updating dropdown premium status...');
-
-    /* If dropdown is currently shown, refresh its content */
-    if (this.currentDropdown && this.currentDropdown.style.display === 'block') {
-      logger.info('✅ Refreshing visible dropdown content');
-      this.refreshDropdownContent();
-    }
-  }
-
-  /**
-   * Refresh the dropdown content with current premium status
-   */
-  public refreshDropdownContent(): void {
-    if (!this.currentDropdown) {
-      return;
-    }
-
-    /* Clear existing content */
-    this.currentDropdown.innerHTML = '';
-
-    /* Recreate dropdown items with current premium status */
-    const items = this.createDropdownItems();
-    items.forEach((item) => this.currentDropdown!.appendChild(item));
-
-    logger.info('🔄 Dropdown content refreshed with current premium status');
   }
 
   /**
@@ -92,7 +46,7 @@ export class DropdownManager implements IDropdownManager {
     // Wait a bit for the dropdown content to render
     await new Promise((resolve) => setTimeout(resolve, 200));
 
-    // Always recreate dropdown content to ensure it reflects current premium status
+    // Recreate dropdown content
     let dropdownContent = document.querySelector('#github-dropdown-content') as HTMLElement;
     if (dropdownContent) {
       dropdownContent.remove();
@@ -301,114 +255,6 @@ export class DropdownManager implements IDropdownManager {
       this.messageHandler.sendMessage('OPEN_HOME');
     });
     items.push(dashboardButton);
-
-    // Show Changed Files option - now premium feature
-    const changedFilesButton = document.createElement('button');
-    const isPremium = this.premiumService?.isPremiumSync() || false;
-
-    changedFilesButton.className = `dropdown-item flex items-center justify-between ${!isPremium ? 'opacity-75' : ''}`;
-    changedFilesButton.innerHTML = `
-      <div class="flex items-center">
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-          <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
-          <polyline points="14 2 14 8 20 8"></polyline>
-          <line x1="9" y1="15" x2="15" y2="15"></line>
-        </svg>
-        <span>Show Changed Files</span>
-      </div>
-      ${!isPremium ? '<span class="text-xs bg-gradient-to-r from-blue-500 to-purple-600 text-white px-2 py-0.5 rounded-full font-medium">PRO</span>' : ''}
-    `;
-
-    changedFilesButton.addEventListener('click', async () => {
-      this.hide();
-
-      /* Server validation happens in the callback - FileChangeHandler will validate subscription */
-      if (!isPremium) {
-        /* Show upgrade prompt for file changes feature */
-        if (this.onUpgradePromptCallback) {
-          await this.onUpgradePromptCallback('file-changes');
-        } else {
-          /* Fallback notification */
-          logger.info('Upgrade required for file changes feature');
-        }
-        return;
-      }
-
-      /* For premium users, proceed to file changes (validation happens in FileChangeHandler) */
-      if (this.onShowChangedFilesCallback) {
-        await this.onShowChangedFilesCallback();
-      }
-    });
-    items.push(changedFilesButton);
-
-    // Issues option - now premium feature
-    const issuesButton = document.createElement('button');
-    const isPremiumForIssues = this.premiumService?.isPremiumSync() || false;
-
-    issuesButton.className = `dropdown-item flex items-center justify-between ${!isPremiumForIssues ? 'opacity-75' : ''}`;
-    issuesButton.innerHTML = `
-      <div class="flex items-center">
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-          <circle cx="12" cy="12" r="10" />
-          <path d="M12 6v6l4 2" />
-        </svg>
-        <span>Manage Issues</span>
-      </div>
-      ${!isPremiumForIssues ? '<span class="text-xs bg-gradient-to-r from-blue-500 to-purple-600 text-white px-2 py-0.5 rounded-full font-medium">PRO</span>' : ''}
-    `;
-
-    issuesButton.addEventListener('click', async () => {
-      this.hide();
-
-      /* Server validation happens in the callback - similar to file changes */
-      if (!isPremiumForIssues) {
-        /* Show upgrade prompt for issues feature */
-        if (this.onUpgradePromptCallback) {
-          await this.onUpgradePromptCallback('issues');
-        } else {
-          /* Fallback notification */
-          logger.info('Upgrade required for issues feature');
-        }
-        return;
-      }
-
-      /* For premium users, proceed to open issues */
-      this.messageHandler.sendMessage('OPEN_ISSUES');
-    });
-    items.push(issuesButton);
-
-    // Projects option
-    const projectsButton = document.createElement('button');
-    projectsButton.className = 'dropdown-item flex items-center';
-    projectsButton.innerHTML = `
-      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-        <rect x="3" y="3" width="18" height="18" rx="2" ry="2" />
-        <path d="M9 9h6v6H9z" />
-      </svg>
-      <span>Projects</span>
-    `;
-    projectsButton.addEventListener('click', () => {
-      this.hide();
-      this.messageHandler.sendMessage('OPEN_PROJECTS');
-    });
-    items.push(projectsButton);
-
-    // Settings option
-    const settingsButton = document.createElement('button');
-    settingsButton.className = 'dropdown-item flex items-center';
-    settingsButton.innerHTML = `
-      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-        <circle cx="12" cy="12" r="3" />
-        <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z" />
-      </svg>
-      <span>Settings</span>
-    `;
-    settingsButton.addEventListener('click', () => {
-      this.hide();
-      // Send the OPEN_SETTINGS message
-      this.messageHandler.sendMessage('OPEN_SETTINGS');
-    });
-    items.push(settingsButton);
 
     return items;
   }

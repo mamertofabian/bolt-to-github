@@ -11,6 +11,9 @@ import type { INotificationManager, IUIStateManager } from '../../types/ManagerI
 jest.mock('../../../services/settings');
 jest.mock('../../../services/DownloadService');
 jest.mock('../../services/CommitTemplateService');
+jest.mock('../../../lib/utils/projectId', () => ({
+  getCurrentProjectId: jest.fn(() => 'test-project'),
+}));
 jest.mock('../FileChangeHandler', () => ({
   FileChangeHandler: jest.fn().mockImplementation(() => ({
     getChangedFiles: jest.fn(),
@@ -194,8 +197,10 @@ describe('GitHubUploadHandler', () => {
         isSettingsValid: true,
         gitHubSettings: {
           projectSettings: {
-            repoName: 'test-repo',
-            branch: 'main',
+            'test-project': {
+              repoName: 'test-repo',
+              branch: 'main',
+            },
           },
         },
       });
@@ -642,8 +647,10 @@ describe('GitHubUploadHandler', () => {
         isSettingsValid: true,
         gitHubSettings: {
           projectSettings: {
-            repoName: 'test-repo',
-            branch: 'main',
+            'test-project': {
+              repoName: 'test-repo',
+              branch: 'main',
+            },
           },
         },
       });
