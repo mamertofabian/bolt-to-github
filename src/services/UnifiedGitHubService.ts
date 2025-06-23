@@ -392,7 +392,7 @@ export class UnifiedGitHubService {
         name: repoName,
         private: isPrivate,
         description: description || '',
-        auto_init: true,
+        auto_init: false,
       }),
     });
 
@@ -447,9 +447,9 @@ export class UnifiedGitHubService {
   async initializeEmptyRepo(owner: string, repo: string, branch: string = 'main'): Promise<void> {
     const token = await this.getToken();
 
-    // Create initial commit with README
+    // Create initial commit with .gitkeep file
     const response = await fetch(
-      `https://api.github.com/repos/${owner}/${repo}/contents/README.md`,
+      `https://api.github.com/repos/${owner}/${repo}/contents/.gitkeep`,
       {
         method: 'PUT',
         headers: {
@@ -458,8 +458,8 @@ export class UnifiedGitHubService {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          message: 'Initial commit',
-          content: btoa(`# ${repo}\n\nInitialized by Bolt to GitHub extension.`),
+          message: 'Initialize repository',
+          content: btoa(''),
           branch,
         }),
       }

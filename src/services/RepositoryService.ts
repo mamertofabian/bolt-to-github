@@ -151,33 +151,22 @@ export class RepositoryService implements IRepositoryService {
   }
 
   /**
-   * Initializes an empty repository with a README file
+   * Initializes an empty repository with a .gitkeep file
    * @param owner Repository owner (username or organization)
    * @param repo Repository name
    * @param branch Branch name
    * @returns Promise resolving when initialization is complete
    */
   async initializeEmptyRepo(owner: string, repo: string, branch: string): Promise<void> {
-    // Create a more informative README.md to initialize the repository
-    const readmeContent = `# ${repo}
-
-## Feel free to delete this file and replace it with your own content.
-
-## Repository Initialization Notice
-
-This repository was automatically initialized by the Bolt to GitHub extension.
-
-**Auto-Generated Repository**
-- Created to ensure a valid Git repository structure
-- Serves as an initial commit point for your project`;
-
+    // Create a .gitkeep file to initialize the repository
+    // This avoids creating an auto-generated README that users need to delete
     await this.fileService.writeFile(
       owner,
       repo,
-      'README.md',
-      readmeContent,
+      '.gitkeep',
+      '',
       branch,
-      'Initialize repository with auto-generated README'
+      `Initialize repository with branch '${branch}'`
     );
   }
 
