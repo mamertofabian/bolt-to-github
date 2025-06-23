@@ -9,6 +9,7 @@ import { processFilesWithGitignore } from '$lib/fileUtils';
 import { pushStatisticsActions } from '../lib/stores';
 import { createLogger } from '$lib/utils/logger';
 import { ChromeStorageService } from '../lib/services/chromeStorage';
+import { ReadmeGeneratorService } from './ReadmeGeneratorService';
 
 const logger = createLogger('ZipHandler');
 
@@ -211,7 +212,10 @@ export class ZipHandler {
 
       await this.ensureBranchExists(repoOwner, repoName, targetBranch);
 
-      const processedFiles = await processFilesWithGitignore(files);
+      let processedFiles = await processFilesWithGitignore(files);
+
+      // Generate README if necessary
+      processedFiles = ReadmeGeneratorService.processFilesWithReadme(processedFiles, repoName);
 
       await this.updateStatus('uploading', 20, 'Getting repository information...');
 

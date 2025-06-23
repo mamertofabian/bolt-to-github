@@ -33,6 +33,7 @@ export class MockUnifiedGitHubService implements Partial<UnifiedGitHubService> {
   private requestDelay: number = 0;
   private rateLimitState = { ...GITHUB_API_RESPONSES.rateLimit };
   private rateLimitBehavior: 'normal' | 'limited' | 'exceeded' = 'normal';
+  private blobShaMap: Map<string, string> = new Map();
 
   constructor() {
     this.setupDefaultResponses();
@@ -139,7 +140,16 @@ export class MockUnifiedGitHubService implements Partial<UnifiedGitHubService> {
         }
       }
 
-      return { sha: `blob-${Date.now()}-${Math.random().toString(36).slice(2)}` } as T;
+      // Generate consistent SHA based on content
+      const blobData = data as { content: string; encoding: string };
+      const contentKey = blobData.content || '';
+      let sha = this.blobShaMap.get(contentKey);
+      if (!sha) {
+        sha = `blob-${this.blobShaMap.size + 1}`;
+        this.blobShaMap.set(contentKey, sha);
+      }
+
+      return { sha } as T;
     }
 
     // Handle tree creation
@@ -294,10 +304,6 @@ export class MockUnifiedGitHubService implements Partial<UnifiedGitHubService> {
     this.rateLimitBehavior = 'normal';
   }
 
-  getRequestHistory() {
-    return [...this.requestHistory];
-  }
-
   clearHistory() {
     this.requestHistory = [];
   }
@@ -308,6 +314,38 @@ export class MockUnifiedGitHubService implements Partial<UnifiedGitHubService> {
       const pathMatch = !pathPattern || req.path.includes(pathPattern);
       return methodMatch && pathMatch;
     }).length;
+  }
+
+  getRequestHistory(method?: string, pathPattern?: string) {
+    return this.requestHistory
+      .filter((req) => {
+        const methodMatch = !method || req.method === method;
+        const pathMatch = !pathPattern || req.path.includes(pathPattern);
+        return methodMatch && pathMatch;
+      })
+      .map((req) => ({
+        method: req.method,
+        path: req.path,
+        body: req.body,
+        response: this.getMockResponseForRequest(req),
+      }));
+  }
+
+  private getMockResponseForRequest(req: RequestHistoryEntry) {
+    // Return the mock response that would have been returned for this request
+    if (req.method === 'POST' && req.path.includes('/git/blobs')) {
+      const blobData = req.body as { content: string; encoding: string };
+      const contentKey = blobData?.content || '';
+      const sha = this.blobShaMap.get(contentKey) || `blob-unknown`;
+      return { sha };
+    }
+    if (req.method === 'POST' && req.path.includes('/git/trees')) {
+      return { sha: `tree-${Date.now()}-${Math.random().toString(36).slice(2)}` };
+    }
+    if (req.method === 'POST' && req.path.includes('/git/commits')) {
+      return { sha: `commit-${Date.now()}-${Math.random().toString(36).slice(2)}` };
+    }
+    return {};
   }
 }
 
