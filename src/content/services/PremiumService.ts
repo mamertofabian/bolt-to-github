@@ -1,5 +1,5 @@
-import { createLogger } from '../../lib/utils/logger';
 import { debounce, throttle } from '../../lib/utils/debounce';
+import { createLogger } from '../../lib/utils/logger';
 
 const logger = createLogger('PremiumService');
 
@@ -172,7 +172,8 @@ export class PremiumService {
         syncResult.popupPremiumStatus &&
         this.isValidPopupPremiumStatus(syncResult.popupPremiumStatus) &&
         (!statusToUse ||
-          (syncResult.popupPremiumStatus.lastUpdated || 0) > (statusToUse.lastUpdated || 0))
+          (syncResult.popupPremiumStatus.lastUpdated || 0) >
+            (((statusToUse as Record<string, unknown>)?.lastUpdated as number) || 0))
       ) {
         logger.info('🔄 Using more recent premium status from popup');
         statusToUse = {
@@ -563,5 +564,6 @@ export class PremiumService {
       chrome.storage.onChanged.removeListener(this.storageListener);
       this.storageListener = undefined;
     }
+    this.syncInProgress = false;
   }
 }
