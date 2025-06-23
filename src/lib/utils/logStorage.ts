@@ -29,7 +29,7 @@ export class LogStorageManager {
   private readonly MAX_MEMORY_ENTRIES = 1000;
   private readonly MAX_BATCH_SIZE = 100;
   private readonly WRITE_INTERVAL = 10000; // 10 seconds
-  private readonly LOG_RETENTION_HOURS = 6;
+  private readonly LOG_RETENTION_HOURS = 12;
   private readonly STORAGE_KEY_PREFIX = 'bolt_logs_';
   private readonly CURRENT_BATCH_KEY = 'bolt_logs_current';
   private readonly METADATA_KEY = 'bolt_logs_metadata';

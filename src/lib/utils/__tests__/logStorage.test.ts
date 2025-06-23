@@ -267,7 +267,7 @@ describe('LogStorageManager', () => {
 
   describe('rotateLogs', () => {
     it('should remove logs older than retention period', async () => {
-      const oldTimestamp = new Date(Date.now() - 7 * 60 * 60 * 1000).toISOString(); // 7 hours ago
+      const oldTimestamp = new Date(Date.now() - 13 * 60 * 60 * 1000).toISOString(); // 13 hours ago
       const recentTimestamp = new Date().toISOString();
 
       // Mock storage to return old and new logs
@@ -349,6 +349,51 @@ describe('LogStorageManager', () => {
 
       // Should have called set for archiving current batch
       expect(mockChromeStorage.local.set).toHaveBeenCalled();
+    });
+
+    it('should retain logs from the last 12 hours', async () => {
+      const now = Date.now();
+      const elevenHoursAgo = new Date(now - 11 * 60 * 60 * 1000).toISOString();
+      const thirteenHoursAgo = new Date(now - 13 * 60 * 60 * 1000).toISOString();
+
+      // Add logs with different timestamps
+      await storageManager.addLog('info', 'OldModule', 'This should be removed');
+      await storageManager.addLog('info', 'RecentModule', 'This should be kept');
+
+      // Mock the timestamps in memory buffer
+      const memoryBuffer = (storageManager as any).memoryBuffer;
+      memoryBuffer[0].timestamp = thirteenHoursAgo;
+      memoryBuffer[1].timestamp = elevenHoursAgo;
+
+      // Mock storage to return empty initially
+      mockChromeStorage.local.get.mockImplementation((keys: any, callback?: any) => {
+        const result: any = {};
+        if (keys === null) {
+          result['bolt_logs_current'] = memoryBuffer;
+          result['bolt_logs_metadata'] = {};
+        } else if (Array.isArray(keys) && keys.includes('bolt_logs_current')) {
+          result['bolt_logs_current'] = memoryBuffer;
+        } else if (keys === 'bolt_logs_current') {
+          result['bolt_logs_current'] = memoryBuffer;
+        }
+
+        if (callback) {
+          callback(result);
+          return undefined;
+        }
+        return Promise.resolve(result);
+      });
+
+      await storageManager.rotateLogs();
+
+      // Verify that set was called
+      expect(mockChromeStorage.local.set).toHaveBeenCalled();
+
+      // The memory buffer should only contain the recent log
+      const recentLogs = storageManager.getRecentLogs();
+      expect(recentLogs).toHaveLength(1);
+      expect(recentLogs[0].module).toBe('RecentModule');
+      expect(recentLogs[0].message).toBe('This should be kept');
     });
   });
 });

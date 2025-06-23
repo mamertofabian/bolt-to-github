@@ -203,15 +203,10 @@ export class BackgroundService {
     const logStorage = getLogStorage();
     logStorage.rotateLogs();
 
-    // Set up rotation using JavaScript timer instead of chrome.alarms
-    // This avoids requiring new permissions
-    const SIX_HOURS_MS = 6 * 60 * 60 * 1000;
-
-    // Use setInterval for periodic rotation
-    setInterval(() => {
-      logger.info('Running scheduled log rotation');
-      logStorage.rotateLogs();
-    }, SIX_HOURS_MS);
+    // Set up rotation using chrome.alarms for reliability
+    // Check every 3 hours for logs older than 12 hours (configured in LogStorageManager)
+    // This ensures logs are retained for a maximum of ~15 hours (12 + 3)
+    chrome.alarms.create('logRotation', { periodInMinutes: 180 }); // 3 hours = 180 minutes
 
     // Also check and rotate logs when the service worker wakes up
     // This handles cases where the interval might be cleared
