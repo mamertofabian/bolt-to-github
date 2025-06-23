@@ -114,9 +114,7 @@ describe('PremiumService', () => {
 
   describe('UI Manager Integration', () => {
     test('sets UI manager reference', () => {
-      const mockUIManager = {
-        updateDropdownPremiumStatus: jest.fn(),
-      };
+      const mockUIManager = {};
 
       expect(() => {
         premiumService.setUIManager(mockUIManager);

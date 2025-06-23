@@ -499,15 +499,6 @@ describe('UIManager', () => {
 
       expect(spy).toHaveBeenCalled();
     });
-
-    test('updates dropdown premium status', () => {
-      const dropdownManager = (uiManager as any).dropdownManager;
-      const spy = jest.spyOn(dropdownManager, 'updatePremiumStatus');
-
-      uiManager.updateDropdownPremiumStatus();
-
-      expect(spy).toHaveBeenCalled();
-    });
   });
 
   describe('Cleanup', () => {

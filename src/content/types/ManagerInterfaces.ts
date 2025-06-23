@@ -65,5 +65,5 @@ export interface IBaseManager {
 
 // Minimal interface for premium status updates
 export interface IPremiumStatusUpdater {
-  updateDropdownPremiumStatus(): void;
+  // No methods needed for simplified dropdown
 }

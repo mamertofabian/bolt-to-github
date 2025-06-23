@@ -100,11 +100,6 @@ export class PremiumService {
       },
     });
 
-    // Update dropdown manager with new premium status
-    if (this.uiManager) {
-      this.uiManager.updateDropdownPremiumStatus();
-    }
-
     logger.info(
       `🔐 Premium status updated from auth: authenticated=${authData.isAuthenticated}, premium=${authData.isPremium} (${authData.plan})`
     );
@@ -443,10 +438,5 @@ export class PremiumService {
         githubIssues: false,
       },
     });
-
-    // Update UI components
-    if (this.uiManager) {
-      this.uiManager.updateDropdownPremiumStatus();
-    }
   }
 }

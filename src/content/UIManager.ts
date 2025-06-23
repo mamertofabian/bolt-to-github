@@ -92,9 +92,7 @@ export class UIManager implements IPremiumStatusUpdater {
     this.dropdownManager = new DropdownManager(
       messageHandler,
       this.stateManager,
-      () => this.handleGitHubPushAction(), // Push action callback
-      () => this.handleShowChangedFiles(), // Show changed files callback
-      (feature: string) => this.handleUpgradePrompt(feature) // Upgrade prompt callback
+      () => this.handleGitHubPushAction() // Push action callback
     );
 
     // Initialize GitHubUploadHandler with state integration
@@ -171,9 +169,6 @@ export class UIManager implements IPremiumStatusUpdater {
 
     // Link upload status manager to file change handler
     this.fileChangeHandler.setUploadStatusManager(this.uploadStatusManager);
-
-    // Link premium service to dropdown manager
-    this.dropdownManager.setPremiumService(this.premiumService);
 
     // Set up state change listening for coordination
     this.setupStateCoordination();
@@ -704,13 +699,6 @@ export class UIManager implements IPremiumStatusUpdater {
     feature: keyof import('./services/PremiumService').PremiumStatus['features']
   ): Promise<boolean> {
     return await this.premiumService.hasFeature(feature);
-  }
-
-  /**
-   * Update dropdown manager when premium status changes
-   */
-  public updateDropdownPremiumStatus(): void {
-    this.dropdownManager.updatePremiumStatus();
   }
 
   /**
