@@ -68,9 +68,38 @@ export class PremiumService {
       // Message handling is now done through ContentManager
       // to avoid conflicts with multiple message listeners
       logger.info('🔐 Supabase auth integration initialized (messages handled by ContentManager)');
+
+      // Set up sync storage listener to watch for popup premium status changes
+      this.setupPopupPremiumStatusSync();
     } catch (error) {
       logger.warn('Failed to initialize Supabase auth integration:', error);
     }
+  }
+
+  /**
+   * Set up listener to sync premium status from popup to content scripts
+   */
+  private setupPopupPremiumStatusSync(): void {
+    chrome.storage.onChanged.addListener(async (changes, namespace) => {
+      if (namespace === 'sync' && changes.popupPremiumStatus) {
+        const newPopupStatus = changes.popupPremiumStatus.newValue;
+        if (newPopupStatus) {
+          logger.info('🔄 Syncing premium status from popup to content script:', newPopupStatus);
+
+          // Update content script premium status to match popup status
+          await this.updatePremiumStatusFromAuth({
+            isAuthenticated: newPopupStatus.isAuthenticated,
+            isPremium: newPopupStatus.isPremium,
+            plan: newPopupStatus.plan || 'free',
+            expiresAt: newPopupStatus.expiresAt
+              ? new Date(newPopupStatus.expiresAt).toISOString()
+              : undefined,
+          });
+
+          logger.info('✅ Premium status synced from popup to content script');
+        }
+      }
+    });
   }
 
   /**
@@ -109,14 +138,34 @@ export class PremiumService {
    */
   private async loadStoredData(): Promise<void> {
     try {
-      const result = await chrome.storage.local.get(['premiumStatus']);
+      // Load content script premium status from local storage
+      const localResult = await chrome.storage.local.get(['premiumStatus']);
 
-      if (result.premiumStatus) {
+      // Also check popup premium status from sync storage for latest updates
+      const syncResult = await chrome.storage.sync.get(['popupPremiumStatus']);
+
+      let statusToUse = localResult.premiumStatus;
+
+      // If popup has more recent premium status, use that instead
+      if (
+        syncResult.popupPremiumStatus &&
+        (!statusToUse || syncResult.popupPremiumStatus.lastUpdated > (statusToUse.lastUpdated || 0))
+      ) {
+        logger.info('🔄 Using more recent premium status from popup');
+        statusToUse = {
+          isPremium: syncResult.popupPremiumStatus.isPremium,
+          isAuthenticated: syncResult.popupPremiumStatus.isAuthenticated,
+          expiresAt: syncResult.popupPremiumStatus.expiresAt,
+          features: syncResult.popupPremiumStatus.features,
+        };
+      }
+
+      if (statusToUse) {
         this.premiumStatus = {
           ...this.premiumStatus,
-          ...result.premiumStatus,
+          ...statusToUse,
           // Ensure isAuthenticated is always defined (default to false for backward compatibility)
-          isAuthenticated: result.premiumStatus.isAuthenticated ?? false,
+          isAuthenticated: statusToUse.isAuthenticated ?? false,
         };
       }
     } catch (error) {

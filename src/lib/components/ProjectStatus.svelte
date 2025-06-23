@@ -389,6 +389,19 @@
     dispatch('showFileChanges');
   }
 
+  function checkForChanges(event: MouseEvent | KeyboardEvent) {
+    event.stopPropagation();
+
+    // Check if user has premium access
+    if (!isUserPremium) {
+      handleUpgradeClick('fileChanges');
+      return;
+    }
+
+    // Send a message to trigger file change detection and comparison
+    chrome.runtime.sendMessage({ action: 'CHECK_FILE_CHANGES' });
+  }
+
   function openIssueManager(event: MouseEvent | KeyboardEvent) {
     event.stopPropagation();
 
@@ -576,8 +589,9 @@
           {/if}
         </div>
 
-        <!-- View File Changes button - only show if there are changes -->
+        <!-- File Changes buttons -->
         {#if hasFileChanges}
+          <!-- View File Changes button - show when there are changes -->
           <div class="relative">
             <button
               class="tooltip-container w-8 h-8 flex items-center justify-center border border-slate-700 rounded-full text-slate-400 hover:bg-slate-800 hover:text-slate-300 transition-colors {!isUserPremium
@@ -601,6 +615,38 @@
                 <line x1="9" y1="15" x2="15" y2="15"></line>
               </svg>
               <span class="tooltip">View File Changes{!isUserPremium ? ' (Pro)' : ''}</span>
+            </button>
+            {#if !isUserPremium}
+              <span
+                class="absolute -top-1 -right-1 text-[8px] bg-gradient-to-r from-blue-500 to-purple-600 text-white px-1 py-0.5 rounded-full font-bold leading-none"
+                >PRO</span
+              >
+            {/if}
+          </div>
+        {:else}
+          <!-- Check for Changes button - show when no changes are detected -->
+          <div class="relative">
+            <button
+              class="tooltip-container w-8 h-8 flex items-center justify-center border border-slate-700 rounded-full text-slate-400 hover:bg-slate-800 hover:text-slate-300 transition-colors {!isUserPremium
+                ? 'opacity-75'
+                : ''}"
+              on:click|stopPropagation={checkForChanges}
+              aria-label="Check for Changes{!isUserPremium ? ' (Pro)' : ''}"
+            >
+              <svg
+                width="16"
+                height="16"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="2"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+              >
+                <path d="M21 12c0 1-1 2-2 2s-2-1-2-2 1-2 2-2 2 1 2 2z"></path>
+                <path d="M16 12c0-5-3-9-7-9s-7 4-7 9c0 5 3 9 7 9 1.5 0 3-.5 4-1"></path>
+              </svg>
+              <span class="tooltip">Check for Changes{!isUserPremium ? ' (Pro)' : ''}</span>
             </button>
             {#if !isUserPremium}
               <span
