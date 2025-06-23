@@ -351,65 +351,45 @@ describe('LogStorageManager', () => {
       expect(mockChromeStorage.local.set).toHaveBeenCalled();
     });
 
-    it('should retain logs based on 12 hours of activity, not just timestamp', async () => {
+    it('should retain logs newer than 12 hours', async () => {
       const now = Date.now();
       const oneHourAgo = new Date(now - 1 * 60 * 60 * 1000).toISOString();
       const fiveHoursAgo = new Date(now - 5 * 60 * 60 * 1000).toISOString();
       const tenHoursAgo = new Date(now - 10 * 60 * 60 * 1000).toISOString();
       const fifteenHoursAgo = new Date(now - 15 * 60 * 60 * 1000).toISOString();
 
-      // Add logs representing different activity periods
-      await storageManager.addLog('info', 'RecentActivity', 'Recent log 1');
-      await storageManager.addLog('info', 'RecentActivity', 'Recent log 2');
-      await storageManager.addLog('info', 'MidActivity', 'Mid-activity log');
-      await storageManager.addLog('info', 'OldActivity', 'Within 12h activity span');
-      await storageManager.addLog('info', 'VeryOldActivity', 'Beyond 12h activity span');
+      // Add logs with different timestamps
+      await storageManager.addLog('info', 'Recent1', 'Recent log 1');
+      await storageManager.addLog('info', 'Recent2', 'Recent log 2');
+      await storageManager.addLog('info', 'Mid', 'Mid log');
+      await storageManager.addLog('info', 'Old', 'Old log within 12h');
+      await storageManager.addLog('info', 'VeryOld', 'Very old log beyond 12h');
 
       // Mock the timestamps in memory buffer
       const memoryBuffer = (storageManager as any).memoryBuffer;
       expect(memoryBuffer.length).toBe(5);
-      memoryBuffer[0].timestamp = oneHourAgo; // Recent
-      memoryBuffer[1].timestamp = fiveHoursAgo; // Recent
-      memoryBuffer[2].timestamp = tenHoursAgo; // Within 12h activity window
-      memoryBuffer[3].timestamp = tenHoursAgo; // Within 12h activity window (same time as previous)
-      memoryBuffer[4].timestamp = fifteenHoursAgo; // Beyond 12h activity window
-
-      // Mock storage to return logs when getAllLogs is called
-      mockChromeStorage.local.get.mockImplementation((keys: any, callback?: any) => {
-        const result: any = {};
-        if (keys === null) {
-          result['bolt_logs_current'] = memoryBuffer;
-          result['bolt_logs_metadata'] = {};
-        } else if (Array.isArray(keys) && keys.includes('bolt_logs_current')) {
-          result['bolt_logs_current'] = memoryBuffer;
-        } else if (keys === 'bolt_logs_current') {
-          result['bolt_logs_current'] = memoryBuffer;
-        }
-
-        if (callback) {
-          callback(result);
-          return undefined;
-        }
-        return Promise.resolve(result);
-      });
+      memoryBuffer[0].timestamp = oneHourAgo; // Within 12h
+      memoryBuffer[1].timestamp = fiveHoursAgo; // Within 12h
+      memoryBuffer[2].timestamp = tenHoursAgo; // Within 12h
+      memoryBuffer[3].timestamp = tenHoursAgo; // Within 12h
+      memoryBuffer[4].timestamp = fifteenHoursAgo; // Beyond 12h - should be removed
 
       await storageManager.rotateLogs();
 
       // Verify that set was called
       expect(mockChromeStorage.local.set).toHaveBeenCalled();
 
-      // The memory buffer should contain logs within the 12-hour activity window
-      // Since all logs from 1h to 10h ago span 9 hours of activity (< 12h), they should all be kept
-      // Only the 15h ago log should be removed as it extends the activity window beyond 12h
+      // The memory buffer should only contain logs newer than 12 hours
       const recentLogs = storageManager.getRecentLogs();
       expect(recentLogs.length).toBe(4);
 
-      // Verify the very old activity log was removed
+      // Verify the very old log was removed
       const modules = recentLogs.map((log) => log.module);
-      expect(modules).toContain('RecentActivity');
-      expect(modules).toContain('MidActivity');
-      expect(modules).toContain('OldActivity');
-      expect(modules).not.toContain('VeryOldActivity');
+      expect(modules).toContain('Recent1');
+      expect(modules).toContain('Recent2');
+      expect(modules).toContain('Mid');
+      expect(modules).toContain('Old');
+      expect(modules).not.toContain('VeryOld');
     });
   });
 });
