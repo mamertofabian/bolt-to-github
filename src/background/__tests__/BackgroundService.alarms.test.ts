@@ -186,16 +186,15 @@ describe('BackgroundService - Alarms Functionality', () => {
 
       // Get the alarm listener
       const alarmListener = mockAlarms.onAlarm.addListener.mock.calls[0]?.[0];
+      expect(alarmListener).toBeDefined();
 
-      if (alarmListener) {
-        // Trigger keep-alive alarm
-        alarmListener({ name: 'keepAlive' });
+      // Trigger keep-alive alarm
+      alarmListener({ name: 'keepAlive' });
 
-        expect(mockUpdateLastActivity).toHaveBeenCalled();
-        expect(mockStorage.local.set).toHaveBeenCalledWith({
-          lastKeepAlive: expect.any(Number),
-        });
-      }
+      expect(mockUpdateLastActivity).toHaveBeenCalled();
+      expect(mockStorage.local.set).toHaveBeenCalledWith({
+        lastKeepAlive: expect.any(Number),
+      });
     });
   });
 
@@ -204,6 +203,21 @@ describe('BackgroundService - Alarms Functionality', () => {
       await jest.runOnlyPendingTimersAsync();
 
       expect(mockAlarms.create).toHaveBeenCalledWith('bolt-project-sync', { periodInMinutes: 5 });
+    });
+  });
+
+  describe('Alarm Configuration Verification', () => {
+    it('should create all alarms with correct parameters on initialization', async () => {
+      await jest.runOnlyPendingTimersAsync();
+
+      // Verify all three alarms are created with exact parameters
+      expect(mockAlarms.create).toHaveBeenCalledWith('logRotation', { periodInMinutes: 180 });
+      expect(mockAlarms.create).toHaveBeenCalledWith('keepAlive', { periodInMinutes: 1 });
+      expect(mockAlarms.create).toHaveBeenCalledWith('bolt-project-sync', { periodInMinutes: 5 });
+
+      // Note: mockAlarms.create.toHaveBeenCalledTimes count may vary due to keep-alive calls
+      // The important part is that all required alarms are created with correct parameters
+      expect(mockAlarms.create.mock.calls.length).toBeGreaterThanOrEqual(3);
     });
   });
 
@@ -219,16 +233,15 @@ describe('BackgroundService - Alarms Functionality', () => {
 
       // Get the alarm listener
       const alarmListener = mockAlarms.onAlarm.addListener.mock.calls[0]?.[0];
+      expect(alarmListener).toBeDefined();
 
-      if (alarmListener) {
-        // Trigger keep-alive alarm
-        alarmListener({ name: 'keepAlive' });
+      // Trigger keep-alive alarm
+      alarmListener({ name: 'keepAlive' });
 
-        expect(mockUpdateLastActivity).toHaveBeenCalled();
-        expect(mockStorage.local.set).toHaveBeenCalledWith({
-          lastKeepAlive: expect.any(Number),
-        });
-      }
+      expect(mockUpdateLastActivity).toHaveBeenCalled();
+      expect(mockStorage.local.set).toHaveBeenCalledWith({
+        lastKeepAlive: expect.any(Number),
+      });
     });
 
     it('should handle log rotation alarm events', () => {
@@ -237,13 +250,12 @@ describe('BackgroundService - Alarms Functionality', () => {
 
       // Get the alarm listener
       const alarmListener = mockAlarms.onAlarm.addListener.mock.calls[0]?.[0];
+      expect(alarmListener).toBeDefined();
 
-      if (alarmListener) {
-        // Trigger log rotation alarm
-        alarmListener({ name: 'logRotation' });
+      // Trigger log rotation alarm
+      alarmListener({ name: 'logRotation' });
 
-        expect(mockLogStorage.rotateLogs).toHaveBeenCalled();
-      }
+      expect(mockLogStorage.rotateLogs).toHaveBeenCalled();
     });
 
     it('should handle sync alarm events', () => {
@@ -253,13 +265,12 @@ describe('BackgroundService - Alarms Functionality', () => {
 
       // Get the alarm listener
       const alarmListener = mockAlarms.onAlarm.addListener.mock.calls[0]?.[0];
+      expect(alarmListener).toBeDefined();
 
-      if (alarmListener) {
-        // Trigger sync alarm
-        alarmListener({ name: 'bolt-project-sync' });
+      // Trigger sync alarm
+      alarmListener({ name: 'bolt-project-sync' });
 
-        expect(mockHandleSyncAlarm).toHaveBeenCalled();
-      }
+      expect(mockHandleSyncAlarm).toHaveBeenCalled();
     });
 
     it('should ignore unknown alarm events', () => {
@@ -273,15 +284,14 @@ describe('BackgroundService - Alarms Functionality', () => {
 
       // Get the alarm listener
       const alarmListener = mockAlarms.onAlarm.addListener.mock.calls[0]?.[0];
+      expect(alarmListener).toBeDefined();
 
-      if (alarmListener) {
-        // Trigger unknown alarm
-        alarmListener({ name: 'unknown-alarm' });
+      // Trigger unknown alarm
+      alarmListener({ name: 'unknown-alarm' });
 
-        expect(mockUpdateLastActivity).not.toHaveBeenCalled();
-        expect(mockLogStorage.rotateLogs).not.toHaveBeenCalled();
-        expect(mockHandleSyncAlarm).not.toHaveBeenCalled();
-      }
+      expect(mockUpdateLastActivity).not.toHaveBeenCalled();
+      expect(mockLogStorage.rotateLogs).not.toHaveBeenCalled();
+      expect(mockHandleSyncAlarm).not.toHaveBeenCalled();
     });
   });
 
@@ -289,13 +299,12 @@ describe('BackgroundService - Alarms Functionality', () => {
     it('should remove alarm listeners on service destruction', () => {
       // Initialize service and get the listener
       const alarmListener = mockAlarms.onAlarm.addListener.mock.calls[0]?.[0];
+      expect(alarmListener).toBeDefined();
 
       // Destroy service
       service.destroy();
 
-      if (alarmListener) {
-        expect(mockAlarms.onAlarm.removeListener).toHaveBeenCalledWith(alarmListener);
-      }
+      expect(mockAlarms.onAlarm.removeListener).toHaveBeenCalledWith(alarmListener);
     });
 
     it('should clear sync alarm on service destruction', () => {
@@ -322,14 +331,13 @@ describe('BackgroundService - Alarms Functionality', () => {
 
     it('should store keep-alive timestamp in chrome storage', () => {
       const alarmListener = mockAlarms.onAlarm.addListener.mock.calls[0]?.[0];
+      expect(alarmListener).toBeDefined();
 
-      if (alarmListener) {
-        alarmListener({ name: 'keepAlive' });
+      alarmListener({ name: 'keepAlive' });
 
-        expect(mockStorage.local.set).toHaveBeenCalledWith({
-          lastKeepAlive: 1000000,
-        });
-      }
+      expect(mockStorage.local.set).toHaveBeenCalledWith({
+        lastKeepAlive: 1000000,
+      });
     });
   });
 

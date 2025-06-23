@@ -205,7 +205,8 @@ export class BackgroundService {
 
     // Set up rotation using chrome.alarms for reliability
     // Check every 3 hours for logs older than 12 hours (configured in LogStorageManager)
-    // This ensures logs are retained for a maximum of ~15 hours (12 + 3)
+    // Note: Logs may persist up to 15 hours total (12h retention + 3h check interval)
+    // This is an acceptable trade-off between cleanup precision and resource efficiency
     chrome.alarms.create('logRotation', { periodInMinutes: 180 }); // 3 hours = 180 minutes
 
     // Also check and rotate logs when the service worker wakes up
