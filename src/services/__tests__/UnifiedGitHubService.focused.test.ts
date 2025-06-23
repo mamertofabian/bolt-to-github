@@ -288,6 +288,10 @@ describe('UnifiedGitHubService - Focused Tests', () => {
     });
 
     it('should initialize empty repo with .gitkeep instead of README', async () => {
+      // Set up mock for the .gitkeep file creation
+      mockFetch.reset();
+      mockFetch.mockPushFile('testuser', 'test-repo', '.gitkeep').build();
+
       const service = new UnifiedGitHubService(TestFixtures.TokenFixtures.pat.classic);
       await service.initializeEmptyRepo('testuser', 'test-repo', 'main');
 
