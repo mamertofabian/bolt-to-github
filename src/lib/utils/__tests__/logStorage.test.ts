@@ -358,21 +358,73 @@ describe('LogStorageManager', () => {
       const tenHoursAgo = new Date(now - 10 * 60 * 60 * 1000).toISOString();
       const fifteenHoursAgo = new Date(now - 15 * 60 * 60 * 1000).toISOString();
 
-      // Add logs with different timestamps
-      await storageManager.addLog('info', 'Recent1', 'Recent log 1');
-      await storageManager.addLog('info', 'Recent2', 'Recent log 2');
-      await storageManager.addLog('info', 'Mid', 'Mid log');
-      await storageManager.addLog('info', 'Old', 'Old log within 12h');
-      await storageManager.addLog('info', 'VeryOld', 'Very old log beyond 12h');
+      // Mock storage to return logs with specific timestamps
+      const testLogs = [
+        {
+          timestamp: oneHourAgo,
+          level: 'info',
+          module: 'Recent1',
+          message: 'Recent log 1',
+          context: 'unknown',
+        },
+        {
+          timestamp: fiveHoursAgo,
+          level: 'info',
+          module: 'Recent2',
+          message: 'Recent log 2',
+          context: 'unknown',
+        },
+        {
+          timestamp: tenHoursAgo,
+          level: 'info',
+          module: 'Mid',
+          message: 'Mid log',
+          context: 'unknown',
+        },
+        {
+          timestamp: tenHoursAgo,
+          level: 'info',
+          module: 'Old',
+          message: 'Old log within 12h',
+          context: 'unknown',
+        },
+        {
+          timestamp: fifteenHoursAgo,
+          level: 'info',
+          module: 'VeryOld',
+          message: 'Very old log beyond 12h',
+          context: 'unknown',
+        },
+      ];
 
-      // Mock the timestamps in memory buffer
-      const memoryBuffer = (storageManager as any).memoryBuffer;
-      expect(memoryBuffer.length).toBe(5);
-      memoryBuffer[0].timestamp = oneHourAgo; // Within 12h
-      memoryBuffer[1].timestamp = fiveHoursAgo; // Within 12h
-      memoryBuffer[2].timestamp = tenHoursAgo; // Within 12h
-      memoryBuffer[3].timestamp = tenHoursAgo; // Within 12h
-      memoryBuffer[4].timestamp = fifteenHoursAgo; // Beyond 12h - should be removed
+      mockChromeStorage.local.get.mockImplementation((keys: any, callback?: any) => {
+        let result: any = {};
+
+        if (keys === null) {
+          result = {
+            bolt_logs_current: testLogs,
+            bolt_logs_metadata: {},
+          };
+        } else if (Array.isArray(keys)) {
+          if (keys.includes('bolt_logs_current')) {
+            result['bolt_logs_current'] = testLogs;
+          }
+          if (keys.includes('bolt_logs_metadata')) {
+            result['bolt_logs_metadata'] = {};
+          }
+        } else if (keys === 'bolt_logs_current') {
+          result = { bolt_logs_current: testLogs };
+        }
+
+        if (callback) {
+          callback(result);
+          return undefined;
+        }
+        return Promise.resolve(result);
+      });
+
+      // Set the memory buffer to match our test data
+      (storageManager as any).memoryBuffer = [...testLogs];
 
       await storageManager.rotateLogs();
 
