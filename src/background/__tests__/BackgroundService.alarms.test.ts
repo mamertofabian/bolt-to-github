@@ -185,7 +185,8 @@ describe('BackgroundService - Alarms Functionality', () => {
       const mockUpdateLastActivity = jest.spyOn(service as any, 'updateLastActivity');
 
       // Get the alarm listener
-      const alarmListener = mockAlarms.onAlarm.addListener.mock.calls[0]?.[0];
+      expect(mockAlarms.onAlarm.addListener).toHaveBeenCalled();
+      const alarmListener = mockAlarms.onAlarm.addListener.mock.calls[0][0];
       expect(alarmListener).toBeDefined();
 
       // Trigger keep-alive alarm
@@ -215,9 +216,11 @@ describe('BackgroundService - Alarms Functionality', () => {
       expect(mockAlarms.create).toHaveBeenCalledWith('keepAlive', { periodInMinutes: 1 });
       expect(mockAlarms.create).toHaveBeenCalledWith('bolt-project-sync', { periodInMinutes: 5 });
 
-      // Note: mockAlarms.create.toHaveBeenCalledTimes count may vary due to keep-alive calls
-      // The important part is that all required alarms are created with correct parameters
-      expect(mockAlarms.create.mock.calls.length).toBeGreaterThanOrEqual(3);
+      // Verify specific alarms were created
+      const alarmNames = mockAlarms.create.mock.calls.map((call) => call[0]);
+      expect(alarmNames).toContain('logRotation');
+      expect(alarmNames).toContain('keepAlive');
+      expect(alarmNames).toContain('bolt-project-sync');
     });
   });
 
@@ -232,7 +235,8 @@ describe('BackgroundService - Alarms Functionality', () => {
       const mockUpdateLastActivity = jest.spyOn(service as any, 'updateLastActivity');
 
       // Get the alarm listener
-      const alarmListener = mockAlarms.onAlarm.addListener.mock.calls[0]?.[0];
+      expect(mockAlarms.onAlarm.addListener).toHaveBeenCalled();
+      const alarmListener = mockAlarms.onAlarm.addListener.mock.calls[0][0];
       expect(alarmListener).toBeDefined();
 
       // Trigger keep-alive alarm
@@ -249,7 +253,8 @@ describe('BackgroundService - Alarms Functionality', () => {
       mockLogStorage.rotateLogs.mockClear();
 
       // Get the alarm listener
-      const alarmListener = mockAlarms.onAlarm.addListener.mock.calls[0]?.[0];
+      expect(mockAlarms.onAlarm.addListener).toHaveBeenCalled();
+      const alarmListener = mockAlarms.onAlarm.addListener.mock.calls[0][0];
       expect(alarmListener).toBeDefined();
 
       // Trigger log rotation alarm
@@ -264,7 +269,8 @@ describe('BackgroundService - Alarms Functionality', () => {
         .mockImplementation();
 
       // Get the alarm listener
-      const alarmListener = mockAlarms.onAlarm.addListener.mock.calls[0]?.[0];
+      expect(mockAlarms.onAlarm.addListener).toHaveBeenCalled();
+      const alarmListener = mockAlarms.onAlarm.addListener.mock.calls[0][0];
       expect(alarmListener).toBeDefined();
 
       // Trigger sync alarm
@@ -283,7 +289,8 @@ describe('BackgroundService - Alarms Functionality', () => {
       mockLogStorage.rotateLogs.mockClear();
 
       // Get the alarm listener
-      const alarmListener = mockAlarms.onAlarm.addListener.mock.calls[0]?.[0];
+      expect(mockAlarms.onAlarm.addListener).toHaveBeenCalled();
+      const alarmListener = mockAlarms.onAlarm.addListener.mock.calls[0][0];
       expect(alarmListener).toBeDefined();
 
       // Trigger unknown alarm
@@ -298,7 +305,8 @@ describe('BackgroundService - Alarms Functionality', () => {
   describe('Alarm Cleanup', () => {
     it('should remove alarm listeners on service destruction', () => {
       // Initialize service and get the listener
-      const alarmListener = mockAlarms.onAlarm.addListener.mock.calls[0]?.[0];
+      expect(mockAlarms.onAlarm.addListener).toHaveBeenCalled();
+      const alarmListener = mockAlarms.onAlarm.addListener.mock.calls[0][0];
       expect(alarmListener).toBeDefined();
 
       // Destroy service

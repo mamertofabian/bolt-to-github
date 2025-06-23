@@ -30,6 +30,7 @@ export class LogStorageManager {
   private readonly MAX_BATCH_SIZE = 100;
   private readonly WRITE_INTERVAL = 10000; // 10 seconds
   private readonly LOG_RETENTION_HOURS = 12;
+  private readonly MAX_LOG_ENTRIES = 10000; // Fallback limit to prevent unbounded growth
   private readonly STORAGE_KEY_PREFIX = 'bolt_logs_';
   private readonly CURRENT_BATCH_KEY = 'bolt_logs_current';
   private readonly METADATA_KEY = 'bolt_logs_metadata';
@@ -201,7 +202,6 @@ export class LogStorageManager {
       if (!chrome.storage || !chrome.storage.local) return;
 
       const now = new Date();
-      const cutoffTime = new Date(now.getTime() - this.LOG_RETENTION_HOURS * 60 * 60 * 1000);
 
       // Get all log keys
       const allKeys = await this.getAllLogKeys();
@@ -217,23 +217,45 @@ export class LogStorageManager {
         });
       }
 
-      // Remove old batches
+      // Get ALL logs to determine activity-based retention
+      const allLogs = await this.getAllLogs();
+
+      // Sort by timestamp (newest first)
+      allLogs.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
+
+      // Activity-based retention: Keep logs that represent 12 hours of actual logging activity
+      const retainedLogs = this.selectLogsForRetention(allLogs);
+      const retainedLogIds = new Set(
+        retainedLogs.map((log) => log.timestamp + log.module + log.message)
+      );
+
+      // Identify batches to remove
+      const batchesToRemove: string[] = [];
       for (const key of allKeys) {
         if (key === this.CURRENT_BATCH_KEY || key === this.METADATA_KEY) continue;
 
         const batchResult = await chrome.storage.local.get(key);
         const batch = batchResult[key] as LogEntry[] | undefined;
         if (batch && batch.length > 0) {
-          const oldestEntry = new Date(batch[0].timestamp);
-          if (oldestEntry < cutoffTime) {
-            await chrome.storage.local.remove(key);
+          // Check if any logs in this batch should be retained
+          const hasRetainedLogs = batch.some((log) =>
+            retainedLogIds.has(log.timestamp + log.module + log.message)
+          );
+
+          if (!hasRetainedLogs) {
+            batchesToRemove.push(key);
           }
         }
       }
 
-      // Clean up memory buffer
-      this.memoryBuffer = this.memoryBuffer.filter(
-        (entry) => new Date(entry.timestamp) >= cutoffTime
+      // Remove old batches that don't contain retained logs
+      if (batchesToRemove.length > 0) {
+        await chrome.storage.local.remove(batchesToRemove);
+      }
+
+      // Clean up memory buffer (keep only retained logs)
+      this.memoryBuffer = this.memoryBuffer.filter((entry) =>
+        retainedLogIds.has(entry.timestamp + entry.module + entry.message)
       );
 
       // Update metadata with rotation timestamp
@@ -241,6 +263,66 @@ export class LogStorageManager {
     } catch (error) {
       console.error('Failed to rotate logs:', error);
     }
+  }
+
+  /**
+   * Select logs for retention based on activity, not just time
+   * Keeps the most recent 12 hours worth of actual logging activity
+   */
+  private selectLogsForRetention(allLogs: LogEntry[]): LogEntry[] {
+    if (allLogs.length === 0) return [];
+
+    // If we have fewer logs than the max limit, keep them all
+    if (allLogs.length <= this.MAX_LOG_ENTRIES) {
+      return this.filterByActivityWindow(allLogs);
+    }
+
+    // Otherwise, keep the most recent MAX_LOG_ENTRIES
+    const recentLogs = allLogs.slice(0, this.MAX_LOG_ENTRIES);
+    return this.filterByActivityWindow(recentLogs);
+  }
+
+  /**
+   * Filter logs to represent 12 hours of actual activity
+   */
+  private filterByActivityWindow(logs: LogEntry[]): LogEntry[] {
+    if (logs.length === 0) return [];
+
+    // Start with the newest log
+    const newestLog = logs[0];
+    const newestTime = new Date(newestLog.timestamp);
+
+    // Find logs that span 12 hours of actual logged activity
+    const activitySpanMs = this.LOG_RETENTION_HOURS * 60 * 60 * 1000; // 12 hours in ms
+    const retainedLogs: LogEntry[] = [];
+
+    let activityStartTime: Date | null = null;
+    const activityEndTime = newestTime;
+
+    for (const log of logs) {
+      const logTime = new Date(log.timestamp);
+
+      // Always keep the newest logs
+      if (!activityStartTime) {
+        activityStartTime = logTime;
+        retainedLogs.push(log);
+        continue;
+      }
+
+      // Calculate the actual time span of logging activity so far
+      const currentActivitySpan = activityEndTime.getTime() - logTime.getTime();
+
+      // If this log extends our activity window beyond 12 hours, stop here
+      if (currentActivitySpan > activitySpanMs) {
+        break;
+      }
+
+      // Keep this log as it's within our activity window
+      retainedLogs.push(log);
+      activityStartTime = logTime;
+    }
+
+    return retainedLogs;
   }
 
   private async getAllLogKeys(): Promise<string[]> {
