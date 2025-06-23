@@ -514,38 +514,41 @@ export class PremiumService {
   /**
    * Validate popup premium status data structure
    */
-  private isValidPopupPremiumStatus(data: any): boolean {
+  private isValidPopupPremiumStatus(data: unknown): boolean {
     if (!data || typeof data !== 'object') {
       return false;
     }
 
+    const obj = data as Record<string, unknown>;
+
     // Check required boolean properties
-    if (typeof data.isAuthenticated !== 'boolean' || typeof data.isPremium !== 'boolean') {
+    if (typeof obj.isAuthenticated !== 'boolean' || typeof obj.isPremium !== 'boolean') {
       return false;
     }
 
     // Check features object structure
-    if (!data.features || typeof data.features !== 'object') {
+    if (!obj.features || typeof obj.features !== 'object') {
       return false;
     }
 
+    const features = obj.features as Record<string, unknown>;
     const requiredFeatures = ['viewFileChanges', 'pushReminders', 'branchSelector', 'githubIssues'];
     for (const feature of requiredFeatures) {
-      if (typeof data.features[feature] !== 'boolean') {
+      if (typeof features[feature] !== 'boolean') {
         return false;
       }
     }
 
     // Check optional properties have correct types when present
-    if (data.expiresAt !== undefined && typeof data.expiresAt !== 'number') {
+    if (obj.expiresAt !== undefined && typeof obj.expiresAt !== 'number') {
       return false;
     }
 
-    if (data.plan !== undefined && typeof data.plan !== 'string') {
+    if (obj.plan !== undefined && typeof obj.plan !== 'string') {
       return false;
     }
 
-    if (data.lastUpdated !== undefined && typeof data.lastUpdated !== 'number') {
+    if (obj.lastUpdated !== undefined && typeof obj.lastUpdated !== 'number') {
       return false;
     }
 
