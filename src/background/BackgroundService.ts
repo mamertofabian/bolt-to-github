@@ -1,12 +1,26 @@
 import { UnifiedGitHubService } from '../services/UnifiedGitHubService';
-import type { Message, MessageType, Port, UploadStatusState } from '../lib/types';
+import type {
+  Message,
+  MessageType,
+  Port,
+  UploadStatusState,
+  ZipDataMessage,
+  SetCommitMessage,
+  OpenFileChangesMessage,
+  ImportPrivateRepoMessage,
+  NotifyGitHubAppSyncMessage,
+} from '../lib/types';
 import { StateManager } from './StateManager';
 import { ZipHandler } from '../services/zipHandler';
 import { BackgroundTempRepoManager } from './TempRepoManager';
 import { SupabaseAuthService } from '../content/services/SupabaseAuthService';
+import type { AuthState } from '../content/services/SupabaseAuthService';
 import { OperationStateManager } from '../content/services/OperationStateManager';
 import { createLogger, getLogStorage } from '../lib/utils/logger';
 import { UsageTracker } from './UsageTracker';
+import { BoltProjectSyncService } from '../services/BoltProjectSyncService';
+import { extractProjectIdFromUrl } from '../lib/utils/projectId';
+import { ChromeStorageService } from '../lib/services/chromeStorage';
 
 const logger = createLogger('BackgroundService');
 
@@ -20,12 +34,25 @@ export class BackgroundService {
   private supabaseAuthService: SupabaseAuthService;
   private operationStateManager: OperationStateManager;
   private usageTracker: UsageTracker;
+  private syncService: BoltProjectSyncService;
   private keepAliveInterval: NodeJS.Timeout | null = null;
   private lastActivityTime: number = Date.now();
   private authCheckTimeout: NodeJS.Timeout | null = null;
   private storageListener:
     | ((changes: { [key: string]: chrome.storage.StorageChange }, namespace: string) => void)
     | null = null;
+  private syncAlarmHandler: ((alarm: chrome.alarms.Alarm) => void) | null = null;
+  // Tab-based project tracking to prevent wrong project pushes
+  private tabProjectMap: Map<number, string> = new Map();
+  // Auth state change listener
+  private authStateListener: ((authState: AuthState, previousState: AuthState) => void) | null =
+    null;
+  // Track initial auth check completion
+  private initialAuthCheckCompleted: boolean = false;
+  // Track delayed sync timeout for cancellation
+  private delayedSyncTimeout: NodeJS.Timeout | null = null;
+  // Prevent concurrent sync operations
+  private syncInProgress: boolean = false;
 
   constructor() {
     logger.info('🚀 Background service initializing...');
@@ -37,6 +64,7 @@ export class BackgroundService {
     this.supabaseAuthService = SupabaseAuthService.getInstance();
     this.operationStateManager = OperationStateManager.getInstance();
     this.usageTracker = new UsageTracker();
+    this.syncService = new BoltProjectSyncService();
     this.initialize();
 
     // Track extension lifecycle
@@ -56,6 +84,15 @@ export class BackgroundService {
 
     // Start service worker keep-alive mechanism
     this.startKeepAlive();
+
+    // Set up auth state listener for sync retry mechanism
+    this.setupAuthStateListener();
+
+    // Set up sync alarm with improved timing
+    this.setupSyncAlarm();
+
+    // Clean up github.com projects on startup
+    this.cleanupGitHubComProjectsOnStartup();
   }
 
   private async trackExtensionStartup(): Promise<void> {
@@ -73,6 +110,8 @@ export class BackgroundService {
         await chrome.storage.local.set({
           installDate: Date.now(),
           lastVersion: version,
+          extensionInstallDate: Date.now(), // For fresh install detection
+          totalProjectsCreated: 0, // Track project creation for fresh install detection
         });
         await this.sendAnalyticsEvent('extension_installed', { version });
       } else if (result.lastVersion !== version) {
@@ -85,7 +124,10 @@ export class BackgroundService {
     }
   }
 
-  private async sendAnalyticsEvent(eventName: string, params: any = {}): Promise<void> {
+  private async sendAnalyticsEvent(
+    eventName: string,
+    params: Record<string, string | number | boolean> = {}
+  ): Promise<void> {
     try {
       // Get or generate client ID
       let clientId = '';
@@ -98,6 +140,7 @@ export class BackgroundService {
           await chrome.storage.local.set({ analyticsClientId: clientId });
         }
       } catch (error) {
+        logger.debug('Failed to get analytics client ID:', error);
         clientId = this.generateClientId();
       }
 
@@ -160,15 +203,10 @@ export class BackgroundService {
     const logStorage = getLogStorage();
     logStorage.rotateLogs();
 
-    // Set up rotation using JavaScript timer instead of chrome.alarms
-    // This avoids requiring new permissions
-    const SIX_HOURS_MS = 6 * 60 * 60 * 1000;
-
-    // Use setInterval for periodic rotation
-    setInterval(() => {
-      logger.info('Running scheduled log rotation');
-      logStorage.rotateLogs();
-    }, SIX_HOURS_MS);
+    // Set up rotation using chrome.alarms for reliability
+    // Check every 3 hours for time-based log cleanup (configured in LogStorageManager)
+    // Retains logs newer than 12 hours for debugging while preventing unbounded growth
+    chrome.alarms.create('logRotation', { periodInMinutes: 180 }); // 3 hours = 180 minutes
 
     // Also check and rotate logs when the service worker wakes up
     // This handles cases where the interval might be cleared
@@ -273,7 +311,7 @@ export class BackgroundService {
   }
 
   private broadcastStatus(status: UploadStatusState) {
-    for (const [tabId, port] of this.ports) {
+    for (const [, port] of this.ports) {
       this.sendResponse(port, {
         type: 'UPLOAD_STATUS',
         status,
@@ -359,8 +397,9 @@ export class BackgroundService {
         chrome.action.openPopup();
         sendResponse({ success: true });
       } else if (message.type === 'NOTIFY_GITHUB_APP_SYNC') {
-        logger.info('📢 Received NOTIFY_GITHUB_APP_SYNC message:', message.data);
-        await this.handleGitHubAppSyncNotification(message.data);
+        const syncMessage = message as NotifyGitHubAppSyncMessage;
+        logger.info('📢 Received NOTIFY_GITHUB_APP_SYNC message:', syncMessage.data);
+        await this.handleGitHubAppSyncNotification(syncMessage.data);
         sendResponse({ success: true });
       } else if (
         message.type === 'getExtensionStatus' &&
@@ -386,6 +425,10 @@ export class BackgroundService {
         // Handle GitHub authentication initiation
         this.handleInitiateGitHubAuth(message.method, sendResponse);
         return true; // Will respond asynchronously
+      } else if (message.type === 'SYNC_BOLT_PROJECTS') {
+        // Handle manual sync trigger
+        this.handleManualSync(sendResponse);
+        return true; // Will respond asynchronously
       }
 
       // Return true to indicate we'll send a response asynchronously
@@ -395,14 +438,52 @@ export class BackgroundService {
     // Clean up when tabs are closed
     chrome.tabs.onRemoved.addListener((tabId) => {
       this.ports.delete(tabId);
+      this.tabProjectMap.delete(tabId);
     });
 
-    // Handle URL updates for project ID
+    // Track project IDs per tab to prevent cross-tab confusion
     chrome.tabs.onUpdated.addListener(async (tabId, changeInfo, tab) => {
       if (tab.url?.includes('bolt.new/~/')) {
-        const projectId = tab.url.match(/bolt\.new\/~\/([^/]+)/)?.[1] || null;
+        const projectId = extractProjectIdFromUrl(tab.url);
         if (projectId) {
+          // Check if URL changed from temporary format to final format
+          const previousProjectId = this.tabProjectMap.get(tabId);
+          if (
+            previousProjectId &&
+            this.isTempRepoUrl(previousProjectId) &&
+            !this.isTempRepoUrl(projectId)
+          ) {
+            logger.info(
+              `🎯 URL changed from temp format '${previousProjectId}' to final format '${projectId}' - triggering temp repo cleanup`
+            );
+            await this.triggerTempRepoCleanup();
+          }
+
+          // Store project ID for this specific tab
+          this.tabProjectMap.set(tabId, projectId);
+          logger.info(`📌 Tab ${tabId} is now associated with project: ${projectId}`);
+        }
+      } else if (changeInfo.url) {
+        // Clear project association if navigating away from a project page
+        if (!changeInfo.url.includes('bolt.new/~/')) {
+          // Clear if navigating away from a project page (including bolt.new home)
+          this.tabProjectMap.delete(tabId);
+          logger.info(`🧹 Cleared project association for tab ${tabId}`);
+        }
+      }
+    });
+
+    // Update global project ID when user switches to a tab with a project
+    chrome.tabs.onActivated.addListener(async (activeInfo) => {
+      const projectId = this.tabProjectMap.get(activeInfo.tabId);
+      if (projectId) {
+        try {
           await this.stateManager.setProjectId(projectId);
+          logger.info(
+            `🎯 Switched to tab ${activeInfo.tabId}, updated global project ID: ${projectId}`
+          );
+        } catch (error) {
+          logger.error(`Failed to update project ID for tab ${activeInfo.tabId}:`, error);
         }
       }
     });
@@ -433,6 +514,20 @@ export class BackgroundService {
           if (githubService) {
             logger.info('🔄 GitHub service reinitialized, reinitializing ZipHandler...');
             this.setupZipHandler(githubService);
+
+            // Also reinitialize TempRepoManager with new settings
+            const settings = await this.stateManager.getGitHubSettings();
+            if (settings?.gitHubSettings?.repoOwner) {
+              logger.info('🔄 Reinitializing TempRepoManager with updated settings...');
+              this.tempRepoManager = new BackgroundTempRepoManager(
+                githubService,
+                settings.gitHubSettings.repoOwner,
+                (status) => this.broadcastStatus(status)
+              );
+            } else {
+              logger.warn('⚠️ No repoOwner found, TempRepoManager will remain uninitialized');
+              this.tempRepoManager = null;
+            }
           }
         }
       }
@@ -461,33 +556,39 @@ export class BackgroundService {
       }
 
       switch (message.type) {
-        case 'ZIP_DATA':
+        case 'ZIP_DATA': {
           await this.sendAnalyticsEvent('user_action', {
             action: 'zip_upload_initiated',
             context: 'content_script',
           });
+          // Type narrowing for ZIP_DATA message
+          const zipMessage = message as ZipDataMessage;
           // Handle both old and new message formats for backward compatibility
-          if (typeof message.data === 'string') {
+          if (typeof zipMessage.data === 'string') {
             // Old format: message.data is just the base64 string
-            await this.handleZipData(tabId, message.data, null);
+            await this.handleZipData(tabId, zipMessage.data, null);
           } else {
             // New format: message.data is { data: string, projectId?: string }
-            await this.handleZipData(tabId, message.data.data, message.data.projectId);
+            await this.handleZipData(tabId, zipMessage.data.data, zipMessage.data.projectId);
           }
           break;
+        }
 
-        case 'SET_COMMIT_MESSAGE':
-          logger.info('Setting commit message:', message.data.message);
+        case 'SET_COMMIT_MESSAGE': {
+          const commitMessage = message as SetCommitMessage;
+          logger.info('Setting commit message:', commitMessage.data.message);
           await this.sendAnalyticsEvent('user_action', {
             action: 'commit_message_customized',
             has_custom_message: Boolean(
-              message.data?.message && message.data.message !== 'Commit from Bolt to GitHub'
+              commitMessage.data?.message &&
+                commitMessage.data.message !== 'Commit from Bolt to GitHub'
             ),
           });
-          if (message.data && message.data.message) {
-            this.pendingCommitMessage = message.data.message;
+          if (commitMessage.data && commitMessage.data.message) {
+            this.pendingCommitMessage = commitMessage.data.message;
           }
           break;
+        }
 
         case 'OPEN_SETTINGS':
           logger.info('Opening settings popup');
@@ -557,48 +658,85 @@ export class BackgroundService {
           }, 10);
           break;
 
-        case 'OPEN_FILE_CHANGES':
+        case 'OPEN_FILE_CHANGES': {
+          const fileChangesMessage = message as OpenFileChangesMessage;
           logger.info('Opening file changes popup');
           await this.sendAnalyticsEvent('user_action', {
             action: 'file_changes_viewed',
-            file_count: Object.keys(message.data?.changes || {}).length,
+            file_count: Object.keys(fileChangesMessage.data?.changes || {}).length,
           });
           // Store the file changes in local storage for the popup to retrieve
           await chrome.storage.local.set({
-            pendingFileChanges: message.data?.changes || {},
+            pendingFileChanges: fileChangesMessage.data?.changes || {},
           });
           logger.info('Stored file changes in local storage');
 
           // Open the popup - it will check for pendingFileChanges when it loads
           chrome.action.openPopup();
           break;
+        }
 
-        case 'IMPORT_PRIVATE_REPO':
-          logger.info('🔄 Processing private repo import:', message.data.repoName);
+        case 'IMPORT_PRIVATE_REPO': {
+          const importMessage = message as ImportPrivateRepoMessage;
+          logger.info('🔄 Processing private repo import:', importMessage.data.repoName);
           await this.sendAnalyticsEvent('user_action', {
             action: 'private_repo_import_started',
-            has_custom_branch: Boolean(message.data.branch),
+            has_custom_branch: Boolean(importMessage.data.branch),
           });
+
+          // Ensure TempRepoManager is initialized before proceeding
           if (!this.tempRepoManager) {
-            throw new Error('Temp repo manager not initialized');
+            logger.warn('⚠️ TempRepoManager not initialized, attempting to initialize...');
+            const githubService = await this.initializeGitHubService();
+            if (githubService) {
+              const settings = await this.stateManager.getGitHubSettings();
+              if (settings?.gitHubSettings?.repoOwner) {
+                logger.info('🔄 Initializing TempRepoManager for private repo import...');
+                this.tempRepoManager = new BackgroundTempRepoManager(
+                  githubService,
+                  settings.gitHubSettings.repoOwner,
+                  (status) => this.broadcastStatus(status)
+                );
+              } else {
+                throw new Error(
+                  'GitHub repository owner not configured. Please set up your GitHub settings first.'
+                );
+              }
+            } else {
+              throw new Error(
+                'GitHub service not available. Please check your GitHub authentication.'
+              );
+            }
           }
+
           await this.tempRepoManager.handlePrivateRepoImport(
-            message.data.repoName,
-            message.data.branch
+            importMessage.data.repoName,
+            importMessage.data.branch
           );
           await this.sendAnalyticsEvent('user_action', {
             action: 'private_repo_import_completed',
           });
           logger.info(
-            `✅ Private repo import completed from branch '${message.data.branch || 'default'}'`
+            `✅ Private repo import completed from branch '${importMessage.data.branch || 'default'}'`
           );
           break;
+        }
         case 'DELETE_TEMP_REPO':
           await this.sendAnalyticsEvent('user_action', {
             action: 'temp_repo_cleanup',
           });
           await this.tempRepoManager?.cleanupTempRepos(true);
           logger.info('✅ Temp repo cleaned up');
+
+          // Clean up github.com projects after temp repo cleanup
+          try {
+            const cleanedCount = await ChromeStorageService.cleanupGitHubComProjects();
+            if (cleanedCount > 0) {
+              logger.info(`✅ Cleaned up ${cleanedCount} github.com projects`);
+            }
+          } catch (error) {
+            logger.error('❌ Failed to cleanup github.com projects:', error);
+          }
           break;
 
         case 'DEBUG':
@@ -677,7 +815,14 @@ export class BackgroundService {
 
     const startTime = Date.now();
     let uploadSuccess = false;
-    let uploadMetadata: any = {};
+    let uploadMetadata: {
+      projectId?: string;
+      zipSize?: number;
+      commitMessage?: string;
+      duration?: number;
+      error_type?: string;
+      error_message?: string;
+    } = {};
 
     try {
       if (!this.githubService) {
@@ -688,10 +833,58 @@ export class BackgroundService {
         throw new Error('Zip handler is not initialized.');
       }
 
-      // Use the project ID from the message if provided, otherwise fall back to stored project ID
+      // Validate project ID against tab URL to prevent spoofing
+      if (currentProjectId && tabId) {
+        try {
+          const tab = await chrome.tabs.get(tabId);
+          const tabProjectId = extractProjectIdFromUrl(tab.url || '');
+
+          logger.debug(`🔍 Project ID validation - Tab ${tabId} URL: ${tab.url}`);
+          logger.debug(
+            `🔍 Project ID validation - Tab project ID: ${tabProjectId}, Message project ID: ${currentProjectId}`
+          );
+
+          if (tabProjectId && tabProjectId !== currentProjectId) {
+            // Validate that the tab URL actually contains a valid project pattern
+            if (tab.url && tab.url.includes('bolt.new/~/') && tab.url.includes(tabProjectId)) {
+              logger.warn(
+                `⚠️ Security: Project ID mismatch detected! Tab ${tabId} is on project '${tabProjectId}' but ZIP message contains '${currentProjectId}'. Using tab's project ID for security.`
+              );
+              currentProjectId = tabProjectId;
+            } else {
+              logger.error(`🚨 Invalid project ID extraction from tab URL: ${tab.url}`);
+              throw new Error('Invalid project ID - security validation failed');
+            }
+          } else if (tabProjectId) {
+            logger.debug(
+              `✅ Project ID validation passed - tab and message both use: ${currentProjectId}`
+            );
+          } else {
+            logger.warn(`⚠️ Could not extract project ID from tab URL: ${tab.url}`);
+          }
+        } catch (error) {
+          logger.warn(
+            `⚠️ Failed to validate project ID against tab ${tabId}: ${error instanceof Error ? error.message : 'Unknown error'}`
+          );
+          // Continue with the provided project ID if tab validation fails
+        }
+      }
+
+      // Always prefer the project ID from the current tab's URL
       let projectId = currentProjectId;
+
+      // If no project ID from message, try to get it from the tab map
+      if (!projectId && tabId) {
+        projectId = this.tabProjectMap.get(tabId);
+        if (projectId) {
+          logger.info(`📌 Using project ID from tab ${tabId}: ${projectId}`);
+        }
+      }
+
+      // Only fall back to stored project ID as last resort
       if (!projectId) {
         projectId = await this.stateManager.getProjectId();
+        logger.warn('⚠️ Using fallback project ID from storage - this may be incorrect!');
       }
 
       if (!projectId) {
@@ -701,7 +894,11 @@ export class BackgroundService {
       logger.info(
         '🔍 Using project ID for push:',
         projectId,
-        currentProjectId ? '(from URL)' : '(from storage)'
+        currentProjectId
+          ? '(from URL)'
+          : projectId === this.tabProjectMap.get(tabId)
+            ? '(from tab map)'
+            : '(from storage)'
       );
 
       try {
@@ -730,6 +927,9 @@ export class BackgroundService {
           2 * 60 * 1000, // 2 minutes timeout
           'Processing ZIP file timed out'
         );
+
+        // Track project creation for fresh install detection
+        await this.trackProjectCreation();
 
         const duration = Date.now() - startTime;
         uploadSuccess = true;
@@ -788,7 +988,8 @@ export class BackgroundService {
         if (isGitHubError) {
           // Extract the original GitHub error message if available
           const originalMessage =
-            (decodeError as any).originalMessage || 'GitHub authentication or API error occurred';
+            (decodeError as Error & { originalMessage?: string }).originalMessage ||
+            'GitHub authentication or API error occurred';
 
           throw new Error(`GitHub Error: ${originalMessage}`);
         } else {
@@ -863,7 +1064,7 @@ export class BackgroundService {
 
   private async handleCheckPremiumFeature(
     feature: string,
-    sendResponse: (response: any) => void
+    sendResponse: (response: { hasAccess: boolean }) => void
   ): Promise<void> {
     try {
       const premiumFeatures = ['pushReminders', 'branchSelector', 'viewFileChanges', 'issues'];
@@ -886,44 +1087,70 @@ export class BackgroundService {
     }
   }
 
-  private async handleAnalyticsEvent(eventType: string, eventData: any): Promise<void> {
+  private async handleAnalyticsEvent(
+    eventType: string,
+    eventData: {
+      context?: string;
+      eventType?: string;
+      projectMetadata?: Record<string, string | number | boolean>;
+      details?: Record<string, string | number | boolean>;
+      action?: string;
+      page?: string;
+      metadata?: Record<string, string | number | boolean>;
+      operation?: string;
+      success?: boolean;
+      errorType?: string;
+      error?: string;
+    }
+  ): Promise<void> {
     try {
       switch (eventType) {
         case 'extension_opened':
-          await this.sendAnalyticsEvent('extension_opened', { context: eventData.context });
+          await this.sendAnalyticsEvent('extension_opened', {
+            context: eventData.context || 'unknown',
+          });
           break;
 
         case 'bolt_project_event':
-          await this.sendAnalyticsEvent(eventData.eventType, eventData.projectMetadata);
+          await this.sendAnalyticsEvent(
+            eventData.eventType || 'bolt_project_event',
+            eventData.projectMetadata || {}
+          );
           break;
 
         case 'extension_event':
-          await this.sendAnalyticsEvent(eventData.eventType, eventData.details);
+          await this.sendAnalyticsEvent(
+            eventData.eventType || 'extension_event',
+            eventData.details || {}
+          );
           break;
 
         case 'user_preference':
-          await this.sendAnalyticsEvent(eventData.action, eventData.details);
+          await this.sendAnalyticsEvent(
+            eventData.action || 'user_preference',
+            eventData.details || {}
+          );
           break;
 
         case 'page_view':
           await this.sendAnalyticsEvent('page_view', {
-            page: eventData.page,
-            ...eventData.metadata,
+            page: eventData.page || 'unknown',
+            ...(eventData.metadata || {}),
           });
           break;
 
         case 'github_operation':
-          await this.sendAnalyticsEvent(`github_${eventData.operation}`, {
-            success: eventData.success,
-            ...eventData.metadata,
+          await this.sendAnalyticsEvent(`github_${eventData.operation || 'unknown'}`, {
+            success: Boolean(eventData.success),
+            ...(eventData.metadata || {}),
           });
           break;
 
         case 'error':
           await this.sendAnalyticsEvent('extension_error', {
-            error_type: eventData.errorType,
-            error_message: eventData.error,
-            context: eventData.context,
+            error_type: eventData.errorType || 'unknown',
+            error_message: eventData.error || 'unknown',
+            context: eventData.context || 'unknown',
           });
           break;
 
@@ -967,7 +1194,11 @@ export class BackgroundService {
     }
   }
 
-  private async handleGitHubAppSyncNotification(data: any): Promise<void> {
+  private async handleGitHubAppSyncNotification(data: {
+    installationId?: number;
+    username?: string;
+    avatarUrl?: string;
+  }): Promise<void> {
     try {
       logger.info('📢 Handling GitHub App sync notification to all bolt.new tabs');
 
@@ -1015,7 +1246,7 @@ export class BackgroundService {
       }
 
       // Perform a simple async operation to keep the service worker active
-      chrome.storage.local.get(['keepAliveTimestamp'], (result) => {
+      chrome.storage.local.get(['keepAliveTimestamp'], (_result) => {
         chrome.storage.local.set({ keepAliveTimestamp: Date.now() });
       });
     }, 25000); // Every 25 seconds
@@ -1051,7 +1282,20 @@ export class BackgroundService {
     }
   }
 
-  private async handleGetExtensionStatus(sendResponse: (response: any) => void): Promise<void> {
+  private async handleGetExtensionStatus(
+    sendResponse: (response: {
+      success: boolean;
+      data?: {
+        installed: boolean;
+        version: string;
+        authenticated: boolean;
+        installDate: string;
+        onboardingCompleted: boolean;
+        installedVersion: string;
+      };
+      error?: string;
+    }) => void
+  ): Promise<void> {
     try {
       // Get onboarding data from storage
       const storageData = await chrome.storage.local.get([
@@ -1062,7 +1306,7 @@ export class BackgroundService {
       ]);
 
       // Check authentication status
-      const authState = await this.supabaseAuthService.getCurrentAuthState();
+      const authState = this.supabaseAuthService.getAuthState();
 
       const response = {
         success: true,
@@ -1070,7 +1314,6 @@ export class BackgroundService {
           installed: true,
           version: chrome.runtime.getManifest().version,
           authenticated: authState.isAuthenticated,
-          authMethod: authState.authMethod || 'none',
           installDate: storageData.installDate,
           onboardingCompleted: storageData.onboardingCompleted || false,
           installedVersion: storageData.installedVersion,
@@ -1090,7 +1333,7 @@ export class BackgroundService {
 
   private async handleCompleteOnboardingStep(
     step: string,
-    sendResponse: (response: any) => void
+    sendResponse: (response: { success: boolean; error?: string }) => void
   ): Promise<void> {
     try {
       // Validate step parameter
@@ -1140,9 +1383,51 @@ export class BackgroundService {
     }
   }
 
+  /**
+   * Check if a project ID represents a temporary repository (contains github.com)
+   */
+  private isTempRepoUrl(projectId: string): boolean {
+    return projectId.includes('github.com');
+  }
+
+  /**
+   * Trigger immediate cleanup of temporary repositories
+   */
+  private async triggerTempRepoCleanup(): Promise<void> {
+    if (!this.tempRepoManager) {
+      logger.info('⚠️ TempRepoManager not initialized - skipping cleanup trigger');
+      return;
+    }
+
+    try {
+      logger.info('🧹 Triggering immediate temp repo cleanup due to URL change');
+      await this.tempRepoManager.cleanupTempRepos(true); // Force cleanup regardless of age
+
+      // Clean up github.com projects after temp repo cleanup
+      try {
+        const cleanedCount = await ChromeStorageService.cleanupGitHubComProjects();
+        if (cleanedCount > 0) {
+          logger.info(
+            `✅ Cleaned up ${cleanedCount} github.com projects during URL change cleanup`
+          );
+        }
+      } catch (cleanupError) {
+        logger.error('❌ Failed to cleanup github.com projects during URL change:', cleanupError);
+      }
+    } catch (error) {
+      logger.error('❌ Failed to trigger temp repo cleanup:', error);
+    }
+  }
+
   private async handleInitiateGitHubAuth(
     method: string,
-    sendResponse: (response: any) => void
+    sendResponse: (response: {
+      success: boolean;
+      authUrl?: string;
+      method?: string;
+      message?: string;
+      error?: string;
+    }) => void
   ): Promise<void> {
     try {
       // Validate authentication method
@@ -1180,6 +1465,99 @@ export class BackgroundService {
     }
   }
 
+  private async handleManualSync(
+    sendResponse: (response: {
+      success: boolean;
+      message?: string;
+      result?: {
+        syncPerformed: boolean;
+        updatedCount?: number;
+        conflictCount?: number;
+        deletedCount?: number;
+      };
+      error?: string;
+    }) => void
+  ): Promise<void> {
+    try {
+      logger.info('📱 Manual sync triggered via message - starting sync operation...');
+
+      // Perform outward sync (manual sync only does outward sync)
+      const result = await this.syncService.performOutwardSync();
+
+      logger.info('✅ Manual sync completed successfully', {
+        syncPerformed: !!result,
+        resultSummary: result
+          ? {
+              updatedCount: result.updatedProjects.length,
+              conflictCount: result.conflicts.length,
+              deletedCount: result.deletedProjects.length,
+            }
+          : 'skipped',
+      });
+
+      sendResponse({
+        success: true,
+        message: 'Sync completed',
+        result: {
+          syncPerformed: !!result,
+          ...(result
+            ? {
+                updatedCount: result.updatedProjects.length,
+                conflictCount: result.conflicts.length,
+                deletedCount: result.deletedProjects.length,
+              }
+            : {}),
+        },
+      });
+    } catch (error) {
+      logger.error('💥 Manual sync failed:', error);
+      sendResponse({
+        success: false,
+        error: error instanceof Error ? error.message : 'Sync failed',
+      });
+    }
+  }
+
+  /**
+   * Track project creation for fresh install detection
+   */
+  private async trackProjectCreation(): Promise<void> {
+    try {
+      const result = await chrome.storage.local.get(['totalProjectsCreated']);
+      const currentCount = result.totalProjectsCreated || 0;
+      await chrome.storage.local.set({
+        totalProjectsCreated: currentCount + 1,
+      });
+      logger.debug('📊 Project creation tracked', { totalCreated: currentCount + 1 });
+    } catch (error) {
+      logger.error('❌ Failed to track project creation:', error);
+    }
+  }
+
+  /**
+   * Clean up github.com projects on extension startup
+   */
+  private async cleanupGitHubComProjectsOnStartup(): Promise<void> {
+    try {
+      // Add small delay to allow initialization to complete
+      setTimeout(async () => {
+        try {
+          logger.info('🧹 Starting startup cleanup of github.com projects...');
+          const cleanedCount = await ChromeStorageService.cleanupGitHubComProjects();
+          if (cleanedCount > 0) {
+            logger.info(`✅ Startup cleanup removed ${cleanedCount} github.com projects`);
+          } else {
+            logger.debug('✅ No github.com projects found during startup cleanup');
+          }
+        } catch (error) {
+          logger.error('❌ Startup cleanup of github.com projects failed:', error);
+        }
+      }, 3000); // Wait 3 seconds after startup
+    } catch (error) {
+      logger.error('❌ Failed to schedule startup cleanup:', error);
+    }
+  }
+
   public destroy(): void {
     // Clean up keep-alive interval
     if (this.keepAliveInterval) {
@@ -1193,9 +1571,30 @@ export class BackgroundService {
       this.authCheckTimeout = null;
     }
 
+    // Clean up delayed sync timeout
+    if (this.delayedSyncTimeout) {
+      clearTimeout(this.delayedSyncTimeout);
+      this.delayedSyncTimeout = null;
+    }
+
     if (this.storageListener) {
       chrome.storage.onChanged.removeListener(this.storageListener);
       this.storageListener = null;
+    }
+
+    // Clean up auth state listener
+    if (this.authStateListener) {
+      this.supabaseAuthService.removeAuthStateListener(this.authStateListener);
+      this.authStateListener = null;
+    }
+
+    // Clean up sync alarm
+    chrome.alarms.clear('bolt-project-sync');
+
+    // Remove sync alarm handler if it exists
+    if (this.syncAlarmHandler) {
+      chrome.alarms.onAlarm.removeListener(this.syncAlarmHandler);
+      this.syncAlarmHandler = null;
     }
   }
 
@@ -1210,14 +1609,152 @@ export class BackgroundService {
    * Set up Chrome alarms for keep-alive
    */
   private setupAlarms(): void {
-    chrome.alarms.onAlarm.addListener((alarm) => {
+    // Store the alarm handler so we can remove it later
+    this.syncAlarmHandler = (alarm: chrome.alarms.Alarm) => {
       if (alarm.name === 'keepAlive') {
         // Simple operation to keep service worker active
         this.updateLastActivity();
         chrome.storage.local.set({ lastKeepAlive: Date.now() });
       } else if (alarm.name === 'logRotation') {
         this.rotateOldLogs();
+      } else if (alarm.name === 'bolt-project-sync') {
+        this.handleSyncAlarm();
       }
+    };
+
+    chrome.alarms.onAlarm.addListener(this.syncAlarmHandler);
+  }
+
+  /**
+   * Safely perform inward sync with concurrency protection
+   */
+  private async safePerformInwardSync(context: string): Promise<void> {
+    if (this.syncInProgress) {
+      logger.info(`⏸️ Sync already in progress, skipping ${context} sync request`);
+      return;
+    }
+
+    this.syncInProgress = true;
+    logger.info(`🔄 Starting ${context} inward sync`);
+
+    try {
+      await this.syncService.performInwardSync();
+      logger.info(`✅ Completed ${context} inward sync`);
+    } catch (error) {
+      logger.error(`💥 ${context} inward sync failed:`, error);
+    } finally {
+      this.syncInProgress = false;
+    }
+  }
+
+  /**
+   * Set up auth state listener for sync retry mechanism
+   */
+  private setupAuthStateListener(): void {
+    this.authStateListener = (authState: AuthState, previousState: AuthState) => {
+      logger.info('🔐 Auth state change detected for sync', {
+        wasAuthenticated: previousState.isAuthenticated,
+        nowAuthenticated: authState.isAuthenticated,
+      });
+
+      // If user just became authenticated, trigger immediate inward sync
+      if (authState.isAuthenticated && !previousState.isAuthenticated) {
+        logger.info('🎉 User authenticated - triggering immediate inward sync');
+
+        // Cancel any pending delayed sync since we're doing immediate sync
+        if (this.delayedSyncTimeout) {
+          logger.debug('⏹️ Cancelling delayed sync due to authentication');
+          clearTimeout(this.delayedSyncTimeout);
+          this.delayedSyncTimeout = null;
+        }
+
+        // Use safe sync to prevent concurrent operations
+        this.safePerformInwardSync('auth-triggered').catch((error) => {
+          logger.error('Safe auth-triggered sync wrapper failed:', error);
+        });
+      }
+    };
+
+    // Add listener to auth service
+    this.supabaseAuthService.addAuthStateListener(this.authStateListener);
+  }
+
+  /**
+   * Set up sync alarm for periodic bolt project syncing
+   */
+  private setupSyncAlarm(): void {
+    // Create sync alarm (every 5 minutes)
+    chrome.alarms.create('bolt-project-sync', { periodInMinutes: 5 });
+
+    // Perform delayed initial inward sync with better timing
+    this.performDelayedInitialSync();
+  }
+
+  /**
+   * Perform delayed initial sync that waits for auth check completion
+   */
+  private performDelayedInitialSync(): void {
+    // Wait for initial auth check to complete before running sync
+    this.delayedSyncTimeout = setTimeout(() => {
+      logger.info('🔄 Performing delayed initial inward sync after auth check window');
+      this.delayedSyncTimeout = null; // Clear reference since timeout has fired
+      this.safePerformInwardSync('delayed-initial').catch((error) => {
+        logger.error('Safe delayed initial sync wrapper failed:', error);
+      });
+    }, 3000); // Wait 3 seconds to allow auth check to complete
+
+    // Also try sync immediately if already authenticated
+    setTimeout(() => {
+      const authState = this.supabaseAuthService.getAuthState();
+      if (authState.isAuthenticated) {
+        logger.info('✅ User already authenticated - triggering immediate initial sync');
+
+        // Cancel delayed sync since we're doing immediate sync
+        if (this.delayedSyncTimeout) {
+          clearTimeout(this.delayedSyncTimeout);
+          this.delayedSyncTimeout = null;
+        }
+
+        this.safePerformInwardSync('immediate-initial').catch((error) => {
+          logger.error('Safe immediate initial sync wrapper failed:', error);
+        });
+      }
+    }, 100); // Quick check after 100ms
+  }
+
+  /**
+   * Handle sync alarm
+   */
+  private async handleSyncAlarm(): Promise<void> {
+    logger.info('⏰ Sync alarm fired, performing periodic sync operation...');
+
+    let outwardResult = null;
+    let inwardResult = null;
+
+    // Perform outward sync first (extension → server)
+    try {
+      logger.debug('🔄 Starting outward sync phase...');
+      outwardResult = await this.syncService.performOutwardSync();
+      logger.debug('📤 Outward sync phase completed', {
+        result: outwardResult ? 'success' : 'skipped',
+      });
+    } catch (error) {
+      logger.error('💥 Outward sync phase failed:', error);
+    }
+
+    // Perform inward sync second (server → extension)
+    try {
+      logger.debug('🔄 Starting inward sync phase...');
+      await this.safePerformInwardSync('periodic-alarm');
+      inwardResult = true; // Indicate that we attempted the sync
+      logger.debug('📥 Inward sync phase completed');
+    } catch (error) {
+      logger.error('💥 Inward sync phase failed:', error);
+    }
+
+    logger.info('✅ Periodic sync operation completed', {
+      outwardSyncPerformed: !!outwardResult,
+      inwardSyncPerformed: !!inwardResult,
     });
   }
 

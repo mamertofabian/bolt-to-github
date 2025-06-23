@@ -61,7 +61,7 @@ class LoggerImpl implements Logger {
         message,
         args.length > 1 ? args.slice(1) : undefined
       );
-    } catch (_error) {
+    } catch {
       // Silently fail to avoid infinite loops
     }
   }
@@ -115,15 +115,7 @@ export function resetLogger(): void {
 
 function getDefaultConfig() {
   const isDevelopment = detectEnvironment();
-  const enableDebugInProduction = (() => {
-    try {
-      return typeof window !== 'undefined'
-        ? localStorage.getItem('bolt-to-github-debug') === 'true'
-        : false;
-    } catch (_e) {
-      return false;
-    }
-  })();
+  const enableDebugInProduction = true;
 
   return {
     isDevelopment,
@@ -139,7 +131,7 @@ export const logger: Logger = new Proxy({} as Logger, {
     if (!_logger) {
       _logger = new LoggerImpl(getDefaultConfig());
     }
-    return (_logger as any)[prop];
+    return (_logger as never)[prop];
   },
 });
 
@@ -163,7 +155,7 @@ export function enableProductionDebug(): void {
     try {
       localStorage.setItem('bolt-to-github-debug', 'true');
       logger.info('Production debug logging enabled. Reload the page to take effect.');
-    } catch (e) {
+    } catch {
       logger.warn('Failed to enable production debug logging: localStorage unavailable');
     }
   }
@@ -177,7 +169,7 @@ export function disableProductionDebug(): void {
     try {
       localStorage.removeItem('bolt-to-github-debug');
       logger.info('Production debug logging disabled. Reload the page to take effect.');
-    } catch (e) {
+    } catch {
       logger.warn('Failed to disable production debug logging: localStorage unavailable');
     }
   }

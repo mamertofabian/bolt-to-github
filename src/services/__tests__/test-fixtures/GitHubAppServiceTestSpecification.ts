@@ -15,7 +15,8 @@ export interface TestScenario {
   description: string;
   category: 'auth' | 'token' | 'installation' | 'permission' | 'error' | 'edge';
   setup: (env: GitHubAppServiceTestEnvironment) => Promise<void> | void;
-  execute: (service: GitHubAppService) => Promise<any>;
+  execute: (service: GitHubAppService) => Promise<unknown>;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   assertions: (result: any, env: GitHubAppServiceTestEnvironment) => void;
   cleanup?: (env: GitHubAppServiceTestEnvironment) => void;
 }
@@ -40,7 +41,7 @@ export const authenticationScenarios: TestScenario[] = [
       });
     },
     execute: (service) => service.completeOAuthFlow('code_valid_1234567890abcdef', 'state_12345'),
-    assertions: (result, env) => {
+    assertions: (result) => {
       expect(result.success).toBe(true);
       expect(result.github_username).toBe('testuser');
       expect(result.installation_found).toBe(true);
@@ -443,7 +444,7 @@ export const edgeCaseScenarios: TestScenario[] = [
     assertions: (results) => {
       expect(results).toHaveLength(5);
       // All calls should return a valid token
-      results.forEach((result) => {
+      results.forEach((result: { access_token: string; renewed: boolean }) => {
         expect(result.access_token).toMatch(/^ghs_renewed_/);
         expect(result.renewed).toBe(true);
       });
@@ -454,7 +455,6 @@ export const edgeCaseScenarios: TestScenario[] = [
     description: 'Should handle chrome storage quota errors',
     category: 'edge',
     setup: (env) => {
-      const originalSet = env.storage.set;
       env.storage.set = () => Promise.reject(new Error('QUOTA_BYTES_PER_ITEM quota exceeded'));
     },
     execute: (service) =>

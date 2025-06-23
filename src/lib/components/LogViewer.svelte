@@ -236,10 +236,10 @@
   });
 
   // React to filter changes
-  $: selectedLevel, selectedContext, debouncedSearchTerm, applyFilters();
+  $: if (selectedLevel || selectedContext || debouncedSearchTerm) applyFilters();
 
   // React to search term changes
-  $: searchTerm, handleSearchInput();
+  $: if (searchTerm !== undefined) handleSearchInput();
 </script>
 
 <div class="log-viewer p-4 h-full flex flex-col bg-slate-900 text-slate-100">

@@ -48,6 +48,7 @@ global.chrome = {
     query: jest.fn(),
     sendMessage: jest.fn(),
     getCurrent: jest.fn(),
+    get: jest.fn(),
     create: jest.fn(),
     update: jest.fn(),
     onRemoved: {
@@ -55,6 +56,10 @@ global.chrome = {
       removeListener: jest.fn(),
     },
     onUpdated: {
+      addListener: jest.fn(),
+      removeListener: jest.fn(),
+    },
+    onActivated: {
       addListener: jest.fn(),
       removeListener: jest.fn(),
     },
@@ -106,13 +111,3 @@ global.chrome.tabs.sendMessage = jest.fn().mockImplementation((tabId, message, c
     return Promise.resolve({});
   }
 });
-
-// Mock chrome.alarms API
-global.chrome.alarms = {
-  create: jest.fn(),
-  clear: jest.fn(),
-  onAlarm: {
-    addListener: jest.fn(),
-    removeListener: jest.fn(),
-  },
-};

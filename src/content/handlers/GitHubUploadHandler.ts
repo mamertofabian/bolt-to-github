@@ -3,28 +3,19 @@ import type { INotificationManager } from '../types/ManagerInterfaces';
 import type { MessageHandler } from '../MessageHandler';
 import type { UIStateManager } from '../services/UIStateManager';
 import type { FileChange } from '../../services/FilePreviewService';
+import type { UploadStatusState, ProjectSetting, GitHubSettingsInterface } from '../../lib/types';
 import { SettingsService } from '../../services/settings';
 import { DownloadService } from '../../services/DownloadService';
 import { CommitTemplateService } from '../services/CommitTemplateService';
 import { createLogger } from '../../lib/utils/logger';
+import { getCurrentProjectId } from '../../lib/utils/projectId';
 
 const logger = createLogger('GitHubUploadHandler');
 
 // Local interface to match actual structure returned by SettingsService
-interface CurrentProjectSettings {
-  repoName: string;
-  branch: string;
-}
-
-interface LocalGitHubSettings {
-  githubToken: string;
-  repoOwner: string;
-  projectSettings?: CurrentProjectSettings;
-}
-
 interface LocalSettingsResult {
   isSettingsValid: boolean;
-  gitHubSettings?: LocalGitHubSettings;
+  gitHubSettings?: GitHubSettingsInterface;
 }
 
 /**
@@ -55,7 +46,10 @@ export class GitHubUploadHandler implements IGitHubUploadHandler {
    * Returns true if settings are valid and complete
    */
   public async validateSettings(): Promise<boolean> {
-    const settings = (await SettingsService.getGitHubSettings()) as LocalSettingsResult;
+    const currentProjectId = getCurrentProjectId();
+    const settings = (await SettingsService.getGitHubSettings(
+      currentProjectId ?? undefined
+    )) as LocalSettingsResult;
     return settings.isSettingsValid;
   }
 
@@ -78,8 +72,31 @@ export class GitHubUploadHandler implements IGitHubUploadHandler {
   ): Promise<void> {
     logger.info('🔊 Handling GitHub push action');
 
-    // Validate settings first
-    const settings = (await SettingsService.getGitHubSettings()) as LocalSettingsResult;
+    // Get current project ID from the URL to ensure we're using the tab-specific project
+    const currentProjectId = getCurrentProjectId();
+    logger.info('🔊 Using current project ID from URL:', currentProjectId);
+
+    // Validate settings first with the current project ID
+    const settings = (await SettingsService.getGitHubSettings(
+      currentProjectId ?? undefined
+    )) as LocalSettingsResult;
+
+    // Debug logging for troubleshooting
+    logger.info('🔍 Settings result:', {
+      isValid: settings.isSettingsValid,
+      hasGitHubSettings: !!settings.gitHubSettings,
+      hasProjectSettings: !!settings.gitHubSettings?.projectSettings,
+      projectCount: settings.gitHubSettings?.projectSettings
+        ? Object.keys(settings.gitHubSettings.projectSettings).length
+        : 0,
+      currentProjectExists: currentProjectId
+        ? !!settings.gitHubSettings?.projectSettings?.[currentProjectId]
+        : false,
+      currentProjectSettings: currentProjectId
+        ? settings.gitHubSettings?.projectSettings?.[currentProjectId]
+        : undefined,
+    });
+
     if (!settings.isSettingsValid) {
       this.notificationManager.showSettingsNotification();
       return;
@@ -92,14 +109,23 @@ export class GitHubUploadHandler implements IGitHubUploadHandler {
       // Get commit message templates for the dialog
       const commitMessageTemplates = await this.commitTemplateService.getTemplateSuggestions();
 
+      // Get the specific project settings for the current project
+      const currentProjectSettings: ProjectSetting | undefined = currentProjectId
+        ? settings.gitHubSettings?.projectSettings?.[currentProjectId]
+        : undefined;
+
       // Show simple confirmation dialog without change detection
       const { confirmed, commitMessage } = await this.notificationManager.showConfirmationDialog({
         title: 'Confirm GitHub Push',
-        message: `Repository: <span class="font-mono">${settings.gitHubSettings?.projectSettings?.repoName || 'N/A'} / ${settings.gitHubSettings?.projectSettings?.branch || 'N/A'}</span><br><br>Push your changes to GitHub?<br><small class="text-gray-500">Only modified files will be uploaded.</small>`,
+        message: 'Push your changes to GitHub?\n\nOnly modified files will be uploaded.',
         confirmText: 'Push Changes',
         cancelText: 'Cancel',
         type: 'info',
         commitMessageTemplates,
+        repoInfo: {
+          repoName: currentProjectSettings?.repoName || currentProjectId || 'N/A',
+          branch: currentProjectSettings?.branch || 'main',
+        },
       });
 
       if (!confirmed) return;
@@ -191,16 +217,25 @@ export class GitHubUploadHandler implements IGitHubUploadHandler {
 
     // Show enhanced confirmation dialog
     const confirmationMessage = hasChanges
-      ? `${changesSummary}<br><br>Do you want to push these changes to GitHub?`
-      : `${changesSummary}<br><br>Do you still want to push to GitHub?`;
+      ? `${changesSummary}\n\nDo you want to push these changes to GitHub?`
+      : `${changesSummary}\n\nDo you still want to push to GitHub?`;
+
+    // Get the specific project settings for the current project
+    const currentProjectSettings: ProjectSetting | undefined = currentProjectId
+      ? settings.gitHubSettings?.projectSettings?.[currentProjectId]
+      : undefined;
 
     const { confirmed, commitMessage } = await this.notificationManager.showConfirmationDialog({
       title: hasChanges ? 'Confirm GitHub Push' : 'No Changes - Confirm Push',
-      message: `Repository: <span class="font-mono">${settings.gitHubSettings?.projectSettings?.repoName || 'N/A'} / ${settings.gitHubSettings?.projectSettings?.branch || 'N/A'}</span><br><br>${confirmationMessage}`,
+      message: confirmationMessage,
       confirmText: hasChanges ? 'Push Changes' : 'Push Anyway',
       cancelText: 'Cancel',
       type: hasChanges ? 'info' : 'warning',
       commitMessageTemplates,
+      repoInfo: {
+        repoName: currentProjectSettings?.repoName || currentProjectId || 'N/A',
+        branch: currentProjectSettings?.branch || 'main',
+      },
     });
 
     if (!confirmed) {
@@ -271,6 +306,7 @@ export class GitHubUploadHandler implements IGitHubUploadHandler {
       if (base64data) {
         // Get current project ID from URL to ensure we're pushing to the correct project
         const currentProjectId = this.getCurrentProjectId();
+        logger.info(`📤 Sending ZIP data for project: ${currentProjectId || 'unknown'}`);
         this.messageHandler.sendZipData(base64data, currentProjectId || undefined);
       } else {
         throw new Error('Failed to convert ZIP file to base64');
@@ -306,7 +342,7 @@ export class GitHubUploadHandler implements IGitHubUploadHandler {
   /**
    * Update upload status through callback
    */
-  private updateUploadStatus(status: any): void {
+  private updateUploadStatus(status: UploadStatusState): void {
     if (this.stateManager) {
       this.stateManager.setUploadStatus(status);
     }
@@ -316,12 +352,19 @@ export class GitHubUploadHandler implements IGitHubUploadHandler {
    * Get current project settings for display
    */
   public async getProjectInfo(): Promise<{ repoName?: string; branch?: string } | null> {
-    const settings = (await SettingsService.getGitHubSettings()) as LocalSettingsResult;
-    if (settings.isSettingsValid && settings.gitHubSettings?.projectSettings) {
-      return {
-        repoName: settings.gitHubSettings.projectSettings.repoName,
-        branch: settings.gitHubSettings.projectSettings.branch,
-      };
+    const currentProjectId = getCurrentProjectId();
+    const settings = (await SettingsService.getGitHubSettings(
+      currentProjectId ?? undefined
+    )) as LocalSettingsResult;
+
+    if (settings.isSettingsValid && settings.gitHubSettings?.projectSettings && currentProjectId) {
+      const currentProjectSettings = settings.gitHubSettings.projectSettings[currentProjectId];
+      if (currentProjectSettings) {
+        return {
+          repoName: currentProjectSettings.repoName,
+          branch: currentProjectSettings.branch,
+        };
+      }
     }
     return null;
   }

@@ -475,7 +475,7 @@ describe('ZipHandler - Critical Scenarios', () => {
         .getRequestHistory()
         .find((req) => req.method === 'POST' && req.path.includes('/git/trees'));
 
-      expect(treeCreation?.body?.tree).toContainEqual(
+      expect((treeCreation?.body as unknown as { tree: unknown[] })?.tree).toContainEqual(
         expect.objectContaining({
           path: 'a/b/c/d/e/f/g/h/i/j/k/l/m/n/deep.txt',
         })
@@ -519,7 +519,7 @@ describe('ZipHandler - Critical Scenarios', () => {
         .getRequestHistory()
         .find((req) => req.method === 'POST' && req.path.includes('/git/trees'));
 
-      expect(treeCreation?.body?.tree).toHaveLength(3);
+      expect((treeCreation?.body as unknown as { tree: unknown[] })?.tree).toHaveLength(3);
     });
   });
 });

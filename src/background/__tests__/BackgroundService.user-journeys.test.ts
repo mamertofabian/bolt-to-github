@@ -420,9 +420,6 @@ describe('BackgroundService User Journey Integration Tests', () => {
       // Should handle storage failures gracefully
       const operations = env.serviceFactory.operationStateManager.getAllOperations();
       if (operations.length > 0) {
-        const storageFailures = operations.filter(
-          (op) => op.status === 'failed' && op.error?.message.toLowerCase().includes('storage')
-        );
         // May or may not fail depending on implementation - should not crash
         expect(operations.length).toBeGreaterThan(0);
       }

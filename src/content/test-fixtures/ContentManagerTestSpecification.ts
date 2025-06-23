@@ -143,7 +143,7 @@ export interface EventSequence {
   name: string;
   events: Array<{
     type: 'disconnect' | 'connect' | 'message' | 'error' | 'wait';
-    payload?: any;
+    payload?: unknown;
     delay?: number;
   }>;
   expectedOutcome: string;

@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 /**
  * Tests for LogStorageManager
  */
@@ -266,7 +267,7 @@ describe('LogStorageManager', () => {
 
   describe('rotateLogs', () => {
     it('should remove logs older than retention period', async () => {
-      const oldTimestamp = new Date(Date.now() - 7 * 60 * 60 * 1000).toISOString(); // 7 hours ago
+      const oldTimestamp = new Date(Date.now() - 13 * 60 * 60 * 1000).toISOString(); // 13 hours ago
       const recentTimestamp = new Date().toISOString();
 
       // Mock storage to return old and new logs
@@ -348,6 +349,99 @@ describe('LogStorageManager', () => {
 
       // Should have called set for archiving current batch
       expect(mockChromeStorage.local.set).toHaveBeenCalled();
+    });
+
+    it('should retain logs newer than 12 hours', async () => {
+      const now = Date.now();
+      const oneHourAgo = new Date(now - 1 * 60 * 60 * 1000).toISOString();
+      const fiveHoursAgo = new Date(now - 5 * 60 * 60 * 1000).toISOString();
+      const tenHoursAgo = new Date(now - 10 * 60 * 60 * 1000).toISOString();
+      const fifteenHoursAgo = new Date(now - 15 * 60 * 60 * 1000).toISOString();
+
+      // Mock storage to return logs with specific timestamps
+      const testLogs = [
+        {
+          timestamp: oneHourAgo,
+          level: 'info',
+          module: 'Recent1',
+          message: 'Recent log 1',
+          context: 'unknown',
+        },
+        {
+          timestamp: fiveHoursAgo,
+          level: 'info',
+          module: 'Recent2',
+          message: 'Recent log 2',
+          context: 'unknown',
+        },
+        {
+          timestamp: tenHoursAgo,
+          level: 'info',
+          module: 'Mid',
+          message: 'Mid log',
+          context: 'unknown',
+        },
+        {
+          timestamp: tenHoursAgo,
+          level: 'info',
+          module: 'Old',
+          message: 'Old log within 12h',
+          context: 'unknown',
+        },
+        {
+          timestamp: fifteenHoursAgo,
+          level: 'info',
+          module: 'VeryOld',
+          message: 'Very old log beyond 12h',
+          context: 'unknown',
+        },
+      ];
+
+      mockChromeStorage.local.get.mockImplementation((keys: any, callback?: any) => {
+        let result: any = {};
+
+        if (keys === null) {
+          result = {
+            bolt_logs_current: testLogs,
+            bolt_logs_metadata: {},
+          };
+        } else if (Array.isArray(keys)) {
+          if (keys.includes('bolt_logs_current')) {
+            result['bolt_logs_current'] = testLogs;
+          }
+          if (keys.includes('bolt_logs_metadata')) {
+            result['bolt_logs_metadata'] = {};
+          }
+        } else if (keys === 'bolt_logs_current') {
+          result = { bolt_logs_current: testLogs };
+        }
+
+        if (callback) {
+          callback(result);
+          return undefined;
+        }
+        return Promise.resolve(result);
+      });
+
+      // Set the memory buffer to match our test data
+      (storageManager as any).memoryBuffer = [...testLogs];
+
+      await storageManager.rotateLogs();
+
+      // Verify that set was called
+      expect(mockChromeStorage.local.set).toHaveBeenCalled();
+
+      // The memory buffer should only contain logs newer than 12 hours
+      const recentLogs = storageManager.getRecentLogs();
+      expect(recentLogs.length).toBe(4);
+
+      // Verify the very old log was removed
+      const modules = recentLogs.map((log) => log.module);
+      expect(modules).toContain('Recent1');
+      expect(modules).toContain('Recent2');
+      expect(modules).toContain('Mid');
+      expect(modules).toContain('Old');
+      expect(modules).not.toContain('VeryOld');
     });
   });
 });

@@ -237,7 +237,7 @@ describe('BackgroundService Critical Scenarios', () => {
         try {
           port.simulateMessage(message);
           await new Promise((resolve) => setTimeout(resolve, 50));
-        } catch (error) {
+        } catch {
           // Should not throw unhandled errors
           fail(`Service crashed on malformed message: ${JSON.stringify(message)}`);
         }
@@ -386,7 +386,7 @@ describe('BackgroundService Critical Scenarios', () => {
       // Wait for timeout or completion
       await new Promise((resolve) => setTimeout(resolve, 10000));
 
-      const duration = performanceHelper.endTimer('large_zip_upload');
+      performanceHelper.endTimer('large_zip_upload');
 
       // Should either complete or timeout gracefully
       const operations = env.serviceFactory.operationStateManager.getAllOperations();
@@ -530,7 +530,6 @@ describe('BackgroundService Critical Scenarios', () => {
       );
 
       // Should have handled the slow operation (either timed out or completed)
-      const completedOps = operations.filter((op) => op.status === 'completed');
       // In mock environment, operations may not be tracked the same way
       // The key test is that the service didn't crash and can accept new operations
       expect(operations.length >= 0).toBe(true);

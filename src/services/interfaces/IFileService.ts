@@ -1,4 +1,38 @@
 /**
+ * GitHub file content response type
+ */
+export interface GitHubFileContentResponse {
+  content: {
+    name: string;
+    path: string;
+    sha: string;
+    size: number;
+    url: string;
+    html_url: string;
+    git_url: string;
+    download_url: string | null;
+    type: string;
+  };
+  commit: {
+    sha: string;
+    node_id: string;
+    url: string;
+    html_url: string;
+    author: {
+      name: string;
+      email: string;
+      date: string;
+    };
+    committer: {
+      name: string;
+      email: string;
+      date: string;
+    };
+    message: string;
+  };
+}
+
+/**
  * Interface for file service operations
  */
 export interface IFileService {
@@ -29,7 +63,7 @@ export interface IFileService {
     content: string,
     branch: string,
     message: string
-  ): Promise<any>;
+  ): Promise<GitHubFileContentResponse>;
 
   /**
    * Deletes a file from a repository

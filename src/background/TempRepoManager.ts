@@ -67,9 +67,9 @@ export class BackgroundTempRepoManager {
       if (!branch) {
         try {
           const branches = await this.githubService.listBranches(this.owner, sourceRepo);
-          const defaultBranch = branches.find(
-            (b: { name: string; isDefault: boolean }) => b.isDefault
-          );
+          // GitHub API doesn't directly provide isDefault, but we can check the repo info
+          const repoInfo = await this.githubService.getRepoInfo(this.owner, sourceRepo);
+          const defaultBranch = branches.find((b) => b.name === repoInfo.default_branch);
           branchToUse = defaultBranch ? defaultBranch.name : 'main';
           logger.info(`Using detected default branch: ${branchToUse}`);
         } catch (error) {

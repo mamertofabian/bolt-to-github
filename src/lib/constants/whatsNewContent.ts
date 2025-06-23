@@ -6,6 +6,16 @@ export interface WhatsNewVersion {
 }
 
 export const whatsNewContent: Record<string, WhatsNewVersion> = {
+  '1.3.6': {
+    date: '2025-06-14',
+    highlights: [
+      '🔄 Project Sync - Your Bolt projects now sync automatically across devices',
+      '🛡️ Data Loss Prevention - Fixed critical race conditions in storage operations',
+      '⚡ Enhanced Reliability - Background sync every 5 minutes keeps everything current',
+    ],
+    details: `Never lose your Bolt projects mapping to GitHub repositories again! This major stability update includes automatic cross-device synchronization, critical race condition fixes, and enhanced error handling for bulletproof project management.`,
+    type: 'minor',
+  },
   '1.3.5': {
     date: '2025-06-13',
     highlights: [

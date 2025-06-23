@@ -22,6 +22,24 @@ interface AnalyticsConfig {
   enabled: boolean;
 }
 
+// Define specific types for analytics data
+interface AnalyticsEventData {
+  name: string;
+  params: {
+    [key: string]: string | number | boolean | undefined;
+  };
+}
+
+interface AnalyticsDetails {
+  [key: string]: string | number | boolean | undefined;
+}
+
+interface AnalyticsSummary {
+  clientId?: string;
+  lastSync?: string;
+  enabled: boolean;
+}
+
 export class AnalyticsService {
   private static instance: AnalyticsService;
   private config: AnalyticsConfig | null = null;
@@ -212,10 +230,7 @@ export class AnalyticsService {
   /**
    * Track specific extension events
    */
-  public async trackExtensionEvent(
-    eventType: string,
-    details?: Record<string, any>
-  ): Promise<void> {
+  public async trackExtensionEvent(eventType: string, details?: AnalyticsDetails): Promise<void> {
     await this.trackEvent({
       category: 'extension_usage',
       action: eventType,
@@ -229,7 +244,7 @@ export class AnalyticsService {
   public async trackGitHubOperation(
     operation: string,
     success: boolean,
-    details?: Record<string, any>
+    details?: AnalyticsDetails
   ): Promise<void> {
     await this.trackEvent({
       category: 'github_operations',
@@ -242,7 +257,7 @@ export class AnalyticsService {
   /**
    * Track user journey milestones
    */
-  public async trackMilestone(milestone: string, metadata?: Record<string, any>): Promise<void> {
+  public async trackMilestone(milestone: string, metadata?: AnalyticsDetails): Promise<void> {
     await this.trackEvent({
       category: 'user_journey',
       action: milestone,
@@ -271,7 +286,7 @@ export class AnalyticsService {
       .substring(0, 40);
   }
 
-  private async sendEvent(eventData: any): Promise<void> {
+  private async sendEvent(eventData: AnalyticsEventData): Promise<void> {
     if (!this.config) {
       await this.initializeConfig();
     }
@@ -325,7 +340,7 @@ export class AnalyticsService {
   /**
    * Get analytics summary for user
    */
-  public async getAnalyticsSummary(): Promise<Record<string, any>> {
+  public async getAnalyticsSummary(): Promise<AnalyticsSummary> {
     try {
       const result = await chrome.storage.local.get(['analyticsClientId', 'lastAnalyticsSync']);
       return {
@@ -335,7 +350,7 @@ export class AnalyticsService {
       };
     } catch (error) {
       logger.error('Failed to get analytics summary:', error);
-      return {};
+      return { enabled: false };
     }
   }
 }

@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 /**
  * MessageHandler.test.ts
  *
@@ -8,16 +9,8 @@
  * - Edge cases and failure scenarios
  */
 
-import { MessageHandler } from '../MessageHandler';
 import type { MessageType } from '$lib/types';
-import {
-  MessageHandlerTestEnvironment,
-  TestSuiteHelpers,
-  CommonTestPatterns,
-  TestData,
-  MessageFactory,
-  TimingHelpers,
-} from '../test-fixtures';
+import { MessageHandlerTestEnvironment, TestData, TimingHelpers } from '../test-fixtures';
 
 describe('MessageHandler', () => {
   let env: MessageHandlerTestEnvironment;
@@ -143,8 +136,6 @@ describe('MessageHandler', () => {
     describe('Queue Memory Management', () => {
       it('should handle unbounded queue growth gracefully', async () => {
         await env.setupPortDisconnectionScenario();
-
-        const initialMemory = env.getMemorySnapshot();
 
         // Add large number of messages to queue
         const largeMessageCount = 10000;
@@ -486,7 +477,7 @@ describe('MessageHandler', () => {
         let messagesSent = 0;
 
         // Mock postMessage to disconnect after a few messages
-        newPort.postMessage = jest.fn((message) => {
+        newPort.postMessage = jest.fn((_message) => {
           messagesSent++;
           if (messagesSent > 10) {
             // Simulate disconnection by throwing

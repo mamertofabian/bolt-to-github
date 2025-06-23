@@ -1,7 +1,13 @@
 import type { IGitHubApiClient } from './interfaces/IGitHubApiClient';
 import type { ITokenService } from './interfaces/ITokenService';
 import type { ProgressCallback } from './types/common';
+import type { GitHubUser, GitHubOrganization } from './types/repository';
 import { createLogger } from '../lib/utils/logger';
+
+// Type for API client with token property
+interface IGitHubApiClientWithToken extends IGitHubApiClient {
+  token?: string;
+}
 
 const logger = createLogger('TokenService');
 
@@ -38,7 +44,7 @@ export class TokenService implements ITokenService {
     // We're assuming the token is stored in the apiClient
     // In a real implementation, we might need to pass the token to this service
     // or have a way to access it from the apiClient
-    const token = (this.apiClient as any).token;
+    const token = (this.apiClient as IGitHubApiClientWithToken).token;
     return token?.startsWith('ghp_') || false;
   }
 
@@ -47,7 +53,7 @@ export class TokenService implements ITokenService {
    * @returns True if token is a fine-grained token, false otherwise
    */
   isFineGrainedToken(): boolean {
-    const token = (this.apiClient as any).token;
+    const token = (this.apiClient as IGitHubApiClientWithToken).token;
     return token?.startsWith('github_pat_') || false;
   }
 
@@ -82,7 +88,7 @@ export class TokenService implements ITokenService {
     username: string
   ): Promise<{ isValid: boolean; error?: string }> {
     try {
-      const authUser = await this.apiClient.request('GET', '/user');
+      const authUser = await this.apiClient.request<GitHubUser>('GET', '/user');
 
       if (!authUser.login) {
         return { isValid: false, error: 'Invalid GitHub token' };
@@ -94,11 +100,11 @@ export class TokenService implements ITokenService {
 
       // Check if username refers to an organization
       try {
-        const targetUser = await this.apiClient.request('GET', `/users/${username}`);
+        const targetUser = await this.apiClient.request<GitHubUser>('GET', `/users/${username}`);
         if (targetUser.type === 'Organization') {
-          const orgs = await this.apiClient.request('GET', '/user/orgs');
+          const orgs = await this.apiClient.request<GitHubOrganization[]>('GET', '/user/orgs');
           const hasOrgAccess = orgs.some(
-            (org: any) => org.login.toLowerCase() === username.toLowerCase()
+            (org: GitHubOrganization) => org.login.toLowerCase() === username.toLowerCase()
           );
           if (hasOrgAccess) {
             return { isValid: true };
@@ -141,19 +147,22 @@ export class TokenService implements ITokenService {
       let authUser;
 
       try {
-        authUser = await this.apiClient.request('GET', '/user');
+        authUser = await this.apiClient.request<GitHubUser>('GET', '/user');
 
         // Check if the owner is not the current user
         if (username.toLowerCase() !== authUser.login.toLowerCase()) {
           try {
-            const targetUser = await this.apiClient.request('GET', `/users/${username}`);
+            const targetUser = await this.apiClient.request<GitHubUser>(
+              'GET',
+              `/users/${username}`
+            );
             isOrg = targetUser.type === 'Organization';
 
             // If it's an org, check if the user is a member
             if (isOrg) {
-              const orgs = await this.apiClient.request('GET', '/user/orgs');
+              const orgs = await this.apiClient.request<GitHubOrganization[]>('GET', '/user/orgs');
               const hasOrgAccess = orgs.some(
-                (org: any) => org.login.toLowerCase() === username.toLowerCase()
+                (org: GitHubOrganization) => org.login.toLowerCase() === username.toLowerCase()
               );
 
               if (!hasOrgAccess) {
@@ -177,7 +186,7 @@ export class TokenService implements ITokenService {
             throw error;
           }
         }
-      } catch (error) {
+      } catch {
         return { isValid: false, error: 'Invalid GitHub token' };
       }
 

@@ -9,6 +9,16 @@ import type { AuthenticationConfig, AuthenticationType } from './types/authentic
 // Removed GitHubService import to eliminate circular dependency
 import { AuthenticationStrategyFactory } from './AuthenticationStrategyFactory';
 import { createLogger } from '$lib/utils/logger';
+import type {
+  GitHubBranch,
+  GitHubComment,
+  GitHubCreateOrUpdateFileRequest,
+  GitHubFileResponse,
+  GitHubIssue,
+  GitHubIssueUpdate,
+  GitHubRepository,
+  GitHubTreeItem,
+} from './types/repository';
 
 const logger = createLogger('UnifiedGitHubService');
 
@@ -241,7 +251,7 @@ export class UnifiedGitHubService {
       // For PAT, check token format
       const token = await strategy.getToken();
       return token.startsWith('ghp_');
-    } catch (error) {
+    } catch {
       return false;
     }
   }
@@ -260,7 +270,7 @@ export class UnifiedGitHubService {
       // For PAT, check token format
       const token = await strategy.getToken();
       return token.startsWith('github_pat_');
-    } catch (error) {
+    } catch {
       return false;
     }
   }
@@ -311,7 +321,7 @@ export class UnifiedGitHubService {
         },
       });
       return response.status === 200;
-    } catch (error) {
+    } catch {
       return false;
     }
   }
@@ -319,7 +329,7 @@ export class UnifiedGitHubService {
   /**
    * Get repository information
    */
-  async getRepoInfo(owner: string, repo: string): Promise<any> {
+  async getRepoInfo(owner: string, repo: string): Promise<GitHubRepository> {
     try {
       const token = await this.getToken();
       const response = await fetch(`https://api.github.com/repos/${owner}/${repo}`, {
@@ -334,7 +344,7 @@ export class UnifiedGitHubService {
         return {
           name: repo,
           exists: false,
-        };
+        } as GitHubRepository;
       }
 
       if (!response.ok) {
@@ -356,7 +366,7 @@ export class UnifiedGitHubService {
         return {
           name: repo,
           exists: false,
-        };
+        } as GitHubRepository;
       }
       throw error;
     }
@@ -369,7 +379,7 @@ export class UnifiedGitHubService {
     repoName: string,
     isPrivate: boolean = true,
     description?: string
-  ): Promise<any> {
+  ): Promise<GitHubRepository> {
     const token = await this.getToken();
     const response = await fetch('https://api.github.com/user/repos', {
       method: 'POST',
@@ -382,7 +392,7 @@ export class UnifiedGitHubService {
         name: repoName,
         private: isPrivate,
         description: description || '',
-        auto_init: true,
+        auto_init: false,
       }),
     });
 
@@ -396,7 +406,11 @@ export class UnifiedGitHubService {
   /**
    * Ensure repository exists (create if it doesn't)
    */
-  async ensureRepoExists(owner: string, repo: string, isPrivate: boolean = true): Promise<any> {
+  async ensureRepoExists(
+    owner: string,
+    repo: string,
+    isPrivate: boolean = true
+  ): Promise<GitHubRepository> {
     if (await this.repoExists(owner, repo)) {
       return await this.getRepoInfo(owner, repo);
     }
@@ -422,7 +436,7 @@ export class UnifiedGitHubService {
       }
 
       return response.status !== 200;
-    } catch (error) {
+    } catch {
       return false;
     }
   }
@@ -433,9 +447,9 @@ export class UnifiedGitHubService {
   async initializeEmptyRepo(owner: string, repo: string, branch: string = 'main'): Promise<void> {
     const token = await this.getToken();
 
-    // Create initial commit with README
+    // Create initial commit with .gitkeep file
     const response = await fetch(
-      `https://api.github.com/repos/${owner}/${repo}/contents/README.md`,
+      `https://api.github.com/repos/${owner}/${repo}/contents/.gitkeep`,
       {
         method: 'PUT',
         headers: {
@@ -444,8 +458,8 @@ export class UnifiedGitHubService {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          message: 'Initial commit',
-          content: btoa(`# ${repo}\n\nInitialized by Bolt to GitHub extension.`),
+          message: 'Initialize repository',
+          content: btoa(''),
           branch,
         }),
       }
@@ -477,7 +491,11 @@ export class UnifiedGitHubService {
   /**
    * Update repository visibility
    */
-  async updateRepoVisibility(owner: string, repo: string, isPrivate: boolean): Promise<any> {
+  async updateRepoVisibility(
+    owner: string,
+    repo: string,
+    isPrivate: boolean
+  ): Promise<GitHubRepository> {
     const token = await this.getToken();
     const response = await fetch(`https://api.github.com/repos/${owner}/${repo}`, {
       method: 'PATCH',
@@ -501,7 +519,7 @@ export class UnifiedGitHubService {
   /**
    * List repositories
    */
-  async listRepos(): Promise<any[]> {
+  async listRepos(): Promise<GitHubRepository[]> {
     const token = await this.getToken();
     const response = await fetch('https://api.github.com/user/repos?sort=updated&per_page=100', {
       headers: {
@@ -520,7 +538,7 @@ export class UnifiedGitHubService {
   /**
    * List branches
    */
-  async listBranches(owner: string, repo: string): Promise<any[]> {
+  async listBranches(owner: string, repo: string): Promise<GitHubBranch[]> {
     const token = await this.getToken();
     const response = await fetch(`https://api.github.com/repos/${owner}/${repo}/branches`, {
       headers: {
@@ -538,19 +556,28 @@ export class UnifiedGitHubService {
 
   /**
    * Get commit count for a repository branch
+   * @param owner Repository owner
+   * @param repo Repository name
+   * @param branch Branch name (default: 'main')
+   * @param maxCommits Maximum number of commits to fetch (default: 100)
    */
-  async getCommitCount(owner: string, repo: string, branch: string = 'main'): Promise<number> {
+  async getCommitCount(
+    owner: string,
+    repo: string,
+    branch: string = 'main',
+    maxCommits: number = 100
+  ): Promise<number> {
     const token = await this.getToken();
 
     try {
-      // Get all commits by fetching pages until we reach the end
+      // Get commits by fetching pages until we reach the end or hit the limit
       let totalCommits = 0;
       let page = 1;
       const perPage = 100;
-      const maxPages = 100;
+      const maxPages = Math.min(100, Math.ceil(maxCommits / perPage)); // Don't exceed maxCommits
       let hasNextPage = true;
 
-      while (hasNextPage && page <= maxPages) {
+      while (hasNextPage && page <= maxPages && totalCommits < maxCommits) {
         const response = await fetch(
           `https://api.github.com/repos/${owner}/${repo}/commits?sha=${branch}&per_page=${perPage}&page=${page}`,
           {
@@ -574,7 +601,8 @@ export class UnifiedGitHubService {
           break;
         }
 
-        totalCommits += commits.length;
+        const commitsToAdd = Math.min(commits.length, maxCommits - totalCommits);
+        totalCommits += commitsToAdd;
         hasNextPage = commits.length === perPage;
         page++;
       }
@@ -597,11 +625,11 @@ export class UnifiedGitHubService {
     message: string,
     branch: string = 'main',
     sha?: string
-  ): Promise<any> {
+  ): Promise<GitHubFileResponse> {
     const token = await this.getToken();
     const url = `https://api.github.com/repos/${owner}/${repo}/contents/${path}`;
 
-    const body: any = {
+    const body: GitHubCreateOrUpdateFileRequest = {
       message,
       content: btoa(content),
       branch,
@@ -637,7 +665,7 @@ export class UnifiedGitHubService {
     repo: string,
     state: 'open' | 'closed' | 'all' = 'open',
     forceRefresh: boolean = false
-  ): Promise<any[]> {
+  ): Promise<GitHubIssue[]> {
     const token = await this.getToken();
 
     // Build URL with cache-busting for force refresh
@@ -668,7 +696,7 @@ export class UnifiedGitHubService {
     return await response.json();
   }
 
-  async getIssue(owner: string, repo: string, issueNumber: number): Promise<any> {
+  async getIssue(owner: string, repo: string, issueNumber: number): Promise<GitHubIssue> {
     const token = await this.getToken();
     const response = await fetch(
       `https://api.github.com/repos/${owner}/${repo}/issues/${issueNumber}`,
@@ -696,7 +724,7 @@ export class UnifiedGitHubService {
       labels?: string[];
       assignees?: string[];
     }
-  ): Promise<any> {
+  ): Promise<GitHubIssue> {
     const token = await this.getToken();
     const response = await fetch(`https://api.github.com/repos/${owner}/${repo}/issues`, {
       method: 'POST',
@@ -727,9 +755,9 @@ export class UnifiedGitHubService {
     title?: string,
     body?: string,
     state?: 'open' | 'closed'
-  ): Promise<any> {
+  ): Promise<GitHubIssue> {
     const token = await this.getToken();
-    const updateData: any = {};
+    const updateData: Partial<GitHubIssueUpdate> = {};
 
     if (title !== undefined) updateData.title = title;
     if (body !== undefined) updateData.body = body;
@@ -760,7 +788,7 @@ export class UnifiedGitHubService {
     repo: string,
     issueNumber: number,
     body: string
-  ): Promise<any> {
+  ): Promise<GitHubComment> {
     const token = await this.getToken();
     const response = await fetch(
       `https://api.github.com/repos/${owner}/${repo}/issues/${issueNumber}/comments`,
@@ -789,7 +817,7 @@ export class UnifiedGitHubService {
       browserInfo: string;
       extensionVersion: string;
     };
-  }): Promise<any> {
+  }): Promise<GitHubIssue> {
     // Convert feedback to GitHub issue format
     const issueTitle = `[${feedback.category.toUpperCase()}] User Feedback`;
 
@@ -844,8 +872,13 @@ export class UnifiedGitHubService {
         throw new Error(`Failed to get repository tree: ${treeResponse.statusText}`);
       }
 
-      const tree = await treeResponse.json();
-      const files = tree.tree.filter((item: any) => item.type === 'blob');
+      const tree = (await treeResponse.json()) as {
+        tree: GitHubTreeItem[];
+        sha: string;
+        url: string;
+        truncated: boolean;
+      };
+      const files = tree.tree.filter((item: GitHubTreeItem) => item.type === 'blob');
 
       if (onProgress) onProgress(30);
 
@@ -946,7 +979,7 @@ export class UnifiedGitHubService {
   /**
    * Legacy request method (marked for removal in original service)
    */
-  async request(method: string, endpoint: string, data?: any): Promise<any> {
+  async request<T = unknown>(method: string, endpoint: string, data?: unknown): Promise<T> {
     const token = await this.getToken();
 
     // Ensure proper URL construction
@@ -983,7 +1016,7 @@ export class UnifiedGitHubService {
       throw new Error(`Request failed: ${response.statusText}`);
     }
 
-    return await response.json();
+    return (await response.json()) as T;
   }
 
   // ========================================
@@ -1017,7 +1050,7 @@ export class UnifiedGitHubService {
   /**
    * Get authentication metadata
    */
-  async getAuthMetadata(): Promise<any> {
+  async getAuthMetadata(): Promise<Record<string, unknown>> {
     const strategy = await this.getStrategy();
     return await strategy.getMetadata();
   }

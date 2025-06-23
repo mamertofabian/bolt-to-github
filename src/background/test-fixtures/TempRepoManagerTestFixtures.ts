@@ -9,6 +9,37 @@ import type { UploadStatusState } from '../../lib/types';
 import type { UnifiedGitHubService } from '../../services/UnifiedGitHubService';
 import type { OperationStateManager } from '../../content/services/OperationStateManager';
 import { STORAGE_KEY } from '../TempRepoManager';
+import type { GitHubRepository } from '../../services/types/repository';
+
+// =============================================================================
+// TYPE DEFINITIONS FOR BETTER TYPE SAFETY
+// =============================================================================
+
+interface GitHubBranch {
+  name: string;
+  commit: {
+    sha: string;
+    url: string;
+  };
+  protected: boolean;
+}
+
+interface TempRepoData {
+  originalRepo: string;
+  tempRepo: string;
+  createdAt: number;
+  owner: string;
+  branch: string;
+}
+
+interface OperationMetadata {
+  type: string;
+  status: 'started' | 'completed' | 'failed';
+  description: string;
+  metadata?: Record<string, unknown>;
+  error?: Error;
+  startTime: number;
+}
 
 // =============================================================================
 // REALISTIC TEST DATA
@@ -47,26 +78,72 @@ export const TempRepoTestData = {
     specialCharsBranch: 'feature/fix-issue-#123',
   },
 
-  // GitHub API branch responses
+  // GitHub API branch responses - now properly typed
   branchResponses: {
     mainDefault: [
-      { name: 'main', isDefault: true },
-      { name: 'develop', isDefault: false },
-      { name: 'feature/auth', isDefault: false },
-    ],
+      {
+        name: 'main',
+        commit: { sha: 'abc123', url: 'https://api.github.com/commits/abc123' },
+        protected: false,
+      },
+      {
+        name: 'develop',
+        commit: { sha: 'def456', url: 'https://api.github.com/commits/def456' },
+        protected: false,
+      },
+      {
+        name: 'feature/auth',
+        commit: { sha: 'ghi789', url: 'https://api.github.com/commits/ghi789' },
+        protected: false,
+      },
+    ] as GitHubBranch[],
     masterDefault: [
-      { name: 'master', isDefault: true },
-      { name: 'staging', isDefault: false },
-    ],
-    noBranches: [],
-    singleBranch: [{ name: 'main', isDefault: true }],
+      {
+        name: 'master',
+        commit: { sha: 'abc123', url: 'https://api.github.com/commits/abc123' },
+        protected: true,
+      },
+      {
+        name: 'staging',
+        commit: { sha: 'def456', url: 'https://api.github.com/commits/def456' },
+        protected: false,
+      },
+    ] as GitHubBranch[],
+    noBranches: [] as GitHubBranch[],
+    singleBranch: [
+      {
+        name: 'main',
+        commit: { sha: 'abc123', url: 'https://api.github.com/commits/abc123' },
+        protected: true,
+      },
+    ] as GitHubBranch[],
     multipleBranches: [
-      { name: 'main', isDefault: true },
-      { name: 'develop', isDefault: false },
-      { name: 'staging', isDefault: false },
-      { name: 'feature/auth', isDefault: false },
-      { name: 'feature/payments', isDefault: false },
-    ],
+      {
+        name: 'main',
+        commit: { sha: 'abc123', url: 'https://api.github.com/commits/abc123' },
+        protected: false,
+      },
+      {
+        name: 'develop',
+        commit: { sha: 'def456', url: 'https://api.github.com/commits/def456' },
+        protected: false,
+      },
+      {
+        name: 'staging',
+        commit: { sha: 'ghi789', url: 'https://api.github.com/commits/ghi789' },
+        protected: false,
+      },
+      {
+        name: 'feature/auth',
+        commit: { sha: 'jkl012', url: 'https://api.github.com/commits/jkl012' },
+        protected: false,
+      },
+      {
+        name: 'feature/payments',
+        commit: { sha: 'mno345', url: 'https://api.github.com/commits/mno345' },
+        protected: false,
+      },
+    ] as GitHubBranch[],
   },
 
   // Time-based test data
@@ -243,14 +320,14 @@ export class MockUnifiedGitHubService implements Partial<UnifiedGitHubService> {
   private deleteFailureRepos = new Set<string>();
   private progressCallbacks = new Map<string, (progress: number) => void>();
 
-  // Mock method declarations - properly initialized
-  listBranches = jest.fn(async (owner: string, repo: string) => {
+  // Mock method declarations - properly initialized with correct types
+  listBranches = jest.fn(async (owner: string, repo: string): Promise<GitHubBranch[]> => {
     return this._listBranches(owner, repo);
   });
 
   createTemporaryPublicRepo = jest.fn(
-    async (owner: string, sourceRepo: string, branch?: string) => {
-      return this._createTemporaryPublicRepo(owner, sourceRepo, branch);
+    async (owner: string, sourceRepo: string, _branch?: string): Promise<string> => {
+      return this._createTemporaryPublicRepo(owner, sourceRepo, _branch);
     }
   );
 
@@ -262,7 +339,7 @@ export class MockUnifiedGitHubService implements Partial<UnifiedGitHubService> {
       targetRepo: string,
       branch: string,
       onProgress?: (progress: number) => void
-    ) => {
+    ): Promise<void> => {
       return this._cloneRepoContents(
         sourceOwner,
         sourceRepo,
@@ -274,11 +351,13 @@ export class MockUnifiedGitHubService implements Partial<UnifiedGitHubService> {
     }
   );
 
-  updateRepoVisibility = jest.fn(async (owner: string, repo: string, isPrivate: boolean) => {
-    return this._updateRepoVisibility(owner, repo, isPrivate);
-  });
+  updateRepoVisibility = jest.fn(
+    async (owner: string, repo: string, isPrivate: boolean): Promise<GitHubRepository> => {
+      return this._updateRepoVisibility(owner, repo, isPrivate);
+    }
+  );
 
-  deleteRepo = jest.fn(async (owner: string, repo: string) => {
+  deleteRepo = jest.fn(async (owner: string, repo: string): Promise<void> => {
     return this._deleteRepo(owner, repo);
   });
 
@@ -306,10 +385,7 @@ export class MockUnifiedGitHubService implements Partial<UnifiedGitHubService> {
     return this.shouldFail && (this.failureMode === 'all' || this.failureMode === operation);
   }
 
-  private async _listBranches(
-    owner: string,
-    repo: string
-  ): Promise<Array<{ name: string; isDefault: boolean }>> {
+  private async _listBranches(_owner: string, repo: string): Promise<GitHubBranch[]> {
     await this.simulateDelay();
 
     if (this.shouldFailOperation('listBranches')) {
@@ -331,9 +407,9 @@ export class MockUnifiedGitHubService implements Partial<UnifiedGitHubService> {
   }
 
   private async _createTemporaryPublicRepo(
-    owner: string,
+    _owner: string,
     sourceRepo: string,
-    branch?: string
+    _branch?: string
   ): Promise<string> {
     await this.simulateDelay();
 
@@ -348,11 +424,11 @@ export class MockUnifiedGitHubService implements Partial<UnifiedGitHubService> {
   }
 
   private async _cloneRepoContents(
-    sourceOwner: string,
-    sourceRepo: string,
-    targetOwner: string,
+    _sourceOwner: string,
+    _sourceRepo: string,
+    _targetOwner: string,
     targetRepo: string,
-    branch: string,
+    _branch: string,
     onProgress?: (progress: number) => void
   ): Promise<void> {
     await this.simulateDelay();
@@ -374,18 +450,45 @@ export class MockUnifiedGitHubService implements Partial<UnifiedGitHubService> {
   }
 
   private async _updateRepoVisibility(
-    owner: string,
-    repo: string,
-    isPrivate: boolean
-  ): Promise<void> {
+    _owner: string,
+    _repo: string,
+    _isPrivate: boolean
+  ): Promise<GitHubRepository> {
     await this.simulateDelay();
 
     if (this.shouldFailOperation('updateVisibility')) {
       throw TempRepoTestData.errors.repoVisibilityError;
     }
+
+    // Return a mock GitHubRepository object
+    return {
+      id: 123456,
+      node_id: 'MDEwOlJlcG9zaXRvcnkxMjM0NTY=',
+      name: 'test-repo',
+      full_name: 'testuser/test-repo',
+      private: _isPrivate,
+      owner: {
+        login: 'testuser',
+        id: 12345,
+        avatar_url: 'https://avatars.githubusercontent.com/u/12345?v=4',
+        type: 'User',
+      },
+      html_url: 'https://github.com/testuser/test-repo',
+      description: null,
+      fork: false,
+      created_at: '2023-01-01T00:00:00Z',
+      updated_at: '2023-01-01T00:00:00Z',
+      pushed_at: '2023-01-01T00:00:00Z',
+      git_url: 'git://github.com/testuser/test-repo.git',
+      ssh_url: 'git@github.com:testuser/test-repo.git',
+      clone_url: 'https://github.com/testuser/test-repo.git',
+      language: 'TypeScript',
+      size: 1024,
+      default_branch: 'main',
+    };
   }
 
-  private async _deleteRepo(owner: string, repo: string): Promise<void> {
+  private async _deleteRepo(_owner: string, repo: string): Promise<void> {
     await this.simulateDelay();
 
     if (this.shouldFailOperation('deleteRepo') || this.deleteFailureRepos.has(repo)) {
@@ -404,17 +507,7 @@ export class MockUnifiedGitHubService implements Partial<UnifiedGitHubService> {
 }
 
 export class MockOperationStateManager implements Partial<OperationStateManager> {
-  private operations = new Map<
-    string,
-    {
-      type: string;
-      status: 'started' | 'completed' | 'failed';
-      description: string;
-      metadata?: any;
-      error?: Error;
-      startTime: number;
-    }
-  >();
+  private operations = new Map<string, OperationMetadata>();
   private shouldFail = false;
 
   static getInstance = jest.fn(() => new MockOperationStateManager());
@@ -428,7 +521,7 @@ export class MockOperationStateManager implements Partial<OperationStateManager>
       type: string,
       operationId: string,
       description: string,
-      metadata?: any
+      metadata?: Record<string, unknown>
     ): Promise<void> => {
       if (this.shouldFail) {
         throw new Error('Failed to start operation tracking');
@@ -468,11 +561,11 @@ export class MockOperationStateManager implements Partial<OperationStateManager>
   });
 
   // Test helpers
-  getOperation(operationId: string): any {
+  getOperation(operationId: string): OperationMetadata | undefined {
     return this.operations.get(operationId);
   }
 
-  getAllOperations(): Array<{ id: string; operation: any }> {
+  getAllOperations(): Array<{ id: string; operation: OperationMetadata }> {
     return Array.from(this.operations.entries()).map(([id, operation]) => ({ id, operation }));
   }
 
@@ -482,7 +575,7 @@ export class MockOperationStateManager implements Partial<OperationStateManager>
 
   getOperationsByStatus(
     status: 'started' | 'completed' | 'failed'
-  ): Array<{ id: string; operation: any }> {
+  ): Array<{ id: string; operation: OperationMetadata }> {
     return this.getAllOperations().filter(({ operation }) => operation.status === status);
   }
 
@@ -492,7 +585,7 @@ export class MockOperationStateManager implements Partial<OperationStateManager>
 }
 
 export class TempRepoMockChromeStorage {
-  private localData: Record<string, any> = {};
+  private localData: Record<string, unknown> = {};
   private shouldFail = false;
   private delay = 0;
 
@@ -521,7 +614,7 @@ export class TempRepoMockChromeStorage {
       if (!keys) return { ...this.localData };
       if (typeof keys === 'string') return { [keys]: this.localData[keys] };
       if (Array.isArray(keys)) {
-        const result: Record<string, any> = {};
+        const result: Record<string, unknown> = {};
         keys.forEach((key) => {
           if (key in this.localData) result[key] = this.localData[key];
         });
@@ -530,7 +623,7 @@ export class TempRepoMockChromeStorage {
       return {};
     }),
 
-    set: jest.fn(async (items: Record<string, any>) => {
+    set: jest.fn(async (items: Record<string, unknown>) => {
       await this.simulateDelay();
 
       if (this.shouldFail) {
@@ -553,11 +646,11 @@ export class TempRepoMockChromeStorage {
   };
 
   // Test helpers
-  setLocalData(data: Record<string, any>): void {
+  setLocalData(data: Record<string, unknown>): void {
     this.localData = { ...data };
   }
 
-  getLocalData(): Record<string, any> {
+  getLocalData(): Record<string, unknown> {
     return { ...this.localData };
   }
 
@@ -677,10 +770,10 @@ export class TempRepoManagerTestEnvironment {
   public mockTabs: TempRepoMockChromeTabs;
   public mockStatusBroadcaster: MockStatusBroadcaster;
 
-  private originalChrome: any;
-  private originalSetInterval: any;
-  private originalClearInterval: any;
-  private originalConsole: any;
+  private originalChrome: unknown;
+  private originalSetInterval: typeof setInterval;
+  private originalClearInterval: typeof clearInterval;
+  private originalConsole: Console;
 
   constructor() {
     this.mockGitHubService = new MockUnifiedGitHubService();
@@ -696,17 +789,17 @@ export class TempRepoManagerTestEnvironment {
     // Create our test instance and configure the mock to return it
     this.mockOperationStateManager = new MockOperationStateManager();
     MockedOperationStateManager.getInstance = jest.fn(() => this.mockOperationStateManager);
-  }
 
-  setup(): void {
-    // Store originals
-    this.originalChrome = (global as any).chrome;
+    // Store originals - properly typed
+    this.originalChrome = (global as unknown as { chrome?: unknown }).chrome;
     this.originalSetInterval = global.setInterval;
     this.originalClearInterval = global.clearInterval;
     this.originalConsole = global.console;
+  }
 
+  setup(): void {
     // Mock Chrome APIs
-    (global as any).chrome = {
+    (global as unknown as { chrome: unknown }).chrome = {
       storage: this.mockStorage,
       tabs: this.mockTabs,
     };
@@ -718,10 +811,10 @@ export class TempRepoManagerTestEnvironment {
       error: jest.fn(),
       info: jest.fn(),
       debug: jest.fn(),
-    } as any;
+    } as unknown as Console;
 
     // Mock timers to avoid actual intervals
-    global.setInterval = jest.fn().mockImplementation((callback: Function, delay: number) => {
+    global.setInterval = jest.fn().mockImplementation((_callback: () => void, _delay: number) => {
       // Return a mock interval ID
       return Math.random().toString(36).slice(2);
     });
@@ -730,7 +823,7 @@ export class TempRepoManagerTestEnvironment {
 
   teardown(): void {
     // Restore originals
-    (global as any).chrome = this.originalChrome;
+    (global as unknown as { chrome: unknown }).chrome = this.originalChrome;
     global.setInterval = this.originalSetInterval;
     global.clearInterval = this.originalClearInterval;
     global.console = this.originalConsole;
@@ -840,11 +933,11 @@ export const TempRepoAssertionHelpers = {
     expectedRepos: Array<{ originalRepo: string; tempRepo: string }>
   ): void {
     const storageData = storage.getLocalData();
-    const tempRepos = storageData[STORAGE_KEY] || [];
+    const tempRepos = (storageData[STORAGE_KEY] as TempRepoData[]) || [];
 
     expectedRepos.forEach((expected) => {
       const found = tempRepos.find(
-        (repo: any) =>
+        (repo: TempRepoData) =>
           repo.originalRepo === expected.originalRepo && repo.tempRepo === expected.tempRepo
       );
       expect(found).toBeDefined();
@@ -853,7 +946,7 @@ export const TempRepoAssertionHelpers = {
 
   expectStorageEmpty(storage: TempRepoMockChromeStorage): void {
     const storageData = storage.getLocalData();
-    const tempRepos = storageData[STORAGE_KEY] || [];
+    const tempRepos = (storageData[STORAGE_KEY] as TempRepoData[]) || [];
     expect(tempRepos).toHaveLength(0);
   },
 

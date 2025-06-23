@@ -47,7 +47,7 @@ export type {
   BehaviorVerifier,
 } from './MessageHandlerMocks';
 
-export type { MessageHandlerTestEnvironment } from './MessageHandlerTestHelpers';
+export { MessageHandlerTestEnvironment } from './MessageHandlerTestHelpers';
 
 /**
  * Quick setup function for common test scenarios

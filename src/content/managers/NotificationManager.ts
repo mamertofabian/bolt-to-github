@@ -191,6 +191,7 @@ export class NotificationManager implements INotificationManager {
           fileChangesSummary: options.fileChangesSummary || null,
           commitMessageTemplates: options.commitMessageTemplates || [],
           isLoading: false,
+          repoInfo: options.repoInfo || null,
         },
       }) as SvelteComponent;
 

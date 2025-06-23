@@ -8,8 +8,39 @@ import { GitHubComparisonService } from './GitHubComparisonService';
 import { processFilesWithGitignore } from '$lib/fileUtils';
 import { pushStatisticsActions } from '../lib/stores';
 import { createLogger } from '$lib/utils/logger';
+import { ChromeStorageService } from '../lib/services/chromeStorage';
 
 const logger = createLogger('ZipHandler');
+
+// Type definitions for GitHub API responses
+interface GitHubRef {
+  object: {
+    sha: string;
+  };
+}
+
+interface GitHubCommit {
+  tree: {
+    sha: string;
+  };
+}
+
+interface GitHubTree {
+  sha: string;
+}
+
+interface GitHubBlob {
+  sha: string;
+}
+
+interface GitHubRateLimit {
+  resources: {
+    core: {
+      remaining: number;
+      reset: number;
+    };
+  };
+}
 
 export class ZipHandler {
   private githubComparisonService: GitHubComparisonService;
@@ -64,17 +95,17 @@ export class ZipHandler {
         'GET',
         `/repos/${repoOwner}/${repoName}/branches/${targetBranch}`
       );
-    } catch (_) {
+    } catch {
       branchExists = false;
     }
 
     // If branch doesn't exist, create it from default branch
     if (!branchExists) {
       await this.updateStatus('uploading', 18, `Creating branch ${targetBranch}...`);
-      const defaultBranch = await this.githubService.request(
+      const defaultBranch = (await this.githubService.request(
         'GET',
         `/repos/${repoOwner}/${repoName}/git/refs/heads/main`
-      );
+      )) as GitHubRef;
       await this.githubService.request('POST', `/repos/${repoOwner}/${repoName}/git/refs`, {
         ref: `refs/heads/${targetBranch}`,
         sha: defaultBranch.object.sha,
@@ -136,16 +167,10 @@ export class ZipHandler {
       if (!projectSettings?.[currentProjectId]) {
         logger.info('Project settings not found, creating default settings for:', currentProjectId);
 
-        // Create a mutable copy of the project settings
-        const updatedProjectSettings = projectSettings ? { ...projectSettings } : {};
+        // Use thread-safe method to save project settings
+        await ChromeStorageService.saveProjectSettings(currentProjectId, currentProjectId, 'main');
 
-        // Use the project ID as the repo name with a default branch of 'main'
-        updatedProjectSettings[currentProjectId] = { repoName: currentProjectId, branch: 'main' };
-
-        // Save the updated settings
-        await chrome.storage.sync.set({ projectSettings: updatedProjectSettings });
-
-        logger.info('Created default project settings:', updatedProjectSettings[currentProjectId]);
+        logger.info('Created default project settings for:', currentProjectId);
 
         // Use the newly created settings
         repoName = currentProjectId;
@@ -241,16 +266,16 @@ export class ZipHandler {
     currentProjectId?: string
   ) {
     // Get the current commit SHA for reference
-    const baseRef = await this.githubService.request(
+    const baseRef = (await this.githubService.request(
       'GET',
       `/repos/${repoOwner}/${repoName}/git/refs/heads/${targetBranch}`
-    );
+    )) as GitHubRef;
     const baseSha = baseRef.object.sha;
 
-    const baseCommit = await this.githubService.request(
+    const baseCommit = (await this.githubService.request(
       'GET',
       `/repos/${repoOwner}/${repoName}/git/commits/${baseSha}`
-    );
+    )) as GitHubCommit;
     const baseTreeSha = baseCommit.tree.sha;
 
     // Use the GitHubComparisonService to determine which files have changed
@@ -319,19 +344,19 @@ export class ZipHandler {
     await this.updateStatus('uploading', 70, 'Creating tree...');
 
     // Create a new tree
-    const newTree = await this.githubService.request(
+    const newTree = (await this.githubService.request(
       'POST',
       `/repos/${repoOwner}/${repoName}/git/trees`,
       {
         base_tree: baseTreeSha,
         tree: treeItems,
       }
-    );
+    )) as GitHubTree;
 
     await this.updateStatus('uploading', 80, 'Creating commit...');
 
     // Create a new commit
-    const newCommit = await this.githubService.request(
+    const newCommit = (await this.githubService.request(
       'POST',
       `/repos/${repoOwner}/${repoName}/git/commits`,
       {
@@ -339,7 +364,7 @@ export class ZipHandler {
         tree: newTree.sha,
         parents: [baseSha],
       }
-    );
+    )) as GitHubCommit & { sha: string };
 
     await this.updateStatus('uploading', 90, 'Updating branch...');
 
@@ -388,7 +413,7 @@ export class ZipHandler {
     let completedFiles = 0;
 
     // Check rate limit status at the beginning
-    const rateLimit = await this.githubService.request('GET', '/rate_limit');
+    const rateLimit = (await this.githubService.request('GET', '/rate_limit')) as GitHubRateLimit;
     const remainingRequests = rateLimit.resources.core.remaining;
     const resetTime = rateLimit.resources.core.reset;
     const now = Math.floor(Date.now() / 1000);
@@ -416,7 +441,10 @@ export class ZipHandler {
         );
         await this.sleep(waitTime * 1000);
         // Recheck rate limit after waiting
-        const newRateLimit = await this.githubService.request('GET', '/rate_limit');
+        const newRateLimit = (await this.githubService.request(
+          'GET',
+          '/rate_limit'
+        )) as GitHubRateLimit;
         if (newRateLimit.resources.core.remaining < 10) {
           throw new Error('Insufficient API rate limit remaining even after waiting for reset');
         }
@@ -490,14 +518,14 @@ export class ZipHandler {
               attempts++;
               await rateLimitHandler.beforeRequest();
 
-              const blobData = await this.githubService.request(
+              const blobData = (await this.githubService.request(
                 'POST',
                 `/repos/${repoOwner}/${repoName}/git/blobs`,
                 {
                   content: toBase64(content),
                   encoding: 'base64',
                 }
-              );
+              )) as GitHubBlob;
 
               results.push({
                 path: normalizedPath,

@@ -10,9 +10,6 @@ import {
   UnifiedGitHubServiceTestScenarios,
   UnifiedGitHubServiceTestHelpers,
   TestFixtures,
-  MockAuthenticationStrategyFactory,
-  MockPATAuthenticationStrategy,
-  MockGitHubAppAuthenticationStrategy,
 } from './test-fixtures';
 
 // Mock the AuthenticationStrategyFactory at the module level
@@ -64,7 +61,6 @@ jest.mock('../AuthenticationStrategyFactory', () => ({
 describe('UnifiedGitHubService - Comprehensive Tests', () => {
   let scenario: UnifiedGitHubServiceTestScenarios;
   let mockFetch: jest.MockedFunction<typeof fetch>;
-  let mockAuthFactory: MockAuthenticationStrategyFactory;
 
   beforeEach(() => {
     scenario = new UnifiedGitHubServiceTestScenarios();
@@ -83,9 +79,10 @@ describe('UnifiedGitHubService - Comprehensive Tests', () => {
   afterEach(() => {
     scenario.reset();
 
-    // Clean up global fetch mock
-    if (global.fetch && typeof global.fetch.mockRestore === 'function') {
-      (global.fetch as jest.Mock).mockRestore();
+    // Clean up global fetch mock with proper type guard
+    const globalFetch = global.fetch as jest.Mock | undefined;
+    if (globalFetch && typeof globalFetch.mockRestore === 'function') {
+      globalFetch.mockRestore();
     }
   });
 
@@ -116,7 +113,6 @@ describe('UnifiedGitHubService - Comprehensive Tests', () => {
       beforeEach(() => {
         const mocks = scenario.setupSuccessfulPATAuthentication().build();
         mockFetch = mocks.mockFetch;
-        mockAuthFactory = mocks.mockAuthFactory;
       });
 
       it('should successfully validate PAT token', async () => {
@@ -165,7 +161,6 @@ describe('UnifiedGitHubService - Comprehensive Tests', () => {
       beforeEach(() => {
         const mocks = scenario.setupSuccessfulGitHubAppAuthentication().build();
         mockFetch = mocks.mockFetch;
-        mockAuthFactory = mocks.mockAuthFactory;
       });
 
       it('should successfully authenticate with GitHub App', async () => {
@@ -233,7 +228,6 @@ describe('UnifiedGitHubService - Comprehensive Tests', () => {
           .setupSuccessfulPATAuthentication() // Start with success, then configure failures
           .build();
         mockFetch = mocks.mockFetch;
-        mockAuthFactory = mocks.mockAuthFactory;
       });
 
       it('should handle invalid PAT token gracefully', async () => {
@@ -290,7 +284,6 @@ describe('UnifiedGitHubService - Comprehensive Tests', () => {
         .setupRepositoryOperations('testuser', 'test-repo')
         .build();
       mockFetch = mocks.mockFetch;
-      mockAuthFactory = mocks.mockAuthFactory;
     });
 
     it('should check if repository exists', async () => {
@@ -318,7 +311,7 @@ describe('UnifiedGitHubService - Comprehensive Tests', () => {
     it('should handle non-existent repository', async () => {
       // Override the mock for this specific test
       scenario.reset();
-      const mocks = scenario
+      scenario
         .setupSuccessfulPATAuthentication()
         .setupRepositoryNotFound('testuser', 'nonexistent')
         .build();
@@ -384,16 +377,16 @@ describe('UnifiedGitHubService - Comprehensive Tests', () => {
       const { mockFetch: newMockFetch } = scenario.setupSuccessfulPATAuthentication().build();
 
       // Mock the commit API calls
-      newMockFetch.mockImplementation(async (url: string | Request) => {
-        const urlStr = typeof url === 'string' ? url : url.url;
+      newMockFetch.mockImplementation(async (url: string | Request | URL) => {
+        const urlStr = typeof url === 'string' ? url : url instanceof URL ? url.href : url.url;
         if (urlStr.includes('/commits')) {
           return {
             ok: true,
             status: 200,
             json: () => Promise.resolve(commitData),
-          };
+          } as Response;
         }
-        return { ok: false, status: 404 };
+        return { ok: false, status: 404 } as Response;
       });
 
       const service = new UnifiedGitHubService(TestFixtures.TokenFixtures.pat.classic);
@@ -428,23 +421,25 @@ describe('UnifiedGitHubService - Comprehensive Tests', () => {
       scenario.reset();
       const { mockFetch: newMockFetch } = scenario.setupSuccessfulPATAuthentication().build();
 
-      newMockFetch.mockImplementation(async (url: string | Request, options?: RequestInit) => {
-        const urlStr = typeof url === 'string' ? url : url.url;
-        const method = options?.method || 'GET';
+      newMockFetch.mockImplementation(
+        async (url: string | Request | URL, options?: RequestInit) => {
+          const urlStr = typeof url === 'string' ? url : url instanceof URL ? url.href : url.url;
+          const method = options?.method || 'GET';
 
-        if (urlStr.includes('/repos/testuser/test-repo') && method === 'DELETE') {
+          if (urlStr.includes('/repos/testuser/test-repo') && method === 'DELETE') {
+            return {
+              ok: true,
+              status: 204,
+              statusText: 'No Content',
+            } as Response;
+          }
           return {
-            ok: true,
-            status: 204,
-            statusText: 'No Content',
-          };
+            ok: false,
+            status: 404,
+            statusText: 'Not Found',
+          } as Response;
         }
-        return {
-          ok: false,
-          status: 404,
-          statusText: 'Not Found',
-        };
-      });
+      );
 
       const service = new UnifiedGitHubService(TestFixtures.TokenFixtures.pat.classic);
 
@@ -460,7 +455,6 @@ describe('UnifiedGitHubService - Comprehensive Tests', () => {
         .setupIssueOperations('testuser', 'test-repo')
         .build();
       mockFetch = mocks.mockFetch;
-      mockAuthFactory = mocks.mockAuthFactory;
     });
 
     it('should get open issues', async () => {
@@ -518,29 +512,31 @@ describe('UnifiedGitHubService - Comprehensive Tests', () => {
       scenario.reset();
       const { mockFetch: newMockFetch } = scenario.setupSuccessfulPATAuthentication().build();
 
-      newMockFetch.mockImplementation(async (url: string | Request, options?: RequestInit) => {
-        const urlStr = typeof url === 'string' ? url : url.url;
-        const method = options?.method || 'GET';
+      newMockFetch.mockImplementation(
+        async (url: string | Request | URL, options?: RequestInit) => {
+          const urlStr = typeof url === 'string' ? url : url instanceof URL ? url.href : url.url;
+          const method = options?.method || 'GET';
 
-        if (urlStr.includes('/issues/1') && method === 'PATCH') {
+          if (urlStr.includes('/issues/1') && method === 'PATCH') {
+            return {
+              ok: true,
+              status: 200,
+              statusText: 'OK',
+              json: () =>
+                Promise.resolve({
+                  ...TestFixtures.IssueFixtures.openIssue,
+                  title: 'Updated Title',
+                  state: 'closed',
+                }),
+            } as Response;
+          }
           return {
-            ok: true,
-            status: 200,
-            statusText: 'OK',
-            json: () =>
-              Promise.resolve({
-                ...TestFixtures.IssueFixtures.openIssue,
-                title: 'Updated Title',
-                state: 'closed',
-              }),
-          };
+            ok: false,
+            status: 404,
+            statusText: 'Not Found',
+          } as Response;
         }
-        return {
-          ok: false,
-          status: 404,
-          statusText: 'Not Found',
-        };
-      });
+      );
 
       const issue = await service.updateIssue(
         'testuser',
@@ -565,7 +561,7 @@ describe('UnifiedGitHubService - Comprehensive Tests', () => {
       );
 
       expect(comment.body).toContain('Thanks for reporting');
-      expect(comment.issue_url).toContain('/issues/1');
+      expect(comment.url).toContain('/issues/comments/');
     });
   });
 
@@ -576,7 +572,6 @@ describe('UnifiedGitHubService - Comprehensive Tests', () => {
         .setupIssueOperations('mamertofabian', 'bolt-to-github')
         .build();
       mockFetch = mocks.mockFetch;
-      mockAuthFactory = mocks.mockAuthFactory;
     });
 
     it('should submit user feedback as GitHub issue', async () => {
@@ -612,7 +607,6 @@ describe('UnifiedGitHubService - Comprehensive Tests', () => {
         .setupRepositoryOperations('target-owner', 'target-repo')
         .build();
       mockFetch = mocks.mockFetch;
-      mockAuthFactory = mocks.mockAuthFactory;
     });
 
     it('should clone repository contents with progress tracking', async () => {
@@ -620,15 +614,15 @@ describe('UnifiedGitHubService - Comprehensive Tests', () => {
       scenario.reset();
       const { mockFetch: newMockFetch } = scenario.setupSuccessfulPATAuthentication().build();
 
-      newMockFetch.mockImplementation(async (url: string | Request) => {
-        const urlStr = typeof url === 'string' ? url : url.url;
+      newMockFetch.mockImplementation(async (url: string | Request | URL) => {
+        const urlStr = typeof url === 'string' ? url : url instanceof URL ? url.href : url.url;
 
         if (urlStr.includes('/git/trees/main?recursive=1')) {
           return {
             ok: true,
             status: 200,
             json: () => Promise.resolve(TestFixtures.GitHubAPIResponses.tree.withFiles),
-          };
+          } as Response;
         }
 
         if (urlStr.includes('/git/blobs/')) {
@@ -636,7 +630,7 @@ describe('UnifiedGitHubService - Comprehensive Tests', () => {
             ok: true,
             status: 200,
             json: () => Promise.resolve(TestFixtures.GitHubAPIResponses.fileContent.readmeMarkdown),
-          };
+          } as Response;
         }
 
         if (urlStr.includes('/contents/') && url instanceof Request && url.method === 'PUT') {
@@ -644,10 +638,10 @@ describe('UnifiedGitHubService - Comprehensive Tests', () => {
             ok: true,
             status: 201,
             json: () => Promise.resolve(TestFixtures.GitHubAPIResponses.filePush.created),
-          };
+          } as Response;
         }
 
-        return { ok: false, status: 404 };
+        return { ok: false, status: 404 } as Response;
       });
 
       const service = new UnifiedGitHubService(TestFixtures.TokenFixtures.pat.classic);
@@ -671,36 +665,38 @@ describe('UnifiedGitHubService - Comprehensive Tests', () => {
       scenario.reset();
       const { mockFetch: newMockFetch } = scenario.setupSuccessfulPATAuthentication().build();
 
-      newMockFetch.mockImplementation(async (url: string | Request, options?: RequestInit) => {
-        const urlStr = typeof url === 'string' ? url : url.url;
-        const method = options?.method || 'GET';
+      newMockFetch.mockImplementation(
+        async (url: string | Request | URL, options?: RequestInit) => {
+          const urlStr = typeof url === 'string' ? url : url instanceof URL ? url.href : url.url;
+          const method = options?.method || 'GET';
 
-        // Mock repository creation
-        if (urlStr.includes('/user/repos') && method === 'POST') {
+          // Mock repository creation
+          if (urlStr.includes('/user/repos') && method === 'POST') {
+            return {
+              ok: true,
+              status: 201,
+              statusText: 'Created',
+              json: () => Promise.resolve(TestFixtures.GitHubAPIResponses.repository.created),
+            } as Response;
+          }
+
+          // Mock file push
+          if (urlStr.includes('/contents/.gitkeep') && method === 'PUT') {
+            return {
+              ok: true,
+              status: 201,
+              statusText: 'Created',
+              json: () => Promise.resolve(TestFixtures.GitHubAPIResponses.filePush.created),
+            } as Response;
+          }
+
           return {
-            ok: true,
-            status: 201,
-            statusText: 'Created',
-            json: () => Promise.resolve(TestFixtures.GitHubAPIResponses.repository.created),
-          };
+            ok: false,
+            status: 404,
+            statusText: 'Not Found',
+          } as Response;
         }
-
-        // Mock file push
-        if (urlStr.includes('/contents/.gitkeep') && method === 'PUT') {
-          return {
-            ok: true,
-            status: 201,
-            statusText: 'Created',
-            json: () => Promise.resolve(TestFixtures.GitHubAPIResponses.filePush.created),
-          };
-        }
-
-        return {
-          ok: false,
-          status: 404,
-          statusText: 'Not Found',
-        };
-      });
+      );
 
       const service = new UnifiedGitHubService(TestFixtures.TokenFixtures.pat.classic);
       const tempRepoName = await service.createTemporaryPublicRepo(
@@ -754,7 +750,6 @@ describe('UnifiedGitHubService - Comprehensive Tests', () => {
       beforeEach(() => {
         const mocks = scenario.setupSuccessfulPATAuthentication().build();
         mockFetch = mocks.mockFetch;
-        mockAuthFactory = mocks.mockAuthFactory;
       });
 
       it('should handle insufficient permissions', async () => {
@@ -849,7 +844,6 @@ describe('UnifiedGitHubService - Comprehensive Tests', () => {
     beforeEach(() => {
       const mocks = scenario.setupSuccessfulPATAuthentication().build();
       mockFetch = mocks.mockFetch;
-      mockAuthFactory = mocks.mockAuthFactory;
     });
 
     it('should support legacy request method', async () => {
@@ -859,19 +853,20 @@ describe('UnifiedGitHubService - Comprehensive Tests', () => {
       scenario.reset();
       const { mockFetch: newMockFetch } = scenario.setupSuccessfulPATAuthentication().build();
 
-      newMockFetch.mockImplementation(async (url: string | Request) => {
-        if (typeof url === 'string' && url.includes('/user')) {
+      newMockFetch.mockImplementation(async (url: string | Request | URL) => {
+        const urlStr = typeof url === 'string' ? url : url instanceof URL ? url.href : url.url;
+        if (urlStr.includes('/user')) {
           return {
             ok: true,
             status: 200,
             json: () => Promise.resolve(TestFixtures.GitHubAPIResponses.user.valid),
-          };
+          } as Response;
         }
-        return { ok: false, status: 404 };
+        return { ok: false, status: 404 } as Response;
       });
 
       const result = await service.request('GET', '/user');
-      expect(result.login).toBe('testuser');
+      expect((result as unknown as { login: string }).login).toBe('testuser');
     });
   });
 });

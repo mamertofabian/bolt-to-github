@@ -1,5 +1,7 @@
 import { writable, derived, type Writable } from 'svelte/store';
 import { createLogger } from '../utils/logger';
+import { ChromeStorageService } from '../services/chromeStorage';
+import { extractProjectIdFromUrl } from '../utils/projectId';
 
 const logger = createLogger('ProjectSettingsStore');
 
@@ -61,8 +63,7 @@ export const projectSettingsActions = {
     let parsedProjectId: string | null = null;
 
     if (isBoltSite) {
-      const match = url.match(/bolt\.new\/~\/([^/]+)/);
-      parsedProjectId = match?.[1] || null;
+      parsedProjectId = extractProjectIdFromUrl(url);
 
       // Load project title if we have a project ID
       if (parsedProjectId) {
@@ -122,8 +123,7 @@ export const projectSettingsActions = {
    * Parse project ID from URL
    */
   parseProjectIdFromUrl(url: string): string | null {
-    const match = url.match(/bolt\.new\/~\/([^/]+)/);
-    return match?.[1] || null;
+    return extractProjectIdFromUrl(url);
   },
 
   /**
@@ -142,12 +142,21 @@ export const projectSettingsActions = {
       if (tabs[0]?.url) {
         this.setCurrentUrl(tabs[0].url);
 
-        // Also check stored project ID to match with current URL
-        const storedProject = await chrome.storage.sync.get('projectId');
+        // Always set the project ID from the current tab's URL
         const currentProjectId = this.parseProjectIdFromUrl(tabs[0].url);
 
-        if (currentProjectId && storedProject.projectId === currentProjectId) {
+        if (currentProjectId) {
           this.setProjectId(currentProjectId);
+          logger.info(`🎯 Detected project ID from active tab: ${currentProjectId}`);
+
+          // Update the stored project ID to match the current tab
+          await ChromeStorageService.set({ projectId: currentProjectId });
+        } else {
+          // Clear project ID if not on a project page
+          projectSettingsStore.update((state) => ({
+            ...state,
+            parsedProjectId: null,
+          }));
         }
       }
     } catch (error) {

@@ -8,15 +8,8 @@
  * - Stress testing scenarios
  */
 
-import { MessageHandler } from '../MessageHandler';
 import type { MessageType } from '$lib/types';
-import {
-  MessageHandlerTestEnvironment,
-  TestData,
-  MessageFactory,
-  TimingHelpers,
-  MockChromePort,
-} from '../test-fixtures';
+import { MessageHandlerTestEnvironment, TimingHelpers } from '../test-fixtures';
 
 describe('MessageHandler - Edge Cases', () => {
   let env: MessageHandlerTestEnvironment;
@@ -281,7 +274,7 @@ describe('MessageHandler - Edge Cases', () => {
       env.createMessageHandler();
 
       // Create deeply nested object
-      let deepObject: any = { value: 'leaf' };
+      let deepObject: Record<string, unknown> = { value: 'leaf' };
       for (let i = 0; i < 100; i++) {
         deepObject = { nested: deepObject };
       }
@@ -298,7 +291,7 @@ describe('MessageHandler - Edge Cases', () => {
       env.createMessageHandler();
 
       // Create object with many properties
-      const wideObject: any = {};
+      const wideObject: Record<string, string> = {};
       for (let i = 0; i < 1000; i++) {
         // Reduced from 10k
         wideObject[`prop${i}`] = `value${i}`;
@@ -375,9 +368,6 @@ describe('MessageHandler - Edge Cases', () => {
       env.sendDebugMessage('Initial message');
       const initialPort = env.currentPort;
 
-      // Track total messages sent across all ports
-      let totalMessagesSent = 1; // Initial message
-
       // Create burst scenario
       const burstSize = 100; // Reduced from 1000 for faster tests
 
@@ -385,7 +375,6 @@ describe('MessageHandler - Edge Cases', () => {
       for (let i = 0; i < 10; i++) {
         env.sendDebugMessage(`Pre-disconnect message ${i}`);
       }
-      totalMessagesSent += 10;
 
       // Disconnect the port
       env.simulatePortDisconnection();
@@ -495,7 +484,7 @@ describe('MessageHandler - Edge Cases', () => {
       env.createMessageHandler();
 
       // Corrupt port internals
-      const port = env.currentPort as any;
+      const port = env.currentPort as unknown as Record<string, unknown>;
       port.name = null;
       port.postMessage = undefined;
 
@@ -523,7 +512,7 @@ describe('MessageHandler - Edge Cases', () => {
       // Create port that fails after 5 messages
       let callCount = 0;
       const flakyPort = env.createHealthyPort();
-      flakyPort.postMessage = jest.fn((message) => {
+      flakyPort.postMessage = jest.fn((_message) => {
         callCount++;
         if (callCount > 5) {
           throw new Error('Port failed mid-processing');

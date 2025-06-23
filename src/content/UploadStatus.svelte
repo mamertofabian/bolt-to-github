@@ -123,7 +123,17 @@
 
   function updateReassuringMessages(currentStatus: UploadStatusState) {
     const context: ReassuringMessageContext = {
-      operation: currentStatus.status as any,
+      operation:
+        currentStatus.status === 'success' ||
+        currentStatus.status === 'error' ||
+        currentStatus.status === 'complete'
+          ? 'uploading'
+          : (currentStatus.status as
+              | 'uploading'
+              | 'loading'
+              | 'analyzing'
+              | 'importing'
+              | 'cloning'),
       progress: currentStatus.progress,
       // You can add filename and filesCount if available in the status
     };

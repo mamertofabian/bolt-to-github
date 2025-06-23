@@ -1,6 +1,5 @@
 <script lang="ts">
   import type { FileChange } from '../services/FilePreviewService';
-  import { onMount } from 'svelte';
   import { Button } from '$lib/components/ui/button';
   import { Eye } from 'lucide-svelte';
   import DiffViewer from '$lib/components/DiffViewer.svelte';
@@ -35,22 +34,6 @@
         return '❌';
       case 'unchanged':
         return '✓';
-      default:
-        return '';
-    }
-  }
-
-  // Get color class for file status
-  function getStatusColorClass(status: string): string {
-    switch (status) {
-      case 'added':
-        return 'text-green-500';
-      case 'modified':
-        return 'text-blue-500';
-      case 'deleted':
-        return 'text-red-500';
-      case 'unchanged':
-        return 'text-gray-500';
       default:
         return '';
     }

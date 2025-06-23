@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import { GitHubApiClient, GitHubApiError } from '../GitHubApiClient';
 import { beforeEach, describe, expect, it, jest } from '@jest/globals';
 

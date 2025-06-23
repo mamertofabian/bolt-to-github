@@ -22,6 +22,7 @@
   import OnboardingView from './components/OnboardingView.svelte';
   import { setUpgradeModalState, type UpgradeModalType } from '$lib/utils/upgradeModal';
   import { SubscriptionService } from '../services/SubscriptionService';
+  import { ChromeStorageService } from '$lib/services/chromeStorage';
 
   const logger = createLogger('App');
 
@@ -39,17 +40,14 @@
     uiStateActions,
     fileChangesStore,
     fileChangesActions,
-    uploadStateStore,
     uploadStateActions,
-    premiumStatusStore,
     isAuthenticated,
     isPremium,
-    premiumPlan,
-    premiumFeatures as userPremiumFeatures,
     premiumStatusActions,
     type TempRepoMetadata,
   } from '$lib/stores';
   import { ChromeMessagingService } from '$lib/services/chromeMessaging';
+  import type { PremiumFeature } from './types';
 
   // Constants for display modes
   const DISPLAY_MODES = {
@@ -63,16 +61,12 @@
   $: projectSettings = $projectSettingsStore;
   $: uiState = $uiStateStore;
   $: fileChangesState = $fileChangesStore;
-  $: uploadState = $uploadStateStore;
   $: settingsValid = $isSettingsValid;
   $: authenticationValid = $isAuthenticationValid;
   $: onBoltProject = $isOnBoltProject;
   $: projectId = $currentProjectId;
-  $: premiumStatus = $premiumStatusStore;
   $: isUserAuthenticated = $isAuthenticated;
   $: isUserPremium = $isPremium;
-  $: userPlan = $premiumPlan;
-  $: userFeatures = $userPremiumFeatures;
 
   // Component references and modal states
   let projectStatusRef: any;
@@ -91,7 +85,7 @@
   let upgradeModalConfig = {
     feature: '',
     reason: '',
-    features: [] as Array<{ id: string; name: string; description: string; icon: string }>,
+    features: [] as PremiumFeature[],
   };
 
   // Newsletter subscription state
@@ -121,13 +115,6 @@
       githubSettings.githubAppInstallationId) ||
       (githubSettings.authenticationMethod === 'pat' && githubSettings.githubToken))
   );
-
-  // Common props for components
-  $: projectsListProps = {
-    repoOwner: githubSettings.repoOwner,
-    currentlyLoadedProjectId: projectId,
-    isBoltSite: projectSettings.isBoltSite,
-  };
 
   // Handle pending popup context when stores are ready
   $: if (
@@ -270,6 +257,7 @@
    * Automatically create project settings for Bolt projects when popup is opened
    * This ensures repositories are set to private by default without user intervention
    */
+
   async function autoCreateProjectSettingsIfNeeded() {
     try {
       // Only proceed if we're on a Bolt project
@@ -317,15 +305,13 @@
         projectTitle: projectId, // Use project ID as initial title
       };
 
-      // Update the project settings in storage
-      const updatedProjectSettings = {
-        ...projectSettings,
-        [projectId]: newProjectSettings,
-      };
-
-      await chrome.storage.sync.set({
-        projectSettings: updatedProjectSettings,
-      });
+      // Save project settings using ChromeStorageService (thread-safe)
+      await ChromeStorageService.saveProjectSettings(
+        projectId,
+        newProjectSettings.repoName,
+        newProjectSettings.branch,
+        newProjectSettings.projectTitle
+      );
 
       // Update the stores to reflect the new settings
       githubSettingsActions.setProjectSettings(
@@ -339,18 +325,6 @@
       githubSettingsActions.loadProjectSettings(projectId);
 
       logger.info('✅ Auto-created project settings:', newProjectSettings);
-
-      // Store a timestamp to trigger UI updates
-      await chrome.storage.local.set({
-        lastSettingsUpdate: {
-          timestamp: Date.now(),
-          projectId,
-          repoName: newProjectSettings.repoName,
-          branch: newProjectSettings.branch,
-          projectTitle: newProjectSettings.projectTitle,
-          autoCreated: true,
-        },
-      });
 
       logger.info(
         '🎯 Project settings auto-created successfully. Repository will be private by default.'
@@ -557,7 +531,7 @@
       try {
         await fileChangesActions.requestFileChangesFromContentScript();
         uiStateActions.showStatus('Calculating file changes...', 5000);
-      } catch (error) {
+      } catch {
         uiStateActions.showStatus('Cannot show file changes: Not on a Bolt project page');
       }
     }
@@ -614,15 +588,15 @@
     try {
       const subscription = await SubscriptionService.getSubscriptionStatus();
       hasSubscribed = subscription.subscribed;
-    } catch (error) {
-      logger.error('Error refreshing subscription status:', error);
+    } catch (_error) {
+      logger.error('Error refreshing subscription status:', _error);
     }
   }
 
   async function handleSuccessfulAction(message: string) {
     // Increment interaction count
     try {
-      const count = await SubscriptionService.incrementInteractionCount();
+      await SubscriptionService.incrementInteractionCount();
 
       // Check if we should show subscription prompt
       const shouldPrompt = await SubscriptionService.shouldShowSubscriptionPrompt();

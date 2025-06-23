@@ -62,7 +62,7 @@
 
       <!-- Message content -->
       <div class="mb-6">
-        <p class="text-slate-300 leading-relaxed">{@html message}</p>
+        <p class="text-slate-300 leading-relaxed whitespace-pre-line">{message}</p>
       </div>
 
       <!-- Action buttons -->

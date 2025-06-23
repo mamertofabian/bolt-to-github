@@ -12,6 +12,8 @@ Bolt to GitHub is a Chrome Extension (Manifest v3) that automatically captures Z
 
 - Follow @docs/unit-testing-rules.md .
   **CRITICAL**: Always follow the versioned development branch strategy below - NEVER branch directly off main for features/fixes.
+- Unless doing a TDD session, the task is never considered complete if there are failing tests
+- Make sure all code quality checks (pnpm lint, check, test, build) are passing before ending each coding session to keep the code clean
 
 ### Versioned Development Branch Strategy
 

@@ -8,6 +8,8 @@
   import { githubSettingsActions } from '$lib/stores';
   import Modal from '$lib/components/ui/modal/Modal.svelte';
   import { createLogger } from '$lib/utils/logger';
+  import { ChromeMessagingService } from '$lib/services/chromeMessaging';
+  import { ChromeStorageService } from '$lib/services/chromeStorage';
 
   const logger = createLogger('RepoSettings');
 
@@ -33,7 +35,6 @@
   }> = [];
   let showRepoDropdown = false;
   let repoSearchQuery = '';
-  let repoInputFocused = false;
   let repoExists = false;
   let selectedIndex = -1;
   let isSaving = false;
@@ -116,13 +117,11 @@
   }
 
   function handleRepoFocus() {
-    repoInputFocused = true;
     showRepoDropdown = true;
     repoSearchQuery = repoName;
   }
 
   function handleRepoBlur() {
-    repoInputFocused = false;
     // Delay hiding dropdown to allow click events to register
     setTimeout(() => {
       showRepoDropdown = false;
@@ -136,43 +135,32 @@
       isSaving = true;
       logger.info('Saving repository settings for project:', projectId);
 
-      // Get current settings
-      const settings = await chrome.storage.sync.get([
-        'projectSettings',
-        'githubToken',
-        'repoOwner',
-      ]);
-      let updatedProjectSettings = { ...(settings.projectSettings || {}) };
-
-      // Update project settings
-      updatedProjectSettings[projectId] = {
-        repoName,
-        branch,
-        projectTitle,
-      };
-
-      // Save updated settings
-      await chrome.storage.sync.set({
-        projectSettings: updatedProjectSettings,
-        githubToken: settings.githubToken,
-        repoOwner: settings.repoOwner,
-      });
+      // Save project settings using ChromeStorageService (thread-safe)
+      await ChromeStorageService.saveProjectSettings(projectId, repoName, branch, projectTitle);
 
       // Update the stores to trigger immediate reactivity
       githubSettingsActions.setProjectSettings(projectId, repoName, branch, projectTitle);
 
-      // Store a timestamp in local storage to trigger refresh in other components
-      await chrome.storage.local.set({
-        lastSettingsUpdate: {
-          timestamp: Date.now(),
-          projectId,
-          repoName,
-          branch,
-          projectTitle,
-        },
-      });
+      logger.info('Settings saved successfully');
 
-      logger.info('Settings saved successfully with timestamp');
+      // Trigger outward sync to push changes to backend immediately
+      try {
+        logger.info('Triggering manual sync to push changes to backend');
+        const syncResponse = await ChromeMessagingService.sendMessageToBackground({
+          type: 'SYNC_BOLT_PROJECTS',
+        });
+
+        // Type assertion for the response
+        const typedResponse = syncResponse as { success?: boolean; result?: unknown } | null;
+        if (typedResponse?.success) {
+          logger.info('Manual sync completed successfully', typedResponse.result);
+        } else {
+          logger.warn('Manual sync completed with issues', typedResponse);
+        }
+      } catch (syncError) {
+        // Don't fail the save operation if sync fails
+        logger.error('Failed to trigger manual sync, changes saved locally', syncError);
+      }
 
       // Notify parent that settings were saved
       dispatch('close');

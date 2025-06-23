@@ -1,5 +1,5 @@
-import type { SvelteComponent } from '../types/UITypes';
 import { createLogger } from '../../lib/utils/logger';
+import type { SvelteComponent } from 'svelte';
 
 const logger = createLogger('ComponentLifecycleManager');
 
@@ -7,11 +7,11 @@ const logger = createLogger('ComponentLifecycleManager');
  * Component configuration for creating Svelte components
  */
 export interface ComponentConfig {
-  constructor: any; // Svelte component constructor
+  constructor: typeof SvelteComponent; // Svelte component constructor
   containerId: string;
   containerClasses?: string[];
   containerStyles?: Record<string, string>;
-  props?: Record<string, any>;
+  props?: Record<string, unknown>;
   appendToBody?: boolean;
   waitForBody?: boolean;
 }
@@ -113,7 +113,7 @@ export class ComponentLifecycleManager {
    * @param id Component identifier
    * @param props New props to set
    */
-  public updateComponent(id: string, props: Record<string, any>): void {
+  public updateComponent(id: string, props: Record<string, unknown>): void {
     const component = this.components.get(id);
     if (component && component.$set) {
       component.$set(props);

@@ -1,15 +1,17 @@
 <script lang="ts">
-  import { createEventDispatcher, onMount } from 'svelte';
-  import { UnifiedGitHubService } from '../../services/UnifiedGitHubService';
-  import RepoSettings from '$lib/components/RepoSettings.svelte';
   import IssueManager from '$lib/components/IssueManager.svelte';
   import QuickIssueForm from '$lib/components/QuickIssueForm.svelte';
-  import { isPremium } from '$lib/stores/premiumStore';
+  import RepoSettings from '$lib/components/RepoSettings.svelte';
   import { issuesStore } from '$lib/stores/issuesStore';
-  import type { UpgradeModalType } from '$lib/utils/upgradeModal';
+  import { isPremium } from '$lib/stores/premiumStore';
   import { createLogger } from '$lib/utils/logger';
+  import type { UpgradeModalType } from '$lib/utils/upgradeModal';
+  import type { GitHubCommit } from 'src/services/types/repository';
+  import { createEventDispatcher, onMount } from 'svelte';
+  import { UnifiedGitHubService } from '../../services/UnifiedGitHubService';
 
   const logger = createLogger('ProjectStatus');
+  const dispatch = createEventDispatcher();
 
   export let projectId: string;
   export let gitHubUsername: string;
@@ -71,6 +73,69 @@
 
   export const getProjectStatus = async () => {
     try {
+      // Step 1: Try to load from enhanced projectSettings cache first
+      const { ChromeStorageService } = await import('../services/chromeStorage');
+      const cachedProjectSettings =
+        await ChromeStorageService.getProjectSettingsWithMetadata(projectId);
+
+      // Step 2: Try to load from GitHubCacheService
+      const { GitHubCacheService } = await import('../services/GitHubCacheService');
+      const cachedRepo = await GitHubCacheService.getRepoMetadata(gitHubUsername, repoName);
+
+      // Step 3: Check if we have sufficient cached data
+      const hasCachedProjectData =
+        cachedProjectSettings && cachedProjectSettings.metadata_last_updated;
+      const hasCachedRepoData =
+        cachedRepo && !(await GitHubCacheService.isCacheStale(gitHubUsername));
+
+      logger.info(
+        `Cache status - Project: ${!!hasCachedProjectData}, Repo: ${!!hasCachedRepoData}`
+      );
+
+      // Step 4: Use cached data if available and fresh
+      if (hasCachedProjectData && hasCachedRepoData) {
+        logger.info('Using cached data for project status');
+
+        // Populate from cached project settings
+        if (cachedProjectSettings.is_private !== undefined) {
+          isPrivate = cachedProjectSettings.is_private;
+          isLoading.visibility = false;
+        }
+
+        if (cachedProjectSettings.latest_commit_date) {
+          latestCommit = {
+            date: cachedProjectSettings.latest_commit_date,
+            message:
+              cachedProjectSettings.latest_commit_message?.slice(0, 50) +
+                (cachedProjectSettings.latest_commit_message &&
+                cachedProjectSettings.latest_commit_message.length > 50
+                  ? '...'
+                  : '') || 'No message',
+          };
+          isLoading.latestCommit = false;
+        }
+
+        // Assume repo exists if we have cached metadata
+        repoExists = true;
+        isLoading.repoStatus = false;
+
+        // Check branch existence from cached default branch or assume it exists
+        branchExists = branch === cachedProjectSettings.default_branch || branch === 'main';
+        isLoading.branchStatus = false;
+
+        // Load issues from cache/store
+        if (cachedProjectSettings.open_issues_count !== undefined) {
+          // Issues count will be updated via store, but we can stop loading
+          isLoading.issues = false;
+        }
+
+        logger.info('Successfully loaded project status from cache');
+        return;
+      }
+
+      // Step 5: Cache is stale or missing, fall back to API calls
+      logger.info('Cache stale or missing, fetching from GitHub API');
+
       // Get authentication method to determine how to create the service
       const authSettings = await chrome.storage.local.get(['authenticationMethod']);
       const authMethod = authSettings.authenticationMethod || 'pat';
@@ -87,7 +152,7 @@
 
       // Get repo info
       const repoInfo = await githubService.getRepoInfo(gitHubUsername, repoName);
-      repoExists = repoInfo.exists;
+      repoExists = repoInfo.exists ?? null;
       isLoading.repoStatus = false;
 
       if (repoExists) {
@@ -107,10 +172,11 @@
         }
 
         // Get latest commit
-        const commits = await githubService.request(
+        const commits = await githubService.request<GitHubCommit[]>(
           'GET',
           `/repos/${gitHubUsername}/${repoName}/commits?per_page=1`
         );
+        let commitCount;
         if (commits[0]?.commit) {
           latestCommit = {
             date: commits[0].commit.committer.date,
@@ -118,6 +184,13 @@
               commits[0].commit.message.split('\n')[0].slice(0, 50) +
               (commits[0].commit.message.length > 50 ? '...' : ''),
           };
+
+          // Get commit count for caching
+          try {
+            commitCount = await githubService.getCommitCount(gitHubUsername, repoName, branch);
+          } catch (err) {
+            logger.warn('Could not fetch commit count:', err);
+          }
         }
         isLoading.latestCommit = false;
 
@@ -129,6 +202,57 @@
           logger.error('Error fetching issues:', err);
         }
         isLoading.issues = false;
+
+        // Step 6: Update cache with fresh data
+        try {
+          // Create enhanced repo data for cache
+          const enhancedRepo = GitHubCacheService.createEnhancedRepo(
+            {
+              name: repoName,
+              private: isPrivate ?? false,
+              description: repoInfo.description,
+              language: repoInfo.language,
+              html_url: `https://github.com/${gitHubUsername}/${repoName}`,
+              created_at: repoInfo.created_at,
+              updated_at: repoInfo.updated_at,
+              default_branch: repoInfo.default_branch || 'main',
+              open_issues_count: repoInfo.open_issues_count || 0,
+            },
+            commitCount,
+            latestCommit
+              ? {
+                  sha: commits[0]?.sha || '',
+                  message: commits[0]?.commit?.message || '',
+                  date: latestCommit.date,
+                  author: commits[0]?.commit?.author?.name || '',
+                }
+              : undefined
+          );
+
+          // Cache the repo metadata
+          await GitHubCacheService.cacheRepoMetadata(gitHubUsername, repoName, enhancedRepo);
+
+          // Update project settings with GitHub metadata
+          await ChromeStorageService.updateProjectMetadata(projectId, {
+            is_private: isPrivate ?? undefined,
+            language: repoInfo.language || undefined,
+            description: repoInfo.description || undefined,
+            commit_count: commitCount,
+            latest_commit_date: latestCommit?.date,
+            latest_commit_message: latestCommit?.message,
+            latest_commit_sha: commits[0]?.sha,
+            latest_commit_author: commits[0]?.commit?.author?.name,
+            open_issues_count: repoInfo.open_issues_count || 0,
+            github_updated_at: repoInfo.updated_at,
+            default_branch: repoInfo.default_branch || 'main',
+            github_repo_url: `https://github.com/${gitHubUsername}/${repoName}`,
+          });
+
+          logger.info('Updated cache and project metadata with fresh GitHub data');
+        } catch (cacheError) {
+          logger.error('Error updating cache:', cacheError);
+          // Don't fail the whole operation if cache update fails
+        }
       } else {
         branchExists = false;
         isLoading.branchStatus = false;
@@ -179,7 +303,10 @@
     checkStoredFileChanges();
 
     // Set up storage change listener
-    const storageChangeListener = (changes: any, areaName: string) => {
+    const storageChangeListener = (
+      changes: { [key: string]: chrome.storage.StorageChange },
+      areaName: string
+    ) => {
       logger.info(
         'Storage changes detected in ProjectStatus:',
         Object.keys(changes),
@@ -236,8 +363,6 @@
     };
   });
 
-  const dispatch = createEventDispatcher();
-
   function openGitHub(event: MouseEvent | KeyboardEvent) {
     event.stopPropagation();
     chrome.tabs.create({ url: `https://github.com/${gitHubUsername}/${repoName}/tree/${branch}` });
@@ -260,6 +385,19 @@
 
     // Instead of sending a message directly, dispatch an event to the parent component
     // This will allow App.svelte to call its showStoredFileChanges function
+    dispatch('showFileChanges');
+  }
+
+  function checkForChanges(event: MouseEvent | KeyboardEvent) {
+    event.stopPropagation();
+
+    // Check if user has premium access
+    if (!isUserPremium) {
+      handleUpgradeClick('fileChanges');
+      return;
+    }
+
+    // Use the existing showFileChanges mechanism instead of CHECK_FILE_CHANGES
     dispatch('showFileChanges');
   }
 
@@ -450,8 +588,9 @@
           {/if}
         </div>
 
-        <!-- View File Changes button - only show if there are changes -->
+        <!-- File Changes buttons -->
         {#if hasFileChanges}
+          <!-- View File Changes button - show when there are changes -->
           <div class="relative">
             <button
               class="tooltip-container w-8 h-8 flex items-center justify-center border border-slate-700 rounded-full text-slate-400 hover:bg-slate-800 hover:text-slate-300 transition-colors {!isUserPremium
@@ -475,6 +614,38 @@
                 <line x1="9" y1="15" x2="15" y2="15"></line>
               </svg>
               <span class="tooltip">View File Changes{!isUserPremium ? ' (Pro)' : ''}</span>
+            </button>
+            {#if !isUserPremium}
+              <span
+                class="absolute -top-1 -right-1 text-[8px] bg-gradient-to-r from-blue-500 to-purple-600 text-white px-1 py-0.5 rounded-full font-bold leading-none"
+                >PRO</span
+              >
+            {/if}
+          </div>
+        {:else}
+          <!-- Check for Changes button - show when no changes are detected -->
+          <div class="relative">
+            <button
+              class="tooltip-container w-8 h-8 flex items-center justify-center border border-slate-700 rounded-full text-slate-400 hover:bg-slate-800 hover:text-slate-300 transition-colors {!isUserPremium
+                ? 'opacity-75'
+                : ''}"
+              on:click|stopPropagation={checkForChanges}
+              aria-label="Check for Changes{!isUserPremium ? ' (Pro)' : ''}"
+            >
+              <svg
+                width="16"
+                height="16"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="2"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+              >
+                <path d="M21 12c0 1-1 2-2 2s-2-1-2-2 1-2 2-2 2 1 2 2z"></path>
+                <path d="M16 12c0-5-3-9-7-9s-7 4-7 9c0 5 3 9 7 9 1.5 0 3-.5 4-1"></path>
+              </svg>
+              <span class="tooltip">Check for Changes{!isUserPremium ? ' (Pro)' : ''}</span>
             </button>
             {#if !isUserPremium}
               <span

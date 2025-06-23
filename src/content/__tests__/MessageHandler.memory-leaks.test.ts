@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 /**
  * MessageHandler.memory-leaks.test.ts
  *
@@ -10,7 +11,7 @@
  */
 
 import { MessageHandler } from '../MessageHandler';
-import { MessageHandlerTestEnvironment, TimingHelpers, TestData } from '../test-fixtures';
+import { MessageHandlerTestEnvironment, TimingHelpers } from '../test-fixtures';
 
 describe('MessageHandler - Memory Leak Detection', () => {
   let env: MessageHandlerTestEnvironment;

@@ -50,6 +50,9 @@ export class SupabaseAuthService {
   private lastPremiumStatusUpdate: number = 0;
   private readonly PREMIUM_STATUS_UPDATE_COOLDOWN = 1000; // 1 second cooldown
 
+  /* Auth state change listeners */
+  private authStateListeners: Array<(authState: AuthState, previousState: AuthState) => void> = [];
+
   /* Configuration - replace with your actual Supabase project details */
   private readonly SUPABASE_URL = SUPABASE_CONFIG.URL;
   private readonly SUPABASE_ANON_KEY = SUPABASE_CONFIG.ANON_KEY;
@@ -413,7 +416,7 @@ export class SupabaseAuthService {
         ? tokenData.expires_at * 1000
         : Date.now() + 3600 * 1000; /* 1 hour default */
 
-      const storageData: any = {
+      const storageData: Record<string, unknown> = {
         supabaseToken: tokenData.access_token,
         supabaseTokenExpiry: expiresAt,
       };
@@ -489,9 +492,12 @@ export class SupabaseAuthService {
         target: { tabId },
         func: (projectRef: string) => {
           /* Collect logs to return to extension */
-          const logs: Array<{ level: 'info' | 'error'; message: string; data?: any }> = [];
-          const log = (message: string, data?: any) => {
-            const logEntry: any = { level: 'info', message };
+          const logs: Array<{ level: 'info' | 'error'; message: string; data?: unknown }> = [];
+          const log = (message: string, data?: unknown) => {
+            const logEntry: { level: 'info' | 'error'; message: string; data?: unknown } = {
+              level: 'info',
+              message,
+            };
             if (data !== undefined) {
               logEntry.data = data;
             }
@@ -502,8 +508,11 @@ export class SupabaseAuthService {
               console.log(message);
             }
           };
-          const logError = (message: string, data?: any) => {
-            const logEntry: any = { level: 'error', message };
+          const logError = (message: string, data?: unknown) => {
+            const logEntry: { level: 'info' | 'error'; message: string; data?: unknown } = {
+              level: 'error',
+              message,
+            };
             if (data !== undefined) {
               logEntry.data = data;
             }
@@ -991,6 +1000,9 @@ export class SupabaseAuthService {
         `💰 Subscription status changed: ${this.authState.subscription.isActive ? 'active' : 'inactive'} (${this.authState.subscription.plan})`
       );
     }
+
+    /* Notify auth state listeners */
+    this.notifyAuthStateListeners(previousState);
 
     /* Notify premium service of subscription changes */
     this.notifyPremiumService();
@@ -1547,6 +1559,55 @@ export class SupabaseAuthService {
   public async forceSyncToPopup(): Promise<void> {
     logger.info('🔄 Force syncing authentication status to popup...');
     await this.notifyPremiumService();
+  }
+
+  /**
+   * Add listener for auth state changes
+   */
+  public addAuthStateListener(
+    listener: (authState: AuthState, previousState: AuthState) => void
+  ): void {
+    this.authStateListeners.push(listener);
+    logger.debug('➕ Added auth state listener, total listeners:', this.authStateListeners.length);
+  }
+
+  /**
+   * Remove auth state listener
+   */
+  public removeAuthStateListener(
+    listener: (authState: AuthState, previousState: AuthState) => void
+  ): void {
+    const index = this.authStateListeners.indexOf(listener);
+    if (index > -1) {
+      this.authStateListeners.splice(index, 1);
+      logger.debug(
+        '➖ Removed auth state listener, total listeners:',
+        this.authStateListeners.length
+      );
+    }
+  }
+
+  /**
+   * Notify all auth state listeners
+   */
+  private notifyAuthStateListeners(previousState: AuthState): void {
+    if (this.authStateListeners.length === 0) {
+      return;
+    }
+
+    logger.debug('📢 Notifying auth state listeners', {
+      listenerCount: this.authStateListeners.length,
+      wasAuthenticated: previousState.isAuthenticated,
+      nowAuthenticated: this.authState.isAuthenticated,
+    });
+
+    this.authStateListeners.forEach((listener, index) => {
+      try {
+        listener(this.authState, previousState);
+      } catch (error) {
+        logger.error(`Failed to notify auth state listener ${index}:`, error);
+      }
+    });
   }
 
   /**

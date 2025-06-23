@@ -31,7 +31,22 @@ A Chrome extension that automatically captures ZIP file downloads from bolt.new,
   <img src="https://img.shields.io/badge/Install%20from-Chrome%20Web%20Store-blue?style=for-the-badge&logo=google-chrome&logoColor=white" alt="Install from Chrome Web Store" height="40">
 </a>
 
-### Latest Version: v1.3.4 (Development)
+### Latest Version: v1.3.6 (Development)
+
+#### 🔄 Version 1.3.6 - Project Synchronization & Stability
+
+**Major Features:**
+
+- **Automatic Project Sync** - Your Bolt projects now sync automatically across devices and browsers
+- **Data Loss Prevention** - Fixed critical race conditions that could cause project data loss
+- **Enhanced Reliability** - Comprehensive improvements to storage operations and error handling
+
+**Key Benefits:**
+
+- **Never lose your projects** - Seamless synchronization ensures your project mappings are always available
+- **Cross-device compatibility** - Access your projects from any browser or device
+- **Automatic conflict resolution** - Smart handling of sync conflicts with multiple resolution strategies
+- **Background sync** - Periodic 5-minute automatic syncing keeps everything up-to-date
 
 #### 🐛 Version 1.3.4 - Enhanced Bug Reporting
 

@@ -5,7 +5,7 @@
  * Covers normal operations, edge cases, and error conditions.
  */
 
-import type { Message, MessageType, UploadStatusState } from '$lib/types';
+import type { Message, UploadStatusState } from '$lib/types';
 
 // Chrome runtime error messages that indicate different failure modes
 export const ChromeRuntimeErrors = {
@@ -39,13 +39,13 @@ export const TestProjectIds = {
 // Test messages for various scenarios
 export const TestMessages: Record<string, Message> = {
   HEARTBEAT: {
-    type: 'HEARTBEAT' as MessageType,
+    type: 'HEARTBEAT',
   },
   HEARTBEAT_RESPONSE: {
-    type: 'HEARTBEAT_RESPONSE' as MessageType,
+    type: 'HEARTBEAT_RESPONSE',
   },
   CONTENT_SCRIPT_READY: {
-    type: 'CONTENT_SCRIPT_READY' as MessageType,
+    type: 'CONTENT_SCRIPT_READY',
   },
   UPLOAD_STATUS_UPLOADING: {
     type: 'UPLOAD_STATUS',

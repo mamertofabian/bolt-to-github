@@ -21,19 +21,97 @@ export type MessageType =
   | 'HEARTBEAT'
   | 'HEARTBEAT_RESPONSE'
   | 'GITHUB_APP_SYNCED'
-  | 'SUBSCRIPTION_UPGRADED';
+  | 'SUBSCRIPTION_UPGRADED'
+  | 'SYNC_BOLT_PROJECTS'
+  | 'NOTIFY_GITHUB_APP_SYNC'
+  | 'SHOW_UPGRADE_MODAL';
 
-export interface Message {
+// Base message interface
+interface BaseMessage {
   type: MessageType;
-  data?: any;
   status?: UploadStatusState;
   message?: string;
 }
+
+// Specific message types with their data
+export interface ZipDataMessage extends BaseMessage {
+  type: 'ZIP_DATA';
+  data: string | { data: string; projectId?: string };
+}
+
+export interface SetCommitMessage extends BaseMessage {
+  type: 'SET_COMMIT_MESSAGE';
+  data: { message: string };
+}
+
+export interface OpenFileChangesMessage extends BaseMessage {
+  type: 'OPEN_FILE_CHANGES';
+  data: { changes: Record<string, string> };
+}
+
+export interface ImportPrivateRepoMessage extends BaseMessage {
+  type: 'IMPORT_PRIVATE_REPO';
+  data: { repoName: string; branch?: string };
+}
+
+export interface NotifyGitHubAppSyncMessage extends BaseMessage {
+  type: 'NOTIFY_GITHUB_APP_SYNC';
+  data: { installationId?: number; username?: string; avatarUrl?: string };
+}
+
+export interface ShowUpgradeModalMessage extends BaseMessage {
+  type: 'SHOW_UPGRADE_MODAL';
+  feature?: string;
+}
+
+export interface GenericMessage extends BaseMessage {
+  type: Exclude<
+    MessageType,
+    | 'ZIP_DATA'
+    | 'SET_COMMIT_MESSAGE'
+    | 'OPEN_FILE_CHANGES'
+    | 'IMPORT_PRIVATE_REPO'
+    | 'NOTIFY_GITHUB_APP_SYNC'
+    | 'SHOW_UPGRADE_MODAL'
+  >;
+  data?: unknown;
+  action?: string;
+  feature?: string;
+  eventType?: string;
+  eventData?: Record<string, unknown>;
+  step?: string;
+  method?: string;
+}
+
+// Union of all message types
+export type Message =
+  | ZipDataMessage
+  | SetCommitMessage
+  | OpenFileChangesMessage
+  | ImportPrivateRepoMessage
+  | NotifyGitHubAppSyncMessage
+  | ShowUpgradeModalMessage
+  | GenericMessage;
 
 export interface ProjectSetting {
   repoName: string;
   branch: string;
   projectTitle?: string;
+  // Enhanced GitHub metadata fields for migration readiness
+  is_private?: boolean;
+  language?: string;
+  description?: string;
+  commit_count?: number;
+  latest_commit_date?: string;
+  latest_commit_message?: string;
+  latest_commit_sha?: string;
+  latest_commit_author?: string;
+  open_issues_count?: number;
+  github_updated_at?: string;
+  default_branch?: string;
+  // Cache metadata
+  metadata_last_updated?: string;
+  github_repo_url?: string;
 }
 
 export type ProjectSettings = Record<string, ProjectSetting>;
@@ -152,4 +230,54 @@ export interface ErrorLogEntry {
 export interface TelemetrySettings {
   enabled: boolean;
   anonymousId?: string;
+}
+
+/**
+ * Extended interface for Bolt projects with sync metadata
+ * Matches backend ExtensionProject schema
+ */
+export interface BoltProject extends ProjectSetting {
+  // Local extension fields
+  id: string;
+
+  // Backend schema fields (from ExtensionProject interface)
+  bolt_project_id: string;
+  project_name: string; // Required by backend
+  project_description?: string;
+  github_repo_owner?: string;
+  github_repo_name?: string;
+  github_branch?: string; // Backend uses github_branch, not branch
+  github_repo_url?: string;
+  is_private?: boolean;
+  last_modified?: string;
+
+  // Local sync metadata (not sent to backend)
+  version?: number;
+  sync_status?: 'pending' | 'synced' | 'error';
+}
+
+/**
+ * Interface for sync request to backend
+ */
+export interface SyncRequest {
+  localProjects: BoltProject[];
+  lastSyncTimestamp?: string;
+  conflictResolution?: 'auto-resolve' | 'keep-local' | 'keep-remote';
+}
+
+/**
+ * Interface for sync response from backend
+ */
+export interface SyncResponse {
+  success: boolean;
+  updatedProjects: BoltProject[];
+  conflicts: Array<{
+    project: BoltProject;
+    error?: string;
+    dbProject?: BoltProject;
+    conflict?: string;
+    message?: string;
+  }>;
+  deletedProjects: string[];
+  error?: string;
 }

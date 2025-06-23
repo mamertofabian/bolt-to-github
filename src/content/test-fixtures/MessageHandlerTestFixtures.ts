@@ -285,7 +285,7 @@ export const TestData = {
       },
     },
     circularReference: (() => {
-      const obj: any = { name: 'circular' };
+      const obj: Record<string, unknown> = { name: 'circular' };
       obj.self = obj;
       return obj;
     })(),
@@ -348,27 +348,124 @@ export const MessageFactory = {
   },
 
   // Create message sequences for testing patterns
-  createMessageSequence(types: MessageType[], baseData?: any): Message[] {
-    return types.map((type) => ({
-      type,
-      ...(baseData && { data: baseData }),
-    }));
+  createMessageSequence(types: MessageType[], baseData?: Record<string, unknown>): Message[] {
+    return types.map((type) => {
+      if (type === 'ZIP_DATA') {
+        return {
+          type: 'ZIP_DATA',
+          data: baseData || 'defaultdata',
+        } as Message;
+      } else if (type === 'SET_COMMIT_MESSAGE') {
+        return {
+          type: 'SET_COMMIT_MESSAGE',
+          data: { message: (baseData?.message as string) || 'default commit' },
+        } as Message;
+      } else if (type === 'IMPORT_PRIVATE_REPO') {
+        return {
+          type: 'IMPORT_PRIVATE_REPO',
+          data: { repoName: 'default-repo', branch: 'main', ...baseData },
+        } as Message;
+      } else if (type === 'OPEN_FILE_CHANGES') {
+        return {
+          type: 'OPEN_FILE_CHANGES',
+          data: { changes: (baseData as Record<string, string>) || {} },
+        } as Message;
+      } else if (type === 'NOTIFY_GITHUB_APP_SYNC') {
+        return {
+          type: 'NOTIFY_GITHUB_APP_SYNC',
+          data: { installationId: 123, username: 'default', ...baseData },
+        } as Message;
+      }
+
+      // For generic message types
+      return {
+        type,
+        ...(baseData && { data: baseData }),
+      } as Message;
+    });
   },
 
   // Create messages with edge case data
-  createMessageWithPayload(type: MessageType, payload: any): Message {
+  createMessageWithPayload(type: MessageType, payload: Record<string, unknown>): Message {
+    if (type === 'ZIP_DATA') {
+      return {
+        type: 'ZIP_DATA',
+        data: (payload.data as string) || 'defaultdata',
+      } as Message;
+    } else if (type === 'SET_COMMIT_MESSAGE') {
+      return {
+        type: 'SET_COMMIT_MESSAGE',
+        data: { message: (payload.message as string) || 'default commit' },
+      } as Message;
+    } else if (type === 'IMPORT_PRIVATE_REPO') {
+      return {
+        type: 'IMPORT_PRIVATE_REPO',
+        data: {
+          repoName: (payload.repoName as string) || 'default-repo',
+          branch: payload.branch as string,
+        },
+      } as Message;
+    } else if (type === 'OPEN_FILE_CHANGES') {
+      return {
+        type: 'OPEN_FILE_CHANGES',
+        data: { changes: (payload as Record<string, string>) || {} },
+      } as Message;
+    } else if (type === 'NOTIFY_GITHUB_APP_SYNC') {
+      return {
+        type: 'NOTIFY_GITHUB_APP_SYNC',
+        data: {
+          installationId: (payload.installationId as number) || 123,
+          username: (payload.username as string) || 'default',
+        },
+      } as Message;
+    }
+
+    // For generic message types
     return {
       type,
       data: payload,
-    };
+    } as Message;
   },
 
   // Create messages for performance testing
   createPerformanceMessages(count: number, type: MessageType = 'DEBUG'): Message[] {
-    return Array.from({ length: count }, (_, i) => ({
-      type,
-      data: { message: `Performance test message ${i + 1}`, timestamp: Date.now() },
-    }));
+    return Array.from({ length: count }, (_, i) => {
+      const baseMessage = {
+        type,
+        data: { message: `Performance test message ${i + 1}`, timestamp: Date.now() },
+      };
+
+      // Handle specific message types that require special data structure
+      if (type === 'ZIP_DATA') {
+        return {
+          type: 'ZIP_DATA',
+          data: `base64data${i}`,
+        } as Message;
+      } else if (type === 'SET_COMMIT_MESSAGE') {
+        return {
+          type: 'SET_COMMIT_MESSAGE',
+          data: { message: `Performance test commit message ${i + 1}` },
+        } as Message;
+      } else if (type === 'IMPORT_PRIVATE_REPO') {
+        return {
+          type: 'IMPORT_PRIVATE_REPO',
+          data: { repoName: `perf-repo-${i}`, branch: 'main' },
+        } as Message;
+      } else if (type === 'OPEN_FILE_CHANGES') {
+        return {
+          type: 'OPEN_FILE_CHANGES',
+          data: { changes: { [`file${i}.js`]: 'modified' } },
+        } as Message;
+      } else if (type === 'NOTIFY_GITHUB_APP_SYNC') {
+        return {
+          type: 'NOTIFY_GITHUB_APP_SYNC',
+          data: { installationId: i, username: `user${i}` },
+        } as Message;
+      }
+
+      // For generic message types
+      return baseMessage as Message;
+    });
   },
 };
 
@@ -386,7 +483,7 @@ export const PortStateFactory = {
         removeListener: jest.fn(),
         hasListener: jest.fn(),
         hasListeners: jest.fn(() => true),
-      } as any,
+      } as unknown as chrome.runtime.Port['onDisconnect'],
       postMessage: jest.fn(),
     };
   },
@@ -399,7 +496,7 @@ export const PortStateFactory = {
         removeListener: jest.fn(),
         hasListener: jest.fn(),
         hasListeners: jest.fn(() => false),
-      } as any,
+      } as unknown as chrome.runtime.Port['onDisconnect'],
       postMessage: jest.fn(() => {
         throw new Error('Port is disconnected');
       }),
@@ -414,7 +511,7 @@ export const PortStateFactory = {
         removeListener: jest.fn(),
         hasListener: jest.fn(),
         hasListeners: jest.fn(() => true),
-      } as any,
+      } as unknown as chrome.runtime.Port['onDisconnect'],
       postMessage: jest.fn(() => {
         throw new Error(errorMessage);
       }),
@@ -429,7 +526,7 @@ export const PortStateFactory = {
         removeListener: jest.fn(),
         hasListener: jest.fn(),
         hasListeners: jest.fn(() => false),
-      } as any,
+      } as unknown as chrome.runtime.Port['onDisconnect'],
       postMessage: jest.fn(),
     };
   },
@@ -472,7 +569,7 @@ export const ChromeRuntimeStateFactory = {
     return new Proxy(
       {},
       {
-        get(target, prop) {
+        get(_target, _prop) {
           throw new Error('Extension context invalidated');
         },
       }
@@ -586,7 +683,11 @@ export const ScenarioBuilder = {
 
 export const AssertionHelpers = {
   // Queue state assertions
-  expectQueueState(messageHandler: any, expectedLength: number, expectedMessages?: Message[]) {
+  expectQueueState(
+    messageHandler: { getConnectionStatus: () => { queuedMessages: number } },
+    expectedLength: number,
+    expectedMessages?: Message[]
+  ) {
     const status = messageHandler.getConnectionStatus();
     expect(status.queuedMessages).toBe(expectedLength);
 
@@ -597,24 +698,31 @@ export const AssertionHelpers = {
   },
 
   // Connection state assertions
-  expectConnectionState(messageHandler: any, expectedConnected: boolean) {
+  expectConnectionState(
+    messageHandler: { getConnectionStatus: () => { connected: boolean } },
+    expectedConnected: boolean
+  ) {
     const status = messageHandler.getConnectionStatus();
     expect(status.connected).toBe(expectedConnected);
   },
 
   // Custom event assertions
-  expectCustomEventDispatched(eventType: string, expectedDetail?: any) {
+  expectCustomEventDispatched(_eventType: string, _expectedDetail?: Record<string, unknown>) {
     // This would need to be implemented with event listeners in tests
     // or by mocking window.dispatchEvent
   },
 
   // Port method call assertions
-  expectPortMethodCalled(port: any, method: string, times: number = 1) {
+  expectPortMethodCalled(port: Record<string, jest.Mock>, method: string, times: number = 1) {
     expect(port[method]).toHaveBeenCalledTimes(times);
   },
 
   // Message content assertions
-  expectMessageContent(port: any, messageType: MessageType, data?: any) {
+  expectMessageContent(
+    port: Record<string, jest.Mock>,
+    messageType: MessageType,
+    data?: Record<string, unknown>
+  ) {
     expect(port.postMessage).toHaveBeenCalledWith({
       type: messageType,
       ...(data && { data }),
@@ -622,7 +730,7 @@ export const AssertionHelpers = {
   },
 
   // Memory leak detection helpers
-  expectNoMemoryLeaks(initialCounts: any, finalCounts: any) {
+  expectNoMemoryLeaks(initialCounts: Record<string, number>, finalCounts: Record<string, number>) {
     // Compare timer counts, event listener counts, etc.
     Object.keys(initialCounts).forEach((key) => {
       expect(finalCounts[key]).toBeLessThanOrEqual(

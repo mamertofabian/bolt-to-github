@@ -1,5 +1,5 @@
-import { createLogger } from '../../lib/utils/logger';
 import { debounce, throttle } from '../../lib/utils/debounce';
+import { createLogger } from '../../lib/utils/logger';
 
 const logger = createLogger('PremiumService');
 
@@ -20,9 +20,7 @@ export interface PremiumStatus {
  */
 export class PremiumService {
   private premiumStatus: PremiumStatus;
-  private supabaseAuthService: any; // Will be imported dynamically
   private currentAuthPlan: 'free' | 'monthly' | 'yearly' = 'free';
-  private uiManager?: any; // Reference to UIManager for updating components
   private lastSubscriptionCheck: number = 0;
   private readonly SUBSCRIPTION_CHECK_CACHE_DURATION = 300000; // 5 minutes cache for subscription checks
 
@@ -31,6 +29,11 @@ export class PremiumService {
   private debouncedSaveData: () => void;
   private throttledUpdatePremiumStatus: (status: Partial<PremiumStatus>) => void;
   private isSaving: boolean = false;
+  private storageListener?: (
+    changes: { [key: string]: chrome.storage.StorageChange },
+    namespace: string
+  ) => Promise<void>;
+  private syncInProgress: boolean = false;
 
   constructor() {
     this.premiumStatus = {
@@ -56,9 +59,10 @@ export class PremiumService {
 
   /**
    * Set UIManager reference for updating components when premium status changes
+   * Note: Premium status updates have been simplified, so this is a no-op
    */
-  public setUIManager(uiManager: any): void {
-    this.uiManager = uiManager;
+  public setUIManager(_uiManager: unknown): void {
+    // No longer needed since we removed premium status update functionality
   }
 
   /**
@@ -69,9 +73,54 @@ export class PremiumService {
       // Message handling is now done through ContentManager
       // to avoid conflicts with multiple message listeners
       logger.info('🔐 Supabase auth integration initialized (messages handled by ContentManager)');
+
+      // Set up sync storage listener to watch for popup premium status changes
+      this.setupPopupPremiumStatusSync();
     } catch (error) {
       logger.warn('Failed to initialize Supabase auth integration:', error);
     }
+  }
+
+  /**
+   * Set up listener to sync premium status from popup to content scripts
+   */
+  private setupPopupPremiumStatusSync(): void {
+    this.storageListener = async (changes, namespace) => {
+      if (namespace === 'sync' && changes.popupPremiumStatus) {
+        const newPopupStatus = changes.popupPremiumStatus.newValue;
+        if (newPopupStatus && !this.syncInProgress) {
+          // Prevent race conditions by setting sync flag
+          this.syncInProgress = true;
+
+          try {
+            // Validate popup status data structure
+            if (!this.isValidPopupPremiumStatus(newPopupStatus)) {
+              logger.warn('⚠️ Invalid popup premium status data, skipping sync:', newPopupStatus);
+              return;
+            }
+
+            logger.info('🔄 Syncing premium status from popup to content script:', newPopupStatus);
+
+            // Update content script premium status to match popup status
+            await this.updatePremiumStatusFromAuth({
+              isAuthenticated: newPopupStatus.isAuthenticated,
+              isPremium: newPopupStatus.isPremium,
+              plan: newPopupStatus.plan || 'free',
+              expiresAt: newPopupStatus.expiresAt
+                ? new Date(newPopupStatus.expiresAt).toISOString()
+                : undefined,
+            });
+
+            logger.info('✅ Premium status synced from popup to content script');
+          } catch (error) {
+            logger.error('❌ Error syncing premium status from popup:', error);
+          } finally {
+            this.syncInProgress = false;
+          }
+        }
+      }
+    };
+    chrome.storage.onChanged.addListener(this.storageListener);
   }
 
   /**
@@ -100,11 +149,6 @@ export class PremiumService {
       },
     });
 
-    // Update dropdown manager with new premium status
-    if (this.uiManager) {
-      this.uiManager.updateDropdownPremiumStatus();
-    }
-
     logger.info(
       `🔐 Premium status updated from auth: authenticated=${authData.isAuthenticated}, premium=${authData.isPremium} (${authData.plan})`
     );
@@ -115,14 +159,37 @@ export class PremiumService {
    */
   private async loadStoredData(): Promise<void> {
     try {
-      const result = await chrome.storage.local.get(['premiumStatus']);
+      // Load content script premium status from local storage
+      const localResult = await chrome.storage.local.get(['premiumStatus']);
 
-      if (result.premiumStatus) {
+      // Also check popup premium status from sync storage for latest updates
+      const syncResult = await chrome.storage.sync.get(['popupPremiumStatus']);
+
+      let statusToUse = localResult.premiumStatus;
+
+      // If popup has more recent premium status, use that instead
+      if (
+        syncResult.popupPremiumStatus &&
+        this.isValidPopupPremiumStatus(syncResult.popupPremiumStatus) &&
+        (!statusToUse ||
+          (syncResult.popupPremiumStatus.lastUpdated || 0) >
+            (((statusToUse as Record<string, unknown>)?.lastUpdated as number) || 0))
+      ) {
+        logger.info('🔄 Using more recent premium status from popup');
+        statusToUse = {
+          isPremium: syncResult.popupPremiumStatus.isPremium,
+          isAuthenticated: syncResult.popupPremiumStatus.isAuthenticated,
+          expiresAt: syncResult.popupPremiumStatus.expiresAt,
+          features: syncResult.popupPremiumStatus.features,
+        };
+      }
+
+      if (statusToUse) {
         this.premiumStatus = {
           ...this.premiumStatus,
-          ...result.premiumStatus,
+          ...statusToUse,
           // Ensure isAuthenticated is always defined (default to false for backward compatibility)
-          isAuthenticated: result.premiumStatus.isAuthenticated ?? false,
+          isAuthenticated: statusToUse.isAuthenticated ?? false,
         };
       }
     } catch (error) {
@@ -443,10 +510,60 @@ export class PremiumService {
         githubIssues: false,
       },
     });
+  }
 
-    // Update UI components
-    if (this.uiManager) {
-      this.uiManager.updateDropdownPremiumStatus();
+  /**
+   * Validate popup premium status data structure
+   */
+  private isValidPopupPremiumStatus(data: unknown): boolean {
+    if (!data || typeof data !== 'object') {
+      return false;
     }
+
+    const obj = data as Record<string, unknown>;
+
+    // Check required boolean properties
+    if (typeof obj.isAuthenticated !== 'boolean' || typeof obj.isPremium !== 'boolean') {
+      return false;
+    }
+
+    // Check features object structure
+    if (!obj.features || typeof obj.features !== 'object') {
+      return false;
+    }
+
+    const features = obj.features as Record<string, unknown>;
+    const requiredFeatures = ['viewFileChanges', 'pushReminders', 'branchSelector', 'githubIssues'];
+    for (const feature of requiredFeatures) {
+      if (typeof features[feature] !== 'boolean') {
+        return false;
+      }
+    }
+
+    // Check optional properties have correct types when present
+    if (obj.expiresAt !== undefined && typeof obj.expiresAt !== 'number') {
+      return false;
+    }
+
+    if (obj.plan !== undefined && typeof obj.plan !== 'string') {
+      return false;
+    }
+
+    if (obj.lastUpdated !== undefined && typeof obj.lastUpdated !== 'number') {
+      return false;
+    }
+
+    return true;
+  }
+
+  /**
+   * Cleanup method to remove listeners and prevent memory leaks
+   */
+  public cleanup(): void {
+    if (this.storageListener) {
+      chrome.storage.onChanged.removeListener(this.storageListener);
+      this.storageListener = undefined;
+    }
+    this.syncInProgress = false;
   }
 }

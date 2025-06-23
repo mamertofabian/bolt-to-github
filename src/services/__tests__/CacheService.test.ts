@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import { CacheService } from '../CacheService';
 import type { IIdleMonitorService } from '../interfaces/IIdleMonitorService';
 import { expect, jest, describe, it, beforeEach, afterEach } from '@jest/globals';
@@ -36,7 +37,7 @@ class ControlledIdleCallbackManager {
   private activeCallbacks = new Map<number, IdleRequestCallback>();
 
   requestIdleCallback = jest.fn(
-    (callback: IdleRequestCallback, options?: IdleRequestOptions): number => {
+    (callback: IdleRequestCallback, _options?: IdleRequestOptions): number => {
       const id = this.idCounter++;
       this.activeCallbacks.set(id, callback);
       return id;
@@ -56,7 +57,7 @@ class ControlledIdleCallbackManager {
     this.activeCallbacks.clear();
 
     // Execute each callback with the specified idle parameters
-    callbackEntries.forEach(([id, callback]) => {
+    callbackEntries.forEach(([, callback]) => {
       callback({
         timeRemaining: () => timeRemaining,
         didTimeout,

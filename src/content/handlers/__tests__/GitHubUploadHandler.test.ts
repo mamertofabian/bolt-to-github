@@ -1,68 +1,113 @@
 /* eslint-env jest */
 
 import { GitHubUploadHandler } from '../GitHubUploadHandler';
-import type { INotificationManager } from '../../types/ManagerInterfaces';
-import type { MessageHandler } from '../../MessageHandler';
-import type { UIStateManager } from '../../services/UIStateManager';
 import { SettingsService } from '../../../services/settings';
 import { DownloadService } from '../../../services/DownloadService';
 import { CommitTemplateService } from '../../services/CommitTemplateService';
+import type { MessageHandler } from '../../MessageHandler';
+import type { INotificationManager, IUIStateManager } from '../../types/ManagerInterfaces';
 
 // Mock external dependencies
 jest.mock('../../../services/settings');
 jest.mock('../../../services/DownloadService');
 jest.mock('../../services/CommitTemplateService');
+jest.mock('../../../lib/utils/projectId', () => ({
+  getCurrentProjectId: jest.fn(() => 'test-project'),
+}));
 jest.mock('../FileChangeHandler', () => ({
   FileChangeHandler: jest.fn().mockImplementation(() => ({
     getChangedFiles: jest.fn(),
   })),
 }));
 
+// Create proper mock for MessageHandler
+class MockMessageHandler implements Partial<MessageHandler> {
+  public port: chrome.runtime.Port | null = null;
+  public messageQueue: { type: string; data?: unknown }[] = [];
+  public isConnected = true;
+
+  public sendMessage = jest.fn();
+  public sendCommitMessage = jest.fn();
+  public sendZipData = jest.fn();
+  public addListener = jest.fn();
+  public updatePort = jest.fn();
+  public sendDebugMessage = jest.fn();
+  public getConnectionStatus = jest.fn().mockReturnValue({ connected: true, queuedMessages: 0 });
+  public clearQueue = jest.fn();
+  public setupPortListeners = jest.fn();
+}
+
+// Create proper mock for NotificationManager
+class MockNotificationManager implements INotificationManager {
+  public showNotification = jest.fn();
+  public showUpgradeNotification = jest.fn();
+  public showConfirmationDialog = jest
+    .fn()
+    .mockResolvedValue({ confirmed: true, commitMessage: '' });
+  public showSettingsNotification = jest.fn();
+  public clearReminderNotifications = jest.fn();
+  public getReminderNotificationCount = jest.fn().mockReturnValue(0);
+  public getNotificationDebugInfo = jest.fn().mockReturnValue({});
+  public cleanup = jest.fn();
+}
+
+// Create proper mock for StateManager
+class MockStateManager implements IUIStateManager {
+  public setUploadStatus = jest.fn();
+  public setButtonState = jest.fn();
+  public setButtonDetectingChanges = jest.fn();
+  public setButtonPushing = jest.fn();
+  public setButtonLoadingState = jest.fn();
+  public resetButtonLoadingState = jest.fn();
+  public getState = jest.fn().mockReturnValue({
+    uploadStatus: { status: 'idle', progress: 0, message: '' },
+    buttonState: { isValid: false, isProcessing: false, isInitialized: false },
+    notifications: { active: 0 },
+    dropdown: { isVisible: false },
+    components: {
+      uploadStatusInitialized: false,
+      notificationInitialized: false,
+      buttonInitialized: false,
+    },
+  });
+}
+
 describe('GitHubUploadHandler', () => {
   let uploadHandler: GitHubUploadHandler;
-  let mockMessageHandler: jest.Mocked<MessageHandler>;
-  let mockNotificationManager: jest.Mocked<INotificationManager>;
-  let mockStateManager: jest.Mocked<UIStateManager>;
-  let mockDownloadService: jest.Mocked<DownloadService>;
-  let mockCommitTemplateService: jest.Mocked<CommitTemplateService>;
+  let mockMessageHandler: MockMessageHandler;
+  let mockNotificationManager: MockNotificationManager;
+  let mockStateManager: MockStateManager;
+  let mockDownloadService: jest.Mocked<{
+    downloadProjectZip: jest.Mock;
+    blobToBase64: jest.Mock;
+    getProjectFiles: jest.Mock;
+  }>;
+  let mockCommitTemplateService: jest.Mocked<{
+    getTemplateSuggestions: jest.Mock;
+    recordTemplateUsage: jest.Mock;
+  }>;
 
   beforeEach(() => {
     // Reset all mocks
     jest.clearAllMocks();
 
     // Setup mock objects
-    mockMessageHandler = {
-      sendMessage: jest.fn(),
-      sendCommitMessage: jest.fn(),
-      sendZipData: jest.fn(),
-      addListener: jest.fn(),
-    } as any;
-
-    mockNotificationManager = {
-      showNotification: jest.fn(),
-      showSettingsNotification: jest.fn(),
-      showConfirmationDialog: jest.fn().mockResolvedValue({ confirmed: true, commitMessage: '' }),
-    } as any;
-
-    mockStateManager = {
-      setButtonDetectingChanges: jest.fn(),
-      setButtonPushing: jest.fn(),
-      resetButtonLoadingState: jest.fn(),
-      setUploadStatus: jest.fn(),
-    } as any;
+    mockMessageHandler = new MockMessageHandler();
+    mockNotificationManager = new MockNotificationManager();
+    mockStateManager = new MockStateManager();
 
     // Mock DownloadService
     mockDownloadService = {
       downloadProjectZip: jest.fn(),
       blobToBase64: jest.fn(),
       getProjectFiles: jest.fn(),
-    } as any;
+    };
 
     // Mock CommitTemplateService
     mockCommitTemplateService = {
       getTemplateSuggestions: jest.fn().mockResolvedValue([]),
       recordTemplateUsage: jest.fn(),
-    } as any;
+    };
 
     // Setup DownloadService mock constructor
     (DownloadService as jest.Mock).mockImplementation(() => mockDownloadService);
@@ -71,9 +116,10 @@ describe('GitHubUploadHandler', () => {
     (CommitTemplateService.getInstance as jest.Mock).mockReturnValue(mockCommitTemplateService);
 
     uploadHandler = new GitHubUploadHandler(
-      mockMessageHandler,
+      mockMessageHandler as unknown as MessageHandler,
       mockNotificationManager,
-      mockStateManager
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      mockStateManager as unknown as any
     );
 
     // Mock chrome storage
@@ -85,7 +131,7 @@ describe('GitHubUploadHandler', () => {
           remove: jest.fn(),
         },
       },
-    } as any;
+    } as unknown as typeof chrome;
   });
 
   describe('Constructor', () => {
@@ -96,7 +142,10 @@ describe('GitHubUploadHandler', () => {
     });
 
     test('can be constructed without state manager', () => {
-      const handler = new GitHubUploadHandler(mockMessageHandler, mockNotificationManager);
+      const handler = new GitHubUploadHandler(
+        mockMessageHandler as unknown as MessageHandler,
+        mockNotificationManager
+      );
       expect(handler).toBeInstanceOf(GitHubUploadHandler);
     });
   });
@@ -148,8 +197,10 @@ describe('GitHubUploadHandler', () => {
         isSettingsValid: true,
         gitHubSettings: {
           projectSettings: {
-            repoName: 'test-repo',
-            branch: 'main',
+            'test-project': {
+              repoName: 'test-repo',
+              branch: 'main',
+            },
           },
         },
       });
@@ -171,7 +222,12 @@ describe('GitHubUploadHandler', () => {
         commitMessage: 'Test commit',
       });
 
-      const proceedSpy = jest.spyOn(uploadHandler as any, 'proceedWithUpload').mockResolvedValue();
+      const proceedSpy = jest
+        .spyOn(
+          uploadHandler as unknown as { proceedWithUpload: (message: string) => Promise<void> },
+          'proceedWithUpload'
+        )
+        .mockResolvedValue(undefined);
 
       await uploadHandler.handleGitHubPush(true, true);
 
@@ -204,7 +260,12 @@ describe('GitHubUploadHandler', () => {
         commitMessage: '',
       });
 
-      const proceedSpy = jest.spyOn(uploadHandler as any, 'proceedWithUpload').mockResolvedValue();
+      const proceedSpy = jest
+        .spyOn(
+          uploadHandler as unknown as { proceedWithUpload: (message?: string) => Promise<void> },
+          'proceedWithUpload'
+        )
+        .mockResolvedValue(undefined);
 
       await uploadHandler.handleGitHubPush(false, false);
 
@@ -221,14 +282,29 @@ describe('GitHubUploadHandler', () => {
     test('handles stored file changes', async () => {
       // Mock stored changes
       const storedChanges = new Map([['stored.txt', { status: 'modified', path: 'stored.txt' }]]);
-      jest.spyOn(uploadHandler as any, 'getStoredFileChanges').mockResolvedValue(storedChanges);
+      jest
+        .spyOn(
+          uploadHandler as unknown as {
+            getStoredFileChanges: () => Promise<Map<
+              string,
+              { status: string; path: string }
+            > | null>;
+          },
+          'getStoredFileChanges'
+        )
+        .mockResolvedValue(storedChanges);
 
       mockNotificationManager.showConfirmationDialog.mockResolvedValue({
         confirmed: true,
         commitMessage: '',
       });
 
-      const proceedSpy = jest.spyOn(uploadHandler as any, 'proceedWithUpload').mockResolvedValue();
+      const proceedSpy = jest
+        .spyOn(
+          uploadHandler as unknown as { proceedWithUpload: (message?: string) => Promise<void> },
+          'proceedWithUpload'
+        )
+        .mockResolvedValue(undefined);
 
       await uploadHandler.handleGitHubPush(true, false);
 
@@ -241,7 +317,17 @@ describe('GitHubUploadHandler', () => {
     });
 
     test('handles no changes detected', async () => {
-      jest.spyOn(uploadHandler as any, 'getStoredFileChanges').mockResolvedValue(null);
+      jest
+        .spyOn(
+          uploadHandler as unknown as {
+            getStoredFileChanges: () => Promise<Map<
+              string,
+              { status: string; path: string }
+            > | null>;
+          },
+          'getStoredFileChanges'
+        )
+        .mockResolvedValue(null);
 
       // Mock FileChangeHandler returning no changes
       const mockFileChangeHandler = {
@@ -256,7 +342,12 @@ describe('GitHubUploadHandler', () => {
         commitMessage: '',
       });
 
-      const proceedSpy = jest.spyOn(uploadHandler as any, 'proceedWithUpload').mockResolvedValue();
+      const proceedSpy = jest
+        .spyOn(
+          uploadHandler as unknown as { proceedWithUpload: (message?: string) => Promise<void> },
+          'proceedWithUpload'
+        )
+        .mockResolvedValue(undefined);
 
       await uploadHandler.handleGitHubPush(false, false);
 
@@ -277,7 +368,12 @@ describe('GitHubUploadHandler', () => {
         commitMessage: '',
       });
 
-      const proceedSpy = jest.spyOn(uploadHandler as any, 'proceedWithUpload').mockResolvedValue();
+      const proceedSpy = jest
+        .spyOn(
+          uploadHandler as unknown as { proceedWithUpload: (message?: string) => Promise<void> },
+          'proceedWithUpload'
+        )
+        .mockResolvedValue(undefined);
 
       await uploadHandler.handleGitHubPush(true, true);
 
@@ -287,7 +383,17 @@ describe('GitHubUploadHandler', () => {
     });
 
     test('aborts when user cancels confirmation (with change detection)', async () => {
-      jest.spyOn(uploadHandler as any, 'getStoredFileChanges').mockResolvedValue(null);
+      jest
+        .spyOn(
+          uploadHandler as unknown as {
+            getStoredFileChanges: () => Promise<Map<
+              string,
+              { status: string; path: string }
+            > | null>;
+          },
+          'getStoredFileChanges'
+        )
+        .mockResolvedValue(null);
 
       // Mock FileChangeHandler returning no changes
       const mockFileChangeHandler = {
@@ -302,7 +408,12 @@ describe('GitHubUploadHandler', () => {
         commitMessage: '',
       });
 
-      const proceedSpy = jest.spyOn(uploadHandler as any, 'proceedWithUpload').mockResolvedValue();
+      const proceedSpy = jest
+        .spyOn(
+          uploadHandler as unknown as { proceedWithUpload: (message?: string) => Promise<void> },
+          'proceedWithUpload'
+        )
+        .mockResolvedValue(undefined);
 
       await uploadHandler.handleGitHubPush(false, false);
 
@@ -317,7 +428,12 @@ describe('GitHubUploadHandler', () => {
         commitMessage,
       });
 
-      const proceedSpy = jest.spyOn(uploadHandler as any, 'proceedWithUpload').mockResolvedValue();
+      const proceedSpy = jest
+        .spyOn(
+          uploadHandler as unknown as { proceedWithUpload: (message: string) => Promise<void> },
+          'proceedWithUpload'
+        )
+        .mockResolvedValue(undefined);
 
       await uploadHandler.handleGitHubPush(true, true);
 
@@ -326,7 +442,17 @@ describe('GitHubUploadHandler', () => {
     });
 
     test('handles change detection errors gracefully', async () => {
-      jest.spyOn(uploadHandler as any, 'getStoredFileChanges').mockResolvedValue(null);
+      jest
+        .spyOn(
+          uploadHandler as unknown as {
+            getStoredFileChanges: () => Promise<Map<
+              string,
+              { status: string; path: string }
+            > | null>;
+          },
+          'getStoredFileChanges'
+        )
+        .mockResolvedValue(null);
 
       // Mock FileChangeHandler throwing error
       const mockFileChangeHandler = {
@@ -341,7 +467,12 @@ describe('GitHubUploadHandler', () => {
         commitMessage: '',
       });
 
-      const proceedSpy = jest.spyOn(uploadHandler as any, 'proceedWithUpload').mockResolvedValue();
+      const proceedSpy = jest
+        .spyOn(
+          uploadHandler as unknown as { proceedWithUpload: (message?: string) => Promise<void> },
+          'proceedWithUpload'
+        )
+        .mockResolvedValue(undefined);
 
       await uploadHandler.handleGitHubPush(false, false);
 
@@ -363,7 +494,9 @@ describe('GitHubUploadHandler', () => {
       mockDownloadService.downloadProjectZip.mockResolvedValue(mockBlob);
       mockDownloadService.blobToBase64.mockResolvedValue(mockBase64);
 
-      await (uploadHandler as any).proceedWithUpload(commitMessage);
+      await (
+        uploadHandler as unknown as { proceedWithUpload: (message: string) => Promise<void> }
+      ).proceedWithUpload(commitMessage);
 
       expect(mockStateManager.setButtonPushing).toHaveBeenCalled();
       expect(mockMessageHandler.sendCommitMessage).toHaveBeenCalledWith(commitMessage);
@@ -382,7 +515,9 @@ describe('GitHubUploadHandler', () => {
       mockDownloadService.downloadProjectZip.mockResolvedValue(mockBlob);
       mockDownloadService.blobToBase64.mockResolvedValue('base64data');
 
-      await (uploadHandler as any).proceedWithUpload();
+      await (
+        uploadHandler as unknown as { proceedWithUpload: (message?: string) => Promise<void> }
+      ).proceedWithUpload();
 
       expect(mockMessageHandler.sendCommitMessage).toHaveBeenCalledWith(
         'Commit from Bolt to GitHub'
@@ -395,7 +530,9 @@ describe('GitHubUploadHandler', () => {
       // Mock getProjectFiles to also fail for cached files fallback
       mockDownloadService.getProjectFiles.mockResolvedValue(new Map());
 
-      await (uploadHandler as any).proceedWithUpload('Test commit');
+      await (
+        uploadHandler as unknown as { proceedWithUpload: (message: string) => Promise<void> }
+      ).proceedWithUpload('Test commit');
 
       expect(mockNotificationManager.showNotification).toHaveBeenCalledWith({
         type: 'error',
@@ -412,7 +549,9 @@ describe('GitHubUploadHandler', () => {
       // Mock getProjectFiles to also fail for cached files fallback
       mockDownloadService.getProjectFiles.mockResolvedValue(new Map());
 
-      await (uploadHandler as any).proceedWithUpload('Test commit');
+      await (
+        uploadHandler as unknown as { proceedWithUpload: (message: string) => Promise<void> }
+      ).proceedWithUpload('Test commit');
 
       expect(mockNotificationManager.showNotification).toHaveBeenCalledWith({
         type: 'error',
@@ -430,7 +569,9 @@ describe('GitHubUploadHandler', () => {
       mockDownloadService.downloadProjectZip.mockResolvedValue(mockBlob);
       mockDownloadService.blobToBase64.mockResolvedValue(mockBase64);
 
-      await (uploadHandler as any).handleFileDownloadAndUpload();
+      await (
+        uploadHandler as unknown as { handleFileDownloadAndUpload: () => Promise<void> }
+      ).handleFileDownloadAndUpload();
 
       expect(mockDownloadService.downloadProjectZip).toHaveBeenCalled();
       expect(mockDownloadService.blobToBase64).toHaveBeenCalledWith(mockBlob);
@@ -441,10 +582,15 @@ describe('GitHubUploadHandler', () => {
       mockDownloadService.downloadProjectZip.mockRejectedValue(new Error('Download failed'));
 
       const fallbackSpy = jest
-        .spyOn(uploadHandler as any, 'handleCachedFilesFallback')
-        .mockResolvedValue();
+        .spyOn(
+          uploadHandler as unknown as { handleCachedFilesFallback: () => Promise<void> },
+          'handleCachedFilesFallback'
+        )
+        .mockResolvedValue(undefined);
 
-      await (uploadHandler as any).handleFileDownloadAndUpload();
+      await (
+        uploadHandler as unknown as { handleFileDownloadAndUpload: () => Promise<void> }
+      ).handleFileDownloadAndUpload();
 
       expect(fallbackSpy).toHaveBeenCalled();
     });
@@ -459,7 +605,9 @@ describe('GitHubUploadHandler', () => {
 
       mockDownloadService.getProjectFiles.mockResolvedValue(mockFiles);
 
-      await (uploadHandler as any).handleCachedFilesFallback();
+      await (
+        uploadHandler as unknown as { handleCachedFilesFallback: () => Promise<void> }
+      ).handleCachedFilesFallback();
 
       expect(mockStateManager.setUploadStatus).toHaveBeenCalledWith({
         status: 'uploading',
@@ -475,17 +623,21 @@ describe('GitHubUploadHandler', () => {
     test('throws error when no cached files available', async () => {
       mockDownloadService.getProjectFiles.mockResolvedValue(new Map());
 
-      await expect((uploadHandler as any).handleCachedFilesFallback()).rejects.toThrow(
-        'No cached files available and download failed'
-      );
+      await expect(
+        (
+          uploadHandler as unknown as { handleCachedFilesFallback: () => Promise<void> }
+        ).handleCachedFilesFallback()
+      ).rejects.toThrow('No cached files available and download failed');
     });
 
     test('throws error when cached files is null', async () => {
-      mockDownloadService.getProjectFiles.mockResolvedValue(null as any);
+      mockDownloadService.getProjectFiles.mockResolvedValue(null as unknown as Map<string, string>);
 
-      await expect((uploadHandler as any).handleCachedFilesFallback()).rejects.toThrow(
-        'No cached files available and download failed'
-      );
+      await expect(
+        (
+          uploadHandler as unknown as { handleCachedFilesFallback: () => Promise<void> }
+        ).handleCachedFilesFallback()
+      ).rejects.toThrow('No cached files available and download failed');
     });
   });
 
@@ -495,8 +647,10 @@ describe('GitHubUploadHandler', () => {
         isSettingsValid: true,
         gitHubSettings: {
           projectSettings: {
-            repoName: 'test-repo',
-            branch: 'main',
+            'test-project': {
+              repoName: 'test-repo',
+              branch: 'main',
+            },
           },
         },
       });
@@ -557,7 +711,11 @@ describe('GitHubUploadHandler', () => {
         storedFileChanges: mockStoredData,
       });
 
-      const result = await (uploadHandler as any).getStoredFileChanges();
+      const result = await (
+        uploadHandler as unknown as {
+          getStoredFileChanges: () => Promise<Map<string, { status: string; path: string }> | null>;
+        }
+      ).getStoredFileChanges();
 
       expect(result).toBeInstanceOf(Map);
       expect(result?.size).toBe(1);
@@ -567,7 +725,11 @@ describe('GitHubUploadHandler', () => {
     test('returns null when no stored data', async () => {
       (global.chrome.storage.local.get as jest.Mock).mockResolvedValue({});
 
-      const result = await (uploadHandler as any).getStoredFileChanges();
+      const result = await (
+        uploadHandler as unknown as {
+          getStoredFileChanges: () => Promise<Map<string, { status: string; path: string }> | null>;
+        }
+      ).getStoredFileChanges();
 
       expect(result).toBeNull();
     });
@@ -585,10 +747,17 @@ describe('GitHubUploadHandler', () => {
       });
 
       const clearSpy = jest
-        .spyOn(uploadHandler as any, 'clearStoredFileChanges')
-        .mockResolvedValue();
+        .spyOn(
+          uploadHandler as unknown as { clearStoredFileChanges: () => Promise<void> },
+          'clearStoredFileChanges'
+        )
+        .mockResolvedValue(undefined);
 
-      const result = await (uploadHandler as any).getStoredFileChanges();
+      const result = await (
+        uploadHandler as unknown as {
+          getStoredFileChanges: () => Promise<Map<string, { status: string; path: string }> | null>;
+        }
+      ).getStoredFileChanges();
 
       expect(result).toBeNull();
       expect(clearSpy).toHaveBeenCalled();
@@ -607,10 +776,17 @@ describe('GitHubUploadHandler', () => {
       });
 
       const clearSpy = jest
-        .spyOn(uploadHandler as any, 'clearStoredFileChanges')
-        .mockResolvedValue();
+        .spyOn(
+          uploadHandler as unknown as { clearStoredFileChanges: () => Promise<void> },
+          'clearStoredFileChanges'
+        )
+        .mockResolvedValue(undefined);
 
-      const result = await (uploadHandler as any).getStoredFileChanges();
+      const result = await (
+        uploadHandler as unknown as {
+          getStoredFileChanges: () => Promise<Map<string, { status: string; path: string }> | null>;
+        }
+      ).getStoredFileChanges();
 
       expect(result).toBeNull();
       expect(clearSpy).toHaveBeenCalled();
@@ -629,10 +805,17 @@ describe('GitHubUploadHandler', () => {
       });
 
       const clearSpy = jest
-        .spyOn(uploadHandler as any, 'clearStoredFileChanges')
-        .mockResolvedValue();
+        .spyOn(
+          uploadHandler as unknown as { clearStoredFileChanges: () => Promise<void> },
+          'clearStoredFileChanges'
+        )
+        .mockResolvedValue(undefined);
 
-      const result = await (uploadHandler as any).getStoredFileChanges();
+      const result = await (
+        uploadHandler as unknown as {
+          getStoredFileChanges: () => Promise<Map<string, { status: string; path: string }> | null>;
+        }
+      ).getStoredFileChanges();
 
       expect(result).toBeNull();
       expect(clearSpy).toHaveBeenCalled();
@@ -641,7 +824,11 @@ describe('GitHubUploadHandler', () => {
     test('handles storage errors gracefully', async () => {
       (global.chrome.storage.local.get as jest.Mock).mockRejectedValue(new Error('Storage error'));
 
-      const result = await (uploadHandler as any).getStoredFileChanges();
+      const result = await (
+        uploadHandler as unknown as {
+          getStoredFileChanges: () => Promise<Map<string, { status: string; path: string }> | null>;
+        }
+      ).getStoredFileChanges();
 
       expect(result).toBeNull();
     });
@@ -649,7 +836,9 @@ describe('GitHubUploadHandler', () => {
 
   describe('clearStoredFileChanges', () => {
     test('removes stored file changes', async () => {
-      await (uploadHandler as any).clearStoredFileChanges();
+      await (
+        uploadHandler as unknown as { clearStoredFileChanges: () => Promise<void> }
+      ).clearStoredFileChanges();
 
       expect(global.chrome.storage.local.remove).toHaveBeenCalledWith(['storedFileChanges']);
     });
@@ -659,7 +848,11 @@ describe('GitHubUploadHandler', () => {
         new Error('Storage error')
       );
 
-      await expect((uploadHandler as any).clearStoredFileChanges()).resolves.toBeUndefined();
+      await expect(
+        (
+          uploadHandler as unknown as { clearStoredFileChanges: () => Promise<void> }
+        ).clearStoredFileChanges()
+      ).resolves.toBeUndefined();
     });
   });
 
@@ -674,19 +867,27 @@ describe('GitHubUploadHandler', () => {
     test('updates status through state manager', () => {
       const status = { status: 'uploading', progress: 50 };
 
-      (uploadHandler as any).updateUploadStatus(status);
+      (
+        uploadHandler as unknown as {
+          updateUploadStatus: (status: { status: string; progress: number }) => void;
+        }
+      ).updateUploadStatus(status);
 
       expect(mockStateManager.setUploadStatus).toHaveBeenCalledWith(status);
     });
 
     test('handles missing state manager gracefully', () => {
       const handlerWithoutStateManager = new GitHubUploadHandler(
-        mockMessageHandler,
+        mockMessageHandler as unknown as MessageHandler,
         mockNotificationManager
       );
 
       expect(() => {
-        (handlerWithoutStateManager as any).updateUploadStatus({ status: 'uploading' });
+        (
+          handlerWithoutStateManager as unknown as {
+            updateUploadStatus: (status: { status: string }) => void;
+          }
+        ).updateUploadStatus({ status: 'uploading' });
       }).not.toThrow();
     });
   });

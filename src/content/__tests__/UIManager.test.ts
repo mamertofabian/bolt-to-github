@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 /* eslint-env jest */
 
 import { UIManager } from '../UIManager';
@@ -495,15 +496,6 @@ describe('UIManager', () => {
       const spy = jest.spyOn(pushReminderService, 'forceReminderCheck');
 
       await uiManager.forceReminderCheck();
-
-      expect(spy).toHaveBeenCalled();
-    });
-
-    test('updates dropdown premium status', () => {
-      const dropdownManager = (uiManager as any).dropdownManager;
-      const spy = jest.spyOn(dropdownManager, 'updatePremiumStatus');
-
-      uiManager.updateDropdownPremiumStatus();
 
       expect(spy).toHaveBeenCalled();
     });

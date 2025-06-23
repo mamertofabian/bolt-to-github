@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 /* eslint-env jest */
 
 import { DOMObserver } from '../DOMObserver';
@@ -32,7 +33,7 @@ describe('DOMObserver', () => {
     global.MutationObserver = mockMutationObserver;
 
     // Mock window.setTimeout and clearTimeout
-    jest.spyOn(window, 'setTimeout').mockImplementation((callback, delay) => {
+    jest.spyOn(window, 'setTimeout').mockImplementation((_callback) => {
       const id = Math.random();
       return id as any;
     });

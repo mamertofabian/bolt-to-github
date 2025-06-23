@@ -6,14 +6,7 @@
  */
 
 import { BackgroundTempRepoManager, STORAGE_KEY } from '../TempRepoManager';
-import {
-  TempRepoTestLifecycle,
-  TempRepoTestData,
-  ValidationHelpers,
-  PerformanceHelpers,
-  DebuggingHelpers,
-  TempRepoAssertionHelpers,
-} from '../test-fixtures';
+import { TempRepoTestLifecycle, TempRepoTestData, ValidationHelpers } from '../test-fixtures';
 import type { TempRepoManagerTestEnvironment } from '../test-fixtures';
 
 // Mock the OperationStateManager module
@@ -87,6 +80,7 @@ describe('TempRepoManager - Edge Cases & Stress Tests', () => {
         { branch: 'branch-with-issue-#123', description: 'with special chars' },
         { branch: 'ветка-на-русском', description: 'unicode branch' },
         { branch: undefined, description: 'undefined branch' },
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         { branch: null as any, description: 'null branch' },
       ];
 
@@ -202,7 +196,9 @@ describe('TempRepoManager - Edge Cases & Stress Tests', () => {
 
       // All entries should be valid
       repos.forEach((repo) => {
-        expect(ValidationHelpers.validateRepoMetadata(repo)).toBe(true);
+        expect(
+          ValidationHelpers.validateRepoMetadata(repo as unknown as Record<string, unknown>)
+        ).toBe(true);
       });
     });
 
@@ -212,7 +208,6 @@ describe('TempRepoManager - Edge Cases & Stress Tests', () => {
       manager = lifecycle.createManager('existing');
 
       const initialRepos = await manager.getTempRepos();
-      const expiredCount = initialRepos.filter((r) => Date.now() - r.createdAt > 60000).length;
       const freshCount = initialRepos.filter((r) => Date.now() - r.createdAt < 60000).length;
 
       // Act - Run cleanup
@@ -423,9 +418,16 @@ describe('TempRepoManager - Edge Cases & Stress Tests', () => {
       manager = lifecycle.createManager('success');
 
       // Make operations fail
-      env.mockOperationStateManager.startOperation = jest.fn(async () => {
-        throw new Error('Operation tracking failed');
-      });
+      env.mockOperationStateManager.startOperation = jest.fn(
+        async (
+          _type: string,
+          _operationId: string,
+          _description: string,
+          _metadata?: Record<string, unknown>
+        ) => {
+          throw new Error('Operation tracking failed');
+        }
+      );
 
       // Act - Attempt operation that will fail
       await manager.handlePrivateRepoImport('failing-operation');
