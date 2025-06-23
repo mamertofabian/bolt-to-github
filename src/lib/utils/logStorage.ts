@@ -29,7 +29,8 @@ export class LogStorageManager {
   private readonly MAX_MEMORY_ENTRIES = 1000;
   private readonly MAX_BATCH_SIZE = 100;
   private readonly WRITE_INTERVAL = 10000; // 10 seconds
-  private readonly LOG_RETENTION_HOURS = 6;
+  private readonly LOG_RETENTION_HOURS = 12;
+  private readonly MAX_LOG_ENTRIES = 10000; // Fallback limit to prevent unbounded growth
   private readonly STORAGE_KEY_PREFIX = 'bolt_logs_';
   private readonly CURRENT_BATCH_KEY = 'bolt_logs_current';
   private readonly METADATA_KEY = 'bolt_logs_metadata';
@@ -217,21 +218,29 @@ export class LogStorageManager {
         });
       }
 
-      // Remove old batches
+      // Identify batches to remove based on simple time-based retention
+      const batchesToRemove: string[] = [];
       for (const key of allKeys) {
         if (key === this.CURRENT_BATCH_KEY || key === this.METADATA_KEY) continue;
 
         const batchResult = await chrome.storage.local.get(key);
         const batch = batchResult[key] as LogEntry[] | undefined;
         if (batch && batch.length > 0) {
-          const oldestEntry = new Date(batch[0].timestamp);
-          if (oldestEntry < cutoffTime) {
-            await chrome.storage.local.remove(key);
+          // Check if any logs in this batch are newer than cutoff time
+          const hasRecentLogs = batch.some((log) => new Date(log.timestamp) >= cutoffTime);
+
+          if (!hasRecentLogs) {
+            batchesToRemove.push(key);
           }
         }
       }
 
-      // Clean up memory buffer
+      // Remove old batches
+      if (batchesToRemove.length > 0) {
+        await chrome.storage.local.remove(batchesToRemove);
+      }
+
+      // Clean up memory buffer (keep only recent logs)
       this.memoryBuffer = this.memoryBuffer.filter(
         (entry) => new Date(entry.timestamp) >= cutoffTime
       );
