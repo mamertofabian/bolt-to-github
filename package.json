@@ -16,7 +16,8 @@
     "test:ci": "jest --coverage=false",
     "test": "jest",
     "test:watch": "jest --watch",
-    "prepare": "husky"
+    "prepare": "husky",
+    "lint-check": "pnpm run lint && pnpm run check"
   },
   "lint-staged": {
     "*.{js,ts,svelte,css,json,md}": [
