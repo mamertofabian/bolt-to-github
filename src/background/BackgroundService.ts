@@ -17,6 +17,7 @@ import { SupabaseAuthService } from '../content/services/SupabaseAuthService';
 import type { AuthState } from '../content/services/SupabaseAuthService';
 import { OperationStateManager } from '../content/services/OperationStateManager';
 import { createLogger, getLogStorage } from '../lib/utils/logger';
+import { analytics } from '../services/AnalyticsService';
 import { UsageTracker } from './UsageTracker';
 import { BoltProjectSyncService } from '../services/BoltProjectSyncService';
 import { extractProjectIdFromUrl } from '../lib/utils/projectId';
@@ -1254,9 +1255,16 @@ export class BackgroundService {
 
   private async handleExtensionInstalled(details: chrome.runtime.InstalledDetails): Promise<void> {
     try {
+      const currentVersion = chrome.runtime.getManifest().version;
+
       if (details.reason === 'install') {
         logger.info('Extension installed for the first time', {
-          version: chrome.runtime.getManifest().version,
+          version: currentVersion,
+        });
+
+        // Track fresh installation
+        await analytics.trackExtensionEvent('fresh_install', {
+          version: currentVersion,
         });
 
         // Open welcome page
@@ -1269,13 +1277,31 @@ export class BackgroundService {
         const onboardingData = {
           installDate: new Date().toISOString(),
           onboardingCompleted: false,
-          installedVersion: chrome.runtime.getManifest().version,
+          installedVersion: currentVersion,
           completedSteps: [] as string[],
           welcomePageViewed: false,
         };
 
         await chrome.storage.local.set(onboardingData);
         logger.info('Initialized onboarding data', onboardingData);
+
+        // Store current version for future version change tracking
+        await chrome.storage.local.set({ lastKnownVersion: currentVersion });
+      } else if (details.reason === 'update') {
+        const previousVersion = details.previousVersion || 'unknown';
+        logger.info('Extension updated', {
+          from: previousVersion,
+          to: currentVersion,
+        });
+
+        // Track version change
+        await analytics.trackVersionChange(previousVersion, currentVersion);
+
+        // Update stored version
+        await chrome.storage.local.set({ lastKnownVersion: currentVersion });
+
+        // Track daily active user on update
+        await analytics.trackDailyActiveUser();
       }
     } catch (error) {
       logger.error('Error handling extension installation:', error);

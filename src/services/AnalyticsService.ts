@@ -50,13 +50,8 @@ export class AnalyticsService {
 
   private constructor() {
     // Don't initialize immediately to avoid DOM issues
-    // Safe environment variable access for service workers
-    try {
-      this.API_SECRET = import.meta.env?.VITE_GA4_API_SECRET || 'SDSrX58bTAmEqVg2awosDA';
-    } catch (error) {
-      logger.debug('Could not access environment variables:', error);
-      this.API_SECRET = 'SDSrX58bTAmEqVg2awosDA';
-    }
+    // Use default API secret - in production, this would be replaced via build process
+    this.API_SECRET = 'SDSrX58bTAmEqVg2awosDA';
   }
 
   public static getInstance(): AnalyticsService {
@@ -269,10 +264,11 @@ export class AnalyticsService {
    * Track errors for debugging
    */
   public async trackError(error: Error, context?: string): Promise<void> {
+    const version = chrome.runtime.getManifest().version;
     await this.trackEvent({
       category: 'errors',
       action: 'extension_error',
-      label: `${context || 'unknown'}: ${error.message}`,
+      label: `${context || 'unknown'}: ${error.message} (v${version})`,
       value: 1,
     });
   }
@@ -296,9 +292,19 @@ export class AnalyticsService {
     }
 
     try {
+      // Always include app version in event params
+      const version = chrome.runtime.getManifest().version;
+      const enhancedEventData = {
+        ...eventData,
+        params: {
+          ...eventData.params,
+          app_version: version,
+        },
+      };
+
       const payload = {
         client_id: this.config.clientId,
-        events: [eventData],
+        events: [enhancedEventData],
       };
 
       const url = `${this.MEASUREMENT_PROTOCOL_URL}?measurement_id=${this.GA4_MEASUREMENT_ID}&api_secret=${this.API_SECRET}`;
@@ -352,6 +358,119 @@ export class AnalyticsService {
       logger.error('Failed to get analytics summary:', error);
       return { enabled: false };
     }
+  }
+
+  /**
+   * Track version changes (upgrades/downgrades)
+   */
+  public async trackVersionChange(oldVersion: string, newVersion: string): Promise<void> {
+    const isUpgrade = this.compareVersions(oldVersion, newVersion) < 0;
+    await this.trackEvent({
+      category: 'version_tracking',
+      action: isUpgrade ? 'version_upgrade' : 'version_downgrade',
+      label: JSON.stringify({ from: oldVersion, to: newVersion }),
+    });
+  }
+
+  /**
+   * Track feature adoption
+   */
+  public async trackFeatureAdoption(feature: string, adopted: boolean): Promise<void> {
+    await this.trackEvent({
+      category: 'feature_adoption',
+      action: `${feature}_${adopted ? 'adopted' : 'abandoned'}`,
+    });
+  }
+
+  /**
+   * Track performance metrics
+   */
+  public async trackPerformance(
+    operation: string,
+    startTime: number,
+    endTime: number,
+    metadata?: AnalyticsDetails
+  ): Promise<void> {
+    const duration = endTime - startTime;
+    await this.trackEvent({
+      category: 'performance',
+      action: `${operation}_duration`,
+      label: metadata ? JSON.stringify(metadata) : undefined,
+      value: duration,
+    });
+  }
+
+  /**
+   * Track user journey milestones with enhanced metadata
+   */
+  public async trackUserJourney(
+    journey: string,
+    milestone: string,
+    metadata?: AnalyticsDetails
+  ): Promise<void> {
+    await this.trackEvent({
+      category: 'user_journey',
+      action: `${journey}_${milestone}`,
+      label: metadata ? JSON.stringify(metadata) : undefined,
+    });
+  }
+
+  /**
+   * Track operation results with detailed context
+   */
+  public async trackOperationResult(
+    operation: string,
+    success: boolean,
+    metadata?: AnalyticsDetails
+  ): Promise<void> {
+    await this.trackEvent({
+      category: 'operation_results',
+      action: `${operation}_${success ? 'success' : 'failure'}`,
+      label: metadata ? JSON.stringify(metadata) : undefined,
+      value: success ? 1 : 0,
+    });
+  }
+
+  /**
+   * Track daily active users with version
+   */
+  public async trackDailyActiveUser(): Promise<void> {
+    const version = chrome.runtime.getManifest().version;
+    await this.trackEvent({
+      category: 'engagement',
+      action: 'daily_active_user',
+      label: JSON.stringify({ app_version: version }),
+    });
+  }
+
+  /**
+   * Track feature usage with version
+   */
+  public async trackFeatureUsage(feature: string, metadata?: AnalyticsDetails): Promise<void> {
+    const version = chrome.runtime.getManifest().version;
+    await this.trackEvent({
+      category: 'feature_usage',
+      action: `${feature}_used`,
+      label: JSON.stringify({ ...metadata, app_version: version }),
+    });
+  }
+
+  /**
+   * Compare version strings
+   */
+  private compareVersions(v1: string, v2: string): number {
+    const parts1 = v1.split('.').map(Number);
+    const parts2 = v2.split('.').map(Number);
+
+    for (let i = 0; i < Math.max(parts1.length, parts2.length); i++) {
+      const part1 = parts1[i] || 0;
+      const part2 = parts2[i] || 0;
+
+      if (part1 < part2) return -1;
+      if (part1 > part2) return 1;
+    }
+
+    return 0;
   }
 }
 

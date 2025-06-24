@@ -1,8 +1,21 @@
 // Tests for enhanced analytics functionality
 describe('AnalyticsService Enhanced Features', () => {
   let mockFetch: jest.Mock;
-  let mockChromeRuntime: any;
-  let mockChromeStorage: any;
+  let mockChromeRuntime: {
+    id: string;
+    getManifest: jest.Mock;
+    sendMessage: jest.Mock;
+  };
+  let mockChromeStorage: {
+    local: {
+      get: jest.Mock;
+      set: jest.Mock;
+    };
+    sync: {
+      get: jest.Mock;
+      set: jest.Mock;
+    };
+  };
 
   beforeEach(() => {
     // Mock global fetch
@@ -32,11 +45,11 @@ describe('AnalyticsService Enhanced Features', () => {
       },
     };
 
-    // Set chrome mocks
+    // Replace global chrome object
     global.chrome = {
-      runtime: mockChromeRuntime,
       storage: mockChromeStorage,
-    } as any;
+      runtime: mockChromeRuntime,
+    } as unknown as typeof chrome;
   });
 
   afterEach(() => {
@@ -136,8 +149,7 @@ describe('AnalyticsService Enhanced Features', () => {
       // - New method: trackPerformance(operation, startTime, endTime, metadata)
       // - Calculate and track operation duration
 
-      const startTime = Date.now();
-      const endTime = startTime + 1500;
+      const duration = 1500;
 
       const expectedPerformanceData = {
         category: 'performance',
@@ -149,7 +161,7 @@ describe('AnalyticsService Enhanced Features', () => {
         },
       };
 
-      expect(expectedPerformanceData.duration_ms).toBe(1500);
+      expect(expectedPerformanceData.duration_ms).toBe(duration);
     });
 
     it('should track user journey analytics', async () => {
@@ -316,19 +328,3 @@ describe('AnalyticsService Enhanced Features', () => {
     });
   });
 });
-
-// Type definitions for the new methods
-interface AnalyticsEnhancements {
-  trackVersionChange(oldVersion: string, newVersion: string): Promise<void>;
-  trackFeatureAdoption(feature: string, adopted: boolean): Promise<void>;
-  trackPerformance(
-    operation: string,
-    startTime: number,
-    endTime: number,
-    metadata?: any
-  ): Promise<void>;
-  trackUserJourney(journey: string, milestone: string, metadata?: any): Promise<void>;
-  trackOperationResult(operation: string, success: boolean, metadata?: any): Promise<void>;
-  trackDailyActiveUser(): Promise<void>;
-  trackFeatureUsage(feature: string, metadata?: any): Promise<void>;
-}
