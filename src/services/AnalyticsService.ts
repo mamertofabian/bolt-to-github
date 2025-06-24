@@ -364,7 +364,14 @@ export class AnalyticsService {
    * Track version changes (upgrades/downgrades)
    */
   public async trackVersionChange(oldVersion: string, newVersion: string): Promise<void> {
-    const isUpgrade = this.compareVersions(oldVersion, newVersion) < 0;
+    const comparison = this.compareVersions(oldVersion, newVersion);
+
+    // Don't track if versions are the same
+    if (comparison === 0) {
+      return;
+    }
+
+    const isUpgrade = comparison < 0;
     await this.trackEvent({
       category: 'version_tracking',
       action: isUpgrade ? 'version_upgrade' : 'version_downgrade',
@@ -459,6 +466,11 @@ export class AnalyticsService {
    * Compare version strings
    */
   private compareVersions(v1: string, v2: string): number {
+    // Validate inputs
+    if (!v1 || !v2 || typeof v1 !== 'string' || typeof v2 !== 'string') {
+      return 0; // Consider equal if invalid
+    }
+
     // Extract numeric parts only, ignoring pre-release identifiers
     const cleanVersion = (v: string) => v.split('-')[0];
     const parts1 = cleanVersion(v1)

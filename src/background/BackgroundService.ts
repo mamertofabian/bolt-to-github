@@ -1271,6 +1271,13 @@ export class BackgroundService {
           logger.error('Failed to track fresh install analytics:', analyticsError);
         }
 
+        // Track daily active user for fresh install
+        try {
+          await analytics.trackDailyActiveUser();
+        } catch (analyticsError) {
+          logger.error('Failed to track daily active user for fresh install:', analyticsError);
+        }
+
         // Open welcome page
         logger.info('Opening welcome page for new installation');
         await chrome.tabs.create({
@@ -1298,12 +1305,17 @@ export class BackgroundService {
           to: currentVersion,
         });
 
-        // Track version change and daily active user
+        // Track version change and daily active user independently
         try {
           await analytics.trackVersionChange(previousVersion, currentVersion);
+        } catch (analyticsError) {
+          logger.error('Failed to track version change analytics:', analyticsError);
+        }
+
+        try {
           await analytics.trackDailyActiveUser();
         } catch (analyticsError) {
-          logger.error('Failed to track update analytics:', analyticsError);
+          logger.error('Failed to track daily active user analytics:', analyticsError);
         }
 
         // Update stored version (keep outside try-catch as it's critical)
