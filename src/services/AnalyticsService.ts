@@ -459,8 +459,20 @@ export class AnalyticsService {
    * Compare version strings
    */
   private compareVersions(v1: string, v2: string): number {
-    const parts1 = v1.split('.').map(Number);
-    const parts2 = v2.split('.').map(Number);
+    // Extract numeric parts only, ignoring pre-release identifiers
+    const cleanVersion = (v: string) => v.split('-')[0];
+    const parts1 = cleanVersion(v1)
+      .split('.')
+      .map((part) => {
+        const num = parseInt(part, 10);
+        return isNaN(num) ? 0 : num;
+      });
+    const parts2 = cleanVersion(v2)
+      .split('.')
+      .map((part) => {
+        const num = parseInt(part, 10);
+        return isNaN(num) ? 0 : num;
+      });
 
     for (let i = 0; i < Math.max(parts1.length, parts2.length); i++) {
       const part1 = parts1[i] || 0;

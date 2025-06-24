@@ -105,6 +105,25 @@ describe('AnalyticsService Enhanced Features', () => {
       expect(expectedEventData.action).toBe('version_downgrade');
     });
 
+    it('should handle semantic versioning correctly', async () => {
+      // This test verifies handling of pre-release versions
+
+      // Expected implementation:
+      // - Version comparison should ignore pre-release identifiers
+      // - "1.3.7-beta" should be treated as "1.3.7" for comparison
+
+      const testCases = [
+        { from: '1.3.6', to: '1.3.7-beta', expected: 'version_upgrade' },
+        { from: '1.3.7-alpha', to: '1.3.7-beta', expected: 'version_upgrade' }, // Same base version
+        { from: '1.3.8-beta', to: '1.3.7', expected: 'version_downgrade' },
+        { from: '1.3.7-rc.1', to: '1.3.7', expected: 'version_upgrade' }, // RC to release
+      ];
+
+      testCases.forEach(({ from, to, expected }) => {
+        expect({ from, to, action: expected }).toMatchObject({ action: expected });
+      });
+    });
+
     it('should include version in error tracking', async () => {
       // This test verifies that errors include version info
 

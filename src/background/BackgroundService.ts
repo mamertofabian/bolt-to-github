@@ -1263,9 +1263,13 @@ export class BackgroundService {
         });
 
         // Track fresh installation
-        await analytics.trackExtensionEvent('fresh_install', {
-          version: currentVersion,
-        });
+        try {
+          await analytics.trackExtensionEvent('fresh_install', {
+            version: currentVersion,
+          });
+        } catch (analyticsError) {
+          logger.error('Failed to track fresh install analytics:', analyticsError);
+        }
 
         // Open welcome page
         logger.info('Opening welcome page for new installation');
@@ -1294,14 +1298,16 @@ export class BackgroundService {
           to: currentVersion,
         });
 
-        // Track version change
-        await analytics.trackVersionChange(previousVersion, currentVersion);
+        // Track version change and daily active user
+        try {
+          await analytics.trackVersionChange(previousVersion, currentVersion);
+          await analytics.trackDailyActiveUser();
+        } catch (analyticsError) {
+          logger.error('Failed to track update analytics:', analyticsError);
+        }
 
-        // Update stored version
+        // Update stored version (keep outside try-catch as it's critical)
         await chrome.storage.local.set({ lastKnownVersion: currentVersion });
-
-        // Track daily active user on update
-        await analytics.trackDailyActiveUser();
       }
     } catch (error) {
       logger.error('Error handling extension installation:', error);
