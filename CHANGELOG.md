@@ -1,3 +1,62 @@
+## 2025-06-25 - Version 1.3.7
+
+### 🎉 New Features
+
+- **Automatic README Generation** - Smart README creation for projects without meaningful documentation
+
+  - **ReadmeGeneratorService** - New service for intelligent README detection and generation
+  - **Push workflow integration** - Seamlessly integrated into ZipHandler push process
+  - **Content preservation** - Preserves existing meaningful README content
+  - **Case-insensitive detection** - Handles README, readme, Readme file variations
+  - **Project branding** - Generated READMEs include project name and Bolt to GitHub attribution
+  - **Empty file handling** - Automatically replaces empty or whitespace-only README files
+
+- **Enhanced Analytics with Version Tracking** - Comprehensive analytics improvements for better insights
+  - **Automatic version tracking** - All analytics events now include app version automatically
+  - **Version upgrade/downgrade tracking** - Monitor extension updates in real-time
+  - **New analytics methods** - Enhanced tracking capabilities:
+    - `trackFeatureAdoption` - Monitor feature adoption rates across versions
+    - `trackPerformance` - Track operation durations and performance metrics
+    - `trackUserJourney` - Monitor user progress through workflows
+    - `trackOperationResult` - Track success/failure rates with contextual data
+    - `trackDailyActiveUser` - Enhanced DAU tracking with version information
+    - `trackFeatureUsage` - Feature usage analytics with version correlation
+  - **Enhanced error tracking** - Version information included in error reports for better debugging
+  - **Privacy-compliant** - No PII collected in version tracking data
+
+### 🔧 Performance & Stability
+
+- **Background service improvements** - Enhanced version change detection on extension updates
+- **Utility function enhancements** - New helper functions in analytics.ts for easier integration
+- **Backward compatibility** - All existing analytics calls continue to work without changes
+
+### 🧪 Testing & Quality Improvements
+
+- **Comprehensive test coverage** - Added extensive tests for both new features:
+  - **ReadmeGeneratorService tests** - Full test suite for README generation logic
+  - **Analytics enhancement tests** - Versioning and enhanced analytics functionality tests
+  - **Integration tests** - ZipHandler integration with README generation
+- **Test fixtures improvements** - Enhanced ZipHandlerMocks with better test utilities
+
+### 📚 Documentation & Development
+
+- **Lint-check script** - Added new `pnpm run lint-check` command to package.json for development workflow
+- **Code review integration** - Implemented PR review feedback and improvements
+- **Enhanced commit messages** - Better structured commit history with conventional commits
+
+### 🛠️ Technical Improvements
+
+- **Service integration** - ReadmeGeneratorService integrated into existing ZipHandler workflow
+- **Analytics architecture** - Enhanced AnalyticsService with modular tracking methods
+- **Version management** - Improved version detection and tracking in BackgroundService
+- **Error handling** - Enhanced error reporting with version context for better debugging
+
+### 🐛 Bug Fixes
+
+- **Duplicate function removal** - Fixed duplicate function in ZipHandlerMocks test fixture
+- **Test file organization** - Reorganized test files for better maintainability
+- **Analytics method consistency** - Ensured consistent method signatures across analytics functions
+
 ## 2025-06-14 - Version 1.3.6
 
 ### ⚠️ Important: This is a Major Stability Release

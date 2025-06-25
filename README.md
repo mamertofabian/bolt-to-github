@@ -31,7 +31,22 @@ A Chrome extension that automatically captures ZIP file downloads from bolt.new,
   <img src="https://img.shields.io/badge/Install%20from-Chrome%20Web%20Store-blue?style=for-the-badge&logo=google-chrome&logoColor=white" alt="Install from Chrome Web Store" height="40">
 </a>
 
-### Latest Version: v1.3.6 (Development)
+### Latest Version: v1.3.7 (Development)
+
+#### 📝 Version 1.3.7 - Automatic README Generation
+
+**Major Features:**
+
+- **Automatic README Generation** - Smart documentation creation for projects without meaningful README files
+- **Smart Content Detection** - Preserves existing documentation while replacing empty or whitespace-only files
+- **Zero Setup Required** - Works automatically during push to GitHub with no configuration needed
+
+**Key Benefits:**
+
+- **Never push undocumented projects** - Automatic README creation ensures every project has meaningful documentation
+- **Intelligent detection** - Handles README, readme, Readme file variations with case-insensitive detection
+- **Content preservation** - Existing meaningful documentation is always preserved
+- **Project branding** - Generated READMEs include project name and Bolt to GitHub attribution
 
 #### 🔄 Version 1.3.6 - Project Synchronization & Stability
 
