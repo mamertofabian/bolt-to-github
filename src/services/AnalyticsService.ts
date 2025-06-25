@@ -50,8 +50,12 @@ export class AnalyticsService {
 
   private constructor() {
     // Don't initialize immediately to avoid DOM issues
-    // Use default API secret - in production, this would be replaced via build process
-    this.API_SECRET = 'SDSrX58bTAmEqVg2awosDA';
+    // Get API secret from environment variable
+    this.API_SECRET = import.meta.env.VITE_GA4_API_SECRET || '';
+
+    if (!this.API_SECRET) {
+      logger.warn('GA4 API_SECRET not configured. Analytics will be disabled.');
+    }
   }
 
   public static getInstance(): AnalyticsService {
@@ -287,7 +291,7 @@ export class AnalyticsService {
       await this.initializeConfig();
     }
 
-    if (!this.config || !this.config.enabled) {
+    if (!this.config || !this.config.enabled || !this.API_SECRET) {
       return;
     }
 

@@ -169,7 +169,14 @@ export class BackgroundService {
         ],
       };
 
-      const url = `https://www.google-analytics.com/mp/collect?measurement_id=G-6J0TXX2XW0&api_secret=SDSrX58bTAmEqVg2awosDA`;
+      const apiSecret = import.meta.env.VITE_GA4_API_SECRET || '';
+
+      if (!apiSecret) {
+        logger.debug('GA4 API_SECRET not configured. Skipping analytics event.');
+        return;
+      }
+
+      const url = `https://www.google-analytics.com/mp/collect?measurement_id=G-6J0TXX2XW0&api_secret=${apiSecret}`;
 
       await fetch(url, {
         method: 'POST',
