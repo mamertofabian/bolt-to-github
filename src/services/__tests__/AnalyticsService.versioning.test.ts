@@ -41,8 +41,8 @@ describe('AnalyticsService Version Tracking', () => {
 
   beforeEach(() => {
     jest.clearAllMocks();
-    // Reset singleton instance by clearing module cache
-    jest.resetModules();
+    // Reset singleton instance
+    (AnalyticsService as any).instance = null;
     analyticsService = AnalyticsService.getInstance();
   });
 

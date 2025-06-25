@@ -114,96 +114,15 @@ export class BackgroundService {
           extensionInstallDate: Date.now(), // For fresh install detection
           totalProjectsCreated: 0, // Track project creation for fresh install detection
         });
-        await this.sendAnalyticsEvent('extension_installed', { version });
+        await analytics.trackExtensionEvent('extension_installed', { version });
       } else if (result.lastVersion !== version) {
         // Extension updated
         await chrome.storage.local.set({ lastVersion: version });
-        await this.sendAnalyticsEvent('extension_updated', { version });
+        await analytics.trackExtensionEvent('extension_updated', { version });
       }
     } catch (error) {
       logger.error('Failed to track extension startup:', error);
     }
-  }
-
-  private async sendAnalyticsEvent(
-    eventName: string,
-    params: Record<string, string | number | boolean> = {}
-  ): Promise<void> {
-    try {
-      // Get or generate client ID
-      let clientId = '';
-      try {
-        const result = await chrome.storage.local.get(['analyticsClientId']);
-        if (result.analyticsClientId) {
-          clientId = result.analyticsClientId;
-        } else {
-          clientId = this.generateClientId();
-          await chrome.storage.local.set({ analyticsClientId: clientId });
-        }
-      } catch (error) {
-        logger.debug('Failed to get analytics client ID:', error);
-        clientId = this.generateClientId();
-      }
-
-      // Check if analytics is enabled
-      let enabled = true;
-      try {
-        const result = await chrome.storage.sync.get(['analyticsEnabled']);
-        enabled = result.analyticsEnabled !== false;
-      } catch (error) {
-        logger.debug('Could not check analytics preference:', error);
-      }
-
-      if (!enabled) {
-        return;
-      }
-
-      // Send to Google Analytics
-      const payload = {
-        client_id: clientId,
-        events: [
-          {
-            name: eventName,
-            params,
-          },
-        ],
-      };
-
-      const apiSecret = import.meta.env.VITE_GA4_API_SECRET || '';
-
-      if (!apiSecret) {
-        logger.debug('GA4 API_SECRET not configured. Skipping analytics event.');
-        return;
-      }
-
-      const url = `https://www.google-analytics.com/mp/collect?measurement_id=G-6J0TXX2XW0&api_secret=${apiSecret}`;
-
-      await fetch(url, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(payload),
-        mode: 'no-cors',
-      });
-
-      logger.info('📊 Analytics event sent:', eventName, params);
-    } catch (error) {
-      logger.debug('Analytics event failed (expected in some contexts):', error);
-    }
-  }
-
-  private generateClientId(): string {
-    // Generate a UUID-like client ID
-    if (typeof crypto !== 'undefined' && crypto.randomUUID) {
-      return crypto.randomUUID();
-    }
-
-    return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function (c) {
-      const r = (Math.random() * 16) | 0;
-      const v = c === 'x' ? r : (r & 0x3) | 0x8;
-      return v.toString(16);
-    });
   }
 
   private setupLogRotation(): void {
@@ -380,9 +299,10 @@ export class BackgroundService {
         sendResponse({ success: true });
       } else if (message.type === 'USER_LOGOUT') {
         logger.info('🚪 User logout requested from popup');
-        await this.sendAnalyticsEvent('user_action', {
+        await analytics.trackEvent({
+          category: 'user_action',
           action: 'user_logout',
-          context: 'popup',
+          label: JSON.stringify({ context: 'popup' }),
         });
         await this.supabaseAuthService.logout();
         sendResponse({ success: true });
@@ -392,10 +312,10 @@ export class BackgroundService {
         sendResponse({ success: true });
       } else if (message.type === 'SHOW_UPGRADE_MODAL') {
         logger.info('🔊 Received SHOW_UPGRADE_MODAL message:', message.feature);
-        await this.sendAnalyticsEvent('user_action', {
+        await analytics.trackEvent({
+          category: 'user_action',
           action: 'upgrade_modal_requested',
-          feature: message.feature,
-          context: 'content_script',
+          label: JSON.stringify({ feature: message.feature, context: 'content_script' }),
         });
         // Store the upgrade modal context and open popup
         await chrome.storage.local.set({
@@ -565,9 +485,10 @@ export class BackgroundService {
 
       switch (message.type) {
         case 'ZIP_DATA': {
-          await this.sendAnalyticsEvent('user_action', {
+          await analytics.trackEvent({
+            category: 'user_action',
             action: 'zip_upload_initiated',
-            context: 'content_script',
+            label: JSON.stringify({ context: 'content_script' }),
           });
           // Type narrowing for ZIP_DATA message
           const zipMessage = message as ZipDataMessage;
@@ -585,12 +506,15 @@ export class BackgroundService {
         case 'SET_COMMIT_MESSAGE': {
           const commitMessage = message as SetCommitMessage;
           logger.info('Setting commit message:', commitMessage.data.message);
-          await this.sendAnalyticsEvent('user_action', {
+          await analytics.trackEvent({
+            category: 'user_action',
             action: 'commit_message_customized',
-            has_custom_message: Boolean(
-              commitMessage.data?.message &&
-                commitMessage.data.message !== 'Commit from Bolt to GitHub'
-            ),
+            label: JSON.stringify({
+              has_custom_message: Boolean(
+                commitMessage.data?.message &&
+                  commitMessage.data.message !== 'Commit from Bolt to GitHub'
+              ),
+            }),
           });
           if (commitMessage.data && commitMessage.data.message) {
             this.pendingCommitMessage = commitMessage.data.message;
@@ -600,9 +524,10 @@ export class BackgroundService {
 
         case 'OPEN_SETTINGS':
           logger.info('Opening settings popup');
-          await this.sendAnalyticsEvent('user_action', {
+          await analytics.trackEvent({
+            category: 'user_action',
             action: 'settings_opened',
-            context: 'content_script',
+            label: JSON.stringify({ context: 'content_script' }),
           });
           await chrome.storage.local.set({ popupContext: 'settings' });
           logger.info('✅ Storage set: popupContext = settings');
@@ -616,9 +541,10 @@ export class BackgroundService {
 
         case 'OPEN_HOME':
           logger.info('Opening home/dashboard popup');
-          await this.sendAnalyticsEvent('user_action', {
+          await analytics.trackEvent({
+            category: 'user_action',
             action: 'dashboard_opened',
-            context: 'content_script',
+            label: JSON.stringify({ context: 'content_script' }),
           });
           await chrome.storage.local.set({ popupContext: 'home' });
           logger.info('✅ Storage set: popupContext = home');
@@ -632,9 +558,10 @@ export class BackgroundService {
 
         case 'OPEN_ISSUES': {
           logger.info('Opening issues popup');
-          await this.sendAnalyticsEvent('user_action', {
+          await analytics.trackEvent({
+            category: 'user_action',
             action: 'issues_opened',
-            context: 'content_script',
+            label: JSON.stringify({ context: 'content_script' }),
           });
           // Check premium status before allowing access
           const hasIssuesAccess = this.supabaseAuthService.isPremium();
@@ -652,9 +579,10 @@ export class BackgroundService {
 
         case 'OPEN_PROJECTS':
           logger.info('Opening projects popup');
-          await this.sendAnalyticsEvent('user_action', {
+          await analytics.trackEvent({
+            category: 'user_action',
             action: 'projects_opened',
-            context: 'content_script',
+            label: JSON.stringify({ context: 'content_script' }),
           });
           await chrome.storage.local.set({ popupContext: 'projects' });
           logger.info('✅ Storage set: popupContext = projects');
@@ -669,9 +597,12 @@ export class BackgroundService {
         case 'OPEN_FILE_CHANGES': {
           const fileChangesMessage = message as OpenFileChangesMessage;
           logger.info('Opening file changes popup');
-          await this.sendAnalyticsEvent('user_action', {
+          await analytics.trackEvent({
+            category: 'user_action',
             action: 'file_changes_viewed',
-            file_count: Object.keys(fileChangesMessage.data?.changes || {}).length,
+            label: JSON.stringify({
+              file_count: Object.keys(fileChangesMessage.data?.changes || {}).length,
+            }),
           });
           // Store the file changes in local storage for the popup to retrieve
           await chrome.storage.local.set({
@@ -687,9 +618,10 @@ export class BackgroundService {
         case 'IMPORT_PRIVATE_REPO': {
           const importMessage = message as ImportPrivateRepoMessage;
           logger.info('🔄 Processing private repo import:', importMessage.data.repoName);
-          await this.sendAnalyticsEvent('user_action', {
+          await analytics.trackEvent({
+            category: 'user_action',
             action: 'private_repo_import_started',
-            has_custom_branch: Boolean(importMessage.data.branch),
+            label: JSON.stringify({ has_custom_branch: Boolean(importMessage.data.branch) }),
           });
 
           // Ensure TempRepoManager is initialized before proceeding
@@ -721,7 +653,8 @@ export class BackgroundService {
             importMessage.data.repoName,
             importMessage.data.branch
           );
-          await this.sendAnalyticsEvent('user_action', {
+          await analytics.trackEvent({
+            category: 'user_action',
             action: 'private_repo_import_completed',
           });
           logger.info(
@@ -730,7 +663,8 @@ export class BackgroundService {
           break;
         }
         case 'DELETE_TEMP_REPO':
-          await this.sendAnalyticsEvent('user_action', {
+          await analytics.trackEvent({
+            category: 'user_action',
             action: 'temp_repo_cleanup',
           });
           await this.tempRepoManager?.cleanupTempRepos(true);
@@ -753,8 +687,7 @@ export class BackgroundService {
 
         case 'CONTENT_SCRIPT_READY':
           logger.info('Content script is ready');
-          await this.sendAnalyticsEvent('extension_event', {
-            action: 'content_script_ready',
+          await analytics.trackExtensionEvent('content_script_ready', {
             context: 'bolt_page',
           });
           break;
@@ -782,11 +715,10 @@ export class BackgroundService {
       logger.error(`Error handling message ${message.type}:`, error);
 
       // Track errors for debugging
-      await this.sendAnalyticsEvent('extension_error', {
-        error_type: 'port_message_handler',
-        message_type: message.type,
-        error_message: error instanceof Error ? error.message : 'Unknown error',
-      });
+      await analytics.trackError(
+        error instanceof Error ? error : new Error('Port message handler error'),
+        `port_message_handler_${message.type}`
+      );
 
       this.sendResponse(port, {
         type: 'UPLOAD_STATUS',
@@ -925,7 +857,7 @@ export class BackgroundService {
           commitMessage: this.pendingCommitMessage,
         };
 
-        await this.sendAnalyticsEvent('github_upload_started', {
+        await analytics.trackGitHubOperation('upload_started', true, {
           ...uploadMetadata,
         });
 
@@ -943,7 +875,7 @@ export class BackgroundService {
         uploadSuccess = true;
 
         // Track successful upload
-        await this.sendAnalyticsEvent('github_upload_completed', {
+        await analytics.trackGitHubOperation('upload_completed', true, {
           ...uploadMetadata,
           duration,
         });
@@ -968,18 +900,17 @@ export class BackgroundService {
         const isGitHubError = errorMessage.includes('GitHub API Error');
 
         // Track upload failure
-        await this.sendAnalyticsEvent('github_upload_failed', {
+        await analytics.trackGitHubOperation('upload_failed', false, {
           ...uploadMetadata,
           duration,
           error_type: isGitHubError ? 'github_api' : 'processing',
           error_message: errorMessage,
         });
 
-        await this.sendAnalyticsEvent('extension_error', {
-          error_type: 'upload',
-          error_message: errorMessage,
-          context: 'zip_processing',
-        });
+        await analytics.trackError(
+          decodeError instanceof Error ? decodeError : new Error(errorMessage),
+          'upload_zip_processing'
+        );
 
         // Mark operation as failed
         await this.operationStateManager.failOperation(
@@ -1012,18 +943,17 @@ export class BackgroundService {
 
       if (!uploadSuccess) {
         const duration = Date.now() - startTime;
-        await this.sendAnalyticsEvent('github_upload_failed', {
+        await analytics.trackGitHubOperation('upload_failed', false, {
           ...uploadMetadata,
           duration,
           error_type: 'general',
           error_message: error instanceof Error ? error.message : 'Unknown error',
         });
 
-        await this.sendAnalyticsEvent('extension_error', {
-          error_type: 'upload',
-          error_message: error instanceof Error ? error.message : 'Unknown error',
-          context: 'general',
-        });
+        await analytics.trackError(
+          error instanceof Error ? error : new Error('Unknown upload error'),
+          'upload_general'
+        );
 
         // Mark operation as failed for any outer catch errors
         await this.operationStateManager.failOperation(
@@ -1114,52 +1044,56 @@ export class BackgroundService {
     try {
       switch (eventType) {
         case 'extension_opened':
-          await this.sendAnalyticsEvent('extension_opened', {
+          await analytics.trackExtensionEvent('extension_opened', {
             context: eventData.context || 'unknown',
           });
           break;
 
         case 'bolt_project_event':
-          await this.sendAnalyticsEvent(
-            eventData.eventType || 'bolt_project_event',
-            eventData.projectMetadata || {}
-          );
+          await analytics.trackEvent({
+            category: 'bolt_project',
+            action: eventData.eventType || 'bolt_project_event',
+            label: eventData.projectMetadata
+              ? JSON.stringify(eventData.projectMetadata)
+              : undefined,
+          });
           break;
 
         case 'extension_event':
-          await this.sendAnalyticsEvent(
+          await analytics.trackExtensionEvent(
             eventData.eventType || 'extension_event',
             eventData.details || {}
           );
           break;
 
         case 'user_preference':
-          await this.sendAnalyticsEvent(
-            eventData.action || 'user_preference',
-            eventData.details || {}
-          );
+          await analytics.trackEvent({
+            category: 'user_preference',
+            action: eventData.action || 'preference_changed',
+            label: eventData.details ? JSON.stringify(eventData.details) : undefined,
+          });
           break;
 
         case 'page_view':
-          await this.sendAnalyticsEvent('page_view', {
-            page: eventData.page || 'unknown',
-            ...(eventData.metadata || {}),
-          });
+          await analytics.trackPageView(
+            eventData.page || '/unknown',
+            String(eventData.metadata?.title || 'Extension Page')
+          );
           break;
 
         case 'github_operation':
-          await this.sendAnalyticsEvent(`github_${eventData.operation || 'unknown'}`, {
-            success: Boolean(eventData.success),
-            ...(eventData.metadata || {}),
-          });
+          await analytics.trackGitHubOperation(
+            eventData.operation || 'unknown',
+            Boolean(eventData.success),
+            eventData.metadata || {}
+          );
           break;
 
         case 'error':
-          await this.sendAnalyticsEvent('extension_error', {
-            error_type: eventData.errorType || 'unknown',
-            error_message: eventData.error || 'unknown',
-            context: eventData.context || 'unknown',
-          });
+          await analytics.trackError(
+            new Error(eventData.error || 'Unknown error'),
+            eventData.context || 'unknown'
+          );
           break;
 
         default:
