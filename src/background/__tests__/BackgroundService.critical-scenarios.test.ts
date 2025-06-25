@@ -8,7 +8,7 @@
  * Priority Score: 100 - Critical business logic with high complexity risk
  */
 
-import type { Mock } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, type Mock } from 'vitest';
 import { BackgroundServiceTestSuite } from '../test-fixtures';
 import { MessageFixtures, TestData } from '../test-fixtures/BackgroundServiceTestFixtures';
 
@@ -240,7 +240,7 @@ describe('BackgroundService Critical Scenarios', () => {
           await new Promise((resolve) => setTimeout(resolve, 50));
         } catch {
           // Should not throw unhandled errors
-          fail(`Service crashed on malformed message: ${JSON.stringify(message)}`);
+          expect.fail(`Service crashed on malformed message: ${JSON.stringify(message)}`);
         }
       }
 

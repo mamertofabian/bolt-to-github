@@ -286,7 +286,7 @@ describe('GitHubAppService - Critical Business Logic', () => {
 
       try {
         await env.service.getAccessToken();
-        fail('Should have thrown error');
+        expect.fail('Should have thrown error');
       } catch (error: any) {
         expect(error.message).toContain('Re-authentication required');
         expect(error.message).toContain('No GitHub App configuration found');
@@ -307,7 +307,7 @@ describe('GitHubAppService - Critical Business Logic', () => {
 
       try {
         await env.service.getAccessToken();
-        fail('Should have thrown error');
+        expect.fail('Should have thrown error');
       } catch (error: any) {
         expect(error.message).toContain('Re-authentication required');
         expect(error.message).toContain('Access token expired and no refresh token available');
@@ -327,7 +327,7 @@ describe('GitHubAppService - Critical Business Logic', () => {
 
       try {
         await env.service.getAccessToken();
-        fail('Should have thrown error');
+        expect.fail('Should have thrown error');
       } catch (error: any) {
         expect(error.message).toContain('Re-authentication required');
         expect(error.message).toContain('Failed to renew access token');
@@ -346,7 +346,7 @@ describe('GitHubAppService - Critical Business Logic', () => {
 
       try {
         await env.service.getAccessToken();
-        fail('Should have thrown error');
+        expect.fail('Should have thrown error');
       } catch (error: any) {
         expect(error.message).toBe('Unknown error occurred');
       }
@@ -364,7 +364,7 @@ describe('GitHubAppService - Critical Business Logic', () => {
 
       try {
         await env.service.getAccessToken();
-        fail('Should have thrown error');
+        expect.fail('Should have thrown error');
       } catch (error: any) {
         // When error message is missing, it shows "undefined"
         expect(error.message).toBe('Re-authentication required: undefined');

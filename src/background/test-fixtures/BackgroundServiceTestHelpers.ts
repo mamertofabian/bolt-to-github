@@ -5,14 +5,15 @@
  * designed to reveal real usage patterns and catch potential bugs.
  */
 
+import { type Mock, vi } from 'vitest';
+import type { Message } from '../../lib/types';
+import { MockServiceFactory, ServiceMocks } from './BackgroundServiceMocks';
 import {
   BackgroundServiceTestEnvironment,
   MessageFixtures,
-  TestData,
   MockPort,
+  TestData,
 } from './BackgroundServiceTestFixtures';
-import { MockServiceFactory, ServiceMocks } from './BackgroundServiceMocks';
-import type { Message } from '../../lib/types';
 
 // =============================================================================
 // CONTROLLED TEST ENVIRONMENTS
@@ -50,7 +51,7 @@ export class BackgroundServiceIntegrationEnvironment {
 
     this.serviceFactory.resetAllMocks();
     this.chromeEnv.teardown();
-    jest.resetModules();
+    vi.resetModules();
   }
 
   private async waitForInitialization(maxWait: number = 5000): Promise<void> {
@@ -137,7 +138,7 @@ export class ErrorInjectionHelper {
   }
 
   injectIntermittentNetworkFailure(failureRate: number = 0.5): void {
-    (global.fetch as jest.Mock).mockImplementation(() => {
+    (global.fetch as Mock).mockImplementation(() => {
       if (Math.random() < failureRate) {
         return Promise.reject(new Error('Network error'));
       }
@@ -147,7 +148,7 @@ export class ErrorInjectionHelper {
 
   // GitHub API failures
   injectGitHubRateLimit(): void {
-    (global.fetch as jest.Mock).mockResolvedValue({
+    (global.fetch as Mock).mockResolvedValue({
       ok: false,
       status: 429,
       headers: new Map([
@@ -386,7 +387,7 @@ export class StateValidationHelper {
   static validateAnalyticsEvents(
     expectedEvents: Array<{ name: string; params?: unknown }>
   ): boolean {
-    const fetchCalls = (global.fetch as jest.Mock).mock.calls;
+    const fetchCalls = (global.fetch as Mock).mock.calls;
     const analyticsCalls = fetchCalls.filter((call) => call[0]?.includes('google-analytics.com'));
 
     for (const expectedEvent of expectedEvents) {

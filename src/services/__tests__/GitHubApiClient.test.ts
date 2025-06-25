@@ -1,9 +1,9 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { GitHubApiClient, GitHubApiError } from '../GitHubApiClient';
-import { beforeEach, describe, expect, it, jest } from '@jest/globals';
 
 // Create a mock for the global fetch function
-global.fetch = jest.fn().mockImplementation(() =>
+global.fetch = vi.fn().mockImplementation(() =>
   Promise.resolve({
     ok: true,
     status: 200,
@@ -23,7 +23,7 @@ const createMockResponse = (status: number, data: any, headers: Record<string, s
     ok: status >= 200 && status < 300,
     status,
     statusText: status === 200 ? 'OK' : 'Error',
-    json: jest.fn<() => Promise<any>>().mockResolvedValue(data),
+    json: vi.fn().mockResolvedValue(data),
     headers: headersObj,
   } as unknown as Response;
 };
@@ -36,7 +36,7 @@ describe('GitHubApiClient', () => {
     client = new GitHubApiClient('test-token');
 
     // Reset the fetch mock
-    jest.clearAllMocks();
+    vi.clearAllMocks();
   });
 
   describe('request', () => {
@@ -44,7 +44,7 @@ describe('GitHubApiClient', () => {
       // Arrange
       const mockData = { name: 'test-repo' };
       const mockResponse = createMockResponse(200, mockData);
-      (global.fetch as jest.MockedFunction<typeof fetch>).mockResolvedValueOnce(mockResponse);
+      (global.fetch as ReturnType<typeof vi.fn>).mockResolvedValueOnce(mockResponse);
 
       // Act
       const result = await client.request('GET', '/repos/test-user/test-repo');
@@ -66,7 +66,7 @@ describe('GitHubApiClient', () => {
     it('should handle 204 No Content responses', async () => {
       // Arrange
       const mockResponse = createMockResponse(204, null);
-      (global.fetch as jest.MockedFunction<typeof fetch>).mockResolvedValueOnce(mockResponse);
+      (global.fetch as ReturnType<typeof vi.fn>).mockResolvedValueOnce(mockResponse);
 
       // Act
       const result = await client.request('DELETE', '/repos/test-user/test-repo');
@@ -79,7 +79,7 @@ describe('GitHubApiClient', () => {
       // Arrange
       const errorData = { message: 'Not Found' };
       const mockResponse = createMockResponse(404, errorData);
-      (global.fetch as jest.MockedFunction<typeof fetch>).mockResolvedValueOnce(mockResponse);
+      (global.fetch as ReturnType<typeof vi.fn>).mockResolvedValueOnce(mockResponse);
 
       // Act
       let error: any;
@@ -110,7 +110,7 @@ describe('GitHubApiClient', () => {
       const successResponse = createMockResponse(200, { success: true });
 
       // First call hits rate limit, second call succeeds
-      (global.fetch as jest.MockedFunction<typeof fetch>)
+      (global.fetch as ReturnType<typeof vi.fn>)
         .mockResolvedValueOnce(rateLimitResponse)
         .mockResolvedValueOnce(successResponse);
 
@@ -124,9 +124,7 @@ describe('GitHubApiClient', () => {
 
     it('should handle network errors', async () => {
       // Arrange
-      (global.fetch as jest.MockedFunction<typeof fetch>).mockRejectedValueOnce(
-        new Error('Network error')
-      );
+      (global.fetch as ReturnType<typeof vi.fn>).mockRejectedValueOnce(new Error('Network error'));
 
       // Act & Assert
       await expect(client.request('GET', '/user')).rejects.toThrow(
@@ -147,7 +145,7 @@ describe('GitHubApiClient', () => {
       };
 
       const mockResponse = createMockResponse(200, mockData);
-      (global.fetch as jest.MockedFunction<typeof fetch>).mockResolvedValueOnce(mockResponse);
+      (global.fetch as ReturnType<typeof vi.fn>).mockResolvedValueOnce(mockResponse);
 
       // Act
       const result = await client.getRateLimit();

@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 /**
  * Edge case and stress tests for TempRepoManager
  *
@@ -5,21 +6,30 @@
  * that could reveal hidden bugs or performance issues
  */
 
+import { afterEach, beforeEach, describe, expect, it, test, vi } from 'vitest';
 import { BackgroundTempRepoManager, STORAGE_KEY } from '../TempRepoManager';
-import { TempRepoTestLifecycle, TempRepoTestData, ValidationHelpers } from '../test-fixtures';
 import type { TempRepoManagerTestEnvironment } from '../test-fixtures';
+import { TempRepoTestData, TempRepoTestLifecycle, ValidationHelpers } from '../test-fixtures';
 
 // Mock the OperationStateManager module
-jest.mock('../../content/services/OperationStateManager');
+vi.mock('../../content/services/OperationStateManager', () => ({
+  OperationStateManager: {
+    getInstance: vi.fn(),
+  },
+}));
 
 describe('TempRepoManager - Edge Cases & Stress Tests', () => {
   let lifecycle: TempRepoTestLifecycle;
   let env: TempRepoManagerTestEnvironment;
   let manager: BackgroundTempRepoManager;
 
-  beforeEach(() => {
+  beforeEach(async () => {
     lifecycle = new TempRepoTestLifecycle();
     env = lifecycle.beforeEach();
+
+    // Import and setup the mock after the environment is ready
+    const { OperationStateManager } = await import('../../content/services/OperationStateManager');
+    (OperationStateManager.getInstance as any).mockReturnValue(env.mockOperationStateManager);
   });
 
   afterEach(() => {
@@ -103,11 +113,11 @@ describe('TempRepoManager - Edge Cases & Stress Tests', () => {
 
     describe('Time Boundary Conditions', () => {
       beforeEach(() => {
-        jest.useFakeTimers();
+        vi.useFakeTimers();
       });
 
       afterEach(() => {
-        jest.useRealTimers();
+        vi.useRealTimers();
       });
 
       it('should handle repository at exact expiry boundary (60000ms)', async () => {
@@ -418,13 +428,13 @@ describe('TempRepoManager - Edge Cases & Stress Tests', () => {
       manager = lifecycle.createManager('success');
 
       // Make operations fail
-      env.mockOperationStateManager.startOperation = jest.fn(
+      env.mockOperationStateManager.startOperation = vi.fn(
         async (
           _type: string,
           _operationId: string,
           _description: string,
           _metadata?: Record<string, unknown>
-        ) => {
+        ): Promise<void> => {
           throw new Error('Operation tracking failed');
         }
       );

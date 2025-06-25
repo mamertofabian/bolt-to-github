@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 /**
  * ContentManager Edge Cases Tests
  *
@@ -8,61 +9,65 @@
  * - Error injection and fault tolerance
  */
 
+import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
+
 // Mock WhatsNewModal component
-jest.mock('$lib/components/WhatsNewModal.svelte', () => ({
-  default: jest.fn().mockImplementation(function (this: unknown, options: Record<string, unknown>) {
+vi.mock('$lib/components/WhatsNewModal.svelte', () => ({
+  default: vi.fn().mockImplementation(function (this: unknown, options: Record<string, unknown>) {
     (this as Record<string, unknown>).target = options.target;
     (this as Record<string, unknown>).props = options.props;
-    (this as Record<string, unknown>).$destroy = jest.fn();
-    (this as Record<string, unknown>).$set = jest.fn();
+    (this as Record<string, unknown>).$destroy = vi.fn();
+    (this as Record<string, unknown>).$set = vi.fn();
     return this;
   }),
 }));
 
 // Mock UIManager
-jest.mock('../UIManager');
+vi.mock('../UIManager');
 
 // Mock console methods using spies
 beforeAll(() => {
-  jest.spyOn(console, 'log').mockImplementation(() => {});
-  jest.spyOn(console, 'warn').mockImplementation(() => {});
-  jest.spyOn(console, 'error').mockImplementation(() => {});
-  jest.spyOn(console, 'debug').mockImplementation(() => {});
-  jest.spyOn(console, 'info').mockImplementation(() => {});
+  vi.spyOn(console, 'log').mockImplementation(() => {});
+  vi.spyOn(console, 'warn').mockImplementation(() => {});
+  vi.spyOn(console, 'error').mockImplementation(() => {});
+  vi.spyOn(console, 'debug').mockImplementation(() => {});
+  vi.spyOn(console, 'info').mockImplementation(() => {});
 });
 
 afterAll(() => {
-  jest.restoreAllMocks();
+  vi.restoreAllMocks();
 });
 
 import { ContentManager } from '../ContentManager';
 import {
-  setupBasicTest,
   createTestEnvironment,
+  getContentManagerState,
+  setupBasicTest,
   setupChromeAPIMocks,
   setupWindowMocks,
   simulatePortState,
-  validateCleanup,
-  getContentManagerState,
-  wait,
-  type TestEnvironment,
+  TestMessages,
   TestPortStates,
   TestUrls,
-  TestMessages,
+  validateCleanup,
+  wait,
+  type TestEnvironment,
 } from '../test-fixtures';
 
 describe('ContentManager - Edge Cases', () => {
   let testEnv: TestEnvironment;
 
-  beforeEach(() => {
+  beforeEach(async () => {
     // Clear all mocks before each test
-    jest.clearAllMocks();
-    jest.spyOn(console, 'warn').mockImplementation(() => {});
-    jest.spyOn(console, 'error').mockImplementation(() => {});
-    jest.spyOn(console, 'debug').mockImplementation(() => {});
+    vi.clearAllMocks();
+    vi.spyOn(console, 'warn').mockImplementation(() => {});
+    vi.spyOn(console, 'error').mockImplementation(() => {});
+    vi.spyOn(console, 'debug').mockImplementation(() => {});
     // Reset UIManager singleton
-    const { UIManager } = jest.requireMock('../UIManager');
-    UIManager.resetInstance();
+    const { UIManager } = await import('../UIManager');
+    if (UIManager.resetInstance) {
+      UIManager.resetInstance();
+    }
   });
 
   afterEach(() => {
@@ -73,7 +78,7 @@ describe('ContentManager - Edge Cases', () => {
       }
       testEnv.cleanup();
     }
-    jest.restoreAllMocks();
+    vi.restoreAllMocks();
   });
 
   describe('Basic Reliability', () => {
@@ -285,7 +290,7 @@ describe('ContentManager - Edge Cases', () => {
 
       // Mock port.postMessage to throw
       if (testEnv.mockPort) {
-        testEnv.mockPort.postMessage = jest.fn(() => {
+        testEnv.mockPort.postMessage = vi.fn(() => {
           throw new Error('Mock postMessage failure');
         });
 
@@ -304,8 +309,8 @@ describe('ContentManager - Edge Cases', () => {
       setupWindowMocks(TestUrls.BOLT_NEW_PROJECT);
 
       // Mock storage to throw errors
-      (chrome.storage.local.get as jest.Mock).mockRejectedValue(new Error('Storage error'));
-      (chrome.storage.local.remove as jest.Mock).mockRejectedValue(new Error('Storage error'));
+      (chrome.storage.local.get as any).mockRejectedValue(new Error('Storage error'));
+      (chrome.storage.local.remove as any).mockRejectedValue(new Error('Storage error'));
 
       // Should not throw during creation
       expect(() => new ContentManager()).not.toThrow();
@@ -318,7 +323,7 @@ describe('ContentManager - Edge Cases', () => {
 
       // Mock chrome.runtime.connect to return null
       const originalConnect = chrome.runtime.connect;
-      (chrome.runtime as Record<string, unknown>).connect = jest.fn(() => null);
+      (chrome.runtime as Record<string, unknown>).connect = vi.fn(() => null);
 
       // Should not throw
       expect(() => new ContentManager()).not.toThrow();

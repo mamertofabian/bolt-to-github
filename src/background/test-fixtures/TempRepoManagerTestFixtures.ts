@@ -976,7 +976,7 @@ export const TempRepoAssertionHelpers = {
   expectBoltTabCreated(
     tabs: TempRepoMockChromeTabs,
     expectedOwner: string,
-    expectedRepo: string | vi.AsymmetricMatcher
+    expectedRepo: string
   ): void {
     const createdTab = tabs.getLastCreatedTab();
     expect(createdTab).toBeDefined();

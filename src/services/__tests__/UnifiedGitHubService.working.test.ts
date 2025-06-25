@@ -5,23 +5,24 @@
  * It focuses on core functionality that can be reliably tested.
  */
 
+import type { Mock } from 'vitest';
 import { UnifiedGitHubService } from '../UnifiedGitHubService';
 import {
-  TestFixtures,
-  MockFetchResponseBuilder,
   MockChromeStorage,
+  MockFetchResponseBuilder,
+  TestFixtures,
   UnifiedGitHubServiceTestHelpers,
 } from './test-fixtures';
 
 // Mock the AuthenticationStrategyFactory
-jest.mock('../AuthenticationStrategyFactory', () => {
-  const { MockAuthenticationStrategyFactory } = jest.requireActual(
+vi.mock('../AuthenticationStrategyFactory', async () => {
+  const { MockAuthenticationStrategyFactory } = await import(
     './test-fixtures/UnifiedGitHubServiceFixtures'
   );
   const mockFactory = new MockAuthenticationStrategyFactory();
   return {
     AuthenticationStrategyFactory: {
-      getInstance: jest.fn(() => mockFactory),
+      getInstance: vi.fn(() => mockFactory),
     },
   };
 });
@@ -30,7 +31,7 @@ describe('UnifiedGitHubService - Working Tests', () => {
   let mockFetch: MockFetchResponseBuilder;
   let mockStorage: MockChromeStorage;
 
-  beforeEach(() => {
+  beforeEach(async () => {
     mockFetch = new MockFetchResponseBuilder();
     mockStorage = new MockChromeStorage();
 
@@ -38,15 +39,15 @@ describe('UnifiedGitHubService - Working Tests', () => {
     mockStorage.loadGitHubSettings();
     mockStorage.loadAuthenticationMethod('pat');
 
-    jest.clearAllMocks();
+    vi.clearAllMocks();
   });
 
   afterEach(() => {
     mockFetch.reset();
     mockStorage.reset();
 
-    if (global.fetch && typeof (global.fetch as jest.Mock).mockRestore === 'function') {
-      (global.fetch as jest.Mock).mockRestore();
+    if (global.fetch && typeof (global.fetch as Mock).mockRestore === 'function') {
+      (global.fetch as Mock).mockRestore();
     }
   });
 

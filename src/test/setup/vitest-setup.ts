@@ -1,6 +1,9 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import '@testing-library/jest-dom';
 import { afterAll, afterEach, beforeAll, vi } from 'vitest';
+import './svelte-mocks';
+
+// Svelte component mock pattern for individual test files
 
 // Mock import.meta.env
 (globalThis as any).import = {
@@ -207,6 +210,53 @@ global.IntersectionObserver = vi.fn().mockImplementation(() => ({
   rootMargin: '',
   thresholds: [],
 }));
+
+// Mock timer functions if not already available
+if (typeof global.clearTimeout === 'undefined') {
+  global.clearTimeout = vi.fn();
+}
+if (typeof global.setTimeout === 'undefined') {
+  const mockSetTimeout = vi.fn() as any;
+  // Add __promisify__ property required by Node.js util.promisify
+  mockSetTimeout.__promisify__ = vi.fn();
+  global.setTimeout = mockSetTimeout;
+}
+
+// Mock FileReader for vitest environment
+if (typeof global.FileReader === 'undefined') {
+  (global as any).FileReader = class {
+    result: ArrayBuffer | string | null = null;
+    onloadend: ((this: any, ev: any) => any) | null = null;
+
+    readAsArrayBuffer(blob: Blob) {
+      // Simple mock that returns the blob's content as ArrayBuffer
+      setTimeout(() => {
+        if (blob instanceof Blob) {
+          // Convert blob content to ArrayBuffer
+          const text = (blob as any)._content || '';
+          const encoder = new TextEncoder();
+          this.result = encoder.encode(text).buffer as ArrayBuffer;
+        } else {
+          this.result = new ArrayBuffer(0);
+        }
+        if (this.onloadend) {
+          this.onloadend.call(this, {} as any);
+        }
+      }, 0);
+    }
+  };
+}
+
+// Ensure Blob has arrayBuffer method for vitest environment
+if (typeof Blob !== 'undefined' && !Blob.prototype.arrayBuffer) {
+  Blob.prototype.arrayBuffer = function () {
+    return new Promise((resolve) => {
+      const reader = new FileReader();
+      reader.onloadend = () => resolve(reader.result as ArrayBuffer);
+      reader.readAsArrayBuffer(this);
+    });
+  };
+}
 
 // Mock MutationObserver
 global.MutationObserver = vi.fn().mockImplementation(() => ({

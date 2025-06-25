@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import { ChromeStorageService } from '$lib/services/chromeStorage';
 import type { BoltProject, ProjectSettings } from '$lib/types';
 import type { Mock } from 'vitest';

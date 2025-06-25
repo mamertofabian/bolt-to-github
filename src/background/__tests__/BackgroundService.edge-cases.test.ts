@@ -9,6 +9,7 @@
  */
 
 import type { Mock } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { BackgroundServiceTestSuite } from '../test-fixtures';
 import { MessageFixtures, TestData } from '../test-fixtures/BackgroundServiceTestFixtures';
 
@@ -53,7 +54,7 @@ describe('BackgroundService Edge Cases and Boundary Testing', () => {
           // Should handle without crashing
           expect(true).toBe(true);
         } catch (error) {
-          fail(`Failed with commit message length ${commitMessage.length}: ${error}`);
+          expect(error).toBeNull();
         }
       }
     });

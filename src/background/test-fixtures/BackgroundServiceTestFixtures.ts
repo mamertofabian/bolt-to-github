@@ -6,6 +6,7 @@
  * designed to reveal actual usage patterns and potential bugs in BackgroundService.
  */
 
+import { type Mock, vi } from 'vitest';
 import type { Message, MessageType, Port } from '../../lib/types';
 
 // =============================================================================
@@ -307,10 +308,10 @@ export class MockChromeRuntime {
     },
   };
 
-  getManifest = jest.fn(() => TestData.chrome.manifest);
-  sendMessage = jest.fn();
+  getManifest = vi.fn(() => TestData.chrome.manifest);
+  sendMessage = vi.fn();
 
-  simulateMessage(message: any, sender: any = {}, sendResponse: any = jest.fn()): void {
+  simulateMessage(message: any, sender: any = {}, sendResponse: any = vi.fn()): void {
     this.messageHandlers.forEach((handler) => handler(message, sender, sendResponse));
   }
 
@@ -333,7 +334,7 @@ export class MockChromeStorage {
   private changeHandlers: Array<(changes: any, namespace: string) => void> = [];
 
   local = {
-    get: jest.fn(async (keys?: string | string[] | null) => {
+    get: vi.fn(async (keys?: string | string[] | null) => {
       if (!keys) return { ...this.localData };
       if (typeof keys === 'string') return { [keys]: this.localData[keys] };
       if (Array.isArray(keys)) {
@@ -345,7 +346,7 @@ export class MockChromeStorage {
       }
       return {};
     }),
-    set: jest.fn(async (items: Record<string, any>) => {
+    set: vi.fn(async (items: Record<string, any>) => {
       const changes: Record<string, chrome.storage.StorageChange> = {};
       Object.entries(items).forEach(([key, newValue]) => {
         const oldValue = this.localData[key];
@@ -357,7 +358,7 @@ export class MockChromeStorage {
   };
 
   sync = {
-    get: jest.fn(async (keys?: string | string[] | null) => {
+    get: vi.fn(async (keys?: string | string[] | null) => {
       if (!keys) return { ...this.syncData };
       if (typeof keys === 'string') return { [keys]: this.syncData[keys] };
       if (Array.isArray(keys)) {
@@ -369,7 +370,7 @@ export class MockChromeStorage {
       }
       return {};
     }),
-    set: jest.fn(async (items: Record<string, any>) => {
+    set: vi.fn(async (items: Record<string, any>) => {
       const changes: Record<string, chrome.storage.StorageChange> = {};
       Object.entries(items).forEach(([key, newValue]) => {
         const oldValue = this.syncData[key];
@@ -417,7 +418,7 @@ export class MockChromeTabs {
   private removeHandlers: Array<(tabId: number, removeInfo: any) => void> = [];
   private activatedHandlers: Array<(activeInfo: chrome.tabs.TabActiveInfo) => void> = [];
 
-  query = jest.fn(async (queryInfo: chrome.tabs.QueryInfo) => {
+  query = vi.fn(async (queryInfo: chrome.tabs.QueryInfo) => {
     return this.tabs.filter((tab) => {
       if (queryInfo.active !== undefined && tab.active !== queryInfo.active) return false;
       if (queryInfo.url) {
@@ -428,9 +429,9 @@ export class MockChromeTabs {
     });
   });
 
-  sendMessage = jest.fn();
+  sendMessage = vi.fn();
 
-  get = jest.fn(async (tabId: number) => {
+  get = vi.fn(async (tabId: number) => {
     return this.tabs.find((tab) => tab.id === tabId) || null;
   });
 
@@ -499,14 +500,14 @@ export class BackgroundServiceTestEnvironment {
       storage: new MockChromeStorage(),
       tabs: new MockChromeTabs(),
       action: {
-        openPopup: jest.fn(),
+        openPopup: vi.fn(),
       },
       alarms: {
-        create: jest.fn(),
-        clear: jest.fn(),
+        create: vi.fn(),
+        clear: vi.fn(),
         onAlarm: {
-          addListener: jest.fn(),
-          removeListener: jest.fn(),
+          addListener: vi.fn(),
+          removeListener: vi.fn(),
         },
       },
     };
@@ -521,11 +522,11 @@ export class BackgroundServiceTestEnvironment {
     (global as any).chrome = this.mockChrome;
 
     // Mock fetch for analytics
-    global.fetch = jest.fn();
+    global.fetch = vi.fn();
 
     // Mock crypto for client ID generation
     (global as any).crypto = {
-      randomUUID: jest.fn(() => '12345678-1234-4567-8901-123456789012'),
+      randomUUID: vi.fn(() => '12345678-1234-4567-8901-123456789012'),
     };
   }
 
@@ -536,7 +537,7 @@ export class BackgroundServiceTestEnvironment {
     delete (global as any).crypto;
 
     // Reset all mocks
-    jest.clearAllMocks();
+    vi.clearAllMocks();
     this.mockChrome.storage.reset();
   }
 
@@ -556,11 +557,11 @@ export class BackgroundServiceTestEnvironment {
   }
 
   setupNetworkFailure(): void {
-    (global.fetch as jest.Mock).mockRejectedValue(TestData.errors.networkTimeout);
+    (global.fetch as Mock).mockRejectedValue(TestData.errors.networkTimeout);
   }
 
   setupSlowNetwork(delay: number = TestData.performance.highLatency): void {
-    (global.fetch as jest.Mock).mockImplementation(
+    (global.fetch as Mock).mockImplementation(
       () => new Promise((resolve) => setTimeout(() => resolve({ ok: true }), delay))
     );
   }

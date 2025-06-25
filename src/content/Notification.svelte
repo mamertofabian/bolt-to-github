@@ -1,11 +1,11 @@
 <script lang="ts">
   import { onDestroy, onMount } from 'svelte';
   import { fly } from 'svelte/transition';
+  import type { ReassuringMessageContext } from '../lib/utils/reassuringMessages';
   import {
     getContextualMessage,
     getRotatingMessage,
     resetMessageRotation,
-    type ReassuringMessageContext,
   } from '../lib/utils/reassuringMessages';
   import type { NotificationAction } from './types/UITypes';
 

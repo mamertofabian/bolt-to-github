@@ -1,15 +1,27 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
 /**
- * MessageHandler.memory-leaks.test.ts
+ * MessageHandler Memory Leaks Test Suite
  *
- * Dedicated memory leak detection tests for MessageHandler
- * Focuses on identifying and preventing memory leaks in:
- * - Event listener accumulation
- * - Timer management
- * - Queue growth patterns
- * - Port reference cleanup
+ * Tests focused on memory management and preventing leaks
+ * in long-running content script environments.
  */
 
+/* eslint-disable @typescript-eslint/no-explicit-any */
+// Mock the Notification.svelte component to prevent parse errors
+vi.mock('../Notification.svelte', () => ({
+  default: class MockNotification {
+    constructor() {
+      this.$set = vi.fn();
+      this.$destroy = vi.fn();
+      this.$on = vi.fn();
+    }
+    $set = vi.fn();
+    $destroy = vi.fn();
+    $on = vi.fn();
+  },
+}));
+
+import type { Mock } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { MessageHandler } from '../MessageHandler';
 import { MessageHandlerTestEnvironment, TimingHelpers } from '../test-fixtures';
 
@@ -76,7 +88,7 @@ describe('MessageHandler - Memory Leak Detection', () => {
 
       // Check that old ports don't accumulate listeners
       ports.forEach((port) => {
-        const listenerCount = (port.onDisconnect.addListener as jest.Mock).mock.calls.length;
+        const listenerCount = (port.onDisconnect.addListener as Mock).mock.calls.length;
         expect(listenerCount).toBeLessThanOrEqual(2); // Initial + one update max
       });
     });
@@ -245,7 +257,7 @@ describe('MessageHandler - Memory Leak Detection', () => {
 
       for (let i = 0; i < 20; i++) {
         const port = env.createHealthyPort();
-        const addListenerMock = port.onDisconnect.addListener as jest.Mock;
+        const addListenerMock = port.onDisconnect.addListener as Mock;
 
         // Store initial call count
         const initialCalls = addListenerMock.mock.calls.length;
@@ -261,7 +273,7 @@ describe('MessageHandler - Memory Leak Detection', () => {
 
       // Verify no excessive listeners accumulated on any port
       ports.forEach((port) => {
-        const listenerCount = (port.onDisconnect.addListener as jest.Mock).mock.calls.length;
+        const listenerCount = (port.onDisconnect.addListener as Mock).mock.calls.length;
         expect(listenerCount).toBeLessThanOrEqual(1);
       });
     });

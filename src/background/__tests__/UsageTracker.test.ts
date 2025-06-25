@@ -5,8 +5,8 @@
  * for the uninstall feedback feature.
  */
 
-import { vi, describe, it, expect, beforeEach, afterEach, beforeAll, afterAll } from 'vitest';
-import type { UsageData, ErrorLogEntry } from '../../lib/types';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import type { ErrorLogEntry, UsageData } from '../../lib/types';
 import { UsageTracker } from '../UsageTracker';
 
 // Mock chrome APIs

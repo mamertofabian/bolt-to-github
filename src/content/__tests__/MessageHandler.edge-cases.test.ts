@@ -8,7 +8,23 @@
  * - Stress testing scenarios
  */
 
+/* eslint-disable @typescript-eslint/no-explicit-any */
+// Mock the Notification.svelte component to prevent parse errors
+vi.mock('../Notification.svelte', () => ({
+  default: class MockNotification {
+    constructor() {
+      this.$set = vi.fn();
+      this.$destroy = vi.fn();
+      this.$on = vi.fn();
+    }
+    $set = vi.fn();
+    $destroy = vi.fn();
+    $on = vi.fn();
+  },
+}));
+
 import type { MessageType } from '$lib/types';
+import { afterEach, beforeEach, describe, expect, it, vi, type Mock } from 'vitest';
 import { MessageHandlerTestEnvironment, TimingHelpers } from '../test-fixtures';
 
 describe('MessageHandler - Edge Cases', () => {
@@ -205,7 +221,7 @@ describe('MessageHandler - Edge Cases', () => {
       expect(status.connected).toBe(false);
 
       // Total should be 10 (sent + queued)
-      const sentCount = (env.currentPort?.postMessage as jest.Mock).mock.calls.length;
+      const sentCount = (env.currentPort?.postMessage as Mock).mock.calls.length;
       const queuedCount = status.queuedMessages;
       expect(sentCount + queuedCount).toBe(10);
     });
@@ -512,7 +528,7 @@ describe('MessageHandler - Edge Cases', () => {
       // Create port that fails after 5 messages
       let callCount = 0;
       const flakyPort = env.createHealthyPort();
-      flakyPort.postMessage = jest.fn((_message) => {
+      flakyPort.postMessage = vi.fn((_message) => {
         callCount++;
         if (callCount > 5) {
           throw new Error('Port failed mid-processing');
