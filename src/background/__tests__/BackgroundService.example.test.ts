@@ -110,6 +110,11 @@ describe('BackgroundService Test Fixtures Example', () => {
       expect(report).toContain('Total Tests:');
       expect(report).toContain('Passed:');
       expect(report).toContain('Failed:');
+
+      // Total passed tests should be equal to the number of tests in the report
+      const passedTests = report.match(/Passed: (\d+)/)?.[1];
+      const totalTests = report.match(/Total Tests: (\d+)/)?.[1];
+      expect(passedTests).toBe(totalTests);
     }, 10000); // Increase timeout for comprehensive testing
   });
 });

@@ -984,7 +984,6 @@ export const TempRepoAssertionHelpers = {
     if (typeof expectedRepo === 'string') {
       expect(createdTab?.url).toContain(`${expectedOwner}/${expectedRepo}`);
     } else {
-      // Handle Jest matchers like expect.stringContaining()
       expect(createdTab?.url).toContain(expectedOwner);
       const match = createdTab?.url?.match(/github\.com\/[^/]+\/(.+)$/);
       if (match) {

@@ -36,6 +36,13 @@ export class BackgroundServiceIntegrationEnvironment {
     // Setup service mocks
     this.serviceFactory.setupMocks();
 
+    // Set up default authentication if not already configured
+    // This ensures the BackgroundService will have auth when it initializes
+    const storage = await this.chromeEnv.mockChrome.storage.sync.get();
+    if (!storage.authenticationMethod) {
+      this.chromeEnv.setupValidPATAuth();
+    }
+
     // Import and create BackgroundService after mocks are in place
     const { BackgroundService } = await import('../BackgroundService');
     this.backgroundService = new BackgroundService();

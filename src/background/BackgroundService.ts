@@ -1,27 +1,27 @@
-import { UnifiedGitHubService } from '../services/UnifiedGitHubService';
+import { OperationStateManager } from '../content/services/OperationStateManager';
+import type { AuthState } from '../content/services/SupabaseAuthService';
+import { SupabaseAuthService } from '../content/services/SupabaseAuthService';
+import { ChromeStorageService } from '../lib/services/chromeStorage';
 import type {
+  ImportPrivateRepoMessage,
   Message,
   MessageType,
+  NotifyGitHubAppSyncMessage,
+  OpenFileChangesMessage,
   Port,
+  SetCommitMessage,
   UploadStatusState,
   ZipDataMessage,
-  SetCommitMessage,
-  OpenFileChangesMessage,
-  ImportPrivateRepoMessage,
-  NotifyGitHubAppSyncMessage,
 } from '../lib/types';
-import { StateManager } from './StateManager';
-import { ZipHandler } from '../services/zipHandler';
-import { BackgroundTempRepoManager } from './TempRepoManager';
-import { SupabaseAuthService } from '../content/services/SupabaseAuthService';
-import type { AuthState } from '../content/services/SupabaseAuthService';
-import { OperationStateManager } from '../content/services/OperationStateManager';
 import { createLogger, getLogStorage } from '../lib/utils/logger';
-import { analytics } from '../services/AnalyticsService';
-import { UsageTracker } from './UsageTracker';
-import { BoltProjectSyncService } from '../services/BoltProjectSyncService';
 import { extractProjectIdFromUrl } from '../lib/utils/projectId';
-import { ChromeStorageService } from '../lib/services/chromeStorage';
+import { analytics } from '../services/AnalyticsService';
+import { BoltProjectSyncService } from '../services/BoltProjectSyncService';
+import { UnifiedGitHubService } from '../services/UnifiedGitHubService';
+import { ZipHandler } from '../services/zipHandler';
+import { StateManager } from './StateManager';
+import { BackgroundTempRepoManager } from './TempRepoManager';
+import { UsageTracker } from './UsageTracker';
 
 const logger = createLogger('BackgroundService');
 

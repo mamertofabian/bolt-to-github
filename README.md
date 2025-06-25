@@ -426,7 +426,7 @@ See our [Contributing Guide](#contributing) for more details.
 
 - [Supabase](https://supabase.com/) - Backend services and authentication
 - [MailerLite](https://mailerlite.com/) - Newsletter management
-- [Jest](https://jestjs.io/) - Testing framework
+- [Vitest](https://vitest.dev/) - Testing framework
 
 ### Development Tools
 

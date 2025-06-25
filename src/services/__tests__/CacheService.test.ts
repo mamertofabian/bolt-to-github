@@ -31,7 +31,6 @@ class MockIdleMonitor implements IIdleMonitorService {
 
 /**
  * Controlled implementation of window.requestIdleCallback
- * that doesn't cause infinite loops with Jest timers
  */
 class ControlledIdleCallbackManager {
   private idCounter = 1;

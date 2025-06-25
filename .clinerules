@@ -24,7 +24,7 @@ DO NOT read or modify:
 - Use Vite v4.5.x as build tool
 - Chrome Extension manifest v3 standards must be followed
 - ESM modules only (type: "module" in package.json)
-- Jest v29.x for testing
+- Vitest v1.6.x for testing
 
 ## TypeScript Standards
 
@@ -107,7 +107,7 @@ DO NOT read or modify:
 - Fix all ESLint warnings
 - Format code before committing
 - Test in both light and dark modes
-- Use Jest for unit testing with ts-jest for TypeScript support
+- Use Vitest for unit testing
 - Ensure test coverage is collected
 - Follow the test naming convention: (/**tests**/.\*|(\\.|/)(test|spec))\\.tsx?$
 
