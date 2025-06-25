@@ -22,7 +22,9 @@ export default {
     '^\\$lib/(.*)$': '<rootDir>/src/lib/$1',
     '\\.svelte$': '<rootDir>/src/test/setup/svelte-mock.js',
     'svelte/store': '<rootDir>/src/test/setup/svelte-store-mock.js',
+    '^../config/analytics$': '<rootDir>/src/config/__mocks__/analytics.ts',
   },
+  setupFiles: ['<rootDir>/src/test/setup/import-meta-mock.js'],
   setupFilesAfterEnv: [
     '<rootDir>/src/test/setup/fetch-mocks.js',
     '<rootDir>/src/test/setup/chrome-mocks.js',
@@ -44,6 +46,9 @@ export default {
   globals: {
     'ts-jest': {
       useESM: true,
+    },
+    'import.meta.env': {
+      VITE_GA4_API_SECRET: 'test-api-secret',
     },
   },
   // Temporary disabled until the threshold is met

@@ -6,6 +6,7 @@
  */
 
 import { createLogger } from '../lib/utils/logger';
+import { getAnalyticsApiSecret } from '../config/analytics';
 
 const logger = createLogger('AnalyticsService');
 
@@ -51,7 +52,7 @@ export class AnalyticsService {
   private constructor() {
     // Don't initialize immediately to avoid DOM issues
     // Get API secret from environment variable
-    this.API_SECRET = import.meta.env.VITE_GA4_API_SECRET || '';
+    this.API_SECRET = getAnalyticsApiSecret();
 
     if (!this.API_SECRET) {
       logger.warn('GA4 API_SECRET not configured. Analytics will be disabled.');
