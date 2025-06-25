@@ -5,11 +5,12 @@
  * designed to reveal actual usage patterns and potential bugs in TempRepoManager.
  */
 
-import type { UploadStatusState } from '../../lib/types';
-import type { UnifiedGitHubService } from '../../services/UnifiedGitHubService';
+import { vi } from 'vitest';
 import type { OperationStateManager } from '../../content/services/OperationStateManager';
-import { STORAGE_KEY } from '../TempRepoManager';
+import type { UploadStatusState } from '../../lib/types';
 import type { GitHubRepository } from '../../services/types/repository';
+import type { UnifiedGitHubService } from '../../services/UnifiedGitHubService';
+import { STORAGE_KEY } from '../TempRepoManager';
 
 // =============================================================================
 // TYPE DEFINITIONS FOR BETTER TYPE SAFETY
@@ -321,17 +322,17 @@ export class MockUnifiedGitHubService implements Partial<UnifiedGitHubService> {
   private progressCallbacks = new Map<string, (progress: number) => void>();
 
   // Mock method declarations - properly initialized with correct types
-  listBranches = jest.fn(async (owner: string, repo: string): Promise<GitHubBranch[]> => {
+  listBranches = vi.fn(async (owner: string, repo: string): Promise<GitHubBranch[]> => {
     return this._listBranches(owner, repo);
   });
 
-  createTemporaryPublicRepo = jest.fn(
+  createTemporaryPublicRepo = vi.fn(
     async (owner: string, sourceRepo: string, _branch?: string): Promise<string> => {
       return this._createTemporaryPublicRepo(owner, sourceRepo, _branch);
     }
   );
 
-  cloneRepoContents = jest.fn(
+  cloneRepoContents = vi.fn(
     async (
       sourceOwner: string,
       sourceRepo: string,
@@ -351,13 +352,13 @@ export class MockUnifiedGitHubService implements Partial<UnifiedGitHubService> {
     }
   );
 
-  updateRepoVisibility = jest.fn(
+  updateRepoVisibility = vi.fn(
     async (owner: string, repo: string, isPrivate: boolean): Promise<GitHubRepository> => {
       return this._updateRepoVisibility(owner, repo, isPrivate);
     }
   );
 
-  deleteRepo = jest.fn(async (owner: string, repo: string): Promise<void> => {
+  deleteRepo = vi.fn(async (owner: string, repo: string): Promise<void> => {
     return this._deleteRepo(owner, repo);
   });
 
@@ -510,13 +511,13 @@ export class MockOperationStateManager implements Partial<OperationStateManager>
   private operations = new Map<string, OperationMetadata>();
   private shouldFail = false;
 
-  static getInstance = jest.fn(() => new MockOperationStateManager());
+  static getInstance = vi.fn(() => new MockOperationStateManager());
 
   setShouldFail(shouldFail: boolean): void {
     this.shouldFail = shouldFail;
   }
 
-  startOperation = jest.fn(
+  startOperation = vi.fn(
     async (
       type: string,
       operationId: string,
@@ -537,7 +538,7 @@ export class MockOperationStateManager implements Partial<OperationStateManager>
     }
   );
 
-  completeOperation = jest.fn(async (operationId: string): Promise<void> => {
+  completeOperation = vi.fn(async (operationId: string): Promise<void> => {
     if (this.shouldFail) {
       throw new Error('Failed to complete operation tracking');
     }
@@ -548,7 +549,7 @@ export class MockOperationStateManager implements Partial<OperationStateManager>
     }
   });
 
-  failOperation = jest.fn(async (operationId: string, error: Error): Promise<void> => {
+  failOperation = vi.fn(async (operationId: string, error: Error): Promise<void> => {
     if (this.shouldFail) {
       throw new Error('Failed to record operation failure');
     }
@@ -604,7 +605,7 @@ export class TempRepoMockChromeStorage {
   }
 
   local = {
-    get: jest.fn(async (keys?: string | string[] | null) => {
+    get: vi.fn(async (keys?: string | string[] | null) => {
       await this.simulateDelay();
 
       if (this.shouldFail) {
@@ -623,7 +624,7 @@ export class TempRepoMockChromeStorage {
       return {};
     }),
 
-    set: jest.fn(async (items: Record<string, unknown>) => {
+    set: vi.fn(async (items: Record<string, unknown>) => {
       await this.simulateDelay();
 
       if (this.shouldFail) {
@@ -633,7 +634,7 @@ export class TempRepoMockChromeStorage {
       Object.assign(this.localData, items);
     }),
 
-    remove: jest.fn(async (keys: string | string[]) => {
+    remove: vi.fn(async (keys: string | string[]) => {
       await this.simulateDelay();
 
       if (this.shouldFail) {
@@ -669,7 +670,7 @@ export class TempRepoMockChromeTabs {
     this.shouldFail = shouldFail;
   }
 
-  create = jest.fn(
+  create = vi.fn(
     async (createProperties: chrome.tabs.CreateProperties): Promise<chrome.tabs.Tab> => {
       if (this.shouldFail) {
         throw new Error('Failed to create tab');
@@ -728,7 +729,7 @@ export class MockStatusBroadcaster {
     this.shouldFail = shouldFail;
   }
 
-  broadcast = jest.fn((status: UploadStatusState): void => {
+  broadcast = vi.fn((status: UploadStatusState): void => {
     if (this.shouldFail) {
       throw new Error('Failed to broadcast status');
     }
@@ -781,14 +782,11 @@ export class TempRepoManagerTestEnvironment {
     this.mockTabs = new TempRepoMockChromeTabs();
     this.mockStatusBroadcaster = new MockStatusBroadcaster();
 
-    // Get the mocked OperationStateManager module
-    const { OperationStateManager: MockedOperationStateManager } = jest.requireMock(
-      '../../content/services/OperationStateManager'
-    );
-
-    // Create our test instance and configure the mock to return it
+    // Create our test instance
     this.mockOperationStateManager = new MockOperationStateManager();
-    MockedOperationStateManager.getInstance = jest.fn(() => this.mockOperationStateManager);
+
+    // Configure the mock to return our test instance
+    MockOperationStateManager.getInstance = vi.fn(() => this.mockOperationStateManager);
 
     // Store originals - properly typed
     this.originalChrome = (global as unknown as { chrome?: unknown }).chrome;
@@ -806,19 +804,19 @@ export class TempRepoManagerTestEnvironment {
 
     // Mock console to avoid noise in tests
     global.console = {
-      log: jest.fn(),
-      warn: jest.fn(),
-      error: jest.fn(),
-      info: jest.fn(),
-      debug: jest.fn(),
+      log: vi.fn(),
+      warn: vi.fn(),
+      error: vi.fn(),
+      info: vi.fn(),
+      debug: vi.fn(),
     } as unknown as Console;
 
     // Mock timers to avoid actual intervals
-    global.setInterval = jest.fn().mockImplementation((_callback: () => void, _delay: number) => {
+    global.setInterval = vi.fn().mockImplementation((_callback: () => void, _delay: number) => {
       // Return a mock interval ID
       return Math.random().toString(36).slice(2);
     });
-    global.clearInterval = jest.fn();
+    global.clearInterval = vi.fn();
   }
 
   teardown(): void {
@@ -829,8 +827,8 @@ export class TempRepoManagerTestEnvironment {
     global.console = this.originalConsole;
 
     // Reset all mocks
-    jest.clearAllMocks();
-    jest.useRealTimers();
+    vi.clearAllMocks();
+    vi.useRealTimers();
 
     // Reset all mock services
     this.mockGitHubService.clearProgressCallbacks();
@@ -899,12 +897,12 @@ export class TempRepoManagerTestEnvironment {
 
   // Fast-forward time for interval testing
   advanceTime(ms: number): void {
-    jest.advanceTimersByTime(ms);
+    vi.advanceTimersByTime(ms);
   }
 
   // Run all pending timers
   runAllTimers(): void {
-    jest.runAllTimers();
+    vi.runAllTimers();
   }
 }
 
@@ -978,7 +976,7 @@ export const TempRepoAssertionHelpers = {
   expectBoltTabCreated(
     tabs: TempRepoMockChromeTabs,
     expectedOwner: string,
-    expectedRepo: string | jest.AsymmetricMatcher
+    expectedRepo: string | vi.AsymmetricMatcher
   ): void {
     const createdTab = tabs.getLastCreatedTab();
     expect(createdTab).toBeDefined();

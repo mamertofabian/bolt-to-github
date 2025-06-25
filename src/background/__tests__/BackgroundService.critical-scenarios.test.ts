@@ -8,8 +8,9 @@
  * Priority Score: 100 - Critical business logic with high complexity risk
  */
 
+import type { Mock } from 'vitest';
 import { BackgroundServiceTestSuite } from '../test-fixtures';
-import { TestData, MessageFixtures } from '../test-fixtures/BackgroundServiceTestFixtures';
+import { MessageFixtures, TestData } from '../test-fixtures/BackgroundServiceTestFixtures';
 
 describe('BackgroundService Critical Scenarios', () => {
   let testSuite: BackgroundServiceTestSuite;
@@ -446,7 +447,7 @@ describe('BackgroundService Critical Scenarios', () => {
       await new Promise((resolve) => setTimeout(resolve, 300));
 
       // Verify analytics were attempted even during failures
-      const fetchCalls = (global.fetch as jest.Mock).mock.calls;
+      const fetchCalls = (global.fetch as Mock).mock.calls;
       const analyticsCalls = fetchCalls.filter(
         (call) =>
           call[0]?.includes('google-analytics.com') || call[1]?.body?.includes('extension_error')

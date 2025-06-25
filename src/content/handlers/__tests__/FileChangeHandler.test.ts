@@ -1,16 +1,16 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-/* eslint-env jest */
 
-import { FileChangeHandler } from '../FileChangeHandler';
-import type { INotificationManager, IUploadStatusManager } from '../../types/ManagerInterfaces';
+import type { Mock, Mocked } from 'vitest';
+import { FilePreviewService } from '../../../services/FilePreviewService';
 import type { MessageHandler } from '../../MessageHandler';
 import type { PremiumService } from '../../services/PremiumService';
-import { FilePreviewService } from '../../../services/FilePreviewService';
+import type { INotificationManager, IUploadStatusManager } from '../../types/ManagerInterfaces';
+import { FileChangeHandler } from '../FileChangeHandler';
 
 // Mock external dependencies
-jest.mock('../../../services/FilePreviewService');
-jest.mock('../../../services/UnifiedGitHubService', () => ({
-  UnifiedGitHubService: jest.fn().mockImplementation(() => ({
+vi.mock('../../../services/FilePreviewService');
+vi.mock('../../../services/UnifiedGitHubService', () => ({
+  UnifiedGitHubService: vi.fn().mockImplementation(() => ({
     // Mock UnifiedGitHubService methods if needed
   })),
 }));
@@ -18,15 +18,15 @@ jest.mock('../../../services/UnifiedGitHubService', () => ({
 // Mock chrome APIs
 const mockChromeStorage = {
   sync: {
-    get: jest.fn(),
+    get: vi.fn(),
   },
   local: {
-    get: jest.fn(),
-    set: jest.fn(),
+    get: vi.fn(),
+    set: vi.fn(),
   },
 };
 
-const mockChromeTabsCreate = jest.fn();
+const mockChromeTabsCreate = vi.fn();
 
 (global as any).chrome = {
   storage: mockChromeStorage,
@@ -45,55 +45,55 @@ Object.defineProperty(window, 'location', {
 });
 
 // Mock window.open
-(global as any).window.open = jest.fn();
+(global as any).window.open = vi.fn();
 
 // Mock performance.now
 Object.defineProperty(global, 'performance', {
   value: {
-    now: jest.fn(() => 1000),
+    now: vi.fn(() => 1000),
   },
 });
 
 describe('FileChangeHandler', () => {
   let fileChangeHandler: FileChangeHandler;
-  let mockMessageHandler: jest.Mocked<MessageHandler>;
-  let mockNotificationManager: jest.Mocked<INotificationManager>;
-  let mockUploadStatusManager: jest.Mocked<IUploadStatusManager>;
-  let mockPremiumService: jest.Mocked<PremiumService>;
-  let mockFilePreviewService: jest.Mocked<FilePreviewService>;
+  let mockMessageHandler: Mocked<MessageHandler>;
+  let mockNotificationManager: Mocked<INotificationManager>;
+  let mockUploadStatusManager: Mocked<IUploadStatusManager>;
+  let mockPremiumService: Mocked<PremiumService>;
+  let mockFilePreviewService: Mocked<FilePreviewService>;
 
   beforeEach(() => {
     // Reset all mocks
-    jest.clearAllMocks();
+    vi.clearAllMocks();
 
     // Create mock dependencies
     mockMessageHandler = {
-      sendMessage: jest.fn(),
+      sendMessage: vi.fn(),
     } as any;
 
     mockNotificationManager = {
-      showNotification: jest.fn(),
-      showUpgradeNotification: jest.fn(),
+      showNotification: vi.fn(),
+      showUpgradeNotification: vi.fn(),
     } as any;
 
     mockUploadStatusManager = {
-      updateStatus: jest.fn(),
+      updateStatus: vi.fn(),
     } as any;
 
     mockPremiumService = {
-      canUseFileChanges: jest.fn(),
-      useFileChanges: jest.fn(),
+      canUseFileChanges: vi.fn(),
+      useFileChanges: vi.fn(),
     } as any;
 
     // Mock FilePreviewService
     mockFilePreviewService = {
-      loadProjectFiles: jest.fn(),
-      getChangedFiles: jest.fn(),
-      compareWithGitHub: jest.fn(),
-      getProcessedFiles: jest.fn(),
+      loadProjectFiles: vi.fn(),
+      getChangedFiles: vi.fn(),
+      compareWithGitHub: vi.fn(),
+      getProcessedFiles: vi.fn(),
     } as any;
 
-    (FilePreviewService.getInstance as jest.Mock).mockReturnValue(mockFilePreviewService);
+    (FilePreviewService.getInstance as Mock).mockReturnValue(mockFilePreviewService);
 
     // Reset chrome storage mocks
     mockChromeStorage.sync.get.mockResolvedValue({});
@@ -102,10 +102,10 @@ describe('FileChangeHandler', () => {
     mockChromeTabsCreate.mockResolvedValue(undefined);
 
     // Reset window.open mock
-    (window.open as jest.Mock).mockReturnValue(null);
+    (window.open as Mock).mockReturnValue(null);
 
     // Reset performance.now mock
-    (performance.now as jest.Mock).mockReturnValue(1000);
+    (performance.now as Mock).mockReturnValue(1000);
 
     // Reset window.location mock to the default test project
     Object.defineProperty(window, 'location', {
@@ -516,7 +516,7 @@ describe('FileChangeHandler', () => {
       );
       mockChromeStorage.local.set.mockRejectedValue(new Error('Storage error'));
 
-      const consoleSpy = jest.spyOn(console, 'error').mockImplementation();
+      const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
 
       await fileChangeHandler.showChangedFiles();
 
@@ -605,7 +605,7 @@ describe('FileChangeHandler', () => {
     });
 
     it('should fallback to chrome tabs API when window.open fails', async () => {
-      (window.open as jest.Mock).mockImplementation(() => {
+      (window.open as Mock).mockImplementation(() => {
         throw new Error('Window open failed');
       });
 
@@ -622,14 +622,14 @@ describe('FileChangeHandler', () => {
     });
 
     it('should handle both window.open and chrome tabs API failures gracefully', async () => {
-      (window.open as jest.Mock).mockImplementation(() => {
+      (window.open as Mock).mockImplementation(() => {
         throw new Error('Window open failed');
       });
       mockChromeTabsCreate.mockImplementation(() => {
         throw new Error('Chrome tabs failed');
       });
 
-      const consoleSpy = jest.spyOn(console, 'error').mockImplementation();
+      const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
 
       await fileChangeHandler.showChangedFiles();
 
@@ -678,7 +678,7 @@ describe('FileChangeHandler', () => {
         ])
       );
 
-      const consoleSpy = jest.spyOn(console, 'info').mockImplementation();
+      const consoleSpy = vi.spyOn(console, 'info').mockImplementation(() => {});
 
       await fileChangeHandler.showChangedFiles();
 
@@ -733,7 +733,7 @@ describe('FileChangeHandler', () => {
 
       // Mock performance timing
       let callCount = 0;
-      (performance.now as jest.Mock).mockImplementation(() => {
+      (performance.now as Mock).mockImplementation(() => {
         callCount++;
         return callCount === 1 ? 1000 : 1250; // 250ms difference
       });
@@ -741,7 +741,7 @@ describe('FileChangeHandler', () => {
       mockChromeStorage.sync.get.mockResolvedValue({});
       mockFilePreviewService.getProcessedFiles.mockResolvedValue(new Map());
 
-      const consoleSpy = jest.spyOn(console, 'info').mockImplementation();
+      const consoleSpy = vi.spyOn(console, 'info').mockImplementation(() => {});
 
       await fileChangeHandler.showChangedFiles();
 

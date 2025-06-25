@@ -1,15 +1,15 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-/* eslint-env jest */
 
-import { DropdownManager } from '../DropdownManager';
+import { afterEach, beforeEach, describe, expect, test, vi, type Mock, type Mocked } from 'vitest';
 import type { MessageHandler } from '../../MessageHandler';
 import type { UIStateManager } from '../../services/UIStateManager';
+import { DropdownManager } from '../DropdownManager';
 
 describe('DropdownManager', () => {
   let dropdownManager: DropdownManager;
-  let mockMessageHandler: jest.Mocked<MessageHandler>;
-  let mockStateManager: jest.Mocked<UIStateManager>;
-  let mockPushCallback: jest.Mock;
+  let mockMessageHandler: Mocked<MessageHandler>;
+  let mockStateManager: Mocked<UIStateManager>;
+  let mockPushCallback: Mock;
 
   beforeEach(() => {
     // Reset DOM
@@ -17,11 +17,11 @@ describe('DropdownManager', () => {
     document.head.innerHTML = '';
 
     // Reset mocks
-    jest.clearAllMocks();
+    vi.clearAllMocks();
 
     // Mock MessageHandler
     mockMessageHandler = {
-      sendMessage: jest.fn(),
+      sendMessage: vi.fn(),
     } as any;
 
     // Mock UIStateManager
@@ -30,26 +30,26 @@ describe('DropdownManager', () => {
     } as any;
 
     // Mock callback functions
-    mockPushCallback = jest.fn().mockResolvedValue(undefined);
+    mockPushCallback = vi.fn().mockResolvedValue(undefined);
 
     dropdownManager = new DropdownManager(mockMessageHandler, mockStateManager, mockPushCallback);
 
     // Mock setTimeout and addEventListener for proper async handling
-    jest.spyOn(window, 'setTimeout').mockImplementation((callback) => {
+    vi.spyOn(window, 'setTimeout').mockImplementation((callback) => {
       if (typeof callback === 'function') {
         callback();
       }
       return 123 as any;
     });
 
-    jest.spyOn(window, 'addEventListener').mockImplementation();
-    jest.spyOn(window, 'removeEventListener').mockImplementation();
-    jest.spyOn(document, 'addEventListener').mockImplementation();
-    jest.spyOn(document, 'removeEventListener').mockImplementation();
+    vi.spyOn(window, 'addEventListener');
+    vi.spyOn(window, 'removeEventListener');
+    vi.spyOn(document, 'addEventListener');
+    vi.spyOn(document, 'removeEventListener');
   });
 
   afterEach(() => {
-    jest.restoreAllMocks();
+    vi.restoreAllMocks();
     dropdownManager.cleanup();
   });
 
@@ -111,7 +111,7 @@ describe('DropdownManager', () => {
 
     beforeEach(() => {
       mockButton = document.createElement('button');
-      mockButton.getBoundingClientRect = jest.fn().mockReturnValue({
+      mockButton.getBoundingClientRect = vi.fn().mockReturnValue({
         bottom: 100,
         left: 50,
         right: 150,
@@ -133,7 +133,7 @@ describe('DropdownManager', () => {
     });
 
     test('dispatches keydown event on button', async () => {
-      const spy = jest.spyOn(mockButton, 'dispatchEvent');
+      const spy = vi.spyOn(mockButton, 'dispatchEvent');
 
       await dropdownManager.show(mockButton);
 

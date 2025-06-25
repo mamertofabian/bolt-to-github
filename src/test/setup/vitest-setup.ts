@@ -1,6 +1,6 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import '@testing-library/jest-dom';
-import { vi } from 'vitest';
+import { afterAll, afterEach, beforeAll, vi } from 'vitest';
 
 // Mock import.meta.env
 (globalThis as any).import = {
@@ -106,6 +106,20 @@ global.fetch = vi.fn(() =>
   } as Response)
 );
 
+// Mock crypto API for Chrome extensions
+Object.defineProperty(globalThis, 'crypto', {
+  value: {
+    randomUUID: vi.fn(() => 'mock-uuid-' + Math.random().toString(36).substring(2)),
+    getRandomValues: vi.fn((arr: any) => {
+      for (let i = 0; i < arr.length; i++) {
+        arr[i] = Math.floor(Math.random() * 256);
+      }
+      return arr;
+    }),
+  },
+  writable: true,
+});
+
 // DOM mocks
 class MockLocalStorage {
   private store: Record<string, string> = {};
@@ -136,13 +150,29 @@ class MockLocalStorage {
   }
 }
 
+// Create mock instances
+const mockLocalStorage = new MockLocalStorage();
+const mockSessionStorage = new MockLocalStorage();
+
+// Set up global storage mocks
 Object.defineProperty(window, 'localStorage', {
-  value: new MockLocalStorage(),
+  value: mockLocalStorage,
   writable: true,
 });
 
 Object.defineProperty(window, 'sessionStorage', {
-  value: new MockLocalStorage(),
+  value: mockSessionStorage,
+  writable: true,
+});
+
+// Also set up global scope for Node.js environment
+Object.defineProperty(globalThis, 'localStorage', {
+  value: mockLocalStorage,
+  writable: true,
+});
+
+Object.defineProperty(globalThis, 'sessionStorage', {
+  value: mockSessionStorage,
   writable: true,
 });
 
@@ -204,19 +234,39 @@ afterAll(() => {
   console.debug = originalConsole.debug;
 });
 
-// Global timer functions
-global.setTimeout = vi.fn((callback: () => void, ms?: number) => {
-  return 1 as unknown as NodeJS.Timeout;
-});
-global.clearTimeout = vi.fn();
-global.setInterval = vi.fn((callback: () => void, ms?: number) => {
-  return 1 as unknown as NodeJS.Timeout;
-});
-global.clearInterval = vi.fn();
+// Timer setup - use Vitest's built-in fake timers in individual tests
+// Instead of mocking global timer functions, tests should use:
+// - vi.useFakeTimers() to enable fake timers
+// - vi.useRealTimers() to restore real timers
+// - vi.advanceTimersByTime(ms) to advance time
+// - vi.runAllTimers() to run all pending timers
+
+// Svelte component mock helper class
+// Individual test files should use this pattern for mocking Svelte components:
+// vi.mock('./Component.svelte', () => ({
+//   default: MockSvelteComponent,
+// }));
+class MockSvelteComponent {
+  constructor(options: any = {}) {
+    this.options = options;
+    this.$set = vi.fn();
+    this.$on = vi.fn();
+    this.$destroy = vi.fn();
+  }
+  options: any;
+  $set: any;
+  $on: any;
+  $destroy: any;
+}
+
+// Export for use in test files
+(globalThis as any).MockSvelteComponent = MockSvelteComponent;
 
 // Cleanup after each test
 afterEach(() => {
   vi.clearAllMocks();
-  localStorage.clear();
-  sessionStorage.clear();
+  mockLocalStorage.clear();
+  mockSessionStorage.clear();
+  // Ensure real timers are restored after each test
+  vi.useRealTimers();
 });

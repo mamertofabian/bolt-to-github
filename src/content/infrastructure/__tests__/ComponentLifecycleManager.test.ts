@@ -1,20 +1,21 @@
 // Mock the logger module
-jest.mock('../../../lib/utils/logger', () => ({
-  createLogger: jest.fn().mockReturnValue({
-    error: jest.fn(),
-    warn: jest.fn(),
-    info: jest.fn(),
-    debug: jest.fn(),
+vi.mock('../../../lib/utils/logger', () => ({
+  createLogger: vi.fn().mockReturnValue({
+    error: vi.fn(),
+    warn: vi.fn(),
+    info: vi.fn(),
+    debug: vi.fn(),
   }),
 }));
 
-import { ComponentLifecycleManager, type ComponentConfig } from '../ComponentLifecycleManager';
 import type { SvelteComponent } from 'svelte';
-import { createLogger } from '../../../lib/utils/logger';
+import type { Mocked } from 'vitest';
 import type { Logger } from '../../../lib/utils/logger';
+import { createLogger } from '../../../lib/utils/logger';
+import { ComponentLifecycleManager, type ComponentConfig } from '../ComponentLifecycleManager';
 
 // Get fresh mocked logger instance in beforeEach
-let mockLogger: jest.Mocked<Logger>;
+let mockLogger: Mocked<Logger>;
 
 // Mock Svelte component constructor
 class MockSvelteComponent {
@@ -64,17 +65,17 @@ class MockSvelteComponent {
 // Mock DOM environment
 Object.defineProperty(global, 'document', {
   value: {
-    createElement: jest.fn(),
-    getElementById: jest.fn(),
+    createElement: vi.fn(),
+    getElementById: vi.fn(),
     body: null,
-    addEventListener: jest.fn(),
+    addEventListener: vi.fn(),
   },
   writable: true,
 });
 
 describe('ComponentLifecycleManager', () => {
   let lifecycleManager: ComponentLifecycleManager;
-  let mockDocument: jest.Mocked<typeof document>;
+  let mockDocument: Mocked<typeof document>;
   let mockElement: HTMLElement;
 
   const createBasicConfig = (): ComponentConfig => ({
@@ -83,29 +84,29 @@ describe('ComponentLifecycleManager', () => {
   });
 
   beforeEach(() => {
-    mockLogger = createLogger('ComponentLifecycleManager') as jest.Mocked<Logger>;
+    mockLogger = createLogger('ComponentLifecycleManager') as Mocked<Logger>;
 
     lifecycleManager = new ComponentLifecycleManager();
 
     // Reset all mocks
-    jest.clearAllMocks();
+    vi.clearAllMocks();
     mockLogger.error.mockClear();
     mockLogger.warn.mockClear();
     mockLogger.info.mockClear();
     mockLogger.debug.mockClear();
 
     // Setup mock document
-    mockDocument = global.document as jest.Mocked<typeof document>;
+    mockDocument = global.document as Mocked<typeof document>;
 
     // Setup mock element
     mockElement = {
       id: '',
       className: '',
       style: {},
-      remove: jest.fn(),
-      appendChild: jest.fn(),
+      remove: vi.fn(),
+      appendChild: vi.fn(),
       parentNode: {
-        removeChild: jest.fn(),
+        removeChild: vi.fn(),
       },
     } as unknown as HTMLElement;
 
@@ -115,7 +116,7 @@ describe('ComponentLifecycleManager', () => {
     // Setup mock document.body
     Object.defineProperty(global.document, 'body', {
       value: {
-        appendChild: jest.fn(),
+        appendChild: vi.fn(),
       },
       writable: true,
     });
@@ -235,9 +236,9 @@ describe('ComponentLifecycleManager', () => {
       const existingElement = {
         id: 'test-container',
         parentNode: {
-          removeChild: jest.fn(),
+          removeChild: vi.fn(),
         },
-        remove: jest.fn(),
+        remove: vi.fn(),
       };
 
       mockDocument.getElementById.mockReturnValue(existingElement as unknown as HTMLElement);
@@ -286,7 +287,7 @@ describe('ComponentLifecycleManager', () => {
       // Simulate DOMContentLoaded
       const [[, callback]] = mockDocument.addEventListener.mock.calls;
       Object.defineProperty(global.document, 'body', {
-        value: { appendChild: jest.fn() },
+        value: { appendChild: vi.fn() },
         writable: true,
       });
       (callback as EventListener)(new Event('DOMContentLoaded'));
@@ -297,7 +298,7 @@ describe('ComponentLifecycleManager', () => {
     });
 
     it('should handle constructor errors gracefully', async () => {
-      const FailingComponent = jest.fn().mockImplementation(() => {
+      const FailingComponent = vi.fn().mockImplementation(() => {
         throw new Error('Component constructor failed');
       });
 
@@ -352,7 +353,7 @@ describe('ComponentLifecycleManager', () => {
     });
 
     it('should warn when component does not support $set', async () => {
-      const ComponentWithoutSet = jest.fn().mockImplementation(({ target }) => ({
+      const ComponentWithoutSet = vi.fn().mockImplementation(({ target }) => ({
         target,
         // No $set method
       }));
@@ -399,7 +400,7 @@ describe('ComponentLifecycleManager', () => {
     });
 
     it('should handle component without $destroy method gracefully', async () => {
-      const ComponentWithoutDestroy = jest.fn().mockImplementation(({ target }) => ({
+      const ComponentWithoutDestroy = vi.fn().mockImplementation(({ target }) => ({
         target,
         // No $destroy method
       }));

@@ -5,12 +5,13 @@
  * significant user impact if they fail
  */
 
+import { vi } from 'vitest';
 import { BackgroundTempRepoManager } from '../TempRepoManager';
-import { TempRepoTestLifecycle } from '../test-fixtures';
 import type { TempRepoManagerTestEnvironment } from '../test-fixtures';
+import { TempRepoTestLifecycle } from '../test-fixtures';
 
 // Mock the OperationStateManager module
-jest.mock('../../content/services/OperationStateManager');
+vi.mock('../../content/services/OperationStateManager');
 
 describe('TempRepoManager - Critical Scenarios', () => {
   let lifecycle: TempRepoTestLifecycle;
