@@ -14,7 +14,7 @@
     "format": "prettier --check .",
     "format:fix": "prettier --write .",
     "test:ci": "vitest run",
-    "test": "FORCE_COLOR=1 vitest run | cat",
+    "test": "vitest run",
     "test:watch": "vitest watch",
     "test:ui": "vitest --ui",
     "prepare": "husky",
