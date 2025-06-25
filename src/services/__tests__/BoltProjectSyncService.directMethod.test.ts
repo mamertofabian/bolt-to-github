@@ -1,46 +1,48 @@
-import { BoltProjectSyncService } from '../BoltProjectSyncService';
 import { ChromeStorageService } from '$lib/services/chromeStorage';
-import { SupabaseAuthService } from '../../content/services/SupabaseAuthService';
 import type { BoltProject, ProjectSettings } from '$lib/types';
+import type { Mock } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { SupabaseAuthService } from '../../content/services/SupabaseAuthService';
+import { BoltProjectSyncService } from '../BoltProjectSyncService';
 
 // Mock dependencies
-jest.mock('$lib/services/chromeStorage');
-jest.mock('../../content/services/SupabaseAuthService');
+vi.mock('$lib/services/chromeStorage');
+vi.mock('../../content/services/SupabaseAuthService');
 
 describe('BoltProjectSyncService - Direct Method Testing', () => {
   let service: BoltProjectSyncService;
-  let mockStorageGet: jest.Mock;
-  let mockStorageSet: jest.Mock;
-  let mockGetGitHubSettings: jest.Mock;
-  let mockSaveGitHubSettings: jest.Mock;
+  let mockStorageGet: Mock;
+  let mockStorageSet: Mock;
+  let mockGetGitHubSettings: Mock;
+  let mockSaveGitHubSettings: Mock;
 
   beforeEach(() => {
-    jest.clearAllMocks();
+    vi.clearAllMocks();
 
     // Setup ChromeStorageService mock
-    mockStorageGet = jest.fn();
-    mockStorageSet = jest.fn();
+    mockStorageGet = vi.fn();
+    mockStorageSet = vi.fn();
     ChromeStorageService.prototype.get = mockStorageGet;
     ChromeStorageService.prototype.set = mockStorageSet;
 
     // Setup static ChromeStorageService methods
-    mockGetGitHubSettings = jest.mocked(ChromeStorageService.getGitHubSettings);
-    mockSaveGitHubSettings = jest.mocked(ChromeStorageService.saveGitHubSettings);
+    mockGetGitHubSettings = vi.mocked(ChromeStorageService.getGitHubSettings);
+    mockSaveGitHubSettings = vi.mocked(ChromeStorageService.saveGitHubSettings);
 
     // Default mock for auth
     const mockAuthInstance = {
-      getAuthState: jest.fn().mockReturnValue({
+      getAuthState: vi.fn().mockReturnValue({
         isAuthenticated: true,
         subscription: { isActive: true },
       }),
     };
-    (SupabaseAuthService.getInstance as jest.Mock).mockReturnValue(mockAuthInstance);
+    (SupabaseAuthService.getInstance as any).mockReturnValue(mockAuthInstance);
 
     // Mock chrome storage
     global.chrome = {
       storage: {
         local: {
-          get: jest.fn().mockImplementation((keys) => {
+          get: vi.fn().mockImplementation((keys) => {
             const result: Record<string, unknown> = {};
             const keyArray = Array.isArray(keys) ? keys : [keys];
 
@@ -55,11 +57,11 @@ describe('BoltProjectSyncService - Direct Method Testing', () => {
             }
             return Promise.resolve(result);
           }),
-          set: jest.fn().mockResolvedValue(undefined),
+          set: vi.fn().mockResolvedValue(undefined),
         },
         sync: {
-          get: jest.fn().mockResolvedValue({}),
-          set: jest.fn().mockResolvedValue(undefined),
+          get: vi.fn().mockResolvedValue({}),
+          set: vi.fn().mockResolvedValue(undefined),
         },
       },
     } as unknown as typeof chrome;
@@ -71,7 +73,7 @@ describe('BoltProjectSyncService - Direct Method Testing', () => {
     it('should skip updating projects with recent user changes', async () => {
       // Mock recent settings update (5 seconds ago)
       const recentTimestamp = Date.now() - 5000;
-      (chrome.storage.local.get as jest.Mock).mockImplementation((keys) => {
+      (chrome.storage.local.get as Mock).mockImplementation((keys) => {
         if (Array.isArray(keys) && keys.includes('lastSettingsUpdate')) {
           return Promise.resolve({
             lastSettingsUpdate: {
@@ -157,7 +159,7 @@ describe('BoltProjectSyncService - Direct Method Testing', () => {
 
     it('should update all projects when no recent changes exist', async () => {
       // Mock no recent changes
-      (chrome.storage.local.get as jest.Mock).mockResolvedValue({});
+      (chrome.storage.local.get as Mock).mockResolvedValue({});
 
       const existingSettings: ProjectSettings = {
         'project-1': {
@@ -219,7 +221,7 @@ describe('BoltProjectSyncService - Direct Method Testing', () => {
     it('should respect the 30-second threshold', async () => {
       const oldTimestamp = Date.now() - 40000; // 40 seconds ago
 
-      (chrome.storage.local.get as jest.Mock).mockImplementation((keys) => {
+      (chrome.storage.local.get as Mock).mockImplementation((keys) => {
         if (Array.isArray(keys) && keys.includes('lastSettingsUpdate')) {
           return Promise.resolve({
             lastSettingsUpdate: {
@@ -279,7 +281,7 @@ describe('BoltProjectSyncService - Direct Method Testing', () => {
     it('should detect recent changes within threshold', async () => {
       const recentTimestamp = Date.now() - 10000; // 10 seconds ago
 
-      (chrome.storage.local.get as jest.Mock).mockResolvedValue({
+      (chrome.storage.local.get as Mock).mockResolvedValue({
         lastSettingsUpdate: {
           timestamp: recentTimestamp,
           projectId: 'project-1',
@@ -303,7 +305,7 @@ describe('BoltProjectSyncService - Direct Method Testing', () => {
     it('should ignore old changes beyond threshold', async () => {
       const oldTimestamp = Date.now() - 40000; // 40 seconds ago
 
-      (chrome.storage.local.get as jest.Mock).mockResolvedValue({
+      (chrome.storage.local.get as Mock).mockResolvedValue({
         lastSettingsUpdate: {
           timestamp: oldTimestamp,
           projectId: 'project-1',
@@ -319,7 +321,7 @@ describe('BoltProjectSyncService - Direct Method Testing', () => {
     });
 
     it('should handle missing data gracefully', async () => {
-      (chrome.storage.local.get as jest.Mock).mockResolvedValue({});
+      (chrome.storage.local.get as Mock).mockResolvedValue({});
 
       const changes = await (
         service as unknown as { getRecentProjectChanges: () => Promise<Map<string, unknown>> }
@@ -329,7 +331,7 @@ describe('BoltProjectSyncService - Direct Method Testing', () => {
     });
 
     it('should handle errors gracefully', async () => {
-      (chrome.storage.local.get as jest.Mock).mockRejectedValue(new Error('Storage error'));
+      (chrome.storage.local.get as Mock).mockRejectedValue(new Error('Storage error'));
 
       const changes = await (
         service as unknown as { getRecentProjectChanges: () => Promise<Map<string, unknown>> }

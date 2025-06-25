@@ -1,7 +1,8 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
+import type { Mock, MockInstance } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { CacheService } from '../CacheService';
 import type { IIdleMonitorService } from '../interfaces/IIdleMonitorService';
-import { expect, jest, describe, it, beforeEach, afterEach } from '@jest/globals';
 
 /**
  * Mock implementation of IIdleMonitorService that maintains internal state
@@ -10,14 +11,14 @@ class MockIdleMonitor implements IIdleMonitorService {
   private currentState: chrome.idle.IdleState = 'active';
   private listeners: Array<(state: chrome.idle.IdleState) => void> = [];
 
-  getCurrentState = jest.fn((): chrome.idle.IdleState => this.currentState);
-  isIdle = jest.fn((): boolean => this.currentState === 'idle' || this.currentState === 'locked');
+  getCurrentState = vi.fn((): chrome.idle.IdleState => this.currentState);
+  isIdle = vi.fn((): boolean => this.currentState === 'idle' || this.currentState === 'locked');
 
-  addListener = jest.fn((callback: (state: chrome.idle.IdleState) => void) => {
+  addListener = vi.fn((callback: (state: chrome.idle.IdleState) => void) => {
     this.listeners.push(callback);
   });
 
-  removeListener = jest.fn((callback: (state: chrome.idle.IdleState) => void) => {
+  removeListener = vi.fn((callback: (state: chrome.idle.IdleState) => void) => {
     this.listeners = this.listeners.filter((l) => l !== callback);
   });
 
@@ -36,7 +37,7 @@ class ControlledIdleCallbackManager {
   private idCounter = 1;
   private activeCallbacks = new Map<number, IdleRequestCallback>();
 
-  requestIdleCallback = jest.fn(
+  requestIdleCallback = vi.fn(
     (callback: IdleRequestCallback, _options?: IdleRequestOptions): number => {
       const id = this.idCounter++;
       this.activeCallbacks.set(id, callback);
@@ -44,7 +45,7 @@ class ControlledIdleCallbackManager {
     }
   );
 
-  cancelIdleCallback = jest.fn((id: number): void => {
+  cancelIdleCallback = vi.fn((id: number): void => {
     this.activeCallbacks.delete(id);
   });
 
@@ -71,14 +72,14 @@ describe('CacheService', () => {
   let idleCallbackManager: ControlledIdleCallbackManager;
   let cacheService: CacheService;
   let mockWindow: any;
-  let mockDate: ReturnType<typeof jest.spyOn>;
+  let mockDate: ReturnType<typeof vi.spyOn>;
   let fakeNow: number;
   let originalRefreshAllCaches: any;
 
   beforeEach(() => {
     // Set up a controlled current time
     fakeNow = 1000000;
-    mockDate = jest.spyOn(Date, 'now').mockImplementation(() => fakeNow);
+    mockDate = vi.spyOn(Date, 'now').mockImplementation(() => fakeNow) as unknown as MockInstance;
 
     // Create mock services
     mockIdleMonitor = new MockIdleMonitor();
@@ -107,7 +108,7 @@ describe('CacheService', () => {
     }
 
     mockDate.mockRestore();
-    jest.clearAllMocks();
+    vi.clearAllMocks();
   });
 
   // Helper function to advance time
@@ -172,16 +173,16 @@ describe('CacheService', () => {
   describe('idle refresh behavior', () => {
     const projectId = 'test-project';
     const files = new Map([['test.txt', 'content']]);
-    let refreshCallback: jest.Mock;
-    let refreshAllCachesSpy: ReturnType<typeof jest.spyOn>;
+    let refreshCallback: Mock;
+    let refreshAllCachesSpy: ReturnType<typeof vi.spyOn>;
 
     beforeEach(() => {
       // Mock the refreshAllCaches method to avoid auto-refreshing
-      refreshAllCachesSpy = jest
+      refreshAllCachesSpy = vi
         .spyOn(cacheService as any, 'refreshAllCaches')
         .mockImplementation(() => {});
 
-      refreshCallback = jest.fn();
+      refreshCallback = vi.fn();
       cacheService.onCacheRefreshNeeded(refreshCallback);
       cacheService.clearAllCaches();
       cacheService.cacheProjectFiles(projectId, files);
@@ -206,7 +207,7 @@ describe('CacheService', () => {
       refreshAllCachesSpy.mockRestore();
 
       // Now manually spy on refreshCaches to verify it's called with correct args
-      const refreshCachesSpy: ReturnType<typeof jest.spyOn> = jest.spyOn(
+      const refreshCachesSpy: ReturnType<typeof vi.spyOn> = vi.spyOn(
         cacheService as any,
         'refreshCaches'
       );
@@ -285,12 +286,12 @@ describe('CacheService', () => {
       // Restore original implementation for this test
       refreshAllCachesSpy.mockRestore();
 
-      const consoleSpy = jest.spyOn(console, 'error').mockImplementation(() => {});
+      const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
 
-      const errorCallback = jest.fn().mockImplementation(() => {
+      const errorCallback = vi.fn().mockImplementation(() => {
         throw new Error('Test error');
       });
-      const successCallback = jest.fn();
+      const successCallback = vi.fn();
 
       cacheService.onCacheRefreshNeeded(errorCallback);
       cacheService.onCacheRefreshNeeded(successCallback);
@@ -311,11 +312,11 @@ describe('CacheService', () => {
   describe('callback management', () => {
     it('should add and remove refresh callbacks', () => {
       // Mock the refreshAllCaches method to avoid auto-refreshing
-      const refreshAllCachesSpy = jest
+      const refreshAllCachesSpy = vi
         .spyOn(cacheService as any, 'refreshAllCaches')
         .mockImplementation(() => {});
 
-      const callback = jest.fn();
+      const callback = vi.fn();
       cacheService.onCacheRefreshNeeded(callback);
       cacheService.cacheProjectFiles('test', new Map());
 

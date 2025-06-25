@@ -1,104 +1,106 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import { BackgroundService } from '../BackgroundService';
+import type { Mocked, MockedClass } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { BoltProjectSyncService } from '../../services/BoltProjectSyncService';
+import { BackgroundService } from '../BackgroundService';
 
 // Mock all dependencies
-jest.mock('../../services/UnifiedGitHubService');
-jest.mock('../../services/zipHandler');
-jest.mock('../StateManager', () => ({
+vi.mock('../../services/UnifiedGitHubService');
+vi.mock('../../services/zipHandler');
+vi.mock('../StateManager', () => ({
   StateManager: {
-    getInstance: jest.fn(() => ({
-      getGitHubSettings: jest.fn().mockResolvedValue({ gitHubSettings: {} }),
+    getInstance: vi.fn(() => ({
+      getGitHubSettings: vi.fn().mockResolvedValue({ gitHubSettings: {} }),
     })),
   },
 }));
-jest.mock('../TempRepoManager');
-jest.mock('../../content/services/SupabaseAuthService', () => ({
+vi.mock('../TempRepoManager');
+vi.mock('../../content/services/SupabaseAuthService', () => ({
   SupabaseAuthService: {
-    getInstance: jest.fn(() => ({
-      forceCheck: jest.fn(),
-      getAuthState: jest.fn().mockReturnValue({ isAuthenticated: true }),
-      addAuthStateListener: jest.fn(),
-      removeAuthStateListener: jest.fn(),
+    getInstance: vi.fn(() => ({
+      forceCheck: vi.fn(),
+      getAuthState: vi.fn().mockReturnValue({ isAuthenticated: true }),
+      addAuthStateListener: vi.fn(),
+      removeAuthStateListener: vi.fn(),
     })),
   },
 }));
-jest.mock('../../content/services/OperationStateManager', () => ({
+vi.mock('../../content/services/OperationStateManager', () => ({
   OperationStateManager: {
-    getInstance: jest.fn(() => ({})),
+    getInstance: vi.fn(() => ({})),
   },
 }));
-jest.mock('../../lib/utils/logger', () => ({
-  createLogger: jest.fn(() => ({
-    info: jest.fn(),
-    error: jest.fn(),
-    warn: jest.fn(),
-    debug: jest.fn(),
+vi.mock('../../lib/utils/logger', () => ({
+  createLogger: vi.fn(() => ({
+    info: vi.fn(),
+    error: vi.fn(),
+    warn: vi.fn(),
+    debug: vi.fn(),
   })),
-  getLogStorage: jest.fn(() => ({
-    getLogs: jest.fn().mockResolvedValue([]),
-    rotateLogs: jest.fn(),
-  })),
-}));
-jest.mock('../UsageTracker', () => ({
-  UsageTracker: jest.fn(() => ({
-    initializeUsageData: jest.fn().mockResolvedValue(undefined),
-    updateUsageStats: jest.fn().mockResolvedValue(undefined),
+  getLogStorage: vi.fn(() => ({
+    getLogs: vi.fn().mockResolvedValue([]),
+    rotateLogs: vi.fn(),
   })),
 }));
-jest.mock('../../services/BoltProjectSyncService');
+vi.mock('../UsageTracker', () => ({
+  UsageTracker: vi.fn(() => ({
+    initializeUsageData: vi.fn().mockResolvedValue(undefined),
+    updateUsageStats: vi.fn().mockResolvedValue(undefined),
+  })),
+}));
+vi.mock('../../services/BoltProjectSyncService');
 
 // Mock chrome APIs
 const mockAlarms = {
-  create: jest.fn(),
-  clear: jest.fn(),
+  create: vi.fn(),
+  clear: vi.fn(),
   onAlarm: {
-    addListener: jest.fn(),
-    removeListener: jest.fn(),
+    addListener: vi.fn(),
+    removeListener: vi.fn(),
   },
 };
 
 const mockStorage = {
   local: {
-    get: jest.fn(),
-    set: jest.fn(),
+    get: vi.fn(),
+    set: vi.fn(),
   },
   sync: {
-    get: jest.fn(),
-    set: jest.fn(),
+    get: vi.fn(),
+    set: vi.fn(),
   },
   onChanged: {
-    addListener: jest.fn(),
-    removeListener: jest.fn(),
+    addListener: vi.fn(),
+    removeListener: vi.fn(),
   },
 };
 
 const mockRuntime = {
   onInstalled: {
-    addListener: jest.fn(),
+    addListener: vi.fn(),
   },
   onConnect: {
-    addListener: jest.fn(),
+    addListener: vi.fn(),
   },
   onMessage: {
-    addListener: jest.fn(),
+    addListener: vi.fn(),
   },
   onStartup: {
-    addListener: jest.fn(),
+    addListener: vi.fn(),
   },
   lastError: null,
 };
 
 const mockTabs = {
-  get: jest.fn(),
+  get: vi.fn(),
   onUpdated: {
-    addListener: jest.fn(),
+    addListener: vi.fn(),
   },
   onRemoved: {
-    addListener: jest.fn(),
+    addListener: vi.fn(),
   },
   onActivated: {
-    addListener: jest.fn(),
+    addListener: vi.fn(),
   },
 };
 
@@ -111,11 +113,11 @@ global.chrome = {
 
 describe('BackgroundService - Sync Functionality', () => {
   let service: BackgroundService;
-  let mockSyncService: jest.Mocked<BoltProjectSyncService>;
+  let mockSyncService: Mocked<BoltProjectSyncService>;
 
   beforeEach(() => {
-    jest.clearAllMocks();
-    jest.useFakeTimers();
+    vi.clearAllMocks();
+    vi.useFakeTimers();
 
     // Setup mock returns
     mockStorage.sync.get.mockResolvedValue({});
@@ -123,10 +125,10 @@ describe('BackgroundService - Sync Functionality', () => {
 
     // Mock BoltProjectSyncService
     mockSyncService = {
-      performOutwardSync: jest.fn().mockResolvedValue(null),
-      performInwardSync: jest.fn().mockResolvedValue(null),
+      performOutwardSync: vi.fn().mockResolvedValue(null),
+      performInwardSync: vi.fn().mockResolvedValue(null),
     } as any;
-    (BoltProjectSyncService as jest.MockedClass<typeof BoltProjectSyncService>).mockImplementation(
+    (BoltProjectSyncService as MockedClass<typeof BoltProjectSyncService>).mockImplementation(
       () => mockSyncService
     );
 
@@ -134,20 +136,20 @@ describe('BackgroundService - Sync Functionality', () => {
   });
 
   afterEach(() => {
-    jest.useRealTimers();
+    vi.useRealTimers();
   });
 
   describe('Sync Alarm Setup', () => {
     it('should create sync alarm on initialization', async () => {
       // Wait for initialization
-      await jest.runOnlyPendingTimersAsync();
+      await vi.runOnlyPendingTimersAsync();
 
       expect(mockAlarms.create).toHaveBeenCalledWith('bolt-project-sync', { periodInMinutes: 5 });
     });
 
     it('should add alarm listener on initialization', async () => {
       // Wait for initialization
-      await jest.runOnlyPendingTimersAsync();
+      await vi.runOnlyPendingTimersAsync();
 
       expect(mockAlarms.onAlarm.addListener).toHaveBeenCalled();
     });
@@ -159,7 +161,7 @@ describe('BackgroundService - Sync Functionality', () => {
       });
 
       service = new BackgroundService();
-      await jest.runOnlyPendingTimersAsync();
+      await vi.runOnlyPendingTimersAsync();
 
       // Should still be called, but error is handled gracefully
       expect(mockAlarms.create).toHaveBeenCalled();
@@ -178,7 +180,7 @@ describe('BackgroundService - Sync Functionality', () => {
       });
 
       service = new BackgroundService();
-      await jest.runOnlyPendingTimersAsync();
+      await vi.runOnlyPendingTimersAsync();
     });
 
     it('should perform outward sync when alarm fires', async () => {
@@ -240,7 +242,7 @@ describe('BackgroundService - Sync Functionality', () => {
       });
 
       service = new BackgroundService();
-      await jest.runOnlyPendingTimersAsync();
+      await vi.runOnlyPendingTimersAsync();
 
       // Ensure we captured a handler
       expect(mockRuntime.onMessage.addListener).toHaveBeenCalled();
@@ -248,7 +250,7 @@ describe('BackgroundService - Sync Functionality', () => {
     });
 
     it('should handle SYNC_BOLT_PROJECTS message', async () => {
-      const sendResponse = jest.fn();
+      const sendResponse = vi.fn();
       const message = { type: 'SYNC_BOLT_PROJECTS' };
       const sender = {};
 
@@ -256,7 +258,7 @@ describe('BackgroundService - Sync Functionality', () => {
       messageHandler(message, sender, sendResponse);
 
       // Wait for async operations
-      await jest.runOnlyPendingTimersAsync();
+      await vi.runOnlyPendingTimersAsync();
 
       // Verify sync was triggered
       expect(mockSyncService.performOutwardSync).toHaveBeenCalled();
@@ -272,7 +274,7 @@ describe('BackgroundService - Sync Functionality', () => {
     });
 
     it('should handle sync errors in manual trigger', async () => {
-      const sendResponse = jest.fn();
+      const sendResponse = vi.fn();
       const message = { type: 'SYNC_BOLT_PROJECTS' };
       const error = new Error('Sync failed');
 
@@ -281,7 +283,7 @@ describe('BackgroundService - Sync Functionality', () => {
       messageHandler(message, {}, sendResponse);
 
       // Wait for async operations
-      await jest.runOnlyPendingTimersAsync();
+      await vi.runOnlyPendingTimersAsync();
 
       expect(sendResponse).toHaveBeenCalledWith({
         success: false,
@@ -293,7 +295,7 @@ describe('BackgroundService - Sync Functionality', () => {
   describe('Sync Service Initialization', () => {
     it('should initialize sync service on startup', async () => {
       service = new BackgroundService();
-      await jest.runOnlyPendingTimersAsync();
+      await vi.runOnlyPendingTimersAsync();
 
       expect(BoltProjectSyncService).toHaveBeenCalled();
     });
@@ -302,10 +304,10 @@ describe('BackgroundService - Sync Functionality', () => {
       service = new BackgroundService();
 
       // Wait for initialization
-      await jest.runOnlyPendingTimersAsync();
+      await vi.runOnlyPendingTimersAsync();
 
       // Advance timers by 1ms to execute the setTimeout
-      jest.advanceTimersByTime(1);
+      vi.advanceTimersByTime(1);
 
       expect(mockSyncService.performInwardSync).toHaveBeenCalled();
     });
@@ -314,7 +316,7 @@ describe('BackgroundService - Sync Functionality', () => {
   describe('Cleanup', () => {
     it('should clear sync alarm on service cleanup', async () => {
       service = new BackgroundService();
-      await jest.runOnlyPendingTimersAsync();
+      await vi.runOnlyPendingTimersAsync();
 
       // Simulate cleanup via destroy
       service.destroy();
@@ -329,7 +331,7 @@ describe('BackgroundService - Sync Functionality', () => {
       });
 
       service = new BackgroundService();
-      await jest.runOnlyPendingTimersAsync();
+      await vi.runOnlyPendingTimersAsync();
 
       // Simulate cleanup via destroy
       service.destroy();

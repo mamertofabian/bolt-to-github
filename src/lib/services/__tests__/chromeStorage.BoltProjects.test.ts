@@ -1,19 +1,20 @@
-import { ChromeStorageService } from '../chromeStorage';
 import type { BoltProject } from '$lib/types';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { ChromeStorageService } from '../chromeStorage';
 
 // Mock chrome.storage API
 const mockStorage = {
   local: {
-    get: jest.fn(),
-    set: jest.fn(),
-    remove: jest.fn(),
-    clear: jest.fn(),
+    get: vi.fn(),
+    set: vi.fn(),
+    remove: vi.fn(),
+    clear: vi.fn(),
   },
   sync: {
-    get: jest.fn(),
-    set: jest.fn(),
-    remove: jest.fn(),
-    clear: jest.fn(),
+    get: vi.fn(),
+    set: vi.fn(),
+    remove: vi.fn(),
+    clear: vi.fn(),
   },
 };
 
@@ -28,7 +29,7 @@ describe('ChromeStorageService - BoltProjects', () => {
   let service: ChromeStorageService;
 
   beforeEach(() => {
-    jest.clearAllMocks();
+    vi.clearAllMocks();
     service = new ChromeStorageService();
     // Reset lastError
     chrome.runtime.lastError = undefined;

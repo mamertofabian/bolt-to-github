@@ -1,96 +1,97 @@
-import { UnifiedGitHubService } from '../UnifiedGitHubService';
+import {
+  beforeEach,
+  describe,
+  expect,
+  it,
+  type Mocked,
+  type MockedClass,
+  type MockedFunction,
+  vi,
+} from 'vitest';
 import { GitHubApiClient } from '../GitHubApiClient';
-import { beforeEach, describe, expect, it, jest } from '@jest/globals';
+import { UnifiedGitHubService } from '../UnifiedGitHubService';
 import type { IAuthenticationStrategy } from '../interfaces/IAuthenticationStrategy';
 import type {
   AuthenticationType,
-  TokenValidationResult,
   PermissionCheckResult,
+  TokenValidationResult,
 } from '../types/authentication';
 
 // Mock the GitHubApiClient
-jest.mock('../GitHubApiClient');
-const MockedGitHubApiClient = GitHubApiClient as jest.MockedClass<typeof GitHubApiClient>;
+vi.mock('../GitHubApiClient');
+const MockedGitHubApiClient = GitHubApiClient as MockedClass<typeof GitHubApiClient>;
 
 // Create proper mock implementations for the authentication strategies
 const createMockPATStrategy = (): IAuthenticationStrategy => ({
   type: 'pat' as AuthenticationType,
-  isConfigured: jest.fn<() => Promise<boolean>>().mockResolvedValue(true),
-  getToken: jest.fn<() => Promise<string>>().mockResolvedValue('test-token'),
-  validateAuth: jest.fn<(username?: string) => Promise<TokenValidationResult>>().mockResolvedValue({
+  isConfigured: vi.fn().mockResolvedValue(true),
+  getToken: vi.fn().mockResolvedValue('test-token'),
+  validateAuth: vi.fn().mockResolvedValue({
     isValid: true,
     userInfo: { login: 'testuser', id: 123, avatar_url: 'test.jpg' },
     scopes: ['repo'],
   } as TokenValidationResult),
-  needsRenewal: jest.fn<() => Promise<boolean>>().mockResolvedValue(false),
-  refreshToken: jest.fn<() => Promise<string>>().mockResolvedValue('refreshed-token'),
-  getMetadata: jest.fn<() => Promise<Record<string, unknown>>>().mockResolvedValue({}),
-  checkPermissions: jest
-    .fn<(repoOwner: string) => Promise<PermissionCheckResult>>()
-    .mockResolvedValue({
-      isValid: true,
-      permissions: { allRepos: true, admin: true, contents: true },
-    } as PermissionCheckResult),
-  clearAuth: jest.fn<() => Promise<void>>().mockResolvedValue(undefined),
-  getUserInfo: jest
-    .fn<() => Promise<{ login: string; id: number; avatar_url: string } | null>>()
-    .mockResolvedValue({ login: 'testuser', id: 123, avatar_url: 'test.jpg' }),
+  needsRenewal: vi.fn().mockResolvedValue(false),
+  refreshToken: vi.fn().mockResolvedValue('refreshed-token'),
+  getMetadata: vi.fn().mockResolvedValue({}),
+  checkPermissions: vi.fn().mockResolvedValue({
+    isValid: true,
+    permissions: { allRepos: true, admin: true, contents: true },
+  } as PermissionCheckResult),
+  clearAuth: vi.fn().mockResolvedValue(undefined),
+  getUserInfo: vi.fn().mockResolvedValue({ login: 'testuser', id: 123, avatar_url: 'test.jpg' }),
 });
 
 const createMockGitHubAppStrategy = (): IAuthenticationStrategy => ({
   type: 'github_app' as AuthenticationType,
-  isConfigured: jest.fn<() => Promise<boolean>>().mockResolvedValue(true),
-  getToken: jest.fn<() => Promise<string>>().mockResolvedValue('github-app-token'),
-  validateAuth: jest.fn<(username?: string) => Promise<TokenValidationResult>>().mockResolvedValue({
+  isConfigured: vi.fn().mockResolvedValue(true),
+  getToken: vi.fn().mockResolvedValue('github-app-token'),
+  validateAuth: vi.fn().mockResolvedValue({
     isValid: true,
     userInfo: { login: 'testuser', id: 123, avatar_url: 'test.jpg' },
     scopes: ['repo'],
   } as TokenValidationResult),
-  needsRenewal: jest.fn<() => Promise<boolean>>().mockResolvedValue(false),
-  refreshToken: jest.fn<() => Promise<string>>().mockResolvedValue('refreshed-token'),
-  getMetadata: jest.fn<() => Promise<Record<string, unknown>>>().mockResolvedValue({}),
-  checkPermissions: jest
-    .fn<(repoOwner: string) => Promise<PermissionCheckResult>>()
-    .mockResolvedValue({
-      isValid: true,
-      permissions: { allRepos: true, admin: true, contents: true },
-    } as PermissionCheckResult),
-  clearAuth: jest.fn<() => Promise<void>>().mockResolvedValue(undefined),
-  getUserInfo: jest
-    .fn<() => Promise<{ login: string; id: number; avatar_url: string } | null>>()
-    .mockResolvedValue({ login: 'testuser', id: 123, avatar_url: 'test.jpg' }),
+  needsRenewal: vi.fn().mockResolvedValue(false),
+  refreshToken: vi.fn().mockResolvedValue('refreshed-token'),
+  getMetadata: vi.fn().mockResolvedValue({}),
+  checkPermissions: vi.fn().mockResolvedValue({
+    isValid: true,
+    permissions: { allRepos: true, admin: true, contents: true },
+  } as PermissionCheckResult),
+  clearAuth: vi.fn().mockResolvedValue(undefined),
+  getUserInfo: vi.fn().mockResolvedValue({ login: 'testuser', id: 123, avatar_url: 'test.jpg' }),
 });
 
 // Mock AuthenticationStrategyFactory
-jest.mock('../AuthenticationStrategyFactory', () => ({
+vi.mock('../AuthenticationStrategyFactory', () => ({
   AuthenticationStrategyFactory: {
-    getInstance: jest.fn(() => ({
-      createPATStrategy: jest.fn(() => createMockPATStrategy()),
-      createGitHubAppStrategy: jest.fn(() => createMockGitHubAppStrategy()),
-      getCurrentStrategy: jest.fn(),
+    getInstance: vi.fn(() => ({
+      createPATStrategy: vi.fn(() => createMockPATStrategy()),
+      createGitHubAppStrategy: vi.fn(() => createMockGitHubAppStrategy()),
+      getCurrentStrategy: vi.fn(),
     })),
   },
 }));
 
 describe('UnifiedGitHubService Feedback', () => {
   let githubService: UnifiedGitHubService;
-  let mockApiClient: jest.Mocked<GitHubApiClient>;
-  let mockFetch: jest.MockedFunction<typeof fetch>;
+  let mockApiClient: Mocked<GitHubApiClient>;
+  let mockFetch: MockedFunction<typeof fetch>;
 
   beforeEach(() => {
-    jest.clearAllMocks();
+    vi.clearAllMocks();
 
     // Create a mock instance
     mockApiClient = {
-      request: jest.fn(),
-      getRateLimit: jest.fn(),
-    } as unknown as jest.Mocked<GitHubApiClient>;
+      request: vi.fn(),
+      getRateLimit: vi.fn(),
+    } as unknown as Mocked<GitHubApiClient>;
 
     // Mock the constructor to return our mock instance
     MockedGitHubApiClient.mockImplementation(() => mockApiClient);
 
     // Setup fetch mock
-    mockFetch = jest.fn() as jest.MockedFunction<typeof fetch>;
+    mockFetch = vi.fn() as MockedFunction<typeof fetch>;
     global.fetch = mockFetch;
 
     githubService = new UnifiedGitHubService('test-token');
@@ -103,9 +104,7 @@ describe('UnifiedGitHubService Feedback', () => {
       // Mock fetch to return a proper Response-like object
       mockFetch.mockResolvedValue({
         ok: true,
-        json: jest
-          .fn<() => Promise<typeof mockIssueResponse>>()
-          .mockResolvedValue(mockIssueResponse),
+        json: vi.fn().mockResolvedValue(mockIssueResponse),
       } as unknown as Response);
 
       const result = await githubService.createIssue('owner', 'repo', {
@@ -146,9 +145,7 @@ describe('UnifiedGitHubService Feedback', () => {
 
       mockFetch.mockResolvedValue({
         ok: true,
-        json: jest
-          .fn<() => Promise<typeof mockIssueResponse>>()
-          .mockResolvedValue(mockIssueResponse),
+        json: vi.fn().mockResolvedValue(mockIssueResponse),
       } as unknown as Response);
 
       const feedback = {
@@ -195,9 +192,7 @@ describe('UnifiedGitHubService Feedback', () => {
 
       mockFetch.mockResolvedValue({
         ok: true,
-        json: jest
-          .fn<() => Promise<typeof mockIssueResponse>>()
-          .mockResolvedValue(mockIssueResponse),
+        json: vi.fn().mockResolvedValue(mockIssueResponse),
       } as unknown as Response);
 
       const feedback = {
@@ -229,7 +224,7 @@ describe('UnifiedGitHubService Feedback', () => {
         const mockResponse = { id: 1, number: 1 };
         mockFetch.mockResolvedValue({
           ok: true,
-          json: jest.fn<() => Promise<typeof mockResponse>>().mockResolvedValue(mockResponse),
+          json: vi.fn().mockResolvedValue(mockResponse),
         } as unknown as Response);
 
         const feedback = {

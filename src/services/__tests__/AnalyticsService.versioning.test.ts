@@ -1,24 +1,25 @@
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { AnalyticsService } from '../AnalyticsService';
 
 // Mock chrome APIs
 const mockChromeRuntime = {
   id: 'test-extension-id',
-  getManifest: jest.fn(() => ({
+  getManifest: vi.fn(() => ({
     version: '1.3.7',
     name: 'Bolt to GitHub',
     manifest_version: 3,
   })),
-  sendMessage: jest.fn(),
+  sendMessage: vi.fn(),
 };
 
 const mockChromeStorage = {
   local: {
-    get: jest.fn(() => Promise.resolve({ analyticsClientId: 'test-client-id' })),
-    set: jest.fn(() => Promise.resolve()),
+    get: vi.fn(() => Promise.resolve({ analyticsClientId: 'test-client-id' })),
+    set: vi.fn(() => Promise.resolve()),
   },
   sync: {
-    get: jest.fn(() => Promise.resolve({ analyticsEnabled: true })),
-    set: jest.fn(() => Promise.resolve()),
+    get: vi.fn(() => Promise.resolve({ analyticsEnabled: true })),
+    set: vi.fn(() => Promise.resolve()),
   },
 };
 
@@ -28,7 +29,7 @@ global.chrome = {
 } as unknown as typeof chrome;
 
 // Mock fetch
-const mockFetch = jest.fn<Promise<Response>, [RequestInfo | URL, RequestInit?]>(() =>
+const mockFetch = vi.fn<[RequestInfo | URL, RequestInit?], Promise<Response>>(() =>
   Promise.resolve({
     ok: true,
     json: () => Promise.resolve({}),
@@ -40,7 +41,7 @@ describe('AnalyticsService Version Tracking', () => {
   let analyticsService: AnalyticsService;
 
   beforeEach(() => {
-    jest.clearAllMocks();
+    vi.clearAllMocks();
     // Reset singleton instance
     analyticsService = AnalyticsService.getInstance();
   });

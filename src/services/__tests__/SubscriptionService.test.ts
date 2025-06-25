@@ -1,33 +1,34 @@
-import { describe, jest, beforeEach, it, expect } from '@jest/globals';
-import { SubscriptionService } from '../SubscriptionService';
+import type { MockedFunction } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { SUPABASE_CONFIG } from '../../lib/constants/supabase';
+import { SubscriptionService } from '../SubscriptionService';
 
 // Mock chrome API
 const mockChrome = {
   storage: {
     sync: {
-      get: jest.fn(),
-      set: jest.fn(),
+      get: vi.fn(),
+      set: vi.fn(),
     },
   },
   runtime: {
-    getManifest: jest.fn(() => ({ version: '1.0.0' })),
+    getManifest: vi.fn(() => ({ version: '1.0.0' })),
   },
 };
 
 global.chrome = mockChrome as unknown as typeof chrome;
 
 // Mock fetch
-global.fetch = jest.fn() as jest.MockedFunction<typeof fetch>;
+global.fetch = vi.fn() as MockedFunction<typeof fetch>;
 
 describe('SubscriptionService', () => {
   beforeEach(() => {
-    jest.clearAllMocks();
+    vi.clearAllMocks();
   });
 
   describe('getSubscriptionStatus', () => {
     it('should return default status when no subscription exists', async () => {
-      (mockChrome.storage.sync.get as jest.Mock).mockResolvedValue({} as never);
+      (mockChrome.storage.sync.get as any).mockResolvedValue({} as never);
 
       const status = await SubscriptionService.getSubscriptionStatus();
 
@@ -41,7 +42,7 @@ describe('SubscriptionService', () => {
         email: 'test@example.com',
         date: '2023-01-01T00:00:00.000Z',
       };
-      (mockChrome.storage.sync.get as jest.Mock).mockResolvedValue({
+      (mockChrome.storage.sync.get as any).mockResolvedValue({
         newsletterSubscription: mockSubscription,
       } as never);
 
@@ -55,7 +56,7 @@ describe('SubscriptionService', () => {
     it('should save subscription status with current date', async () => {
       const email = 'test@example.com';
       const mockDate = new Date('2023-01-01T00:00:00.000Z');
-      jest.spyOn(global, 'Date').mockImplementation(() => mockDate as unknown as Date);
+      vi.spyOn(global, 'Date').mockImplementation(() => mockDate as unknown as Date);
 
       await SubscriptionService.saveSubscriptionStatus(email);
 
@@ -71,7 +72,7 @@ describe('SubscriptionService', () => {
 
   describe('getUsageStats', () => {
     it('should return default stats when none exist', async () => {
-      (mockChrome.storage.sync.get as jest.Mock).mockResolvedValue({} as never);
+      (mockChrome.storage.sync.get as any).mockResolvedValue({} as never);
 
       const stats = await SubscriptionService.getUsageStats();
 
@@ -84,7 +85,7 @@ describe('SubscriptionService', () => {
         interactionCount: 5,
         lastSubscriptionPrompt: '2023-01-01T00:00:00.000Z',
       };
-      (mockChrome.storage.sync.get as jest.Mock).mockResolvedValue({
+      (mockChrome.storage.sync.get as any).mockResolvedValue({
         usageStats: mockStats,
       } as never);
 
@@ -96,7 +97,7 @@ describe('SubscriptionService', () => {
 
   describe('incrementInteractionCount', () => {
     it('should increment interaction count from 0', async () => {
-      (mockChrome.storage.sync.get as jest.Mock).mockResolvedValue({} as never);
+      (mockChrome.storage.sync.get as any).mockResolvedValue({} as never);
 
       const newCount = await SubscriptionService.incrementInteractionCount();
 
@@ -110,7 +111,7 @@ describe('SubscriptionService', () => {
 
     it('should increment existing interaction count', async () => {
       const existingStats = { interactionCount: 3, lastSubscriptionPrompt: '2023-01-01' };
-      (mockChrome.storage.sync.get as jest.Mock).mockResolvedValue({
+      (mockChrome.storage.sync.get as any).mockResolvedValue({
         usageStats: existingStats,
       } as never);
 
@@ -129,18 +130,18 @@ describe('SubscriptionService', () => {
   describe('shouldShowSubscriptionPrompt', () => {
     beforeEach(() => {
       // Mock the static methods that are called
-      jest
-        .spyOn(SubscriptionService, 'getSubscriptionStatus')
-        .mockResolvedValue({ subscribed: false } as never);
-      jest
-        .spyOn(SubscriptionService, 'getUsageStats')
-        .mockResolvedValue({ interactionCount: 0 } as never);
+      vi.spyOn(SubscriptionService, 'getSubscriptionStatus').mockResolvedValue({
+        subscribed: false,
+      } as never);
+      vi.spyOn(SubscriptionService, 'getUsageStats').mockResolvedValue({
+        interactionCount: 0,
+      } as never);
     });
 
     it('should not show prompt if user is already subscribed', async () => {
-      jest
-        .spyOn(SubscriptionService, 'getSubscriptionStatus')
-        .mockResolvedValue({ subscribed: true } as never);
+      vi.spyOn(SubscriptionService, 'getSubscriptionStatus').mockResolvedValue({
+        subscribed: true,
+      } as never);
 
       const shouldShow = await SubscriptionService.shouldShowSubscriptionPrompt();
 
@@ -148,9 +149,9 @@ describe('SubscriptionService', () => {
     });
 
     it('should not show prompt if interaction count is less than 3', async () => {
-      jest
-        .spyOn(SubscriptionService, 'getUsageStats')
-        .mockResolvedValue({ interactionCount: 2 } as never);
+      vi.spyOn(SubscriptionService, 'getUsageStats').mockResolvedValue({
+        interactionCount: 2,
+      } as never);
 
       const shouldShow = await SubscriptionService.shouldShowSubscriptionPrompt();
 
@@ -158,9 +159,9 @@ describe('SubscriptionService', () => {
     });
 
     it('should show prompt on 3rd interaction', async () => {
-      jest
-        .spyOn(SubscriptionService, 'getUsageStats')
-        .mockResolvedValue({ interactionCount: 3 } as never);
+      vi.spyOn(SubscriptionService, 'getUsageStats').mockResolvedValue({
+        interactionCount: 3,
+      } as never);
 
       const shouldShow = await SubscriptionService.shouldShowSubscriptionPrompt();
 
@@ -168,9 +169,9 @@ describe('SubscriptionService', () => {
     });
 
     it('should show prompt on 10th interaction', async () => {
-      jest
-        .spyOn(SubscriptionService, 'getUsageStats')
-        .mockResolvedValue({ interactionCount: 10 } as never);
+      vi.spyOn(SubscriptionService, 'getUsageStats').mockResolvedValue({
+        interactionCount: 10,
+      } as never);
 
       const shouldShow = await SubscriptionService.shouldShowSubscriptionPrompt();
 
@@ -181,7 +182,7 @@ describe('SubscriptionService', () => {
       const recentDate = new Date();
       recentDate.setDate(recentDate.getDate() - 15); // 15 days ago
 
-      jest.spyOn(SubscriptionService, 'getUsageStats').mockResolvedValue({
+      vi.spyOn(SubscriptionService, 'getUsageStats').mockResolvedValue({
         interactionCount: 5,
         lastSubscriptionPrompt: recentDate.toISOString(),
       } as never);
@@ -195,7 +196,7 @@ describe('SubscriptionService', () => {
       const oldDate = new Date();
       oldDate.setDate(oldDate.getDate() - 35); // 35 days ago
 
-      jest.spyOn(SubscriptionService, 'getUsageStats').mockResolvedValue({
+      vi.spyOn(SubscriptionService, 'getUsageStats').mockResolvedValue({
         interactionCount: 5,
         lastSubscriptionPrompt: oldDate.toISOString(),
       } as never);
@@ -216,7 +217,7 @@ describe('SubscriptionService', () => {
           subscriber: { id: 'subscriber-123' },
         }),
       };
-      (global.fetch as jest.MockedFunction<typeof fetch>).mockResolvedValue(
+      (global.fetch as MockedFunction<typeof fetch>).mockResolvedValue(
         mockResponse as unknown as Response
       );
 
@@ -256,7 +257,7 @@ describe('SubscriptionService', () => {
           message: 'Email is already subscribed',
         }),
       };
-      (global.fetch as jest.MockedFunction<typeof fetch>).mockResolvedValue(
+      (global.fetch as MockedFunction<typeof fetch>).mockResolvedValue(
         mockResponse as unknown as Response
       );
 
@@ -275,7 +276,7 @@ describe('SubscriptionService', () => {
     });
 
     it('should handle network errors', async () => {
-      (global.fetch as jest.MockedFunction<typeof fetch>).mockRejectedValue(
+      (global.fetch as MockedFunction<typeof fetch>).mockRejectedValue(
         new TypeError('Failed to fetch')
       );
 

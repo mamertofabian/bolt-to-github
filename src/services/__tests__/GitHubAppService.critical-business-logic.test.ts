@@ -9,25 +9,24 @@
  * - Storage Management
  */
 
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import {
-  setupGitHubAppServiceTest,
-  setupCommonMockResponses,
+  advanceTime,
   assertFetchCall,
   assertStorageUpdate,
-  simulateError,
-  advanceTime,
-  type GitHubAppServiceTestEnvironment,
-} from './test-fixtures';
-import {
-  validGitHubAppConfig,
-  validOAuthFlowResponse,
+  createGitHubAppConfigWithExpiry,
+  noGitHubAppError,
   oAuthFlowNoInstallationResponse,
   renewedTokenResponse,
-  noGitHubAppError,
+  setupCommonMockResponses,
+  setupGitHubAppServiceTest,
+  simulateError,
   tokenExpiredNoRefreshError,
   tokenRenewalFailedError,
   validAuthStorageData,
-  createGitHubAppConfigWithExpiry,
+  validGitHubAppConfig,
+  validOAuthFlowResponse,
+  type GitHubAppServiceTestEnvironment,
 } from './test-fixtures';
 
 describe('GitHubAppService - Critical Business Logic', () => {
@@ -408,7 +407,7 @@ describe('GitHubAppService - Critical Business Logic', () => {
       it('should handle storage errors', async () => {
         // Mock storage error
         const originalSet = env.storage.set;
-        env.storage.set = jest.fn().mockRejectedValue(new Error('QUOTA_EXCEEDED'));
+        env.storage.set = vi.fn().mockRejectedValue(new Error('QUOTA_EXCEEDED'));
 
         await expect(env.service.storeConfig(validGitHubAppConfig)).rejects.toThrow(
           'Failed to store GitHub App configuration'
@@ -456,7 +455,7 @@ describe('GitHubAppService - Critical Business Logic', () => {
 
       it('should handle storage errors during clear', async () => {
         const originalRemove = env.storage.remove;
-        env.storage.remove = jest.fn().mockRejectedValue(new Error('Storage error'));
+        env.storage.remove = vi.fn().mockRejectedValue(new Error('Storage error'));
 
         await expect(env.service.clearConfig()).rejects.toThrow(
           'Failed to clear GitHub App configuration'
@@ -492,7 +491,7 @@ describe('GitHubAppService - Critical Business Logic', () => {
 
       it('should handle storage errors gracefully', async () => {
         const originalGet = env.storage.get;
-        env.storage.get = jest.fn().mockRejectedValue(new Error('Storage error'));
+        env.storage.get = vi.fn().mockRejectedValue(new Error('Storage error'));
 
         const config = await env.service.getConfig();
         expect(config).toBeNull();

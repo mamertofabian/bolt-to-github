@@ -1,108 +1,109 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { BackgroundService } from '../BackgroundService';
 
 // Mock all dependencies
-jest.mock('../../services/UnifiedGitHubService');
-jest.mock('../../services/zipHandler');
-jest.mock('../StateManager', () => ({
+vi.mock('../../services/UnifiedGitHubService');
+vi.mock('../../services/zipHandler');
+vi.mock('../StateManager', () => ({
   StateManager: {
-    getInstance: jest.fn(() => ({
-      getGitHubSettings: jest.fn().mockResolvedValue({ gitHubSettings: {} }),
+    getInstance: vi.fn(() => ({
+      getGitHubSettings: vi.fn().mockResolvedValue({ gitHubSettings: {} }),
     })),
   },
 }));
-jest.mock('../TempRepoManager');
-jest.mock('../../content/services/SupabaseAuthService', () => ({
+vi.mock('../TempRepoManager');
+vi.mock('../../content/services/SupabaseAuthService', () => ({
   SupabaseAuthService: {
-    getInstance: jest.fn(() => ({
-      forceCheck: jest.fn(),
-      getAuthState: jest.fn().mockReturnValue({ isAuthenticated: true }),
-      addAuthStateListener: jest.fn(),
-      removeAuthStateListener: jest.fn(),
+    getInstance: vi.fn(() => ({
+      forceCheck: vi.fn(),
+      getAuthState: vi.fn().mockReturnValue({ isAuthenticated: true }),
+      addAuthStateListener: vi.fn(),
+      removeAuthStateListener: vi.fn(),
     })),
   },
 }));
-jest.mock('../../content/services/OperationStateManager', () => ({
+vi.mock('../../content/services/OperationStateManager', () => ({
   OperationStateManager: {
-    getInstance: jest.fn(() => ({})),
+    getInstance: vi.fn(() => ({})),
   },
 }));
 const mockLogStorage = {
-  getLogs: jest.fn().mockResolvedValue([]),
-  rotateLogs: jest.fn(),
+  getLogs: vi.fn().mockResolvedValue([]),
+  rotateLogs: vi.fn(),
 };
 
-jest.mock('../../lib/utils/logger', () => ({
-  createLogger: jest.fn(() => ({
-    info: jest.fn(),
-    error: jest.fn(),
-    warn: jest.fn(),
-    debug: jest.fn(),
+vi.mock('../../lib/utils/logger', () => ({
+  createLogger: vi.fn(() => ({
+    info: vi.fn(),
+    error: vi.fn(),
+    warn: vi.fn(),
+    debug: vi.fn(),
   })),
-  getLogStorage: jest.fn(() => mockLogStorage),
+  getLogStorage: vi.fn(() => mockLogStorage),
 }));
-jest.mock('../UsageTracker', () => ({
-  UsageTracker: jest.fn(() => ({
-    initializeUsageData: jest.fn().mockResolvedValue(undefined),
-    updateUsageStats: jest.fn().mockResolvedValue(undefined),
+vi.mock('../UsageTracker', () => ({
+  UsageTracker: vi.fn(() => ({
+    initializeUsageData: vi.fn().mockResolvedValue(undefined),
+    updateUsageStats: vi.fn().mockResolvedValue(undefined),
   })),
 }));
-jest.mock('../../services/BoltProjectSyncService');
+vi.mock('../../services/BoltProjectSyncService');
 
 // Mock chrome APIs with enhanced alarm functionality
 const mockAlarms = {
-  create: jest.fn(),
-  clear: jest.fn(),
-  clearAll: jest.fn(),
-  get: jest.fn(),
-  getAll: jest.fn(),
+  create: vi.fn(),
+  clear: vi.fn(),
+  clearAll: vi.fn(),
+  get: vi.fn(),
+  getAll: vi.fn(),
   onAlarm: {
-    addListener: jest.fn(),
-    removeListener: jest.fn(),
+    addListener: vi.fn(),
+    removeListener: vi.fn(),
   },
 };
 
 const mockStorage = {
   local: {
-    get: jest.fn(),
-    set: jest.fn(),
+    get: vi.fn(),
+    set: vi.fn(),
   },
   sync: {
-    get: jest.fn(),
-    set: jest.fn(),
+    get: vi.fn(),
+    set: vi.fn(),
   },
   onChanged: {
-    addListener: jest.fn(),
-    removeListener: jest.fn(),
+    addListener: vi.fn(),
+    removeListener: vi.fn(),
   },
 };
 
 const mockRuntime = {
   onInstalled: {
-    addListener: jest.fn(),
+    addListener: vi.fn(),
   },
   onConnect: {
-    addListener: jest.fn(),
+    addListener: vi.fn(),
   },
   onMessage: {
-    addListener: jest.fn(),
+    addListener: vi.fn(),
   },
   onStartup: {
-    addListener: jest.fn(),
+    addListener: vi.fn(),
   },
   lastError: null,
 };
 
 const mockTabs = {
-  get: jest.fn(),
+  get: vi.fn(),
   onUpdated: {
-    addListener: jest.fn(),
+    addListener: vi.fn(),
   },
   onRemoved: {
-    addListener: jest.fn(),
+    addListener: vi.fn(),
   },
   onActivated: {
-    addListener: jest.fn(),
+    addListener: vi.fn(),
   },
 };
 
@@ -117,8 +118,8 @@ describe('BackgroundService - Alarms Functionality', () => {
   let service: BackgroundService;
 
   beforeEach(() => {
-    jest.clearAllMocks();
-    jest.useFakeTimers();
+    vi.clearAllMocks();
+    vi.useFakeTimers();
 
     // Setup mock returns
     mockStorage.sync.get.mockResolvedValue({});
@@ -128,13 +129,13 @@ describe('BackgroundService - Alarms Functionality', () => {
   });
 
   afterEach(() => {
-    jest.useRealTimers();
+    vi.useRealTimers();
     service.destroy();
   });
 
   describe('Log Rotation Alarm', () => {
     it('should create log rotation alarm on initialization', async () => {
-      await jest.runOnlyPendingTimersAsync();
+      await vi.runOnlyPendingTimersAsync();
 
       expect(mockAlarms.create).toHaveBeenCalledWith('logRotation', { periodInMinutes: 180 });
     });
@@ -168,7 +169,7 @@ describe('BackgroundService - Alarms Functionality', () => {
 
   describe('Keep-Alive Alarm', () => {
     it('should create keep-alive alarm on initialization', async () => {
-      await jest.runOnlyPendingTimersAsync();
+      await vi.runOnlyPendingTimersAsync();
 
       expect(mockAlarms.create).toHaveBeenCalledWith('keepAlive', { periodInMinutes: 1 });
     });
@@ -182,7 +183,7 @@ describe('BackgroundService - Alarms Functionality', () => {
     });
 
     it('should update activity timestamp on keep-alive alarm', () => {
-      const mockUpdateLastActivity = jest.spyOn(service as any, 'updateLastActivity');
+      const mockUpdateLastActivity = vi.spyOn(service as any, 'updateLastActivity');
 
       // Get the alarm listener
       expect(mockAlarms.onAlarm.addListener).toHaveBeenCalled();
@@ -201,7 +202,7 @@ describe('BackgroundService - Alarms Functionality', () => {
 
   describe('Sync Alarm', () => {
     it('should create sync alarm on initialization', async () => {
-      await jest.runOnlyPendingTimersAsync();
+      await vi.runOnlyPendingTimersAsync();
 
       expect(mockAlarms.create).toHaveBeenCalledWith('bolt-project-sync', { periodInMinutes: 5 });
     });
@@ -209,7 +210,7 @@ describe('BackgroundService - Alarms Functionality', () => {
 
   describe('Alarm Configuration Verification', () => {
     it('should create all alarms with correct parameters on initialization', async () => {
-      await jest.runOnlyPendingTimersAsync();
+      await vi.runOnlyPendingTimersAsync();
 
       // Verify all three alarms are created with exact parameters
       expect(mockAlarms.create).toHaveBeenCalledWith('logRotation', { periodInMinutes: 180 });
@@ -226,13 +227,13 @@ describe('BackgroundService - Alarms Functionality', () => {
 
   describe('Alarm Event Handling', () => {
     it('should register alarm event listener on initialization', async () => {
-      await jest.runOnlyPendingTimersAsync();
+      await vi.runOnlyPendingTimersAsync();
 
       expect(mockAlarms.onAlarm.addListener).toHaveBeenCalledWith(expect.any(Function));
     });
 
     it('should handle keep-alive alarm events', () => {
-      const mockUpdateLastActivity = jest.spyOn(service as any, 'updateLastActivity');
+      const mockUpdateLastActivity = vi.spyOn(service as any, 'updateLastActivity');
 
       // Get the alarm listener
       expect(mockAlarms.onAlarm.addListener).toHaveBeenCalled();
@@ -264,9 +265,11 @@ describe('BackgroundService - Alarms Functionality', () => {
     });
 
     it('should handle sync alarm events', () => {
-      const mockHandleSyncAlarm = jest
+      const mockHandleSyncAlarm = vi
         .spyOn(service as any, 'handleSyncAlarm')
-        .mockImplementation();
+        .mockImplementation((alarmInfo) => {
+          console.log('handleSyncAlarm', alarmInfo);
+        });
 
       // Get the alarm listener
       expect(mockAlarms.onAlarm.addListener).toHaveBeenCalled();
@@ -280,10 +283,12 @@ describe('BackgroundService - Alarms Functionality', () => {
     });
 
     it('should ignore unknown alarm events', () => {
-      const mockUpdateLastActivity = jest.spyOn(service as any, 'updateLastActivity');
-      const mockHandleSyncAlarm = jest
+      const mockUpdateLastActivity = vi.spyOn(service as any, 'updateLastActivity');
+      const mockHandleSyncAlarm = vi
         .spyOn(service as any, 'handleSyncAlarm')
-        .mockImplementation();
+        .mockImplementation((alarmInfo) => {
+          console.log('handleSyncAlarm', alarmInfo);
+        });
 
       // Clear any previous calls
       mockLogStorage.rotateLogs.mockClear();
@@ -324,11 +329,11 @@ describe('BackgroundService - Alarms Functionality', () => {
 
   describe('Keep-Alive Activity Tracking', () => {
     beforeEach(() => {
-      jest.spyOn(Date, 'now').mockReturnValue(1000000);
+      vi.spyOn(Date, 'now').mockReturnValue(1000000);
     });
 
     afterEach(() => {
-      (Date.now as jest.Mock).mockRestore();
+      (Date.now as any).mockRestore();
     });
 
     it('should track last activity timestamp', () => {

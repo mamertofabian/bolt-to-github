@@ -1,14 +1,14 @@
-import { expect, jest, describe, it, beforeEach } from '@jest/globals';
-import type { ProjectFiles } from '../types';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import {
-  processFilesWithGitignore,
   decodeBase64ToUtf8,
   normalizeContentForComparison,
+  processFilesWithGitignore,
 } from '../fileUtils';
+import type { ProjectFiles } from '../types';
 
 describe('fileUtils', () => {
   beforeEach(() => {
-    jest.clearAllMocks();
+    vi.clearAllMocks();
   });
 
   describe('processFilesWithGitignore', () => {

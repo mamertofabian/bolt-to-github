@@ -1,23 +1,24 @@
-import { ReadmeGeneratorService } from '../ReadmeGeneratorService';
 import { processFilesWithGitignore } from '$lib/fileUtils';
+import { beforeEach, describe, expect, it, type Mock, vi } from 'vitest';
+import { ReadmeGeneratorService } from '../ReadmeGeneratorService';
 
 // Mock dependencies
-jest.mock('$lib/fileUtils');
-jest.mock('$lib/utils/logger', () => ({
+vi.mock('$lib/fileUtils');
+vi.mock('$lib/utils/logger', () => ({
   createLogger: () => ({
-    info: jest.fn(),
-    error: jest.fn(),
-    warn: jest.fn(),
-    debug: jest.fn(),
+    info: vi.fn(),
+    error: vi.fn(),
+    warn: vi.fn(),
+    debug: vi.fn(),
   }),
 }));
 
 describe('ZipHandler - README Generation Integration', () => {
   beforeEach(() => {
-    jest.clearAllMocks();
+    vi.clearAllMocks();
 
     // Mock processFilesWithGitignore to return input unchanged
-    (processFilesWithGitignore as jest.Mock).mockImplementation((files) => Promise.resolve(files));
+    (processFilesWithGitignore as Mock).mockImplementation((files) => Promise.resolve(files));
   });
 
   it('should add README.md when processing files without one', async () => {

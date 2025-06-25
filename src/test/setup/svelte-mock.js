@@ -3,7 +3,7 @@
  */
 
 // Generic Svelte component constructor mock
-class MockSvelteComponent {
+export default class MockSvelteComponent {
   constructor(options = {}) {
     this.options = options;
     this.$set = function () {};
@@ -11,5 +11,3 @@ class MockSvelteComponent {
     this.$destroy = function () {};
   }
 }
-
-module.exports = MockSvelteComponent;
