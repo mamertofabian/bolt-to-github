@@ -17,6 +17,7 @@ import { SupabaseAuthService } from '../content/services/SupabaseAuthService';
 import type { AuthState } from '../content/services/SupabaseAuthService';
 import { OperationStateManager } from '../content/services/OperationStateManager';
 import { createLogger, getLogStorage } from '../lib/utils/logger';
+import { analytics } from '../services/AnalyticsService';
 import { UsageTracker } from './UsageTracker';
 import { BoltProjectSyncService } from '../services/BoltProjectSyncService';
 import { extractProjectIdFromUrl } from '../lib/utils/projectId';
@@ -1254,10 +1255,28 @@ export class BackgroundService {
 
   private async handleExtensionInstalled(details: chrome.runtime.InstalledDetails): Promise<void> {
     try {
+      const currentVersion = chrome.runtime.getManifest().version;
+
       if (details.reason === 'install') {
         logger.info('Extension installed for the first time', {
-          version: chrome.runtime.getManifest().version,
+          version: currentVersion,
         });
+
+        // Track fresh installation
+        try {
+          await analytics.trackExtensionEvent('fresh_install', {
+            version: currentVersion,
+          });
+        } catch (analyticsError) {
+          logger.error('Failed to track fresh install analytics:', analyticsError);
+        }
+
+        // Track daily active user for fresh install
+        try {
+          await analytics.trackDailyActiveUser();
+        } catch (analyticsError) {
+          logger.error('Failed to track daily active user for fresh install:', analyticsError);
+        }
 
         // Open welcome page
         logger.info('Opening welcome page for new installation');
@@ -1269,13 +1288,38 @@ export class BackgroundService {
         const onboardingData = {
           installDate: new Date().toISOString(),
           onboardingCompleted: false,
-          installedVersion: chrome.runtime.getManifest().version,
+          installedVersion: currentVersion,
           completedSteps: [] as string[],
           welcomePageViewed: false,
         };
 
         await chrome.storage.local.set(onboardingData);
         logger.info('Initialized onboarding data', onboardingData);
+
+        // Store current version for future version change tracking
+        await chrome.storage.local.set({ lastKnownVersion: currentVersion });
+      } else if (details.reason === 'update') {
+        const previousVersion = details.previousVersion || 'unknown';
+        logger.info('Extension updated', {
+          from: previousVersion,
+          to: currentVersion,
+        });
+
+        // Track version change and daily active user independently
+        try {
+          await analytics.trackVersionChange(previousVersion, currentVersion);
+        } catch (analyticsError) {
+          logger.error('Failed to track version change analytics:', analyticsError);
+        }
+
+        try {
+          await analytics.trackDailyActiveUser();
+        } catch (analyticsError) {
+          logger.error('Failed to track daily active user analytics:', analyticsError);
+        }
+
+        // Update stored version (keep outside try-catch as it's critical)
+        await chrome.storage.local.set({ lastKnownVersion: currentVersion });
       }
     } catch (error) {
       logger.error('Error handling extension installation:', error);
