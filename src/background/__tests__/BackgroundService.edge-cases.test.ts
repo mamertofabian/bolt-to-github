@@ -54,7 +54,7 @@ describe('BackgroundService Edge Cases and Boundary Testing', () => {
           // Should handle without crashing
           expect(true).toBe(true);
         } catch (error) {
-          expect(error).toBeNull();
+          expect.fail(`Failed with commit message length ${commitMessage.length}: ${error}`);
         }
       }
     });

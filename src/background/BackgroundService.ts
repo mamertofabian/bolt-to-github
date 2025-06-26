@@ -506,15 +506,14 @@ export class BackgroundService {
         case 'SET_COMMIT_MESSAGE': {
           const commitMessage = message as SetCommitMessage;
           logger.info('Setting commit message:', commitMessage.data.message);
+          const hasCustomMessage = Boolean(
+            commitMessage.data?.message &&
+              commitMessage.data.message !== 'Commit from Bolt to GitHub'
+          );
           await analytics.trackEvent({
             category: 'user_action',
             action: 'commit_message_customized',
-            label: JSON.stringify({
-              has_custom_message: Boolean(
-                commitMessage.data?.message &&
-                  commitMessage.data.message !== 'Commit from Bolt to GitHub'
-              ),
-            }),
+            label: JSON.stringify({ has_custom_message: hasCustomMessage }),
           });
           if (commitMessage.data && commitMessage.data.message) {
             this.pendingCommitMessage = commitMessage.data.message;
@@ -951,7 +950,7 @@ export class BackgroundService {
         });
 
         await analytics.trackError(
-          error instanceof Error ? error : new Error('Unknown upload error'),
+          error instanceof Error ? error : new Error(`Unknown upload error: ${String(error)}`),
           'upload_general'
         );
 

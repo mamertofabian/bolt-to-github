@@ -43,7 +43,9 @@ describe('BoltProjectSyncService', () => {
       getAuthToken: mockAuthGetToken,
       getAuthState: mockAuthGetState,
     };
-    (SupabaseAuthService.getInstance as any).mockReturnValue(mockAuthInstance);
+    vi.mocked(SupabaseAuthService.getInstance).mockReturnValue(
+      mockAuthInstance as unknown as SupabaseAuthService
+    );
 
     // Mock chrome storage for auth token
     global.chrome = {

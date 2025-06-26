@@ -45,26 +45,6 @@ global.chrome = {
   runtime: mockChromeRuntime as unknown as typeof chrome.runtime,
 } as typeof chrome;
 
-// Mock WhatsNewModal component
-vi.mock('$lib/components/WhatsNewModal.svelte', () => {
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const MockComponent = vi.fn().mockImplementation((options: any) => {
-    const component = {
-      target: options.target,
-      props: options.props,
-      $destroy: vi.fn(),
-      $set: vi.fn(),
-    };
-    // Important: return component instance
-    return component;
-  });
-
-  return {
-    __esModule: true,
-    default: MockComponent,
-  };
-});
-
 // Mock DOMPurify
 vi.mock('dompurify', () => ({
   default: {

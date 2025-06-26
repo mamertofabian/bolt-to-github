@@ -221,7 +221,9 @@ describe('MessageHandler - Edge Cases', () => {
       expect(status.connected).toBe(false);
 
       // Total should be 10 (sent + queued)
-      const sentCount = (env.currentPort?.postMessage as Mock).mock.calls.length;
+      const sentCount = env.currentPort
+        ? (env.currentPort.postMessage as Mock).mock.calls.length
+        : 0;
       const queuedCount = status.queuedMessages;
       expect(sentCount + queuedCount).toBe(10);
     });
