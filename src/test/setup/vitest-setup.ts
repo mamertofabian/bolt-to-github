@@ -5,14 +5,9 @@ import './svelte-mocks';
 
 // Svelte component mock pattern for individual test files
 
-// Mock import.meta.env
-(globalThis as any).import = {
-  meta: {
-    env: {
-      VITE_GA4_API_SECRET: 'test-api-secret',
-    },
-  },
-};
+// Setup environment variables for tests
+// Vitest will automatically handle import.meta.env when these are set
+vi.stubEnv('VITE_GA4_API_SECRET', 'test-api-secret');
 
 // Chrome Extension API Mocks
 (globalThis as any).chrome = {

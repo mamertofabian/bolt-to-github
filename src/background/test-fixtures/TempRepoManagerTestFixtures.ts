@@ -976,7 +976,7 @@ export const TempRepoAssertionHelpers = {
   expectBoltTabCreated(
     tabs: TempRepoMockChromeTabs,
     expectedOwner: string,
-    expectedRepo: string | any // Allow matchers like expect.stringContaining()
+    expectedRepo: string | ReturnType<typeof expect.stringContaining>
   ): void {
     const createdTab = tabs.getLastCreatedTab();
     expect(createdTab).toBeDefined();

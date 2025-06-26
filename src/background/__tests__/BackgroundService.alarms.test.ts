@@ -267,8 +267,8 @@ describe('BackgroundService - Alarms Functionality', () => {
     it('should handle sync alarm events', () => {
       const mockHandleSyncAlarm = vi
         .spyOn(service as any, 'handleSyncAlarm')
-        .mockImplementation((alarmInfo) => {
-          console.log('handleSyncAlarm', alarmInfo);
+        .mockImplementation(() => {
+          // Mock implementation
         });
 
       // Get the alarm listener
@@ -286,8 +286,8 @@ describe('BackgroundService - Alarms Functionality', () => {
       const mockUpdateLastActivity = vi.spyOn(service as any, 'updateLastActivity');
       const mockHandleSyncAlarm = vi
         .spyOn(service as any, 'handleSyncAlarm')
-        .mockImplementation((alarmInfo) => {
-          console.log('handleSyncAlarm', alarmInfo);
+        .mockImplementation(() => {
+          // Mock implementation
         });
 
       // Clear any previous calls
