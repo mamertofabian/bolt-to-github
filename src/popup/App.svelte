@@ -47,7 +47,7 @@
     type TempRepoMetadata,
   } from '$lib/stores';
   import { ChromeMessagingService } from '$lib/services/chromeMessaging';
-  import type { PremiumFeature } from './types';
+  import type { PremiumFeature, ProjectStatusRef } from './types';
 
   // Constants for display modes
   const DISPLAY_MODES = {
@@ -69,7 +69,7 @@
   $: isUserPremium = $isPremium;
 
   // Component references and modal states
-  let projectStatusRef: any;
+  let projectStatusRef: ProjectStatusRef = null;
 
   // Modal states grouped together
   let modalStates = {
@@ -135,14 +135,35 @@
   }
 
   // Message handlers
-  function handleUploadStatusMessage(message: any) {
-    uploadStateActions.handleUploadStatusMessage(message);
+  function handleUploadStatusMessage(message: unknown): void {
+    const msg = message as {
+      type?: string;
+      status?: import('$lib/types').ProcessingStatus;
+      progress?: number;
+      message?: string;
+    };
+    if (msg?.type === 'UPLOAD_STATUS') {
+      uploadStateActions.handleUploadStatusMessage({
+        type: 'UPLOAD_STATUS',
+        status: msg.status,
+        progress: msg.progress,
+        message: msg.message,
+      });
+    }
   }
 
-  function handleFileChangesMessage(message: any) {
-    if (message.type === 'FILE_CHANGES') {
-      logger.info('Received file changes:', message.changes, 'for project:', message.projectId);
-      fileChangesActions.processFileChangesMessage(message.changes, message.projectId);
+  function handleFileChangesMessage(message: unknown): void {
+    const msg = message as {
+      type?: string;
+      changes?: Record<string, unknown>;
+      projectId?: string;
+    };
+    if (msg?.type === 'FILE_CHANGES' && msg.changes && msg.projectId) {
+      logger.info('Received file changes:', msg.changes, 'for project:', msg.projectId);
+      fileChangesActions.processFileChangesMessage(
+        msg.changes as Record<string, import('../services/FilePreviewService').FileChange>,
+        msg.projectId
+      );
     }
   }
 
@@ -555,7 +576,7 @@
     if (uiState.tempRepoData) {
       githubSettingsActions.setRepoName(uiState.tempRepoData.originalRepo);
       await saveSettings();
-      await projectStatusRef.getProjectStatus();
+      await projectStatusRef?.getProjectStatus();
       uiStateActions.markTempRepoNameUsed();
 
       // Check if we can close the modal
