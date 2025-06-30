@@ -80,12 +80,17 @@ describe('DropdownManager', () => {
       const content = dropdownManager.createContent();
       const buttons = content.querySelectorAll('button');
 
-      expect(buttons.length).toBe(2); // Push, Dashboard
+      expect(buttons.length).toBe(6); // Push, Dashboard, Show Changed Files, Manage Issues, Projects, Settings
 
-      // Check button texts
+      // Check button texts - account for the fact that premium buttons include "Upgrade" badge
       const buttonTexts = Array.from(buttons).map((btn) => btn.textContent?.trim());
-      expect(buttonTexts).toContain('Push to GitHub');
-      expect(buttonTexts).toContain('Project Dashboard');
+
+      expect(buttonTexts[0]).toBe('Push to GitHub');
+      expect(buttonTexts[1]).toBe('Project Dashboard');
+      expect(buttonTexts[2]).toContain('Show Changed Files'); // Premium item with "Upgrade" badge
+      expect(buttonTexts[3]).toContain('Manage Issues'); // Premium item with "Upgrade" badge
+      expect(buttonTexts[4]).toBe('Projects');
+      expect(buttonTexts[5]).toBe('Settings');
     });
 
     test('adds custom styles to document head', () => {
@@ -215,6 +220,59 @@ describe('DropdownManager', () => {
       dashboardButton?.click();
 
       expect(mockMessageHandler.sendMessage).toHaveBeenCalledWith('OPEN_HOME');
+    });
+
+    test('premium features show upgrade badge when not premium', () => {
+      const content = dropdownManager.createContent();
+      const buttons = content.querySelectorAll('button');
+
+      // Check Show Changed Files button
+      const changedFilesButton = Array.from(buttons).find((btn) =>
+        btn.textContent?.includes('Show Changed Files')
+      );
+      expect(changedFilesButton?.innerHTML).toContain('Upgrade');
+      expect(changedFilesButton?.className).toContain('opacity-75');
+
+      // Check Manage Issues button
+      const issuesButton = Array.from(buttons).find((btn) =>
+        btn.textContent?.includes('Manage Issues')
+      );
+      expect(issuesButton?.innerHTML).toContain('Upgrade');
+      expect(issuesButton?.className).toContain('opacity-75');
+    });
+
+    test('handles Settings button click', () => {
+      const content = dropdownManager.createContent();
+      const buttons = content.querySelectorAll('button');
+
+      const settingsButton = Array.from(buttons).find((btn) =>
+        btn.textContent?.includes('Settings')
+      );
+
+      // Mock the current dropdown
+      (dropdownManager as any).currentDropdown = { style: { display: 'block' } };
+
+      // Simulate click
+      settingsButton?.click();
+
+      expect(mockMessageHandler.sendMessage).toHaveBeenCalledWith('OPEN_SETTINGS');
+    });
+
+    test('handles Projects button click', () => {
+      const content = dropdownManager.createContent();
+      const buttons = content.querySelectorAll('button');
+
+      const projectsButton = Array.from(buttons).find((btn) =>
+        btn.textContent?.includes('Projects')
+      );
+
+      // Mock the current dropdown
+      (dropdownManager as any).currentDropdown = { style: { display: 'block' } };
+
+      // Simulate click
+      projectsButton?.click();
+
+      expect(mockMessageHandler.sendMessage).toHaveBeenCalledWith('OPEN_PROJECTS');
     });
   });
 
