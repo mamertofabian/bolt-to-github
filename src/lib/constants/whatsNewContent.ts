@@ -6,6 +6,16 @@ export interface WhatsNewVersion {
 }
 
 export const whatsNewContent: Record<string, WhatsNewVersion> = {
+  '1.3.8': {
+    date: '2025-XX-XX',
+    highlights: [
+      '✨ [Feature Highlight 1] - Brief description of the most exciting feature',
+      '🚀 [Feature Highlight 2] - Another key improvement or feature',
+      '🔧 [Feature Highlight 3] - Performance or stability enhancement',
+    ],
+    details: `[Provide a 1-2 sentence description of why this update matters and what value it brings to users.]`,
+    type: 'minor',
+  },
   '1.3.7': {
     date: '2025-06-25',
     highlights: [
