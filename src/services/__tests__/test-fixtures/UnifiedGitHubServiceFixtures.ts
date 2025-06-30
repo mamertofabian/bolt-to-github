@@ -10,8 +10,9 @@
  * - Error scenarios
  */
 
-import type { AuthenticationConfig, AuthenticationType } from '../../types/authentication';
+import type { MockedFunction } from 'vitest';
 import type { IAuthenticationStrategy } from '../../interfaces/IAuthenticationStrategy';
+import type { AuthenticationConfig, AuthenticationType } from '../../types/authentication';
 
 // =============================================================================
 // GITHUB API RESPONSE FIXTURES
@@ -1336,19 +1337,19 @@ export class MockAuthenticationStrategyFactory {
     );
   }
 
-  static getInstance = jest.fn(() => new MockAuthenticationStrategyFactory());
+  static getInstance = vi.fn(() => new MockAuthenticationStrategyFactory());
 
-  createPATStrategy = jest.fn((token: string): IAuthenticationStrategy => {
+  createPATStrategy = vi.fn((token: string): IAuthenticationStrategy => {
     this.patStrategy = new MockPATAuthenticationStrategy(token);
     return this.patStrategy;
   });
 
-  createGitHubAppStrategy = jest.fn((userToken?: string): IAuthenticationStrategy => {
+  createGitHubAppStrategy = vi.fn((userToken?: string): IAuthenticationStrategy => {
     this.githubAppStrategy = new MockGitHubAppAuthenticationStrategy(userToken);
     return this.githubAppStrategy;
   });
 
-  getCurrentStrategy = jest.fn(async (): Promise<IAuthenticationStrategy> => {
+  getCurrentStrategy = vi.fn(async (): Promise<IAuthenticationStrategy> => {
     return this.currentStrategyType === 'pat' ? this.patStrategy : this.githubAppStrategy;
   });
 
@@ -1377,7 +1378,7 @@ export class MockAuthenticationStrategyFactory {
     this.patStrategy.reset();
     this.githubAppStrategy.reset();
     this.currentStrategyType = 'pat';
-    jest.clearAllMocks();
+    vi.clearAllMocks();
   }
 }
 
@@ -1624,8 +1625,8 @@ export class MockFetchResponseBuilder {
   }
 
   // Build and install the mock
-  build(): jest.MockedFunction<typeof fetch> {
-    const mockFetch = jest.fn(async (input: string | URL | Request, init?: RequestInit) => {
+  build(): MockedFunction<typeof fetch> {
+    const mockFetch = vi.fn(async (input: string | URL | Request, init?: RequestInit) => {
       this.callCount++;
 
       // Simulate delay
@@ -1678,7 +1679,7 @@ export class MockFetchResponseBuilder {
         statusText: 'Not Found',
         json: () => Promise.resolve(ErrorFixtures.notFound.error),
       };
-    }) as jest.MockedFunction<typeof fetch>;
+    }) as MockedFunction<typeof fetch>;
 
     global.fetch = mockFetch;
     return mockFetch;
@@ -1701,7 +1702,7 @@ export class MockFetchResponseBuilder {
     this.callCount = 0;
     this.shouldFail = false;
     this.delay = 0;
-    jest.clearAllMocks();
+    vi.clearAllMocks();
   }
 }
 
@@ -1724,7 +1725,7 @@ export class MockChromeStorage {
     global.chrome = {
       storage: {
         local: {
-          get: jest.fn(async (keys?: string | string[]) => {
+          get: vi.fn(async (keys?: string | string[]) => {
             await this.simulateDelay();
             if (this.shouldFail) {
               throw new Error('Storage operation failed');
@@ -1746,7 +1747,7 @@ export class MockChromeStorage {
             return result;
           }),
 
-          set: jest.fn(async (items: Record<string, unknown>) => {
+          set: vi.fn(async (items: Record<string, unknown>) => {
             await this.simulateDelay();
             if (this.shouldFail) {
               throw new Error('Storage operation failed');
@@ -1757,7 +1758,7 @@ export class MockChromeStorage {
             }
           }),
 
-          remove: jest.fn(async (keys: string | string[]) => {
+          remove: vi.fn(async (keys: string | string[]) => {
             await this.simulateDelay();
             if (this.shouldFail) {
               throw new Error('Storage operation failed');
@@ -1769,7 +1770,7 @@ export class MockChromeStorage {
             }
           }),
 
-          clear: jest.fn(async () => {
+          clear: vi.fn(async () => {
             await this.simulateDelay();
             if (this.shouldFail) {
               throw new Error('Storage operation failed');
@@ -1779,7 +1780,7 @@ export class MockChromeStorage {
         },
 
         sync: {
-          get: jest.fn(async (keys?: string | string[]) => {
+          get: vi.fn(async (keys?: string | string[]) => {
             await this.simulateDelay();
             if (this.shouldFail) {
               throw new Error('Storage operation failed');
@@ -1801,7 +1802,7 @@ export class MockChromeStorage {
             return result;
           }),
 
-          set: jest.fn(async (items: Record<string, unknown>) => {
+          set: vi.fn(async (items: Record<string, unknown>) => {
             await this.simulateDelay();
             if (this.shouldFail) {
               throw new Error('Storage operation failed');
@@ -1880,7 +1881,7 @@ export class MockChromeStorage {
     this.syncStorage.clear();
     this.shouldFail = false;
     this.delay = 0;
-    jest.clearAllMocks();
+    vi.clearAllMocks();
   }
 }
 
@@ -1984,40 +1985,11 @@ export class UnifiedGitHubServiceTestScenarios {
 
   // Build and apply all mocks
   build(): {
-    mockFetch: jest.MockedFunction<typeof fetch>;
+    mockFetch: MockedFunction<typeof fetch>;
     mockStorage: MockChromeStorage;
     mockAuthFactory: MockAuthenticationStrategyFactory;
   } {
     const mockFetch = this.mockFetch.build();
-
-    // Get the existing mocked factory instance and configure it
-    const { AuthenticationStrategyFactory } = jest.requireMock(
-      '../../AuthenticationStrategyFactory'
-    );
-    const mockFactoryInstance = AuthenticationStrategyFactory.getInstance();
-
-    // Configure the existing mock factory with our settings
-    if (mockFactoryInstance) {
-      // Copy our configuration to the existing mock
-      mockFactoryInstance.patStrategy = this.mockAuthFactory.getPATStrategy();
-      mockFactoryInstance.githubAppStrategy = this.mockAuthFactory.getGitHubAppStrategy();
-      mockFactoryInstance.currentStrategyType = this.mockAuthFactory.currentStrategyType;
-
-      // Update the mock methods to use our configured strategies
-      mockFactoryInstance.createPATStrategy.mockImplementation((token: string) => {
-        this.mockAuthFactory.createPATStrategy(token);
-        return this.mockAuthFactory.getPATStrategy();
-      });
-
-      mockFactoryInstance.createGitHubAppStrategy.mockImplementation((userToken?: string) => {
-        this.mockAuthFactory.createGitHubAppStrategy(userToken);
-        return this.mockAuthFactory.getGitHubAppStrategy();
-      });
-
-      mockFactoryInstance.getCurrentStrategy.mockImplementation(async () => {
-        return this.mockAuthFactory.getCurrentStrategy();
-      });
-    }
 
     return {
       mockFetch,
@@ -2066,7 +2038,7 @@ export class UnifiedGitHubServiceTestHelpers {
   }
 
   static expectValidGitHubApiCall(
-    mockFetch: jest.MockedFunction<typeof fetch>,
+    mockFetch: MockedFunction<typeof fetch>,
     expectedUrl: string,
     expectedMethod: string = 'GET',
     expectedHeaders?: Record<string, string>
@@ -2098,7 +2070,7 @@ export class UnifiedGitHubServiceTestHelpers {
     }
   }
 
-  static expectNoGitHubApiCalls(mockFetch: jest.MockedFunction<typeof fetch>): void {
+  static expectNoGitHubApiCalls(mockFetch: MockedFunction<typeof fetch>): void {
     expect(mockFetch).not.toHaveBeenCalled();
   }
 

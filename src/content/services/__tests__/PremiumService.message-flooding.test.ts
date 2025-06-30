@@ -5,23 +5,23 @@
 import { PremiumService } from '../PremiumService';
 
 // Mock the logger
-jest.mock('../../../lib/utils/logger', () => ({
+vi.mock('../../../lib/utils/logger', () => ({
   createLogger: () => ({
-    info: jest.fn(),
-    warn: jest.fn(),
-    error: jest.fn(),
-    debug: jest.fn(),
+    info: vi.fn(),
+    warn: vi.fn(),
+    error: vi.fn(),
+    debug: vi.fn(),
   }),
 }));
 
 // Mock Chrome storage
 const mockChromeStorage = {
   local: {
-    get: jest.fn().mockResolvedValue({}),
-    set: jest.fn().mockResolvedValue(undefined),
+    get: vi.fn().mockResolvedValue({}),
+    set: vi.fn().mockResolvedValue(undefined),
   },
   sync: {
-    set: jest.fn().mockResolvedValue(undefined),
+    set: vi.fn().mockResolvedValue(undefined),
   },
 };
 
@@ -36,7 +36,7 @@ describe('PremiumService Message Flooding Prevention', () => {
   let premiumService: PremiumService;
 
   beforeEach(() => {
-    jest.clearAllMocks();
+    vi.clearAllMocks();
     premiumService = new PremiumService();
   });
 

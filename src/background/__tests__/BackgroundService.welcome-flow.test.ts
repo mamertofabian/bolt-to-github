@@ -8,88 +8,95 @@
  * - Handle various installation scenarios
  */
 
+import { type Mock, vi } from 'vitest';
 import { BackgroundService } from '../BackgroundService';
 
 // Mock all dependencies before importing
-jest.mock('../../services/UnifiedGitHubService');
-jest.mock('../StateManager', () => ({
+vi.mock('../../services/UnifiedGitHubService');
+vi.mock('../StateManager', () => ({
   StateManager: {
-    getInstance: jest.fn(() => ({
-      getGitHubSettings: jest.fn().mockResolvedValue({ gitHubSettings: {} }),
+    getInstance: vi.fn(() => ({
+      getGitHubSettings: vi.fn().mockResolvedValue({ gitHubSettings: {} }),
     })),
   },
 }));
-jest.mock('../../services/zipHandler');
-jest.mock('../TempRepoManager');
-jest.mock('../UsageTracker', () => ({
-  UsageTracker: jest.fn(() => ({
-    initializeUsageData: jest.fn().mockResolvedValue(undefined),
-    updateUsageStats: jest.fn().mockResolvedValue(undefined),
+vi.mock('../../services/zipHandler');
+vi.mock('../TempRepoManager');
+vi.mock('../UsageTracker', () => ({
+  UsageTracker: vi.fn(() => ({
+    initializeUsageData: vi.fn().mockResolvedValue(undefined),
+    updateUsageStats: vi.fn().mockResolvedValue(undefined),
   })),
 }));
-jest.mock('../../services/BoltProjectSyncService');
+vi.mock('../../services/BoltProjectSyncService');
 
 // Create a mock that can be dynamically updated during tests
 const mockSupabaseAuthService = {
-  forceCheck: jest.fn(),
-  getAuthState: jest.fn().mockReturnValue({ isAuthenticated: false }),
-  addAuthStateListener: jest.fn(),
-  removeAuthStateListener: jest.fn(),
+  forceCheck: vi.fn(),
+  getAuthState: vi.fn().mockReturnValue({ isAuthenticated: false }),
+  addAuthStateListener: vi.fn(),
+  removeAuthStateListener: vi.fn(),
 };
 
-jest.mock('../../content/services/SupabaseAuthService', () => ({
+vi.mock('../../content/services/SupabaseAuthService', () => ({
   SupabaseAuthService: {
-    getInstance: jest.fn(() => mockSupabaseAuthService),
+    getInstance: vi.fn(() => mockSupabaseAuthService),
   },
 }));
-jest.mock('../../content/services/OperationStateManager', () => ({
+vi.mock('../../content/services/OperationStateManager', () => ({
   OperationStateManager: {
-    getInstance: jest.fn(() => ({})),
+    getInstance: vi.fn(() => ({})),
   },
 }));
-jest.mock('../../lib/utils/logger', () => ({
+vi.mock('../../lib/utils/logger', () => ({
   createLogger: () => ({
-    info: jest.fn(),
-    error: jest.fn(),
-    warn: jest.fn(),
-    debug: jest.fn(),
+    info: vi.fn(),
+    error: vi.fn(),
+    warn: vi.fn(),
+    debug: vi.fn(),
   }),
   getLogStorage: () => ({
-    rotateLogs: jest.fn(),
-    getLogs: jest.fn().mockResolvedValue([]),
+    rotateLogs: vi.fn(),
+    getLogs: vi.fn().mockResolvedValue([]),
   }),
 }));
 
 // Helper function to create a proper Chrome Event mock
 function createMockChromeEvent<T extends (...args: unknown[]) => void>(): chrome.events.Event<T> {
   return {
-    addListener: jest.fn(),
-    removeListener: jest.fn(),
-    hasListener: jest.fn(),
-    hasListeners: jest.fn(),
-    getRules: jest.fn(),
-    removeRules: jest.fn(),
-    addRules: jest.fn(),
+    addListener: vi.fn(),
+    removeListener: vi.fn(),
+    hasListener: vi.fn(),
+    hasListeners: vi.fn(),
+    getRules: vi.fn().mockImplementation((callback) => {
+      callback([]);
+    }),
+    removeRules: vi.fn().mockImplementation((callback) => {
+      callback();
+    }),
+    addRules: vi.fn().mockImplementation((rules, callback) => {
+      callback();
+    }),
   };
 }
 
 describe('BackgroundService - Welcome Flow', () => {
   let service: BackgroundService;
-  let mockTabsCreate: jest.Mock;
-  let mockStorageSet: jest.Mock;
-  let mockStorageGet: jest.Mock;
-  let mockRuntimeGetManifest: jest.Mock;
+  let mockTabsCreate: Mock;
+  let mockStorageSet: Mock;
+  let mockStorageGet: Mock;
+  let mockRuntimeGetManifest: Mock;
 
-  beforeEach(() => {
-    jest.clearAllMocks();
+  beforeEach(async () => {
+    vi.clearAllMocks();
 
     // Set up Chrome API mocks
-    mockTabsCreate = jest.fn().mockResolvedValue({ id: 123 });
-    mockStorageSet = jest.fn().mockImplementation((data, callback) => {
+    mockTabsCreate = vi.fn().mockResolvedValue({ id: 123 });
+    mockStorageSet = vi.fn().mockImplementation((data, callback) => {
       if (callback) callback();
       return Promise.resolve();
     });
-    mockStorageGet = jest.fn().mockImplementation((keys, callback) => {
+    mockStorageGet = vi.fn().mockImplementation((keys, callback) => {
       const result = {
         installDate: '2024-01-15T10:00:00.000Z',
         onboardingCompleted: false,
@@ -99,7 +106,7 @@ describe('BackgroundService - Welcome Flow', () => {
       if (callback) callback(result);
       return Promise.resolve(result);
     });
-    mockRuntimeGetManifest = jest.fn().mockReturnValue({
+    mockRuntimeGetManifest = vi.fn().mockReturnValue({
       version: '1.3.5',
       name: 'Bolt to GitHub',
     });
@@ -118,20 +125,28 @@ describe('BackgroundService - Welcome Flow', () => {
     chrome.runtime.onMessage = createMockChromeEvent();
     chrome.tabs.onRemoved = createMockChromeEvent();
     chrome.tabs.onUpdated = createMockChromeEvent();
+    chrome.tabs.onActivated = createMockChromeEvent();
     chrome.alarms.onAlarm = createMockChromeEvent();
-    chrome.alarms.create = jest.fn();
-    chrome.alarms.clear = jest.fn();
+    chrome.alarms.create = vi.fn().mockImplementation((name, alarmInfo, callback) => {
+      if (callback) callback();
+    });
+    chrome.alarms.clear = vi.fn().mockImplementation((name, callback) => {
+      if (callback) callback(true);
+    });
 
     // Initialize the service to register the event listeners
     service = new BackgroundService();
+
+    // Wait for async initialization
+    await new Promise((resolve) => setTimeout(resolve, 10));
   });
 
   afterEach(() => {
     if (service) {
       service.destroy();
     }
-    jest.clearAllMocks();
-    jest.resetModules();
+    vi.clearAllMocks();
+    vi.resetModules();
   });
 
   describe('First-Time Installation', () => {
@@ -141,8 +156,7 @@ describe('BackgroundService - Welcome Flow', () => {
 
     it('should open welcome page on first install', async () => {
       // Get the onInstalled handler
-      const onInstalledHandler = (chrome.runtime.onInstalled.addListener as jest.Mock).mock
-        .calls[0][0];
+      const onInstalledHandler = (chrome.runtime.onInstalled.addListener as Mock).mock.calls[0][0];
 
       // Simulate first-time installation
       await onInstalledHandler({
@@ -158,8 +172,7 @@ describe('BackgroundService - Welcome Flow', () => {
 
     it('should initialize onboarding data on first install', async () => {
       // Get the onInstalled handler
-      const onInstalledHandler = (chrome.runtime.onInstalled.addListener as jest.Mock).mock
-        .calls[0][0];
+      const onInstalledHandler = (chrome.runtime.onInstalled.addListener as Mock).mock.calls[0][0];
 
       // Simulate first-time installation
       await onInstalledHandler({
@@ -187,8 +200,7 @@ describe('BackgroundService - Welcome Flow', () => {
 
     it('should not open welcome page on extension update', async () => {
       // Get the onInstalled handler
-      const onInstalledHandler = (chrome.runtime.onInstalled.addListener as jest.Mock).mock
-        .calls[0][0];
+      const onInstalledHandler = (chrome.runtime.onInstalled.addListener as Mock).mock.calls[0][0];
 
       // Simulate extension update
       await onInstalledHandler({
@@ -202,8 +214,7 @@ describe('BackgroundService - Welcome Flow', () => {
 
     it('should not open welcome page on browser update', async () => {
       // Get the onInstalled handler
-      const onInstalledHandler = (chrome.runtime.onInstalled.addListener as jest.Mock).mock
-        .calls[0][0];
+      const onInstalledHandler = (chrome.runtime.onInstalled.addListener as Mock).mock.calls[0][0];
 
       // Simulate browser update
       await onInstalledHandler({
@@ -217,8 +228,7 @@ describe('BackgroundService - Welcome Flow', () => {
 
     it('should not open welcome page on shared module update', async () => {
       // Get the onInstalled handler
-      const onInstalledHandler = (chrome.runtime.onInstalled.addListener as jest.Mock).mock
-        .calls[0][0];
+      const onInstalledHandler = (chrome.runtime.onInstalled.addListener as Mock).mock.calls[0][0];
 
       // Simulate shared module update
       await onInstalledHandler({
@@ -237,8 +247,7 @@ describe('BackgroundService - Welcome Flow', () => {
       mockTabsCreate.mockRejectedValue(new Error('Popup blocked'));
 
       // Get the onInstalled handler
-      const onInstalledHandler = (chrome.runtime.onInstalled.addListener as jest.Mock).mock
-        .calls[0][0];
+      const onInstalledHandler = (chrome.runtime.onInstalled.addListener as Mock).mock.calls[0][0];
 
       // Call handler and ensure it doesn't throw
       await onInstalledHandler({
@@ -255,8 +264,7 @@ describe('BackgroundService - Welcome Flow', () => {
       mockStorageSet.mockRejectedValue(new Error('Storage quota exceeded'));
 
       // Get the onInstalled handler
-      const onInstalledHandler = (chrome.runtime.onInstalled.addListener as jest.Mock).mock
-        .calls[0][0];
+      const onInstalledHandler = (chrome.runtime.onInstalled.addListener as Mock).mock.calls[0][0];
 
       // Call handler and ensure it doesn't throw
       await onInstalledHandler({
@@ -278,10 +286,10 @@ describe('BackgroundService - Welcome Flow', () => {
       });
 
       // Get the onMessage handler
-      const onMessageHandler = (chrome.runtime.onMessage.addListener as jest.Mock).mock.calls[0][0];
+      const onMessageHandler = (chrome.runtime.onMessage.addListener as Mock).mock.calls[0][0];
 
       // Create a mock sendResponse function
-      const sendResponse = jest.fn();
+      const sendResponse = vi.fn();
 
       // Simulate message from welcome page
       const result = await onMessageHandler(
@@ -312,10 +320,10 @@ describe('BackgroundService - Welcome Flow', () => {
 
     it('should respond to completeOnboardingStep message', async () => {
       // Get the onMessage handler
-      const onMessageHandler = (chrome.runtime.onMessage.addListener as jest.Mock).mock.calls[0][0];
+      const onMessageHandler = (chrome.runtime.onMessage.addListener as Mock).mock.calls[0][0];
 
       // Create a mock sendResponse function
-      const sendResponse = jest.fn();
+      const sendResponse = vi.fn();
 
       // Simulate message from welcome page
       const result = await onMessageHandler(
@@ -345,10 +353,10 @@ describe('BackgroundService - Welcome Flow', () => {
 
     it('should ignore messages from non-bolt2github domains', async () => {
       // Get the onMessage handler
-      const onMessageHandler = (chrome.runtime.onMessage.addListener as jest.Mock).mock.calls[0][0];
+      const onMessageHandler = (chrome.runtime.onMessage.addListener as Mock).mock.calls[0][0];
 
       // Create a mock sendResponse function
-      const sendResponse = jest.fn();
+      const sendResponse = vi.fn();
 
       // Simulate message from malicious site
       await onMessageHandler(
@@ -369,10 +377,10 @@ describe('BackgroundService - Welcome Flow', () => {
 
     it('should ignore messages not from tabs', async () => {
       // Get the onMessage handler
-      const onMessageHandler = (chrome.runtime.onMessage.addListener as jest.Mock).mock.calls[0][0];
+      const onMessageHandler = (chrome.runtime.onMessage.addListener as Mock).mock.calls[0][0];
 
       // Create a mock sendResponse function
-      const sendResponse = jest.fn();
+      const sendResponse = vi.fn();
 
       // Simulate message without tab (e.g., from popup or other extension context)
       await onMessageHandler(
@@ -393,10 +401,10 @@ describe('BackgroundService - Welcome Flow', () => {
 
     it('should validate onboarding steps', async () => {
       // Get the onMessage handler
-      const onMessageHandler = (chrome.runtime.onMessage.addListener as jest.Mock).mock.calls[0][0];
+      const onMessageHandler = (chrome.runtime.onMessage.addListener as Mock).mock.calls[0][0];
 
       // Create a mock sendResponse function
-      const sendResponse = jest.fn();
+      const sendResponse = vi.fn();
 
       // Simulate message with invalid step
       await onMessageHandler(
@@ -417,10 +425,10 @@ describe('BackgroundService - Welcome Flow', () => {
 
     it('should handle GitHub auth initiation', async () => {
       // Get the onMessage handler
-      const onMessageHandler = (chrome.runtime.onMessage.addListener as jest.Mock).mock.calls[0][0];
+      const onMessageHandler = (chrome.runtime.onMessage.addListener as Mock).mock.calls[0][0];
 
       // Create a mock sendResponse function
-      const sendResponse = jest.fn();
+      const sendResponse = vi.fn();
 
       // Simulate GitHub App auth request
       await onMessageHandler(
@@ -444,8 +452,7 @@ describe('BackgroundService - Welcome Flow', () => {
   describe('Logging', () => {
     it('should process installation without errors', async () => {
       // Get the onInstalled handler
-      const onInstalledHandler = (chrome.runtime.onInstalled.addListener as jest.Mock).mock
-        .calls[0][0];
+      const onInstalledHandler = (chrome.runtime.onInstalled.addListener as Mock).mock.calls[0][0];
 
       // Simulate extension installation - this test verifies no errors occur
       await onInstalledHandler({

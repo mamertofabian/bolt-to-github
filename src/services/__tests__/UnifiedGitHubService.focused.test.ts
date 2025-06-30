@@ -6,14 +6,15 @@
  * It covers the core use cases that work consistently with our test fixtures.
  */
 
+import type { Mock } from 'vitest';
 import { UnifiedGitHubService } from '../UnifiedGitHubService';
 import {
-  TestFixtures,
-  MockFetchResponseBuilder,
   MockChromeStorage,
-  UnifiedGitHubServiceTestHelpers,
-  MockPATAuthenticationStrategy,
+  MockFetchResponseBuilder,
   MockGitHubAppAuthenticationStrategy,
+  MockPATAuthenticationStrategy,
+  TestFixtures,
+  UnifiedGitHubServiceTestHelpers,
 } from './test-fixtures';
 
 // Mock the AuthenticationStrategyFactory with controlled behavior
@@ -23,23 +24,24 @@ const mockGitHubAppStrategy = new MockGitHubAppAuthenticationStrategy(
 );
 
 const mockFactory = {
-  createPATStrategy: jest.fn((token: string) => {
-    const strategy = new (jest.requireActual(
+  createPATStrategy: vi.fn(async (token: string) => {
+    const { MockPATAuthenticationStrategy } = await import(
       './test-fixtures/UnifiedGitHubServiceFixtures'
-    ).MockPATAuthenticationStrategy)(token);
+    );
+    const strategy = new MockPATAuthenticationStrategy(token);
     // Apply test configurations that would have been set up
     if (token === TestFixtures.TokenFixtures.pat.invalid) {
       strategy.setShouldFail(true);
     }
     return strategy;
   }),
-  createGitHubAppStrategy: jest.fn(() => mockGitHubAppStrategy),
-  getCurrentStrategy: jest.fn(async () => mockPATStrategy),
+  createGitHubAppStrategy: vi.fn(() => mockGitHubAppStrategy),
+  getCurrentStrategy: vi.fn(async () => mockPATStrategy),
 };
 
-jest.mock('../AuthenticationStrategyFactory', () => ({
+vi.mock('../AuthenticationStrategyFactory', () => ({
   AuthenticationStrategyFactory: {
-    getInstance: jest.fn(() => mockFactory),
+    getInstance: vi.fn(() => mockFactory),
   },
 }));
 
@@ -47,7 +49,7 @@ describe('UnifiedGitHubService - Focused Tests', () => {
   let mockFetch: MockFetchResponseBuilder;
   let mockStorage: MockChromeStorage;
 
-  beforeEach(() => {
+  beforeEach(async () => {
     mockFetch = new MockFetchResponseBuilder();
     mockStorage = new MockChromeStorage();
 
@@ -59,15 +61,15 @@ describe('UnifiedGitHubService - Focused Tests', () => {
     mockPATStrategy.reset();
     mockGitHubAppStrategy.reset();
 
-    jest.clearAllMocks();
+    vi.clearAllMocks();
   });
 
   afterEach(() => {
     mockFetch.reset();
     mockStorage.reset();
 
-    if (global.fetch && typeof (global.fetch as jest.Mock).mockRestore === 'function') {
-      (global.fetch as jest.Mock).mockRestore();
+    if (global.fetch && typeof (global.fetch as Mock).mockRestore === 'function') {
+      (global.fetch as Mock).mockRestore();
     }
   });
 
@@ -110,7 +112,7 @@ describe('UnifiedGitHubService - Focused Tests', () => {
     it('should verify token permissions', async () => {
       const service = new UnifiedGitHubService(TestFixtures.TokenFixtures.pat.classic);
 
-      const onProgress = jest.fn();
+      const onProgress = vi.fn();
       const result = await service.verifyTokenPermissions('testuser', onProgress);
 
       expect(result.isValid).toBe(true);
@@ -161,7 +163,7 @@ describe('UnifiedGitHubService - Focused Tests', () => {
       );
       failingStrategy.setShouldFailPermissions(true);
 
-      mockFactory.createPATStrategy.mockReturnValueOnce(failingStrategy);
+      mockFactory.createPATStrategy.mockReturnValueOnce(Promise.resolve(failingStrategy));
 
       const service = new UnifiedGitHubService(TestFixtures.TokenFixtures.pat.classic);
       const result = await service.verifyTokenPermissions('testuser');
@@ -412,7 +414,7 @@ describe('UnifiedGitHubService - Focused Tests', () => {
       const categories = ['appreciation', 'question', 'bug', 'feature', 'other'] as const;
 
       for (const category of categories) {
-        (global.fetch as jest.Mock).mockClear();
+        (global.fetch as Mock).mockClear();
 
         const service = new UnifiedGitHubService(TestFixtures.TokenFixtures.pat.classic);
         const feedback = {
@@ -477,7 +479,7 @@ describe('UnifiedGitHubService - Focused Tests', () => {
       // Test that the service gracefully handles network failures
       // Instead of expecting an exception, test that it returns false for network errors
       mockFetch.reset();
-      const mockFetchFn = jest.fn().mockRejectedValue(new Error('Network request failed'));
+      const mockFetchFn = vi.fn().mockRejectedValue(new Error('Network request failed'));
       global.fetch = mockFetchFn;
 
       const service = new UnifiedGitHubService(TestFixtures.TokenFixtures.pat.classic);

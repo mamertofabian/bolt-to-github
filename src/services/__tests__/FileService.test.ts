@@ -1,16 +1,16 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
+import { beforeEach, describe, expect, it, type MockedFunction, vi } from 'vitest';
 import { FileService } from '../FileService';
 import type { IGitHubApiClient } from '../interfaces/IGitHubApiClient';
-import { expect, jest, describe, it, beforeEach } from '@jest/globals';
 
 // Mock the fileUtils module
-jest.mock('$lib/fileUtils', () => ({
-  decodeBase64ToUtf8: jest.fn((base64: string) => Buffer.from(base64, 'base64').toString('utf-8')),
+vi.mock('$lib/fileUtils', () => ({
+  decodeBase64ToUtf8: vi.fn((base64: string) => Buffer.from(base64, 'base64').toString('utf-8')),
 }));
 
 // Import the mocked function so we can check if it was called
 import { decodeBase64ToUtf8 } from '$lib/fileUtils';
-const mockDecodeBase64ToUtf8 = decodeBase64ToUtf8 as jest.MockedFunction<typeof decodeBase64ToUtf8>;
+const mockDecodeBase64ToUtf8 = decodeBase64ToUtf8 as MockedFunction<typeof decodeBase64ToUtf8>;
 
 describe('FileService', () => {
   let mockApiClient: any;
@@ -19,16 +19,16 @@ describe('FileService', () => {
   beforeEach(() => {
     // Create a fresh mock for each test
     mockApiClient = {
-      request: jest.fn(),
+      request: vi.fn(),
     };
 
     fileService = new FileService(mockApiClient as IGitHubApiClient);
 
     // Reset the mocked functions
-    jest.clearAllMocks();
+    vi.clearAllMocks();
 
     // Mock global btoa function (still needed for writeFile)
-    global.btoa = jest.fn((str: string) => Buffer.from(str).toString('base64'));
+    global.btoa = vi.fn((str: string) => Buffer.from(str).toString('base64'));
   });
 
   describe('readFile', () => {

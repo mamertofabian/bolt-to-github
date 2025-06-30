@@ -1,40 +1,40 @@
 /**
- * DOM Testing Utilities and Mocks for Jest Tests
+ * DOM Testing Utilities and Mocks for Vitest Tests
  *
  * This file provides enhanced DOM testing utilities and mocks
  * that are needed for testing UI components.
  */
 
-/* eslint-env jest */
+import { vi } from 'vitest';
 
 // Mock MutationObserver
-global.MutationObserver = jest.fn().mockImplementation((_callback) => ({
-  observe: jest.fn(),
-  disconnect: jest.fn(),
-  takeRecords: jest.fn().mockReturnValue([]),
+global.MutationObserver = vi.fn().mockImplementation((_callback) => ({
+  observe: vi.fn(),
+  disconnect: vi.fn(),
+  takeRecords: vi.fn().mockReturnValue([]),
 }));
 
 // Mock IntersectionObserver
-global.IntersectionObserver = jest.fn().mockImplementation((_callback) => ({
-  observe: jest.fn(),
-  unobserve: jest.fn(),
-  disconnect: jest.fn(),
+global.IntersectionObserver = vi.fn().mockImplementation((_callback) => ({
+  observe: vi.fn(),
+  unobserve: vi.fn(),
+  disconnect: vi.fn(),
   root: null,
   rootMargin: '',
   thresholds: [],
 }));
 
 // Mock ResizeObserver
-global.ResizeObserver = jest.fn().mockImplementation((_callback) => ({
-  observe: jest.fn(),
-  unobserve: jest.fn(),
-  disconnect: jest.fn(),
+global.ResizeObserver = vi.fn().mockImplementation((_callback) => ({
+  observe: vi.fn(),
+  unobserve: vi.fn(),
+  disconnect: vi.fn(),
 }));
 
 // Mock window.getComputedStyle
 Object.defineProperty(window, 'getComputedStyle', {
-  value: jest.fn().mockImplementation((_element) => ({
-    getPropertyValue: jest.fn().mockReturnValue(''),
+  value: vi.fn().mockImplementation((_element) => ({
+    getPropertyValue: vi.fn().mockReturnValue(''),
     display: 'block',
     visibility: 'visible',
     opacity: '1',
@@ -44,21 +44,21 @@ Object.defineProperty(window, 'getComputedStyle', {
 
 // Mock window.scrollTo
 Object.defineProperty(window, 'scrollTo', {
-  value: jest.fn(),
+  value: vi.fn(),
   writable: true,
 });
 
 // Mock window.scrollBy
 Object.defineProperty(window, 'scrollBy', {
-  value: jest.fn(),
+  value: vi.fn(),
   writable: true,
 });
 
 // Mock Element.scrollIntoView
-Element.prototype.scrollIntoView = jest.fn();
+Element.prototype.scrollIntoView = vi.fn();
 
 // Mock Element.getBoundingClientRect
-Element.prototype.getBoundingClientRect = jest.fn().mockReturnValue({
+Element.prototype.getBoundingClientRect = vi.fn().mockReturnValue({
   width: 100,
   height: 100,
   top: 0,
@@ -67,27 +67,27 @@ Element.prototype.getBoundingClientRect = jest.fn().mockReturnValue({
   right: 100,
   x: 0,
   y: 0,
-  toJSON: jest.fn(),
+  toJSON: vi.fn(),
 });
 
 // Mock Element.animate
-Element.prototype.animate = jest.fn().mockReturnValue({
+Element.prototype.animate = vi.fn().mockReturnValue({
   finished: Promise.resolve(),
-  cancel: jest.fn(),
-  finish: jest.fn(),
-  pause: jest.fn(),
-  play: jest.fn(),
-  reverse: jest.fn(),
+  cancel: vi.fn(),
+  finish: vi.fn(),
+  pause: vi.fn(),
+  play: vi.fn(),
+  reverse: vi.fn(),
 });
 
 // Mock localStorage
 const localStorageMock = {
-  getItem: jest.fn(),
-  setItem: jest.fn(),
-  removeItem: jest.fn(),
-  clear: jest.fn(),
+  getItem: vi.fn(),
+  setItem: vi.fn(),
+  removeItem: vi.fn(),
+  clear: vi.fn(),
   length: 0,
-  key: jest.fn(),
+  key: vi.fn(),
 };
 
 Object.defineProperty(window, 'localStorage', {
@@ -103,15 +103,15 @@ Object.defineProperty(window, 'sessionStorage', {
 
 // Mock window.matchMedia
 Object.defineProperty(window, 'matchMedia', {
-  value: jest.fn().mockImplementation((query) => ({
+  value: vi.fn().mockImplementation((query) => ({
     matches: false,
     media: query,
     onchange: null,
-    addListener: jest.fn(),
-    removeListener: jest.fn(),
-    addEventListener: jest.fn(),
-    removeEventListener: jest.fn(),
-    dispatchEvent: jest.fn(),
+    addListener: vi.fn(),
+    removeListener: vi.fn(),
+    addEventListener: vi.fn(),
+    removeEventListener: vi.fn(),
+    dispatchEvent: vi.fn(),
   })),
   writable: true,
 });

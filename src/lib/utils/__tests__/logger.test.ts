@@ -1,24 +1,24 @@
 import {
-  logger,
   createLogger,
-  enableProductionDebug,
   disableProductionDebug,
+  enableProductionDebug,
+  logger,
   resetLogger,
 } from '../logger';
 
 // Mock console methods
 const mockConsole = {
-  log: jest.fn(),
-  info: jest.fn(),
-  warn: jest.fn(),
-  error: jest.fn(),
+  log: vi.fn(),
+  info: vi.fn(),
+  warn: vi.fn(),
+  error: vi.fn(),
 };
 
 // Mock localStorage
 const mockLocalStorage = {
-  getItem: jest.fn(),
-  setItem: jest.fn(),
-  removeItem: jest.fn(),
+  getItem: vi.fn(),
+  setItem: vi.fn(),
+  removeItem: vi.fn(),
 };
 
 // Mock import.meta.env is not needed since we use fallback in logger
@@ -26,7 +26,7 @@ const mockLocalStorage = {
 describe('Logger', () => {
   beforeEach(() => {
     // Reset mocks
-    jest.clearAllMocks();
+    vi.clearAllMocks();
 
     // Mock console
     Object.assign(console, mockConsole);

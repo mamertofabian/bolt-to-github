@@ -91,7 +91,9 @@ export class UIManager {
     this.dropdownManager = new DropdownManager(
       messageHandler,
       this.stateManager,
-      () => this.handleGitHubPushAction() // Push action callback
+      () => this.handleGitHubPushAction(), // Push action callback
+      () => this.handleShowChangedFiles(), // Show changed files callback
+      (feature: string) => this.handleUpgradePrompt(feature) // Upgrade prompt callback
     );
 
     // Initialize GitHubUploadHandler with state integration
@@ -165,6 +167,9 @@ export class UIManager {
 
     // Link premium service to file change handler
     this.fileChangeHandler.setPremiumService(this.premiumService);
+
+    // Link premium service to dropdown manager
+    this.dropdownManager.setPremiumService(this.premiumService);
 
     // Link upload status manager to file change handler
     this.fileChangeHandler.setUploadStatusManager(this.uploadStatusManager);

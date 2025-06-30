@@ -1,5 +1,5 @@
 /**
- * Fetch API Mocks for Jest Tests
+ * Fetch API Mocks for Vitest Tests
  *
  * This file provides mock implementations of Fetch API objects
  * that are needed for non-DOM tests that use these browser APIs.

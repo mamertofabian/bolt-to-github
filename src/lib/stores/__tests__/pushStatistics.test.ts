@@ -1,15 +1,15 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import { expect, jest, describe, it, beforeEach } from '@jest/globals';
 import { get } from 'svelte/store';
-import { pushStatisticsStore, pushStatisticsActions } from '../pushStatistics';
+import { beforeEach, describe, expect, it, type MockedFunction, vi } from 'vitest';
 import { ChromeStorageService } from '../../services/chromeStorage';
+import { pushStatisticsActions, pushStatisticsStore } from '../pushStatistics';
 
 // Mock ChromeStorageService
-jest.mock('../../services/chromeStorage', () => ({
+vi.mock('../../services/chromeStorage', () => ({
   ChromeStorageService: {
-    getPushStatistics: jest.fn(),
-    savePushStatistics: jest.fn(),
-    clearPushStatistics: jest.fn(),
+    getPushStatistics: vi.fn(),
+    savePushStatistics: vi.fn(),
+    clearPushStatistics: vi.fn(),
   },
 }));
 
@@ -17,7 +17,7 @@ jest.mock('../../services/chromeStorage', () => ({
 global.chrome = {
   storage: {
     onChanged: {
-      addListener: jest.fn(),
+      addListener: vi.fn(),
     },
   },
 } as any;
@@ -25,7 +25,7 @@ global.chrome = {
 describe('Push Statistics Store', () => {
   beforeEach(() => {
     // Reset mocks
-    jest.clearAllMocks();
+    vi.clearAllMocks();
 
     // Reset store to initial state
     pushStatisticsStore.set({
@@ -56,7 +56,7 @@ describe('Push Statistics Store', () => {
       records: [],
     };
 
-    (ChromeStorageService.getPushStatistics as jest.MockedFunction<any>).mockResolvedValue(
+    (ChromeStorageService.getPushStatistics as MockedFunction<any>).mockResolvedValue(
       mockStatistics
     );
 
@@ -75,12 +75,8 @@ describe('Push Statistics Store', () => {
       records: [],
     };
 
-    (ChromeStorageService.getPushStatistics as jest.MockedFunction<any>).mockResolvedValue(
-      initialStats
-    );
-    (ChromeStorageService.savePushStatistics as jest.MockedFunction<any>).mockResolvedValue(
-      undefined
-    );
+    (ChromeStorageService.getPushStatistics as MockedFunction<any>).mockResolvedValue(initialStats);
+    (ChromeStorageService.savePushStatistics as MockedFunction<any>).mockResolvedValue(undefined);
 
     await pushStatisticsActions.recordPushAttempt(
       'test-project',
@@ -128,12 +124,8 @@ describe('Push Statistics Store', () => {
       records: [existingRecord],
     };
 
-    (ChromeStorageService.getPushStatistics as jest.MockedFunction<any>).mockResolvedValue(
-      initialStats
-    );
-    (ChromeStorageService.savePushStatistics as jest.MockedFunction<any>).mockResolvedValue(
-      undefined
-    );
+    (ChromeStorageService.getPushStatistics as MockedFunction<any>).mockResolvedValue(initialStats);
+    (ChromeStorageService.savePushStatistics as MockedFunction<any>).mockResolvedValue(undefined);
 
     await pushStatisticsActions.recordPushSuccess(
       'test-project',
@@ -164,7 +156,7 @@ describe('Push Statistics Store', () => {
       records: [],
     };
 
-    (ChromeStorageService.getPushStatistics as jest.MockedFunction<any>).mockResolvedValue(
+    (ChromeStorageService.getPushStatistics as MockedFunction<any>).mockResolvedValue(
       mockStatistics
     );
 
@@ -179,9 +171,7 @@ describe('Push Statistics Store', () => {
   });
 
   it('should clear statistics', async () => {
-    (ChromeStorageService.clearPushStatistics as jest.MockedFunction<any>).mockResolvedValue(
-      undefined
-    );
+    (ChromeStorageService.clearPushStatistics as MockedFunction<any>).mockResolvedValue(undefined);
 
     await pushStatisticsActions.clearStatistics();
 
@@ -203,9 +193,7 @@ describe('Push Statistics Store', () => {
       records: [],
     };
 
-    (ChromeStorageService.getPushStatistics as jest.MockedFunction<any>).mockResolvedValue(
-      emptyStats
-    );
+    (ChromeStorageService.getPushStatistics as MockedFunction<any>).mockResolvedValue(emptyStats);
 
     const hasNoAttempts = await pushStatisticsActions.hasPushAttempts();
     expect(hasNoAttempts).toBe(false);
@@ -218,7 +206,7 @@ describe('Push Statistics Store', () => {
       records: [],
     };
 
-    (ChromeStorageService.getPushStatistics as jest.MockedFunction<any>).mockResolvedValue(
+    (ChromeStorageService.getPushStatistics as MockedFunction<any>).mockResolvedValue(
       statsWithAttempts
     );
 

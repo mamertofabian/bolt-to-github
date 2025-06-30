@@ -9,6 +9,7 @@
  * with realistic error scenarios and user behavior patterns.
  */
 
+import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import { BackgroundServiceTestSuite } from '../test-fixtures';
 import {
   TestData,

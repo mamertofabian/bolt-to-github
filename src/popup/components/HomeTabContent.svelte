@@ -5,9 +5,9 @@
   import ProjectGuide from '$lib/components/ProjectGuide.svelte';
   import SocialLinks from '$lib/components/SocialLinks.svelte';
   import { COFFEE_LINK, GITHUB_LINK, YOUTUBE_LINK } from '$lib/constants';
-  import type { HomeTabProps, UpgradeType } from '../types';
+  import type { HomeTabProps, UpgradeType, ProjectStatusRef } from '../types';
 
-  export let projectStatusRef: any;
+  export let projectStatusRef: ProjectStatusRef;
   export let projectId: string | null;
   export let githubSettings: HomeTabProps['githubSettings'];
   export let isAuthenticationValid: boolean;

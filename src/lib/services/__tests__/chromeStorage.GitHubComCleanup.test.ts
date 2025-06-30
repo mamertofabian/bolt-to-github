@@ -1,25 +1,26 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { ChromeStorageService } from '../chromeStorage';
 
 // Mock logger to avoid console output during tests
-jest.mock('../../utils/logger', () => ({
-  createLogger: jest.fn(() => ({
-    debug: jest.fn(),
-    info: jest.fn(),
-    warn: jest.fn(),
-    error: jest.fn(),
+vi.mock('../../utils/logger', () => ({
+  createLogger: vi.fn(() => ({
+    debug: vi.fn(),
+    info: vi.fn(),
+    warn: vi.fn(),
+    error: vi.fn(),
   })),
 }));
 
 // Mock chrome.storage
 const mockChromeStorage = {
   sync: {
-    get: jest.fn(),
-    set: jest.fn(),
+    get: vi.fn(),
+    set: vi.fn(),
   },
   local: {
-    get: jest.fn(),
-    set: jest.fn(),
+    get: vi.fn(),
+    set: vi.fn(),
   },
 };
 
@@ -29,7 +30,7 @@ const mockChromeStorage = {
 
 describe('ChromeStorageService - GitHub.com Project Cleanup', () => {
   beforeEach(() => {
-    jest.clearAllMocks();
+    vi.clearAllMocks();
   });
 
   describe('cleanupGitHubComProjects', () => {

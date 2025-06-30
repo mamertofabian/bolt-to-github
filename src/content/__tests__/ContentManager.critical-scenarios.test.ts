@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 /**
  * ContentManager Critical Scenarios Tests
  *
@@ -8,39 +9,65 @@
  * - Resource cleanup and memory leak prevention
  */
 
+import {
+  afterAll,
+  afterEach,
+  beforeAll,
+  beforeEach,
+  describe,
+  expect,
+  it,
+  vi,
+  type Mock,
+} from 'vitest';
+import { ContentManager } from '../ContentManager';
+import {
+  createTestEnvironment,
+  getContentManagerState,
+  setupChromeAPIMocks,
+  setupWindowMocks,
+  simulatePortState,
+  TestMessages,
+  TestPortStates,
+  TestUrls,
+  validateCleanup,
+  wait,
+  type TestEnvironment,
+} from '../test-fixtures';
+
 // Mock WhatsNewModal component with proper types
 interface MockSvelteComponent {
   target: Element;
   props: Record<string, unknown>;
-  $destroy: jest.Mock;
-  $set: jest.Mock;
+  $destroy: Mock;
+  $set: Mock;
 }
 
-jest.mock('$lib/components/WhatsNewModal.svelte', () => ({
-  default: jest.fn().mockImplementation(function (
+vi.mock('$lib/components/WhatsNewModal.svelte', () => ({
+  default: vi.fn().mockImplementation(function (
     this: MockSvelteComponent,
     options: { target: Element; props: Record<string, unknown> }
   ) {
     this.target = options.target;
     this.props = options.props;
-    this.$destroy = jest.fn();
-    this.$set = jest.fn();
+    this.$destroy = vi.fn();
+    this.$set = vi.fn();
     return this;
   }),
 }));
 
 // Mock UIManager
-jest.mock('../UIManager');
+vi.mock('../UIManager');
 
-// Mock console methods using jest.spyOn for better isolation
-let consoleSpy: { [key: string]: jest.SpyInstance };
+// Mock console methods using vi.spyOn for better isolation
+let consoleSpy: { [key: string]: any };
 beforeAll(() => {
   consoleSpy = {
-    log: jest.spyOn(console, 'log').mockImplementation(),
-    warn: jest.spyOn(console, 'warn').mockImplementation(),
-    error: jest.spyOn(console, 'error').mockImplementation(),
-    debug: jest.spyOn(console, 'debug').mockImplementation(),
-    info: jest.spyOn(console, 'info').mockImplementation(),
+    log: vi.spyOn(console, 'log').mockImplementation(() => {}),
+    warn: vi.spyOn(console, 'warn').mockImplementation(() => {}),
+    error: vi.spyOn(console, 'error').mockImplementation(() => {}),
+    debug: vi.spyOn(console, 'debug').mockImplementation(() => {}),
+    info: vi.spyOn(console, 'info').mockImplementation(() => {}),
   };
 });
 
@@ -48,30 +75,17 @@ afterAll(() => {
   Object.values(consoleSpy).forEach((spy) => spy.mockRestore());
 });
 
-import { ContentManager } from '../ContentManager';
-import {
-  createTestEnvironment,
-  setupChromeAPIMocks,
-  setupWindowMocks,
-  simulatePortState,
-  validateCleanup,
-  getContentManagerState,
-  wait,
-  TestPortStates,
-  TestUrls,
-  TestMessages,
-  type TestEnvironment,
-} from '../test-fixtures';
-
 describe('ContentManager - Critical Scenarios', () => {
   let testEnv: TestEnvironment;
 
-  beforeEach(() => {
+  beforeEach(async () => {
     // Clear console mocks before each test
-    jest.clearAllMocks();
+    vi.clearAllMocks();
     // Reset UIManager singleton
-    const { UIManager } = jest.requireMock('../UIManager');
-    UIManager.resetInstance();
+    const { UIManager } = await import('../UIManager');
+    if (UIManager.resetInstance) {
+      UIManager.resetInstance();
+    }
   });
 
   afterEach(() => {
@@ -82,7 +96,7 @@ describe('ContentManager - Critical Scenarios', () => {
       }
       testEnv.cleanup();
     }
-    jest.restoreAllMocks();
+    vi.restoreAllMocks();
   });
 
   describe('Context Invalidation Detection', () => {
@@ -367,7 +381,7 @@ describe('ContentManager - Critical Scenarios', () => {
 
       // Mock chrome.runtime.connect to return null after setup
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      (chrome.runtime as any).connect = jest.fn(() => null);
+      (chrome.runtime as any).connect = vi.fn(() => null);
 
       setupWindowMocks(TestUrls.BOLT_NEW_PROJECT);
 

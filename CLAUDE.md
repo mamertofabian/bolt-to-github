@@ -4,7 +4,7 @@
 
 Bolt to GitHub is a Chrome Extension (Manifest v3) that automatically captures ZIP file downloads from bolt.new, extracts them, and pushes contents to GitHub repositories. Built with Svelte v4.2.x, TypeScript v5.6.x, and TailwindCSS.
 
-**Current Version**: v1.3.5  
+**Current Version**: v1.3.7  
 **Repository**: mamertofabian/bolt-to-github  
 **Package Manager**: pnpm (required)
 
@@ -122,8 +122,8 @@ When working on GitHub issues, follow this structured approach:
 
 4. **Testing**
 
-   - Use Jest with Testing Library for frontend tests
-   - Run tests with: `pnpm test <test_file_or_pattern>`
+   - Use Vitest with Testing Library for frontend tests
+   - Run tests with: `pnpm test` or `pnpm test:watch` for watch mode
    - Ensure TypeScript compilation passes: `pnpm build`
 
 5. **Close Issue**
@@ -149,9 +149,10 @@ When working on GitHub issues, follow this structured approach:
 
 ### Testing
 
-- Test: `pnpm run test` - Run Jest tests with coverage
-- Test (CI): `pnpm run test:ci` - Run tests without coverage
+- Test: `pnpm run test` - Run Vitest tests
+- Test (CI): `pnpm run test:ci` - Run tests in CI mode
 - Test Watch: `pnpm run test:watch` - Run tests in watch mode
+- Test UI: `pnpm run test:ui` - Run tests with Vitest UI
 
 ### Git Hooks
 
@@ -187,7 +188,7 @@ src/
 - **Styling**: TailwindCSS v3.4.x with custom theme system
 - **UI Components**: bits-ui v0.21.x for base components
 - **Icons**: lucide-svelte v0.460.x
-- **Testing**: Jest v29.x with @testing-library/jest-dom
+- **Testing**: Vitest v1.6.x with @testing-library/jest-dom and jsdom environment
 - **Utilities**: fflate v0.8.x (compression), tailwind-merge v2.5.x, tailwind-variants v0.3.x
 
 ## Code Style Guidelines
@@ -242,8 +243,8 @@ src/
 
 ### Framework
 
-- Jest v29.x with jsdom environment
-- ts-jest for TypeScript support with ESM modules
+- Vitest v1.6.x with jsdom environment and globals enabled
+- Native TypeScript support with ESM modules
 - @testing-library/jest-dom for DOM assertions
 - Comprehensive mocking system for Chrome APIs, Svelte, and external dependencies
 
@@ -252,13 +253,14 @@ src/
 - Tests located in `__tests__/` directories alongside source files
 - Test files follow pattern: `(/__tests__/.*|(\\.|/)(test|spec))\\.tsx?$`
 - Mock files in `__mocks__/` directories
-- Shared test setup in `src/test/setup/`
+- Shared test setup in `src/test/setup/vitest-setup.ts`
 
 ### Coverage
 
-- Coverage collection enabled by default
+- Coverage collection with V8 provider (@vitest/coverage-v8)
 - Coverage directory: `coverage/`
-- Covers all TypeScript files: `src/**/*.{ts,tsx}`
+- Multiple reporters: text, json, html
+- Excludes test files, mocks, and setup files
 - Coverage thresholds temporarily disabled during development
 
 ### Testing Best Practices
@@ -316,7 +318,7 @@ src/
 - **Core**: svelte@^4.2.19, typescript@^5.6.3
 - **Build**: vite@^4.5.5, @crxjs/vite-plugin@^2.0.0-beta.18
 - **Styling**: tailwindcss@^3.4.15, bits-ui@^0.21.16
-- **Testing**: jest@^29.7.0, @testing-library/jest-dom@^6.6.3
+- **Testing**: vitest@^1.6.0, @vitest/coverage-v8@^3.2.4, @vitest/ui@^1.6.0, @testing-library/jest-dom@^6.6.3
 - **Utilities**: fflate@^0.8.2, lucide-svelte@^0.460.1
 
 ### Version Compatibility

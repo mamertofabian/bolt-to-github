@@ -3,10 +3,11 @@
   import { Button } from '$lib/components/ui/button';
   import WelcomeHero from '$lib/components/WelcomeHero.svelte';
   import OnboardingSetup from '$lib/components/OnboardingSetup.svelte';
+  import type { GitHubSettingsState, ProjectSettingsState, UIState } from '$lib/stores';
 
-  export let githubSettings: any;
-  export let projectSettings: any;
-  export let uiState: any;
+  export let githubSettings: GitHubSettingsState;
+  export let projectSettings: ProjectSettingsState;
+  export let uiState: UIState;
 
   const dispatch = createEventDispatcher<{
     save: void;
@@ -16,6 +17,17 @@
 
   // Simple 2-step flow
   let currentStep: 1 | 2 = 1;
+
+  // Create a type-compatible wrapper for uiState
+  $: uiStateWrapper = {
+    status: uiState.status,
+    hasStatus: uiState.hasStatus,
+    activeTab: uiState.activeTab,
+    showTempRepoModal: uiState.showTempRepoModal,
+    tempRepoData: uiState.tempRepoData,
+    hasDeletedTempRepo: uiState.hasDeletedTempRepo,
+    hasUsedTempRepoName: uiState.hasUsedTempRepoName,
+  } as { status?: string; hasStatus?: boolean; [key: string]: unknown };
 
   function handleSave() {
     dispatch('save');
@@ -58,8 +70,15 @@
 {:else}
   <!-- Step 2: Unified Setup -->
   <OnboardingSetup
-    {githubSettings}
-    {uiState}
+    githubSettings={{
+      authenticationMethod: githubSettings.authenticationMethod,
+      githubAppInstallationId: githubSettings.githubAppInstallationId ?? undefined,
+      githubAppUsername: githubSettings.githubAppUsername ?? undefined,
+      githubAppAvatarUrl: githubSettings.githubAppAvatarUrl ?? undefined,
+      githubToken: githubSettings.githubToken,
+      repoOwner: githubSettings.repoOwner,
+    }}
+    uiState={uiStateWrapper}
     on:save={handleSave}
     on:error={(e) => handleError(e.detail)}
     on:authMethodChange={handleAuthMethodChange}

@@ -11,7 +11,7 @@
     "strict": true,
     "noImplicitAny": true,
     "strictNullChecks": true,
-    "types": ["chrome", "jest"],
+    "types": ["chrome", "vitest/globals"],
     "baseUrl": ".",
     "paths": {
       "$lib": ["src/lib"],

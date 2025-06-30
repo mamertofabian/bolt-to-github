@@ -8,9 +8,9 @@ import { LogStorageManager } from '../logStorage';
 // Mock chrome.storage
 const mockChromeStorage = {
   local: {
-    get: jest.fn(),
-    set: jest.fn(),
-    remove: jest.fn(),
+    get: vi.fn(),
+    set: vi.fn(),
+    remove: vi.fn(),
   },
 };
 
@@ -25,7 +25,7 @@ describe('LogStorageManager', () => {
   let storageManager: LogStorageManager;
 
   beforeEach(() => {
-    jest.clearAllMocks();
+    vi.clearAllMocks();
     // Reset singleton
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     (LogStorageManager as any).instance = null;

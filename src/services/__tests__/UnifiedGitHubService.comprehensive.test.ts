@@ -5,27 +5,37 @@
  * and provides full coverage testing examples for the UnifiedGitHubService.
  */
 
+import {
+  afterEach,
+  beforeEach,
+  describe,
+  expect,
+  it,
+  vi,
+  type Mock,
+  type MockedFunction,
+} from 'vitest';
 import { UnifiedGitHubService } from '../UnifiedGitHubService';
 import {
-  UnifiedGitHubServiceTestScenarios,
-  UnifiedGitHubServiceTestHelpers,
   TestFixtures,
+  UnifiedGitHubServiceTestHelpers,
+  UnifiedGitHubServiceTestScenarios,
 } from './test-fixtures';
 
 // Mock the AuthenticationStrategyFactory at the module level
-const mockFactory = (() => {
-  const { MockAuthenticationStrategyFactory } = jest.requireActual(
-    './test-fixtures/UnifiedGitHubServiceFixtures'
-  );
+const mockFactory = await (async () => {
+  const { MockAuthenticationStrategyFactory } = await vi.importActual<
+    typeof import('./test-fixtures/UnifiedGitHubServiceFixtures')
+  >('./test-fixtures/UnifiedGitHubServiceFixtures');
   return new MockAuthenticationStrategyFactory();
 })();
 
 // Create a factory wrapper that handles token-based strategy creation
 const mockFactoryWrapper = {
-  createPATStrategy: jest.fn((token: string) => {
-    const { MockPATAuthenticationStrategy, TestFixtures } = jest.requireActual(
-      './test-fixtures/UnifiedGitHubServiceFixtures'
-    );
+  createPATStrategy: vi.fn(async (token: string) => {
+    const { MockPATAuthenticationStrategy, TestFixtures } = await vi.importActual<
+      typeof import('./test-fixtures/UnifiedGitHubServiceFixtures')
+    >('./test-fixtures/UnifiedGitHubServiceFixtures');
     const strategy = new MockPATAuthenticationStrategy(token);
 
     // Apply test configurations based on token type
@@ -39,32 +49,32 @@ const mockFactoryWrapper = {
 
     return strategy;
   }),
-  createGitHubAppStrategy: jest.fn((userToken?: string) => {
-    const { MockGitHubAppAuthenticationStrategy } = jest.requireActual(
-      './test-fixtures/UnifiedGitHubServiceFixtures'
-    );
+  createGitHubAppStrategy: vi.fn(async (userToken?: string) => {
+    const { MockGitHubAppAuthenticationStrategy } = await vi.importActual<
+      typeof import('./test-fixtures/UnifiedGitHubServiceFixtures')
+    >('./test-fixtures/UnifiedGitHubServiceFixtures');
     return new MockGitHubAppAuthenticationStrategy(userToken);
   }),
-  getCurrentStrategy: jest.fn(async () => {
+  getCurrentStrategy: vi.fn(async () => {
     // This should not be called when we pass a token string to the constructor
     // If it is called, something is wrong with our test setup
     throw new Error('getCurrentStrategy should not be called when token is provided directly');
   }),
 };
 
-jest.mock('../AuthenticationStrategyFactory', () => ({
+vi.mock('../AuthenticationStrategyFactory', () => ({
   AuthenticationStrategyFactory: {
-    getInstance: jest.fn(() => mockFactoryWrapper),
+    getInstance: vi.fn(() => mockFactoryWrapper),
   },
 }));
 
 describe('UnifiedGitHubService - Comprehensive Tests', () => {
   let scenario: UnifiedGitHubServiceTestScenarios;
-  let mockFetch: jest.MockedFunction<typeof fetch>;
+  let mockFetch: MockedFunction<typeof fetch>;
 
   beforeEach(() => {
     scenario = new UnifiedGitHubServiceTestScenarios();
-    jest.clearAllMocks();
+    vi.clearAllMocks();
 
     // Reset the mock factory
     mockFactory.reset();
@@ -72,7 +82,7 @@ describe('UnifiedGitHubService - Comprehensive Tests', () => {
 
     // Reset the global fetch mock
     if (global.fetch) {
-      (global.fetch as jest.Mock).mockClear();
+      (global.fetch as Mock).mockClear();
     }
   });
 
@@ -80,7 +90,7 @@ describe('UnifiedGitHubService - Comprehensive Tests', () => {
     scenario.reset();
 
     // Clean up global fetch mock with proper type guard
-    const globalFetch = global.fetch as jest.Mock | undefined;
+    const globalFetch = global.fetch as Mock | undefined;
     if (globalFetch && typeof globalFetch.mockRestore === 'function') {
       globalFetch.mockRestore();
     }
@@ -146,7 +156,7 @@ describe('UnifiedGitHubService - Comprehensive Tests', () => {
       it('should verify token permissions successfully', async () => {
         const service = new UnifiedGitHubService(TestFixtures.TokenFixtures.pat.classic);
 
-        const onProgress = jest.fn();
+        const onProgress = vi.fn();
         const result = await service.verifyTokenPermissions('testuser', onProgress);
 
         expect(result.isValid).toBe(true);
@@ -183,17 +193,19 @@ describe('UnifiedGitHubService - Comprehensive Tests', () => {
         const authConfig = UnifiedGitHubServiceTestHelpers.createAuthConfig('github_app');
 
         // Create a GitHub App strategy configured for renewal
-        const { MockGitHubAppAuthenticationStrategy } = jest.requireActual(
-          './test-fixtures/UnifiedGitHubServiceFixtures'
-        );
+        const { MockGitHubAppAuthenticationStrategy } = await vi.importActual<
+          typeof import('./test-fixtures/UnifiedGitHubServiceFixtures')
+        >('./test-fixtures/UnifiedGitHubServiceFixtures');
         const appStrategy = new MockGitHubAppAuthenticationStrategy(
           TestFixtures.TokenFixtures.oauth.accessToken
         );
         appStrategy.setNeedsRenewal(true);
 
         // Configure the mock factory wrapper to return our GitHub App strategy
-        mockFactoryWrapper.createGitHubAppStrategy.mockReturnValueOnce(appStrategy);
-        mockFactoryWrapper.getCurrentStrategy.mockResolvedValueOnce(appStrategy);
+        mockFactoryWrapper.createGitHubAppStrategy.mockReturnValueOnce(
+          Promise.resolve(appStrategy)
+        );
+        mockFactoryWrapper.getCurrentStrategy.mockResolvedValueOnce(appStrategy as never);
 
         const service = new UnifiedGitHubService(authConfig);
 
@@ -257,16 +269,16 @@ describe('UnifiedGitHubService - Comprehensive Tests', () => {
 
       it('should handle permission verification failures', async () => {
         // Create a strategy that will fail permissions
-        const { MockPATAuthenticationStrategy } = jest.requireActual(
-          './test-fixtures/UnifiedGitHubServiceFixtures'
-        );
+        const { MockPATAuthenticationStrategy } = await vi.importActual<
+          typeof import('./test-fixtures/UnifiedGitHubServiceFixtures')
+        >('./test-fixtures/UnifiedGitHubServiceFixtures');
         const failingStrategy = new MockPATAuthenticationStrategy(
           TestFixtures.TokenFixtures.pat.classic
         );
         failingStrategy.setShouldFailPermissions(true);
 
         // Configure the mock factory wrapper to return our failing strategy
-        mockFactoryWrapper.createPATStrategy.mockReturnValueOnce(failingStrategy);
+        mockFactoryWrapper.createPATStrategy.mockReturnValueOnce(Promise.resolve(failingStrategy));
 
         const service = new UnifiedGitHubService(TestFixtures.TokenFixtures.pat.classic);
         const result = await service.verifyTokenPermissions('testuser');
@@ -718,7 +730,7 @@ describe('UnifiedGitHubService - Comprehensive Tests', () => {
         mockFactory.setCurrentStrategyType('pat');
 
         // Create a custom mock fetch that throws network errors
-        mockFetch = jest.fn().mockRejectedValue(new Error('Network request failed'));
+        mockFetch = vi.fn().mockRejectedValue(new Error('Network request failed'));
         global.fetch = mockFetch;
       });
 
@@ -754,16 +766,16 @@ describe('UnifiedGitHubService - Comprehensive Tests', () => {
 
       it('should handle insufficient permissions', async () => {
         // Create a strategy that will fail permissions
-        const { MockPATAuthenticationStrategy } = jest.requireActual(
-          './test-fixtures/UnifiedGitHubServiceFixtures'
-        );
+        const { MockPATAuthenticationStrategy } = await vi.importActual<
+          typeof import('./test-fixtures/UnifiedGitHubServiceFixtures')
+        >('./test-fixtures/UnifiedGitHubServiceFixtures');
         const failingStrategy = new MockPATAuthenticationStrategy(
           TestFixtures.TokenFixtures.pat.classic
         );
         failingStrategy.setShouldFailPermissions(true);
 
         // Configure the mock factory wrapper to return our failing strategy
-        mockFactoryWrapper.createPATStrategy.mockReturnValueOnce(failingStrategy);
+        mockFactoryWrapper.createPATStrategy.mockReturnValueOnce(Promise.resolve(failingStrategy));
 
         const service = new UnifiedGitHubService(TestFixtures.TokenFixtures.pat.classic);
         const result = await service.verifyTokenPermissions('testuser');
@@ -777,18 +789,18 @@ describe('UnifiedGitHubService - Comprehensive Tests', () => {
   describe('Performance Scenarios', () => {
     it('should handle slow network conditions', async () => {
       // Create a strategy without delay since we're testing network delay
-      const { MockPATAuthenticationStrategy } = jest.requireActual(
-        './test-fixtures/UnifiedGitHubServiceFixtures'
-      );
+      const { MockPATAuthenticationStrategy } = await vi.importActual<
+        typeof import('./test-fixtures/UnifiedGitHubServiceFixtures')
+      >('./test-fixtures/UnifiedGitHubServiceFixtures');
       const normalStrategy = new MockPATAuthenticationStrategy(
         TestFixtures.TokenFixtures.pat.classic
       );
 
       // Configure the mock factory wrapper to return our normal strategy
-      mockFactoryWrapper.createPATStrategy.mockReturnValueOnce(normalStrategy);
+      mockFactoryWrapper.createPATStrategy.mockReturnValueOnce(Promise.resolve(normalStrategy));
 
       // Create a custom mock fetch with delay
-      mockFetch = jest.fn().mockImplementation(async () => {
+      mockFetch = vi.fn().mockImplementation(async () => {
         await new Promise((resolve) => setTimeout(resolve, 1000)); // 1 second delay
         return {
           ok: true,
@@ -811,19 +823,19 @@ describe('UnifiedGitHubService - Comprehensive Tests', () => {
 
     it('should handle slow authentication', async () => {
       // Create a strategy with validation delay
-      const { MockPATAuthenticationStrategy } = jest.requireActual(
-        './test-fixtures/UnifiedGitHubServiceFixtures'
-      );
+      const { MockPATAuthenticationStrategy } = await vi.importActual<
+        typeof import('./test-fixtures/UnifiedGitHubServiceFixtures')
+      >('./test-fixtures/UnifiedGitHubServiceFixtures');
       const slowStrategy = new MockPATAuthenticationStrategy(
         TestFixtures.TokenFixtures.pat.classic
       );
       slowStrategy.setValidationDelay(500); // 0.5 second delay
 
       // Configure the mock factory wrapper to return our slow strategy
-      mockFactoryWrapper.createPATStrategy.mockReturnValueOnce(slowStrategy);
+      mockFactoryWrapper.createPATStrategy.mockReturnValueOnce(Promise.resolve(slowStrategy));
 
       // Setup basic fetch mock
-      mockFetch = jest.fn().mockResolvedValue({
+      mockFetch = vi.fn().mockResolvedValue({
         ok: true,
         status: 200,
         json: () => Promise.resolve({ success: true }),

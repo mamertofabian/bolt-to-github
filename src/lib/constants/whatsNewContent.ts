@@ -6,6 +6,15 @@ export interface WhatsNewVersion {
 }
 
 export const whatsNewContent: Record<string, WhatsNewVersion> = {
+  '1.3.7': {
+    date: '2025-06-25',
+    highlights: [
+      '📝 Auto README Generation - Projects without READMEs get smart documentation',
+      '🔄 Smart Content Detection - Preserves existing documentation, replaces empty files',
+    ],
+    details: `Never push projects without documentation again! Automatic README generation creates meaningful documentation for projects that need it, while preserving any existing content you've already written.`,
+    type: 'minor',
+  },
   '1.3.6': {
     date: '2025-06-14',
     highlights: [

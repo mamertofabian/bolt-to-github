@@ -6,12 +6,14 @@
  */
 
 /* eslint-disable @typescript-eslint/no-require-imports */
+/* eslint-disable @typescript-eslint/no-explicit-any */
+import { afterEach, beforeEach, describe, expect, it, vi, type Mock } from 'vitest';
 
 describe('WelcomePageContentScript', () => {
-  let mockRuntimeSendMessage: jest.Mock;
-  let mockStorageGet: jest.Mock;
-  let mockWindowPostMessage: jest.Mock;
-  let mockAddEventListener: jest.Mock;
+  let mockRuntimeSendMessage: Mock;
+  let mockStorageGet: Mock;
+  let mockWindowPostMessage: Mock;
+  let mockAddEventListener: Mock;
   let messageListeners: Array<(event: MessageEvent) => void>;
 
   // Helper function to create proper MessageEvent mocks
@@ -35,25 +37,25 @@ describe('WelcomePageContentScript', () => {
       srcElement: window,
       target: window,
       timeStamp: Date.now(),
-      initEvent: jest.fn(),
-      preventDefault: jest.fn(),
-      stopImmediatePropagation: jest.fn(),
-      stopPropagation: jest.fn(),
-      initMessageEvent: jest.fn(),
-      composedPath: jest.fn(() => []),
+      initEvent: vi.fn(),
+      preventDefault: vi.fn(),
+      stopImmediatePropagation: vi.fn(),
+      stopPropagation: vi.fn(),
+      initMessageEvent: vi.fn(),
+      composedPath: vi.fn(() => []),
       AT_TARGET: Event.AT_TARGET,
       BUBBLING_PHASE: Event.BUBBLING_PHASE,
       CAPTURING_PHASE: Event.CAPTURING_PHASE,
       NONE: Event.NONE,
-    } as MessageEvent;
+    } as unknown as MessageEvent;
   };
 
   beforeEach(() => {
-    jest.clearAllMocks();
+    vi.clearAllMocks();
     messageListeners = [];
 
     // Mock Chrome runtime API
-    mockRuntimeSendMessage = jest.fn().mockImplementation((message, callback) => {
+    mockRuntimeSendMessage = vi.fn().mockImplementation((message, callback) => {
       // Simulate async response from background
       setTimeout(() => {
         if (message.type === 'getExtensionStatus') {
@@ -77,7 +79,7 @@ describe('WelcomePageContentScript', () => {
       return true;
     });
 
-    mockStorageGet = jest.fn().mockImplementation((keys, callback) => {
+    mockStorageGet = vi.fn().mockImplementation((keys, callback) => {
       const result = {
         extensionCapabilities: ['zip_upload', 'issue_management', 'branch_management'],
       };
@@ -89,16 +91,16 @@ describe('WelcomePageContentScript', () => {
     });
 
     // Mock window.postMessage
-    mockWindowPostMessage = jest.fn();
+    mockWindowPostMessage = vi.fn();
 
     // Mock addEventListener to capture listeners
-    mockAddEventListener = jest.fn((event, listener) => {
+    mockAddEventListener = vi.fn((event, listener) => {
       if (event === 'message') {
         messageListeners.push(listener);
       }
     });
 
-    // Apply mocks
+    // Apply mocks before any imports
     chrome.runtime.sendMessage = mockRuntimeSendMessage;
     chrome.storage.local.get = mockStorageGet;
     window.postMessage = mockWindowPostMessage;
@@ -106,36 +108,36 @@ describe('WelcomePageContentScript', () => {
   });
 
   afterEach(() => {
-    jest.clearAllMocks();
+    vi.clearAllMocks();
+    // Clear module cache to ensure fresh imports in each test
+    vi.resetModules();
   });
 
   describe('Page Communication', () => {
-    it('should initialize content script without exposing extension ID', () => {
+    it('should initialize content script without exposing extension ID', async () => {
       // Import the content script
-      jest.isolateModules(() => {
-        require('../WelcomePageContentScript');
-      });
+      await import('../WelcomePageContentScript');
 
       // Verify no script was injected that exposes extension ID
       const scriptElement = document.querySelector('script[data-extension-id]');
       expect(scriptElement).toBeNull();
     });
 
-    it('should listen for messages from the welcome page', () => {
+    it('should listen for messages from the welcome page', async () => {
       // Import the content script
-      jest.isolateModules(() => {
-        require('../WelcomePageContentScript');
-      });
+      await import('../WelcomePageContentScript');
 
       // Verify message listener was added
       expect(mockAddEventListener).toHaveBeenCalledWith('message', expect.any(Function));
+      expect(messageListeners.length).toBeGreaterThan(0);
     });
 
     it('should forward getExtensionStatus requests to background', async () => {
       // Import the content script
-      jest.isolateModules(() => {
-        require('../WelcomePageContentScript');
-      });
+      await import('../WelcomePageContentScript');
+
+      // Ensure listener was added
+      expect(messageListeners.length).toBeGreaterThan(0);
 
       // Simulate message from page
       const messageListener = messageListeners[0];
@@ -175,9 +177,10 @@ describe('WelcomePageContentScript', () => {
 
     it('should handle completeOnboardingStep requests', async () => {
       // Import the content script
-      jest.isolateModules(() => {
-        require('../WelcomePageContentScript');
-      });
+      await import('../WelcomePageContentScript');
+
+      // Ensure listener was added
+      expect(messageListeners.length).toBeGreaterThan(0);
 
       // Simulate message from page
       const messageListener = messageListeners[0];
@@ -211,9 +214,10 @@ describe('WelcomePageContentScript', () => {
 
     it('should handle initiateGitHubAuth requests', async () => {
       // Import the content script
-      jest.isolateModules(() => {
-        require('../WelcomePageContentScript');
-      });
+      await import('../WelcomePageContentScript');
+
+      // Ensure listener was added
+      expect(messageListeners.length).toBeGreaterThan(0);
 
       // Simulate message from page
       const messageListener = messageListeners[0];
@@ -247,9 +251,10 @@ describe('WelcomePageContentScript', () => {
 
     it('should provide extension capabilities', async () => {
       // Import the content script
-      jest.isolateModules(() => {
-        require('../WelcomePageContentScript');
-      });
+      await import('../WelcomePageContentScript');
+
+      // Ensure listener was added
+      expect(messageListeners.length).toBeGreaterThan(0);
 
       // Simulate message from page
       const messageListener = messageListeners[0];
@@ -279,11 +284,12 @@ describe('WelcomePageContentScript', () => {
   });
 
   describe('Security', () => {
-    it('should ignore messages from non-bolt2github origins', () => {
+    it('should ignore messages from non-bolt2github origins', async () => {
       // Import the content script
-      jest.isolateModules(() => {
-        require('../WelcomePageContentScript');
-      });
+      await import('../WelcomePageContentScript');
+
+      // Ensure listener was added
+      expect(messageListeners.length).toBeGreaterThan(0);
 
       // Simulate message from malicious origin
       const messageListener = messageListeners[0];
@@ -299,11 +305,12 @@ describe('WelcomePageContentScript', () => {
       expect(mockWindowPostMessage).not.toHaveBeenCalled();
     });
 
-    it('should ignore messages without proper source identifier', () => {
+    it('should ignore messages without proper source identifier', async () => {
       // Import the content script
-      jest.isolateModules(() => {
-        require('../WelcomePageContentScript');
-      });
+      await import('../WelcomePageContentScript');
+
+      // Ensure listener was added
+      expect(messageListeners.length).toBeGreaterThan(0);
 
       // Simulate message without source
       const messageListener = messageListeners[0];
@@ -318,11 +325,12 @@ describe('WelcomePageContentScript', () => {
       expect(mockWindowPostMessage).not.toHaveBeenCalled();
     });
 
-    it('should handle messages only from same window', () => {
+    it('should handle messages only from same window', async () => {
       // Import the content script
-      jest.isolateModules(() => {
-        require('../WelcomePageContentScript');
-      });
+      await import('../WelcomePageContentScript');
+
+      // Ensure listener was added
+      expect(messageListeners.length).toBeGreaterThan(0);
 
       // Create a mock iframe
       const iframe = document.createElement('iframe');
@@ -353,9 +361,10 @@ describe('WelcomePageContentScript', () => {
       });
 
       // Import the content script
-      jest.isolateModules(() => {
-        require('../WelcomePageContentScript');
-      });
+      await import('../WelcomePageContentScript');
+
+      // Ensure listener was added
+      expect(messageListeners.length).toBeGreaterThan(0);
 
       // Simulate message from page
       const messageListener = messageListeners[0];
@@ -393,9 +402,10 @@ describe('WelcomePageContentScript', () => {
       });
 
       // Import the content script
-      jest.isolateModules(() => {
-        require('../WelcomePageContentScript');
-      });
+      await import('../WelcomePageContentScript');
+
+      // Ensure listener was added
+      expect(messageListeners.length).toBeGreaterThan(0);
 
       // Simulate message from page
       const messageListener = messageListeners[0];
@@ -425,13 +435,11 @@ describe('WelcomePageContentScript', () => {
   });
 
   describe('Logging', () => {
-    it('should log content script initialization', () => {
-      const consoleInfoSpy = jest.spyOn(console, 'info').mockImplementation();
+    it('should log content script initialization', async () => {
+      const consoleInfoSpy = vi.spyOn(console, 'info').mockImplementation(() => {});
 
       // Import the content script
-      jest.isolateModules(() => {
-        require('../WelcomePageContentScript');
-      });
+      await import('../WelcomePageContentScript');
 
       // Verify initialization was logged
       expect(consoleInfoSpy).toHaveBeenCalledWith(
@@ -444,12 +452,13 @@ describe('WelcomePageContentScript', () => {
     });
 
     it('should log incoming messages', async () => {
-      const consoleInfoSpy = jest.spyOn(console, 'info').mockImplementation();
+      const consoleInfoSpy = vi.spyOn(console, 'info').mockImplementation(() => {});
 
       // Import the content script
-      jest.isolateModules(() => {
-        require('../WelcomePageContentScript');
-      });
+      await import('../WelcomePageContentScript');
+
+      // Ensure listener was added
+      expect(messageListeners.length).toBeGreaterThan(0);
 
       // Simulate message from page
       const messageListener = messageListeners[0];

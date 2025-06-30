@@ -2,7 +2,7 @@
 export class MockOperationStateManager {
   private operations = new Map();
 
-  startOperation = jest.fn(
+  startOperation = vi.fn(
     async (operationId: string, type: string, description: string, metadata?: unknown) => {
       this.operations.set(operationId, {
         type,
@@ -14,14 +14,14 @@ export class MockOperationStateManager {
     }
   );
 
-  completeOperation = jest.fn(async (operationId: string) => {
+  completeOperation = vi.fn(async (operationId: string) => {
     const operation = this.operations.get(operationId);
     if (operation) {
       operation.status = 'completed';
     }
   });
 
-  failOperation = jest.fn(async (operationId: string, error: Error) => {
+  failOperation = vi.fn(async (operationId: string, error: Error) => {
     const operation = this.operations.get(operationId);
     if (operation) {
       operation.status = 'failed';
@@ -50,7 +50,7 @@ export class MockOperationStateManager {
 let mockInstance = new MockOperationStateManager();
 
 export const OperationStateManager = {
-  getInstance: jest.fn(() => mockInstance),
+  getInstance: vi.fn(() => mockInstance),
   __resetMockInstance: () => {
     mockInstance = new MockOperationStateManager();
   },

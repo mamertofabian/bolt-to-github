@@ -1,7 +1,6 @@
-/* eslint-env jest */
-
-import { UIStateManager } from '../UIStateManager';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { UploadStatusState } from '../../../lib/types';
+import { UIStateManager } from '../UIStateManager';
 
 describe('UIStateManager', () => {
   let stateManager: UIStateManager;
@@ -15,7 +14,7 @@ describe('UIStateManager', () => {
   });
 
   describe('Upload Status Management', () => {
-    test('sets and gets upload status', () => {
+    it('sets and gets upload status', () => {
       const status: UploadStatusState = {
         status: 'uploading',
         progress: 75,
@@ -31,8 +30,8 @@ describe('UIStateManager', () => {
       expect(retrievedStatus.message).toBe('Uploading files...');
     });
 
-    test('triggers listeners on status change', () => {
-      const listener = jest.fn();
+    it('triggers listeners on status change', () => {
+      const listener = vi.fn();
       stateManager.addListener(listener);
 
       const status: UploadStatusState = {
@@ -49,7 +48,7 @@ describe('UIStateManager', () => {
       expect(previousState.uploadStatus.status).toBe('idle');
     });
 
-    test('updates button processing state based on upload status', () => {
+    it('updates button processing state based on upload status', () => {
       // Test uploading state sets processing
       stateManager.setUploadStatus({ status: 'uploading', progress: 50, message: 'Uploading...' });
 
@@ -63,7 +62,7 @@ describe('UIStateManager', () => {
       expect(buttonState.isProcessing).toBe(false);
     });
 
-    test('handles error states correctly', () => {
+    it('handles error states correctly', () => {
       stateManager.setUploadStatus({ status: 'error', progress: 0, message: 'Upload failed' });
 
       const buttonState = stateManager.getButtonState();
@@ -76,7 +75,7 @@ describe('UIStateManager', () => {
   });
 
   describe('Button State Management', () => {
-    test('sets and gets button state', () => {
+    it('sets and gets button state', () => {
       expect(stateManager.getButtonState().isValid).toBe(false);
 
       stateManager.setButtonState(true);
@@ -86,7 +85,7 @@ describe('UIStateManager', () => {
       expect(stateManager.getButtonState().isValid).toBe(false);
     });
 
-    test('manages button processing states', () => {
+    it('manages button processing states', () => {
       stateManager.setButtonProcessing(true);
       expect(stateManager.getButtonState().isProcessing).toBe(true);
 
@@ -94,7 +93,7 @@ describe('UIStateManager', () => {
       expect(stateManager.getButtonState().isProcessing).toBe(false);
     });
 
-    test('handles specialized loading states', () => {
+    it('handles specialized loading states', () => {
       // Test detecting changes state
       stateManager.setButtonDetectingChanges();
       let buttonState = stateManager.getButtonState();
@@ -122,7 +121,7 @@ describe('UIStateManager', () => {
       expect(buttonState.loadingText).toBeUndefined();
     });
 
-    test('tracks initialization state', () => {
+    it('tracks initialization state', () => {
       expect(stateManager.getButtonState().isInitialized).toBe(false);
 
       stateManager.setButtonInitialized(true);
@@ -134,7 +133,7 @@ describe('UIStateManager', () => {
   });
 
   describe('Notification Management', () => {
-    test('tracks notification count and types', () => {
+    it('tracks notification count and types', () => {
       expect(stateManager.getNotificationState().active).toBe(0);
 
       stateManager.addNotification('success');
@@ -151,7 +150,7 @@ describe('UIStateManager', () => {
       expect(stateManager.getNotificationState().active).toBe(1);
     });
 
-    test('prevents negative notification count', () => {
+    it('prevents negative notification count', () => {
       stateManager.removeNotification();
       stateManager.removeNotification();
 
@@ -160,7 +159,7 @@ describe('UIStateManager', () => {
   });
 
   describe('Dropdown State Management', () => {
-    test('manages dropdown visibility', () => {
+    it('manages dropdown visibility', () => {
       expect(stateManager.getDropdownState().isVisible).toBe(false);
 
       stateManager.setDropdownVisible(true);
@@ -170,7 +169,7 @@ describe('UIStateManager', () => {
       expect(stateManager.getDropdownState().isVisible).toBe(false);
     });
 
-    test('manages dropdown position', () => {
+    it('manages dropdown position', () => {
       const position = { top: 100, left: 200 };
 
       stateManager.setDropdownVisible(true, position);
@@ -187,7 +186,7 @@ describe('UIStateManager', () => {
   });
 
   describe('Component Initialization Tracking', () => {
-    test('tracks component initialization state', () => {
+    it('tracks component initialization state', () => {
       expect(stateManager.getComponentState().uploadStatusInitialized).toBe(false);
 
       stateManager.setComponentInitialized('uploadStatusInitialized', true);
@@ -197,7 +196,7 @@ describe('UIStateManager', () => {
       expect(stateManager.getComponentState().uploadStatusInitialized).toBe(false);
     });
 
-    test('tracks multiple components independently', () => {
+    it('tracks multiple components independently', () => {
       stateManager.setComponentInitialized('uploadStatusInitialized', true);
       stateManager.setComponentInitialized('buttonInitialized', false);
       stateManager.setComponentInitialized('notificationInitialized', true);
@@ -210,9 +209,9 @@ describe('UIStateManager', () => {
   });
 
   describe('State Listeners', () => {
-    test('adds and removes listeners correctly', () => {
-      const listener1 = jest.fn();
-      const listener2 = jest.fn();
+    it('adds and removes listeners correctly', () => {
+      const listener1 = vi.fn();
+      const listener2 = vi.fn();
 
       stateManager.addListener(listener1);
       stateManager.addListener(listener2);
@@ -233,8 +232,8 @@ describe('UIStateManager', () => {
       expect(listener2).toHaveBeenCalledTimes(1);
     });
 
-    test('provides state snapshots to listeners', () => {
-      const listener = jest.fn();
+    it('provides state snapshots to listeners', () => {
+      const listener = vi.fn();
       stateManager.addListener(listener);
 
       const uploadStatus: UploadStatusState = {
@@ -254,8 +253,8 @@ describe('UIStateManager', () => {
       expect(newState).not.toBe(previousState);
     });
 
-    test('handles notification depth limit to prevent infinite loops', () => {
-      const listener = jest.fn();
+    it('handles notification depth limit to prevent infinite loops', () => {
+      const listener = vi.fn();
       stateManager.addListener(listener);
 
       // This should not cause infinite recursion
@@ -266,7 +265,7 @@ describe('UIStateManager', () => {
   });
 
   describe('State Validation', () => {
-    test('validates state correctly', () => {
+    it('validates state correctly', () => {
       expect(stateManager.isValidState()).toBe(true);
 
       // Set some state
@@ -276,7 +275,7 @@ describe('UIStateManager', () => {
       expect(stateManager.isValidState()).toBe(true);
     });
 
-    test('provides state summary', () => {
+    it('provides state summary', () => {
       const summary = stateManager.getStateSummary();
 
       expect(typeof summary).toBe('string');
@@ -287,7 +286,7 @@ describe('UIStateManager', () => {
   });
 
   describe('State Reset and Cleanup', () => {
-    test('resets to initial state', () => {
+    it('resets to initial state', () => {
       // Modify state
       stateManager.setButtonState(true);
       stateManager.setUploadStatus({ status: 'uploading', progress: 50, message: 'Test' });
@@ -305,8 +304,8 @@ describe('UIStateManager', () => {
       expect(state.dropdown.isVisible).toBe(false);
     });
 
-    test('removes all listeners on cleanup', () => {
-      const listener = jest.fn();
+    it('removes all listeners on cleanup', () => {
+      const listener = vi.fn();
       stateManager.addListener(listener);
 
       stateManager.cleanup();
@@ -318,7 +317,7 @@ describe('UIStateManager', () => {
   });
 
   describe('State Immutability', () => {
-    test('getState returns readonly copy', () => {
+    it('getState returns readonly copy', () => {
       const state1 = stateManager.getState();
       const state2 = stateManager.getState();
 
@@ -327,7 +326,7 @@ describe('UIStateManager', () => {
       expect(state1).toEqual(state2);
     });
 
-    test('modifying returned state does not affect internal state', () => {
+    it('modifying returned state does not affect internal state', () => {
       const state = stateManager.getState();
 
       // Try to modify returned state

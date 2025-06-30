@@ -86,6 +86,12 @@ export const ANALYTICS_EVENTS = {
   DIFF_COMPARISON_VIEWED: 'diff_comparison_viewed',
   MANUAL_SYNC_TRIGGERED: 'manual_sync_triggered',
   AUTO_SYNC_COMPLETED: 'auto_sync_completed',
+
+  // Feature adoption
+  GITHUB_APP_AUTH_ADOPTED: 'github_app_auth_adopted',
+  PAT_AUTH_ADOPTED: 'pat_auth_adopted',
+  AUTO_PUSH_ENABLED: 'auto_push_enabled',
+  BRANCH_PROTECTION_ENABLED: 'branch_protection_enabled',
 } as const;
 
 /**
@@ -278,6 +284,64 @@ export async function trackPageView(
 }
 
 /**
+ * Track feature adoption
+ */
+export async function trackFeatureAdoption(feature: string, adopted: boolean): Promise<void> {
+  await analytics.trackFeatureAdoption(feature, adopted);
+}
+
+/**
+ * Track operation performance with enhanced metrics
+ */
+export async function trackOperationPerformance(
+  operation: string,
+  startTime: number,
+  endTime: number,
+  metadata?: AnalyticsMetadata
+): Promise<void> {
+  await analytics.trackPerformance(operation, startTime, endTime, metadata);
+}
+
+/**
+ * Track user journey milestones
+ */
+export async function trackUserJourneyMilestone(
+  journey: string,
+  milestone: string,
+  metadata?: AnalyticsMetadata
+): Promise<void> {
+  await analytics.trackUserJourney(journey, milestone, metadata);
+}
+
+/**
+ * Track operation results with success/failure
+ */
+export async function trackOperationResult(
+  operation: string,
+  success: boolean,
+  metadata?: AnalyticsMetadata
+): Promise<void> {
+  await analytics.trackOperationResult(operation, success, metadata);
+}
+
+/**
+ * Track feature usage with version info (enhanced)
+ */
+export async function trackFeatureUsageWithVersion(
+  feature: string,
+  metadata?: AnalyticsMetadata
+): Promise<void> {
+  await analytics.trackFeatureUsage(feature, metadata);
+}
+
+/**
+ * Track daily active user
+ */
+export async function trackDailyActiveUser(): Promise<void> {
+  await analytics.trackDailyActiveUser();
+}
+
+/**
  * Utility to wrap async operations with analytics tracking
  */
 export function withAnalytics<T extends unknown[], R>(
@@ -290,16 +354,23 @@ export function withAnalytics<T extends unknown[], R>(
 
     try {
       const result = await operation(...args);
-      const duration = Date.now() - startTime;
+      const endTime = Date.now();
 
-      await trackPerformance(eventName, duration, getMetadata?.(...args));
+      await trackOperationPerformance(eventName, startTime, endTime, getMetadata?.(...args));
+      await trackOperationResult(eventName, true, getMetadata?.(...args));
 
       return result;
     } catch (error) {
-      const duration = Date.now() - startTime;
+      const endTime = Date.now();
 
       await trackError('unknown', error as Error, eventName);
-      await trackPerformance(`${eventName}_failed`, duration, getMetadata?.(...args));
+      await trackOperationPerformance(
+        `${eventName}_failed`,
+        startTime,
+        endTime,
+        getMetadata?.(...args)
+      );
+      await trackOperationResult(eventName, false, getMetadata?.(...args));
 
       throw error;
     }

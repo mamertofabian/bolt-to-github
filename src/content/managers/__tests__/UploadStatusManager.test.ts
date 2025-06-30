@@ -1,38 +1,42 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-/* eslint-env jest */
 
-import { UploadStatusManager } from '../UploadStatusManager';
+import type { Mocked } from 'vitest';
 import type { UploadStatusState } from '../../../lib/types';
 import type { UIStateManager } from '../../services/UIStateManager';
+import { UploadStatusManager } from '../UploadStatusManager';
 
 // Mock the Svelte component
 const mockSvelteComponent = {
-  $set: jest.fn(),
-  $destroy: jest.fn(),
+  $set: vi.fn(),
+  $destroy: vi.fn(),
+  $on: vi.fn(),
 };
 
-jest.mock(
-  '../../UploadStatus.svelte',
-  () => {
-    return jest.fn().mockImplementation(() => mockSvelteComponent);
+vi.mock('../../UploadStatus.svelte', () => ({
+  default: class MockUploadStatus {
+    constructor() {
+      Object.assign(this, mockSvelteComponent);
+    }
+    $set = mockSvelteComponent.$set;
+    $destroy = mockSvelteComponent.$destroy;
+    $on = mockSvelteComponent.$on;
   },
-  { virtual: true }
-);
+}));
 
 describe('UploadStatusManager', () => {
   let uploadStatusManager: UploadStatusManager;
-  let mockStateManager: jest.Mocked<UIStateManager>;
+  let mockStateManager: Mocked<UIStateManager>;
 
   beforeEach(() => {
     // Reset DOM
     document.body.innerHTML = '';
 
     // Reset mocks
-    jest.clearAllMocks();
+    vi.clearAllMocks();
 
     // Mock state manager
     mockStateManager = {
-      setUploadStatus: jest.fn(),
+      setUploadStatus: vi.fn(),
     } as any;
 
     uploadStatusManager = new UploadStatusManager(mockStateManager);
@@ -41,7 +45,7 @@ describe('UploadStatusManager', () => {
   afterEach(() => {
     uploadStatusManager.cleanup();
     document.body.innerHTML = '';
-    jest.restoreAllMocks();
+    vi.restoreAllMocks();
   });
 
   describe('Initialization', () => {
@@ -88,7 +92,7 @@ describe('UploadStatusManager', () => {
       });
 
       // Mock addEventListener
-      const addEventListenerSpy = jest.spyOn(document, 'addEventListener');
+      const addEventListenerSpy = vi.spyOn(document, 'addEventListener');
 
       uploadStatusManager.initialize();
 
@@ -142,7 +146,7 @@ describe('UploadStatusManager', () => {
     test('initializes component if not already initialized', () => {
       // Create uninitialized manager
       const uninitializedManager = new UploadStatusManager(mockStateManager);
-      const initSpy = jest.spyOn(uninitializedManager, 'initialize');
+      const initSpy = vi.spyOn(uninitializedManager, 'initialize');
 
       const status: UploadStatusState = {
         status: 'uploading',

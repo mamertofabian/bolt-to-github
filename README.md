@@ -31,7 +31,22 @@ A Chrome extension that automatically captures ZIP file downloads from bolt.new,
   <img src="https://img.shields.io/badge/Install%20from-Chrome%20Web%20Store-blue?style=for-the-badge&logo=google-chrome&logoColor=white" alt="Install from Chrome Web Store" height="40">
 </a>
 
-### Latest Version: v1.3.6 (Development)
+### Latest Version: v1.3.7 (Development)
+
+#### 📝 Version 1.3.7 - Automatic README Generation
+
+**Major Features:**
+
+- **Automatic README Generation** - Smart documentation creation for projects without meaningful README files
+- **Smart Content Detection** - Preserves existing documentation while replacing empty or whitespace-only files
+- **Zero Setup Required** - Works automatically during push to GitHub with no configuration needed
+
+**Key Benefits:**
+
+- **Never push undocumented projects** - Automatic README creation ensures every project has meaningful documentation
+- **Intelligent detection** - Handles README, readme, Readme file variations with case-insensitive detection
+- **Content preservation** - Existing meaningful documentation is always preserved
+- **Project branding** - Generated READMEs include project name and Bolt to GitHub attribution
 
 #### 🔄 Version 1.3.6 - Project Synchronization & Stability
 
@@ -276,11 +291,31 @@ If you want to modify the extension or contribute to its development:
    pnpm run format
    ```
 
-4. Load in Chrome:
+4. Set up environment variables:
+
+   ```bash
+   # Copy the example environment file
+   cp .env.example .env
+
+   # Edit .env and add your Google Analytics API secret
+   # Get it from: https://analytics.google.com/analytics/web/
+   # Navigate to: Admin > Data Streams > [Your Stream] > Measurement Protocol API secrets
+   ```
+
+5. Load in Chrome:
    - Open Chrome and go to `chrome://extensions/`
    - Enable "Developer mode" (top right)
    - Click "Load unpacked"
    - Select the `dist` directory from your project folder
+
+#### Environment Variables
+
+The extension uses environment variables for sensitive configuration:
+
+- `VITE_GA4_API_SECRET`: Google Analytics 4 API secret for analytics tracking
+  - Required for analytics functionality
+  - Analytics will be disabled if not provided
+  - Never commit this value to the repository
 
 #### Adding UI Components (shadcn-svelte)
 
@@ -391,7 +426,7 @@ See our [Contributing Guide](#contributing) for more details.
 
 - [Supabase](https://supabase.com/) - Backend services and authentication
 - [MailerLite](https://mailerlite.com/) - Newsletter management
-- [Jest](https://jestjs.io/) - Testing framework
+- [Vitest](https://vitest.dev/) - Testing framework
 
 ### Development Tools
 

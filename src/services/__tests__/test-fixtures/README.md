@@ -306,7 +306,7 @@ scenario.setupSlowNetwork(2000); // Simulate 2s delay
 
 These fixtures are designed to work alongside the existing test infrastructure:
 
-- **Compatible with Jest** - All mocks use Jest's mocking capabilities
+- **Compatible with Vitest** - All mocks use Vitest's mocking capabilities
 - **Follows Existing Patterns** - Similar structure to BackgroundService fixtures
 - **Extends Current Coverage** - Builds upon existing GitHubService.feedback.test.ts
 

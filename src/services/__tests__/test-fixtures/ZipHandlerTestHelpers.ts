@@ -1,18 +1,19 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 /* eslint-disable @typescript-eslint/no-require-imports */
 
 import { GitHubComparisonService } from '../../GitHubComparisonService';
 import {
-  MockUnifiedGitHubService,
-  MockGitHubComparisonService,
-  MockStatusCallback,
   MockChromeStorage,
+  MockGitHubComparisonService,
   MockPushStatisticsActions,
+  MockStatusCallback,
+  MockUnifiedGitHubService,
 } from './ZipHandlerMocks';
 import {
-  ZIP_FILE_FIXTURES,
   createTestBlob,
-  TEST_PROJECTS,
   ERROR_SCENARIOS,
+  TEST_PROJECTS,
+  ZIP_FILE_FIXTURES,
 } from './ZipHandlerTestFixtures';
 
 /**
@@ -39,9 +40,9 @@ export interface ZipHandlerTestEnvironment {
 }
 
 // Mock modules before importing ZipHandler
-jest.mock('../../../lib/zip', () => ({
+vi.mock('../../../lib/zip', () => ({
   ZipProcessor: {
-    processZipBlob: jest.fn().mockImplementation(async (blob: Blob) => {
+    processZipBlob: vi.fn().mockImplementation(async (blob: Blob) => {
       // Check if it's a corrupted blob (our test marker)
       if (blob.size === 4) {
         // Check the blob type to see if it's corrupted
@@ -63,7 +64,9 @@ jest.mock('../../../lib/zip', () => ({
 
         const entries = JSON.parse(text);
         return new Map(entries);
-      } catch {
+      } catch (error) {
+        console.error('Failed to parse blob content:', error);
+        console.error('Blob content:', blob);
         // Return empty map if JSON parsing fails (for other test cases)
         return new Map();
       }
@@ -71,26 +74,33 @@ jest.mock('../../../lib/zip', () => ({
   },
 }));
 
-jest.mock('../../../lib/stores');
+// Mock the stores module first, before any imports
+vi.mock('../../../lib/stores', () => ({
+  pushStatisticsActions: {
+    recordPushAttempt: vi.fn(),
+    recordPushSuccess: vi.fn(),
+    recordPushFailure: vi.fn(),
+  },
+}));
 
-jest.mock('../../../lib/common', () => ({
-  toBase64: jest.fn().mockImplementation((str: string) => {
+vi.mock('../../../lib/common', () => ({
+  toBase64: vi.fn().mockImplementation((str: string) => {
     // Simple base64 encoding for tests
     return Buffer.from(str).toString('base64');
   }),
 }));
 
-jest.mock('../../../lib/Queue', () => ({
-  Queue: jest.fn().mockImplementation(() => ({
-    add: jest.fn().mockImplementation(async (fn: () => Promise<unknown>) => {
+vi.mock('../../../lib/Queue', () => ({
+  Queue: vi.fn().mockImplementation(() => ({
+    add: vi.fn().mockImplementation(async (fn: () => Promise<unknown>) => {
       // Execute the function immediately in tests
       return await fn();
     }),
   })),
 }));
 
-jest.mock('../../../lib/fileUtils', () => ({
-  processFilesWithGitignore: jest.fn().mockImplementation((files) => {
+vi.mock('../../../lib/fileUtils', () => ({
+  processFilesWithGitignore: vi.fn().mockImplementation((files) => {
     // Simple mock that filters out common ignored patterns
     const processedFiles = new Map();
     for (const [path, content] of files.entries()) {
@@ -110,7 +120,7 @@ jest.mock('../../../lib/fileUtils', () => ({
 /**
  * Create a complete test environment for ZipHandler testing
  */
-export function createTestEnvironment(): ZipHandlerTestEnvironment {
+export async function createTestEnvironment(): Promise<ZipHandlerTestEnvironment> {
   // Create mocks
   const githubService = new MockUnifiedGitHubService();
   const comparisonService = new MockGitHubComparisonService();
@@ -122,9 +132,9 @@ export function createTestEnvironment(): ZipHandlerTestEnvironment {
   const originalComparison = GitHubComparisonService.getInstance();
 
   // Mock GitHubComparisonService.getInstance()
-  jest
-    .spyOn(GitHubComparisonService, 'getInstance')
-    .mockReturnValue(comparisonService as unknown as GitHubComparisonService);
+  vi.spyOn(GitHubComparisonService, 'getInstance').mockReturnValue(
+    comparisonService as unknown as GitHubComparisonService
+  );
 
   // Mock chrome.storage
   global.chrome = {
@@ -138,16 +148,26 @@ export function createTestEnvironment(): ZipHandlerTestEnvironment {
     },
   };
 
-  // Set up the push statistics mock
-  const pushStatisticsMock = require('../../../lib/stores');
-  pushStatisticsMock.pushStatisticsActions = pushStats;
+  // Get the mocked push statistics actions
+  const { pushStatisticsActions } = await import('../../../lib/stores');
+
+  // Override the mock functions to use our test spy
+  vi.mocked(pushStatisticsActions.recordPushAttempt).mockImplementation(
+    pushStats.recordPushAttempt.bind(pushStats) as any
+  );
+  vi.mocked(pushStatisticsActions.recordPushSuccess).mockImplementation(
+    pushStats.recordPushSuccess.bind(pushStats) as any
+  );
+  vi.mocked(pushStatisticsActions.recordPushFailure).mockImplementation(
+    pushStats.recordPushFailure.bind(pushStats) as any
+  );
 
   // Import ZipHandler after mocks are set up
-  const { ZipHandler } = require('../../zipHandler');
+  const { ZipHandler } = await import('../../zipHandler');
 
   // Create ZipHandler instance
   const zipHandler = new ZipHandler(
-    githubService as Parameters<typeof ZipHandler>[0],
+    githubService as any,
     statusCallback.getCallback()
   ) as ZipHandlerLike;
 
@@ -167,10 +187,10 @@ export function createTestEnvironment(): ZipHandlerTestEnvironment {
  */
 export function cleanupTestEnvironment(env: ZipHandlerTestEnvironment) {
   // Restore GitHubComparisonService
-  jest.spyOn(GitHubComparisonService, 'getInstance').mockRestore();
+  vi.spyOn(GitHubComparisonService, 'getInstance').mockRestore();
 
   // Clear all mocks
-  jest.clearAllMocks();
+  vi.clearAllMocks();
 
   // Clear mock data
   env.githubService.clearHistory();

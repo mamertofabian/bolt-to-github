@@ -1,9 +1,9 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
+import { beforeEach, describe, expect, it } from 'vitest';
 import { RepositoryService } from '../RepositoryService';
-import type { IGitHubApiClient } from '../interfaces/IGitHubApiClient';
 import type { IFileService } from '../interfaces/IFileService';
+import type { IGitHubApiClient } from '../interfaces/IGitHubApiClient';
 import type { IRepoCloneService } from '../interfaces/IRepoCloneService';
-import { expect, jest, describe, it, beforeEach } from '@jest/globals';
 
 describe('RepositoryService', () => {
   let mockApiClient: any;
@@ -14,23 +14,23 @@ describe('RepositoryService', () => {
   beforeEach(() => {
     // Create fresh mocks for each test
     mockApiClient = {
-      request: jest.fn(),
-      getRateLimit: jest.fn(),
+      request: vi.fn(),
+      getRateLimit: vi.fn(),
       token: 'test-token',
     };
 
     mockFileService = {
-      writeFile: jest.fn().mockResolvedValue({} as never),
-      readFile: jest.fn(),
-      deleteFile: jest.fn(),
-      listFiles: jest.fn(),
-      getFileInfo: jest.fn(),
-      fileExists: jest.fn(),
-      createDirectory: jest.fn(),
+      writeFile: vi.fn().mockResolvedValue({} as never),
+      readFile: vi.fn(),
+      deleteFile: vi.fn(),
+      listFiles: vi.fn(),
+      getFileInfo: vi.fn(),
+      fileExists: vi.fn(),
+      createDirectory: vi.fn(),
     };
 
     mockRepoCloneService = {
-      cloneRepoContents: jest.fn().mockResolvedValue({} as never),
+      cloneRepoContents: vi.fn().mockResolvedValue({} as never),
     };
 
     repositoryService = new RepositoryService(
@@ -221,7 +221,7 @@ describe('RepositoryService', () => {
       mockApiClient.request.mockResolvedValueOnce({ name: 'new-repo' });
 
       // Mock setTimeout
-      jest.spyOn(global, 'setTimeout').mockImplementation((callback: any) => {
+      vi.spyOn(global, 'setTimeout').mockImplementation((callback: any) => {
         callback();
         return {} as any;
       });
@@ -445,13 +445,13 @@ describe('RepositoryService', () => {
       // Mock Math.random to return a predictable value for testing
       const originalRandom = Math.random;
       // Mock that will return '123456' when toString(36).substring(2, 8) is called
-      Math.random = jest.fn(() => ({
+      Math.random = vi.fn(() => ({
         toString: (radix: number) => (radix === 36 ? '0.123456' : '0.123456'),
       })) as unknown as () => number;
 
       // Mock Date.now to return a predictable value for testing
       const originalDateNow = Date.now;
-      Date.now = jest.fn(() => 1234567890) as () => number;
+      Date.now = vi.fn(() => 1234567890) as () => number;
 
       // Arrange
       mockApiClient.request.mockImplementation((method: string, endpoint: string, body?: any) => {
@@ -505,10 +505,10 @@ describe('RepositoryService', () => {
       const originalRandom = Math.random;
       const originalDateNow = Date.now;
       // Mock that will return '123456' when toString(36).substring(2, 8) is called
-      Math.random = jest.fn(() => ({
+      Math.random = vi.fn(() => ({
         toString: (radix: number) => (radix === 36 ? '0.123456' : '0.123456'),
       })) as unknown as () => number;
-      Date.now = jest.fn(() => 1234567890) as () => number;
+      Date.now = vi.fn(() => 1234567890) as () => number;
 
       // Arrange
       mockApiClient.request.mockImplementation((method: string, endpoint: string, body?: any) => {
@@ -584,7 +584,7 @@ describe('RepositoryService', () => {
   describe('cloneRepoContents', () => {
     it('should delegate to the RepoCloneService', async () => {
       // Act
-      const onProgressMock = jest.fn();
+      const onProgressMock = vi.fn();
       await repositoryService.cloneRepoContents(
         'sourceOwner',
         'sourceRepo',

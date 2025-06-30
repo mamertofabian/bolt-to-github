@@ -1,20 +1,20 @@
-import { ChromeStorageService } from '../chromeStorage';
 import type { GitHubSettingsInterface } from '../../types';
+import { ChromeStorageService } from '../chromeStorage';
 
 // Mock chrome.storage
 const mockOnChanged = {
-  addListener: jest.fn(),
-  removeListener: jest.fn(),
+  addListener: vi.fn(),
+  removeListener: vi.fn(),
 };
 
 const mockChromeStorage = {
   sync: {
-    get: jest.fn(),
-    set: jest.fn(),
+    get: vi.fn(),
+    set: vi.fn(),
   },
   local: {
-    get: jest.fn(),
-    set: jest.fn(),
+    get: vi.fn(),
+    set: vi.fn(),
   },
   onChanged: mockOnChanged,
 };
@@ -25,7 +25,7 @@ const mockChromeStorage = {
 
 describe('ChromeStorageService Race Condition Tests', () => {
   beforeEach(() => {
-    jest.clearAllMocks();
+    vi.clearAllMocks();
 
     // Default mock implementations
     mockChromeStorage.sync.get.mockResolvedValue({ projectSettings: {} });
@@ -205,7 +205,7 @@ describe('ChromeStorageService Race Condition Tests', () => {
 
   describe('Storage change listener', () => {
     it('should set up storage change listener correctly', () => {
-      const mockCallback = jest.fn();
+      const mockCallback = vi.fn();
 
       ChromeStorageService.setupStorageListener(mockCallback);
 

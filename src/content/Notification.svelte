@@ -1,13 +1,13 @@
 <script lang="ts">
+  import { onDestroy, onMount } from 'svelte';
   import { fly } from 'svelte/transition';
-  import { onMount, onDestroy } from 'svelte';
-  import type { NotificationAction } from './types/UITypes';
+  import type { ReassuringMessageContext } from '../lib/utils/reassuringMessages';
   import {
-    getRotatingMessage,
     getContextualMessage,
+    getRotatingMessage,
     resetMessageRotation,
-    type ReassuringMessageContext,
   } from '../lib/utils/reassuringMessages';
+  import type { NotificationAction } from './types/UITypes';
 
   export let type: 'info' | 'error' | 'success' = 'info';
   export let message: string = '';

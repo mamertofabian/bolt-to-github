@@ -3,7 +3,7 @@ import type { Message } from '../lib/types';
 
 // Component reference types
 export type ProjectStatusRef = {
-  refreshProjectStatus: () => Promise<void>;
+  getProjectStatus: () => Promise<void>;
   [key: string]: unknown;
 } | null;
 

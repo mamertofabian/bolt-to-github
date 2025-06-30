@@ -1,15 +1,15 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-/* eslint-env jest */
 
-import { DropdownManager } from '../DropdownManager';
+import { afterEach, beforeEach, describe, expect, test, vi, type Mock, type Mocked } from 'vitest';
 import type { MessageHandler } from '../../MessageHandler';
 import type { UIStateManager } from '../../services/UIStateManager';
+import { DropdownManager } from '../DropdownManager';
 
 describe('DropdownManager', () => {
   let dropdownManager: DropdownManager;
-  let mockMessageHandler: jest.Mocked<MessageHandler>;
-  let mockStateManager: jest.Mocked<UIStateManager>;
-  let mockPushCallback: jest.Mock;
+  let mockMessageHandler: Mocked<MessageHandler>;
+  let mockStateManager: Mocked<UIStateManager>;
+  let mockPushCallback: Mock;
 
   beforeEach(() => {
     // Reset DOM
@@ -17,11 +17,11 @@ describe('DropdownManager', () => {
     document.head.innerHTML = '';
 
     // Reset mocks
-    jest.clearAllMocks();
+    vi.clearAllMocks();
 
     // Mock MessageHandler
     mockMessageHandler = {
-      sendMessage: jest.fn(),
+      sendMessage: vi.fn(),
     } as any;
 
     // Mock UIStateManager
@@ -30,26 +30,26 @@ describe('DropdownManager', () => {
     } as any;
 
     // Mock callback functions
-    mockPushCallback = jest.fn().mockResolvedValue(undefined);
+    mockPushCallback = vi.fn().mockResolvedValue(undefined);
 
     dropdownManager = new DropdownManager(mockMessageHandler, mockStateManager, mockPushCallback);
 
     // Mock setTimeout and addEventListener for proper async handling
-    jest.spyOn(window, 'setTimeout').mockImplementation((callback) => {
+    vi.spyOn(window, 'setTimeout').mockImplementation((callback) => {
       if (typeof callback === 'function') {
         callback();
       }
       return 123 as any;
     });
 
-    jest.spyOn(window, 'addEventListener').mockImplementation();
-    jest.spyOn(window, 'removeEventListener').mockImplementation();
-    jest.spyOn(document, 'addEventListener').mockImplementation();
-    jest.spyOn(document, 'removeEventListener').mockImplementation();
+    vi.spyOn(window, 'addEventListener');
+    vi.spyOn(window, 'removeEventListener');
+    vi.spyOn(document, 'addEventListener');
+    vi.spyOn(document, 'removeEventListener');
   });
 
   afterEach(() => {
-    jest.restoreAllMocks();
+    vi.restoreAllMocks();
     dropdownManager.cleanup();
   });
 
@@ -80,12 +80,17 @@ describe('DropdownManager', () => {
       const content = dropdownManager.createContent();
       const buttons = content.querySelectorAll('button');
 
-      expect(buttons.length).toBe(2); // Push, Dashboard
+      expect(buttons.length).toBe(6); // Push, Dashboard, Show Changed Files, Manage Issues, Projects, Settings
 
-      // Check button texts
+      // Check button texts - account for the fact that premium buttons include "PRO" badge
       const buttonTexts = Array.from(buttons).map((btn) => btn.textContent?.trim());
-      expect(buttonTexts).toContain('Push to GitHub');
-      expect(buttonTexts).toContain('Project Dashboard');
+
+      expect(buttonTexts[0]).toBe('Push to GitHub');
+      expect(buttonTexts[1]).toBe('Project Dashboard');
+      expect(buttonTexts[2]).toContain('Show Changed Files'); // Premium item with "PRO" badge
+      expect(buttonTexts[3]).toContain('Manage Issues'); // Premium item with "PRO" badge
+      expect(buttonTexts[4]).toBe('Projects');
+      expect(buttonTexts[5]).toBe('Settings');
     });
 
     test('adds custom styles to document head', () => {
@@ -111,7 +116,7 @@ describe('DropdownManager', () => {
 
     beforeEach(() => {
       mockButton = document.createElement('button');
-      mockButton.getBoundingClientRect = jest.fn().mockReturnValue({
+      mockButton.getBoundingClientRect = vi.fn().mockReturnValue({
         bottom: 100,
         left: 50,
         right: 150,
@@ -133,7 +138,7 @@ describe('DropdownManager', () => {
     });
 
     test('dispatches keydown event on button', async () => {
-      const spy = jest.spyOn(mockButton, 'dispatchEvent');
+      const spy = vi.spyOn(mockButton, 'dispatchEvent');
 
       await dropdownManager.show(mockButton);
 
@@ -215,6 +220,59 @@ describe('DropdownManager', () => {
       dashboardButton?.click();
 
       expect(mockMessageHandler.sendMessage).toHaveBeenCalledWith('OPEN_HOME');
+    });
+
+    test('premium features show PRO badge when not premium', () => {
+      const content = dropdownManager.createContent();
+      const buttons = content.querySelectorAll('button');
+
+      // Check Show Changed Files button
+      const changedFilesButton = Array.from(buttons).find((btn) =>
+        btn.textContent?.includes('Show Changed Files')
+      );
+      expect(changedFilesButton?.innerHTML).toContain('PRO');
+      expect(changedFilesButton?.className).toContain('opacity-75');
+
+      // Check Manage Issues button
+      const issuesButton = Array.from(buttons).find((btn) =>
+        btn.textContent?.includes('Manage Issues')
+      );
+      expect(issuesButton?.innerHTML).toContain('PRO');
+      expect(issuesButton?.className).toContain('opacity-75');
+    });
+
+    test('handles Settings button click', () => {
+      const content = dropdownManager.createContent();
+      const buttons = content.querySelectorAll('button');
+
+      const settingsButton = Array.from(buttons).find((btn) =>
+        btn.textContent?.includes('Settings')
+      );
+
+      // Mock the current dropdown
+      (dropdownManager as any).currentDropdown = { style: { display: 'block' } };
+
+      // Simulate click
+      settingsButton?.click();
+
+      expect(mockMessageHandler.sendMessage).toHaveBeenCalledWith('OPEN_SETTINGS');
+    });
+
+    test('handles Projects button click', () => {
+      const content = dropdownManager.createContent();
+      const buttons = content.querySelectorAll('button');
+
+      const projectsButton = Array.from(buttons).find((btn) =>
+        btn.textContent?.includes('Projects')
+      );
+
+      // Mock the current dropdown
+      (dropdownManager as any).currentDropdown = { style: { display: 'block' } };
+
+      // Simulate click
+      projectsButton?.click();
+
+      expect(mockMessageHandler.sendMessage).toHaveBeenCalledWith('OPEN_PROJECTS');
     });
   });
 

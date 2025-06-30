@@ -1,7 +1,7 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { TokenService } from '../TokenService';
 import type { IGitHubApiClient } from '../interfaces/IGitHubApiClient';
-import { expect, jest, describe, it, beforeEach } from '@jest/globals';
 
 describe('TokenService', () => {
   let mockApiClient: any;
@@ -10,8 +10,8 @@ describe('TokenService', () => {
   beforeEach(() => {
     // Create a fresh mock for each test
     mockApiClient = {
-      request: jest.fn(),
-      getRateLimit: jest.fn(),
+      request: vi.fn(),
+      getRateLimit: vi.fn(),
       token: 'test-token',
     };
 

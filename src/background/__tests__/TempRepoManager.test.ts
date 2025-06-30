@@ -1,11 +1,24 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 /**
  * Final working tests for TempRepoManager
  */
 
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+
 // Manual mock the OperationStateManager before importing anything else
-jest.mock('../../content/services/OperationStateManager');
+vi.mock('../../content/services/OperationStateManager', () => ({
+  OperationStateManager: {
+    getInstance: vi.fn(),
+  },
+}));
 
 import { BackgroundTempRepoManager, STORAGE_KEY } from '../TempRepoManager';
+import type { TempRepoManagerTestEnvironment } from '../test-fixtures';
+import {
+  TempRepoAssertionHelpers,
+  TempRepoTestData,
+  TempRepoTestLifecycle,
+} from '../test-fixtures';
 
 // Define TempRepo interface locally since it's not exported from TempRepoManager
 interface TempRepo {
@@ -15,26 +28,24 @@ interface TempRepo {
   owner: string;
   branch: string;
 }
-import {
-  TempRepoTestLifecycle,
-  TempRepoTestData,
-  TempRepoAssertionHelpers,
-} from '../test-fixtures';
-import type { TempRepoManagerTestEnvironment } from '../test-fixtures';
 
 describe('TempRepoManager', () => {
   let lifecycle: TempRepoTestLifecycle;
   let env: TempRepoManagerTestEnvironment;
   let manager: BackgroundTempRepoManager;
 
-  beforeEach(() => {
+  beforeEach(async () => {
     lifecycle = new TempRepoTestLifecycle();
     env = lifecycle.beforeEach();
+
+    // Import and setup the mock after the environment is ready
+    const { OperationStateManager } = await import('../../content/services/OperationStateManager');
+    (OperationStateManager.getInstance as any).mockReturnValue(env.mockOperationStateManager);
   });
 
   afterEach(() => {
     lifecycle.afterEach();
-    jest.clearAllMocks();
+    vi.clearAllMocks();
   });
 
   describe('Repository Import Pipeline', () => {

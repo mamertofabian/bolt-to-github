@@ -5,11 +5,12 @@
  * Provides controlled test environments and utilities for comprehensive testing.
  */
 
+import { vi } from 'vitest';
 import { ContentManager } from '../ContentManager';
 import {
   MockMessageHandler,
-  MockUIManager,
   MockPort,
+  MockUIManager,
   ResourceTracker,
 } from './ContentManagerMocks';
 import type { MockPortState } from './ContentManagerTestFixtures';
@@ -177,19 +178,19 @@ export function setupChromeAPIMocks(
     runtime: {
       id: config.hasRuntimeId !== false ? 'test-extension-id' : undefined,
       lastError: config.lastError !== undefined ? config.lastError : null,
-      connect: jest.fn((info?: chrome.runtime.ConnectInfo) => {
+      connect: vi.fn((info?: chrome.runtime.ConnectInfo) => {
         const port = new MockPort(info?.name || 'bolt-content');
         env.mockPort = port;
         return port;
       }),
       onMessage: {
-        addListener: jest.fn((listener) => {
+        addListener: vi.fn((listener) => {
           messageListeners.push(listener);
         }),
-        removeListener: jest.fn(),
-        hasListener: jest.fn(() => false),
+        removeListener: vi.fn(),
+        hasListener: vi.fn(() => false),
         // Add dispatch method for testing
-        dispatch: jest.fn(
+        dispatch: vi.fn(
           (
             message: unknown,
             sender?: chrome.runtime.MessageSender,
@@ -208,15 +209,15 @@ export function setupChromeAPIMocks(
         ),
       },
       onConnect: {
-        addListener: jest.fn(),
-        removeListener: jest.fn(),
-        hasListener: jest.fn(() => false),
+        addListener: vi.fn(),
+        removeListener: vi.fn(),
+        hasListener: vi.fn(() => false),
       },
     },
 
     storage: {
       local: {
-        get: jest.fn(async (keys) => {
+        get: vi.fn(async (keys) => {
           if (!keys) return config.storageData || {};
           if (typeof keys === 'string') {
             return { [keys]: (config.storageData || {})[keys] };
@@ -232,8 +233,8 @@ export function setupChromeAPIMocks(
           }
           return {};
         }),
-        set: jest.fn(async () => {}),
-        remove: jest.fn(async () => {}),
+        set: vi.fn(async () => {}),
+        remove: vi.fn(async () => {}),
       },
     },
   };
@@ -272,11 +273,11 @@ export function setupWindowMocks(url: string = 'https://bolt.new/project/abc123'
     } catch {
       // If we can't set document.body, create a mock
       const mockBody = {
-        appendChild: jest.fn(),
-        removeChild: jest.fn(),
-        querySelector: jest.fn(),
-        querySelectorAll: jest.fn(() => []),
-        getBoundingClientRect: jest.fn(() => ({
+        appendChild: vi.fn(),
+        removeChild: vi.fn(),
+        querySelector: vi.fn(),
+        querySelectorAll: vi.fn(() => []),
+        getBoundingClientRect: vi.fn(() => ({
           width: 0,
           height: 0,
           top: 0,
@@ -284,7 +285,7 @@ export function setupWindowMocks(url: string = 'https://bolt.new/project/abc123'
           right: 0,
           bottom: 0,
         })),
-        contains: jest.fn(() => false),
+        contains: vi.fn(() => false),
       };
       Object.defineProperty(document, 'body', {
         value: mockBody,
@@ -426,9 +427,9 @@ export function simulateUserAction(action: 'debug_notifications' | 'debug_recove
 export function spyOnContentManager(
   contentManager: ContentManager,
   methodName: string
-): jest.SpyInstance {
+): ReturnType<typeof vi.spyOn> {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  return jest.spyOn(contentManager as any, methodName);
+  return vi.spyOn(contentManager as any, methodName);
 }
 
 /**
