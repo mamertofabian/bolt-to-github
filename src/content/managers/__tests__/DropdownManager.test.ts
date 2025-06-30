@@ -82,13 +82,13 @@ describe('DropdownManager', () => {
 
       expect(buttons.length).toBe(6); // Push, Dashboard, Show Changed Files, Manage Issues, Projects, Settings
 
-      // Check button texts - account for the fact that premium buttons include "Upgrade" badge
+      // Check button texts - account for the fact that premium buttons include "PRO" badge
       const buttonTexts = Array.from(buttons).map((btn) => btn.textContent?.trim());
 
       expect(buttonTexts[0]).toBe('Push to GitHub');
       expect(buttonTexts[1]).toBe('Project Dashboard');
-      expect(buttonTexts[2]).toContain('Show Changed Files'); // Premium item with "Upgrade" badge
-      expect(buttonTexts[3]).toContain('Manage Issues'); // Premium item with "Upgrade" badge
+      expect(buttonTexts[2]).toContain('Show Changed Files'); // Premium item with "PRO" badge
+      expect(buttonTexts[3]).toContain('Manage Issues'); // Premium item with "PRO" badge
       expect(buttonTexts[4]).toBe('Projects');
       expect(buttonTexts[5]).toBe('Settings');
     });
@@ -222,7 +222,7 @@ describe('DropdownManager', () => {
       expect(mockMessageHandler.sendMessage).toHaveBeenCalledWith('OPEN_HOME');
     });
 
-    test('premium features show upgrade badge when not premium', () => {
+    test('premium features show PRO badge when not premium', () => {
       const content = dropdownManager.createContent();
       const buttons = content.querySelectorAll('button');
 
@@ -230,14 +230,14 @@ describe('DropdownManager', () => {
       const changedFilesButton = Array.from(buttons).find((btn) =>
         btn.textContent?.includes('Show Changed Files')
       );
-      expect(changedFilesButton?.innerHTML).toContain('Upgrade');
+      expect(changedFilesButton?.innerHTML).toContain('PRO');
       expect(changedFilesButton?.className).toContain('opacity-75');
 
       // Check Manage Issues button
       const issuesButton = Array.from(buttons).find((btn) =>
         btn.textContent?.includes('Manage Issues')
       );
-      expect(issuesButton?.innerHTML).toContain('Upgrade');
+      expect(issuesButton?.innerHTML).toContain('PRO');
       expect(issuesButton?.className).toContain('opacity-75');
     });
 

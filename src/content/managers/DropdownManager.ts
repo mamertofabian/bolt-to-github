@@ -1,8 +1,8 @@
-import type { IDropdownManager } from '../types/ManagerInterfaces';
-import type { MessageHandler } from '../MessageHandler';
-import type { UIStateManager } from '../services/UIStateManager';
-import type { PremiumService } from '../services/PremiumService';
 import { createLogger } from '$lib/utils/logger';
+import type { MessageHandler } from '../MessageHandler';
+import type { PremiumService } from '../services/PremiumService';
+import type { UIStateManager } from '../services/UIStateManager';
+import type { IDropdownManager } from '../types/ManagerInterfaces';
 
 const logger = createLogger('DropdownManager');
 
@@ -285,7 +285,7 @@ export class DropdownManager implements IDropdownManager {
         </svg>
         <span>Show Changed Files</span>
       </div>
-      ${!isPremium ? '<span class="text-xs bg-gradient-to-r from-blue-500 to-purple-600 text-white px-2 py-0.5 rounded-full font-medium">Upgrade</span>' : ''}
+      ${!isPremium ? '<span class="text-xs bg-gradient-to-r from-blue-500 to-purple-600 text-white px-2 py-0.5 rounded-full font-medium">PRO</span>' : ''}
     `;
 
     changedFilesButton.addEventListener('click', async () => {
@@ -317,7 +317,7 @@ export class DropdownManager implements IDropdownManager {
         </svg>
         <span>Manage Issues</span>
       </div>
-      ${!isPremium ? '<span class="text-xs bg-gradient-to-r from-blue-500 to-purple-600 text-white px-2 py-0.5 rounded-full font-medium">Upgrade</span>' : ''}
+      ${!isPremium ? '<span class="text-xs bg-gradient-to-r from-blue-500 to-purple-600 text-white px-2 py-0.5 rounded-full font-medium">PRO</span>' : ''}
     `;
 
     issuesButton.addEventListener('click', async () => {
