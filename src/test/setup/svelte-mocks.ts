@@ -29,19 +29,13 @@ vi.mock('$lib/components/ui/button/index.ts', () => ({
 }));
 
 // Mock content Svelte components
-vi.mock(
-  '/home/atomrem/projects/codefrost-dev/bolt-to-github/src/content/Notification.svelte',
-  () => ({
-    default: MockSvelteComponent,
-  })
-);
+vi.mock('../../content/Notification.svelte', () => ({
+  default: MockSvelteComponent,
+}));
 
-vi.mock(
-  '/home/atomrem/projects/codefrost-dev/bolt-to-github/src/content/UploadStatus.svelte',
-  () => ({
-    default: MockSvelteComponent,
-  })
-);
+vi.mock('../../content/UploadStatus.svelte', () => ({
+  default: MockSvelteComponent,
+}));
 
 vi.mock('$lib/components/WhatsNewModal.svelte', () => ({
   default: MockSvelteComponent,
