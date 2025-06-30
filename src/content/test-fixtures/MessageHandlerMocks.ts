@@ -7,6 +7,7 @@
  */
 
 import type { MessageType } from '$lib/types';
+import type { MockedFunction } from 'vitest';
 
 // =============================================================================
 // MOCK CHROME RUNTIME PORT
@@ -71,25 +72,25 @@ export class MockChromePort implements chrome.runtime.Port {
         typeof options.postMessageShouldThrow === 'string'
           ? options.postMessageShouldThrow
           : 'Port disconnected';
-      this.postMessage = jest.fn((_message: unknown): void => {
+      this.postMessage = vi.fn((_message: unknown): void => {
         throw new Error(errorMessage);
-      }) as jest.MockedFunction<(message: unknown) => void>;
+      }) as MockedFunction<(message: unknown) => void>;
     } else if (options.connected === false) {
       // For initially disconnected ports, postMessage should throw
-      this.postMessage = jest.fn((_message: unknown): void => {
+      this.postMessage = vi.fn((_message: unknown): void => {
         throw new Error('Port is disconnected');
-      }) as jest.MockedFunction<(message: unknown) => void>;
+      }) as MockedFunction<(message: unknown) => void>;
     } else {
-      this.postMessage = jest.fn((message: unknown): void => {
+      this.postMessage = vi.fn((message: unknown): void => {
         if (!this.connected) {
           throw new Error('Port is disconnected');
         }
         this.postMessageCalls.push({ message, timestamp: Date.now() });
-      }) as jest.MockedFunction<(message: unknown) => void>;
+      }) as MockedFunction<(message: unknown) => void>;
     }
   }
 
-  public postMessage: jest.MockedFunction<(message: unknown) => void>;
+  public postMessage: MockedFunction<(message: unknown) => void>;
 
   disconnect(): void {
     this.connected = false;
@@ -134,18 +135,18 @@ export class MockChromePort implements chrome.runtime.Port {
     handlers: T[]
   ): chrome.events.Event<T> {
     return {
-      addListener: jest.fn((callback: T) => {
+      addListener: vi.fn((callback: T) => {
         handlers.push(callback);
       }),
-      removeListener: jest.fn((callback: T) => {
+      removeListener: vi.fn((callback: T) => {
         const index = handlers.indexOf(callback);
         if (index > -1) handlers.splice(index, 1);
       }),
-      hasListener: jest.fn((callback: T) => handlers.includes(callback)),
-      hasListeners: jest.fn(() => handlers.length > 0),
-      getRules: jest.fn(() => Promise.resolve([])),
-      removeRules: jest.fn(() => Promise.resolve()),
-      addRules: jest.fn(() => Promise.resolve()),
+      hasListener: vi.fn((callback: T) => handlers.includes(callback)),
+      hasListeners: vi.fn(() => handlers.length > 0),
+      getRules: vi.fn(() => Promise.resolve([])),
+      removeRules: vi.fn(() => Promise.resolve()),
+      addRules: vi.fn(() => Promise.resolve()),
     } as unknown as chrome.events.Event<T>;
   }
 }
@@ -296,11 +297,11 @@ export class MockWindow {
 // =============================================================================
 
 export class MockConsole {
-  public log = jest.fn();
-  public warn = jest.fn();
-  public error = jest.fn();
-  public debug = jest.fn();
-  public info = jest.fn();
+  public log = vi.fn();
+  public warn = vi.fn();
+  public error = vi.fn();
+  public debug = vi.fn();
+  public info = vi.fn();
 
   // Test helpers
   getLogCalls(): unknown[][] {

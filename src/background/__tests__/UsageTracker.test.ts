@@ -5,24 +5,25 @@
  * for the uninstall feedback feature.
  */
 
-import type { UsageData, ErrorLogEntry } from '../../lib/types';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import type { ErrorLogEntry, UsageData } from '../../lib/types';
 import { UsageTracker } from '../UsageTracker';
 
 // Mock chrome APIs
 const mockChromeStorage = {
   local: {
-    get: jest.fn(),
-    set: jest.fn(),
+    get: vi.fn(),
+    set: vi.fn(),
   },
   sync: {
-    get: jest.fn(),
-    set: jest.fn(),
+    get: vi.fn(),
+    set: vi.fn(),
   },
 };
 
 const mockChromeRuntime = {
-  getManifest: jest.fn(() => ({ version: '1.3.5' })),
-  setUninstallURL: jest.fn(),
+  getManifest: vi.fn(() => ({ version: '1.3.5' })),
+  setUninstallURL: vi.fn(),
 };
 
 // Replace global chrome object
@@ -35,12 +36,12 @@ describe('UsageTracker', () => {
   let usageTracker: UsageTracker;
 
   beforeEach(() => {
-    jest.clearAllMocks();
+    vi.clearAllMocks();
     usageTracker = new UsageTracker();
   });
 
   afterEach(() => {
-    jest.restoreAllMocks();
+    vi.restoreAllMocks();
   });
 
   describe('initializeUsageData', () => {

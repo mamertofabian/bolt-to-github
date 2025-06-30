@@ -1,48 +1,64 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-/* eslint-env jest */
 
-import { NotificationManager } from '../NotificationManager';
+import { afterEach, beforeEach, describe, expect, test, vi, type Mocked } from 'vitest';
 import type { MessageHandler } from '../../MessageHandler';
 import type { UIStateManager } from '../../services/UIStateManager';
 import type { NotificationOptions } from '../../types/UITypes';
+import { NotificationManager } from '../NotificationManager';
 
 // Mock Svelte components
-jest.mock('../../Notification.svelte', () => {
-  return jest.fn().mockImplementation(() => ({
-    $destroy: jest.fn(),
-    $on: jest.fn(),
-  }));
-});
+vi.mock('../../Notification.svelte', () => ({
+  default: class MockNotification {
+    constructor(options: any = {}) {
+      this.options = options;
+      this.$set = vi.fn();
+      this.$on = vi.fn();
+      this.$destroy = vi.fn();
+    }
+    options: any;
+    $set: any;
+    $on: any;
+    $destroy: any;
+  },
+}));
 
-jest.mock('../../../lib/components/ui/dialog', () => ({
-  EnhancedConfirmationDialog: jest.fn().mockImplementation(() => ({
-    $destroy: jest.fn(),
-    $on: jest.fn(),
-  })),
+vi.mock('../../../lib/components/ui/dialog', () => ({
+  EnhancedConfirmationDialog: class MockEnhancedConfirmationDialog {
+    constructor(options: any = {}) {
+      this.options = options;
+      this.$set = vi.fn();
+      this.$on = vi.fn();
+      this.$destroy = vi.fn();
+    }
+    options: any;
+    $set: any;
+    $on: any;
+    $destroy: any;
+  },
 }));
 
 describe('NotificationManager', () => {
   let notificationManager: NotificationManager;
-  let mockMessageHandler: jest.Mocked<MessageHandler>;
-  let mockStateManager: jest.Mocked<UIStateManager>;
+  let mockMessageHandler: Mocked<MessageHandler>;
+  let mockStateManager: Mocked<UIStateManager>;
 
   beforeEach(() => {
     mockMessageHandler = {
-      sendMessage: jest.fn(),
-      sendZipData: jest.fn(),
-      sendDebugMessage: jest.fn(),
-      sendCommitMessage: jest.fn(),
-      updatePort: jest.fn(),
+      sendMessage: vi.fn(),
+      sendZipData: vi.fn(),
+      sendDebugMessage: vi.fn(),
+      sendCommitMessage: vi.fn(),
+      updatePort: vi.fn(),
     } as any;
 
     mockStateManager = {
-      addListener: jest.fn(),
-      removeListener: jest.fn(),
-      getState: jest.fn(),
-      setUploadStatus: jest.fn(),
-      setButtonState: jest.fn(),
-      addNotification: jest.fn(),
-      removeNotification: jest.fn(),
+      addListener: vi.fn(),
+      removeListener: vi.fn(),
+      getState: vi.fn(),
+      setUploadStatus: vi.fn(),
+      setButtonState: vi.fn(),
+      addNotification: vi.fn(),
+      removeNotification: vi.fn(),
     } as any;
 
     notificationManager = new NotificationManager(mockMessageHandler, mockStateManager);
@@ -61,7 +77,7 @@ describe('NotificationManager', () => {
   afterEach(() => {
     notificationManager.cleanup();
     document.body.innerHTML = '';
-    jest.clearAllMocks();
+    vi.clearAllMocks();
   });
 
   describe('Notification Display', () => {
@@ -186,7 +202,7 @@ describe('NotificationManager', () => {
         '[id^="bolt-to-github-notification-container-"]'
       ) as HTMLElement;
       expect(container.style.right).toBe('1rem');
-      expect(container.style.left).toBe('');
+      expect(container.style.left).toBe('auto');
     });
   });
 
@@ -207,7 +223,7 @@ describe('NotificationManager', () => {
         type: 'info' as const,
         message: 'Upgrade to premium',
         upgradeText: 'Upgrade Now',
-        onUpgrade: jest.fn(),
+        onUpgrade: vi.fn(),
       };
 
       notificationManager.showUpgradeNotification(options);
@@ -265,7 +281,7 @@ describe('NotificationManager', () => {
     });
 
     test('removes resize event listener on cleanup', () => {
-      const removeEventListenerSpy = jest.spyOn(window, 'removeEventListener');
+      const removeEventListenerSpy = vi.spyOn(window, 'removeEventListener');
 
       notificationManager.cleanup();
 
@@ -315,7 +331,7 @@ describe('NotificationManager', () => {
 
   describe('Notification Actions', () => {
     test('supports notifications with custom actions', () => {
-      const mockAction = jest.fn();
+      const mockAction = vi.fn();
       const options: NotificationOptions = {
         type: 'info',
         message: 'Test with actions',

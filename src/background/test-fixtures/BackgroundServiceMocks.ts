@@ -16,17 +16,17 @@ export class MockStateManager {
   private projectId: string | null = null;
   private githubSettings: any = null;
 
-  static getInstance = jest.fn(() => new MockStateManager());
+  static getInstance = vi.fn(() => new MockStateManager());
 
-  getProjectId = jest.fn(async (): Promise<string | null> => {
+  getProjectId = vi.fn(async (): Promise<string | null> => {
     return this.projectId;
   });
 
-  setProjectId = jest.fn(async (projectId: string): Promise<void> => {
+  setProjectId = vi.fn(async (projectId: string): Promise<void> => {
     this.projectId = projectId;
   });
 
-  getGitHubSettings = jest.fn(async () => {
+  getGitHubSettings = vi.fn(async () => {
     return this.githubSettings;
   });
 
@@ -42,7 +42,7 @@ export class MockStateManager {
   reset(): void {
     this.projectId = null;
     this.githubSettings = null;
-    jest.clearAllMocks();
+    vi.clearAllMocks();
   }
 }
 
@@ -134,7 +134,7 @@ export class MockZipHandler {
     this.progressCallbacks.push(statusCallback);
   }
 
-  processZipFile = jest.fn(
+  processZipFile = vi.fn(
     async (_blob: Blob, projectId: string, commitMessage: string): Promise<void> => {
       // Simulate processing stages
       this.broadcastStatus({
@@ -195,7 +195,7 @@ export class MockZipHandler {
     this.shouldFail = false;
     this.delay = 0;
     this.processedFiles = [];
-    jest.clearAllMocks();
+    vi.clearAllMocks();
   }
 }
 
@@ -215,7 +215,7 @@ export class MockBackgroundTempRepoManager {
     // Mock constructor
   }
 
-  handlePrivateRepoImport = jest.fn(async (repoName: string, _branch?: string): Promise<void> => {
+  handlePrivateRepoImport = vi.fn(async (repoName: string, _branch?: string): Promise<void> => {
     if (this.shouldFail) {
       throw new Error('Failed to import private repository');
     }
@@ -229,7 +229,7 @@ export class MockBackgroundTempRepoManager {
     await new Promise((resolve) => setTimeout(resolve, 100));
   });
 
-  cleanupTempRepos = jest.fn(async (force: boolean = false): Promise<void> => {
+  cleanupTempRepos = vi.fn(async (force: boolean = false): Promise<void> => {
     if (this.shouldFail && !force) {
       throw new Error('Failed to cleanup temporary repositories');
     }
@@ -249,7 +249,7 @@ export class MockBackgroundTempRepoManager {
   reset(): void {
     this.repositories = [];
     this.shouldFail = false;
-    jest.clearAllMocks();
+    vi.clearAllMocks();
   }
 }
 
@@ -262,17 +262,17 @@ export class MockSupabaseAuthService {
   private isAuthenticated = false;
   private shouldFailAuth = false;
 
-  static getInstance = jest.fn(() => new MockSupabaseAuthService());
+  static getInstance = vi.fn(() => new MockSupabaseAuthService());
 
-  isPremium = jest.fn((): boolean => {
+  isPremium = vi.fn((): boolean => {
     return this.isPremiumUser;
   });
 
-  isAuth = jest.fn((): boolean => {
+  isAuth = vi.fn((): boolean => {
     return this.isAuthenticated;
   });
 
-  forceCheck = jest.fn(async (): Promise<void> => {
+  forceCheck = vi.fn(async (): Promise<void> => {
     if (this.shouldFailAuth) {
       throw new Error('Authentication check failed');
     }
@@ -280,34 +280,34 @@ export class MockSupabaseAuthService {
     await new Promise((resolve) => setTimeout(resolve, 50));
   });
 
-  forceSubscriptionRevalidation = jest.fn(async (): Promise<void> => {
+  forceSubscriptionRevalidation = vi.fn(async (): Promise<void> => {
     if (this.shouldFailAuth) {
       throw new Error('Subscription revalidation failed');
     }
     await new Promise((resolve) => setTimeout(resolve, 100));
   });
 
-  forceSyncToPopup = jest.fn(async (): Promise<void> => {
+  forceSyncToPopup = vi.fn(async (): Promise<void> => {
     await new Promise((resolve) => setTimeout(resolve, 50));
   });
 
-  logout = jest.fn(async (): Promise<void> => {
+  logout = vi.fn(async (): Promise<void> => {
     this.isAuthenticated = false;
     this.isPremiumUser = false;
     await new Promise((resolve) => setTimeout(resolve, 100));
   });
 
-  getAuthState = jest.fn(() => ({
+  getAuthState = vi.fn(() => ({
     isAuthenticated: this.isAuthenticated,
     user: this.isAuthenticated ? { id: 'test-user', email: 'test@example.com' } : null,
     subscription: { isActive: this.isPremiumUser, plan: 'free' as const },
   }));
 
-  addAuthStateListener = jest.fn((_listener: any): void => {
+  addAuthStateListener = vi.fn((_listener: any): void => {
     // Mock implementation - store listener for testing
   });
 
-  removeAuthStateListener = jest.fn((_listener: any): void => {
+  removeAuthStateListener = vi.fn((_listener: any): void => {
     // Mock implementation - remove listener for testing
   });
 
@@ -328,7 +328,7 @@ export class MockSupabaseAuthService {
     this.isPremiumUser = false;
     this.isAuthenticated = false;
     this.shouldFailAuth = false;
-    jest.clearAllMocks();
+    vi.clearAllMocks();
   }
 }
 
@@ -340,9 +340,9 @@ export class MockOperationStateManager {
   private operations: Map<string, { type: string; status: string; error?: Error }> = new Map();
   private shouldFail = false;
 
-  static getInstance = jest.fn(() => new MockOperationStateManager());
+  static getInstance = vi.fn(() => new MockOperationStateManager());
 
-  startOperation = jest.fn(
+  startOperation = vi.fn(
     async (
       type: string,
       operationId: string,
@@ -357,7 +357,7 @@ export class MockOperationStateManager {
     }
   );
 
-  completeOperation = jest.fn(async (operationId: string): Promise<void> => {
+  completeOperation = vi.fn(async (operationId: string): Promise<void> => {
     if (this.shouldFail) {
       throw new Error('Failed to complete operation');
     }
@@ -368,7 +368,7 @@ export class MockOperationStateManager {
     }
   });
 
-  failOperation = jest.fn(async (operationId: string, error: Error): Promise<void> => {
+  failOperation = vi.fn(async (operationId: string, error: Error): Promise<void> => {
     if (this.shouldFail) {
       throw new Error('Failed to fail operation');
     }
@@ -399,7 +399,7 @@ export class MockOperationStateManager {
   reset(): void {
     this.operations.clear();
     this.shouldFail = false;
-    jest.clearAllMocks();
+    vi.clearAllMocks();
   }
 }
 
@@ -408,24 +408,24 @@ export class MockOperationStateManager {
 // =============================================================================
 
 export class MockUsageTracker {
-  initializeUsageData = jest.fn(async (): Promise<void> => {
+  initializeUsageData = vi.fn(async (): Promise<void> => {
     // Mock implementation - does nothing
   });
 
-  updateUsageStats = jest.fn(async (_eventType: string, _data?: any): Promise<void> => {
+  updateUsageStats = vi.fn(async (_eventType: string, _data?: any): Promise<void> => {
     // Mock implementation - does nothing
   });
 
-  trackError = jest.fn(async (_error: Error, _context: string): Promise<void> => {
+  trackError = vi.fn(async (_error: Error, _context: string): Promise<void> => {
     // Mock implementation - does nothing
   });
 
-  setUninstallURL = jest.fn(async (): Promise<void> => {
+  setUninstallURL = vi.fn(async (): Promise<void> => {
     // Mock implementation - does nothing
   });
 
   reset(): void {
-    jest.clearAllMocks();
+    vi.clearAllMocks();
   }
 }
 
@@ -458,38 +458,38 @@ export class MockServiceFactory {
 
   setupMocks(): void {
     // Mock the imports to return our mock instances
-    jest.doMock('../StateManager', () => ({
+    vi.doMock('../StateManager', () => ({
       StateManager: {
         getInstance: () => this.stateManager,
       },
     }));
 
-    jest.doMock('../../services/UnifiedGitHubService', () => ({
-      UnifiedGitHubService: jest.fn(() => this.unifiedGitHubService),
+    vi.doMock('../../services/UnifiedGitHubService', () => ({
+      UnifiedGitHubService: vi.fn(() => this.unifiedGitHubService),
     }));
 
-    jest.doMock('../../services/zipHandler', () => ({
-      ZipHandler: jest.fn(() => this.zipHandler),
+    vi.doMock('../../services/zipHandler', () => ({
+      ZipHandler: vi.fn(() => this.zipHandler),
     }));
 
-    jest.doMock('../TempRepoManager', () => ({
-      BackgroundTempRepoManager: jest.fn(() => this.tempRepoManager),
+    vi.doMock('../TempRepoManager', () => ({
+      BackgroundTempRepoManager: vi.fn(() => this.tempRepoManager),
     }));
 
-    jest.doMock('../../content/services/SupabaseAuthService', () => ({
+    vi.doMock('../../content/services/SupabaseAuthService', () => ({
       SupabaseAuthService: {
         getInstance: () => this.supabaseAuthService,
       },
     }));
 
-    jest.doMock('../../content/services/OperationStateManager', () => ({
+    vi.doMock('../../content/services/OperationStateManager', () => ({
       OperationStateManager: {
         getInstance: () => this.operationStateManager,
       },
     }));
 
-    jest.doMock('../UsageTracker', () => ({
-      UsageTracker: jest.fn(() => this.usageTracker),
+    vi.doMock('../UsageTracker', () => ({
+      UsageTracker: vi.fn(() => this.usageTracker),
     }));
   }
 

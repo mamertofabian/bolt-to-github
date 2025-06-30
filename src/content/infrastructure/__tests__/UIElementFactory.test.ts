@@ -1,27 +1,28 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
+import type { Mock, Mocked } from 'vitest';
+import type { ButtonOptions, DialogOptions, DropdownItem } from '../../types/UITypes';
 import { UIElementFactory, type ContainerConfig, type OverlayConfig } from '../UIElementFactory';
-import type { ButtonOptions, DropdownItem, DialogOptions } from '../../types/UITypes';
 
 // Mock DOM environment using the same successful pattern as ComponentLifecycleManager
 Object.defineProperty(global, 'document', {
   value: {
-    createElement: jest.fn(),
-    getElementById: jest.fn(),
+    createElement: vi.fn(),
+    getElementById: vi.fn(),
     body: {
-      appendChild: jest.fn(),
+      appendChild: vi.fn(),
     },
-    addEventListener: jest.fn(),
+    addEventListener: vi.fn(),
   },
   writable: true,
 });
 
 describe('UIElementFactory', () => {
   let mockElement: HTMLElement & { disabled?: boolean };
-  let mockDocument: jest.Mocked<typeof document>;
+  let mockDocument: Mocked<typeof document>;
 
   beforeEach(() => {
     // Setup mock document
-    mockDocument = global.document as jest.Mocked<typeof document>;
+    mockDocument = global.document as Mocked<typeof document>;
 
     // Setup mock element (includes disabled for button elements)
     mockElement = {
@@ -31,18 +32,18 @@ describe('UIElementFactory', () => {
       style: {},
       id: '',
       disabled: false,
-      setAttribute: jest.fn(),
-      appendChild: jest.fn(),
-      addEventListener: jest.fn(),
-      remove: jest.fn(),
-      querySelector: jest.fn(),
+      setAttribute: vi.fn(),
+      appendChild: vi.fn(),
+      addEventListener: vi.fn(),
+      remove: vi.fn(),
+      querySelector: vi.fn(),
     } as any;
 
     mockDocument.createElement.mockReturnValue(mockElement);
     mockDocument.getElementById.mockReturnValue(null);
 
     // Reset all mocks
-    jest.clearAllMocks();
+    vi.clearAllMocks();
   });
 
   describe('createButton', () => {
@@ -216,19 +217,19 @@ describe('UIElementFactory', () => {
   describe('createDropdownContent', () => {
     it('should create dropdown with multiple items', () => {
       const mockItem1 = {
-        addEventListener: jest.fn(),
+        addEventListener: vi.fn(),
         disabled: false,
         className: '',
         innerHTML: '',
       } as any;
       const mockItem2 = {
-        addEventListener: jest.fn(),
+        addEventListener: vi.fn(),
         disabled: false,
         className: '',
         innerHTML: '',
       } as any;
 
-      (mockDocument.createElement as jest.Mock)
+      (mockDocument.createElement as Mock)
         .mockReturnValueOnce(mockElement) // Main dropdown container
         .mockReturnValueOnce(mockItem1) // First item
         .mockReturnValueOnce(mockItem2); // Second item
@@ -236,12 +237,12 @@ describe('UIElementFactory', () => {
       const items: DropdownItem[] = [
         {
           label: 'Action 1',
-          action: jest.fn(),
+          action: vi.fn(),
           icon: '<svg>icon1</svg>',
         },
         {
           label: 'Action 2',
-          action: jest.fn(),
+          action: vi.fn(),
           disabled: true,
         },
       ];
@@ -268,17 +269,17 @@ describe('UIElementFactory', () => {
 
     it('should set up item click handlers', () => {
       const mockItem = {
-        addEventListener: jest.fn(),
+        addEventListener: vi.fn(),
         disabled: false,
         className: '',
         innerHTML: '',
       } as any;
 
-      (mockDocument.createElement as jest.Mock)
+      (mockDocument.createElement as Mock)
         .mockReturnValueOnce(mockElement)
         .mockReturnValueOnce(mockItem);
 
-      const actionMock = jest.fn();
+      const actionMock = vi.fn();
       const items: DropdownItem[] = [
         {
           label: 'Test Action',
@@ -295,20 +296,20 @@ describe('UIElementFactory', () => {
 
     it('should handle disabled items', () => {
       const mockItem = {
-        addEventListener: jest.fn(),
+        addEventListener: vi.fn(),
         disabled: false,
         className: '',
         innerHTML: '',
       } as any;
 
-      (mockDocument.createElement as jest.Mock)
+      (mockDocument.createElement as Mock)
         .mockReturnValueOnce(mockElement)
         .mockReturnValueOnce(mockItem);
 
       const items: DropdownItem[] = [
         {
           label: 'Disabled Action',
-          action: jest.fn(),
+          action: vi.fn(),
           disabled: true,
         },
       ];
@@ -320,20 +321,20 @@ describe('UIElementFactory', () => {
 
     it('should include icons in items when provided', () => {
       const mockItem = {
-        addEventListener: jest.fn(),
+        addEventListener: vi.fn(),
         disabled: false,
         className: '',
         innerHTML: '',
       } as any;
 
-      (mockDocument.createElement as jest.Mock)
+      (mockDocument.createElement as Mock)
         .mockReturnValueOnce(mockElement)
         .mockReturnValueOnce(mockItem);
 
       const items: DropdownItem[] = [
         {
           label: 'With Icon',
-          action: jest.fn(),
+          action: vi.fn(),
           icon: '<svg>icon</svg>',
         },
       ];
@@ -370,8 +371,8 @@ describe('UIElementFactory', () => {
     });
 
     it('should create dialog with actions', () => {
-      const primaryAction = jest.fn();
-      const secondaryAction = jest.fn();
+      const primaryAction = vi.fn();
+      const secondaryAction = vi.fn();
 
       const options: DialogOptions = {
         title: 'Confirm Action',
@@ -404,7 +405,7 @@ describe('UIElementFactory', () => {
         title: 'Alert',
         content: 'Something happened.',
         actions: {
-          primary: { text: 'OK', action: jest.fn() },
+          primary: { text: 'OK', action: vi.fn() },
         },
       };
 
@@ -419,7 +420,7 @@ describe('UIElementFactory', () => {
         title: 'Info',
         content: 'Information message.',
         actions: {
-          secondary: { text: 'Close', action: jest.fn() },
+          secondary: { text: 'Close', action: vi.fn() },
         },
       };
 
@@ -435,7 +436,7 @@ describe('UIElementFactory', () => {
         textContent: 'Custom content',
       } as any;
 
-      mockElement.querySelector = jest.fn().mockReturnValue(mockElement);
+      mockElement.querySelector = vi.fn().mockReturnValue(mockElement);
 
       const options: DialogOptions = {
         title: 'Custom Dialog',
@@ -506,7 +507,7 @@ describe('UIElementFactory', () => {
 
   describe('createContainer', () => {
     const mockParentElement = {
-      appendChild: jest.fn(),
+      appendChild: vi.fn(),
     } as any;
 
     beforeEach(() => {
@@ -673,7 +674,7 @@ describe('UIElementFactory', () => {
 
     beforeEach(() => {
       mockDocument.createElement.mockReturnValue(mockStyleElement);
-      mockDocument.getElementById = jest.fn();
+      mockDocument.getElementById = vi.fn();
     });
 
     it('should create new style element', () => {

@@ -8,7 +8,7 @@
 ##  Javascript / Typescript: Jest, Mocha, Vitest, Karma, Jasmine, QUnit, React Testing Library
 ##    HOWEVER: running tests in JS / TS is at the moment only supported
 ##    for Jest, Mocha, Vitest, and React Testing Library
-framework = "Jest"
+framework = "Vitest"
 
 ## An additional Javascript utility library used to test your code, if any. 
 ## Possible values are None, Testing Library, Enzyme, or Chai. Not applicable to Python projects.
@@ -26,7 +26,7 @@ num_desired_tests = 4
 ## This will appear as "General instructions" in the
 ## configuration section in the tests panel.
 plan_instructions = """
-Write tests for TypeScript code using Jest and ts-jest.
+Write tests for TypeScript code using Vitest.
 Use ESM import/export syntax.
 Follow the AAA pattern (Arrange, Act, Assert) with clear comments.
 Use appropriate mocking for external dependencies.
@@ -111,7 +111,7 @@ describe('exampleFunction', () => {
 ## (select Qodo from the dropdown).
 ## It's helpful to clear the output (right-click -> clear) and then run the tests again.
 ##
-overrideTestRunScript = "npx jest --runTestsByPath TEST_FILEPATH"
+overrideTestRunScript = "npx vitest run TEST_FILEPATH"
 
 ## A multiline string, delimited with triple-quotes ("""),
 ## containing import declaration to use in each test file. 

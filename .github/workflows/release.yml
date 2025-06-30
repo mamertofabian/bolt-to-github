@@ -49,6 +49,8 @@ jobs:
         run: pnpm install --frozen-lockfile
 
       - name: Build project
+        env:
+          VITE_GA4_API_SECRET: ${{ secrets.VITE_GA4_API_SECRET }}
         run: pnpm run build
 
       - name: Zip build artifacts

@@ -1,4 +1,4 @@
-import { expect, jest, describe, it } from '@jest/globals';
+import { describe, expect, it, vi } from 'vitest';
 import { RateLimitHandler } from '../RateLimitHandler';
 
 describe('RateLimitHandler', () => {
@@ -8,14 +8,14 @@ describe('RateLimitHandler', () => {
     const rateLimitHandler = new RateLimitHandler();
     const mockResponse = {
       headers: {
-        get: jest.fn((header: string) => {
+        get: vi.fn((header: string) => {
           if (header === 'retry-after') return '2';
           return null;
         }),
       },
     } as unknown as Response;
 
-    const sleepSpy = jest.spyOn(rateLimitHandler, 'sleep').mockResolvedValue();
+    const sleepSpy = vi.spyOn(rateLimitHandler, 'sleep').mockResolvedValue();
 
     // Act
     await rateLimitHandler.handleRateLimit(mockResponse);
@@ -34,7 +34,7 @@ describe('RateLimitHandler', () => {
 
     const mockResponse = {
       headers: {
-        get: jest.fn((header: string) => {
+        get: vi.fn((header: string) => {
           if (header === 'retry-after') return null;
           if (header === 'x-ratelimit-remaining') return '0';
           if (header === 'x-ratelimit-reset') return resetTime.toString();
@@ -43,7 +43,7 @@ describe('RateLimitHandler', () => {
       },
     } as unknown as Response;
 
-    const sleepSpy = jest.spyOn(rateLimitHandler, 'sleep').mockResolvedValue();
+    const sleepSpy = vi.spyOn(rateLimitHandler, 'sleep').mockResolvedValue();
 
     // Act
     await rateLimitHandler.handleRateLimit(mockResponse);
@@ -61,11 +61,11 @@ describe('RateLimitHandler', () => {
     const rateLimitHandler = new RateLimitHandler();
     const mockResponse = {
       headers: {
-        get: jest.fn(() => null),
+        get: vi.fn(() => null),
       },
     } as unknown as Response;
 
-    jest.spyOn(rateLimitHandler, 'sleep').mockResolvedValue();
+    vi.spyOn(rateLimitHandler, 'sleep').mockResolvedValue();
 
     // Set retry count to MAX_RETRIES - 2 (two before the limit)
     for (let i = 0; i < 3; i++) {
@@ -89,14 +89,14 @@ describe('RateLimitHandler', () => {
     const rateLimitHandler = new RateLimitHandler();
     const mockResponse = {
       headers: {
-        get: jest.fn((header: string) => {
+        get: vi.fn((header: string) => {
           if (header === 'x-ratelimit-remaining') return '1'; // Not zero
           return null;
         }),
       },
     } as unknown as Response;
 
-    const sleepSpy = jest.spyOn(rateLimitHandler, 'sleep').mockResolvedValue();
+    const sleepSpy = vi.spyOn(rateLimitHandler, 'sleep').mockResolvedValue();
 
     // Act
     // First retry (retryCount = 0)

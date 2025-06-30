@@ -37,8 +37,4 @@ function get(store) {
   return value;
 }
 
-module.exports = {
-  writable,
-  derived,
-  get,
-};
+export { writable, derived, get };

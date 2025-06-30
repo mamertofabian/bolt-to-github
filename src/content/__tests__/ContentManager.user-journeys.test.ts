@@ -10,32 +10,32 @@
  */
 
 // Mock WhatsNewModal component
-jest.mock('$lib/components/WhatsNewModal.svelte', () => ({
-  default: jest.fn().mockImplementation(function (
+vi.mock('$lib/components/WhatsNewModal.svelte', () => ({
+  default: vi.fn().mockImplementation(function (
     this: any,
     options: { target: Element; props: unknown }
   ) {
     this.target = options.target;
     this.props = options.props;
-    this.$destroy = jest.fn();
-    this.$set = jest.fn();
+    this.$destroy = vi.fn();
+    this.$set = vi.fn();
     return this;
   }),
 }));
 
 // Mock UIManager
-jest.mock('../UIManager');
+vi.mock('../UIManager');
 
 // Mock console methods
 const originalConsole = { ...console };
 beforeAll(() => {
   global.console = {
     ...console,
-    log: jest.fn(),
-    warn: jest.fn(),
-    error: jest.fn(),
-    debug: jest.fn(),
-    info: jest.fn(),
+    log: vi.fn(),
+    warn: vi.fn(),
+    error: vi.fn(),
+    debug: vi.fn(),
+    info: vi.fn(),
   };
 });
 
@@ -46,41 +46,41 @@ afterAll(() => {
 import { ContentManager } from '../ContentManager';
 import {
   createTestEnvironment,
+  getContentManagerState,
+  MockUIManager,
+  PerformanceMonitor,
   setupChromeAPIMocks,
   setupWindowMocks,
   simulatePortState,
   simulateUserAction,
-  waitForState,
-  validateCleanup,
-  getContentManagerState,
-  wait,
-  PerformanceMonitor,
   type TestEnvironment,
-  TestPortStates,
-  TestUrls,
   TestMessages,
+  TestPortStates,
   TestProjectIds,
-  MockUIManager,
+  TestUrls,
+  validateCleanup,
+  wait,
+  waitForState,
 } from '../test-fixtures';
 
 describe('ContentManager - User Journeys', () => {
   let testEnv: TestEnvironment;
   let performanceMonitor: PerformanceMonitor;
 
-  beforeEach(() => {
+  beforeEach(async () => {
     // Clear all mocks before each test
-    jest.clearAllMocks();
+    vi.clearAllMocks();
     performanceMonitor = new PerformanceMonitor();
     performanceMonitor.start();
 
     // Reset console to capture output
-    jest.spyOn(console, 'log').mockImplementation(() => {});
-    jest.spyOn(console, 'warn').mockImplementation(() => {});
-    jest.spyOn(console, 'error').mockImplementation(() => {});
-    jest.spyOn(console, 'debug').mockImplementation(() => {});
+    vi.spyOn(console, 'log').mockImplementation(() => {});
+    vi.spyOn(console, 'warn').mockImplementation(() => {});
+    vi.spyOn(console, 'error').mockImplementation(() => {});
+    vi.spyOn(console, 'debug').mockImplementation(() => {});
 
     // Reset UIManager singleton
-    const { UIManager } = jest.requireMock('../UIManager');
+    const { UIManager } = await import('../UIManager');
     UIManager.resetInstance();
   });
 
@@ -92,7 +92,7 @@ describe('ContentManager - User Journeys', () => {
       }
       testEnv.cleanup();
     }
-    jest.restoreAllMocks();
+    vi.restoreAllMocks();
   });
 
   describe('Complete User Session', () => {

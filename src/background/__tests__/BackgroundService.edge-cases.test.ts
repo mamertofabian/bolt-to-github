@@ -8,8 +8,10 @@
  * extension crashes, data corruption, or security vulnerabilities.
  */
 
+import type { Mock } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { BackgroundServiceTestSuite } from '../test-fixtures';
-import { TestData, MessageFixtures } from '../test-fixtures/BackgroundServiceTestFixtures';
+import { MessageFixtures, TestData } from '../test-fixtures/BackgroundServiceTestFixtures';
 
 describe('BackgroundService Edge Cases and Boundary Testing', () => {
   let testSuite: BackgroundServiceTestSuite;
@@ -52,7 +54,7 @@ describe('BackgroundService Edge Cases and Boundary Testing', () => {
           // Should handle without crashing
           expect(true).toBe(true);
         } catch (error) {
-          fail(`Failed with commit message length ${commitMessage.length}: ${error}`);
+          expect.fail(`Failed with commit message length ${commitMessage.length}: ${error}`);
         }
       }
     });
@@ -477,7 +479,7 @@ describe('BackgroundService Edge Cases and Boundary Testing', () => {
       const env = testSuite.getEnvironment();
 
       // Mock DNS resolution failure
-      (global.fetch as jest.Mock).mockRejectedValue(
+      (global.fetch as Mock).mockRejectedValue(
         new Error('Network request failed: DNS resolution failed')
       );
 

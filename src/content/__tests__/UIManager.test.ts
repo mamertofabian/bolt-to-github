@@ -1,153 +1,153 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-/* eslint-env jest */
 
-import { UIManager } from '../UIManager';
+import { afterEach, beforeEach, describe, expect, it, type Mocked, vi } from 'vitest';
 import type { MessageHandler } from '../MessageHandler';
 import type { NotificationOptions } from '../types/UITypes';
+import { UIManager } from '../UIManager';
 
 // Mock WhatsNewModal component
-jest.mock('$lib/components/WhatsNewModal.svelte', () => ({
-  default: jest.fn().mockImplementation(function (this: any, options: any) {
+vi.mock('$lib/components/WhatsNewModal.svelte', () => ({
+  default: vi.fn().mockImplementation(function (this: any, options: any) {
     this.target = options.target;
     this.props = options.props;
-    this.$destroy = jest.fn();
-    this.$set = jest.fn();
+    this.$destroy = vi.fn();
+    this.$set = vi.fn();
     return this;
   }),
 }));
 
 // Mock modules with proper method implementations
-jest.mock('../managers/NotificationManager', () => {
+vi.mock('../managers/NotificationManager', () => {
   return {
-    NotificationManager: jest.fn().mockImplementation(() => ({
-      showNotification: jest.fn(),
-      cleanup: jest.fn(),
+    NotificationManager: vi.fn().mockImplementation(() => ({
+      showNotification: vi.fn(),
+      cleanup: vi.fn(),
     })),
   };
 });
 
-jest.mock('../managers/UploadStatusManager', () => {
+vi.mock('../managers/UploadStatusManager', () => {
   return {
-    UploadStatusManager: jest.fn().mockImplementation(() => ({
-      initialize: jest.fn(),
-      updateStatus: jest.fn(),
-      cleanup: jest.fn(),
+    UploadStatusManager: vi.fn().mockImplementation(() => ({
+      initialize: vi.fn(),
+      updateStatus: vi.fn(),
+      cleanup: vi.fn(),
     })),
   };
 });
 
-jest.mock('../managers/GitHubButtonManager', () => {
+vi.mock('../managers/GitHubButtonManager', () => {
   return {
-    GitHubButtonManager: jest.fn().mockImplementation(() => ({
-      initialize: jest.fn(),
-      updateState: jest.fn(),
-      cleanup: jest.fn(),
+    GitHubButtonManager: vi.fn().mockImplementation(() => ({
+      initialize: vi.fn(),
+      updateState: vi.fn(),
+      cleanup: vi.fn(),
     })),
   };
 });
 
-jest.mock('../managers/DropdownManager', () => {
+vi.mock('../managers/DropdownManager', () => {
   return {
-    DropdownManager: jest.fn().mockImplementation(() => ({
-      updatePremiumStatus: jest.fn(),
-      cleanup: jest.fn(),
-      setPremiumService: jest.fn(),
+    DropdownManager: vi.fn().mockImplementation(() => ({
+      updatePremiumStatus: vi.fn(),
+      cleanup: vi.fn(),
+      setPremiumService: vi.fn(),
     })),
   };
 });
 
-jest.mock('../handlers/GitHubUploadHandler', () => {
+vi.mock('../handlers/GitHubUploadHandler', () => {
   return {
-    GitHubUploadHandler: jest.fn().mockImplementation(() => ({})),
+    GitHubUploadHandler: vi.fn().mockImplementation(() => ({})),
   };
 });
 
-jest.mock('../handlers/FileChangeHandler', () => {
+vi.mock('../handlers/FileChangeHandler', () => {
   return {
-    FileChangeHandler: jest.fn().mockImplementation(() => ({
-      setPremiumService: jest.fn(),
-      setUploadStatusManager: jest.fn(),
+    FileChangeHandler: vi.fn().mockImplementation(() => ({
+      setPremiumService: vi.fn(),
+      setUploadStatusManager: vi.fn(),
     })),
   };
 });
 
-jest.mock('../infrastructure/DOMObserver', () => {
+vi.mock('../infrastructure/DOMObserver', () => {
   return {
-    DOMObserver: jest.fn().mockImplementation(() => ({
-      start: jest.fn(),
-      stop: jest.fn(),
+    DOMObserver: vi.fn().mockImplementation(() => ({
+      start: vi.fn(),
+      stop: vi.fn(),
     })),
   };
 });
 
-jest.mock('../infrastructure/ComponentLifecycleManager', () => {
+vi.mock('../infrastructure/ComponentLifecycleManager', () => {
   return {
-    ComponentLifecycleManager: jest.fn().mockImplementation(() => ({
-      cleanupAll: jest.fn(),
+    ComponentLifecycleManager: vi.fn().mockImplementation(() => ({
+      cleanupAll: vi.fn(),
     })),
   };
 });
 
-jest.mock('../services/UIStateManager', () => {
+vi.mock('../services/UIStateManager', () => {
   return {
-    UIStateManager: jest.fn().mockImplementation(() => ({
-      addListener: jest.fn(),
-      removeListener: jest.fn(),
-      getState: jest.fn().mockReturnValue({
+    UIStateManager: vi.fn().mockImplementation(() => ({
+      addListener: vi.fn(),
+      removeListener: vi.fn(),
+      getState: vi.fn().mockReturnValue({
         buttonState: { isValid: false },
         uploadStatus: { status: 'idle' },
         notifications: { active: 0 },
         dropdown: { isVisible: false },
       }),
-      setButtonState: jest.fn(),
-      setComponentInitialized: jest.fn(),
+      setButtonState: vi.fn(),
+      setComponentInitialized: vi.fn(),
     })),
   };
 });
 
-jest.mock('../services/PushReminderService', () => {
+vi.mock('../services/PushReminderService', () => {
   return {
-    PushReminderService: jest.fn().mockImplementation(() => ({
-      enable: jest.fn(),
-      disable: jest.fn(),
-      snoozeReminders: jest.fn(),
-      enableDebugMode: jest.fn(),
-      disableDebugMode: jest.fn(),
-      forceReminderCheck: jest.fn().mockResolvedValue(undefined),
-      forceShowReminder: jest.fn().mockResolvedValue(undefined),
-      forceScheduledReminderCheck: jest.fn().mockResolvedValue(undefined),
-      forceShowScheduledReminder: jest.fn().mockResolvedValue(undefined),
-      setPremiumService: jest.fn(),
-      cleanup: jest.fn(),
+    PushReminderService: vi.fn().mockImplementation(() => ({
+      enable: vi.fn(),
+      disable: vi.fn(),
+      snoozeReminders: vi.fn(),
+      enableDebugMode: vi.fn(),
+      disableDebugMode: vi.fn(),
+      forceReminderCheck: vi.fn().mockResolvedValue(undefined),
+      forceShowReminder: vi.fn().mockResolvedValue(undefined),
+      forceScheduledReminderCheck: vi.fn().mockResolvedValue(undefined),
+      forceShowScheduledReminder: vi.fn().mockResolvedValue(undefined),
+      setPremiumService: vi.fn(),
+      cleanup: vi.fn(),
     })),
   };
 });
 
-jest.mock('../services/PremiumService', () => {
+vi.mock('../services/PremiumService', () => {
   return {
-    PremiumService: jest.fn().mockImplementation(() => ({
-      isPremiumSync: jest.fn().mockReturnValue(false),
-      isPremium: jest.fn().mockResolvedValue(false),
-      hasFeatureSync: jest.fn().mockReturnValue(false),
-      hasFeature: jest.fn().mockResolvedValue(false),
-      setUIManager: jest.fn(),
+    PremiumService: vi.fn().mockImplementation(() => ({
+      isPremiumSync: vi.fn().mockReturnValue(false),
+      isPremium: vi.fn().mockResolvedValue(false),
+      hasFeatureSync: vi.fn().mockReturnValue(false),
+      hasFeature: vi.fn().mockResolvedValue(false),
+      setUIManager: vi.fn(),
     })),
   };
 });
 
 describe('UIManager', () => {
-  let mockMessageHandler: jest.Mocked<MessageHandler>;
+  let mockMessageHandler: Mocked<MessageHandler>;
 
   beforeEach(() => {
     // Reset singleton between tests
     UIManager.resetInstance();
 
     mockMessageHandler = {
-      sendMessage: jest.fn(),
-      sendZipData: jest.fn(),
-      sendDebugMessage: jest.fn(),
-      sendCommitMessage: jest.fn(),
-      updatePort: jest.fn(),
+      sendMessage: vi.fn(),
+      sendZipData: vi.fn(),
+      sendDebugMessage: vi.fn(),
+      sendCommitMessage: vi.fn(),
+      updatePort: vi.fn(),
     } as any;
 
     // Setup DOM
@@ -166,8 +166,8 @@ describe('UIManager', () => {
     // Mock history for SPA navigation
     Object.defineProperty(window, 'history', {
       value: {
-        pushState: jest.fn(),
-        replaceState: jest.fn(),
+        pushState: vi.fn(),
+        replaceState: vi.fn(),
       },
       writable: true,
     });
@@ -176,11 +176,11 @@ describe('UIManager', () => {
   afterEach(() => {
     UIManager.resetInstance();
     document.body.innerHTML = '';
-    jest.clearAllMocks();
+    vi.clearAllMocks();
   });
 
   describe('Singleton Pattern', () => {
-    test('creates single instance when initialized', () => {
+    it('creates single instance when initialized', () => {
       const instance1 = UIManager.initialize(mockMessageHandler);
       const instance2 = UIManager.getInstance();
 
@@ -188,7 +188,7 @@ describe('UIManager', () => {
       expect(instance1).toBeInstanceOf(UIManager);
     });
 
-    test('returns same instance on subsequent calls', () => {
+    it('returns same instance on subsequent calls', () => {
       const instance1 = UIManager.initialize(mockMessageHandler);
       const instance2 = UIManager.initialize(mockMessageHandler);
       const instance3 = UIManager.getInstance();
@@ -197,13 +197,13 @@ describe('UIManager', () => {
       expect(instance2).toBe(instance3);
     });
 
-    test('throws error when accessing instance without initialization', () => {
+    it('throws error when accessing instance without initialization', () => {
       expect(() => UIManager.getInstance()).toThrow(
         'UIManager must be initialized with a MessageHandler first'
       );
     });
 
-    test('resets instance correctly', () => {
+    it('resets instance correctly', () => {
       UIManager.initialize(mockMessageHandler);
       expect(() => UIManager.getInstance()).not.toThrow();
 
@@ -214,7 +214,7 @@ describe('UIManager', () => {
       );
     });
 
-    test('can be reinitialized after reset', () => {
+    it('can be reinitialized after reset', () => {
       UIManager.initialize(mockMessageHandler);
       UIManager.resetInstance();
 
@@ -226,7 +226,7 @@ describe('UIManager', () => {
   });
 
   describe('Manager Initialization', () => {
-    test('initializes all required managers during construction', () => {
+    it('initializes all required managers during construction', () => {
       const uiManager = UIManager.initialize(mockMessageHandler);
 
       // Access private properties for testing initialization
@@ -245,7 +245,7 @@ describe('UIManager', () => {
       expect(privateManager.premiumService).toBeDefined();
     });
 
-    test('sets up state coordination between managers', () => {
+    it('sets up state coordination between managers', () => {
       const uiManager = UIManager.initialize(mockMessageHandler);
       const stateManager = (uiManager as any).stateManager;
 
@@ -256,21 +256,21 @@ describe('UIManager', () => {
       expect(typeof stateManager.getState).toBe('function');
     });
 
-    test('starts DOM observation during initialization', () => {
+    it('starts DOM observation during initialization', () => {
       const uiManager = UIManager.initialize(mockMessageHandler);
       const domObserver = (uiManager as any).domObserver;
 
       expect(domObserver.start).toHaveBeenCalled();
     });
 
-    test('initializes upload status manager', () => {
+    it('initializes upload status manager', () => {
       const uiManager = UIManager.initialize(mockMessageHandler);
       const uploadStatusManager = (uiManager as any).uploadStatusManager;
 
       expect(uploadStatusManager.initialize).toHaveBeenCalled();
     });
 
-    test('initializes GitHub button manager', () => {
+    it('initializes GitHub button manager', () => {
       // Mock location to be on a project page
       Object.defineProperty(window, 'location', {
         value: {
@@ -308,9 +308,9 @@ describe('UIManager', () => {
       uiManager = UIManager.initialize(mockMessageHandler);
     });
 
-    test('updateUploadStatus delegates to UploadStatusManager', () => {
+    it('updateUploadStatus delegates to UploadStatusManager', () => {
       const uploadStatusManager = (uiManager as any).uploadStatusManager;
-      const spy = jest.spyOn(uploadStatusManager, 'updateStatus');
+      const spy = vi.spyOn(uploadStatusManager, 'updateStatus');
 
       const status = { status: 'uploading' as const, progress: 50, message: 'Uploading...' };
       uiManager.updateUploadStatus(status);
@@ -318,18 +318,18 @@ describe('UIManager', () => {
       expect(spy).toHaveBeenCalledWith(status);
     });
 
-    test('updateButtonState delegates to GitHub button manager', () => {
+    it('updateButtonState delegates to GitHub button manager', () => {
       const githubButtonManager = (uiManager as any).githubButtonManager;
-      const spy = jest.spyOn(githubButtonManager, 'updateState');
+      const spy = vi.spyOn(githubButtonManager, 'updateState');
 
       uiManager.updateButtonState(true);
 
       expect(spy).toHaveBeenCalledWith(true);
     });
 
-    test('showNotification delegates to NotificationManager', () => {
+    it('showNotification delegates to NotificationManager', () => {
       const notificationManager = (uiManager as any).notificationManager;
-      const spy = jest.spyOn(notificationManager, 'showNotification');
+      const spy = vi.spyOn(notificationManager, 'showNotification');
 
       const notification: NotificationOptions = {
         type: 'success',
@@ -341,21 +341,21 @@ describe('UIManager', () => {
       expect(spy).toHaveBeenCalledWith(notification);
     });
 
-    test('provides access to PushReminderService', () => {
+    it('provides access to PushReminderService', () => {
       const pushReminderService = uiManager.getPushReminderService();
 
       expect(pushReminderService).toBeDefined();
       expect(pushReminderService).toBe((uiManager as any).pushReminderService);
     });
 
-    test('provides access to PremiumService', () => {
+    it('provides access to PremiumService', () => {
       const premiumService = uiManager.getPremiumService();
 
       expect(premiumService).toBeDefined();
       expect(premiumService).toBe((uiManager as any).premiumService);
     });
 
-    test('handles premium status checking', async () => {
+    it('handles premium status checking', async () => {
       const premiumService = (uiManager as any).premiumService;
       premiumService.isPremiumSync.mockReturnValue(true);
       premiumService.isPremium.mockResolvedValue(true);
@@ -364,7 +364,7 @@ describe('UIManager', () => {
       await expect(uiManager.isPremiumValidated()).resolves.toBe(true);
     });
 
-    test('handles feature checking', async () => {
+    it('handles feature checking', async () => {
       const premiumService = (uiManager as any).premiumService;
       premiumService.hasFeatureSync.mockReturnValue(true);
       premiumService.hasFeature.mockResolvedValue(true);
@@ -381,14 +381,14 @@ describe('UIManager', () => {
       uiManager = UIManager.initialize(mockMessageHandler);
     });
 
-    test('detects Bolt.new project pages correctly', () => {
+    it('detects Bolt.new project pages correctly', () => {
       const isOnProjectPage = (uiManager as any).isOnProjectPage();
 
       // With default URL setup (https://bolt.new/~/sb1-abc123)
       expect(isOnProjectPage).toBe(true);
     });
 
-    test('rejects non-project pages', () => {
+    it('rejects non-project pages', () => {
       Object.defineProperty(window, 'location', {
         value: {
           href: 'https://bolt.new/',
@@ -402,7 +402,7 @@ describe('UIManager', () => {
       expect(isOnProjectPage).toBe(false);
     });
 
-    test('rejects non-Bolt.new pages', () => {
+    it('rejects non-Bolt.new pages', () => {
       Object.defineProperty(window, 'location', {
         value: {
           href: 'https://github.com/user/repo',
@@ -424,7 +424,7 @@ describe('UIManager', () => {
       uiManager = UIManager.initialize(mockMessageHandler);
     });
 
-    test('sets up URL change detection for SPA navigation', () => {
+    it('sets up URL change detection for SPA navigation', () => {
       const originalPushState = (uiManager as any).originalPushState;
       const originalReplaceState = (uiManager as any).originalReplaceState;
 
@@ -432,8 +432,8 @@ describe('UIManager', () => {
       expect(originalReplaceState).toBeDefined();
     });
 
-    test('handles URL changes correctly', () => {
-      const handleUrlChange = jest.spyOn(uiManager as any, 'handleUrlChange');
+    it('handles URL changes correctly', () => {
+      const handleUrlChange = vi.spyOn(uiManager as any, 'handleUrlChange');
 
       // Simulate history pushState call (which should trigger our listener)
       window.history.pushState({}, '', '/~/new-project');
@@ -452,37 +452,37 @@ describe('UIManager', () => {
       uiManager = UIManager.initialize(mockMessageHandler);
     });
 
-    test('enables push reminders', () => {
+    it('enables push reminders', () => {
       const pushReminderService = (uiManager as any).pushReminderService;
-      const spy = jest.spyOn(pushReminderService, 'enable');
+      const spy = vi.spyOn(pushReminderService, 'enable');
 
       uiManager.enablePushReminders();
 
       expect(spy).toHaveBeenCalled();
     });
 
-    test('disables push reminders', () => {
+    it('disables push reminders', () => {
       const pushReminderService = (uiManager as any).pushReminderService;
-      const spy = jest.spyOn(pushReminderService, 'disable');
+      const spy = vi.spyOn(pushReminderService, 'disable');
 
       uiManager.disablePushReminders();
 
       expect(spy).toHaveBeenCalled();
     });
 
-    test('snoozes push reminders', () => {
+    it('snoozes push reminders', () => {
       const pushReminderService = (uiManager as any).pushReminderService;
-      const spy = jest.spyOn(pushReminderService, 'snoozeReminders');
+      const spy = vi.spyOn(pushReminderService, 'snoozeReminders');
 
       uiManager.snoozePushReminders();
 
       expect(spy).toHaveBeenCalled();
     });
 
-    test('handles debug mode toggling', () => {
+    it('handles debug mode toggling', () => {
       const pushReminderService = (uiManager as any).pushReminderService;
-      const enableSpy = jest.spyOn(pushReminderService, 'enableDebugMode');
-      const disableSpy = jest.spyOn(pushReminderService, 'disableDebugMode');
+      const enableSpy = vi.spyOn(pushReminderService, 'enableDebugMode');
+      const disableSpy = vi.spyOn(pushReminderService, 'disableDebugMode');
 
       uiManager.enablePushReminderDebugMode();
       expect(enableSpy).toHaveBeenCalled();
@@ -491,9 +491,9 @@ describe('UIManager', () => {
       expect(disableSpy).toHaveBeenCalled();
     });
 
-    test('forces reminder checks', async () => {
+    it('forces reminder checks', async () => {
       const pushReminderService = (uiManager as any).pushReminderService;
-      const spy = jest.spyOn(pushReminderService, 'forceReminderCheck');
+      const spy = vi.spyOn(pushReminderService, 'forceReminderCheck');
 
       await uiManager.forceReminderCheck();
 
@@ -508,14 +508,14 @@ describe('UIManager', () => {
       uiManager = UIManager.initialize(mockMessageHandler);
     });
 
-    test('cleans up all components', () => {
+    it('cleans up all components', () => {
       const domObserver = (uiManager as any).domObserver;
       const lifecycleManager = (uiManager as any).componentLifecycleManager;
       const pushReminderService = (uiManager as any).pushReminderService;
 
-      const domSpy = jest.spyOn(domObserver, 'stop');
-      const lifecycleSpy = jest.spyOn(lifecycleManager, 'cleanupAll');
-      const reminderSpy = jest.spyOn(pushReminderService, 'cleanup');
+      const domSpy = vi.spyOn(domObserver, 'stop');
+      const lifecycleSpy = vi.spyOn(lifecycleManager, 'cleanupAll');
+      const reminderSpy = vi.spyOn(pushReminderService, 'cleanup');
 
       uiManager.cleanup();
 
@@ -524,7 +524,7 @@ describe('UIManager', () => {
       expect(reminderSpy).toHaveBeenCalled();
     });
 
-    test('restores original history functions', () => {
+    it('restores original history functions', () => {
       // Get references to the original functions before UIManager modifies them
       const originalPushState = (uiManager as any).originalPushState;
       const originalReplaceState = (uiManager as any).originalReplaceState;
@@ -536,11 +536,11 @@ describe('UIManager', () => {
       expect(window.history.replaceState).toBe(originalReplaceState);
     });
 
-    test('can reinitialize after cleanup', () => {
+    it('can reinitialize after cleanup', () => {
       uiManager.cleanup();
 
       const uploadStatusManager = (uiManager as any).uploadStatusManager;
-      const reinitializeSpy = jest.spyOn(uploadStatusManager, 'initialize');
+      const reinitializeSpy = vi.spyOn(uploadStatusManager, 'initialize');
 
       uiManager.reinitialize();
 
@@ -554,14 +554,14 @@ describe('UIManager', () => {
   });
 
   describe('Error Handling', () => {
-    test('handles initialization errors gracefully', () => {
+    it('handles initialization errors gracefully', () => {
       // Don't throw errors during initialization
       expect(() => {
         UIManager.initialize(mockMessageHandler);
       }).not.toThrow();
     });
 
-    test('handles missing DOM elements gracefully', () => {
+    it('handles missing DOM elements gracefully', () => {
       document.body.innerHTML = ''; // Empty DOM
 
       expect(() => {

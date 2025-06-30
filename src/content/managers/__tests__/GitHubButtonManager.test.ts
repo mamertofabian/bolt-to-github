@@ -1,41 +1,41 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-/* eslint-env jest */
 
-import { GitHubButtonManager } from '../GitHubButtonManager';
-import type { UIStateManager } from '../../services/UIStateManager';
+import { afterEach, beforeEach, describe, expect, it, type Mock, type Mocked, vi } from 'vitest';
 import { SettingsService } from '../../../services/settings';
+import type { UIStateManager } from '../../services/UIStateManager';
+import { GitHubButtonManager } from '../GitHubButtonManager';
 
 // Mock SettingsService
-jest.mock('../../../services/settings', () => ({
+vi.mock('../../../services/settings', () => ({
   SettingsService: {
-    getGitHubSettings: jest.fn(),
+    getGitHubSettings: vi.fn(),
   },
 }));
 
 describe('GitHubButtonManager', () => {
   let githubButtonManager: GitHubButtonManager;
-  let mockStateManager: jest.Mocked<UIStateManager>;
-  let mockDropdownCallback: jest.Mock;
+  let mockStateManager: Mocked<UIStateManager>;
+  let mockDropdownCallback: Mock;
 
   beforeEach(() => {
     // Reset DOM
     document.body.innerHTML = '';
 
     // Reset mocks
-    jest.clearAllMocks();
+    vi.clearAllMocks();
 
     // Mock state manager
     mockStateManager = {
-      setButtonState: jest.fn(),
+      setButtonState: vi.fn(),
     } as any;
 
     // Mock dropdown callback
-    mockDropdownCallback = jest.fn().mockResolvedValue(undefined);
+    mockDropdownCallback = vi.fn().mockResolvedValue(undefined);
 
     githubButtonManager = new GitHubButtonManager(mockStateManager, mockDropdownCallback);
 
     // Mock SettingsService default response
-    (SettingsService.getGitHubSettings as jest.Mock).mockResolvedValue({
+    (SettingsService.getGitHubSettings as any).mockResolvedValue({
       isSettingsValid: true,
     });
   });
@@ -43,22 +43,22 @@ describe('GitHubButtonManager', () => {
   afterEach(() => {
     githubButtonManager.cleanup();
     document.body.innerHTML = '';
-    jest.restoreAllMocks();
+    vi.restoreAllMocks();
   });
 
   describe('Initialization', () => {
-    test('initializes without state manager and callback', () => {
+    it('initializes without state manager and callback', () => {
       const manager = new GitHubButtonManager();
       expect(manager).toBeInstanceOf(GitHubButtonManager);
       expect(manager.isInitialized()).toBe(false);
     });
 
-    test('initializes with state manager and callback', () => {
+    it('initializes with state manager and callback', () => {
       expect(githubButtonManager).toBeInstanceOf(GitHubButtonManager);
       expect(githubButtonManager.isInitialized()).toBe(false);
     });
 
-    test('skips initialization when button container is missing', async () => {
+    it('skips initialization when button container is missing', async () => {
       // No button container in DOM
       await githubButtonManager.initialize();
 
@@ -66,7 +66,7 @@ describe('GitHubButtonManager', () => {
       expect(githubButtonManager.getButton()).toBeNull();
     });
 
-    test('skips initialization when existing button is found', async () => {
+    it('skips initialization when existing button is found', async () => {
       // Set up button container
       const container = document.createElement('div');
       container.className = 'flex grow-1 basis-60';
@@ -85,7 +85,7 @@ describe('GitHubButtonManager', () => {
       expect(githubButtonManager.isInitialized()).toBe(false);
     });
 
-    test('successfully initializes button when conditions are met', async () => {
+    it('successfully initializes button when conditions are met', async () => {
       // Set up button container
       const container = document.createElement('div');
       container.className = 'flex grow-1 basis-60';
@@ -111,7 +111,7 @@ describe('GitHubButtonManager', () => {
       expect(button?.getAttribute('data-testid')).toBe('github-upload-button');
     });
 
-    test('places button before deploy button when available', async () => {
+    it('places button before deploy button when available', async () => {
       // Set up button container with deploy button
       const container = document.createElement('div');
       container.className = 'flex grow-1 basis-60';
@@ -131,10 +131,8 @@ describe('GitHubButtonManager', () => {
       expect(githubButton?.nextElementSibling).toBe(deployButton);
     });
 
-    test('handles settings service errors gracefully', async () => {
-      (SettingsService.getGitHubSettings as jest.Mock).mockRejectedValue(
-        new Error('Settings error')
-      );
+    it('handles settings service errors gracefully', async () => {
+      (SettingsService.getGitHubSettings as any).mockRejectedValue(new Error('Settings error'));
 
       // Set up button container
       const container = document.createElement('div');
@@ -162,7 +160,7 @@ describe('GitHubButtonManager', () => {
       await githubButtonManager.initialize();
     });
 
-    test('creates button with correct attributes', () => {
+    it('creates button with correct attributes', () => {
       const button = githubButtonManager.getButton();
 
       expect(button?.tagName).toBe('BUTTON');
@@ -171,7 +169,7 @@ describe('GitHubButtonManager', () => {
       expect(button?.getAttribute('aria-haspopup')).toBe('menu');
     });
 
-    test('creates button with correct CSS classes', () => {
+    it('creates button with correct CSS classes', () => {
       const button = githubButtonManager.getButton() as HTMLButtonElement;
 
       expect(button.className).toContain('rounded-md');
@@ -180,7 +178,7 @@ describe('GitHubButtonManager', () => {
       expect(button.className).toContain('bg-bolt-elements-button-secondary-background');
     });
 
-    test('creates button with GitHub icon and text', () => {
+    it('creates button with GitHub icon and text', () => {
       const button = githubButtonManager.getButton();
 
       expect(button?.innerHTML).toContain('GitHub');
@@ -189,7 +187,7 @@ describe('GitHubButtonManager', () => {
       expect(button?.innerHTML).toContain('viewBox="0 0 24 24"'); // Dropdown arrow
     });
 
-    test('adds click event listener to button', async () => {
+    it('adds click event listener to button', async () => {
       const button = githubButtonManager.getButton() as HTMLButtonElement;
 
       // Simulate button click
@@ -212,7 +210,7 @@ describe('GitHubButtonManager', () => {
       await githubButtonManager.initialize();
     });
 
-    test('updates button to valid state', () => {
+    it('updates button to valid state', () => {
       const button = githubButtonManager.getButton() as HTMLButtonElement;
 
       githubButtonManager.updateState(true);
@@ -225,7 +223,7 @@ describe('GitHubButtonManager', () => {
       expect(mockStateManager.setButtonState).toHaveBeenCalledWith(true);
     });
 
-    test('updates button to invalid state', () => {
+    it('updates button to invalid state', () => {
       const button = githubButtonManager.getButton() as HTMLButtonElement;
 
       githubButtonManager.updateState(false);
@@ -238,7 +236,7 @@ describe('GitHubButtonManager', () => {
       expect(mockStateManager.setButtonState).toHaveBeenCalledWith(false);
     });
 
-    test('handles state update when button is not initialized', () => {
+    it('handles state update when button is not initialized', () => {
       const uninitializedManager = new GitHubButtonManager(mockStateManager);
 
       // Should not throw error
@@ -249,7 +247,7 @@ describe('GitHubButtonManager', () => {
       expect(mockStateManager.setButtonState).not.toHaveBeenCalled();
     });
 
-    test('sets processing state correctly', () => {
+    it('sets processing state correctly', () => {
       const button = githubButtonManager.getButton() as HTMLButtonElement;
 
       githubButtonManager.setProcessingState();
@@ -259,7 +257,7 @@ describe('GitHubButtonManager', () => {
       expect(button.innerHTML).toContain('animate-spin');
     });
 
-    test('sets detecting changes state correctly', () => {
+    it('sets detecting changes state correctly', () => {
       const button = githubButtonManager.getButton() as HTMLButtonElement;
 
       githubButtonManager.setDetectingChangesState();
@@ -269,7 +267,7 @@ describe('GitHubButtonManager', () => {
       expect(button.innerHTML).toContain('animate-spin');
     });
 
-    test('sets pushing state correctly', () => {
+    it('sets pushing state correctly', () => {
       const button = githubButtonManager.getButton() as HTMLButtonElement;
 
       githubButtonManager.setPushingState();
@@ -279,7 +277,7 @@ describe('GitHubButtonManager', () => {
       expect(button.innerHTML).toContain('animate-spin');
     });
 
-    test('sets custom loading state correctly', () => {
+    it('sets custom loading state correctly', () => {
       const button = githubButtonManager.getButton() as HTMLButtonElement;
       const customText = 'Custom loading...';
 
@@ -290,7 +288,7 @@ describe('GitHubButtonManager', () => {
       expect(button.innerHTML).toContain('animate-spin');
     });
 
-    test('resets button state correctly', () => {
+    it('resets button state correctly', () => {
       const button = githubButtonManager.getButton() as HTMLButtonElement;
 
       // First set to loading state
@@ -307,7 +305,7 @@ describe('GitHubButtonManager', () => {
   });
 
   describe('Button Queries', () => {
-    test('reports initialization state correctly', async () => {
+    it('reports initialization state correctly', async () => {
       expect(githubButtonManager.isInitialized()).toBe(false);
 
       // Set up button container
@@ -327,7 +325,7 @@ describe('GitHubButtonManager', () => {
       expect(githubButtonManager.isInitialized()).toBe(false);
     });
 
-    test('checks button existence in DOM correctly', async () => {
+    it('checks button existence in DOM correctly', async () => {
       expect(githubButtonManager.buttonExists()).toBe(false);
 
       // Add an existing button to DOM
@@ -338,7 +336,7 @@ describe('GitHubButtonManager', () => {
       expect(githubButtonManager.buttonExists()).toBe(true);
     });
 
-    test('returns correct button element', async () => {
+    it('returns correct button element', async () => {
       expect(githubButtonManager.getButton()).toBeNull();
 
       // Set up and initialize
@@ -358,7 +356,7 @@ describe('GitHubButtonManager', () => {
   });
 
   describe('Cleanup', () => {
-    test('removes button and resets state', async () => {
+    it('removes button and resets state', async () => {
       // Set up button container
       const container = document.createElement('div');
       container.className = 'flex grow-1 basis-60';
@@ -380,14 +378,14 @@ describe('GitHubButtonManager', () => {
       expect(githubButtonManager.getButton()).toBeNull();
     });
 
-    test('handles cleanup when button is not initialized', () => {
+    it('handles cleanup when button is not initialized', () => {
       // Should not throw error
       expect(() => {
         githubButtonManager.cleanup();
       }).not.toThrow();
     });
 
-    test('can reinitialize after cleanup', async () => {
+    it('can reinitialize after cleanup', async () => {
       // Set up button container
       const container = document.createElement('div');
       container.className = 'flex grow-1 basis-60';
@@ -411,7 +409,7 @@ describe('GitHubButtonManager', () => {
   });
 
   describe('Error Handling', () => {
-    test('handles missing state manager gracefully', async () => {
+    it('handles missing state manager gracefully', async () => {
       const managerWithoutState = new GitHubButtonManager();
 
       // Set up button container
@@ -430,7 +428,7 @@ describe('GitHubButtonManager', () => {
       }).not.toThrow();
     });
 
-    test('handles missing callback gracefully', async () => {
+    it('handles missing callback gracefully', async () => {
       const managerWithoutCallback = new GitHubButtonManager(mockStateManager);
 
       // Set up button container
@@ -451,7 +449,7 @@ describe('GitHubButtonManager', () => {
       }).not.toThrow();
     });
 
-    test('handles state updates on uninitialized button', () => {
+    it('handles state updates on uninitialized button', () => {
       const methods = [
         () => githubButtonManager.setProcessingState(),
         () => githubButtonManager.setDetectingChangesState(),
@@ -468,7 +466,7 @@ describe('GitHubButtonManager', () => {
   });
 
   describe('Integration with Settings', () => {
-    test('calls SettingsService during initialization', async () => {
+    it('calls SettingsService during initialization', async () => {
       // Set up button container
       const container = document.createElement('div');
       container.className = 'flex grow-1 basis-60';

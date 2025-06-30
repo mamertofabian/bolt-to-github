@@ -18,7 +18,6 @@ module.exports = {
     es2017: true,
     node: true,
     webextensions: true,
-    jest: true,
   },
   overrides: [
     {
@@ -26,6 +25,20 @@ module.exports = {
       parser: 'svelte-eslint-parser',
       parserOptions: {
         parser: '@typescript-eslint/parser',
+      },
+    },
+    {
+      files: ['**/*.test.ts', '**/*.spec.ts', '**/__tests__/**/*.ts'],
+      globals: {
+        describe: 'readonly',
+        it: 'readonly',
+        test: 'readonly',
+        expect: 'readonly',
+        beforeEach: 'readonly',
+        afterEach: 'readonly',
+        beforeAll: 'readonly',
+        afterAll: 'readonly',
+        vi: 'readonly',
       },
     },
   ],

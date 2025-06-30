@@ -1,30 +1,30 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-/* eslint-env jest */
 
+import type { Mock } from 'vitest';
 import { PremiumService } from '../PremiumService';
 
 // Mock chrome API
 global.chrome = {
   storage: {
     local: {
-      get: jest.fn().mockResolvedValue({}),
-      set: jest.fn().mockResolvedValue(undefined),
+      get: vi.fn().mockResolvedValue({}),
+      set: vi.fn().mockResolvedValue(undefined),
     },
     sync: {
-      get: jest.fn().mockResolvedValue({}),
-      set: jest.fn().mockResolvedValue(undefined),
+      get: vi.fn().mockResolvedValue({}),
+      set: vi.fn().mockResolvedValue(undefined),
     },
   },
   tabs: {
-    create: jest.fn(),
+    create: vi.fn(),
   },
 } as any;
 
 // Mock the SupabaseAuthService import
-jest.mock('../SupabaseAuthService', () => ({
+vi.mock('../SupabaseAuthService', () => ({
   SupabaseAuthService: {
-    getInstance: jest.fn().mockReturnValue({
-      validateSubscriptionStatus: jest.fn().mockResolvedValue(true),
+    getInstance: vi.fn().mockReturnValue({
+      validateSubscriptionStatus: vi.fn().mockResolvedValue(true),
     }),
   },
 }));
@@ -33,12 +33,12 @@ describe('PremiumService', () => {
   let premiumService: PremiumService;
 
   beforeEach(() => {
-    jest.clearAllMocks();
+    vi.clearAllMocks();
     premiumService = new PremiumService();
   });
 
   afterEach(() => {
-    jest.clearAllMocks();
+    vi.clearAllMocks();
   });
 
   describe('Initialization', () => {
@@ -142,7 +142,7 @@ describe('PremiumService', () => {
     test('triggers premium status check', async () => {
       // Mock chrome.runtime.sendMessage
       global.chrome.runtime = {
-        sendMessage: jest.fn().mockResolvedValue({}),
+        sendMessage: vi.fn().mockResolvedValue({}),
       } as any;
 
       await premiumService.checkPremiumStatusFromServer();
@@ -155,7 +155,7 @@ describe('PremiumService', () => {
     test('handles server check errors gracefully', async () => {
       // Mock chrome.runtime.sendMessage to fail
       global.chrome.runtime = {
-        sendMessage: jest.fn().mockRejectedValue(new Error('No connection')),
+        sendMessage: vi.fn().mockRejectedValue(new Error('No connection')),
       } as any;
 
       // Should not throw error
@@ -177,7 +177,7 @@ describe('PremiumService', () => {
 
   describe('Data Persistence', () => {
     test('saves data on status update', async () => {
-      const mockSet = chrome.storage.local.set as jest.Mock;
+      const mockSet = chrome.storage.local.set as Mock;
 
       await premiumService.updatePremiumStatus({
         isPremium: true,
@@ -191,7 +191,7 @@ describe('PremiumService', () => {
     });
 
     test('handles storage errors gracefully', async () => {
-      const mockSet = chrome.storage.local.set as jest.Mock;
+      const mockSet = chrome.storage.local.set as Mock;
       mockSet.mockRejectedValue(new Error('Storage quota exceeded'));
 
       // Should not throw error

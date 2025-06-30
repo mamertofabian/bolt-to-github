@@ -10,7 +10,8 @@
  * - Performance under stress
  */
 
-import type { MessageType, Message } from '$lib/types';
+import type { Message, MessageType } from '$lib/types';
+import type { Mock } from 'vitest';
 
 // =============================================================================
 // REALISTIC TEST DATA
@@ -479,12 +480,12 @@ export const PortStateFactory = {
     return {
       name: 'bolt-content',
       onDisconnect: {
-        addListener: jest.fn(),
-        removeListener: jest.fn(),
-        hasListener: jest.fn(),
-        hasListeners: jest.fn(() => true),
+        addListener: vi.fn(),
+        removeListener: vi.fn(),
+        hasListener: vi.fn(),
+        hasListeners: vi.fn(() => true),
       } as unknown as chrome.runtime.Port['onDisconnect'],
-      postMessage: jest.fn(),
+      postMessage: vi.fn(),
     };
   },
 
@@ -492,12 +493,12 @@ export const PortStateFactory = {
     return {
       name: 'bolt-content',
       onDisconnect: {
-        addListener: jest.fn(),
-        removeListener: jest.fn(),
-        hasListener: jest.fn(),
-        hasListeners: jest.fn(() => false),
+        addListener: vi.fn(),
+        removeListener: vi.fn(),
+        hasListener: vi.fn(),
+        hasListeners: vi.fn(() => false),
       } as unknown as chrome.runtime.Port['onDisconnect'],
-      postMessage: jest.fn(() => {
+      postMessage: vi.fn(() => {
         throw new Error('Port is disconnected');
       }),
     };
@@ -507,12 +508,12 @@ export const PortStateFactory = {
     return {
       name: 'bolt-content',
       onDisconnect: {
-        addListener: jest.fn(),
-        removeListener: jest.fn(),
-        hasListener: jest.fn(),
-        hasListeners: jest.fn(() => true),
+        addListener: vi.fn(),
+        removeListener: vi.fn(),
+        hasListener: vi.fn(),
+        hasListeners: vi.fn(() => true),
       } as unknown as chrome.runtime.Port['onDisconnect'],
-      postMessage: jest.fn(() => {
+      postMessage: vi.fn(() => {
         throw new Error(errorMessage);
       }),
     };
@@ -522,12 +523,12 @@ export const PortStateFactory = {
     return {
       name: '', // Invalid empty name
       onDisconnect: {
-        addListener: jest.fn(),
-        removeListener: jest.fn(),
-        hasListener: jest.fn(),
-        hasListeners: jest.fn(() => false),
+        addListener: vi.fn(),
+        removeListener: vi.fn(),
+        hasListener: vi.fn(),
+        hasListeners: vi.fn(() => false),
       } as unknown as chrome.runtime.Port['onDisconnect'],
-      postMessage: jest.fn(),
+      postMessage: vi.fn(),
     };
   },
 
@@ -536,7 +537,7 @@ export const PortStateFactory = {
 
     // Simulate disconnection after delay
     setTimeout(() => {
-      const disconnectHandlers = (port.onDisconnect!.addListener as jest.Mock).mock.calls.map(
+      const disconnectHandlers = (port.onDisconnect!.addListener as Mock).mock.calls.map(
         (call) => call[0]
       );
       disconnectHandlers.forEach((handler) => handler(port));
@@ -713,13 +714,13 @@ export const AssertionHelpers = {
   },
 
   // Port method call assertions
-  expectPortMethodCalled(port: Record<string, jest.Mock>, method: string, times: number = 1) {
+  expectPortMethodCalled(port: Record<string, Mock>, method: string, times: number = 1) {
     expect(port[method]).toHaveBeenCalledTimes(times);
   },
 
   // Message content assertions
   expectMessageContent(
-    port: Record<string, jest.Mock>,
+    port: Record<string, Mock>,
     messageType: MessageType,
     data?: Record<string, unknown>
   ) {

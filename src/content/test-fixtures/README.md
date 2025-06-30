@@ -203,6 +203,6 @@ These fixtures complement the existing test infrastructure and can be used along
 
 - BackgroundService test fixtures (similar pattern)
 - Existing Chrome API mocks in `src/test/setup/`
-- Jest configuration in `jest.config.js`
+- Vitest configuration in `vitest.config.js`
 
 The fixtures are designed to be drop-in replacements for ad-hoc mocks while providing more comprehensive and reliable testing capabilities.

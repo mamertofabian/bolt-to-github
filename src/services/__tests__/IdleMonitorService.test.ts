@@ -1,6 +1,6 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { IdleMonitorService } from '../IdleMonitorService';
-import { expect, jest, describe, it, beforeEach, afterEach } from '@jest/globals';
 
 // Define test types without colliding with chrome namespace
 type IdleStateType = 'active' | 'idle' | 'locked';
@@ -13,17 +13,17 @@ class MockChromeIdle {
   private currentState: IdleStateType = 'active';
   private stateChangeListeners: Array<(state: IdleStateType) => void> = [];
 
-  setDetectionInterval = jest.fn((intervalInSeconds: number) => {
+  setDetectionInterval = vi.fn((intervalInSeconds: number) => {
     this.detectionInterval = intervalInSeconds;
   });
 
   onStateChanged = {
-    addListener: jest.fn((callback: (state: IdleStateType) => void) => {
+    addListener: vi.fn((callback: (state: IdleStateType) => void) => {
       this.stateChangeListeners.push(callback);
     }),
   };
 
-  queryState = jest.fn(
+  queryState = vi.fn(
     (detectionIntervalInSeconds: number, callback: (state: IdleStateType) => void) => {
       callback(this.currentState);
     }
@@ -60,7 +60,7 @@ describe('IdleMonitorService', () => {
   });
 
   afterEach(() => {
-    jest.clearAllMocks();
+    vi.clearAllMocks();
   });
 
   describe('initialization', () => {
@@ -171,7 +171,7 @@ describe('IdleMonitorService', () => {
 
   describe('listener management', () => {
     it('should notify listeners when state changes', () => {
-      const listener = jest.fn();
+      const listener = vi.fn();
       idleMonitorService.addListener(listener);
 
       mockChromeIdle.simulateStateChange('idle');
@@ -179,7 +179,7 @@ describe('IdleMonitorService', () => {
     });
 
     it('should not notify removed listeners', () => {
-      const listener = jest.fn();
+      const listener = vi.fn();
       idleMonitorService.addListener(listener);
       idleMonitorService.removeListener(listener);
 
@@ -188,9 +188,9 @@ describe('IdleMonitorService', () => {
     });
 
     it('should notify multiple listeners in order', () => {
-      const listener1 = jest.fn();
-      const listener2 = jest.fn();
-      const listener3 = jest.fn();
+      const listener1 = vi.fn();
+      const listener2 = vi.fn();
+      const listener3 = vi.fn();
 
       idleMonitorService.addListener(listener1);
       idleMonitorService.addListener(listener2);
@@ -214,12 +214,12 @@ describe('IdleMonitorService', () => {
     it('should support removing listeners while iterating', () => {
       // Looking at the IdleMonitorService implementation, we can see it uses
       // filter to create a new array when removing listeners, which is safe
-      const listener1 = jest.fn();
-      const listener2 = jest.fn().mockImplementation(() => {
+      const listener1 = vi.fn();
+      const listener2 = vi.fn().mockImplementation(() => {
         // This will remove listener3 from the array during iteration
         idleMonitorService.removeListener(listener3);
       });
-      const listener3 = jest.fn();
+      const listener3 = vi.fn();
 
       // Add all listeners
       idleMonitorService.addListener(listener1);
@@ -227,7 +227,7 @@ describe('IdleMonitorService', () => {
       idleMonitorService.addListener(listener3);
 
       // Setup a spy on the notifyListeners method
-      const notifyListenersSpy = jest.spyOn(idleMonitorService as any, 'notifyListeners');
+      const notifyListenersSpy = vi.spyOn(idleMonitorService as any, 'notifyListeners');
 
       // The implementation of notifyListeners in IdleMonitorService uses forEach
       // on the listeners array, which internally makes a snapshot of the array
@@ -257,7 +257,7 @@ describe('IdleMonitorService', () => {
     });
 
     it('should not break if removing a non-existent listener', () => {
-      const nonExistentListener = jest.fn();
+      const nonExistentListener = vi.fn();
 
       // Should not throw an error
       expect(() => {
@@ -267,7 +267,7 @@ describe('IdleMonitorService', () => {
 
     it('should call the same listener multiple times if added multiple times', () => {
       // Based on the implementation, IdleMonitorService does not filter out duplicate listeners
-      const listener = jest.fn();
+      const listener = vi.fn();
 
       // Add the listener twice
       idleMonitorService.addListener(listener);

@@ -1,14 +1,14 @@
-import { expect, jest, describe, it, beforeEach } from '@jest/globals';
-import type { ProjectFiles } from '../types';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import {
-  processFilesWithGitignore,
   decodeBase64ToUtf8,
   normalizeContentForComparison,
+  processFilesWithGitignore,
 } from '../fileUtils';
+import type { ProjectFiles } from '../types';
 
 describe('fileUtils', () => {
   beforeEach(() => {
-    jest.clearAllMocks();
+    vi.clearAllMocks();
   });
 
   describe('processFilesWithGitignore', () => {
@@ -116,9 +116,6 @@ describe('fileUtils', () => {
       // Act & Assert
       expect(() => decodeBase64ToUtf8(invalidBase64)).toThrow();
     });
-
-    // Note: UTF-8 testing is complex in Jest environment due to TextEncoder/TextDecoder
-    // These are tested indirectly through integration tests
   });
 
   describe('normalizeContentForComparison', () => {
@@ -210,8 +207,4 @@ describe('fileUtils', () => {
       expect(result).toBe('line1\nline2\nline3\n');
     });
   });
-
-  // Note: calculateGitBlobHash tests are skipped due to complexity of mocking crypto.subtle in Jest
-  // This function is tested indirectly through integration tests and the actual implementation
-  // works correctly in browser environments
 });

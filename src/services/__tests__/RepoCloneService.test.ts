@@ -1,19 +1,19 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { RepoCloneService } from '../RepoCloneService';
-import type { IGitHubApiClient } from '../interfaces/IGitHubApiClient';
 import type { IFileService } from '../interfaces/IFileService';
-import { expect, jest, describe, it, beforeEach } from '@jest/globals';
+import type { IGitHubApiClient } from '../interfaces/IGitHubApiClient';
 
 // Mock the RateLimitHandler to avoid rate limit issues in tests
-jest.mock('../RateLimitHandler', () => {
+vi.mock('../RateLimitHandler', () => {
   return {
-    RateLimitHandler: jest.fn().mockImplementation(() => {
+    RateLimitHandler: vi.fn().mockImplementation(() => {
       return {
-        beforeRequest: jest.fn().mockResolvedValue({} as never),
-        handleRateLimit: jest.fn().mockResolvedValue({} as never),
-        resetRequestCount: jest.fn(),
-        resetRetryCount: jest.fn(),
-        sleep: jest.fn().mockImplementation((_ms) => Promise.resolve()),
+        beforeRequest: vi.fn().mockResolvedValue({} as never),
+        handleRateLimit: vi.fn().mockResolvedValue({} as never),
+        resetRequestCount: vi.fn(),
+        resetRetryCount: vi.fn(),
+        sleep: vi.fn().mockImplementation((_ms) => Promise.resolve()),
       };
     }),
   };
@@ -27,19 +27,19 @@ describe('RepoCloneService', () => {
   beforeEach(() => {
     // Create fresh mocks for each test
     mockApiClient = {
-      request: jest.fn(),
-      getRateLimit: jest.fn(),
+      request: vi.fn(),
+      getRateLimit: vi.fn(),
       token: 'test-token',
     };
 
     mockFileService = {
-      writeFile: jest.fn().mockResolvedValue({} as never),
-      readFile: jest.fn(),
-      deleteFile: jest.fn(),
-      listFiles: jest.fn(),
-      getFileInfo: jest.fn(),
-      fileExists: jest.fn(),
-      createDirectory: jest.fn(),
+      writeFile: vi.fn().mockResolvedValue({} as never),
+      readFile: vi.fn(),
+      deleteFile: vi.fn(),
+      listFiles: vi.fn(),
+      getFileInfo: vi.fn(),
+      fileExists: vi.fn(),
+      createDirectory: vi.fn(),
     };
 
     repoCloneService = new RepoCloneService(
@@ -91,7 +91,7 @@ describe('RepoCloneService', () => {
       });
 
       // Act
-      const onProgressMock = jest.fn();
+      const onProgressMock = vi.fn();
       await repoCloneService.cloneRepoContents(
         'sourceOwner',
         'sourceRepo',

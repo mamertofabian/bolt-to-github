@@ -6,13 +6,14 @@
  * test implementation and ensure consistent test setup across different scenarios.
  */
 
+import type { Message, MessageType } from '$lib/types';
+import type { MockedFunction } from 'vitest';
 import { MessageHandler } from '../MessageHandler';
-import type { MessageType, Message } from '$lib/types';
-import { MockChromeEnvironment, MockChromePort, BehaviorVerifier } from './MessageHandlerMocks';
+import { BehaviorVerifier, MockChromeEnvironment, MockChromePort } from './MessageHandlerMocks';
 import {
-  TestData,
   MessageFactory,
   ScenarioBuilder,
+  TestData,
   TimingHelpers,
 } from './MessageHandlerTestFixtures';
 
@@ -463,9 +464,9 @@ export class MessageHandlerTestEnvironment {
       throw new Error('No current port to simulate error on');
     }
 
-    this.currentPort.postMessage = jest.fn((_message: unknown): void => {
+    this.currentPort.postMessage = vi.fn((_message: unknown): void => {
       throw new Error(errorMessage);
-    }) as jest.MockedFunction<(message: unknown) => void>;
+    }) as MockedFunction<(message: unknown) => void>;
   }
 
   simulateExtensionContextInvalidation(): void {
@@ -602,7 +603,7 @@ export class TestSuiteHelpers {
 // CONVENIENCE EXPORTS
 // =============================================================================
 
-export { BehaviorVerifier, TimingHelpers, TestData, MessageFactory, ScenarioBuilder };
+export { BehaviorVerifier, MessageFactory, ScenarioBuilder, TestData, TimingHelpers };
 
 // Common test patterns
 export const CommonTestPatterns = {

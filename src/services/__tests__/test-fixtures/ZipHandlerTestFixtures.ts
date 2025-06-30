@@ -1,4 +1,4 @@
-import type { ProcessingStatus, UploadStatusState, ProjectSettings, PushRecord } from '$lib/types';
+import type { ProcessingStatus, ProjectSettings, PushRecord, UploadStatusState } from '$lib/types';
 
 /**
  * Comprehensive test fixtures for ZipHandler testing

@@ -1,11 +1,11 @@
 /**
- * Console mocks for Jest tests
+ * Console mocks for Vitest tests
  *
  * This file silences console output during tests to keep test output clean
  * while preserving the ability to test console behavior when needed.
  */
 
-/* eslint-env jest */
+import { afterEach, beforeEach, expect, vi } from 'vitest';
 
 // Store original console methods
 const originalConsole = {
@@ -20,24 +20,24 @@ const originalConsole = {
 // Mock console methods to silence output during tests
 beforeEach(() => {
   // Mock all console methods to do nothing by default
-  jest.spyOn(console, 'log').mockImplementation(() => {});
-  jest.spyOn(console, 'warn').mockImplementation(() => {});
-  jest.spyOn(console, 'error').mockImplementation(() => {});
+  vi.spyOn(console, 'log').mockImplementation(() => {});
+  vi.spyOn(console, 'warn').mockImplementation(() => {});
+  vi.spyOn(console, 'error').mockImplementation(() => {});
 
   if (console.group) {
-    jest.spyOn(console, 'group').mockImplementation(() => {});
+    vi.spyOn(console, 'group').mockImplementation(() => {});
   }
   if (console.info) {
-    jest.spyOn(console, 'info').mockImplementation(() => {});
+    vi.spyOn(console, 'info').mockImplementation(() => {});
   }
   if (console.debug) {
-    jest.spyOn(console, 'debug').mockImplementation(() => {});
+    vi.spyOn(console, 'debug').mockImplementation(() => {});
   }
 });
 
 afterEach(() => {
   // Restore console methods after each test
-  jest.restoreAllMocks();
+  vi.restoreAllMocks();
 });
 
 // Export utilities for tests that need to verify console output
@@ -65,7 +65,7 @@ global.testConsole = {
    * Get the mock for a specific console method to verify calls
    */
   getMock: (method) => {
-    return jest.mocked(console[method]);
+    return vi.mocked(console[method]);
   },
 
   /**

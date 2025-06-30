@@ -6,17 +6,17 @@
 
 import type { GitHubAppService } from '../../GitHubAppService';
 import {
-  validGitHubAppConfig,
-  validTokenResponse,
-  validInstallationTokenResponse,
-  validTokenValidationResult,
-  validPermissionCheckResult,
-  validOAuthFlowResponse,
   noGitHubAppError,
   tokenExpiredNoRefreshError,
-  validGitHubUserResponse,
   validAuthStorageData,
+  validGitHubAppConfig,
+  validGitHubUserResponse,
+  validInstallationTokenResponse,
+  validOAuthFlowResponse,
+  validPermissionCheckResult,
   validSupabaseAuthToken,
+  validTokenResponse,
+  validTokenValidationResult,
 } from './GitHubAppServiceTestFixtures';
 
 // ===========================
@@ -378,28 +378,28 @@ export class GitHubAppServiceTestScenario {
 export function createMockChromeStorageAPI(storage: MockChromeStorage) {
   return {
     local: {
-      get: jest.fn((keys: string | string[] | null, callback?: (result: any) => void) => {
+      get: vi.fn((keys: string | string[] | null, callback?: (result: any) => void) => {
         const promise = storage.get(keys || []);
         if (callback) {
           promise.then((result) => callback(result));
         }
         return promise;
       }),
-      set: jest.fn((items: Record<string, any>, callback?: () => void) => {
+      set: vi.fn((items: Record<string, any>, callback?: () => void) => {
         const promise = storage.set(items);
         if (callback) {
           promise.then(() => callback());
         }
         return promise;
       }),
-      remove: jest.fn((keys: string | string[], callback?: () => void) => {
+      remove: vi.fn((keys: string | string[], callback?: () => void) => {
         const promise = storage.remove(keys);
         if (callback) {
           promise.then(() => callback());
         }
         return promise;
       }),
-      clear: jest.fn((callback?: () => void) => {
+      clear: vi.fn((callback?: () => void) => {
         const promise = storage.clear();
         if (callback) {
           promise.then(() => callback());
@@ -408,10 +408,10 @@ export function createMockChromeStorageAPI(storage: MockChromeStorage) {
       }),
     },
     sync: {
-      get: jest.fn().mockResolvedValue({}),
-      set: jest.fn().mockResolvedValue(undefined),
-      remove: jest.fn().mockResolvedValue(undefined),
-      clear: jest.fn().mockResolvedValue(undefined),
+      get: vi.fn().mockResolvedValue({}),
+      set: vi.fn().mockResolvedValue(undefined),
+      remove: vi.fn().mockResolvedValue(undefined),
+      clear: vi.fn().mockResolvedValue(undefined),
     },
   };
 }

@@ -1,19 +1,19 @@
 import {
-  createTestEnvironment,
   cleanupTestEnvironment,
-  ZIP_FILE_FIXTURES,
-  createTestBlob,
-  TEST_PROJECTS,
-  setupTestProject,
   COMPARISON_RESULTS,
+  createTestBlob,
+  createTestEnvironment,
+  setupTestProject,
+  TEST_PROJECTS,
+  ZIP_FILE_FIXTURES,
   type ZipHandlerTestEnvironment,
 } from './test-fixtures/ZipHandlerTestFixtures.index';
 
 describe('ZipHandler - Critical Scenarios', () => {
   let env: ZipHandlerTestEnvironment;
 
-  beforeEach(() => {
-    env = createTestEnvironment();
+  beforeEach(async () => {
+    env = await createTestEnvironment();
   });
 
   afterEach(() => {

@@ -1,13 +1,13 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-/* eslint-env jest */
 
+import type { Mock } from 'vitest';
 import { DOMObserver } from '../DOMObserver';
 
 describe('DOMObserver', () => {
   let domObserver: DOMObserver;
-  let mockCallback: jest.Mock;
-  let mockOnError: jest.Mock;
-  let mockMutationObserver: jest.Mock;
+  let mockCallback: Mock;
+  let mockOnError: Mock;
+  let mockMutationObserver: Mock;
   let mockObserverInstance: any;
 
   beforeEach(() => {
@@ -15,37 +15,37 @@ describe('DOMObserver', () => {
     document.body.innerHTML = '';
 
     // Reset mocks
-    jest.clearAllMocks();
+    vi.clearAllMocks();
 
     // Mock callback functions
-    mockCallback = jest.fn();
-    mockOnError = jest.fn();
+    mockCallback = vi.fn();
+    mockOnError = vi.fn();
 
     // Mock MutationObserver
     mockObserverInstance = {
-      observe: jest.fn(),
-      disconnect: jest.fn(),
+      observe: vi.fn(),
+      disconnect: vi.fn(),
     };
 
-    mockMutationObserver = jest.fn().mockImplementation(() => mockObserverInstance);
+    mockMutationObserver = vi.fn().mockImplementation(() => mockObserverInstance);
 
     // Replace global MutationObserver
     global.MutationObserver = mockMutationObserver;
 
     // Mock window.setTimeout and clearTimeout
-    jest.spyOn(window, 'setTimeout').mockImplementation((_callback) => {
+    vi.spyOn(window, 'setTimeout').mockImplementation((_callback) => {
       const id = Math.random();
       return id as any;
     });
 
-    jest.spyOn(window, 'clearTimeout').mockImplementation(() => {});
+    vi.spyOn(window, 'clearTimeout').mockImplementation(() => {});
 
     domObserver = new DOMObserver();
   });
 
   afterEach(() => {
     domObserver.stop();
-    jest.restoreAllMocks();
+    vi.restoreAllMocks();
   });
 
   describe('Initialization', () => {
@@ -86,7 +86,7 @@ describe('DOMObserver', () => {
     });
 
     test('prevents multiple starts', () => {
-      const consoleSpy = jest.spyOn(console, 'warn').mockImplementation(() => {});
+      const consoleSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
 
       domObserver.start(mockCallback);
       domObserver.start(mockCallback);
@@ -139,7 +139,7 @@ describe('DOMObserver', () => {
         value: null,
       });
 
-      const addEventListenerSpy = jest.spyOn(document, 'addEventListener');
+      const addEventListenerSpy = vi.spyOn(document, 'addEventListener');
 
       domObserver.start(mockCallback);
 
@@ -161,7 +161,7 @@ describe('DOMObserver', () => {
       });
 
       let domContentLoadedCallback: (() => void) | undefined;
-      jest.spyOn(document, 'addEventListener').mockImplementation((event, callback) => {
+      vi.spyOn(document, 'addEventListener').mockImplementation((event, callback) => {
         if (event === 'DOMContentLoaded') {
           domContentLoadedCallback = callback as () => void;
         }
@@ -224,7 +224,7 @@ describe('DOMObserver', () => {
   describe('Retry Logic', () => {
     test('handles successful callback execution', () => {
       const customObserver = new DOMObserver(3, 100, 50);
-      const successCallback = jest.fn();
+      const successCallback = vi.fn();
 
       customObserver.start(successCallback);
 
@@ -234,9 +234,9 @@ describe('DOMObserver', () => {
 
     test('handles callback failure and sets up retry', () => {
       const customObserver = new DOMObserver(2, 100, 50);
-      const consoleSpy = jest.spyOn(console, 'warn').mockImplementation(() => {});
+      const consoleSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
 
-      const failingCallback = jest.fn(() => {
+      const failingCallback = vi.fn(() => {
         throw new Error('Test error');
       });
 
@@ -256,7 +256,7 @@ describe('DOMObserver', () => {
     test('handles missing onError callback gracefully', () => {
       const customObserver = new DOMObserver(1, 100, 50);
 
-      const alwaysFailingCallback = jest.fn(() => {
+      const alwaysFailingCallback = vi.fn(() => {
         throw new Error('Always fails');
       });
 
@@ -357,9 +357,9 @@ describe('DOMObserver', () => {
 
   describe('Error Handling', () => {
     test('handles callback errors gracefully', () => {
-      const consoleSpy = jest.spyOn(console, 'warn').mockImplementation(() => {});
+      const consoleSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
 
-      const errorCallback = jest.fn(() => {
+      const errorCallback = vi.fn(() => {
         throw new Error('Test error');
       });
 
@@ -375,7 +375,7 @@ describe('DOMObserver', () => {
     });
 
     test('continues operating after callback errors', () => {
-      const errorCallback = jest.fn(() => {
+      const errorCallback = vi.fn(() => {
         throw new Error('Test error');
       });
 
@@ -425,9 +425,9 @@ describe('DOMObserver', () => {
     });
 
     test('works with different callback signatures', () => {
-      const voidCallback = jest.fn();
-      const returningCallback = jest.fn(() => 'result');
-      const asyncCallback = jest.fn(async () => Promise.resolve());
+      const voidCallback = vi.fn();
+      const returningCallback = vi.fn(() => 'result');
+      const asyncCallback = vi.fn(async () => Promise.resolve());
 
       // Test void callback
       domObserver.start(voidCallback);
@@ -447,7 +447,7 @@ describe('DOMObserver', () => {
 
     test('maintains state across multiple callback executions', () => {
       let executionCount = 0;
-      const trackingCallback = jest.fn(() => {
+      const trackingCallback = vi.fn(() => {
         executionCount++;
       });
 

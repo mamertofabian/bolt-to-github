@@ -1,47 +1,53 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 // Tests for enhanced analytics functionality
+import type { Mock } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { AnalyticsService } from '../AnalyticsService';
+
 describe('AnalyticsService Enhanced Features', () => {
-  let mockFetch: jest.Mock;
+  let analyticsService: AnalyticsService;
+  let mockFetch: Mock;
   let mockChromeRuntime: {
     id: string;
-    getManifest: jest.Mock;
-    sendMessage: jest.Mock;
+    getManifest: Mock;
+    sendMessage: Mock;
   };
   let mockChromeStorage: {
     local: {
-      get: jest.Mock;
-      set: jest.Mock;
+      get: Mock;
+      set: Mock;
     };
     sync: {
-      get: jest.Mock;
-      set: jest.Mock;
+      get: Mock;
+      set: Mock;
     };
   };
 
   beforeEach(() => {
     // Mock global fetch
-    mockFetch = jest.fn().mockResolvedValue({ ok: true });
+    mockFetch = vi.fn().mockResolvedValue({ ok: true });
     global.fetch = mockFetch;
 
     // Mock chrome.runtime
     mockChromeRuntime = {
       id: 'test-extension-id',
-      getManifest: jest.fn(() => ({
+      getManifest: vi.fn(() => ({
         version: '1.3.7',
         name: 'Bolt to GitHub',
         manifest_version: 3,
       })),
-      sendMessage: jest.fn(),
+      sendMessage: vi.fn(),
     };
 
     // Mock chrome.storage
     mockChromeStorage = {
       local: {
-        get: jest.fn(() => Promise.resolve({})),
-        set: jest.fn(() => Promise.resolve()),
+        get: vi.fn(() => Promise.resolve({ analyticsClientId: 'test-client-id' })),
+        set: vi.fn(() => Promise.resolve()),
       },
       sync: {
-        get: jest.fn(() => Promise.resolve({ analyticsEnabled: true })),
-        set: jest.fn(() => Promise.resolve()),
+        get: vi.fn(() => Promise.resolve({ analyticsEnabled: true })),
+        set: vi.fn(() => Promise.resolve()),
       },
     };
 
@@ -50,322 +56,362 @@ describe('AnalyticsService Enhanced Features', () => {
       storage: mockChromeStorage,
       runtime: mockChromeRuntime,
     } as unknown as typeof chrome;
+
+    // Mock environment variable
+    vi.stubGlobal('import', {
+      meta: {
+        env: {
+          VITE_GA4_API_SECRET: 'test-api-secret',
+        },
+      },
+    });
+
+    // Reset the singleton instance to get fresh state for each test
+    // This is a bit hacky but necessary for proper test isolation
+    (AnalyticsService as any).instance = null;
+
+    // Get fresh instance for each test
+    analyticsService = AnalyticsService.getInstance();
   });
 
   afterEach(() => {
-    jest.clearAllMocks();
+    vi.clearAllMocks();
+    vi.unstubAllGlobals();
   });
 
-  describe('Version Tracking Requirements', () => {
-    it('should include app version in all analytics events', async () => {
-      // This test verifies that when any analytics event is sent,
-      // it includes the app_version parameter from the manifest
+  describe('Version Tracking', () => {
+    it('should track version upgrades correctly', async () => {
+      await analyticsService.trackVersionChange('1.3.6', '1.3.7');
 
-      // Expected implementation:
-      // - All trackEvent calls should automatically append app_version
-      // - The version should come from chrome.runtime.getManifest().version
+      expect(mockFetch).toHaveBeenCalledWith(
+        expect.stringContaining('google-analytics.com'),
+        expect.objectContaining({
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: expect.stringContaining('"version_upgrade"'),
+        })
+      );
 
-      expect(mockChromeRuntime.getManifest).toBeDefined();
-      expect(mockChromeRuntime.getManifest().version).toBe('1.3.7');
+      const callBody = JSON.parse(mockFetch.mock.calls[0][1].body);
+      expect(callBody.events[0].name).toBe('version_upgrade');
+      expect(callBody.events[0].params.event_category).toBe('version_tracking');
+      expect(callBody.events[0].params.app_version).toBe('1.3.7');
     });
 
-    it('should track version upgrades when extension is updated', async () => {
-      // This test verifies version upgrade tracking
+    it('should track version downgrades correctly', async () => {
+      await analyticsService.trackVersionChange('1.3.8', '1.3.7');
 
-      // Expected implementation:
-      // - Compare old version with new version
-      // - Send event with category: 'version_tracking', action: 'version_upgrade'
-      // - Include both versions in the event data
+      expect(mockFetch).toHaveBeenCalledWith(
+        expect.stringContaining('google-analytics.com'),
+        expect.objectContaining({
+          body: expect.stringContaining('"version_downgrade"'),
+        })
+      );
 
-      const expectedEventData = {
-        category: 'version_tracking',
-        action: 'version_upgrade',
-        from_version: '1.3.6',
-        to_version: '1.3.7',
-      };
-
-      // The service should detect and track version changes
-      expect(expectedEventData.action).toBe('version_upgrade');
+      const callBody = JSON.parse(mockFetch.mock.calls[0][1].body);
+      expect(callBody.events[0].name).toBe('version_downgrade');
+      expect(callBody.events[0].params.event_category).toBe('version_tracking');
     });
 
-    it('should track version downgrades when detected', async () => {
-      // This test verifies version downgrade tracking
+    it('should not track when versions are the same', async () => {
+      await analyticsService.trackVersionChange('1.3.7', '1.3.7');
 
-      // Expected implementation:
-      // - Detect when current version is lower than previous
-      // - Send event with action: 'version_downgrade'
-
-      const expectedEventData = {
-        category: 'version_tracking',
-        action: 'version_downgrade',
-        from_version: '1.3.8',
-        to_version: '1.3.7',
-      };
-
-      expect(expectedEventData.action).toBe('version_downgrade');
+      expect(mockFetch).not.toHaveBeenCalled();
     });
 
     it('should handle semantic versioning correctly', async () => {
-      // This test verifies handling of pre-release versions
-      // Since we can't directly test the private compareVersions method,
-      // we'll test the behavior through trackVersionChange
+      // Test pre-release versions are handled correctly
+      await analyticsService.trackVersionChange('1.3.6', '1.3.7-beta');
 
-      // Expected implementation:
-      // - Version comparison should ignore pre-release identifiers
-      // - "1.3.7-beta" should be treated as "1.3.7" for comparison
+      expect(mockFetch).toHaveBeenCalled();
+      const callBody = JSON.parse(mockFetch.mock.calls[0][1].body);
+      expect(callBody.events[0].name).toBe('version_upgrade');
 
-      const testCases = [
-        { from: '1.3.6', to: '1.3.7-beta', expectedAction: 'version_upgrade' },
-        { from: '1.3.7-alpha', to: '1.3.7-beta', expectedAction: null }, // Same base version - no event
-        { from: '1.3.8-beta', to: '1.3.7', expectedAction: 'version_downgrade' },
-        { from: '1.3.7-rc.1', to: '1.3.7', expectedAction: null }, // RC to release, same base - no event
-        { from: '1.3.7', to: '1.3.8-alpha', expectedAction: 'version_upgrade' },
-        { from: '1.3.7-beta', to: '1.3.6', expectedAction: 'version_downgrade' },
-      ];
+      // Clear and test same base version with different pre-release
+      mockFetch.mockClear();
+      await analyticsService.trackVersionChange('1.3.7-alpha', '1.3.7-beta');
 
-      // Test each case
-      for (const testCase of testCases) {
-        // Clear the mock to test each case independently
-        mockFetch.mockClear();
-
-        // Mock the analytics service behavior based on version comparison
-        if (testCase.expectedAction) {
-          // For actual version changes, the service would send an event
-          mockFetch.mockResolvedValueOnce({ ok: true });
-        }
-
-        // The actual comparison logic would happen inside AnalyticsService
-        // We're testing the expected behavior based on the test cases
-        if (testCase.expectedAction === null) {
-          // No event should be sent for same versions
-          expect(mockFetch).not.toHaveBeenCalled();
-        } else {
-          // Verify the expected action would be tracked
-          expect(testCase.expectedAction).toMatch(/^version_(upgrade|downgrade)$/);
-        }
-      }
+      expect(mockFetch).not.toHaveBeenCalled(); // Same base version, no tracking
     });
 
-    it('should include version in error tracking', async () => {
-      // This test verifies that errors include version info
+    it('should include app version in all events', async () => {
+      await analyticsService.trackFeatureAdoption('github_app_auth', true);
 
-      // Expected implementation:
-      // - trackError method should include app_version
-      // - Error context should be preserved
-
-      const expectedErrorData = {
-        category: 'errors',
-        action: 'extension_error',
-        app_version: '1.3.7',
-        error_message: 'Test error',
-        context: 'test_context',
-      };
-
-      expect(expectedErrorData.app_version).toBe('1.3.7');
+      expect(mockFetch).toHaveBeenCalled();
+      const callBody = JSON.parse(mockFetch.mock.calls[0][1].body);
+      expect(callBody.events[0].params.app_version).toBe('1.3.7');
     });
   });
 
-  describe('Enhanced Metrics Requirements', () => {
-    it('should track feature adoption rates', async () => {
-      // This test verifies feature adoption tracking
+  describe('Feature Adoption Tracking', () => {
+    it('should track feature adoption', async () => {
+      await analyticsService.trackFeatureAdoption('github_app_auth', true);
 
-      // Expected implementation:
-      // - New method: trackFeatureAdoption(feature, adopted)
-      // - Track whether users adopt or abandon features
+      expect(mockFetch).toHaveBeenCalledWith(
+        expect.stringContaining('google-analytics.com'),
+        expect.objectContaining({
+          body: expect.stringContaining('"github_app_auth_adopted"'),
+        })
+      );
 
-      const expectedAdoptionData = {
-        category: 'feature_adoption',
-        action: 'github_app_auth_adopted',
-        feature: 'github_app_auth',
-        adopted: true,
-      };
-
-      expect(expectedAdoptionData.category).toBe('feature_adoption');
+      const callBody = JSON.parse(mockFetch.mock.calls[0][1].body);
+      expect(callBody.events[0].name).toBe('github_app_auth_adopted');
+      expect(callBody.events[0].params.event_category).toBe('feature_adoption');
     });
 
-    it('should track performance metrics for key operations', async () => {
-      // This test verifies performance tracking
+    it('should track feature abandonment', async () => {
+      await analyticsService.trackFeatureAdoption('file_preview', false);
 
-      // Expected implementation:
-      // - New method: trackPerformance(operation, startTime, endTime, metadata)
-      // - Calculate and track operation duration
+      expect(mockFetch).toHaveBeenCalledWith(
+        expect.stringContaining('google-analytics.com'),
+        expect.objectContaining({
+          body: expect.stringContaining('"file_preview_abandoned"'),
+        })
+      );
 
-      const duration = 1500;
-
-      const expectedPerformanceData = {
-        category: 'performance',
-        action: 'github_push_duration',
-        duration_ms: 1500,
-        metadata: {
-          fileCount: 10,
-          totalSize: 1024,
-        },
-      };
-
-      expect(expectedPerformanceData.duration_ms).toBe(duration);
-    });
-
-    it('should track user journey analytics', async () => {
-      // This test verifies user journey tracking
-
-      // Expected implementation:
-      // - New method: trackUserJourney(journey, milestone, metadata)
-      // - Track user progress through key workflows
-
-      const expectedJourneyData = {
-        category: 'user_journey',
-        action: 'onboarding_github_auth_completed',
-        journey: 'onboarding',
-        milestone: 'github_auth_completed',
-        metadata: {
-          authMethod: 'github_app',
-          timeToComplete: 45,
-        },
-      };
-
-      expect(expectedJourneyData.category).toBe('user_journey');
-    });
-
-    it('should track success/failure rates with detailed context', async () => {
-      // This test verifies operation result tracking
-
-      // Expected implementation:
-      // - New method: trackOperationResult(operation, success, metadata)
-      // - Include detailed context about the operation
-
-      const expectedResultData = {
-        category: 'operation_results',
-        action: 'repo_creation_success',
-        success: true,
-        metadata: {
-          repoType: 'private',
-          filesCount: 25,
-          duration: 3000,
-        },
-      };
-
-      expect(expectedResultData.success).toBe(true);
+      const callBody = JSON.parse(mockFetch.mock.calls[0][1].body);
+      expect(callBody.events[0].name).toBe('file_preview_abandoned');
     });
   });
 
-  describe('Version Distribution Tracking Requirements', () => {
-    it('should track daily active users by version', async () => {
-      // This test verifies DAU tracking by version
+  describe('Performance Tracking', () => {
+    it('should track performance metrics correctly', async () => {
+      const startTime = Date.now();
+      const endTime = startTime + 1500;
+      const metadata = { fileCount: 10, totalSize: 1024 };
 
-      // Expected implementation:
-      // - New method: trackDailyActiveUser()
-      // - Include version in engagement metrics
+      await analyticsService.trackPerformance('github_push', startTime, endTime, metadata);
 
-      const expectedDAUData = {
-        category: 'engagement',
-        action: 'daily_active_user',
-        app_version: '1.3.7',
-      };
+      expect(mockFetch).toHaveBeenCalled();
+      const callBody = JSON.parse(mockFetch.mock.calls[0][1].body);
 
-      expect(expectedDAUData.app_version).toBe('1.3.7');
+      expect(callBody.events[0].name).toBe('github_push_duration');
+      expect(callBody.events[0].params.event_category).toBe('performance');
+      expect(callBody.events[0].params.value).toBe(1500);
+      expect(callBody.events[0].params.event_label).toBe(JSON.stringify(metadata));
     });
 
-    it('should track feature usage by version', async () => {
-      // This test verifies feature usage tracking by version
+    it('should calculate duration correctly', async () => {
+      const startTime = 1000;
+      const endTime = 3500;
 
-      // Expected implementation:
-      // - New method: trackFeatureUsage(feature, metadata)
-      // - Always include app_version
+      await analyticsService.trackPerformance('file_upload', startTime, endTime);
 
-      const expectedUsageData = {
-        category: 'feature_usage',
-        action: 'file_preview_used',
-        feature: 'file_preview',
-        app_version: '1.3.7',
-        metadata: {
-          fileType: 'javascript',
-          fileSize: 2048,
-        },
-      };
-
-      expect(expectedUsageData.app_version).toBe('1.3.7');
-    });
-
-    it('should monitor error rates by version', async () => {
-      // This test verifies error rate monitoring by version
-
-      // Expected implementation:
-      // - Enhanced trackError to always include version
-      // - Group errors by version for analysis
-
-      const expectedErrorData = {
-        category: 'errors',
-        action: 'extension_error',
-        app_version: '1.3.7',
-        error_type: 'network_timeout',
-        context: 'github_api',
-      };
-
-      expect(expectedErrorData.app_version).toBe('1.3.7');
+      const callBody = JSON.parse(mockFetch.mock.calls[0][1].body);
+      expect(callBody.events[0].params.value).toBe(2500);
     });
   });
 
-  describe('Backward Compatibility Requirements', () => {
-    it('should maintain compatibility with existing trackEvent calls', () => {
-      // Verify existing method signatures still work
-      const existingEventStructure = {
+  describe('User Journey Tracking', () => {
+    it('should track user journey milestones', async () => {
+      const metadata = { authMethod: 'github_app', timeToComplete: 45 };
+
+      await analyticsService.trackUserJourney('onboarding', 'github_auth_completed', metadata);
+
+      expect(mockFetch).toHaveBeenCalled();
+      const callBody = JSON.parse(mockFetch.mock.calls[0][1].body);
+
+      expect(callBody.events[0].name).toBe('onboarding_github_auth_completed');
+      expect(callBody.events[0].params.event_category).toBe('user_journey');
+      expect(callBody.events[0].params.event_label).toBe(JSON.stringify(metadata));
+    });
+  });
+
+  describe('Operation Result Tracking', () => {
+    it('should track successful operations', async () => {
+      const metadata = { repoType: 'private', filesCount: 25, duration: 3000 };
+
+      await analyticsService.trackOperationResult('repo_creation', true, metadata);
+
+      expect(mockFetch).toHaveBeenCalled();
+      const callBody = JSON.parse(mockFetch.mock.calls[0][1].body);
+
+      expect(callBody.events[0].name).toBe('repo_creation_success');
+      expect(callBody.events[0].params.event_category).toBe('operation_results');
+      expect(callBody.events[0].params.value).toBe(1);
+      expect(callBody.events[0].params.event_label).toBe(JSON.stringify(metadata));
+    });
+
+    it('should track failed operations', async () => {
+      await analyticsService.trackOperationResult('file_upload', false);
+
+      expect(mockFetch).toHaveBeenCalled();
+      const callBody = JSON.parse(mockFetch.mock.calls[0][1].body);
+
+      expect(callBody.events[0].name).toBe('file_upload_failure');
+      expect(callBody.events[0].params.value).toBe(0);
+    });
+  });
+
+  describe('Engagement Tracking', () => {
+    it('should track daily active users with version', async () => {
+      await analyticsService.trackDailyActiveUser();
+
+      expect(mockFetch).toHaveBeenCalled();
+      const callBody = JSON.parse(mockFetch.mock.calls[0][1].body);
+
+      expect(callBody.events[0].name).toBe('daily_active_user');
+      expect(callBody.events[0].params.event_category).toBe('engagement');
+      expect(callBody.events[0].params.app_version).toBe('1.3.7');
+    });
+
+    it('should track feature usage with version and metadata', async () => {
+      const metadata = { fileType: 'javascript', fileSize: 2048 };
+
+      await analyticsService.trackFeatureUsage('file_preview', metadata);
+
+      expect(mockFetch).toHaveBeenCalled();
+      const callBody = JSON.parse(mockFetch.mock.calls[0][1].body);
+
+      expect(callBody.events[0].name).toBe('file_preview_used');
+      expect(callBody.events[0].params.event_category).toBe('feature_usage');
+      expect(callBody.events[0].params.app_version).toBe('1.3.7');
+
+      const labelData = JSON.parse(callBody.events[0].params.event_label);
+      expect(labelData.fileType).toBe('javascript');
+      expect(labelData.fileSize).toBe(2048);
+      expect(labelData.app_version).toBe('1.3.7');
+    });
+  });
+
+  describe('Error Tracking', () => {
+    it('should track errors with version and context', async () => {
+      const error = new Error('Network timeout');
+      const context = 'github_api';
+
+      await analyticsService.trackError(error, context);
+
+      expect(mockFetch).toHaveBeenCalled();
+      const callBody = JSON.parse(mockFetch.mock.calls[0][1].body);
+
+      expect(callBody.events[0].name).toBe('extension_error');
+      expect(callBody.events[0].params.event_category).toBe('errors');
+      expect(callBody.events[0].params.event_label).toContain('github_api: Network timeout');
+      expect(callBody.events[0].params.event_label).toContain('(v1.3.7)');
+      expect(callBody.events[0].params.app_version).toBe('1.3.7');
+    });
+
+    it('should handle errors without context', async () => {
+      const error = new Error('Unexpected error');
+
+      await analyticsService.trackError(error);
+
+      expect(mockFetch).toHaveBeenCalled();
+      const callBody = JSON.parse(mockFetch.mock.calls[0][1].body);
+
+      expect(callBody.events[0].params.event_label).toContain('unknown: Unexpected error');
+    });
+  });
+
+  describe('Analytics State Management', () => {
+    it('should not track when analytics is disabled', async () => {
+      // Reset instance and set up disabled analytics before creating service
+      (AnalyticsService as any).instance = null;
+      mockChromeStorage.sync.get.mockResolvedValue({ analyticsEnabled: false });
+
+      const disabledService = AnalyticsService.getInstance();
+      await disabledService.trackFeatureAdoption('test_feature', true);
+
+      expect(mockFetch).not.toHaveBeenCalled();
+    });
+
+    it('should not track when API secret is missing', async () => {
+      // Reset instance and create service with empty API secret
+      (AnalyticsService as any).instance = null;
+
+      const serviceWithoutSecret = AnalyticsService.getInstance();
+      // Manually set the API_SECRET to empty to simulate missing secret
+      // This simulates the behavior when VITE_GA4_API_SECRET is not set
+      (serviceWithoutSecret as any).API_SECRET = '';
+
+      await serviceWithoutSecret.trackFeatureAdoption('test_feature', true);
+
+      expect(mockFetch).not.toHaveBeenCalled();
+    });
+
+    it('should handle storage errors gracefully', async () => {
+      mockChromeStorage.sync.get.mockRejectedValue(new Error('Storage error'));
+
+      // Should not throw, should fallback to enabled=true
+      await expect(
+        analyticsService.trackFeatureAdoption('test_feature', true)
+      ).resolves.not.toThrow();
+    });
+
+    it('should handle fetch errors gracefully', async () => {
+      mockFetch.mockRejectedValue(new Error('Network error'));
+
+      // Should not throw, should fail silently
+      await expect(
+        analyticsService.trackFeatureAdoption('test_feature', true)
+      ).resolves.not.toThrow();
+    });
+  });
+
+  describe('Backward Compatibility', () => {
+    it('should maintain compatibility with trackEvent', async () => {
+      await analyticsService.trackEvent({
         category: 'github_operations',
         action: 'push_success',
         label: 'test',
         value: 1,
-      };
+      });
 
-      expect(existingEventStructure).toHaveProperty('category');
-      expect(existingEventStructure).toHaveProperty('action');
+      expect(mockFetch).toHaveBeenCalled();
+      const callBody = JSON.parse(mockFetch.mock.calls[0][1].body);
+
+      expect(callBody.events[0].name).toBe('push_success');
+      expect(callBody.events[0].params.event_category).toBe('github_operations');
+      expect(callBody.events[0].params.event_label).toBe('test');
+      expect(callBody.events[0].params.value).toBe(1);
     });
 
-    it('should maintain compatibility with existing trackPageView', () => {
-      // Verify trackPageView still works
-      const pageViewData = {
-        pagePath: '/popup',
-        pageTitle: 'Extension Popup',
-      };
+    it('should maintain compatibility with trackPageView', async () => {
+      await analyticsService.trackPageView('/popup', 'Extension Popup');
 
-      expect(pageViewData).toHaveProperty('pagePath');
+      expect(mockFetch).toHaveBeenCalled();
+      const callBody = JSON.parse(mockFetch.mock.calls[0][1].body);
+
+      expect(callBody.events[0].name).toBe('page_view');
+      expect(callBody.events[0].params.page_location).toContain('/popup');
+      expect(callBody.events[0].params.page_title).toBe('Extension Popup');
     });
 
-    it('should maintain compatibility with existing trackGitHubOperation', () => {
-      // Verify trackGitHubOperation still works
-      const githubOpData = {
-        operation: 'file_upload',
-        success: true,
-        details: { count: 5 },
-      };
+    it('should maintain compatibility with trackGitHubOperation', async () => {
+      const details = { count: 5 };
 
-      expect(githubOpData).toHaveProperty('operation');
-      expect(githubOpData).toHaveProperty('success');
+      await analyticsService.trackGitHubOperation('file_upload', true, details);
+
+      expect(mockFetch).toHaveBeenCalled();
+      const callBody = JSON.parse(mockFetch.mock.calls[0][1].body);
+
+      expect(callBody.events[0].name).toBe('file_upload_success');
+      expect(callBody.events[0].params.event_category).toBe('github_operations');
+      expect(callBody.events[0].params.value).toBe(1);
+      expect(callBody.events[0].params.event_label).toBe(JSON.stringify(details));
     });
   });
 
-  describe('Privacy Compliance Requirements', () => {
-    it('should not track when analytics is disabled', async () => {
-      // Update mock to disable analytics
-      mockChromeStorage.sync.get.mockResolvedValue({ analyticsEnabled: false });
+  describe('Service Worker Compatibility', () => {
+    it('should pass service worker compatibility test', async () => {
+      const result = await analyticsService.testServiceWorkerCompatibility();
 
-      // Verify no tracking occurs
-      expect(mockChromeStorage.sync.get).toBeDefined();
+      expect(result).toBe(true);
     });
 
-    it('should not include any PII in version tracking', () => {
-      // Verify no personal information patterns
-      const versionData = {
-        category: 'version_tracking',
-        action: 'version_upgrade',
-        from: '1.3.6',
-        to: '1.3.7',
-      };
+    it('should provide analytics summary', async () => {
+      mockChromeStorage.local.get.mockResolvedValue({
+        analyticsClientId: 'test-client-123',
+        lastAnalyticsSync: '2023-01-01T00:00:00.000Z',
+      });
 
-      const dataString = JSON.stringify(versionData);
+      const summary = await analyticsService.getAnalyticsSummary();
 
-      // Check for common PII patterns
-      expect(dataString).not.toMatch(/[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}/); // email
-      expect(dataString).not.toMatch(/ghp_[a-zA-Z0-9]{36}/); // GitHub token
-      expect(dataString).not.toMatch(/\/users\/[a-zA-Z0-9-]+/); // username paths
+      expect(summary).toEqual({
+        clientId: 'test-client-123',
+        lastSync: '2023-01-01T00:00:00.000Z',
+        enabled: true,
+      });
     });
   });
 });

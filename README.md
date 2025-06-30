@@ -291,11 +291,31 @@ If you want to modify the extension or contribute to its development:
    pnpm run format
    ```
 
-4. Load in Chrome:
+4. Set up environment variables:
+
+   ```bash
+   # Copy the example environment file
+   cp .env.example .env
+
+   # Edit .env and add your Google Analytics API secret
+   # Get it from: https://analytics.google.com/analytics/web/
+   # Navigate to: Admin > Data Streams > [Your Stream] > Measurement Protocol API secrets
+   ```
+
+5. Load in Chrome:
    - Open Chrome and go to `chrome://extensions/`
    - Enable "Developer mode" (top right)
    - Click "Load unpacked"
    - Select the `dist` directory from your project folder
+
+#### Environment Variables
+
+The extension uses environment variables for sensitive configuration:
+
+- `VITE_GA4_API_SECRET`: Google Analytics 4 API secret for analytics tracking
+  - Required for analytics functionality
+  - Analytics will be disabled if not provided
+  - Never commit this value to the repository
 
 #### Adding UI Components (shadcn-svelte)
 
@@ -406,7 +426,7 @@ See our [Contributing Guide](#contributing) for more details.
 
 - [Supabase](https://supabase.com/) - Backend services and authentication
 - [MailerLite](https://mailerlite.com/) - Newsletter management
-- [Jest](https://jestjs.io/) - Testing framework
+- [Vitest](https://vitest.dev/) - Testing framework
 
 ### Development Tools
 
