@@ -453,6 +453,14 @@ export class SupabaseAuthService {
 
           /* Check for GitHub App installation and sync */
           await this.checkGitHubAppInstallation(token);
+
+          /* Trigger GitHub settings store re-initialization to update hasInitialSettings */
+          try {
+            await githubSettingsActions.initialize();
+            logger.info('✅ GitHub settings store re-initialized after authentication');
+          } catch (initError) {
+            logger.warn('Failed to re-initialize GitHub settings store:', initError);
+          }
         } else {
           logger.error('❌ Token verification failed');
           this.updateAuthState({
