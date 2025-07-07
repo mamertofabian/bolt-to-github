@@ -232,12 +232,19 @@ export class ZipHandler {
       // No need to reset to idle state here as it can cause race conditions
       // The UI will handle hiding the notification after a delay
     } catch (error) {
-      // Error handling
-      await this.updateStatus(
-        'error',
-        0,
-        `Failed to upload files: ${error instanceof Error ? error.message : 'Unknown error'}`
-      );
+      // Enhanced error handling with authentication failure detection
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+
+      // Check if this is an authentication failure that requires re-authentication
+      const isAuthFailure = this.isAuthenticationFailure(errorMessage);
+
+      if (isAuthFailure) {
+        // Handle authentication failure with clear messaging and self-healing attempt
+        await this.handleAuthenticationFailure(errorMessage);
+      } else {
+        // Handle general upload failure
+        await this.updateStatus('error', 0, `Failed to upload files: ${errorMessage}`);
+      }
 
       // Record push failure
       try {
@@ -250,7 +257,7 @@ export class ZipHandler {
             errorRepoOwner,
             errorProjectSettings[currentProjectId].repoName,
             errorProjectSettings[currentProjectId].branch || 'main',
-            error instanceof Error ? error.message : 'Unknown error'
+            errorMessage
           );
         }
       } catch (trackingError) {
@@ -400,6 +407,85 @@ export class ZipHandler {
       } catch (trackingError) {
         logger.error('Failed to record push success:', trackingError);
       }
+    }
+  }
+
+  /**
+   * Check if an error message indicates an authentication failure
+   */
+  private isAuthenticationFailure(errorMessage: string): boolean {
+    const authFailureIndicators = [
+      'Re-authentication required',
+      'Failed to get GitHub token',
+      'Failed to get GitHub App token',
+      'TOKEN_EXPIRED_NO_REFRESH',
+      'TOKEN_RENEWAL_FAILED',
+      'GitHub App authentication expired',
+      'Please re-authenticate',
+      'authentication.* expired',
+      'invalid.*token',
+      'unauthorized',
+      'token.*invalid',
+      'authentication.*failed',
+    ];
+
+    return authFailureIndicators.some((indicator) => new RegExp(indicator, 'i').test(errorMessage));
+  }
+
+  /**
+   * Handle authentication failure with clear messaging and self-healing attempt
+   */
+  private async handleAuthenticationFailure(errorMessage: string): Promise<void> {
+    logger.warn('🔐 Authentication failure detected:', errorMessage);
+
+    // Show clear authentication failure message with action
+    await this.updateStatus(
+      'error',
+      0,
+      'GitHub authentication expired. Please reconnect your GitHub account via bolt2github.com'
+    );
+
+    // Attempt self-healing: trigger re-authentication flow
+    try {
+      await this.triggerReAuthentication();
+    } catch (reauthError) {
+      logger.error('Failed to trigger re-authentication:', reauthError);
+    }
+  }
+
+  /**
+   * Trigger re-authentication flow
+   */
+  private async triggerReAuthentication(): Promise<void> {
+    try {
+      // Import SupabaseAuthService dynamically to avoid circular dependencies
+      const { SupabaseAuthService } = await import('../content/services/SupabaseAuthService');
+      const authService = SupabaseAuthService.getInstance();
+
+      // Clear any cached authentication state
+      await authService.logout();
+
+      // Trigger aggressive detection mode for quicker re-authentication
+      authService.enterPostConnectionMode();
+
+      logger.info('🔄 Re-authentication flow triggered');
+
+      // Also send message to background script to open bolt2github.com for re-authentication
+      try {
+        await chrome.runtime.sendMessage({
+          type: 'OPEN_REAUTHENTICATION',
+          data: {
+            reason: 'Token expired during upload',
+            action: 'reconnect_github',
+          },
+        });
+      } catch (messageError) {
+        // Background script might not be available, ignore
+        logger.warn('Could not send re-authentication message to background:', messageError);
+      }
+    } catch (error) {
+      logger.error('Error in triggerReAuthentication:', error);
+      throw error;
     }
   }
 

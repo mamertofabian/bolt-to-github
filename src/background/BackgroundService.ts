@@ -357,6 +357,11 @@ export class BackgroundService {
         // Handle manual sync trigger
         this.handleManualSync(sendResponse);
         return true; // Will respond asynchronously
+      } else if (message.type === 'OPEN_REAUTHENTICATION') {
+        // Handle re-authentication request (self-healing)
+        logger.info('🔐 Opening re-authentication page for token renewal');
+        this.handleOpenReauthentication(message.data, sendResponse);
+        return true; // Will respond asynchronously
       }
 
       // Return true to indicate we'll send a response asynchronously
@@ -1498,6 +1503,48 @@ export class BackgroundService {
       sendResponse({
         success: false,
         error: error instanceof Error ? error.message : 'Sync failed',
+      });
+    }
+  }
+
+  /**
+   * Handle re-authentication request (self-healing)
+   */
+  private async handleOpenReauthentication(
+    data: {
+      reason?: string;
+      action?: string;
+    },
+    sendResponse: (response: { success: boolean; error?: string }) => void
+  ): Promise<void> {
+    try {
+      logger.info('🔐 Handling re-authentication request:', data);
+
+      // Track re-authentication event
+      await analytics.trackEvent({
+        category: 'authentication',
+        action: 'reauthentication_triggered',
+        label: JSON.stringify({
+          reason: data.reason || 'unknown',
+          action: data.action || 'unknown',
+        }),
+      });
+
+      // Open bolt2github.com for re-authentication
+      await chrome.tabs.create({
+        url: 'https://bolt2github.com/login',
+        active: true,
+      });
+
+      // Trigger aggressive detection mode for faster re-authentication
+      this.supabaseAuthService.enterPostConnectionMode();
+
+      sendResponse({ success: true });
+    } catch (error) {
+      logger.error('Error handling re-authentication request:', error);
+      sendResponse({
+        success: false,
+        error: error instanceof Error ? error.message : 'Failed to open re-authentication',
       });
     }
   }
