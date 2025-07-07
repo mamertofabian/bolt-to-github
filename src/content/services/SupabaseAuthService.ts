@@ -60,6 +60,17 @@ export class SupabaseAuthService {
   private readonly CHECK_INTERVAL_AUTHENTICATED = 3600000; /* 1 hour when authenticated */
   private readonly CHECK_INTERVAL_PREMIUM = 900000; /* 15 minutes for premium users (more frequent validation) */
 
+  /* New aggressive detection intervals for better onboarding experience */
+  private readonly CHECK_INTERVAL_INITIAL_ONBOARDING = 2000; /* 2 seconds during initial onboarding */
+  private readonly CHECK_INTERVAL_POST_CONNECTION = 1000; /* 1 second after user clicks connect */
+  private readonly AGGRESSIVE_DETECTION_DURATION = 120000; /* 2 minutes of aggressive detection */
+
+  /* State tracking for aggressive detection */
+  private isInitialOnboarding: boolean = true;
+  private isPostConnectionMode: boolean = false;
+  private postConnectionStartTime: number = 0;
+  private aggressiveDetectionInterval: number | null = null;
+
   private constructor() {
     this.supabaseUrl = this.SUPABASE_URL;
     this.anonKey = this.SUPABASE_ANON_KEY;
@@ -132,7 +143,7 @@ export class SupabaseAuthService {
   }
 
   /**
-   * Start periodic authentication checks
+   * Start periodic authentication checks with aggressive detection during onboarding
    */
   private startPeriodicChecks(): void {
     if (this.checkInterval) {
@@ -141,25 +152,103 @@ export class SupabaseAuthService {
 
     /* Use different intervals based on authentication and subscription status */
     let interval: number;
+    let mode: string;
+
     if (!this.authState.isAuthenticated) {
-      interval = this.CHECK_INTERVAL_UNAUTHENTICATED;
-    } else if (this.authState.subscription.isActive) {
-      /* Premium users get more frequent checks to detect subscription changes faster */
-      interval = this.CHECK_INTERVAL_PREMIUM;
+      /* Check if we're in post-connection aggressive mode */
+      if (this.isPostConnectionMode) {
+        const timeSincePostConnection = Date.now() - this.postConnectionStartTime;
+        if (timeSincePostConnection < this.AGGRESSIVE_DETECTION_DURATION) {
+          interval = this.CHECK_INTERVAL_POST_CONNECTION;
+          mode = 'post-connection';
+        } else {
+          /* Exit post-connection mode after timeout */
+          this.isPostConnectionMode = false;
+          interval = this.isInitialOnboarding
+            ? this.CHECK_INTERVAL_INITIAL_ONBOARDING
+            : this.CHECK_INTERVAL_UNAUTHENTICATED;
+          mode = this.isInitialOnboarding ? 'initial-onboarding' : 'unauthenticated';
+        }
+      } else if (this.isInitialOnboarding) {
+        interval = this.CHECK_INTERVAL_INITIAL_ONBOARDING;
+        mode = 'initial-onboarding';
+      } else {
+        interval = this.CHECK_INTERVAL_UNAUTHENTICATED;
+        mode = 'unauthenticated';
+      }
     } else {
-      interval = this.CHECK_INTERVAL_AUTHENTICATED;
+      /* User is authenticated - disable aggressive detection */
+      this.isInitialOnboarding = false;
+      this.isPostConnectionMode = false;
+      this.stopAggressiveDetection();
+
+      if (this.authState.subscription.isActive) {
+        interval = this.CHECK_INTERVAL_PREMIUM;
+        mode = 'premium';
+      } else {
+        interval = this.CHECK_INTERVAL_AUTHENTICATED;
+        mode = 'authenticated';
+      }
     }
 
     this.checkInterval = setInterval(() => {
       this.checkAuthStatus();
     }, interval);
-    logger.info(
-      `🔄 Started auth checks every ${interval / 1000}s (${this.authState.subscription.isActive ? 'premium' : this.authState.isAuthenticated ? 'authenticated' : 'unauthenticated'})`
-    );
+
+    logger.info(`🔄 Started auth checks every ${interval / 1000}s (${mode})`);
   }
 
   /**
-   * Setup initial authentication detection (only when not authenticated)
+   * Stop aggressive detection timers
+   */
+  private stopAggressiveDetection(): void {
+    if (this.aggressiveDetectionInterval) {
+      clearInterval(this.aggressiveDetectionInterval);
+      this.aggressiveDetectionInterval = null;
+      logger.info('🛑 Stopped aggressive detection');
+    }
+  }
+
+  /**
+   * Enter post-connection aggressive detection mode
+   */
+  public enterPostConnectionMode(): void {
+    logger.info('🚀 Entering post-connection aggressive detection mode');
+    this.isPostConnectionMode = true;
+    this.postConnectionStartTime = Date.now();
+
+    /* Start immediate aggressive detection */
+    this.startAggressiveDetection();
+
+    /* Restart periodic checks with new interval */
+    this.startPeriodicChecks();
+  }
+
+  /**
+   * Start aggressive token detection (rapid polling of bolt2github.com tabs)
+   */
+  private startAggressiveDetection(): void {
+    this.stopAggressiveDetection();
+
+    logger.info('⚡ Starting aggressive token detection');
+    this.aggressiveDetectionInterval = setInterval(async () => {
+      if (!this.authState.isAuthenticated) {
+        const tokenData = await this.extractTokenFromActiveTabs();
+        if (tokenData?.access_token) {
+          logger.info('🎯 Aggressive detection found tokens!');
+          await this.storeTokenData(tokenData);
+          await this.checkAuthStatus();
+
+          if (this.authState.isAuthenticated) {
+            this.stopAggressiveDetection();
+          }
+        }
+      }
+    }, 500) as unknown as number; /* Check every 500ms during aggressive mode */
+  }
+
+  /**
+   * Setup initial authentication detection (enhanced for better onboarding)
    * This monitors bolt2github.com to capture initial login tokens
    */
   private setupInitialAuthDetection(): void {
@@ -170,39 +259,92 @@ export class SupabaseAuthService {
         return;
       }
 
-      logger.info('🔍 Setting up initial authentication detection for bolt2github.com');
+      logger.info('🔍 Setting up enhanced initial authentication detection for bolt2github.com');
 
-      /* Listen for bolt2github.com tab loads to capture initial authentication */
+      /* Enhanced tab monitoring - check on any tab update, not just complete loads */
       chrome.tabs.onUpdated.addListener(async (tabId, changeInfo, tab) => {
-        /* Only check if user is NOT authenticated and tab finished loading */
-        if (
-          !this.authState.isAuthenticated &&
-          changeInfo.status === 'complete' &&
-          tab.url &&
-          tab.url.includes('bolt2github.com')
-        ) {
-          logger.info('🔍 Detected bolt2github.com page load, checking for authentication...');
+        if (!this.authState.isAuthenticated && tab.url && tab.url.includes('bolt2github.com')) {
+          /* Check on both loading and complete states for faster detection */
+          if (changeInfo.status === 'complete' || changeInfo.status === 'loading') {
+            logger.info(
+              `🔍 Detected bolt2github.com ${changeInfo.status}, checking for authentication...`
+            );
 
-          /* Give a moment for the page to fully load and set localStorage */
-          setTimeout(async () => {
-            const tokenData = await this.extractTokenFromTab(tabId);
-            if (tokenData?.access_token) {
-              logger.info('✅ Found authentication tokens on bolt2github.com, storing...');
-              await this.storeTokenData(tokenData);
+            /* Reduced delay for faster detection */
+            setTimeout(
+              async () => {
+                const tokenData = await this.extractTokenFromTab(tabId);
+                if (tokenData?.access_token) {
+                  logger.info('✅ Found authentication tokens on bolt2github.com, storing...');
+                  await this.storeTokenData(tokenData);
 
-              /* Force immediate auth check with new tokens */
-              await this.checkAuthStatus();
+                  /* Force immediate auth check with new tokens */
+                  await this.checkAuthStatus();
 
-              /* If now authenticated, we can stop monitoring bolt2github.com */
-              if (this.authState.isAuthenticated) {
-                logger.info('🎉 Initial authentication successful - extension now independent');
+                  /* If now authenticated, exit onboarding mode */
+                  if (this.authState.isAuthenticated) {
+                    logger.info('🎉 Initial authentication successful - extension now independent');
+                    this.isInitialOnboarding = false;
+                    this.stopAggressiveDetection();
+                  }
+                }
+              },
+              changeInfo.status === 'complete' ? 500 : 1500
+            ); /* Faster for complete loads */
+          }
+
+          /* Also check on URL changes (for SPA navigation) */
+          if (changeInfo.url) {
+            logger.info('🔍 Detected bolt2github.com URL change, checking for authentication...');
+            setTimeout(async () => {
+              const tokenData = await this.extractTokenFromTab(tabId);
+              if (tokenData?.access_token) {
+                logger.info('✅ Found authentication tokens after URL change, storing...');
+                await this.storeTokenData(tokenData);
+                await this.checkAuthStatus();
+
+                if (this.authState.isAuthenticated) {
+                  this.isInitialOnboarding = false;
+                  this.stopAggressiveDetection();
+                }
               }
-            }
-          }, 1000); /* 1 second delay for page load */
+            }, 1000);
+          }
         }
       });
 
-      logger.info('🔍 Initial authentication detection active (monitoring bolt2github.com)');
+      /* Monitor tab activation (when user switches to bolt2github.com tab) */
+      chrome.tabs.onActivated.addListener(async (activeInfo: any) => {
+        if (!this.authState.isAuthenticated) {
+          try {
+            const tab = await chrome.tabs.get(activeInfo.tabId);
+            if (tab.url && tab.url.includes('bolt2github.com')) {
+              logger.info(
+                '🔍 User switched to bolt2github.com tab, checking for authentication...'
+              );
+              setTimeout(async () => {
+                const tokenData = await this.extractTokenFromTab(activeInfo.tabId);
+                if (tokenData?.access_token) {
+                  logger.info('✅ Found authentication tokens on tab activation, storing...');
+                  await this.storeTokenData(tokenData);
+                  await this.checkAuthStatus();
+
+                  if (this.authState.isAuthenticated) {
+                    this.isInitialOnboarding = false;
+                    this.stopAggressiveDetection();
+                  }
+                }
+              }, 500);
+            }
+          } catch (error) {
+            /* Tab might not exist or be accessible */
+          }
+        }
+      });
+
+      logger.info(
+        '🔍 Enhanced initial authentication detection active (monitoring bolt2github.com)'
+      );
     } catch (error) {
       logger.error('Failed to setup initial authentication detection:', error);
     }
@@ -1210,6 +1352,15 @@ export class SupabaseAuthService {
       clearInterval(this.checkInterval);
       this.checkInterval = null;
     }
+
+    this.stopAggressiveDetection();
+
+    /* Reset aggressive detection state */
+    this.isInitialOnboarding = true;
+    this.isPostConnectionMode = false;
+    this.postConnectionStartTime = 0;
+
+    logger.info('🧹 Cleaned up SupabaseAuthService including aggressive detection');
   }
 
   /**

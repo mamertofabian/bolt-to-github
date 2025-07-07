@@ -12,6 +12,7 @@
     ChevronDown,
     ChevronUp,
     Settings,
+    RefreshCw,
   } from 'lucide-svelte';
   import { onMount, tick } from 'svelte';
   import { UnifiedGitHubService } from '../../services/UnifiedGitHubService';
@@ -592,6 +593,16 @@
       // Redirect to bolt2github.com for OAuth flow
       window.open(GITHUB_APP_AUTH_URL, '_blank');
 
+      // Enter aggressive detection mode for faster connection detection
+      try {
+        const { SupabaseAuthService } = await import('../../content/services/SupabaseAuthService');
+        const authService = SupabaseAuthService.getInstance();
+        authService.enterPostConnectionMode();
+        logger.info('🚀 Entered post-connection detection mode for faster GitHub authentication');
+      } catch (importError) {
+        logger.warn('Could not enter post-connection mode:', importError);
+      }
+
       // Show success message
       githubAppConnectionError = null;
     } catch (error) {
@@ -600,6 +611,18 @@
         error instanceof Error ? error.message : 'Failed to connect GitHub App';
     } finally {
       isConnectingGitHubApp = false;
+    }
+  }
+
+  // Manual refresh function for GitHub connection detection
+  async function refreshGitHubConnection() {
+    try {
+      const { SupabaseAuthService } = await import('../../content/services/SupabaseAuthService');
+      const authService = SupabaseAuthService.getInstance();
+      await authService.forceCheck();
+      logger.info('🔄 Manually triggered GitHub connection check');
+    } catch (error) {
+      logger.error('Error refreshing GitHub connection:', error);
     }
   }
 
@@ -821,19 +844,31 @@
                           GitHub App provides secure authentication with automatic token refresh and
                           fine-grained permissions.
                         </p>
-                        <Button
-                          type="button"
-                          class="bg-blue-600 hover:bg-blue-700 text-white"
-                          on:click={connectGitHubApp}
-                          disabled={isConnectingGitHubApp}
-                        >
-                          {#if isConnectingGitHubApp}
-                            <Loader2 class="w-4 h-4 mr-2 animate-spin" />
-                            Connecting...
-                          {:else}
-                            Connect with GitHub
-                          {/if}
-                        </Button>
+                        <div class="flex gap-2">
+                          <Button
+                            type="button"
+                            class="bg-blue-600 hover:bg-blue-700 text-white flex-1"
+                            on:click={connectGitHubApp}
+                            disabled={isConnectingGitHubApp}
+                          >
+                            {#if isConnectingGitHubApp}
+                              <Loader2 class="w-4 h-4 mr-2 animate-spin" />
+                              Connecting...
+                            {:else}
+                              Connect with GitHub
+                            {/if}
+                          </Button>
+                          <Button
+                            type="button"
+                            variant="outline"
+                            size="sm"
+                            class="text-xs px-3"
+                            on:click={refreshGitHubConnection}
+                            title="Manually check for GitHub connection"
+                          >
+                            <RefreshCw class="w-3 h-3" />
+                          </Button>
+                        </div>
                       </div>
 
                       {#if githubAppConnectionError}
