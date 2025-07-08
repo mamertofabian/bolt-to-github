@@ -23,8 +23,7 @@ export class WindowManager {
   private isChromeApiAvailable(): boolean {
     try {
       // Check for chrome API availability in different contexts
-      const chromeGlobal =
-        (globalThis as any).chrome || (window as any)?.chrome || (global as any)?.chrome;
+      const chromeGlobal = chrome;
 
       return (
         chromeGlobal &&
@@ -87,9 +86,31 @@ export class WindowManager {
       const windowWidth = options.width || 420; // Slightly larger than popup for window chrome
       const windowHeight = options.height || 640;
 
-      // Use reasonable default positioning (centered on screen)
-      const left = options.left ?? Math.round((screen.width - windowWidth) / 2);
-      const top = options.top ?? Math.round((screen.height - windowHeight) / 2);
+      // Get screen dimensions using Chrome API
+      let left = options.left;
+      let top = options.top;
+
+      if (left === undefined || top === undefined) {
+        try {
+          // Try to get display info to center the window
+          const displays = await chrome.system.display.getInfo();
+          const primaryDisplay = displays.find((d) => d.isPrimary) || displays[0];
+
+          if (primaryDisplay) {
+            left = left ?? Math.round((primaryDisplay.bounds.width - windowWidth) / 2);
+            top = top ?? Math.round((primaryDisplay.bounds.height - windowHeight) / 2);
+          } else {
+            // Fallback to reasonable defaults if display info is not available
+            left = left ?? 100;
+            top = top ?? 100;
+          }
+        } catch (error) {
+          // Fallback to reasonable defaults if system.display API fails
+          logger.warn('⚠️ Could not get display info, using default positioning:', error);
+          left = left ?? 100;
+          top = top ?? 100;
+        }
+      }
 
       // Create new popup window
       const window = await chrome.windows.create({

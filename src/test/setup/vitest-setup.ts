@@ -82,7 +82,14 @@ vi.stubEnv('VITE_GA4_API_SECRET', 'test-api-secret');
   },
   system: {
     display: {
-      getInfo: vi.fn().mockResolvedValue([]),
+      getInfo: vi.fn().mockResolvedValue([
+        {
+          id: 'display1',
+          name: 'Primary Display',
+          isPrimary: true,
+          bounds: { left: 0, top: 0, width: 1920, height: 1080 },
+        },
+      ]),
     },
   },
   alarms: {
