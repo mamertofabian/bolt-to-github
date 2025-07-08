@@ -1,9 +1,9 @@
-import { ZipProcessor } from '../lib/zip';
-import { CacheService } from './CacheService';
-import { IdleMonitorService } from './IdleMonitorService';
 import type { ProjectFiles } from '$lib/types';
 import { createLogger } from '../lib/utils/logger';
 import { getCurrentProjectId as getProjectIdFromUrl } from '../lib/utils/projectId';
+import { ZipProcessor } from '../lib/zip';
+import { CacheService } from './CacheService';
+import { IdleMonitorService } from './IdleMonitorService';
 
 const logger = createLogger('DownloadService');
 
@@ -189,29 +189,102 @@ export class DownloadService {
   }
 
   /**
-   * Finds and clicks the export button to open the dropdown
+   * Opens the export dropdown. Bolt has had at least two different
+   * header menu structures so we try both:
+   *  1. The classic "Export" button with the `i-ph:export` icon.
+   *  2. The new 3-dots overflow menu (`i-ph:dots-three-vertical`) → "Export" submenu.
+   *
+   * This helper is intentionally defensive so the extension keeps
+   * working even if Bolt tweaks their DOM again.
    */
   private async findAndClickExportButton(): Promise<void> {
-    const exportButton = Array.from(document.querySelectorAll('button[aria-haspopup="menu"]')).find(
-      (btn) => btn.textContent?.includes('Export') && btn.querySelector('.i-ph\\:export')
-    ) as HTMLButtonElement;
+    // Helper: fully simulate a user click (pointerdown→mousedown→mouseup→click)
+    const dispatchFullClick = (el: HTMLElement) => {
+      const opts = { bubbles: true, cancelable: true } as const;
+      el.dispatchEvent(new PointerEvent('pointerdown', opts));
+      el.dispatchEvent(new MouseEvent('mousedown', opts));
+      el.dispatchEvent(new PointerEvent('pointerup', opts));
+      el.dispatchEvent(new MouseEvent('mouseup', opts));
+      // `HTMLElement.click()` will fire the click event after the sequence above
+      (el as HTMLButtonElement).click();
+    };
+    // ---------- STRATEGY 1: Original dedicated Export button ----------
+    const legacyExportButton = Array.from(
+      document.querySelectorAll<HTMLButtonElement>('button[aria-haspopup="menu"]')
+    ).find((btn) => btn.textContent?.includes('Export') && btn.querySelector('.i-ph\\:export'));
 
-    if (!exportButton) {
-      throw new Error('Export button not found');
+    if (legacyExportButton) {
+      logger.info('Found legacy export button:', legacyExportButton);
+      // Trigger the dropdown via keyboard to mimic user interaction
+      legacyExportButton.dispatchEvent(
+        new KeyboardEvent('keydown', {
+          key: 'Enter',
+          bubbles: true,
+          cancelable: true,
+        })
+      );
+
+      // wait briefly for dropdown to render
+      await new Promise((resolve) => setTimeout(resolve, 200));
+      return;
     }
-    logger.info('Found export button:', exportButton);
 
-    // Dispatch keydown event to open dropdown
-    const keydownEvent = new KeyboardEvent('keydown', {
-      key: 'Enter',
+    // ---------- STRATEGY 2: New overflow (3-dots) menu ----------
+    const overflowMenuButton = Array.from(
+      document.querySelectorAll<HTMLButtonElement>('button[aria-haspopup="menu"]')
+    ).find((btn) => btn.querySelector('[class*="i-ph:dots-three-vertical"]'));
+
+    if (!overflowMenuButton) {
+      throw new Error('Export menu trigger not found (legacy or overflow button)');
+    }
+
+    logger.info('Found overflow menu button (dots):', overflowMenuButton);
+
+    // Click to open the first-level menu using full event sequence (Radix listens to pointerdown)
+    dispatchFullClick(overflowMenuButton);
+
+    // Attempt to locate the "Export" menu item with retries (menu can render lazily)
+    let exportMenuItem: HTMLElement | undefined;
+    const maxFindAttempts = 4;
+    for (let i = 0; i < maxFindAttempts && !exportMenuItem; i++) {
+      const waitTime = 150 * (i + 1);
+      logger.info(`Searching for Export menu item (attempt ${i + 1}/${maxFindAttempts})`);
+      await new Promise((resolve) => setTimeout(resolve, waitTime));
+
+      exportMenuItem = Array.from(
+        document.querySelectorAll<HTMLElement>('[role="menuitem"],[data-radix-collection-item]')
+      ).find((el) => {
+        const txt = el.textContent?.toLowerCase() ?? '';
+        return txt.includes('export');
+      });
+    }
+
+    if (!exportMenuItem) {
+      throw new Error('Export menu item not found inside overflow menu after retries');
+    }
+
+    logger.info('Found Export menu item inside overflow:', exportMenuItem);
+
+    // Bolt seems to open sub-menus on hover, but to be safe we fire hover AND click.
+    const pointerOver = new PointerEvent('pointerover', {
       bubbles: true,
       cancelable: true,
+      composed: true,
     });
-    exportButton.dispatchEvent(keydownEvent);
-    logger.info('Dispatched keydown to export button');
+    exportMenuItem.dispatchEvent(pointerOver);
 
-    // Wait for the dropdown to appear
-    await new Promise((resolve) => setTimeout(resolve, 200));
+    exportMenuItem.dispatchEvent(
+      new MouseEvent('mouseover', {
+        bubbles: true,
+        cancelable: true,
+      })
+    );
+
+    // Fallback click in case implementation changed
+    exportMenuItem.click();
+
+    // Wait for nested submenu to render
+    await new Promise((resolve) => setTimeout(resolve, 250));
   }
 
   /**
