@@ -331,7 +331,7 @@ export class SupabaseAuthService {
       });
 
       /* Monitor tab activation (when user switches to bolt2github.com tab) */
-      chrome.tabs.onActivated.addListener(async (activeInfo: any) => {
+      chrome.tabs.onActivated.addListener(async (activeInfo: chrome.tabs.TabActiveInfo) => {
         if (!this.authState.isAuthenticated) {
           try {
             const tab = await chrome.tabs.get(activeInfo.tabId);
@@ -353,7 +353,7 @@ export class SupabaseAuthService {
                 }
               }, 500);
             }
-          } catch (error) {
+          } catch {
             /* Tab might not exist or be accessible */
           }
         }
