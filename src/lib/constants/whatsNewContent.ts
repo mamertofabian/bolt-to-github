@@ -6,6 +6,16 @@ export interface WhatsNewVersion {
 }
 
 export const whatsNewContent: Record<string, WhatsNewVersion> = {
+  '1.3.8': {
+    date: '2025-07-08',
+    highlights: [
+      '🚀 Reliable Export / Download – now works with Bolt’s new 3-dots menu',
+      '⚡ Lighter CPU footprint on project pages',
+      '🛡️ More graceful error handling during downloads',
+    ],
+    details: `Downloads work again! The extension now detects Bolt’s redesigned Export → Download flow and runs with lower resource usage for a smoother experience.`,
+    type: 'minor',
+  },
   '1.3.7': {
     date: '2025-06-25',
     highlights: [

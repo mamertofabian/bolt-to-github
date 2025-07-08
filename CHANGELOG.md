@@ -1,3 +1,13 @@
+## 2025-07-08 – Version 1.3.8
+
+### 🚀 Highlights
+
+- **Reliable Export → Download** – Works with Bolt’s new overflow (three-dots) menu so pushes are back to one-click.
+- **Lower CPU Usage** – Leaner page-watcher logic keeps your browser snappy.
+- **Smoother Error Handling** – Fails gracefully and recovers without page reloads.
+
+Thanks for the quick feedback that helped us ship this fix! 🎉
+
 ## 2025-06-25 - Version 1.3.7
 
 ### 🎉 New Features
