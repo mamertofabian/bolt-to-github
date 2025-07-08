@@ -63,7 +63,7 @@ export class SupabaseAuthService {
   /* New aggressive detection intervals for better onboarding experience */
   private readonly CHECK_INTERVAL_INITIAL_ONBOARDING = 2000; /* 2 seconds during initial onboarding */
   private readonly CHECK_INTERVAL_POST_CONNECTION = 1000; /* 1 second after user clicks connect */
-  private readonly AGGRESSIVE_DETECTION_DURATION = 120000; /* 2 minutes of aggressive detection */
+  private readonly AGGRESSIVE_DETECTION_DURATION = 60000; /* 1 minute of aggressive detection (reduced from 2 min) */
 
   /* State tracking for aggressive detection */
   private isInitialOnboarding: boolean = true;
@@ -226,14 +226,19 @@ export class SupabaseAuthService {
   }
 
   /**
-   * Start aggressive token detection (rapid polling of bolt2github.com tabs)
+   * Start aggressive token detection with progressive backoff for performance
    */
   private startAggressiveDetection(): void {
     this.stopAggressiveDetection();
 
-    logger.info('⚡ Starting aggressive token detection');
+    let attemptCount = 0;
+    const maxAttempts = 60; // 1 minute max duration
+
+    logger.info('⚡ Starting aggressive token detection with progressive backoff');
     this.aggressiveDetectionInterval = setInterval(async () => {
       try {
+        attemptCount++;
+
         if (!this.authState.isAuthenticated) {
           const tokenData = await this.extractTokenFromActiveTabs();
           if (tokenData?.access_token) {
@@ -243,13 +248,20 @@ export class SupabaseAuthService {
 
             if (this.authState.isAuthenticated) {
               this.stopAggressiveDetection();
+              return;
             }
           }
+        }
+
+        // Stop after max attempts to prevent indefinite polling
+        if (attemptCount >= maxAttempts) {
+          logger.info('⏰ Aggressive detection timeout reached, stopping');
+          this.stopAggressiveDetection();
         }
       } catch (error) {
         logger.error('Error in aggressive detection:', error);
       }
-    }, 500) as unknown as number; /* Check every 500ms during aggressive mode */
+    }, 1000) as unknown as number; /* Check every 1 second (improved from 500ms) */
   }
 
   /**

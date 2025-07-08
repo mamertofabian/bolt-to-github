@@ -455,10 +455,14 @@ export class ZipHandler {
 
   /**
    * Trigger re-authentication flow
+   * Note: Dynamic import used intentionally to prevent circular dependency
+   * (zipHandler -> SupabaseAuthService -> GitHubService -> zipHandler)
    */
   private async triggerReAuthentication(): Promise<void> {
     try {
-      // Import SupabaseAuthService dynamically to avoid circular dependencies
+      // ARCHITECTURAL NOTE: Dynamic import prevents circular dependency chain:
+      // This service imports UnifiedGitHubService, which could import SupabaseAuthService,
+      // which imports this service - dynamic import breaks this cycle at runtime
       const { SupabaseAuthService } = await import('../content/services/SupabaseAuthService');
       const authService = SupabaseAuthService.getInstance();
 
