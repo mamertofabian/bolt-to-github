@@ -33,19 +33,13 @@ A Chrome extension that automatically captures ZIP file downloads from bolt.new,
 
 ### Latest Version: v1.3.8 (Development)
 
-#### 📝 Version 1.3.8 - Performance & Stability Improvements
+#### 📝 Version 1.3.8 – Quick Fix Release
 
-**Major Features:**
+**What’s new:**
 
-- **Optimized Authentication Detection** - Reduced aggressive detection CPU usage by 67%
-- **Enhanced Error Handling** - Improved stability with comprehensive error handling and resource cleanup
-- **Code Quality Improvements** - Simplified authentication flow and streamlined message handling
-
-**Key Benefits:**
-
-- **Better Performance** - Reduced resource usage while maintaining fast connection detection
-- **Enhanced Stability** - Improved error handling prevents service crashes and ensures proper cleanup
-- **Simplified Architecture** - Cleaner code structure for better maintainability and debugging
+- **Works with Bolt’s new 3-dots Export menu** – seamless Export → Download interception again.
+- **Lighter on resources** – background observers use less CPU.
+- **More resilient** – graceful errors and self-recovery if something goes wrong.
 
 ### Previous Version: v1.3.7
 

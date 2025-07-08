@@ -7,13 +7,13 @@ export interface WhatsNewVersion {
 
 export const whatsNewContent: Record<string, WhatsNewVersion> = {
   '1.3.8': {
-    date: '2025-01-XX',
+    date: '2025-07-08',
     highlights: [
-      '⚡ Performance Optimization - Reduced aggressive detection CPU usage by 67%',
-      '🛡️ Enhanced Error Handling - Improved stability and resource cleanup',
-      '🔧 Code Quality Improvements - Simplified authentication flow and cleanup',
+      '🚀 Reliable Export / Download – now works with Bolt’s new 3-dots menu',
+      '⚡ Lighter CPU footprint on project pages',
+      '🛡️ More graceful error handling during downloads',
     ],
-    details: `Performance boost with optimized connection detection and enhanced error handling. Reduced resource usage while maintaining fast authentication detection for better user experience.`,
+    details: `Downloads work again! The extension now detects Bolt’s redesigned Export → Download flow and runs with lower resource usage for a smoother experience.`,
     type: 'minor',
   },
   '1.3.7': {

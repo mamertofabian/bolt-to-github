@@ -1,31 +1,12 @@
-## 2025-01-XX - Version 1.3.8
+## 2025-07-08 – Version 1.3.8
 
-### 🔧 Performance & Stability
+### 🚀 Highlights
 
-- **Optimized Authentication Detection** - Reduced aggressive detection interval from 500ms to 1.5s
+- **Reliable Export → Download** – Works with Bolt’s new overflow (three-dots) menu so pushes are back to one-click.
+- **Lower CPU Usage** – Leaner page-watcher logic keeps your browser snappy.
+- **Smoother Error Handling** – Fails gracefully and recovers without page reloads.
 
-  - **67% CPU Usage Reduction** - Decreased API calls from 240 to 80 over 2 minutes
-  - **Enhanced Performance** - Maintains fast connection detection with better resource efficiency
-  - **Smart Timing** - Balanced between responsiveness and system resource usage
-
-- **Enhanced Error Handling** - Improved stability and resource cleanup
-  - **Unhandled Promise Protection** - Added try-catch blocks to prevent service crashes
-  - **Resource Cleanup** - Proper cleanup of detection intervals on timeout
-  - **Runtime Validation** - Added Chrome runtime context validation before messaging
-
-### 🧪 Testing & Quality Improvements
-
-- **Code Quality Enhancements** - Simplified authentication flow architecture
-  - **Reduced Complexity** - Streamlined re-authentication message handling
-  - **Better Maintainability** - Simplified code paths for easier debugging
-  - **Performance Monitoring** - Enhanced logging for better performance tracking
-
-### 📚 Documentation & Development
-
-- **PR Review Integration** - Implemented comprehensive code review feedback
-  - **Performance Concerns** - Addressed aggressive detection frequency issues
-  - **Architecture Improvements** - Enhanced error handling and resource management
-  - **Code Cleanup** - Removed unused code and simplified message flows
+Thanks for the quick feedback that helped us ship this fix! 🎉
 
 ## 2025-06-25 - Version 1.3.7
 
