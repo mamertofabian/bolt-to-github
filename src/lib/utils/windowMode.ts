@@ -59,6 +59,16 @@ export async function openPopupWindow(): Promise<{
       type: 'OPEN_POPUP_WINDOW',
     });
 
+    logger.info('📥 Received response from background service:', response);
+
+    if (!response) {
+      logger.error('❌ No response received from background service');
+      return {
+        success: false,
+        error: 'No response received from background service',
+      };
+    }
+
     if (response.success) {
       logger.info('✅ Popup window opened successfully:', response.windowId);
     } else {

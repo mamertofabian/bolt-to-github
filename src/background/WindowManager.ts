@@ -22,18 +22,9 @@ export class WindowManager {
 
   private isChromeApiAvailable(): boolean {
     try {
-      // Access chrome through eval to avoid TypeScript compilation errors
-      const chromeGlobal = (function () {
-        try {
-          return (
-            (window as any)?.chrome ||
-            (globalThis as any)?.chrome ||
-            eval('globalThis.chrome || global.chrome')
-          );
-        } catch {
-          return null;
-        }
-      })();
+      // Check for chrome API availability in different contexts
+      const chromeGlobal =
+        (globalThis as any).chrome || (window as any)?.chrome || (global as any)?.chrome;
 
       return (
         chromeGlobal &&

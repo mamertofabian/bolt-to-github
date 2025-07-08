@@ -1566,6 +1566,17 @@ export class BackgroundService {
     try {
       logger.info('🪟 Opening popup window');
       const window = await this.windowManager.openPopupWindow();
+
+      if (!window || !window.id) {
+        logger.error('❌ Window creation failed - no window ID returned');
+        sendResponse({
+          success: false,
+          error: 'Failed to create popup window - no window ID returned',
+        });
+        return;
+      }
+
+      logger.info('✅ Popup window created successfully:', window.id);
       sendResponse({ success: true, windowId: window.id });
     } catch (error) {
       logger.error('❌ Failed to open popup window:', error);
