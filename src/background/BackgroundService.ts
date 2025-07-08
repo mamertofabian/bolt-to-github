@@ -22,6 +22,7 @@ import { ZipHandler } from '../services/zipHandler';
 import { StateManager } from './StateManager';
 import { BackgroundTempRepoManager } from './TempRepoManager';
 import { UsageTracker } from './UsageTracker';
+import { WindowManager } from './WindowManager';
 
 const logger = createLogger('BackgroundService');
 
@@ -36,6 +37,7 @@ export class BackgroundService {
   private operationStateManager: OperationStateManager;
   private usageTracker: UsageTracker;
   private syncService: BoltProjectSyncService;
+  private windowManager: WindowManager;
   private keepAliveInterval: NodeJS.Timeout | null = null;
   private lastActivityTime: number = Date.now();
   private authCheckTimeout: NodeJS.Timeout | null = null;
@@ -66,6 +68,7 @@ export class BackgroundService {
     this.operationStateManager = OperationStateManager.getInstance();
     this.usageTracker = new UsageTracker();
     this.syncService = new BoltProjectSyncService();
+    this.windowManager = WindowManager.getInstance();
     this.initialize();
 
     // Track extension lifecycle
@@ -361,6 +364,11 @@ export class BackgroundService {
         // Handle re-authentication request (self-healing)
         logger.info('🔐 Opening re-authentication page for token renewal');
         this.handleOpenReauthentication(message.data, sendResponse);
+        return true; // Will respond asynchronously
+      } else if (message.type === 'OPEN_POPUP_WINDOW') {
+        // Handle popup window opening request
+        logger.info('🪟 Opening popup in window mode');
+        this.handleOpenPopupWindow(sendResponse);
         return true; // Will respond asynchronously
       }
 
@@ -1545,6 +1553,25 @@ export class BackgroundService {
       sendResponse({
         success: false,
         error: error instanceof Error ? error.message : 'Failed to open re-authentication',
+      });
+    }
+  }
+
+  /**
+   * Handle popup window opening request
+   */
+  private async handleOpenPopupWindow(
+    sendResponse: (response: { success: boolean; windowId?: number; error?: string }) => void
+  ): Promise<void> {
+    try {
+      logger.info('🪟 Opening popup window');
+      const window = await this.windowManager.openPopupWindow();
+      sendResponse({ success: true, windowId: window.id });
+    } catch (error) {
+      logger.error('❌ Failed to open popup window:', error);
+      sendResponse({
+        success: false,
+        error: error instanceof Error ? error.message : 'Failed to open popup window',
       });
     }
   }

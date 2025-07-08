@@ -8,7 +8,7 @@
     "48": "assets/icons/icon48.png",
     "128": "assets/icons/icon128.png"
   },
-  "permissions": ["storage", "activeTab", "tabs", "idle", "scripting", "alarms"],
+  "permissions": ["storage", "activeTab", "tabs", "idle", "scripting", "alarms", "system.display"],
   "host_permissions": [
     "https://bolt.new/*",
     "https://api.github.com/*",
