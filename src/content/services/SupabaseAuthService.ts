@@ -164,6 +164,7 @@ export class SupabaseAuthService {
         } else {
           /* Exit post-connection mode after timeout */
           this.isPostConnectionMode = false;
+          this.stopAggressiveDetection();
           interval = this.isInitialOnboarding
             ? this.CHECK_INTERVAL_INITIAL_ONBOARDING
             : this.CHECK_INTERVAL_UNAUTHENTICATED;
@@ -232,17 +233,21 @@ export class SupabaseAuthService {
 
     logger.info('⚡ Starting aggressive token detection');
     this.aggressiveDetectionInterval = setInterval(async () => {
-      if (!this.authState.isAuthenticated) {
-        const tokenData = await this.extractTokenFromActiveTabs();
-        if (tokenData?.access_token) {
-          logger.info('🎯 Aggressive detection found tokens!');
-          await this.storeTokenData(tokenData);
-          await this.checkAuthStatus();
+      try {
+        if (!this.authState.isAuthenticated) {
+          const tokenData = await this.extractTokenFromActiveTabs();
+          if (tokenData?.access_token) {
+            logger.info('🎯 Aggressive detection found tokens!');
+            await this.storeTokenData(tokenData);
+            await this.checkAuthStatus();
 
-          if (this.authState.isAuthenticated) {
-            this.stopAggressiveDetection();
+            if (this.authState.isAuthenticated) {
+              this.stopAggressiveDetection();
+            }
           }
         }
+      } catch (error) {
+        logger.error('Error in aggressive detection:', error);
       }
     }, 500) as unknown as number; /* Check every 500ms during aggressive mode */
   }

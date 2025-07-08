@@ -472,13 +472,15 @@ export class ZipHandler {
 
       // Also send message to background script to open bolt2github.com for re-authentication
       try {
-        await chrome.runtime.sendMessage({
-          type: 'OPEN_REAUTHENTICATION',
-          data: {
-            reason: 'Token expired during upload',
-            action: 'reconnect_github',
-          },
-        });
+        if (chrome.runtime?.id) {
+          await chrome.runtime.sendMessage({
+            type: 'OPEN_REAUTHENTICATION',
+            data: {
+              reason: 'Token expired during upload',
+              action: 'reconnect_github',
+            },
+          });
+        }
       } catch (messageError) {
         // Background script might not be available, ignore
         logger.warn('Could not send re-authentication message to background:', messageError);
