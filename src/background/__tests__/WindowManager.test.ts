@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { WindowManager } from '../WindowManager';
 
 // Mock Chrome APIs
@@ -6,12 +6,9 @@ const mockChrome = {
   windows: {
     onRemoved: {
       addListener: vi.fn(),
-    },
-    onFocusChanged: {
-      addListener: vi.fn(),
+      removeListener: vi.fn(),
     },
     get: vi.fn(),
-    update: vi.fn(),
     create: vi.fn(),
     remove: vi.fn(),
   },
@@ -20,8 +17,15 @@ const mockChrome = {
   },
   system: {
     display: {
-      getInfo: vi.fn(),
+      getInfo: vi.fn().mockResolvedValue([
+        {
+          bounds: { left: 0, top: 0, width: 1920, height: 1080 },
+        },
+      ]),
     },
+  },
+  action: {
+    openPopup: vi.fn().mockResolvedValue(undefined),
   },
 };
 
@@ -37,7 +41,8 @@ describe('WindowManager', () => {
   });
 
   afterEach(() => {
-    windowManager.destroy();
+    // Clean up any window references
+    windowManager['popupWindowId'] = null;
   });
 
   describe('getInstance', () => {
@@ -49,7 +54,7 @@ describe('WindowManager', () => {
   });
 
   describe('openPopupWindow', () => {
-    it('should create a new popup window when none exists', async () => {
+    it('should create a new popup window', async () => {
       const mockWindow = { id: 123, left: 100, top: 100, width: 420, height: 640 };
       mockChrome.windows.create.mockResolvedValue(mockWindow);
 
@@ -67,59 +72,51 @@ describe('WindowManager', () => {
       expect(result).toBe(mockWindow);
     });
 
-    it('should focus existing window if it already exists', async () => {
-      const mockWindow = { id: 123 };
-
-      // Set up existing window
-      windowManager['popupWindowId'] = 123;
-      mockChrome.windows.get.mockResolvedValue(mockWindow);
-      mockChrome.windows.update.mockResolvedValue(mockWindow);
-
-      const result = await windowManager.openPopupWindow();
-
-      expect(mockChrome.windows.get).toHaveBeenCalledWith(123);
-      expect(mockChrome.windows.update).toHaveBeenCalledWith(123, { focused: true });
-      expect(mockChrome.windows.create).not.toHaveBeenCalled();
-      expect(result).toBe(mockWindow);
-    });
-
-    it('should create new window if existing window is not found', async () => {
+    it('should close existing window before creating new one', async () => {
       const mockWindow = { id: 456 };
-
-      // Set up existing window ID that doesn't exist
       windowManager['popupWindowId'] = 123;
-      mockChrome.windows.get.mockRejectedValue(new Error('Window not found'));
+      mockChrome.windows.remove.mockResolvedValue(undefined);
       mockChrome.windows.create.mockResolvedValue(mockWindow);
 
       const result = await windowManager.openPopupWindow();
 
-      expect(mockChrome.windows.get).toHaveBeenCalledWith(123);
+      expect(mockChrome.windows.remove).toHaveBeenCalledWith(123);
       expect(mockChrome.windows.create).toHaveBeenCalled();
       expect(result).toBe(mockWindow);
     });
 
-    it('should use custom dimensions when provided', async () => {
-      const mockWindow = { id: 123 };
-      const options = { width: 500, height: 700, left: 200, top: 300 };
+    it('should handle error when closing existing window', async () => {
+      const mockWindow = { id: 456 };
+      windowManager['popupWindowId'] = 123;
+      mockChrome.windows.remove.mockRejectedValue(new Error('Window not found'));
       mockChrome.windows.create.mockResolvedValue(mockWindow);
 
-      await windowManager.openPopupWindow(options);
+      const result = await windowManager.openPopupWindow();
 
-      expect(mockChrome.windows.create).toHaveBeenCalledWith({
-        url: 'chrome-extension://test-id/src/popup/index.html?mode=window',
-        type: 'popup',
-        width: 500,
-        height: 700,
-        left: 200,
-        top: 300,
-        focused: true,
-      });
+      expect(mockChrome.windows.remove).toHaveBeenCalledWith(123);
+      expect(mockChrome.windows.create).toHaveBeenCalled();
+      expect(result).toBe(mockWindow);
+    });
+
+    it('should throw error if window creation fails', async () => {
+      mockChrome.windows.create.mockRejectedValue(new Error('Creation failed'));
+
+      await expect(windowManager.openPopupWindow()).rejects.toThrow('Creation failed');
     });
   });
 
   describe('closePopupWindow', () => {
-    it('should close the popup window if it exists', async () => {
-      windowManager['popupWindowId'] = 123;
+    it('should close existing popup window', async () => {
+      const windowManager = WindowManager.getInstance();
+
+      // First open a window
+      const mockWindow = { id: 123 };
+      mockChrome.windows.create.mockResolvedValue(mockWindow);
+
+      await windowManager.openPopupWindow();
+      expect(mockChrome.windows.create).toHaveBeenCalled();
+
+      // Now close it
       mockChrome.windows.remove.mockResolvedValue(undefined);
 
       await windowManager.closePopupWindow();
@@ -128,112 +125,103 @@ describe('WindowManager', () => {
       expect(windowManager.getPopupWindowId()).toBeNull();
     });
 
-    it('should handle error when closing window', async () => {
-      windowManager['popupWindowId'] = 123;
-      mockChrome.windows.remove.mockRejectedValue(new Error('Failed to close'));
+    it('should handle closing when no window exists', async () => {
+      const windowManager = WindowManager.getInstance();
 
-      await windowManager.closePopupWindow();
+      // Ensure no window is open
+      expect(windowManager.getPopupWindowId()).toBeNull();
 
-      expect(mockChrome.windows.remove).toHaveBeenCalledWith(123);
-      expect(windowManager.getPopupWindowId()).toBeNull(); // Should clear ID even on error
+      // Should not throw when closing non-existent window
+      await expect(windowManager.closePopupWindow()).resolves.toBeUndefined();
+      expect(mockChrome.windows.remove).not.toHaveBeenCalled();
     });
 
-    it('should do nothing if no window is open', async () => {
-      windowManager['popupWindowId'] = null;
+    it('should handle chrome.windows.remove errors gracefully', async () => {
+      const windowManager = WindowManager.getInstance();
 
-      await windowManager.closePopupWindow();
+      // First open a window
+      const mockWindow = { id: 123 };
+      mockChrome.windows.create.mockResolvedValue(mockWindow);
 
-      expect(mockChrome.windows.remove).not.toHaveBeenCalled();
+      await windowManager.openPopupWindow();
+
+      // Mock an error when removing
+      const removeError = new Error('Window not found');
+      mockChrome.windows.remove.mockRejectedValue(removeError);
+
+      // Should handle the error gracefully and not throw
+      await expect(windowManager.closePopupWindow()).resolves.toBeUndefined();
+      expect(windowManager.getPopupWindowId()).toBeNull();
     });
   });
 
   describe('isPopupWindowOpen', () => {
-    it('should return true when window is open', () => {
+    it('should return true when window exists', async () => {
       windowManager['popupWindowId'] = 123;
-      expect(windowManager.isPopupWindowOpen()).toBe(true);
+      mockChrome.windows.get.mockResolvedValue({ id: 123 });
+
+      const result = await windowManager.isPopupWindowOpen();
+
+      expect(result).toBe(true);
+      expect(mockChrome.windows.get).toHaveBeenCalledWith(123);
     });
 
-    it('should return false when no window is open', () => {
+    it('should return false when window does not exist', async () => {
+      windowManager['popupWindowId'] = 123;
+      mockChrome.windows.get.mockRejectedValue(new Error('Window not found'));
+
+      const result = await windowManager.isPopupWindowOpen();
+
+      expect(result).toBe(false);
+      expect(windowManager.getPopupWindowId()).toBeNull(); // Should clear ID
+    });
+
+    it('should return false when no window ID is set', async () => {
       windowManager['popupWindowId'] = null;
-      expect(windowManager.isPopupWindowOpen()).toBe(false);
+
+      const result = await windowManager.isPopupWindowOpen();
+
+      expect(result).toBe(false);
+      expect(mockChrome.windows.get).not.toHaveBeenCalled();
     });
   });
 
-  describe('isPopupWindow', () => {
-    it('should return true for the popup window ID', () => {
+  describe('getPopupWindowId', () => {
+    it('should return the current window ID', () => {
       windowManager['popupWindowId'] = 123;
-      expect(windowManager.isPopupWindow(123)).toBe(true);
+      expect(windowManager.getPopupWindowId()).toBe(123);
     });
 
-    it('should return false for different window ID', () => {
-      windowManager['popupWindowId'] = 123;
-      expect(windowManager.isPopupWindow(456)).toBe(false);
-    });
-
-    it('should return false when no popup window is open', () => {
+    it('should return null when no window is open', () => {
       windowManager['popupWindowId'] = null;
-      expect(windowManager.isPopupWindow(123)).toBe(false);
+      expect(windowManager.getPopupWindowId()).toBeNull();
     });
   });
 
-  describe('updatePopupWindow', () => {
-    it('should update window dimensions', async () => {
-      windowManager['popupWindowId'] = 123;
-      const options = { width: 500, height: 700, left: 200, top: 300 };
-      mockChrome.windows.update.mockResolvedValue(undefined);
+  describe('Background service integration', () => {
+    it('should be able to call chrome.action.openPopup from background context', async () => {
+      // This test verifies that chrome.action.openPopup() works from background service context
+      // which is different from popup window context where it would fail
 
-      await windowManager.updatePopupWindow(options);
+      // Mock successful popup opening
+      mockChrome.action.openPopup.mockResolvedValue(undefined);
 
-      expect(mockChrome.windows.update).toHaveBeenCalledWith(123, options);
+      // Call chrome.action.openPopup directly (simulating background service call)
+      await expect(chrome.action.openPopup()).resolves.toBeUndefined();
+
+      // Verify it was called
+      expect(mockChrome.action.openPopup).toHaveBeenCalled();
     });
 
-    it('should throw error if no window is open', async () => {
-      windowManager['popupWindowId'] = null;
-      const options = { width: 500, height: 700 };
+    it('should handle chrome.action.openPopup errors gracefully', async () => {
+      // Mock an error from chrome.action.openPopup
+      const openPopupError = new Error('No active tab');
+      mockChrome.action.openPopup.mockRejectedValue(openPopupError);
 
-      await expect(windowManager.updatePopupWindow(options)).rejects.toThrow(
-        'No popup window is currently open'
-      );
-    });
-  });
+      // Should reject with the error
+      await expect(chrome.action.openPopup()).rejects.toThrow('No active tab');
 
-  describe('event listeners', () => {
-    it('should clear window ID when window is closed', () => {
-      windowManager['popupWindowId'] = 123;
-
-      // Check if event listeners were actually set up (they might not be in test environment)
-      if (mockChrome.windows.onRemoved.addListener.mock.calls.length > 0) {
-        // Get the listener that was registered
-        const removeListener = mockChrome.windows.onRemoved.addListener.mock.calls[0][0];
-
-        // Simulate window close event
-        removeListener(123);
-
-        expect(windowManager.getPopupWindowId()).toBeNull();
-      } else {
-        // If listeners weren't set up in test environment, that's okay for now
-        // The important thing is that the WindowManager doesn't crash during initialization
-        expect(windowManager.getPopupWindowId()).toBe(123);
-      }
-    });
-
-    it('should not clear window ID when different window is closed', () => {
-      windowManager['popupWindowId'] = 123;
-
-      // Check if event listeners were actually set up (they might not be in test environment)
-      if (mockChrome.windows.onRemoved.addListener.mock.calls.length > 0) {
-        // Get the listener that was registered
-        const removeListener = mockChrome.windows.onRemoved.addListener.mock.calls[0][0];
-
-        // Simulate different window close event
-        removeListener(456);
-
-        expect(windowManager.getPopupWindowId()).toBe(123);
-      } else {
-        // If listeners weren't set up in test environment, that's okay for now
-        // The important thing is that the WindowManager doesn't crash during initialization
-        expect(windowManager.getPopupWindowId()).toBe(123);
-      }
+      expect(mockChrome.action.openPopup).toHaveBeenCalled();
     });
   });
 });

@@ -2,40 +2,11 @@ import { createLogger } from '../lib/utils/logger';
 
 const logger = createLogger('WindowManager');
 
-interface PopupWindowOptions {
-  width?: number;
-  height?: number;
-  left?: number;
-  top?: number;
-}
-
 export class WindowManager {
   private static instance: WindowManager | null = null;
   private popupWindowId: number | null = null;
 
-  private constructor() {
-    // Set up window management listeners only if Chrome APIs are available
-    if (this.isChromeApiAvailable()) {
-      this.setupListeners();
-    }
-  }
-
-  private isChromeApiAvailable(): boolean {
-    try {
-      // Check for chrome API availability in different contexts
-      const chromeGlobal = chrome;
-
-      return (
-        chromeGlobal &&
-        chromeGlobal.windows &&
-        chromeGlobal.windows.onRemoved &&
-        chromeGlobal.windows.onFocusChanged &&
-        typeof chromeGlobal.windows.onRemoved.addListener === 'function'
-      );
-    } catch {
-      return false;
-    }
-  }
+  private constructor() {}
 
   public static getInstance(): WindowManager {
     if (!WindowManager.instance) {
@@ -44,75 +15,44 @@ export class WindowManager {
     return WindowManager.instance;
   }
 
-  private setupListeners(): void {
-    // Listen for window close events
-    chrome.windows.onRemoved.addListener((windowId: number) => {
-      if (this.popupWindowId === windowId) {
-        logger.info('🪟 Popup window closed:', windowId);
-        this.popupWindowId = null;
-      }
-    });
-
-    // Listen for window focus events to handle existing window management
-    chrome.windows.onFocusChanged.addListener((windowId: number) => {
-      if (windowId === this.popupWindowId) {
-        logger.debug('🪟 Popup window focused:', windowId);
-      }
-    });
-  }
-
   /**
-   * Opens the popup content in a new window or focuses existing window
+   * Open popup content in a new window
    */
-  public async openPopupWindow(options: PopupWindowOptions = {}): Promise<chrome.windows.Window> {
+  async openPopupWindow(): Promise<chrome.windows.Window | null> {
     try {
-      // Check if popup window already exists
+      logger.info('🪟 Opening popup window...');
+
+      // Get display info for window positioning
+      const displays = await chrome.system.display.getInfo();
+      const primaryDisplay = displays[0];
+
+      if (!primaryDisplay) {
+        throw new Error('No display information available');
+      }
+
+      const windowWidth = 420;
+      const windowHeight = 640;
+
+      // Center the window on the primary display
+      const left = Math.round(
+        primaryDisplay.bounds.left + (primaryDisplay.bounds.width - windowWidth) / 2
+      );
+      const top = Math.round(
+        primaryDisplay.bounds.top + (primaryDisplay.bounds.height - windowHeight) / 2
+      );
+
+      // Close existing popup window if it exists
       if (this.popupWindowId) {
         try {
-          const existingWindow = await chrome.windows.get(this.popupWindowId);
-          if (existingWindow) {
-            // Focus existing window
-            await chrome.windows.update(this.popupWindowId, { focused: true });
-            logger.info('🪟 Focused existing popup window:', this.popupWindowId);
-            return existingWindow;
-          }
-        } catch {
-          // Window no longer exists, clear the ID
-          this.popupWindowId = null;
-        }
-      }
-
-      // Calculate window position
-      const windowWidth = options.width || 420; // Slightly larger than popup for window chrome
-      const windowHeight = options.height || 640;
-
-      // Get screen dimensions using Chrome API
-      let left = options.left;
-      let top = options.top;
-
-      if (left === undefined || top === undefined) {
-        try {
-          // Try to get display info to center the window
-          const displays = await chrome.system.display.getInfo();
-          const primaryDisplay = displays.find((d) => d.isPrimary) || displays[0];
-
-          if (primaryDisplay) {
-            left = left ?? Math.round((primaryDisplay.bounds.width - windowWidth) / 2);
-            top = top ?? Math.round((primaryDisplay.bounds.height - windowHeight) / 2);
-          } else {
-            // Fallback to reasonable defaults if display info is not available
-            left = left ?? 100;
-            top = top ?? 100;
-          }
+          await chrome.windows.remove(this.popupWindowId);
+          logger.info('🗑️ Closed existing popup window');
         } catch (error) {
-          // Fallback to reasonable defaults if system.display API fails
-          logger.warn('⚠️ Could not get display info, using default positioning:', error);
-          left = left ?? 100;
-          top = top ?? 100;
+          logger.warn('⚠️ Could not close existing window (may already be closed)');
         }
+        this.popupWindowId = null;
       }
 
-      // Create new popup window
+      // Create the new popup window
       const window = await chrome.windows.create({
         url: chrome.runtime.getURL('src/popup/index.html?mode=window'),
         type: 'popup',
@@ -123,88 +63,66 @@ export class WindowManager {
         focused: true,
       });
 
-      if (window?.id) {
+      if (window && window.id) {
         this.popupWindowId = window.id;
-        logger.info('🪟 Created new popup window:', window.id, {
-          width: windowWidth,
-          height: windowHeight,
-          left,
-          top,
-        });
+        logger.info(`✅ Popup window created successfully: ${window.id}`);
+
+        // Set up window close listener to clean up
+        const onWindowRemoved = (windowId: number) => {
+          if (windowId === this.popupWindowId) {
+            logger.info('🪟 Popup window closed, cleaning up');
+            this.popupWindowId = null;
+            chrome.windows.onRemoved.removeListener(onWindowRemoved);
+          }
+        };
+        chrome.windows.onRemoved.addListener(onWindowRemoved);
       }
 
-      return window!;
+      return window;
     } catch (error) {
       logger.error('❌ Failed to open popup window:', error);
-      throw new Error(`Failed to open popup window: ${error}`);
+      throw error;
     }
   }
 
   /**
-   * Closes the popup window if it exists
+   * Get the current popup window ID
    */
-  public async closePopupWindow(): Promise<void> {
-    if (this.popupWindowId) {
-      try {
-        await chrome.windows.remove(this.popupWindowId);
-        logger.info('🪟 Closed popup window:', this.popupWindowId);
-        this.popupWindowId = null;
-      } catch (error) {
-        logger.warn('⚠️ Failed to close popup window:', error);
-        this.popupWindowId = null; // Clear ID even if close failed
-      }
-    }
-  }
-
-  /**
-   * Checks if a popup window is currently open
-   */
-  public isPopupWindowOpen(): boolean {
-    return this.popupWindowId !== null;
-  }
-
-  /**
-   * Gets the current popup window ID if it exists
-   */
-  public getPopupWindowId(): number | null {
+  getPopupWindowId(): number | null {
     return this.popupWindowId;
   }
 
   /**
-   * Checks if the given window ID is our popup window
+   * Check if popup window is currently open
    */
-  public isPopupWindow(windowId: number): boolean {
-    return this.popupWindowId === windowId;
-  }
-
-  /**
-   * Updates window size and position
-   */
-  public async updatePopupWindow(options: PopupWindowOptions): Promise<void> {
+  async isPopupWindowOpen(): Promise<boolean> {
     if (!this.popupWindowId) {
-      throw new Error('No popup window is currently open');
+      return false;
     }
 
     try {
-      await chrome.windows.update(this.popupWindowId, {
-        width: options.width,
-        height: options.height,
-        left: options.left,
-        top: options.top,
-      });
-      logger.info('🪟 Updated popup window:', this.popupWindowId, options);
+      await chrome.windows.get(this.popupWindowId);
+      return true;
     } catch (error) {
-      logger.error('❌ Failed to update popup window:', error);
-      throw new Error(`Failed to update popup window: ${error}`);
+      // Window doesn't exist anymore
+      this.popupWindowId = null;
+      return false;
     }
   }
 
-  public destroy(): void {
-    // Clean up any resources if needed
+  /**
+   * Close the popup window if it's open
+   */
+  async closePopupWindow(): Promise<void> {
     if (this.popupWindowId) {
-      this.closePopupWindow().catch((error) => {
-        logger.error('❌ Error closing popup window during destroy:', error);
-      });
+      try {
+        await chrome.windows.remove(this.popupWindowId);
+        logger.info('🗑️ Popup window closed successfully');
+      } catch (error) {
+        logger.warn('⚠️ Could not close popup window:', error);
+      } finally {
+        this.popupWindowId = null;
+      }
     }
   }
 }

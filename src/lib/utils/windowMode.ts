@@ -103,6 +103,30 @@ export function getWindowTitle(): string {
 }
 
 /**
+ * Close the popup window and open the regular extension popup
+ */
+export async function closePopupWindow(): Promise<{ success: boolean; error?: string }> {
+  try {
+    logger.info('🔄 Closing popup window and opening regular popup...');
+
+    const response = await chrome.runtime.sendMessage({
+      type: 'CLOSE_POPUP_WINDOW',
+    });
+
+    if (response?.success) {
+      logger.info('✅ Successfully switched back to popup mode');
+      return { success: true };
+    } else {
+      logger.error('❌ Failed to switch back to popup mode:', response?.error);
+      return { success: false, error: response?.error || 'Unknown error' };
+    }
+  } catch (error) {
+    logger.error('❌ Error communicating with background service:', error);
+    return { success: false, error: `Communication error: ${error}` };
+  }
+}
+
+/**
  * State synchronization utility for cross-mode communication
  */
 export class WindowModeStateSync {

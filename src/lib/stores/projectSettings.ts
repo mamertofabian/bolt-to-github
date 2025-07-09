@@ -1,6 +1,6 @@
-import { writable, derived, type Writable } from 'svelte/store';
-import { createLogger } from '../utils/logger';
+import { derived, writable, type Writable } from 'svelte/store';
 import { ChromeStorageService } from '../services/chromeStorage';
+import { createLogger } from '../utils/logger';
 import { extractProjectIdFromUrl } from '../utils/projectId';
 
 const logger = createLogger('ProjectSettingsStore');
