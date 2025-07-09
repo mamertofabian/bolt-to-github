@@ -1,24 +1,8 @@
-## 2025-XX-XX - Version 1.3.9
+## 2025-07-09 - Version 1.3.9
 
-### 🎉 New Features
+### 🪟 Pop-out Window Mode
 
-- [Placeholder for new features]
-
-### 🔧 Performance & Stability
-
-- [Placeholder for performance improvements]
-
-### 🧪 Testing & Quality
-
-- [Placeholder for testing improvements]
-
-### 🐛 Bug Fixes
-
-- [Placeholder for bug fixes]
-
-### 📚 Documentation
-
-- [Placeholder for documentation updates]
+- Open the extension in its own window so it stays visible while you work
 
 ## 2025-07-08 – Version 1.3.8
 

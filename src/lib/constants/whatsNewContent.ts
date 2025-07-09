@@ -7,13 +7,11 @@ export interface WhatsNewVersion {
 
 export const whatsNewContent: Record<string, WhatsNewVersion> = {
   '1.3.9': {
-    date: '2025-XX-XX',
+    date: '2025-07-09',
     highlights: [
-      '🚀 [Placeholder for highlight 1]',
-      '⚡ [Placeholder for highlight 2]',
-      '🛡️ [Placeholder for highlight 3]',
+      '🪟 Pop-out mode – open the extension in its own window that never closes when you click away',
     ],
-    details: `[Placeholder for detailed description of version 1.3.9 features and improvements]`,
+    details: `You can now pop the extension out into a dedicated window! Click the new pop-out button in the header and keep the UI visible while you work elsewhere.`,
     type: 'minor',
   },
   '1.3.8': {

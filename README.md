@@ -33,13 +33,11 @@ A Chrome extension that automatically captures ZIP file downloads from bolt.new,
 
 ### Latest Version: v1.3.9 (Development)
 
-#### 📝 Version 1.3.9 – Coming Soon
+#### 📝 Version 1.3.9 – Pop-out Window Release
 
-**What's new:**
+**What’s new:**
 
-- [Placeholder for new features]
-- [Placeholder for improvements]
-- [Placeholder for bug fixes]
+- **Pop-out window mode** – Keep the extension open in its own dedicated window that never closes when you click away.
 
 ### Previous Version: v1.3.8
 
