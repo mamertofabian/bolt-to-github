@@ -22,24 +22,35 @@ export class WindowManager {
     try {
       logger.info('🪟 Opening popup window...');
 
-      // Get display info for window positioning
-      const displays = await chrome.system.display.getInfo();
-      const primaryDisplay = displays[0];
-
-      if (!primaryDisplay) {
-        throw new Error('No display information available');
-      }
-
       const windowWidth = 420;
       const windowHeight = 640;
 
-      // Center the window on the primary display
-      const left = Math.round(
-        primaryDisplay.bounds.left + (primaryDisplay.bounds.width - windowWidth) / 2
-      );
-      const top = Math.round(
-        primaryDisplay.bounds.top + (primaryDisplay.bounds.height - windowHeight) / 2
-      );
+      let left = 100; // Default fallback
+      let top = 100; // Default fallback
+
+      try {
+        // Get the current focused window to position relative to it
+        const currentWindow = await chrome.windows.getLastFocused();
+
+        if (
+          currentWindow &&
+          currentWindow.left !== undefined &&
+          currentWindow.top !== undefined &&
+          currentWindow.width
+        ) {
+          // Position the popup near the top-right of the current window
+          // This ensures it appears on the same monitor as the browser window
+          left = currentWindow.left + currentWindow.width - windowWidth - 100;
+          top = currentWindow.top + 120; // A bit below the browser's top bar
+
+          logger.info(`📍 Positioning popup relative to current window: left=${left}, top=${top}`);
+        } else {
+          logger.warn('⚠️ Could not get current window position, using default positioning');
+        }
+      } catch (error) {
+        logger.warn('⚠️ Failed to get current window position:', error);
+        // Will use default positioning
+      }
 
       // Close existing popup window if it exists
       if (this.popupWindowId) {

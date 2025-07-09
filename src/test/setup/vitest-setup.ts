@@ -71,6 +71,13 @@ vi.stubEnv('VITE_GA4_API_SECRET', 'test-api-secret');
     update: vi.fn().mockResolvedValue({}),
     create: vi.fn().mockResolvedValue({ id: 1 }),
     remove: vi.fn().mockResolvedValue(undefined),
+    getLastFocused: vi.fn().mockResolvedValue({
+      id: 1,
+      left: 100,
+      top: 100,
+      width: 1200,
+      height: 800,
+    }),
     onRemoved: {
       addListener: vi.fn(),
       removeListener: vi.fn(),
@@ -80,18 +87,7 @@ vi.stubEnv('VITE_GA4_API_SECRET', 'test-api-secret');
       removeListener: vi.fn(),
     },
   },
-  system: {
-    display: {
-      getInfo: vi.fn().mockResolvedValue([
-        {
-          id: 'display1',
-          name: 'Primary Display',
-          isPrimary: true,
-          bounds: { left: 0, top: 0, width: 1920, height: 1080 },
-        },
-      ]),
-    },
-  },
+
   alarms: {
     create: vi.fn(),
     get: vi.fn(),

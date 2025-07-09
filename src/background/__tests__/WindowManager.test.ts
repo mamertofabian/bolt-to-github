@@ -11,19 +11,18 @@ const mockChrome = {
     get: vi.fn(),
     create: vi.fn(),
     remove: vi.fn(),
+    getLastFocused: vi.fn().mockResolvedValue({
+      id: 1,
+      left: 100,
+      top: 100,
+      width: 1200,
+      height: 800,
+    }),
   },
   runtime: {
     getURL: vi.fn((path: string) => `chrome-extension://test-id/${path}`),
   },
-  system: {
-    display: {
-      getInfo: vi.fn().mockResolvedValue([
-        {
-          bounds: { left: 0, top: 0, width: 1920, height: 1080 },
-        },
-      ]),
-    },
-  },
+
   action: {
     openPopup: vi.fn().mockResolvedValue(undefined),
   },
