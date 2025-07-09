@@ -134,9 +134,9 @@ export class BackgroundService {
     logStorage.rotateLogs();
 
     // Set up rotation using chrome.alarms for reliability
-    // Check every 30 minutes for time-based log cleanup (more frequent due to reduced retention)
-    // Retains logs newer than 2 hours for debugging while preventing unbounded growth
-    chrome.alarms.create('logRotation', { periodInMinutes: 30 }); // Reduced from 180 to 30 minutes
+    // Check every hour for time-based log cleanup (balanced frequency for 4-hour retention)
+    // Retains logs newer than 4 hours for debugging while preventing unbounded growth
+    chrome.alarms.create('logRotation', { periodInMinutes: 60 }); // Balanced interval for efficient cleanup
 
     // Also check and rotate logs when the service worker wakes up
     // This handles cases where the interval might be cleared

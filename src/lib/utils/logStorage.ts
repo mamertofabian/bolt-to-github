@@ -29,7 +29,7 @@ export class LogStorageManager {
   private readonly MAX_MEMORY_ENTRIES = 500;
   private readonly MAX_BATCH_SIZE = 50;
   private readonly WRITE_INTERVAL = 30000;
-  private readonly LOG_RETENTION_HOURS = 2;
+  private readonly LOG_RETENTION_HOURS = 4;
   private readonly MAX_LOG_ENTRIES = 2000;
   private readonly STORAGE_KEY_PREFIX = 'bolt_logs_';
   private readonly CURRENT_BATCH_KEY = 'bolt_logs_current';
@@ -64,7 +64,7 @@ export class LogStorageManager {
         const hoursSinceRotation = (now.getTime() - lastRotation.getTime()) / (1000 * 60 * 60);
 
         if (hoursSinceRotation >= this.LOG_RETENTION_HOURS) {
-          // Rotation is overdue
+          // Rotation is overdue, clean up old logs
           this.rotateLogs();
         }
       }
