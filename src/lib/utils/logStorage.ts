@@ -26,14 +26,15 @@ export class LogStorageManager {
   private memoryBuffer: LogEntry[] = [];
   private pendingWrites: LogEntry[] = [];
   private writeTimer: number | null = null;
-  private readonly MAX_MEMORY_ENTRIES = 1000;
-  private readonly MAX_BATCH_SIZE = 100;
-  private readonly WRITE_INTERVAL = 10000; // 10 seconds
-  private readonly LOG_RETENTION_HOURS = 12;
-  private readonly MAX_LOG_ENTRIES = 10000; // Fallback limit to prevent unbounded growth
+  private readonly MAX_MEMORY_ENTRIES = 500;
+  private readonly MAX_BATCH_SIZE = 50;
+  private readonly WRITE_INTERVAL = 30000;
+  private readonly LOG_RETENTION_HOURS = 2;
+  private readonly MAX_LOG_ENTRIES = 2000;
   private readonly STORAGE_KEY_PREFIX = 'bolt_logs_';
   private readonly CURRENT_BATCH_KEY = 'bolt_logs_current';
   private readonly METADATA_KEY = 'bolt_logs_metadata';
+  private quotaExceeded = false;
 
   private constructor() {
     this.initializeStorage();
@@ -160,6 +161,7 @@ export class LogStorageManager {
   private async flushPendingWrites(): Promise<void> {
     if (this.pendingWrites.length === 0) return;
     if (!chrome.storage || !chrome.storage.local) return;
+    if (this.quotaExceeded) return;
 
     const entriesToWrite = [...this.pendingWrites];
     this.pendingWrites = [];
@@ -170,15 +172,35 @@ export class LogStorageManager {
       const currentBatch = (result[this.CURRENT_BATCH_KEY] as LogEntry[]) || [];
       const updatedBatch = [...currentBatch, ...entriesToWrite];
 
+      // Limit batch size to prevent unbounded growth
+      const limitedBatch = updatedBatch.slice(-this.MAX_LOG_ENTRIES);
+
       // Save updated batch
-      await chrome.storage.local.set({ [this.CURRENT_BATCH_KEY]: updatedBatch });
+      await chrome.storage.local.set({ [this.CURRENT_BATCH_KEY]: limitedBatch });
 
       // Update metadata
       await this.updateMetadata();
+
+      // Reset quota exceeded flag on successful write
+      this.quotaExceeded = false;
     } catch (error) {
-      console.error('Failed to write logs to storage:', error);
-      // Re-add entries to pending if write failed
-      this.pendingWrites.unshift(...entriesToWrite);
+      // Check if it's a quota exceeded error
+      if (error instanceof Error && error.message.includes('quota exceeded')) {
+        this.quotaExceeded = true;
+        console.warn('Storage quota exceeded, triggering emergency log cleanup');
+
+        // Trigger emergency cleanup without logging to prevent infinite loops
+        this.emergencyCleanup().catch(() => {
+          // Silent fail to prevent cascading errors
+        });
+      } else {
+        console.error('Failed to write logs to storage:', error);
+      }
+
+      // Don't re-add entries to pending if quota is exceeded
+      if (!this.quotaExceeded) {
+        this.pendingWrites.unshift(...entriesToWrite);
+      }
     }
   }
 
@@ -322,19 +344,6 @@ export class LogStorageManager {
     return this.memoryBuffer.slice(-count);
   }
 
-  async clearAllLogs(): Promise<void> {
-    if (!chrome.storage || !chrome.storage.local) return;
-
-    const keys = await this.getAllLogKeys();
-
-    if (keys.length > 0) {
-      await chrome.storage.local.remove(keys);
-    }
-
-    this.memoryBuffer = [];
-    this.pendingWrites = [];
-  }
-
   async exportLogs(format: 'json' | 'text' = 'json'): Promise<string> {
     const logs = await this.getAllLogs();
 
@@ -357,4 +366,89 @@ export class LogStorageManager {
     }
     this.flushPendingWrites();
   }
+
+  /**
+   * Emergency cleanup when storage quota is exceeded
+   */
+  private async emergencyCleanup(): Promise<void> {
+    try {
+      if (!chrome.storage || !chrome.storage.local) return;
+
+      // Clear current batch to free up space immediately
+      await chrome.storage.local.set({ [this.CURRENT_BATCH_KEY]: [] });
+
+      // Get all log keys and remove old batches aggressively
+      const allKeys = await this.getAllLogKeys();
+      const keysToRemove = allKeys.filter(
+        (key) => key !== this.CURRENT_BATCH_KEY && key !== this.METADATA_KEY
+      );
+
+      if (keysToRemove.length > 0) {
+        await chrome.storage.local.remove(keysToRemove);
+      }
+
+      // Clear memory buffers
+      this.memoryBuffer = [];
+      this.pendingWrites = [];
+
+      // Update metadata to reflect cleanup
+      await chrome.storage.local.set({
+        [this.METADATA_KEY]: {
+          lastWrite: new Date().toISOString(),
+          lastRotation: new Date().toISOString(),
+          totalEntries: 0,
+          emergencyCleanup: new Date().toISOString(),
+        },
+      });
+
+      // Reset quota flag after cleanup
+      this.quotaExceeded = false;
+    } catch (error) {
+      // Silent fail to prevent cascading errors during emergency cleanup
+    }
+  }
+
+  /**
+   * Clear all logs immediately (public method for emergency use)
+   */
+  async clearAllLogs(): Promise<void> {
+    try {
+      if (!chrome.storage || !chrome.storage.local) return;
+
+      const keys = await this.getAllLogKeys();
+      if (keys.length > 0) {
+        await chrome.storage.local.remove(keys);
+      }
+
+      this.memoryBuffer = [];
+      this.pendingWrites = [];
+      this.quotaExceeded = false;
+
+      // Reset metadata
+      await chrome.storage.local.set({
+        [this.METADATA_KEY]: {
+          lastWrite: new Date().toISOString(),
+          lastRotation: new Date().toISOString(),
+          totalEntries: 0,
+          manualClear: new Date().toISOString(),
+        },
+      });
+    } catch (error) {
+      // Silent fail
+    }
+  }
+}
+
+/**
+ * Utility function to trigger emergency log clearing from popup/content scripts
+ */
+export async function clearLogsEmergency(): Promise<{ success: boolean; error?: string }> {
+  return new Promise((resolve) => {
+    chrome.runtime.sendMessage(
+      { type: 'CLEAR_LOGS_EMERGENCY' },
+      (response: { success: boolean; error?: string }) => {
+        resolve(response || { success: false, error: 'No response received' });
+      }
+    );
+  });
 }
