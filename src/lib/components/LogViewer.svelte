@@ -1,11 +1,12 @@
 <script lang="ts">
-  import { onMount, onDestroy } from 'svelte';
-  import { getLogStorage, clearLogs, exportLogsForBugReport } from '$lib/utils/logger';
-  import type { LogEntry } from '$lib/utils/logStorage';
+  import { Badge } from '$lib/components/ui/badge';
   import { Button } from '$lib/components/ui/button';
   import { Input } from '$lib/components/ui/input';
-  import { Badge } from '$lib/components/ui/badge';
+  import { clearLogs, exportLogsForBugReport, getLogStorage } from '$lib/utils/logger';
+  import type { LogEntry } from '$lib/utils/logStorage';
+  import { clearLogsEmergency } from '$lib/utils/logStorage';
   import { X } from 'lucide-svelte';
+  import { onDestroy, onMount } from 'svelte';
 
   let logs: LogEntry[] = [];
   let filteredLogs: LogEntry[] = [];
@@ -17,6 +18,7 @@
   let autoRefresh = true;
   let refreshInterval: number | null = null;
   let isExporting = false;
+  let isClearingEmergency = false;
   let autoScroll = true;
   let logsContainer: HTMLDivElement;
   let isUserScrolling = false;
@@ -82,6 +84,18 @@
     if (confirm('Are you sure you want to clear all logs?')) {
       await clearLogs();
       await loadLogs();
+    }
+  }
+
+  async function handleClearLogsEmergency() {
+    if (confirm('Are you REALLY sure you want to clear ALL logs? This action cannot be undone.')) {
+      isClearingEmergency = true;
+      try {
+        await clearLogsEmergency();
+        await loadLogs();
+      } finally {
+        isClearingEmergency = false;
+      }
     }
   }
 
@@ -305,6 +319,13 @@
       <Button on:click={handleDownloadText} variant="outline">Download as Text</Button>
 
       <Button on:click={handleClearLogs} variant="destructive">Clear All Logs</Button>
+      <Button
+        on:click={handleClearLogsEmergency}
+        variant="destructive"
+        disabled={isClearingEmergency}
+      >
+        {isClearingEmergency ? 'Clearing...' : 'Clear All Logs (Emergency)'}
+      </Button>
     </div>
 
     <div class="stats text-sm text-slate-400">

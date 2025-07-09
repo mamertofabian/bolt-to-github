@@ -351,12 +351,11 @@ describe('LogStorageManager', () => {
       expect(mockChromeStorage.local.set).toHaveBeenCalled();
     });
 
-    it('should retain logs newer than 12 hours', async () => {
+    it('should retain logs newer than 4 hours', async () => {
       const now = Date.now();
       const oneHourAgo = new Date(now - 1 * 60 * 60 * 1000).toISOString();
+      const threeHoursAgo = new Date(now - 3 * 60 * 60 * 1000).toISOString();
       const fiveHoursAgo = new Date(now - 5 * 60 * 60 * 1000).toISOString();
-      const tenHoursAgo = new Date(now - 10 * 60 * 60 * 1000).toISOString();
-      const fifteenHoursAgo = new Date(now - 15 * 60 * 60 * 1000).toISOString();
 
       // Mock storage to return logs with specific timestamps
       const testLogs = [
@@ -368,31 +367,17 @@ describe('LogStorageManager', () => {
           context: 'unknown',
         },
         {
-          timestamp: fiveHoursAgo,
+          timestamp: threeHoursAgo,
           level: 'info',
           module: 'Recent2',
-          message: 'Recent log 2',
+          message: 'Recent log 2 (3h ago)',
           context: 'unknown',
         },
         {
-          timestamp: tenHoursAgo,
-          level: 'info',
-          module: 'Mid',
-          message: 'Mid log',
-          context: 'unknown',
-        },
-        {
-          timestamp: tenHoursAgo,
+          timestamp: fiveHoursAgo,
           level: 'info',
           module: 'Old',
-          message: 'Old log within 12h',
-          context: 'unknown',
-        },
-        {
-          timestamp: fifteenHoursAgo,
-          level: 'info',
-          module: 'VeryOld',
-          message: 'Very old log beyond 12h',
+          message: 'Old log beyond 4h',
           context: 'unknown',
         },
       ];
@@ -431,17 +416,15 @@ describe('LogStorageManager', () => {
       // Verify that set was called
       expect(mockChromeStorage.local.set).toHaveBeenCalled();
 
-      // The memory buffer should only contain logs newer than 12 hours
+      // The memory buffer should contain logs newer than 4 hours (both 1h and 3h ago)
       const recentLogs = storageManager.getRecentLogs();
-      expect(recentLogs.length).toBe(4);
+      expect(recentLogs.length).toBe(2);
 
-      // Verify the very old log was removed
+      // Verify the old log (5h ago) was removed and only recent ones remain
       const modules = recentLogs.map((log) => log.module);
       expect(modules).toContain('Recent1');
       expect(modules).toContain('Recent2');
-      expect(modules).toContain('Mid');
-      expect(modules).toContain('Old');
-      expect(modules).not.toContain('VeryOld');
+      expect(modules).not.toContain('Old');
     });
   });
 });
