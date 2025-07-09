@@ -31,7 +31,15 @@ A Chrome extension that automatically captures ZIP file downloads from bolt.new,
   <img src="https://img.shields.io/badge/Install%20from-Chrome%20Web%20Store-blue?style=for-the-badge&logo=google-chrome&logoColor=white" alt="Install from Chrome Web Store" height="40">
 </a>
 
-### Latest Version: v1.3.8 (Development)
+### Latest Version: v1.3.9 (Development)
+
+#### 📝 Version 1.3.9 – Pop-out Window Release
+
+**What’s new:**
+
+- **Pop-out window mode** – Keep the extension open in its own dedicated window that never closes when you click away.
+
+### Previous Version: v1.3.8
 
 #### 📝 Version 1.3.8 – Quick Fix Release
 
@@ -41,7 +49,7 @@ A Chrome extension that automatically captures ZIP file downloads from bolt.new,
 - **Lighter on resources** – background observers use less CPU.
 - **More resilient** – graceful errors and self-recovery if something goes wrong.
 
-### Previous Version: v1.3.7
+### Version 1.3.7
 
 #### 📝 Version 1.3.7 - Automatic README Generation
 

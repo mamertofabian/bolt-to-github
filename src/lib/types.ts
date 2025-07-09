@@ -24,7 +24,10 @@ export type MessageType =
   | 'SUBSCRIPTION_UPGRADED'
   | 'SYNC_BOLT_PROJECTS'
   | 'NOTIFY_GITHUB_APP_SYNC'
-  | 'SHOW_UPGRADE_MODAL';
+  | 'SHOW_UPGRADE_MODAL'
+  | 'OPEN_POPUP_WINDOW'
+  | 'CLOSE_POPUP_WINDOW'
+  | 'CLEAR_LOGS_EMERGENCY';
 
 // Base message interface
 interface BaseMessage {
@@ -73,6 +76,7 @@ export interface GenericMessage extends BaseMessage {
     | 'IMPORT_PRIVATE_REPO'
     | 'NOTIFY_GITHUB_APP_SYNC'
     | 'SHOW_UPGRADE_MODAL'
+    | 'CLEAR_LOGS_EMERGENCY'
   >;
   data?: unknown;
   action?: string;

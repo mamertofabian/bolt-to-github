@@ -1,17 +1,18 @@
 <script lang="ts">
-  import { createEventDispatcher } from 'svelte';
   import GitHubSettings from '$lib/components/GitHubSettings.svelte';
-  import PushReminderSection from './PushReminderSection.svelte';
-  import PremiumStatus from './PremiumStatus.svelte';
   import AnalyticsToggle from '$lib/components/ui/AnalyticsToggle.svelte';
   import { Button } from '$lib/components/ui/button';
-  import { FileText } from 'lucide-svelte';
-  import { createLogger } from '$lib/utils/logger';
+
   import type { GitHubSettingsState } from '$lib/stores/githubSettings';
   import type { UIState } from '$lib/stores/uiState';
+  import { createLogger } from '$lib/utils/logger';
+  import { FileText } from 'lucide-svelte';
+  import { createEventDispatcher } from 'svelte';
+  import type { UpgradeType } from '../types';
+  import PremiumStatus from './PremiumStatus.svelte';
+  import PushReminderSection from './PushReminderSection.svelte';
 
   const logger = createLogger('SettingsTabContent');
-  import type { UpgradeType } from '../types';
 
   export let githubSettings: GitHubSettingsState;
   export let projectId: string | null;
@@ -84,6 +85,8 @@
 
   <!-- Analytics Toggle -->
   <AnalyticsToggle />
+
+  <div class="border-t my-4"></div>
 
   <div class="border-t pt-4">
     <Button variant="outline" class="w-full gap-2" on:click={openLogsPage}>

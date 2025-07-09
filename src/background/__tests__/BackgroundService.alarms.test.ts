@@ -137,7 +137,7 @@ describe('BackgroundService - Alarms Functionality', () => {
     it('should create log rotation alarm on initialization', async () => {
       await vi.runOnlyPendingTimersAsync();
 
-      expect(mockAlarms.create).toHaveBeenCalledWith('logRotation', { periodInMinutes: 180 });
+      expect(mockAlarms.create).toHaveBeenCalledWith('logRotation', { periodInMinutes: 60 });
     });
 
     it('should trigger log rotation on startup event', () => {
@@ -213,7 +213,7 @@ describe('BackgroundService - Alarms Functionality', () => {
       await vi.runOnlyPendingTimersAsync();
 
       // Verify all three alarms are created with exact parameters
-      expect(mockAlarms.create).toHaveBeenCalledWith('logRotation', { periodInMinutes: 180 });
+      expect(mockAlarms.create).toHaveBeenCalledWith('logRotation', { periodInMinutes: 60 });
       expect(mockAlarms.create).toHaveBeenCalledWith('keepAlive', { periodInMinutes: 1 });
       expect(mockAlarms.create).toHaveBeenCalledWith('bolt-project-sync', { periodInMinutes: 5 });
 

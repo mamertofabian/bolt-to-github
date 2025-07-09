@@ -22,6 +22,7 @@ import { ZipHandler } from '../services/zipHandler';
 import { StateManager } from './StateManager';
 import { BackgroundTempRepoManager } from './TempRepoManager';
 import { UsageTracker } from './UsageTracker';
+import { WindowManager } from './WindowManager';
 
 const logger = createLogger('BackgroundService');
 
@@ -36,6 +37,7 @@ export class BackgroundService {
   private operationStateManager: OperationStateManager;
   private usageTracker: UsageTracker;
   private syncService: BoltProjectSyncService;
+  private windowManager: WindowManager;
   private keepAliveInterval: NodeJS.Timeout | null = null;
   private lastActivityTime: number = Date.now();
   private authCheckTimeout: NodeJS.Timeout | null = null;
@@ -66,6 +68,7 @@ export class BackgroundService {
     this.operationStateManager = OperationStateManager.getInstance();
     this.usageTracker = new UsageTracker();
     this.syncService = new BoltProjectSyncService();
+    this.windowManager = WindowManager.getInstance();
     this.initialize();
 
     // Track extension lifecycle
@@ -131,9 +134,9 @@ export class BackgroundService {
     logStorage.rotateLogs();
 
     // Set up rotation using chrome.alarms for reliability
-    // Check every 3 hours for time-based log cleanup (configured in LogStorageManager)
-    // Retains logs newer than 12 hours for debugging while preventing unbounded growth
-    chrome.alarms.create('logRotation', { periodInMinutes: 180 }); // 3 hours = 180 minutes
+    // Check every hour for time-based log cleanup (balanced frequency for 4-hour retention)
+    // Retains logs newer than 4 hours for debugging while preventing unbounded growth
+    chrome.alarms.create('logRotation', { periodInMinutes: 60 }); // Balanced interval for efficient cleanup
 
     // Also check and rotate logs when the service worker wakes up
     // This handles cases where the interval might be cleared
@@ -361,6 +364,21 @@ export class BackgroundService {
         // Handle re-authentication request (self-healing)
         logger.info('🔐 Opening re-authentication page for token renewal');
         this.handleOpenReauthentication(message.data, sendResponse);
+        return true; // Will respond asynchronously
+      } else if (message.type === 'OPEN_POPUP_WINDOW') {
+        // Handle popup window opening request
+        logger.info('🪟 Opening popup in window mode');
+        this.handleOpenPopupWindow(sendResponse);
+        return true; // Will respond asynchronously
+      } else if (message.type === 'CLOSE_POPUP_WINDOW') {
+        // Handle popup window closing request
+        logger.info('🔄 Closing popup window and opening regular popup');
+        this.handleClosePopupWindow(sendResponse);
+        return true; // Will respond asynchronously
+      } else if (message.type === 'CLEAR_LOGS_EMERGENCY') {
+        // Handle emergency log clearing when storage quota is exceeded
+        logger.info('🧹 Emergency log clearing requested');
+        this.handleEmergencyLogClear(sendResponse);
         return true; // Will respond asynchronously
       }
 
@@ -1184,8 +1202,9 @@ export class BackgroundService {
       const hasActiveConnections = this.ports.size > 0;
       const timeSinceLastActivity = Date.now() - this.lastActivityTime;
 
-      // Only log if there's something interesting
-      if (hasActiveConnections || timeSinceLastActivity < 60000) {
+      // Only log every 5 minutes to reduce log volume, and only if there's activity
+      const shouldLog = Date.now() % (5 * 60 * 1000) < 25000; // Every 5 minutes
+      if (shouldLog && (hasActiveConnections || timeSinceLastActivity < 300000)) {
         logger.debug(
           `💓 Keep-alive: ${this.ports.size} active connections, last activity ${Math.round(timeSinceLastActivity / 1000)}s ago`
         );
@@ -1545,6 +1564,91 @@ export class BackgroundService {
       sendResponse({
         success: false,
         error: error instanceof Error ? error.message : 'Failed to open re-authentication',
+      });
+    }
+  }
+
+  /**
+   * Handle popup window opening request
+   */
+  private async handleOpenPopupWindow(
+    sendResponse: (response: { success: boolean; windowId?: number; error?: string }) => void
+  ): Promise<void> {
+    try {
+      logger.info('🪟 Opening popup window');
+      const window = await this.windowManager.openPopupWindow();
+
+      if (!window || !window.id) {
+        logger.error('❌ Window creation failed - no window ID returned');
+        sendResponse({
+          success: false,
+          error: 'Failed to create popup window - no window ID returned',
+        });
+        return;
+      }
+
+      logger.info('✅ Popup window created successfully:', window.id);
+      sendResponse({ success: true, windowId: window.id });
+    } catch (error) {
+      logger.error('❌ Failed to open popup window:', error);
+      sendResponse({
+        success: false,
+        error: error instanceof Error ? error.message : 'Failed to open popup window',
+      });
+    }
+  }
+
+  /**
+   * Handle popup window closing request and open regular popup
+   */
+  private async handleClosePopupWindow(
+    sendResponse: (response: { success: boolean; error?: string }) => void
+  ): Promise<void> {
+    try {
+      logger.info('🔄 Closing popup window and opening regular popup');
+
+      // First close the popup window
+      await this.windowManager.closePopupWindow();
+      logger.info('✅ Closed popup window');
+
+      // Then open the regular popup (action popup) after a small delay
+      // Small delay ensures the window is fully closed before opening popup
+      setTimeout(async () => {
+        try {
+          await chrome.action.openPopup();
+          logger.info('✅ Opened regular extension popup');
+        } catch (error) {
+          logger.error('❌ Failed to open regular popup:', error);
+        }
+      }, 100);
+
+      sendResponse({ success: true });
+    } catch (error) {
+      logger.error('❌ Failed to close popup window:', error);
+      sendResponse({
+        success: false,
+        error: error instanceof Error ? error.message : 'Failed to close popup window',
+      });
+    }
+  }
+
+  /**
+   * Handle emergency log clearing when storage quota is exceeded
+   */
+  private async handleEmergencyLogClear(
+    sendResponse: (response: { success: boolean; error?: string }) => void
+  ): Promise<void> {
+    try {
+      logger.info('🧹 Emergency log clearing requested');
+      const logStorage = getLogStorage();
+      await logStorage.clearAllLogs();
+      logger.info('✅ Emergency log clearing completed');
+      sendResponse({ success: true });
+    } catch (error) {
+      logger.error('❌ Failed to perform emergency log clearing:', error);
+      sendResponse({
+        success: false,
+        error: error instanceof Error ? error.message : 'Failed to clear logs',
       });
     }
   }
