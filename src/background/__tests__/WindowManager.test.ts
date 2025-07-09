@@ -17,6 +17,7 @@ const mockChrome = {
       top: 100,
       width: 1200,
       height: 800,
+      focused: true,
     }),
   },
   runtime: {
@@ -101,6 +102,34 @@ describe('WindowManager', () => {
       mockChrome.windows.create.mockRejectedValue(new Error('Creation failed'));
 
       await expect(windowManager.openPopupWindow()).rejects.toThrow('Creation failed');
+    });
+
+    it('should handle negative positioning by using Math.max(0, ...)', async () => {
+      // Mock a window that would result in negative positioning
+      mockChrome.windows.getLastFocused.mockResolvedValueOnce({
+        id: 1,
+        left: 50, // Small left value that would result in negative positioning
+        top: 10, // Small top value that would result in negative positioning
+        width: 300, // Small width
+        height: 200,
+        focused: true,
+      });
+
+      const mockWindow = { id: 789 };
+      mockChrome.windows.create.mockResolvedValue(mockWindow);
+
+      const result = await windowManager.openPopupWindow();
+
+      expect(result).toBe(mockWindow);
+      expect(mockChrome.windows.create).toHaveBeenCalledWith({
+        url: 'chrome-extension://test-id/src/popup/index.html?mode=window',
+        type: 'popup',
+        width: 420,
+        height: 640,
+        left: 0, // Should be 0 instead of negative (Math.max(0, 50 + 300 - 420 - 100) = Math.max(0, -170) = 0)
+        top: 130, // Should be Math.max(0, 10 + 120) = 130
+        focused: true,
+      });
     });
   });
 

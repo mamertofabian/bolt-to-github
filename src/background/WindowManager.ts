@@ -40,8 +40,8 @@ export class WindowManager {
         ) {
           // Position the popup near the top-right of the current window
           // This ensures it appears on the same monitor as the browser window
-          left = currentWindow.left + currentWindow.width - windowWidth - 100;
-          top = currentWindow.top + 120; // A bit below the browser's top bar
+          left = Math.max(0, currentWindow.left + currentWindow.width - windowWidth - 105);
+          top = Math.max(0, currentWindow.top + 80); // A bit below the browser's top bar
 
           logger.info(`📍 Positioning popup relative to current window: left=${left}, top=${top}`);
         } else {

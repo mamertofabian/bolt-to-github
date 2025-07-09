@@ -77,6 +77,7 @@ vi.stubEnv('VITE_GA4_API_SECRET', 'test-api-secret');
       top: 100,
       width: 1200,
       height: 800,
+      focused: true,
     }),
     onRemoved: {
       addListener: vi.fn(),
