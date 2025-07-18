@@ -795,6 +795,17 @@ export class BackgroundService {
         throw new Error('Zip handler is not initialized.');
       }
 
+      // Proactively refresh authentication if the token is close to expiring
+      try {
+        if (await this.githubService.needsRenewal()) {
+          logger.info('🔄 GitHub token is expiring soon – refreshing before upload');
+          await this.githubService.refreshAuth();
+        }
+      } catch (authRefreshError) {
+        logger.warn('⚠️ Pre-upload token refresh failed:', authRefreshError);
+        // Continue – the upload flow has built-in self-healing if the token truly is invalid
+      }
+
       // Validate project ID against tab URL to prevent spoofing
       if (currentProjectId && tabId) {
         try {
