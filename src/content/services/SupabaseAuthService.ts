@@ -485,6 +485,11 @@ export class SupabaseAuthService {
             user: null,
             subscription: { isActive: false, plan: 'free' },
           });
+
+          // Proactively trigger re-authentication flow so the user is guided to sign back in
+          if (!this.isPostConnectionMode) {
+            await this.triggerReAuthentication('Token verification failed');
+          }
         }
       } else {
         logger.error('❌ No authentication token found');
@@ -493,9 +498,50 @@ export class SupabaseAuthService {
           user: null,
           subscription: { isActive: false, plan: 'free' },
         });
+
+        // No token at all – kick off onboarding / re-auth automatically
+        if (!this.isPostConnectionMode) {
+          await this.triggerReAuthentication('No authentication token found');
+        }
       }
     } catch (error) {
       logger.error('Error checking auth status:', error);
+    }
+  }
+
+  /**
+   * Trigger re-authentication: logout, enter aggressive detection, show modal and
+   * ask the background script to open bolt2github.com so the user can connect.
+   */
+  private async triggerReAuthentication(reason: string): Promise<void> {
+    try {
+      logger.info(`🔐 Triggering re-authentication flow – reason: ${reason}`);
+
+      // Ensure we start from a clean state
+      await this.logout();
+
+      // Aggressive detection for fast token pickup once user connects
+      this.enterPostConnectionMode();
+
+      // Show in-page modal prompting sign-in
+      await this.showReauthenticationModal();
+
+      // Ask background to open bolt2github.com (service-worker context handles window/tab)
+      try {
+        if (chrome.runtime?.id) {
+          await chrome.runtime.sendMessage({
+            type: 'OPEN_REAUTHENTICATION',
+            data: {
+              reason,
+              action: 'reconnect_github',
+            },
+          });
+        }
+      } catch (msgError) {
+        logger.warn('Could not request background to open re-auth page:', msgError);
+      }
+    } catch (err) {
+      logger.error('Error during triggerReAuthentication:', err);
     }
   }
 

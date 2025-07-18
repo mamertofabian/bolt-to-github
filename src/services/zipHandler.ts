@@ -483,38 +483,22 @@ export class ZipHandler {
    */
   private async triggerReAuthentication(): Promise<void> {
     try {
-      // ARCHITECTURAL NOTE: Dynamic import prevents circular dependency chain:
-      // This service imports UnifiedGitHubService, which could import SupabaseAuthService,
-      // which imports this service - dynamic import breaks this cycle at runtime
-      const { SupabaseAuthService } = await import('../content/services/SupabaseAuthService');
-      const authService = SupabaseAuthService.getInstance();
-
-      // Clear any cached authentication state
-      await authService.logout();
-
-      // Trigger aggressive detection mode for quicker re-authentication
-      authService.enterPostConnectionMode();
-
       logger.info('🔄 Re-authentication flow triggered');
 
-      // Also send message to background script to open bolt2github.com for re-authentication
-      try {
-        if (chrome.runtime?.id) {
-          await chrome.runtime.sendMessage({
-            type: 'OPEN_REAUTHENTICATION',
-            data: {
-              reason: 'Token expired during upload',
-              action: 'reconnect_github',
-            },
-          });
-        }
-      } catch (messageError) {
-        // Background script might not be available, ignore
-        logger.warn('Could not send re-authentication message to background:', messageError);
+      // Ask background (or itself) to open bolt2github.com for re-authentication –
+      // BackgroundService already handles this message type.
+      if (chrome.runtime?.id) {
+        await chrome.runtime.sendMessage({
+          type: 'OPEN_REAUTHENTICATION',
+          data: {
+            reason: 'Token expired during upload',
+            action: 'reconnect_github',
+          },
+        });
       }
     } catch (error) {
       logger.error('Error in triggerReAuthentication:', error);
-      throw error;
+      // Swallow errors – re-auth issues should not crash the main upload flow
     }
   }
 
