@@ -1,3 +1,9 @@
+## 2025-07-09 - Version 1.3.9
+
+### 🪟 Pop-out Window Mode
+
+- Open the extension in its own window so it stays visible while you work
+
 ## 2025-07-08 – Version 1.3.8
 
 ### 🚀 Highlights

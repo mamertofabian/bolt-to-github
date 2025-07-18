@@ -51,9 +51,14 @@ class LoggerImpl implements Logger {
     if (!this.storageManager) return;
 
     try {
-      const message = args
+      let message = args
         .map((arg) => (typeof arg === 'object' ? JSON.stringify(arg) : String(arg)))
         .join(' ');
+
+      // if the message is too long, truncate it
+      if (message.length > 1000) {
+        message = message.slice(0, 1000) + '...';
+      }
 
       await this.storageManager.addLog(
         level as 'debug' | 'info' | 'warn' | 'error',

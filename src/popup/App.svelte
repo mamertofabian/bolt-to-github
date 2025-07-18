@@ -1,6 +1,8 @@
 <script lang="ts">
-  import { onMount, onDestroy } from 'svelte';
-  import { createLogger } from '$lib/utils/logger';
+  import IssueManager from '$lib/components/IssueManager.svelte';
+  import NewsletterModal from '$lib/components/NewsletterModal.svelte';
+  import SuccessToast from '$lib/components/SuccessToast.svelte';
+  import { Button } from '$lib/components/ui/button';
   import {
     Card,
     CardContent,
@@ -8,46 +10,45 @@
     CardHeader,
     CardTitle,
   } from '$lib/components/ui/card';
-  import { STORAGE_KEY } from '../background/TempRepoManager';
-  import { Button } from '$lib/components/ui/button';
-  import FileChangesModal from './components/FileChangesModal.svelte';
-  import TempRepoModal from './components/TempRepoModal.svelte';
-  import PushReminderSettings from './components/PushReminderSettings.svelte';
-  import UpgradeModal from './components/UpgradeModal.svelte';
-  import FeedbackModal from './components/FeedbackModal.svelte';
-  import NewsletterModal from '$lib/components/NewsletterModal.svelte';
-  import SuccessToast from '$lib/components/SuccessToast.svelte';
-  import IssueManager from '$lib/components/IssueManager.svelte';
-  import TabsView from './components/TabsView.svelte';
-  import OnboardingView from './components/OnboardingView.svelte';
-  import { setUpgradeModalState, type UpgradeModalType } from '$lib/utils/upgradeModal';
-  import { SubscriptionService } from '../services/SubscriptionService';
   import { ChromeStorageService } from '$lib/services/chromeStorage';
-
-  const logger = createLogger('App');
-
+  import { createLogger } from '$lib/utils/logger';
+  import { setUpgradeModalState, type UpgradeModalType } from '$lib/utils/upgradeModal';
+  import { closePopupWindow, isWindowMode, openPopupWindow } from '$lib/utils/windowMode';
+  import { ExternalLink, Minimize2 } from 'lucide-svelte';
+  import { onDestroy, onMount } from 'svelte';
+  import { STORAGE_KEY } from '../background/TempRepoManager';
+  import { SubscriptionService } from '../services/SubscriptionService';
+  import FeedbackModal from './components/FeedbackModal.svelte';
+  import FileChangesModal from './components/FileChangesModal.svelte';
+  import OnboardingView from './components/OnboardingView.svelte';
+  import PushReminderSettings from './components/PushReminderSettings.svelte';
+  import TabsView from './components/TabsView.svelte';
+  import TempRepoModal from './components/TempRepoModal.svelte';
+  import UpgradeModal from './components/UpgradeModal.svelte';
   // Import stores and services
+  import { ChromeMessagingService } from '$lib/services/chromeMessaging';
   import {
-    githubSettingsStore,
-    isSettingsValid,
-    isAuthenticationValid,
-    githubSettingsActions,
-    projectSettingsStore,
-    isOnBoltProject,
     currentProjectId,
-    projectSettingsActions,
-    uiStateStore,
-    uiStateActions,
-    fileChangesStore,
     fileChangesActions,
-    uploadStateActions,
+    fileChangesStore,
+    githubSettingsActions,
+    githubSettingsStore,
     isAuthenticated,
+    isAuthenticationValid,
+    isOnBoltProject,
     isPremium,
+    isSettingsValid,
     premiumStatusActions,
+    projectSettingsActions,
+    projectSettingsStore,
+    uiStateActions,
+    uiStateStore,
+    uploadStateActions,
     type TempRepoMetadata,
   } from '$lib/stores';
-  import { ChromeMessagingService } from '$lib/services/chromeMessaging';
   import type { PremiumFeature, ProjectStatusRef } from './types';
+
+  const logger = createLogger('App');
 
   // Constants for display modes
   const DISPLAY_MODES = {
@@ -100,6 +101,9 @@
   let pendingPopupContext = '';
   let pendingUpgradeFeature = '';
   let hasHandledPendingContext = false;
+
+  // Window mode detection
+  let isInWindowMode = false;
 
   // Computed display mode
   $: displayMode = (() => {
@@ -193,6 +197,9 @@
   async function initializeApp() {
     // Add dark mode to the document
     document.documentElement.classList.add('dark');
+
+    // Detect window mode
+    isInWindowMode = isWindowMode();
 
     // Initialize stores
     projectSettingsActions.initialize();
@@ -647,6 +654,32 @@
     });
   };
 
+  // Handle pop-out button click
+  async function handlePopOutClick() {
+    try {
+      // Schedule close after opening window to be able to close the current popup
+      setTimeout(() => window.close(), 100);
+      await openPopupWindow();
+    } catch (error) {
+      logger.error('Failed to open popup window:', error);
+      uiStateActions.showStatus('Failed to open popup window');
+    }
+  }
+
+  // Handle pop back in button click
+  async function handlePopBackIn() {
+    try {
+      const result = await closePopupWindow();
+      if (!result.success) {
+        uiStateActions.showStatus(`Failed to switch back to popup: ${result.error}`);
+      }
+      // Note: If successful, this window will close and the regular popup will open
+    } catch (error) {
+      logger.error('Failed to switch back to popup:', error);
+      uiStateActions.showStatus('Failed to switch back to popup');
+    }
+  }
+
   // Handle authentication method change
   function authMethodChangeHandler(event: CustomEvent<string>) {
     const newAuthMethod = event.detail;
@@ -661,7 +694,7 @@
 <main class="w-[400px] h-[600px] p-3 bg-slate-950 text-slate-50">
   <Card class="border-slate-800 bg-slate-900">
     <CardHeader>
-      <CardTitle class="flex items-center gap-2">
+      <CardTitle class="flex items-center justify-between">
         <a
           href="https://bolt2github.com"
           target="_blank"
@@ -670,39 +703,66 @@
           <img src="/assets/icons/icon48.png" alt="Bolt to GitHub" class="w-5 h-5" />
           Bolt to GitHub <span class="text-xs text-slate-400">v{projectSettings.version}</span>
         </a>
-        {#if isUserPremium}
-          <span
-            class="text-xs font-medium bg-gradient-to-r from-emerald-500 to-teal-500 text-white px-3 py-1.5 rounded-full flex items-center gap-1.5 shadow-sm"
-          >
-            <svg class="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
-              <path
-                fill-rule="evenodd"
-                d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"
-                clip-rule="evenodd"
-              ></path>
-            </svg>
-            PRO
-          </span>
-        {:else if onBoltProject || (githubSettings.hasInitialSettings && isUserAuthenticated)}
-          <div class="flex items-center gap-2">
+        <div class="flex items-center gap-2">
+          {#if isUserPremium}
+            <span
+              class="text-xs font-medium bg-gradient-to-r from-emerald-500 to-teal-500 text-white px-3 py-1.5 rounded-full flex items-center gap-1.5 shadow-sm"
+            >
+              <svg class="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
+                <path
+                  fill-rule="evenodd"
+                  d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"
+                  clip-rule="evenodd"
+                ></path>
+              </svg>
+              PRO
+            </span>
+          {:else if onBoltProject || (githubSettings.hasInitialSettings && isUserAuthenticated)}
+            <div class="flex items-center gap-2">
+              <Button
+                size="sm"
+                class="text-xs bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white px-3 py-1 h-6"
+                on:click={() => handleUpgradeClick('general')}
+              >
+                ✨ Upgrade
+              </Button>
+              {#if !isUserAuthenticated}
+                <button
+                  class="text-xs text-slate-400 hover:text-slate-300 transition-colors underline"
+                  on:click={openSignInPage}
+                  title="Sign in if you already have a premium account"
+                >
+                  Sign in
+                </button>
+              {/if}
+            </div>
+          {/if}
+
+          <!-- Window mode toggle buttons -->
+          {#if !isInWindowMode}
+            <!-- Pop-out button (only show in popup mode) -->
             <Button
               size="sm"
-              class="text-xs bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white px-3 py-1 h-6"
-              on:click={() => handleUpgradeClick('general')}
+              variant="ghost"
+              class="h-8 w-8 p-0 text-slate-400 hover:text-slate-200 hover:bg-slate-800"
+              on:click={handlePopOutClick}
+              title="Open in window"
             >
-              ✨ Upgrade
+              <ExternalLink size={16} />
             </Button>
-            {#if !isUserAuthenticated}
-              <button
-                class="text-xs text-slate-400 hover:text-slate-300 transition-colors underline"
-                on:click={openSignInPage}
-                title="Sign in if you already have a premium account"
-              >
-                Sign in
-              </button>
-            {/if}
-          </div>
-        {/if}
+          {:else}
+            <!-- Pop back in button (only show in window mode) -->
+            <Button
+              size="sm"
+              variant="ghost"
+              class="h-8 w-8 p-0 text-slate-400 hover:text-slate-200 hover:bg-slate-800"
+              on:click={handlePopBackIn}
+              title="Pop back in"
+            >
+              <Minimize2 size={16} />
+            </Button>
+          {/if}
+        </div>
       </CardTitle>
       <CardDescription class="text-slate-400">
         Upload and sync your Bolt projects to GitHub

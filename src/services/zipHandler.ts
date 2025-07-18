@@ -1,15 +1,15 @@
-import type { UnifiedGitHubService } from './UnifiedGitHubService';
-import { toBase64 } from '../lib/common';
-import { ZipProcessor } from '../lib/zip';
-import type { ProcessingStatus, UploadStatusState } from '$lib/types';
-import { RateLimitHandler } from './RateLimitHandler';
-import { Queue } from '../lib/Queue';
-import { GitHubComparisonService } from './GitHubComparisonService';
 import { processFilesWithGitignore } from '$lib/fileUtils';
-import { pushStatisticsActions } from '../lib/stores';
+import type { ProcessingStatus, UploadStatusState } from '$lib/types';
 import { createLogger } from '$lib/utils/logger';
+import { toBase64 } from '../lib/common';
+import { Queue } from '../lib/Queue';
 import { ChromeStorageService } from '../lib/services/chromeStorage';
+import { pushStatisticsActions } from '../lib/stores';
+import { ZipProcessor } from '../lib/zip';
+import { GitHubComparisonService } from './GitHubComparisonService';
+import { RateLimitHandler } from './RateLimitHandler';
 import { ReadmeGeneratorService } from './ReadmeGeneratorService';
+import type { UnifiedGitHubService } from './UnifiedGitHubService';
 
 const logger = createLogger('ZipHandler');
 
@@ -117,8 +117,9 @@ export class ZipHandler {
   public processZipFile = async (
     blob: Blob,
     currentProjectId: string | null,
-    commitMessage: string
-  ) => {
+    commitMessage: string,
+    hasRetried: boolean = false
+  ): Promise<void> => {
     // Add size validation (50MB limit)
     const MAX_FILE_SIZE = 50 * 1024 * 1024; // 50MB in bytes
     if (blob.size > MAX_FILE_SIZE) {
@@ -237,6 +238,28 @@ export class ZipHandler {
 
       // Check if this is an authentication failure that requires re-authentication
       const isAuthFailure = this.isAuthenticationFailure(errorMessage);
+
+      // Attempt a silent refresh & retry once before surfacing the error to the UI
+      if (isAuthFailure && !hasRetried) {
+        logger.info('🔄 Detected authentication failure – attempting token refresh & retry');
+
+        try {
+          // Proactively refresh the GitHub authentication (if strategy supports it)
+          await (
+            this.githubService as unknown as { refreshAuth?: () => Promise<string> }
+          )?.refreshAuth?.();
+
+          // Give a brief moment for the refreshed token to propagate to storage/cache
+          await this.updateStatus('uploading', 0, 'Authentication refreshed. Retrying upload…');
+          await this.sleep(500);
+
+          // Retry the entire upload once (guarded by hasRetried flag to avoid infinite loops)
+          return await this.processZipFile(blob, currentProjectId, commitMessage, true);
+        } catch (refreshError) {
+          logger.warn('⚠️ Automatic auth refresh failed:', refreshError);
+          // Fall through to existing auth-failure handling, which will prompt re-authentication
+        }
+      }
 
       if (isAuthFailure) {
         // Handle authentication failure with clear messaging and self-healing attempt
