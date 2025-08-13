@@ -1,7 +1,7 @@
-import type { IGitHubButtonManager } from '../types/ManagerInterfaces';
-import type { UIStateManager } from '../services/UIStateManager';
-import { SettingsService } from '../../services/settings';
 import { createLogger } from '$lib/utils/logger';
+import { SettingsService } from '../../services/settings';
+import type { UIStateManager } from '../services/UIStateManager';
+import type { IGitHubButtonManager } from '../types/ManagerInterfaces';
 
 const logger = createLogger('GitHubButtonManager');
 
@@ -29,7 +29,7 @@ export class GitHubButtonManager implements IGitHubButtonManager {
   public async initialize(): Promise<void> {
     logger.info('🔊 Initializing GitHub upload button');
 
-    const buttonContainer = document.querySelector('div.flex.grow-1.basis-60 div.flex.gap-2');
+    const buttonContainer = document.querySelector('div.flex.grow-1.basis-60 div.flex.gap-3');
     logger.debug('Button container found:', !!buttonContainer);
 
     const existingButton = document.querySelector('[data-github-upload]');

@@ -31,11 +31,28 @@ A Chrome extension that automatically captures ZIP file downloads from bolt.new,
   <img src="https://img.shields.io/badge/Install%20from-Chrome%20Web%20Store-blue?style=for-the-badge&logo=google-chrome&logoColor=white" alt="Install from Chrome Web Store" height="40">
 </a>
 
-### Latest Version: v1.3.9 (Development)
+### Latest Version: v1.3.10 (Development)
+
+#### 📝 Version 1.3.10 – Bolt.new Header Integration Fix
+
+**What's new:**
+
+- **Bolt.new Header Integration Fix** – Updated to work with bolt.new's new header layout
+- **Enhanced Re-authentication Flow** – Improved authentication handling and user guidance
+- **Export Button Detection Update** – Fixed export/download functionality with new bolt.new structure
+
+**Key Benefits:**
+
+- **Seamless Integration** – GitHub button injection works perfectly with updated bolt.new header
+- **Reliable Downloads** – Export → Download functionality restored and working reliably
+- **Better User Experience** – Improved authentication flow with clearer guidance during token issues
+- **Future-Proof** – Maintains backward compatibility while supporting new bolt.new features
+
+### Previous Version: v1.3.9
 
 #### 📝 Version 1.3.9 – Pop-out Window Release
 
-**What’s new:**
+**What's new:**
 
 - **Pop-out window mode** – Keep the extension open in its own dedicated window that never closes when you click away.
 

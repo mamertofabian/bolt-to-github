@@ -6,6 +6,16 @@ export interface WhatsNewVersion {
 }
 
 export const whatsNewContent: Record<string, WhatsNewVersion> = {
+  '1.3.10': {
+    date: '2025-08-14',
+    highlights: [
+      '🔧 Bolt.new Header Integration Fix – Updated to work with new header layout',
+      '🔄 Enhanced Re-authentication Flow – Better authentication handling and user guidance',
+      '📥 Export Button Detection Update – Fixed export/download functionality',
+    ],
+    details: `The extension now works seamlessly with bolt.new's updated header layout! GitHub button injection and export/download functionality have been restored and enhanced with improved authentication flow for a better user experience.`,
+    type: 'patch',
+  },
   '1.3.9': {
     date: '2025-07-09',
     highlights: [

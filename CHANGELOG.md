@@ -1,3 +1,18 @@
+## 2025-08-14 - Version 1.3.10
+
+### 🔧 Performance & Stability
+
+- **Enhanced Re-authentication Flow** - Improved SupabaseAuthService with proactive re-authentication triggers for better user guidance during token verification failures
+- **Streamlined ZipHandler Re-authentication** - Refactored triggerReAuthentication method for improved error handling and user experience
+- **Enhanced Logging** - Better logging for re-authentication events to aid in debugging and user experience
+
+### 🐛 Bug Fixes
+
+- **Bolt.new Header Integration Fix** - Updated button container selectors from `gap-2` to `gap-3` to work with new bolt.new header layout
+- **Export Button Detection Update** - Enhanced export button detection to use new project status dropdown structure instead of deprecated overflow menu
+- **GitHub Button Injection** - Ensured GitHub button injection works correctly with updated bolt.new header layout
+- **Backward Compatibility** - Maintained compatibility with legacy export button detection as fallback
+
 ## 2025-07-09 - Version 1.3.9
 
 ### 🪟 Pop-out Window Mode

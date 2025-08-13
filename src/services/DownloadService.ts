@@ -189,10 +189,9 @@ export class DownloadService {
   }
 
   /**
-   * Opens the export dropdown. Bolt has had at least two different
-   * header menu structures so we try both:
-   *  1. The classic "Export" button with the `i-ph:export` icon.
-   *  2. The new 3-dots overflow menu (`i-ph:dots-three-vertical`) → "Export" submenu.
+   * Opens the export dropdown. Bolt has evolved through different header structures:
+   *  1. The classic "Export" button with the `i-ph:export` icon (legacy).
+   *  2. The current project status dropdown → "Export" menu item → submenu with "Download".
    *
    * This helper is intentionally defensive so the extension keeps
    * working even if Bolt tweaks their DOM again.
@@ -229,19 +228,20 @@ export class DownloadService {
       return;
     }
 
-    // ---------- STRATEGY 2: New overflow (3-dots) menu ----------
-    const overflowMenuButton = Array.from(
-      document.querySelectorAll<HTMLButtonElement>('button[aria-haspopup="menu"]')
-    ).find((btn) => btn.querySelector('[class*="i-ph:dots-three-vertical"]'));
+    // ---------- STRATEGY 2: New project status dropdown ----------
+    // Find the project status button in the center header area
+    const projectStatusButton = document.querySelector<HTMLButtonElement>(
+      '.flex-1.select-text .flex.items-center.justify-center button[aria-haspopup="menu"]'
+    );
 
-    if (!overflowMenuButton) {
-      throw new Error('Export menu trigger not found (legacy or overflow button)');
+    if (!projectStatusButton) {
+      throw new Error('Export menu trigger not found (legacy or project status button)');
     }
 
-    logger.info('Found overflow menu button (dots):', overflowMenuButton);
+    logger.info('Found project status dropdown button:', projectStatusButton);
 
-    // Click to open the first-level menu using full event sequence (Radix listens to pointerdown)
-    dispatchFullClick(overflowMenuButton);
+    // Click to open the project status dropdown using full event sequence (Radix listens to pointerdown)
+    dispatchFullClick(projectStatusButton);
 
     // Attempt to locate the "Export" menu item with retries (menu can render lazily)
     let exportMenuItem: HTMLElement | undefined;
@@ -260,10 +260,10 @@ export class DownloadService {
     }
 
     if (!exportMenuItem) {
-      throw new Error('Export menu item not found inside overflow menu after retries');
+      throw new Error('Export menu item not found inside project status dropdown after retries');
     }
 
-    logger.info('Found Export menu item inside overflow:', exportMenuItem);
+    logger.info('Found Export menu item inside project status dropdown:', exportMenuItem);
 
     // Bolt seems to open sub-menus on hover, but to be safe we fire hover AND click.
     const pointerOver = new PointerEvent('pointerover', {
