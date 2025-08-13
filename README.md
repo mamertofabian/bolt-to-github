@@ -33,15 +33,20 @@ A Chrome extension that automatically captures ZIP file downloads from bolt.new,
 
 ### Latest Version: v1.3.10 (Development)
 
-#### 📝 Version 1.3.10 – TBD Release
+#### 📝 Version 1.3.10 – Bolt.new Header Integration Fix
 
 **What's new:**
 
-- (To be added)
+- **Bolt.new Header Integration Fix** – Updated to work with bolt.new's new header layout
+- **Enhanced Re-authentication Flow** – Improved authentication handling and user guidance
+- **Export Button Detection Update** – Fixed export/download functionality with new bolt.new structure
 
 **Key Benefits:**
 
-- (To be added)
+- **Seamless Integration** – GitHub button injection works perfectly with updated bolt.new header
+- **Reliable Downloads** – Export → Download functionality restored and working reliably
+- **Better User Experience** – Improved authentication flow with clearer guidance during token issues
+- **Future-Proof** – Maintains backward compatibility while supporting new bolt.new features
 
 ### Previous Version: v1.3.9
 
