@@ -2,6 +2,21 @@ import type { UploadStatusState } from '$lib/types';
 import type { MessageHandler } from './MessageHandler';
 
 // Import new types and managers
+import { createLogger } from '$lib/utils/logger';
+import { SettingsService } from '../services/settings';
+import { FileChangeHandler } from './handlers/FileChangeHandler';
+import { GitHubUploadHandler } from './handlers/GitHubUploadHandler';
+import { ComponentLifecycleManager } from './infrastructure/ComponentLifecycleManager';
+import { DOMObserver } from './infrastructure/DOMObserver';
+import { UIElementFactory } from './infrastructure/UIElementFactory';
+import { DropdownManager } from './managers/DropdownManager';
+import { GitHubButtonManager } from './managers/GitHubButtonManager';
+import { NotificationManager } from './managers/NotificationManager';
+import { UploadStatusManager } from './managers/UploadStatusManager';
+import { WhatsNewManager } from './managers/WhatsNewManager';
+import { PremiumService } from './services/PremiumService';
+import { PushReminderService } from './services/PushReminderService';
+import { UIStateManager } from './services/UIStateManager';
 import type { NotificationOptions } from './types/UITypes';
 
 // Define the state structure for type safety
@@ -17,21 +32,6 @@ interface UIManagerState {
     loadingText?: string;
   };
 }
-import { NotificationManager } from './managers/NotificationManager';
-import { UploadStatusManager } from './managers/UploadStatusManager';
-import { GitHubButtonManager } from './managers/GitHubButtonManager';
-import { DropdownManager } from './managers/DropdownManager';
-import { GitHubUploadHandler } from './handlers/GitHubUploadHandler';
-import { FileChangeHandler } from './handlers/FileChangeHandler';
-import { DOMObserver } from './infrastructure/DOMObserver';
-import { ComponentLifecycleManager } from './infrastructure/ComponentLifecycleManager';
-import { UIStateManager } from './services/UIStateManager';
-import { PushReminderService } from './services/PushReminderService';
-import { PremiumService } from './services/PremiumService';
-import { WhatsNewManager } from './managers/WhatsNewManager';
-import { UIElementFactory } from './infrastructure/UIElementFactory';
-import { createLogger } from '$lib/utils/logger';
-import { SettingsService } from '../services/settings';
 
 const logger = createLogger('UIManager');
 
@@ -241,7 +241,7 @@ export class UIManager {
       () => {
         // Initialization callback - called when DOM changes are detected
         const button = document.querySelector('[data-github-upload]');
-        const buttonContainer = document.querySelector('div.flex.grow-1.basis-60 div.flex.gap-2');
+        const buttonContainer = document.querySelector('div.flex.grow-1.basis-60 div.flex.gap-3');
 
         // Enhanced detection: Check if we're on a project page
         const isProjectPage = this.isOnProjectPage();
@@ -775,7 +775,7 @@ export class UIManager {
 
       // Use a small delay to let the DOM settle after navigation
       setTimeout(() => {
-        const buttonContainer = document.querySelector('div.flex.grow-1.basis-60 div.flex.gap-2');
+        const buttonContainer = document.querySelector('div.flex.grow-1.basis-60 div.flex.gap-3');
         if (buttonContainer && !document.querySelector('[data-github-upload]')) {
           logger.info('🔊 Initializing GitHub button after URL change');
           this.githubButtonManager.initialize();
