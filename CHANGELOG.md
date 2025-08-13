@@ -1,3 +1,25 @@
+## 2025-XX-XX - Version 1.3.11
+
+### 🎉 New Features
+
+- (To be added)
+
+### 🔧 Performance & Stability
+
+- (To be added)
+
+### 🧪 Testing & Quality
+
+- (To be added)
+
+### 🐛 Bug Fixes
+
+- (To be added)
+
+### 📚 Documentation
+
+- (To be added)
+
 ## 2025-08-14 - Version 1.3.10
 
 ### 🔧 Performance & Stability
