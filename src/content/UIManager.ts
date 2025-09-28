@@ -241,7 +241,7 @@ export class UIManager {
       () => {
         // Initialization callback - called when DOM changes are detected
         const button = document.querySelector('[data-github-upload]');
-        const buttonContainer = document.querySelector('div.flex.grow-1.basis-60 div.flex.gap-3');
+        const buttonContainer = document.querySelector('div.ml-auto > div.flex.gap-3');
 
         // Enhanced detection: Check if we're on a project page
         const isProjectPage = this.isOnProjectPage();
@@ -775,7 +775,7 @@ export class UIManager {
 
       // Use a small delay to let the DOM settle after navigation
       setTimeout(() => {
-        const buttonContainer = document.querySelector('div.flex.grow-1.basis-60 div.flex.gap-3');
+        const buttonContainer = document.querySelector('div.ml-auto > div.flex.gap-3');
         if (buttonContainer && !document.querySelector('[data-github-upload]')) {
           logger.info('🔊 Initializing GitHub button after URL change');
           this.githubButtonManager.initialize();

@@ -12,6 +12,30 @@ vi.mock('../../../services/settings', () => ({
   },
 }));
 
+// Helper function to create the DOM structure for tests
+function createTestDOMStructure() {
+  const mlAuto = document.createElement('div');
+  mlAuto.className = 'ml-auto';
+
+  const innerContainer = document.createElement('div');
+  innerContainer.className = 'flex gap-3';
+
+  // Add the empty div
+  const emptyDiv = document.createElement('div');
+  emptyDiv.className = 'flex gap-1 empty:hidden';
+  innerContainer.appendChild(emptyDiv);
+
+  // Add the GitHub button container
+  const githubButtonContainer = document.createElement('div');
+  githubButtonContainer.className = 'flex gap-1';
+  innerContainer.appendChild(githubButtonContainer);
+
+  mlAuto.appendChild(innerContainer);
+  document.body.appendChild(mlAuto);
+
+  return { mlAuto, innerContainer, githubButtonContainer };
+}
+
 describe('GitHubButtonManager', () => {
   let githubButtonManager: GitHubButtonManager;
   let mockStateManager: Mocked<UIStateManager>;
@@ -71,7 +95,7 @@ describe('GitHubButtonManager', () => {
       const container = document.createElement('div');
       container.className = 'flex grow-1 basis-60';
       const innerContainer = document.createElement('div');
-      innerContainer.className = 'flex gap-2';
+      innerContainer.className = 'flex gap-3';
       container.appendChild(innerContainer);
       document.body.appendChild(container);
 
@@ -86,19 +110,8 @@ describe('GitHubButtonManager', () => {
     });
 
     it('successfully initializes button when conditions are met', async () => {
-      // Set up button container
-      const container = document.createElement('div');
-      container.className = 'flex grow-1 basis-60';
-      const innerContainer = document.createElement('div');
-      innerContainer.className = 'flex gap-2';
-
-      // Add a deploy button to test button placement
-      const deployButton = document.createElement('button');
-      deployButton.textContent = 'Deploy';
-      innerContainer.appendChild(deployButton);
-
-      container.appendChild(innerContainer);
-      document.body.appendChild(container);
+      // Set up button container using helper
+      const { githubButtonContainer } = createTestDOMStructure();
 
       await githubButtonManager.initialize();
 
@@ -109,26 +122,18 @@ describe('GitHubButtonManager', () => {
       expect(button).toBeTruthy();
       expect(button?.getAttribute('data-github-upload')).toBe('true');
       expect(button?.getAttribute('data-testid')).toBe('github-upload-button');
+      expect(githubButtonContainer.contains(button)).toBe(true);
     });
 
-    it('places button before deploy button when available', async () => {
-      // Set up button container with deploy button
-      const container = document.createElement('div');
-      container.className = 'flex grow-1 basis-60';
-      const innerContainer = document.createElement('div');
-      innerContainer.className = 'flex gap-2';
-
-      const deployButton = document.createElement('button');
-      deployButton.textContent = 'Deploy';
-      innerContainer.appendChild(deployButton);
-
-      container.appendChild(innerContainer);
-      document.body.appendChild(container);
+    it('places button in GitHub button container when available', async () => {
+      // Set up button container with GitHub button container
+      const { githubButtonContainer } = createTestDOMStructure();
 
       await githubButtonManager.initialize();
 
       const githubButton = githubButtonManager.getButton();
-      expect(githubButton?.nextElementSibling).toBe(deployButton);
+      expect(githubButton).toBeTruthy();
+      expect(githubButtonContainer.contains(githubButton)).toBe(true);
     });
 
     it('handles settings service errors gracefully', async () => {
@@ -138,7 +143,7 @@ describe('GitHubButtonManager', () => {
       const container = document.createElement('div');
       container.className = 'flex grow-1 basis-60';
       const innerContainer = document.createElement('div');
-      innerContainer.className = 'flex gap-2';
+      innerContainer.className = 'flex gap-3';
       container.appendChild(innerContainer);
       document.body.appendChild(container);
 
@@ -153,7 +158,7 @@ describe('GitHubButtonManager', () => {
       const container = document.createElement('div');
       container.className = 'flex grow-1 basis-60';
       const innerContainer = document.createElement('div');
-      innerContainer.className = 'flex gap-2';
+      innerContainer.className = 'flex gap-3';
       container.appendChild(innerContainer);
       document.body.appendChild(container);
 
@@ -203,7 +208,7 @@ describe('GitHubButtonManager', () => {
       const container = document.createElement('div');
       container.className = 'flex grow-1 basis-60';
       const innerContainer = document.createElement('div');
-      innerContainer.className = 'flex gap-2';
+      innerContainer.className = 'flex gap-3';
       container.appendChild(innerContainer);
       document.body.appendChild(container);
 
@@ -312,7 +317,7 @@ describe('GitHubButtonManager', () => {
       const container = document.createElement('div');
       container.className = 'flex grow-1 basis-60';
       const innerContainer = document.createElement('div');
-      innerContainer.className = 'flex gap-2';
+      innerContainer.className = 'flex gap-3';
       container.appendChild(innerContainer);
       document.body.appendChild(container);
 
@@ -343,7 +348,7 @@ describe('GitHubButtonManager', () => {
       const container = document.createElement('div');
       container.className = 'flex grow-1 basis-60';
       const innerContainer = document.createElement('div');
-      innerContainer.className = 'flex gap-2';
+      innerContainer.className = 'flex gap-3';
       container.appendChild(innerContainer);
       document.body.appendChild(container);
 
@@ -361,7 +366,7 @@ describe('GitHubButtonManager', () => {
       const container = document.createElement('div');
       container.className = 'flex grow-1 basis-60';
       const innerContainer = document.createElement('div');
-      innerContainer.className = 'flex gap-2';
+      innerContainer.className = 'flex gap-3';
       container.appendChild(innerContainer);
       document.body.appendChild(container);
 
@@ -390,7 +395,7 @@ describe('GitHubButtonManager', () => {
       const container = document.createElement('div');
       container.className = 'flex grow-1 basis-60';
       const innerContainer = document.createElement('div');
-      innerContainer.className = 'flex gap-2';
+      innerContainer.className = 'flex gap-3';
       container.appendChild(innerContainer);
       document.body.appendChild(container);
 
@@ -416,7 +421,7 @@ describe('GitHubButtonManager', () => {
       const container = document.createElement('div');
       container.className = 'flex grow-1 basis-60';
       const innerContainer = document.createElement('div');
-      innerContainer.className = 'flex gap-2';
+      innerContainer.className = 'flex gap-3';
       container.appendChild(innerContainer);
       document.body.appendChild(container);
 
@@ -435,7 +440,7 @@ describe('GitHubButtonManager', () => {
       const container = document.createElement('div');
       container.className = 'flex grow-1 basis-60';
       const innerContainer = document.createElement('div');
-      innerContainer.className = 'flex gap-2';
+      innerContainer.className = 'flex gap-3';
       container.appendChild(innerContainer);
       document.body.appendChild(container);
 
@@ -471,7 +476,7 @@ describe('GitHubButtonManager', () => {
       const container = document.createElement('div');
       container.className = 'flex grow-1 basis-60';
       const innerContainer = document.createElement('div');
-      innerContainer.className = 'flex gap-2';
+      innerContainer.className = 'flex gap-3';
       container.appendChild(innerContainer);
       document.body.appendChild(container);
 
