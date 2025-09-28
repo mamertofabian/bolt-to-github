@@ -99,6 +99,13 @@ export class GitHubButtonManager implements IGitHubButtonManager {
 
     button.innerHTML = this.getButtonHTML();
 
+    // Apply inline styles immediately to prevent initial flash
+    button.style.backgroundColor = '#1E1E21';
+    button.style.borderColor = '#2A2A2D';
+    button.style.color = '#ffffff';
+    button.style.border = '1px solid #2A2A2D';
+    button.style.transition = 'background-color 0.15s ease, border-color 0.15s ease';
+
     // Add click event listener that delegates to the dropdown handler
     button.addEventListener('click', async () => {
       if (this.onDropdownClickCallback) {
