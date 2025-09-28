@@ -196,7 +196,7 @@ export class DropdownManager implements IDropdownManager {
         animation: fadeIn 0.2s ease-out forwards;
       }
       #github-dropdown-content {
-        background-color: #1a1a1a; /* Match the Export dropdown background */
+        background-color: #1E1E21; /* Match the updated Bolt.new page background */
         border: none;
         box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3);
         position: fixed; /* Use fixed positioning to avoid scroll issues */
@@ -212,7 +212,7 @@ export class DropdownManager implements IDropdownManager {
         font-size: 12px;
       }
       #github-dropdown-content button:hover {
-        background-color: #333333; /* Match the Export dropdown hover state */
+        background-color: #2A2A2D; /* Slightly lighter than the new background for hover state */
       }
       #github-dropdown-content button svg {
         transition: transform 0.15s ease;
@@ -224,6 +224,27 @@ export class DropdownManager implements IDropdownManager {
       /* Remove border between items to match Export dropdown */
       #github-dropdown-content button:first-child {
         border-bottom: none;
+      }
+      /* Override GitHub button background to match new Bolt.new page */
+      button[data-github-upload="true"] {
+        background-color: #1E1E21 !important;
+        border: 1px solid #2A2A2D !important;
+        color: #ffffff !important;
+        transition: background-color 0.15s ease, border-color 0.15s ease !important;
+      }
+      button[data-github-upload="true"]:hover {
+        background-color: #2A2A2D !important;
+        border-color: #3A3A3D !important;
+      }
+      /* Prevent initial flash by targeting all possible button states */
+      button[data-github-upload="true"]:not(:hover):not(:active):not(:focus) {
+        background-color: #1E1E21 !important;
+        border-color: #2A2A2D !important;
+      }
+      /* Override any Bolt.new specific classes that might be applied */
+      button[data-github-upload="true"].bg-bolt-elements-button-secondary-background,
+      button[data-github-upload="true"][class*="bg-"] {
+        background-color: #1E1E21 !important;
       }
     `;
     document.head.appendChild(style);

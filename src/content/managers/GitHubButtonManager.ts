@@ -29,7 +29,7 @@ export class GitHubButtonManager implements IGitHubButtonManager {
   public async initialize(): Promise<void> {
     logger.info('🔊 Initializing GitHub upload button');
 
-    const buttonContainer = document.querySelector('div.flex.grow-1.basis-60 div.flex.gap-3');
+    const buttonContainer = document.querySelector('div.ml-auto > div.flex.gap-3');
     logger.debug('Button container found:', !!buttonContainer);
 
     const existingButton = document.querySelector('[data-github-upload]');
@@ -45,9 +45,25 @@ export class GitHubButtonManager implements IGitHubButtonManager {
     this.updateState(settings.isSettingsValid);
     this.uploadButton = button;
 
-    const deployButton = buttonContainer.querySelector('button:last-child');
-    if (deployButton) {
-      deployButton.before(button);
+    // Look for the GitHub button container (div.flex.gap-1) within the main container
+    // Find all div.flex.gap-1 and filter out the one with empty:hidden class
+    const allGap1Divs = buttonContainer.querySelectorAll('div.flex.gap-1');
+    const githubButtonContainer = Array.from(allGap1Divs).find(
+      (div) => !div.classList.contains('empty:hidden')
+    );
+
+    if (githubButtonContainer) {
+      // Place our button in the GitHub button container
+      githubButtonContainer.appendChild(button);
+    } else {
+      // Fallback: look for the Publish button and place before it
+      const publishButton = buttonContainer.querySelector('button[aria-controls="publish-menu"]');
+      if (publishButton) {
+        publishButton.before(button);
+      } else {
+        // Final fallback: append to the end of the container
+        buttonContainer.appendChild(button);
+      }
     }
 
     logger.info('GitHub upload button initialized');
@@ -82,6 +98,13 @@ export class GitHubButtonManager implements IGitHubButtonManager {
     ].join(' ');
 
     button.innerHTML = this.getButtonHTML();
+
+    // Apply inline styles immediately to prevent initial flash
+    button.style.backgroundColor = '#1E1E21';
+    button.style.borderColor = '#2A2A2D';
+    button.style.color = '#ffffff';
+    button.style.border = '1px solid #2A2A2D';
+    button.style.transition = 'background-color 0.15s ease, border-color 0.15s ease';
 
     // Add click event listener that delegates to the dropdown handler
     button.addEventListener('click', async () => {

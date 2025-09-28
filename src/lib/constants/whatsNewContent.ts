@@ -6,6 +6,18 @@ export interface WhatsNewVersion {
 }
 
 export const whatsNewContent: Record<string, WhatsNewVersion> = {
+  '1.3.11': {
+    date: '2025-01-15',
+    highlights: [
+      '🎨 Updated for New Bolt.new Design – Seamless integration with the latest UI changes',
+      '🔧 Fixed GitHub Button Injection – Now works with the new header layout structure',
+      '📥 Enhanced Download Functionality – Updated to work with project name dropdown export flow',
+      '⚡ Eliminated Color Flash – Button appears with correct styling immediately',
+      '🎯 Improved Button Placement – Smart targeting of GitHub button container',
+    ],
+    details: `The extension has been fully updated to work with Bolt.new's latest design changes! The GitHub button now seamlessly integrates with the new header layout, download functionality works with the updated export flow through the project name dropdown, and we've eliminated the initial color flash for a smoother user experience. All styling has been updated to match the new #1E1E21 color scheme.`,
+    type: 'minor',
+  },
   '1.3.10': {
     date: '2025-08-14',
     highlights: [

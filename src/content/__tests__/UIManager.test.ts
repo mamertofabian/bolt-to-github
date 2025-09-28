@@ -281,8 +281,20 @@ describe('UIManager', () => {
 
       // Mock DOM state for button initialization
       document.body.innerHTML = `
-        <div class="flex grow-1 basis-60">
-          <div class="flex gap-2"></div>
+        <div id="root">
+          <div class="flex flex-col h-full w-full">
+            <div class="_BaseChat_t1btp_1 relative flex h-full w-full overflow-hidden [--side-menu-width:0px] bg-bolt-elements-background-depth-1">
+              <div>
+                <div class="z-workbench w-[var(--workbench-width)]">
+                  <div>
+                    <div class="ml-auto">
+                      <div class="flex gap-3"></div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
         </div>
       `;
 

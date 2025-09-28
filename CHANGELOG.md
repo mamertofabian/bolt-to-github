@@ -1,3 +1,36 @@
+## 2025-01-15 - Version 1.3.11
+
+### 🎉 New Features
+
+- **New Bolt.new Design Integration** - Full compatibility with Bolt.new's updated UI design and color scheme (#1E1E21)
+- **Smart Button Placement** - Intelligent targeting of GitHub button container within the new header layout structure
+- **Enhanced Download Flow** - Updated export functionality to work with the new project name dropdown structure
+
+### 🔧 Performance & Stability
+
+- **Eliminated Color Flash** - Button now appears with correct styling immediately, preventing visual glitches
+- **Robust Selector System** - Updated CSS selectors to work with new DOM structure and prevent future breakages
+- **Improved Error Handling** - Enhanced debugging logs for better troubleshooting of dropdown and menu detection
+
+### 🧪 Testing & Quality
+
+- **Updated Test Suite** - All tests updated to reflect new DOM structure and selectors
+- **JSDOM Compatibility** - Fixed CSS selector issues with `:not(.empty:hidden)` pseudo-class
+- **Comprehensive Coverage** - Added tests for new button placement logic and dropdown detection
+
+### 🐛 Bug Fixes
+
+- **GitHub Button Injection** - Fixed button not appearing due to outdated CSS selectors
+- **Download Functionality** - Resolved export button detection issues with new dropdown structure
+- **Button Container Targeting** - Fixed selector from `div.flex.grow-1.basis-60` to `div.ml-auto > div.flex.gap-3`
+- **CSS Pseudo-class Support** - Replaced unsupported `:not(.empty:hidden)` with `querySelectorAll` and filtering
+
+### 📚 Documentation
+
+- **Updated README** - Added comprehensive information about v1.3.11 changes
+- **Enhanced What's New** - Detailed changelog with visual improvements and technical details
+- **Code Documentation** - Added inline comments explaining new selector logic and button placement
+
 ## 2025-08-14 - Version 1.3.10
 
 ### 🔧 Performance & Stability

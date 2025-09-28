@@ -207,7 +207,80 @@ export class DownloadService {
       // `HTMLElement.click()` will fire the click event after the sequence above
       (el as HTMLButtonElement).click();
     };
-    // ---------- STRATEGY 1: Original dedicated Export button ----------
+    // ---------- STRATEGY 1: Project name dropdown (with Export menu) ----------
+    // Look for the project name button specifically - it has a chevron-down icon and contains project name text
+    const allMenuButtons = document.querySelectorAll<HTMLButtonElement>(
+      'button[aria-haspopup="menu"][data-state="closed"]'
+    );
+    logger.info(
+      `Found ${allMenuButtons.length} closed menu buttons:`,
+      Array.from(allMenuButtons).map((btn) => ({
+        text: btn.textContent?.trim(),
+        hasChevronDown: !!btn.querySelector('.i-lucide\\:chevron-down'),
+        id: btn.id,
+      }))
+    );
+
+    const projectNameButton = Array.from(allMenuButtons).find((btn) => {
+      // Check if it has a chevron-down icon (indicating it's a dropdown)
+      const hasChevronDown = btn.querySelector('.i-lucide\\:chevron-down');
+      // Check if it contains project name text (not just icons)
+      const hasProjectText =
+        btn.textContent &&
+        btn.textContent.trim().length > 0 &&
+        !btn.textContent.includes('chevron');
+      return hasChevronDown && hasProjectText;
+    });
+
+    if (projectNameButton) {
+      logger.info('Found project name dropdown button:', projectNameButton);
+      dispatchFullClick(projectNameButton);
+
+      // Wait for the dropdown to render
+      await new Promise((resolve) => setTimeout(resolve, 200));
+
+      // Debug: Check what dropdowns are available
+      const allDropdowns = document.querySelectorAll('[role="menu"], [data-radix-menu-content]');
+      logger.info(`Found ${allDropdowns.length} dropdowns after clicking project name button`);
+
+      // Look for the Export menu item in the project name dropdown
+      let exportMenuItem: HTMLElement | undefined;
+      const maxFindAttempts = 4;
+      for (let i = 0; i < maxFindAttempts && !exportMenuItem; i++) {
+        const waitTime = 150 * (i + 1);
+        logger.info(`Searching for Export menu item (attempt ${i + 1}/${maxFindAttempts})`);
+        await new Promise((resolve) => setTimeout(resolve, waitTime));
+
+        // Look for all menu items and log them for debugging
+        const allMenuItems = document.querySelectorAll<HTMLElement>(
+          '[role="menuitem"],[data-radix-collection-item]'
+        );
+        logger.info(
+          `Found ${allMenuItems.length} menu items:`,
+          Array.from(allMenuItems).map((el) => el.textContent?.trim())
+        );
+
+        exportMenuItem = Array.from(allMenuItems).find((el) => {
+          const txt = el.textContent?.toLowerCase() ?? '';
+          return txt.includes('export');
+        });
+      }
+
+      if (!exportMenuItem) {
+        throw new Error('Export menu item not found inside project name dropdown after retries');
+      }
+
+      logger.info('Found Export menu item inside project name dropdown:', exportMenuItem);
+
+      // Click the Export menu item to open the submenu
+      exportMenuItem.click();
+
+      // Wait for nested submenu to render
+      await new Promise((resolve) => setTimeout(resolve, 250));
+      return;
+    }
+
+    // ---------- STRATEGY 2: Legacy dedicated Export button ----------
     const legacyExportButton = Array.from(
       document.querySelectorAll<HTMLButtonElement>('button[aria-haspopup="menu"]')
     ).find((btn) => btn.textContent?.includes('Export') && btn.querySelector('.i-ph\\:export'));
@@ -228,14 +301,16 @@ export class DownloadService {
       return;
     }
 
-    // ---------- STRATEGY 2: New project status dropdown ----------
+    // ---------- STRATEGY 3: New project status dropdown ----------
     // Find the project status button in the center header area
     const projectStatusButton = document.querySelector<HTMLButtonElement>(
       '.flex-1.select-text .flex.items-center.justify-center button[aria-haspopup="menu"]'
     );
 
     if (!projectStatusButton) {
-      throw new Error('Export menu trigger not found (legacy or project status button)');
+      throw new Error(
+        'Export menu trigger not found (project name dropdown, legacy, or project status button)'
+      );
     }
 
     logger.info('Found project status dropdown button:', projectStatusButton);
@@ -243,6 +318,7 @@ export class DownloadService {
     // Click to open the project status dropdown using full event sequence (Radix listens to pointerdown)
     dispatchFullClick(projectStatusButton);
 
+    // For other strategies, use the original logic
     // Attempt to locate the "Export" menu item with retries (menu can render lazily)
     let exportMenuItem: HTMLElement | undefined;
     const maxFindAttempts = 4;
@@ -293,18 +369,18 @@ export class DownloadService {
    */
   private async findAndClickDownloadButton(): Promise<void> {
     let attempts = 0;
-    const maxAttempts = 3;
-    let exportDropdown = null;
+    const maxAttempts = 5;
+    let downloadButton = null;
 
-    while (attempts < maxAttempts && !exportDropdown) {
+    while (attempts < maxAttempts && !downloadButton) {
       // Increase wait time with each attempt
       const waitTime = 200 * (attempts + 1);
       logger.info(
-        `Waiting ${waitTime}ms for dropdown to appear (attempt ${attempts + 1}/${maxAttempts})`
+        `Waiting ${waitTime}ms for download button to appear (attempt ${attempts + 1}/${maxAttempts})`
       );
       await new Promise((resolve) => setTimeout(resolve, waitTime));
 
-      // Find all dropdowns
+      // Find all dropdowns (including nested submenus)
       const allDropdowns = Array.from(
         document.querySelectorAll('[role="menu"], [data-radix-menu-content]')
       );
@@ -316,46 +392,55 @@ export class DownloadService {
         continue;
       }
 
-      // Find the dropdown that contains download-related buttons
-      exportDropdown = allDropdowns.find((dropdown) => {
-        const buttons = dropdown.querySelectorAll('button');
-        logger.info('Checking dropdown with buttons:', buttons.length);
+      // Look for download button in any of the dropdowns
+      // The download button is now in a submenu with file-archive icon
+      for (const dropdown of allDropdowns) {
+        // Look for menuitem elements (not buttons) in the dropdown
+        const menuItems = dropdown.querySelectorAll('[role="menuitem"]');
+        logger.info(`Checking dropdown with ${menuItems.length} menu items`);
 
-        // Check if any button in this dropdown has download text or icon
-        return Array.from(buttons).some((button) => {
+        // Find the download button by looking for the file-archive icon
+        downloadButton = Array.from(menuItems).find((item) => {
+          const hasFileArchiveIcon = item.querySelector('[class*="i-lucide:file-archive"]');
+          const hasDownloadText = item.textContent?.toLowerCase().includes('download');
+          return hasFileArchiveIcon || hasDownloadText;
+        });
+
+        if (downloadButton) {
+          logger.info('Found download button in dropdown:', downloadButton);
+          break;
+        }
+
+        // Fallback: also check for buttons with download-related content
+        const buttons = dropdown.querySelectorAll('button');
+        downloadButton = Array.from(buttons).find((button) => {
           const hasDownloadText = button.textContent?.toLowerCase().includes('download');
-          const hasDownloadIcon = button.querySelector('[class*="i-ph:download-simple"]');
+          const hasDownloadIcon = button.querySelector(
+            '[class*="i-ph:download-simple"], [class*="i-lucide:download"], [class*="i-lucide:file-archive"]'
+          );
           return hasDownloadText || hasDownloadIcon;
         });
-      });
 
-      if (!exportDropdown) {
-        logger.info('No export dropdown found in this attempt, will retry');
+        if (downloadButton) {
+          logger.info('Found download button (fallback) in dropdown:', downloadButton);
+          break;
+        }
+      }
+
+      if (!downloadButton) {
+        logger.info('No download button found in this attempt, will retry');
         attempts++;
       }
     }
 
-    if (!exportDropdown) {
-      throw new Error('Export dropdown content not found after multiple attempts');
-    }
-    logger.info('Found export dropdown:', exportDropdown);
-
-    // Find download button within the identified export dropdown
-    const downloadButton = Array.from(exportDropdown.querySelectorAll('button')).find((button) => {
-      // Search for the icon class anywhere within the button's descendants
-      const hasIcon = button.querySelector('[class*="i-ph:download-simple"]');
-      const hasText = button.textContent?.toLowerCase().includes('download');
-      return hasIcon || hasText;
-    });
-
     if (!downloadButton) {
-      throw new Error('Download button not found in dropdown');
+      throw new Error('Download button not found in any dropdown after multiple attempts');
     }
 
     logger.info('Found download button, clicking...');
 
     // Click the download button - the click will be intercepted by our event listener
-    downloadButton.click();
+    (downloadButton as HTMLElement).click();
 
     // Close the dropdown by clicking outside or pressing Escape
     setTimeout(() => {
@@ -377,12 +462,18 @@ export class DownloadService {
           if (dropdowns.length > 0) {
             logger.info('Dropdown still open, clicking outside to close it');
             // Click in an empty area of the page
-            const clickEvent = new MouseEvent('click', {
-              bubbles: true,
-              cancelable: true,
-              view: window,
-            });
-            document.body.dispatchEvent(clickEvent);
+            try {
+              const clickEvent = new MouseEvent('click', {
+                bubbles: true,
+                cancelable: true,
+                view: typeof window !== 'undefined' ? window : undefined,
+              });
+              document.body.dispatchEvent(clickEvent);
+            } catch (error) {
+              // Fallback: just click the body element directly
+              logger.warn('Failed to create MouseEvent, using direct click:', error);
+              (document.body as HTMLElement).click?.();
+            }
           }
         }, 100);
       } catch (closeError) {
