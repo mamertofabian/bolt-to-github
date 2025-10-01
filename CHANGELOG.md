@@ -1,3 +1,23 @@
+## 2025-XX-XX - Version 1.3.12
+
+### 🔧 Performance & Stability
+
+- **Self-Healing Authentication** - Extension automatically reloads to fix persistent auth failures after 3 consecutive attempts
+- **Reliable Service Worker Reloads** - Replaced unreliable setTimeout with chrome.alarms API for Manifest V3 compatibility
+- **Persistent Reload Throttling** - Reload timestamp survives extension restarts to prevent reload loops (5-minute minimum)
+
+### 🧪 Testing & Quality
+
+- **Comprehensive Test Coverage** - Added 30 new tests for extension reload functionality
+- **Race Condition Prevention** - Fixed concurrent failure tracking to prevent duplicate reload requests
+- **Enhanced Error Handling** - Improved robustness for notification and alarm failures
+
+### 🐛 Bug Fixes
+
+- **Auth Expiry Recovery** - No more manual extension disable/enable needed when auth expires
+- **Stale State Clearing** - Extension reload now properly clears all service worker memory state
+- **Manifest V3 Compatibility** - Fixed service worker timeout issues with proper alarm-based timing
+
 ## 2025-01-15 - Version 1.3.11
 
 ### 🎉 New Features

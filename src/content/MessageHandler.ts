@@ -88,7 +88,10 @@ export class MessageHandler {
 
     try {
       this.port!.postMessage(message);
-      logger.debug('📤 MessageHandler: Message sent:', { type, data });
+
+      // Sanitize data for logging to avoid huge base64 strings in logs
+      const sanitizedData = this.sanitizeDataForLogging(type, data);
+      logger.debug('📤 MessageHandler: Message sent:', { type, data: sanitizedData });
     } catch (error) {
       logger.error('❌ MessageHandler: Error sending message:', error);
 
@@ -99,6 +102,20 @@ export class MessageHandler {
       // Try to notify ContentManager about the connection issue
       this.notifyConnectionIssue();
     }
+  }
+
+  /**
+   * Sanitize data for logging to prevent huge base64 strings from bloating logs
+   */
+  private sanitizeDataForLogging(type: MessageType, data?: unknown): unknown {
+    if (type === 'ZIP_DATA' && data && typeof data === 'object' && 'data' in data) {
+      const zipData = data as { data: string; projectId?: string };
+      return {
+        data: `<base64 string: ${zipData.data.length} chars>`,
+        projectId: zipData.projectId,
+      };
+    }
+    return data;
   }
 
   private notifyConnectionIssue(): void {
