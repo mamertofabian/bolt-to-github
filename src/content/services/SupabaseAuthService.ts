@@ -110,6 +110,9 @@ export class SupabaseAuthService {
     /* Load cached auth state */
     await this.loadCachedAuthState();
 
+    /* Load last reload timestamp to prevent reload loops across restarts */
+    await this.loadLastReloadTimestamp();
+
     /* Setup subscription upgrade detection (only for premium feature responsiveness) */
     this.setupSubscriptionUpgradeDetection();
 
@@ -135,6 +138,24 @@ export class SupabaseAuthService {
       }
     } catch (error) {
       logger.error('Failed to load cached auth state:', error);
+    }
+  }
+
+  /**
+   * Load last reload timestamp from storage
+   * This prevents reload loops after extension restarts
+   */
+  private async loadLastReloadTimestamp(): Promise<void> {
+    try {
+      const result = await chrome.storage.local.get(['lastExtensionReloadTimestamp']);
+      if (result.lastExtensionReloadTimestamp) {
+        this.lastReloadTimestamp = result.lastExtensionReloadTimestamp;
+        const timeSinceReload = Date.now() - this.lastReloadTimestamp;
+        logger.info(`📋 Loaded last reload timestamp: ${Math.round(timeSinceReload / 1000)}s ago`);
+      }
+    } catch (error) {
+      logger.warn('Failed to load last reload timestamp:', error);
+      // Not critical - default to 0 (no previous reload)
     }
   }
 
@@ -538,11 +559,17 @@ export class SupabaseAuthService {
 
       // Check if we've hit the threshold for extension reload
       if (this.consecutiveAuthFailures >= this.MAX_AUTH_FAILURES_BEFORE_RELOAD) {
+        // Set flag immediately to prevent race conditions with concurrent calls
+        if (this.reloadRequested) {
+          logger.info('⏸️ Extension reload already in progress, skipping duplicate request');
+          return;
+        }
+        this.reloadRequested = true;
+
         logger.warn(
           `⚠️ Reached maximum auth failures (${this.MAX_AUTH_FAILURES_BEFORE_RELOAD}). ` +
             `Requesting extension reload to clear stale state.`
         );
-        this.reloadRequested = true;
         await this.requestExtensionReload();
         return; // Don't proceed with normal re-auth flow - reload will handle it
       }
@@ -1926,6 +1953,15 @@ export class SupabaseAuthService {
 
       // Record reload timestamp BEFORE sending message (to prevent race conditions)
       this.lastReloadTimestamp = Date.now();
+
+      // Persist timestamp to storage to survive extension restarts and prevent reload loops
+      try {
+        await chrome.storage.local.set({ lastExtensionReloadTimestamp: this.lastReloadTimestamp });
+        logger.debug('💾 Persisted reload timestamp to storage');
+      } catch (storageError) {
+        logger.warn('Failed to persist reload timestamp:', storageError);
+        // Continue anyway - timestamp in memory is better than nothing
+      }
 
       // Send message to background service to handle the reload
       // The background service will show a notification and then call chrome.runtime.reload()

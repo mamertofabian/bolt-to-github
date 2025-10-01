@@ -195,9 +195,17 @@ describe('SupabaseAuthService - Extension Reload Logic', () => {
     test('should allow reload after minimum time has passed', async () => {
       const sendMessageSpy = mockChromeRuntime.sendMessage as Mock;
 
+      // Clear any messages from initialization
+      sendMessageSpy.mockClear();
+
       // First reload
       await (authService as any).requestExtensionReload();
-      expect(sendMessageSpy).toHaveBeenCalledTimes(1);
+
+      // Check that RELOAD_EXTENSION message was sent
+      const firstReloadCalls = sendMessageSpy.mock.calls.filter(
+        (call) => call[0]?.type === 'RELOAD_EXTENSION'
+      );
+      expect(firstReloadCalls.length).toBe(1);
 
       sendMessageSpy.mockClear();
 
@@ -207,7 +215,12 @@ describe('SupabaseAuthService - Extension Reload Logic', () => {
 
       // Second reload should now be allowed
       await (authService as any).requestExtensionReload();
-      expect(sendMessageSpy).toHaveBeenCalledTimes(1);
+
+      // Check that RELOAD_EXTENSION message was sent again
+      const secondReloadCalls = sendMessageSpy.mock.calls.filter(
+        (call) => call[0]?.type === 'RELOAD_EXTENSION'
+      );
+      expect(secondReloadCalls.length).toBe(1);
     });
 
     test('should handle sendMessage errors gracefully', async () => {

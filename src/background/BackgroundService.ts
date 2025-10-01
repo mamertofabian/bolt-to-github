@@ -1692,7 +1692,7 @@ export class BackgroundService {
         }),
       });
 
-      // Send notification to all bolt.new tabs about the reload
+      // Send notification to all bolt.new tabs about the reload (best effort)
       try {
         const tabs = await chrome.tabs.query({ url: 'https://bolt.new/*' });
         for (const tab of tabs) {
@@ -1716,15 +1716,21 @@ export class BackgroundService {
         // Continue with reload even if notification fails
       }
 
-      // Give user time to see the notification (3 seconds)
-      setTimeout(() => {
-        logger.info('🔄 Reloading extension now...');
+      // Schedule extension reload using chrome.alarms (reliable in Manifest V3 service workers)
+      // setTimeout is unreliable as service workers can go inactive
+      const RELOAD_DELAY_MINUTES = 3 / 60; // 3 seconds = 0.05 minutes
+      try {
+        await chrome.alarms.create('self-heal-reload', { delayInMinutes: RELOAD_DELAY_MINUTES });
+        logger.info('✅ Scheduled extension reload via chrome.alarms in 3 seconds');
+      } catch (alarmError) {
+        logger.error('❌ Failed to schedule reload alarm:', alarmError);
+        // Fallback: try immediate reload if alarm creation fails
         try {
           chrome.runtime.reload();
         } catch (reloadError) {
-          logger.error('❌ Failed to reload extension:', reloadError);
+          logger.error('❌ Fallback reload also failed:', reloadError);
         }
-      }, 3000);
+      }
 
       // Respond immediately (before reload happens)
       sendResponse({ success: true });
@@ -1838,6 +1844,14 @@ export class BackgroundService {
         this.rotateOldLogs();
       } else if (alarm.name === 'bolt-project-sync') {
         this.handleSyncAlarm();
+      } else if (alarm.name === 'self-heal-reload') {
+        // Handle extension reload for authentication self-healing
+        logger.info('🔄 Self-heal alarm triggered - reloading extension now...');
+        try {
+          chrome.runtime.reload();
+        } catch (reloadError) {
+          logger.error('❌ Failed to reload extension from alarm:', reloadError);
+        }
       }
     };
 
