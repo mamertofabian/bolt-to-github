@@ -8,8 +8,13 @@ export interface WhatsNewVersion {
 export const whatsNewContent: Record<string, WhatsNewVersion> = {
   '1.3.12': {
     date: '2025-XX-XX',
-    highlights: ['(To be added)'],
-    details: '(To be added)',
+    highlights: [
+      '🔄 Auto-Recovery from Auth Expiry – Extension automatically reloads to fix authentication issues',
+      '⚡ Manifest V3 Optimization – Reliable service worker reloads using chrome.alarms API',
+      '🛡️ Enhanced Stability – Persistent reload throttling prevents loops across restarts',
+      '🧪 Improved Testing – 30+ new tests ensure robust authentication recovery',
+    ],
+    details: `No more manual extension restarts! The extension now automatically recovers from persistent authentication failures by intelligently reloading itself after 3 consecutive failures. This fix addresses the critical Manifest V3 service worker timeout issues and ensures a seamless user experience even when auth expires.`,
     type: 'patch',
   },
   '1.3.11': {

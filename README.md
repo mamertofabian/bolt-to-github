@@ -33,15 +33,20 @@ A Chrome extension that automatically captures ZIP file downloads from bolt.new,
 
 ### Latest Version: v1.3.12 (Development)
 
-#### 📝 Version 1.3.12 – TBD Release
+#### 📝 Version 1.3.12 – Enhanced Auth Recovery
 
 **What's new:**
 
-- (To be added)
+- **Auto-Recovery from Auth Expiry** – Extension automatically reloads to fix persistent authentication issues
+- **Manifest V3 Optimization** – Reliable service worker reloads using chrome.alarms API instead of setTimeout
+- **Enhanced Stability** – Persistent reload throttling prevents loops (5-minute minimum between reloads)
+- **Improved Testing** – 30+ new tests ensure robust authentication recovery
 
 **Key Benefits:**
 
-- (To be added)
+- **No More Manual Restarts** – Automatically recovers from auth failures without user intervention
+- **Reliable in All Scenarios** – Works even when service worker becomes inactive (Manifest V3 fix)
+- **Smart Self-Healing** – Reloads only when necessary after 3 consecutive auth failures
 
 #### 📝 Version 1.3.11 – New Bolt.new Design Integration
 
