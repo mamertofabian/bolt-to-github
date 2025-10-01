@@ -762,7 +762,7 @@ export class BackgroundService {
     base64Data: string,
     currentProjectId?: string | null
   ): Promise<void> {
-    logger.info('🔄 Handling ZIP data for tab:', tabId);
+    logger.info('🔄 Handling ZIP data for tab:', tabId, '- ZIP size:', base64Data.length, 'chars');
     const port = this.ports.get(tabId);
     if (!port) return;
 
@@ -792,8 +792,32 @@ export class BackgroundService {
     } = {};
 
     try {
+      // Proactively try to initialize GitHub service if not already initialized
       if (!this.githubService) {
-        throw new Error('GitHub service is not initialized. Please check your GitHub settings.');
+        logger.warn('⚠️ GitHub service not initialized, attempting to initialize now...');
+        const githubService = await this.initializeGitHubService();
+        if (githubService) {
+          logger.info('✅ GitHub service initialized successfully during ZIP processing');
+          this.setupZipHandler(githubService);
+        } else {
+          // Provide detailed diagnostics for why initialization failed
+          const settings = await this.stateManager.getGitHubSettings();
+          const localSettings = await chrome.storage.local.get(['authenticationMethod']);
+          const authMethod = localSettings.authenticationMethod || 'pat';
+
+          logger.error('❌ GitHub service initialization failed. Diagnostics:', {
+            authMethod,
+            hasSettings: !!settings,
+            hasGitHubSettings: !!settings?.gitHubSettings,
+            hasToken: !!settings?.gitHubSettings?.githubToken,
+            hasRepoOwner: !!settings?.gitHubSettings?.repoOwner,
+          });
+
+          throw new Error(
+            'GitHub service is not initialized. Please ensure you have configured your GitHub authentication in the extension settings. ' +
+              `Current auth method: ${authMethod}${authMethod === 'pat' ? ' (requires GitHub token and repo owner)' : ' (requires GitHub App connection)'}`
+          );
+        }
       }
 
       if (!this.zipHandler) {
@@ -977,7 +1001,17 @@ export class BackgroundService {
         }
       }
     } catch (error) {
-      logger.error('Error processing ZIP:', error);
+      // Better error serialization for logging
+      const errorDetails =
+        error instanceof Error
+          ? {
+              message: error.message,
+              name: error.name,
+              stack: error.stack?.split('\n').slice(0, 3).join('\n'), // First 3 lines of stack
+            }
+          : { error: String(error) };
+
+      logger.error('Error processing ZIP:', errorDetails);
 
       if (!uploadSuccess) {
         const duration = Date.now() - startTime;
