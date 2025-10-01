@@ -380,6 +380,11 @@ export class BackgroundService {
         logger.info('🧹 Emergency log clearing requested');
         this.handleEmergencyLogClear(sendResponse);
         return true; // Will respond asynchronously
+      } else if (message.type === 'RELOAD_EXTENSION') {
+        // Handle extension reload request (self-healing for auth failures)
+        logger.info('🔄 Extension reload requested for authentication recovery');
+        this.handleExtensionReload(message.data, sendResponse);
+        return true; // Will respond asynchronously
       }
 
       // Return true to indicate we'll send a response asynchronously
@@ -1660,6 +1665,74 @@ export class BackgroundService {
       sendResponse({
         success: false,
         error: error instanceof Error ? error.message : 'Failed to clear logs',
+      });
+    }
+  }
+
+  /**
+   * Handle extension reload request (self-healing for authentication failures)
+   * Shows a notification and then reloads the extension to clear stale state
+   */
+  private async handleExtensionReload(
+    data: {
+      reason?: string;
+    },
+    sendResponse: (response: { success: boolean; error?: string }) => void
+  ): Promise<void> {
+    try {
+      logger.info('🔄 Handling extension reload request:', data);
+
+      // Track reload event in analytics
+      await analytics.trackEvent({
+        category: 'authentication',
+        action: 'extension_reload_triggered',
+        label: JSON.stringify({
+          reason: data.reason || 'unknown',
+          context: 'self_healing',
+        }),
+      });
+
+      // Send notification to all bolt.new tabs about the reload
+      try {
+        const tabs = await chrome.tabs.query({ url: 'https://bolt.new/*' });
+        for (const tab of tabs) {
+          if (tab.id) {
+            chrome.tabs
+              .sendMessage(tab.id, {
+                type: 'SHOW_EXTENSION_RELOAD_NOTIFICATION',
+                data: {
+                  message:
+                    'Extension needs to restart to fix authentication. Restarting in 3 seconds...',
+                  countdown: 3,
+                },
+              })
+              .catch(() => {
+                // Tab might not have content script injected - ignore
+              });
+          }
+        }
+      } catch (notificationError) {
+        logger.warn('Failed to send reload notification to tabs:', notificationError);
+        // Continue with reload even if notification fails
+      }
+
+      // Give user time to see the notification (3 seconds)
+      setTimeout(() => {
+        logger.info('🔄 Reloading extension now...');
+        try {
+          chrome.runtime.reload();
+        } catch (reloadError) {
+          logger.error('❌ Failed to reload extension:', reloadError);
+        }
+      }, 3000);
+
+      // Respond immediately (before reload happens)
+      sendResponse({ success: true });
+    } catch (error) {
+      logger.error('❌ Error handling extension reload:', error);
+      sendResponse({
+        success: false,
+        error: error instanceof Error ? error.message : 'Failed to reload extension',
       });
     }
   }

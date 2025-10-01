@@ -71,6 +71,13 @@ export class SupabaseAuthService {
   private postConnectionStartTime: number = 0;
   private aggressiveDetectionInterval: number | null = null;
 
+  /* Extension reload tracking for self-healing */
+  private consecutiveAuthFailures: number = 0;
+  private lastReloadTimestamp: number = 0;
+  private reloadRequested: boolean = false;
+  private readonly MAX_AUTH_FAILURES_BEFORE_RELOAD = 3;
+  private readonly MIN_TIME_BETWEEN_RELOADS = 5 * 60 * 1000; /* 5 minutes */
+
   private constructor() {
     this.supabaseUrl = this.SUPABASE_URL;
     this.anonKey = this.SUPABASE_ANON_KEY;
@@ -516,6 +523,29 @@ export class SupabaseAuthService {
   private async triggerReAuthentication(reason: string): Promise<void> {
     try {
       logger.info(`🔐 Triggering re-authentication flow – reason: ${reason}`);
+
+      // Don't increment or proceed if reload has already been requested
+      if (this.reloadRequested) {
+        logger.info('⏸️ Extension reload already requested, skipping re-auth flow');
+        return;
+      }
+
+      // Increment failure counter
+      this.consecutiveAuthFailures++;
+      logger.info(
+        `📊 Consecutive auth failures: ${this.consecutiveAuthFailures}/${this.MAX_AUTH_FAILURES_BEFORE_RELOAD}`
+      );
+
+      // Check if we've hit the threshold for extension reload
+      if (this.consecutiveAuthFailures >= this.MAX_AUTH_FAILURES_BEFORE_RELOAD) {
+        logger.warn(
+          `⚠️ Reached maximum auth failures (${this.MAX_AUTH_FAILURES_BEFORE_RELOAD}). ` +
+            `Requesting extension reload to clear stale state.`
+        );
+        this.reloadRequested = true;
+        await this.requestExtensionReload();
+        return; // Don't proceed with normal re-auth flow - reload will handle it
+      }
 
       // Ensure we start from a clean state
       await this.logout();
@@ -1202,6 +1232,10 @@ export class SupabaseAuthService {
       /* If user became unauthenticated, restart initial auth detection */
       if (this.authState.isAuthenticated && !previousState.isAuthenticated) {
         logger.info('🎉 User authenticated - extension now independent from bolt2github.com');
+        /* Reset failure counter and reload flag on successful authentication */
+        this.consecutiveAuthFailures = 0;
+        this.reloadRequested = false;
+        logger.info('✅ Reset consecutive auth failures counter after successful authentication');
       } else if (!this.authState.isAuthenticated && previousState.isAuthenticated) {
         logger.info('🔄 User unauthenticated - restarting initial auth detection');
         this.setupInitialAuthDetection();
@@ -1430,6 +1464,10 @@ export class SupabaseAuthService {
     this.isInitialOnboarding = true;
     this.isPostConnectionMode = false;
     this.postConnectionStartTime = 0;
+
+    /* Reset failure counter and reload flag (but preserve reload timestamp to prevent loops) */
+    this.consecutiveAuthFailures = 0;
+    this.reloadRequested = false;
 
     logger.info('🧹 Cleaned up SupabaseAuthService including aggressive detection');
   }
@@ -1862,6 +1900,51 @@ export class SupabaseAuthService {
       }
     } catch (error) {
       logger.warn('Error clearing GitHub Apps cache:', error);
+    }
+  }
+
+  /**
+   * Request extension reload to clear stale state
+   * This is a "nuclear option" when authentication repeatedly fails after user has logged in
+   * Replicates the effect of manually disabling/enabling the extension
+   */
+  private async requestExtensionReload(): Promise<void> {
+    try {
+      // Check if minimum time has passed since last reload (prevent reload loops)
+      const timeSinceLastReload = Date.now() - this.lastReloadTimestamp;
+      if (timeSinceLastReload < this.MIN_TIME_BETWEEN_RELOADS) {
+        logger.warn(
+          `⏸️ Reload requested too soon after previous reload (${Math.round(timeSinceLastReload / 1000)}s ago). ` +
+            `Minimum interval: ${this.MIN_TIME_BETWEEN_RELOADS / 1000}s. Skipping reload to prevent loops.`
+        );
+        return;
+      }
+
+      logger.info(
+        '🔄 Requesting extension reload to clear stale authentication state (after multiple failures)'
+      );
+
+      // Record reload timestamp BEFORE sending message (to prevent race conditions)
+      this.lastReloadTimestamp = Date.now();
+
+      // Send message to background service to handle the reload
+      // The background service will show a notification and then call chrome.runtime.reload()
+      try {
+        if (chrome.runtime?.id) {
+          await chrome.runtime.sendMessage({
+            type: 'RELOAD_EXTENSION',
+            data: {
+              reason: 'Multiple authentication failures - clearing stale state',
+            },
+          });
+          logger.info('✅ Extension reload requested successfully');
+        }
+      } catch (error) {
+        logger.error('❌ Failed to send extension reload message:', error);
+        // Don't throw - this is best effort
+      }
+    } catch (error) {
+      logger.error('❌ Error requesting extension reload:', error);
     }
   }
 }
