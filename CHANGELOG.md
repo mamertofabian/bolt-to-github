@@ -1,14 +1,17 @@
-## 2025-XX-XX - Version 1.3.12
+# Changelog
+
+## 2025-10-01 - Version 1.3.12
 
 ### 🔧 Performance & Stability
 
+- **Automatic Extension Reload for Auth Failures** - Extension now automatically restarts after 3 consecutive authentication failures to clear stale state and restore connectivity
 - **Self-Healing Authentication** - Extension automatically reloads to fix persistent auth failures after 3 consecutive attempts
 - **Reliable Service Worker Reloads** - Replaced unreliable setTimeout with chrome.alarms API for Manifest V3 compatibility
 - **Persistent Reload Throttling** - Reload timestamp survives extension restarts to prevent reload loops (5-minute minimum)
 
 ### 🧪 Testing & Quality
 
-- **Comprehensive Test Coverage** - Added 30 new tests for extension reload functionality
+- **Comprehensive Test Coverage** - Added 30 new tests for extension reload functionality (BackgroundService and SupabaseAuthService)
 - **Race Condition Prevention** - Fixed concurrent failure tracking to prevent duplicate reload requests
 - **Enhanced Error Handling** - Improved robustness for notification and alarm failures
 

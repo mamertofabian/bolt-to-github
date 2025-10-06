@@ -7,7 +7,7 @@ export interface WhatsNewVersion {
 
 export const whatsNewContent: Record<string, WhatsNewVersion> = {
   '1.3.12': {
-    date: '2025-XX-XX',
+    date: '2025-10-01',
     highlights: [
       '🔄 Auto-Recovery from Auth Expiry – Extension automatically reloads to fix authentication issues',
       '⚡ Manifest V3 Optimization – Reliable service worker reloads using chrome.alarms API',
