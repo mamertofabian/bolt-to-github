@@ -1,0 +1,30 @@
+# GitHub Actions workflow files
+# Must match default branch exactly for OIDC token exchange
+.github/workflows/
+
+# Build outputs
+dist/
+build/
+coverage/
+
+# Dependencies
+node_modules/
+pnpm-lock.yaml
+package-lock.json
+yarn.lock
+
+# IDE
+.vscode/
+.idea/
+.cursor/
+
+# Minified files
+*.min.js
+*.min.css
+
+# Generated files
+.DS_Store
+
+# Other
+.env
+.env.local
