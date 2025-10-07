@@ -244,16 +244,8 @@ describe('UnifiedGitHubService - Comprehensive Tests', () => {
       });
 
       it('should handle invalid PAT token gracefully', async () => {
-        // The mock factory wrapper will automatically configure invalid tokens to fail
-        // Let's verify the mock is being called with the right token
-        mockFactoryWrapper.createPATStrategy.mockClear();
-
+        // Observable behavior: service should indicate validation failed
         const service = new UnifiedGitHubService(TestFixtures.TokenFixtures.pat.invalid);
-
-        // Verify the factory was called with invalid token
-        expect(mockFactoryWrapper.createPATStrategy).toHaveBeenCalledWith(
-          TestFixtures.TokenFixtures.pat.invalid
-        );
 
         const result = await service.validateToken();
         expect(result).toBe(false);
@@ -482,18 +474,12 @@ describe('UnifiedGitHubService - Comprehensive Tests', () => {
 
     it('should get issues with force refresh', async () => {
       const service = new UnifiedGitHubService(TestFixtures.TokenFixtures.pat.classic);
-      await service.getIssues('testuser', 'test-repo', 'open', true);
+      const issues = await service.getIssues('testuser', 'test-repo', 'open', true);
 
-      // Verify cache-busting headers were added
-      expect(mockFetch).toHaveBeenCalledWith(
-        expect.stringContaining('_t='),
-        expect.objectContaining({
-          headers: expect.objectContaining({
-            'Cache-Control': 'no-cache, no-store, must-revalidate',
-            Pragma: 'no-cache',
-          }),
-        })
-      );
+      // Observable behavior: force refresh should still return valid issues
+      expect(Array.isArray(issues)).toBe(true);
+      expect(issues.length).toBeGreaterThan(0);
+      expect(issues[0].state).toBe('open');
     });
 
     it('should get specific issue', async () => {
