@@ -26,12 +26,24 @@ fi
 
 # 4. Run tests to ensure nothing is broken (can skip with SKIP_TESTS=1)
 if [ -z "$SKIP_TESTS" ]; then
-  echo "🧪 Running tests..."
-  pnpm test
-  if [ $? -ne 0 ]; then
-    echo "❌ Tests failed. Please fix failing tests before committing."
-    echo "💡 To skip tests temporarily during development, use: SKIP_TESTS=1 git commit"
-    exit 1
+  # Option to run only changed tests for faster development (feature branches)
+  if [ "$SKIP_FULL_TESTS" = "1" ]; then
+    echo "🧪 Running tests on changed files only..."
+    pnpm test --changed
+    if [ $? -ne 0 ]; then
+      echo "❌ Tests on changed files failed. Please fix failing tests before committing."
+      echo "💡 To run full test suite, use: git commit (without SKIP_FULL_TESTS=1)"
+      exit 1
+    fi
+  else
+    echo "🧪 Running full test suite..."
+    pnpm test
+    if [ $? -ne 0 ]; then
+      echo "❌ Tests failed. Please fix failing tests before committing."
+      echo "💡 To skip tests temporarily during development, use: SKIP_TESTS=1 git commit"
+      echo "💡 To run only changed tests, use: SKIP_FULL_TESTS=1 git commit"
+      exit 1
+    fi
   fi
 else
   echo "⏭️  Skipping tests (SKIP_TESTS is set)"
