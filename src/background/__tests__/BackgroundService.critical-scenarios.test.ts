@@ -103,8 +103,9 @@ describe('BackgroundService Critical Scenarios - Observable Behaviors', () => {
       await new Promise((resolve) => setTimeout(resolve, 300));
 
       const operations = env.serviceFactory.operationStateManager.getAllOperations();
-      const hasError = operations.length === 0 || operations.some((op) => op.status === 'failed');
-      expect(hasError).toBe(true);
+      expect(operations.length).toBeGreaterThan(0);
+      const hasFailedOperation = operations.some((op) => op.status === 'failed');
+      expect(hasFailedOperation).toBe(true);
     });
 
     it('should process custom commit message before ZIP upload', async () => {
@@ -120,7 +121,7 @@ describe('BackgroundService Critical Scenarios - Observable Behaviors', () => {
       await new Promise((resolve) => setTimeout(resolve, 200));
 
       const operations = env.serviceFactory.operationStateManager.getAllOperations();
-      expect(operations.length).toBeGreaterThanOrEqual(0);
+      expect(operations.length).toBeGreaterThan(0);
       expect(port.onMessage.hasListeners()).toBe(true);
     });
   });
