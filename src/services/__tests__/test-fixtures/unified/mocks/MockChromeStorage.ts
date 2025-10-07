@@ -127,6 +127,26 @@ export class MockChromeStorage {
               this.syncStorage.set(key, value);
             }
           }),
+
+          remove: vi.fn(async (keys: string | string[]) => {
+            await this.simulateDelay();
+            if (this.shouldFail) {
+              throw new Error('Storage operation failed');
+            }
+
+            const keyArray = Array.isArray(keys) ? keys : [keys];
+            for (const key of keyArray) {
+              this.syncStorage.delete(key);
+            }
+          }),
+
+          clear: vi.fn(async () => {
+            await this.simulateDelay();
+            if (this.shouldFail) {
+              throw new Error('Storage operation failed');
+            }
+            this.syncStorage.clear();
+          }),
         },
       },
     } as unknown as typeof chrome;
