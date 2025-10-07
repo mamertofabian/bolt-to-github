@@ -403,7 +403,7 @@ export class LogStorageManager {
 
       // Reset quota flag after cleanup
       this.quotaExceeded = false;
-    } catch (error) {
+    } catch {
       // Silent fail to prevent cascading errors during emergency cleanup
     }
   }
@@ -433,7 +433,7 @@ export class LogStorageManager {
           manualClear: new Date().toISOString(),
         },
       });
-    } catch (error) {
+    } catch {
       // Silent fail
     }
   }
