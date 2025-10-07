@@ -319,7 +319,17 @@ pnpm test:ui
 
 # Run tests with coverage
 pnpm test:ci
+
+# Show list of failing test files (useful for debugging)
+pnpm test:failed-files
 ```
+
+**Using `test:failed-files`**: This command is particularly useful when you have multiple failing tests and want to quickly identify which test files need attention. It:
+
+- Runs all tests and captures the output
+- Extracts unique failing test file paths
+- Displays a clean list of files with errors
+- Can be used in CI/CD pipelines to identify problematic test files
 
 ### Future Commands (after adding tools)
 
