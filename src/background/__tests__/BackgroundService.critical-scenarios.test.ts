@@ -60,7 +60,11 @@ describe('BackgroundService Critical Scenarios - Observable Behaviors', () => {
       await new Promise((resolve) => setTimeout(resolve, 200));
 
       const operations = env.serviceFactory.operationStateManager.getAllOperations();
-      expect(operations.length).toBeGreaterThanOrEqual(1);
+      expect(operations.length).toBeGreaterThan(0);
+      const operation = operations[operations.length - 1];
+      expect(operation.status).toBeDefined();
+      expect(['completed', 'failed', 'pending']).toContain(operation.status);
+      expect(operation.id).toBeDefined();
     });
 
     it('should handle rapid connection/disconnection cycles without resource leaks', async () => {
@@ -91,6 +95,10 @@ describe('BackgroundService Critical Scenarios - Observable Behaviors', () => {
 
       const operations = env.serviceFactory.operationStateManager.getAllOperations();
       expect(operations.length).toBeGreaterThan(0);
+      const operation = operations[0];
+      expect(operation.status).toBe('completed');
+      expect(operation.type).toBeDefined();
+      expect(operation.id).toBeDefined();
     });
 
     it('should handle corrupted ZIP data and create failed operation', async () => {
@@ -104,8 +112,10 @@ describe('BackgroundService Critical Scenarios - Observable Behaviors', () => {
 
       const operations = env.serviceFactory.operationStateManager.getAllOperations();
       expect(operations.length).toBeGreaterThan(0);
-      const hasFailedOperation = operations.some((op) => op.status === 'failed');
-      expect(hasFailedOperation).toBe(true);
+      const failedOperation = operations.find((op) => op.status === 'failed');
+      expect(failedOperation).toBeDefined();
+      expect(failedOperation?.status).toBe('failed');
+      expect(failedOperation?.error).toBeDefined();
     });
 
     it('should process custom commit message before ZIP upload', async () => {

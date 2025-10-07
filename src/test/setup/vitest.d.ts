@@ -1,4 +1,5 @@
 /// <reference types="vitest/globals" />
+/// <reference types="@vitest/expect" />
 
 declare global {
   const vi: typeof import('vitest').vi;
