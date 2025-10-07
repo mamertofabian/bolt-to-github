@@ -1,0 +1,346 @@
+# Testing Overview
+
+## Current Testing Status
+
+**Last Updated**: 2025-10-07
+**Version**: 1.3.12
+
+### Summary Statistics
+
+| Metric                       | Count | Percentage |
+| ---------------------------- | ----- | ---------- |
+| Total Source Files           | 171   | 100%       |
+| Files with Unit Tests        | 44    | 25.7%      |
+| Files without Tests          | 127   | 74.3%      |
+| Total Test Files             | 68    | -          |
+| Svelte Components            | 61    | -          |
+| Svelte Components with Tests | 0     | 0%         |
+
+### Test Coverage by Category
+
+| Category              | Type   | Status                      |
+| --------------------- | ------ | --------------------------- |
+| **Unit Tests**        | Vitest | ✅ Partial (25.7% coverage) |
+| **Component Tests**   | None   | ❌ Missing                  |
+| **Integration Tests** | None   | ❌ Missing                  |
+| **E2E Tests**         | None   | ❌ Missing                  |
+
+---
+
+## Testing Tools & Technologies
+
+### Current Testing Stack
+
+| Tool/Library                  | Version | Purpose                  | Status           |
+| ----------------------------- | ------- | ------------------------ | ---------------- |
+| **Vitest**                    | 1.6.0   | Unit testing framework   | ✅ Configured    |
+| **@testing-library/jest-dom** | 6.6.3   | DOM assertions           | ✅ Configured    |
+| **@vitest/coverage-v8**       | 3.2.4   | Code coverage            | ✅ Configured    |
+| **@vitest/ui**                | 1.6.0   | Test UI                  | ✅ Configured    |
+| **jsdom**                     | 24.0.0  | DOM environment          | ✅ Configured    |
+| **Playwright**                | -       | E2E testing              | ❌ Not installed |
+| **@testing-library/svelte**   | -       | Svelte component testing | ❌ Not installed |
+
+### Understanding Testing Tools
+
+**Testing Tools vs Libraries vs Frameworks:**
+
+- **Testing Frameworks**: Complete testing solutions (Vitest, Jest, Mocha)
+
+  - Provide test runners, assertion libraries, and configuration
+  - Example: Vitest runs tests and reports results
+
+- **Testing Libraries**: Specialized utilities for specific testing needs
+
+  - @testing-library/jest-dom: DOM-specific assertions
+  - @testing-library/svelte: Utilities for testing Svelte components
+
+- **Testing Tools**: Broader category including frameworks, libraries, and utilities
+  - Playwright: Browser automation tool for E2E testing
+  - Coverage reporters: Tools for measuring test coverage
+
+**Appropriate Tools by Test Type:**
+
+| Test Type             | Recommended Tools                  | Purpose                                          |
+| --------------------- | ---------------------------------- | ------------------------------------------------ |
+| **Unit Tests**        | Vitest + @testing-library/jest-dom | Test individual functions/classes in isolation   |
+| **Component Tests**   | Vitest + @testing-library/svelte   | Test Svelte component rendering and interactions |
+| **Integration Tests** | Vitest with real implementations   | Test how multiple units work together            |
+| **E2E Tests**         | Playwright or Cypress              | Test complete user workflows in real browser     |
+
+---
+
+## What We Have: Existing Test Coverage
+
+### ✅ Well-Tested Areas (44 files with tests)
+
+#### Background Services (4/5 files)
+
+- ✅ BackgroundService.ts (8 test files covering alarms, edge cases, user journeys, etc.)
+- ✅ TempRepoManager.ts (3 test files)
+- ✅ UsageTracker.ts
+- ✅ WindowManager.ts
+
+#### Content Scripts (4/6 core files)
+
+- ✅ ContentManager.ts (3 test files: critical scenarios, edge cases, user journeys)
+- ✅ MessageHandler.ts (3 test files: edge cases, memory leaks, basic tests)
+- ✅ UIManager.ts
+- ✅ WelcomePageContentScript.ts
+
+#### Handlers (2/2 files)
+
+- ✅ FileChangeHandler.ts
+- ✅ GitHubUploadHandler.ts
+
+#### Infrastructure (3/4 files)
+
+- ✅ ComponentLifecycleManager.ts
+- ✅ DOMObserver.ts
+- ✅ UIElementFactory.ts
+
+#### Managers (5/5 files)
+
+- ✅ DropdownManager.ts
+- ✅ GitHubButtonManager.ts
+- ✅ NotificationManager.ts
+- ✅ UploadStatusManager.ts
+- ✅ WhatsNewManager.ts
+
+#### Content Services (3/6 files)
+
+- ✅ PremiumService.ts (2 test files)
+- ✅ SupabaseAuthService.ts
+- ✅ UIStateManager.ts
+
+#### Global Services (14/22 files)
+
+- ✅ AnalyticsService.ts (2 test files)
+- ✅ BoltProjectSyncService.ts (2 test files)
+- ✅ CacheService.ts
+- ✅ DownloadService.ts
+- ✅ FileService.ts
+- ✅ GitHubApiClient.ts
+- ✅ GitHubAppService.ts
+- ✅ IdleMonitorService.ts
+- ✅ RateLimitHandler.ts
+- ✅ ReadmeGeneratorService.ts
+- ✅ RepoCloneService.ts
+- ✅ RepositoryService.ts
+- ✅ SubscriptionService.ts
+- ✅ TokenService.ts
+- ✅ UnifiedGitHubService.ts (3 test files)
+- ✅ zipHandler.ts (4 test files)
+
+#### Utilities (4/11 files)
+
+- ✅ fileUtils.ts
+- ✅ logStorage.ts
+- ✅ logger.ts
+- ✅ projectId.ts
+- ✅ windowMode.ts
+
+#### Storage (1/1 file)
+
+- ✅ chromeStorage.ts (3 test files: BoltProjects, GitHubComCleanup, RaceConditions)
+
+#### Stores (1/8 files)
+
+- ✅ pushStatistics.ts
+
+---
+
+## What We're Missing: Test Gaps
+
+### ❌ Critical Gaps
+
+#### 1. **Zero Component Tests** (61 Svelte components untested)
+
+All UI components lack dedicated tests:
+
+- Main app (App.svelte)
+- All popup components (13 files)
+- All lib components (29 files)
+- All UI library components (19 files)
+- Content components (2 files)
+
+#### 2. **No E2E Tests**
+
+- No browser automation testing
+- No extension lifecycle testing
+- No real GitHub integration testing
+- No user workflow validation
+
+#### 3. **No Integration Tests**
+
+- Multi-service workflows untested
+- Chrome API integration untested
+- External API integration untested
+
+#### 4. **Untested Services** (8 files)
+
+- AuthenticationStrategyFactory.ts
+- FilePreviewService.ts
+- GitHubAppAuthenticationStrategy.ts
+- GitHubComparisonService.ts
+- PATAuthenticationStrategy.ts
+- CommitTemplateService.ts
+- OperationStateManager.ts
+- PushReminderService.ts
+
+See [testing-gaps.md](./testing-gaps.md) for complete detailed breakdown.
+
+---
+
+## Test Types Explained
+
+### 1. Unit Tests (Current: Vitest)
+
+**What they test**: Individual functions, classes, or modules in isolation
+**Example**: Testing that `calculateTotal(items)` returns correct sum
+
+**Current Status**: ✅ Partial coverage (25.7%)
+
+### 2. Component Tests (Missing: Need @testing-library/svelte)
+
+**What they test**: Svelte component rendering, props, events, user interactions
+**Example**: Testing that clicking "Submit" button calls the submit handler
+
+**Current Status**: ❌ Zero coverage
+
+**How to add**:
+
+```bash
+pnpm add -D @testing-library/svelte
+```
+
+### 3. Integration Tests (Missing: Use Vitest with real implementations)
+
+**What they test**: How multiple units/services work together
+**Example**: Testing that uploading a file triggers GitHub API and updates UI
+
+**Current Status**: ❌ Zero coverage
+
+**How to add**: Write Vitest tests that use real implementations instead of mocks
+
+### 4. E2E Tests (Missing: Need Playwright)
+
+**What they test**: Complete user workflows in real browser environment
+**Example**: User downloads ZIP from bolt.new, extension detects it, pushes to GitHub
+
+**Current Status**: ❌ Zero coverage
+
+**How to add**:
+
+```bash
+pnpm add -D @playwright/test
+pnpm exec playwright install
+```
+
+---
+
+## Testing Quality Metrics
+
+### Test Type Distribution (Should be)
+
+- **Unit Tests**: 70% (Current: 100% of existing tests)
+- **Component Tests**: 15% (Current: 0%)
+- **Integration Tests**: 10% (Current: 0%)
+- **E2E Tests**: 5% (Current: 0%)
+
+### Coverage Goals
+
+- **Overall**: 80%+ (Current: Unknown, likely ~25-35%)
+- **Critical paths**: 100% (Current: Partial)
+- **UI Components**: 70%+ (Current: 0%)
+- **Business logic**: 90%+ (Current: ~60%)
+
+---
+
+## Recommendations
+
+### Immediate Actions (Priority 1)
+
+1. **Add E2E Testing with Playwright**
+
+   - Install Playwright
+   - Write tests for critical user flows
+   - Test extension lifecycle
+
+2. **Add Component Testing**
+
+   - Install @testing-library/svelte
+   - Test critical UI components first
+   - Focus on forms, modals, and interactive elements
+
+3. **Add Integration Tests**
+   - Test multi-service workflows
+   - Test GitHub API integration
+   - Test Chrome storage operations
+
+### Short-term Actions (Priority 2)
+
+1. Fill gaps in service tests (8 untested services)
+2. Add tests for stores (7 untested stores)
+3. Test utility functions (7 untested utils)
+
+### Long-term Actions (Priority 3)
+
+1. Achieve 80%+ overall coverage
+2. Add visual regression testing
+3. Add performance testing
+4. Implement mutation testing
+
+---
+
+## How to Run Tests
+
+### ⚠️ Prerequisites
+
+Before running tests, install dependencies:
+
+```bash
+pnpm install
+```
+
+**Note**: If you get `sh: vitest: command not found`, run `pnpm install` first.
+
+### Current Commands
+
+```bash
+# Run all tests
+pnpm test
+
+# Run tests in watch mode
+pnpm test:watch
+
+# Run tests with UI
+pnpm test:ui
+
+# Run tests with coverage
+pnpm test:ci
+```
+
+### Future Commands (after adding tools)
+
+```bash
+# Run E2E tests (after Playwright setup)
+pnpm test:e2e
+
+# Run component tests only
+pnpm test:components
+
+# Run integration tests only
+pnpm test:integration
+```
+
+---
+
+## Next Steps
+
+See [testing-gaps.md](./testing-gaps.md) for:
+
+- Complete list of all untested files
+- Detailed tables organized by category
+- Specific test types needed for each file
+- Priority recommendations
