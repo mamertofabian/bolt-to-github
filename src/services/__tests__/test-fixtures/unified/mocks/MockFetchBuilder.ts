@@ -296,7 +296,7 @@ export class MockFetchResponseBuilder {
         if (response instanceof Promise) {
           return await response;
         }
-        return response;
+        return this.createResponse(response);
       }
 
       // Check for pattern matches (for cache-busted URLs, etc.)
@@ -307,32 +307,90 @@ export class MockFetchResponseBuilder {
           if (response instanceof Promise) {
             return await response;
           }
-          return response;
+          return this.createResponse(response);
         }
       }
 
       // Return default response or 404
       if (this.defaultResponse) {
-        return this.defaultResponse;
+        return this.createResponse(this.defaultResponse);
       }
 
-      return {
+      return this.createResponse({
         ok: false,
         status: 404,
         statusText: 'Not Found',
         json: () => Promise.resolve(ErrorFixtures.notFound.error),
-      };
+      });
     }) as MockedFunction<typeof fetch>;
 
     global.fetch = mockFetch;
     return mockFetch;
   }
 
+  /**
+   * Creates a proper Response instance from partial response data
+   */
+  private createResponse(partial: Partial<Response>): Response {
+    // If it's already a Response instance, return it
+    if (partial instanceof Response) {
+      return partial;
+    }
+
+    // Create a proper Response-like object with all necessary properties
+    const response = {
+      ok: partial.ok ?? true,
+      status: partial.status ?? 200,
+      statusText: partial.statusText ?? 'OK',
+      headers: partial.headers ?? new Headers(),
+      json: partial.json ?? (() => Promise.resolve({})),
+      text: partial.text ?? (() => Promise.resolve('')),
+      blob: partial.blob ?? (() => Promise.resolve(new Blob())),
+      arrayBuffer: partial.arrayBuffer ?? (() => Promise.resolve(new ArrayBuffer(0))),
+      formData: partial.formData ?? (() => Promise.resolve(new FormData())),
+      body: partial.body ?? null,
+      bodyUsed: partial.bodyUsed ?? false,
+      url: partial.url ?? '',
+      redirected: partial.redirected ?? false,
+      type: partial.type ?? ('basic' as ResponseType),
+      clone: partial.clone ?? (() => response as Response),
+    } as Response;
+
+    return response;
+  }
+
   private matchesPattern(key: string, pattern: string): boolean {
-    // Handle cache-busted URLs by removing query parameters for comparison
-    const baseKey = key.split('?')[0];
-    const basePattern = pattern.split('?')[0];
-    return baseKey === basePattern;
+    // Handle cache-busted URLs by checking if pattern params are a subset of key params
+    const [baseKey, keyQueryString] = key.split('?');
+    const [basePattern, patternQueryString] = pattern.split('?');
+
+    // Base URLs must match exactly
+    if (baseKey !== basePattern) {
+      return false;
+    }
+
+    // If pattern has no query params, it matches any query params on the key (cache-busting support)
+    if (!patternQueryString) {
+      return true;
+    }
+
+    // If pattern has query params, check if they're all present in the key
+    // This allows cache-busted URLs like ?state=open&_t=123 to match pattern ?state=open
+    if (!keyQueryString) {
+      return false; // Pattern has params but key doesn't
+    }
+
+    const patternParams = new URLSearchParams(patternQueryString);
+    const keyParams = new URLSearchParams(keyQueryString);
+
+    // Check if all pattern params exist in key params with matching values
+    for (const [key, value] of patternParams.entries()) {
+      if (keyParams.get(key) !== value) {
+        return false;
+      }
+    }
+
+    return true;
   }
 
   getCallCount(): number {
