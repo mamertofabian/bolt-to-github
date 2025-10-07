@@ -24,12 +24,17 @@ if [ $? -ne 0 ]; then
   exit 1
 fi
 
-# 4. Run tests to ensure nothing is broken
-# echo "🧪 Running tests..."
-# pnpm test
-# if [ $? -ne 0 ]; then
-#   echo "❌ Tests failed. Please fix failing tests before committing."
-#   exit 1
-# fi
+# 4. Run tests to ensure nothing is broken (can skip with SKIP_TESTS=1)
+if [ -z "$SKIP_TESTS" ]; then
+  echo "🧪 Running tests..."
+  pnpm test
+  if [ $? -ne 0 ]; then
+    echo "❌ Tests failed. Please fix failing tests before committing."
+    echo "💡 To skip tests temporarily during development, use: SKIP_TESTS=1 git commit"
+    exit 1
+  fi
+else
+  echo "⏭️  Skipping tests (SKIP_TESTS is set)"
+fi
 
 echo "✅ All pre-commit checks passed!"
