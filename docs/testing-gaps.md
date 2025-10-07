@@ -1,7 +1,7 @@
 # Testing Gaps - Detailed Analysis
 
 **Last Updated**: 2025-10-07
-**Total Untested Files**: 127 out of 171 (74.3%)
+**Total Untested Files**: 126 out of 171 (73.7%)
 
 This document lists ALL files that lack tests, organized by category with specific test types needed.
 
@@ -24,13 +24,18 @@ This document lists ALL files that lack tests, organized by category with specif
 
 ## Svelte Components
 
-**Total**: 61 files | **Tested**: 0 files | **Coverage**: 0%
+**Total**: 61 files | **Tested**: 1 file | **Coverage**: 1.6%
 
 ### Popup Components (13 files)
 
+**✅ Tested (1 file)**:
+
+- `src/popup/App.svelte` - **10 test files, 189 tests** covering cleanup, initialization, message handling, modal states, popup context, premium features, settings, temp repos, user interactions, and window mode
+
+**❌ Untested (12 files)**:
+
 | File Path                                          | Missing Test Types     | Recommended Tools                   | Priority    |
 | -------------------------------------------------- | ---------------------- | ----------------------------------- | ----------- |
-| `src/popup/App.svelte`                             | Component, E2E         | @testing-library/svelte, Playwright | 🔴 Critical |
 | `src/popup/components/BranchSelectionModal.svelte` | Component, Integration | @testing-library/svelte, Vitest     | 🟡 High     |
 | `src/popup/components/FeedbackModal.svelte`        | Component, Integration | @testing-library/svelte, Vitest     | 🟡 High     |
 | `src/popup/components/FileChangesModal.svelte`     | Component, Integration | @testing-library/svelte, Vitest     | 🟡 High     |
@@ -318,7 +323,7 @@ Files that are essential to core functionality and should be tested immediately:
 
 2. **Core UI Components**
 
-   - `src/popup/App.svelte`
+   - ✅ ~~`src/popup/App.svelte`~~ (Completed - 10 test files, 189 tests)
    - `src/popup/components/OnboardingView.svelte`
    - `src/lib/components/GitHubSettings.svelte`
    - `src/lib/components/OnboardingSetup.svelte`
@@ -371,9 +376,10 @@ All other services, stores, main UI components, and utilities
 
 ### Phase 2: Core Components (Week 3-4)
 
-1. Test main app components (8 critical Svelte files)
-2. Test critical stores (1 file: premiumStore)
-3. Test critical services (3 files: StateManager, OperationStateManager, ProjectSettingsMigrationService)
+1. ✅ ~~Test main app component (App.svelte)~~ - **Completed!** 10 test files, 189 tests
+2. Test remaining critical UI components (7 files)
+3. Test critical stores (1 file: premiumStore)
+4. Test critical services (3 files: StateManager, OperationStateManager, ProjectSettingsMigrationService)
 
 ### Phase 3: UI Library (Week 5-6)
 
@@ -411,7 +417,8 @@ All other services, stores, main UI components, and utilities
 - [ ] Services: 100% (currently 63.6%)
 - [ ] Stores: 100% (currently 14.3%)
 - [ ] Utilities: 100% (currently 36.4%)
-- [ ] Components: 70%+ (currently 0%)
+- [x] **Main App Component: 100% (App.svelte - 189 tests)**
+- [ ] Other Components: 70%+ (currently 1.6% - 1 of 61 files)
 - [ ] Infrastructure: 100% (currently 75%)
 
 ### Quality Metrics

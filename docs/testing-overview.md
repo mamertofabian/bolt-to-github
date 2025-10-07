@@ -10,18 +10,18 @@
 | Metric                       | Count | Percentage |
 | ---------------------------- | ----- | ---------- |
 | Total Source Files           | 171   | 100%       |
-| Files with Unit Tests        | 44    | 25.7%      |
-| Files without Tests          | 127   | 74.3%      |
-| Total Test Files             | 68    | -          |
+| Files with Unit Tests        | 45    | 26.3%      |
+| Files without Tests          | 126   | 73.7%      |
+| Total Test Files             | 78    | -          |
 | Svelte Components            | 61    | -          |
-| Svelte Components with Tests | 0     | 0%         |
+| Svelte Components with Tests | 1     | 1.6%       |
 
 ### Test Coverage by Category
 
 | Category              | Type   | Status                      |
 | --------------------- | ------ | --------------------------- |
-| **Unit Tests**        | Vitest | ✅ Partial (25.7% coverage) |
-| **Component Tests**   | None   | ❌ Missing                  |
+| **Unit Tests**        | Vitest | ✅ Partial (26.3% coverage) |
+| **Component Tests**   | Vitest | ✅ Started (1.6% coverage)  |
 | **Integration Tests** | None   | ❌ Missing                  |
 | **E2E Tests**         | None   | ❌ Missing                  |
 
@@ -72,7 +72,21 @@
 
 ## What We Have: Existing Test Coverage
 
-### ✅ Well-Tested Areas (44 files with tests)
+### ✅ Well-Tested Areas (45 files with tests)
+
+#### Popup Components (1/14 files)
+
+- ✅ **App.svelte** (10 test files, 189 tests)
+  - App.cleanup.test.ts - Resource cleanup and disposal (22 tests)
+  - App.initialization.test.ts - Component initialization and lifecycle (27 tests)
+  - App.message-handlers.test.ts - Chrome runtime message handling (18 tests)
+  - App.modal-states.test.ts - Modal state management (8 tests)
+  - App.popup-context.test.ts - Popup context handling (7 tests)
+  - App.premium-features.test.ts - Premium feature behavior (8 tests)
+  - App.settings.test.ts - Settings management (28 tests)
+  - App.temp-repo.test.ts - Temporary repository management (19 tests)
+  - App.user-interactions.test.ts - User interaction flows (31 tests)
+  - App.window-mode.test.ts - Window mode functionality (21 tests)
 
 #### Background Services (4/5 files)
 
@@ -148,21 +162,33 @@
 
 - ✅ pushStatistics.ts
 
+**Note**: App.svelte tests also indirectly test store actions and interactions through the component's behavior.
+
 ---
 
 ## What We're Missing: Test Gaps
 
 ### ❌ Critical Gaps
 
-#### 1. **Zero Component Tests** (61 Svelte components untested)
+#### 1. **Very Limited Component Tests** (60 Svelte components untested)
 
-All UI components lack dedicated tests:
+Almost all UI components lack dedicated tests:
 
-- Main app (App.svelte)
-- All popup components (13 files)
-- All lib components (29 files)
-- All UI library components (19 files)
-- Content components (2 files)
+- ✅ **Main app (App.svelte)** - 10 test files, 189 tests covering:
+  - Cleanup and resource disposal
+  - Initialization and lifecycle
+  - Message handling
+  - Modal state management
+  - Popup context handling
+  - Premium features
+  - Settings management
+  - Temp repo management
+  - User interactions
+  - Window mode functionality
+- ❌ All popup components (13 files)
+- ❌ All lib components (29 files)
+- ❌ All UI library components (19 files)
+- ❌ Content components (2 files)
 
 #### 2. **No E2E Tests**
 
