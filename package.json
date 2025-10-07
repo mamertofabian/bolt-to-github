@@ -18,7 +18,7 @@
     "test:coverage": "vitest run --coverage",
     "test:watch": "vitest watch",
     "test:ui": "vitest --ui",
-    "test:failed-files": "pnpm test 2>&1 | tee /tmp/vitest_output.log > /dev/null; echo '=== FAILING TEST FILES ==='; grep -E '❯.*\\.test\\.ts.*failed' /tmp/vitest_output.log | grep -oE 'src/[^[:space:]\"]*\\.test\\.ts' | sort | uniq; echo '--- Files with errors in context ---'; grep -E '(❯|FAIL|failed|Error:|TypeError:|ReferenceError:|This error originated)' /tmp/vitest_output.log | grep -oE 'src/[^[:space:]\"]*\\.test\\.ts' | sort | uniq || true",
+    "test:failed-files": "node scripts/find-failed-tests.js",
     "prepare": "husky",
     "lint-check": "pnpm run lint && pnpm run check"
   },
