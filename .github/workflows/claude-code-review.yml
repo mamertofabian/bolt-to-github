@@ -31,6 +31,19 @@ jobs:
         with:
           fetch-depth: 1
 
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v3
+        with:
+          version: 8
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
       - name: Run Claude Code Review
         id: claude-review
         uses: anthropics/claude-code-action@v1
