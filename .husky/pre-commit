@@ -1,11 +1,35 @@
 #!/usr/bin/env sh
 . "$(dirname -- "$0")/_/husky.sh"
 
-# Run tests
-# pnpm test
+echo "🔍 Running pre-commit checks..."
 
-# Run lint-staged to format files
+# 1. Format files with lint-staged (only staged files)
+echo "📝 Formatting staged files..."
 pnpm lint-staged
 
-# Run prettier to format files
-pnpm format:fix
+# 2. Run ESLint on all source files
+echo "🔧 Running ESLint..."
+pnpm lint
+if [ $? -ne 0 ]; then
+  echo "❌ ESLint failed. Please fix linting errors before committing."
+  echo "💡 Run 'pnpm lint:fix' to auto-fix some issues."
+  exit 1
+fi
+
+# 3. Run TypeScript type checking
+echo "🔍 Running TypeScript type checking..."
+pnpm check
+if [ $? -ne 0 ]; then
+  echo "❌ TypeScript type checking failed. Please fix type errors before committing."
+  exit 1
+fi
+
+# 4. Run tests to ensure nothing is broken
+# echo "🧪 Running tests..."
+# pnpm test
+# if [ $? -ne 0 ]; then
+#   echo "❌ Tests failed. Please fix failing tests before committing."
+#   exit 1
+# fi
+
+echo "✅ All pre-commit checks passed!"
