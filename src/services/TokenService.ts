@@ -27,6 +27,13 @@ export class TokenService implements ITokenService {
    */
   async validateToken(): Promise<boolean> {
     try {
+      // Security check: Reject test tokens in production
+      const token = (this.apiClient as IGitHubApiClientWithToken).token;
+      if (token?.startsWith('TEST_')) {
+        logger.error('SECURITY: Test token detected in production environment');
+        return false;
+      }
+
       await this.apiClient.request('GET', '/user');
       return true;
     } catch (error) {
