@@ -24,25 +24,26 @@ import {
 
 // Mock the AuthenticationStrategyFactory at the module level
 const mockFactory = await (async () => {
-  const { MockAuthenticationStrategyFactory } = await vi.importActual<
-    typeof import('./test-fixtures/UnifiedGitHubServiceFixtures')
-  >('./test-fixtures/UnifiedGitHubServiceFixtures');
+  const { MockAuthenticationStrategyFactory } =
+    await vi.importActual<typeof import('./test-fixtures/unified')>('./test-fixtures/unified');
   return new MockAuthenticationStrategyFactory();
 })();
 
 // Create a factory wrapper that handles token-based strategy creation
 const mockFactoryWrapper = {
   createPATStrategy: vi.fn(async (token: string) => {
-    const { MockPATAuthenticationStrategy, TestFixtures } = await vi.importActual<
-      typeof import('./test-fixtures/UnifiedGitHubServiceFixtures')
-    >('./test-fixtures/UnifiedGitHubServiceFixtures');
+    const { MockPATAuthenticationStrategy, TestFixtures, stripTestPrefix, isTestToken } =
+      await vi.importActual<typeof import('./test-fixtures/unified')>('./test-fixtures/unified');
     const strategy = new MockPATAuthenticationStrategy(token);
+
+    // Strip TEST_ prefix for pattern validation
+    const cleanToken = isTestToken(token) ? stripTestPrefix(token) : token;
 
     // Apply test configurations based on token type
     if (
       token === TestFixtures.TokenFixtures.pat.invalid ||
       token === 'invalid-token-format' ||
-      (!token.startsWith('ghp_') && !token.startsWith('github_pat_'))
+      (!cleanToken.startsWith('ghp_') && !cleanToken.startsWith('github_pat_'))
     ) {
       strategy.setShouldFail(true);
     }
@@ -50,9 +51,8 @@ const mockFactoryWrapper = {
     return strategy;
   }),
   createGitHubAppStrategy: vi.fn(async (userToken?: string) => {
-    const { MockGitHubAppAuthenticationStrategy } = await vi.importActual<
-      typeof import('./test-fixtures/UnifiedGitHubServiceFixtures')
-    >('./test-fixtures/UnifiedGitHubServiceFixtures');
+    const { MockGitHubAppAuthenticationStrategy } =
+      await vi.importActual<typeof import('./test-fixtures/unified')>('./test-fixtures/unified');
     return new MockGitHubAppAuthenticationStrategy(userToken);
   }),
   getCurrentStrategy: vi.fn(async () => {
@@ -193,9 +193,10 @@ describe('UnifiedGitHubService - Comprehensive Tests', () => {
         const authConfig = UnifiedGitHubServiceTestHelpers.createAuthConfig('github_app');
 
         // Create a GitHub App strategy configured for renewal
-        const { MockGitHubAppAuthenticationStrategy } = await vi.importActual<
-          typeof import('./test-fixtures/UnifiedGitHubServiceFixtures')
-        >('./test-fixtures/UnifiedGitHubServiceFixtures');
+        const { MockGitHubAppAuthenticationStrategy } =
+          await vi.importActual<typeof import('./test-fixtures/unified')>(
+            './test-fixtures/unified'
+          );
         const appStrategy = new MockGitHubAppAuthenticationStrategy(
           TestFixtures.TokenFixtures.oauth.accessToken
         );
@@ -269,9 +270,10 @@ describe('UnifiedGitHubService - Comprehensive Tests', () => {
 
       it('should handle permission verification failures', async () => {
         // Create a strategy that will fail permissions
-        const { MockPATAuthenticationStrategy } = await vi.importActual<
-          typeof import('./test-fixtures/UnifiedGitHubServiceFixtures')
-        >('./test-fixtures/UnifiedGitHubServiceFixtures');
+        const { MockPATAuthenticationStrategy } =
+          await vi.importActual<typeof import('./test-fixtures/unified')>(
+            './test-fixtures/unified'
+          );
         const failingStrategy = new MockPATAuthenticationStrategy(
           TestFixtures.TokenFixtures.pat.classic
         );
@@ -766,9 +768,10 @@ describe('UnifiedGitHubService - Comprehensive Tests', () => {
 
       it('should handle insufficient permissions', async () => {
         // Create a strategy that will fail permissions
-        const { MockPATAuthenticationStrategy } = await vi.importActual<
-          typeof import('./test-fixtures/UnifiedGitHubServiceFixtures')
-        >('./test-fixtures/UnifiedGitHubServiceFixtures');
+        const { MockPATAuthenticationStrategy } =
+          await vi.importActual<typeof import('./test-fixtures/unified')>(
+            './test-fixtures/unified'
+          );
         const failingStrategy = new MockPATAuthenticationStrategy(
           TestFixtures.TokenFixtures.pat.classic
         );
@@ -789,9 +792,8 @@ describe('UnifiedGitHubService - Comprehensive Tests', () => {
   describe('Performance Scenarios', () => {
     it('should handle slow network conditions', async () => {
       // Create a strategy without delay since we're testing network delay
-      const { MockPATAuthenticationStrategy } = await vi.importActual<
-        typeof import('./test-fixtures/UnifiedGitHubServiceFixtures')
-      >('./test-fixtures/UnifiedGitHubServiceFixtures');
+      const { MockPATAuthenticationStrategy } =
+        await vi.importActual<typeof import('./test-fixtures/unified')>('./test-fixtures/unified');
       const normalStrategy = new MockPATAuthenticationStrategy(
         TestFixtures.TokenFixtures.pat.classic
       );
@@ -823,9 +825,8 @@ describe('UnifiedGitHubService - Comprehensive Tests', () => {
 
     it('should handle slow authentication', async () => {
       // Create a strategy with validation delay
-      const { MockPATAuthenticationStrategy } = await vi.importActual<
-        typeof import('./test-fixtures/UnifiedGitHubServiceFixtures')
-      >('./test-fixtures/UnifiedGitHubServiceFixtures');
+      const { MockPATAuthenticationStrategy } =
+        await vi.importActual<typeof import('./test-fixtures/unified')>('./test-fixtures/unified');
       const slowStrategy = new MockPATAuthenticationStrategy(
         TestFixtures.TokenFixtures.pat.classic
       );

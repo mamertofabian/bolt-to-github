@@ -16,9 +16,7 @@ import {
 
 // Mock the AuthenticationStrategyFactory
 vi.mock('../AuthenticationStrategyFactory', async () => {
-  const { MockAuthenticationStrategyFactory } = await import(
-    './test-fixtures/UnifiedGitHubServiceFixtures'
-  );
+  const { MockAuthenticationStrategyFactory } = await import('./test-fixtures/unified');
   const mockFactory = new MockAuthenticationStrategyFactory();
   return {
     AuthenticationStrategyFactory: {

@@ -25,9 +25,7 @@ const mockGitHubAppStrategy = new MockGitHubAppAuthenticationStrategy(
 
 const mockFactory = {
   createPATStrategy: vi.fn(async (token: string) => {
-    const { MockPATAuthenticationStrategy } = await import(
-      './test-fixtures/UnifiedGitHubServiceFixtures'
-    );
+    const { MockPATAuthenticationStrategy } = await import('./test-fixtures/unified');
     const strategy = new MockPATAuthenticationStrategy(token);
     // Apply test configurations that would have been set up
     if (token === TestFixtures.TokenFixtures.pat.invalid) {
@@ -126,9 +124,9 @@ describe('UnifiedGitHubService - Focused Tests', () => {
     });
 
     it('should identify fine-grained PAT tokens', async () => {
-      // Test the token format directly since the service checks the token format
+      // Test the token format - fixture has TEST_ prefix for safety
       const fineGrainedToken = TestFixtures.TokenFixtures.pat.fineGrained;
-      expect(fineGrainedToken.startsWith('github_pat_')).toBe(true);
+      expect(fineGrainedToken.startsWith('TEST_github_pat_')).toBe(true);
 
       // The service constructor will create a new strategy with the fine-grained token
       const service = new UnifiedGitHubService(fineGrainedToken);
