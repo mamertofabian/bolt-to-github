@@ -35,13 +35,14 @@ export function isTestToken(token: string): boolean {
  */
 export function ensureTestTokenSafety(token: string): void {
   // Check if it looks like a real GitHub token without TEST_ prefix
+  // Using exact character lengths per GitHub token specification
   const realTokenPatterns = [
-    /^ghp_[a-zA-Z0-9]{36,}$/,
-    /^github_pat_[a-zA-Z0-9]{22}_[a-zA-Z0-9]{59}$/,
-    /^ghs_[a-zA-Z0-9]{36,}$/,
-    /^ghu_[a-zA-Z0-9]{36,}$/,
-    /^gho_[a-zA-Z0-9]{36,}$/,
-    /^ghr_[a-zA-Z0-9]{36,}$/,
+    /^ghp_[a-zA-Z0-9]{36}$/, // Classic PAT: exactly 36 chars
+    /^github_pat_[a-zA-Z0-9]{22}_[a-zA-Z0-9]{59}$/, // Fine-grained PAT: 22 + 59 chars
+    /^ghs_[a-zA-Z0-9]{36}$/, // GitHub App: exactly 36 chars
+    /^ghu_[a-zA-Z0-9]{36}$/, // GitHub App Installation: exactly 36 chars
+    /^gho_[a-zA-Z0-9]{36}$/, // OAuth Access: exactly 36 chars
+    /^ghr_[a-zA-Z0-9]{36}$/, // OAuth Refresh: exactly 36 chars
   ];
 
   for (const pattern of realTokenPatterns) {
@@ -69,16 +70,18 @@ export const TokenFixtures = {
    */
   pat: {
     /**
-     * Classic PAT token - valid format for testing authentication
-     * Format: TEST_ghp_[40 chars]
+     * Classic PAT token - CLEARLY INVALID for testing authentication
+     * Format: TEST_ghp_[short obviously fake pattern]
+     * Note: Real tokens are 36 chars, we use shorter/different pattern to be obviously fake
      */
-    classic: `${TEST_TOKEN_PREFIX}ghp_1234567890abcdef1234567890abcdef`,
+    classic: `${TEST_TOKEN_PREFIX}ghp_FAKE1234TEST`,
 
     /**
-     * Fine-grained PAT token - valid format for testing granular permissions
-     * Format: TEST_github_pat_[82 chars]
+     * Fine-grained PAT token - CLEARLY INVALID for testing granular permissions
+     * Format: TEST_github_pat_[short obviously fake pattern]
+     * Note: Real tokens are 22_59 chars, we use shorter pattern to be obviously fake
      */
-    fineGrained: `${TEST_TOKEN_PREFIX}github_pat_11ABCDEFG0123456789_abcdefghijklmnopqrstuvwxyz1234567890AB`,
+    fineGrained: `${TEST_TOKEN_PREFIX}github_pat_FAKE_TESTTOKEN`,
 
     /**
      * Invalid token format - for testing token validation failures
@@ -88,12 +91,12 @@ export const TokenFixtures = {
     /**
      * Expired token - for testing token expiration handling
      */
-    expired: `${TEST_TOKEN_PREFIX}ghp_expired1234567890abcdef1234567890`,
+    expired: `${TEST_TOKEN_PREFIX}ghp_EXPIRED123`,
 
     /**
      * Token with insufficient permissions - for testing permission checks
      */
-    readOnly: `${TEST_TOKEN_PREFIX}ghp_readonly1234567890abcdef12345678`,
+    readOnly: `${TEST_TOKEN_PREFIX}ghp_READONLY456`,
   },
 
   /**
@@ -101,16 +104,18 @@ export const TokenFixtures = {
    */
   githubApp: {
     /**
-     * Valid GitHub App token
-     * Format: TEST_ghs_[40 chars]
+     * Valid GitHub App token - CLEARLY INVALID for testing
+     * Format: TEST_ghs_[short obviously fake pattern]
+     * Note: Real tokens are 36 chars, we use shorter pattern to be obviously fake
      */
-    valid: `${TEST_TOKEN_PREFIX}ghs_1234567890abcdef1234567890abcdef`,
+    valid: `${TEST_TOKEN_PREFIX}ghs_FAKEAPP123`,
 
     /**
-     * GitHub App installation token
-     * Format: TEST_ghu_[40 chars]
+     * GitHub App installation token - CLEARLY INVALID for testing
+     * Format: TEST_ghu_[short obviously fake pattern]
+     * Note: Real tokens are 36 chars, we use shorter pattern to be obviously fake
      */
-    installation: `${TEST_TOKEN_PREFIX}ghu_1234567890abcdef1234567890abcdef`,
+    installation: `${TEST_TOKEN_PREFIX}ghu_FAKEINSTALL456`,
 
     /**
      * Invalid GitHub App token - for testing validation
@@ -120,7 +125,7 @@ export const TokenFixtures = {
     /**
      * Expired GitHub App token
      */
-    expired: `${TEST_TOKEN_PREFIX}ghs_expired1234567890abcdef1234567890`,
+    expired: `${TEST_TOKEN_PREFIX}ghs_EXPIRED789`,
   },
 
   /**
@@ -128,21 +133,23 @@ export const TokenFixtures = {
    */
   oauth: {
     /**
-     * OAuth access token
-     * Format: TEST_gho_[40 chars]
+     * OAuth access token - CLEARLY INVALID for testing
+     * Format: TEST_gho_[short obviously fake pattern]
+     * Note: Real tokens are 36 chars, we use shorter pattern to be obviously fake
      */
-    accessToken: `${TEST_TOKEN_PREFIX}gho_1234567890abcdef1234567890abcdef`,
+    accessToken: `${TEST_TOKEN_PREFIX}gho_FAKEACCESS123`,
 
     /**
-     * OAuth refresh token
-     * Format: TEST_ghr_[40 chars]
+     * OAuth refresh token - CLEARLY INVALID for testing
+     * Format: TEST_ghr_[short obviously fake pattern]
+     * Note: Real tokens are 36 chars, we use shorter pattern to be obviously fake
      */
-    refreshToken: `${TEST_TOKEN_PREFIX}ghr_1234567890abcdef1234567890abcdef`,
+    refreshToken: `${TEST_TOKEN_PREFIX}ghr_FAKEREFRESH456`,
 
     /**
      * Expired OAuth access token
      */
-    expiredAccessToken: `${TEST_TOKEN_PREFIX}gho_expired1234567890abcdef12345678`,
+    expiredAccessToken: `${TEST_TOKEN_PREFIX}gho_EXPIRED789`,
   },
 
   /**
