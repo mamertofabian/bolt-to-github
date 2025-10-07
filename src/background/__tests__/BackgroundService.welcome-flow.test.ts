@@ -259,12 +259,17 @@ describe('BackgroundService - Welcome Flow', () => {
       // Wait for async operations
       await new Promise((resolve) => setTimeout(resolve, 10));
 
-      // Verify installation data was still stored despite tab failure (observable state)
-      // Note: When tab creation fails, the welcome page-specific data is stored separately
+      // Verify that even when tab creation fails, the startup tracking data was stored
+      // Note: Onboarding data is NOT stored when tab creation fails (it happens after tab.create)
+      // But startup tracking data from constructor is already stored
       expect(storageState).toMatchObject({
-        installDate: expect.any(Number),
+        installDate: expect.any(Number), // From startup tracking in constructor
         lastVersion: '1.3.5',
       });
+
+      // Verify onboarding-specific data was NOT stored since tab creation failed
+      expect(storageState.installedVersion).toBeUndefined();
+      expect(storageState.onboardingCompleted).toBeUndefined();
     });
 
     it('should handle storage failure gracefully during install', async () => {
