@@ -826,7 +826,7 @@ export class BackgroundService {
 
       // Proactively refresh authentication if the token is close to expiring
       try {
-        if (await this.githubService.needsRenewal()) {
+        if (this.githubService && (await this.githubService.needsRenewal())) {
           logger.info('🔄 GitHub token is expiring soon – refreshing before upload');
           await this.githubService.refreshAuth();
         }
