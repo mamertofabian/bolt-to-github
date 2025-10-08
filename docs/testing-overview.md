@@ -10,9 +10,9 @@
 | Metric                       | Count | Percentage |
 | ---------------------------- | ----- | ---------- |
 | Total Source Files           | 171   | 100%       |
-| Files with Unit Tests        | 58    | 33.9%      |
-| Files without Tests          | 113   | 66.1%      |
-| Total Test Files             | 91    | -          |
+| Files with Unit Tests        | 59    | 34.5%      |
+| Files without Tests          | 112   | 65.5%      |
+| Total Test Files             | 92    | -          |
 | Svelte Components            | 61    | -          |
 | Svelte Components with Tests | 8     | 13.1%      |
 
@@ -20,7 +20,7 @@
 
 | Category              | Type   | Status                      |
 | --------------------- | ------ | --------------------------- |
-| **Unit Tests**        | Vitest | ✅ Partial (33.9% coverage) |
+| **Unit Tests**        | Vitest | ✅ Partial (34.5% coverage) |
 | **Component Tests**   | Vitest | ✅ Started (13.1% coverage) |
 | **Integration Tests** | None   | ❌ Missing                  |
 | **E2E Tests**         | None   | ❌ Missing                  |
@@ -180,10 +180,12 @@
 - ✅ UnifiedGitHubService.ts (3 test files)
 - ✅ zipHandler.ts (4 test files)
 
-#### Library Services (1/6 files)
+#### Library Services (2/6 files)
 
+- ✅ GitHubCacheService.ts (1 test file, 47 tests)
+  - GitHubCacheService.test.ts - Singleton pattern (implied), cache staleness checking (isCacheStale with fresh/stale/missing/invalid timestamps, storage errors), repository caching (getCachedRepos, cacheRepos with timestamps, empty arrays, multiple repos), repository metadata operations (getRepoMetadata from main/individual cache, staleness checks, cacheRepoMetadata), enhanced repo creation (createEnhancedRepo with all/missing fields, null handling, default branches), cache clearing (clearCache for owner-specific data, individual metadata cleanup, multi-owner scenarios), cache statistics (getCacheStats with age calculation, staleness indication), edge cases (special characters in owner names, empty repos, concurrent operations, long names), integration scenarios (full cache lifecycle, metadata sync, refresh workflow) (47 tests)
 - ✅ ProjectSettingsMigrationService.ts (1 test file, 38 tests)
-  - ProjectSettingsMigrationService.test.ts - Migration detection, statistics gathering, bulk project migration (with progress callbacks, stale cache handling, GitHub App auth, error handling), single project migration, migration status reset, project migration validation, integration scenarios, edge cases (38 tests)
+  - ProjectSettingsMigrationService.test.ts - Migration detection (needsMigration), statistics gathering (getMigrationStats), bulk project migration (migrateProjectSettings with progress callbacks, stale cache handling, GitHub App auth, error handling), single project migration (migrateSingleProject), migration status reset (resetMigrationStatus), project migration validation (projectNeedsMigration), integration scenarios, and edge cases (38 tests)
 
 #### Utilities (5/11 files)
 
