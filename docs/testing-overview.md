@@ -10,18 +10,18 @@
 | Metric                       | Count | Percentage |
 | ---------------------------- | ----- | ---------- |
 | Total Source Files           | 171   | 100%       |
-| Files with Unit Tests        | 46    | 26.9%      |
-| Files without Tests          | 125   | 73.1%      |
-| Total Test Files             | 79    | -          |
+| Files with Unit Tests        | 47    | 27.5%      |
+| Files without Tests          | 124   | 72.5%      |
+| Total Test Files             | 80    | -          |
 | Svelte Components            | 61    | -          |
-| Svelte Components with Tests | 5     | 8.2%       |
+| Svelte Components with Tests | 6     | 9.8%       |
 
 ### Test Coverage by Category
 
 | Category              | Type   | Status                      |
 | --------------------- | ------ | --------------------------- |
-| **Unit Tests**        | Vitest | ✅ Partial (26.9% coverage) |
-| **Component Tests**   | Vitest | ✅ Started (8.2% coverage)  |
+| **Unit Tests**        | Vitest | ✅ Partial (27.5% coverage) |
+| **Component Tests**   | Vitest | ✅ Started (9.8% coverage)  |
 | **Integration Tests** | None   | ❌ Missing                  |
 | **E2E Tests**         | None   | ❌ Missing                  |
 
@@ -94,13 +94,16 @@
 - ✅ **OnboardingView.svelte** (1 test file, 14 tests)
   - OnboardingView.component.test.ts - Step navigation, event handling, props reactivity, conditional rendering (14 tests)
 
-#### Library Components (1/29 files)
+#### Library Components (2/29 files)
 
 - ✅ **GitHubSettings.svelte** (2 test files, 103 tests) - **COMPREHENSIVE COVERAGE**
   - GitHubSettings.component.test.ts - Component rendering, collapsible behavior, form submission, storage quota, visual feedback, project settings (46 tests)
   - GitHubSettings.logic.test.ts - Token validation, debouncing, permission checking, repository filtering, error handling (57 tests)
   - **Testing Strategy**: Split into component + logic tests due to high complexity (600+ lines) with significant UI interactions and business logic
   - **Note**: Repository autocomplete UI timing tests were intentionally removed as they violated unit-testing-rules (time-dependent). Core autocomplete logic is tested in logic.test.ts.
+- ✅ **OnboardingSetup.svelte** (1 test file, 43 tests)
+  - OnboardingSetup.component.test.ts - Rendering and initial state, authentication method selection (GitHub App vs PAT), GitHub App UI (connect button, connected state, step-by-step guide), PAT UI (token input, repository owner input), form completion and submission, status messages, help links, security features display, reactive isSetupComplete (43 tests)
+  - **Testing Strategy**: Single component test file (component is 313 lines with minimal business logic - simple event dispatching and one reactive statement)
 
 #### Background Services (4/5 files)
 

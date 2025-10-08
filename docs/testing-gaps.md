@@ -24,7 +24,7 @@ This document lists ALL files that lack tests, organized by category with specif
 
 ## Svelte Components
 
-**Total**: 61 files | **Tested**: 5 files | **Coverage**: 8.2%
+**Total**: 61 files | **Tested**: 6 files | **Coverage**: 9.8%
 
 ### Popup Components (13 files)
 
@@ -52,11 +52,12 @@ This document lists ALL files that lack tests, organized by category with specif
 
 ### Lib Components (29 files)
 
-**✅ Tested (1 file)**:
+**✅ Tested (2 files)**:
 
 - `src/lib/components/GitHubSettings.svelte` - **2 test files, 103 tests** covering component rendering, collapsible behavior, form submission, token validation, debouncing, permission checking, repository filtering, storage quota error handling, and visual feedback
+- `src/lib/components/OnboardingSetup.svelte` - **1 test file, 43 tests** covering rendering and initial state, authentication method selection (GitHub App vs PAT), GitHub App UI (connect button, connected state, step-by-step guide), PAT UI (token input, repository owner input), form completion and submission, status messages, help links, security features display, and reactive isSetupComplete
 
-**❌ Untested (28 files)**:
+**❌ Untested (27 files)**:
 
 | File Path                                      | Missing Test Types          | Recommended Tools                           | Priority    |
 | ---------------------------------------------- | --------------------------- | ------------------------------------------- | ----------- |
@@ -70,7 +71,6 @@ This document lists ALL files that lack tests, organized by category with specif
 | `src/lib/components/NewIssueForm.svelte`       | Component, Integration      | @testing-library/svelte, Vitest             | 🟡 High     |
 | `src/lib/components/NewsletterModal.svelte`    | Component                   | @testing-library/svelte                     | 🟢 Medium   |
 | `src/lib/components/NewsletterSection.svelte`  | Component                   | @testing-library/svelte                     | 🟢 Medium   |
-| `src/lib/components/OnboardingSetup.svelte`    | Component, E2E              | @testing-library/svelte, Playwright         | 🔴 Critical |
 | `src/lib/components/ProjectGuide.svelte`       | Component                   | @testing-library/svelte                     | 🟢 Medium   |
 | `src/lib/components/ProjectStatus.svelte`      | Component                   | @testing-library/svelte                     | 🟡 High     |
 | `src/lib/components/ProjectsList.svelte`       | Component, Integration      | @testing-library/svelte, Vitest             | 🟡 High     |
@@ -331,7 +331,7 @@ Files that are essential to core functionality and should be tested immediately:
    - ✅ ~~`src/popup/App.svelte`~~ (Completed - 10 test files, 189 tests)
    - ✅ ~~`src/popup/components/OnboardingView.svelte`~~ (Completed - 1 test file, 14 tests)
    - ✅ ~~`src/lib/components/GitHubSettings.svelte`~~ (Completed - 2 test files, 103 tests)
-   - `src/lib/components/OnboardingSetup.svelte`
+   - ✅ ~~`src/lib/components/OnboardingSetup.svelte`~~ (Completed - 1 test file, 43 tests)
    - `src/lib/components/RepoSettings.svelte`
 
 3. **Critical Services**
@@ -386,9 +386,10 @@ All other services, stores, main UI components, and utilities
 3. ✅ ~~Test FeedbackModal component~~ - **Completed!** 1 test file, 19 tests
 4. ✅ ~~Test OnboardingView component~~ - **Completed!** 1 test file, 14 tests
 5. ✅ ~~Test GitHubSettings component~~ - **Completed!** 2 test files, 103 tests
-6. Test remaining critical UI components (2 files: OnboardingSetup, RepoSettings)
-7. Test critical stores (1 file: premiumStore)
-8. Test critical services (3 files: StateManager, OperationStateManager, ProjectSettingsMigrationService)
+6. ✅ ~~Test OnboardingSetup component~~ - **Completed!** 1 test file, 43 tests
+7. Test remaining critical UI components (1 file: RepoSettings)
+8. Test critical stores (1 file: premiumStore)
+9. Test critical services (3 files: StateManager, OperationStateManager, ProjectSettingsMigrationService)
 
 ### Phase 3: UI Library (Week 5-6)
 
@@ -431,7 +432,8 @@ All other services, stores, main UI components, and utilities
 - [x] **FeedbackModal Component: 100% (19 tests)**
 - [x] **OnboardingView Component: 100% (14 tests)**
 - [x] **GitHubSettings Component: 100% (103 tests across 2 files)**
-- [ ] Other Components: 70%+ (currently 8.2% - 5 of 61 files)
+- [x] **OnboardingSetup Component: 100% (43 tests)**
+- [ ] Other Components: 70%+ (currently 9.8% - 6 of 61 files)
 - [ ] Infrastructure: 100% (currently 75%)
 
 ### Quality Metrics
