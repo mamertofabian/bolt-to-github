@@ -1,7 +1,7 @@
 # Testing Gaps - Detailed Analysis
 
 **Last Updated**: 2025-10-08
-**Total Untested Files**: 110 out of 171 (64.3%)
+**Total Untested Files**: 109 out of 171 (63.7%)
 
 This document lists ALL files that lack tests, organized by category with specific test types needed.
 
@@ -243,16 +243,11 @@ This document lists ALL files that lack tests, organized by category with specif
 
 ## Background
 
-**Total**: 6 files | **Tested**: 5 files | **Coverage**: 83.3%
+**Total**: 6 files | **Tested**: 6 files | **Coverage**: 100%
 
-### Untested Background Files (1 file)
+**✅ All Tested (6 files)**:
 
-| File Path                 | Missing Test Types | Recommended Tools  | Priority |
-| ------------------------- | ------------------ | ------------------ | -------- |
-| `src/background/index.ts` | Integration, E2E   | Vitest, Playwright | 🟡 High  |
-
-### ✅ Tested Background Files (5 files)
-
+- `src/background/index.ts` - **1 test file, 24 tests** covering entry point initialization, logger creation, BackgroundService instantiation, error handling (initialization failures, non-Error objects, null/undefined errors), integration scenarios (logger creation failure, execution order, null logger), edge cases (constructor returning null, multiple imports, construction failures), module exports, dependency verification, error recovery, and behavior validation
 - `src/background/BackgroundService.ts` (8 test files)
 - `src/background/StateManager.ts` - **1 test file, 37 tests** covering singleton pattern, getGitHubSettings delegation to SettingsService, getProjectId delegation and retrieval, setProjectId delegation and persistence, error propagation from SettingsService, integration scenarios (settings workflow, project switching, concurrent calls, rapid changes, onboarding flow), edge cases (null values, special characters, long IDs, concurrent operations, missing fields), singleton integrity through errors, and type safety validation
 - `src/background/TempRepoManager.ts` (3 test files)
@@ -458,6 +453,7 @@ All other services, stores, main UI components, and utilities
 - [ ] Services: 100% (currently 86.4%)
 - [x] **Stores: 28.6% (2 of 7 files) - premiumStore.ts and pushStatistics.ts tested**
 - [ ] Utilities: 100% (currently 45.5%)
+- [x] **Background: 100% (6 of 6 files) - All background files tested**
 - [x] **Main App Component: 100% (App.svelte - 189 tests)**
 - [x] **BranchSelectionModal Component: 100% (19 tests)**
 - [x] **FeedbackModal Component: 100% (19 tests)**
