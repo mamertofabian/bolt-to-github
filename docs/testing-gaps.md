@@ -1,7 +1,7 @@
 # Testing Gaps - Detailed Analysis
 
 **Last Updated**: 2025-10-08
-**Total Untested Files**: 123 out of 171 (71.9%)
+**Total Untested Files**: 120 out of 171 (70.2%)
 
 This document lists ALL files that lack tests, organized by category with specific test types needed.
 
@@ -24,7 +24,7 @@ This document lists ALL files that lack tests, organized by category with specif
 
 ## Svelte Components
 
-**Total**: 61 files | **Tested**: 6 files | **Coverage**: 9.8%
+**Total**: 61 files | **Tested**: 7 files | **Coverage**: 11.5%
 
 ### Popup Components (13 files)
 
@@ -52,40 +52,40 @@ This document lists ALL files that lack tests, organized by category with specif
 
 ### Lib Components (29 files)
 
-**✅ Tested (2 files)**:
+**✅ Tested (3 files)**:
 
 - `src/lib/components/GitHubSettings.svelte` - **2 test files, 103 tests** covering component rendering, collapsible behavior, form submission, token validation, debouncing, permission checking, repository filtering, storage quota error handling, and visual feedback
 - `src/lib/components/OnboardingSetup.svelte` - **1 test file, 43 tests** covering rendering and initial state, authentication method selection (GitHub App vs PAT), GitHub App UI (connect button, connected state, step-by-step guide), PAT UI (token input, repository owner input), form completion and submission, status messages, help links, security features display, and reactive isSetupComplete
+- `src/lib/components/RepoSettings.svelte` - **2 test files, 110 tests** covering component rendering (modal, forms, inputs, buttons), user interactions (typing, clicking, keyboard navigation), repository dropdown (loading, filtering, selection, keyboard nav), form validation, save operations, error handling, default project title, authentication method detection (PAT/GitHub App), and reactive state management
 
-**❌ Untested (27 files)**:
+**❌ Untested (26 files)**:
 
-| File Path                                      | Missing Test Types          | Recommended Tools                           | Priority    |
-| ---------------------------------------------- | --------------------------- | ------------------------------------------- | ----------- |
-| `src/lib/components/DiffViewer.svelte`         | Component, Integration      | @testing-library/svelte, Vitest             | 🟡 High     |
-| `src/lib/components/Footer.svelte`             | Component                   | @testing-library/svelte                     | 🟢 Medium   |
-| `src/lib/components/Header.svelte`             | Component                   | @testing-library/svelte                     | 🟢 Medium   |
-| `src/lib/components/Help.svelte`               | Component                   | @testing-library/svelte                     | 🟢 Medium   |
-| `src/lib/components/IssueCard.svelte`          | Component                   | @testing-library/svelte                     | 🟡 High     |
-| `src/lib/components/IssueManager.svelte`       | Component, Integration      | @testing-library/svelte, Vitest             | 🟡 High     |
-| `src/lib/components/LogViewer.svelte`          | Component                   | @testing-library/svelte                     | 🟡 High     |
-| `src/lib/components/NewIssueForm.svelte`       | Component, Integration      | @testing-library/svelte, Vitest             | 🟡 High     |
-| `src/lib/components/NewsletterModal.svelte`    | Component                   | @testing-library/svelte                     | 🟢 Medium   |
-| `src/lib/components/NewsletterSection.svelte`  | Component                   | @testing-library/svelte                     | 🟢 Medium   |
-| `src/lib/components/ProjectGuide.svelte`       | Component                   | @testing-library/svelte                     | 🟢 Medium   |
-| `src/lib/components/ProjectStatus.svelte`      | Component                   | @testing-library/svelte                     | 🟡 High     |
-| `src/lib/components/ProjectsList.svelte`       | Component, Integration      | @testing-library/svelte, Vitest             | 🟡 High     |
-| `src/lib/components/ProjectsListGuide.svelte`  | Component                   | @testing-library/svelte                     | 🟢 Medium   |
-| `src/lib/components/QuickIssueForm.svelte`     | Component, Integration      | @testing-library/svelte, Vitest             | 🟡 High     |
-| `src/lib/components/RepoSettings.svelte`       | Component, Integration, E2E | @testing-library/svelte, Vitest, Playwright | 🔴 Critical |
-| `src/lib/components/SocialLinks.svelte`        | Component                   | @testing-library/svelte                     | 🟢 Medium   |
-| `src/lib/components/StatusAlert.svelte`        | Component                   | @testing-library/svelte                     | 🟡 High     |
-| `src/lib/components/SuccessToast.svelte`       | Component                   | @testing-library/svelte                     | 🟢 Medium   |
-| `src/lib/components/WelcomeHero.svelte`        | Component                   | @testing-library/svelte                     | 🟢 Medium   |
-| `src/lib/components/WhatsNewModal.svelte`      | Component                   | @testing-library/svelte                     | 🟡 High     |
-| `src/lib/components/ui/AnalyticsToggle.svelte` | Component                   | @testing-library/svelte                     | 🟡 High     |
-| `src/components/FileChanges.svelte`            | Component, Integration      | @testing-library/svelte, Vitest             | 🟡 High     |
-| `src/content/Notification.svelte`              | Component                   | @testing-library/svelte                     | 🟡 High     |
-| `src/content/UploadStatus.svelte`              | Component                   | @testing-library/svelte                     | 🟡 High     |
+| File Path                                      | Missing Test Types     | Recommended Tools               | Priority  |
+| ---------------------------------------------- | ---------------------- | ------------------------------- | --------- |
+| `src/lib/components/DiffViewer.svelte`         | Component, Integration | @testing-library/svelte, Vitest | 🟡 High   |
+| `src/lib/components/Footer.svelte`             | Component              | @testing-library/svelte         | 🟢 Medium |
+| `src/lib/components/Header.svelte`             | Component              | @testing-library/svelte         | 🟢 Medium |
+| `src/lib/components/Help.svelte`               | Component              | @testing-library/svelte         | 🟢 Medium |
+| `src/lib/components/IssueCard.svelte`          | Component              | @testing-library/svelte         | 🟡 High   |
+| `src/lib/components/IssueManager.svelte`       | Component, Integration | @testing-library/svelte, Vitest | 🟡 High   |
+| `src/lib/components/LogViewer.svelte`          | Component              | @testing-library/svelte         | 🟡 High   |
+| `src/lib/components/NewIssueForm.svelte`       | Component, Integration | @testing-library/svelte, Vitest | 🟡 High   |
+| `src/lib/components/NewsletterModal.svelte`    | Component              | @testing-library/svelte         | 🟢 Medium |
+| `src/lib/components/NewsletterSection.svelte`  | Component              | @testing-library/svelte         | 🟢 Medium |
+| `src/lib/components/ProjectGuide.svelte`       | Component              | @testing-library/svelte         | 🟢 Medium |
+| `src/lib/components/ProjectStatus.svelte`      | Component              | @testing-library/svelte         | 🟡 High   |
+| `src/lib/components/ProjectsList.svelte`       | Component, Integration | @testing-library/svelte, Vitest | 🟡 High   |
+| `src/lib/components/ProjectsListGuide.svelte`  | Component              | @testing-library/svelte         | 🟢 Medium |
+| `src/lib/components/QuickIssueForm.svelte`     | Component, Integration | @testing-library/svelte, Vitest | 🟡 High   |
+| `src/lib/components/SocialLinks.svelte`        | Component              | @testing-library/svelte         | 🟢 Medium |
+| `src/lib/components/StatusAlert.svelte`        | Component              | @testing-library/svelte         | 🟡 High   |
+| `src/lib/components/SuccessToast.svelte`       | Component              | @testing-library/svelte         | 🟢 Medium |
+| `src/lib/components/WelcomeHero.svelte`        | Component              | @testing-library/svelte         | 🟢 Medium |
+| `src/lib/components/WhatsNewModal.svelte`      | Component              | @testing-library/svelte         | 🟡 High   |
+| `src/lib/components/ui/AnalyticsToggle.svelte` | Component              | @testing-library/svelte         | 🟡 High   |
+| `src/components/FileChanges.svelte`            | Component, Integration | @testing-library/svelte, Vitest | 🟡 High   |
+| `src/content/Notification.svelte`              | Component              | @testing-library/svelte         | 🟡 High   |
+| `src/content/UploadStatus.svelte`              | Component              | @testing-library/svelte         | 🟡 High   |
 
 ### UI Library Components (19 files)
 
@@ -332,7 +332,7 @@ Files that are essential to core functionality and should be tested immediately:
    - ✅ ~~`src/popup/components/OnboardingView.svelte`~~ (Completed - 1 test file, 14 tests)
    - ✅ ~~`src/lib/components/GitHubSettings.svelte`~~ (Completed - 2 test files, 103 tests)
    - ✅ ~~`src/lib/components/OnboardingSetup.svelte`~~ (Completed - 1 test file, 43 tests)
-   - `src/lib/components/RepoSettings.svelte`
+   - ✅ ~~`src/lib/components/RepoSettings.svelte`~~ (Completed - 2 test files, 110 tests)
 
 3. **Critical Services**
 
@@ -387,7 +387,7 @@ All other services, stores, main UI components, and utilities
 4. ✅ ~~Test OnboardingView component~~ - **Completed!** 1 test file, 14 tests
 5. ✅ ~~Test GitHubSettings component~~ - **Completed!** 2 test files, 103 tests
 6. ✅ ~~Test OnboardingSetup component~~ - **Completed!** 1 test file, 43 tests
-7. Test remaining critical UI components (1 file: RepoSettings)
+7. ✅ ~~Test RepoSettings component~~ - **Completed!** 2 test files, 110 tests
 8. Test critical stores (1 file: premiumStore)
 9. Test critical services (3 files: StateManager, OperationStateManager, ProjectSettingsMigrationService)
 
@@ -433,7 +433,8 @@ All other services, stores, main UI components, and utilities
 - [x] **OnboardingView Component: 100% (14 tests)**
 - [x] **GitHubSettings Component: 100% (103 tests across 2 files)**
 - [x] **OnboardingSetup Component: 100% (43 tests)**
-- [ ] Other Components: 70%+ (currently 9.8% - 6 of 61 files)
+- [x] **RepoSettings Component: 100% (110 tests across 2 files)**
+- [ ] Other Components: 70%+ (currently 11.5% - 7 of 61 files)
 - [ ] Infrastructure: 100% (currently 75%)
 
 ### Quality Metrics
