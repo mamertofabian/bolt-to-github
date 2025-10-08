@@ -1,7 +1,7 @@
 # Testing Gaps - Detailed Analysis
 
 **Last Updated**: 2025-10-08
-**Total Untested Files**: 115 out of 171 (67.3%)
+**Total Untested Files**: 114 out of 171 (66.7%)
 
 This document lists ALL files that lack tests, organized by category with specific test types needed.
 
@@ -174,23 +174,23 @@ This document lists ALL files that lack tests, organized by category with specif
 
 ## Utilities
 
-**Total**: 11 files | **Tested**: 4 files | **Coverage**: 36.4%
+**Total**: 11 files | **Tested**: 5 files | **Coverage**: 45.5%
 
 ### Untested Utilities (7 files)
 
-| File Path                             | Missing Test Types | Recommended Tools | Priority    |
-| ------------------------------------- | ------------------ | ----------------- | ----------- |
-| `src/lib/utils.ts`                    | Unit               | Vitest            | 🟡 High     |
-| `src/lib/utils/analytics.ts`          | Unit               | Vitest            | 🟡 High     |
-| `src/lib/utils/debounce.ts`           | Unit               | Vitest            | 🟡 High     |
-| `src/lib/utils/githubAppSync.ts`      | Unit, Integration  | Vitest            | 🔴 Critical |
-| `src/lib/utils/reassuringMessages.ts` | Unit               | Vitest            | 🟢 Medium   |
-| `src/lib/utils/upgradeModal.ts`       | Unit               | Vitest            | 🟡 High     |
-| `src/lib/zip.ts`                      | Unit               | Vitest            | 🟡 High     |
+| File Path                             | Missing Test Types | Recommended Tools | Priority  |
+| ------------------------------------- | ------------------ | ----------------- | --------- |
+| `src/lib/utils.ts`                    | Unit               | Vitest            | 🟡 High   |
+| `src/lib/utils/analytics.ts`          | Unit               | Vitest            | 🟡 High   |
+| `src/lib/utils/debounce.ts`           | Unit               | Vitest            | 🟡 High   |
+| `src/lib/utils/reassuringMessages.ts` | Unit               | Vitest            | 🟢 Medium |
+| `src/lib/utils/upgradeModal.ts`       | Unit               | Vitest            | 🟡 High   |
+| `src/lib/zip.ts`                      | Unit               | Vitest            | 🟡 High   |
 
-### ✅ Tested Utilities (4 files)
+### ✅ Tested Utilities (5 files)
 
 - `src/lib/fileUtils.ts`
+- `src/lib/utils/githubAppSync.ts` - **1 test file, 29 tests** covering sync operations, status checks, authentication switching, token refresh, app info retrieval, error handling, and integration scenarios
 - `src/lib/utils/logStorage.ts`
 - `src/lib/utils/logger.ts`
 - `src/lib/utils/projectId.ts`
@@ -367,7 +367,7 @@ Files that are essential to core functionality and should be tested immediately:
    - `src/lib/stores/premiumStore.ts`
 
 5. **Critical Utils**
-   - `src/lib/utils/githubAppSync.ts`
+   - ✅ ~~`src/lib/utils/githubAppSync.ts`~~ (Completed - 1 test file, 29 tests)
 
 ### 🟡 High Priority (50+ items)
 
