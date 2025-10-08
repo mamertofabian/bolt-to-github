@@ -1,7 +1,7 @@
 # Testing Gaps - Detailed Analysis
 
 **Last Updated**: 2025-10-08
-**Total Untested Files**: 109 out of 171 (63.7%)
+**Total Untested Files**: 108 out of 171 (63.2%)
 
 This document lists ALL files that lack tests, organized by category with specific test types needed.
 
@@ -27,22 +27,22 @@ This document lists ALL files that lack tests, organized by category with specif
 
 ## Svelte Components
 
-**Total**: 61 files | **Tested**: 7 files | **Coverage**: 11.5%
+**Total**: 61 files | **Tested**: 8 files | **Coverage**: 13.1%
 
 ### Popup Components (13 files)
 
-**✅ Tested (4 files)**:
+**✅ Tested (5 files)**:
 
 - `src/popup/App.svelte` - **10 test files, 189 tests** covering cleanup, initialization, message handling, modal states, popup context, premium features, settings, temp repos, user interactions, and window mode
 - `src/popup/components/BranchSelectionModal.svelte` - **1 test file, 19 tests** covering branch loading, default branch selection, premium feature access, branch selection behavior, import/cancel actions, empty states, loading states, error handling, and reactive loading
 - `src/popup/components/FeedbackModal.svelte` - **1 test file, 19 tests** covering category selection, message input, form validation, feedback submission with PAT/GitHub App auth, log handling, error handling with fallbacks, GitHub issue URL generation, alternative contact methods (email/GitHub), form reset, modal close, success state, and fallback submissions
+- `src/popup/components/FileChangesModal.svelte` - **2 test files, 48 tests** covering modal visibility, file change displays (added/modified/deleted/unchanged), button states, push to GitHub with confirmation dialogs, refresh functionality with error handling, user interactions (clicks, keyboard events), integration with child components (FileChanges, Modal, ConfirmationDialog), and business logic (countChanges function, hasActualChanges logic, confirmation messages, edge cases)
 - `src/popup/components/OnboardingView.svelte` - **1 test file, 14 tests** covering step navigation (welcome → setup), event dispatching (save, error, authMethodChange), props reactivity (githubSettings, projectSettings, uiState), conditional rendering based on isBoltSite, and UI state propagation
 
-**❌ Untested (9 files)**:
+**❌ Untested (8 files)**:
 
 | File Path                                          | Missing Test Types     | Recommended Tools                   | Priority  |
 | -------------------------------------------------- | ---------------------- | ----------------------------------- | --------- |
-| `src/popup/components/FileChangesModal.svelte`     | Component, Integration | @testing-library/svelte, Vitest     | 🟡 High   |
 | `src/popup/components/HelpTabContent.svelte`       | Component              | @testing-library/svelte             | 🟢 Medium |
 | `src/popup/components/HomeTabContent.svelte`       | Component, E2E         | @testing-library/svelte, Playwright | 🟡 High   |
 | `src/popup/components/PremiumStatus.svelte`        | Component              | @testing-library/svelte             | 🟡 High   |
@@ -409,13 +409,14 @@ All other services, stores, main UI components, and utilities
 1. ✅ ~~Test main app component (App.svelte)~~ - **Completed!** 10 test files, 189 tests
 2. ✅ ~~Test BranchSelectionModal component~~ - **Completed!** 1 test file, 19 tests
 3. ✅ ~~Test FeedbackModal component~~ - **Completed!** 1 test file, 19 tests
-4. ✅ ~~Test OnboardingView component~~ - **Completed!** 1 test file, 14 tests
-5. ✅ ~~Test GitHubSettings component~~ - **Completed!** 2 test files, 103 tests
-6. ✅ ~~Test OnboardingSetup component~~ - **Completed!** 1 test file, 43 tests
-7. ✅ ~~Test RepoSettings component~~ - **Completed!** 2 test files, 110 tests
-8. ✅ ~~Test critical stores (premiumStore)~~ - **Completed!** 1 test file, 34 tests
-9. ✅ ~~Test OperationStateManager service~~ - **Completed!** 1 test file, 66 tests
-10. ✅ ~~Test StateManager service~~ - **Completed!** 1 test file, 37 tests
+4. ✅ ~~Test FileChangesModal component~~ - **Completed!** 2 test files, 48 tests
+5. ✅ ~~Test OnboardingView component~~ - **Completed!** 1 test file, 14 tests
+6. ✅ ~~Test GitHubSettings component~~ - **Completed!** 2 test files, 103 tests
+7. ✅ ~~Test OnboardingSetup component~~ - **Completed!** 1 test file, 43 tests
+8. ✅ ~~Test RepoSettings component~~ - **Completed!** 2 test files, 110 tests
+9. ✅ ~~Test critical stores (premiumStore)~~ - **Completed!** 1 test file, 34 tests
+10. ✅ ~~Test OperationStateManager service~~ - **Completed!** 1 test file, 66 tests
+11. ✅ ~~Test StateManager service~~ - **Completed!** 1 test file, 37 tests
 
 ### Phase 3: UI Library (Week 5-6)
 

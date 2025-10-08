@@ -10,18 +10,18 @@
 | Metric                       | Count | Percentage |
 | ---------------------------- | ----- | ---------- |
 | Total Source Files           | 171   | 100%       |
-| Files with Unit Tests        | 55    | 32.2%      |
-| Files without Tests          | 116   | 67.8%      |
-| Total Test Files             | 88    | -          |
+| Files with Unit Tests        | 56    | 32.7%      |
+| Files without Tests          | 115   | 67.3%      |
+| Total Test Files             | 89    | -          |
 | Svelte Components            | 61    | -          |
-| Svelte Components with Tests | 7     | 11.5%      |
+| Svelte Components with Tests | 8     | 13.1%      |
 
 ### Test Coverage by Category
 
 | Category              | Type   | Status                      |
 | --------------------- | ------ | --------------------------- |
-| **Unit Tests**        | Vitest | ✅ Partial (32.2% coverage) |
-| **Component Tests**   | Vitest | ✅ Started (11.5% coverage) |
+| **Unit Tests**        | Vitest | ✅ Partial (32.7% coverage) |
+| **Component Tests**   | Vitest | ✅ Started (13.1% coverage) |
 | **Integration Tests** | None   | ❌ Missing                  |
 | **E2E Tests**         | None   | ❌ Missing                  |
 
@@ -72,9 +72,9 @@
 
 ## What We Have: Existing Test Coverage
 
-### ✅ Well-Tested Areas (49 files with tests)
+### ✅ Well-Tested Areas (50 files with tests)
 
-#### Popup Components (4/14 files)
+#### Popup Components (5/14 files)
 
 - ✅ **App.svelte** (10 test files, 189 tests)
   - App.cleanup.test.ts - Resource cleanup and disposal (22 tests)
@@ -91,10 +91,13 @@
   - BranchSelectionModal.component.test.ts - Branch selection, premium features, loading states, error handling (19 tests)
 - ✅ **FeedbackModal.svelte** (1 test file, 19 tests)
   - FeedbackModal.component.test.ts - Category selection, message input, form validation, submission, log handling, error handling, GitHub/email fallback (19 tests)
+- ✅ **FileChangesModal.svelte** (2 test files, 48 tests)
+  - FileChangesModal.component.test.ts - Modal visibility, file change displays, button states, push to GitHub, refresh functionality, user interactions, child component integration (27 tests)
+  - FileChangesModal.logic.test.ts - countChanges function, hasActualChanges logic, confirmation messages, edge cases (21 tests)
 - ✅ **OnboardingView.svelte** (1 test file, 14 tests)
   - OnboardingView.component.test.ts - Step navigation, event handling, props reactivity, conditional rendering (14 tests)
 
-#### Library Components (2/29 files)
+#### Library Components (3/29 files)
 
 - ✅ **GitHubSettings.svelte** (2 test files, 103 tests) - **COMPREHENSIVE COVERAGE**
   - GitHubSettings.component.test.ts - Component rendering, collapsible behavior, form submission, storage quota, visual feedback, project settings (46 tests)
@@ -219,6 +222,14 @@ Almost all UI components lack dedicated tests:
   - Temp repo management
   - User interactions
   - Window mode functionality
+- ✅ **FileChangesModal.svelte** - 2 test files, 48 tests covering:
+  - Component rendering and modal visibility
+  - File change displays and summaries
+  - Button states and interactions
+  - Push to GitHub with confirmations
+  - Refresh functionality with error handling
+  - Business logic (countChanges, hasActualChanges)
+  - Edge cases and validation
 - ✅ **GitHubSettings.svelte** - 2 test files, 103 tests covering:
   - Component rendering and collapsible behavior
   - Form submission and validation
@@ -226,8 +237,8 @@ Almost all UI components lack dedicated tests:
   - Repository filtering and permission checking
   - Storage quota error handling
   - Visual feedback and project settings
-- ❌ All other popup components (12 files)
-- ❌ All other lib components (28 files)
+- ❌ All other popup components (11 files)
+- ❌ All other lib components (27 files)
 - ❌ All UI library components (19 files)
 - ❌ Content components (2 files)
 
