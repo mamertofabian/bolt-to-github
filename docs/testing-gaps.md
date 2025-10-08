@@ -1,7 +1,7 @@
 # Testing Gaps - Detailed Analysis
 
 **Last Updated**: 2025-10-08
-**Total Untested Files**: 116 out of 171 (67.8%)
+**Total Untested Files**: 115 out of 171 (67.3%)
 
 This document lists ALL files that lack tests, organized by category with specific test types needed.
 
@@ -116,9 +116,9 @@ This document lists ALL files that lack tests, organized by category with specif
 
 ## Services
 
-**Total**: 22 files | **Tested**: 18 files | **Coverage**: 81.8%
+**Total**: 22 files | **Tested**: 19 files | **Coverage**: 86.4%
 
-**✅ Tested (18 files)**:
+**✅ Tested (19 files)**:
 
 - `src/services/AnalyticsService.ts` - **2 test files** covering enhanced analytics and versioning
 - `src/services/AuthenticationStrategyFactory.ts` - **1 test file, 41 tests** covering singleton pattern, strategy creation and caching, default strategy behavior, current strategy resolution, authentication method management, multiple auth method detection, cache management, token-specific strategies, edge cases, and integration scenarios
@@ -136,17 +136,21 @@ This document lists ALL files that lack tests, organized by category with specif
 - `src/services/RepoCloneService.ts` - **1 test file** covering repository cloning
 - `src/services/RepositoryService.ts` - **1 test file** covering repository operations
 - `src/services/SubscriptionService.ts` - **1 test file** covering subscription management
+- `src/services/TokenService.ts` - **1 test file** covering token operations
 - `src/services/UnifiedGitHubService.ts` - **3 test files** covering comprehensive, focused, and working scenarios
 - `src/services/zipHandler.ts` - **4 test files** covering critical scenarios, edge cases, readme integration, and general functionality
 
-**❌ Untested (4 files)**:
+**✅ Tested Library Services (1 file)**:
 
-| File Path                                             | Missing Test Types | Recommended Tools | Priority    |
-| ----------------------------------------------------- | ------------------ | ----------------- | ----------- |
-| `src/services/FilePreviewService.ts`                  | Unit               | Vitest            | 🟡 High     |
-| `src/services/GitHubComparisonService.ts`             | Unit, Integration  | Vitest            | 🟡 High     |
-| `src/lib/services/GitHubCacheService.ts`              | Unit, Integration  | Vitest            | 🟡 High     |
-| `src/lib/services/ProjectSettingsMigrationService.ts` | Unit, Integration  | Vitest            | 🔴 Critical |
+- `src/lib/services/ProjectSettingsMigrationService.ts` - **1 test file, 38 tests** covering migration detection (needsMigration), statistics gathering (getMigrationStats), bulk project migration (migrateProjectSettings with progress callbacks, stale cache handling, GitHub App auth, error handling), single project migration (migrateSingleProject), migration status reset (resetMigrationStatus), project migration validation (projectNeedsMigration), integration scenarios, and edge cases
+
+**❌ Untested (3 files)**:
+
+| File Path                                 | Missing Test Types | Recommended Tools | Priority |
+| ----------------------------------------- | ------------------ | ----------------- | -------- |
+| `src/services/FilePreviewService.ts`      | Unit               | Vitest            | 🟡 High  |
+| `src/services/GitHubComparisonService.ts` | Unit, Integration  | Vitest            | 🟡 High  |
+| `src/lib/services/GitHubCacheService.ts`  | Unit, Integration  | Vitest            | 🟡 High  |
 
 ---
 
@@ -357,7 +361,6 @@ Files that are essential to core functionality and should be tested immediately:
 
    - `src/background/StateManager.ts`
    - `src/content/services/OperationStateManager.ts`
-   - `src/lib/services/ProjectSettingsMigrationService.ts`
 
 4. **Critical Stores**
 

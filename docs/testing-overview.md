@@ -144,7 +144,7 @@
 - ✅ SupabaseAuthService.ts
 - ✅ UIStateManager.ts
 
-#### Global Services (18/22 files)
+#### Global Services (19/22 files)
 
 - ✅ AnalyticsService.ts (2 test files)
 - ✅ AuthenticationStrategyFactory.ts (1 test file, 41 tests)
@@ -168,6 +168,11 @@
 - ✅ TokenService.ts
 - ✅ UnifiedGitHubService.ts (3 test files)
 - ✅ zipHandler.ts (4 test files)
+
+#### Library Services (1/6 files)
+
+- ✅ ProjectSettingsMigrationService.ts (1 test file, 38 tests)
+  - ProjectSettingsMigrationService.test.ts - Migration detection, statistics gathering, bulk project migration (with progress callbacks, stale cache handling, GitHub App auth, error handling), single project migration, migration status reset, project migration validation, integration scenarios, edge cases (38 tests)
 
 #### Utilities (4/11 files)
 
@@ -233,11 +238,10 @@ Almost all UI components lack dedicated tests:
 - Chrome API integration untested
 - External API integration untested
 
-#### 4. **Untested Services** (6 files)
+#### 4. **Untested Services** (5 files)
 
 - FilePreviewService.ts
 - GitHubComparisonService.ts
-- PATAuthenticationStrategy.ts
 - CommitTemplateService.ts
 - OperationStateManager.ts
 - PushReminderService.ts
@@ -334,7 +338,7 @@ pnpm exec playwright install
 
 ### Short-term Actions (Priority 2)
 
-1. Fill gaps in service tests (8 untested services)
+1. Fill gaps in service tests (5 untested services)
 2. Add tests for stores (7 untested stores)
 3. Test utility functions (7 untested utils)
 
