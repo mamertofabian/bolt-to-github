@@ -10,9 +10,9 @@
 | Metric                       | Count | Percentage |
 | ---------------------------- | ----- | ---------- |
 | Total Source Files           | 171   | 100%       |
-| Files with Unit Tests        | 56    | 32.7%      |
-| Files without Tests          | 115   | 67.3%      |
-| Total Test Files             | 89    | -          |
+| Files with Unit Tests        | 57    | 33.3%      |
+| Files without Tests          | 114   | 66.7%      |
+| Total Test Files             | 90    | -          |
 | Svelte Components            | 61    | -          |
 | Svelte Components with Tests | 8     | 13.1%      |
 
@@ -20,7 +20,7 @@
 
 | Category              | Type   | Status                      |
 | --------------------- | ------ | --------------------------- |
-| **Unit Tests**        | Vitest | ✅ Partial (32.7% coverage) |
+| **Unit Tests**        | Vitest | ✅ Partial (33.3% coverage) |
 | **Component Tests**   | Vitest | ✅ Started (13.1% coverage) |
 | **Integration Tests** | None   | ❌ Missing                  |
 | **E2E Tests**         | None   | ❌ Missing                  |
@@ -151,7 +151,7 @@
 - ✅ SupabaseAuthService.ts
 - ✅ UIStateManager.ts
 
-#### Global Services (19/22 files)
+#### Global Services (20/22 files)
 
 - ✅ AnalyticsService.ts (2 test files)
 - ✅ AuthenticationStrategyFactory.ts (1 test file, 41 tests)
@@ -159,6 +159,8 @@
 - ✅ BoltProjectSyncService.ts (2 test files)
 - ✅ CacheService.ts
 - ✅ DownloadService.ts
+- ✅ FilePreviewService.ts (1 test file, 53 tests)
+  - FilePreviewService.test.ts - Singleton pattern, file loading and caching, gitignore processing, file content retrieval, change detection (added/modified/deleted/unchanged), diff calculation (line-by-line, contextual), UI preview creation, UI diff rendering, GitHub comparison, cache refresh handling, cleanup, and edge cases (53 tests)
 - ✅ FileService.ts
 - ✅ GitHubApiClient.ts
 - ✅ GitHubAppAuthenticationStrategy.ts (1 test file, 48 tests)
@@ -255,13 +257,10 @@ Almost all UI components lack dedicated tests:
 - Chrome API integration untested
 - External API integration untested
 
-#### 4. **Untested Services** (5 files)
+#### 4. **Untested Services** (2 files)
 
-- FilePreviewService.ts
 - GitHubComparisonService.ts
-- CommitTemplateService.ts
-- OperationStateManager.ts
-- PushReminderService.ts
+- GitHubCacheService.ts (lib/services)
 
 See [testing-gaps.md](./testing-gaps.md) for complete detailed breakdown.
 
@@ -274,7 +273,7 @@ See [testing-gaps.md](./testing-gaps.md) for complete detailed breakdown.
 **What they test**: Individual functions, classes, or modules in isolation
 **Example**: Testing that `calculateTotal(items)` returns correct sum
 
-**Current Status**: ✅ Partial coverage (25.7%)
+**Current Status**: ✅ Partial coverage (33.3%)
 
 ### 2. Component Tests (Missing: Need @testing-library/svelte)
 
@@ -325,10 +324,10 @@ pnpm exec playwright install
 
 ### Coverage Goals
 
-- **Overall**: 80%+ (Current: Unknown, likely ~25-35%)
+- **Overall**: 80%+ (Current: Unknown, likely ~33-35%)
 - **Critical paths**: 100% (Current: Partial)
 - **UI Components**: 70%+ (Current: 0%)
-- **Business logic**: 90%+ (Current: ~60%)
+- **Business logic**: 90%+ (Current: ~65%)
 
 ---
 
@@ -355,7 +354,7 @@ pnpm exec playwright install
 
 ### Short-term Actions (Priority 2)
 
-1. Fill gaps in service tests (5 untested services)
+1. Fill gaps in service tests (2 untested services)
 2. Add tests for stores (6 untested stores: fileChanges, githubSettings, issuesStore, projectSettings, uiState, uploadState)
 3. Test utility functions (7 untested utils)
 

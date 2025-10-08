@@ -1,7 +1,7 @@
 # Testing Gaps - Detailed Analysis
 
 **Last Updated**: 2025-10-08
-**Total Untested Files**: 108 out of 171 (63.2%)
+**Total Untested Files**: 107 out of 171 (62.6%)
 
 This document lists ALL files that lack tests, organized by category with specific test types needed.
 
@@ -119,15 +119,16 @@ This document lists ALL files that lack tests, organized by category with specif
 
 ## Services
 
-**Total**: 22 files | **Tested**: 19 files | **Coverage**: 86.4%
+**Total**: 22 files | **Tested**: 20 files | **Coverage**: 90.9%
 
-**✅ Tested (19 files)**:
+**✅ Tested (20 files)**:
 
 - `src/services/AnalyticsService.ts` - **2 test files** covering enhanced analytics and versioning
 - `src/services/AuthenticationStrategyFactory.ts` - **1 test file, 41 tests** covering singleton pattern, strategy creation and caching, default strategy behavior, current strategy resolution, authentication method management, multiple auth method detection, cache management, token-specific strategies, edge cases, and integration scenarios
 - `src/services/BoltProjectSyncService.ts` - **2 test files** covering direct method and general sync functionality
 - `src/services/CacheService.ts` - **1 test file** covering cache operations
 - `src/services/DownloadService.ts` - **1 test file** covering download functionality
+- `src/services/FilePreviewService.ts` - **1 test file, 53 tests** covering singleton pattern, file loading and caching, gitignore processing, file content retrieval, change detection (added/modified/deleted/unchanged), diff calculation (line-by-line, contextual), UI preview creation, UI diff rendering, GitHub comparison, cache refresh handling, cleanup, and edge cases
 - `src/services/FileService.ts` - **1 test file** covering file operations
 - `src/services/GitHubApiClient.ts` - **1 test file** covering API client functionality
 - `src/services/GitHubAppAuthenticationStrategy.ts` - **1 test file, 48 tests** covering type property, isConfigured, token caching, token expiration and automatic refresh, validateAuth, checkPermissions, refreshToken, clearAuth, getUserInfo (from config and API), needsRenewal, getMetadata, setUserToken, completeOAuth flow, generateOAuthUrl, and integration scenarios
@@ -147,11 +148,10 @@ This document lists ALL files that lack tests, organized by category with specif
 
 - `src/lib/services/ProjectSettingsMigrationService.ts` - **1 test file, 38 tests** covering migration detection (needsMigration), statistics gathering (getMigrationStats), bulk project migration (migrateProjectSettings with progress callbacks, stale cache handling, GitHub App auth, error handling), single project migration (migrateSingleProject), migration status reset (resetMigrationStatus), project migration validation (projectNeedsMigration), integration scenarios, and edge cases
 
-**❌ Untested (3 files)**:
+**❌ Untested (2 files)**:
 
 | File Path                                 | Missing Test Types | Recommended Tools | Priority |
 | ----------------------------------------- | ------------------ | ----------------- | -------- |
-| `src/services/FilePreviewService.ts`      | Unit               | Vitest            | 🟡 High  |
 | `src/services/GitHubComparisonService.ts` | Unit, Integration  | Vitest            | 🟡 High  |
 | `src/lib/services/GitHubCacheService.ts`  | Unit, Integration  | Vitest            | 🟡 High  |
 
