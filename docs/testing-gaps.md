@@ -1,7 +1,7 @@
 # Testing Gaps - Detailed Analysis
 
 **Last Updated**: 2025-10-08
-**Total Untested Files**: 120 out of 171 (70.2%)
+**Total Untested Files**: 119 out of 171 (69.6%)
 
 This document lists ALL files that lack tests, organized by category with specific test types needed.
 
@@ -116,11 +116,16 @@ This document lists ALL files that lack tests, organized by category with specif
 
 ## Services
 
-**Total**: 8 files | **Tested**: 0 files | **Coverage**: 0%
+**Total**: 8 files | **Tested**: 1 file | **Coverage**: 12.5%
+
+**✅ Tested (1 file)**:
+
+- `src/services/AuthenticationStrategyFactory.ts` - **1 test file, 41 tests** covering singleton pattern, strategy creation and caching, default strategy behavior, current strategy resolution, authentication method management, multiple auth method detection, cache management, token-specific strategies, edge cases, and integration scenarios
+
+**❌ Untested (7 files)**:
 
 | File Path                                             | Missing Test Types | Recommended Tools | Priority    |
 | ----------------------------------------------------- | ------------------ | ----------------- | ----------- |
-| `src/services/AuthenticationStrategyFactory.ts`       | Unit, Integration  | Vitest            | 🔴 Critical |
 | `src/services/FilePreviewService.ts`                  | Unit               | Vitest            | 🟡 High     |
 | `src/services/GitHubAppAuthenticationStrategy.ts`     | Unit, Integration  | Vitest            | 🔴 Critical |
 | `src/services/GitHubComparisonService.ts`             | Unit, Integration  | Vitest            | 🟡 High     |
@@ -322,7 +327,7 @@ Files that are essential to core functionality and should be tested immediately:
 
 1. **Authentication & Security**
 
-   - `src/services/AuthenticationStrategyFactory.ts`
+   - ✅ ~~`src/services/AuthenticationStrategyFactory.ts`~~ (Completed - 1 test file, 41 tests)
    - `src/services/GitHubAppAuthenticationStrategy.ts`
    - `src/services/PATAuthenticationStrategy.ts`
 
@@ -424,7 +429,7 @@ All other services, stores, main UI components, and utilities
 
 ### File Coverage Targets
 
-- [ ] Services: 100% (currently 63.6%)
+- [ ] Services: 100% (currently 68.2%)
 - [ ] Stores: 100% (currently 14.3%)
 - [ ] Utilities: 100% (currently 36.4%)
 - [x] **Main App Component: 100% (App.svelte - 189 tests)**

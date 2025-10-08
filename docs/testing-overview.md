@@ -10,9 +10,9 @@
 | Metric                       | Count | Percentage |
 | ---------------------------- | ----- | ---------- |
 | Total Source Files           | 171   | 100%       |
-| Files with Unit Tests        | 47    | 27.5%      |
-| Files without Tests          | 124   | 72.5%      |
-| Total Test Files             | 80    | -          |
+| Files with Unit Tests        | 48    | 28.1%      |
+| Files without Tests          | 123   | 71.9%      |
+| Total Test Files             | 81    | -          |
 | Svelte Components            | 61    | -          |
 | Svelte Components with Tests | 6     | 9.8%       |
 
@@ -144,9 +144,10 @@
 - ✅ SupabaseAuthService.ts
 - ✅ UIStateManager.ts
 
-#### Global Services (14/22 files)
+#### Global Services (15/22 files)
 
 - ✅ AnalyticsService.ts (2 test files)
+- ✅ AuthenticationStrategyFactory.ts
 - ✅ BoltProjectSyncService.ts (2 test files)
 - ✅ CacheService.ts
 - ✅ DownloadService.ts
