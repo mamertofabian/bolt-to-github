@@ -10,9 +10,9 @@
 | Metric                       | Count | Percentage |
 | ---------------------------- | ----- | ---------- |
 | Total Source Files           | 171   | 100%       |
-| Files with Unit Tests        | 49    | 28.7%      |
-| Files without Tests          | 122   | 71.3%      |
-| Total Test Files             | 82    | -          |
+| Files with Unit Tests        | 50    | 29.2%      |
+| Files without Tests          | 121   | 70.8%      |
+| Total Test Files             | 83    | -          |
 | Svelte Components            | 61    | -          |
 | Svelte Components with Tests | 6     | 9.8%       |
 
@@ -20,7 +20,7 @@
 
 | Category              | Type   | Status                      |
 | --------------------- | ------ | --------------------------- |
-| **Unit Tests**        | Vitest | ✅ Partial (28.7% coverage) |
+| **Unit Tests**        | Vitest | ✅ Partial (29.2% coverage) |
 | **Component Tests**   | Vitest | ✅ Started (9.8% coverage)  |
 | **Integration Tests** | None   | ❌ Missing                  |
 | **E2E Tests**         | None   | ❌ Missing                  |
@@ -144,7 +144,7 @@
 - ✅ SupabaseAuthService.ts
 - ✅ UIStateManager.ts
 
-#### Global Services (17/22 files)
+#### Global Services (18/22 files)
 
 - ✅ AnalyticsService.ts (2 test files)
 - ✅ AuthenticationStrategyFactory.ts (1 test file, 41 tests)
@@ -158,6 +158,8 @@
   - GitHubAppAuthenticationStrategy.test.ts - Token caching, automatic refresh, validation, permissions, user info retrieval, OAuth completion (48 tests)
 - ✅ GitHubAppService.ts
 - ✅ IdleMonitorService.ts
+- ✅ PATAuthenticationStrategy.ts (1 test file, 54 tests)
+  - PATAuthenticationStrategy.test.ts - Type property, constructor, token configuration, token retrieval and caching, authentication validation (classic/fine-grained tokens), permission checking, token refresh (unsupported), auth clearing, user info retrieval, renewal checking (always false), metadata retrieval, setToken method, integration scenarios, edge cases (54 tests)
 - ✅ RateLimitHandler.ts
 - ✅ ReadmeGeneratorService.ts
 - ✅ RepoCloneService.ts

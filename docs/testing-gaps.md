@@ -1,7 +1,7 @@
 # Testing Gaps - Detailed Analysis
 
 **Last Updated**: 2025-10-08
-**Total Untested Files**: 117 out of 171 (68.4%)
+**Total Untested Files**: 116 out of 171 (67.8%)
 
 This document lists ALL files that lack tests, organized by category with specific test types needed.
 
@@ -116,9 +116,9 @@ This document lists ALL files that lack tests, organized by category with specif
 
 ## Services
 
-**Total**: 22 files | **Tested**: 17 files | **Coverage**: 77.3%
+**Total**: 22 files | **Tested**: 18 files | **Coverage**: 81.8%
 
-**✅ Tested (17 files)**:
+**✅ Tested (18 files)**:
 
 - `src/services/AnalyticsService.ts` - **2 test files** covering enhanced analytics and versioning
 - `src/services/AuthenticationStrategyFactory.ts` - **1 test file, 41 tests** covering singleton pattern, strategy creation and caching, default strategy behavior, current strategy resolution, authentication method management, multiple auth method detection, cache management, token-specific strategies, edge cases, and integration scenarios
@@ -130,6 +130,7 @@ This document lists ALL files that lack tests, organized by category with specif
 - `src/services/GitHubAppAuthenticationStrategy.ts` - **1 test file, 48 tests** covering type property, isConfigured, token caching, token expiration and automatic refresh, validateAuth, checkPermissions, refreshToken, clearAuth, getUserInfo (from config and API), needsRenewal, getMetadata, setUserToken, completeOAuth flow, generateOAuthUrl, and integration scenarios
 - `src/services/GitHubAppService.ts` - **1 test file** covering critical business logic
 - `src/services/IdleMonitorService.ts` - **1 test file** covering idle monitoring
+- `src/services/PATAuthenticationStrategy.ts` - **1 test file, 54 tests** covering type property, constructor, token configuration, token retrieval and caching, authentication validation (classic/fine-grained tokens), permission checking, token refresh (unsupported), auth clearing, user info retrieval, renewal checking (always false), metadata retrieval, setToken method, integration scenarios, edge cases
 - `src/services/RateLimitHandler.ts` - **1 test file** covering rate limit handling
 - `src/services/ReadmeGeneratorService.ts` - **1 test file** covering README generation
 - `src/services/RepoCloneService.ts` - **1 test file** covering repository cloning
@@ -138,13 +139,12 @@ This document lists ALL files that lack tests, organized by category with specif
 - `src/services/UnifiedGitHubService.ts` - **3 test files** covering comprehensive, focused, and working scenarios
 - `src/services/zipHandler.ts` - **4 test files** covering critical scenarios, edge cases, readme integration, and general functionality
 
-**❌ Untested (5 files)**:
+**❌ Untested (4 files)**:
 
 | File Path                                             | Missing Test Types | Recommended Tools | Priority    |
 | ----------------------------------------------------- | ------------------ | ----------------- | ----------- |
 | `src/services/FilePreviewService.ts`                  | Unit               | Vitest            | 🟡 High     |
 | `src/services/GitHubComparisonService.ts`             | Unit, Integration  | Vitest            | 🟡 High     |
-| `src/services/PATAuthenticationStrategy.ts`           | Unit, Integration  | Vitest            | 🔴 Critical |
 | `src/lib/services/GitHubCacheService.ts`              | Unit, Integration  | Vitest            | 🟡 High     |
 | `src/lib/services/ProjectSettingsMigrationService.ts` | Unit, Integration  | Vitest            | 🔴 Critical |
 
@@ -335,15 +335,15 @@ This document lists ALL files that lack tests, organized by category with specif
 
 ## Priority Recommendations
 
-### 🔴 Critical Priority (16 items)
+### 🔴 Critical Priority (15 items)
 
 Files that are essential to core functionality and should be tested immediately:
 
 1. **Authentication & Security**
 
    - ✅ ~~`src/services/AuthenticationStrategyFactory.ts`~~ (Completed - 1 test file, 41 tests)
-   - `src/services/GitHubAppAuthenticationStrategy.ts`
-   - `src/services/PATAuthenticationStrategy.ts`
+   - ✅ ~~`src/services/GitHubAppAuthenticationStrategy.ts`~~ (Completed - 1 test file, 48 tests)
+   - ✅ ~~`src/services/PATAuthenticationStrategy.ts`~~ (Completed - 1 test file, 54 tests)
 
 2. **Core UI Components**
 
@@ -396,7 +396,10 @@ All other services, stores, main UI components, and utilities
    - Write first E2E test for main flow
    - Set up CI/CD for E2E tests
 
-3. Test critical authentication services (3 files)
+3. Test critical authentication services (✅ 3/3 files completed)
+   - ✅ AuthenticationStrategyFactory.ts
+   - ✅ GitHubAppAuthenticationStrategy.ts
+   - ✅ PATAuthenticationStrategy.ts
 
 ### Phase 2: Core Components (Week 3-4)
 
@@ -443,7 +446,7 @@ All other services, stores, main UI components, and utilities
 
 ### File Coverage Targets
 
-- [ ] Services: 100% (currently 68.2%)
+- [ ] Services: 100% (currently 81.8%)
 - [ ] Stores: 100% (currently 14.3%)
 - [ ] Utilities: 100% (currently 36.4%)
 - [x] **Main App Component: 100% (App.svelte - 189 tests)**
@@ -453,6 +456,7 @@ All other services, stores, main UI components, and utilities
 - [x] **GitHubSettings Component: 100% (103 tests across 2 files)**
 - [x] **OnboardingSetup Component: 100% (43 tests)**
 - [x] **RepoSettings Component: 100% (110 tests across 2 files)**
+- [x] **PATAuthenticationStrategy: 100% (54 tests)**
 - [ ] Other Components: 70%+ (currently 11.5% - 7 of 61 files)
 - [ ] Infrastructure: 100% (currently 75%)
 
