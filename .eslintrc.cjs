@@ -28,6 +28,13 @@ module.exports = {
       },
     },
     {
+      files: ['**/__mocks__/**/*.svelte'],
+      rules: {
+        'svelte/valid-compile': 'off',
+        'svelte/no-unused-svelte-ignore': 'off',
+      },
+    },
+    {
       files: ['**/*.test.ts', '**/*.spec.ts', '**/__tests__/**/*.ts'],
       globals: {
         describe: 'readonly',
