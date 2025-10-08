@@ -4,7 +4,6 @@ import { RepoCloneService } from '../RepoCloneService';
 import type { IFileService } from '../interfaces/IFileService';
 import type { IGitHubApiClient } from '../interfaces/IGitHubApiClient';
 
-// Mock the RateLimitHandler to avoid rate limit issues in tests
 vi.mock('../RateLimitHandler', () => {
   return {
     RateLimitHandler: vi.fn().mockImplementation(() => {
@@ -25,7 +24,6 @@ describe('RepoCloneService', () => {
   let repoCloneService: RepoCloneService;
 
   beforeEach(() => {
-    // Create fresh mocks for each test
     mockApiClient = {
       request: vi.fn(),
       getRateLimit: vi.fn(),
@@ -50,8 +48,6 @@ describe('RepoCloneService', () => {
 
   describe('cloneRepoContents', () => {
     it('should clone files from source repository to target repository', async () => {
-      // Arrange
-      // Mock for rate limit check
       mockApiClient.request.mockImplementation((method: string, endpoint: string) => {
         if (endpoint === '/rate_limit') {
           return Promise.resolve({
@@ -77,20 +73,19 @@ describe('RepoCloneService', () => {
 
         if (endpoint.includes('/contents/file1.txt')) {
           return Promise.resolve({
-            content: 'ZmlsZTEgY29udGVudA==', // Base64 for "file1 content"
+            content: 'ZmlsZTEgY29udGVudA==',
           });
         }
 
         if (endpoint.includes('/contents/file2.txt')) {
           return Promise.resolve({
-            content: 'ZmlsZTIgY29udGVudA==', // Base64 for "file2 content"
+            content: 'ZmlsZTIgY29udGVudA==',
           });
         }
 
         return Promise.reject(new Error(`Unexpected request: ${method} ${endpoint}`));
       });
 
-      // Act
       const onProgressMock = vi.fn();
       await repoCloneService.cloneRepoContents(
         'sourceOwner',
@@ -101,7 +96,6 @@ describe('RepoCloneService', () => {
         onProgressMock
       );
 
-      // Assert
       expect(mockApiClient.request).toHaveBeenCalledWith(
         'GET',
         '/repos/sourceOwner/sourceRepo/git/trees/main?recursive=1'
@@ -129,8 +123,6 @@ describe('RepoCloneService', () => {
     });
 
     it('should handle file fetch errors and retry', async () => {
-      // Arrange
-      // Mock API with temporary error on first try
       let firstTry = true;
       mockApiClient.request.mockImplementation((method: string, endpoint: string) => {
         if (endpoint === '/rate_limit') {
@@ -154,19 +146,18 @@ describe('RepoCloneService', () => {
         if (endpoint.includes('/contents/file1.txt')) {
           if (firstTry) {
             firstTry = false;
-            // Simply throw an error, let the RateLimitHandler mock handle it
+
             throw new Response(null, { status: 403 });
           }
 
           return Promise.resolve({
-            content: 'ZmlsZTEgY29udGVudA==', // Base64 for "file1 content"
+            content: 'ZmlsZTEgY29udGVudA==',
           });
         }
 
         return Promise.reject(new Error(`Unexpected request: ${method} ${endpoint}`));
       });
 
-      // Act
       await repoCloneService.cloneRepoContents(
         'sourceOwner',
         'sourceRepo',
@@ -174,7 +165,6 @@ describe('RepoCloneService', () => {
         'targetRepo'
       );
 
-      // Assert
       expect(mockFileService.writeFile).toHaveBeenCalledWith(
         'targetOwner',
         'targetRepo',

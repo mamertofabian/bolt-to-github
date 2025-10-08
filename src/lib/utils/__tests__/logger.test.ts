@@ -6,7 +6,6 @@ import {
   resetLogger,
 } from '../logger';
 
-// Mock console methods
 const mockConsole = {
   log: vi.fn(),
   info: vi.fn(),
@@ -14,33 +13,25 @@ const mockConsole = {
   error: vi.fn(),
 };
 
-// Mock localStorage
 const mockLocalStorage = {
   getItem: vi.fn(),
   setItem: vi.fn(),
   removeItem: vi.fn(),
 };
 
-// Mock import.meta.env is not needed since we use fallback in logger
-
 describe('Logger', () => {
   beforeEach(() => {
-    // Reset mocks
     vi.clearAllMocks();
 
-    // Mock console
     Object.assign(console, mockConsole);
 
-    // Mock localStorage
     Object.defineProperty(window, 'localStorage', {
       value: mockLocalStorage,
       writable: true,
     });
 
-    // Mock process.env for testing (set to production by default)
     process.env.NODE_ENV = 'production';
 
-    // Reset logger to pick up new environment
     resetLogger();
   });
 
@@ -66,7 +57,6 @@ describe('Logger', () => {
     it('should log debug messages when enableDebugInProduction is true', () => {
       mockLocalStorage.getItem.mockReturnValue('true');
 
-      // Create a new logger instance with debug enabled in production
       const testLogger = createLogger('Test', { enableDebugInProduction: true });
       testLogger.debug('Debug message');
 
@@ -91,7 +81,6 @@ describe('Logger', () => {
 
       customLogger.debug('Debug message');
 
-      // Should include timestamp, module prefix, and level
       const call = mockConsole.log.mock.calls[0];
       expect(call[0]).toMatch(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z \[Custom\] \[DEBUG\]$/);
       expect(call[1]).toBe('Debug message');
@@ -128,7 +117,6 @@ describe('Logger', () => {
     });
 
     it('should handle missing localStorage gracefully', () => {
-      // Remove window to simulate environment without localStorage
       const originalWindow = global.window;
       // @ts-expect-error - this is a test
       delete global.window;
@@ -136,12 +124,10 @@ describe('Logger', () => {
       expect(() => enableProductionDebug()).not.toThrow();
       expect(() => disableProductionDebug()).not.toThrow();
 
-      // Restore window
       global.window = originalWindow;
     });
 
     it('should handle localStorage errors gracefully', () => {
-      // Mock localStorage to throw an error
       mockLocalStorage.setItem.mockImplementation(() => {
         throw new Error('localStorage access denied');
       });

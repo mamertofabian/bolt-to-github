@@ -4,7 +4,6 @@ import { beforeEach, describe, expect, it, type MockedFunction, vi } from 'vites
 import { ChromeStorageService } from '../../services/chromeStorage';
 import { pushStatisticsActions, pushStatisticsStore } from '../pushStatistics';
 
-// Mock ChromeStorageService
 vi.mock('../../services/chromeStorage', () => ({
   ChromeStorageService: {
     getPushStatistics: vi.fn(),
@@ -13,7 +12,6 @@ vi.mock('../../services/chromeStorage', () => ({
   },
 }));
 
-// Mock chrome storage
 global.chrome = {
   storage: {
     onChanged: {
@@ -24,10 +22,8 @@ global.chrome = {
 
 describe('Push Statistics Store', () => {
   beforeEach(() => {
-    // Reset mocks
     vi.clearAllMocks();
 
-    // Reset store to initial state
     pushStatisticsStore.set({
       statistics: {
         totalAttempts: 0,
@@ -185,7 +181,6 @@ describe('Push Statistics Store', () => {
   });
 
   it('should check if user has push attempts', async () => {
-    // Test with no push attempts
     const emptyStats = {
       totalAttempts: 0,
       totalSuccesses: 0,
@@ -198,7 +193,6 @@ describe('Push Statistics Store', () => {
     const hasNoAttempts = await pushStatisticsActions.hasPushAttempts();
     expect(hasNoAttempts).toBe(false);
 
-    // Test with push attempts
     const statsWithAttempts = {
       totalAttempts: 3,
       totalSuccesses: 2,

@@ -12,7 +12,6 @@ describe('RepositoryService', () => {
   let repositoryService: RepositoryService;
 
   beforeEach(() => {
-    // Create fresh mocks for each test
     mockApiClient = {
       request: vi.fn(),
       getRateLimit: vi.fn(),
@@ -42,27 +41,21 @@ describe('RepositoryService', () => {
 
   describe('repoExists', () => {
     it('should return true when repository exists', async () => {
-      // Arrange
       mockApiClient.request.mockResolvedValueOnce({ name: 'test-repo' });
 
-      // Act
       const result = await repositoryService.repoExists('testuser', 'test-repo');
 
-      // Assert
       expect(result).toBe(true);
       expect(mockApiClient.request).toHaveBeenCalledWith('GET', '/repos/testuser/test-repo');
     });
 
     it('should return false when repository does not exist', async () => {
-      // Arrange
       const error = new Error('Not Found');
       error.message = '404 Not Found';
       mockApiClient.request.mockRejectedValueOnce(error);
 
-      // Act
       const result = await repositoryService.repoExists('testuser', 'non-existent-repo');
 
-      // Assert
       expect(result).toBe(false);
       expect(mockApiClient.request).toHaveBeenCalledWith(
         'GET',
@@ -71,12 +64,10 @@ describe('RepositoryService', () => {
     });
 
     it('should propagate errors that are not 404', async () => {
-      // Arrange
       const error = new Error('Server Error');
       error.message = '500 Server Error';
       mockApiClient.request.mockRejectedValueOnce(error);
 
-      // Act & Assert
       await expect(repositoryService.repoExists('testuser', 'test-repo')).rejects.toThrow(
         'Server Error'
       );
@@ -86,7 +77,6 @@ describe('RepositoryService', () => {
 
   describe('getRepoInfo', () => {
     it('should return repository info when repository exists', async () => {
-      // Arrange
       const mockRepo = {
         name: 'test-repo',
         description: 'Test repository',
@@ -94,10 +84,8 @@ describe('RepositoryService', () => {
       };
       mockApiClient.request.mockResolvedValueOnce(mockRepo);
 
-      // Act
       const result = await repositoryService.getRepoInfo('testuser', 'test-repo');
 
-      // Assert
       expect(result).toEqual({
         name: 'test-repo',
         description: 'Test repository',
@@ -108,15 +96,12 @@ describe('RepositoryService', () => {
     });
 
     it('should return exists=false when repository does not exist', async () => {
-      // Arrange
       const error = new Error('Not Found');
       error.message = '404 Not Found';
       mockApiClient.request.mockRejectedValueOnce(error);
 
-      // Act
       const result = await repositoryService.getRepoInfo('testuser', 'non-existent-repo');
 
-      // Assert
       expect(result).toEqual({
         name: 'non-existent-repo',
         exists: false,
@@ -130,18 +115,15 @@ describe('RepositoryService', () => {
 
   describe('createRepo', () => {
     it('should create a repository in user account', async () => {
-      // Arrange
       const mockResponse = { name: 'new-repo', html_url: 'https://github.com/testuser/new-repo' };
       mockApiClient.request.mockResolvedValueOnce(mockResponse);
 
-      // Act
       const result = await repositoryService.createRepo({
         name: 'new-repo',
         private: true,
         description: 'New test repository',
       });
 
-      // Assert
       expect(result).toEqual(mockResponse);
       expect(mockApiClient.request).toHaveBeenCalledWith(
         'POST',
@@ -156,11 +138,9 @@ describe('RepositoryService', () => {
     });
 
     it('should create a repository in organization', async () => {
-      // Arrange
       const mockResponse = { name: 'new-repo', html_url: 'https://github.com/testorg/new-repo' };
       mockApiClient.request.mockResolvedValueOnce(mockResponse);
 
-      // Act
       const result = await repositoryService.createRepo({
         name: 'new-repo',
         private: true,
@@ -168,7 +148,6 @@ describe('RepositoryService', () => {
         org: 'testorg',
       });
 
-      // Assert
       expect(result).toEqual(mockResponse);
       expect(mockApiClient.request).toHaveBeenCalledWith(
         'POST',
@@ -183,11 +162,9 @@ describe('RepositoryService', () => {
     });
 
     it('should handle errors when creating a repository', async () => {
-      // Arrange
       const error = new Error('Repository creation failed');
       mockApiClient.request.mockRejectedValueOnce(error);
 
-      // Act & Assert
       await expect(repositoryService.createRepo({ name: 'new-repo' })).rejects.toThrow(
         'Failed to create repository: Repository creation failed'
       );
@@ -196,40 +173,30 @@ describe('RepositoryService', () => {
 
   describe('ensureRepoExists', () => {
     it('should not create repository when it already exists', async () => {
-      // Arrange
-      mockApiClient.request.mockResolvedValueOnce({ name: 'existing-repo' }); // For repoExists check
+      mockApiClient.request.mockResolvedValueOnce({ name: 'existing-repo' });
 
-      // Act
       await repositoryService.ensureRepoExists('testuser', 'existing-repo');
 
-      // Assert
       expect(mockApiClient.request).toHaveBeenCalledTimes(1);
       expect(mockApiClient.request).toHaveBeenCalledWith('GET', '/repos/testuser/existing-repo');
     });
 
     it('should create repository when it does not exist', async () => {
-      // Arrange
-      // First call for repoExists
       const error = new Error('Not Found');
       error.message = '404 Not Found';
       mockApiClient.request.mockRejectedValueOnce(error);
 
-      // Second call for checking if owner is an organization
       mockApiClient.request.mockResolvedValueOnce({ type: 'User' });
 
-      // Third call for creating the repository
       mockApiClient.request.mockResolvedValueOnce({ name: 'new-repo' });
 
-      // Mock setTimeout
       vi.spyOn(global, 'setTimeout').mockImplementation((callback: any) => {
         callback();
         return {} as any;
       });
 
-      // Act
       await repositoryService.ensureRepoExists('testuser', 'new-repo');
 
-      // Assert
       expect(mockApiClient.request).toHaveBeenCalledTimes(3);
       expect(mockApiClient.request).toHaveBeenNthCalledWith(1, 'GET', '/repos/testuser/new-repo');
       expect(mockApiClient.request).toHaveBeenNthCalledWith(2, 'GET', '/users/testuser');
@@ -249,13 +216,10 @@ describe('RepositoryService', () => {
 
   describe('isRepoEmpty', () => {
     it('should return true when repository has no commits', async () => {
-      // Arrange
       mockApiClient.request.mockResolvedValueOnce([]);
 
-      // Act
       const result = await repositoryService.isRepoEmpty('testuser', 'empty-repo');
 
-      // Assert
       expect(result).toBe(true);
       expect(mockApiClient.request).toHaveBeenCalledWith(
         'GET',
@@ -264,13 +228,10 @@ describe('RepositoryService', () => {
     });
 
     it('should return false when repository has commits', async () => {
-      // Arrange
       mockApiClient.request.mockResolvedValueOnce([{ sha: 'abc123' }]);
 
-      // Act
       const result = await repositoryService.isRepoEmpty('testuser', 'non-empty-repo');
 
-      // Assert
       expect(result).toBe(false);
       expect(mockApiClient.request).toHaveBeenCalledWith(
         'GET',
@@ -279,22 +240,18 @@ describe('RepositoryService', () => {
     });
 
     it('should return true when repository returns 409 (empty repository)', async () => {
-      // Arrange
       const error = new Error('Conflict');
       error.message = '409 Conflict';
       mockApiClient.request.mockRejectedValueOnce(error);
 
-      // Act
       const result = await repositoryService.isRepoEmpty('testuser', 'empty-repo');
 
-      // Assert
       expect(result).toBe(true);
     });
   });
 
   describe('listRepos', () => {
     it('should return list of repositories from user account and organizations', async () => {
-      // Arrange
       const userRepos = [
         {
           name: 'repo1',
@@ -343,16 +300,13 @@ describe('RepositoryService', () => {
         return Promise.reject(new Error(`Unexpected request: ${method} ${endpoint}`));
       });
 
-      // Act
       const result = await repositoryService.listRepos();
 
-      // Assert
       expect(result).toHaveLength(3);
       expect(result).toEqual([...userRepos, ...orgRepos]);
     });
 
     it('should handle errors when fetching organization repositories', async () => {
-      // Arrange
       const userRepos = [
         {
           name: 'repo1',
@@ -380,10 +334,8 @@ describe('RepositoryService', () => {
         return Promise.reject(new Error(`Unexpected request: ${method} ${endpoint}`));
       });
 
-      // Act
       const result = await repositoryService.listRepos();
 
-      // Assert - Should still return user repos even if org repos fail
       expect(result).toHaveLength(1);
       expect(result).toEqual(userRepos);
     });
@@ -391,7 +343,6 @@ describe('RepositoryService', () => {
 
   describe('listBranches', () => {
     it('should return list of branches with default branch marked', async () => {
-      // Arrange
       const repoInfo = {
         default_branch: 'main',
       };
@@ -412,10 +363,8 @@ describe('RepositoryService', () => {
         return Promise.reject(new Error(`Unexpected request: ${method} ${endpoint}`));
       });
 
-      // Act
       const result = await repositoryService.listBranches('testuser', 'test-repo');
 
-      // Assert
       expect(result).toHaveLength(3);
       expect(result).toEqual([
         { name: 'main', isDefault: true },
@@ -430,10 +379,8 @@ describe('RepositoryService', () => {
     });
 
     it('should handle errors when fetching branches', async () => {
-      // Arrange
       mockApiClient.request.mockRejectedValueOnce(new Error('Failed to fetch repository info'));
 
-      // Act & Assert
       await expect(repositoryService.listBranches('testuser', 'test-repo')).rejects.toThrow(
         'Failed to fetch branches for testuser/test-repo: Failed to fetch repository info'
       );
@@ -442,18 +389,15 @@ describe('RepositoryService', () => {
 
   describe('createTemporaryPublicRepo', () => {
     it('should create a temporary repository with specified branch', async () => {
-      // Mock Math.random to return a predictable value for testing
       const originalRandom = Math.random;
-      // Mock that will return '123456' when toString(36).substring(2, 8) is called
+
       Math.random = vi.fn(() => ({
         toString: (radix: number) => (radix === 36 ? '0.123456' : '0.123456'),
       })) as unknown as () => number;
 
-      // Mock Date.now to return a predictable value for testing
       const originalDateNow = Date.now;
       Date.now = vi.fn(() => 1234567890) as () => number;
 
-      // Arrange
       mockApiClient.request.mockImplementation((method: string, endpoint: string, body?: any) => {
         if (method === 'GET' && endpoint === '/users/testuser') {
           return Promise.resolve({ type: 'User' });
@@ -466,14 +410,12 @@ describe('RepositoryService', () => {
 
       mockFileService.writeFile.mockResolvedValueOnce({ sha: 'mock-sha-gitkeep' });
 
-      // Act
       const result = await repositoryService.createTemporaryPublicRepo(
         'testuser',
         'source-repo',
         'develop'
       );
 
-      // Assert
       expect(result).toBe('temp-source-repo-1234567890-123456');
       expect(mockApiClient.request).toHaveBeenCalledWith('GET', '/users/testuser');
       expect(mockApiClient.request).toHaveBeenCalledWith(
@@ -495,22 +437,19 @@ describe('RepositoryService', () => {
         `Initialize repository with branch 'develop'`
       );
 
-      // Restore original functions
       Math.random = originalRandom;
       Date.now = originalDateNow;
     });
 
     it('should use main as default branch when not specified', async () => {
-      // Mock Math.random and Date.now
       const originalRandom = Math.random;
       const originalDateNow = Date.now;
-      // Mock that will return '123456' when toString(36).substring(2, 8) is called
+
       Math.random = vi.fn(() => ({
         toString: (radix: number) => (radix === 36 ? '0.123456' : '0.123456'),
       })) as unknown as () => number;
       Date.now = vi.fn(() => 1234567890) as () => number;
 
-      // Arrange
       mockApiClient.request.mockImplementation((method: string, endpoint: string, body?: any) => {
         if (method === 'GET' && endpoint === '/users/testuser') {
           return Promise.resolve({ type: 'User' });
@@ -523,10 +462,8 @@ describe('RepositoryService', () => {
 
       mockFileService.writeFile.mockResolvedValueOnce({ sha: 'mock-sha-gitkeep-main' });
 
-      // Act
       const result = await repositoryService.createTemporaryPublicRepo('testuser', 'source-repo');
 
-      // Assert
       expect(result).toBe('temp-source-repo-1234567890-123456');
       expect(mockFileService.writeFile).toHaveBeenCalledWith(
         'testuser',
@@ -537,7 +474,6 @@ describe('RepositoryService', () => {
         `Initialize repository with branch 'main'`
       );
 
-      // Restore original functions
       Math.random = originalRandom;
       Date.now = originalDateNow;
     });
@@ -545,13 +481,10 @@ describe('RepositoryService', () => {
 
   describe('initializeEmptyRepo', () => {
     it('should initialize a repository with a .gitkeep file', async () => {
-      // Arrange
       mockFileService.writeFile.mockResolvedValueOnce({ sha: 'mock-sha-gitkeep' });
 
-      // Act
       await repositoryService.initializeEmptyRepo('testuser', 'test-repo', 'main');
 
-      // Assert
       expect(mockFileService.writeFile).toHaveBeenCalledWith(
         'testuser',
         'test-repo',
@@ -563,13 +496,10 @@ describe('RepositoryService', () => {
     });
 
     it('should not create a README.md file', async () => {
-      // Arrange
       mockFileService.writeFile.mockResolvedValueOnce({ sha: 'mock-sha-gitkeep' });
 
-      // Act
       await repositoryService.initializeEmptyRepo('testuser', 'test-repo', 'main');
 
-      // Assert
       expect(mockFileService.writeFile).not.toHaveBeenCalledWith(
         expect.any(String),
         expect.any(String),
@@ -583,7 +513,6 @@ describe('RepositoryService', () => {
 
   describe('cloneRepoContents', () => {
     it('should delegate to the RepoCloneService', async () => {
-      // Act
       const onProgressMock = vi.fn();
       await repositoryService.cloneRepoContents(
         'sourceOwner',
@@ -594,7 +523,6 @@ describe('RepositoryService', () => {
         onProgressMock
       );
 
-      // Assert
       expect(mockRepoCloneService.cloneRepoContents).toHaveBeenCalledWith(
         'sourceOwner',
         'sourceRepo',
@@ -606,13 +534,11 @@ describe('RepositoryService', () => {
     });
 
     it('should throw error when RepoCloneService is not provided', async () => {
-      // Arrange
       const repoServiceWithoutCloner = new RepositoryService(
         mockApiClient as IGitHubApiClient,
         mockFileService as IFileService
       );
 
-      // Act & Assert
       await expect(
         repoServiceWithoutCloner.cloneRepoContents(
           'sourceOwner',

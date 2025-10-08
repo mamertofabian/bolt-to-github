@@ -7,28 +7,6 @@ import { render, screen, waitFor } from '@testing-library/svelte';
 import userEvent from '@testing-library/user-event';
 import FeedbackModal from '../FeedbackModal.svelte';
 
-/**
- * FeedbackModal Component Tests
- *
- * Tests the UI behavior and user interactions of the FeedbackModal component.
- * Focus: Component rendering, user interactions, state changes, and integration with services.
- *
- * For business logic tests (data transformations, URL generation, etc.),
- * see FeedbackModal.logic.test.ts
- *
- * Following unit-testing-rules.md:
- * - Test behavior (user actions and outcomes), not implementation details
- * - Mock only external dependencies (Chrome API, UnifiedGitHubService, LogStorageManager)
- * - Test both success and error scenarios
- * - Use realistic test data
- * - Test state changes after user interactions
- *
- * Testing Convention:
- * - *.component.test.ts = UI behavior tests using @testing-library/svelte
- * - *.logic.test.ts = Business logic tests for pure functions and algorithms
- */
-
-// Unmock UI components to allow real rendering for proper coverage
 vi.unmock('$lib/components/ui/modal/Modal.svelte');
 vi.unmock('$lib/components/ui/button');
 vi.unmock('$lib/components/ui/button/index.ts');
@@ -36,24 +14,17 @@ vi.unmock('$lib/components/ui/button/button.svelte');
 vi.unmock('lucide-svelte');
 vi.unmock('bits-ui');
 
-// Mock external dependencies
-// Solution: Create a mock state object that can be safely referenced in the factory
-// This avoids hoisting issues while allowing us to track and control mock behavior
 const mockState = {
   submitFeedback: vi.fn(),
   getAllLogs: vi.fn(),
 };
 
-// Mock UnifiedGitHubService
 vi.mock('../../../services/UnifiedGitHubService', () => {
   return {
     UnifiedGitHubService: class {
       // eslint-disable-next-line @typescript-eslint/no-unused-vars
-      constructor(_config?: unknown) {
-        // Constructor can accept config but we don't need to track it
-      }
+      constructor(_config?: unknown) {}
       async submitFeedback(params: unknown) {
-        // Call through to the mockState function which we can control in tests
         return mockState.submitFeedback(params);
       }
     },
@@ -105,10 +76,8 @@ describe('FeedbackModal.svelte', () => {
     mockState.getAllLogs.mockResolvedValue([]);
     mockState.submitFeedback.mockResolvedValue(undefined);
 
-    // Mock scrollIntoView which is not available in jsdom
     Element.prototype.scrollIntoView = vi.fn();
 
-    // Setup Chrome API mocks
     chromeMocks = {
       runtime: {
         getManifest: vi.fn().mockReturnValue(mockManifest),
@@ -124,14 +93,12 @@ describe('FeedbackModal.svelte', () => {
       },
     };
 
-    // Setup window mock
     Object.defineProperty(window, 'chrome', {
       value: chromeMocks,
       writable: true,
       configurable: true,
     });
 
-    // Setup navigator mock
     Object.defineProperty(window.navigator, 'userAgent', {
       value: 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7)',
       writable: true,
@@ -183,7 +150,6 @@ describe('FeedbackModal.svelte', () => {
       const bugButton = screen.getByText(/🐛 Bug Report/);
       await user.click(bugButton);
 
-      // After selecting bug category, message input should be visible
       await waitFor(() => {
         expect(screen.getByLabelText(/Your Message/i)).toBeInTheDocument();
       });
@@ -195,23 +161,18 @@ describe('FeedbackModal.svelte', () => {
         props: { show: true, githubToken: 'test-token' },
       });
 
-      // Initially, log option should not be visible
       expect(screen.queryByLabelText(/Include recent logs/i)).not.toBeInTheDocument();
 
-      // Select bug category
       const bugButton = screen.getByText(/🐛 Bug Report/);
       await user.click(bugButton);
 
-      // Log option should now be visible
       await waitFor(() => {
         expect(screen.getByLabelText(/Include recent logs/i)).toBeInTheDocument();
       });
 
-      // Select non-bug category
       const appreciationButton = screen.getByText(/💝 Appreciation/);
       await user.click(appreciationButton);
 
-      // Log option should be hidden again
       await waitFor(() => {
         expect(screen.queryByLabelText(/Include recent logs/i)).not.toBeInTheDocument();
       });
@@ -248,15 +209,12 @@ describe('FeedbackModal.svelte', () => {
         props: { show: true, githubToken: 'test-token' },
       });
 
-      // Select category
       const bugButton = screen.getByText(/🐛 Bug Report/);
       await user.click(bugButton);
 
-      // Enter message
       const messageInput = await screen.findByLabelText(/Your Message/i);
       await user.type(messageInput, 'Found a bug');
 
-      // Submit button should be enabled
       await waitFor(() => {
         const submitButton = screen.getByRole('button', { name: /Send Feedback/i });
         expect(submitButton).not.toBeDisabled();
@@ -273,18 +231,15 @@ describe('FeedbackModal.svelte', () => {
         props: { show: true, githubToken: 'test-token' },
       });
 
-      // Select category and enter message
       const bugButton = screen.getByText(/🐛 Bug Report/);
       await user.click(bugButton);
 
       const messageInput = await screen.findByLabelText(/Your Message/i);
       await user.type(messageInput, 'Found a bug');
 
-      // Submit
       const submitButton = await screen.findByRole('button', { name: /Send Feedback/i });
       await user.click(submitButton);
 
-      // Verify submission
       await waitFor(() => {
         expect(mockState.submitFeedback).toHaveBeenCalledWith({
           category: 'bug',
@@ -363,23 +318,18 @@ describe('FeedbackModal.svelte', () => {
         props: { show: true, githubToken: 'test-token' },
       });
 
-      // Select bug category
       const bugButton = screen.getByText(/🐛 Bug Report/);
       await user.click(bugButton);
 
-      // Enable log inclusion
       const includeLogsCheckbox = await screen.findByLabelText(/Include recent logs/i);
       await user.click(includeLogsCheckbox);
 
-      // Enter message
       const messageInput = await screen.findByLabelText(/Your Message/i);
       await user.type(messageInput, 'Bug report');
 
-      // Submit
       const submitButton = await screen.findByRole('button', { name: /Send Feedback/i });
       await user.click(submitButton);
 
-      // Verify logs were fetched and included
       await waitFor(() => {
         expect(mockState.getAllLogs).toHaveBeenCalled();
         expect(mockState.submitFeedback).toHaveBeenCalledWith(
@@ -476,7 +426,6 @@ describe('FeedbackModal.svelte', () => {
         props: { show: true, githubToken: 'test-token' },
       });
 
-      // Select category to show the alternative options
       const bugButton = screen.getByText(/🐛 Bug Report/);
       await user.click(bugButton);
 
@@ -503,11 +452,9 @@ describe('FeedbackModal.svelte', () => {
       const closeHandler = vi.fn();
       component.$on('close', closeHandler);
 
-      // Select a category first to make Cancel button visible
       const bugButton = screen.getByText(/🐛 Bug Report/);
       await user.click(bugButton);
 
-      // Now the Cancel button should be visible
       const cancelButton = await screen.findByRole('button', { name: /Cancel/i });
       await user.click(cancelButton);
 
@@ -549,12 +496,10 @@ describe('FeedbackModal.svelte', () => {
       const submitButton = await screen.findByRole('button', { name: /Send Feedback/i });
       await user.click(submitButton);
 
-      // Wait for success message
       await waitFor(() => {
         expect(screen.getByText('Thank You!')).toBeInTheDocument();
       });
 
-      // Wait for the auto-close to trigger (3 seconds + buffer)
       await waitFor(
         () => {
           expect(closeHandler).toHaveBeenCalled();

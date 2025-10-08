@@ -4,7 +4,6 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { BoltProjectSyncService } from '../../services/BoltProjectSyncService';
 import { BackgroundService } from '../BackgroundService';
 
-// Mock all dependencies
 vi.mock('../../services/UnifiedGitHubService');
 vi.mock('../../services/zipHandler');
 vi.mock('../StateManager', () => ({
@@ -50,7 +49,6 @@ vi.mock('../UsageTracker', () => ({
 }));
 vi.mock('../../services/BoltProjectSyncService');
 
-// Mock chrome APIs
 const mockAlarms = {
   create: vi.fn(),
   clear: vi.fn(),
@@ -119,11 +117,9 @@ describe('BackgroundService - Sync Functionality', () => {
     vi.clearAllMocks();
     vi.useFakeTimers();
 
-    // Setup mock returns
     mockStorage.sync.get.mockResolvedValue({});
     mockStorage.local.get.mockResolvedValue({});
 
-    // Mock BoltProjectSyncService
     mockSyncService = {
       performOutwardSync: vi.fn().mockResolvedValue(null),
       performInwardSync: vi.fn().mockResolvedValue(null),
@@ -141,14 +137,12 @@ describe('BackgroundService - Sync Functionality', () => {
 
   describe('Sync Alarm Setup', () => {
     it('should create sync alarm on initialization', async () => {
-      // Wait for initialization
       await vi.runOnlyPendingTimersAsync();
 
       expect(mockAlarms.create).toHaveBeenCalledWith('bolt-project-sync', { periodInMinutes: 5 });
     });
 
     it('should add alarm listener on initialization', async () => {
-      // Wait for initialization
       await vi.runOnlyPendingTimersAsync();
 
       expect(mockAlarms.onAlarm.addListener).toHaveBeenCalled();
@@ -163,9 +157,8 @@ describe('BackgroundService - Sync Functionality', () => {
       service = new BackgroundService();
       await vi.runOnlyPendingTimersAsync();
 
-      // Should still be called, but error is handled gracefully
       expect(mockAlarms.create).toHaveBeenCalled();
-      // Verify service continues to function by checking alarm listener is still added
+
       expect(mockAlarms.onAlarm.addListener).toHaveBeenCalled();
     });
   });
@@ -174,7 +167,6 @@ describe('BackgroundService - Sync Functionality', () => {
     let alarmHandler: (alarm: chrome.alarms.Alarm) => void;
 
     beforeEach(async () => {
-      // Capture the alarm handler
       mockAlarms.onAlarm.addListener.mockImplementation((handler) => {
         alarmHandler = handler;
       });
@@ -202,7 +194,6 @@ describe('BackgroundService - Sync Functionality', () => {
     it('should ignore non-sync alarms', async () => {
       const mockAlarm = { name: 'other-alarm' } as chrome.alarms.Alarm;
 
-      // Clear any calls from initialization
       mockSyncService.performOutwardSync.mockClear();
       mockSyncService.performInwardSync.mockClear();
 
@@ -218,7 +209,6 @@ describe('BackgroundService - Sync Functionality', () => {
 
       mockSyncService.performOutwardSync.mockRejectedValue(error);
 
-      // Should not throw
       await alarmHandler(mockAlarm);
 
       expect(mockSyncService.performOutwardSync).toHaveBeenCalled();
@@ -233,10 +223,8 @@ describe('BackgroundService - Sync Functionality', () => {
     ) => boolean | void;
 
     beforeEach(async () => {
-      // Reset mock
       mockRuntime.onMessage.addListener.mockClear();
 
-      // Capture the message handler
       mockRuntime.onMessage.addListener.mockImplementation((handler) => {
         messageHandler = handler;
       });
@@ -244,7 +232,6 @@ describe('BackgroundService - Sync Functionality', () => {
       service = new BackgroundService();
       await vi.runOnlyPendingTimersAsync();
 
-      // Ensure we captured a handler
       expect(mockRuntime.onMessage.addListener).toHaveBeenCalled();
       expect(messageHandler).toBeDefined();
     });
@@ -254,16 +241,12 @@ describe('BackgroundService - Sync Functionality', () => {
       const message = { type: 'SYNC_BOLT_PROJECTS' };
       const sender = {};
 
-      // Call the handler - we won't check the return value since the mock behavior differs
       messageHandler(message, sender, sendResponse);
 
-      // Wait for async operations
       await vi.runOnlyPendingTimersAsync();
 
-      // Verify sync was triggered
       expect(mockSyncService.performOutwardSync).toHaveBeenCalled();
 
-      // Verify response was sent
       expect(sendResponse).toHaveBeenCalledWith({
         success: true,
         message: 'Sync completed',
@@ -282,7 +265,6 @@ describe('BackgroundService - Sync Functionality', () => {
 
       messageHandler(message, {}, sendResponse);
 
-      // Wait for async operations
       await vi.runOnlyPendingTimersAsync();
 
       expect(sendResponse).toHaveBeenCalledWith({
@@ -303,10 +285,8 @@ describe('BackgroundService - Sync Functionality', () => {
     it('should perform initial inward sync on startup', async () => {
       service = new BackgroundService();
 
-      // Wait for initialization
       await vi.runOnlyPendingTimersAsync();
 
-      // Advance timers by 1ms to execute the setTimeout
       vi.advanceTimersByTime(1);
 
       expect(mockSyncService.performInwardSync).toHaveBeenCalled();
@@ -318,7 +298,6 @@ describe('BackgroundService - Sync Functionality', () => {
       service = new BackgroundService();
       await vi.runOnlyPendingTimersAsync();
 
-      // Simulate cleanup via destroy
       service.destroy();
 
       expect(mockAlarms.clear).toHaveBeenCalledWith('bolt-project-sync');
@@ -333,7 +312,6 @@ describe('BackgroundService - Sync Functionality', () => {
       service = new BackgroundService();
       await vi.runOnlyPendingTimersAsync();
 
-      // Simulate cleanup via destroy
       service.destroy();
 
       expect(mockAlarms.onAlarm.removeListener).toHaveBeenCalledWith(alarmHandler);

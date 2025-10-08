@@ -6,7 +6,6 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { SupabaseAuthService } from '../../content/services/SupabaseAuthService';
 import { BoltProjectSyncService } from '../BoltProjectSyncService';
 
-// Mock dependencies
 vi.mock('$lib/services/chromeStorage');
 vi.mock('../../content/services/SupabaseAuthService');
 
@@ -20,17 +19,14 @@ describe('BoltProjectSyncService - Direct Method Testing', () => {
   beforeEach(() => {
     vi.clearAllMocks();
 
-    // Setup ChromeStorageService mock
     mockStorageGet = vi.fn();
     mockStorageSet = vi.fn();
     ChromeStorageService.prototype.get = mockStorageGet;
     ChromeStorageService.prototype.set = mockStorageSet;
 
-    // Setup static ChromeStorageService methods
     mockGetGitHubSettings = vi.mocked(ChromeStorageService.getGitHubSettings);
     mockSaveGitHubSettings = vi.mocked(ChromeStorageService.saveGitHubSettings);
 
-    // Default mock for auth
     const mockAuthInstance = {
       getAuthState: vi.fn().mockReturnValue({
         isAuthenticated: true,
@@ -39,7 +35,6 @@ describe('BoltProjectSyncService - Direct Method Testing', () => {
     };
     (SupabaseAuthService.getInstance as any).mockReturnValue(mockAuthInstance);
 
-    // Mock chrome storage
     global.chrome = {
       storage: {
         local: {
@@ -49,7 +44,7 @@ describe('BoltProjectSyncService - Direct Method Testing', () => {
 
             if (keyArray.includes('lastSettingsUpdate')) {
               result.lastSettingsUpdate = {
-                timestamp: Date.now() - 60000, // 1 minute ago by default
+                timestamp: Date.now() - 60000,
                 projectId: 'test-project',
               };
             }
@@ -72,7 +67,6 @@ describe('BoltProjectSyncService - Direct Method Testing', () => {
 
   describe('syncBackToActiveStorage', () => {
     it('should skip updating projects with recent user changes', async () => {
-      // Mock recent settings update (5 seconds ago)
       const recentTimestamp = Date.now() - 5000;
       (chrome.storage.local.get as Mock).mockImplementation((keys) => {
         if (Array.isArray(keys) && keys.includes('lastSettingsUpdate')) {
@@ -89,7 +83,6 @@ describe('BoltProjectSyncService - Direct Method Testing', () => {
         return Promise.resolve({});
       });
 
-      // Mock existing settings
       const existingSettings: ProjectSettings = {
         'project-1': {
           repoName: 'user-updated-repo',
@@ -108,7 +101,6 @@ describe('BoltProjectSyncService - Direct Method Testing', () => {
         projectSettings: existingSettings,
       });
 
-      // Mock bolt projects with different data
       const boltProjects: BoltProject[] = [
         {
           id: 'project-1',
@@ -134,24 +126,22 @@ describe('BoltProjectSyncService - Direct Method Testing', () => {
 
       mockStorageGet.mockResolvedValue({ boltProjects });
 
-      // Call the method directly
       await (
         service as unknown as { syncBackToActiveStorage: () => Promise<void> }
       ).syncBackToActiveStorage();
 
-      // Verify project-1 was preserved (recent change)
       expect(mockSaveGitHubSettings).toHaveBeenCalledWith(
         expect.objectContaining({
           projectSettings: expect.objectContaining({
             'project-1': {
-              repoName: 'user-updated-repo', // Preserved
-              branch: 'user-branch', // Preserved
-              projectTitle: 'User Title', // Preserved
+              repoName: 'user-updated-repo',
+              branch: 'user-branch',
+              projectTitle: 'User Title',
             },
             'project-2': {
-              repoName: 'server-repo-2', // Updated from server
-              branch: 'develop', // Updated from server
-              projectTitle: 'Server Project 2', // Updated from server
+              repoName: 'server-repo-2',
+              branch: 'develop',
+              projectTitle: 'Server Project 2',
             },
           }),
         })
@@ -159,7 +149,6 @@ describe('BoltProjectSyncService - Direct Method Testing', () => {
     });
 
     it('should update all projects when no recent changes exist', async () => {
-      // Mock no recent changes
       (chrome.storage.local.get as Mock).mockResolvedValue({});
 
       const existingSettings: ProjectSettings = {
@@ -194,7 +183,6 @@ describe('BoltProjectSyncService - Direct Method Testing', () => {
         service as unknown as { syncBackToActiveStorage: () => Promise<void> }
       ).syncBackToActiveStorage();
 
-      // All projects should be updated
       expect(mockSaveGitHubSettings).toHaveBeenCalledWith(
         expect.objectContaining({
           projectSettings: expect.objectContaining({
@@ -215,12 +203,11 @@ describe('BoltProjectSyncService - Direct Method Testing', () => {
         service as unknown as { syncBackToActiveStorage: () => Promise<void> }
       ).syncBackToActiveStorage();
 
-      // Should not save anything
       expect(mockSaveGitHubSettings).not.toHaveBeenCalled();
     });
 
     it('should respect the 30-second threshold', async () => {
-      const oldTimestamp = Date.now() - 40000; // 40 seconds ago
+      const oldTimestamp = Date.now() - 40000;
 
       (chrome.storage.local.get as Mock).mockImplementation((keys) => {
         if (Array.isArray(keys) && keys.includes('lastSettingsUpdate')) {
@@ -263,7 +250,6 @@ describe('BoltProjectSyncService - Direct Method Testing', () => {
         service as unknown as { syncBackToActiveStorage: () => Promise<void> }
       ).syncBackToActiveStorage();
 
-      // Old change should be overwritten
       expect(mockSaveGitHubSettings).toHaveBeenCalledWith(
         expect.objectContaining({
           projectSettings: expect.objectContaining({
@@ -280,7 +266,7 @@ describe('BoltProjectSyncService - Direct Method Testing', () => {
 
   describe('getRecentProjectChanges', () => {
     it('should detect recent changes within threshold', async () => {
-      const recentTimestamp = Date.now() - 10000; // 10 seconds ago
+      const recentTimestamp = Date.now() - 10000;
 
       (chrome.storage.local.get as Mock).mockResolvedValue({
         lastSettingsUpdate: {
@@ -304,7 +290,7 @@ describe('BoltProjectSyncService - Direct Method Testing', () => {
     });
 
     it('should ignore old changes beyond threshold', async () => {
-      const oldTimestamp = Date.now() - 40000; // 40 seconds ago
+      const oldTimestamp = Date.now() - 40000;
 
       (chrome.storage.local.get as Mock).mockResolvedValue({
         lastSettingsUpdate: {

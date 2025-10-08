@@ -17,20 +17,6 @@ import {
   resetAllStoreMocks,
 } from '../test-helpers/store-mocks';
 
-/**
- * App.svelte Premium Features Tests
- *
- * Tests verify premium feature behavior through actual component interactions:
- * - Premium status changes via store updates
- * - Upgrade modal triggering for different features
- * - Sign-in flow for unauthenticated users
- *
- * Following unit-testing-rules.md:
- * - Test behavior (store updates, modal triggers), not implementation
- * - Mock only external dependencies (Chrome API, services)
- * - Avoid duplicating component logic in tests
- */
-
 const chromeMessagingMock = createMockChromeMessagingService();
 const subscriptionServiceMock = createMockSubscriptionService();
 

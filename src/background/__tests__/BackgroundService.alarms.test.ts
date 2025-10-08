@@ -2,7 +2,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { BackgroundService } from '../BackgroundService';
 
-// Mock all dependencies
 vi.mock('../../services/UnifiedGitHubService');
 vi.mock('../../services/zipHandler');
 vi.mock('../StateManager', () => ({
@@ -50,7 +49,6 @@ vi.mock('../UsageTracker', () => ({
 }));
 vi.mock('../../services/BoltProjectSyncService');
 
-// Mock chrome APIs with enhanced alarm functionality
 const mockAlarms = {
   create: vi.fn(),
   clear: vi.fn(),
@@ -121,7 +119,6 @@ describe('BackgroundService - Alarms Functionality', () => {
     vi.clearAllMocks();
     vi.useFakeTimers();
 
-    // Setup mock returns
     mockStorage.sync.get.mockResolvedValue({});
     mockStorage.local.get.mockResolvedValue({});
 
@@ -141,26 +138,20 @@ describe('BackgroundService - Alarms Functionality', () => {
     });
 
     it('should trigger log rotation on startup event', () => {
-      // Clear any previous calls
       mockLogStorage.rotateLogs.mockClear();
 
-      // Get the startup listener
       const startupListener = mockRuntime.onStartup.addListener.mock.calls[0][0];
 
-      // Trigger startup event
       startupListener();
 
       expect(mockLogStorage.rotateLogs).toHaveBeenCalled();
     });
 
     it('should trigger log rotation on installed event', async () => {
-      // Clear any previous calls
       mockLogStorage.rotateLogs.mockClear();
 
-      // Get the installed listener
       const installedListener = mockRuntime.onInstalled.addListener.mock.calls[0][0];
 
-      // Trigger installed event
       await installedListener({ reason: 'install' });
 
       expect(mockLogStorage.rotateLogs).toHaveBeenCalled();
@@ -175,22 +166,18 @@ describe('BackgroundService - Alarms Functionality', () => {
     });
 
     it('should manage ports for active connections', () => {
-      // Verify ports Map exists
       expect((service as any).ports).toBeInstanceOf(Map);
 
-      // Verify initial state
       expect((service as any).ports.size).toBe(0);
     });
 
     it('should update activity timestamp on keep-alive alarm', () => {
       const mockUpdateLastActivity = vi.spyOn(service as any, 'updateLastActivity');
 
-      // Get the alarm listener
       expect(mockAlarms.onAlarm.addListener).toHaveBeenCalled();
       const alarmListener = mockAlarms.onAlarm.addListener.mock.calls[0][0];
       expect(alarmListener).toBeDefined();
 
-      // Trigger keep-alive alarm
       alarmListener({ name: 'keepAlive' });
 
       expect(mockUpdateLastActivity).toHaveBeenCalled();
@@ -212,12 +199,10 @@ describe('BackgroundService - Alarms Functionality', () => {
     it('should create all alarms with correct parameters on initialization', async () => {
       await vi.runOnlyPendingTimersAsync();
 
-      // Verify all three alarms are created with exact parameters
       expect(mockAlarms.create).toHaveBeenCalledWith('logRotation', { periodInMinutes: 60 });
       expect(mockAlarms.create).toHaveBeenCalledWith('keepAlive', { periodInMinutes: 1 });
       expect(mockAlarms.create).toHaveBeenCalledWith('bolt-project-sync', { periodInMinutes: 5 });
 
-      // Verify specific alarms were created
       const alarmNames = mockAlarms.create.mock.calls.map((call) => call[0]);
       expect(alarmNames).toContain('logRotation');
       expect(alarmNames).toContain('keepAlive');
@@ -235,12 +220,10 @@ describe('BackgroundService - Alarms Functionality', () => {
     it('should handle keep-alive alarm events', () => {
       const mockUpdateLastActivity = vi.spyOn(service as any, 'updateLastActivity');
 
-      // Get the alarm listener
       expect(mockAlarms.onAlarm.addListener).toHaveBeenCalled();
       const alarmListener = mockAlarms.onAlarm.addListener.mock.calls[0][0];
       expect(alarmListener).toBeDefined();
 
-      // Trigger keep-alive alarm
       alarmListener({ name: 'keepAlive' });
 
       expect(mockUpdateLastActivity).toHaveBeenCalled();
@@ -250,15 +233,12 @@ describe('BackgroundService - Alarms Functionality', () => {
     });
 
     it('should handle log rotation alarm events', () => {
-      // Clear any previous calls
       mockLogStorage.rotateLogs.mockClear();
 
-      // Get the alarm listener
       expect(mockAlarms.onAlarm.addListener).toHaveBeenCalled();
       const alarmListener = mockAlarms.onAlarm.addListener.mock.calls[0][0];
       expect(alarmListener).toBeDefined();
 
-      // Trigger log rotation alarm
       alarmListener({ name: 'logRotation' });
 
       expect(mockLogStorage.rotateLogs).toHaveBeenCalled();
@@ -267,16 +247,12 @@ describe('BackgroundService - Alarms Functionality', () => {
     it('should handle sync alarm events', () => {
       const mockHandleSyncAlarm = vi
         .spyOn(service as any, 'handleSyncAlarm')
-        .mockImplementation(() => {
-          // Mock implementation
-        });
+        .mockImplementation(() => {});
 
-      // Get the alarm listener
       expect(mockAlarms.onAlarm.addListener).toHaveBeenCalled();
       const alarmListener = mockAlarms.onAlarm.addListener.mock.calls[0][0];
       expect(alarmListener).toBeDefined();
 
-      // Trigger sync alarm
       alarmListener({ name: 'bolt-project-sync' });
 
       expect(mockHandleSyncAlarm).toHaveBeenCalled();
@@ -286,19 +262,14 @@ describe('BackgroundService - Alarms Functionality', () => {
       const mockUpdateLastActivity = vi.spyOn(service as any, 'updateLastActivity');
       const mockHandleSyncAlarm = vi
         .spyOn(service as any, 'handleSyncAlarm')
-        .mockImplementation(() => {
-          // Mock implementation
-        });
+        .mockImplementation(() => {});
 
-      // Clear any previous calls
       mockLogStorage.rotateLogs.mockClear();
 
-      // Get the alarm listener
       expect(mockAlarms.onAlarm.addListener).toHaveBeenCalled();
       const alarmListener = mockAlarms.onAlarm.addListener.mock.calls[0][0];
       expect(alarmListener).toBeDefined();
 
-      // Trigger unknown alarm
       alarmListener({ name: 'unknown-alarm' });
 
       expect(mockUpdateLastActivity).not.toHaveBeenCalled();
@@ -309,12 +280,10 @@ describe('BackgroundService - Alarms Functionality', () => {
 
   describe('Alarm Cleanup', () => {
     it('should remove alarm listeners on service destruction', () => {
-      // Initialize service and get the listener
       expect(mockAlarms.onAlarm.addListener).toHaveBeenCalled();
       const alarmListener = mockAlarms.onAlarm.addListener.mock.calls[0][0];
       expect(alarmListener).toBeDefined();
 
-      // Destroy service
       service.destroy();
 
       expect(mockAlarms.onAlarm.removeListener).toHaveBeenCalledWith(alarmListener);
@@ -363,11 +332,7 @@ describe('BackgroundService - Alarms Functionality', () => {
     it('should manage port connections', () => {
       const ports = (service as any).ports;
 
-      // Verify we can work with the ports Map
       expect(ports.size).toBe(0);
-
-      // Note: Actual port management is handled by Chrome extension runtime
-      // and would require more complex mocking to test the connection handlers
     });
   });
 });

@@ -7,15 +7,11 @@ import type { PremiumService } from '../../services/PremiumService';
 import type { INotificationManager, IUploadStatusManager } from '../../types/ManagerInterfaces';
 import { FileChangeHandler } from '../FileChangeHandler';
 
-// Mock external dependencies
 vi.mock('../../../services/FilePreviewService');
 vi.mock('../../../services/UnifiedGitHubService', () => ({
-  UnifiedGitHubService: vi.fn().mockImplementation(() => ({
-    // Mock UnifiedGitHubService methods if needed
-  })),
+  UnifiedGitHubService: vi.fn().mockImplementation(() => ({})),
 }));
 
-// Mock chrome APIs
 const mockChromeStorage = {
   sync: {
     get: vi.fn(),
@@ -35,7 +31,6 @@ const mockChromeTabsCreate = vi.fn();
   },
 };
 
-// Mock window.location
 Object.defineProperty(window, 'location', {
   value: {
     pathname: '/project/test-project-123',
@@ -44,10 +39,8 @@ Object.defineProperty(window, 'location', {
   writable: true,
 });
 
-// Mock window.open
 (global as any).window.open = vi.fn();
 
-// Mock performance.now
 Object.defineProperty(global, 'performance', {
   value: {
     now: vi.fn(() => 1000),
@@ -63,10 +56,8 @@ describe('FileChangeHandler', () => {
   let mockFilePreviewService: Mocked<FilePreviewService>;
 
   beforeEach(() => {
-    // Reset all mocks
     vi.clearAllMocks();
 
-    // Create mock dependencies
     mockMessageHandler = {
       sendMessage: vi.fn(),
     } as any;
@@ -85,7 +76,6 @@ describe('FileChangeHandler', () => {
       useFileChanges: vi.fn(),
     } as any;
 
-    // Mock FilePreviewService
     mockFilePreviewService = {
       loadProjectFiles: vi.fn(),
       getChangedFiles: vi.fn(),
@@ -95,19 +85,15 @@ describe('FileChangeHandler', () => {
 
     (FilePreviewService.getInstance as Mock).mockReturnValue(mockFilePreviewService);
 
-    // Reset chrome storage mocks
     mockChromeStorage.sync.get.mockResolvedValue({});
     mockChromeStorage.local.get.mockResolvedValue({ authenticationMethod: 'pat' });
     mockChromeStorage.local.set.mockResolvedValue(undefined);
     mockChromeTabsCreate.mockResolvedValue(undefined);
 
-    // Reset window.open mock
     (window.open as Mock).mockReturnValue(null);
 
-    // Reset performance.now mock
     (performance.now as Mock).mockReturnValue(1000);
 
-    // Reset window.location mock to the default test project
     Object.defineProperty(window, 'location', {
       value: {
         pathname: '/project/test-project-123',
@@ -144,7 +130,6 @@ describe('FileChangeHandler', () => {
     it('should set premium service reference', () => {
       fileChangeHandler.setPremiumService(mockPremiumService);
 
-      // Test by calling a method that uses premium service
       expect(() => fileChangeHandler.setPremiumService(mockPremiumService)).not.toThrow();
     });
   });
@@ -157,7 +142,6 @@ describe('FileChangeHandler', () => {
     it('should set upload status manager reference', () => {
       fileChangeHandler.setUploadStatusManager(mockUploadStatusManager);
 
-      // Test by calling a method that uses upload status manager
       expect(() => fileChangeHandler.setUploadStatusManager(mockUploadStatusManager)).not.toThrow();
     });
   });
@@ -226,7 +210,6 @@ describe('FileChangeHandler', () => {
     });
 
     it('should get changed files without force refresh', async () => {
-      // Mock the private method behavior
       mockChromeStorage.sync.get.mockResolvedValue({});
       mockFilePreviewService.getProcessedFiles.mockResolvedValue(
         new Map([['file1.js', 'content1']])
@@ -234,13 +217,11 @@ describe('FileChangeHandler', () => {
 
       const result = await fileChangeHandler.getChangedFiles();
 
-      // loadProjectFiles is called internally by getChangedFilesForNonExistentRepo
       expect(mockFilePreviewService.loadProjectFiles).toHaveBeenCalledWith();
       expect(result).toBeInstanceOf(Map);
     });
 
     it('should get changed files with force refresh', async () => {
-      // Mock the private method behavior
       mockChromeStorage.sync.get.mockResolvedValue({});
       mockFilePreviewService.getProcessedFiles.mockResolvedValue(
         new Map([['file1.js', 'content1']])
@@ -292,7 +273,6 @@ describe('FileChangeHandler', () => {
       mockPremiumService.useFileChanges.mockResolvedValue(undefined);
       mockFilePreviewService.loadProjectFiles.mockResolvedValue(new Map());
 
-      // Mock the comparison behavior
       mockChromeStorage.sync.get.mockResolvedValue({});
       mockFilePreviewService.getProcessedFiles.mockResolvedValue(
         new Map([
@@ -326,7 +306,6 @@ describe('FileChangeHandler', () => {
       mockPremiumService.useFileChanges.mockResolvedValue(undefined);
       mockFilePreviewService.loadProjectFiles.mockResolvedValue(new Map());
 
-      // Mock the comparison behavior
       mockChromeStorage.sync.get.mockResolvedValue({});
       mockFilePreviewService.getProcessedFiles.mockResolvedValue(
         new Map([['file1.js', 'content1']])
@@ -351,10 +330,8 @@ describe('FileChangeHandler', () => {
       mockPremiumService.useFileChanges.mockResolvedValue(undefined);
       mockFilePreviewService.loadProjectFiles.mockResolvedValue(new Map());
 
-      // Mock authentication method for local storage
       mockChromeStorage.local.get.mockResolvedValue({ authenticationMethod: 'pat' });
 
-      // Mock GitHub settings
       mockChromeStorage.sync.get.mockResolvedValue({
         repoOwner: 'testowner',
         projectSettings: {
@@ -389,10 +366,8 @@ describe('FileChangeHandler', () => {
       mockPremiumService.canUseFileChanges.mockResolvedValue({ allowed: true });
       mockPremiumService.useFileChanges.mockResolvedValue(undefined);
 
-      // Mock authentication method for local storage
       mockChromeStorage.local.get.mockResolvedValue({ authenticationMethod: 'pat' });
 
-      // Mock GitHub settings
       mockChromeStorage.sync.get.mockResolvedValue({
         repoOwner: 'testowner',
         projectSettings: {
@@ -404,11 +379,9 @@ describe('FileChangeHandler', () => {
         githubToken: 'test-token',
       });
 
-      // Mock 404 error from GitHub
       const error404 = new Error('Repository not found (404)');
       mockFilePreviewService.compareWithGitHub.mockRejectedValue(error404);
 
-      // Mock the calls inside getChangedFilesForNonExistentRepo
       mockFilePreviewService.loadProjectFiles.mockResolvedValue(new Map());
       mockFilePreviewService.getProcessedFiles.mockResolvedValue(
         new Map([['file1.js', 'content1']])
@@ -428,10 +401,8 @@ describe('FileChangeHandler', () => {
       mockPremiumService.useFileChanges.mockResolvedValue(undefined);
       mockFilePreviewService.loadProjectFiles.mockResolvedValue(new Map());
 
-      // Mock authentication method for local storage
       mockChromeStorage.local.get.mockResolvedValue({ authenticationMethod: 'pat' });
 
-      // Mock GitHub settings
       mockChromeStorage.sync.get.mockResolvedValue({
         repoOwner: 'testowner',
         projectSettings: {
@@ -443,7 +414,6 @@ describe('FileChangeHandler', () => {
         githubToken: 'test-token',
       });
 
-      // Mock network error from GitHub
       const networkError = new Error('Network error');
       mockFilePreviewService.compareWithGitHub.mockRejectedValue(networkError);
 
@@ -465,10 +435,8 @@ describe('FileChangeHandler', () => {
       mockPremiumService.canUseFileChanges.mockResolvedValue({ allowed: true });
       mockPremiumService.useFileChanges.mockResolvedValue(undefined);
 
-      // Mock no GitHub settings
       mockChromeStorage.sync.get.mockResolvedValue({});
 
-      // Mock the calls inside getChangedFilesForNonExistentRepo
       mockFilePreviewService.loadProjectFiles.mockResolvedValue(new Map());
       mockFilePreviewService.getProcessedFiles.mockResolvedValue(
         new Map([['file1.js', 'content1']])
@@ -594,11 +562,9 @@ describe('FileChangeHandler', () => {
     it('should open upgrade URL when upgrade button is clicked', async () => {
       await fileChangeHandler.showChangedFiles();
 
-      // Get the onUpgrade callback
       const upgradeCall = mockNotificationManager.showUpgradeNotification.mock.calls[0][0];
       const onUpgrade = upgradeCall.onUpgrade;
 
-      // Call the upgrade function
       onUpgrade?.();
 
       expect(window.open).toHaveBeenCalledWith('https://bolt2github.com/upgrade', '_blank');
@@ -611,11 +577,9 @@ describe('FileChangeHandler', () => {
 
       await fileChangeHandler.showChangedFiles();
 
-      // Get the onUpgrade callback
       const upgradeCall = mockNotificationManager.showUpgradeNotification.mock.calls[0][0];
       const onUpgrade = upgradeCall.onUpgrade;
 
-      // Call the upgrade function
       onUpgrade?.();
 
       expect(mockChromeTabsCreate).toHaveBeenCalledWith({ url: 'https://bolt2github.com/upgrade' });
@@ -633,11 +597,9 @@ describe('FileChangeHandler', () => {
 
       await fileChangeHandler.showChangedFiles();
 
-      // Get the onUpgrade callback
       const upgradeCall = mockNotificationManager.showUpgradeNotification.mock.calls[0][0];
       const onUpgrade = upgradeCall.onUpgrade;
 
-      // Call the upgrade function
       onUpgrade?.();
 
       expect(consoleSpy).toHaveBeenCalledWith(
@@ -700,15 +662,14 @@ describe('FileChangeHandler', () => {
       mockChromeStorage.sync.get.mockResolvedValue({});
       mockFilePreviewService.getProcessedFiles.mockResolvedValue(
         new Map([
-          ['src/', ''], // Directory entry
-          ['src/file.js', 'content1'], // File entry
-          ['empty.txt', ''], // Empty file
+          ['src/', ''],
+          ['src/file.js', 'content1'],
+          ['empty.txt', ''],
         ])
       );
 
       await fileChangeHandler.showChangedFiles();
 
-      // Should only process the actual file, not the directory or empty file
       expect(mockMessageHandler.sendMessage).toHaveBeenCalledWith('OPEN_FILE_CHANGES', {
         changes: { 'src/file.js': { path: 'src/file.js', status: 'added', content: 'content1' } },
         projectId: 'test-project-123',
@@ -731,11 +692,10 @@ describe('FileChangeHandler', () => {
       mockPremiumService.useFileChanges.mockResolvedValue(undefined);
       mockFilePreviewService.loadProjectFiles.mockResolvedValue(new Map());
 
-      // Mock performance timing
       let callCount = 0;
       (performance.now as Mock).mockImplementation(() => {
         callCount++;
-        return callCount === 1 ? 1000 : 1250; // 250ms difference
+        return callCount === 1 ? 1000 : 1250;
       });
 
       mockChromeStorage.sync.get.mockResolvedValue({});
@@ -767,7 +727,6 @@ describe('FileChangeHandler', () => {
       mockPremiumService.canUseFileChanges.mockResolvedValue({ allowed: true });
       mockPremiumService.useFileChanges.mockResolvedValue(undefined);
 
-      // Throw a non-Error object
       mockFilePreviewService.loadProjectFiles.mockRejectedValue('String error');
 
       await fileChangeHandler.showChangedFiles();
@@ -784,10 +743,8 @@ describe('FileChangeHandler', () => {
       mockPremiumService.useFileChanges.mockResolvedValue(undefined);
       mockFilePreviewService.loadProjectFiles.mockResolvedValue(new Map());
 
-      // Mock partial GitHub settings (missing project settings)
       mockChromeStorage.sync.get.mockResolvedValue({
         repoOwner: 'testowner',
-        // projectSettings is missing
       });
       mockFilePreviewService.getProcessedFiles.mockResolvedValue(new Map());
 
@@ -801,16 +758,13 @@ describe('FileChangeHandler', () => {
       mockPremiumService.useFileChanges.mockResolvedValue(undefined);
       mockFilePreviewService.loadProjectFiles.mockResolvedValue(new Map());
 
-      // Mock authentication method for local storage
       mockChromeStorage.local.get.mockResolvedValue({ authenticationMethod: 'pat' });
 
-      // Mock GitHub settings without branch
       mockChromeStorage.sync.get.mockResolvedValue({
         repoOwner: 'testowner',
         projectSettings: {
           'test-project-123': {
             repoName: 'test-repo',
-            // branch is missing
           },
         },
         githubToken: 'test-token',
@@ -821,7 +775,6 @@ describe('FileChangeHandler', () => {
 
       await fileChangeHandler.showChangedFiles();
 
-      // Should default to 'main' branch
       expect(mockFilePreviewService.compareWithGitHub).toHaveBeenCalledWith(
         'testowner',
         'test-repo',

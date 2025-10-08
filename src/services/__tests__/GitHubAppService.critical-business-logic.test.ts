@@ -1,13 +1,4 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-/**
- * Critical Business Logic Tests for GitHubAppService
- *
- * Tests focusing on high-risk areas:
- * - OAuth Flow Management
- * - Token Lifecycle with Automatic Refresh
- * - Error Classification
- * - Storage Management
- */
 
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import {
@@ -96,7 +87,7 @@ describe('GitHubAppService - Critical Business Logic', () => {
       });
 
       it('should handle missing user token during OAuth', async () => {
-        env.storage.clear(); // Remove Supabase token
+        env.storage.clear();
         env.service.setUserToken(null as any);
 
         await expect(env.service.completeOAuthFlow('valid_code')).rejects.toThrow(
@@ -133,7 +124,6 @@ describe('GitHubAppService - Critical Business Logic', () => {
       });
 
       it('should automatically refresh expired token', async () => {
-        // Set up expired token in storage
         await env.storage.set({
           ...validAuthStorageData,
           githubAppExpiresAt: new Date(Date.now() - 3600000).toISOString(),
@@ -176,7 +166,6 @@ describe('GitHubAppService - Critical Business Logic', () => {
       });
 
       it('should handle concurrent token refresh requests', async () => {
-        // Set up expired token
         await env.storage.set({
           ...validAuthStorageData,
           githubAppExpiresAt: new Date(Date.now() - 3600000).toISOString(),
@@ -195,40 +184,37 @@ describe('GitHubAppService - Critical Business Logic', () => {
           };
         });
 
-        // Make concurrent requests
         const promises = Array(5)
           .fill(null)
           .map(() => env.service.getAccessToken());
         const results = await Promise.all(promises);
 
-        // All should get valid tokens
         results.forEach((token) => {
           expect(token.access_token).toMatch(/^ghs_renewed_/);
           expect(token.renewed).toBe(true);
         });
 
-        // Should have made multiple calls (no request deduplication in current implementation)
         expect(callCount).toBeGreaterThanOrEqual(1);
       });
     });
 
     describe('needsRenewal', () => {
       it('should return false for token with sufficient time remaining', async () => {
-        await env.service.storeConfig(createGitHubAppConfigWithExpiry(3600000)); // 1 hour
+        await env.service.storeConfig(createGitHubAppConfigWithExpiry(3600000));
 
         const needsRenewal = await env.service.needsRenewal();
         expect(needsRenewal).toBe(false);
       });
 
       it('should return true for token expiring within 5 minutes', async () => {
-        await env.service.storeConfig(createGitHubAppConfigWithExpiry(240000)); // 4 minutes
+        await env.service.storeConfig(createGitHubAppConfigWithExpiry(240000));
 
         const needsRenewal = await env.service.needsRenewal();
         expect(needsRenewal).toBe(true);
       });
 
       it('should return true for expired token', async () => {
-        await env.service.storeConfig(createGitHubAppConfigWithExpiry(-3600000)); // Expired
+        await env.service.storeConfig(createGitHubAppConfigWithExpiry(-3600000));
 
         const needsRenewal = await env.service.needsRenewal();
         expect(needsRenewal).toBe(true);
@@ -253,16 +239,12 @@ describe('GitHubAppService - Critical Business Logic', () => {
         const restoreTime = advanceTime(0);
 
         try {
-          // Set token to expire in exactly 5 minutes
           await env.service.storeConfig(createGitHubAppConfigWithExpiry(300000));
 
-          // Should not need renewal yet
           expect(await env.service.needsRenewal()).toBe(false);
 
-          // Advance time by 1 second
           advanceTime(1000);
 
-          // Now should need renewal
           expect(await env.service.needsRenewal()).toBe(true);
         } finally {
           restoreTime();
@@ -357,7 +339,6 @@ describe('GitHubAppService - Critical Business Logic', () => {
         '/functions/v1/get-github-token',
         {
           code: 'NO_GITHUB_APP',
-          // error field is missing
         },
         401
       );
@@ -366,7 +347,6 @@ describe('GitHubAppService - Critical Business Logic', () => {
         await env.service.getAccessToken();
         expect.fail('Should have thrown error');
       } catch (error: any) {
-        // When error message is missing, it shows "undefined"
         expect(error.message).toBe('Re-authentication required: undefined');
       }
     });
@@ -405,7 +385,6 @@ describe('GitHubAppService - Critical Business Logic', () => {
       });
 
       it('should handle storage errors', async () => {
-        // Mock storage error
         const originalSet = env.storage.set;
         env.storage.set = vi.fn().mockRejectedValue(new Error('QUOTA_EXCEEDED'));
 
@@ -423,10 +402,8 @@ describe('GitHubAppService - Critical Business Logic', () => {
           { ...validGitHubAppConfig, installationId: 333 },
         ];
 
-        // Store configs concurrently
         await Promise.all(configs.map((config) => env.service.storeConfig(config)));
 
-        // Last write should win
         const stored = env.storage.getAll();
         expect([111, 222, 333]).toContain(stored.githubAppInstallationId);
       });
@@ -434,10 +411,8 @@ describe('GitHubAppService - Critical Business Logic', () => {
 
     describe('clearConfig', () => {
       it('should remove all GitHub App configuration', async () => {
-        // First store config
         await env.service.storeConfig(validGitHubAppConfig);
 
-        // Then clear it
         await env.service.clearConfig();
 
         assertStorageUpdate(env.storage, {
@@ -506,29 +481,23 @@ describe('GitHubAppService - Critical Business Logic', () => {
       await env.storage.set({
         'sb-gapvjcqybzabnrjnxzhg-auth-token': {
           access_token: 'malformed_token',
-          // Missing other expected fields
         },
       });
 
       setupCommonMockResponses(env.fetchMock, 'success');
 
-      // Should work with the malformed token
       const token = await env.service.getAccessToken();
       expect(token).toBeDefined();
       expect(token.access_token).toBe('ghs_1234567890abcdefghijklmnopqrstuvwxyz12');
     });
 
     it('should handle missing Supabase URL configuration', async () => {
-      // This would require mocking the SUPABASE_CONFIG import
-      // In a real scenario, this would be a deployment configuration error
       expect(env.service['supabaseUrl']).toBe('https://gapvjcqybzabnrjnxzhg.supabase.co');
     });
 
     it('should handle token extraction from various storage key formats', async () => {
-      // Clear existing storage
       env.storage.clear();
 
-      // Try different key formats
       const keys = ['sb-gapvjcqybzabnrjnxzhg-auth-token', 'sb-differentproject-auth-token'];
 
       for (const key of keys) {
@@ -537,25 +506,20 @@ describe('GitHubAppService - Critical Business Logic', () => {
         });
       }
 
-      // Should extract from the correct key
       const token = await env.service['getUserToken']();
       expect(token).toBe('token_for_sb-gapvjcqybzabnrjnxzhg-auth-token');
     });
 
     it('should handle race condition in isConfigured check', async () => {
-      // Start with no config
       expect(await env.service.isConfigured()).toBe(false);
 
-      // Simulate concurrent operations
       const storePromise = env.service.storeConfig(validGitHubAppConfig);
       const checkPromise = env.service.isConfigured();
 
       const [, isConfiguredDuringStore] = await Promise.all([storePromise, checkPromise]);
 
-      // Result depends on timing, but should not error
       expect(typeof isConfiguredDuringStore).toBe('boolean');
 
-      // After store completes, should be configured
       expect(await env.service.isConfigured()).toBe(true);
     });
   });

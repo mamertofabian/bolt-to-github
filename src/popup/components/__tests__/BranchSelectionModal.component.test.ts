@@ -8,24 +8,6 @@ import userEvent from '@testing-library/user-event';
 import BranchSelectionModal from '../BranchSelectionModal.svelte';
 import type { GitHubBranch } from '../../../services/types/repository';
 
-/**
- * BranchSelectionModal Component Tests
- *
- * Tests the UI behavior and user interactions of the BranchSelectionModal component.
- * Focus: Component rendering, user interactions, state changes, and integration with services.
- *
- * Following unit-testing-rules.md:
- * - Test behavior (user actions and outcomes), not implementation details
- * - Mock only external dependencies (Chrome API, UnifiedGitHubService)
- * - Test both success and error scenarios
- * - Use realistic test data
- * - Test state changes after user interactions
- *
- * Testing Convention:
- * - *.component.test.ts = UI behavior tests using @testing-library/svelte
- */
-
-// Unmock UI components to allow real rendering for proper coverage
 vi.unmock('$lib/components/ui/modal/Modal.svelte');
 vi.unmock('$lib/components/ui/button');
 vi.unmock('$lib/components/ui/button/index.ts');
@@ -34,19 +16,15 @@ vi.unmock('./UpgradeModal.svelte');
 vi.unmock('lucide-svelte');
 vi.unmock('bits-ui');
 
-// Mock external dependencies using mockState pattern to avoid hoisting issues
 const mockState = {
   listBranches: vi.fn(),
 };
 
-// Mock UnifiedGitHubService
 vi.mock('../../../services/UnifiedGitHubService', () => {
   return {
     UnifiedGitHubService: class {
       // eslint-disable-next-line @typescript-eslint/no-unused-vars
-      constructor(_config?: unknown) {
-        // Constructor can accept config but we don't need to track it
-      }
+      constructor(_config?: unknown) {}
       async listBranches(owner: string, repo: string) {
         return mockState.listBranches(owner, repo);
       }
@@ -76,7 +54,6 @@ describe('BranchSelectionModal.svelte', () => {
     vi.clearAllMocks();
     mockState.listBranches.mockResolvedValue(mockBranches);
 
-    // Setup Chrome API mocks
     chromeMocks = {
       runtime: {
         sendMessage: vi.fn().mockResolvedValue({ hasAccess: false }),
@@ -88,7 +65,6 @@ describe('BranchSelectionModal.svelte', () => {
       },
     };
 
-    // Setup window mock
     Object.defineProperty(window, 'chrome', {
       value: chromeMocks,
       writable: true,
@@ -193,7 +169,6 @@ describe('BranchSelectionModal.svelte', () => {
         },
       });
 
-      // Check for loading spinner by its class and structure
       const spinner = document.querySelector('.animate-spin');
       expect(spinner).toBeInTheDocument();
     });
@@ -445,7 +420,6 @@ describe('BranchSelectionModal.svelte', () => {
         expect(screen.getByText('develop')).toBeInTheDocument();
       });
 
-      // Should not show locked state since we default to allowing access
       const developBranch = screen.getByText('develop').closest('[role="button"]');
       expect(developBranch).not.toHaveClass('cursor-not-allowed');
     });
@@ -521,11 +495,9 @@ describe('BranchSelectionModal.svelte', () => {
         expect(screen.getByText('main')).toBeInTheDocument();
       });
 
-      // Try to select a non-default branch (should not work)
       const developBranch = screen.getByText('develop').closest('[role="button"]');
       await user.click(developBranch!);
 
-      // Main should still be selected
       const importButton = screen.getByRole('button', { name: /Import Branch/i });
       expect(importButton).not.toBeDisabled();
     });

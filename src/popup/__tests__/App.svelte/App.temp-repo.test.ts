@@ -17,26 +17,6 @@ import {
   resetAllStoreMocks,
 } from '../test-helpers/store-mocks';
 
-/**
- * App.svelte Temp Repo Tests
- *
- * Tests verify that App.svelte correctly handles temporary repositories:
- * - Detection of temp repos from storage
- * - Temp repo modal display with metadata
- * - Delete flow for temp repositories
- * - Using temp repo name as final name
- * - Modal close conditions
- * - Multiple temp repos handling
- * - Cleanup from storage after actions
- * - Edge cases (corrupted data, missing fields)
- *
- * Following unit-testing-rules.md:
- * - Test behavior (temp repo management), not implementation
- * - Mock only external dependencies (Chrome API, ChromeMessagingService)
- * - Test state changes after temp repo actions
- * - Test both success and error scenarios
- */
-
 const STORAGE_KEY = 'temp_repos';
 const chromeMessagingMock = createMockChromeMessagingService();
 const subscriptionServiceMock = createMockSubscriptionService();
@@ -60,7 +40,6 @@ const mockUiStateActions = {
   canCloseTempRepoModal: vi.fn().mockResolvedValue(true),
 };
 
-// Mock all external dependencies
 vi.mock('$lib/services/chromeMessaging', () => ({
   ChromeMessagingService: chromeMessagingMock,
 }));
@@ -111,11 +90,9 @@ describe('App.svelte - Temp Repo Management', () => {
   let chromeMocks: ReturnType<typeof createAppChromeMocks>;
 
   beforeEach(() => {
-    // Reset all mocks
     vi.clearAllMocks();
     resetAllStoreMocks();
 
-    // Setup Chrome API mocks
     chromeMocks = createAppChromeMocks();
     global.chrome = chromeMocks as unknown as typeof chrome;
   });
@@ -127,7 +104,6 @@ describe('App.svelte - Temp Repo Management', () => {
 
       chromeMocks._setLocalStorage(STORAGE_KEY, [tempRepo]);
 
-      // Simulate checkForTempRepos
       const result = await chromeMocks.storage.local.get(STORAGE_KEY);
       const tempRepos = (result[STORAGE_KEY] || []) as unknown[];
 
@@ -191,11 +167,9 @@ describe('App.svelte - Temp Repo Management', () => {
     it('should send delete message and mark as deleted', async () => {
       const tempRepoData = createMockTempRepo();
 
-      // Simulate delete
       chromeMessagingMock.sendDeleteTempRepoMessage(tempRepoData.owner, tempRepoData.tempRepo);
       mockUiStateActions.markTempRepoDeleted();
 
-      // Check if modal can be closed
       const canClose = await mockUiStateActions.canCloseTempRepoModal();
       if (canClose) {
         mockUiStateActions.hideTempRepoModal();
@@ -231,12 +205,10 @@ describe('App.svelte - Temp Repo Management', () => {
       vi.mocked(mockGithubSettingsActions.saveSettings).mockResolvedValue({ success: true });
       vi.mocked(mockUiStateActions.canCloseTempRepoModal).mockResolvedValue(true);
 
-      // Simulate using temp repo name
       mockGithubSettingsActions.setRepoName(tempRepoData.originalRepo);
       await mockGithubSettingsActions.saveSettings();
       mockUiStateActions.markTempRepoNameUsed();
 
-      // Check if modal can be closed
       const canClose = await mockUiStateActions.canCloseTempRepoModal();
       if (canClose) {
         mockUiStateActions.hideTempRepoModal();
@@ -331,7 +303,7 @@ describe('App.svelte - Temp Repo Management', () => {
 
       if (tempRepos.length > 0 && projectId) {
         const tempRepoData = tempRepos[tempRepos.length - 1];
-        // Even with corrupted data, modal should be shown (component handles validation)
+
         mockUiStateActions.showTempRepoModal(tempRepoData);
       }
 
@@ -355,7 +327,6 @@ describe('App.svelte - Temp Repo Management', () => {
     it('should handle temp repo with missing fields', async () => {
       const incompleteTempRepo = {
         owner: 'test-owner',
-        // Missing tempRepo, originalRepo, timestamp
       };
       const projectId = 'test-project';
 
@@ -378,13 +349,11 @@ describe('App.svelte - Temp Repo Management', () => {
       chromeMocks._setLocalStorage(STORAGE_KEY, [tempRepo]);
       vi.mocked(mockUiStateActions.canCloseTempRepoModal).mockResolvedValue(true);
 
-      // Simulate both actions completed
       mockUiStateActions.markTempRepoDeleted();
       mockUiStateActions.markTempRepoNameUsed();
 
       const canClose = await mockUiStateActions.canCloseTempRepoModal();
       if (canClose) {
-        // In real implementation, this would remove from storage
         await chromeMocks.storage.local.remove(STORAGE_KEY);
         mockUiStateActions.hideTempRepoModal();
       }

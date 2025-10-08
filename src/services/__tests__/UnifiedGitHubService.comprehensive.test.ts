@@ -1,10 +1,3 @@
-/**
- * Comprehensive Test Suite for UnifiedGitHubService
- *
- * This test file demonstrates how to use the comprehensive test fixtures
- * and provides full coverage testing examples for the UnifiedGitHubService.
- */
-
 import {
   afterEach,
   beforeEach,
@@ -22,24 +15,20 @@ import {
   UnifiedGitHubServiceTestScenarios,
 } from './test-fixtures';
 
-// Mock the AuthenticationStrategyFactory at the module level
 const mockFactory = await (async () => {
   const { MockAuthenticationStrategyFactory } =
     await vi.importActual<typeof import('./test-fixtures/unified')>('./test-fixtures/unified');
   return new MockAuthenticationStrategyFactory();
 })();
 
-// Create a factory wrapper that handles token-based strategy creation
 const mockFactoryWrapper = {
   createPATStrategy: vi.fn(async (token: string) => {
     const { MockPATAuthenticationStrategy, TestFixtures, stripTestPrefix, isTestToken } =
       await vi.importActual<typeof import('./test-fixtures/unified')>('./test-fixtures/unified');
     const strategy = new MockPATAuthenticationStrategy(token);
 
-    // Strip TEST_ prefix for pattern validation
     const cleanToken = isTestToken(token) ? stripTestPrefix(token) : token;
 
-    // Apply test configurations based on token type
     if (
       token === TestFixtures.TokenFixtures.pat.invalid ||
       token === 'invalid-token-format' ||
@@ -56,8 +45,6 @@ const mockFactoryWrapper = {
     return new MockGitHubAppAuthenticationStrategy(userToken);
   }),
   getCurrentStrategy: vi.fn(async () => {
-    // This should not be called when we pass a token string to the constructor
-    // If it is called, something is wrong with our test setup
     throw new Error('getCurrentStrategy should not be called when token is provided directly');
   }),
 };
@@ -76,11 +63,9 @@ describe('UnifiedGitHubService - Comprehensive Tests', () => {
     scenario = new UnifiedGitHubServiceTestScenarios();
     vi.clearAllMocks();
 
-    // Reset the mock factory
     mockFactory.reset();
     mockFactory.setCurrentStrategyType('pat');
 
-    // Reset the global fetch mock
     if (global.fetch) {
       (global.fetch as Mock).mockClear();
     }
@@ -89,7 +74,6 @@ describe('UnifiedGitHubService - Comprehensive Tests', () => {
   afterEach(() => {
     scenario.reset();
 
-    // Clean up global fetch mock with proper type guard
     const globalFetch = global.fetch as Mock | undefined;
     if (globalFetch && typeof globalFetch.mockRestore === 'function') {
       globalFetch.mockRestore();
@@ -147,7 +131,6 @@ describe('UnifiedGitHubService - Comprehensive Tests', () => {
       });
 
       it('should identify fine-grained PAT tokens correctly', async () => {
-        // The mock factory wrapper will create a strategy with the fine-grained token
         const service = new UnifiedGitHubService(TestFixtures.TokenFixtures.pat.fineGrained);
         const isFineGrained = await service.isFineGrainedToken();
         expect(isFineGrained).toBe(true);
@@ -160,7 +143,7 @@ describe('UnifiedGitHubService - Comprehensive Tests', () => {
         const result = await service.verifyTokenPermissions('testuser', onProgress);
 
         expect(result.isValid).toBe(true);
-        expect(onProgress).toHaveBeenCalledTimes(3); // repos, admin, code permissions
+        expect(onProgress).toHaveBeenCalledTimes(3);
         expect(onProgress).toHaveBeenCalledWith({ permission: 'repos', isValid: true });
         expect(onProgress).toHaveBeenCalledWith({ permission: 'admin', isValid: true });
         expect(onProgress).toHaveBeenCalledWith({ permission: 'code', isValid: true });
@@ -192,7 +175,6 @@ describe('UnifiedGitHubService - Comprehensive Tests', () => {
       it('should handle token renewal for GitHub App', async () => {
         const authConfig = UnifiedGitHubServiceTestHelpers.createAuthConfig('github_app');
 
-        // Create a GitHub App strategy configured for renewal
         const { MockGitHubAppAuthenticationStrategy } =
           await vi.importActual<typeof import('./test-fixtures/unified')>(
             './test-fixtures/unified'
@@ -202,7 +184,6 @@ describe('UnifiedGitHubService - Comprehensive Tests', () => {
         );
         appStrategy.setNeedsRenewal(true);
 
-        // Configure the mock factory wrapper to return our GitHub App strategy
         mockFactoryWrapper.createGitHubAppStrategy.mockReturnValueOnce(
           Promise.resolve(appStrategy)
         );
@@ -210,7 +191,6 @@ describe('UnifiedGitHubService - Comprehensive Tests', () => {
 
         const service = new UnifiedGitHubService(authConfig);
 
-        // Wait a bit for async initialization
         await new Promise((resolve) => setTimeout(resolve, 50));
 
         const needsRenewal = await service.needsRenewal();
@@ -233,18 +213,14 @@ describe('UnifiedGitHubService - Comprehensive Tests', () => {
 
     describe('Authentication Failures', () => {
       beforeEach(() => {
-        // Reset the mock factory to PAT mode
         mockFactory.reset();
         mockFactory.setCurrentStrategyType('pat');
 
-        const mocks = scenario
-          .setupSuccessfulPATAuthentication() // Start with success, then configure failures
-          .build();
+        const mocks = scenario.setupSuccessfulPATAuthentication().build();
         mockFetch = mocks.mockFetch;
       });
 
       it('should handle invalid PAT token gracefully', async () => {
-        // Observable behavior: service should indicate validation failed
         const service = new UnifiedGitHubService(TestFixtures.TokenFixtures.pat.invalid);
 
         const result = await service.validateToken();
@@ -252,7 +228,6 @@ describe('UnifiedGitHubService - Comprehensive Tests', () => {
       });
 
       it('should return error details for failed validation', async () => {
-        // The mock factory wrapper will automatically configure invalid tokens to fail
         const service = new UnifiedGitHubService(TestFixtures.TokenFixtures.pat.invalid);
         const result = await service.validateTokenAndUser('testuser');
 
@@ -261,7 +236,6 @@ describe('UnifiedGitHubService - Comprehensive Tests', () => {
       });
 
       it('should handle permission verification failures', async () => {
-        // Create a strategy that will fail permissions
         const { MockPATAuthenticationStrategy } =
           await vi.importActual<typeof import('./test-fixtures/unified')>(
             './test-fixtures/unified'
@@ -271,7 +245,6 @@ describe('UnifiedGitHubService - Comprehensive Tests', () => {
         );
         failingStrategy.setShouldFailPermissions(true);
 
-        // Configure the mock factory wrapper to return our failing strategy
         mockFactoryWrapper.createPATStrategy.mockReturnValueOnce(Promise.resolve(failingStrategy));
 
         const service = new UnifiedGitHubService(TestFixtures.TokenFixtures.pat.classic);
@@ -315,7 +288,6 @@ describe('UnifiedGitHubService - Comprehensive Tests', () => {
     });
 
     it('should handle non-existent repository', async () => {
-      // Override the mock for this specific test
       scenario.reset();
       scenario
         .setupSuccessfulPATAuthentication()
@@ -355,7 +327,7 @@ describe('UnifiedGitHubService - Comprehensive Tests', () => {
       const service = new UnifiedGitHubService(TestFixtures.TokenFixtures.pat.classic);
       const isEmpty = await service.isRepoEmpty('testuser', 'test-repo');
 
-      expect(isEmpty).toBe(false); // Based on our fixture setup
+      expect(isEmpty).toBe(false);
     });
 
     it('should list user repositories', async () => {
@@ -377,12 +349,10 @@ describe('UnifiedGitHubService - Comprehensive Tests', () => {
     });
 
     it('should get commit count for repository', async () => {
-      // Mock commit responses for pagination test
       const commitData = TestFixtures.GitHubAPIResponses.commits.page1;
       scenario.reset();
       const { mockFetch: newMockFetch } = scenario.setupSuccessfulPATAuthentication().build();
 
-      // Mock the commit API calls
       newMockFetch.mockImplementation(async (url: string | Request | URL) => {
         const urlStr = typeof url === 'string' ? url : url instanceof URL ? url.href : url.url;
         if (urlStr.includes('/commits')) {
@@ -413,7 +383,7 @@ describe('UnifiedGitHubService - Comprehensive Tests', () => {
         'main'
       );
 
-      expect(result.content.name).toBe('new-file.txt'); // From fixture
+      expect(result.content.name).toBe('new-file.txt');
       expect(result.commit.message).toBe('Add new file');
       UnifiedGitHubServiceTestHelpers.expectValidGitHubApiCall(
         mockFetch,
@@ -449,7 +419,6 @@ describe('UnifiedGitHubService - Comprehensive Tests', () => {
 
       const service = new UnifiedGitHubService(TestFixtures.TokenFixtures.pat.classic);
 
-      // Should not throw
       await expect(service.deleteRepo('testuser', 'test-repo')).resolves.toBeUndefined();
     });
   });
@@ -476,7 +445,6 @@ describe('UnifiedGitHubService - Comprehensive Tests', () => {
       const service = new UnifiedGitHubService(TestFixtures.TokenFixtures.pat.classic);
       const issues = await service.getIssues('testuser', 'test-repo', 'open', true);
 
-      // Observable behavior: force refresh should still return valid issues
       expect(Array.isArray(issues)).toBe(true);
       expect(issues.length).toBeGreaterThan(0);
       expect(issues[0].state).toBe('open');
@@ -501,14 +469,13 @@ describe('UnifiedGitHubService - Comprehensive Tests', () => {
 
       const issue = await service.createIssue('testuser', 'test-repo', issueData);
 
-      expect(issue.number).toBe(3); // From fixture
+      expect(issue.number).toBe(3);
       expect(issue.title).toBe('Test Issue Title');
     });
 
     it('should update existing issue', async () => {
       const service = new UnifiedGitHubService(TestFixtures.TokenFixtures.pat.classic);
 
-      // Mock the update response
       scenario.reset();
       const { mockFetch: newMockFetch } = scenario.setupSuccessfulPATAuthentication().build();
 
@@ -589,7 +556,7 @@ describe('UnifiedGitHubService - Comprehensive Tests', () => {
 
       const issue = await service.submitFeedback(feedback);
 
-      expect(issue.number).toBe(3); // From fixture
+      expect(issue.number).toBe(3);
       UnifiedGitHubServiceTestHelpers.expectValidGitHubApiCall(
         mockFetch,
         'https://api.github.com/repos/mamertofabian/bolt-to-github/issues',
@@ -610,7 +577,6 @@ describe('UnifiedGitHubService - Comprehensive Tests', () => {
     });
 
     it('should clone repository contents with progress tracking', async () => {
-      // Setup detailed tree and file content mocks
       scenario.reset();
       const { mockFetch: newMockFetch } = scenario.setupSuccessfulPATAuthentication().build();
 
@@ -657,8 +623,8 @@ describe('UnifiedGitHubService - Comprehensive Tests', () => {
       );
 
       expect(progressUpdates.length).toBeGreaterThan(0);
-      expect(progressUpdates[0]).toBe(10); // Initial progress
-      expect(progressUpdates[progressUpdates.length - 1]).toBe(100); // Completion
+      expect(progressUpdates[0]).toBe(10);
+      expect(progressUpdates[progressUpdates.length - 1]).toBe(100);
     });
 
     it('should create temporary public repository', async () => {
@@ -670,7 +636,6 @@ describe('UnifiedGitHubService - Comprehensive Tests', () => {
           const urlStr = typeof url === 'string' ? url : url instanceof URL ? url.href : url.url;
           const method = options?.method || 'GET';
 
-          // Mock repository creation
           if (urlStr.includes('/user/repos') && method === 'POST') {
             return {
               ok: true,
@@ -680,7 +645,6 @@ describe('UnifiedGitHubService - Comprehensive Tests', () => {
             } as Response;
           }
 
-          // Mock file push
           if (urlStr.includes('/contents/.gitkeep') && method === 'PUT') {
             return {
               ok: true,
@@ -713,11 +677,9 @@ describe('UnifiedGitHubService - Comprehensive Tests', () => {
   describe('Error Handling', () => {
     describe('Network Errors', () => {
       beforeEach(() => {
-        // Reset and configure for successful authentication but network failures
         mockFactory.reset();
         mockFactory.setCurrentStrategyType('pat');
 
-        // Create a custom mock fetch that throws network errors
         mockFetch = vi.fn().mockRejectedValue(new Error('Network request failed'));
         global.fetch = mockFetch;
       });
@@ -725,7 +687,6 @@ describe('UnifiedGitHubService - Comprehensive Tests', () => {
       it('should handle network failures gracefully', async () => {
         const service = new UnifiedGitHubService(TestFixtures.TokenFixtures.pat.classic);
 
-        // The service catches network errors and returns false for repoExists
         const exists = await service.repoExists('testuser', 'test-repo');
         expect(exists).toBe(false);
       });
@@ -740,7 +701,6 @@ describe('UnifiedGitHubService - Comprehensive Tests', () => {
       it('should handle rate limiting errors', async () => {
         const service = new UnifiedGitHubService(TestFixtures.TokenFixtures.pat.classic);
 
-        // The service handles rate limiting by returning false for repoExists
         const exists = await service.repoExists('testuser', 'test-repo');
         expect(exists).toBe(false);
       });
@@ -753,7 +713,6 @@ describe('UnifiedGitHubService - Comprehensive Tests', () => {
       });
 
       it('should handle insufficient permissions', async () => {
-        // Create a strategy that will fail permissions
         const { MockPATAuthenticationStrategy } =
           await vi.importActual<typeof import('./test-fixtures/unified')>(
             './test-fixtures/unified'
@@ -763,7 +722,6 @@ describe('UnifiedGitHubService - Comprehensive Tests', () => {
         );
         failingStrategy.setShouldFailPermissions(true);
 
-        // Configure the mock factory wrapper to return our failing strategy
         mockFactoryWrapper.createPATStrategy.mockReturnValueOnce(Promise.resolve(failingStrategy));
 
         const service = new UnifiedGitHubService(TestFixtures.TokenFixtures.pat.classic);
@@ -777,19 +735,16 @@ describe('UnifiedGitHubService - Comprehensive Tests', () => {
 
   describe('Performance Scenarios', () => {
     it('should handle slow network conditions', async () => {
-      // Create a strategy without delay since we're testing network delay
       const { MockPATAuthenticationStrategy } =
         await vi.importActual<typeof import('./test-fixtures/unified')>('./test-fixtures/unified');
       const normalStrategy = new MockPATAuthenticationStrategy(
         TestFixtures.TokenFixtures.pat.classic
       );
 
-      // Configure the mock factory wrapper to return our normal strategy
       mockFactoryWrapper.createPATStrategy.mockReturnValueOnce(Promise.resolve(normalStrategy));
 
-      // Create a custom mock fetch with delay
       mockFetch = vi.fn().mockImplementation(async () => {
-        await new Promise((resolve) => setTimeout(resolve, 1000)); // 1 second delay
+        await new Promise((resolve) => setTimeout(resolve, 1000));
         return {
           ok: true,
           status: 200,
@@ -801,27 +756,24 @@ describe('UnifiedGitHubService - Comprehensive Tests', () => {
       const service = new UnifiedGitHubService(TestFixtures.TokenFixtures.pat.classic);
 
       const startTime = Date.now();
-      // Call a method that definitely uses fetch
+
       await service.repoExists('testuser', 'test-repo');
       const duration = Date.now() - startTime;
 
-      expect(duration).toBeGreaterThan(900); // Allow some variance
+      expect(duration).toBeGreaterThan(900);
       expect(mockFetch).toHaveBeenCalled();
     });
 
     it('should handle slow authentication', async () => {
-      // Create a strategy with validation delay
       const { MockPATAuthenticationStrategy } =
         await vi.importActual<typeof import('./test-fixtures/unified')>('./test-fixtures/unified');
       const slowStrategy = new MockPATAuthenticationStrategy(
         TestFixtures.TokenFixtures.pat.classic
       );
-      slowStrategy.setValidationDelay(500); // 0.5 second delay
+      slowStrategy.setValidationDelay(500);
 
-      // Configure the mock factory wrapper to return our slow strategy
       mockFactoryWrapper.createPATStrategy.mockReturnValueOnce(Promise.resolve(slowStrategy));
 
-      // Setup basic fetch mock
       mockFetch = vi.fn().mockResolvedValue({
         ok: true,
         status: 200,
@@ -835,7 +787,7 @@ describe('UnifiedGitHubService - Comprehensive Tests', () => {
       await service.validateToken();
       const duration = Date.now() - startTime;
 
-      expect(duration).toBeGreaterThan(400); // Allow some variance
+      expect(duration).toBeGreaterThan(400);
     });
   });
 
@@ -848,7 +800,6 @@ describe('UnifiedGitHubService - Comprehensive Tests', () => {
     it('should support legacy request method', async () => {
       const service = new UnifiedGitHubService(TestFixtures.TokenFixtures.pat.classic);
 
-      // Mock a specific API endpoint
       scenario.reset();
       const { mockFetch: newMockFetch } = scenario.setupSuccessfulPATAuthentication().build();
 

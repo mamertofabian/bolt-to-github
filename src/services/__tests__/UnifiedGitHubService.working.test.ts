@@ -1,10 +1,3 @@
-/**
- * Working Test Suite for UnifiedGitHubService
- *
- * This test file provides working examples using the comprehensive test fixtures.
- * It focuses on core functionality that can be reliably tested.
- */
-
 import type { Mock } from 'vitest';
 import { UnifiedGitHubService } from '../UnifiedGitHubService';
 import {
@@ -14,7 +7,6 @@ import {
   UnifiedGitHubServiceTestHelpers,
 } from './test-fixtures';
 
-// Mock the AuthenticationStrategyFactory
 vi.mock('../AuthenticationStrategyFactory', async () => {
   const { MockAuthenticationStrategyFactory } = await import('./test-fixtures/unified');
   const mockFactory = new MockAuthenticationStrategyFactory();
@@ -33,7 +25,6 @@ describe('UnifiedGitHubService - Working Tests', () => {
     mockFetch = new MockFetchResponseBuilder();
     mockStorage = new MockChromeStorage();
 
-    // Setup basic authentication
     mockStorage.loadGitHubSettings();
     mockStorage.loadAuthenticationMethod('pat');
 
@@ -172,7 +163,7 @@ describe('UnifiedGitHubService - Working Tests', () => {
 
       const issue = await service.createIssue('testuser', 'test-repo', issueData);
 
-      expect(issue.number).toBe(3); // From fixture
+      expect(issue.number).toBe(3);
       expect(global.fetch).toHaveBeenCalledWith(
         'https://api.github.com/repos/testuser/test-repo/issues',
         expect.objectContaining({
@@ -201,7 +192,7 @@ describe('UnifiedGitHubService - Working Tests', () => {
         'main'
       );
 
-      expect(result.content.name).toBe('new-file.txt'); // From fixture
+      expect(result.content.name).toBe('new-file.txt');
       expect(global.fetch).toHaveBeenCalledWith(
         'https://api.github.com/repos/testuser/test-repo/contents/test-file.txt',
         expect.objectContaining({
@@ -232,7 +223,7 @@ describe('UnifiedGitHubService - Working Tests', () => {
       const service = new UnifiedGitHubService(TestFixtures.TokenFixtures.pat.classic);
       const exists = await service.repoExists('testuser', 'test-repo');
 
-      expect(exists).toBe(false); // Should return false for auth errors
+      expect(exists).toBe(false);
     });
 
     it('should handle server errors', async () => {
@@ -242,7 +233,7 @@ describe('UnifiedGitHubService - Working Tests', () => {
       const service = new UnifiedGitHubService(TestFixtures.TokenFixtures.pat.classic);
       const exists = await service.repoExists('testuser', 'test-repo');
 
-      expect(exists).toBe(false); // Should return false for server errors
+      expect(exists).toBe(false);
     });
   });
 
@@ -265,7 +256,7 @@ describe('UnifiedGitHubService - Working Tests', () => {
 
       const issue = await service.submitFeedback(feedback);
 
-      expect(issue.number).toBe(3); // From fixture
+      expect(issue.number).toBe(3);
       expect(global.fetch).toHaveBeenCalledWith(
         'https://api.github.com/repos/mamertofabian/bolt-to-github/issues',
         expect.objectContaining({
@@ -292,10 +283,7 @@ describe('UnifiedGitHubService - Working Tests', () => {
   describe('Performance', () => {
     it('should handle requests with simulated delay', async () => {
       mockFetch.reset();
-      mockFetch
-        .mockRepoExists('testuser', 'test-repo', true)
-        .setDelay(100) // 100ms delay
-        .build();
+      mockFetch.mockRepoExists('testuser', 'test-repo', true).setDelay(100).build();
 
       const service = new UnifiedGitHubService(TestFixtures.TokenFixtures.pat.classic);
 
@@ -303,7 +291,7 @@ describe('UnifiedGitHubService - Working Tests', () => {
       await service.repoExists('testuser', 'test-repo');
       const duration = Date.now() - startTime;
 
-      expect(duration).toBeGreaterThan(90); // Allow some variance
+      expect(duration).toBeGreaterThan(90);
     });
   });
 });

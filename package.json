@@ -9,18 +9,17 @@
     "check": "svelte-check --tsconfig ./tsconfig.json",
     "watch": "vite build --watch",
     "watch:dev": "vite build --mode development --watch",
+    "format": "prettier --write .",
     "lint": "eslint \"src/**/*.{js,ts,svelte}\"",
     "lint:fix": "eslint \"src/**/*.{js,ts,svelte}\" --fix",
-    "format": "prettier --check .",
-    "format:fix": "prettier --write .",
-    "test:ci": "vitest run --coverage",
+    "lint-check": "pnpm run lint && pnpm run check",
     "test": "vitest run",
     "test:coverage": "vitest run --coverage",
-    "test:watch": "vitest watch",
     "test:ui": "vitest --ui",
+    "test:watch": "vitest watch",
     "test:failed-files": "node scripts/find-failed-tests.js",
-    "prepare": "husky",
-    "lint-check": "pnpm run lint && pnpm run check"
+    "clean:test-comments": "npx tsx scripts/remove-test-comments.ts",
+    "prepare": "husky"
   },
   "lint-staged": {
     "*.{js,ts,svelte,css,json,md}": [

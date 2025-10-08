@@ -17,34 +17,6 @@ import {
   resetAllStoreMocks,
 } from '../test-helpers/store-mocks';
 
-/**
- * App.svelte Settings Tests
- *
- * Tests verify that App.svelte correctly handles settings functionality:
- * - saveSettings with success and error flows
- * - Project settings update before save when projectId exists
- * - Storage quota error handling (MAX_WRITE_OPERATIONS_PER_H)
- * - autoCreateProjectSettingsIfNeeded logic:
- *   - Only proceeds if on Bolt project (onBoltProject && projectId)
- *   - Checks if project settings already exist
- *   - Validates authentication (PAT or GitHub App)
- *   - Creates default settings with private repository
- *   - Updates stores after creation
- * - Settings validation (valid auth, repo info)
- * - PAT vs GitHub App authentication flows
- * - updateEffectiveToken for different auth methods:
- *   - PAT: uses actual token
- *   - GitHub App: uses placeholder 'github_app_token'
- * - Settings initialization from Chrome storage
- * - Error scenarios (no auth, no repo owner, save failures)
- *
- * Following unit-testing-rules.md:
- * - Test behavior (settings management), not implementation
- * - Mock only external dependencies (Chrome API, ChromeStorageService)
- * - Test state changes after settings operations
- * - Test both success and error scenarios
- */
-
 const chromeMessagingMock = createMockChromeMessagingService();
 const subscriptionServiceMock = createMockSubscriptionService();
 
@@ -71,7 +43,6 @@ const mockChromeStorageService = {
   saveProjectSettings: vi.fn().mockResolvedValue(undefined),
 };
 
-// Mock all external dependencies
 vi.mock('$lib/services/chromeMessaging', () => ({
   ChromeMessagingService: chromeMessagingMock,
 }));
@@ -126,11 +97,9 @@ describe('App.svelte - Settings', () => {
   let chromeMocks: ReturnType<typeof createAppChromeMocks>;
 
   beforeEach(() => {
-    // Reset all mocks
     vi.clearAllMocks();
     resetAllStoreMocks();
 
-    // Setup Chrome API mocks
     chromeMocks = createAppChromeMocks();
     global.chrome = chromeMocks as unknown as typeof chrome;
   });
@@ -202,8 +171,7 @@ describe('App.svelte - Settings', () => {
       const result = await mockGithubSettingsActions.saveSettings();
 
       if (result.error && result.error.includes('MAX_WRITE_OPERATIONS_PER_H')) {
-        // Storage quota error handling - don't show on button
-        // This is handled in GitHubSettings component
+        // Rate limit error - no status shown
       } else if (!result.success) {
         mockUiStateActions.showStatus(result.error || 'Error saving settings');
       }
@@ -215,7 +183,6 @@ describe('App.svelte - Settings', () => {
     it('should clear status on storage quota error', () => {
       const error = 'Error: MAX_WRITE_OPERATIONS_PER_H exceeded';
 
-      // Simulate handleSettingsError
       if (error.includes('MAX_WRITE_OPERATIONS_PER_H')) {
         mockUiStateActions.clearStatus();
       }
@@ -226,12 +193,10 @@ describe('App.svelte - Settings', () => {
 
   describe('autoCreateProjectSettingsIfNeeded', () => {
     it('should not create settings when not on Bolt project', async () => {
-      // Simulate conditions: not on bolt project
       const onBoltProject = false;
       const projectId = null;
 
       if (!onBoltProject || !projectId) {
-        // Early return
         return;
       }
 
@@ -262,7 +227,6 @@ describe('App.svelte - Settings', () => {
       const projectSettings = existingSettings.projectSettings || {};
 
       if (projectSettings[projectId]) {
-        // Already exists, don't create
         return;
       }
 
@@ -285,7 +249,6 @@ describe('App.svelte - Settings', () => {
       const githubToken = 'test-token';
       const hasValidAuth = authMethod === 'pat' && Boolean(githubToken);
 
-      // Verify conditions are met before creating settings
       expect(onBoltProject).toBe(true);
       expect(projectId).toBe('test-project');
 
@@ -318,7 +281,6 @@ describe('App.svelte - Settings', () => {
       const hasValidAuth =
         authMethod === 'github_app' && Boolean(localSettings.githubAppInstallationId);
 
-      // Verify conditions are met
       expect(onBoltProject).toBe(true);
       expect(projectId).toBe('test-project');
 
@@ -340,7 +302,6 @@ describe('App.svelte - Settings', () => {
 
       chromeMocks._setSyncStorage('repoOwner', 'test-owner');
       chromeMocks._setLocalStorage('authenticationMethod', 'pat');
-      // No token set
 
       const [syncSettings, localSettings] = await Promise.all([
         chrome.storage.sync.get(['repoOwner']),
@@ -348,9 +309,8 @@ describe('App.svelte - Settings', () => {
       ]);
 
       const authMethod = localSettings.authenticationMethod || 'pat';
-      const hasValidAuth = authMethod === 'pat' && false; // No token
+      const hasValidAuth = authMethod === 'pat' && false;
 
-      // Verify conditions - should fail auth check
       expect(onBoltProject).toBe(true);
       expect(projectId).toBe('test-project');
       expect(hasValidAuth).toBe(false);
@@ -366,7 +326,6 @@ describe('App.svelte - Settings', () => {
       const projectId = 'test-project';
       const onBoltProject = true;
 
-      // No repoOwner set
       chromeMocks._setLocalStorage('authenticationMethod', 'pat');
 
       const [syncSettings] = await Promise.all([
@@ -374,7 +333,6 @@ describe('App.svelte - Settings', () => {
         chrome.storage.local.get(['authenticationMethod', 'githubAppInstallationId']),
       ]);
 
-      // Verify conditions - should fail repoOwner check
       expect(onBoltProject).toBe(true);
       expect(projectId).toBe('test-project');
       expect(syncSettings.repoOwner).toBeUndefined();
@@ -422,12 +380,10 @@ describe('App.svelte - Settings', () => {
     it('should set repository to private by default', async () => {
       const projectId = 'test-project';
 
-      // Default settings should create private repository
       const newSettings = {
         repoName: projectId,
         branch: 'main',
         projectTitle: projectId,
-        // Note: private is default in ChromeStorageService
       };
 
       await mockChromeStorageService.saveProjectSettings(
@@ -476,7 +432,6 @@ describe('App.svelte - Settings', () => {
     });
 
     it('should default to PAT if no authentication method is set', async () => {
-      // No auth method set
       const authSettings = await chrome.storage.local.get(['authenticationMethod']);
       const authMethod = authSettings.authenticationMethod || 'pat';
 
@@ -501,7 +456,6 @@ describe('App.svelte - Settings', () => {
     });
 
     it('should update effective token when settings change', async () => {
-      // Initial: PAT
       chromeMocks._setLocalStorage('authenticationMethod', 'pat');
       let authSettings = await chrome.storage.local.get(['authenticationMethod']);
       let authMethod = authSettings.authenticationMethod || 'pat';
@@ -509,7 +463,6 @@ describe('App.svelte - Settings', () => {
 
       expect(effectiveToken).toBe('pat-token');
 
-      // Change to GitHub App
       chromeMocks._setLocalStorage('authenticationMethod', 'github_app');
       authSettings = await chrome.storage.local.get(['authenticationMethod']);
       authMethod = authSettings.authenticationMethod || 'pat';
@@ -575,7 +528,6 @@ describe('App.svelte - Settings', () => {
     it('should update effective token after auth method change', async () => {
       mockGithubSettingsActions.setAuthenticationMethod('github_app');
 
-      // Simulate updateEffectiveToken call
       chromeMocks._setLocalStorage('authenticationMethod', 'github_app');
       const authSettings = await chrome.storage.local.get(['authenticationMethod']);
       const authMethod = authSettings.authenticationMethod || 'pat';
@@ -593,7 +545,7 @@ describe('App.svelte - Settings', () => {
       try {
         await mockChromeStorageService.saveProjectSettings('test', 'test', 'main', 'test');
       } catch {
-        // Error should be logged but not thrown
+        // Expected error
       }
 
       expect(mockChromeStorageService.saveProjectSettings).toHaveBeenCalled();

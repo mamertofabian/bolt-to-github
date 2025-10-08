@@ -1,10 +1,5 @@
-/**
- * Test for Premium Service message flooding prevention
- */
-
 import { PremiumService } from '../PremiumService';
 
-// Mock the logger
 vi.mock('../../../lib/utils/logger', () => ({
   createLogger: () => ({
     info: vi.fn(),
@@ -14,7 +9,6 @@ vi.mock('../../../lib/utils/logger', () => ({
   }),
 }));
 
-// Mock Chrome storage
 const mockChromeStorage = {
   local: {
     get: vi.fn().mockResolvedValue({}),
@@ -41,7 +35,6 @@ describe('PremiumService Message Flooding Prevention', () => {
   });
 
   test('should debounce rapid save operations', async () => {
-    // Rapidly trigger multiple updates
     const promises = [];
     for (let i = 0; i < 10; i++) {
       promises.push(
@@ -54,10 +47,8 @@ describe('PremiumService Message Flooding Prevention', () => {
 
     await Promise.all(promises);
 
-    // Wait for debounce to complete
     await new Promise((resolve) => setTimeout(resolve, 600));
 
-    // Should have made far fewer storage calls than updates
     expect(mockChromeStorage.local.set).toHaveBeenCalledTimes(1);
     expect(mockChromeStorage.sync.set).toHaveBeenCalledTimes(1);
   });
@@ -65,7 +56,6 @@ describe('PremiumService Message Flooding Prevention', () => {
   test('should throttle rapid status updates', async () => {
     const startTime = Date.now();
 
-    // Rapidly trigger multiple status updates
     for (let i = 0; i < 5; i++) {
       await premiumService.updatePremiumStatus({
         isPremium: i % 2 === 0,
@@ -75,13 +65,10 @@ describe('PremiumService Message Flooding Prevention', () => {
 
     const endTime = Date.now();
 
-    // Should complete quickly due to throttling (not waiting for each operation)
     expect(endTime - startTime).toBeLessThan(100);
 
-    // Wait for debounce to complete
     await new Promise((resolve) => setTimeout(resolve, 600));
 
-    // Storage should be called (via debounced save)
     expect(mockChromeStorage.local.set).toHaveBeenCalled();
   });
 
@@ -91,21 +78,16 @@ describe('PremiumService Message Flooding Prevention', () => {
       isAuthenticated: true,
     };
 
-    // First update
     await premiumService.updatePremiumStatus(statusUpdate);
 
-    // Wait for debounce
     await new Promise((resolve) => setTimeout(resolve, 600));
 
     const firstCallCount = mockChromeStorage.local.set.mock.calls.length;
 
-    // Same update again
     await premiumService.updatePremiumStatus(statusUpdate);
 
-    // Wait for debounce
     await new Promise((resolve) => setTimeout(resolve, 600));
 
-    // Should not have triggered additional storage calls for identical data
     expect(mockChromeStorage.local.set.mock.calls.length).toBe(firstCallCount);
   });
 });

@@ -4,7 +4,6 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { SUPABASE_CONFIG } from '../../lib/constants/supabase';
 import { SubscriptionService } from '../SubscriptionService';
 
-// Mock chrome API
 const mockChrome = {
   storage: {
     sync: {
@@ -19,7 +18,6 @@ const mockChrome = {
 
 global.chrome = mockChrome as unknown as typeof chrome;
 
-// Mock fetch
 global.fetch = vi.fn() as MockedFunction<typeof fetch>;
 
 describe('SubscriptionService', () => {
@@ -130,7 +128,6 @@ describe('SubscriptionService', () => {
 
   describe('shouldShowSubscriptionPrompt', () => {
     beforeEach(() => {
-      // Mock the static methods that are called
       vi.spyOn(SubscriptionService, 'getSubscriptionStatus').mockResolvedValue({
         subscribed: false,
       } as never);
@@ -181,7 +178,7 @@ describe('SubscriptionService', () => {
 
     it('should not show prompt if last prompt was less than 30 days ago', async () => {
       const recentDate = new Date();
-      recentDate.setDate(recentDate.getDate() - 15); // 15 days ago
+      recentDate.setDate(recentDate.getDate() - 15);
 
       vi.spyOn(SubscriptionService, 'getUsageStats').mockResolvedValue({
         interactionCount: 5,
@@ -195,7 +192,7 @@ describe('SubscriptionService', () => {
 
     it('should show prompt if last prompt was more than 30 days ago', async () => {
       const oldDate = new Date();
-      oldDate.setDate(oldDate.getDate() - 35); // 35 days ago
+      oldDate.setDate(oldDate.getDate() - 35);
 
       vi.spyOn(SubscriptionService, 'getUsageStats').mockResolvedValue({
         interactionCount: 5,
@@ -204,7 +201,7 @@ describe('SubscriptionService', () => {
 
       const shouldShow = await SubscriptionService.shouldShowSubscriptionPrompt();
 
-      expect(shouldShow).toBe(false); // Should be false because interactionCount is not 3 or 10
+      expect(shouldShow).toBe(false);
     });
   });
 

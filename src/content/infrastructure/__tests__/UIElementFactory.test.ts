@@ -3,7 +3,6 @@ import type { Mock, Mocked } from 'vitest';
 import type { ButtonOptions, DialogOptions, DropdownItem } from '../../types/UITypes';
 import { UIElementFactory, type ContainerConfig, type OverlayConfig } from '../UIElementFactory';
 
-// Mock DOM environment using the same successful pattern as ComponentLifecycleManager
 Object.defineProperty(global, 'document', {
   value: {
     createElement: vi.fn(),
@@ -21,10 +20,8 @@ describe('UIElementFactory', () => {
   let mockDocument: Mocked<typeof document>;
 
   beforeEach(() => {
-    // Setup mock document
     mockDocument = global.document as Mocked<typeof document>;
 
-    // Setup mock element (includes disabled for button elements)
     mockElement = {
       textContent: '',
       innerHTML: '',
@@ -42,7 +39,6 @@ describe('UIElementFactory', () => {
     mockDocument.createElement.mockReturnValue(mockElement);
     mockDocument.getElementById.mockReturnValue(null);
 
-    // Reset all mocks
     vi.clearAllMocks();
   });
 
@@ -230,9 +226,9 @@ describe('UIElementFactory', () => {
       } as any;
 
       (mockDocument.createElement as Mock)
-        .mockReturnValueOnce(mockElement) // Main dropdown container
-        .mockReturnValueOnce(mockItem1) // First item
-        .mockReturnValueOnce(mockItem2); // Second item
+        .mockReturnValueOnce(mockElement)
+        .mockReturnValueOnce(mockItem1)
+        .mockReturnValueOnce(mockItem2);
 
       const items: DropdownItem[] = [
         {
@@ -385,7 +381,6 @@ describe('UIElementFactory', () => {
 
       UIElementFactory.createDialog(options);
 
-      // Check that the HTML contains the expected elements (ignore whitespace formatting)
       expect(mockElement.innerHTML).toContain(
         '<h3 class="text-lg font-semibold text-white">Confirm Action</h3>'
       );
@@ -762,7 +757,7 @@ describe('UIElementFactory', () => {
       UIElementFactory.createButton(options);
 
       expect(mockElement.textContent).toBe('Button');
-      // Should not call setAttribute for undefined values
+
       expect(mockElement.setAttribute).not.toHaveBeenCalled();
     });
 

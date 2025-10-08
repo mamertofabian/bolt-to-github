@@ -1,5 +1,5 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-// Tests for enhanced analytics functionality
+
 import type { Mock } from 'vitest';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { AnalyticsService } from '../AnalyticsService';
@@ -24,11 +24,9 @@ describe('AnalyticsService Enhanced Features', () => {
   };
 
   beforeEach(() => {
-    // Mock global fetch
     mockFetch = vi.fn().mockResolvedValue({ ok: true });
     global.fetch = mockFetch;
 
-    // Mock chrome.runtime
     mockChromeRuntime = {
       id: 'test-extension-id',
       getManifest: vi.fn(() => ({
@@ -39,7 +37,6 @@ describe('AnalyticsService Enhanced Features', () => {
       sendMessage: vi.fn(),
     };
 
-    // Mock chrome.storage
     mockChromeStorage = {
       local: {
         get: vi.fn(() => Promise.resolve({ analyticsClientId: 'test-client-id' })),
@@ -51,13 +48,11 @@ describe('AnalyticsService Enhanced Features', () => {
       },
     };
 
-    // Replace global chrome object
     global.chrome = {
       storage: mockChromeStorage,
       runtime: mockChromeRuntime,
     } as unknown as typeof chrome;
 
-    // Mock environment variable
     vi.stubGlobal('import', {
       meta: {
         env: {
@@ -66,11 +61,8 @@ describe('AnalyticsService Enhanced Features', () => {
       },
     });
 
-    // Reset the singleton instance to get fresh state for each test
-    // This is a bit hacky but necessary for proper test isolation
     (AnalyticsService as any).instance = null;
 
-    // Get fresh instance for each test
     analyticsService = AnalyticsService.getInstance();
   });
 
@@ -120,18 +112,16 @@ describe('AnalyticsService Enhanced Features', () => {
     });
 
     it('should handle semantic versioning correctly', async () => {
-      // Test pre-release versions are handled correctly
       await analyticsService.trackVersionChange('1.3.6', '1.3.7-beta');
 
       expect(mockFetch).toHaveBeenCalled();
       const callBody = JSON.parse(mockFetch.mock.calls[0][1].body);
       expect(callBody.events[0].name).toBe('version_upgrade');
 
-      // Clear and test same base version with different pre-release
       mockFetch.mockClear();
       await analyticsService.trackVersionChange('1.3.7-alpha', '1.3.7-beta');
 
-      expect(mockFetch).not.toHaveBeenCalled(); // Same base version, no tracking
+      expect(mockFetch).not.toHaveBeenCalled();
     });
 
     it('should include app version in all events', async () => {
@@ -305,7 +295,6 @@ describe('AnalyticsService Enhanced Features', () => {
 
   describe('Analytics State Management', () => {
     it('should not track when analytics is disabled', async () => {
-      // Reset instance and set up disabled analytics before creating service
       (AnalyticsService as any).instance = null;
       mockChromeStorage.sync.get.mockResolvedValue({ analyticsEnabled: false });
 
@@ -316,12 +305,10 @@ describe('AnalyticsService Enhanced Features', () => {
     });
 
     it('should not track when API secret is missing', async () => {
-      // Reset instance and create service with empty API secret
       (AnalyticsService as any).instance = null;
 
       const serviceWithoutSecret = AnalyticsService.getInstance();
-      // Manually set the API_SECRET to empty to simulate missing secret
-      // This simulates the behavior when VITE_GA4_API_SECRET is not set
+
       (serviceWithoutSecret as any).API_SECRET = '';
 
       await serviceWithoutSecret.trackFeatureAdoption('test_feature', true);
@@ -332,7 +319,6 @@ describe('AnalyticsService Enhanced Features', () => {
     it('should handle storage errors gracefully', async () => {
       mockChromeStorage.sync.get.mockRejectedValue(new Error('Storage error'));
 
-      // Should not throw, should fallback to enabled=true
       await expect(
         analyticsService.trackFeatureAdoption('test_feature', true)
       ).resolves.not.toThrow();
@@ -341,7 +327,6 @@ describe('AnalyticsService Enhanced Features', () => {
     it('should handle fetch errors gracefully', async () => {
       mockFetch.mockRejectedValue(new Error('Network error'));
 
-      // Should not throw, should fail silently
       await expect(
         analyticsService.trackFeatureAdoption('test_feature', true)
       ).resolves.not.toThrow();

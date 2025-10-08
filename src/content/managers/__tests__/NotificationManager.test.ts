@@ -6,7 +6,6 @@ import type { UIStateManager } from '../../services/UIStateManager';
 import type { NotificationOptions } from '../../types/UITypes';
 import { NotificationManager } from '../NotificationManager';
 
-// Mock Svelte components
 vi.mock('../../Notification.svelte', () => ({
   default: class MockNotification {
     constructor(options: any = {}) {
@@ -63,10 +62,8 @@ describe('NotificationManager', () => {
 
     notificationManager = new NotificationManager(mockMessageHandler, mockStateManager);
 
-    // Setup DOM
     document.body.innerHTML = '<div></div>';
 
-    // Mock window dimensions
     Object.defineProperty(window, 'innerWidth', {
       writable: true,
       configurable: true,
@@ -90,7 +87,6 @@ describe('NotificationManager', () => {
 
       notificationManager.showNotification(options);
 
-      // Check that a notification container was created
       const containers = document.querySelectorAll(
         '[id^="bolt-to-github-notification-container-"]'
       );
@@ -149,7 +145,6 @@ describe('NotificationManager', () => {
       );
       expect(containers.length).toBe(2);
 
-      // Check that notifications are positioned differently
       const firstContainer = containers[0] as HTMLElement;
       const secondContainer = containers[1] as HTMLElement;
 
@@ -162,7 +157,6 @@ describe('NotificationManager', () => {
 
   describe('Mobile Responsiveness', () => {
     test('adjusts notification layout for mobile screens', () => {
-      // Mock mobile screen width
       Object.defineProperty(window, 'innerWidth', {
         writable: true,
         configurable: true,
@@ -184,7 +178,6 @@ describe('NotificationManager', () => {
     });
 
     test('uses standard layout for desktop screens', () => {
-      // Mock desktop screen width
       Object.defineProperty(window, 'innerWidth', {
         writable: true,
         configurable: true,
@@ -245,18 +238,14 @@ describe('NotificationManager', () => {
         placeholder: 'Enter commit message',
       };
 
-      // Start the confirmation dialog
       notificationManager.showConfirmationDialog(options);
 
-      // Check that dialog container was created
       const dialogContainer = document.getElementById(
         'bolt-to-github-confirmation-dialog-container'
       );
       expect(dialogContainer).toBeTruthy();
       expect(dialogContainer?.style.zIndex).toBe('2147483646');
 
-      // We can't easily test the actual resolution without complex mocking
-      // So we'll just verify the dialog was created properly
       expect(dialogContainer?.style.position).toBe('fixed');
       expect(dialogContainer?.style.width).toBe('100%');
       expect(dialogContainer?.style.height).toBe('100%');
@@ -265,7 +254,6 @@ describe('NotificationManager', () => {
 
   describe('Cleanup', () => {
     test('removes all notifications on cleanup', () => {
-      // Create multiple notifications
       notificationManager.showNotification({ type: 'info', message: 'Test 1' });
       notificationManager.showNotification({ type: 'success', message: 'Test 2' });
 
@@ -293,23 +281,20 @@ describe('NotificationManager', () => {
 
   describe('Window Resize Handling', () => {
     test('updates notification positions on window resize', () => {
-      // Create a notification
       notificationManager.showNotification({ type: 'info', message: 'Test' });
 
       const container = document.querySelector(
         '[id^="bolt-to-github-notification-container-"]'
       ) as HTMLElement;
-      // Trigger resize event
+
       window.dispatchEvent(new Event('resize'));
 
-      // Position should be recalculated (though in this simple test it might be the same)
       expect(container.style.top).toBeDefined();
     });
   });
 
   describe('Error Handling', () => {
     test('handles missing state manager gracefully', () => {
-      // Setup fresh DOM for this test
       document.body.innerHTML = '<div></div>';
 
       const managerWithoutState = new NotificationManager(mockMessageHandler);
@@ -324,7 +309,7 @@ describe('NotificationManager', () => {
     test('handles multiple cleanup calls gracefully', () => {
       expect(() => {
         notificationManager.cleanup();
-        notificationManager.cleanup(); // Second cleanup should not throw
+        notificationManager.cleanup();
       }).not.toThrow();
     });
   });

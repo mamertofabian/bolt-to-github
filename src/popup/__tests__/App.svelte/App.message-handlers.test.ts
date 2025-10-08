@@ -17,27 +17,6 @@ import {
   resetAllStoreMocks,
 } from '../test-helpers/store-mocks';
 
-/**
- * App.svelte Message Handlers Tests
- *
- * Tests verify that App.svelte correctly handles Chrome runtime messages:
- * - Upload status messages with different statuses (idle, uploading, complete, error)
- * - File changes messages with project data
- * - Open file changes requests
- * - Chrome runtime message listener setup
- * - ChromeMessagingService port message handlers
- * - Message routing to appropriate handlers
- * - Edge cases (malformed messages, missing data, invalid types)
- *
- * Following unit-testing-rules.md:
- * - Test behavior (message processing), not implementation
- * - Mock only external dependencies (Chrome API, ChromeMessagingService)
- * - Test state changes (store updates) after message handling
- * - Test both happy paths and error conditions
- * - Verify message routing works correctly
- */
-
-// Create mocks
 const chromeMessagingMock = createMockChromeMessagingService();
 const subscriptionServiceMock = createMockSubscriptionService();
 
@@ -60,7 +39,6 @@ const mockUiStateActions = {
   canCloseTempRepoModal: vi.fn().mockResolvedValue(true),
 };
 
-// Mock all external dependencies
 vi.mock('$lib/services/chromeMessaging', () => ({
   ChromeMessagingService: chromeMessagingMock,
 }));
@@ -111,11 +89,9 @@ describe('App.svelte - Message Handlers', () => {
   let chromeMocks: ReturnType<typeof createAppChromeMocks>;
 
   beforeEach(() => {
-    // Reset all mocks
     vi.clearAllMocks();
     resetAllStoreMocks();
 
-    // Setup Chrome API mocks
     chromeMocks = createAppChromeMocks();
     global.chrome = chromeMocks as unknown as typeof chrome;
   });
@@ -129,7 +105,6 @@ describe('App.svelte - Message Handlers', () => {
         message: '',
       };
 
-      // Test the action directly - this is what actually happens in the component
       mockUploadStateActions.handleUploadStatusMessage(message);
 
       expect(mockUploadStateActions.handleUploadStatusMessage).toHaveBeenCalledWith(message);
@@ -285,8 +260,6 @@ describe('App.svelte - Message Handlers', () => {
       const success = await mockFileChangesActions.loadStoredFileChanges(projectId);
 
       expect(success).toBe(false);
-      // In actual implementation, component would call requestFileChangesFromContentScript
-      // when success is false
     });
 
     it('should handle error when requesting file changes fails', async () => {
@@ -321,7 +294,6 @@ describe('App.svelte - Message Handlers', () => {
         message: 'Processing files...',
       };
 
-      // The component would register a handler that calls handleUploadStatusMessage
       mockUploadStateActions.handleUploadStatusMessage(message);
 
       expect(mockUploadStateActions.handleUploadStatusMessage).toHaveBeenCalledWith(message);
@@ -344,12 +316,11 @@ describe('App.svelte - Message Handlers', () => {
     it('should handle message with invalid data types', () => {
       const message = {
         type: 'UPLOAD_STATUS',
-        status: 123, // Should be string
-        progress: 'invalid', // Should be number
-        message: { object: 'instead of string' }, // Should be string
+        status: 123,
+        progress: 'invalid',
+        message: { object: 'instead of string' },
       };
 
-      // Action should handle validation internally
       mockUploadStateActions.handleUploadStatusMessage(message);
 
       expect(mockUploadStateActions.handleUploadStatusMessage).toHaveBeenCalledWith(message);

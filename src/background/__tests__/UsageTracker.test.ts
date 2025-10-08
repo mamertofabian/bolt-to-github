@@ -1,15 +1,7 @@
-/**
- * UsageTracker Tests
- *
- * Tests for tracking extension usage statistics, error logging, and uninstall URL generation
- * for the uninstall feedback feature.
- */
-
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { ErrorLogEntry, UsageData } from '../../lib/types';
 import { UsageTracker } from '../UsageTracker';
 
-// Mock chrome APIs
 const mockChromeStorage = {
   local: {
     get: vi.fn(),
@@ -26,7 +18,6 @@ const mockChromeRuntime = {
   setUninstallURL: vi.fn(),
 };
 
-// Replace global chrome object
 global.chrome = {
   storage: mockChromeStorage,
   runtime: mockChromeRuntime,
@@ -99,7 +90,7 @@ describe('UsageTracker', () => {
 
       expect(savedData.usageData).toMatchObject({
         ...existingData,
-        extensionVersion: '1.3.5', // Should update version
+        extensionVersion: '1.3.5',
       });
     });
   });
@@ -235,14 +226,14 @@ describe('UsageTracker', () => {
 
       expect(savedData.errorLog).toHaveLength(10);
       expect(savedData.errorLog[9].message).toBe('New error');
-      expect(savedData.errorLog[0].message).toBe('Error 1'); // First error should be removed
+      expect(savedData.errorLog[0].message).toBe('Error 1');
     });
   });
 
   describe('setUninstallURL', () => {
     it('should generate correct uninstall URL with usage parameters', async () => {
       const usageData: UsageData = {
-        installDate: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString(), // 30 days ago
+        installDate: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString(),
         lastActiveDate: new Date().toISOString(),
         totalPushes: 15,
         authMethod: 'github-app',

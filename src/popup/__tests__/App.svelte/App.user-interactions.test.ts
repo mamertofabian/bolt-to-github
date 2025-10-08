@@ -17,28 +17,6 @@ import {
   resetAllStoreMocks,
 } from '../test-helpers/store-mocks';
 
-/**
- * App.svelte User Interactions Tests
- *
- * Tests verify that App.svelte correctly handles user interactions:
- * - Settings save with success and error flows
- * - Storage quota error handling
- * - Tab switching between home, projects, settings
- * - Modal triggers (push reminder, upgrade, newsletter)
- * - Sign-in page opening
- * - File changes display with success/failure
- * - Successful action handling with subscription prompts
- * - Toast subscribe and newsletter modal
- * - Upgrade click with different types
- * - Authentication method changes (PAT/GitHub App)
- *
- * Following unit-testing-rules.md:
- * - Test behavior (user actions), not implementation
- * - Mock only external dependencies (Chrome API, services)
- * - Test state changes after user interactions
- * - Test both success and error scenarios
- */
-
 const chromeMessagingMock = createMockChromeMessagingService();
 const subscriptionServiceMock = createMockSubscriptionService();
 
@@ -61,7 +39,6 @@ const mockUiStateActions = {
   canCloseTempRepoModal: vi.fn().mockResolvedValue(true),
 };
 
-// Mock all external dependencies
 vi.mock('$lib/services/chromeMessaging', () => ({
   ChromeMessagingService: chromeMessagingMock,
 }));
@@ -112,11 +89,9 @@ describe('App.svelte - User Interactions', () => {
   let chromeMocks: ReturnType<typeof createAppChromeMocks>;
 
   beforeEach(() => {
-    // Reset all mocks
     vi.clearAllMocks();
     resetAllStoreMocks();
 
-    // Setup Chrome API mocks
     chromeMocks = createAppChromeMocks();
     global.chrome = chromeMocks as unknown as typeof chrome;
   });
@@ -125,14 +100,11 @@ describe('App.svelte - User Interactions', () => {
     it('should save settings successfully and show success message', async () => {
       vi.mocked(mockGithubSettingsActions.saveSettings).mockResolvedValue({ success: true });
 
-      // Simulate saveSettings
       const result = await mockGithubSettingsActions.saveSettings();
 
       if (result.success) {
-        // Simulate handleSuccessfulAction
         await subscriptionServiceMock.incrementInteractionCount();
         await subscriptionServiceMock.shouldShowSubscriptionPrompt();
-        // Show success toast would happen here
       }
 
       expect(mockGithubSettingsActions.saveSettings).toHaveBeenCalled();
@@ -145,10 +117,8 @@ describe('App.svelte - User Interactions', () => {
       const repoName = 'test-repo';
       const branch = 'main';
 
-      // Simulate setting project settings
       mockGithubSettingsActions.setProjectSettings(projectId, repoName, branch);
 
-      // Then save
       await mockGithubSettingsActions.saveSettings();
 
       expect(mockGithubSettingsActions.setProjectSettings).toHaveBeenCalledWith(
@@ -188,7 +158,7 @@ describe('App.svelte - User Interactions', () => {
 
       if (!result.success) {
         if (result.error && result.error.includes('MAX_WRITE_OPERATIONS_PER_H')) {
-          // Don't show on button - this is handled in GitHubSettings component
+          // Rate limit error - no status shown
         } else {
           mockUiStateActions.showStatus(result.error || 'Error saving settings');
         }
@@ -248,7 +218,6 @@ describe('App.svelte - User Interactions', () => {
 
   describe('handleConfigurePushReminder', () => {
     it('should open push reminder settings modal', () => {
-      // Simulate modal state change
       const modalStates = { pushReminderSettings: false };
       modalStates.pushReminderSettings = true;
 
@@ -364,18 +333,16 @@ describe('App.svelte - User Interactions', () => {
       try {
         await subscriptionServiceMock.incrementInteractionCount();
       } catch {
-        // Still show success toast without subscription prompt
+        // Expected error
       }
 
       expect(subscriptionServiceMock.incrementInteractionCount).toHaveBeenCalled();
-      // Toast should still be shown even if subscription service fails
     });
   });
 
   describe('handleToastSubscribe', () => {
     it('should update last prompt date and open newsletter modal', async () => {
       await subscriptionServiceMock.updateLastPromptDate();
-      // Modal would be opened here
 
       expect(subscriptionServiceMock.updateLastPromptDate).toHaveBeenCalled();
     });
@@ -432,10 +399,8 @@ describe('App.svelte - User Interactions', () => {
     });
 
     it('should update effective token after auth method change', async () => {
-      // Simulate auth method change
       mockGithubSettingsActions.setAuthenticationMethod('github_app');
 
-      // Check storage for auth method
       await chromeMocks.storage.local.get(['authenticationMethod']);
 
       expect(mockGithubSettingsActions.setAuthenticationMethod).toHaveBeenCalledWith('github_app');

@@ -1,7 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { AnalyticsService } from '../AnalyticsService';
 
-// Mock chrome APIs
 const mockChromeRuntime = {
   id: 'test-extension-id',
   getManifest: vi.fn(() => ({
@@ -28,7 +27,6 @@ global.chrome = {
   runtime: mockChromeRuntime,
 } as unknown as typeof chrome;
 
-// Mock fetch
 const mockFetch = vi.fn<[RequestInfo | URL, RequestInit?], Promise<Response>>(() =>
   Promise.resolve({
     ok: true,
@@ -42,7 +40,7 @@ describe('AnalyticsService Version Tracking', () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
-    // Reset singleton instance
+
     analyticsService = AnalyticsService.getInstance();
   });
 
@@ -81,19 +79,16 @@ describe('AnalyticsService Version Tracking', () => {
 
     it('should handle semantic versioning with pre-release identifiers', async () => {
       const testCases = [
-        // Upgrades
         { from: '1.3.6', to: '1.3.7-beta', expectedEvent: 'version_upgrade' },
         { from: '1.3.6', to: '1.3.7-alpha', expectedEvent: 'version_upgrade' },
         { from: '1.3.6-beta', to: '1.3.7', expectedEvent: 'version_upgrade' },
         { from: '1.3.6-beta', to: '1.3.7-alpha', expectedEvent: 'version_upgrade' },
 
-        // Same base version - no event
         { from: '1.3.7-alpha', to: '1.3.7-beta', expectedEvent: null },
         { from: '1.3.7-rc.1', to: '1.3.7', expectedEvent: null },
         { from: '1.3.7', to: '1.3.7-beta', expectedEvent: null },
         { from: '1.3.7-beta', to: '1.3.7-alpha', expectedEvent: null },
 
-        // Downgrades
         { from: '1.3.8-beta', to: '1.3.7', expectedEvent: 'version_downgrade' },
         { from: '1.3.8', to: '1.3.7-beta', expectedEvent: 'version_downgrade' },
         { from: '1.3.8-alpha', to: '1.3.7-rc.1', expectedEvent: 'version_downgrade' },
@@ -117,7 +112,6 @@ describe('AnalyticsService Version Tracking', () => {
     });
 
     it('should handle invalid version inputs gracefully', async () => {
-      // Test with various invalid inputs
       await analyticsService.trackVersionChange('', '1.3.7');
       expect(mockFetch).not.toHaveBeenCalled();
 
@@ -133,10 +127,10 @@ describe('AnalyticsService Version Tracking', () => {
 
     it('should handle complex version formats', async () => {
       const testCases = [
-        { from: '1.3.7-beta.1', to: '1.3.7-beta.2', expectedEvent: null }, // Same base
-        { from: '1.3.7-rc1+build123', to: '1.3.7-rc2+build456', expectedEvent: null }, // Same base
-        { from: '2.0.0-alpha', to: '1.9.9', expectedEvent: 'version_downgrade' }, // 2.0.0 > 1.9.9, so downgrade
-        { from: '1.9.9', to: '2.0.0-alpha', expectedEvent: 'version_upgrade' }, // 1.9.9 < 2.0.0, so upgrade
+        { from: '1.3.7-beta.1', to: '1.3.7-beta.2', expectedEvent: null },
+        { from: '1.3.7-rc1+build123', to: '1.3.7-rc2+build456', expectedEvent: null },
+        { from: '2.0.0-alpha', to: '1.9.9', expectedEvent: 'version_downgrade' },
+        { from: '1.9.9', to: '2.0.0-alpha', expectedEvent: 'version_upgrade' },
       ];
 
       for (const { from, to, expectedEvent } of testCases) {
@@ -184,7 +178,6 @@ describe('AnalyticsService Version Tracking', () => {
         const payload = JSON.parse(call[1].body as string);
         const event = payload.events[0];
 
-        // Every event should include app_version
         expect(event.params.app_version).toBe('1.3.7');
       }
     });

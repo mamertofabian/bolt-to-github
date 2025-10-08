@@ -6,7 +6,6 @@ import { CommitTemplateService } from '../../services/CommitTemplateService';
 import type { INotificationManager, IUIStateManager } from '../../types/ManagerInterfaces';
 import { GitHubUploadHandler } from '../GitHubUploadHandler';
 
-// Mock external dependencies
 vi.mock('../../../services/settings');
 vi.mock('../../../services/DownloadService');
 vi.mock('../../services/CommitTemplateService');
@@ -19,7 +18,6 @@ vi.mock('../FileChangeHandler', () => ({
   })),
 }));
 
-// Create proper mock for MessageHandler
 class MockMessageHandler implements Partial<MessageHandler> {
   public port: chrome.runtime.Port | null = null;
   public messageQueue: { type: string; data?: unknown }[] = [];
@@ -36,7 +34,6 @@ class MockMessageHandler implements Partial<MessageHandler> {
   public setupPortListeners = vi.fn();
 }
 
-// Create proper mock for NotificationManager
 class MockNotificationManager implements INotificationManager {
   public showNotification = vi.fn();
   public showUpgradeNotification = vi.fn();
@@ -48,7 +45,6 @@ class MockNotificationManager implements INotificationManager {
   public cleanup = vi.fn();
 }
 
-// Create proper mock for StateManager
 class MockStateManager implements IUIStateManager {
   public setUploadStatus = vi.fn();
   public setButtonState = vi.fn();
@@ -85,31 +81,25 @@ describe('GitHubUploadHandler', () => {
   }>;
 
   beforeEach(() => {
-    // Reset all mocks
     vi.clearAllMocks();
 
-    // Setup mock objects
     mockMessageHandler = new MockMessageHandler();
     mockNotificationManager = new MockNotificationManager();
     mockStateManager = new MockStateManager();
 
-    // Mock DownloadService
     mockDownloadService = {
       downloadProjectZip: vi.fn(),
       blobToBase64: vi.fn(),
       getProjectFiles: vi.fn(),
     };
 
-    // Mock CommitTemplateService
     mockCommitTemplateService = {
       getTemplateSuggestions: vi.fn().mockResolvedValue([]),
       recordTemplateUsage: vi.fn(),
     };
 
-    // Setup DownloadService mock constructor
     (DownloadService as Mock).mockImplementation(() => mockDownloadService);
 
-    // Setup CommitTemplateService singleton mock
     (CommitTemplateService.getInstance as Mock).mockReturnValue(mockCommitTemplateService);
 
     uploadHandler = new GitHubUploadHandler(
@@ -119,7 +109,6 @@ describe('GitHubUploadHandler', () => {
       mockStateManager as unknown as any
     );
 
-    // Mock chrome storage
     global.chrome = {
       storage: {
         local: {
@@ -237,7 +226,6 @@ describe('GitHubUploadHandler', () => {
     });
 
     test('performs change detection when not skipped', async () => {
-      // Mock FileChangeHandler
       const mockFileChangeHandler = {
         getChangedFiles: vi.fn().mockResolvedValue(
           new Map([
@@ -275,7 +263,6 @@ describe('GitHubUploadHandler', () => {
     });
 
     test('handles stored file changes', async () => {
-      // Mock stored changes
       const storedChanges = new Map([['stored.txt', { status: 'modified', path: 'stored.txt' }]]);
       vi.spyOn(
         uploadHandler as unknown as {
@@ -314,7 +301,6 @@ describe('GitHubUploadHandler', () => {
         'getStoredFileChanges'
       ).mockResolvedValue(null);
 
-      // Mock FileChangeHandler returning no changes
       const mockFileChangeHandler = {
         getChangedFiles: vi.fn().mockResolvedValue(new Map()),
       };
@@ -363,8 +349,6 @@ describe('GitHubUploadHandler', () => {
       await uploadHandler.handleGitHubPush(true, true);
 
       expect(proceedSpy).not.toHaveBeenCalled();
-      // Skip change detection path doesn't call resetButtonLoadingState when cancelling
-      // because the button detecting state wasn't set in this path
     });
 
     test('aborts when user cancels confirmation (with change detection)', async () => {
@@ -375,7 +359,6 @@ describe('GitHubUploadHandler', () => {
         'getStoredFileChanges'
       ).mockResolvedValue(null);
 
-      // Mock FileChangeHandler returning no changes
       const mockFileChangeHandler = {
         getChangedFiles: vi.fn().mockResolvedValue(new Map()),
       };
@@ -429,7 +412,6 @@ describe('GitHubUploadHandler', () => {
         'getStoredFileChanges'
       ).mockResolvedValue(null);
 
-      // Mock FileChangeHandler throwing error
       const mockFileChangeHandler = {
         getChangedFiles: vi.fn().mockRejectedValue(new Error('Detection failed')),
       };
@@ -502,7 +484,7 @@ describe('GitHubUploadHandler', () => {
     test('handles upload errors', async () => {
       const error = new Error('Upload failed');
       mockDownloadService.downloadProjectZip.mockRejectedValue(error);
-      // Mock getProjectFiles to also fail for cached files fallback
+
       mockDownloadService.getProjectFiles.mockResolvedValue(new Map());
 
       await (
@@ -521,7 +503,7 @@ describe('GitHubUploadHandler', () => {
       const mockBlob = new Blob(['test'], { type: 'application/zip' });
       mockDownloadService.downloadProjectZip.mockResolvedValue(mockBlob);
       mockDownloadService.blobToBase64.mockResolvedValue(null);
-      // Mock getProjectFiles to also fail for cached files fallback
+
       mockDownloadService.getProjectFiles.mockResolvedValue(new Map());
 
       await (
@@ -662,7 +644,6 @@ describe('GitHubUploadHandler', () => {
 
   describe('getStoredFileChanges', () => {
     beforeEach(() => {
-      // Mock window.location
       Object.defineProperty(window, 'location', {
         value: {
           pathname: '/project/test-project',
@@ -677,7 +658,7 @@ describe('GitHubUploadHandler', () => {
         changes: {
           'file1.txt': { status: 'modified', path: 'file1.txt' },
         },
-        timestamp: Date.now() - 5 * 60 * 1000, // 5 minutes ago
+        timestamp: Date.now() - 5 * 60 * 1000,
         projectId: 'test-project',
         url: 'https://example.com/project/test-project',
       };
@@ -770,7 +751,7 @@ describe('GitHubUploadHandler', () => {
     test('clears and returns null for expired changes', async () => {
       const mockStoredData = {
         changes: { 'file1.txt': { status: 'modified', path: 'file1.txt' } },
-        timestamp: Date.now() - 15 * 60 * 1000, // 15 minutes ago (expired)
+        timestamp: Date.now() - 15 * 60 * 1000,
         projectId: 'test-project',
         url: 'https://example.com/project/test-project',
       };

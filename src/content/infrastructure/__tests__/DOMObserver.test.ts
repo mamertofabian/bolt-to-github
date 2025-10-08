@@ -11,17 +11,13 @@ describe('DOMObserver', () => {
   let mockObserverInstance: any;
 
   beforeEach(() => {
-    // Reset DOM
     document.body.innerHTML = '';
 
-    // Reset mocks
     vi.clearAllMocks();
 
-    // Mock callback functions
     mockCallback = vi.fn();
     mockOnError = vi.fn();
 
-    // Mock MutationObserver
     mockObserverInstance = {
       observe: vi.fn(),
       disconnect: vi.fn(),
@@ -29,10 +25,8 @@ describe('DOMObserver', () => {
 
     mockMutationObserver = vi.fn().mockImplementation(() => mockObserverInstance);
 
-    // Replace global MutationObserver
     global.MutationObserver = mockMutationObserver;
 
-    // Mock window.setTimeout and clearTimeout
     vi.spyOn(window, 'setTimeout').mockImplementation((_callback) => {
       const id = Math.random();
       return id as any;
@@ -122,7 +116,6 @@ describe('DOMObserver', () => {
 
   describe('DOM Body Availability', () => {
     test('observes immediately when body is available', () => {
-      // Body is available by default in JSDOM
       domObserver.start(mockCallback);
 
       expect(mockObserverInstance.observe).toHaveBeenCalledWith(document.body, {
@@ -132,7 +125,6 @@ describe('DOMObserver', () => {
     });
 
     test('waits for DOMContentLoaded when body is not available', () => {
-      // Mock missing body
       const originalBody = document.body;
       Object.defineProperty(document, 'body', {
         writable: true,
@@ -145,7 +137,6 @@ describe('DOMObserver', () => {
 
       expect(addEventListenerSpy).toHaveBeenCalledWith('DOMContentLoaded', expect.any(Function));
 
-      // Restore body
       Object.defineProperty(document, 'body', {
         writable: true,
         value: originalBody,
@@ -153,7 +144,6 @@ describe('DOMObserver', () => {
     });
 
     test('observes after DOMContentLoaded when body becomes available', () => {
-      // Mock missing body initially
       const originalBody = document.body;
       Object.defineProperty(document, 'body', {
         writable: true,
@@ -169,13 +159,11 @@ describe('DOMObserver', () => {
 
       domObserver.start(mockCallback);
 
-      // Body becomes available
       Object.defineProperty(document, 'body', {
         writable: true,
         value: originalBody,
       });
 
-      // Trigger DOMContentLoaded
       if (domContentLoadedCallback) {
         domContentLoadedCallback();
       }
@@ -212,7 +200,6 @@ describe('DOMObserver', () => {
 
       domObserver.start(mockCallback);
 
-      // Trigger mutation should set up timeout management
       if (mutationCallback) {
         mutationCallback();
       }
@@ -324,10 +311,8 @@ describe('DOMObserver', () => {
     });
 
     test('handles stop when observer is null', () => {
-      // Start and manually set observer to null to test edge case
       domObserver.start(mockCallback);
 
-      // Access private property for testing
       (domObserver as any).observer = null;
 
       expect(() => {
@@ -345,12 +330,10 @@ describe('DOMObserver', () => {
 
       domObserver.start(mockCallback);
 
-      // Trigger mutation should call clearTimeout if there's an existing timeout
       if (mutationCallback) {
         mutationCallback();
       }
 
-      // Should call setTimeout for the new timeout
       expect(window.setTimeout).toHaveBeenCalled();
     });
   });
@@ -386,7 +369,6 @@ describe('DOMObserver', () => {
     });
 
     test('handles missing MutationObserver gracefully', () => {
-      // Mock missing MutationObserver
       const originalMutationObserver = global.MutationObserver;
       delete (global as any).MutationObserver;
 
@@ -394,7 +376,6 @@ describe('DOMObserver', () => {
         new DOMObserver().start(mockCallback);
       }).toThrow();
 
-      // Restore MutationObserver
       global.MutationObserver = originalMutationObserver;
     });
   });
@@ -410,17 +391,14 @@ describe('DOMObserver', () => {
 
       domObserver.start(mockCallback);
 
-      // Clear initial callback call
       mockCallback.mockClear();
 
-      // Trigger multiple rapid mutations
       for (let i = 0; i < 5; i++) {
         if (mutationCallback) {
           mutationCallback();
         }
       }
 
-      // Should call setTimeout for each mutation
       expect(window.setTimeout).toHaveBeenCalled();
     });
 
@@ -429,15 +407,12 @@ describe('DOMObserver', () => {
       const returningCallback = vi.fn(() => 'result');
       const asyncCallback = vi.fn(async () => Promise.resolve());
 
-      // Test void callback
       domObserver.start(voidCallback);
       domObserver.stop();
 
-      // Test returning callback
       domObserver.start(returningCallback);
       domObserver.stop();
 
-      // Test async callback (should work as it's not awaited)
       domObserver.start(asyncCallback);
 
       expect(voidCallback).toHaveBeenCalled();
@@ -453,7 +428,6 @@ describe('DOMObserver', () => {
 
       domObserver.start(trackingCallback);
 
-      // Simulate mutation
       let mutationCallback: (() => void) | undefined;
       mockMutationObserver.mockImplementation((callback) => {
         mutationCallback = callback;

@@ -1,10 +1,4 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-/**
- * Focused Test Suite for UnifiedGitHubService
- *
- * This test file focuses on the most critical functionality with reliable testing patterns.
- * It covers the core use cases that work consistently with our test fixtures.
- */
 
 import type { Mock } from 'vitest';
 import { UnifiedGitHubService } from '../UnifiedGitHubService';
@@ -17,7 +11,6 @@ import {
   UnifiedGitHubServiceTestHelpers,
 } from './test-fixtures';
 
-// Mock the AuthenticationStrategyFactory with controlled behavior
 const mockPATStrategy = new MockPATAuthenticationStrategy(TestFixtures.TokenFixtures.pat.classic);
 const mockGitHubAppStrategy = new MockGitHubAppAuthenticationStrategy(
   TestFixtures.TokenFixtures.oauth.accessToken
@@ -27,7 +20,7 @@ const mockFactory = {
   createPATStrategy: vi.fn(async (token: string) => {
     const { MockPATAuthenticationStrategy } = await import('./test-fixtures/unified');
     const strategy = new MockPATAuthenticationStrategy(token);
-    // Apply test configurations that would have been set up
+
     if (token === TestFixtures.TokenFixtures.pat.invalid) {
       strategy.setShouldFail(true);
     }
@@ -51,11 +44,9 @@ describe('UnifiedGitHubService - Focused Tests', () => {
     mockFetch = new MockFetchResponseBuilder();
     mockStorage = new MockChromeStorage();
 
-    // Setup basic authentication and storage
     mockStorage.loadGitHubSettings();
     mockStorage.loadAuthenticationMethod('pat');
 
-    // Reset strategy mocks
     mockPATStrategy.reset();
     mockGitHubAppStrategy.reset();
 
@@ -124,11 +115,9 @@ describe('UnifiedGitHubService - Focused Tests', () => {
     });
 
     it('should identify fine-grained PAT tokens', async () => {
-      // Test the token format - fixture has TEST_ prefix for safety
       const fineGrainedToken = TestFixtures.TokenFixtures.pat.fineGrained;
       expect(fineGrainedToken.startsWith('TEST_github_pat_')).toBe(true);
 
-      // The service constructor will create a new strategy with the fine-grained token
       const service = new UnifiedGitHubService(fineGrainedToken);
       const isFineGrained = await service.isFineGrainedToken();
       expect(isFineGrained).toBe(true);
@@ -155,7 +144,6 @@ describe('UnifiedGitHubService - Focused Tests', () => {
     });
 
     it('should handle permission verification failures', async () => {
-      // Create a strategy that will fail permissions and override the mock factory temporarily
       const failingStrategy = new MockPATAuthenticationStrategy(
         TestFixtures.TokenFixtures.pat.classic
       );
@@ -288,7 +276,6 @@ describe('UnifiedGitHubService - Focused Tests', () => {
     });
 
     it('should initialize empty repo with .gitkeep instead of README', async () => {
-      // Set up mock for the .gitkeep file creation
       mockFetch.reset();
       mockFetch.mockPushFile('testuser', 'test-repo', '.gitkeep').build();
 
@@ -303,7 +290,6 @@ describe('UnifiedGitHubService - Focused Tests', () => {
         })
       );
 
-      // Verify it's NOT trying to create README.md
       expect(global.fetch).not.toHaveBeenCalledWith(
         expect.stringContaining('/contents/README.md'),
         expect.any(Object)
@@ -368,7 +354,6 @@ describe('UnifiedGitHubService - Focused Tests', () => {
       const service = new UnifiedGitHubService(TestFixtures.TokenFixtures.pat.classic);
       const issues = await service.getIssues('testuser', 'test-repo', 'open', true);
 
-      // Observable behavior: force refresh should still return valid issues
       expect(Array.isArray(issues)).toBe(true);
       expect(issues.length).toBeGreaterThan(0);
     });
@@ -468,15 +453,12 @@ describe('UnifiedGitHubService - Focused Tests', () => {
     });
 
     it('should handle network failures', async () => {
-      // Test that the service gracefully handles network failures
-      // Instead of expecting an exception, test that it returns false for network errors
       mockFetch.reset();
       const mockFetchFn = vi.fn().mockRejectedValue(new Error('Network request failed'));
       global.fetch = mockFetchFn;
 
       const service = new UnifiedGitHubService(TestFixtures.TokenFixtures.pat.classic);
 
-      // The service should handle the error and return false rather than throwing
       const exists = await service.repoExists('testuser', 'test-repo');
       expect(exists).toBe(false);
       expect(mockFetchFn).toHaveBeenCalled();

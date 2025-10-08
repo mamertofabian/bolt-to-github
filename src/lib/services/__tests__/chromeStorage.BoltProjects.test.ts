@@ -2,7 +2,6 @@ import type { BoltProject } from '$lib/types';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { ChromeStorageService } from '../chromeStorage';
 
-// Mock chrome.storage API
 const mockStorage = {
   local: {
     get: vi.fn(),
@@ -31,7 +30,7 @@ describe('ChromeStorageService - BoltProjects', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     service = new ChromeStorageService();
-    // Reset lastError
+
     chrome.runtime.lastError = undefined;
   });
 
@@ -273,7 +272,6 @@ describe('ChromeStorageService - BoltProjects', () => {
         callback?.();
       });
 
-      // Should not throw
       await service.deleteBoltProject('non-existent');
 
       expect(mockStorage.local.set).toHaveBeenCalledWith(

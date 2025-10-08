@@ -5,7 +5,6 @@ import type { MessageHandler } from '../MessageHandler';
 import type { NotificationOptions } from '../types/UITypes';
 import { UIManager } from '../UIManager';
 
-// Mock WhatsNewModal component
 vi.mock('$lib/components/WhatsNewModal.svelte', () => ({
   default: vi.fn().mockImplementation(function (this: any, options: any) {
     this.target = options.target;
@@ -16,7 +15,6 @@ vi.mock('$lib/components/WhatsNewModal.svelte', () => ({
   }),
 }));
 
-// Mock modules with proper method implementations
 vi.mock('../managers/NotificationManager', () => {
   return {
     NotificationManager: vi.fn().mockImplementation(() => ({
@@ -139,7 +137,6 @@ describe('UIManager', () => {
   let mockMessageHandler: Mocked<MessageHandler>;
 
   beforeEach(() => {
-    // Reset singleton between tests
     UIManager.resetInstance();
 
     mockMessageHandler = {
@@ -150,10 +147,8 @@ describe('UIManager', () => {
       updatePort: vi.fn(),
     } as any;
 
-    // Setup DOM
     document.body.innerHTML = '<div></div>';
 
-    // Mock window.location for SPA navigation tests
     Object.defineProperty(window, 'location', {
       value: {
         href: 'https://bolt.new/~/sb1-abc123',
@@ -163,7 +158,6 @@ describe('UIManager', () => {
       writable: true,
     });
 
-    // Mock history for SPA navigation
     Object.defineProperty(window, 'history', {
       value: {
         pushState: vi.fn(),
@@ -229,7 +223,6 @@ describe('UIManager', () => {
     it('initializes all required managers during construction', () => {
       const uiManager = UIManager.initialize(mockMessageHandler);
 
-      // Access private properties for testing initialization
       const privateManager = uiManager as any;
 
       expect(privateManager.stateManager).toBeDefined();
@@ -250,7 +243,7 @@ describe('UIManager', () => {
       const stateManager = (uiManager as any).stateManager;
 
       expect(stateManager).toBeDefined();
-      // Verify state manager has required methods
+
       expect(typeof stateManager.addListener).toBe('function');
       expect(typeof stateManager.removeListener).toBe('function');
       expect(typeof stateManager.getState).toBe('function');
@@ -271,7 +264,6 @@ describe('UIManager', () => {
     });
 
     it('initializes GitHub button manager', () => {
-      // Mock location to be on a project page
       Object.defineProperty(window, 'location', {
         value: {
           href: 'https://bolt.new/~/test-project',
@@ -279,7 +271,6 @@ describe('UIManager', () => {
         writable: true,
       });
 
-      // Mock DOM state for button initialization
       document.body.innerHTML = `
         <div id="root">
           <div class="flex flex-col h-full w-full">
@@ -300,12 +291,10 @@ describe('UIManager', () => {
 
       const uiManager = UIManager.initialize(mockMessageHandler);
 
-      // Get the DOM observer callback and trigger it
       const domObserver = (uiManager as any).domObserver;
       const startCall = domObserver.start.mock.calls[0];
       const observerCallback = startCall[0];
 
-      // Trigger the callback to simulate DOM change
       observerCallback();
 
       const githubButtonManager = (uiManager as any).githubButtonManager;
@@ -396,7 +385,6 @@ describe('UIManager', () => {
     it('detects Bolt.new project pages correctly', () => {
       const isOnProjectPage = (uiManager as any).isOnProjectPage();
 
-      // With default URL setup (https://bolt.new/~/sb1-abc123)
       expect(isOnProjectPage).toBe(true);
     });
 
@@ -447,10 +435,8 @@ describe('UIManager', () => {
     it('handles URL changes correctly', () => {
       const handleUrlChange = vi.spyOn(uiManager as any, 'handleUrlChange');
 
-      // Simulate history pushState call (which should trigger our listener)
       window.history.pushState({}, '', '/~/new-project');
 
-      // Since we can't easily test the actual override, we'll test the handler directly
       (uiManager as any).handleUrlChange();
 
       expect(handleUrlChange).toHaveBeenCalled();
@@ -537,13 +523,11 @@ describe('UIManager', () => {
     });
 
     it('restores original history functions', () => {
-      // Get references to the original functions before UIManager modifies them
       const originalPushState = (uiManager as any).originalPushState;
       const originalReplaceState = (uiManager as any).originalReplaceState;
 
       uiManager.cleanup();
 
-      // History functions should be restored to their original values
       expect(window.history.pushState).toBe(originalPushState);
       expect(window.history.replaceState).toBe(originalReplaceState);
     });
@@ -558,8 +542,6 @@ describe('UIManager', () => {
 
       expect(reinitializeSpy).toHaveBeenCalled();
 
-      // GitHub button manager initialize is called conditionally via DOM observer
-      // Let's verify the DOM observer was restarted instead
       const domObserver = (uiManager as any).domObserver;
       expect(domObserver.start).toHaveBeenCalled();
     });
@@ -567,14 +549,13 @@ describe('UIManager', () => {
 
   describe('Error Handling', () => {
     it('handles initialization errors gracefully', () => {
-      // Don't throw errors during initialization
       expect(() => {
         UIManager.initialize(mockMessageHandler);
       }).not.toThrow();
     });
 
     it('handles missing DOM elements gracefully', () => {
-      document.body.innerHTML = ''; // Empty DOM
+      document.body.innerHTML = '';
 
       expect(() => {
         UIManager.initialize(mockMessageHandler);

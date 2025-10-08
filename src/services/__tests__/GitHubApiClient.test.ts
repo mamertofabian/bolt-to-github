@@ -2,7 +2,6 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { GitHubApiClient, GitHubApiError } from '../GitHubApiClient';
 
-// Create a mock for the global fetch function
 global.fetch = vi.fn().mockImplementation(() =>
   Promise.resolve({
     ok: true,
@@ -12,7 +11,6 @@ global.fetch = vi.fn().mockImplementation(() =>
   })
 ) as unknown as typeof global.fetch;
 
-// Helper to create mock responses
 const createMockResponse = (status: number, data: any, headers: Record<string, string> = {}) => {
   const headersObj = new Headers();
   Object.entries(headers).forEach(([key, value]) => {
@@ -32,24 +30,19 @@ describe('GitHubApiClient', () => {
   let client: GitHubApiClient;
 
   beforeEach(() => {
-    // Create a new client instance before each test
     client = new GitHubApiClient('test-token');
 
-    // Reset the fetch mock
     vi.clearAllMocks();
   });
 
   describe('request', () => {
     it('should make a successful request', async () => {
-      // Arrange
       const mockData = { name: 'test-repo' };
       const mockResponse = createMockResponse(200, mockData);
       (global.fetch as ReturnType<typeof vi.fn>).mockResolvedValueOnce(mockResponse);
 
-      // Act
       const result = await client.request('GET', '/repos/test-user/test-repo');
 
-      // Assert
       expect(result).toEqual(mockData);
       expect(global.fetch).toHaveBeenCalledWith(
         'https://api.github.com/repos/test-user/test-repo',
@@ -64,24 +57,19 @@ describe('GitHubApiClient', () => {
     });
 
     it('should handle 204 No Content responses', async () => {
-      // Arrange
       const mockResponse = createMockResponse(204, null);
       (global.fetch as ReturnType<typeof vi.fn>).mockResolvedValueOnce(mockResponse);
 
-      // Act
       const result = await client.request('DELETE', '/repos/test-user/test-repo');
 
-      // Assert
       expect(result).toBeNull();
     });
 
     it('should throw GitHubApiError for error responses', async () => {
-      // Arrange
       const errorData = { message: 'Not Found' };
       const mockResponse = createMockResponse(404, errorData);
       (global.fetch as ReturnType<typeof vi.fn>).mockResolvedValueOnce(mockResponse);
 
-      // Act
       let error: any;
       try {
         await client.request('GET', '/repos/test-user/non-existent');
@@ -89,7 +77,6 @@ describe('GitHubApiClient', () => {
         error = e;
       }
 
-      // Assert
       expect(error).toBeDefined();
       expect(error).toBeInstanceOf(GitHubApiError);
       expect(error.status).toBe(404);
@@ -97,36 +84,30 @@ describe('GitHubApiClient', () => {
     });
 
     it('should handle rate limiting and retry', async () => {
-      // Arrange
       const rateLimitResponse = createMockResponse(
         403,
         { message: 'API rate limit exceeded' },
         {
           'x-ratelimit-remaining': '0',
-          'x-ratelimit-reset': `${Math.floor(Date.now() / 1000) + 1}`, // 1 second from now
+          'x-ratelimit-reset': `${Math.floor(Date.now() / 1000) + 1}`,
         }
       );
 
       const successResponse = createMockResponse(200, { success: true });
 
-      // First call hits rate limit, second call succeeds
       (global.fetch as ReturnType<typeof vi.fn>)
         .mockResolvedValueOnce(rateLimitResponse)
         .mockResolvedValueOnce(successResponse);
 
-      // Act
       const result = await client.request('GET', '/user');
 
-      // Assert
       expect(result).toEqual({ success: true });
       expect(global.fetch).toHaveBeenCalledTimes(2);
     });
 
     it('should handle network errors', async () => {
-      // Arrange
       (global.fetch as ReturnType<typeof vi.fn>).mockRejectedValueOnce(new Error('Network error'));
 
-      // Act & Assert
       await expect(client.request('GET', '/user')).rejects.toThrow(
         'GitHub API request failed: Network error'
       );
@@ -135,7 +116,6 @@ describe('GitHubApiClient', () => {
 
   describe('getRateLimit', () => {
     it('should fetch rate limit information', async () => {
-      // Arrange
       const mockData = {
         resources: {
           core: { limit: 5000, used: 0, remaining: 5000, reset: 1589720233 },
@@ -147,10 +127,8 @@ describe('GitHubApiClient', () => {
       const mockResponse = createMockResponse(200, mockData);
       (global.fetch as ReturnType<typeof vi.fn>).mockResolvedValueOnce(mockResponse);
 
-      // Act
       const result = await client.getRateLimit();
 
-      // Assert
       expect(result).toEqual(mockData);
       expect(global.fetch).toHaveBeenCalledWith(
         'https://api.github.com/rate_limit',

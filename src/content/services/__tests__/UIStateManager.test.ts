@@ -49,13 +49,11 @@ describe('UIStateManager', () => {
     });
 
     it('updates button processing state based on upload status', () => {
-      // Test uploading state sets processing
       stateManager.setUploadStatus({ status: 'uploading', progress: 50, message: 'Uploading...' });
 
       let buttonState = stateManager.getButtonState();
       expect(buttonState.isProcessing).toBe(true);
 
-      // Test completion states clear processing
       stateManager.setUploadStatus({ status: 'success', progress: 100, message: 'Complete' });
 
       buttonState = stateManager.getButtonState();
@@ -94,26 +92,22 @@ describe('UIStateManager', () => {
     });
 
     it('handles specialized loading states', () => {
-      // Test detecting changes state
       stateManager.setButtonDetectingChanges();
       let buttonState = stateManager.getButtonState();
       expect(buttonState.isProcessing).toBe(true);
       expect(buttonState.loadingState).toBe('detecting-changes');
 
-      // Test pushing state
       stateManager.setButtonPushing();
       buttonState = stateManager.getButtonState();
       expect(buttonState.isProcessing).toBe(true);
       expect(buttonState.loadingState).toBe('pushing');
 
-      // Test custom loading state
       stateManager.setButtonLoadingState('Custom loading...');
       buttonState = stateManager.getButtonState();
       expect(buttonState.isProcessing).toBe(true);
       expect(buttonState.loadingState).toBe('custom');
       expect(buttonState.loadingText).toBe('Custom loading...');
 
-      // Test reset
       stateManager.resetButtonLoadingState();
       buttonState = stateManager.getButtonState();
       expect(buttonState.isProcessing).toBe(false);
@@ -177,7 +171,6 @@ describe('UIStateManager', () => {
       expect(dropdownState.isVisible).toBe(true);
       expect(dropdownState.position).toEqual(position);
 
-      // Position should be cleared when dropdown is hidden
       stateManager.setDropdownVisible(false);
       dropdownState = stateManager.getDropdownState();
       expect(dropdownState.isVisible).toBe(false);
@@ -221,7 +214,6 @@ describe('UIStateManager', () => {
       expect(listener1).toHaveBeenCalledTimes(1);
       expect(listener2).toHaveBeenCalledTimes(1);
 
-      // Test listener removal
       stateManager.removeListener(listener1);
       listener1.mockClear();
       listener2.mockClear();
@@ -249,7 +241,6 @@ describe('UIStateManager', () => {
       expect(newState.uploadStatus).toEqual(uploadStatus);
       expect(previousState.uploadStatus.status).toBe('idle');
 
-      // Verify state objects are different (not same reference)
       expect(newState).not.toBe(previousState);
     });
 
@@ -257,7 +248,6 @@ describe('UIStateManager', () => {
       const listener = vi.fn();
       stateManager.addListener(listener);
 
-      // This should not cause infinite recursion
       stateManager.setButtonState(true);
 
       expect(listener).toHaveBeenCalledTimes(1);
@@ -268,7 +258,6 @@ describe('UIStateManager', () => {
     it('validates state correctly', () => {
       expect(stateManager.isValidState()).toBe(true);
 
-      // Set some state
       stateManager.setButtonState(true);
       stateManager.setUploadStatus({ status: 'uploading', progress: 50, message: 'Test' });
 
@@ -287,16 +276,13 @@ describe('UIStateManager', () => {
 
   describe('State Reset and Cleanup', () => {
     it('resets to initial state', () => {
-      // Modify state
       stateManager.setButtonState(true);
       stateManager.setUploadStatus({ status: 'uploading', progress: 50, message: 'Test' });
       stateManager.addNotification('success');
       stateManager.setDropdownVisible(true);
 
-      // Reset
       stateManager.reset();
 
-      // Verify reset to initial state
       const state = stateManager.getState();
       expect(state.buttonState.isValid).toBe(false);
       expect(state.uploadStatus.status).toBe('idle');
@@ -311,7 +297,6 @@ describe('UIStateManager', () => {
       stateManager.cleanup();
       stateManager.setButtonState(true);
 
-      // Listener should not be called after cleanup
       expect(listener).not.toHaveBeenCalled();
     });
   });
@@ -321,7 +306,6 @@ describe('UIStateManager', () => {
       const state1 = stateManager.getState();
       const state2 = stateManager.getState();
 
-      // Should be different objects (deep copies)
       expect(state1).not.toBe(state2);
       expect(state1).toEqual(state2);
     });
@@ -329,11 +313,9 @@ describe('UIStateManager', () => {
     it('modifying returned state does not affect internal state', () => {
       const state = stateManager.getState();
 
-      // Try to modify returned state
       state.buttonState.isValid = true;
       state.uploadStatus.status = 'uploading';
 
-      // Internal state should be unchanged
       const internalState = stateManager.getState();
       expect(internalState.buttonState.isValid).toBe(false);
       expect(internalState.uploadStatus.status).toBe('idle');

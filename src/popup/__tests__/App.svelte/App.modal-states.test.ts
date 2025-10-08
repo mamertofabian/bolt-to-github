@@ -5,20 +5,6 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { createAppChromeMocks } from '../test-helpers/chrome-mocks';
 
-/**
- * App.svelte Modal State Management Tests
- *
- * These tests verify modal state management behavior through UI state actions.
- * Rather than manipulating state objects directly, we test the actual behaviors
- * that would occur when modals are shown/hidden through user interactions.
- *
- * Following unit-testing-rules.md:
- * - Test behavior through actions, not by manipulating state objects
- * - Test actual outcomes, not implementation details
- * - Verify what happens when operations complete
- */
-
-// Import UI state actions and mocks
 import {
   mockUiStateActions,
   mockPremiumStatusActions,

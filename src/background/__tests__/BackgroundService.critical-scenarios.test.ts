@@ -1,17 +1,3 @@
-/**
- * BackgroundService Critical Scenarios - Observable Behaviors
- *
- * Tests critical user-facing behaviors that could break extension functionality.
- * Each test verifies observable outcomes (state changes, messages, errors) rather than
- * implementation details, following unit testing best practices.
- *
- * Focus: Critical business logic scenarios unique to this file
- * - Port connection lifecycle and recovery
- * - ZIP upload workflows with state verification
- * - Authentication switching between PAT and GitHub App
- * - Error recovery and resilience
- */
-
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { BackgroundServiceTestSuite } from '../test-fixtures';
 import { MessageFixtures } from '../test-fixtures/BackgroundServiceTestFixtures';

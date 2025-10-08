@@ -17,11 +17,9 @@ import type {
   TokenValidationResult,
 } from '../types/authentication';
 
-// Mock the GitHubApiClient
 vi.mock('../GitHubApiClient');
 const MockedGitHubApiClient = GitHubApiClient as MockedClass<typeof GitHubApiClient>;
 
-// Create proper mock implementations for the authentication strategies
 const createMockPATStrategy = (): IAuthenticationStrategy => ({
   type: 'pat' as AuthenticationType,
   isConfigured: vi.fn().mockResolvedValue(true),
@@ -62,7 +60,6 @@ const createMockGitHubAppStrategy = (): IAuthenticationStrategy => ({
   getUserInfo: vi.fn().mockResolvedValue({ login: 'testuser', id: 123, avatar_url: 'test.jpg' }),
 });
 
-// Mock AuthenticationStrategyFactory
 vi.mock('../AuthenticationStrategyFactory', () => ({
   AuthenticationStrategyFactory: {
     getInstance: vi.fn(() => ({
@@ -81,16 +78,13 @@ describe('UnifiedGitHubService Feedback', () => {
   beforeEach(() => {
     vi.clearAllMocks();
 
-    // Create a mock instance
     mockApiClient = {
       request: vi.fn(),
       getRateLimit: vi.fn(),
     } as unknown as Mocked<GitHubApiClient>;
 
-    // Mock the constructor to return our mock instance
     MockedGitHubApiClient.mockImplementation(() => mockApiClient);
 
-    // Setup fetch mock
     mockFetch = vi.fn() as MockedFunction<typeof fetch>;
     global.fetch = mockFetch;
 
@@ -101,7 +95,6 @@ describe('UnifiedGitHubService Feedback', () => {
     it('should create an issue with correct parameters', async () => {
       const mockIssueResponse = { id: 123, number: 1, title: 'Test Issue' };
 
-      // Mock fetch to return a proper Response-like object
       mockFetch.mockResolvedValue({
         ok: true,
         json: vi.fn().mockResolvedValue(mockIssueResponse),
@@ -136,7 +129,6 @@ describe('UnifiedGitHubService Feedback', () => {
 
   describe('submitFeedback', () => {
     beforeEach(() => {
-      // Reset fetch mock for each test
       mockFetch.mockClear();
     });
 

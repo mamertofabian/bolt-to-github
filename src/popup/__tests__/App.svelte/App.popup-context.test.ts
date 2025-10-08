@@ -6,13 +6,6 @@ import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { createAppChromeMocks } from '../test-helpers/chrome-mocks';
 import { mockUiStateActions, resetAllStoreMocks } from '../test-helpers/store-mocks';
 
-/**
- * App.svelte Popup Context Handling Tests
- *
- * Tests verify popup context storage and UI action behaviors.
- * Following unit-testing-rules.md - test actual behavior through actions and storage.
- */
-
 describe('App.svelte - Popup Context Handling', () => {
   let chromeMocks: ReturnType<typeof createAppChromeMocks>;
 

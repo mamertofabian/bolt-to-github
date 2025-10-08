@@ -5,11 +5,9 @@ import { beforeEach, describe, expect, it, type Mock, vi } from 'vitest';
 import { SupabaseAuthService } from '../../content/services/SupabaseAuthService';
 import { BoltProjectSyncService } from '../BoltProjectSyncService';
 
-// Mock dependencies
 vi.mock('$lib/services/chromeStorage');
 vi.mock('../../content/services/SupabaseAuthService');
 
-// Mock fetch
 global.fetch = vi.fn();
 
 describe('BoltProjectSyncService', () => {
@@ -22,13 +20,11 @@ describe('BoltProjectSyncService', () => {
   beforeEach(() => {
     vi.clearAllMocks();
 
-    // Setup ChromeStorageService mock
     mockStorageGet = vi.fn();
     mockStorageSet = vi.fn();
     ChromeStorageService.prototype.get = mockStorageGet;
     ChromeStorageService.prototype.set = mockStorageSet;
 
-    // Setup static ChromeStorageService methods
     vi.mocked(ChromeStorageService.getGitHubSettings).mockResolvedValue({
       githubToken: '',
       repoOwner: '',
@@ -36,7 +32,6 @@ describe('BoltProjectSyncService', () => {
     });
     vi.mocked(ChromeStorageService.saveGitHubSettings).mockResolvedValue(undefined);
 
-    // Setup SupabaseAuthService mock
     mockAuthGetToken = vi.fn();
     mockAuthGetState = vi.fn();
     const mockAuthInstance = {
@@ -47,7 +42,6 @@ describe('BoltProjectSyncService', () => {
       mockAuthInstance as unknown as SupabaseAuthService
     );
 
-    // Mock chrome storage for auth token
     global.chrome = {
       storage: {
         local: {
@@ -68,10 +62,10 @@ describe('BoltProjectSyncService', () => {
           project_name: 'test-project',
           github_repo_name: 'test-repo',
           github_repo_owner: 'test-user',
-          github_branch: 'main', // Backend field
+          github_branch: 'main',
           is_private: false,
           last_modified: '2024-01-01T00:00:00Z',
-          // Local compatibility fields
+
           repoName: 'test-repo',
           branch: 'main',
           version: 1,
@@ -104,10 +98,10 @@ describe('BoltProjectSyncService', () => {
           project_name: 'test-project',
           github_repo_name: 'test-repo',
           github_repo_owner: 'test-user',
-          github_branch: 'main', // Backend field
+          github_branch: 'main',
           is_private: false,
           last_modified: '2024-01-01T00:00:00Z',
-          // Local compatibility fields
+
           repoName: 'test-repo',
           branch: 'main',
           version: 1,
@@ -187,14 +181,12 @@ describe('BoltProjectSyncService', () => {
           body: JSON.stringify({
             localProjects: [
               {
-                // Only backend-compatible fields should be sent
                 bolt_project_id: 'bolt-1',
                 project_name: 'test-project',
                 github_repo_owner: 'test-user',
                 github_repo_name: 'test-repo',
                 is_private: false,
                 last_modified: '2024-01-01T00:00:00Z',
-                // Local fields should be excluded: id, repoName, branch, version
               },
             ],
             lastSyncTimestamp: '2024-01-01T00:00:00Z',
@@ -210,7 +202,6 @@ describe('BoltProjectSyncService', () => {
     });
 
     it('should handle authentication errors', async () => {
-      // Mock chrome storage to return no token
       (global.chrome.storage.local.get as any).mockResolvedValue({});
 
       await expect(service.syncWithBackend()).rejects.toThrow('User not authenticated');
@@ -270,10 +261,8 @@ describe('BoltProjectSyncService', () => {
 
   describe('syncProjectsFromLegacyFormat', () => {
     it('should migrate legacy projects to sync format', async () => {
-      // Setup: No existing bolt projects
       mockStorageGet.mockResolvedValue({ boltProjects: [] });
 
-      // Setup: Legacy projects exist
       vi.mocked(ChromeStorageService.getGitHubSettings).mockResolvedValue({
         githubToken: 'test-token',
         repoOwner: 'test-owner',
@@ -290,7 +279,6 @@ describe('BoltProjectSyncService', () => {
         },
       });
 
-      // Trigger migration by calling performOutwardSync
       mockAuthGetState.mockReturnValue({
         isAuthenticated: true,
         user: {
@@ -319,7 +307,6 @@ describe('BoltProjectSyncService', () => {
 
       await service.performOutwardSync();
 
-      // Verify migration occurred - saveLocalProjects should be called with migrated data
       expect(mockStorageSet).toHaveBeenCalledWith(
         expect.objectContaining({
           boltProjects: expect.arrayContaining([
@@ -351,11 +338,10 @@ describe('BoltProjectSyncService', () => {
     });
 
     it('should update existing bolt projects missing project_name field', async () => {
-      // Setup: Existing bolt projects without project_name field
       const incompleteProject = {
         id: 'incomplete-project',
         bolt_project_id: 'incomplete-project',
-        // project_name is missing!
+
         github_repo_name: 'incomplete-repo',
         github_repo_owner: 'test-owner',
         is_private: false,
@@ -395,14 +381,13 @@ describe('BoltProjectSyncService', () => {
 
       await service.performOutwardSync();
 
-      // Verify that saveLocalProjects was called to update the incomplete project
       expect(mockStorageSet).toHaveBeenCalledWith(
         expect.objectContaining({
           boltProjects: expect.arrayContaining([
             expect.objectContaining({
               id: 'incomplete-project',
               bolt_project_id: 'incomplete-project',
-              project_name: 'incomplete-project', // Should be added
+              project_name: 'incomplete-project',
               github_repo_name: 'incomplete-repo',
               github_repo_owner: 'test-owner',
               is_private: false,
@@ -415,7 +400,6 @@ describe('BoltProjectSyncService', () => {
     });
 
     it('should sync projects from projectSettings and remove server-only projects for outward sync', async () => {
-      // Setup: Existing bolt projects (server-only project that should be removed during outward sync)
       mockStorageGet.mockResolvedValue({
         boltProjects: [
           {
@@ -428,7 +412,6 @@ describe('BoltProjectSyncService', () => {
         ],
       });
 
-      // Setup: Legacy projects exist (should be migrated if not already in boltProjects)
       vi.mocked(ChromeStorageService.getGitHubSettings).mockResolvedValue({
         githubToken: 'test-token',
         repoOwner: 'test-owner',
@@ -468,8 +451,6 @@ describe('BoltProjectSyncService', () => {
 
       await service.performOutwardSync();
 
-      // Verify migration happened - only legacy projects should be saved for outward sync (extension is king)
-      // Server-only projects should be removed to sync deletions properly
       expect(mockStorageSet).toHaveBeenCalledWith(
         expect.objectContaining({
           boltProjects: expect.arrayContaining([
@@ -483,7 +464,6 @@ describe('BoltProjectSyncService', () => {
         })
       );
 
-      // Verify that the server-only project was NOT included (extension is source of truth)
       const savedProjects =
         mockStorageSet.mock.calls.find((call) => call[0]?.boltProjects)?.[0]?.boltProjects || [];
 
@@ -497,7 +477,6 @@ describe('BoltProjectSyncService', () => {
     });
 
     it('should preserve server-only projects for non-outward sync operations', async () => {
-      // Setup: Existing bolt projects (server-only project that should be preserved for inward sync)
       mockStorageGet.mockResolvedValue({
         boltProjects: [
           {
@@ -510,7 +489,6 @@ describe('BoltProjectSyncService', () => {
         ],
       });
 
-      // Setup: Legacy projects exist (should be migrated)
       vi.mocked(ChromeStorageService.getGitHubSettings).mockResolvedValue({
         githubToken: 'test-token',
         repoOwner: 'test-owner',
@@ -548,13 +526,11 @@ describe('BoltProjectSyncService', () => {
         json: () => Promise.resolve(mockResponse),
       });
 
-      // Mock shouldPerformInwardSync to return true for inward sync
       const spyShouldPerformInwardSync = vi.spyOn(service, 'shouldPerformInwardSync');
       spyShouldPerformInwardSync.mockResolvedValue(true);
 
       await service.performInwardSync();
 
-      // Verify migration happened - both legacy and server-only projects should be saved for inward sync
       expect(mockStorageSet).toHaveBeenCalledWith(
         expect.objectContaining({
           boltProjects: expect.arrayContaining([
@@ -578,10 +554,8 @@ describe('BoltProjectSyncService', () => {
     });
 
     it('should handle migration failure gracefully', async () => {
-      // Setup: No existing bolt projects
       mockStorageGet.mockResolvedValue({ boltProjects: [] });
 
-      // Setup: ChromeStorageService.getGitHubSettings throws
       vi.mocked(ChromeStorageService.getGitHubSettings).mockRejectedValue(
         new Error('Storage error')
       );
@@ -612,12 +586,10 @@ describe('BoltProjectSyncService', () => {
         json: () => Promise.resolve(mockResponse),
       });
 
-      // Should not throw - migration failure should be handled gracefully
       await expect(service.performOutwardSync()).resolves.not.toThrow();
     });
 
     it('should detect fresh install and preserve server projects during outward sync', async () => {
-      // Setup server project that should be preserved
       const serverProject: BoltProject = {
         id: 'server-project',
         bolt_project_id: 'server-project',
@@ -633,39 +605,30 @@ describe('BoltProjectSyncService', () => {
         sync_status: 'synced',
       };
 
-      // Mock fresh install conditions - minimal setup
       (global as any).chrome.storage.local.get = vi.fn().mockResolvedValue({
-        extensionInstallDate: Date.now() - 2 * 24 * 60 * 60 * 1000, // 2 days ago
-        totalProjectsCreated: 1, // Low usage = fresh install
+        extensionInstallDate: Date.now() - 2 * 24 * 60 * 60 * 1000,
+        totalProjectsCreated: 1,
       });
 
-      // Mock empty legacy storage (indicates fresh install)
       vi.mocked(ChromeStorageService.getGitHubSettings).mockResolvedValue({
         githubToken: 'test-token',
         repoOwner: 'test-owner',
-        projectSettings: {}, // Empty = fresh install
+        projectSettings: {},
       });
 
-      // Mock the storage service methods directly to avoid conflicts
       vi.spyOn(service as any, 'getLastSyncTimestamp').mockResolvedValue(null);
       vi.spyOn(service as any, 'getLocalProjects').mockResolvedValue([serverProject]);
       const saveLocalProjectsSpy = vi
         .spyOn(service as any, 'saveLocalProjects')
         .mockResolvedValue(undefined);
 
-      // Test that fresh install detection works
       const isFresh = await service['isFreshInstall']();
       expect(isFresh).toBe(true);
 
-      // Call syncProjectsFromLegacyFormat
       await service['syncProjectsFromLegacyFormat'](true);
 
-      // For fresh install with empty legacy storage, saveLocalProjects should NOT be called
-      // because the projects are already preserved and don't need to be re-saved
       expect(saveLocalProjectsSpy).not.toHaveBeenCalled();
 
-      // Verify that the getLocalProjects mock still returns the server project
-      // (indicating the server project was preserved and not deleted)
       const finalProjects = await service['getLocalProjects']();
       expect(finalProjects).toBeDefined();
       expect(finalProjects.length).toBe(1);
@@ -676,7 +639,6 @@ describe('BoltProjectSyncService', () => {
 
   describe('syncBackToActiveStorage', () => {
     it('should sync bolt projects back to project settings format', async () => {
-      // Setup: Bolt projects exist
       const mockBoltProjects: BoltProject[] = [
         {
           id: 'project-1',
@@ -684,9 +646,9 @@ describe('BoltProjectSyncService', () => {
           project_name: 'test-project-1',
           github_repo_name: 'test-repo-1',
           github_repo_owner: 'test-owner',
-          github_branch: 'main', // Backend field
+          github_branch: 'main',
           is_private: false,
-          // Local compatibility fields
+
           repoName: 'test-repo-1',
           branch: 'main',
         },
@@ -695,9 +657,9 @@ describe('BoltProjectSyncService', () => {
           bolt_project_id: 'bolt-2',
           project_name: 'test-project-2',
           github_repo_name: 'test-repo-2',
-          github_branch: 'develop', // Backend field
+          github_branch: 'develop',
           is_private: true,
-          // Local compatibility fields
+
           repoName: 'test-repo-2',
           branch: 'develop',
         },
@@ -705,7 +667,6 @@ describe('BoltProjectSyncService', () => {
 
       mockStorageGet.mockResolvedValue({ boltProjects: mockBoltProjects });
 
-      // Setup: Current active storage
       vi.mocked(ChromeStorageService.getGitHubSettings).mockResolvedValue({
         githubToken: 'test-token',
         repoOwner: 'test-owner',
@@ -720,7 +681,6 @@ describe('BoltProjectSyncService', () => {
       const mockSaveGitHubSettings = vi.fn();
       vi.mocked(ChromeStorageService.saveGitHubSettings).mockImplementation(mockSaveGitHubSettings);
 
-      // Trigger sync back by calling performInwardSync
       mockAuthGetState.mockReturnValue({
         isAuthenticated: true,
         user: {
@@ -747,13 +707,11 @@ describe('BoltProjectSyncService', () => {
         json: () => Promise.resolve(mockResponse),
       });
 
-      // Mock shouldPerformInwardSync to return true
       const spyShouldPerformInwardSync = vi.spyOn(service, 'shouldPerformInwardSync');
       spyShouldPerformInwardSync.mockResolvedValue(true);
 
       await service.performInwardSync();
 
-      // Verify that saveGitHubSettings was called with updated project settings
       expect(mockSaveGitHubSettings).toHaveBeenCalledWith(
         expect.objectContaining({
           githubToken: 'test-token',
@@ -762,16 +720,16 @@ describe('BoltProjectSyncService', () => {
             'bolt-1': {
               repoName: 'test-repo-1',
               branch: 'main',
-              projectTitle: 'test-project-1', // Uses project_name from BoltProject
+              projectTitle: 'test-project-1',
               is_private: false,
             },
             'bolt-2': {
               repoName: 'test-repo-2',
               branch: 'develop',
-              projectTitle: 'test-project-2', // Uses project_name from BoltProject
+              projectTitle: 'test-project-2',
               is_private: true,
             },
-            // Should preserve existing projects
+
             'old-project': {
               repoName: 'old-repo',
               branch: 'old-branch',
@@ -784,7 +742,6 @@ describe('BoltProjectSyncService', () => {
     });
 
     it('should handle reverse sync failure gracefully', async () => {
-      // Setup: Bolt projects exist
       mockStorageGet.mockResolvedValue({
         boltProjects: [
           {
@@ -796,7 +753,6 @@ describe('BoltProjectSyncService', () => {
         ],
       });
 
-      // Setup: ChromeStorageService.getGitHubSettings throws
       vi.mocked(ChromeStorageService.getGitHubSettings).mockRejectedValue(
         new Error('Storage error')
       );
@@ -827,18 +783,15 @@ describe('BoltProjectSyncService', () => {
         json: () => Promise.resolve(mockResponse),
       });
 
-      // Mock shouldPerformInwardSync to return true
       const spyShouldPerformInwardSync = vi.spyOn(service, 'shouldPerformInwardSync');
       spyShouldPerformInwardSync.mockResolvedValue(true);
 
-      // Should not throw - reverse sync failure should be handled gracefully
       await expect(service.performInwardSync()).resolves.not.toThrow();
 
       spyShouldPerformInwardSync.mockRestore();
     });
 
     it('should skip reverse sync when no bolt projects exist', async () => {
-      // Setup: No bolt projects
       mockStorageGet.mockResolvedValue({ boltProjects: [] });
 
       mockAuthGetState.mockReturnValue({
@@ -870,13 +823,11 @@ describe('BoltProjectSyncService', () => {
       const mockSaveGitHubSettings = vi.fn();
       vi.mocked(ChromeStorageService.saveGitHubSettings).mockImplementation(mockSaveGitHubSettings);
 
-      // Mock shouldPerformInwardSync to return true
       const spyShouldPerformInwardSync = vi.spyOn(service, 'shouldPerformInwardSync');
       spyShouldPerformInwardSync.mockResolvedValue(true);
 
       await service.performInwardSync();
 
-      // Verify that saveGitHubSettings was not called (no projects to sync back)
       expect(mockSaveGitHubSettings).not.toHaveBeenCalled();
 
       spyShouldPerformInwardSync.mockRestore();
@@ -1060,10 +1011,8 @@ describe('BoltProjectSyncService', () => {
     });
 
     it('should return true when only one project exists in current storage format (simplified approach)', async () => {
-      // No sync format projects
       mockStorageGet.mockResolvedValue({ boltProjects: [] });
 
-      // Mock existing project settings in current format (1 project = allow sync)
       vi.mocked(ChromeStorageService.getGitHubSettings).mockResolvedValue({
         githubToken: 'test-token',
         repoOwner: 'test-owner',
@@ -1082,10 +1031,8 @@ describe('BoltProjectSyncService', () => {
     });
 
     it('should return false when multiple projects exist in current storage format', async () => {
-      // No sync format projects
       mockStorageGet.mockResolvedValue({ boltProjects: [] });
 
-      // Mock multiple existing project settings in current format (2+ projects = block sync)
       vi.mocked(ChromeStorageService.getGitHubSettings).mockResolvedValue({
         githubToken: 'test-token',
         repoOwner: 'test-owner',
@@ -1109,10 +1056,8 @@ describe('BoltProjectSyncService', () => {
     });
 
     it('should return true when no existing projects and no sync projects exist', async () => {
-      // No sync format projects
       mockStorageGet.mockResolvedValue({ boltProjects: [] });
 
-      // No existing projects in current format
       vi.mocked(ChromeStorageService.getGitHubSettings).mockResolvedValue({
         githubToken: 'test-token',
         repoOwner: 'test-owner',
@@ -1127,7 +1072,6 @@ describe('BoltProjectSyncService', () => {
 
   describe('performInwardSync', () => {
     it('should only sync if conditions are met', async () => {
-      // Multiple projects exist - should not sync
       mockStorageGet.mockResolvedValue({
         boltProjects: [
           {
@@ -1203,7 +1147,6 @@ describe('BoltProjectSyncService', () => {
 
       expect(result).toEqual(mockResponse);
 
-      // Verify that projects were saved (with corrected ID for new implementation)
       const projectSaveCall = mockStorageSet.mock.calls.find(
         (call) => call[0].boltProjects && Array.isArray(call[0].boltProjects)
       );
@@ -1213,23 +1156,20 @@ describe('BoltProjectSyncService', () => {
           bolt_project_id: 'bolt-1',
           project_name: 'synced-project',
           github_repo_name: 'synced-repo',
-          id: 'bolt-1', // New implementation uses bolt_project_id as id for new projects
+          id: 'bolt-1',
         }),
       ]);
     });
 
     it('should ADD server projects to existing local projects (not replace)', async () => {
-      // Setup: User has NO existing projects - this should ensure sync is allowed
       mockStorageGet.mockResolvedValue({ boltProjects: [] });
 
-      // Mock empty project settings for shouldPerformInwardSync check
       vi.mocked(ChromeStorageService.getGitHubSettings).mockResolvedValue({
         githubToken: 'test-token',
         repoOwner: 'test-owner',
         projectSettings: {},
       });
 
-      // Server returns 2 projects
       const serverResponse: SyncResponse = {
         success: true,
         updatedProjects: [
@@ -1287,7 +1227,6 @@ describe('BoltProjectSyncService', () => {
 
       expect(result).toEqual(serverResponse);
 
-      // Verify that projects were saved with additive behavior
       const projectSaveCall = mockStorageSet.mock.calls.find(
         (call) => call[0].boltProjects && Array.isArray(call[0].boltProjects)
       );
@@ -1295,7 +1234,6 @@ describe('BoltProjectSyncService', () => {
       expect(projectSaveCall).toBeDefined();
       expect(projectSaveCall[0].boltProjects).toHaveLength(2);
 
-      // Should contain both server projects
       expect(projectSaveCall[0].boltProjects).toEqual(
         expect.arrayContaining([
           expect.objectContaining({
@@ -1311,7 +1249,6 @@ describe('BoltProjectSyncService', () => {
     });
 
     it('should merge existing local projects with server projects (integration test)', async () => {
-      // Setup: User has 1 existing local project
       const existingLocalProject: BoltProject = {
         id: 'local-1',
         bolt_project_id: 'local-1',
@@ -1325,19 +1262,16 @@ describe('BoltProjectSyncService', () => {
         version: 1,
       };
 
-      // Start with 1 existing project (conditions allow sync: count <= 1)
       mockStorageGet.mockImplementation(() =>
         Promise.resolve({ boltProjects: [existingLocalProject] })
       );
 
-      // Mock empty project settings for shouldPerformInwardSync check
       vi.mocked(ChromeStorageService.getGitHubSettings).mockResolvedValue({
         githubToken: 'test-token',
         repoOwner: 'test-owner',
         projectSettings: {},
       });
 
-      // Server returns 1 new project
       const serverResponse: SyncResponse = {
         success: true,
         updatedProjects: [
@@ -1383,7 +1317,6 @@ describe('BoltProjectSyncService', () => {
 
       expect(result).toEqual(serverResponse);
 
-      // Check the final save call for merged projects (local + server = 2 total)
       const projectSaveCalls = mockStorageSet.mock.calls.filter(
         (call) =>
           call[0].boltProjects &&
@@ -1393,10 +1326,9 @@ describe('BoltProjectSyncService', () => {
 
       expect(projectSaveCalls.length).toBeGreaterThan(0);
 
-      const mergedSaveCall = projectSaveCalls[projectSaveCalls.length - 1]; // Get the last one
+      const mergedSaveCall = projectSaveCalls[projectSaveCalls.length - 1];
       expect(mergedSaveCall[0].boltProjects).toHaveLength(2);
 
-      // Should contain both local and server projects
       expect(mergedSaveCall[0].boltProjects).toEqual(
         expect.arrayContaining([
           expect.objectContaining({

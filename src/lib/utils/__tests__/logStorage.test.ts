@@ -1,11 +1,7 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-/**
- * Tests for LogStorageManager
- */
 
 import { LogStorageManager } from '../logStorage';
 
-// Mock chrome.storage
 const mockChromeStorage = {
   local: {
     get: vi.fn(),
@@ -26,11 +22,10 @@ describe('LogStorageManager', () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
-    // Reset singleton
+
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     (LogStorageManager as any).instance = null;
 
-    // Reset chrome storage mocks to return empty by default
     mockChromeStorage.local.get.mockResolvedValue({});
     mockChromeStorage.local.set.mockResolvedValue(undefined);
     mockChromeStorage.local.remove.mockResolvedValue(undefined);
@@ -73,7 +68,6 @@ describe('LogStorageManager', () => {
     });
 
     it('should maintain memory buffer size limit', async () => {
-      // Add more than MAX_MEMORY_ENTRIES (1000) logs
       for (let i = 0; i < 1010; i++) {
         await storageManager.addLog('info', 'TestModule', `Message ${i}`);
       }
@@ -89,11 +83,9 @@ describe('LogStorageManager', () => {
     beforeEach(() => {
       storedLogs = [];
 
-      // Mock storage.local.get to work with both callback and promise patterns
       mockChromeStorage.local.get.mockImplementation((keys: any, callback?: any) => {
         const result: any = {};
 
-        // Handle get(null) for getting all keys
         if (keys === null) {
           result['bolt_logs_current'] = storedLogs;
           result['bolt_logs_metadata'] = {};
@@ -108,7 +100,6 @@ describe('LogStorageManager', () => {
           result['bolt_logs_current'] = storedLogs;
         }
 
-        // Support both callback and promise patterns
         if (callback) {
           callback(result);
           return undefined;
@@ -116,7 +107,6 @@ describe('LogStorageManager', () => {
         return Promise.resolve(result);
       });
 
-      // Intercept set calls to update stored logs
       mockChromeStorage.local.set.mockImplementation((items) => {
         if (items['bolt_logs_current']) {
           storedLogs = [...items['bolt_logs_current']];
@@ -130,7 +120,6 @@ describe('LogStorageManager', () => {
       await storageManager.addLog('info', 'Module2', 'Info message');
       await storageManager.addLog('error', 'Module3', 'Error message');
 
-      // Force flush to storage
       await (storageManager as any).flushPendingWrites();
 
       const errorLogs = await storageManager.getAllLogs({ levels: ['error'] });
@@ -142,7 +131,6 @@ describe('LogStorageManager', () => {
       await storageManager.addLog('info', 'ModuleA', 'Message A');
       await storageManager.addLog('info', 'ModuleB', 'Message B');
 
-      // Force flush to storage
       await (storageManager as any).flushPendingWrites();
 
       const moduleALogs = await storageManager.getAllLogs({ modules: ['ModuleA'] });
@@ -155,7 +143,6 @@ describe('LogStorageManager', () => {
       await new Promise((resolve) => setTimeout(resolve, 10));
       await storageManager.addLog('info', 'Module', 'Message 2');
 
-      // Force flush to storage
       await (storageManager as any).flushPendingWrites();
 
       const allLogs = await storageManager.getAllLogs();
@@ -167,7 +154,6 @@ describe('LogStorageManager', () => {
 
   describe('clearAllLogs', () => {
     it('should clear all logs from memory and storage', async () => {
-      // Mock getAllLogKeys to return some keys
       mockChromeStorage.local.get.mockImplementation((keys: any, callback?: any) => {
         const result: any = {};
         if (keys === null) {
@@ -199,7 +185,6 @@ describe('LogStorageManager', () => {
     beforeEach(() => {
       storedLogs = [];
 
-      // Mock storage for exportLogs tests
       mockChromeStorage.local.get.mockImplementation((keys: any, callback?: any) => {
         const result: any = {};
 
@@ -235,7 +220,6 @@ describe('LogStorageManager', () => {
     it('should export logs as JSON', async () => {
       await storageManager.addLog('info', 'TestModule', 'Test message', { extra: 'data' });
 
-      // Force flush to storage
       await (storageManager as any).flushPendingWrites();
 
       const exported = await storageManager.exportLogs('json');
@@ -254,7 +238,6 @@ describe('LogStorageManager', () => {
     it('should export logs as text', async () => {
       await storageManager.addLog('error', 'TestModule', 'Error occurred');
 
-      // Force flush to storage
       await (storageManager as any).flushPendingWrites();
 
       const exported = await storageManager.exportLogs('text');
@@ -267,15 +250,13 @@ describe('LogStorageManager', () => {
 
   describe('rotateLogs', () => {
     it('should remove logs older than retention period', async () => {
-      const oldTimestamp = new Date(Date.now() - 13 * 60 * 60 * 1000).toISOString(); // 13 hours ago
+      const oldTimestamp = new Date(Date.now() - 13 * 60 * 60 * 1000).toISOString();
       const recentTimestamp = new Date().toISOString();
 
-      // Mock storage to return old and new logs
       mockChromeStorage.local.get.mockImplementation((keys: any, callback?: any) => {
         let result: any = {};
 
         if (keys === null) {
-          // Return all keys for getAllLogKeys
           result = {
             bolt_logs_current: [
               {
@@ -347,7 +328,6 @@ describe('LogStorageManager', () => {
 
       await storageManager.rotateLogs();
 
-      // Should have called set for archiving current batch
       expect(mockChromeStorage.local.set).toHaveBeenCalled();
     });
 
@@ -357,7 +337,6 @@ describe('LogStorageManager', () => {
       const threeHoursAgo = new Date(now - 3 * 60 * 60 * 1000).toISOString();
       const fiveHoursAgo = new Date(now - 5 * 60 * 60 * 1000).toISOString();
 
-      // Mock storage to return logs with specific timestamps
       const testLogs = [
         {
           timestamp: oneHourAgo,
@@ -408,19 +387,15 @@ describe('LogStorageManager', () => {
         return Promise.resolve(result);
       });
 
-      // Set the memory buffer to match our test data
       (storageManager as any).memoryBuffer = [...testLogs];
 
       await storageManager.rotateLogs();
 
-      // Verify that set was called
       expect(mockChromeStorage.local.set).toHaveBeenCalled();
 
-      // The memory buffer should contain logs newer than 4 hours (both 1h and 3h ago)
       const recentLogs = storageManager.getRecentLogs();
       expect(recentLogs.length).toBe(2);
 
-      // Verify the old log (5h ago) was removed and only recent ones remain
       const modules = recentLogs.map((log) => log.module);
       expect(modules).toContain('Recent1');
       expect(modules).toContain('Recent2');
