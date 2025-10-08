@@ -10,9 +10,11 @@ applyTo: '**/*.ts'
 **BEFORE summarizing ANY work or declaring completion:**
 
 1. Run quality checks: `pnpm format && pnpm lint && pnpm check`
-2. Iterate until all errors are resolved
-3. Provide a properly formatted commit message
-4. ONLY THEN provide a summary
+2. Clean up test comments: `pnpm clean:test-comments`
+3. Update testing documentation files in `docs/` if test coverage or approaches changed
+4. Iterate until all errors are resolved
+5. Provide a properly formatted commit message
+6. ONLY THEN provide a summary
 
 ---
 
@@ -26,7 +28,13 @@ applyTo: '**/*.ts'
 pnpm format
 pnpm lint
 pnpm check
+pnpm clean:test-comments
 ```
+
+**After running these commands:**
+- Update `docs/testing-overview.md` if test coverage changed significantly
+- Update `docs/testing-gaps.md` if new gaps were identified or closed
+- Update `docs/unit-testing-rules.md` if new testing patterns or rules were established
 
 **This is MANDATORY.** Iterate until all errors are resolved. Never skip these checks before providing a summary or completing work.
 
@@ -195,6 +203,8 @@ Use this checklist before declaring work complete:
 - [ ] Code formatted (`pnpm format`)
 - [ ] No lint errors (`pnpm lint`)
 - [ ] No TypeScript errors (`pnpm check`)
+- [ ] Test comments cleaned (`pnpm clean:test-comments`)
+- [ ] Testing docs updated (`docs/testing-overview.md`, `docs/testing-gaps.md`, `docs/unit-testing-rules.md`)
 - [ ] All tests passing (`pnpm test`)
 - [ ] Test coverage maintained or improved
 - [ ] No `any` types (except rare documented cases)
