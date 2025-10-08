@@ -10,9 +10,9 @@
 | Metric                       | Count | Percentage |
 | ---------------------------- | ----- | ---------- |
 | Total Source Files           | 171   | 100%       |
-| Files with Unit Tests        | 53    | 31.0%      |
-| Files without Tests          | 118   | 69.0%      |
-| Total Test Files             | 86    | -          |
+| Files with Unit Tests        | 54    | 31.6%      |
+| Files without Tests          | 117   | 68.4%      |
+| Total Test Files             | 87    | -          |
 | Svelte Components            | 61    | -          |
 | Svelte Components with Tests | 7     | 11.5%      |
 
@@ -20,7 +20,7 @@
 
 | Category              | Type   | Status                      |
 | --------------------- | ------ | --------------------------- |
-| **Unit Tests**        | Vitest | ✅ Partial (31.0% coverage) |
+| **Unit Tests**        | Vitest | ✅ Partial (31.6% coverage) |
 | **Component Tests**   | Vitest | ✅ Started (11.5% coverage) |
 | **Integration Tests** | None   | ❌ Missing                  |
 | **E2E Tests**         | None   | ❌ Missing                  |
@@ -105,9 +105,10 @@
   - OnboardingSetup.component.test.ts - Rendering and initial state, authentication method selection (GitHub App vs PAT), GitHub App UI (connect button, connected state, step-by-step guide), PAT UI (token input, repository owner input), form completion and submission, status messages, help links, security features display, reactive isSetupComplete (43 tests)
   - **Testing Strategy**: Single component test file (component is 313 lines with minimal business logic - simple event dispatching and one reactive statement)
 
-#### Background Services (4/5 files)
+#### Background Services (5/5 files)
 
 - ✅ BackgroundService.ts (8 test files covering alarms, edge cases, user journeys, etc.)
+- ✅ StateManager.ts (1 test file, 37 tests)
 - ✅ TempRepoManager.ts (3 test files)
 - ✅ UsageTracker.ts
 - ✅ WindowManager.ts

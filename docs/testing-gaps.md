@@ -1,7 +1,7 @@
 # Testing Gaps - Detailed Analysis
 
 **Last Updated**: 2025-10-08
-**Total Untested Files**: 111 out of 171 (64.9%)
+**Total Untested Files**: 110 out of 171 (64.3%)
 
 This document lists ALL files that lack tests, organized by category with specific test types needed.
 
@@ -243,18 +243,18 @@ This document lists ALL files that lack tests, organized by category with specif
 
 ## Background
 
-**Total**: 6 files | **Tested**: 4 files | **Coverage**: 66.7%
+**Total**: 6 files | **Tested**: 5 files | **Coverage**: 83.3%
 
-### Untested Background Files (2 files)
+### Untested Background Files (1 file)
 
-| File Path                        | Missing Test Types | Recommended Tools  | Priority    |
-| -------------------------------- | ------------------ | ------------------ | ----------- |
-| `src/background/StateManager.ts` | Unit               | Vitest             | 🔴 Critical |
-| `src/background/index.ts`        | Integration, E2E   | Vitest, Playwright | 🟡 High     |
+| File Path                 | Missing Test Types | Recommended Tools  | Priority |
+| ------------------------- | ------------------ | ------------------ | -------- |
+| `src/background/index.ts` | Integration, E2E   | Vitest, Playwright | 🟡 High  |
 
-### ✅ Tested Background Files (4 files)
+### ✅ Tested Background Files (5 files)
 
 - `src/background/BackgroundService.ts` (8 test files)
+- `src/background/StateManager.ts` - **1 test file, 37 tests** covering singleton pattern, getGitHubSettings delegation to SettingsService, getProjectId delegation and retrieval, setProjectId delegation and persistence, error propagation from SettingsService, integration scenarios (settings workflow, project switching, concurrent calls, rapid changes, onboarding flow), edge cases (null values, special characters, long IDs, concurrent operations, missing fields), singleton integrity through errors, and type safety validation
 - `src/background/TempRepoManager.ts` (3 test files)
 - `src/background/UsageTracker.ts`
 - `src/background/WindowManager.ts`
@@ -344,7 +344,7 @@ This document lists ALL files that lack tests, organized by category with specif
 
 ## Priority Recommendations
 
-### 🔴 Critical Priority (15 items)
+### 🔴 Critical Priority (10 items)
 
 Files that are essential to core functionality and should be tested immediately:
 
@@ -364,12 +364,12 @@ Files that are essential to core functionality and should be tested immediately:
 
 3. **Critical Services**
 
-   - `src/background/StateManager.ts`
-   - ✅ ~~`src/content/services/OperationStateManager.ts`~~ **Completed!** (1 test file, 66 tests)
+   - ✅ ~~`src/background/StateManager.ts`~~ (Completed - 1 test file, 37 tests)
+   - ✅ ~~`src/content/services/OperationStateManager.ts`~~ (Completed - 1 test file, 66 tests)
 
 4. **Critical Stores**
 
-   - `src/lib/stores/premiumStore.ts`
+   - ✅ ~~`src/lib/stores/premiumStore.ts`~~ (Completed - 1 test file, 34 tests)
 
 5. **Critical Utils**
    - ✅ ~~`src/lib/utils/githubAppSync.ts`~~ (Completed - 1 test file, 29 tests)
@@ -404,7 +404,7 @@ All other services, stores, main UI components, and utilities
    - Write first E2E test for main flow
    - Set up CI/CD for E2E tests
 
-3. Test critical authentication services (✅ 3/3 files completed)
+3. ✅ Test critical authentication services (3/3 files completed)
    - ✅ AuthenticationStrategyFactory.ts
    - ✅ GitHubAppAuthenticationStrategy.ts
    - ✅ PATAuthenticationStrategy.ts
@@ -420,7 +420,7 @@ All other services, stores, main UI components, and utilities
 7. ✅ ~~Test RepoSettings component~~ - **Completed!** 2 test files, 110 tests
 8. ✅ ~~Test critical stores (premiumStore)~~ - **Completed!** 1 test file, 34 tests
 9. ✅ ~~Test OperationStateManager service~~ - **Completed!** 1 test file, 66 tests
-10. Test remaining critical service: StateManager
+10. ✅ ~~Test StateManager service~~ - **Completed!** 1 test file, 37 tests
 
 ### Phase 3: UI Library (Week 5-6)
 
@@ -455,9 +455,9 @@ All other services, stores, main UI components, and utilities
 
 ### File Coverage Targets
 
-- [ ] Services: 100% (currently 81.8%)
+- [ ] Services: 100% (currently 86.4%)
 - [x] **Stores: 28.6% (2 of 7 files) - premiumStore.ts and pushStatistics.ts tested**
-- [ ] Utilities: 100% (currently 36.4%)
+- [ ] Utilities: 100% (currently 45.5%)
 - [x] **Main App Component: 100% (App.svelte - 189 tests)**
 - [x] **BranchSelectionModal Component: 100% (19 tests)**
 - [x] **FeedbackModal Component: 100% (19 tests)**
@@ -467,6 +467,7 @@ All other services, stores, main UI components, and utilities
 - [x] **RepoSettings Component: 100% (110 tests across 2 files)**
 - [x] **PATAuthenticationStrategy: 100% (54 tests)**
 - [x] **PremiumStore: 100% (34 tests)**
+- [x] **StateManager: 100% (37 tests)**
 - [ ] Other Components: 70%+ (currently 11.5% - 7 of 61 files)
 - [ ] Infrastructure: 100% (currently 75%)
 
