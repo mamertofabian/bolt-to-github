@@ -152,8 +152,8 @@ describe('App.svelte - Cleanup', () => {
 
       try {
         await chrome.storage.local.remove('storedFileChanges');
-      } catch {
-        // Expected error
+      } catch (error) {
+        console.error('Expected error during storage removal:', error);
       }
 
       chromeMessagingMock.cleanup();
@@ -172,8 +172,8 @@ describe('App.svelte - Cleanup', () => {
         await chrome.storage.local.remove('storedFileChanges');
         chromeMessagingMock.cleanup();
         mockUploadStateActions.disconnect();
-      } catch {
-        // Expected error
+      } catch (error) {
+        console.error('Expected error during cleanup:', error);
       }
 
       expect(chromeMessagingMock.cleanup).toHaveBeenCalled();
@@ -261,8 +261,8 @@ describe('App.svelte - Cleanup', () => {
           await chrome.storage.local.remove('storedFileChanges');
           chromeMessagingMock.cleanup();
           mockUploadStateActions.disconnect();
-        } catch {
-          // Expected error
+        } catch (error) {
+          console.error('Expected error during cleanup function:', error);
         }
       });
 
@@ -368,18 +368,18 @@ describe('App.svelte - Cleanup', () => {
       const cleanup = async () => {
         try {
           await chrome.storage.local.remove('storedFileChanges');
-        } catch {
-          // Expected error
+        } catch (error) {
+          console.error('Expected error during storage removal:', error);
         }
         try {
           chromeMessagingMock.cleanup();
-        } catch {
-          // Expected error
+        } catch (error) {
+          console.error('Expected error during messaging cleanup:', error);
         }
         try {
           mockUploadStateActions.disconnect();
-        } catch {
-          // Expected error
+        } catch (error) {
+          console.error('Expected error during upload state disconnect:', error);
         }
       };
 

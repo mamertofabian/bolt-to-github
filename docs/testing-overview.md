@@ -2,7 +2,7 @@
 
 ## Current Testing Status
 
-**Last Updated**: 2025-10-07
+**Last Updated**: 2025-10-08
 **Version**: 1.3.12
 
 ### Summary Statistics
@@ -14,14 +14,14 @@
 | Files without Tests          | 125   | 73.1%      |
 | Total Test Files             | 79    | -          |
 | Svelte Components            | 61    | -          |
-| Svelte Components with Tests | 4     | 6.6%       |
+| Svelte Components with Tests | 5     | 8.2%       |
 
 ### Test Coverage by Category
 
 | Category              | Type   | Status                      |
 | --------------------- | ------ | --------------------------- |
 | **Unit Tests**        | Vitest | ✅ Partial (26.9% coverage) |
-| **Component Tests**   | Vitest | ✅ Started (6.6% coverage)  |
+| **Component Tests**   | Vitest | ✅ Started (8.2% coverage)  |
 | **Integration Tests** | None   | ❌ Missing                  |
 | **E2E Tests**         | None   | ❌ Missing                  |
 
@@ -72,7 +72,7 @@
 
 ## What We Have: Existing Test Coverage
 
-### ✅ Well-Tested Areas (45 files with tests)
+### ✅ Well-Tested Areas (46 files with tests)
 
 #### Popup Components (4/14 files)
 
@@ -93,6 +93,13 @@
   - FeedbackModal.component.test.ts - Category selection, message input, form validation, submission, log handling, error handling, GitHub/email fallback (19 tests)
 - ✅ **OnboardingView.svelte** (1 test file, 14 tests)
   - OnboardingView.component.test.ts - Step navigation, event handling, props reactivity, conditional rendering (14 tests)
+
+#### Library Components (1/29 files)
+
+- ✅ **GitHubSettings.svelte** (2 test files, 103 tests)
+  - GitHubSettings.component.test.ts - Component rendering, collapsible behavior, form submission, storage quota, visual feedback, project settings (46 tests)
+  - GitHubSettings.logic.test.ts - Token validation, debouncing, permission checking, repository filtering, error handling (57 tests)
+  - **Note**: Repository autocomplete UI timing tests were intentionally removed as they violated unit-testing-rules (time-dependent). Core autocomplete logic is tested in logic.test.ts.
 
 #### Background Services (4/5 files)
 
@@ -176,7 +183,7 @@
 
 ### ❌ Critical Gaps
 
-#### 1. **Very Limited Component Tests** (60 Svelte components untested)
+#### 1. **Very Limited Component Tests** (59 Svelte components untested)
 
 Almost all UI components lack dedicated tests:
 
@@ -191,8 +198,15 @@ Almost all UI components lack dedicated tests:
   - Temp repo management
   - User interactions
   - Window mode functionality
-- ❌ All popup components (13 files)
-- ❌ All lib components (29 files)
+- ✅ **GitHubSettings.svelte** - 2 test files, 103 tests covering:
+  - Component rendering and collapsible behavior
+  - Form submission and validation
+  - Token validation and debouncing logic
+  - Repository filtering and permission checking
+  - Storage quota error handling
+  - Visual feedback and project settings
+- ❌ All other popup components (12 files)
+- ❌ All other lib components (28 files)
 - ❌ All UI library components (19 files)
 - ❌ Content components (2 files)
 

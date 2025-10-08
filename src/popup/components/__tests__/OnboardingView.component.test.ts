@@ -16,7 +16,6 @@ vi.unmock('$lib/components/OnboardingSetup.svelte');
 vi.unmock('lucide-svelte');
 vi.unmock('bits-ui');
 
-// Mock chrome API
 const chromeMocks = {
   runtime: {
     sendMessage: vi.fn().mockResolvedValue({ hasAccess: false }),
@@ -380,7 +379,6 @@ describe('OnboardingView.svelte', () => {
         },
       });
 
-      // Navigate to step 2
       const startButton = screen.getByRole('button', { name: /Connect GitHub Account/i });
       await user.click(startButton);
 

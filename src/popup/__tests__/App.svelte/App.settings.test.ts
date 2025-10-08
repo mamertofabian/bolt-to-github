@@ -171,7 +171,7 @@ describe('App.svelte - Settings', () => {
       const result = await mockGithubSettingsActions.saveSettings();
 
       if (result.error && result.error.includes('MAX_WRITE_OPERATIONS_PER_H')) {
-        // Rate limit error - no status shown
+        console.error('Quota exceeded error detected:', result.error);
       } else if (!result.success) {
         mockUiStateActions.showStatus(result.error || 'Error saving settings');
       }
@@ -544,8 +544,8 @@ describe('App.svelte - Settings', () => {
 
       try {
         await mockChromeStorageService.saveProjectSettings('test', 'test', 'main', 'test');
-      } catch {
-        // Expected error
+      } catch (error) {
+        console.error('Expected error during auto-create:', error);
       }
 
       expect(mockChromeStorageService.saveProjectSettings).toHaveBeenCalled();

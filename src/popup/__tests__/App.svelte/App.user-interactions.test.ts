@@ -158,7 +158,7 @@ describe('App.svelte - User Interactions', () => {
 
       if (!result.success) {
         if (result.error && result.error.includes('MAX_WRITE_OPERATIONS_PER_H')) {
-          // Rate limit error - no status shown
+          console.error('Quota exceeded error detected:', result.error);
         } else {
           mockUiStateActions.showStatus(result.error || 'Error saving settings');
         }
@@ -332,8 +332,8 @@ describe('App.svelte - User Interactions', () => {
 
       try {
         await subscriptionServiceMock.incrementInteractionCount();
-      } catch {
-        // Expected error
+      } catch (error) {
+        console.error('Expected error during interaction count increment:', error);
       }
 
       expect(subscriptionServiceMock.incrementInteractionCount).toHaveBeenCalled();

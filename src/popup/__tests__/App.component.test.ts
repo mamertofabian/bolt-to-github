@@ -7,7 +7,6 @@ import { render, screen, waitFor } from '@testing-library/svelte';
 import userEvent from '@testing-library/user-event';
 import App from '../App.svelte';
 
-// Unmock UI components to test actual rendering
 vi.unmock('$lib/components/ui/modal/Modal.svelte');
 vi.unmock('$lib/components/ui/button');
 vi.unmock('$lib/components/ui/button/index.ts');
@@ -16,7 +15,6 @@ vi.unmock('$lib/components/ui/card');
 vi.unmock('lucide-svelte');
 vi.unmock('bits-ui');
 
-// Mock child Svelte components with actual Svelte component implementations
 vi.mock('../components/FileChangesModal.svelte', async () => {
   const mock = await import('./__mocks__/FileChangesModal.svelte');
   return { default: mock.default };
@@ -67,9 +65,7 @@ vi.mock('../components/OnboardingView.svelte', async () => {
   return { default: mock.default };
 });
 
-// Mock stores module
 vi.mock('$lib/stores', () => {
-  // Helper function to create mock store within the mock context
   function createStore<T>(initialValue: T) {
     let value = initialValue;
     const subscribers = new Set<(value: T) => void>();
@@ -180,7 +176,6 @@ vi.mock('$lib/stores', () => {
   };
 });
 
-// Mock services
 vi.mock('$lib/services/chromeMessaging', () => ({
   ChromeMessagingService: {
     addPortMessageHandler: vi.fn(),
@@ -259,11 +254,9 @@ describe('App.svelte - Component Tests', () => {
   beforeEach(async () => {
     vi.clearAllMocks();
 
-    // Get the mocked stores
     const storesModule = await import('$lib/stores');
     stores = storesModule;
 
-    // Reset store values
     stores.githubSettingsStore.set({
       hasInitialSettings: false,
       repoOwner: '',
@@ -293,7 +286,6 @@ describe('App.svelte - Component Tests', () => {
     stores.isAuthenticated.set(false);
     stores.isPremium.set(false);
 
-    // Setup Chrome mocks
     chromeMocks = {
       runtime: {
         sendMessage: vi.fn().mockResolvedValue(undefined),
@@ -322,7 +314,6 @@ describe('App.svelte - Component Tests', () => {
       configurable: true,
     });
 
-    // Mock document API
     Object.defineProperty(document, 'documentElement', {
       value: {
         classList: {
@@ -334,7 +325,6 @@ describe('App.svelte - Component Tests', () => {
       configurable: true,
     });
 
-    // Mock window.addEventListener
     window.addEventListener = vi.fn();
   });
 
@@ -395,7 +385,6 @@ describe('App.svelte - Component Tests', () => {
 
       render(App);
 
-      // OnboardingView should be rendered (check for typical onboarding content)
       expect(screen.queryByRole('tablist')).not.toBeInTheDocument();
     });
 
@@ -418,7 +407,6 @@ describe('App.svelte - Component Tests', () => {
 
   describe('Tabs View', () => {
     beforeEach(() => {
-      // Setup valid authentication for tabs view
       stores.githubSettingsStore.set({
         hasInitialSettings: true,
         repoOwner: 'test-owner',
@@ -434,7 +422,6 @@ describe('App.svelte - Component Tests', () => {
     it('should display tabs view when authentication is valid', () => {
       render(App);
 
-      // TabsView should be rendered
       expect(screen.getByRole('tablist')).toBeInTheDocument();
     });
 
@@ -578,10 +565,7 @@ describe('App.svelte - Component Tests', () => {
       const upgradeButton = screen.getByRole('button', { name: /✨ Upgrade/i });
       await user.click(upgradeButton);
 
-      // Modal should be shown (check if modal content appears)
       await waitFor(() => {
-        // The upgrade modal will be rendered when show prop is true
-        // We can verify this by checking if the modal state changed
         expect(upgradeButton).toBeInTheDocument();
       });
     });
@@ -589,22 +573,13 @@ describe('App.svelte - Component Tests', () => {
 
   describe('Window Mode', () => {
     it('should show pop-out button in popup mode (default)', () => {
-      // Default mock returns false for isWindowMode
       render(App);
 
       const popOutButton = screen.getByTitle('Open in window');
       expect(popOutButton).toBeInTheDocument();
-      // In popup mode, should NOT have pop back in button
+
       expect(screen.queryByTitle('Pop back in')).not.toBeInTheDocument();
     });
-
-    // Note: We cannot easily test the "window mode" state because isWindowMode()
-    // is called in onMount and the result is captured in a non-reactive variable.
-    // To properly test window mode, we would need to either:
-    // 1. Make the component more testable by accepting isWindowMode as a prop
-    // 2. Test in an actual window context (integration test)
-    // 3. Mock at a different level before module initialization
-    // For now, we test the default popup mode and the button click handlers.
 
     it('should handle pop-out button click', async () => {
       const user = userEvent.setup();
@@ -621,14 +596,11 @@ describe('App.svelte - Component Tests', () => {
     });
 
     it('should call closePopupWindow when window mode is active', async () => {
-      // This is a behavioral test - we verify the function exists and can be called
       const windowMode = await import('$lib/utils/windowMode');
 
-      // Verify the mock is set up correctly
       expect(windowMode.closePopupWindow).toBeDefined();
       expect(typeof windowMode.closePopupWindow).toBe('function');
 
-      // Verify it returns the expected structure
       const result = await windowMode.closePopupWindow();
       expect(result).toEqual({ success: true });
     });
@@ -656,10 +628,9 @@ describe('App.svelte - Component Tests', () => {
     it('should have accessible header structure', () => {
       render(App);
 
-      // The heading text is within an anchor tag inside the h3 CardTitle
       const heading = screen.getByText('Bolt to GitHub');
       expect(heading).toBeInTheDocument();
-      // The h3 is the parent of the anchor
+
       const h3 = heading.closest('h3');
       expect(h3).toBeInTheDocument();
     });
@@ -735,10 +706,8 @@ describe('App.svelte - Component Tests', () => {
     it('should reactively update when authentication changes', async () => {
       const { rerender } = render(App);
 
-      // Initially no tabs
       expect(screen.queryByRole('tablist')).not.toBeInTheDocument();
 
-      // Update authentication
       stores.githubSettingsStore.set({
         hasInitialSettings: true,
         repoOwner: 'test-owner',
@@ -751,7 +720,6 @@ describe('App.svelte - Component Tests', () => {
       stores.isAuthenticationValid.set(true);
       await rerender({});
 
-      // Now tabs should appear
       expect(screen.getByRole('tablist')).toBeInTheDocument();
     });
   });
