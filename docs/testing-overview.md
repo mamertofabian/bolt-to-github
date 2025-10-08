@@ -10,18 +10,18 @@
 | Metric                       | Count | Percentage |
 | ---------------------------- | ----- | ---------- |
 | Total Source Files           | 171   | 100%       |
-| Files with Unit Tests        | 45    | 26.3%      |
-| Files without Tests          | 126   | 73.7%      |
-| Total Test Files             | 78    | -          |
+| Files with Unit Tests        | 46    | 26.9%      |
+| Files without Tests          | 125   | 73.1%      |
+| Total Test Files             | 79    | -          |
 | Svelte Components            | 61    | -          |
-| Svelte Components with Tests | 3     | 4.9%       |
+| Svelte Components with Tests | 4     | 6.6%       |
 
 ### Test Coverage by Category
 
 | Category              | Type   | Status                      |
 | --------------------- | ------ | --------------------------- |
-| **Unit Tests**        | Vitest | ✅ Partial (26.3% coverage) |
-| **Component Tests**   | Vitest | ✅ Started (4.9% coverage)  |
+| **Unit Tests**        | Vitest | ✅ Partial (26.9% coverage) |
+| **Component Tests**   | Vitest | ✅ Started (6.6% coverage)  |
 | **Integration Tests** | None   | ❌ Missing                  |
 | **E2E Tests**         | None   | ❌ Missing                  |
 
@@ -74,7 +74,7 @@
 
 ### ✅ Well-Tested Areas (45 files with tests)
 
-#### Popup Components (3/14 files)
+#### Popup Components (4/14 files)
 
 - ✅ **App.svelte** (10 test files, 189 tests)
   - App.cleanup.test.ts - Resource cleanup and disposal (22 tests)
@@ -91,6 +91,8 @@
   - BranchSelectionModal.component.test.ts - Branch selection, premium features, loading states, error handling (19 tests)
 - ✅ **FeedbackModal.svelte** (1 test file, 19 tests)
   - FeedbackModal.component.test.ts - Category selection, message input, form validation, submission, log handling, error handling, GitHub/email fallback (19 tests)
+- ✅ **OnboardingView.svelte** (1 test file, 14 tests)
+  - OnboardingView.component.test.ts - Step navigation, event handling, props reactivity, conditional rendering (14 tests)
 
 #### Background Services (4/5 files)
 

@@ -1,7 +1,7 @@
 # Testing Gaps - Detailed Analysis
 
-**Last Updated**: 2025-10-07
-**Total Untested Files**: 124 out of 171 (72.5%)
+**Last Updated**: 2025-10-08
+**Total Untested Files**: 123 out of 171 (71.9%)
 
 This document lists ALL files that lack tests, organized by category with specific test types needed.
 
@@ -24,63 +24,68 @@ This document lists ALL files that lack tests, organized by category with specif
 
 ## Svelte Components
 
-**Total**: 61 files | **Tested**: 3 files | **Coverage**: 4.9%
+**Total**: 61 files | **Tested**: 4 files | **Coverage**: 6.6%
 
 ### Popup Components (13 files)
 
-**✅ Tested (3 files)**:
+**✅ Tested (4 files)**:
 
 - `src/popup/App.svelte` - **10 test files, 189 tests** covering cleanup, initialization, message handling, modal states, popup context, premium features, settings, temp repos, user interactions, and window mode
 - `src/popup/components/BranchSelectionModal.svelte` - **1 test file, 19 tests** covering branch loading, default branch selection, premium feature access, branch selection behavior, import/cancel actions, empty states, loading states, error handling, and reactive loading
 - `src/popup/components/FeedbackModal.svelte` - **1 test file, 19 tests** covering category selection, message input, form validation, feedback submission with PAT/GitHub App auth, log handling, error handling with fallbacks, GitHub issue URL generation, alternative contact methods (email/GitHub), form reset, modal close, success state, and fallback submissions
+- `src/popup/components/OnboardingView.svelte` - **1 test file, 14 tests** covering step navigation (welcome → setup), event dispatching (save, error, authMethodChange), props reactivity (githubSettings, projectSettings, uiState), conditional rendering based on isBoltSite, and UI state propagation
 
-**❌ Untested (10 files)**:
+**❌ Untested (9 files)**:
 
-| File Path                                          | Missing Test Types     | Recommended Tools                   | Priority    |
-| -------------------------------------------------- | ---------------------- | ----------------------------------- | ----------- |
-| `src/popup/components/FileChangesModal.svelte`     | Component, Integration | @testing-library/svelte, Vitest     | 🟡 High     |
-| `src/popup/components/HelpTabContent.svelte`       | Component              | @testing-library/svelte             | 🟢 Medium   |
-| `src/popup/components/HomeTabContent.svelte`       | Component, E2E         | @testing-library/svelte, Playwright | 🟡 High     |
-| `src/popup/components/OnboardingView.svelte`       | Component, E2E         | @testing-library/svelte, Playwright | 🔴 Critical |
-| `src/popup/components/PremiumStatus.svelte`        | Component              | @testing-library/svelte             | 🟡 High     |
-| `src/popup/components/PushReminderSection.svelte`  | Component              | @testing-library/svelte             | 🟢 Medium   |
-| `src/popup/components/PushReminderSettings.svelte` | Component, Integration | @testing-library/svelte, Vitest     | 🟡 High     |
-| `src/popup/components/SettingsTabContent.svelte`   | Component, Integration | @testing-library/svelte, Vitest     | 🟡 High     |
-| `src/popup/components/TabsView.svelte`             | Component              | @testing-library/svelte             | 🟡 High     |
-| `src/popup/components/TempRepoModal.svelte`        | Component, Integration | @testing-library/svelte, Vitest     | 🟡 High     |
-| `src/popup/components/UpgradeModal.svelte`         | Component              | @testing-library/svelte             | 🟡 High     |
+| File Path                                          | Missing Test Types     | Recommended Tools                   | Priority  |
+| -------------------------------------------------- | ---------------------- | ----------------------------------- | --------- |
+| `src/popup/components/FileChangesModal.svelte`     | Component, Integration | @testing-library/svelte, Vitest     | 🟡 High   |
+| `src/popup/components/HelpTabContent.svelte`       | Component              | @testing-library/svelte             | 🟢 Medium |
+| `src/popup/components/HomeTabContent.svelte`       | Component, E2E         | @testing-library/svelte, Playwright | 🟡 High   |
+| `src/popup/components/PremiumStatus.svelte`        | Component              | @testing-library/svelte             | 🟡 High   |
+| `src/popup/components/PushReminderSection.svelte`  | Component              | @testing-library/svelte             | 🟢 Medium |
+| `src/popup/components/PushReminderSettings.svelte` | Component, Integration | @testing-library/svelte, Vitest     | 🟡 High   |
+| `src/popup/components/SettingsTabContent.svelte`   | Component, Integration | @testing-library/svelte, Vitest     | 🟡 High   |
+| `src/popup/components/TabsView.svelte`             | Component              | @testing-library/svelte             | 🟡 High   |
+| `src/popup/components/TempRepoModal.svelte`        | Component, Integration | @testing-library/svelte, Vitest     | 🟡 High   |
+| `src/popup/components/UpgradeModal.svelte`         | Component              | @testing-library/svelte             | 🟡 High   |
 
 ### Lib Components (29 files)
 
-| File Path                                      | Missing Test Types          | Recommended Tools                           | Priority    |
-| ---------------------------------------------- | --------------------------- | ------------------------------------------- | ----------- |
-| `src/lib/components/DiffViewer.svelte`         | Component, Integration      | @testing-library/svelte, Vitest             | 🟡 High     |
-| `src/lib/components/Footer.svelte`             | Component                   | @testing-library/svelte                     | 🟢 Medium   |
-| `src/lib/components/GitHubSettings.svelte`     | Component, Integration, E2E | @testing-library/svelte, Vitest, Playwright | 🔴 Critical |
-| `src/lib/components/Header.svelte`             | Component                   | @testing-library/svelte                     | 🟢 Medium   |
-| `src/lib/components/Help.svelte`               | Component                   | @testing-library/svelte                     | 🟢 Medium   |
-| `src/lib/components/IssueCard.svelte`          | Component                   | @testing-library/svelte                     | 🟡 High     |
-| `src/lib/components/IssueManager.svelte`       | Component, Integration      | @testing-library/svelte, Vitest             | 🟡 High     |
-| `src/lib/components/LogViewer.svelte`          | Component                   | @testing-library/svelte                     | 🟡 High     |
-| `src/lib/components/NewIssueForm.svelte`       | Component, Integration      | @testing-library/svelte, Vitest             | 🟡 High     |
-| `src/lib/components/NewsletterModal.svelte`    | Component                   | @testing-library/svelte                     | 🟢 Medium   |
-| `src/lib/components/NewsletterSection.svelte`  | Component                   | @testing-library/svelte                     | 🟢 Medium   |
-| `src/lib/components/OnboardingSetup.svelte`    | Component, E2E              | @testing-library/svelte, Playwright         | 🔴 Critical |
-| `src/lib/components/ProjectGuide.svelte`       | Component                   | @testing-library/svelte                     | 🟢 Medium   |
-| `src/lib/components/ProjectStatus.svelte`      | Component                   | @testing-library/svelte                     | 🟡 High     |
-| `src/lib/components/ProjectsList.svelte`       | Component, Integration      | @testing-library/svelte, Vitest             | 🟡 High     |
-| `src/lib/components/ProjectsListGuide.svelte`  | Component                   | @testing-library/svelte                     | 🟢 Medium   |
-| `src/lib/components/QuickIssueForm.svelte`     | Component, Integration      | @testing-library/svelte, Vitest             | 🟡 High     |
-| `src/lib/components/RepoSettings.svelte`       | Component, Integration, E2E | @testing-library/svelte, Vitest, Playwright | 🔴 Critical |
-| `src/lib/components/SocialLinks.svelte`        | Component                   | @testing-library/svelte                     | 🟢 Medium   |
-| `src/lib/components/StatusAlert.svelte`        | Component                   | @testing-library/svelte                     | 🟡 High     |
-| `src/lib/components/SuccessToast.svelte`       | Component                   | @testing-library/svelte                     | 🟢 Medium   |
-| `src/lib/components/WelcomeHero.svelte`        | Component                   | @testing-library/svelte                     | 🟢 Medium   |
-| `src/lib/components/WhatsNewModal.svelte`      | Component                   | @testing-library/svelte                     | 🟡 High     |
-| `src/lib/components/ui/AnalyticsToggle.svelte` | Component                   | @testing-library/svelte                     | 🟡 High     |
-| `src/components/FileChanges.svelte`            | Component, Integration      | @testing-library/svelte, Vitest             | 🟡 High     |
-| `src/content/Notification.svelte`              | Component                   | @testing-library/svelte                     | 🟡 High     |
-| `src/content/UploadStatus.svelte`              | Component                   | @testing-library/svelte                     | 🟡 High     |
+**Note on GitHubSettings.svelte**: This is a highly complex component (600+ lines) with significant business logic and UI behavior. **Recommended approach: Split into TWO test files:**
+
+- `GitHubSettings.component.test.ts` - UI/interaction tests (rendering, user input, dropdown, collapsible, form submission)
+- `GitHubSettings.logic.test.ts` - Business logic tests (token validation, permission checking, repository filtering, auth method switching, debouncing)
+
+| File Path                                      | Missing Test Types                 | Recommended Tools                           | Priority    |
+| ---------------------------------------------- | ---------------------------------- | ------------------------------------------- | ----------- |
+| `src/lib/components/DiffViewer.svelte`         | Component, Integration             | @testing-library/svelte, Vitest             | 🟡 High     |
+| `src/lib/components/Footer.svelte`             | Component                          | @testing-library/svelte                     | 🟢 Medium   |
+| `src/lib/components/GitHubSettings.svelte`     | Component, Logic, Integration, E2E | @testing-library/svelte, Vitest, Playwright | 🔴 Critical |
+| `src/lib/components/Header.svelte`             | Component                          | @testing-library/svelte                     | 🟢 Medium   |
+| `src/lib/components/Help.svelte`               | Component                          | @testing-library/svelte                     | 🟢 Medium   |
+| `src/lib/components/IssueCard.svelte`          | Component                          | @testing-library/svelte                     | 🟡 High     |
+| `src/lib/components/IssueManager.svelte`       | Component, Integration             | @testing-library/svelte, Vitest             | 🟡 High     |
+| `src/lib/components/LogViewer.svelte`          | Component                          | @testing-library/svelte                     | 🟡 High     |
+| `src/lib/components/NewIssueForm.svelte`       | Component, Integration             | @testing-library/svelte, Vitest             | 🟡 High     |
+| `src/lib/components/NewsletterModal.svelte`    | Component                          | @testing-library/svelte                     | 🟢 Medium   |
+| `src/lib/components/NewsletterSection.svelte`  | Component                          | @testing-library/svelte                     | 🟢 Medium   |
+| `src/lib/components/OnboardingSetup.svelte`    | Component, E2E                     | @testing-library/svelte, Playwright         | 🔴 Critical |
+| `src/lib/components/ProjectGuide.svelte`       | Component                          | @testing-library/svelte                     | 🟢 Medium   |
+| `src/lib/components/ProjectStatus.svelte`      | Component                          | @testing-library/svelte                     | 🟡 High     |
+| `src/lib/components/ProjectsList.svelte`       | Component, Integration             | @testing-library/svelte, Vitest             | 🟡 High     |
+| `src/lib/components/ProjectsListGuide.svelte`  | Component                          | @testing-library/svelte                     | 🟢 Medium   |
+| `src/lib/components/QuickIssueForm.svelte`     | Component, Integration             | @testing-library/svelte, Vitest             | 🟡 High     |
+| `src/lib/components/RepoSettings.svelte`       | Component, Integration, E2E        | @testing-library/svelte, Vitest, Playwright | 🔴 Critical |
+| `src/lib/components/SocialLinks.svelte`        | Component                          | @testing-library/svelte                     | 🟢 Medium   |
+| `src/lib/components/StatusAlert.svelte`        | Component                          | @testing-library/svelte                     | 🟡 High     |
+| `src/lib/components/SuccessToast.svelte`       | Component                          | @testing-library/svelte                     | 🟢 Medium   |
+| `src/lib/components/WelcomeHero.svelte`        | Component                          | @testing-library/svelte                     | 🟢 Medium   |
+| `src/lib/components/WhatsNewModal.svelte`      | Component                          | @testing-library/svelte                     | 🟡 High     |
+| `src/lib/components/ui/AnalyticsToggle.svelte` | Component                          | @testing-library/svelte                     | 🟡 High     |
+| `src/components/FileChanges.svelte`            | Component, Integration             | @testing-library/svelte, Vitest             | 🟡 High     |
+| `src/content/Notification.svelte`              | Component                          | @testing-library/svelte                     | 🟡 High     |
+| `src/content/UploadStatus.svelte`              | Component                          | @testing-library/svelte                     | 🟡 High     |
 
 ### UI Library Components (19 files)
 
@@ -324,8 +329,8 @@ Files that are essential to core functionality and should be tested immediately:
 2. **Core UI Components**
 
    - ✅ ~~`src/popup/App.svelte`~~ (Completed - 10 test files, 189 tests)
-   - `src/popup/components/OnboardingView.svelte`
-   - `src/lib/components/GitHubSettings.svelte`
+   - ✅ ~~`src/popup/components/OnboardingView.svelte`~~ (Completed - 1 test file, 14 tests)
+   - `src/lib/components/GitHubSettings.svelte` (Split into component + logic tests)
    - `src/lib/components/OnboardingSetup.svelte`
    - `src/lib/components/RepoSettings.svelte`
 
@@ -379,9 +384,10 @@ All other services, stores, main UI components, and utilities
 1. ✅ ~~Test main app component (App.svelte)~~ - **Completed!** 10 test files, 189 tests
 2. ✅ ~~Test BranchSelectionModal component~~ - **Completed!** 1 test file, 19 tests
 3. ✅ ~~Test FeedbackModal component~~ - **Completed!** 1 test file, 19 tests
-4. Test remaining critical UI components (5 files)
-5. Test critical stores (1 file: premiumStore)
-6. Test critical services (3 files: StateManager, OperationStateManager, ProjectSettingsMigrationService)
+4. ✅ ~~Test OnboardingView component~~ - **Completed!** 1 test file, 14 tests
+5. Test remaining critical UI components (4 files: GitHubSettings [2 files], OnboardingSetup, RepoSettings)
+6. Test critical stores (1 file: premiumStore)
+7. Test critical services (3 files: StateManager, OperationStateManager, ProjectSettingsMigrationService)
 
 ### Phase 3: UI Library (Week 5-6)
 
@@ -422,7 +428,8 @@ All other services, stores, main UI components, and utilities
 - [x] **Main App Component: 100% (App.svelte - 189 tests)**
 - [x] **BranchSelectionModal Component: 100% (19 tests)**
 - [x] **FeedbackModal Component: 100% (19 tests)**
-- [ ] Other Components: 70%+ (currently 4.9% - 3 of 61 files)
+- [x] **OnboardingView Component: 100% (14 tests)**
+- [ ] Other Components: 70%+ (currently 6.6% - 4 of 61 files)
 - [ ] Infrastructure: 100% (currently 75%)
 
 ### Quality Metrics
