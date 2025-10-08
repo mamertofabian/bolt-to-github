@@ -10,18 +10,18 @@
 | Metric                       | Count | Percentage |
 | ---------------------------- | ----- | ---------- |
 | Total Source Files           | 171   | 100%       |
-| Files with Unit Tests        | 52    | 30.4%      |
-| Files without Tests          | 119   | 69.6%      |
-| Total Test Files             | 85    | -          |
+| Files with Unit Tests        | 53    | 31.0%      |
+| Files without Tests          | 118   | 69.0%      |
+| Total Test Files             | 86    | -          |
 | Svelte Components            | 61    | -          |
-| Svelte Components with Tests | 6     | 9.8%       |
+| Svelte Components with Tests | 7     | 11.5%      |
 
 ### Test Coverage by Category
 
 | Category              | Type   | Status                      |
 | --------------------- | ------ | --------------------------- |
-| **Unit Tests**        | Vitest | ✅ Partial (30.4% coverage) |
-| **Component Tests**   | Vitest | ✅ Started (9.8% coverage)  |
+| **Unit Tests**        | Vitest | ✅ Partial (31.0% coverage) |
+| **Component Tests**   | Vitest | ✅ Started (11.5% coverage) |
 | **Integration Tests** | None   | ❌ Missing                  |
 | **E2E Tests**         | None   | ❌ Missing                  |
 
@@ -112,7 +112,7 @@
 - ✅ UsageTracker.ts
 - ✅ WindowManager.ts
 
-#### Content Scripts (4/6 core files)
+### Content Scripts (4/6 core files)
 
 - ✅ ContentManager.ts (3 test files: critical scenarios, edge cases, user journeys)
 - ✅ MessageHandler.ts (3 test files: edge cases, memory leaks, basic tests)
@@ -138,8 +138,9 @@
 - ✅ UploadStatusManager.ts
 - ✅ WhatsNewManager.ts
 
-#### Content Services (3/6 files)
+### Content Services (4/6 files)
 
+- ✅ OperationStateManager.ts - **1 test file, 66 tests** covering singleton pattern, operation lifecycle, operation types, operation queries, timeouts, event listeners, cross-context storage synchronization, debug info, cleanup, edge cases, and integration scenarios
 - ✅ PremiumService.ts (2 test files)
 - ✅ SupabaseAuthService.ts
 - ✅ UIStateManager.ts

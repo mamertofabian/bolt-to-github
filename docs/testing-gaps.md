@@ -1,7 +1,7 @@
 # Testing Gaps - Detailed Analysis
 
 **Last Updated**: 2025-10-08
-**Total Untested Files**: 113 out 171 (66.1%)
+**Total Untested Files**: 111 out of 171 (64.9%)
 
 This document lists ALL files that lack tests, organized by category with specific test types needed.
 
@@ -223,19 +223,19 @@ This document lists ALL files that lack tests, organized by category with specif
 
 ## Content Services
 
-**Total**: 6 files | **Tested**: 3 files | **Coverage**: 50%
+**Total**: 6 files | **Tested**: 4 files | **Coverage**: 66.7%
 
-### Untested Content Services (3 files)
+### Untested Content Services (2 files)
 
-| File Path                                       | Missing Test Types | Recommended Tools | Priority    |
-| ----------------------------------------------- | ------------------ | ----------------- | ----------- |
-| `src/content/services/CommitTemplateService.ts` | Unit, Integration  | Vitest            | 🟡 High     |
-| `src/content/services/OperationStateManager.ts` | Unit, Integration  | Vitest            | 🔴 Critical |
-| `src/content/services/PushReminderService.ts`   | Unit, Integration  | Vitest            | 🟡 High     |
+| File Path                                       | Missing Test Types | Recommended Tools | Priority |
+| ----------------------------------------------- | ------------------ | ----------------- | -------- |
+| `src/content/services/CommitTemplateService.ts` | Unit, Integration  | Vitest            | 🟡 High  |
+| `src/content/services/PushReminderService.ts`   | Unit, Integration  | Vitest            | � High   |
 
-### ✅ Tested Content Services (3 files)
+### ✅ Tested Content Services (4 files)
 
-- `src/content/services/PremiumService.ts`
+- `src/content/services/OperationStateManager.ts` - **1 test file, 66 tests** covering singleton pattern, operation lifecycle (start, complete, fail), operation types (push, import, clone, sync, comparison, auth, API), operation queries (hasOngoingOperations, getOngoingOperations, getOngoingOperationsByType, isOperationOngoing), operation timeouts (auto-completion, timeout clearing), event listeners (operationStarted, operationCompleted, operationFailed), cross-context storage synchronization (save/load state, error handling), storage sync with timeouts, debug information, cleanup, clear all operations, edge cases (duplicate IDs, empty arrays, undefined values, rapid cycles, concurrent operations), context detection, and integration scenarios (push workflow, failed import, multiple simultaneous operations, cross-context sync)
+- `src/content/services/PremiumService.ts` (2 test files)
 - `src/content/services/SupabaseAuthService.ts`
 - `src/content/services/UIStateManager.ts`
 
@@ -365,7 +365,7 @@ Files that are essential to core functionality and should be tested immediately:
 3. **Critical Services**
 
    - `src/background/StateManager.ts`
-   - `src/content/services/OperationStateManager.ts`
+   - ✅ ~~`src/content/services/OperationStateManager.ts`~~ **Completed!** (1 test file, 66 tests)
 
 4. **Critical Stores**
 
@@ -419,7 +419,8 @@ All other services, stores, main UI components, and utilities
 6. ✅ ~~Test OnboardingSetup component~~ - **Completed!** 1 test file, 43 tests
 7. ✅ ~~Test RepoSettings component~~ - **Completed!** 2 test files, 110 tests
 8. ✅ ~~Test critical stores (premiumStore)~~ - **Completed!** 1 test file, 34 tests
-9. Test remaining critical services (2 files: StateManager, OperationStateManager)
+9. ✅ ~~Test OperationStateManager service~~ - **Completed!** 1 test file, 66 tests
+10. Test remaining critical service: StateManager
 
 ### Phase 3: UI Library (Week 5-6)
 
