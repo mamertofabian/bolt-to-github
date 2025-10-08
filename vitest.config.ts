@@ -2,11 +2,13 @@ import { svelte } from '@sveltejs/vite-plugin-svelte';
 import { resolve } from 'path';
 import { defineConfig, mergeConfig } from 'vite';
 import { defineConfig as defineTestConfig } from 'vitest/config';
+import preprocess from 'svelte-preprocess';
 
 export default mergeConfig(
   defineConfig({
     plugins: [
       svelte({
+        preprocess: preprocess(),
         hot: !process.env.VITEST,
         compilerOptions: {
           dev: true,

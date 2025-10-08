@@ -1,18 +1,41 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { vi } from 'vitest';
 
-// Create a reusable Svelte component mock class
+// Create a reusable Svelte component mock class that properly implements Svelte 4 interface
 export class MockSvelteComponent {
   constructor(options: any = {}) {
     this.options = options;
     this.$set = vi.fn();
-    this.$on = vi.fn();
+    this.$on = vi.fn(() => ({ destroy: vi.fn() })); // Return unsubscribe function
     this.$destroy = vi.fn();
+    this.$$host = null;
+
+    // Mock Svelte component lifecycle and internal methods
+    this.$$callbacks = {};
+    this.$$invalidate = vi.fn();
+    this.$$self = this;
+    this.$$props = options.props || {};
+    this.$$bound = {};
+
+    // Create a DOM element to serve as the component
+    if (typeof document !== 'undefined') {
+      this.$$host = document.createElement('div');
+      if (options.target) {
+        options.target.appendChild(this.$$host);
+      }
+    }
   }
+
   options: any;
   $set: any;
   $on: any;
   $destroy: any;
+  $$host: any;
+  $$callbacks: any;
+  $$invalidate: any;
+  $$self: any;
+  $$props: any;
+  $$bound: any;
 }
 
 // Auto-mock all Svelte files
@@ -26,6 +49,34 @@ vi.mock('$lib/components/ui/dialog/EnhancedConfirmationDialog.svelte', () => ({
 
 vi.mock('$lib/components/ui/button/index.ts', () => ({
   Button: MockSvelteComponent,
+  Root: MockSvelteComponent,
+  buttonVariants: vi.fn(),
+}));
+
+vi.mock('$lib/components/ui/button/button.svelte', () => ({
+  default: MockSvelteComponent,
+}));
+
+vi.mock('bits-ui', () => ({
+  Button: {
+    Root: class MockButton {
+      $$host: any;
+      $set: any;
+      $on: any;
+      $destroy: any;
+
+      constructor(options: any = {}) {
+        this.$$host = document.createElement('button');
+        this.$set = vi.fn();
+        this.$on = vi.fn(() => ({ destroy: vi.fn() }));
+        this.$destroy = vi.fn();
+
+        if (options.target) {
+          options.target.appendChild(this.$$host);
+        }
+      }
+    },
+  },
 }));
 
 // Mock content Svelte components
@@ -39,6 +90,27 @@ vi.mock('../../content/UploadStatus.svelte', () => ({
 
 vi.mock('$lib/components/WhatsNewModal.svelte', () => ({
   default: MockSvelteComponent,
+}));
+
+vi.mock('$lib/components/ui/modal/Modal.svelte', () => ({
+  default: MockSvelteComponent,
+}));
+
+vi.mock('$lib/utils', () => ({
+  cn: vi.fn((...args) => args.join(' ')),
+  flyAndScale: vi.fn(),
+}));
+
+vi.mock('tailwind-variants', () => ({
+  tv: vi.fn(() => vi.fn(() => 'mocked-class')),
+}));
+
+vi.mock('clsx', () => ({
+  clsx: vi.fn((...args) => args.join(' ')),
+}));
+
+vi.mock('tailwind-merge', () => ({
+  twMerge: vi.fn((str) => str),
 }));
 
 vi.mock('lucide-svelte', () => ({
@@ -107,4 +179,7 @@ vi.mock('lucide-svelte', () => ({
   ArrowRight: MockSvelteComponent,
   ArrowUp: MockSvelteComponent,
   ArrowDown: MockSvelteComponent,
+  MessageSquare: MockSvelteComponent,
+  Send: MockSvelteComponent,
+  Mail: MockSvelteComponent,
 }));
