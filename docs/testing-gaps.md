@@ -174,21 +174,21 @@ This document lists ALL files that lack tests, organized by category with specif
 
 ## Utilities
 
-**Total**: 11 files | **Tested**: 6 files | **Coverage**: 54.5%
+**Total**: 11 files | **Tested**: 7 files | **Coverage**: 63.6%
 
-### Untested Utilities (5 files)
+### Untested Utilities (4 files)
 
 | File Path                             | Missing Test Types | Recommended Tools | Priority  |
 | ------------------------------------- | ------------------ | ----------------- | --------- |
-| `src/lib/utils/analytics.ts`          | Unit               | Vitest            | 🟡 High   |
 | `src/lib/utils/debounce.ts`           | Unit               | Vitest            | 🟡 High   |
 | `src/lib/utils/reassuringMessages.ts` | Unit               | Vitest            | 🟢 Medium |
 | `src/lib/utils/upgradeModal.ts`       | Unit               | Vitest            | 🟡 High   |
 | `src/lib/zip.ts`                      | Unit               | Vitest            | 🟡 High   |
 
-### ✅ Tested Utilities (6 files)
+### ✅ Tested Utilities (7 files)
 
 - `src/lib/fileUtils.ts`
+- `src/lib/utils/analytics.ts` - **1 test file, 46 tests** covering ANALYTICS_EVENTS constants, sendAnalyticsToBackground, trackExtensionLifecycle, trackExtensionOpened, trackOnboardingStep, trackBoltProjectEvent, trackGitHubRepoOperation, trackUserPreference, trackFeatureUsage, trackError, trackPerformance, trackConversionFunnel, trackPageView, trackFeatureAdoption, trackOperationPerformance, trackUserJourneyMilestone, trackOperationResult, trackFeatureUsageWithVersion, trackDailyActiveUser, withAnalytics wrapper, and integration workflows
 - `src/lib/utils/githubAppSync.ts` - **1 test file, 29 tests** covering sync operations, status checks, authentication switching, token refresh, app info retrieval, error handling, and integration scenarios
 - `src/lib/utils/logStorage.ts`
 - `src/lib/utils/logger.ts`
@@ -450,9 +450,9 @@ All other services, stores, main UI components, and utilities
 
 ### File Coverage Targets
 
-- [x] **Services: 100% (22 of 22 files) - GitHubCacheService.ts tested (47 tests)**
+- [x] **Services: 100% (22 of 22 files) - All services tested ✅**
 - [x] **Stores: 28.6% (2 of 7 files) - premiumStore.ts and pushStatistics.ts tested**
-- [ ] Utilities: 100% (currently 45.5%)
+- [ ] **Utilities: 63.6% (7 of 11 files) - analytics.ts tested (46 tests)**
 - [x] **Background: 100% (6 of 6 files) - All background files tested**
 - [x] **Main App Component: 100% (App.svelte - 189 tests)**
 - [x] **BranchSelectionModal Component: 100% (19 tests)**

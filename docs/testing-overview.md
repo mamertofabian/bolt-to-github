@@ -187,9 +187,10 @@
 - ✅ ProjectSettingsMigrationService.ts (1 test file, 38 tests)
   - ProjectSettingsMigrationService.test.ts - Migration detection (needsMigration), statistics gathering (getMigrationStats), bulk project migration (migrateProjectSettings with progress callbacks, stale cache handling, GitHub App auth, error handling), single project migration (migrateSingleProject), migration status reset (resetMigrationStatus), project migration validation (projectNeedsMigration), integration scenarios, and edge cases (38 tests)
 
-#### Utilities (6/11 files)
+#### Utilities (7/11 files)
 
 - ✅ fileUtils.ts
+- ✅ utils/analytics.ts (1 test file, 46 tests)
 - ✅ githubAppSync.ts (1 test file, 29 tests)
 - ✅ logStorage.ts
 - ✅ logger.ts
@@ -359,9 +360,9 @@ pnpm exec playwright install
 
 ### Short-term Actions (Priority 2)
 
-1. Fill gaps in service tests (2 untested services)
-2. Add tests for stores (6 untested stores: fileChanges, githubSettings, issuesStore, projectSettings, uiState, uploadState)
-3. Test utility functions (7 untested utils)
+1. Fill gaps in service tests (all 22 services now tested ✅)
+2. Add tests for stores (5 untested stores: fileChanges, githubSettings, issuesStore, projectSettings, uiState, uploadState)
+3. Test utility functions (4 untested utils: debounce, reassuringMessages, upgradeModal, zip)
 
 ### Long-term Actions (Priority 3)
 
