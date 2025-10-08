@@ -1,7 +1,7 @@
 # Testing Gaps - Detailed Analysis
 
 **Last Updated**: 2025-10-08
-**Total Untested Files**: 105 out 171 (61.4%)
+**Total Untested Files**: 104 out 171 (60.8%)
 
 This document lists ALL files that lack tests, organized by category with specific test types needed.
 
@@ -174,26 +174,26 @@ This document lists ALL files that lack tests, organized by category with specif
 
 ## Utilities
 
-**Total**: 11 files | **Tested**: 5 files | **Coverage**: 45.5%
+**Total**: 11 files | **Tested**: 6 files | **Coverage**: 54.5%
 
-### Untested Utilities (7 files)
+### Untested Utilities (5 files)
 
 | File Path                             | Missing Test Types | Recommended Tools | Priority  |
 | ------------------------------------- | ------------------ | ----------------- | --------- |
-| `src/lib/utils.ts`                    | Unit               | Vitest            | 🟡 High   |
 | `src/lib/utils/analytics.ts`          | Unit               | Vitest            | 🟡 High   |
 | `src/lib/utils/debounce.ts`           | Unit               | Vitest            | 🟡 High   |
 | `src/lib/utils/reassuringMessages.ts` | Unit               | Vitest            | 🟢 Medium |
 | `src/lib/utils/upgradeModal.ts`       | Unit               | Vitest            | 🟡 High   |
 | `src/lib/zip.ts`                      | Unit               | Vitest            | 🟡 High   |
 
-### ✅ Tested Utilities (5 files)
+### ✅ Tested Utilities (6 files)
 
 - `src/lib/fileUtils.ts`
 - `src/lib/utils/githubAppSync.ts` - **1 test file, 29 tests** covering sync operations, status checks, authentication switching, token refresh, app info retrieval, error handling, and integration scenarios
 - `src/lib/utils/logStorage.ts`
 - `src/lib/utils/logger.ts`
 - `src/lib/utils/projectId.ts`
+- `src/lib/utils.ts` - **1 test file, 16 tests** covering cn() Tailwind class name merging utility and flyAndScale() Svelte transition helper function
 - `src/lib/utils/windowMode.ts`
 
 ---

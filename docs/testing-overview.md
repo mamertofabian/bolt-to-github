@@ -10,9 +10,9 @@
 | Metric                       | Count | Percentage |
 | ---------------------------- | ----- | ---------- |
 | Total Source Files           | 171   | 100%       |
-| Files with Unit Tests        | 59    | 34.5%      |
-| Files without Tests          | 112   | 65.5%      |
-| Total Test Files             | 92    | -          |
+| Files with Unit Tests        | 60    | 35.1%      |
+| Files without Tests          | 111   | 64.9%      |
+| Total Test Files             | 93    | -          |
 | Svelte Components            | 61    | -          |
 | Svelte Components with Tests | 8     | 13.1%      |
 
@@ -20,7 +20,7 @@
 
 | Category              | Type   | Status                      |
 | --------------------- | ------ | --------------------------- |
-| **Unit Tests**        | Vitest | ✅ Partial (34.5% coverage) |
+| **Unit Tests**        | Vitest | ✅ Partial (35.1% coverage) |
 | **Component Tests**   | Vitest | ✅ Started (13.1% coverage) |
 | **Integration Tests** | None   | ❌ Missing                  |
 | **E2E Tests**         | None   | ❌ Missing                  |
@@ -187,13 +187,14 @@
 - ✅ ProjectSettingsMigrationService.ts (1 test file, 38 tests)
   - ProjectSettingsMigrationService.test.ts - Migration detection (needsMigration), statistics gathering (getMigrationStats), bulk project migration (migrateProjectSettings with progress callbacks, stale cache handling, GitHub App auth, error handling), single project migration (migrateSingleProject), migration status reset (resetMigrationStatus), project migration validation (projectNeedsMigration), integration scenarios, and edge cases (38 tests)
 
-#### Utilities (5/11 files)
+#### Utilities (6/11 files)
 
 - ✅ fileUtils.ts
 - ✅ githubAppSync.ts (1 test file, 29 tests)
 - ✅ logStorage.ts
 - ✅ logger.ts
 - ✅ projectId.ts
+- ✅ utils.ts (1 test file, 16 tests)
 - ✅ windowMode.ts
 
 #### Storage (1/1 file)
