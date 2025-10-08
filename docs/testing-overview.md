@@ -10,9 +10,9 @@
 | Metric                       | Count | Percentage |
 | ---------------------------- | ----- | ---------- |
 | Total Source Files           | 171   | 100%       |
-| Files with Unit Tests        | 51    | 29.8%      |
-| Files without Tests          | 120   | 70.2%      |
-| Total Test Files             | 84    | -          |
+| Files with Unit Tests        | 52    | 30.4%      |
+| Files without Tests          | 119   | 69.6%      |
+| Total Test Files             | 85    | -          |
 | Svelte Components            | 61    | -          |
 | Svelte Components with Tests | 6     | 9.8%       |
 
@@ -20,7 +20,7 @@
 
 | Category              | Type   | Status                      |
 | --------------------- | ------ | --------------------------- |
-| **Unit Tests**        | Vitest | ✅ Partial (29.8% coverage) |
+| **Unit Tests**        | Vitest | ✅ Partial (30.4% coverage) |
 | **Component Tests**   | Vitest | ✅ Started (9.8% coverage)  |
 | **Integration Tests** | None   | ❌ Missing                  |
 | **E2E Tests**         | None   | ❌ Missing                  |
@@ -187,9 +187,10 @@
 
 - ✅ chromeStorage.ts (3 test files: BoltProjects, GitHubComCleanup, RaceConditions)
 
-#### Stores (1/8 files)
+#### Stores (2/8 files)
 
-- ✅ pushStatistics.ts
+- ✅ pushStatistics.ts (1 test file: push statistics management)
+- ✅ premiumStore.ts (1 test file, 34 tests: store initialization, derived stores, Chrome storage integration, authentication/premium status, feature flags, logout flow)
 
 **Note**: App.svelte tests also indirectly test store actions and interactions through the component's behavior.
 
@@ -340,7 +341,7 @@ pnpm exec playwright install
 ### Short-term Actions (Priority 2)
 
 1. Fill gaps in service tests (5 untested services)
-2. Add tests for stores (7 untested stores)
+2. Add tests for stores (6 untested stores: fileChanges, githubSettings, issuesStore, projectSettings, uiState, uploadState)
 3. Test utility functions (7 untested utils)
 
 ### Long-term Actions (Priority 3)

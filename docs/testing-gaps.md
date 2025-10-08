@@ -1,7 +1,7 @@
 # Testing Gaps - Detailed Analysis
 
 **Last Updated**: 2025-10-08
-**Total Untested Files**: 114 out of 171 (66.7%)
+**Total Untested Files**: 113 out 171 (66.1%)
 
 This document lists ALL files that lack tests, organized by category with specific test types needed.
 
@@ -12,7 +12,10 @@ This document lists ALL files that lack tests, organized by category with specif
 1. [Svelte Components (61 files)](#svelte-components)
 2. [Services (8 files)](#services)
 3. [Stores (7 files)](#stores)
-4. [Utilities (7 files)](#utilities)
+4. [3. **Critical Stores**
+
+   - ✅ ~~`src/lib/stores/premiumStore.ts`~~ (Completed - 1 test file, 34 tests)lities (7 files)](#utilities)
+
 5. [Infrastructure (1 file)](#infrastructure)
 6. [Content Services (3 files)](#content-services)
 7. [Background (2 files)](#background)
@@ -156,19 +159,21 @@ This document lists ALL files that lack tests, organized by category with specif
 
 ## Stores
 
-**Total**: 7 files | **Tested**: 1 file | **Coverage**: 14.3%
+**Total**: 7 files | **Tested**: 2 files | **Coverage**: 28.6%
 
-| File Path                           | Missing Test Types | Recommended Tools | Priority    |
-| ----------------------------------- | ------------------ | ----------------- | ----------- |
-| `src/lib/stores/fileChanges.ts`     | Unit               | Vitest            | 🟡 High     |
-| `src/lib/stores/githubSettings.ts`  | Unit               | Vitest            | 🟡 High     |
-| `src/lib/stores/issuesStore.ts`     | Unit               | Vitest            | 🟡 High     |
-| `src/lib/stores/premiumStore.ts`    | Unit               | Vitest            | 🔴 Critical |
-| `src/lib/stores/projectSettings.ts` | Unit               | Vitest            | 🟡 High     |
-| `src/lib/stores/uiState.ts`         | Unit               | Vitest            | 🟡 High     |
-| `src/lib/stores/uploadState.ts`     | Unit               | Vitest            | 🟡 High     |
+| File Path                           | Missing Test Types | Recommended Tools | Priority |
+| ----------------------------------- | ------------------ | ----------------- | -------- |
+| `src/lib/stores/fileChanges.ts`     | Unit               | Vitest            | 🟡 High  |
+| `src/lib/stores/githubSettings.ts`  | Unit               | Vitest            | 🟡 High  |
+| `src/lib/stores/issuesStore.ts`     | Unit               | Vitest            | 🟡 High  |
+| `src/lib/stores/projectSettings.ts` | Unit               | Vitest            | � High   |
+| `src/lib/stores/uiState.ts`         | Unit               | Vitest            | 🟡 High  |
+| `src/lib/stores/uploadState.ts`     | Unit               | Vitest            | 🟡 High  |
 
-✅ **Tested**: `src/lib/stores/pushStatistics.ts`
+✅ **Tested**:
+
+- `src/lib/stores/pushStatistics.ts`
+- `src/lib/stores/premiumStore.ts` - **1 test file, 34 tests** covering store initialization, derived stores (isAuthenticated, isPremium, premiumPlan, premiumFeatures), loadPremiumStatus (Chrome storage loading, missing status handling, backward compatibility, error handling), initialize (initial loading, storage listener setup, storage change updates, namespace/key filtering), getCurrentStatus (immediate status retrieval), refresh (force reload from storage), logout (background message, storage clearing, state reset, error handling), UI state combinations (signed out, free user, premium user, expiration), feature flags (partial/full access), and integration scenarios (authentication flow, upgrade flow, logout flow, rapid updates)
 
 ---
 
@@ -413,8 +418,8 @@ All other services, stores, main UI components, and utilities
 5. ✅ ~~Test GitHubSettings component~~ - **Completed!** 2 test files, 103 tests
 6. ✅ ~~Test OnboardingSetup component~~ - **Completed!** 1 test file, 43 tests
 7. ✅ ~~Test RepoSettings component~~ - **Completed!** 2 test files, 110 tests
-8. Test critical stores (1 file: premiumStore)
-9. Test critical services (3 files: StateManager, OperationStateManager, ProjectSettingsMigrationService)
+8. ✅ ~~Test critical stores (premiumStore)~~ - **Completed!** 1 test file, 34 tests
+9. Test remaining critical services (2 files: StateManager, OperationStateManager)
 
 ### Phase 3: UI Library (Week 5-6)
 
@@ -450,7 +455,7 @@ All other services, stores, main UI components, and utilities
 ### File Coverage Targets
 
 - [ ] Services: 100% (currently 81.8%)
-- [ ] Stores: 100% (currently 14.3%)
+- [x] **Stores: 28.6% (2 of 7 files) - premiumStore.ts and pushStatistics.ts tested**
 - [ ] Utilities: 100% (currently 36.4%)
 - [x] **Main App Component: 100% (App.svelte - 189 tests)**
 - [x] **BranchSelectionModal Component: 100% (19 tests)**
@@ -460,6 +465,7 @@ All other services, stores, main UI components, and utilities
 - [x] **OnboardingSetup Component: 100% (43 tests)**
 - [x] **RepoSettings Component: 100% (110 tests across 2 files)**
 - [x] **PATAuthenticationStrategy: 100% (54 tests)**
+- [x] **PremiumStore: 100% (34 tests)**
 - [ ] Other Components: 70%+ (currently 11.5% - 7 of 61 files)
 - [ ] Infrastructure: 100% (currently 75%)
 
