@@ -10,9 +10,9 @@
 | Metric                       | Count | Percentage |
 | ---------------------------- | ----- | ---------- |
 | Total Source Files           | 171   | 100%       |
-| Files with Unit Tests        | 48    | 28.1%      |
-| Files without Tests          | 123   | 71.9%      |
-| Total Test Files             | 81    | -          |
+| Files with Unit Tests        | 49    | 28.7%      |
+| Files without Tests          | 122   | 71.3%      |
+| Total Test Files             | 82    | -          |
 | Svelte Components            | 61    | -          |
 | Svelte Components with Tests | 6     | 9.8%       |
 
@@ -20,7 +20,7 @@
 
 | Category              | Type   | Status                      |
 | --------------------- | ------ | --------------------------- |
-| **Unit Tests**        | Vitest | ✅ Partial (27.5% coverage) |
+| **Unit Tests**        | Vitest | ✅ Partial (28.7% coverage) |
 | **Component Tests**   | Vitest | ✅ Started (9.8% coverage)  |
 | **Integration Tests** | None   | ❌ Missing                  |
 | **E2E Tests**         | None   | ❌ Missing                  |
@@ -72,7 +72,7 @@
 
 ## What We Have: Existing Test Coverage
 
-### ✅ Well-Tested Areas (46 files with tests)
+### ✅ Well-Tested Areas (49 files with tests)
 
 #### Popup Components (4/14 files)
 
@@ -144,15 +144,18 @@
 - ✅ SupabaseAuthService.ts
 - ✅ UIStateManager.ts
 
-#### Global Services (15/22 files)
+#### Global Services (17/22 files)
 
 - ✅ AnalyticsService.ts (2 test files)
-- ✅ AuthenticationStrategyFactory.ts
+- ✅ AuthenticationStrategyFactory.ts (1 test file, 41 tests)
+  - AuthenticationStrategyFactory.test.ts - Singleton pattern, strategy creation, caching, method switching (41 tests)
 - ✅ BoltProjectSyncService.ts (2 test files)
 - ✅ CacheService.ts
 - ✅ DownloadService.ts
 - ✅ FileService.ts
 - ✅ GitHubApiClient.ts
+- ✅ GitHubAppAuthenticationStrategy.ts (1 test file, 48 tests)
+  - GitHubAppAuthenticationStrategy.test.ts - Token caching, automatic refresh, validation, permissions, user info retrieval, OAuth completion (48 tests)
 - ✅ GitHubAppService.ts
 - ✅ IdleMonitorService.ts
 - ✅ RateLimitHandler.ts
@@ -228,11 +231,9 @@ Almost all UI components lack dedicated tests:
 - Chrome API integration untested
 - External API integration untested
 
-#### 4. **Untested Services** (8 files)
+#### 4. **Untested Services** (6 files)
 
-- AuthenticationStrategyFactory.ts
 - FilePreviewService.ts
-- GitHubAppAuthenticationStrategy.ts
 - GitHubComparisonService.ts
 - PATAuthenticationStrategy.ts
 - CommitTemplateService.ts

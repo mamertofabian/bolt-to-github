@@ -1,7 +1,7 @@
 # Testing Gaps - Detailed Analysis
 
 **Last Updated**: 2025-10-08
-**Total Untested Files**: 119 out of 171 (69.6%)
+**Total Untested Files**: 117 out of 171 (68.4%)
 
 This document lists ALL files that lack tests, organized by category with specific test types needed.
 
@@ -116,21 +116,35 @@ This document lists ALL files that lack tests, organized by category with specif
 
 ## Services
 
-**Total**: 8 files | **Tested**: 1 file | **Coverage**: 12.5%
+**Total**: 22 files | **Tested**: 17 files | **Coverage**: 77.3%
 
-**✅ Tested (1 file)**:
+**✅ Tested (17 files)**:
 
+- `src/services/AnalyticsService.ts` - **2 test files** covering enhanced analytics and versioning
 - `src/services/AuthenticationStrategyFactory.ts` - **1 test file, 41 tests** covering singleton pattern, strategy creation and caching, default strategy behavior, current strategy resolution, authentication method management, multiple auth method detection, cache management, token-specific strategies, edge cases, and integration scenarios
+- `src/services/BoltProjectSyncService.ts` - **2 test files** covering direct method and general sync functionality
+- `src/services/CacheService.ts` - **1 test file** covering cache operations
+- `src/services/DownloadService.ts` - **1 test file** covering download functionality
+- `src/services/FileService.ts` - **1 test file** covering file operations
+- `src/services/GitHubApiClient.ts` - **1 test file** covering API client functionality
+- `src/services/GitHubAppAuthenticationStrategy.ts` - **1 test file, 48 tests** covering type property, isConfigured, token caching, token expiration and automatic refresh, validateAuth, checkPermissions, refreshToken, clearAuth, getUserInfo (from config and API), needsRenewal, getMetadata, setUserToken, completeOAuth flow, generateOAuthUrl, and integration scenarios
+- `src/services/GitHubAppService.ts` - **1 test file** covering critical business logic
+- `src/services/IdleMonitorService.ts` - **1 test file** covering idle monitoring
+- `src/services/RateLimitHandler.ts` - **1 test file** covering rate limit handling
+- `src/services/ReadmeGeneratorService.ts` - **1 test file** covering README generation
+- `src/services/RepoCloneService.ts` - **1 test file** covering repository cloning
+- `src/services/RepositoryService.ts` - **1 test file** covering repository operations
+- `src/services/SubscriptionService.ts` - **1 test file** covering subscription management
+- `src/services/UnifiedGitHubService.ts` - **3 test files** covering comprehensive, focused, and working scenarios
+- `src/services/zipHandler.ts` - **4 test files** covering critical scenarios, edge cases, readme integration, and general functionality
 
-**❌ Untested (7 files)**:
+**❌ Untested (5 files)**:
 
 | File Path                                             | Missing Test Types | Recommended Tools | Priority    |
 | ----------------------------------------------------- | ------------------ | ----------------- | ----------- |
 | `src/services/FilePreviewService.ts`                  | Unit               | Vitest            | 🟡 High     |
-| `src/services/GitHubAppAuthenticationStrategy.ts`     | Unit, Integration  | Vitest            | 🔴 Critical |
 | `src/services/GitHubComparisonService.ts`             | Unit, Integration  | Vitest            | 🟡 High     |
 | `src/services/PATAuthenticationStrategy.ts`           | Unit, Integration  | Vitest            | 🔴 Critical |
-| `src/services/settings.ts`                            | Unit               | Vitest            | 🟡 High     |
 | `src/lib/services/GitHubCacheService.ts`              | Unit, Integration  | Vitest            | 🟡 High     |
 | `src/lib/services/ProjectSettingsMigrationService.ts` | Unit, Integration  | Vitest            | 🔴 Critical |
 
