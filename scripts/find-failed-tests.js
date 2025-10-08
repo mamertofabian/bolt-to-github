@@ -48,16 +48,41 @@ vitest.on('close', (code) => {
   // Extract failed test files using regex patterns
   const failedFiles = new Set();
 
-  // Pattern 1: Files with "failed" in the test summary
-  const failedPattern = /❯.*?(src\/[^\s"']+\.test\.ts).*?failed/g;
-  let match;
-  while ((match = failedPattern.exec(outputBuffer)) !== null) {
-    failedFiles.add(match[1]);
+  // Pattern 1: Look for actual test failure indicators (× symbol or FAIL marker)
+  // Match: × test name (with file path before or after)
+  const filePathPattern = /(src\/[^\s"']+\.test\.ts)/;
+
+  // Find lines with failed test indicators
+  const lines = outputBuffer.split('\n');
+  let currentFile = null;
+
+  for (let i = 0; i < lines.length; i++) {
+    const line = lines[i];
+
+    // Track current file being tested
+    const fileMatch = line.match(filePathPattern);
+    if (fileMatch && (line.includes('❯') || line.includes('FAIL'))) {
+      currentFile = fileMatch[1];
+    }
+
+    // If we see an actual failure indicator (× or ✕), mark the current file
+    if ((line.includes('×') || line.includes('✕')) && currentFile) {
+      // Make sure it's an actual test failure, not just the symbol in text
+      if (line.match(/^\s*[×✕]\s+/)) {
+        failedFiles.add(currentFile);
+      }
+    }
+
+    // Also check for FAIL markers with file paths
+    if (line.includes('FAIL') && fileMatch) {
+      failedFiles.add(fileMatch[1]);
+    }
   }
 
-  // Pattern 2: Files mentioned in error contexts
+  // Pattern 2: Look for explicit error indicators with file paths
   const errorPattern =
-    /(❯|FAIL|failed|Error:|TypeError:|ReferenceError:|This error originated).*?(src\/[^\s"']+\.test\.ts)/g;
+    /(FAIL|Error:|TypeError:|ReferenceError:|AssertionError|This error originated).*?(src\/[^\s"']+\.test\.ts)/g;
+  let match;
   while ((match = errorPattern.exec(outputBuffer)) !== null) {
     if (match[2]) {
       failedFiles.add(match[2]);
