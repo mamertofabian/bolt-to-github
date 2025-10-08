@@ -1,7 +1,7 @@
 # Testing Gaps - Detailed Analysis
 
 **Last Updated**: 2025-10-08
-**Total Untested Files**: 107 out of 171 (62.6%)
+**Total Untested Files**: 106 out of 171 (62.0%)
 
 This document lists ALL files that lack tests, organized by category with specific test types needed.
 
@@ -119,9 +119,9 @@ This document lists ALL files that lack tests, organized by category with specif
 
 ## Services
 
-**Total**: 22 files | **Tested**: 20 files | **Coverage**: 90.9%
+**Total**: 22 files | **Tested**: 21 files | **Coverage**: 95.5%
 
-**✅ Tested (20 files)**:
+**✅ Tested (21 files)**:
 
 - `src/services/AnalyticsService.ts` - **2 test files** covering enhanced analytics and versioning
 - `src/services/AuthenticationStrategyFactory.ts` - **1 test file, 41 tests** covering singleton pattern, strategy creation and caching, default strategy behavior, current strategy resolution, authentication method management, multiple auth method detection, cache management, token-specific strategies, edge cases, and integration scenarios
@@ -133,6 +133,7 @@ This document lists ALL files that lack tests, organized by category with specif
 - `src/services/GitHubApiClient.ts` - **1 test file** covering API client functionality
 - `src/services/GitHubAppAuthenticationStrategy.ts` - **1 test file, 48 tests** covering type property, isConfigured, token caching, token expiration and automatic refresh, validateAuth, checkPermissions, refreshToken, clearAuth, getUserInfo (from config and API), needsRenewal, getMetadata, setUserToken, completeOAuth flow, generateOAuthUrl, and integration scenarios
 - `src/services/GitHubAppService.ts` - **1 test file** covering critical business logic
+- `src/services/GitHubComparisonService.ts` - **1 test file, 33 tests** covering singleton pattern, setGitHubService, compareWithGitHub (repository data fetching, file change detection: added/modified/deleted/unchanged, project/ prefix handling, gitignore integration, progress callbacks), OperationStateManager integration, GitHub API error handling, content fetch errors, empty trees, edge cases (special characters, large files, binary content, deeply nested paths)
 - `src/services/IdleMonitorService.ts` - **1 test file** covering idle monitoring
 - `src/services/PATAuthenticationStrategy.ts` - **1 test file, 54 tests** covering type property, constructor, token configuration, token retrieval and caching, authentication validation (classic/fine-grained tokens), permission checking, token refresh (unsupported), auth clearing, user info retrieval, renewal checking (always false), metadata retrieval, setToken method, integration scenarios, edge cases
 - `src/services/RateLimitHandler.ts` - **1 test file** covering rate limit handling
@@ -148,12 +149,11 @@ This document lists ALL files that lack tests, organized by category with specif
 
 - `src/lib/services/ProjectSettingsMigrationService.ts` - **1 test file, 38 tests** covering migration detection (needsMigration), statistics gathering (getMigrationStats), bulk project migration (migrateProjectSettings with progress callbacks, stale cache handling, GitHub App auth, error handling), single project migration (migrateSingleProject), migration status reset (resetMigrationStatus), project migration validation (projectNeedsMigration), integration scenarios, and edge cases
 
-**❌ Untested (2 files)**:
+**❌ Untested (1 file)**:
 
-| File Path                                 | Missing Test Types | Recommended Tools | Priority |
-| ----------------------------------------- | ------------------ | ----------------- | -------- |
-| `src/services/GitHubComparisonService.ts` | Unit, Integration  | Vitest            | 🟡 High  |
-| `src/lib/services/GitHubCacheService.ts`  | Unit, Integration  | Vitest            | 🟡 High  |
+| File Path                                | Missing Test Types | Recommended Tools | Priority |
+| ---------------------------------------- | ------------------ | ----------------- | -------- |
+| `src/lib/services/GitHubCacheService.ts` | Unit, Integration  | Vitest            | 🟡 High  |
 
 ---
 
@@ -451,7 +451,7 @@ All other services, stores, main UI components, and utilities
 
 ### File Coverage Targets
 
-- [ ] Services: 100% (currently 86.4%)
+- [x] **Services: 95.5% (21 of 22 files) - GitHubComparisonService.ts tested (33 tests)**
 - [x] **Stores: 28.6% (2 of 7 files) - premiumStore.ts and pushStatistics.ts tested**
 - [ ] Utilities: 100% (currently 45.5%)
 - [x] **Background: 100% (6 of 6 files) - All background files tested**

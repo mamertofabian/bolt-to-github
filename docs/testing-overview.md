@@ -10,9 +10,9 @@
 | Metric                       | Count | Percentage |
 | ---------------------------- | ----- | ---------- |
 | Total Source Files           | 171   | 100%       |
-| Files with Unit Tests        | 57    | 33.3%      |
-| Files without Tests          | 114   | 66.7%      |
-| Total Test Files             | 90    | -          |
+| Files with Unit Tests        | 58    | 33.9%      |
+| Files without Tests          | 113   | 66.1%      |
+| Total Test Files             | 91    | -          |
 | Svelte Components            | 61    | -          |
 | Svelte Components with Tests | 8     | 13.1%      |
 
@@ -20,7 +20,7 @@
 
 | Category              | Type   | Status                      |
 | --------------------- | ------ | --------------------------- |
-| **Unit Tests**        | Vitest | ✅ Partial (33.3% coverage) |
+| **Unit Tests**        | Vitest | ✅ Partial (33.9% coverage) |
 | **Component Tests**   | Vitest | ✅ Started (13.1% coverage) |
 | **Integration Tests** | None   | ❌ Missing                  |
 | **E2E Tests**         | None   | ❌ Missing                  |
@@ -72,7 +72,7 @@
 
 ## What We Have: Existing Test Coverage
 
-### ✅ Well-Tested Areas (50 files with tests)
+### ✅ Well-Tested Areas (51 files with tests)
 
 #### Popup Components (5/14 files)
 
@@ -151,7 +151,7 @@
 - ✅ SupabaseAuthService.ts
 - ✅ UIStateManager.ts
 
-#### Global Services (20/22 files)
+#### Global Services (21/22 files)
 
 - ✅ AnalyticsService.ts (2 test files)
 - ✅ AuthenticationStrategyFactory.ts (1 test file, 41 tests)
@@ -166,6 +166,8 @@
 - ✅ GitHubAppAuthenticationStrategy.ts (1 test file, 48 tests)
   - GitHubAppAuthenticationStrategy.test.ts - Token caching, automatic refresh, validation, permissions, user info retrieval, OAuth completion (48 tests)
 - ✅ GitHubAppService.ts
+- ✅ GitHubComparisonService.ts (1 test file, 33 tests)
+  - GitHubComparisonService.test.ts - Singleton pattern, setGitHubService, compareWithGitHub (repository data fetching, file change detection: added/modified/deleted/unchanged, project/ prefix handling, gitignore integration, progress callbacks), OperationStateManager integration, GitHub API error handling, content fetch errors, empty trees, edge cases (special characters, large files, binary content, deeply nested paths) (33 tests)
 - ✅ IdleMonitorService.ts
 - ✅ PATAuthenticationStrategy.ts (1 test file, 54 tests)
   - PATAuthenticationStrategy.test.ts - Type property, constructor, token configuration, token retrieval and caching, authentication validation (classic/fine-grained tokens), permission checking, token refresh (unsupported), auth clearing, user info retrieval, renewal checking (always false), metadata retrieval, setToken method, integration scenarios, edge cases (54 tests)
