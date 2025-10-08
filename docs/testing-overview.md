@@ -14,14 +14,14 @@
 | Files without Tests          | 126   | 73.7%      |
 | Total Test Files             | 78    | -          |
 | Svelte Components            | 61    | -          |
-| Svelte Components with Tests | 1     | 1.6%       |
+| Svelte Components with Tests | 3     | 4.9%       |
 
 ### Test Coverage by Category
 
 | Category              | Type   | Status                      |
 | --------------------- | ------ | --------------------------- |
 | **Unit Tests**        | Vitest | ✅ Partial (26.3% coverage) |
-| **Component Tests**   | Vitest | ✅ Started (1.6% coverage)  |
+| **Component Tests**   | Vitest | ✅ Started (4.9% coverage)  |
 | **Integration Tests** | None   | ❌ Missing                  |
 | **E2E Tests**         | None   | ❌ Missing                  |
 
@@ -74,7 +74,7 @@
 
 ### ✅ Well-Tested Areas (45 files with tests)
 
-#### Popup Components (1/14 files)
+#### Popup Components (3/14 files)
 
 - ✅ **App.svelte** (10 test files, 189 tests)
   - App.cleanup.test.ts - Resource cleanup and disposal (22 tests)
@@ -87,6 +87,10 @@
   - App.temp-repo.test.ts - Temporary repository management (19 tests)
   - App.user-interactions.test.ts - User interaction flows (31 tests)
   - App.window-mode.test.ts - Window mode functionality (21 tests)
+- ✅ **BranchSelectionModal.svelte** (1 test file, 19 tests)
+  - BranchSelectionModal.component.test.ts - Branch selection, premium features, loading states, error handling (19 tests)
+- ✅ **FeedbackModal.svelte** (1 test file, 19 tests)
+  - FeedbackModal.component.test.ts - Category selection, message input, form validation, submission, log handling, error handling, GitHub/email fallback (19 tests)
 
 #### Background Services (4/5 files)
 

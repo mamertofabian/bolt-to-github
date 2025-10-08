@@ -1,7 +1,7 @@
 # Testing Gaps - Detailed Analysis
 
 **Last Updated**: 2025-10-07
-**Total Untested Files**: 126 out of 171 (73.7%)
+**Total Untested Files**: 124 out of 171 (72.5%)
 
 This document lists ALL files that lack tests, organized by category with specific test types needed.
 
@@ -24,20 +24,20 @@ This document lists ALL files that lack tests, organized by category with specif
 
 ## Svelte Components
 
-**Total**: 61 files | **Tested**: 1 file | **Coverage**: 1.6%
+**Total**: 61 files | **Tested**: 3 files | **Coverage**: 4.9%
 
 ### Popup Components (13 files)
 
-**✅ Tested (1 file)**:
+**✅ Tested (3 files)**:
 
 - `src/popup/App.svelte` - **10 test files, 189 tests** covering cleanup, initialization, message handling, modal states, popup context, premium features, settings, temp repos, user interactions, and window mode
+- `src/popup/components/BranchSelectionModal.svelte` - **1 test file, 19 tests** covering branch loading, default branch selection, premium feature access, branch selection behavior, import/cancel actions, empty states, loading states, error handling, and reactive loading
+- `src/popup/components/FeedbackModal.svelte` - **1 test file, 19 tests** covering category selection, message input, form validation, feedback submission with PAT/GitHub App auth, log handling, error handling with fallbacks, GitHub issue URL generation, alternative contact methods (email/GitHub), form reset, modal close, success state, and fallback submissions
 
-**❌ Untested (12 files)**:
+**❌ Untested (10 files)**:
 
 | File Path                                          | Missing Test Types     | Recommended Tools                   | Priority    |
 | -------------------------------------------------- | ---------------------- | ----------------------------------- | ----------- |
-| `src/popup/components/BranchSelectionModal.svelte` | Component, Integration | @testing-library/svelte, Vitest     | 🟡 High     |
-| `src/popup/components/FeedbackModal.svelte`        | Component, Integration | @testing-library/svelte, Vitest     | 🟡 High     |
 | `src/popup/components/FileChangesModal.svelte`     | Component, Integration | @testing-library/svelte, Vitest     | 🟡 High     |
 | `src/popup/components/HelpTabContent.svelte`       | Component              | @testing-library/svelte             | 🟢 Medium   |
 | `src/popup/components/HomeTabContent.svelte`       | Component, E2E         | @testing-library/svelte, Playwright | 🟡 High     |
@@ -377,9 +377,11 @@ All other services, stores, main UI components, and utilities
 ### Phase 2: Core Components (Week 3-4)
 
 1. ✅ ~~Test main app component (App.svelte)~~ - **Completed!** 10 test files, 189 tests
-2. Test remaining critical UI components (7 files)
-3. Test critical stores (1 file: premiumStore)
-4. Test critical services (3 files: StateManager, OperationStateManager, ProjectSettingsMigrationService)
+2. ✅ ~~Test BranchSelectionModal component~~ - **Completed!** 1 test file, 19 tests
+3. ✅ ~~Test FeedbackModal component~~ - **Completed!** 1 test file, 19 tests
+4. Test remaining critical UI components (5 files)
+5. Test critical stores (1 file: premiumStore)
+6. Test critical services (3 files: StateManager, OperationStateManager, ProjectSettingsMigrationService)
 
 ### Phase 3: UI Library (Week 5-6)
 
@@ -418,7 +420,9 @@ All other services, stores, main UI components, and utilities
 - [ ] Stores: 100% (currently 14.3%)
 - [ ] Utilities: 100% (currently 36.4%)
 - [x] **Main App Component: 100% (App.svelte - 189 tests)**
-- [ ] Other Components: 70%+ (currently 1.6% - 1 of 61 files)
+- [x] **BranchSelectionModal Component: 100% (19 tests)**
+- [x] **FeedbackModal Component: 100% (19 tests)**
+- [ ] Other Components: 70%+ (currently 4.9% - 3 of 61 files)
 - [ ] Infrastructure: 100% (currently 75%)
 
 ### Quality Metrics
