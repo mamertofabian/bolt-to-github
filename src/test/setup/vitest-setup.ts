@@ -259,13 +259,43 @@ if (typeof global.FileReader === 'undefined') {
     onloadend: ((this: any, ev: any) => any) | null = null;
 
     readAsArrayBuffer(blob: Blob) {
-      // Simple mock that returns the blob's content as ArrayBuffer
-      setTimeout(() => {
+      setTimeout(async () => {
         if (blob instanceof Blob) {
-          // Convert blob content to ArrayBuffer
-          const text = (blob as any)._content || '';
-          const encoder = new TextEncoder();
-          this.result = encoder.encode(text).buffer as ArrayBuffer;
+          // Get the blob parts and construct an ArrayBuffer
+          const blobParts = (blob as any)._parts || [];
+          let totalLength = 0;
+
+          // Calculate total length
+          for (const part of blobParts) {
+            if (part instanceof ArrayBuffer) {
+              totalLength += part.byteLength;
+            } else if (part instanceof Uint8Array) {
+              totalLength += part.byteLength;
+            } else if (typeof part === 'string') {
+              totalLength += new TextEncoder().encode(part).length;
+            }
+          }
+
+          // Create result buffer and copy data
+          const result = new ArrayBuffer(totalLength);
+          const resultView = new Uint8Array(result);
+          let offset = 0;
+
+          for (const part of blobParts) {
+            if (part instanceof ArrayBuffer) {
+              resultView.set(new Uint8Array(part), offset);
+              offset += part.byteLength;
+            } else if (part instanceof Uint8Array) {
+              resultView.set(part, offset);
+              offset += part.byteLength;
+            } else if (typeof part === 'string') {
+              const encoded = new TextEncoder().encode(part);
+              resultView.set(encoded, offset);
+              offset += encoded.length;
+            }
+          }
+
+          this.result = result;
         } else {
           this.result = new ArrayBuffer(0);
         }
@@ -287,6 +317,17 @@ if (typeof Blob !== 'undefined' && !Blob.prototype.arrayBuffer) {
     });
   };
 }
+
+// Override Blob constructor to store parts
+const OriginalBlob = global.Blob;
+(global as any).Blob = class extends OriginalBlob {
+  _parts: any[];
+
+  constructor(parts?: BlobPart[], options?: BlobPropertyBag) {
+    super(parts, options);
+    this._parts = parts ? Array.from(parts) : [];
+  }
+};
 
 // Mock MutationObserver
 global.MutationObserver = vi.fn().mockImplementation(() => ({
