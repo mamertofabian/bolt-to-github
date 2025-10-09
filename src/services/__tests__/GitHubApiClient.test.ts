@@ -1,6 +1,9 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { beforeEach, describe, expect, it, vi, afterEach } from 'vitest';
 import { GitHubApiClient, GitHubApiError } from '../GitHubApiClient';
+
+const FIXED_TIME = new Date('2024-01-01T00:00:00.000Z').getTime();
+const FIXED_UNIX_TIME = Math.floor(FIXED_TIME / 1000);
 
 global.fetch = vi.fn().mockImplementation(() =>
   Promise.resolve({
@@ -30,9 +33,22 @@ describe('GitHubApiClient', () => {
   let client: GitHubApiClient;
 
   beforeEach(() => {
+    vi.useFakeTimers({ now: FIXED_TIME });
     client = new GitHubApiClient('test-token');
-
     vi.clearAllMocks();
+
+    (global.fetch as ReturnType<typeof vi.fn>).mockImplementation(() =>
+      Promise.resolve({
+        ok: true,
+        status: 200,
+        json: () => Promise.resolve({}),
+        headers: new Headers(),
+      })
+    );
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
   });
 
   describe('request', () => {
@@ -89,7 +105,7 @@ describe('GitHubApiClient', () => {
         { message: 'API rate limit exceeded' },
         {
           'x-ratelimit-remaining': '0',
-          'x-ratelimit-reset': `${Math.floor(Date.now() / 1000) + 1}`,
+          'x-ratelimit-reset': `${FIXED_UNIX_TIME + 1}`,
         }
       );
 
@@ -99,7 +115,11 @@ describe('GitHubApiClient', () => {
         .mockResolvedValueOnce(rateLimitResponse)
         .mockResolvedValueOnce(successResponse);
 
-      const result = await client.request('GET', '/user');
+      const requestPromise = client.request('GET', '/user');
+
+      await vi.advanceTimersByTimeAsync(2000);
+
+      const result = await requestPromise;
 
       expect(result).toEqual({ success: true });
       expect(global.fetch).toHaveBeenCalledTimes(2);

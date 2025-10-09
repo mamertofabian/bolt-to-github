@@ -1,18 +1,28 @@
 import { beforeEach, describe, expect, it, vi, afterEach } from 'vitest';
 import { PATAuthenticationStrategy } from '../PATAuthenticationStrategy';
 
-describe('PATAuthenticationStrategy', () => {
-  let strategy: PATAuthenticationStrategy;
-  let mockChrome: {
-    storage: {
-      sync: {
-        get: ReturnType<typeof vi.fn>;
-        remove: ReturnType<typeof vi.fn>;
-      };
+const FIXED_TIME = new Date('2024-01-01T00:00:00.000Z');
+
+interface ChromeNamespace {
+  storage: {
+    sync: {
+      get: ReturnType<typeof vi.fn>;
+      remove: ReturnType<typeof vi.fn>;
     };
   };
+}
+
+interface GlobalWithChrome {
+  chrome: ChromeNamespace;
+}
+
+describe('PATAuthenticationStrategy', () => {
+  let strategy: PATAuthenticationStrategy;
+  let mockChrome: ChromeNamespace;
 
   beforeEach(() => {
+    vi.useFakeTimers({ now: FIXED_TIME });
+
     mockChrome = {
       storage: {
         sync: {
@@ -22,7 +32,7 @@ describe('PATAuthenticationStrategy', () => {
       },
     };
 
-    global.chrome = mockChrome as unknown as typeof chrome;
+    (global as unknown as GlobalWithChrome).chrome = mockChrome;
     global.fetch = vi.fn();
 
     strategy = new PATAuthenticationStrategy();
@@ -31,6 +41,7 @@ describe('PATAuthenticationStrategy', () => {
   afterEach(() => {
     vi.clearAllMocks();
     vi.restoreAllMocks();
+    vi.useRealTimers();
   });
 
   describe('type property', () => {
@@ -512,7 +523,7 @@ describe('PATAuthenticationStrategy', () => {
 
       expect(result.scopes).toEqual(['repo', 'user', 'admin:org']);
       expect(result.tokenType).toBe('classic');
-      expect(result.lastUsed).toBeDefined();
+      expect(result.lastUsed).toBe(FIXED_TIME.toISOString());
     });
 
     it('should return metadata with empty scopes when header is missing', async () => {
@@ -528,6 +539,7 @@ describe('PATAuthenticationStrategy', () => {
 
       expect(result.scopes).toEqual([]);
       expect(result.tokenType).toBe('classic');
+      expect(result.lastUsed).toBe(FIXED_TIME.toISOString());
     });
 
     it('should identify classic token type', async () => {
@@ -572,7 +584,7 @@ describe('PATAuthenticationStrategy', () => {
 
       expect(result.scopes).toEqual([]);
       expect(result.tokenType).toBe('classic');
-      expect(result.lastUsed).toBeDefined();
+      expect(result.lastUsed).toBe(FIXED_TIME.toISOString());
     });
 
     it('should return empty object on network error', async () => {
@@ -594,14 +606,9 @@ describe('PATAuthenticationStrategy', () => {
         json: async () => ({}),
       } as Response);
 
-      const beforeTime = Date.now();
       const result = await strategyWithToken.getMetadata();
-      const afterTime = Date.now();
 
-      expect(result.lastUsed).toBeDefined();
-      const lastUsedTime = new Date(result.lastUsed as string).getTime();
-      expect(lastUsedTime).toBeGreaterThanOrEqual(beforeTime);
-      expect(lastUsedTime).toBeLessThanOrEqual(afterTime);
+      expect(result.lastUsed).toBe(FIXED_TIME.toISOString());
     });
   });
 

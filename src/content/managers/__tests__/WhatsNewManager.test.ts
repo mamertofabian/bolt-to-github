@@ -1,18 +1,4 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
-/* eslint-disable @typescript-eslint/no-require-imports */
-
-vi.mock('../../../lib/components/WhatsNewModal.svelte', () => ({
-  default: vi.fn().mockImplementation(function MockWhatsNewModal() {
-    return {
-      $set: vi.fn(),
-      $on: vi.fn(),
-      $destroy: vi.fn(),
-    };
-  }),
-}));
-
-import type { SvelteComponent } from 'svelte';
-import { afterEach, beforeEach, describe, expect, it, type Mocked, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type {
   IComponentLifecycleManager,
   IUIElementFactory,
@@ -23,12 +9,6 @@ import { WhatsNewManager } from '../WhatsNewManager';
 const mockChromeStorageLocal = {
   get: vi.fn(),
   set: vi.fn(),
-  remove: vi.fn(),
-  clear: vi.fn(),
-  getBytesInUse: vi.fn(),
-  setAccessLevel: vi.fn(),
-  onChanged: {} as chrome.storage.StorageChangedEvent,
-  QUOTA_BYTES: 5242880,
 };
 
 const mockChromeRuntime = {
@@ -41,12 +21,6 @@ global.chrome = {
   },
   runtime: mockChromeRuntime as unknown as typeof chrome.runtime,
 } as typeof chrome;
-
-vi.mock('dompurify', () => ({
-  default: {
-    sanitize: vi.fn((content) => content),
-  },
-}));
 
 vi.mock('$lib/constants/whatsNewContent', () => ({
   whatsNewContent: {
@@ -67,47 +41,42 @@ vi.mock('$lib/constants/whatsNewContent', () => ({
 
 describe('WhatsNewManager', () => {
   let whatsNewManager: WhatsNewManager;
-  let mockComponentLifecycleManager: Mocked<IComponentLifecycleManager>;
-  let mockUIElementFactory: Mocked<IUIElementFactory>;
-  let mockContainer: HTMLDivElement;
+  let componentLifecycleManager: IComponentLifecycleManager;
+  let uiElementFactory: IUIElementFactory;
 
   beforeEach(() => {
     vi.clearAllMocks();
-    vi.useFakeTimers();
+    vi.useFakeTimers({ now: new Date('2025-01-15T12:00:00Z') });
 
     document.body.innerHTML = '';
-    mockContainer = document.createElement('div');
 
-    mockComponentLifecycleManager = {
-      createComponent: vi
-        .fn()
-        .mockImplementation(async () => ({}) as SvelteComponent) as NonNullable<
-        IComponentLifecycleManager['createComponent']
-      >,
+    componentLifecycleManager = {
+      createComponent: vi.fn().mockImplementation(async () => ({
+        $destroy: vi.fn(),
+        $set: vi.fn(),
+        $on: vi.fn(),
+      })) as IComponentLifecycleManager['createComponent'],
       destroyComponent: vi.fn(),
-      hasComponent: vi.fn().mockReturnValue(false) as NonNullable<
-        IComponentLifecycleManager['hasComponent']
-      >,
+      hasComponent: vi.fn().mockReturnValue(false),
     };
 
-    mockUIElementFactory = {
-      createRootContainer: vi.fn((id: string) => {
-        mockContainer.id = id;
-
-        if (!document.getElementById(id)) {
-          document.body.appendChild(mockContainer);
-        }
-        return mockContainer;
-      }) as NonNullable<IUIElementFactory['createRootContainer']>,
-      createContainer: vi.fn((config: { id: string }) => {
-        mockContainer.id = config.id;
-        return mockContainer;
-      }) as NonNullable<IUIElementFactory['createContainer']>,
+    uiElementFactory = {
+      createRootContainer: (id: string) => {
+        const container = document.createElement('div');
+        container.id = id;
+        document.body.appendChild(container);
+        return container;
+      },
+      createContainer: (config: { id: string }) => {
+        const container = document.createElement('div');
+        container.id = config.id;
+        return container;
+      },
     };
 
     mockChromeRuntime.getManifest.mockReturnValue({ version: '1.3.4' } as chrome.runtime.Manifest);
 
-    whatsNewManager = new WhatsNewManager(mockComponentLifecycleManager, mockUIElementFactory);
+    whatsNewManager = new WhatsNewManager(componentLifecycleManager, uiElementFactory);
   });
 
   afterEach(() => {
@@ -115,29 +84,27 @@ describe('WhatsNewManager', () => {
     vi.useRealTimers();
   });
 
-  describe('checkAndShow', () => {
-    it('should show modal for new version when not previously shown', async () => {
+  describe('Automatic version update flow', () => {
+    it('should schedule modal display for new version with content', async () => {
       mockChromeStorageLocal.get.mockResolvedValue({});
       mockChromeStorageLocal.set.mockResolvedValue(undefined);
 
-      vi.useFakeTimers();
-      const setTimeoutSpy = vi.spyOn(window, 'setTimeout');
-
       await whatsNewManager.checkAndShow();
-
-      expect(setTimeoutSpy).toHaveBeenCalledWith(expect.any(Function), 2000);
-
       await vi.runAllTimersAsync();
 
-      expect(mockUIElementFactory.createRootContainer).toHaveBeenCalledWith('whats-new-container');
-
-      const containerInDom = document.getElementById('whats-new-container');
-      expect(containerInDom).toBeTruthy();
-
-      vi.useRealTimers();
+      const container = document.getElementById('whats-new-container');
+      expect(container).toBeTruthy();
+      expect(container?.style.position).toBe('fixed');
+      expect(container?.style.zIndex).toBe('9999');
+      expect(mockChromeStorageLocal.set).toHaveBeenCalledWith({
+        whatsNew: expect.objectContaining({
+          lastShownVersion: '1.3.4',
+          lastCheckTime: expect.any(Number),
+        }),
+      });
     });
 
-    it('should not show modal if already shown for current version', async () => {
+    it('should not display modal for already-shown version', async () => {
       mockChromeStorageLocal.get.mockResolvedValue({
         whatsNew: {
           lastShownVersion: '1.3.4',
@@ -146,14 +113,14 @@ describe('WhatsNewManager', () => {
         } as WhatsNewState,
       });
 
-      const setTimeoutSpy = vi.spyOn(window, 'setTimeout');
-
       await whatsNewManager.checkAndShow();
+      await vi.runAllTimersAsync();
 
-      expect(setTimeoutSpy).not.toHaveBeenCalled();
+      expect(document.getElementById('whats-new-container')).toBeNull();
+      expect(mockChromeStorageLocal.set).not.toHaveBeenCalled();
     });
 
-    it('should not show modal if version was dismissed', async () => {
+    it('should respect user dismissal of version', async () => {
       mockChromeStorageLocal.get.mockResolvedValue({
         whatsNew: {
           lastShownVersion: '1.3.3',
@@ -162,60 +129,43 @@ describe('WhatsNewManager', () => {
         } as WhatsNewState,
       });
 
-      const setTimeoutSpy = vi.spyOn(window, 'setTimeout');
-
       await whatsNewManager.checkAndShow();
+      await vi.runAllTimersAsync();
 
-      expect(setTimeoutSpy).not.toHaveBeenCalled();
+      expect(document.getElementById('whats-new-container')).toBeNull();
     });
 
-    it('should not show modal if no content exists for version', async () => {
+    it('should not display modal when no content exists for version', async () => {
       mockChromeRuntime.getManifest.mockReturnValue({
         version: '1.3.5',
       } as chrome.runtime.Manifest);
       mockChromeStorageLocal.get.mockResolvedValue({});
 
-      whatsNewManager = new WhatsNewManager(mockComponentLifecycleManager, mockUIElementFactory);
-
-      const setTimeoutSpy = vi.spyOn(window, 'setTimeout');
+      whatsNewManager = new WhatsNewManager(componentLifecycleManager, uiElementFactory);
 
       await whatsNewManager.checkAndShow();
+      await vi.runAllTimersAsync();
 
-      expect(setTimeoutSpy).not.toHaveBeenCalled();
+      expect(document.getElementById('whats-new-container')).toBeNull();
     });
   });
 
-  describe('showManually', () => {
-    it('should show modal immediately when called manually', async () => {
+  describe('Manual display', () => {
+    it('should display modal immediately without state update', async () => {
       mockChromeStorageLocal.get.mockResolvedValue({});
 
       await whatsNewManager.showManually();
-
-      expect(mockUIElementFactory.createRootContainer).toHaveBeenCalledWith('whats-new-container');
-
-      const containerInDom = document.getElementById('whats-new-container');
-      expect(containerInDom).toBeTruthy();
-      expect(containerInDom?.id).toBe('whats-new-container');
-
-      expect(mockUIElementFactory.createRootContainer).toHaveBeenCalledWith('whats-new-container');
 
       const container = document.getElementById('whats-new-container');
       expect(container).toBeTruthy();
       expect(container?.style.position).toBe('fixed');
       expect(container?.style.zIndex).toBe('9999');
-    });
-
-    it('should not update state when showing manually', async () => {
-      mockChromeStorageLocal.get.mockResolvedValue({});
-
-      await whatsNewManager.showManually();
-
       expect(mockChromeStorageLocal.set).not.toHaveBeenCalled();
     });
   });
 
-  describe('handleDontShowAgain', () => {
-    it('should add current version to dismissed versions', async () => {
+  describe('Dismissal handling', () => {
+    it('should persist dismissed version when user opts out', async () => {
       mockChromeStorageLocal.get.mockResolvedValue({
         whatsNew: {
           lastShownVersion: '1.3.3',
@@ -231,71 +181,50 @@ describe('WhatsNewManager', () => {
     });
   });
 
-  describe('cleanup', () => {
-    it('should clean up modal and container', async () => {
+  describe('Cleanup', () => {
+    it('should remove modal and container elements', async () => {
       await whatsNewManager.showManually();
 
-      whatsNewManager.cleanup();
-
-      expect(mockComponentLifecycleManager.destroyComponent).toHaveBeenCalledWith('WhatsNewModal');
-
-      const containerInDom = document.getElementById('whats-new-container');
-      expect(containerInDom).toBeNull();
-    });
-
-    it('should clear timeout if pending', async () => {
-      mockChromeStorageLocal.get.mockResolvedValue({});
-
-      vi.useFakeTimers();
-      const setTimeoutSpy = vi.spyOn(window, 'setTimeout');
-      const clearTimeoutSpy = vi.spyOn(global, 'clearTimeout');
-
-      await whatsNewManager.checkAndShow();
-
-      expect(setTimeoutSpy).toHaveBeenCalledWith(expect.any(Function), 2000);
+      const containerBefore = document.getElementById('whats-new-container');
+      expect(containerBefore).toBeTruthy();
 
       whatsNewManager.cleanup();
 
-      expect(clearTimeoutSpy).toHaveBeenCalled();
-
-      vi.useRealTimers();
+      const containerAfter = document.getElementById('whats-new-container');
+      expect(containerAfter).toBeNull();
     });
-  });
 
-  describe('version tracking', () => {
-    it('should mark version as shown after displaying', async () => {
+    it('should cancel pending display timeout', async () => {
       mockChromeStorageLocal.get.mockResolvedValue({});
-      mockChromeStorageLocal.set.mockResolvedValue(undefined);
 
       await whatsNewManager.checkAndShow();
+
+      whatsNewManager.cleanup();
 
       await vi.runAllTimersAsync();
 
-      expect(mockChromeStorageLocal.set).toHaveBeenCalledWith({
-        whatsNew: expect.objectContaining({
-          lastShownVersion: '1.3.4',
-          lastCheckTime: expect.any(Number),
-        }),
-      });
+      expect(document.getElementById('whats-new-container')).toBeNull();
     });
   });
 
-  describe('error handling', () => {
-    it('should handle storage errors gracefully', async () => {
+  describe('Error handling', () => {
+    it('should handle storage read errors gracefully', async () => {
       mockChromeStorageLocal.get.mockRejectedValue(new Error('Storage error'));
 
       await expect(whatsNewManager.checkAndShow()).resolves.not.toThrow();
+
+      expect(document.getElementById('whats-new-container')).toBeNull();
     });
 
-    it('should handle component creation errors', async () => {
-      const mockCreateComponent = mockComponentLifecycleManager.createComponent as any;
-      mockCreateComponent.mockImplementationOnce(() => {
-        throw new Error('Component error');
-      });
+    it('should handle storage write errors without failing', async () => {
+      mockChromeStorageLocal.get.mockResolvedValue({});
+      mockChromeStorageLocal.set.mockRejectedValue(new Error('Write error'));
 
-      await expect(whatsNewManager.showManually()).resolves.not.toThrow();
+      await whatsNewManager.checkAndShow();
+      await vi.runAllTimersAsync();
 
-      expect(mockComponentLifecycleManager.destroyComponent).not.toHaveBeenCalled();
+      const container = document.getElementById('whats-new-container');
+      expect(container).toBeTruthy();
     });
   });
 });

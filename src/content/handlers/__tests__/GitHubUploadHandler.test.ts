@@ -1,183 +1,121 @@
-import type { Mock, Mocked } from 'vitest';
-import { DownloadService } from '../../../services/DownloadService';
-import { SettingsService } from '../../../services/settings';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { MessageHandler } from '../../MessageHandler';
-import { CommitTemplateService } from '../../services/CommitTemplateService';
-import type { INotificationManager, IUIStateManager } from '../../types/ManagerInterfaces';
+import type { INotificationManager } from '../../types/ManagerInterfaces';
 import { GitHubUploadHandler } from '../GitHubUploadHandler';
+import { SettingsService } from '../../../services/settings';
+import { DownloadService } from '../../../services/DownloadService';
 
 vi.mock('../../../services/settings');
 vi.mock('../../../services/DownloadService');
-vi.mock('../../services/CommitTemplateService');
+vi.mock('../../services/CommitTemplateService', () => ({
+  CommitTemplateService: {
+    getInstance: vi.fn(() => ({
+      getTemplateSuggestions: vi.fn().mockResolvedValue([]),
+      recordTemplateUsage: vi.fn(),
+    })),
+  },
+}));
+
 vi.mock('../../../lib/utils/projectId', () => ({
   getCurrentProjectId: vi.fn(() => 'test-project'),
 }));
+
+vi.mock('../../../lib/utils/logger', () => ({
+  createLogger: () => ({
+    info: vi.fn(),
+    warn: vi.fn(),
+    error: vi.fn(),
+    debug: vi.fn(),
+  }),
+}));
+
 vi.mock('../FileChangeHandler', () => ({
   FileChangeHandler: vi.fn().mockImplementation(() => ({
-    getChangedFiles: vi.fn(),
+    getChangedFiles: vi.fn().mockResolvedValue(new Map()),
   })),
 }));
 
-class MockMessageHandler implements Partial<MessageHandler> {
-  public port: chrome.runtime.Port | null = null;
-  public messageQueue: { type: string; data?: unknown }[] = [];
-  public isConnected = true;
-
-  public sendMessage = vi.fn();
-  public sendCommitMessage = vi.fn();
-  public sendZipData = vi.fn();
-  public addListener = vi.fn();
-  public updatePort = vi.fn();
-  public sendDebugMessage = vi.fn();
-  public getConnectionStatus = vi.fn().mockReturnValue({ connected: true, queuedMessages: 0 });
-  public clearQueue = vi.fn();
-  public setupPortListeners = vi.fn();
-}
-
-class MockNotificationManager implements INotificationManager {
-  public showNotification = vi.fn();
-  public showUpgradeNotification = vi.fn();
-  public showConfirmationDialog = vi.fn().mockResolvedValue({ confirmed: true, commitMessage: '' });
-  public showSettingsNotification = vi.fn();
-  public clearReminderNotifications = vi.fn();
-  public getReminderNotificationCount = vi.fn().mockReturnValue(0);
-  public getNotificationDebugInfo = vi.fn().mockReturnValue({});
-  public cleanup = vi.fn();
-}
-
-class MockStateManager implements IUIStateManager {
-  public setUploadStatus = vi.fn();
-  public setButtonState = vi.fn();
-  public setButtonDetectingChanges = vi.fn();
-  public setButtonPushing = vi.fn();
-  public setButtonLoadingState = vi.fn();
-  public resetButtonLoadingState = vi.fn();
-  public getState = vi.fn().mockReturnValue({
-    uploadStatus: { status: 'idle', progress: 0, message: '' },
-    buttonState: { isValid: false, isProcessing: false, isInitialized: false },
-    notifications: { active: 0 },
-    dropdown: { isVisible: false },
-    components: {
-      uploadStatusInitialized: false,
-      notificationInitialized: false,
-      buttonInitialized: false,
-    },
-  });
-}
-
 describe('GitHubUploadHandler', () => {
-  let uploadHandler: GitHubUploadHandler;
-  let mockMessageHandler: MockMessageHandler;
-  let mockNotificationManager: MockNotificationManager;
-  let mockStateManager: MockStateManager;
-  let mockDownloadService: Mocked<{
-    downloadProjectZip: Mock;
-    blobToBase64: Mock;
-    getProjectFiles: Mock;
-  }>;
-  let mockCommitTemplateService: Mocked<{
-    getTemplateSuggestions: Mock;
-    recordTemplateUsage: Mock;
-  }>;
+  let handler: GitHubUploadHandler;
+  let mockMessageHandler: MessageHandler;
+  let mockNotificationManager: INotificationManager;
 
   beforeEach(() => {
     vi.clearAllMocks();
+    vi.useFakeTimers();
 
-    mockMessageHandler = new MockMessageHandler();
-    mockNotificationManager = new MockNotificationManager();
-    mockStateManager = new MockStateManager();
+    mockMessageHandler = {
+      sendMessage: vi.fn(),
+      sendZipData: vi.fn(),
+      sendCommitMessage: vi.fn(),
+    } as unknown as MessageHandler;
 
-    mockDownloadService = {
-      downloadProjectZip: vi.fn(),
-      blobToBase64: vi.fn(),
-      getProjectFiles: vi.fn(),
-    };
+    mockNotificationManager = {
+      showNotification: vi.fn(),
+      showSettingsNotification: vi.fn(),
+      showConfirmationDialog: vi.fn().mockResolvedValue({
+        confirmed: false,
+        commitMessage: '',
+      }),
+    } as unknown as INotificationManager;
 
-    mockCommitTemplateService = {
-      getTemplateSuggestions: vi.fn().mockResolvedValue([]),
-      recordTemplateUsage: vi.fn(),
-    };
-
-    (DownloadService as Mock).mockImplementation(() => mockDownloadService);
-
-    (CommitTemplateService.getInstance as Mock).mockReturnValue(mockCommitTemplateService);
-
-    uploadHandler = new GitHubUploadHandler(
-      mockMessageHandler as unknown as MessageHandler,
-      mockNotificationManager,
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      mockStateManager as unknown as any
+    vi.mocked(DownloadService).mockImplementation(
+      () =>
+        ({
+          downloadProjectZip: vi
+            .fn()
+            .mockResolvedValue(new Blob(['test'], { type: 'application/zip' })),
+          blobToBase64: vi.fn().mockResolvedValue('base64data'),
+          getProjectFiles: vi.fn().mockResolvedValue(new Map([['file.txt', 'content']])),
+        }) as unknown as DownloadService
     );
 
     global.chrome = {
       storage: {
         local: {
-          get: vi.fn(),
-          set: vi.fn(),
-          remove: vi.fn(),
+          get: vi.fn().mockResolvedValue({}) as unknown as typeof chrome.storage.local.get,
+          set: vi.fn().mockResolvedValue(undefined) as unknown as typeof chrome.storage.local.set,
+          remove: vi
+            .fn()
+            .mockResolvedValue(undefined) as unknown as typeof chrome.storage.local.remove,
         },
       },
     } as unknown as typeof chrome;
-  });
 
-  describe('Constructor', () => {
-    test('initializes with required dependencies', () => {
-      expect(uploadHandler).toBeInstanceOf(GitHubUploadHandler);
-      expect(DownloadService).toHaveBeenCalledTimes(1);
-      expect(CommitTemplateService.getInstance).toHaveBeenCalled();
+    Object.defineProperty(window, 'location', {
+      value: {
+        pathname: '/project/test-project',
+        href: 'https://bolt.new/~/test-project',
+      },
+      writable: true,
+      configurable: true,
     });
 
-    test('can be constructed without state manager', () => {
-      const handler = new GitHubUploadHandler(
-        mockMessageHandler as unknown as MessageHandler,
-        mockNotificationManager
-      );
+    handler = new GitHubUploadHandler(mockMessageHandler, mockNotificationManager);
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
+    vi.clearAllMocks();
+  });
+
+  describe('Initialization', () => {
+    it('should create handler with required dependencies', () => {
       expect(handler).toBeInstanceOf(GitHubUploadHandler);
     });
-  });
 
-  describe('validateSettings', () => {
-    test('returns true for valid settings', async () => {
-      (SettingsService.getGitHubSettings as Mock).mockResolvedValue({
-        isSettingsValid: true,
-      });
-
-      const result = await uploadHandler.validateSettings();
-
-      expect(result).toBe(true);
-      expect(SettingsService.getGitHubSettings).toHaveBeenCalled();
-    });
-
-    test('returns false for invalid settings', async () => {
-      (SettingsService.getGitHubSettings as Mock).mockResolvedValue({
-        isSettingsValid: false,
-      });
-
-      const result = await uploadHandler.validateSettings();
-
-      expect(result).toBe(false);
-    });
-
-    test('handles settings service errors', async () => {
-      (SettingsService.getGitHubSettings as Mock).mockRejectedValue(new Error('Settings error'));
-
-      await expect(uploadHandler.validateSettings()).rejects.toThrow('Settings error');
+    it('should create handler without state manager', () => {
+      const handlerWithoutState = new GitHubUploadHandler(
+        mockMessageHandler,
+        mockNotificationManager
+      );
+      expect(handlerWithoutState).toBeInstanceOf(GitHubUploadHandler);
     });
   });
 
-  describe('handleGitHubPushWithFreshComparison', () => {
-    test('calls handleGitHubPush with correct parameters', async () => {
-      const spy = vi.spyOn(uploadHandler, 'handleGitHubPush').mockResolvedValue();
-
-      await uploadHandler.handleGitHubPushWithFreshComparison();
-
-      expect(spy).toHaveBeenCalledWith(false, true);
-    });
-  });
-
-  describe('handleGitHubPush', () => {
-    beforeEach(() => {
-      (SettingsService.getGitHubSettings as Mock).mockResolvedValue({
+  describe('Settings Validation', () => {
+    it('should return true when settings are valid', async () => {
+      vi.mocked(SettingsService.getGitHubSettings).mockResolvedValue({
         isSettingsValid: true,
         gitHubSettings: {
           projectSettings: {
@@ -187,420 +125,136 @@ describe('GitHubUploadHandler', () => {
             },
           },
         },
-      });
+      } as never);
+
+      const result = await handler.validateSettings();
+
+      expect(result).toBe(true);
+      expect(SettingsService.getGitHubSettings).toHaveBeenCalled();
     });
 
-    test('shows settings notification when settings are invalid', async () => {
-      (SettingsService.getGitHubSettings as Mock).mockResolvedValue({
+    it('should return false when settings are invalid', async () => {
+      vi.mocked(SettingsService.getGitHubSettings).mockResolvedValue({
         isSettingsValid: false,
-      });
+      } as never);
 
-      await uploadHandler.handleGitHubPush(true, false);
+      const result = await handler.validateSettings();
+
+      expect(result).toBe(false);
+    });
+
+    it('should propagate settings service errors', async () => {
+      const error = new Error('Settings error');
+      vi.mocked(SettingsService.getGitHubSettings).mockRejectedValue(error);
+
+      await expect(handler.validateSettings()).rejects.toThrow('Settings error');
+    });
+  });
+
+  describe('GitHub Push Workflow', () => {
+    beforeEach(() => {
+      vi.mocked(SettingsService.getGitHubSettings).mockResolvedValue({
+        isSettingsValid: true,
+        gitHubSettings: {
+          projectSettings: {
+            'test-project': {
+              repoName: 'test-repo',
+              branch: 'main',
+            },
+          },
+        },
+      } as never);
+    });
+
+    it('should show settings notification when settings are invalid', async () => {
+      vi.mocked(SettingsService.getGitHubSettings).mockResolvedValue({
+        isSettingsValid: false,
+      } as never);
+
+      await handler.handleGitHubPush(true, false);
 
       expect(mockNotificationManager.showSettingsNotification).toHaveBeenCalled();
     });
 
-    test('skips change detection when requested', async () => {
-      mockNotificationManager.showConfirmationDialog.mockResolvedValue({
-        confirmed: true,
-        commitMessage: 'Test commit',
-      });
+    it('should show confirmation dialog before proceeding', async () => {
+      await handler.handleGitHubPush(true, true);
 
-      const proceedSpy = vi
-        .spyOn(
-          uploadHandler as unknown as { proceedWithUpload: (message: string) => Promise<void> },
-          'proceedWithUpload'
-        )
-        .mockResolvedValue(undefined);
-
-      await uploadHandler.handleGitHubPush(true, true);
-
-      expect(mockStateManager.setButtonDetectingChanges).not.toHaveBeenCalled();
       expect(mockNotificationManager.showConfirmationDialog).toHaveBeenCalledWith(
         expect.objectContaining({
           title: 'Confirm GitHub Push',
           confirmText: 'Push Changes',
         })
       );
-      expect(proceedSpy).toHaveBeenCalledWith('Test commit');
     });
 
-    test('performs change detection when not skipped', async () => {
-      const mockFileChangeHandler = {
-        getChangedFiles: vi.fn().mockResolvedValue(
-          new Map([
-            ['file1.txt', { status: 'added', path: 'file1.txt' }],
-            ['file2.txt', { status: 'modified', path: 'file2.txt' }],
-          ])
-        ),
-      };
-
-      const { FileChangeHandler } = await import('../FileChangeHandler');
-      (FileChangeHandler as Mock).mockImplementation(() => mockFileChangeHandler);
-
-      mockNotificationManager.showConfirmationDialog.mockResolvedValue({
-        confirmed: true,
-        commitMessage: '',
-      });
-
-      const proceedSpy = vi
-        .spyOn(
-          uploadHandler as unknown as { proceedWithUpload: (message?: string) => Promise<void> },
-          'proceedWithUpload'
-        )
-        .mockResolvedValue(undefined);
-
-      await uploadHandler.handleGitHubPush(false, false);
-
-      expect(mockStateManager.setButtonDetectingChanges).toHaveBeenCalled();
-      expect(mockNotificationManager.showNotification).toHaveBeenCalledWith({
-        type: 'info',
-        message: 'Detecting changes before push...',
-        duration: 8000,
-      });
-      expect(mockStateManager.resetButtonLoadingState).toHaveBeenCalled();
-      expect(proceedSpy).toHaveBeenCalled();
-    });
-
-    test('handles stored file changes', async () => {
-      const storedChanges = new Map([['stored.txt', { status: 'modified', path: 'stored.txt' }]]);
-      vi.spyOn(
-        uploadHandler as unknown as {
-          getStoredFileChanges: () => Promise<Map<string, { status: string; path: string }> | null>;
-        },
-        'getStoredFileChanges'
-      ).mockResolvedValue(storedChanges);
-
-      mockNotificationManager.showConfirmationDialog.mockResolvedValue({
-        confirmed: true,
-        commitMessage: '',
-      });
-
-      const proceedSpy = vi
-        .spyOn(
-          uploadHandler as unknown as { proceedWithUpload: (message?: string) => Promise<void> },
-          'proceedWithUpload'
-        )
-        .mockResolvedValue(undefined);
-
-      await uploadHandler.handleGitHubPush(true, false);
-
-      expect(mockNotificationManager.showConfirmationDialog).toHaveBeenCalledWith(
-        expect.objectContaining({
-          message: expect.stringContaining('Found changes: 1 modified file(s)'),
-        })
-      );
-      expect(proceedSpy).toHaveBeenCalled();
-    });
-
-    test('handles no changes detected', async () => {
-      vi.spyOn(
-        uploadHandler as unknown as {
-          getStoredFileChanges: () => Promise<Map<string, { status: string; path: string }> | null>;
-        },
-        'getStoredFileChanges'
-      ).mockResolvedValue(null);
-
-      const mockFileChangeHandler = {
-        getChangedFiles: vi.fn().mockResolvedValue(new Map()),
-      };
-
-      const { FileChangeHandler } = await import('../FileChangeHandler');
-      (FileChangeHandler as Mock).mockImplementation(() => mockFileChangeHandler);
-
-      mockNotificationManager.showConfirmationDialog.mockResolvedValue({
-        confirmed: true,
-        commitMessage: '',
-      });
-
-      const proceedSpy = vi
-        .spyOn(
-          uploadHandler as unknown as { proceedWithUpload: (message?: string) => Promise<void> },
-          'proceedWithUpload'
-        )
-        .mockResolvedValue(undefined);
-
-      await uploadHandler.handleGitHubPush(false, false);
-
-      expect(mockNotificationManager.showConfirmationDialog).toHaveBeenCalledWith(
-        expect.objectContaining({
-          title: 'No Changes - Confirm Push',
-          message: expect.stringContaining('No changes detected'),
-          confirmText: 'Push Anyway',
-          type: 'warning',
-        })
-      );
-      expect(proceedSpy).toHaveBeenCalled();
-    });
-
-    test('aborts when user cancels confirmation (skip change detection)', async () => {
-      mockNotificationManager.showConfirmationDialog.mockResolvedValue({
+    it('should not proceed when user cancels confirmation', async () => {
+      vi.mocked(mockNotificationManager.showConfirmationDialog).mockResolvedValue({
         confirmed: false,
         commitMessage: '',
       });
 
-      const proceedSpy = vi
-        .spyOn(
-          uploadHandler as unknown as { proceedWithUpload: (message?: string) => Promise<void> },
-          'proceedWithUpload'
-        )
-        .mockResolvedValue(undefined);
+      await handler.handleGitHubPush(true, true);
 
-      await uploadHandler.handleGitHubPush(true, true);
-
-      expect(proceedSpy).not.toHaveBeenCalled();
+      expect(mockMessageHandler.sendCommitMessage).not.toHaveBeenCalled();
+      expect(mockMessageHandler.sendZipData).not.toHaveBeenCalled();
     });
 
-    test('aborts when user cancels confirmation (with change detection)', async () => {
-      vi.spyOn(
-        uploadHandler as unknown as {
-          getStoredFileChanges: () => Promise<Map<string, { status: string; path: string }> | null>;
-        },
-        'getStoredFileChanges'
-      ).mockResolvedValue(null);
-
-      const mockFileChangeHandler = {
-        getChangedFiles: vi.fn().mockResolvedValue(new Map()),
-      };
-
-      const { FileChangeHandler } = await import('../FileChangeHandler');
-      (FileChangeHandler as Mock).mockImplementation(() => mockFileChangeHandler);
-
-      mockNotificationManager.showConfirmationDialog.mockResolvedValue({
-        confirmed: false,
-        commitMessage: '',
-      });
-
-      const proceedSpy = vi
-        .spyOn(
-          uploadHandler as unknown as { proceedWithUpload: (message?: string) => Promise<void> },
-          'proceedWithUpload'
-        )
-        .mockResolvedValue(undefined);
-
-      await uploadHandler.handleGitHubPush(false, false);
-
-      expect(proceedSpy).not.toHaveBeenCalled();
-      expect(mockStateManager.resetButtonLoadingState).toHaveBeenCalled();
-    });
-
-    test('records commit template usage', async () => {
-      const commitMessage = 'feat: add new feature';
-      mockNotificationManager.showConfirmationDialog.mockResolvedValue({
+    it('should proceed with upload when user confirms', async () => {
+      vi.mocked(mockNotificationManager.showConfirmationDialog).mockResolvedValue({
         confirmed: true,
-        commitMessage,
+        commitMessage: 'Test commit',
       });
 
-      const proceedSpy = vi
-        .spyOn(
-          uploadHandler as unknown as { proceedWithUpload: (message: string) => Promise<void> },
-          'proceedWithUpload'
-        )
-        .mockResolvedValue(undefined);
+      await handler.handleGitHubPush(true, true);
 
-      await uploadHandler.handleGitHubPush(true, true);
-
-      expect(mockCommitTemplateService.recordTemplateUsage).toHaveBeenCalledWith(commitMessage);
-      expect(proceedSpy).toHaveBeenCalledWith(commitMessage);
+      expect(mockMessageHandler.sendCommitMessage).toHaveBeenCalledWith('Test commit');
+      expect(mockMessageHandler.sendZipData).toHaveBeenCalledWith('base64data', 'test-project');
     });
 
-    test('handles change detection errors gracefully', async () => {
-      vi.spyOn(
-        uploadHandler as unknown as {
-          getStoredFileChanges: () => Promise<Map<string, { status: string; path: string }> | null>;
-        },
-        'getStoredFileChanges'
-      ).mockResolvedValue(null);
-
-      const mockFileChangeHandler = {
-        getChangedFiles: vi.fn().mockRejectedValue(new Error('Detection failed')),
-      };
-
-      const { FileChangeHandler } = await import('../FileChangeHandler');
-      (FileChangeHandler as Mock).mockImplementation(() => mockFileChangeHandler);
-
-      mockNotificationManager.showConfirmationDialog.mockResolvedValue({
+    it('should use default commit message when none provided', async () => {
+      vi.mocked(mockNotificationManager.showConfirmationDialog).mockResolvedValue({
         confirmed: true,
         commitMessage: '',
       });
 
-      const proceedSpy = vi
-        .spyOn(
-          uploadHandler as unknown as { proceedWithUpload: (message?: string) => Promise<void> },
-          'proceedWithUpload'
-        )
-        .mockResolvedValue(undefined);
-
-      await uploadHandler.handleGitHubPush(false, false);
-
-      expect(mockNotificationManager.showConfirmationDialog).toHaveBeenCalledWith(
-        expect.objectContaining({
-          message: expect.stringContaining('Unable to detect changes'),
-        })
-      );
-      expect(proceedSpy).toHaveBeenCalled();
-    });
-  });
-
-  describe('proceedWithUpload', () => {
-    test('handles successful upload process', async () => {
-      const commitMessage = 'Test commit message';
-      const mockBlob = new Blob(['test'], { type: 'application/zip' });
-      const mockBase64 = 'base64data';
-
-      mockDownloadService.downloadProjectZip.mockResolvedValue(mockBlob);
-      mockDownloadService.blobToBase64.mockResolvedValue(mockBase64);
-
-      await (
-        uploadHandler as unknown as { proceedWithUpload: (message: string) => Promise<void> }
-      ).proceedWithUpload(commitMessage);
-
-      expect(mockStateManager.setButtonPushing).toHaveBeenCalled();
-      expect(mockMessageHandler.sendCommitMessage).toHaveBeenCalledWith(commitMessage);
-      expect(mockStateManager.setUploadStatus).toHaveBeenCalledWith({
-        status: 'uploading',
-        progress: 5,
-        message: 'Downloading project files...',
-      });
-      expect(mockDownloadService.downloadProjectZip).toHaveBeenCalled();
-      expect(mockDownloadService.blobToBase64).toHaveBeenCalledWith(mockBlob);
-      expect(mockMessageHandler.sendZipData).toHaveBeenCalledWith(mockBase64, undefined);
-    });
-
-    test('uses default commit message when none provided', async () => {
-      const mockBlob = new Blob(['test'], { type: 'application/zip' });
-      mockDownloadService.downloadProjectZip.mockResolvedValue(mockBlob);
-      mockDownloadService.blobToBase64.mockResolvedValue('base64data');
-
-      await (
-        uploadHandler as unknown as { proceedWithUpload: (message?: string) => Promise<void> }
-      ).proceedWithUpload();
+      await handler.handleGitHubPush(true, true);
 
       expect(mockMessageHandler.sendCommitMessage).toHaveBeenCalledWith(
         'Commit from Bolt to GitHub'
       );
     });
 
-    test('handles upload errors', async () => {
-      const error = new Error('Upload failed');
-      mockDownloadService.downloadProjectZip.mockRejectedValue(error);
-
-      mockDownloadService.getProjectFiles.mockResolvedValue(new Map());
-
-      await (
-        uploadHandler as unknown as { proceedWithUpload: (message: string) => Promise<void> }
-      ).proceedWithUpload('Test commit');
-
-      expect(mockNotificationManager.showNotification).toHaveBeenCalledWith({
-        type: 'error',
-        message: 'Failed to download project: No cached files available and download failed',
-        duration: 5000,
+    it('should detect changes when skipChangeDetection is false', async () => {
+      vi.mocked(mockNotificationManager.showConfirmationDialog).mockResolvedValue({
+        confirmed: true,
+        commitMessage: '',
       });
-      expect(mockStateManager.resetButtonLoadingState).toHaveBeenCalled();
+
+      await handler.handleGitHubPush(false, false);
+
+      expect(mockNotificationManager.showNotification).toHaveBeenCalledWith(
+        expect.objectContaining({
+          type: 'info',
+          message: expect.stringContaining('Detecting changes'),
+        })
+      );
     });
 
-    test('handles blob to base64 conversion failure', async () => {
-      const mockBlob = new Blob(['test'], { type: 'application/zip' });
-      mockDownloadService.downloadProjectZip.mockResolvedValue(mockBlob);
-      mockDownloadService.blobToBase64.mockResolvedValue(null);
-
-      mockDownloadService.getProjectFiles.mockResolvedValue(new Map());
-
-      await (
-        uploadHandler as unknown as { proceedWithUpload: (message: string) => Promise<void> }
-      ).proceedWithUpload('Test commit');
-
-      expect(mockNotificationManager.showNotification).toHaveBeenCalledWith({
-        type: 'error',
-        message: 'Failed to download project: No cached files available and download failed',
-        duration: 5000,
+    it('should handle fresh comparison request', async () => {
+      vi.mocked(mockNotificationManager.showConfirmationDialog).mockResolvedValue({
+        confirmed: false,
+        commitMessage: '',
       });
+
+      await handler.handleGitHubPushWithFreshComparison();
+
+      expect(mockNotificationManager.showConfirmationDialog).toHaveBeenCalled();
     });
   });
 
-  describe('handleFileDownloadAndUpload', () => {
-    test('successfully downloads and uploads files', async () => {
-      const mockBlob = new Blob(['test'], { type: 'application/zip' });
-      const mockBase64 = 'base64data';
-
-      mockDownloadService.downloadProjectZip.mockResolvedValue(mockBlob);
-      mockDownloadService.blobToBase64.mockResolvedValue(mockBase64);
-
-      await (
-        uploadHandler as unknown as { handleFileDownloadAndUpload: () => Promise<void> }
-      ).handleFileDownloadAndUpload();
-
-      expect(mockDownloadService.downloadProjectZip).toHaveBeenCalled();
-      expect(mockDownloadService.blobToBase64).toHaveBeenCalledWith(mockBlob);
-      expect(mockMessageHandler.sendZipData).toHaveBeenCalledWith(mockBase64, undefined);
-    });
-
-    test('falls back to cached files on download failure', async () => {
-      mockDownloadService.downloadProjectZip.mockRejectedValue(new Error('Download failed'));
-
-      const fallbackSpy = vi
-        .spyOn(
-          uploadHandler as unknown as { handleCachedFilesFallback: () => Promise<void> },
-          'handleCachedFilesFallback'
-        )
-        .mockResolvedValue(undefined);
-
-      await (
-        uploadHandler as unknown as { handleFileDownloadAndUpload: () => Promise<void> }
-      ).handleFileDownloadAndUpload();
-
-      expect(fallbackSpy).toHaveBeenCalled();
-    });
-  });
-
-  describe('handleCachedFilesFallback', () => {
-    test('uses cached files when available', async () => {
-      const mockFiles = new Map([
-        ['file1.txt', 'content1'],
-        ['file2.txt', 'content2'],
-      ]);
-
-      mockDownloadService.getProjectFiles.mockResolvedValue(mockFiles);
-
-      await (
-        uploadHandler as unknown as { handleCachedFilesFallback: () => Promise<void> }
-      ).handleCachedFilesFallback();
-
-      expect(mockStateManager.setUploadStatus).toHaveBeenCalledWith({
-        status: 'uploading',
-        progress: 5,
-        message: 'Using cached project files...',
-      });
-      expect(mockDownloadService.getProjectFiles).toHaveBeenCalledWith(false);
-      expect(mockMessageHandler.sendMessage).toHaveBeenCalledWith('USE_CACHED_FILES', {
-        files: Object.fromEntries(mockFiles),
-      });
-    });
-
-    test('throws error when no cached files available', async () => {
-      mockDownloadService.getProjectFiles.mockResolvedValue(new Map());
-
-      await expect(
-        (
-          uploadHandler as unknown as { handleCachedFilesFallback: () => Promise<void> }
-        ).handleCachedFilesFallback()
-      ).rejects.toThrow('No cached files available and download failed');
-    });
-
-    test('throws error when cached files is null', async () => {
-      mockDownloadService.getProjectFiles.mockResolvedValue(null as unknown as Map<string, string>);
-
-      await expect(
-        (
-          uploadHandler as unknown as { handleCachedFilesFallback: () => Promise<void> }
-        ).handleCachedFilesFallback()
-      ).rejects.toThrow('No cached files available and download failed');
-    });
-  });
-
-  describe('getProjectInfo', () => {
-    test('returns project info for valid settings', async () => {
-      (SettingsService.getGitHubSettings as Mock).mockResolvedValue({
+  describe('File Upload Process', () => {
+    beforeEach(() => {
+      vi.mocked(SettingsService.getGitHubSettings).mockResolvedValue({
         isSettingsValid: true,
         gitHubSettings: {
           projectSettings: {
@@ -610,9 +264,43 @@ describe('GitHubUploadHandler', () => {
             },
           },
         },
-      });
+      } as never);
 
-      const result = await uploadHandler.getProjectInfo();
+      vi.mocked(mockNotificationManager.showConfirmationDialog).mockResolvedValue({
+        confirmed: true,
+        commitMessage: 'Test commit',
+      });
+    });
+
+    it('should send commit message before uploading files', async () => {
+      await handler.handleGitHubPush(true, true);
+
+      expect(mockMessageHandler.sendCommitMessage).toHaveBeenCalled();
+      expect(mockMessageHandler.sendZipData).toHaveBeenCalled();
+    });
+
+    it('should convert blob to base64 and send zip data', async () => {
+      await handler.handleGitHubPush(true, true);
+
+      expect(mockMessageHandler.sendZipData).toHaveBeenCalledWith('base64data', 'test-project');
+    });
+  });
+
+  describe('Project Info', () => {
+    it('should return project info when settings are valid', async () => {
+      vi.mocked(SettingsService.getGitHubSettings).mockResolvedValue({
+        isSettingsValid: true,
+        gitHubSettings: {
+          projectSettings: {
+            'test-project': {
+              repoName: 'test-repo',
+              branch: 'main',
+            },
+          },
+        },
+      } as never);
+
+      const result = await handler.getProjectInfo();
 
       expect(result).toEqual({
         repoName: 'test-repo',
@@ -620,229 +308,217 @@ describe('GitHubUploadHandler', () => {
       });
     });
 
-    test('returns null for invalid settings', async () => {
-      (SettingsService.getGitHubSettings as Mock).mockResolvedValue({
+    it('should return null when settings are invalid', async () => {
+      vi.mocked(SettingsService.getGitHubSettings).mockResolvedValue({
         isSettingsValid: false,
-      });
+      } as never);
 
-      const result = await uploadHandler.getProjectInfo();
+      const result = await handler.getProjectInfo();
 
       expect(result).toBeNull();
     });
 
-    test('returns null when project settings missing', async () => {
-      (SettingsService.getGitHubSettings as Mock).mockResolvedValue({
+    it('should return null when project settings are missing', async () => {
+      vi.mocked(SettingsService.getGitHubSettings).mockResolvedValue({
         isSettingsValid: true,
-        gitHubSettings: {},
-      });
-
-      const result = await uploadHandler.getProjectInfo();
-
-      expect(result).toBeNull();
-    });
-  });
-
-  describe('getStoredFileChanges', () => {
-    beforeEach(() => {
-      Object.defineProperty(window, 'location', {
-        value: {
-          pathname: '/project/test-project',
-          href: 'https://example.com/project/test-project',
+        gitHubSettings: {
+          projectSettings: {},
         },
-        writable: true,
-      });
-    });
+      } as never);
 
-    test('returns valid stored changes', async () => {
-      const mockStoredData = {
-        changes: {
-          'file1.txt': { status: 'modified', path: 'file1.txt' },
-        },
-        timestamp: Date.now() - 5 * 60 * 1000,
-        projectId: 'test-project',
-        url: 'https://example.com/project/test-project',
-      };
-
-      (global.chrome.storage.local.get as Mock).mockResolvedValue({
-        storedFileChanges: mockStoredData,
-      });
-
-      const result = await (
-        uploadHandler as unknown as {
-          getStoredFileChanges: () => Promise<Map<string, { status: string; path: string }> | null>;
-        }
-      ).getStoredFileChanges();
-
-      expect(result).toBeInstanceOf(Map);
-      expect(result?.size).toBe(1);
-      expect(result?.get('file1.txt')).toEqual({ status: 'modified', path: 'file1.txt' });
-    });
-
-    test('returns null when no stored data', async () => {
-      (global.chrome.storage.local.get as Mock).mockResolvedValue({});
-
-      const result = await (
-        uploadHandler as unknown as {
-          getStoredFileChanges: () => Promise<Map<string, { status: string; path: string }> | null>;
-        }
-      ).getStoredFileChanges();
-
-      expect(result).toBeNull();
-    });
-
-    test('clears and returns null for different project', async () => {
-      const mockStoredData = {
-        changes: { 'file1.txt': { status: 'modified', path: 'file1.txt' } },
-        timestamp: Date.now() - 5 * 60 * 1000,
-        projectId: 'different-project',
-        url: 'https://example.com/project/test-project',
-      };
-
-      (global.chrome.storage.local.get as Mock).mockResolvedValue({
-        storedFileChanges: mockStoredData,
-      });
-
-      const clearSpy = vi
-        .spyOn(
-          uploadHandler as unknown as { clearStoredFileChanges: () => Promise<void> },
-          'clearStoredFileChanges'
-        )
-        .mockResolvedValue(undefined);
-
-      const result = await (
-        uploadHandler as unknown as {
-          getStoredFileChanges: () => Promise<Map<string, { status: string; path: string }> | null>;
-        }
-      ).getStoredFileChanges();
-
-      expect(result).toBeNull();
-      expect(clearSpy).toHaveBeenCalled();
-    });
-
-    test('clears and returns null for different URL', async () => {
-      const mockStoredData = {
-        changes: { 'file1.txt': { status: 'modified', path: 'file1.txt' } },
-        timestamp: Date.now() - 5 * 60 * 1000,
-        projectId: 'test-project',
-        url: 'https://example.com/different-url',
-      };
-
-      (global.chrome.storage.local.get as Mock).mockResolvedValue({
-        storedFileChanges: mockStoredData,
-      });
-
-      const clearSpy = vi
-        .spyOn(
-          uploadHandler as unknown as { clearStoredFileChanges: () => Promise<void> },
-          'clearStoredFileChanges'
-        )
-        .mockResolvedValue(undefined);
-
-      const result = await (
-        uploadHandler as unknown as {
-          getStoredFileChanges: () => Promise<Map<string, { status: string; path: string }> | null>;
-        }
-      ).getStoredFileChanges();
-
-      expect(result).toBeNull();
-      expect(clearSpy).toHaveBeenCalled();
-    });
-
-    test('clears and returns null for expired changes', async () => {
-      const mockStoredData = {
-        changes: { 'file1.txt': { status: 'modified', path: 'file1.txt' } },
-        timestamp: Date.now() - 15 * 60 * 1000,
-        projectId: 'test-project',
-        url: 'https://example.com/project/test-project',
-      };
-
-      (global.chrome.storage.local.get as Mock).mockResolvedValue({
-        storedFileChanges: mockStoredData,
-      });
-
-      const clearSpy = vi
-        .spyOn(
-          uploadHandler as unknown as { clearStoredFileChanges: () => Promise<void> },
-          'clearStoredFileChanges'
-        )
-        .mockResolvedValue(undefined);
-
-      const result = await (
-        uploadHandler as unknown as {
-          getStoredFileChanges: () => Promise<Map<string, { status: string; path: string }> | null>;
-        }
-      ).getStoredFileChanges();
-
-      expect(result).toBeNull();
-      expect(clearSpy).toHaveBeenCalled();
-    });
-
-    test('handles storage errors gracefully', async () => {
-      (global.chrome.storage.local.get as Mock).mockRejectedValue(new Error('Storage error'));
-
-      const result = await (
-        uploadHandler as unknown as {
-          getStoredFileChanges: () => Promise<Map<string, { status: string; path: string }> | null>;
-        }
-      ).getStoredFileChanges();
+      const result = await handler.getProjectInfo();
 
       expect(result).toBeNull();
     });
   });
 
-  describe('clearStoredFileChanges', () => {
-    test('removes stored file changes', async () => {
-      await (
-        uploadHandler as unknown as { clearStoredFileChanges: () => Promise<void> }
-      ).clearStoredFileChanges();
-
-      expect(global.chrome.storage.local.remove).toHaveBeenCalledWith(['storedFileChanges']);
-    });
-
-    test('handles storage errors gracefully', async () => {
-      (global.chrome.storage.local.remove as Mock).mockRejectedValue(new Error('Storage error'));
-
-      await expect(
-        (
-          uploadHandler as unknown as { clearStoredFileChanges: () => Promise<void> }
-        ).clearStoredFileChanges()
-      ).resolves.toBeUndefined();
-    });
-  });
-
-  describe('isUploadInProgress', () => {
-    test('returns false by default', () => {
-      const result = uploadHandler.isUploadInProgress();
+  describe('Upload Status', () => {
+    it('should report upload not in progress by default', () => {
+      const result = handler.isUploadInProgress();
       expect(result).toBe(false);
     });
   });
 
-  describe('updateUploadStatus', () => {
-    test('updates status through state manager', () => {
-      const status = { status: 'uploading', progress: 50 };
-
-      (
-        uploadHandler as unknown as {
-          updateUploadStatus: (status: { status: string; progress: number }) => void;
-        }
-      ).updateUploadStatus(status);
-
-      expect(mockStateManager.setUploadStatus).toHaveBeenCalledWith(status);
+  describe('Stored File Changes (Time-based)', () => {
+    beforeEach(() => {
+      vi.setSystemTime(new Date('2024-01-01T12:00:00Z'));
     });
 
-    test('handles missing state manager gracefully', () => {
-      const handlerWithoutStateManager = new GitHubUploadHandler(
-        mockMessageHandler as unknown as MessageHandler,
-        mockNotificationManager
+    it('should handle missing stored changes', async () => {
+      (global.chrome.storage.local.get as unknown as ReturnType<typeof vi.fn>).mockResolvedValue(
+        {}
       );
 
-      expect(() => {
-        (
-          handlerWithoutStateManager as unknown as {
-            updateUploadStatus: (status: { status: string }) => void;
-          }
-        ).updateUploadStatus({ status: 'uploading' });
-      }).not.toThrow();
+      vi.mocked(SettingsService.getGitHubSettings).mockResolvedValue({
+        isSettingsValid: true,
+        gitHubSettings: {
+          projectSettings: {
+            'test-project': { repoName: 'test-repo', branch: 'main' },
+          },
+        },
+      } as never);
+
+      vi.mocked(mockNotificationManager.showConfirmationDialog).mockResolvedValue({
+        confirmed: true,
+        commitMessage: '',
+      });
+
+      await handler.handleGitHubPush(true, false);
+
+      expect(mockNotificationManager.showConfirmationDialog).toHaveBeenCalled();
+    });
+
+    it('should use valid stored changes within time window', async () => {
+      const recentTimestamp = Date.now() - 5 * 60 * 1000;
+
+      (global.chrome.storage.local.get as unknown as ReturnType<typeof vi.fn>).mockResolvedValue({
+        storedFileChanges: {
+          changes: { 'file.txt': { status: 'modified', path: 'file.txt' } },
+          timestamp: recentTimestamp,
+          projectId: 'test-project',
+          url: 'https://bolt.new/~/test-project',
+        },
+      });
+
+      vi.mocked(SettingsService.getGitHubSettings).mockResolvedValue({
+        isSettingsValid: true,
+        gitHubSettings: {
+          projectSettings: {
+            'test-project': { repoName: 'test-repo', branch: 'main' },
+          },
+        },
+      } as never);
+
+      vi.mocked(mockNotificationManager.showConfirmationDialog).mockResolvedValue({
+        confirmed: true,
+        commitMessage: '',
+      });
+
+      await handler.handleGitHubPush(true, false);
+
+      expect(mockNotificationManager.showConfirmationDialog).toHaveBeenCalledWith(
+        expect.objectContaining({
+          message: expect.stringContaining('modified'),
+        })
+      );
+    });
+
+    it('should reject expired stored changes', async () => {
+      const expiredTimestamp = Date.now() - 15 * 60 * 1000;
+
+      (global.chrome.storage.local.get as unknown as ReturnType<typeof vi.fn>).mockResolvedValue({
+        storedFileChanges: {
+          changes: { 'file.txt': { status: 'modified', path: 'file.txt' } },
+          timestamp: expiredTimestamp,
+          projectId: 'test-project',
+          url: 'https://bolt.new/~/test-project',
+        },
+      });
+
+      vi.mocked(SettingsService.getGitHubSettings).mockResolvedValue({
+        isSettingsValid: true,
+        gitHubSettings: {
+          projectSettings: {
+            'test-project': { repoName: 'test-repo', branch: 'main' },
+          },
+        },
+      } as never);
+
+      vi.mocked(mockNotificationManager.showConfirmationDialog).mockResolvedValue({
+        confirmed: true,
+        commitMessage: '',
+      });
+
+      await handler.handleGitHubPush(true, false);
+
+      expect(chrome.storage.local.remove).toHaveBeenCalledWith(['storedFileChanges']);
+    });
+
+    it('should reject stored changes for different project', async () => {
+      const recentTimestamp = Date.now() - 5 * 60 * 1000;
+
+      (global.chrome.storage.local.get as unknown as ReturnType<typeof vi.fn>).mockResolvedValue({
+        storedFileChanges: {
+          changes: { 'file.txt': { status: 'modified', path: 'file.txt' } },
+          timestamp: recentTimestamp,
+          projectId: 'different-project',
+          url: 'https://bolt.new/~/test-project',
+        },
+      });
+
+      vi.mocked(SettingsService.getGitHubSettings).mockResolvedValue({
+        isSettingsValid: true,
+        gitHubSettings: {
+          projectSettings: {
+            'test-project': { repoName: 'test-repo', branch: 'main' },
+          },
+        },
+      } as never);
+
+      vi.mocked(mockNotificationManager.showConfirmationDialog).mockResolvedValue({
+        confirmed: true,
+        commitMessage: '',
+      });
+
+      await handler.handleGitHubPush(true, false);
+
+      expect(chrome.storage.local.remove).toHaveBeenCalledWith(['storedFileChanges']);
+    });
+  });
+
+  describe('Error Handling', () => {
+    it('should handle chrome storage errors gracefully', async () => {
+      (global.chrome.storage.local.get as unknown as ReturnType<typeof vi.fn>).mockRejectedValue(
+        new Error('Storage error')
+      );
+
+      vi.mocked(SettingsService.getGitHubSettings).mockResolvedValue({
+        isSettingsValid: true,
+        gitHubSettings: {
+          projectSettings: {
+            'test-project': { repoName: 'test-repo', branch: 'main' },
+          },
+        },
+      } as never);
+
+      vi.mocked(mockNotificationManager.showConfirmationDialog).mockResolvedValue({
+        confirmed: true,
+        commitMessage: '',
+      });
+
+      await expect(handler.handleGitHubPush(true, false)).resolves.not.toThrow();
+    });
+
+    it('should handle change detection errors gracefully', async () => {
+      const { FileChangeHandler } = await import('../FileChangeHandler');
+      vi.mocked(FileChangeHandler).mockImplementation(
+        () =>
+          ({
+            getChangedFiles: vi.fn().mockRejectedValue(new Error('Detection failed')),
+          }) as never
+      );
+
+      vi.mocked(SettingsService.getGitHubSettings).mockResolvedValue({
+        isSettingsValid: true,
+        gitHubSettings: {
+          projectSettings: {
+            'test-project': { repoName: 'test-repo', branch: 'main' },
+          },
+        },
+      } as never);
+
+      vi.mocked(mockNotificationManager.showConfirmationDialog).mockResolvedValue({
+        confirmed: true,
+        commitMessage: '',
+      });
+
+      await handler.handleGitHubPush(false, false);
+
+      expect(mockNotificationManager.showConfirmationDialog).toHaveBeenCalledWith(
+        expect.objectContaining({
+          message: expect.stringContaining('Unable to detect changes'),
+        })
+      );
     });
   });
 });

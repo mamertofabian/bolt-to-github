@@ -1,5 +1,3 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
-
 import type { Mock } from 'vitest';
 import { UnifiedGitHubService } from '../UnifiedGitHubService';
 import {
@@ -10,6 +8,8 @@ import {
   TestFixtures,
   UnifiedGitHubServiceTestHelpers,
 } from './test-fixtures';
+
+const FIXED_TIME = new Date('2024-01-01T00:00:00.000Z').getTime();
 
 const mockPATStrategy = new MockPATAuthenticationStrategy(TestFixtures.TokenFixtures.pat.classic);
 const mockGitHubAppStrategy = new MockGitHubAppAuthenticationStrategy(
@@ -41,6 +41,8 @@ describe('UnifiedGitHubService - Focused Tests', () => {
   let mockStorage: MockChromeStorage;
 
   beforeEach(async () => {
+    vi.useFakeTimers({ now: FIXED_TIME });
+
     mockFetch = new MockFetchResponseBuilder();
     mockStorage = new MockChromeStorage();
 
@@ -54,6 +56,8 @@ describe('UnifiedGitHubService - Focused Tests', () => {
   });
 
   afterEach(() => {
+    vi.useRealTimers();
+
     mockFetch.reset();
     mockStorage.reset();
 
@@ -350,12 +354,22 @@ describe('UnifiedGitHubService - Focused Tests', () => {
       expect(comment.url).toContain('/comments/');
     });
 
-    it('should get issues with force refresh', async () => {
+    it('should get issues with force refresh and cache-busting timestamp', async () => {
       const service = new UnifiedGitHubService(TestFixtures.TokenFixtures.pat.classic);
       const issues = await service.getIssues('testuser', 'test-repo', 'open', true);
 
       expect(Array.isArray(issues)).toBe(true);
       expect(issues.length).toBeGreaterThan(0);
+
+      expect(global.fetch).toHaveBeenCalledWith(
+        `https://api.github.com/repos/testuser/test-repo/issues?state=open&_t=${FIXED_TIME}`,
+        expect.objectContaining({
+          headers: expect.objectContaining({
+            'Cache-Control': 'no-cache, no-store, must-revalidate',
+            Pragma: 'no-cache',
+          }),
+        })
+      );
     });
   });
 
@@ -472,11 +486,12 @@ describe('UnifiedGitHubService - Focused Tests', () => {
 
       const service = new UnifiedGitHubService(TestFixtures.TokenFixtures.pat.classic);
 
-      const startTime = Date.now();
-      await service.repoExists('testuser', 'test-repo');
-      const duration = Date.now() - startTime;
+      const repoExistsPromise = service.repoExists('testuser', 'test-repo');
 
-      expect(duration).toBeGreaterThan(90);
+      await vi.advanceTimersByTimeAsync(100);
+
+      const exists = await repoExistsPromise;
+      expect(exists).toBe(true);
     });
 
     it('should handle multiple concurrent requests', async () => {
@@ -516,7 +531,7 @@ describe('UnifiedGitHubService - Focused Tests', () => {
       const service = new UnifiedGitHubService(TestFixtures.TokenFixtures.pat.classic);
       const result = await service.request('GET', '/user');
 
-      expect((result as any).login).toBe('testuser');
+      expect((result as { login: string }).login).toBe('testuser');
       expect(global.fetch).toHaveBeenCalledWith(
         'https://api.github.com/user',
         expect.objectContaining({

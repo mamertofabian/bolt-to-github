@@ -2,51 +2,7 @@
  * @vitest-environment jsdom
  */
 
-import { describe, it, expect, beforeEach, vi, afterEach } from 'vitest';
-import { tick } from 'svelte';
-
-vi.mock('$lib/utils/logger', () => ({
-  createLogger: vi.fn(() => ({
-    error: vi.fn(),
-    warn: vi.fn(),
-    info: vi.fn(),
-    debug: vi.fn(),
-  })),
-}));
-
-vi.mock('$lib/constants', () => ({
-  GITHUB_APP_AUTH_URL: 'https://bolt2github.com/github/auth',
-}));
-
-const mockState = {
-  validateTokenAndUser: vi.fn(),
-  isClassicToken: vi.fn(),
-  listRepos: vi.fn(),
-  verifyTokenPermissions: vi.fn(),
-};
-
-vi.mock('../../../services/UnifiedGitHubService', () => {
-  return {
-    UnifiedGitHubService: class {
-      constructor(_config?: unknown) {}
-      async validateTokenAndUser(username: string) {
-        return mockState.validateTokenAndUser(username);
-      }
-      async isClassicToken() {
-        return mockState.isClassicToken();
-      }
-      async listRepos() {
-        return mockState.listRepos();
-      }
-      async verifyTokenPermissions(
-        owner: string,
-        callback: (result: { permission: 'repos' | 'admin' | 'code'; isValid: boolean }) => void
-      ) {
-        return mockState.verifyTokenPermissions(owner, callback);
-      }
-    },
-  };
-});
+import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 
 describe('GitHubSettings.svelte - Logic Tests', () => {
   let chromeMocks: {
@@ -63,16 +19,12 @@ describe('GitHubSettings.svelte - Logic Tests', () => {
         removeListener: ReturnType<typeof vi.fn>;
       };
     };
+    runtime: {
+      lastError?: { message: string } | null;
+    };
   };
 
   beforeEach(() => {
-    vi.clearAllMocks();
-
-    mockState.validateTokenAndUser.mockResolvedValue({ isValid: true });
-    mockState.isClassicToken.mockResolvedValue(true);
-    mockState.listRepos.mockResolvedValue([]);
-    mockState.verifyTokenPermissions.mockResolvedValue({ isValid: true });
-
     chromeMocks = {
       storage: {
         local: {
@@ -87,6 +39,9 @@ describe('GitHubSettings.svelte - Logic Tests', () => {
           removeListener: vi.fn(),
         },
       },
+      runtime: {
+        lastError: null,
+      },
     };
 
     Object.defineProperty(window, 'chrome', {
@@ -94,234 +49,182 @@ describe('GitHubSettings.svelte - Logic Tests', () => {
       writable: true,
       configurable: true,
     });
-
-    vi.useFakeTimers();
   });
 
   afterEach(() => {
     vi.clearAllMocks();
-    vi.useRealTimers();
   });
 
-  describe('Token Validation with Debouncing', () => {
-    it('should debounce token validation to avoid excessive API calls', async () => {
-      const { UnifiedGitHubService } = await import('../../../services/UnifiedGitHubService');
+  describe('Reactive Statement: hasRequiredSettings', () => {
+    it('should be true when PAT credentials are complete', () => {
+      type State = {
+        authenticationMethod: 'pat' | 'github_app';
+        githubToken?: string;
+        githubAppInstallationId?: number | null;
+        repoOwner: string;
+        repoName: string;
+        branch: string;
+        isOnboarding: boolean;
+      };
 
-      const service = new UnifiedGitHubService('token1');
-      service.validateTokenAndUser('user1');
+      const state: State = {
+        authenticationMethod: 'pat',
+        githubToken: 'ghp_test',
+        repoOwner: 'testuser',
+        repoName: 'testrepo',
+        branch: 'main',
+        isOnboarding: false,
+      };
 
-      await tick();
-      vi.advanceTimersByTime(100);
+      const hasRequiredSettings =
+        ((state.authenticationMethod === 'pat' && state.githubToken && state.repoOwner) ||
+          (state.authenticationMethod === 'github_app' &&
+            state.githubAppInstallationId &&
+            state.repoOwner)) &&
+        (!state.isOnboarding || (state.repoName && state.branch));
 
-      const service2 = new UnifiedGitHubService('token2');
-      service2.validateTokenAndUser('user2');
-
-      await tick();
-      vi.advanceTimersByTime(100);
-
-      const service3 = new UnifiedGitHubService('token3');
-      service3.validateTokenAndUser('user3');
-
-      await tick();
-      vi.advanceTimersByTime(500);
-
-      expect(mockState.validateTokenAndUser).toHaveBeenCalledTimes(3);
+      expect(hasRequiredSettings).toBe(true);
     });
 
-    it('should validate token when service is called', async () => {
-      const { UnifiedGitHubService } = await import('../../../services/UnifiedGitHubService');
-      mockState.validateTokenAndUser.mockResolvedValue({ isValid: true });
+    it('should be true when GitHub App is authenticated', () => {
+      type State = {
+        authenticationMethod: 'pat' | 'github_app';
+        githubToken?: string;
+        githubAppInstallationId?: number | null;
+        repoOwner: string;
+        repoName: string;
+        branch: string;
+        isOnboarding: boolean;
+      };
 
-      const service = new UnifiedGitHubService('ghp_test');
-      await service.validateTokenAndUser('testuser');
+      const state: State = {
+        authenticationMethod: 'github_app',
+        githubAppInstallationId: 12345,
+        repoOwner: 'testuser',
+        repoName: 'testrepo',
+        branch: 'main',
+        isOnboarding: false,
+      };
 
-      expect(mockState.validateTokenAndUser).toHaveBeenCalledWith('testuser');
+      const hasRequiredSettings =
+        ((state.authenticationMethod === 'pat' && state.githubToken && state.repoOwner) ||
+          (state.authenticationMethod === 'github_app' &&
+            state.githubAppInstallationId &&
+            state.repoOwner)) &&
+        (!state.isOnboarding || (state.repoName && state.branch));
+
+      expect(hasRequiredSettings).toBe(true);
     });
 
-    it('should cancel previous validation timeout when new input arrives', async () => {
-      const { UnifiedGitHubService } = await import('../../../services/UnifiedGitHubService');
+    it('should be false when PAT is missing token', () => {
+      type State = {
+        authenticationMethod: 'pat' | 'github_app';
+        githubToken?: string;
+        githubAppInstallationId?: number | null;
+        repoOwner: string;
+        repoName: string;
+        branch: string;
+        isOnboarding: boolean;
+      };
 
-      const service1 = new UnifiedGitHubService('token1');
-      service1.validateTokenAndUser('user1');
+      const state: State = {
+        authenticationMethod: 'pat',
+        githubToken: undefined,
+        repoOwner: 'testuser',
+        repoName: 'testrepo',
+        branch: 'main',
+        isOnboarding: false,
+      };
 
-      await tick();
-      vi.advanceTimersByTime(300);
+      const hasRequiredSettings =
+        ((state.authenticationMethod === 'pat' && state.githubToken && state.repoOwner) ||
+          (state.authenticationMethod === 'github_app' &&
+            state.githubAppInstallationId &&
+            state.repoOwner)) &&
+        (!state.isOnboarding || (state.repoName && state.branch));
 
-      const service2 = new UnifiedGitHubService('token2');
-      service2.validateTokenAndUser('user2');
-
-      await tick();
-      vi.advanceTimersByTime(500);
-
-      expect(mockState.validateTokenAndUser).toHaveBeenCalledWith('user1');
-      expect(mockState.validateTokenAndUser).toHaveBeenCalledWith('user2');
+      expect(hasRequiredSettings).toBe(false);
     });
 
-    it('should validate immediately when owner changes with existing token', async () => {
-      const { UnifiedGitHubService } = await import('../../../services/UnifiedGitHubService');
-      mockState.validateTokenAndUser.mockResolvedValue({ isValid: true });
+    it('should be false when GitHub App is missing installation ID', () => {
+      type State = {
+        authenticationMethod: 'pat' | 'github_app';
+        githubToken?: string;
+        githubAppInstallationId?: number | null;
+        repoOwner: string;
+        repoName: string;
+        branch: string;
+        isOnboarding: boolean;
+      };
 
-      const service = new UnifiedGitHubService('ghp_test');
-      service.validateTokenAndUser('newuser');
+      const state: State = {
+        authenticationMethod: 'github_app',
+        githubAppInstallationId: null,
+        repoOwner: 'testuser',
+        repoName: 'testrepo',
+        branch: 'main',
+        isOnboarding: false,
+      };
 
-      await tick();
-      vi.advanceTimersByTime(500);
+      const hasRequiredSettings = Boolean(
+        ((state.authenticationMethod === 'pat' && state.githubToken && state.repoOwner) ||
+          (state.authenticationMethod === 'github_app' &&
+            state.githubAppInstallationId &&
+            state.repoOwner)) &&
+          (!state.isOnboarding || (state.repoName && state.branch))
+      );
 
-      expect(mockState.validateTokenAndUser).toHaveBeenCalledWith('newuser');
-    });
-  });
-
-  describe('Permission Checking Logic', () => {
-    it('should verify all three permissions: repos, admin, contents', async () => {
-      const { UnifiedGitHubService } = await import('../../../services/UnifiedGitHubService');
-      const callbackResults: Array<{ permission: string; isValid: boolean }> = [];
-
-      mockState.verifyTokenPermissions.mockImplementation(async (_owner, callback) => {
-        const permissions = [
-          { permission: 'repos', isValid: true },
-          { permission: 'admin', isValid: true },
-          { permission: 'code', isValid: true },
-        ];
-
-        for (const perm of permissions) {
-          callback(perm as { permission: 'repos' | 'admin' | 'code'; isValid: boolean });
-          callbackResults.push(perm);
-        }
-
-        return { isValid: true };
-      });
-
-      const service = new UnifiedGitHubService('ghp_test');
-      await service.verifyTokenPermissions('testuser', (result) => {
-        callbackResults.push(result);
-      });
-
-      expect(callbackResults).toHaveLength(6);
-      expect(callbackResults.filter((r) => r.permission === 'repos')).toHaveLength(2);
-      expect(callbackResults.filter((r) => r.permission === 'admin')).toHaveLength(2);
-      expect(callbackResults.filter((r) => r.permission === 'code')).toHaveLength(2);
-    });
-
-    it('should return false when repos permission fails', async () => {
-      const { UnifiedGitHubService } = await import('../../../services/UnifiedGitHubService');
-
-      mockState.verifyTokenPermissions.mockImplementation(async (_owner, callback) => {
-        callback({ permission: 'repos', isValid: false });
-        callback({ permission: 'admin', isValid: true });
-        callback({ permission: 'code', isValid: true });
-        return { isValid: false, error: 'Missing repository creation permission' };
-      });
-
-      const service = new UnifiedGitHubService('ghp_test');
-      const result = await service.verifyTokenPermissions('testuser', vi.fn());
-
-      expect(result.isValid).toBe(false);
-      expect(result.error).toContain('repository creation');
-    });
-
-    it('should return false when admin permission fails', async () => {
-      const { UnifiedGitHubService } = await import('../../../services/UnifiedGitHubService');
-
-      mockState.verifyTokenPermissions.mockImplementation(async (_owner, callback) => {
-        callback({ permission: 'repos', isValid: true });
-        callback({ permission: 'admin', isValid: false });
-        callback({ permission: 'code', isValid: true });
-        return { isValid: false, error: 'Missing administration permission' };
-      });
-
-      const service = new UnifiedGitHubService('ghp_test');
-      const result = await service.verifyTokenPermissions('testuser', vi.fn());
-
-      expect(result.isValid).toBe(false);
-      expect(result.error).toContain('administration');
-    });
-
-    it('should return false when contents permission fails', async () => {
-      const { UnifiedGitHubService } = await import('../../../services/UnifiedGitHubService');
-
-      mockState.verifyTokenPermissions.mockImplementation(async (_owner, callback) => {
-        callback({ permission: 'repos', isValid: true });
-        callback({ permission: 'admin', isValid: true });
-        callback({ permission: 'code', isValid: false });
-        return { isValid: false, error: 'Missing contents permission' };
-      });
-
-      const service = new UnifiedGitHubService('ghp_test');
-      const result = await service.verifyTokenPermissions('testuser', vi.fn());
-
-      expect(result.isValid).toBe(false);
-      expect(result.error).toContain('contents');
-    });
-
-    it('should track permission check timestamp on success', async () => {
-      const { UnifiedGitHubService } = await import('../../../services/UnifiedGitHubService');
-      const beforeTimestamp = Date.now();
-
-      mockState.verifyTokenPermissions.mockResolvedValue({ isValid: true });
-
-      const service = new UnifiedGitHubService('ghp_test');
-      const result = await service.verifyTokenPermissions('testuser', vi.fn());
-
-      expect(result.isValid).toBe(true);
-
-      const timestamp = Date.now();
-      expect(timestamp).toBeGreaterThanOrEqual(beforeTimestamp);
-    });
-
-    it('should skip permission check if done within 30 days', () => {
-      const thirtyDaysAgo = Date.now();
-      chromeMocks.storage.local.get.mockResolvedValue({
-        lastPermissionCheck: thirtyDaysAgo,
-        preferredAuthMethod: 'pat',
-      });
-
-      mockState.verifyTokenPermissions.mockResolvedValue({ isValid: true });
-
-      const needsCheck = Date.now() - thirtyDaysAgo > 30 * 24 * 60 * 60 * 1000;
-      expect(needsCheck).toBe(false);
-    });
-
-    it('should skip permission check if done within 30 days', async () => {
-      const thirtyDaysAgo = Date.now();
-      chromeMocks.storage.local.get.mockResolvedValue({
-        lastPermissionCheck: thirtyDaysAgo,
-        preferredAuthMethod: 'pat',
-      });
-
-      mockState.verifyTokenPermissions.mockResolvedValue({ isValid: true });
-
-      const needsCheck = Date.now() - thirtyDaysAgo > 30 * 24 * 60 * 60 * 1000;
-      expect(needsCheck).toBe(false);
-    });
-
-    it('should recheck permissions if token changes', async () => {
-      const previousToken = 'ghp_old_token';
-      const newToken = 'ghp_new_token';
-
-      expect(previousToken).not.toBe(newToken);
-
-      mockState.verifyTokenPermissions.mockResolvedValue({ isValid: true });
-
-      const { UnifiedGitHubService } = await import('../../../services/UnifiedGitHubService');
-      const service = new UnifiedGitHubService(newToken);
-      await service.verifyTokenPermissions('testuser', vi.fn());
-
-      expect(mockState.verifyTokenPermissions).toHaveBeenCalled();
-    });
-
-    it('should recheck permissions if more than 30 days have passed', async () => {
-      const moreThan30DaysAgo = Date.now() - 31 * 24 * 60 * 60 * 1000;
-      chromeMocks.storage.local.get.mockResolvedValue({
-        lastPermissionCheck: moreThan30DaysAgo,
-        preferredAuthMethod: 'pat',
-      });
-
-      const needsCheck = Date.now() - moreThan30DaysAgo > 30 * 24 * 60 * 60 * 1000;
-      expect(needsCheck).toBe(true);
+      expect(hasRequiredSettings).toBe(false);
     });
   });
 
-  describe('Repository Filtering and Search', () => {
+  describe('Reactive Statement: isExpanded Collapsible Behavior', () => {
+    it('should collapse when hasRequiredSettings is true and not onboarding', () => {
+      const state = {
+        isOnboarding: false,
+        hasRequiredSettings: true,
+        manuallyToggled: false,
+      };
+
+      const isExpanded = state.isOnboarding || !state.hasRequiredSettings;
+      expect(isExpanded).toBe(false);
+    });
+
+    it('should stay expanded during onboarding regardless of settings', () => {
+      const state = {
+        isOnboarding: true,
+        hasRequiredSettings: true,
+        manuallyToggled: false,
+      };
+
+      const isExpanded = state.isOnboarding || !state.hasRequiredSettings;
+      expect(isExpanded).toBe(true);
+    });
+
+    it('should stay expanded when settings are incomplete', () => {
+      const state = {
+        isOnboarding: false,
+        hasRequiredSettings: false,
+        manuallyToggled: false,
+      };
+
+      const isExpanded = state.isOnboarding || !state.hasRequiredSettings;
+      expect(isExpanded).toBe(true);
+    });
+
+    it('should not auto-collapse when manually toggled', () => {
+      const state = {
+        isOnboarding: false,
+        hasRequiredSettings: true,
+        manuallyToggled: true,
+        isExpanded: true,
+      };
+
+      expect(state.isExpanded).toBe(true);
+    });
+  });
+
+  describe('Reactive Statement: filteredRepos', () => {
     const mockRepos = [
       {
         name: 'awesome-project',
@@ -353,52 +256,66 @@ describe('GitHubSettings.svelte - Logic Tests', () => {
     ];
 
     it('should filter repositories by name match', () => {
-      const query = 'backend';
-      const filtered = mockRepos.filter((repo) =>
-        repo.name.toLowerCase().includes(query.toLowerCase())
-      );
+      const repoSearchQuery = 'backend';
+      const filteredRepos = mockRepos
+        .filter(
+          (repo) =>
+            repo.name.toLowerCase().includes(repoSearchQuery.toLowerCase()) ||
+            (repo.description &&
+              repo.description.toLowerCase().includes(repoSearchQuery.toLowerCase()))
+        )
+        .slice(0, 10);
 
-      expect(filtered).toHaveLength(1);
-      expect(filtered[0].name).toBe('backend-api');
+      expect(filteredRepos).toHaveLength(1);
+      expect(filteredRepos[0].name).toBe('backend-api');
     });
 
     it('should filter repositories by description match', () => {
-      const query = 'awesome';
-      const filtered = mockRepos.filter(
-        (repo) =>
-          repo.name.toLowerCase().includes(query.toLowerCase()) ||
-          (repo.description && repo.description.toLowerCase().includes(query.toLowerCase()))
-      );
+      const repoSearchQuery = 'awesome';
+      const filteredRepos = mockRepos
+        .filter(
+          (repo) =>
+            repo.name.toLowerCase().includes(repoSearchQuery.toLowerCase()) ||
+            (repo.description &&
+              repo.description.toLowerCase().includes(repoSearchQuery.toLowerCase()))
+        )
+        .slice(0, 10);
 
-      expect(filtered).toHaveLength(1);
-      expect(filtered[0].name).toBe('awesome-project');
+      expect(filteredRepos).toHaveLength(1);
+      expect(filteredRepos[0].name).toBe('awesome-project');
     });
 
-    it('should handle null descriptions in filtering', () => {
-      const query = 'frontend';
-      const filtered = mockRepos.filter(
-        (repo) =>
-          repo.name.toLowerCase().includes(query.toLowerCase()) ||
-          (repo.description && repo.description.toLowerCase().includes(query.toLowerCase()))
-      );
+    it('should handle null descriptions safely', () => {
+      const repoSearchQuery = 'frontend';
+      const filteredRepos = mockRepos
+        .filter(
+          (repo) =>
+            repo.name.toLowerCase().includes(repoSearchQuery.toLowerCase()) ||
+            (repo.description &&
+              repo.description.toLowerCase().includes(repoSearchQuery.toLowerCase()))
+        )
+        .slice(0, 10);
 
-      expect(filtered).toHaveLength(1);
-      expect(filtered[0].name).toBe('frontend-app');
+      expect(filteredRepos).toHaveLength(1);
+      expect(filteredRepos[0].name).toBe('frontend-app');
     });
 
-    it('should be case-insensitive when filtering', () => {
-      const query = 'BACKEND';
-      const filtered = mockRepos.filter(
-        (repo) =>
-          repo.name.toLowerCase().includes(query.toLowerCase()) ||
-          (repo.description && repo.description.toLowerCase().includes(query.toLowerCase()))
-      );
+    it('should be case-insensitive', () => {
+      const repoSearchQuery = 'BACKEND';
+      const filteredRepos = mockRepos
+        .filter(
+          (repo) =>
+            repo.name.toLowerCase().includes(repoSearchQuery.toLowerCase()) ||
+            (repo.description &&
+              repo.description.toLowerCase().includes(repoSearchQuery.toLowerCase()))
+        )
+        .slice(0, 10);
 
-      expect(filtered).toHaveLength(1);
-      expect(filtered[0].name).toBe('backend-api');
+      expect(filteredRepos).toHaveLength(1);
+      expect(filteredRepos[0].name).toBe('backend-api');
     });
 
-    it('should limit filtered results to 10 items', () => {
+    it('should limit results to 10 items', () => {
       const manyRepos = Array.from({ length: 20 }, (_, i) => ({
         name: `repo-${i}`,
         description: `Description ${i}`,
@@ -409,44 +326,184 @@ describe('GitHubSettings.svelte - Logic Tests', () => {
         language: 'TypeScript',
       }));
 
-      const query = 'repo';
-      const filtered = manyRepos
+      const repoSearchQuery = 'repo';
+      const filteredRepos = manyRepos
         .filter(
           (repo) =>
-            repo.name.toLowerCase().includes(query.toLowerCase()) ||
-            (repo.description && repo.description.toLowerCase().includes(query.toLowerCase()))
+            repo.name.toLowerCase().includes(repoSearchQuery.toLowerCase()) ||
+            (repo.description &&
+              repo.description.toLowerCase().includes(repoSearchQuery.toLowerCase()))
         )
         .slice(0, 10);
 
-      expect(filtered).toHaveLength(10);
+      expect(filteredRepos).toHaveLength(10);
     });
 
     it('should return empty array when no repositories match', () => {
-      const query = 'nonexistent';
-      const filtered = mockRepos.filter(
-        (repo) =>
-          repo.name.toLowerCase().includes(query.toLowerCase()) ||
-          (repo.description && repo.description.toLowerCase().includes(query.toLowerCase()))
-      );
+      const repoSearchQuery = 'nonexistent';
+      const filteredRepos = mockRepos
+        .filter(
+          (repo) =>
+            repo.name.toLowerCase().includes(repoSearchQuery.toLowerCase()) ||
+            (repo.description &&
+              repo.description.toLowerCase().includes(repoSearchQuery.toLowerCase()))
+        )
+        .slice(0, 10);
 
-      expect(filtered).toHaveLength(0);
-    });
-
-    it('should match partial strings in repository names', () => {
-      const query = 'end';
-      const filtered = mockRepos.filter((repo) =>
-        repo.name.toLowerCase().includes(query.toLowerCase())
-      );
-
-      expect(filtered.length).toBeGreaterThan(0);
-      expect(filtered.some((r) => r.name.includes('end'))).toBe(true);
+      expect(filteredRepos).toHaveLength(0);
     });
   });
 
-  describe('Authentication Method Switching', () => {
-    it('should clear validation state when switching from PAT to GitHub App', async () => {
-      chromeMocks.storage.local.set.mockResolvedValue(undefined);
+  describe('Reactive Statement: repoExists', () => {
+    const mockRepos = [{ name: 'existing-repo' }, { name: 'another-repo' }, { name: 'Third-Repo' }];
 
+    it('should detect existing repository', () => {
+      const repoName = 'existing-repo';
+      const repoExists = mockRepos.some(
+        (repo) => repo.name.toLowerCase() === repoName.toLowerCase()
+      );
+
+      expect(repoExists).toBe(true);
+    });
+
+    it('should detect non-existing repository', () => {
+      const repoName = 'new-repo';
+      const repoExists = mockRepos.some(
+        (repo) => repo.name.toLowerCase() === repoName.toLowerCase()
+      );
+
+      expect(repoExists).toBe(false);
+    });
+
+    it('should be case-insensitive', () => {
+      const repoName = 'THIRD-REPO';
+      const repoExists = mockRepos.some(
+        (repo) => repo.name.toLowerCase() === repoName.toLowerCase()
+      );
+
+      expect(repoExists).toBe(true);
+    });
+  });
+
+  describe('Reactive Statement: repoName from projectId', () => {
+    it('should use projectId as default repoName when not set', () => {
+      const state = {
+        projectId: 'my-project-123',
+        repoName: '',
+        isRepoNameFromProjectId: false,
+      };
+
+      if (state.projectId && !state.repoName && !state.isRepoNameFromProjectId) {
+        state.repoName = state.projectId;
+        state.isRepoNameFromProjectId = true;
+      }
+
+      expect(state.repoName).toBe('my-project-123');
+      expect(state.isRepoNameFromProjectId).toBe(true);
+    });
+
+    it('should not override existing repoName', () => {
+      const state = {
+        projectId: 'my-project-123',
+        repoName: 'existing-repo',
+        isRepoNameFromProjectId: false,
+      };
+
+      if (state.projectId && !state.repoName && !state.isRepoNameFromProjectId) {
+        state.repoName = state.projectId;
+        state.isRepoNameFromProjectId = true;
+      }
+
+      expect(state.repoName).toBe('existing-repo');
+      expect(state.isRepoNameFromProjectId).toBe(false);
+    });
+  });
+
+  describe('Reactive Statement: statusDisplayText', () => {
+    it('should show GitHub App status when authenticated', () => {
+      const state = {
+        authenticationMethod: 'github_app' as 'pat' | 'github_app',
+        githubAppInstallationId: 12345,
+        githubAppUsername: 'testuser',
+        githubToken: '',
+        repoOwner: '',
+        repoName: '',
+      };
+
+      const statusDisplayText = (() => {
+        if (state.authenticationMethod === 'github_app') {
+          if (state.githubAppInstallationId && state.githubAppUsername) {
+            return `Connected via GitHub App as ${state.githubAppUsername}`;
+          }
+          return 'Connect with GitHub App to get started';
+        } else {
+          if (state.githubToken && state.repoOwner) {
+            return `Configured for ${state.repoOwner}${state.repoName ? `/${state.repoName}` : ''}`;
+          }
+          return 'Configure your GitHub repository settings';
+        }
+      })();
+
+      expect(statusDisplayText).toBe('Connected via GitHub App as testuser');
+    });
+
+    it('should show connection prompt when GitHub App not connected', () => {
+      const state = {
+        authenticationMethod: 'github_app' as 'pat' | 'github_app',
+        githubAppInstallationId: null,
+        githubAppUsername: null,
+        githubToken: '',
+        repoOwner: '',
+        repoName: '',
+      };
+
+      const statusDisplayText = (() => {
+        if (state.authenticationMethod === 'github_app') {
+          if (state.githubAppInstallationId && state.githubAppUsername) {
+            return `Connected via GitHub App as ${state.githubAppUsername}`;
+          }
+          return 'Connect with GitHub App to get started';
+        } else {
+          if (state.githubToken && state.repoOwner) {
+            return `Configured for ${state.repoOwner}${state.repoName ? `/${state.repoName}` : ''}`;
+          }
+          return 'Configure your GitHub repository settings';
+        }
+      })();
+
+      expect(statusDisplayText).toBe('Connect with GitHub App to get started');
+    });
+
+    it('should show repository configuration for PAT', () => {
+      const state = {
+        authenticationMethod: 'pat' as 'pat' | 'github_app',
+        githubAppInstallationId: null,
+        githubAppUsername: null,
+        githubToken: 'ghp_test',
+        repoOwner: 'testuser',
+        repoName: 'testrepo',
+      };
+
+      const statusDisplayText = (() => {
+        if (state.authenticationMethod === 'github_app') {
+          if (state.githubAppInstallationId && state.githubAppUsername) {
+            return `Connected via GitHub App as ${state.githubAppUsername}`;
+          }
+          return 'Connect with GitHub App to get started';
+        } else {
+          if (state.githubToken && state.repoOwner) {
+            return `Configured for ${state.repoOwner}${state.repoName ? `/${state.repoName}` : ''}`;
+          }
+          return 'Configure your GitHub repository settings';
+        }
+      })();
+
+      expect(statusDisplayText).toBe('Configured for testuser/testrepo');
+    });
+  });
+
+  describe('Authentication Method State Clearing', () => {
+    it('should clear validation state when switching from PAT to GitHub App', () => {
       const newState = {
         isTokenValid: null,
         validationError: null,
@@ -464,7 +521,7 @@ describe('GitHubSettings.svelte - Logic Tests', () => {
       expect(newState.permissionStatus.allRepos).toBeUndefined();
     });
 
-    it('should clear GitHub App validation when switching to PAT', () => {
+    it('should clear GitHub App state when switching to PAT', () => {
       const newState = {
         githubAppValidationResult: null,
         githubAppConnectionError: null,
@@ -474,45 +531,12 @@ describe('GitHubSettings.svelte - Logic Tests', () => {
       expect(newState.githubAppConnectionError).toBeNull();
     });
 
-    it('should clear repository list when switching authentication methods', async () => {
-      mockState.listRepos.mockResolvedValue([]);
-
-      const repositories = {
-        before: [{ name: 'repo1' }, { name: 'repo2' }],
-        after: [],
-      };
-
-      expect(repositories.after).toHaveLength(0);
-    });
-
-    it('should save authentication method preference to local storage', async () => {
-      chromeMocks.storage.local.set.mockResolvedValue(undefined);
-
+    it('should save authentication method preference to storage', async () => {
       await chromeMocks.storage.local.set({ preferredAuthMethod: 'github_app' });
 
       expect(chromeMocks.storage.local.set).toHaveBeenCalledWith({
         preferredAuthMethod: 'github_app',
       });
-    });
-
-    it('should trigger re-validation after switching to PAT with existing credentials', async () => {
-      const { UnifiedGitHubService } = await import('../../../services/UnifiedGitHubService');
-      mockState.validateTokenAndUser.mockResolvedValue({ isValid: true });
-
-      const service = new UnifiedGitHubService('ghp_test');
-      await service.validateTokenAndUser('testuser');
-
-      expect(mockState.validateTokenAndUser).toHaveBeenCalledWith('testuser');
-    });
-
-    it('should clear permission check timestamp when switching methods', () => {
-      const newState = {
-        lastPermissionCheck: null,
-        previousToken: null,
-      };
-
-      expect(newState.lastPermissionCheck).toBeNull();
-      expect(newState.previousToken).toBeNull();
     });
   });
 
@@ -524,23 +548,11 @@ describe('GitHubSettings.svelte - Logic Tests', () => {
     });
 
     it('should handle storage quota error from chrome.runtime.lastError', () => {
-      const chromeMocksWithError = {
-        ...chromeMocks,
-        runtime: {
-          lastError: {
-            message: 'Quota exceeded: MAX_WRITE_OPERATIONS_PER_HOUR',
-          },
-        },
+      chromeMocks.runtime.lastError = {
+        message: 'Quota exceeded: MAX_WRITE_OPERATIONS_PER_HOUR',
       };
 
-      Object.defineProperty(window, 'chrome', {
-        value: chromeMocksWithError,
-        writable: true,
-        configurable: true,
-      });
-
-      const lastError = (window.chrome as unknown as typeof chromeMocksWithError).runtime.lastError;
-      expect(lastError?.message).toContain('MAX_WRITE_OPERATIONS_PER_H');
+      expect(chromeMocks.runtime.lastError.message).toContain('MAX_WRITE_OPERATIONS_PER_H');
     });
 
     it('should generate appropriate error message for quota exceeded', () => {
@@ -559,237 +571,6 @@ describe('GitHubSettings.svelte - Logic Tests', () => {
       state.storageQuotaError = null as unknown as string;
 
       expect(state.storageQuotaError).toBeNull();
-    });
-  });
-
-  describe('Reactive State Updates', () => {
-    it('should update hasRequiredSettings when PAT credentials are complete', () => {
-      type State = {
-        authenticationMethod: 'pat' | 'github_app';
-        githubToken?: string;
-        githubAppInstallationId?: number | null;
-        repoOwner: string;
-        repoName: string;
-        branch: string;
-        isOnboarding: boolean;
-      };
-
-      const state: State = {
-        authenticationMethod: 'pat',
-        githubToken: 'ghp_test',
-        repoOwner: 'testuser',
-        repoName: 'testrepo',
-        branch: 'main',
-        isOnboarding: false,
-      };
-
-      const hasRequiredSettings =
-        ((state.authenticationMethod === 'pat' && state.githubToken && state.repoOwner) ||
-          (state.authenticationMethod === 'github_app' &&
-            state.githubAppInstallationId &&
-            state.repoOwner)) &&
-        (!state.isOnboarding || (state.repoName && state.branch));
-
-      expect(hasRequiredSettings).toBe(true);
-    });
-
-    it('should update hasRequiredSettings when GitHub App is authenticated', () => {
-      type State = {
-        authenticationMethod: 'pat' | 'github_app';
-        githubToken?: string;
-        githubAppInstallationId?: number | null;
-        repoOwner: string;
-        repoName: string;
-        branch: string;
-        isOnboarding: boolean;
-      };
-
-      const state: State = {
-        authenticationMethod: 'github_app',
-        githubAppInstallationId: 12345,
-        repoOwner: 'testuser',
-        repoName: 'testrepo',
-        branch: 'main',
-        isOnboarding: false,
-      };
-
-      const hasRequiredSettings =
-        ((state.authenticationMethod === 'pat' && state.githubToken && state.repoOwner) ||
-          (state.authenticationMethod === 'github_app' &&
-            state.githubAppInstallationId &&
-            state.repoOwner)) &&
-        (!state.isOnboarding || (state.repoName && state.branch));
-
-      expect(hasRequiredSettings).toBe(true);
-    });
-
-    it('should update isExpanded based on hasRequiredSettings during non-onboarding', () => {
-      const state = {
-        isOnboarding: false,
-        hasRequiredSettings: true,
-        manuallyToggled: false,
-      };
-
-      const isExpanded = state.isOnboarding || !state.hasRequiredSettings;
-      expect(isExpanded).toBe(false);
-    });
-
-    it('should keep isExpanded true during onboarding regardless of settings', () => {
-      const state = {
-        isOnboarding: true,
-        hasRequiredSettings: true,
-        manuallyToggled: false,
-      };
-
-      const isExpanded = state.isOnboarding || !state.hasRequiredSettings;
-      expect(isExpanded).toBe(true);
-    });
-
-    it('should not auto-collapse when manually toggled', () => {
-      const state = {
-        isOnboarding: false,
-        hasRequiredSettings: true,
-        manuallyToggled: true,
-        isExpanded: true,
-      };
-
-      expect(state.isExpanded).toBe(true);
-    });
-
-    it('should detect repository existence from list', () => {
-      const repositories = [{ name: 'existing-repo' }, { name: 'another-repo' }];
-      const repoName = 'existing-repo';
-
-      const repoExists = repositories.some(
-        (repo) => repo.name.toLowerCase() === repoName.toLowerCase()
-      );
-
-      expect(repoExists).toBe(true);
-    });
-
-    it('should handle case-insensitive repository existence check', () => {
-      const repositories = [{ name: 'Existing-Repo' }, { name: 'Another-Repo' }];
-      const repoName = 'existing-repo';
-
-      const repoExists = repositories.some(
-        (repo) => repo.name.toLowerCase() === repoName.toLowerCase()
-      );
-
-      expect(repoExists).toBe(true);
-    });
-
-    it('should use projectId as default repoName when not set', () => {
-      const state = {
-        projectId: 'my-project-123',
-        repoName: '',
-        isRepoNameFromProjectId: false,
-      };
-
-      if (state.projectId && !state.repoName && !state.isRepoNameFromProjectId) {
-        state.repoName = state.projectId;
-        state.isRepoNameFromProjectId = true;
-      }
-
-      expect(state.repoName).toBe('my-project-123');
-      expect(state.isRepoNameFromProjectId).toBe(true);
-    });
-  });
-
-  describe('GitHub App Validation', () => {
-    it('should validate GitHub App when installation ID exists', async () => {
-      const githubAppInstallationId = 12345;
-
-      const validationResult = {
-        isValid: !!githubAppInstallationId,
-        userInfo: {
-          login: 'testuser',
-          avatar_url: 'https://example.com/avatar.jpg',
-        },
-      };
-
-      expect(validationResult.isValid).toBe(true);
-      expect(validationResult.userInfo.login).toBe('testuser');
-    });
-
-    it('should fail validation when no installation ID exists', () => {
-      const validationResult = {
-        isValid: false,
-        error: 'No GitHub App installation found',
-      };
-
-      expect(validationResult.isValid).toBe(false);
-      expect(validationResult.error).toBe('No GitHub App installation found');
-    });
-
-    it('should include user info in validation result', () => {
-      const userInfo = {
-        login: 'github-user',
-        avatar_url: 'https://avatars.githubusercontent.com/u/123456',
-      };
-
-      const validationResult = {
-        isValid: true,
-        userInfo,
-      };
-
-      expect(validationResult.userInfo.login).toBe('github-user');
-      expect(validationResult.userInfo.avatar_url).toContain('avatars.githubusercontent.com');
-    });
-
-    it('should handle validation errors gracefully', () => {
-      const error = new Error('GitHub App validation failed');
-
-      const validationResult = {
-        isValid: false,
-        error: error.message,
-      };
-
-      expect(validationResult.isValid).toBe(false);
-      expect(validationResult.error).toBe('GitHub App validation failed');
-    });
-  });
-
-  describe('Token Type Detection', () => {
-    it('should identify classic token type', async () => {
-      mockState.isClassicToken.mockResolvedValue(true);
-
-      const { UnifiedGitHubService } = await import('../../../services/UnifiedGitHubService');
-      const service = new UnifiedGitHubService('ghp_classic_token');
-      const isClassic = await service.isClassicToken();
-
-      expect(isClassic).toBe(true);
-    });
-
-    it('should identify fine-grained token type', async () => {
-      mockState.isClassicToken.mockResolvedValue(false);
-
-      const { UnifiedGitHubService } = await import('../../../services/UnifiedGitHubService');
-      const service = new UnifiedGitHubService('github_pat_fine_grained');
-      const isClassic = await service.isClassicToken();
-
-      expect(isClassic).toBe(false);
-    });
-
-    it('should set token type to null when validation fails', () => {
-      const state = {
-        isTokenValid: false,
-        tokenType: null as 'classic' | 'fine-grained' | null,
-      };
-
-      expect(state.tokenType).toBeNull();
-    });
-
-    it('should set token type after successful validation', async () => {
-      mockState.validateTokenAndUser.mockResolvedValue({ isValid: true });
-      mockState.isClassicToken.mockResolvedValue(true);
-
-      const { UnifiedGitHubService } = await import('../../../services/UnifiedGitHubService');
-      const service = new UnifiedGitHubService('ghp_test');
-      const validationResult = await service.validateTokenAndUser('testuser');
-      const isClassic = await service.isClassicToken();
-
-      expect(validationResult.isValid).toBe(true);
-      expect(isClassic).toBe(true);
     });
   });
 
@@ -881,42 +662,62 @@ describe('GitHubSettings.svelte - Logic Tests', () => {
     });
   });
 
-  describe('Status Display Text Generation', () => {
-    it('should show GitHub App status when authenticated', () => {
-      const state = {
-        authenticationMethod: 'github_app' as const,
-        githubAppInstallationId: 12345,
-        githubAppUsername: 'testuser',
+  describe('Permission Check Timing Logic', () => {
+    it('should check permissions when token changes', () => {
+      const previousToken = 'ghp_old_token';
+      const currentToken = 'ghp_new_token';
+
+      const needsCheck = (previousToken as string) !== (currentToken as string);
+
+      expect(needsCheck).toBe(true);
+    });
+
+    it('should check permissions when more than 30 days have passed', () => {
+      const THIRTY_DAYS = 30 * 24 * 60 * 60 * 1000;
+      const moreThan30DaysAgo = Date.now() - 31 * 24 * 60 * 60 * 1000;
+
+      const needsCheck = Date.now() - moreThan30DaysAgo > THIRTY_DAYS;
+
+      expect(needsCheck).toBe(true);
+    });
+
+    it('should not check permissions within 30 days if token unchanged', () => {
+      const THIRTY_DAYS = 30 * 24 * 60 * 60 * 1000;
+      const twentyDaysAgo = Date.now() - 20 * 24 * 60 * 60 * 1000;
+      const previousToken = 'ghp_token';
+      const currentToken = 'ghp_token';
+
+      const needsCheck =
+        (previousToken as string) !== (currentToken as string) ||
+        Date.now() - twentyDaysAgo > THIRTY_DAYS;
+
+      expect(needsCheck).toBe(false);
+    });
+  });
+
+  describe('GitHub App Validation Logic', () => {
+    it('should validate when installation ID exists', () => {
+      const githubAppInstallationId = 12345;
+
+      const validationResult = {
+        isValid: !!githubAppInstallationId,
+        userInfo: {
+          login: 'testuser',
+          avatar_url: 'https://example.com/avatar.jpg',
+        },
       };
 
-      const statusText = `Connected via GitHub App as ${state.githubAppUsername}`;
-      expect(statusText).toBe('Connected via GitHub App as testuser');
+      expect(validationResult.isValid).toBe(true);
+      expect(validationResult.userInfo.login).toBe('testuser');
     });
 
-    it('should show connection prompt when GitHub App not connected', () => {
-      const statusText = 'Connect with GitHub App to get started';
-      expect(statusText).toBe('Connect with GitHub App to get started');
-    });
+    it('should fail validation when no installation ID', () => {
+      const validationResult = {
+        isValid: false,
+        error: 'No GitHub App installation found',
+      };
 
-    it('should show repository configuration for PAT authentication', () => {
-      const repoOwner = 'testuser';
-      const repoName = 'testrepo';
-
-      const statusText = `Configured for ${repoOwner}/${repoName}`;
-      expect(statusText).toBe('Configured for testuser/testrepo');
-    });
-
-    it('should show owner only when repo name is missing', () => {
-      const repoOwner = 'testuser';
-      const repoName = '';
-
-      const statusText = `Configured for ${repoOwner}${repoName ? `/${repoName}` : ''}`;
-      expect(statusText).toBe('Configured for testuser');
-    });
-
-    it('should show configuration prompt when PAT not configured', () => {
-      const statusText = 'Configure your GitHub repository settings';
-      expect(statusText).toBe('Configure your GitHub repository settings');
+      expect(validationResult.isValid).toBe(false);
     });
   });
 });

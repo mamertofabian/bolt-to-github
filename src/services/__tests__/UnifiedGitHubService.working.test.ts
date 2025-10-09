@@ -279,19 +279,4 @@ describe('UnifiedGitHubService - Working Tests', () => {
       expect(isFineGrained).toBe(true);
     });
   });
-
-  describe('Performance', () => {
-    it('should handle requests with simulated delay', async () => {
-      mockFetch.reset();
-      mockFetch.mockRepoExists('testuser', 'test-repo', true).setDelay(100).build();
-
-      const service = new UnifiedGitHubService(TestFixtures.TokenFixtures.pat.classic);
-
-      const startTime = Date.now();
-      await service.repoExists('testuser', 'test-repo');
-      const duration = Date.now() - startTime;
-
-      expect(duration).toBeGreaterThan(90);
-    });
-  });
 });

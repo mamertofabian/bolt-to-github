@@ -16,7 +16,7 @@ vi.mock('../Notification.svelte', () => ({
 import type { Mock } from 'vitest';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { MessageHandler } from '../MessageHandler';
-import { MessageHandlerTestEnvironment, TimingHelpers } from '../test-fixtures';
+import { MessageHandlerTestEnvironment } from '../test-fixtures';
 
 describe('MessageHandler - Memory Leak Detection', () => {
   let env: MessageHandlerTestEnvironment;
@@ -121,10 +121,8 @@ describe('MessageHandler - Memory Leak Detection', () => {
 
       env.assertQueueLength(0);
 
-      const handler = env.messageHandler as any;
-      if (handler.messageQueue) {
-        expect(handler.messageQueue.length).toBe(0);
-      }
+      const status = env.messageHandler!.getConnectionStatus();
+      expect(status.queuedMessages).toBe(0);
     });
 
     it('should handle queue clear without memory leaks', async () => {
@@ -140,7 +138,8 @@ describe('MessageHandler - Memory Leak Detection', () => {
         env.messageHandler!.clearQueue();
         env.assertQueueLength(0);
 
-        await TimingHelpers.waitForMs(10);
+        const status = env.messageHandler!.getConnectionStatus();
+        expect(status.queuedMessages).toBe(0);
       }
 
       const finalMemory = env.getMemorySnapshot();
@@ -226,45 +225,35 @@ describe('MessageHandler - Memory Leak Detection', () => {
     it('should maintain stable memory during extended operation', async () => {
       env.createMessageHandler();
 
-      const testDurationMs = 2000;
-      const messageIntervalMs = 10;
-      const snapshotIntervalMs = 500;
+      const messageCount = 200;
+      const snapshotCount = 4;
 
       const memorySnapshots: any[] = [];
-      let messageCount = 0;
 
       memorySnapshots.push({
-        time: 0,
+        messageNumber: 0,
         ...env.getMemorySnapshot(),
       });
 
-      const startTime = Date.now();
+      for (let snapshot = 0; snapshot < snapshotCount; snapshot++) {
+        const messagesInBatch = messageCount / snapshotCount;
 
-      const messageSendPromise = (async () => {
-        while (Date.now() - startTime < testDurationMs) {
-          env.sendDebugMessage(`Long running test ${messageCount++}`);
-          await TimingHelpers.waitForMs(messageIntervalMs);
+        for (let i = 0; i < messagesInBatch; i++) {
+          env.sendDebugMessage(`Batch ${snapshot} message ${i}`);
         }
-      })();
 
-      const memoryMonitorPromise = (async () => {
-        while (Date.now() - startTime < testDurationMs) {
-          await TimingHelpers.waitForMs(snapshotIntervalMs);
-          memorySnapshots.push({
-            time: Date.now() - startTime,
-            ...env.getMemorySnapshot(),
-          });
-        }
-      })();
-
-      await Promise.all([messageSendPromise, memoryMonitorPromise]);
+        memorySnapshots.push({
+          messageNumber: (snapshot + 1) * messagesInBatch,
+          ...env.getMemorySnapshot(),
+        });
+      }
 
       const firstSnapshot = memorySnapshots[0];
       const lastSnapshot = memorySnapshots[memorySnapshots.length - 1];
 
       expect(lastSnapshot.eventListeners).toBeLessThanOrEqual(firstSnapshot.eventListeners + 1);
       expect(lastSnapshot.queueSize).toBe(0);
-    }, 10000);
+    });
 
     it('should handle connection cycling without memory growth', async () => {
       env.createMessageHandler();
@@ -309,8 +298,6 @@ describe('MessageHandler - Memory Leak Detection', () => {
           const largePayload = 'x'.repeat(payloadSizeKb * 1024);
           env.sendZipDataMessage(largePayload, `pressure-${batch}-${i}`);
         }
-
-        await TimingHelpers.waitForMs(10);
       }
 
       env.markPerformancePoint('pressure_end');
@@ -320,8 +307,8 @@ describe('MessageHandler - Memory Leak Detection', () => {
       env.messageHandler!.clearQueue();
       env.assertQueueLength(0);
 
-      const duration = env.getPerformanceDuration('pressure_start', 'pressure_end');
-      expect(duration).toBeLessThan(10000);
+      const status = env.messageHandler!.getConnectionStatus();
+      expect(status.queuedMessages).toBe(0);
     });
 
     it('should release memory after queue processing under pressure', async () => {

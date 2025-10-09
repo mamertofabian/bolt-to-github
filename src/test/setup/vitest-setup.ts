@@ -131,12 +131,24 @@ global.fetch = vi.fn(() =>
 Object.defineProperty(globalThis, 'crypto', {
   value: {
     randomUUID: vi.fn(() => 'mock-uuid-' + Math.random().toString(36).substring(2)),
-    getRandomValues: vi.fn((arr: any) => {
-      for (let i = 0; i < arr.length; i++) {
-        arr[i] = Math.floor(Math.random() * 256);
+    getRandomValues: vi.fn((arr: unknown) => {
+      for (let i = 0; i < (arr as Uint8Array).length; i++) {
+        (arr as Uint8Array)[i] = Math.floor(Math.random() * 256);
       }
       return arr;
     }),
+    subtle: {
+      digest: vi.fn(async (algorithm: string, data: BufferSource) => {
+        const dataBytes =
+          data instanceof ArrayBuffer ? new Uint8Array(data) : new Uint8Array(data.buffer);
+
+        const mockHash = new Uint8Array(20);
+        for (let i = 0; i < mockHash.length; i++) {
+          mockHash[i] = dataBytes[i % dataBytes.length] || 0;
+        }
+        return mockHash.buffer as ArrayBuffer;
+      }),
+    },
   },
   writable: true,
 });

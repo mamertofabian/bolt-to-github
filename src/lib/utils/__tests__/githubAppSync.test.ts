@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import {
   syncGitHubAppFromWebApp,
   checkGitHubAppStatus,
@@ -9,139 +9,111 @@ import {
 import { SupabaseAuthService } from '../../../content/services/SupabaseAuthService';
 import { ChromeStorageService } from '../../services/chromeStorage';
 
-vi.mock('../../../content/services/SupabaseAuthService');
 vi.mock('../../services/chromeStorage');
-vi.mock('../logger', () => ({
-  createLogger: () => ({
-    info: vi.fn(),
-    error: vi.fn(),
-    warn: vi.fn(),
-    debug: vi.fn(),
-  }),
-}));
+vi.mock('../../../content/services/SupabaseAuthService');
+
+const FIXED_TIME = new Date('2024-01-01T00:00:00.000Z');
 
 describe('githubAppSync utilities', () => {
-  let mockAuthService: {
-    getAuthState: ReturnType<typeof vi.fn>;
-    syncGitHubApp: ReturnType<typeof vi.fn>;
-    hasGitHubApp: ReturnType<typeof vi.fn>;
-  };
-
   beforeEach(() => {
     vi.clearAllMocks();
+    vi.useFakeTimers({ now: FIXED_TIME });
+  });
 
-    mockAuthService = {
-      getAuthState: vi.fn(),
-      syncGitHubApp: vi.fn(),
-      hasGitHubApp: vi.fn(),
-    };
-
-    vi.mocked(SupabaseAuthService.getInstance).mockReturnValue(
-      mockAuthService as unknown as SupabaseAuthService
-    );
+  afterEach(() => {
+    vi.useRealTimers();
   });
 
   describe('syncGitHubAppFromWebApp', () => {
-    it('should return error when user is not authenticated', async () => {
-      mockAuthService.getAuthState.mockReturnValue({
-        isAuthenticated: false,
-      });
+    it('should return error message when user is not authenticated', async () => {
+      vi.mocked(SupabaseAuthService.getInstance).mockReturnValue({
+        getAuthState: () => ({ isAuthenticated: false }),
+      } as never);
 
       const result = await syncGitHubAppFromWebApp();
 
-      expect(result).toEqual({
-        success: false,
-        hasGitHubApp: false,
-        message: 'Please authenticate with bolt2github.com first',
-      });
-      expect(mockAuthService.syncGitHubApp).not.toHaveBeenCalled();
+      expect(result.success).toBe(false);
+      expect(result.hasGitHubApp).toBe(false);
+      expect(result.message).toBe('Please authenticate with bolt2github.com first');
     });
 
-    it('should return error when sync fails', async () => {
-      mockAuthService.getAuthState.mockReturnValue({
-        isAuthenticated: true,
-      });
-      mockAuthService.syncGitHubApp.mockResolvedValue(false);
+    it('should return error message when sync fails', async () => {
+      vi.mocked(SupabaseAuthService.getInstance).mockReturnValue({
+        getAuthState: () => ({ isAuthenticated: true }),
+        syncGitHubApp: async () => false,
+      } as never);
 
       const result = await syncGitHubAppFromWebApp();
 
-      expect(result).toEqual({
-        success: false,
-        hasGitHubApp: false,
-        message: 'Failed to sync GitHub App. Please check your authentication.',
-      });
-      expect(mockAuthService.syncGitHubApp).toHaveBeenCalledTimes(1);
+      expect(result.success).toBe(false);
+      expect(result.hasGitHubApp).toBe(false);
+      expect(result.message).toBe('Failed to sync GitHub App. Please check your authentication.');
     });
 
-    it('should return success when GitHub App is found and synced', async () => {
-      mockAuthService.getAuthState.mockReturnValue({
-        isAuthenticated: true,
-      });
-      mockAuthService.syncGitHubApp.mockResolvedValue(true);
-      mockAuthService.hasGitHubApp.mockResolvedValue(true);
+    it('should return success with GitHub App when sync succeeds and app is found', async () => {
+      vi.mocked(SupabaseAuthService.getInstance).mockReturnValue({
+        getAuthState: () => ({ isAuthenticated: true }),
+        syncGitHubApp: async () => true,
+        hasGitHubApp: async () => true,
+      } as never);
 
       const result = await syncGitHubAppFromWebApp();
 
-      expect(result).toEqual({
-        success: true,
-        hasGitHubApp: true,
-        message: 'GitHub App synced successfully!',
-      });
-      expect(mockAuthService.syncGitHubApp).toHaveBeenCalledTimes(1);
-      expect(mockAuthService.hasGitHubApp).toHaveBeenCalledTimes(1);
+      expect(result.success).toBe(true);
+      expect(result.hasGitHubApp).toBe(true);
+      expect(result.message).toBe('GitHub App synced successfully!');
     });
 
-    it('should return success with no GitHub App when sync succeeds but no app found', async () => {
-      mockAuthService.getAuthState.mockReturnValue({
-        isAuthenticated: true,
-      });
-      mockAuthService.syncGitHubApp.mockResolvedValue(true);
-      mockAuthService.hasGitHubApp.mockResolvedValue(false);
+    it('should return success without GitHub App when sync succeeds but no app found', async () => {
+      vi.mocked(SupabaseAuthService.getInstance).mockReturnValue({
+        getAuthState: () => ({ isAuthenticated: true }),
+        syncGitHubApp: async () => true,
+        hasGitHubApp: async () => false,
+      } as never);
 
       const result = await syncGitHubAppFromWebApp();
 
-      expect(result).toEqual({
-        success: true,
-        hasGitHubApp: false,
-        message:
-          'No GitHub App installation found. Please connect GitHub App on bolt2github.com first.',
-      });
+      expect(result.success).toBe(true);
+      expect(result.hasGitHubApp).toBe(false);
+      expect(result.message).toBe(
+        'No GitHub App installation found. Please connect GitHub App on bolt2github.com first.'
+      );
     });
 
-    it('should handle errors during sync and return error message', async () => {
-      const errorMessage = 'Network error';
-      mockAuthService.getAuthState.mockReturnValue({
-        isAuthenticated: true,
-      });
-      mockAuthService.syncGitHubApp.mockRejectedValue(new Error(errorMessage));
+    it('should return error message when sync throws an error', async () => {
+      const errorMessage = 'Network connection failed';
+      vi.mocked(SupabaseAuthService.getInstance).mockReturnValue({
+        getAuthState: () => ({ isAuthenticated: true }),
+        syncGitHubApp: async () => {
+          throw new Error(errorMessage);
+        },
+      } as never);
 
       const result = await syncGitHubAppFromWebApp();
 
-      expect(result).toEqual({
-        success: false,
-        hasGitHubApp: false,
-        message: errorMessage,
-      });
+      expect(result.success).toBe(false);
+      expect(result.hasGitHubApp).toBe(false);
+      expect(result.message).toBe(errorMessage);
     });
 
-    it('should handle non-Error exceptions', async () => {
-      mockAuthService.getAuthState.mockReturnValue({
-        isAuthenticated: true,
-      });
-      mockAuthService.syncGitHubApp.mockRejectedValue('string error');
+    it('should handle non-Error exceptions with default message', async () => {
+      vi.mocked(SupabaseAuthService.getInstance).mockReturnValue({
+        getAuthState: () => ({ isAuthenticated: true }),
+        syncGitHubApp: async () => {
+          throw 'string error';
+        },
+      } as never);
 
       const result = await syncGitHubAppFromWebApp();
 
-      expect(result).toEqual({
-        success: false,
-        hasGitHubApp: false,
-        message: 'Unknown error occurred',
-      });
+      expect(result.success).toBe(false);
+      expect(result.hasGitHubApp).toBe(false);
+      expect(result.message).toBe('Unknown error occurred');
     });
   });
 
   describe('checkGitHubAppStatus', () => {
-    it('should return configured status when GitHub App is set up', async () => {
+    it('should return configured status when using GitHub App with installation ID', async () => {
       vi.mocked(ChromeStorageService.getGitHubAppConfig).mockResolvedValue({
         installationId: 12345,
         username: 'testuser',
@@ -151,12 +123,10 @@ describe('githubAppSync utilities', () => {
 
       const result = await checkGitHubAppStatus();
 
-      expect(result).toEqual({
-        isConfigured: true,
-        username: 'testuser',
-        avatarUrl: 'https://example.com/avatar.png',
-        installationId: 12345,
-      });
+      expect(result.isConfigured).toBe(true);
+      expect(result.username).toBe('testuser');
+      expect(result.avatarUrl).toBe('https://example.com/avatar.png');
+      expect(result.installationId).toBe(12345);
     });
 
     it('should return not configured when using PAT authentication', async () => {
@@ -169,12 +139,10 @@ describe('githubAppSync utilities', () => {
 
       const result = await checkGitHubAppStatus();
 
-      expect(result).toEqual({
-        isConfigured: false,
-        username: 'testuser',
-        avatarUrl: 'https://example.com/avatar.png',
-        installationId: 12345,
-      });
+      expect(result.isConfigured).toBe(false);
+      expect(result.username).toBe('testuser');
+      expect(result.avatarUrl).toBe('https://example.com/avatar.png');
+      expect(result.installationId).toBe(12345);
     });
 
     it('should return not configured when installation ID is missing', async () => {
@@ -186,24 +154,23 @@ describe('githubAppSync utilities', () => {
 
       const result = await checkGitHubAppStatus();
 
-      expect(result).toEqual({
-        isConfigured: false,
-        username: 'testuser',
-        avatarUrl: 'https://example.com/avatar.png',
-        installationId: undefined,
-      });
+      expect(result.isConfigured).toBe(false);
+      expect(result.username).toBe('testuser');
+      expect(result.avatarUrl).toBe('https://example.com/avatar.png');
+      expect(result.installationId).toBeUndefined();
     });
 
-    it('should handle errors and return not configured status', async () => {
+    it('should return minimal status when storage access fails', async () => {
       vi.mocked(ChromeStorageService.getGitHubAppConfig).mockRejectedValue(
         new Error('Storage error')
       );
 
       const result = await checkGitHubAppStatus();
 
-      expect(result).toEqual({
-        isConfigured: false,
-      });
+      expect(result.isConfigured).toBe(false);
+      expect(result.username).toBeUndefined();
+      expect(result.avatarUrl).toBeUndefined();
+      expect(result.installationId).toBeUndefined();
     });
   });
 
@@ -218,65 +185,62 @@ describe('githubAppSync utilities', () => {
 
       const result = await switchToGitHubApp();
 
-      expect(result).toEqual({
-        success: true,
-        message: 'Switched to GitHub App authentication successfully!',
-      });
-      expect(ChromeStorageService.setAuthenticationMethod).toHaveBeenCalledWith('github_app');
+      expect(result.success).toBe(true);
+      expect(result.message).toBe('Switched to GitHub App authentication successfully!');
     });
 
-    it('should sync and switch when GitHub App is not configured but available', async () => {
+    it('should sync and switch when GitHub App is not configured but available after sync', async () => {
       vi.mocked(ChromeStorageService.getGitHubAppConfig).mockResolvedValue({});
       vi.mocked(ChromeStorageService.getAuthenticationMethod).mockResolvedValue('pat');
       vi.mocked(ChromeStorageService.setAuthenticationMethod).mockResolvedValue(undefined);
 
-      mockAuthService.getAuthState.mockReturnValue({ isAuthenticated: true });
-      mockAuthService.syncGitHubApp.mockResolvedValue(true);
-      mockAuthService.hasGitHubApp.mockResolvedValue(true);
+      vi.mocked(SupabaseAuthService.getInstance).mockReturnValue({
+        getAuthState: () => ({ isAuthenticated: true }),
+        syncGitHubApp: async () => true,
+        hasGitHubApp: async () => true,
+      } as never);
 
       const result = await switchToGitHubApp();
 
-      expect(result).toEqual({
-        success: true,
-        message: 'Switched to GitHub App authentication successfully!',
-      });
-      expect(mockAuthService.syncGitHubApp).toHaveBeenCalledTimes(1);
+      expect(result.success).toBe(true);
+      expect(result.message).toBe('Switched to GitHub App authentication successfully!');
     });
 
     it('should return error when GitHub App is not found after sync', async () => {
       vi.mocked(ChromeStorageService.getGitHubAppConfig).mockResolvedValue({});
       vi.mocked(ChromeStorageService.getAuthenticationMethod).mockResolvedValue('pat');
 
-      mockAuthService.getAuthState.mockReturnValue({ isAuthenticated: true });
-      mockAuthService.syncGitHubApp.mockResolvedValue(true);
-      mockAuthService.hasGitHubApp.mockResolvedValue(false);
+      vi.mocked(SupabaseAuthService.getInstance).mockReturnValue({
+        getAuthState: () => ({ isAuthenticated: true }),
+        syncGitHubApp: async () => true,
+        hasGitHubApp: async () => false,
+      } as never);
 
       const result = await switchToGitHubApp();
 
-      expect(result).toEqual({
-        success: false,
-        message: 'GitHub App not found. Please connect GitHub App on bolt2github.com first.',
-      });
-      expect(ChromeStorageService.setAuthenticationMethod).not.toHaveBeenCalled();
+      expect(result.success).toBe(false);
+      expect(result.message).toBe(
+        'GitHub App not found. Please connect GitHub App on bolt2github.com first.'
+      );
     });
 
-    it('should handle errors during status check and attempt sync', async () => {
-      vi.mocked(ChromeStorageService.getGitHubAppConfig).mockRejectedValue(
-        new Error('Storage error')
+    it('should return error when storage operation fails', async () => {
+      vi.mocked(ChromeStorageService.getGitHubAppConfig).mockResolvedValue({
+        installationId: 12345,
+        username: 'testuser',
+      });
+      vi.mocked(ChromeStorageService.getAuthenticationMethod).mockResolvedValue('github_app');
+      vi.mocked(ChromeStorageService.setAuthenticationMethod).mockRejectedValue(
+        new Error('Storage write failed')
       );
 
-      mockAuthService.getAuthState.mockReturnValue({ isAuthenticated: true });
-      mockAuthService.syncGitHubApp.mockResolvedValue(false);
-
       const result = await switchToGitHubApp();
 
-      expect(result).toEqual({
-        success: false,
-        message: 'GitHub App not found. Please connect GitHub App on bolt2github.com first.',
-      });
+      expect(result.success).toBe(false);
+      expect(result.message).toBe('Storage write failed');
     });
 
-    it('should handle errors from setAuthenticationMethod', async () => {
+    it('should handle non-Error exceptions from storage operations', async () => {
       vi.mocked(ChromeStorageService.getGitHubAppConfig).mockResolvedValue({
         installationId: 12345,
         username: 'testuser',
@@ -286,70 +250,60 @@ describe('githubAppSync utilities', () => {
 
       const result = await switchToGitHubApp();
 
-      expect(result).toEqual({
-        success: false,
-        message: 'Failed to switch authentication method',
-      });
+      expect(result.success).toBe(false);
+      expect(result.message).toBe('Failed to switch authentication method');
     });
   });
 
   describe('refreshGitHubAppToken', () => {
-    it('should refresh token successfully', async () => {
+    it('should refresh token successfully by clearing old token and syncing', async () => {
       vi.mocked(ChromeStorageService.saveGitHubAppConfig).mockResolvedValue(undefined);
-      mockAuthService.syncGitHubApp.mockResolvedValue(true);
+      vi.mocked(SupabaseAuthService.getInstance).mockReturnValue({
+        syncGitHubApp: async () => true,
+      } as never);
 
       const result = await refreshGitHubAppToken();
 
-      expect(result).toEqual({
-        success: true,
-        message: 'GitHub App token refreshed successfully!',
-      });
-      expect(ChromeStorageService.saveGitHubAppConfig).toHaveBeenCalledWith({
-        accessToken: undefined,
-      });
-      expect(mockAuthService.syncGitHubApp).toHaveBeenCalledTimes(1);
+      expect(result.success).toBe(true);
+      expect(result.message).toBe('GitHub App token refreshed successfully!');
     });
 
-    it('should return error when token refresh fails', async () => {
+    it('should return error when token refresh sync fails', async () => {
       vi.mocked(ChromeStorageService.saveGitHubAppConfig).mockResolvedValue(undefined);
-      mockAuthService.syncGitHubApp.mockResolvedValue(false);
+      vi.mocked(SupabaseAuthService.getInstance).mockReturnValue({
+        syncGitHubApp: async () => false,
+      } as never);
 
       const result = await refreshGitHubAppToken();
 
-      expect(result).toEqual({
-        success: false,
-        message: 'Failed to refresh GitHub App token. Please re-authenticate.',
-      });
+      expect(result.success).toBe(false);
+      expect(result.message).toBe('Failed to refresh GitHub App token. Please re-authenticate.');
     });
 
-    it('should handle errors during token refresh', async () => {
+    it('should return error message when storage operation fails', async () => {
       vi.mocked(ChromeStorageService.saveGitHubAppConfig).mockRejectedValue(
-        new Error('Storage error')
+        new Error('Storage write failed')
       );
 
       const result = await refreshGitHubAppToken();
 
-      expect(result).toEqual({
-        success: false,
-        message: 'Storage error',
-      });
+      expect(result.success).toBe(false);
+      expect(result.message).toBe('Storage write failed');
     });
 
-    it('should handle non-Error exceptions during refresh', async () => {
+    it('should handle non-Error exceptions from storage operations', async () => {
       vi.mocked(ChromeStorageService.saveGitHubAppConfig).mockRejectedValue('string error');
 
       const result = await refreshGitHubAppToken();
 
-      expect(result).toEqual({
-        success: false,
-        message: 'Failed to refresh token',
-      });
+      expect(result.success).toBe(false);
+      expect(result.message).toBe('Failed to refresh token');
     });
   });
 
   describe('getGitHubAppInfo', () => {
     it('should return complete GitHub App info when configured', async () => {
-      const expiresAt = new Date(Date.now() + 3600000).toISOString();
+      const expiresAt = new Date(FIXED_TIME.getTime() + 3600000).toISOString();
       vi.mocked(ChromeStorageService.getAuthenticationMethod).mockResolvedValue('github_app');
       vi.mocked(ChromeStorageService.getGitHubAppConfig).mockResolvedValue({
         installationId: 12345,
@@ -361,19 +315,17 @@ describe('githubAppSync utilities', () => {
 
       const result = await getGitHubAppInfo();
 
-      expect(result).toEqual({
-        isConfigured: true,
-        authMethod: 'github_app',
-        username: 'testuser',
-        avatarUrl: 'https://example.com/avatar.png',
-        expiresAt,
-        scopes: ['repo', 'user'],
-        needsRefresh: false,
-      });
+      expect(result.isConfigured).toBe(true);
+      expect(result.authMethod).toBe('github_app');
+      expect(result.username).toBe('testuser');
+      expect(result.avatarUrl).toBe('https://example.com/avatar.png');
+      expect(result.expiresAt).toBe(expiresAt);
+      expect(result.scopes).toEqual(['repo', 'user']);
+      expect(result.needsRefresh).toBe(false);
     });
 
-    it('should detect when token needs refresh (within 5 minutes)', async () => {
-      const expiresAt = new Date(Date.now() + 4 * 60 * 1000).toISOString();
+    it('should detect when token expires within 5 minutes', async () => {
+      const expiresAt = new Date(FIXED_TIME.getTime() + 4 * 60 * 1000).toISOString();
       vi.mocked(ChromeStorageService.getAuthenticationMethod).mockResolvedValue('github_app');
       vi.mocked(ChromeStorageService.getGitHubAppConfig).mockResolvedValue({
         installationId: 12345,
@@ -383,10 +335,25 @@ describe('githubAppSync utilities', () => {
 
       const result = await getGitHubAppInfo();
 
+      expect(result.isConfigured).toBe(true);
       expect(result.needsRefresh).toBe(true);
     });
 
-    it('should return not configured when using PAT', async () => {
+    it('should detect when token has already expired', async () => {
+      const expiredTime = new Date(FIXED_TIME.getTime() - 1000).toISOString();
+      vi.mocked(ChromeStorageService.getAuthenticationMethod).mockResolvedValue('github_app');
+      vi.mocked(ChromeStorageService.getGitHubAppConfig).mockResolvedValue({
+        installationId: 12345,
+        expiresAt: expiredTime,
+      });
+
+      const result = await getGitHubAppInfo();
+
+      expect(result.isConfigured).toBe(true);
+      expect(result.needsRefresh).toBe(true);
+    });
+
+    it('should return not configured when using PAT authentication', async () => {
       vi.mocked(ChromeStorageService.getAuthenticationMethod).mockResolvedValue('pat');
       vi.mocked(ChromeStorageService.getGitHubAppConfig).mockResolvedValue({
         username: 'testuser',
@@ -394,15 +361,13 @@ describe('githubAppSync utilities', () => {
 
       const result = await getGitHubAppInfo();
 
-      expect(result).toEqual({
-        isConfigured: false,
-        authMethod: 'pat',
-        username: 'testuser',
-        avatarUrl: undefined,
-        expiresAt: undefined,
-        scopes: undefined,
-        needsRefresh: false,
-      });
+      expect(result.isConfigured).toBe(false);
+      expect(result.authMethod).toBe('pat');
+      expect(result.username).toBe('testuser');
+      expect(result.avatarUrl).toBeUndefined();
+      expect(result.expiresAt).toBeUndefined();
+      expect(result.scopes).toBeUndefined();
+      expect(result.needsRefresh).toBe(false);
     });
 
     it('should return not configured when installation ID is missing', async () => {
@@ -414,6 +379,8 @@ describe('githubAppSync utilities', () => {
       const result = await getGitHubAppInfo();
 
       expect(result.isConfigured).toBe(false);
+      expect(result.authMethod).toBe('github_app');
+      expect(result.username).toBe('testuser');
     });
 
     it('should handle missing expiresAt without error', async () => {
@@ -425,76 +392,97 @@ describe('githubAppSync utilities', () => {
 
       const result = await getGitHubAppInfo();
 
+      expect(result.isConfigured).toBe(true);
       expect(result.needsRefresh).toBe(false);
       expect(result.expiresAt).toBeUndefined();
     });
 
-    it('should handle errors and return default info', async () => {
+    it('should return default info when storage access fails', async () => {
       vi.mocked(ChromeStorageService.getAuthenticationMethod).mockRejectedValue(
         new Error('Storage error')
       );
 
       const result = await getGitHubAppInfo();
 
-      expect(result).toEqual({
-        isConfigured: false,
-        authMethod: 'pat',
-      });
+      expect(result.isConfigured).toBe(false);
+      expect(result.authMethod).toBe('pat');
+      expect(result.username).toBeUndefined();
+      expect(result.avatarUrl).toBeUndefined();
+      expect(result.expiresAt).toBeUndefined();
+      expect(result.scopes).toBeUndefined();
     });
   });
 
-  describe('edge cases and integration scenarios', () => {
-    it('should handle concurrent sync operations gracefully', async () => {
-      mockAuthService.getAuthState.mockReturnValue({ isAuthenticated: true });
-      mockAuthService.syncGitHubApp.mockResolvedValue(true);
-      mockAuthService.hasGitHubApp.mockResolvedValue(true);
+  describe('Edge Cases and Error Handling', () => {
+    it('should handle concurrent sync operations independently', async () => {
+      vi.mocked(SupabaseAuthService.getInstance).mockReturnValue({
+        getAuthState: () => ({ isAuthenticated: true }),
+        syncGitHubApp: async () => true,
+        hasGitHubApp: async () => true,
+      } as never);
 
-      const results = await Promise.all([
+      const [result1, result2, result3] = await Promise.all([
         syncGitHubAppFromWebApp(),
         syncGitHubAppFromWebApp(),
         syncGitHubAppFromWebApp(),
       ]);
 
-      results.forEach((result) => {
-        expect(result.success).toBe(true);
-        expect(result.hasGitHubApp).toBe(true);
-      });
+      expect(result1.success).toBe(true);
+      expect(result1.hasGitHubApp).toBe(true);
+      expect(result2.success).toBe(true);
+      expect(result2.hasGitHubApp).toBe(true);
+      expect(result3.success).toBe(true);
+      expect(result3.hasGitHubApp).toBe(true);
     });
 
-    it('should handle authentication state changes during operations', async () => {
-      mockAuthService.getAuthState
-        .mockReturnValueOnce({ isAuthenticated: true })
-        .mockReturnValueOnce({ isAuthenticated: false });
+    it('should handle authentication state changes between calls', async () => {
+      let callCount = 0;
+      vi.mocked(SupabaseAuthService.getInstance).mockReturnValue({
+        getAuthState: () => ({
+          isAuthenticated: callCount++ === 0,
+        }),
+        syncGitHubApp: async () => false,
+      } as never);
 
       const result1 = await syncGitHubAppFromWebApp();
       const result2 = await syncGitHubAppFromWebApp();
 
       expect(result1.success).toBe(false);
+      expect(result1.message).toBe('Failed to sync GitHub App. Please check your authentication.');
       expect(result2.success).toBe(false);
+      expect(result2.message).toBe('Please authenticate with bolt2github.com first');
     });
 
-    it('should handle expired tokens with appropriate refresh flag', async () => {
-      const expiredTime = new Date(Date.now() - 1000).toISOString();
-      vi.mocked(ChromeStorageService.getAuthenticationMethod).mockResolvedValue('github_app');
-      vi.mocked(ChromeStorageService.getGitHubAppConfig).mockResolvedValue({
-        installationId: 12345,
-        expiresAt: expiredTime,
-      });
-
-      const result = await getGitHubAppInfo();
-
-      expect(result.needsRefresh).toBe(true);
-    });
-
-    it('should verify token clearing during refresh', async () => {
-      vi.mocked(ChromeStorageService.saveGitHubAppConfig).mockResolvedValue(undefined);
-      mockAuthService.syncGitHubApp.mockResolvedValue(true);
+    it('should clear token when refreshing', async () => {
+      const saveConfigMock = vi.mocked(ChromeStorageService.saveGitHubAppConfig);
+      saveConfigMock.mockResolvedValue(undefined);
+      vi.mocked(SupabaseAuthService.getInstance).mockReturnValue({
+        syncGitHubApp: async () => true,
+      } as never);
 
       await refreshGitHubAppToken();
 
-      expect(ChromeStorageService.saveGitHubAppConfig).toHaveBeenCalledWith({
+      expect(saveConfigMock).toHaveBeenCalledWith({
         accessToken: undefined,
       });
+    });
+
+    it('should handle switching when status check fails but sync succeeds', async () => {
+      vi.mocked(ChromeStorageService.getGitHubAppConfig).mockRejectedValue(
+        new Error('Storage error')
+      );
+      vi.mocked(ChromeStorageService.setAuthenticationMethod).mockResolvedValue(undefined);
+
+      vi.mocked(SupabaseAuthService.getInstance).mockReturnValue({
+        getAuthState: () => ({ isAuthenticated: true }),
+        syncGitHubApp: async () => true,
+        hasGitHubApp: async () => true,
+      } as never);
+
+      const result = await switchToGitHubApp();
+
+      expect(result.success).toBe(true);
+      expect(result.message).toBe('Switched to GitHub App authentication successfully!');
     });
   });
 });

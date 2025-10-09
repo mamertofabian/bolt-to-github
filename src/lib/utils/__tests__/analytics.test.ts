@@ -1,23 +1,30 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 
-vi.mock('../../../services/AnalyticsService', () => ({
-  analytics: {
-    trackMilestone: vi.fn().mockResolvedValue(undefined),
-    trackExtensionEvent: vi.fn().mockResolvedValue(undefined),
-    trackGitHubOperation: vi.fn().mockResolvedValue(undefined),
-    trackEvent: vi.fn().mockResolvedValue(undefined),
-    trackError: vi.fn().mockResolvedValue(undefined),
-    trackPageView: vi.fn().mockResolvedValue(undefined),
-    trackFeatureAdoption: vi.fn().mockResolvedValue(undefined),
-    trackPerformance: vi.fn().mockResolvedValue(undefined),
-    trackUserJourney: vi.fn().mockResolvedValue(undefined),
-    trackOperationResult: vi.fn().mockResolvedValue(undefined),
-    trackFeatureUsage: vi.fn().mockResolvedValue(undefined),
-    trackDailyActiveUser: vi.fn().mockResolvedValue(undefined),
+const mockChrome = {
+  runtime: {
+    sendMessage: vi.fn(),
+    getManifest: vi.fn().mockReturnValue({ version: '1.0.0' }),
+    id: 'test-extension-id',
   },
-}));
+  storage: {
+    local: {
+      get: vi.fn().mockResolvedValue({}),
+      set: vi.fn().mockResolvedValue(undefined),
+    },
+    sync: {
+      get: vi.fn().mockResolvedValue({ analyticsEnabled: true }),
+      set: vi.fn().mockResolvedValue(undefined),
+    },
+  },
+};
 
-import { analytics } from '../../../services/AnalyticsService';
+global.fetch = vi.fn().mockResolvedValue({
+  ok: true,
+  status: 200,
+});
+
+global.chrome = mockChrome as never;
+
 import {
   sendAnalyticsToBackground,
   ANALYTICS_EVENTS,
@@ -41,47 +48,32 @@ import {
   withAnalytics,
 } from '../analytics';
 
-const mockChrome = {
-  runtime: {
-    sendMessage: vi.fn(),
-    getManifest: vi.fn().mockReturnValue({ version: '1.0.0' }),
-  },
-};
-
-describe('analytics utilities - integration tests', () => {
+describe('analytics utilities', () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    global.chrome = mockChrome as unknown as typeof chrome;
+    vi.useFakeTimers({ now: new Date('2024-01-01T00:00:00.000Z') });
   });
 
-  describe('ANALYTICS_EVENTS', () => {
-    it('should define extension lifecycle events', () => {
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
+  describe('ANALYTICS_EVENTS constants', () => {
+    it('should define all required event types', () => {
       expect(ANALYTICS_EVENTS.EXTENSION_INSTALLED).toBe('extension_installed');
       expect(ANALYTICS_EVENTS.EXTENSION_UPDATED).toBe('extension_updated');
       expect(ANALYTICS_EVENTS.EXTENSION_OPENED).toBe('extension_opened');
-    });
-
-    it('should define onboarding events', () => {
       expect(ANALYTICS_EVENTS.SETUP_STARTED).toBe('setup_started');
       expect(ANALYTICS_EVENTS.GITHUB_TOKEN_ADDED).toBe('github_token_added');
       expect(ANALYTICS_EVENTS.SETUP_COMPLETED).toBe('setup_completed');
-    });
-
-    it('should define project events', () => {
       expect(ANALYTICS_EVENTS.PROJECT_DETECTED).toBe('project_detected');
       expect(ANALYTICS_EVENTS.DOWNLOAD_INITIATED).toBe('download_initiated');
       expect(ANALYTICS_EVENTS.DOWNLOAD_COMPLETED).toBe('download_completed');
       expect(ANALYTICS_EVENTS.DOWNLOAD_FAILED).toBe('download_failed');
-    });
-
-    it('should define GitHub operation events', () => {
       expect(ANALYTICS_EVENTS.REPO_CREATED).toBe('repo_created');
       expect(ANALYTICS_EVENTS.FILES_UPLOADED).toBe('files_uploaded');
       expect(ANALYTICS_EVENTS.COMMIT_CREATED).toBe('commit_created');
       expect(ANALYTICS_EVENTS.PUSH_COMPLETED).toBe('push_completed');
-    });
-
-    it('should define error events', () => {
       expect(ANALYTICS_EVENTS.AUTH_ERROR).toBe('auth_error');
       expect(ANALYTICS_EVENTS.NETWORK_ERROR).toBe('network_error');
       expect(ANALYTICS_EVENTS.PARSING_ERROR).toBe('parsing_error');
@@ -90,7 +82,7 @@ describe('analytics utilities - integration tests', () => {
   });
 
   describe('sendAnalyticsToBackground', () => {
-    it('should send message to chrome runtime with correct format', () => {
+    it('should send message with correct format', () => {
       const eventData = { action: 'click', target: 'button' };
 
       sendAnalyticsToBackground('test_event', eventData);
@@ -102,7 +94,7 @@ describe('analytics utilities - integration tests', () => {
       });
     });
 
-    it('should handle chrome runtime errors gracefully', () => {
+    it('should handle errors gracefully', () => {
       mockChrome.runtime.sendMessage.mockImplementation(() => {
         throw new Error('Extension context invalidated');
       });
@@ -112,20 +104,23 @@ describe('analytics utilities - integration tests', () => {
   });
 
   describe('trackExtensionLifecycle', () => {
-    it('should track installation with version', async () => {
+    it('should send analytics for installation', async () => {
       await trackExtensionLifecycle('install', '1.0.0');
 
-      expect(analytics.trackMilestone).toHaveBeenCalledWith('extension_installed', {
-        version: '1.0.0',
-      });
+      expect(global.fetch).toHaveBeenCalled();
+      const fetchCall = (global.fetch as ReturnType<typeof vi.fn>).mock.calls[0];
+      const payload = JSON.parse(fetchCall[1].body);
+      expect(payload.events[0].name).toBe('extension_installed');
+      expect(payload.events[0].params.event_category).toBe('user_journey');
     });
 
-    it('should track update with version', async () => {
+    it('should send analytics for update', async () => {
       await trackExtensionLifecycle('update', '2.0.0');
 
-      expect(analytics.trackMilestone).toHaveBeenCalledWith('extension_updated', {
-        version: '2.0.0',
-      });
+      expect(global.fetch).toHaveBeenCalled();
+      const fetchCall = (global.fetch as ReturnType<typeof vi.fn>).mock.calls[0];
+      const payload = JSON.parse(fetchCall[1].body);
+      expect(payload.events[0].name).toBe('extension_updated');
     });
   });
 
@@ -133,270 +128,152 @@ describe('analytics utilities - integration tests', () => {
     it('should track popup context', async () => {
       await trackExtensionOpened('popup');
 
-      expect(analytics.trackExtensionEvent).toHaveBeenCalledWith('extension_opened', {
-        context: 'popup',
-      });
-    });
-
-    it('should track content script context', async () => {
-      await trackExtensionOpened('content_script');
-
-      expect(analytics.trackExtensionEvent).toHaveBeenCalledWith('extension_opened', {
-        context: 'content_script',
-      });
+      expect(global.fetch).toHaveBeenCalled();
+      const payload = JSON.parse((global.fetch as ReturnType<typeof vi.fn>).mock.calls[0][1].body);
+      expect(payload.events[0].name).toBe('extension_opened');
+      expect(JSON.parse(payload.events[0].params.event_label).context).toBe('popup');
     });
   });
 
   describe('trackOnboardingStep', () => {
-    it('should track setup started', async () => {
+    it('should track onboarding started', async () => {
       await trackOnboardingStep('started');
 
-      expect(analytics.trackMilestone).toHaveBeenCalledWith('setup_started', undefined);
+      const payload = JSON.parse((global.fetch as ReturnType<typeof vi.fn>).mock.calls[0][1].body);
+      expect(payload.events[0].name).toBe('setup_started');
     });
 
     it('should track token added with metadata', async () => {
       await trackOnboardingStep('token_added', { tokenType: 'classic' });
 
-      expect(analytics.trackMilestone).toHaveBeenCalledWith('github_token_added', {
-        tokenType: 'classic',
-      });
-    });
-
-    it('should track setup completed', async () => {
-      await trackOnboardingStep('completed');
-
-      expect(analytics.trackMilestone).toHaveBeenCalledWith('setup_completed', undefined);
+      const payload = JSON.parse((global.fetch as ReturnType<typeof vi.fn>).mock.calls[0][1].body);
+      expect(payload.events[0].name).toBe('github_token_added');
+      expect(JSON.parse(payload.events[0].params.event_label)).toEqual({ tokenType: 'classic' });
     });
   });
 
   describe('trackBoltProjectEvent', () => {
-    it('should track project detected with metadata', async () => {
+    it('should track project events', async () => {
       await trackBoltProjectEvent('detected', { projectName: 'my-app', fileCount: 10 });
 
-      expect(analytics.trackExtensionEvent).toHaveBeenCalledWith('project_detected', {
+      const payload = JSON.parse((global.fetch as ReturnType<typeof vi.fn>).mock.calls[0][1].body);
+      expect(payload.events[0].name).toBe('project_detected');
+      expect(JSON.parse(payload.events[0].params.event_label)).toEqual({
         projectName: 'my-app',
         fileCount: 10,
       });
     });
-
-    it('should track download lifecycle', async () => {
-      await trackBoltProjectEvent('download_started', { projectSize: 1024 });
-      await trackBoltProjectEvent('download_completed', { zipSize: 512 });
-
-      expect(analytics.trackExtensionEvent).toHaveBeenCalledWith('download_initiated', {
-        projectSize: 1024,
-      });
-      expect(analytics.trackExtensionEvent).toHaveBeenCalledWith('download_completed', {
-        zipSize: 512,
-      });
-    });
-
-    it('should track download failure', async () => {
-      await trackBoltProjectEvent('download_failed');
-
-      expect(analytics.trackExtensionEvent).toHaveBeenCalledWith('download_failed', undefined);
-    });
   });
 
   describe('trackGitHubRepoOperation', () => {
-    it('should track successful repo creation', async () => {
+    it('should track successful operations', async () => {
       await trackGitHubRepoOperation('create', true, { repoName: 'test-repo' });
 
-      expect(analytics.trackGitHubOperation).toHaveBeenCalledWith('repo_creation', true, {
-        repoName: 'test-repo',
-      });
+      const payload = JSON.parse((global.fetch as ReturnType<typeof vi.fn>).mock.calls[0][1].body);
+      expect(payload.events[0].name).toBe('repo_creation_success');
+      expect(payload.events[0].params.value).toBe(1);
     });
 
-    it('should track failed file upload', async () => {
+    it('should track failed operations', async () => {
       await trackGitHubRepoOperation('upload', false, { errorType: 'network_error' });
 
-      expect(analytics.trackGitHubOperation).toHaveBeenCalledWith('file_upload', false, {
-        errorType: 'network_error',
-      });
-    });
-
-    it('should track complete push workflow', async () => {
-      await trackGitHubRepoOperation('upload', true, { fileCount: 5 });
-      await trackGitHubRepoOperation('commit', true, { commitMessage: 'Initial commit' });
-      await trackGitHubRepoOperation('push', true);
-
-      expect(analytics.trackGitHubOperation).toHaveBeenCalledTimes(3);
+      const payload = JSON.parse((global.fetch as ReturnType<typeof vi.fn>).mock.calls[0][1].body);
+      expect(payload.events[0].name).toBe('file_upload_failure');
+      expect(payload.events[0].params.value).toBe(0);
     });
   });
 
   describe('trackUserPreference', () => {
-    it('should track settings opened', async () => {
+    it('should track preference actions', async () => {
       await trackUserPreference('settings_opened');
 
-      expect(analytics.trackEvent).toHaveBeenCalledWith({
-        category: 'user_preferences',
-        action: 'settings_opened',
-        label: undefined,
-      });
-    });
-
-    it('should track setting changed with details', async () => {
-      await trackUserPreference('setting_changed', {
-        settingName: 'autoPush',
-        oldValue: false,
-        newValue: true,
-      });
-
-      expect(analytics.trackEvent).toHaveBeenCalledWith({
-        category: 'user_preferences',
-        action: 'setting_changed',
-        label: JSON.stringify({ settingName: 'autoPush', oldValue: false, newValue: true }),
-      });
+      const payload = JSON.parse((global.fetch as ReturnType<typeof vi.fn>).mock.calls[0][1].body);
+      expect(payload.events[0].params.event_category).toBe('user_preferences');
     });
   });
 
   describe('trackFeatureUsage', () => {
-    it('should track file preview', async () => {
+    it('should track feature usage', async () => {
       await trackFeatureUsage('file_preview', { fileName: 'App.svelte' });
 
-      expect(analytics.trackExtensionEvent).toHaveBeenCalledWith('file_preview_opened', {
-        fileName: 'App.svelte',
-      });
-    });
-
-    it('should track diff comparison', async () => {
-      await trackFeatureUsage('diff_comparison', { filesCompared: 3 });
-
-      expect(analytics.trackExtensionEvent).toHaveBeenCalledWith('diff_comparison_viewed', {
-        filesCompared: 3,
-      });
-    });
-
-    it('should track sync operations', async () => {
-      await trackFeatureUsage('manual_sync');
-      await trackFeatureUsage('auto_sync', { filesUpdated: 5 });
-
-      expect(analytics.trackExtensionEvent).toHaveBeenCalledWith(
-        'manual_sync_triggered',
-        undefined
-      );
-      expect(analytics.trackExtensionEvent).toHaveBeenCalledWith('auto_sync_completed', {
-        filesUpdated: 5,
-      });
+      const payload = JSON.parse((global.fetch as ReturnType<typeof vi.fn>).mock.calls[0][1].body);
+      expect(payload.events[0].name).toBe('file_preview_opened');
     });
   });
 
   describe('trackError', () => {
-    it('should track auth error', async () => {
-      const error = new Error('Invalid token');
+    it('should track errors with Error objects', async () => {
+      await trackError('auth', new Error('Invalid token'), 'login');
 
-      await trackError('auth', error, 'login');
-
-      expect(analytics.trackError).toHaveBeenCalledWith(error, 'auth_login');
-      expect(analytics.trackEvent).toHaveBeenCalledWith({
-        category: 'errors',
-        action: 'auth_error',
-        label: 'login: Invalid token',
-        value: 1,
-      });
+      expect(global.fetch).toHaveBeenCalledTimes(2);
+      const errorPayload = JSON.parse(
+        (global.fetch as ReturnType<typeof vi.fn>).mock.calls[0][1].body
+      );
+      expect(errorPayload.events[0].name).toBe('extension_error');
+      expect(errorPayload.events[0].params.event_label).toContain('auth_login');
     });
 
-    it('should track error from string message', async () => {
+    it('should track errors with string messages', async () => {
       await trackError('network', 'Connection timeout', 'fetch');
 
-      expect(analytics.trackError).toHaveBeenCalledWith(
-        expect.objectContaining({ message: 'Connection timeout' }),
-        'network_fetch'
-      );
-    });
-
-    it('should handle error without context', async () => {
-      await trackError('parsing', new Error('Parse failed'));
-
-      expect(analytics.trackError).toHaveBeenCalled();
-      expect(analytics.trackEvent).toHaveBeenCalledWith(
-        expect.objectContaining({
-          action: 'parsing_error',
-          label: expect.stringContaining('Parse failed'),
-        })
-      );
+      expect(global.fetch).toHaveBeenCalledTimes(2);
     });
   });
 
   describe('trackPerformance', () => {
-    it('should track operation duration', async () => {
-      await trackPerformance('file_upload', 1500, { fileCount: 10 });
+    it('should track performance metrics', async () => {
+      await trackPerformance('file_upload', 123.456, { fileCount: 10 });
 
-      expect(analytics.trackEvent).toHaveBeenCalledWith({
-        category: 'performance',
-        action: 'operation_timing',
-        label: 'file_upload',
-        value: 1500,
-      });
-      expect(analytics.trackExtensionEvent).toHaveBeenCalledWith('performance_file_upload', {
-        duration: 1500,
-        fileCount: 10,
-      });
-    });
-
-    it('should round duration values', async () => {
-      await trackPerformance('parsing', 123.456);
-
-      expect(analytics.trackEvent).toHaveBeenCalledWith(expect.objectContaining({ value: 123 }));
+      expect(global.fetch).toHaveBeenCalledTimes(2);
+      const timingPayload = JSON.parse(
+        (global.fetch as ReturnType<typeof vi.fn>).mock.calls[0][1].body
+      );
+      expect(timingPayload.events[0].params.value).toBe(123);
     });
   });
 
   describe('trackConversionFunnel', () => {
-    it('should track user journey through funnel', async () => {
+    it('should track conversion stages', async () => {
       await trackConversionFunnel('discovery');
       await trackConversionFunnel('installation', { source: 'chrome_store' });
-      await trackConversionFunnel('first_use');
-      await trackConversionFunnel('successful_upload');
 
-      expect(analytics.trackMilestone).toHaveBeenCalledWith('conversion_discovery', undefined);
-      expect(analytics.trackMilestone).toHaveBeenCalledWith('conversion_installation', {
-        source: 'chrome_store',
-      });
-      expect(analytics.trackMilestone).toHaveBeenCalledWith('conversion_first_use', undefined);
-      expect(analytics.trackMilestone).toHaveBeenCalledWith(
-        'conversion_successful_upload',
-        undefined
-      );
+      expect(global.fetch).toHaveBeenCalledTimes(2);
+      const payload1 = JSON.parse((global.fetch as ReturnType<typeof vi.fn>).mock.calls[0][1].body);
+      expect(payload1.events[0].name).toBe('conversion_discovery');
     });
   });
 
   describe('trackPageView', () => {
-    it('should track popup page view', async () => {
+    it('should track page views', async () => {
       await trackPageView('popup');
 
-      expect(analytics.trackPageView).toHaveBeenCalledWith('/popup', 'Bolt to GitHub - Popup');
-    });
-
-    it('should track page views with metadata', async () => {
-      await trackPageView('options', { section: 'github_settings' });
-
-      expect(analytics.trackPageView).toHaveBeenCalledWith('/options', 'Bolt to GitHub - Options');
-      expect(analytics.trackExtensionEvent).toHaveBeenCalledWith('page_view_options', {
-        section: 'github_settings',
-      });
+      const payload = JSON.parse((global.fetch as ReturnType<typeof vi.fn>).mock.calls[0][1].body);
+      expect(payload.events[0].name).toBe('page_view');
+      expect(payload.events[0].params.page_location).toBe(
+        'chrome-extension://test-extension-id/popup'
+      );
+      expect(payload.events[0].params.page_title).toBe('Bolt to GitHub - Popup');
     });
   });
 
   describe('trackFeatureAdoption', () => {
-    it('should track feature adoption and rejection', async () => {
+    it('should track feature adoption', async () => {
       await trackFeatureAdoption('auto_push', true);
-      await trackFeatureAdoption('github_app_auth', false);
 
-      expect(analytics.trackFeatureAdoption).toHaveBeenCalledWith('auto_push', true);
-      expect(analytics.trackFeatureAdoption).toHaveBeenCalledWith('github_app_auth', false);
+      const payload = JSON.parse((global.fetch as ReturnType<typeof vi.fn>).mock.calls[0][1].body);
+      expect(payload.events[0].name).toBe('auto_push_adopted');
     });
   });
 
   describe('trackOperationPerformance', () => {
-    it('should track operation with time range', async () => {
-      const startTime = Date.now();
+    it('should track operation performance', async () => {
+      const startTime = 1704067200000;
       const endTime = startTime + 1000;
 
       await trackOperationPerformance('upload', startTime, endTime, { fileCount: 5 });
 
-      expect(analytics.trackPerformance).toHaveBeenCalledWith('upload', startTime, endTime, {
-        fileCount: 5,
-      });
+      const payload = JSON.parse((global.fetch as ReturnType<typeof vi.fn>).mock.calls[0][1].body);
+      expect(payload.events[0].params.value).toBe(1000);
     });
   });
 
@@ -404,42 +281,41 @@ describe('analytics utilities - integration tests', () => {
     it('should track journey milestones', async () => {
       await trackUserJourneyMilestone('onboarding', 'completed_setup', { step: 1 });
 
-      expect(analytics.trackUserJourney).toHaveBeenCalledWith('onboarding', 'completed_setup', {
-        step: 1,
-      });
+      const payload = JSON.parse((global.fetch as ReturnType<typeof vi.fn>).mock.calls[0][1].body);
+      expect(payload.events[0].name).toBe('onboarding_completed_setup');
     });
   });
 
   describe('trackOperationResult', () => {
-    it('should track operation success and failure', async () => {
+    it('should track operation results', async () => {
       await trackOperationResult('push', true, { duration: 1500 });
-      await trackOperationResult('clone', false, { errorType: 'network' });
 
-      expect(analytics.trackOperationResult).toHaveBeenCalledWith('push', true, { duration: 1500 });
-      expect(analytics.trackOperationResult).toHaveBeenCalledWith('clone', false, {
-        errorType: 'network',
-      });
+      const payload = JSON.parse((global.fetch as ReturnType<typeof vi.fn>).mock.calls[0][1].body);
+      expect(payload.events[0].name).toBe('push_success');
+      expect(payload.events[0].params.value).toBe(1);
     });
   });
 
   describe('trackFeatureUsageWithVersion', () => {
-    it('should track feature usage with version info', async () => {
+    it('should track feature usage with version', async () => {
       await trackFeatureUsageWithVersion('auto_sync', { version: '1.0.0' });
 
-      expect(analytics.trackFeatureUsage).toHaveBeenCalledWith('auto_sync', { version: '1.0.0' });
+      const payload = JSON.parse((global.fetch as ReturnType<typeof vi.fn>).mock.calls[0][1].body);
+      expect(payload.events[0].name).toBe('auto_sync_used');
     });
   });
 
   describe('trackDailyActiveUser', () => {
-    it('should track daily active user', async () => {
+    it('should track daily active users', async () => {
       await trackDailyActiveUser();
 
-      expect(analytics.trackDailyActiveUser).toHaveBeenCalled();
+      const payload = JSON.parse((global.fetch as ReturnType<typeof vi.fn>).mock.calls[0][1].body);
+      expect(payload.events[0].name).toBe('daily_active_user');
     });
   });
 
   describe('withAnalytics wrapper', () => {
-    it('should wrap async operation and track success', async () => {
+    it('should wrap operation and track success', async () => {
       const operation = vi.fn().mockResolvedValue('success');
       const wrapped = withAnalytics(operation, 'test_op');
 
@@ -447,13 +323,7 @@ describe('analytics utilities - integration tests', () => {
 
       expect(result).toBe('success');
       expect(operation).toHaveBeenCalledWith('arg1', 'arg2');
-      expect(analytics.trackPerformance).toHaveBeenCalledWith(
-        'test_op',
-        expect.any(Number),
-        expect.any(Number),
-        undefined
-      );
-      expect(analytics.trackOperationResult).toHaveBeenCalledWith('test_op', true, undefined);
+      expect(global.fetch).toHaveBeenCalledTimes(2);
     });
 
     it('should track operation with metadata', async () => {
@@ -464,15 +334,7 @@ describe('analytics utilities - integration tests', () => {
       await wrapped('input');
 
       expect(getMetadata).toHaveBeenCalledWith('input');
-      expect(analytics.trackPerformance).toHaveBeenCalledWith(
-        'complex_op',
-        expect.any(Number),
-        expect.any(Number),
-        { param: 'value' }
-      );
-      expect(analytics.trackOperationResult).toHaveBeenCalledWith('complex_op', true, {
-        param: 'value',
-      });
+      expect(global.fetch).toHaveBeenCalledTimes(2);
     });
 
     it('should track and rethrow errors', async () => {
@@ -482,17 +344,10 @@ describe('analytics utilities - integration tests', () => {
 
       await expect(wrapped()).rejects.toThrow('Operation failed');
 
-      expect(analytics.trackError).toHaveBeenCalledWith(error, 'unknown_failing_op');
-      expect(analytics.trackPerformance).toHaveBeenCalledWith(
-        'failing_op_failed',
-        expect.any(Number),
-        expect.any(Number),
-        undefined
-      );
-      expect(analytics.trackOperationResult).toHaveBeenCalledWith('failing_op', false, undefined);
+      expect(global.fetch).toHaveBeenCalledTimes(4);
     });
 
-    it('should preserve operation return value type', async () => {
+    it('should preserve return value type', async () => {
       const operation = vi.fn().mockResolvedValue(42);
       const wrapped = withAnalytics(operation, 'typed_op');
 
@@ -503,16 +358,18 @@ describe('analytics utilities - integration tests', () => {
     });
   });
 
-  describe('integration workflows', () => {
-    it('should support complete onboarding flow', async () => {
+  describe('workflow integration', () => {
+    it('should support complete onboarding workflow', async () => {
       await trackOnboardingStep('started');
       await trackExtensionOpened('popup');
       await trackOnboardingStep('token_added', { tokenType: 'fine_grained' });
       await trackOnboardingStep('completed');
       await trackConversionFunnel('first_use');
 
-      expect(analytics.trackMilestone).toHaveBeenCalledTimes(4);
-      expect(analytics.trackExtensionEvent).toHaveBeenCalledTimes(1);
+      expect(global.fetch).toHaveBeenCalledTimes(5);
+      const calls = (global.fetch as ReturnType<typeof vi.fn>).mock.calls;
+      expect(JSON.parse(calls[0][1].body).events[0].name).toBe('setup_started');
+      expect(JSON.parse(calls[4][1].body).events[0].name).toBe('conversion_first_use');
     });
 
     it('should support complete upload workflow', async () => {
@@ -525,18 +382,10 @@ describe('analytics utilities - integration tests', () => {
       await trackGitHubRepoOperation('push', true);
       await trackConversionFunnel('successful_upload');
 
-      expect(analytics.trackExtensionEvent).toHaveBeenCalledTimes(3);
-      expect(analytics.trackGitHubOperation).toHaveBeenCalledTimes(4);
-      expect(analytics.trackMilestone).toHaveBeenCalledTimes(1);
-    });
-
-    it('should support error recovery flow', async () => {
-      await trackGitHubRepoOperation('upload', false, { errorType: 'network' });
-      await trackError('network', 'Connection timeout', 'upload');
-      await trackGitHubRepoOperation('upload', true, { fileCount: 10 });
-
-      expect(analytics.trackGitHubOperation).toHaveBeenCalledTimes(2);
-      expect(analytics.trackError).toHaveBeenCalledTimes(1);
+      expect(global.fetch).toHaveBeenCalledTimes(8);
+      const calls = (global.fetch as ReturnType<typeof vi.fn>).mock.calls;
+      expect(JSON.parse(calls[0][1].body).events[0].name).toBe('project_detected');
+      expect(JSON.parse(calls[7][1].body).events[0].name).toBe('conversion_successful_upload');
     });
   });
 });

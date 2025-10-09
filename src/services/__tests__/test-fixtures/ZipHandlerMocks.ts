@@ -1,6 +1,10 @@
 import type { UnifiedGitHubService } from '../../UnifiedGitHubService';
 import type { UploadStatusState, ProjectFiles } from '$lib/types';
-import { GITHUB_API_RESPONSES, COMPARISON_RESULTS } from './ZipHandlerTestFixtures';
+import {
+  GITHUB_API_RESPONSES,
+  COMPARISON_RESULTS,
+  FIXED_UNIX_TIME,
+} from './ZipHandlerTestFixtures';
 import type { GitHubRepository } from 'src/services/types/repository';
 
 /**
@@ -34,6 +38,8 @@ export class MockUnifiedGitHubService implements Partial<UnifiedGitHubService> {
   private rateLimitState = { ...GITHUB_API_RESPONSES.rateLimit };
   private rateLimitBehavior: 'normal' | 'limited' | 'exceeded' = 'normal';
   private blobShaMap: Map<string, string> = new Map();
+  private treeCounter = 0;
+  private commitCounter = 0;
 
   constructor() {
     this.setupDefaultResponses();
@@ -96,7 +102,7 @@ export class MockUnifiedGitHubService implements Partial<UnifiedGitHubService> {
     // Handle rate limit checks
     if (endpoint === '/rate_limit') {
       // Check if we should simulate rate limit reset
-      const now = Math.floor(Date.now() / 1000);
+      const now = FIXED_UNIX_TIME;
       if (this.rateLimitState.resources.core.reset <= now && this.rateLimitBehavior !== 'normal') {
         // Reset has passed, restore rate limit
         this.resetRateLimit();
@@ -154,12 +160,12 @@ export class MockUnifiedGitHubService implements Partial<UnifiedGitHubService> {
 
     // Handle tree creation
     if (method === 'POST' && endpoint.includes('/git/trees')) {
-      return { sha: `tree-${Date.now()}-${Math.random().toString(36).slice(2)}` } as T;
+      return { sha: `tree-${this.treeCounter++}` } as T;
     }
 
     // Handle commit creation
     if (method === 'POST' && endpoint.includes('/git/commits')) {
-      return { sha: `commit-${Date.now()}-${Math.random().toString(36).slice(2)}` } as T;
+      return { sha: `commit-${this.commitCounter++}` } as T;
     }
 
     // Handle ref update
@@ -340,10 +346,10 @@ export class MockUnifiedGitHubService implements Partial<UnifiedGitHubService> {
       return { sha };
     }
     if (req.method === 'POST' && req.path.includes('/git/trees')) {
-      return { sha: `tree-${Date.now()}-${Math.random().toString(36).slice(2)}` };
+      return { sha: `tree-${this.treeCounter}` };
     }
     if (req.method === 'POST' && req.path.includes('/git/commits')) {
-      return { sha: `commit-${Date.now()}-${Math.random().toString(36).slice(2)}` };
+      return { sha: `commit-${this.commitCounter}` };
     }
     return {};
   }

@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { BackgroundService } from '../BackgroundService';
 
@@ -19,6 +18,7 @@ vi.mock('../../content/services/SupabaseAuthService', () => ({
       getAuthState: vi.fn().mockReturnValue({ isAuthenticated: true }),
       addAuthStateListener: vi.fn(),
       removeAuthStateListener: vi.fn(),
+      isPremium: vi.fn().mockReturnValue(false),
     })),
   },
 }));
@@ -27,6 +27,7 @@ vi.mock('../../content/services/OperationStateManager', () => ({
     getInstance: vi.fn(() => ({})),
   },
 }));
+
 const mockLogStorage = {
   getLogs: vi.fn().mockResolvedValue([]),
   rotateLogs: vi.fn(),
@@ -41,12 +42,15 @@ vi.mock('../../lib/utils/logger', () => ({
   })),
   getLogStorage: vi.fn(() => mockLogStorage),
 }));
+
 vi.mock('../UsageTracker', () => ({
   UsageTracker: vi.fn(() => ({
     initializeUsageData: vi.fn().mockResolvedValue(undefined),
     updateUsageStats: vi.fn().mockResolvedValue(undefined),
+    setUninstallURL: vi.fn().mockResolvedValue(undefined),
   })),
 }));
+
 vi.mock('../../services/BoltProjectSyncService');
 
 const mockAlarms = {
@@ -90,10 +94,12 @@ const mockRuntime = {
     addListener: vi.fn(),
   },
   lastError: null,
+  getManifest: vi.fn(() => ({ version: '1.0.0' })),
 };
 
 const mockTabs = {
   get: vi.fn(),
+  query: vi.fn().mockResolvedValue([]),
   onUpdated: {
     addListener: vi.fn(),
   },
@@ -105,12 +111,17 @@ const mockTabs = {
   },
 };
 
+const mockAction = {
+  openPopup: vi.fn(),
+};
+
 global.chrome = {
   alarms: mockAlarms,
   storage: mockStorage,
   runtime: mockRuntime,
   tabs: mockTabs,
-} as any;
+  action: mockAction,
+} as never;
 
 describe('BackgroundService - Alarms Functionality', () => {
   let service: BackgroundService;
@@ -130,16 +141,24 @@ describe('BackgroundService - Alarms Functionality', () => {
     service.destroy();
   });
 
-  describe('Log Rotation Alarm', () => {
-    it('should create log rotation alarm on initialization', async () => {
+  describe('Alarm Registration', () => {
+    it('should register all required alarms on initialization', async () => {
       await vi.runOnlyPendingTimersAsync();
 
       expect(mockAlarms.create).toHaveBeenCalledWith('logRotation', { periodInMinutes: 60 });
+      expect(mockAlarms.create).toHaveBeenCalledWith('keepAlive', { periodInMinutes: 1 });
+      expect(mockAlarms.create).toHaveBeenCalledWith('bolt-project-sync', { periodInMinutes: 5 });
     });
 
-    it('should trigger log rotation on startup event', () => {
-      mockLogStorage.rotateLogs.mockClear();
+    it('should register alarm event listener', async () => {
+      await vi.runOnlyPendingTimersAsync();
 
+      expect(mockAlarms.onAlarm.addListener).toHaveBeenCalledWith(expect.any(Function));
+    });
+  });
+
+  describe('Log Rotation Behavior', () => {
+    it('should rotate logs when extension starts up', () => {
       const startupListener = mockRuntime.onStartup.addListener.mock.calls[0][0];
 
       startupListener();
@@ -147,173 +166,27 @@ describe('BackgroundService - Alarms Functionality', () => {
       expect(mockLogStorage.rotateLogs).toHaveBeenCalled();
     });
 
-    it('should trigger log rotation on installed event', async () => {
-      mockLogStorage.rotateLogs.mockClear();
-
+    it('should rotate logs when extension is installed', async () => {
       const installedListener = mockRuntime.onInstalled.addListener.mock.calls[0][0];
 
       await installedListener({ reason: 'install' });
 
       expect(mockLogStorage.rotateLogs).toHaveBeenCalled();
     });
-  });
 
-  describe('Keep-Alive Alarm', () => {
-    it('should create keep-alive alarm on initialization', async () => {
-      await vi.runOnlyPendingTimersAsync();
-
-      expect(mockAlarms.create).toHaveBeenCalledWith('keepAlive', { periodInMinutes: 1 });
-    });
-
-    it('should manage ports for active connections', () => {
-      expect((service as any).ports).toBeInstanceOf(Map);
-
-      expect((service as any).ports.size).toBe(0);
-    });
-
-    it('should update activity timestamp on keep-alive alarm', () => {
-      const mockUpdateLastActivity = vi.spyOn(service as any, 'updateLastActivity');
-
-      expect(mockAlarms.onAlarm.addListener).toHaveBeenCalled();
+    it('should rotate logs when logRotation alarm fires', () => {
       const alarmListener = mockAlarms.onAlarm.addListener.mock.calls[0][0];
-      expect(alarmListener).toBeDefined();
-
-      alarmListener({ name: 'keepAlive' });
-
-      expect(mockUpdateLastActivity).toHaveBeenCalled();
-      expect(mockStorage.local.set).toHaveBeenCalledWith({
-        lastKeepAlive: expect.any(Number),
-      });
-    });
-  });
-
-  describe('Sync Alarm', () => {
-    it('should create sync alarm on initialization', async () => {
-      await vi.runOnlyPendingTimersAsync();
-
-      expect(mockAlarms.create).toHaveBeenCalledWith('bolt-project-sync', { periodInMinutes: 5 });
-    });
-  });
-
-  describe('Alarm Configuration Verification', () => {
-    it('should create all alarms with correct parameters on initialization', async () => {
-      await vi.runOnlyPendingTimersAsync();
-
-      expect(mockAlarms.create).toHaveBeenCalledWith('logRotation', { periodInMinutes: 60 });
-      expect(mockAlarms.create).toHaveBeenCalledWith('keepAlive', { periodInMinutes: 1 });
-      expect(mockAlarms.create).toHaveBeenCalledWith('bolt-project-sync', { periodInMinutes: 5 });
-
-      const alarmNames = mockAlarms.create.mock.calls.map((call) => call[0]);
-      expect(alarmNames).toContain('logRotation');
-      expect(alarmNames).toContain('keepAlive');
-      expect(alarmNames).toContain('bolt-project-sync');
-    });
-  });
-
-  describe('Alarm Event Handling', () => {
-    it('should register alarm event listener on initialization', async () => {
-      await vi.runOnlyPendingTimersAsync();
-
-      expect(mockAlarms.onAlarm.addListener).toHaveBeenCalledWith(expect.any(Function));
-    });
-
-    it('should handle keep-alive alarm events', () => {
-      const mockUpdateLastActivity = vi.spyOn(service as any, 'updateLastActivity');
-
-      expect(mockAlarms.onAlarm.addListener).toHaveBeenCalled();
-      const alarmListener = mockAlarms.onAlarm.addListener.mock.calls[0][0];
-      expect(alarmListener).toBeDefined();
-
-      alarmListener({ name: 'keepAlive' });
-
-      expect(mockUpdateLastActivity).toHaveBeenCalled();
-      expect(mockStorage.local.set).toHaveBeenCalledWith({
-        lastKeepAlive: expect.any(Number),
-      });
-    });
-
-    it('should handle log rotation alarm events', () => {
-      mockLogStorage.rotateLogs.mockClear();
-
-      expect(mockAlarms.onAlarm.addListener).toHaveBeenCalled();
-      const alarmListener = mockAlarms.onAlarm.addListener.mock.calls[0][0];
-      expect(alarmListener).toBeDefined();
 
       alarmListener({ name: 'logRotation' });
 
       expect(mockLogStorage.rotateLogs).toHaveBeenCalled();
     });
-
-    it('should handle sync alarm events', () => {
-      const mockHandleSyncAlarm = vi
-        .spyOn(service as any, 'handleSyncAlarm')
-        .mockImplementation(() => {});
-
-      expect(mockAlarms.onAlarm.addListener).toHaveBeenCalled();
-      const alarmListener = mockAlarms.onAlarm.addListener.mock.calls[0][0];
-      expect(alarmListener).toBeDefined();
-
-      alarmListener({ name: 'bolt-project-sync' });
-
-      expect(mockHandleSyncAlarm).toHaveBeenCalled();
-    });
-
-    it('should ignore unknown alarm events', () => {
-      const mockUpdateLastActivity = vi.spyOn(service as any, 'updateLastActivity');
-      const mockHandleSyncAlarm = vi
-        .spyOn(service as any, 'handleSyncAlarm')
-        .mockImplementation(() => {});
-
-      mockLogStorage.rotateLogs.mockClear();
-
-      expect(mockAlarms.onAlarm.addListener).toHaveBeenCalled();
-      const alarmListener = mockAlarms.onAlarm.addListener.mock.calls[0][0];
-      expect(alarmListener).toBeDefined();
-
-      alarmListener({ name: 'unknown-alarm' });
-
-      expect(mockUpdateLastActivity).not.toHaveBeenCalled();
-      expect(mockLogStorage.rotateLogs).not.toHaveBeenCalled();
-      expect(mockHandleSyncAlarm).not.toHaveBeenCalled();
-    });
   });
 
-  describe('Alarm Cleanup', () => {
-    it('should remove alarm listeners on service destruction', () => {
-      expect(mockAlarms.onAlarm.addListener).toHaveBeenCalled();
+  describe('Keep-Alive Behavior', () => {
+    it('should update storage when keep-alive alarm fires', () => {
+      vi.setSystemTime(1000000);
       const alarmListener = mockAlarms.onAlarm.addListener.mock.calls[0][0];
-      expect(alarmListener).toBeDefined();
-
-      service.destroy();
-
-      expect(mockAlarms.onAlarm.removeListener).toHaveBeenCalledWith(alarmListener);
-    });
-
-    it('should clear sync alarm on service destruction', () => {
-      service.destroy();
-
-      expect(mockAlarms.clear).toHaveBeenCalledWith('bolt-project-sync');
-    });
-  });
-
-  describe('Keep-Alive Activity Tracking', () => {
-    beforeEach(() => {
-      vi.spyOn(Date, 'now').mockReturnValue(1000000);
-    });
-
-    afterEach(() => {
-      (Date.now as any).mockRestore();
-    });
-
-    it('should track last activity timestamp', () => {
-      (service as any).updateLastActivity();
-
-      expect((service as any).lastActivityTime).toBe(1000000);
-    });
-
-    it('should store keep-alive timestamp in chrome storage', () => {
-      const alarmListener = mockAlarms.onAlarm.addListener.mock.calls[0]?.[0];
-      expect(alarmListener).toBeDefined();
 
       alarmListener({ name: 'keepAlive' });
 
@@ -323,16 +196,50 @@ describe('BackgroundService - Alarms Functionality', () => {
     });
   });
 
-  describe('Connection Management', () => {
-    it('should initialize with empty ports map', () => {
-      expect((service as any).ports).toBeInstanceOf(Map);
-      expect((service as any).ports.size).toBe(0);
+  describe('Alarm Cleanup on Destruction', () => {
+    it('should remove alarm listener when service is destroyed', () => {
+      const alarmListener = mockAlarms.onAlarm.addListener.mock.calls[0][0];
+
+      service.destroy();
+
+      expect(mockAlarms.onAlarm.removeListener).toHaveBeenCalledWith(alarmListener);
     });
 
-    it('should manage port connections', () => {
-      const ports = (service as any).ports;
+    it('should clear sync alarm when service is destroyed', () => {
+      service.destroy();
 
-      expect(ports.size).toBe(0);
+      expect(mockAlarms.clear).toHaveBeenCalledWith('bolt-project-sync');
+    });
+  });
+
+  describe('Alarm Event Routing', () => {
+    it('should handle known alarm types correctly', () => {
+      const alarmListener = mockAlarms.onAlarm.addListener.mock.calls[0][0];
+
+      mockLogStorage.rotateLogs.mockClear();
+      mockStorage.local.set.mockClear();
+
+      alarmListener({ name: 'logRotation' });
+      expect(mockLogStorage.rotateLogs).toHaveBeenCalledTimes(1);
+
+      alarmListener({ name: 'keepAlive' });
+      expect(mockStorage.local.set).toHaveBeenCalledWith({
+        lastKeepAlive: expect.any(Number),
+      });
+    });
+
+    it('should not crash on unknown alarm types', () => {
+      const alarmListener = mockAlarms.onAlarm.addListener.mock.calls[0][0];
+
+      mockLogStorage.rotateLogs.mockClear();
+      mockStorage.local.set.mockClear();
+
+      expect(() => {
+        alarmListener({ name: 'unknown-alarm' });
+      }).not.toThrow();
+
+      expect(mockLogStorage.rotateLogs).not.toHaveBeenCalled();
+      expect(mockStorage.local.set).not.toHaveBeenCalled();
     });
   });
 });

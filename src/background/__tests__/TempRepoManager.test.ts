@@ -28,8 +28,11 @@ describe('TempRepoManager', () => {
   let lifecycle: TempRepoTestLifecycle;
   let env: TempRepoManagerTestEnvironment;
   let manager: BackgroundTempRepoManager;
+  const FIXED_TIME = 1609459200000;
 
   beforeEach(async () => {
+    vi.setSystemTime(FIXED_TIME);
+
     lifecycle = new TempRepoTestLifecycle();
     env = lifecycle.beforeEach();
 
@@ -40,6 +43,7 @@ describe('TempRepoManager', () => {
   afterEach(() => {
     lifecycle.afterEach();
     vi.clearAllMocks();
+    vi.useRealTimers();
   });
 
   describe('Repository Import Pipeline', () => {
@@ -193,12 +197,113 @@ describe('TempRepoManager', () => {
     });
   });
 
+  describe('Cleanup Behavior', () => {
+    it('should cleanup repos older than MAX_AGE', async () => {
+      const oldRepoTimestamp = FIXED_TIME - 61 * 1000;
+      const recentRepoTimestamp = FIXED_TIME - 30 * 1000;
+
+      env.mockStorage.setLocalData({
+        [STORAGE_KEY]: [
+          {
+            originalRepo: 'old-repo',
+            tempRepo: 'temp-old-repo',
+            createdAt: oldRepoTimestamp,
+            owner: TempRepoTestData.owners.validOwner,
+            branch: 'main',
+          },
+          {
+            originalRepo: 'recent-repo',
+            tempRepo: 'temp-recent-repo',
+            createdAt: recentRepoTimestamp,
+            owner: TempRepoTestData.owners.validOwner,
+            branch: 'main',
+          },
+        ],
+      });
+
+      manager = lifecycle.createManager('custom');
+
+      await manager.cleanupTempRepos();
+
+      expect(env.mockGitHubService.deleteRepo).toHaveBeenCalledWith(
+        TempRepoTestData.owners.validOwner,
+        'temp-old-repo'
+      );
+      expect(env.mockGitHubService.deleteRepo).not.toHaveBeenCalledWith(
+        TempRepoTestData.owners.validOwner,
+        'temp-recent-repo'
+      );
+
+      const storageData = env.mockStorage.getLocalData();
+      expect((storageData[STORAGE_KEY] as TempRepo[]).length).toBe(1);
+      expect((storageData[STORAGE_KEY] as TempRepo[])[0].originalRepo).toBe('recent-repo');
+    });
+
+    it('should force cleanup all repos when forceCleanUp is true', async () => {
+      const recentRepoTimestamp = FIXED_TIME - 10 * 1000;
+
+      env.mockStorage.setLocalData({
+        [STORAGE_KEY]: [
+          {
+            originalRepo: 'very-recent-repo',
+            tempRepo: 'temp-very-recent-repo',
+            createdAt: recentRepoTimestamp,
+            owner: TempRepoTestData.owners.validOwner,
+            branch: 'main',
+          },
+        ],
+      });
+
+      manager = lifecycle.createManager('custom');
+
+      await manager.cleanupTempRepos(true);
+
+      expect(env.mockGitHubService.deleteRepo).toHaveBeenCalledWith(
+        TempRepoTestData.owners.validOwner,
+        'temp-very-recent-repo'
+      );
+
+      const storageData = env.mockStorage.getLocalData();
+      expect((storageData[STORAGE_KEY] as TempRepo[]).length).toBe(0);
+    });
+
+    it('should retry failed deletions on subsequent cleanup', async () => {
+      const oldRepoTimestamp = FIXED_TIME - 61 * 1000;
+
+      env.mockStorage.setLocalData({
+        [STORAGE_KEY]: [
+          {
+            originalRepo: 'stuck-repo',
+            tempRepo: 'temp-stuck-repo',
+            createdAt: oldRepoTimestamp,
+            owner: TempRepoTestData.owners.validOwner,
+            branch: 'main',
+          },
+        ],
+      });
+
+      manager = lifecycle.createManager('custom');
+
+      env.mockGitHubService.deleteRepo.mockRejectedValueOnce(new Error('Network error'));
+      await manager.cleanupTempRepos();
+
+      let storageData = env.mockStorage.getLocalData();
+      expect((storageData[STORAGE_KEY] as TempRepo[]).length).toBe(1);
+
+      env.mockGitHubService.deleteRepo.mockResolvedValueOnce(undefined);
+      await manager.cleanupTempRepos();
+
+      storageData = env.mockStorage.getLocalData();
+      expect((storageData[STORAGE_KEY] as TempRepo[]).length).toBe(0);
+    });
+  });
+
   describe('Performance', () => {
     it('should handle large number of temp repos efficiently', async () => {
       const largeRepoList = Array.from({ length: 100 }, (_, i) => ({
         originalRepo: `repo-${i}`,
         tempRepo: `temp-repo-${i}`,
-        createdAt: Date.now() - i * 1000,
+        createdAt: FIXED_TIME - (i % 2 === 0 ? 61 * 1000 : 30 * 1000),
         owner: TempRepoTestData.owners.validOwner,
         branch: 'main',
       }));
@@ -206,20 +311,12 @@ describe('TempRepoManager', () => {
       env.mockStorage.setLocalData({ [STORAGE_KEY]: largeRepoList });
       manager = lifecycle.createManager('custom');
 
-      const startTime = Date.now();
       await manager.cleanupTempRepos();
-      const duration = Date.now() - startTime;
 
-      expect(duration).toBeLessThan(5000);
+      expect(env.mockGitHubService.deleteRepo).toHaveBeenCalledTimes(50);
 
-      const expiredCount = largeRepoList.filter((r) => Date.now() - r.createdAt > 60000).length;
-
-      expect(env.mockGitHubService.deleteRepo.mock.calls.length).toBeGreaterThanOrEqual(
-        expiredCount - 1
-      );
-      expect(env.mockGitHubService.deleteRepo.mock.calls.length).toBeLessThanOrEqual(
-        expiredCount + 1
-      );
+      const storageData = env.mockStorage.getLocalData();
+      expect((storageData[STORAGE_KEY] as TempRepo[]).length).toBe(50);
     });
 
     it('should not accumulate memory from progress callbacks', async () => {

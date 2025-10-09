@@ -27,9 +27,6 @@ const mockChromeStorage = {
 
 const mockChromeTabs = {
   query: vi.fn().mockResolvedValue([]),
-  create: vi.fn(),
-  sendMessage: vi.fn(),
-  get: vi.fn(),
   onUpdated: {
     addListener: vi.fn(),
   },
@@ -40,14 +37,9 @@ const mockChromeTabs = {
 
 const mockChromeAlarms = {
   create: vi.fn(),
-  clear: vi.fn(),
   onAlarm: {
     addListener: vi.fn(),
   },
-};
-
-const mockChromeScripting = {
-  executeScript: vi.fn().mockResolvedValue([]),
 };
 
 global.chrome = {
@@ -55,7 +47,6 @@ global.chrome = {
   storage: mockChromeStorage,
   tabs: mockChromeTabs,
   alarms: mockChromeAlarms,
-  scripting: mockChromeScripting,
 } as any;
 
 import { SupabaseAuthService } from '../SupabaseAuthService';
@@ -64,6 +55,7 @@ describe('SupabaseAuthService - Extension Reload Logic', () => {
   let authService: SupabaseAuthService;
 
   beforeEach(() => {
+    vi.useFakeTimers({ now: new Date('2024-01-01T00:00:00.000Z') });
     vi.clearAllMocks();
 
     (SupabaseAuthService as any).instance = null;
@@ -72,6 +64,7 @@ describe('SupabaseAuthService - Extension Reload Logic', () => {
 
   afterEach(() => {
     vi.clearAllMocks();
+    vi.useRealTimers();
     authService.cleanup();
   });
 

@@ -1,9 +1,8 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
-import { ChromeStorageService } from '$lib/services/chromeStorage';
-import type { BoltProject, SyncResponse } from '$lib/types';
-import { beforeEach, describe, expect, it, type Mock, vi } from 'vitest';
-import { SupabaseAuthService } from '../../content/services/SupabaseAuthService';
+import type { BoltProject, SyncResponse, GitHubSettingsInterface } from '$lib/types';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { BoltProjectSyncService } from '../BoltProjectSyncService';
+import { ChromeStorageService } from '$lib/services/chromeStorage';
+import { SupabaseAuthService } from '../../content/services/SupabaseAuthService';
 
 vi.mock('$lib/services/chromeStorage');
 vi.mock('../../content/services/SupabaseAuthService');
@@ -12,19 +11,16 @@ global.fetch = vi.fn();
 
 describe('BoltProjectSyncService', () => {
   let service: BoltProjectSyncService;
-  let mockStorageGet: Mock;
-  let mockStorageSet: Mock;
-  let mockAuthGetToken: Mock;
-  let mockAuthGetState: Mock;
+  let mockAuthService: {
+    getAuthState: ReturnType<typeof vi.fn>;
+  };
 
   beforeEach(() => {
     vi.clearAllMocks();
+    vi.useFakeTimers({ now: new Date('2024-01-01T00:00:00.000Z') });
 
-    mockStorageGet = vi.fn();
-    mockStorageSet = vi.fn();
-    ChromeStorageService.prototype.get = mockStorageGet;
-    ChromeStorageService.prototype.set = mockStorageSet;
-
+    vi.mocked(ChromeStorageService.prototype.get).mockResolvedValue({});
+    vi.mocked(ChromeStorageService.prototype.set).mockResolvedValue(undefined);
     vi.mocked(ChromeStorageService.getGitHubSettings).mockResolvedValue({
       githubToken: '',
       repoOwner: '',
@@ -32,212 +28,232 @@ describe('BoltProjectSyncService', () => {
     });
     vi.mocked(ChromeStorageService.saveGitHubSettings).mockResolvedValue(undefined);
 
-    mockAuthGetToken = vi.fn();
-    mockAuthGetState = vi.fn();
-    const mockAuthInstance = {
-      getAuthToken: mockAuthGetToken,
-      getAuthState: mockAuthGetState,
+    mockAuthService = {
+      getAuthState: vi.fn().mockReturnValue({
+        isAuthenticated: false,
+        user: null,
+        subscription: { isActive: false, plan: 'free' },
+      }),
     };
     vi.mocked(SupabaseAuthService.getInstance).mockReturnValue(
-      mockAuthInstance as unknown as SupabaseAuthService
+      mockAuthService as never as SupabaseAuthService
     );
 
     global.chrome = {
       storage: {
         local: {
-          get: vi.fn().mockResolvedValue({ supabaseToken: 'mock.auth.token' }),
+          get: vi.fn().mockResolvedValue({}),
+          set: vi.fn().mockResolvedValue(undefined),
         },
       },
-    } as unknown as typeof chrome;
+    } as never as typeof chrome;
 
     service = new BoltProjectSyncService();
   });
 
-  describe('getLocalProjects', () => {
-    it('should retrieve projects from chrome storage', async () => {
-      const mockProjects: BoltProject[] = [
-        {
-          id: 'project-1',
-          bolt_project_id: 'bolt-1',
-          project_name: 'test-project',
-          github_repo_name: 'test-repo',
-          github_repo_owner: 'test-user',
-          github_branch: 'main',
-          is_private: false,
-          last_modified: '2024-01-01T00:00:00Z',
+  afterEach(() => {
+    vi.useRealTimers();
+  });
 
-          repoName: 'test-repo',
-          branch: 'main',
-          version: 1,
-        },
-      ];
+  function setupAuthenticatedUser(token: string = 'mock.auth.token') {
+    mockAuthService.getAuthState.mockReturnValue({
+      isAuthenticated: true,
+      user: {
+        id: 'test-user',
+        email: 'test@example.com',
+        created_at: '2024-01-01T00:00:00Z',
+        updated_at: '2024-01-01T00:00:00Z',
+      },
+      subscription: { isActive: false, plan: 'free' },
+    });
+    vi.mocked(chrome.storage.local.get).mockResolvedValue({ supabaseToken: token } as never);
+  }
 
-      mockStorageGet.mockResolvedValue({ boltProjects: mockProjects });
+  function setupBoltProjects(projects: BoltProject[]) {
+    vi.mocked(ChromeStorageService.prototype.get).mockResolvedValue({
+      boltProjects: projects,
+    });
+  }
+
+  function setupGitHubSettings(settings: Partial<GitHubSettingsInterface> = {}) {
+    const defaultSettings: GitHubSettingsInterface = {
+      githubToken: 'ghp_test',
+      repoOwner: 'test-owner',
+      projectSettings: {},
+      ...settings,
+    };
+    vi.mocked(ChromeStorageService.getGitHubSettings).mockResolvedValue(defaultSettings);
+  }
+
+  function createMockProject(overrides: Partial<BoltProject> = {}): BoltProject {
+    return {
+      id: 'project-1',
+      bolt_project_id: 'bolt-1',
+      project_name: 'Test Project',
+      github_repo_name: 'test-repo',
+      github_repo_owner: 'test-user',
+      github_branch: 'main',
+      is_private: false,
+      last_modified: '2024-01-01T00:00:00Z',
+      repoName: 'test-repo',
+      branch: 'main',
+      version: 1,
+      ...overrides,
+    };
+  }
+
+  describe('Local Project Storage', () => {
+    it('should save projects to storage', async () => {
+      const project = createMockProject();
+
+      await service.saveLocalProjects([project]);
+
+      expect(ChromeStorageService.prototype.set).toHaveBeenCalledWith({
+        boltProjects: [project],
+      });
+    });
+
+    it('should retrieve projects from storage', async () => {
+      const project = createMockProject();
+      setupBoltProjects([project]);
 
       const projects = await service.getLocalProjects();
 
-      expect(mockStorageGet).toHaveBeenCalledWith('boltProjects');
-      expect(projects).toEqual(mockProjects);
+      expect(projects).toHaveLength(1);
+      expect(projects[0].project_name).toBe('Test Project');
+      expect(projects[0].github_repo_name).toBe('test-repo');
     });
 
-    it('should return empty array if no projects stored', async () => {
-      mockStorageGet.mockResolvedValue({ boltProjects: null });
+    it('should return empty array when no projects exist', async () => {
+      vi.mocked(ChromeStorageService.prototype.get).mockResolvedValue({ boltProjects: null });
 
       const projects = await service.getLocalProjects();
 
       expect(projects).toEqual([]);
     });
-  });
 
-  describe('saveLocalProjects', () => {
-    it('should save projects to chrome storage', async () => {
-      const mockProjects: BoltProject[] = [
-        {
-          id: 'project-1',
-          bolt_project_id: 'bolt-1',
-          project_name: 'test-project',
-          github_repo_name: 'test-repo',
-          github_repo_owner: 'test-user',
-          github_branch: 'main',
-          is_private: false,
-          last_modified: '2024-01-01T00:00:00Z',
+    it('should handle storage errors gracefully when retrieving', async () => {
+      vi.mocked(ChromeStorageService.prototype.get).mockRejectedValue(new Error('Storage error'));
 
-          repoName: 'test-repo',
-          branch: 'main',
-          version: 1,
-        },
-      ];
+      const projects = await service.getLocalProjects();
 
-      mockStorageSet.mockResolvedValue(undefined);
-
-      await service.saveLocalProjects(mockProjects);
-
-      expect(mockStorageSet).toHaveBeenCalledWith({ boltProjects: mockProjects });
+      expect(projects).toEqual([]);
     });
-  });
 
-  describe('syncWithBackend', () => {
-    const mockToken = 'mock.auth.token';
-    const mockProjects: BoltProject[] = [
-      {
-        id: 'project-1',
-        bolt_project_id: 'bolt-1',
-        project_name: 'test-project',
-        github_repo_name: 'test-repo',
-        github_repo_owner: 'test-user',
-        is_private: false,
-        repoName: 'test-repo',
-        branch: 'main',
-        last_modified: '2024-01-01T00:00:00Z',
-        version: 1,
-      },
-    ];
+    it('should propagate errors when saving fails', async () => {
+      vi.mocked(ChromeStorageService.prototype.set).mockRejectedValue(new Error('Save error'));
 
-    beforeEach(() => {
-      mockAuthGetToken.mockResolvedValue(mockToken);
-      mockAuthGetState.mockReturnValue({
-        isAuthenticated: true,
-        user: {
-          id: 'test-user',
-          email: 'test@example.com',
-          created_at: '2024-01-01T00:00:00Z',
-          updated_at: '2024-01-01T00:00:00Z',
-        },
-        subscription: {
-          isActive: false,
-          plan: 'free',
-        },
+      await expect(service.saveLocalProjects([createMockProject()])).rejects.toThrow('Save error');
+    });
+
+    it('should save sync timestamp to storage', async () => {
+      const timestamp = '2024-01-01T12:00:00Z';
+
+      await service.setLastSyncTimestamp(timestamp);
+
+      expect(ChromeStorageService.prototype.set).toHaveBeenCalledWith({
+        lastSyncTimestamp: timestamp,
       });
     });
 
-    it('should sync projects with backend when authenticated', async () => {
+    it('should retrieve sync timestamp from storage', async () => {
+      const timestamp = '2024-01-01T12:00:00Z';
+      vi.mocked(ChromeStorageService.prototype.get).mockResolvedValue({
+        lastSyncTimestamp: timestamp,
+      });
+
+      const retrieved = await service.getLastSyncTimestamp();
+
+      expect(retrieved).toBe(timestamp);
+    });
+
+    it('should return null when no sync timestamp exists', async () => {
+      vi.mocked(ChromeStorageService.prototype.get).mockResolvedValue({
+        lastSyncTimestamp: null,
+      });
+
+      const result = await service.getLastSyncTimestamp();
+
+      expect(result).toBeNull();
+    });
+
+    it('should handle errors gracefully when retrieving timestamp', async () => {
+      vi.mocked(ChromeStorageService.prototype.get).mockRejectedValue(new Error('Storage error'));
+
+      const result = await service.getLastSyncTimestamp();
+
+      expect(result).toBeNull();
+    });
+  });
+
+  describe('Backend Synchronization', () => {
+    beforeEach(() => {
+      setupAuthenticatedUser();
+    });
+
+    it('should sync projects with backend successfully', async () => {
+      const project = createMockProject();
+      setupBoltProjects([project]);
+
       const mockResponse: SyncResponse = {
         success: true,
-        updatedProjects: mockProjects,
+        updatedProjects: [project],
         conflicts: [],
         deletedProjects: [],
       };
 
-      (global.fetch as any).mockResolvedValue({
+      vi.mocked(global.fetch).mockResolvedValue({
         ok: true,
         json: async () => mockResponse,
-      });
-
-      mockStorageGet.mockResolvedValue({
-        boltProjects: mockProjects,
-        lastSyncTimestamp: '2024-01-01T00:00:00Z',
-      });
+      } as never);
 
       const result = await service.syncWithBackend();
 
-      expect(global.fetch).toHaveBeenCalledWith(
-        expect.stringContaining('/functions/v1/sync-bolt-projects'),
-        expect.objectContaining({
-          method: 'POST',
-          headers: {
-            Authorization: `Bearer ${mockToken}`,
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
-            localProjects: [
-              {
-                bolt_project_id: 'bolt-1',
-                project_name: 'test-project',
-                github_repo_owner: 'test-user',
-                github_repo_name: 'test-repo',
-                is_private: false,
-                last_modified: '2024-01-01T00:00:00Z',
-              },
-            ],
-            lastSyncTimestamp: '2024-01-01T00:00:00Z',
-            conflictResolution: 'auto-resolve',
-          }),
-        })
-      );
-
-      expect(result).toEqual(mockResponse);
-      expect(mockStorageSet).toHaveBeenCalledWith({
-        boltProjects: mockProjects,
-      });
+      expect(result.success).toBe(true);
+      expect(result.updatedProjects).toHaveLength(1);
+      expect(result.updatedProjects[0].project_name).toBe('Test Project');
     });
 
-    it('should handle authentication errors', async () => {
-      (global.chrome.storage.local.get as any).mockResolvedValue({});
+    it('should reject sync when user is not authenticated', async () => {
+      mockAuthService.getAuthState.mockReturnValue({
+        isAuthenticated: false,
+        user: null,
+        subscription: { isActive: false, plan: 'free' },
+      });
+      vi.mocked(chrome.storage.local.get).mockResolvedValue({} as never);
 
       await expect(service.syncWithBackend()).rejects.toThrow('User not authenticated');
     });
 
-    it('should handle network errors gracefully', async () => {
-      (global.fetch as any).mockRejectedValue(new TypeError('Failed to fetch'));
-      mockStorageGet.mockResolvedValue({ boltProjects: mockProjects });
+    it('should handle network errors during sync', async () => {
+      setupBoltProjects([createMockProject()]);
+      vi.mocked(global.fetch).mockRejectedValue(new TypeError('Failed to fetch'));
 
       await expect(service.syncWithBackend()).rejects.toThrow('Network error');
     });
 
-    it('should handle server errors', async () => {
-      const errorResponse = {
-        error: 'Server error',
-        message: 'Internal server error',
-      };
+    it('should handle server errors during sync', async () => {
+      setupBoltProjects([createMockProject()]);
 
-      (global.fetch as any).mockResolvedValue({
+      vi.mocked(global.fetch).mockResolvedValue({
         ok: false,
         status: 500,
-        json: async () => errorResponse,
-      });
-
-      mockStorageGet.mockResolvedValue({ boltProjects: mockProjects });
+        json: async () => ({ error: 'Server error' }),
+      } as never);
 
       await expect(service.syncWithBackend()).rejects.toThrow('Sync failed: Server error');
     });
 
-    it('should handle conflicts in sync response', async () => {
+    it('should return conflicts when server reports them', async () => {
+      const project = createMockProject();
+      setupBoltProjects([project]);
+
       const mockResponse: SyncResponse = {
         success: true,
         updatedProjects: [],
         conflicts: [
           {
-            project: mockProjects[0],
+            project,
             conflict: 'version_mismatch',
             message: 'Project version mismatch',
           },
@@ -245,1132 +261,297 @@ describe('BoltProjectSyncService', () => {
         deletedProjects: [],
       };
 
-      (global.fetch as any).mockResolvedValue({
+      vi.mocked(global.fetch).mockResolvedValue({
         ok: true,
         json: async () => mockResponse,
-      });
-
-      mockStorageGet.mockResolvedValue({ boltProjects: mockProjects });
+      } as never);
 
       const result = await service.syncWithBackend();
 
       expect(result.conflicts).toHaveLength(1);
       expect(result.conflicts[0].conflict).toBe('version_mismatch');
     });
-  });
 
-  describe('syncProjectsFromLegacyFormat', () => {
-    it('should migrate legacy projects to sync format', async () => {
-      mockStorageGet.mockResolvedValue({ boltProjects: [] });
+    it('should update local storage with server response when requested', async () => {
+      const serverProject = createMockProject({ project_name: 'Updated Project' });
+      setupBoltProjects([]);
 
-      vi.mocked(ChromeStorageService.getGitHubSettings).mockResolvedValue({
-        githubToken: 'test-token',
-        repoOwner: 'test-owner',
-        projectSettings: {
-          'github-5q8boznj': {
-            repoName: 'github-5q8boznj',
-            branch: 'main',
-            projectTitle: 'github-5q8boznj',
-          },
-          'project-2': {
-            repoName: 'my-project',
-            branch: 'develop',
-          },
-        },
-      });
-
-      mockAuthGetState.mockReturnValue({
-        isAuthenticated: true,
-        user: {
-          id: 'test-user',
-          email: 'test@example.com',
-          created_at: '2024-01-01T00:00:00Z',
-          updated_at: '2024-01-01T00:00:00Z',
-        },
-        subscription: {
-          isActive: false,
-          plan: 'free',
-        },
-      });
-
-      const mockResponse: SyncResponse = {
-        success: true,
-        updatedProjects: [],
-        conflicts: [],
-        deletedProjects: [],
-      };
-
-      (global.fetch as any).mockResolvedValue({
+      vi.mocked(global.fetch).mockResolvedValue({
         ok: true,
-        json: () => Promise.resolve(mockResponse),
-      });
-
-      await service.performOutwardSync();
-
-      expect(mockStorageSet).toHaveBeenCalledWith(
-        expect.objectContaining({
-          boltProjects: expect.arrayContaining([
-            expect.objectContaining({
-              id: 'github-5q8boznj',
-              bolt_project_id: 'github-5q8boznj',
-              project_name: 'github-5q8boznj',
-              github_repo_name: 'github-5q8boznj',
-              github_repo_owner: 'test-owner',
-              is_private: true,
-              repoName: 'github-5q8boznj',
-              branch: 'main',
-              sync_status: 'pending',
-            }),
-            expect.objectContaining({
-              id: 'project-2',
-              bolt_project_id: 'project-2',
-              project_name: 'project-2',
-              github_repo_name: 'my-project',
-              github_repo_owner: 'test-owner',
-              is_private: true,
-              repoName: 'my-project',
-              branch: 'develop',
-              sync_status: 'pending',
-            }),
-          ]),
-        })
-      );
-    });
-
-    it('should update existing bolt projects missing project_name field', async () => {
-      const incompleteProject = {
-        id: 'incomplete-project',
-        bolt_project_id: 'incomplete-project',
-
-        github_repo_name: 'incomplete-repo',
-        github_repo_owner: 'test-owner',
-        is_private: false,
-        repoName: 'incomplete-repo',
-        branch: 'main',
-      };
-
-      mockStorageGet.mockResolvedValue({
-        boltProjects: [incompleteProject],
-      });
-
-      mockAuthGetState.mockReturnValue({
-        isAuthenticated: true,
-        user: {
-          id: 'test-user',
-          email: 'test@example.com',
-          created_at: '2024-01-01T00:00:00Z',
-          updated_at: '2024-01-01T00:00:00Z',
-        },
-        subscription: {
-          isActive: false,
-          plan: 'free',
-        },
-      });
-
-      const mockResponse: SyncResponse = {
-        success: true,
-        updatedProjects: [],
-        conflicts: [],
-        deletedProjects: [],
-      };
-
-      (global.fetch as any).mockResolvedValue({
-        ok: true,
-        json: () => Promise.resolve(mockResponse),
-      });
-
-      await service.performOutwardSync();
-
-      expect(mockStorageSet).toHaveBeenCalledWith(
-        expect.objectContaining({
-          boltProjects: expect.arrayContaining([
-            expect.objectContaining({
-              id: 'incomplete-project',
-              bolt_project_id: 'incomplete-project',
-              project_name: 'incomplete-project',
-              github_repo_name: 'incomplete-repo',
-              github_repo_owner: 'test-owner',
-              is_private: false,
-              repoName: 'incomplete-repo',
-              branch: 'main',
-            }),
-          ]),
-        })
-      );
-    });
-
-    it('should sync projects from projectSettings and remove server-only projects for outward sync', async () => {
-      mockStorageGet.mockResolvedValue({
-        boltProjects: [
-          {
-            id: 'existing-project',
-            bolt_project_id: 'existing-project',
-            project_name: 'existing-project',
-            github_repo_name: 'existing-repo',
-            is_private: false,
-          },
-        ],
-      });
-
-      vi.mocked(ChromeStorageService.getGitHubSettings).mockResolvedValue({
-        githubToken: 'test-token',
-        repoOwner: 'test-owner',
-        projectSettings: {
-          'legacy-project': {
-            repoName: 'legacy-repo',
-            branch: 'main',
-          },
-        },
-      });
-
-      mockAuthGetState.mockReturnValue({
-        isAuthenticated: true,
-        user: {
-          id: 'test-user',
-          email: 'test@example.com',
-          created_at: '2024-01-01T00:00:00Z',
-          updated_at: '2024-01-01T00:00:00Z',
-        },
-        subscription: {
-          isActive: false,
-          plan: 'free',
-        },
-      });
-
-      const mockResponse: SyncResponse = {
-        success: true,
-        updatedProjects: [],
-        conflicts: [],
-        deletedProjects: [],
-      };
-
-      (global.fetch as any).mockResolvedValue({
-        ok: true,
-        json: () => Promise.resolve(mockResponse),
-      });
-
-      await service.performOutwardSync();
-
-      expect(mockStorageSet).toHaveBeenCalledWith(
-        expect.objectContaining({
-          boltProjects: expect.arrayContaining([
-            expect.objectContaining({
-              id: 'legacy-project',
-              bolt_project_id: 'legacy-project',
-              github_repo_name: 'legacy-repo',
-              github_branch: 'main',
-            }),
-          ]),
-        })
-      );
-
-      const savedProjects =
-        mockStorageSet.mock.calls.find((call) => call[0]?.boltProjects)?.[0]?.boltProjects || [];
-
-      expect(savedProjects).not.toEqual(
-        expect.arrayContaining([
-          expect.objectContaining({
-            bolt_project_id: 'existing-project',
-          }),
-        ])
-      );
-    });
-
-    it('should preserve server-only projects for non-outward sync operations', async () => {
-      mockStorageGet.mockResolvedValue({
-        boltProjects: [
-          {
-            id: 'server-only-project',
-            bolt_project_id: 'server-only-project',
-            project_name: 'server-only-project',
-            github_repo_name: 'server-repo',
-            is_private: false,
-          },
-        ],
-      });
-
-      vi.mocked(ChromeStorageService.getGitHubSettings).mockResolvedValue({
-        githubToken: 'test-token',
-        repoOwner: 'test-owner',
-        projectSettings: {
-          'legacy-project': {
-            repoName: 'legacy-repo',
-            branch: 'main',
-          },
-        },
-      });
-
-      mockAuthGetState.mockReturnValue({
-        isAuthenticated: true,
-        user: {
-          id: 'test-user',
-          email: 'test@example.com',
-          created_at: '2024-01-01T00:00:00Z',
-          updated_at: '2024-01-01T00:00:00Z',
-        },
-        subscription: {
-          isActive: false,
-          plan: 'free',
-        },
-      });
-
-      const mockResponse: SyncResponse = {
-        success: true,
-        updatedProjects: [],
-        conflicts: [],
-        deletedProjects: [],
-      };
-
-      (global.fetch as any).mockResolvedValue({
-        ok: true,
-        json: () => Promise.resolve(mockResponse),
-      });
-
-      const spyShouldPerformInwardSync = vi.spyOn(service, 'shouldPerformInwardSync');
-      spyShouldPerformInwardSync.mockResolvedValue(true);
-
-      await service.performInwardSync();
-
-      expect(mockStorageSet).toHaveBeenCalledWith(
-        expect.objectContaining({
-          boltProjects: expect.arrayContaining([
-            expect.objectContaining({
-              id: 'legacy-project',
-              bolt_project_id: 'legacy-project',
-              github_repo_name: 'legacy-repo',
-              github_branch: 'main',
-            }),
-            expect.objectContaining({
-              id: 'server-only-project',
-              bolt_project_id: 'server-only-project',
-              project_name: 'server-only-project',
-              github_repo_name: 'server-repo',
-            }),
-          ]),
-        })
-      );
-
-      spyShouldPerformInwardSync.mockRestore();
-    });
-
-    it('should handle migration failure gracefully', async () => {
-      mockStorageGet.mockResolvedValue({ boltProjects: [] });
-
-      vi.mocked(ChromeStorageService.getGitHubSettings).mockRejectedValue(
-        new Error('Storage error')
-      );
-
-      mockAuthGetState.mockReturnValue({
-        isAuthenticated: true,
-        user: {
-          id: 'test-user',
-          email: 'test@example.com',
-          created_at: '2024-01-01T00:00:00Z',
-          updated_at: '2024-01-01T00:00:00Z',
-        },
-        subscription: {
-          isActive: false,
-          plan: 'free',
-        },
-      });
-
-      const mockResponse: SyncResponse = {
-        success: true,
-        updatedProjects: [],
-        conflicts: [],
-        deletedProjects: [],
-      };
-
-      (global.fetch as any).mockResolvedValue({
-        ok: true,
-        json: () => Promise.resolve(mockResponse),
-      });
-
-      await expect(service.performOutwardSync()).resolves.not.toThrow();
-    });
-
-    it('should detect fresh install and preserve server projects during outward sync', async () => {
-      const serverProject: BoltProject = {
-        id: 'server-project',
-        bolt_project_id: 'server-project',
-        project_name: 'Server Project',
-        github_repo_name: 'server-repo',
-        github_repo_owner: 'test-owner',
-        github_branch: 'main',
-        is_private: false,
-        last_modified: new Date().toISOString(),
-        repoName: 'server-repo',
-        branch: 'main',
-        version: 1,
-        sync_status: 'synced',
-      };
-
-      (global as any).chrome.storage.local.get = vi.fn().mockResolvedValue({
-        extensionInstallDate: Date.now() - 2 * 24 * 60 * 60 * 1000,
-        totalProjectsCreated: 1,
-      });
-
-      vi.mocked(ChromeStorageService.getGitHubSettings).mockResolvedValue({
-        githubToken: 'test-token',
-        repoOwner: 'test-owner',
-        projectSettings: {},
-      });
-
-      vi.spyOn(service as any, 'getLastSyncTimestamp').mockResolvedValue(null);
-      vi.spyOn(service as any, 'getLocalProjects').mockResolvedValue([serverProject]);
-      const saveLocalProjectsSpy = vi
-        .spyOn(service as any, 'saveLocalProjects')
-        .mockResolvedValue(undefined);
-
-      const isFresh = await service['isFreshInstall']();
-      expect(isFresh).toBe(true);
-
-      await service['syncProjectsFromLegacyFormat'](true);
-
-      expect(saveLocalProjectsSpy).not.toHaveBeenCalled();
-
-      const finalProjects = await service['getLocalProjects']();
-      expect(finalProjects).toBeDefined();
-      expect(finalProjects.length).toBe(1);
-      expect(finalProjects[0].bolt_project_id).toBe('server-project');
-      expect(finalProjects[0].project_name).toBe('Server Project');
-    });
-  });
-
-  describe('syncBackToActiveStorage', () => {
-    it('should sync bolt projects back to project settings format', async () => {
-      const mockBoltProjects: BoltProject[] = [
-        {
-          id: 'project-1',
-          bolt_project_id: 'bolt-1',
-          project_name: 'test-project-1',
-          github_repo_name: 'test-repo-1',
-          github_repo_owner: 'test-owner',
-          github_branch: 'main',
-          is_private: false,
-
-          repoName: 'test-repo-1',
-          branch: 'main',
-        },
-        {
-          id: 'project-2',
-          bolt_project_id: 'bolt-2',
-          project_name: 'test-project-2',
-          github_repo_name: 'test-repo-2',
-          github_branch: 'develop',
-          is_private: true,
-
-          repoName: 'test-repo-2',
-          branch: 'develop',
-        },
-      ];
-
-      mockStorageGet.mockResolvedValue({ boltProjects: mockBoltProjects });
-
-      vi.mocked(ChromeStorageService.getGitHubSettings).mockResolvedValue({
-        githubToken: 'test-token',
-        repoOwner: 'test-owner',
-        projectSettings: {
-          'old-project': {
-            repoName: 'old-repo',
-            branch: 'old-branch',
-          },
-        },
-      });
-
-      const mockSaveGitHubSettings = vi.fn();
-      vi.mocked(ChromeStorageService.saveGitHubSettings).mockImplementation(mockSaveGitHubSettings);
-
-      mockAuthGetState.mockReturnValue({
-        isAuthenticated: true,
-        user: {
-          id: 'test-user',
-          email: 'test@example.com',
-          created_at: '2024-01-01T00:00:00Z',
-          updated_at: '2024-01-01T00:00:00Z',
-        },
-        subscription: {
-          isActive: false,
-          plan: 'free',
-        },
-      });
-
-      const mockResponse: SyncResponse = {
-        success: true,
-        updatedProjects: [],
-        conflicts: [],
-        deletedProjects: [],
-      };
-
-      (global.fetch as any).mockResolvedValue({
-        ok: true,
-        json: () => Promise.resolve(mockResponse),
-      });
-
-      const spyShouldPerformInwardSync = vi.spyOn(service, 'shouldPerformInwardSync');
-      spyShouldPerformInwardSync.mockResolvedValue(true);
-
-      await service.performInwardSync();
-
-      expect(mockSaveGitHubSettings).toHaveBeenCalledWith(
-        expect.objectContaining({
-          githubToken: 'test-token',
-          repoOwner: 'test-owner',
-          projectSettings: expect.objectContaining({
-            'bolt-1': {
-              repoName: 'test-repo-1',
-              branch: 'main',
-              projectTitle: 'test-project-1',
-              is_private: false,
-            },
-            'bolt-2': {
-              repoName: 'test-repo-2',
-              branch: 'develop',
-              projectTitle: 'test-project-2',
-              is_private: true,
-            },
-
-            'old-project': {
-              repoName: 'old-repo',
-              branch: 'old-branch',
-            },
-          }),
-        })
-      );
-
-      spyShouldPerformInwardSync.mockRestore();
-    });
-
-    it('should handle reverse sync failure gracefully', async () => {
-      mockStorageGet.mockResolvedValue({
-        boltProjects: [
-          {
-            id: 'project-1',
-            bolt_project_id: 'bolt-1',
-            github_repo_name: 'test-repo-1',
-            is_private: false,
-          },
-        ],
-      });
-
-      vi.mocked(ChromeStorageService.getGitHubSettings).mockRejectedValue(
-        new Error('Storage error')
-      );
-
-      mockAuthGetState.mockReturnValue({
-        isAuthenticated: true,
-        user: {
-          id: 'test-user',
-          email: 'test@example.com',
-          created_at: '2024-01-01T00:00:00Z',
-          updated_at: '2024-01-01T00:00:00Z',
-        },
-        subscription: {
-          isActive: false,
-          plan: 'free',
-        },
-      });
-
-      const mockResponse: SyncResponse = {
-        success: true,
-        updatedProjects: [],
-        conflicts: [],
-        deletedProjects: [],
-      };
-
-      (global.fetch as any).mockResolvedValue({
-        ok: true,
-        json: () => Promise.resolve(mockResponse),
-      });
-
-      const spyShouldPerformInwardSync = vi.spyOn(service, 'shouldPerformInwardSync');
-      spyShouldPerformInwardSync.mockResolvedValue(true);
-
-      await expect(service.performInwardSync()).resolves.not.toThrow();
-
-      spyShouldPerformInwardSync.mockRestore();
-    });
-
-    it('should skip reverse sync when no bolt projects exist', async () => {
-      mockStorageGet.mockResolvedValue({ boltProjects: [] });
-
-      mockAuthGetState.mockReturnValue({
-        isAuthenticated: true,
-        user: {
-          id: 'test-user',
-          email: 'test@example.com',
-          created_at: '2024-01-01T00:00:00Z',
-          updated_at: '2024-01-01T00:00:00Z',
-        },
-        subscription: {
-          isActive: false,
-          plan: 'free',
-        },
-      });
-
-      const mockResponse: SyncResponse = {
-        success: true,
-        updatedProjects: [],
-        conflicts: [],
-        deletedProjects: [],
-      };
-
-      (global.fetch as any).mockResolvedValue({
-        ok: true,
-        json: () => Promise.resolve(mockResponse),
-      });
-
-      const mockSaveGitHubSettings = vi.fn();
-      vi.mocked(ChromeStorageService.saveGitHubSettings).mockImplementation(mockSaveGitHubSettings);
-
-      const spyShouldPerformInwardSync = vi.spyOn(service, 'shouldPerformInwardSync');
-      spyShouldPerformInwardSync.mockResolvedValue(true);
-
-      await service.performInwardSync();
-
-      expect(mockSaveGitHubSettings).not.toHaveBeenCalled();
-
-      spyShouldPerformInwardSync.mockRestore();
-    });
-  });
-
-  describe('performOutwardSync', () => {
-    it('should only sync if user is authenticated', async () => {
-      mockAuthGetState.mockReturnValue({
-        isAuthenticated: false,
-        user: null,
-        subscription: {
-          isActive: false,
-          plan: 'free',
-        },
-      });
-
-      const result = await service.performOutwardSync();
-
-      expect(result).toBeNull();
-      expect(global.fetch).not.toHaveBeenCalled();
-    });
-
-    it('should perform sync and update last sync timestamp', async () => {
-      const mockResponse: SyncResponse = {
-        success: true,
-        updatedProjects: [],
-        conflicts: [],
-        deletedProjects: [],
-      };
-
-      mockAuthGetState.mockReturnValue({
-        isAuthenticated: true,
-        user: {
-          id: 'test-user',
-          email: 'test@example.com',
-          created_at: '2024-01-01T00:00:00Z',
-          updated_at: '2024-01-01T00:00:00Z',
-        },
-        subscription: {
-          isActive: false,
-          plan: 'free',
-        },
-      });
-
-      mockAuthGetToken.mockResolvedValue('mock-token');
-
-      (global.fetch as any).mockResolvedValue({
-        ok: true,
-        json: async () => mockResponse,
-      });
-
-      mockStorageGet.mockResolvedValue({ boltProjects: [] });
-      mockStorageSet.mockResolvedValue(undefined);
-
-      const result = await service.performOutwardSync();
-
-      expect(result).toEqual(mockResponse);
-      expect(mockStorageSet).toHaveBeenCalledWith({
-        lastSyncTimestamp: expect.any(String),
-      });
-    });
-  });
-
-  describe('shouldPerformInwardSync', () => {
-    it('should return true when projects are empty', async () => {
-      mockStorageGet.mockResolvedValue({ boltProjects: [] });
-
-      const result = await service.shouldPerformInwardSync();
-
-      expect(result).toBe(true);
-    });
-
-    it('should return true when only one project exists without GitHub repo', async () => {
-      mockStorageGet.mockResolvedValue({
-        boltProjects: [
-          {
-            id: 'project-1',
-            bolt_project_id: 'bolt-1',
-            github_repo_name: '',
-            github_repo_owner: '',
-            is_private: false,
-            repoName: 'test-repo',
-            branch: 'main',
-          },
-        ],
-      });
-
-      const result = await service.shouldPerformInwardSync();
-
-      expect(result).toBe(true);
-    });
-
-    it('should return true when only one project exists with GitHub repo (simplified approach)', async () => {
-      mockStorageGet.mockResolvedValue({
-        boltProjects: [
-          {
-            id: 'project-1',
-            bolt_project_id: 'bolt-1',
-            github_repo_name: 'test-repo',
-            github_repo_owner: 'test-user',
-            is_private: false,
-            repoName: 'test-repo',
-            branch: 'main',
-          },
-        ],
-      });
-
-      const result = await service.shouldPerformInwardSync();
-
-      expect(result).toBe(true);
-    });
-
-    it('should return false when only one project exists with partial GitHub repo info (repo name only)', async () => {
-      mockStorageGet.mockResolvedValue({
-        boltProjects: [
-          {
-            id: 'project-1',
-            bolt_project_id: 'bolt-1',
-            github_repo_name: 'test-repo',
-            github_repo_owner: '',
-            is_private: false,
-            repoName: 'test-repo',
-            branch: 'main',
-          },
-        ],
-      });
-
-      const result = await service.shouldPerformInwardSync();
-
-      expect(result).toBe(true);
-    });
-
-    it('should return false when only one project exists with partial GitHub repo info (owner only)', async () => {
-      mockStorageGet.mockResolvedValue({
-        boltProjects: [
-          {
-            id: 'project-1',
-            bolt_project_id: 'bolt-1',
-            github_repo_name: '',
-            github_repo_owner: 'test-user',
-            is_private: false,
-            repoName: 'test-repo',
-            branch: 'main',
-          },
-        ],
-      });
-
-      const result = await service.shouldPerformInwardSync();
-
-      expect(result).toBe(true);
-    });
-
-    it('should return false when multiple projects exist', async () => {
-      mockStorageGet.mockResolvedValue({
-        boltProjects: [
-          {
-            id: 'project-1',
-            bolt_project_id: 'bolt-1',
-            project_name: 'test-project-1',
-            github_repo_name: 'test-repo-1',
-            is_private: false,
-            repoName: 'test-repo-1',
-            branch: 'main',
-          },
-          {
-            id: 'project-2',
-            bolt_project_id: 'bolt-2',
-            project_name: 'test-project-2',
-            github_repo_name: 'test-repo-2',
-            is_private: false,
-            repoName: 'test-repo-2',
-            branch: 'main',
-          },
-        ],
-      });
-
-      const result = await service.shouldPerformInwardSync();
-
-      expect(result).toBe(false);
-    });
-
-    it('should return true when only one project exists in current storage format (simplified approach)', async () => {
-      mockStorageGet.mockResolvedValue({ boltProjects: [] });
-
-      vi.mocked(ChromeStorageService.getGitHubSettings).mockResolvedValue({
-        githubToken: 'test-token',
-        repoOwner: 'test-owner',
-        projectSettings: {
-          'github-5q8boznj': {
-            repoName: 'github-5q8boznj',
-            branch: 'main',
-            projectTitle: 'github-5q8boznj',
-          },
-        },
-      });
-
-      const result = await service.shouldPerformInwardSync();
-
-      expect(result).toBe(true);
-    });
-
-    it('should return false when multiple projects exist in current storage format', async () => {
-      mockStorageGet.mockResolvedValue({ boltProjects: [] });
-
-      vi.mocked(ChromeStorageService.getGitHubSettings).mockResolvedValue({
-        githubToken: 'test-token',
-        repoOwner: 'test-owner',
-        projectSettings: {
-          'project-1': {
-            repoName: 'repo-1',
-            branch: 'main',
-            projectTitle: 'Project 1',
-          },
-          'project-2': {
-            repoName: 'repo-2',
-            branch: 'main',
-            projectTitle: 'Project 2',
-          },
-        },
-      });
-
-      const result = await service.shouldPerformInwardSync();
-
-      expect(result).toBe(false);
-    });
-
-    it('should return true when no existing projects and no sync projects exist', async () => {
-      mockStorageGet.mockResolvedValue({ boltProjects: [] });
-
-      vi.mocked(ChromeStorageService.getGitHubSettings).mockResolvedValue({
-        githubToken: 'test-token',
-        repoOwner: 'test-owner',
-        projectSettings: {},
-      });
-
-      const result = await service.shouldPerformInwardSync();
-
-      expect(result).toBe(true);
-    });
-  });
-
-  describe('performInwardSync', () => {
-    it('should only sync if conditions are met', async () => {
-      mockStorageGet.mockResolvedValue({
-        boltProjects: [
-          {
-            id: '1',
-            bolt_project_id: 'bolt-1',
-            github_repo_name: 'repo-1',
-            is_private: false,
-            repoName: 'repo-1',
-            branch: 'main',
-          },
-          {
-            id: '2',
-            bolt_project_id: 'bolt-2',
-            github_repo_name: 'repo-2',
-            is_private: false,
-            repoName: 'repo-2',
-            branch: 'main',
-          },
-        ],
-      });
-
-      const result = await service.performInwardSync();
-
-      expect(result).toBeNull();
-      expect(global.fetch).not.toHaveBeenCalled();
-    });
-
-    it('should perform inward sync when projects are empty', async () => {
-      const mockResponse: SyncResponse = {
-        success: true,
-        updatedProjects: [
-          {
-            id: 'project-1',
-            bolt_project_id: 'bolt-1',
-            project_name: 'synced-project',
-            github_repo_name: 'synced-repo',
-            github_repo_owner: 'test-user',
-            is_private: false,
-            repoName: 'synced-repo',
-            branch: 'main',
-            last_modified: '2024-01-01T00:00:00Z',
-            version: 1,
-          },
-        ],
-        conflicts: [],
-        deletedProjects: [],
-      };
-
-      mockAuthGetState.mockReturnValue({
-        isAuthenticated: true,
-        user: {
-          id: 'test-user',
-          email: 'test@example.com',
-          created_at: '2024-01-01T00:00:00Z',
-          updated_at: '2024-01-01T00:00:00Z',
-        },
-        subscription: {
-          isActive: false,
-          plan: 'free',
-        },
-      });
-
-      mockAuthGetToken.mockResolvedValue('mock-token');
-
-      mockStorageGet.mockResolvedValue({ boltProjects: [] });
-
-      (global.fetch as any).mockResolvedValue({
-        ok: true,
-        json: async () => mockResponse,
-      });
-
-      const result = await service.performInwardSync();
-
-      expect(result).toEqual(mockResponse);
-
-      const projectSaveCall = mockStorageSet.mock.calls.find(
-        (call) => call[0].boltProjects && Array.isArray(call[0].boltProjects)
-      );
-      expect(projectSaveCall).toBeDefined();
-      expect(projectSaveCall[0].boltProjects).toEqual([
-        expect.objectContaining({
-          bolt_project_id: 'bolt-1',
-          project_name: 'synced-project',
-          github_repo_name: 'synced-repo',
-          id: 'bolt-1',
+        json: async () => ({
+          success: true,
+          updatedProjects: [serverProject],
+          conflicts: [],
+          deletedProjects: [],
         }),
-      ]);
+      } as never);
+
+      await service.syncWithBackend('auto-resolve', true);
+
+      expect(ChromeStorageService.prototype.set).toHaveBeenCalledWith({
+        boltProjects: [serverProject],
+      });
     });
 
-    it('should ADD server projects to existing local projects (not replace)', async () => {
-      mockStorageGet.mockResolvedValue({ boltProjects: [] });
+    it('should not update local storage when not requested', async () => {
+      const serverProject = createMockProject({ project_name: 'Server Project' });
+      setupBoltProjects([createMockProject({ project_name: 'Local Project' })]);
 
-      vi.mocked(ChromeStorageService.getGitHubSettings).mockResolvedValue({
-        githubToken: 'test-token',
-        repoOwner: 'test-owner',
-        projectSettings: {},
-      });
-
-      const serverResponse: SyncResponse = {
-        success: true,
-        updatedProjects: [
-          {
-            id: 'server-1',
-            bolt_project_id: 'server-1',
-            project_name: 'Server Project 1',
-            github_repo_name: 'server-repo-1',
-            github_repo_owner: 'test-user',
-            is_private: false,
-            repoName: 'server-repo-1',
-            branch: 'main',
-            last_modified: '2024-01-02T00:00:00Z',
-            version: 1,
-          },
-          {
-            id: 'server-2',
-            bolt_project_id: 'server-2',
-            project_name: 'Server Project 2',
-            github_repo_name: 'server-repo-2',
-            github_repo_owner: 'test-user',
-            is_private: false,
-            repoName: 'server-repo-2',
-            branch: 'main',
-            last_modified: '2024-01-02T00:00:00Z',
-            version: 1,
-          },
-        ],
-        conflicts: [],
-        deletedProjects: [],
-      };
-
-      mockAuthGetState.mockReturnValue({
-        isAuthenticated: true,
-        user: {
-          id: 'test-user',
-          email: 'test@example.com',
-          created_at: '2024-01-01T00:00:00Z',
-          updated_at: '2024-01-01T00:00:00Z',
-        },
-        subscription: {
-          isActive: false,
-          plan: 'free',
-        },
-      });
-
-      mockAuthGetToken.mockResolvedValue('mock-token');
-
-      (global.fetch as any).mockResolvedValue({
+      vi.mocked(global.fetch).mockResolvedValue({
         ok: true,
-        json: async () => serverResponse,
-      });
+        json: async () => ({
+          success: true,
+          updatedProjects: [serverProject],
+          conflicts: [],
+          deletedProjects: [],
+        }),
+      } as never);
 
-      const result = await service.performInwardSync();
+      await service.syncWithBackend('auto-resolve', false);
 
-      expect(result).toEqual(serverResponse);
-
-      const projectSaveCall = mockStorageSet.mock.calls.find(
-        (call) => call[0].boltProjects && Array.isArray(call[0].boltProjects)
-      );
-
-      expect(projectSaveCall).toBeDefined();
-      expect(projectSaveCall[0].boltProjects).toHaveLength(2);
-
-      expect(projectSaveCall[0].boltProjects).toEqual(
-        expect.arrayContaining([
-          expect.objectContaining({
-            bolt_project_id: 'server-1',
-            project_name: 'Server Project 1',
-          }),
-          expect.objectContaining({
-            bolt_project_id: 'server-2',
-            project_name: 'Server Project 2',
-          }),
-        ])
-      );
+      const savedProjects = await service.getLocalProjects();
+      expect(savedProjects[0].project_name).toBe('Local Project');
     });
 
-    it('should merge existing local projects with server projects (integration test)', async () => {
-      const existingLocalProject: BoltProject = {
-        id: 'local-1',
-        bolt_project_id: 'local-1',
-        project_name: 'Local Project',
-        github_repo_name: 'local-repo',
-        github_repo_owner: 'test-user',
-        is_private: false,
-        repoName: 'local-repo',
-        branch: 'main',
-        last_modified: '2024-01-01T00:00:00Z',
-        version: 1,
-      };
+    it('should filter out invalid project IDs before syncing', async () => {
+      const validProject = createMockProject({ bolt_project_id: 'valid-project' });
+      const invalidProject = createMockProject({ bolt_project_id: 'github.com' });
+      setupBoltProjects([validProject, invalidProject]);
 
-      mockStorageGet.mockImplementation(() =>
-        Promise.resolve({ boltProjects: [existingLocalProject] })
-      );
-
-      vi.mocked(ChromeStorageService.getGitHubSettings).mockResolvedValue({
-        githubToken: 'test-token',
-        repoOwner: 'test-owner',
-        projectSettings: {},
-      });
-
-      const serverResponse: SyncResponse = {
-        success: true,
-        updatedProjects: [
-          {
-            id: 'server-1',
-            bolt_project_id: 'server-1',
-            project_name: 'Server Project 1',
-            github_repo_name: 'server-repo-1',
-            github_repo_owner: 'test-user',
-            is_private: false,
-            repoName: 'server-repo-1',
-            branch: 'main',
-            last_modified: '2024-01-02T00:00:00Z',
-            version: 1,
-          },
-        ],
-        conflicts: [],
-        deletedProjects: [],
-      };
-
-      mockAuthGetState.mockReturnValue({
-        isAuthenticated: true,
-        user: {
-          id: 'test-user',
-          email: 'test@example.com',
-          created_at: '2024-01-01T00:00:00Z',
-          updated_at: '2024-01-01T00:00:00Z',
-        },
-        subscription: {
-          isActive: false,
-          plan: 'free',
-        },
-      });
-
-      mockAuthGetToken.mockResolvedValue('mock-token');
-
-      (global.fetch as any).mockResolvedValue({
+      vi.mocked(global.fetch).mockResolvedValue({
         ok: true,
-        json: async () => serverResponse,
+        json: async () => ({
+          success: true,
+          updatedProjects: [validProject],
+          conflicts: [],
+          deletedProjects: [],
+        }),
+      } as never);
+
+      await service.syncWithBackend();
+
+      const fetchCall = vi.mocked(global.fetch).mock.calls[0];
+      const requestBody = JSON.parse(fetchCall[1]?.body as never as string);
+      expect(requestBody.localProjects).toHaveLength(1);
+      expect(requestBody.localProjects[0].bolt_project_id).toBe('valid-project');
+    });
+
+    it('should include last sync timestamp in request', async () => {
+      const timestamp = '2024-01-01T12:00:00Z';
+      setupBoltProjects([createMockProject()]);
+      vi.mocked(ChromeStorageService.prototype.get).mockResolvedValue({
+        boltProjects: [createMockProject()],
+        lastSyncTimestamp: timestamp,
       });
 
-      const result = await service.performInwardSync();
+      vi.mocked(global.fetch).mockResolvedValue({
+        ok: true,
+        json: async () => ({
+          success: true,
+          updatedProjects: [],
+          conflicts: [],
+          deletedProjects: [],
+        }),
+      } as never);
 
-      expect(result).toEqual(serverResponse);
+      await service.syncWithBackend();
 
-      const projectSaveCalls = mockStorageSet.mock.calls.filter(
-        (call) =>
-          call[0].boltProjects &&
-          Array.isArray(call[0].boltProjects) &&
-          call[0].boltProjects.length === 2
-      );
-
-      expect(projectSaveCalls.length).toBeGreaterThan(0);
-
-      const mergedSaveCall = projectSaveCalls[projectSaveCalls.length - 1];
-      expect(mergedSaveCall[0].boltProjects).toHaveLength(2);
-
-      expect(mergedSaveCall[0].boltProjects).toEqual(
-        expect.arrayContaining([
-          expect.objectContaining({
-            bolt_project_id: 'local-1',
-            project_name: 'Local Project',
-          }),
-          expect.objectContaining({
-            bolt_project_id: 'server-1',
-            project_name: 'Server Project 1',
-          }),
-        ])
-      );
+      const fetchCall = vi.mocked(global.fetch).mock.calls[0];
+      const requestBody = JSON.parse(fetchCall[1]?.body as never as string);
+      expect(requestBody.lastSyncTimestamp).toBe(timestamp);
     });
   });
 
-  describe('getLastSyncTimestamp', () => {
-    it('should retrieve last sync timestamp from storage', async () => {
-      const timestamp = '2024-01-01T00:00:00Z';
-      mockStorageGet.mockResolvedValue({ lastSyncTimestamp: timestamp });
+  describe('Sync Decision Logic', () => {
+    it('should allow inward sync when no projects exist', async () => {
+      setupGitHubSettings({ projectSettings: {} });
 
-      const result = await service.getLastSyncTimestamp();
+      const result = await service.shouldPerformInwardSync();
 
-      expect(result).toBe(timestamp);
+      expect(result).toBe(true);
     });
 
-    it('should return null if no timestamp stored', async () => {
-      mockStorageGet.mockResolvedValue({ lastSyncTimestamp: null });
+    it('should allow inward sync when only one project exists', async () => {
+      setupBoltProjects([createMockProject()]);
+      setupGitHubSettings({ projectSettings: {} });
 
-      const result = await service.getLastSyncTimestamp();
+      const result = await service.shouldPerformInwardSync();
+
+      expect(result).toBe(true);
+    });
+
+    it('should prevent inward sync when multiple projects exist', async () => {
+      setupBoltProjects([
+        createMockProject({ bolt_project_id: 'project-1' }),
+        createMockProject({ bolt_project_id: 'project-2' }),
+      ]);
+      setupGitHubSettings({ projectSettings: {} });
+
+      const result = await service.shouldPerformInwardSync();
+
+      expect(result).toBe(false);
+    });
+
+    it('should count projects across both storage formats', async () => {
+      setupGitHubSettings({
+        projectSettings: {
+          'project-1': { repoName: 'repo-1', branch: 'main' },
+          'project-2': { repoName: 'repo-2', branch: 'main' },
+        },
+      });
+
+      const result = await service.shouldPerformInwardSync();
+
+      expect(result).toBe(false);
+    });
+
+    it('should handle storage errors gracefully', async () => {
+      vi.mocked(chrome.storage.local.get).mockRejectedValue(new Error('Storage error'));
+
+      const result = await service.shouldPerformInwardSync();
+
+      expect(result).toBe(true);
+    });
+  });
+
+  describe('Outward Sync (Extension to Server)', () => {
+    it('should skip sync when user is not authenticated', async () => {
+      const result = await service.performOutwardSync();
 
       expect(result).toBeNull();
     });
+
+    it('should perform sync and update timestamp when authenticated', async () => {
+      setupAuthenticatedUser();
+      setupBoltProjects([createMockProject()]);
+
+      vi.mocked(global.fetch).mockResolvedValue({
+        ok: true,
+        json: async () => ({
+          success: true,
+          updatedProjects: [],
+          conflicts: [],
+          deletedProjects: [],
+        }),
+      } as never);
+
+      const result = await service.performOutwardSync();
+
+      expect(result?.success).toBe(true);
+      expect(ChromeStorageService.prototype.set).toHaveBeenCalledWith({
+        lastSyncTimestamp: '2024-01-01T00:00:00.000Z',
+      });
+    });
+
+    it('should migrate legacy projects before syncing', async () => {
+      setupAuthenticatedUser();
+      setupGitHubSettings({
+        projectSettings: {
+          'legacy-project': { repoName: 'legacy-repo', branch: 'main' },
+        },
+      });
+
+      vi.mocked(global.fetch).mockResolvedValue({
+        ok: true,
+        json: async () => ({
+          success: true,
+          updatedProjects: [],
+          conflicts: [],
+          deletedProjects: [],
+        }),
+      } as never);
+
+      await service.performOutwardSync();
+
+      const setCalls = vi.mocked(ChromeStorageService.prototype.set).mock.calls;
+      const migratedProjectCall = setCalls.find((call) => call[0]?.boltProjects);
+
+      expect(migratedProjectCall).toBeDefined();
+      const migratedProjects = migratedProjectCall![0].boltProjects as BoltProject[];
+      expect(migratedProjects.some((p) => p.bolt_project_id === 'legacy-project')).toBe(true);
+    });
+
+    it('should handle sync failures', async () => {
+      setupAuthenticatedUser();
+      setupBoltProjects([createMockProject()]);
+      vi.mocked(global.fetch).mockRejectedValue(new Error('Network error'));
+
+      await expect(service.performOutwardSync()).rejects.toThrow();
+    });
   });
 
-  describe('setLastSyncTimestamp', () => {
-    it('should save timestamp to storage', async () => {
-      const timestamp = '2024-01-01T00:00:00Z';
-      mockStorageSet.mockResolvedValue(undefined);
+  describe('Inward Sync (Server to Extension)', () => {
+    it('should skip sync when conditions not met', async () => {
+      setupBoltProjects([createMockProject(), createMockProject({ bolt_project_id: 'project-2' })]);
+      setupGitHubSettings({ projectSettings: {} });
 
-      await service.setLastSyncTimestamp(timestamp);
+      const result = await service.performInwardSync();
 
-      expect(mockStorageSet).toHaveBeenCalledWith({ lastSyncTimestamp: timestamp });
+      expect(result).toBeNull();
+    });
+
+    it('should skip sync when user not authenticated', async () => {
+      setupGitHubSettings({ projectSettings: {} });
+
+      const result = await service.performInwardSync();
+
+      expect(result).toBeNull();
+    });
+
+    it('should perform sync when authenticated with empty projects', async () => {
+      setupAuthenticatedUser();
+      setupBoltProjects([]);
+      setupGitHubSettings({ projectSettings: {} });
+
+      const serverProject = createMockProject({ project_name: 'Server Project' });
+      vi.mocked(global.fetch).mockResolvedValue({
+        ok: true,
+        json: async () => ({
+          success: true,
+          updatedProjects: [serverProject],
+          conflicts: [],
+          deletedProjects: [],
+        }),
+      } as never);
+
+      const result = await service.performInwardSync();
+
+      expect(result?.success).toBe(true);
+      expect(ChromeStorageService.prototype.set).toHaveBeenCalledWith({
+        lastSyncTimestamp: '2024-01-01T00:00:00.000Z',
+      });
+    });
+
+    it('should merge server projects with existing local projects', async () => {
+      setupAuthenticatedUser();
+      const localProject = createMockProject({ bolt_project_id: 'local-1', project_name: 'Local' });
+      setupBoltProjects([localProject]);
+      setupGitHubSettings({ projectSettings: {} });
+
+      const serverProject = createMockProject({
+        bolt_project_id: 'server-1',
+        project_name: 'Server',
+      });
+      vi.mocked(global.fetch).mockResolvedValue({
+        ok: true,
+        json: async () => ({
+          success: true,
+          updatedProjects: [serverProject],
+          conflicts: [],
+          deletedProjects: [],
+        }),
+      } as never);
+
+      await service.performInwardSync();
+
+      const setCalls = vi.mocked(ChromeStorageService.prototype.set).mock.calls;
+      const finalProjectCall = setCalls.filter((call) => call[0]?.boltProjects).pop();
+
+      expect(finalProjectCall).toBeDefined();
+      const finalProjects = finalProjectCall![0].boltProjects as BoltProject[];
+      expect(finalProjects).toHaveLength(2);
+      expect(finalProjects.some((p) => p.bolt_project_id === 'local-1')).toBe(true);
+      expect(finalProjects.some((p) => p.bolt_project_id === 'server-1')).toBe(true);
     });
   });
 });

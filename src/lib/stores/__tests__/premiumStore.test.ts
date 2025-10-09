@@ -1,5 +1,5 @@
 import { get } from 'svelte/store';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import premiumStatusStore, {
   isAuthenticated,
   isPremium,
@@ -8,6 +8,8 @@ import premiumStatusStore, {
   premiumStatusActions,
   type PopupPremiumStatus,
 } from '../premiumStore';
+
+const FIXED_TIME = new Date('2024-01-01T00:00:00.000Z').getTime();
 
 interface StorageChange {
   newValue?: unknown;
@@ -60,6 +62,7 @@ describe('premiumStore', () => {
   };
 
   beforeEach(() => {
+    vi.useFakeTimers({ now: FIXED_TIME });
     vi.clearAllMocks();
 
     premiumStatusStore.set(defaultPremiumStatus);
@@ -67,6 +70,10 @@ describe('premiumStore', () => {
     mockChromeStorage.sync.get.mockResolvedValue({});
     mockChromeStorage.sync.remove.mockResolvedValue(undefined);
     mockChromeRuntime.sendMessage.mockResolvedValue(undefined);
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
   });
 
   describe('store initialization', () => {
@@ -128,14 +135,14 @@ describe('premiumStore', () => {
         isAuthenticated: true,
         isPremium: true,
         plan: 'pro',
-        expiresAt: Date.now() + 86400000,
+        expiresAt: FIXED_TIME + 86400000,
         features: {
           viewFileChanges: true,
           pushReminders: true,
           branchSelector: true,
           githubIssues: true,
         },
-        lastUpdated: Date.now(),
+        lastUpdated: FIXED_TIME,
       };
 
       mockChromeStorage.sync.get.mockResolvedValue({
@@ -166,7 +173,7 @@ describe('premiumStore', () => {
           branchSelector: true,
           githubIssues: true,
         },
-        lastUpdated: Date.now(),
+        lastUpdated: FIXED_TIME,
       };
 
       mockChromeStorage.sync.get.mockResolvedValue({
@@ -200,7 +207,7 @@ describe('premiumStore', () => {
           branchSelector: false,
           githubIssues: false,
         },
-        lastUpdated: Date.now(),
+        lastUpdated: FIXED_TIME,
       };
 
       mockChromeStorage.sync.get.mockResolvedValue({
@@ -235,7 +242,7 @@ describe('premiumStore', () => {
           branchSelector: true,
           githubIssues: true,
         },
-        lastUpdated: Date.now(),
+        lastUpdated: FIXED_TIME,
       };
 
       storageListener!(
@@ -310,7 +317,7 @@ describe('premiumStore', () => {
           branchSelector: true,
           githubIssues: true,
         },
-        lastUpdated: Date.now(),
+        lastUpdated: FIXED_TIME,
       };
 
       premiumStatusStore.set(testStatus);
@@ -320,7 +327,7 @@ describe('premiumStore', () => {
       expect(status).toEqual(testStatus);
     });
 
-    it('should return status immediately without waiting', async () => {
+    it('should return status synchronously without waiting', async () => {
       const testStatus: PopupPremiumStatus = {
         isAuthenticated: false,
         isPremium: false,
@@ -331,17 +338,14 @@ describe('premiumStore', () => {
           branchSelector: false,
           githubIssues: false,
         },
-        lastUpdated: Date.now(),
+        lastUpdated: FIXED_TIME,
       };
 
       premiumStatusStore.set(testStatus);
 
-      const startTime = Date.now();
       const status = await premiumStatusActions.getCurrentStatus();
-      const elapsed = Date.now() - startTime;
 
       expect(status).toEqual(testStatus);
-      expect(elapsed).toBeLessThan(10);
     });
   });
 
@@ -357,7 +361,7 @@ describe('premiumStore', () => {
           branchSelector: true,
           githubIssues: true,
         },
-        lastUpdated: Date.now(),
+        lastUpdated: FIXED_TIME,
       };
 
       mockChromeStorage.sync.get.mockResolvedValue({
@@ -397,7 +401,7 @@ describe('premiumStore', () => {
           branchSelector: true,
           githubIssues: true,
         },
-        lastUpdated: Date.now() - 1000,
+        lastUpdated: FIXED_TIME - 1000,
       });
 
       await premiumStatusActions.logout();
@@ -412,16 +416,14 @@ describe('premiumStore', () => {
         branchSelector: false,
         githubIssues: false,
       });
-      expect(state.lastUpdated).toBeGreaterThan(0);
+      expect(state.lastUpdated).toBe(FIXED_TIME);
     });
 
-    it('should update lastUpdated timestamp on logout', async () => {
-      const beforeLogout = Date.now();
-
+    it('should set lastUpdated to current time on logout', async () => {
       await premiumStatusActions.logout();
 
       const state = get(premiumStatusStore);
-      expect(state.lastUpdated).toBeGreaterThanOrEqual(beforeLogout);
+      expect(state.lastUpdated).toBe(FIXED_TIME);
     });
 
     it('should handle errors during logout', async () => {
@@ -463,7 +465,7 @@ describe('premiumStore', () => {
           branchSelector: false,
           githubIssues: false,
         },
-        lastUpdated: Date.now(),
+        lastUpdated: FIXED_TIME,
       });
 
       const state = get(premiumStatusStore);
@@ -482,7 +484,7 @@ describe('premiumStore', () => {
           branchSelector: false,
           githubIssues: false,
         },
-        lastUpdated: Date.now(),
+        lastUpdated: FIXED_TIME,
       });
 
       const state = get(premiumStatusStore);
@@ -501,7 +503,7 @@ describe('premiumStore', () => {
           branchSelector: true,
           githubIssues: true,
         },
-        lastUpdated: Date.now(),
+        lastUpdated: FIXED_TIME,
       });
 
       const state = get(premiumStatusStore);
@@ -510,7 +512,7 @@ describe('premiumStore', () => {
     });
 
     it('should include expiration time for premium users', () => {
-      const expiresAt = Date.now() + 2592000000;
+      const expiresAt = FIXED_TIME + 2592000000;
 
       premiumStatusStore.set({
         isAuthenticated: true,
@@ -523,7 +525,7 @@ describe('premiumStore', () => {
           branchSelector: true,
           githubIssues: true,
         },
-        lastUpdated: Date.now(),
+        lastUpdated: FIXED_TIME,
       });
 
       const state = get(premiumStatusStore);
@@ -543,7 +545,7 @@ describe('premiumStore', () => {
           branchSelector: true,
           githubIssues: false,
         },
-        lastUpdated: Date.now(),
+        lastUpdated: FIXED_TIME,
       });
 
       const features = get(premiumFeatures);
@@ -564,7 +566,7 @@ describe('premiumStore', () => {
           branchSelector: true,
           githubIssues: true,
         },
-        lastUpdated: Date.now(),
+        lastUpdated: FIXED_TIME,
       });
 
       const features = get(premiumFeatures);
@@ -582,7 +584,7 @@ describe('premiumStore', () => {
           branchSelector: false,
           githubIssues: false,
         },
-        lastUpdated: Date.now(),
+        lastUpdated: FIXED_TIME,
       });
 
       const features = get(premiumFeatures);
@@ -605,7 +607,7 @@ describe('premiumStore', () => {
           branchSelector: true,
           githubIssues: true,
         },
-        lastUpdated: Date.now(),
+        lastUpdated: FIXED_TIME,
       };
 
       mockChromeStorage.sync.get.mockResolvedValue({
@@ -630,7 +632,7 @@ describe('premiumStore', () => {
           branchSelector: false,
           githubIssues: false,
         },
-        lastUpdated: Date.now(),
+        lastUpdated: FIXED_TIME,
       });
 
       expect(get(isPremium)).toBe(false);
@@ -645,7 +647,7 @@ describe('premiumStore', () => {
           branchSelector: true,
           githubIssues: true,
         },
-        lastUpdated: Date.now(),
+        lastUpdated: FIXED_TIME,
       };
 
       mockChromeStorage.sync.get.mockResolvedValue({
@@ -669,7 +671,7 @@ describe('premiumStore', () => {
           branchSelector: true,
           githubIssues: true,
         },
-        lastUpdated: Date.now(),
+        lastUpdated: FIXED_TIME,
       });
 
       expect(get(isAuthenticated)).toBe(true);
@@ -694,7 +696,7 @@ describe('premiumStore', () => {
             branchSelector: false,
             githubIssues: false,
           },
-          lastUpdated: Date.now(),
+          lastUpdated: FIXED_TIME,
         },
         {
           isAuthenticated: true,
@@ -706,7 +708,7 @@ describe('premiumStore', () => {
             branchSelector: false,
             githubIssues: false,
           },
-          lastUpdated: Date.now(),
+          lastUpdated: FIXED_TIME,
         },
         {
           isAuthenticated: true,
@@ -718,7 +720,7 @@ describe('premiumStore', () => {
             branchSelector: true,
             githubIssues: true,
           },
-          lastUpdated: Date.now(),
+          lastUpdated: FIXED_TIME,
         },
       ];
 

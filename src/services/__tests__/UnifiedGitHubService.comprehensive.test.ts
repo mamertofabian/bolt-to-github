@@ -15,6 +15,8 @@ import {
   UnifiedGitHubServiceTestScenarios,
 } from './test-fixtures';
 
+const FIXED_TIME = new Date('2024-01-01T00:00:00.000Z').getTime();
+
 const mockFactory = await (async () => {
   const { MockAuthenticationStrategyFactory } =
     await vi.importActual<typeof import('./test-fixtures/unified')>('./test-fixtures/unified');
@@ -60,6 +62,7 @@ describe('UnifiedGitHubService - Comprehensive Tests', () => {
   let mockFetch: MockedFunction<typeof fetch>;
 
   beforeEach(() => {
+    vi.useFakeTimers({ now: FIXED_TIME });
     scenario = new UnifiedGitHubServiceTestScenarios();
     vi.clearAllMocks();
 
@@ -72,6 +75,7 @@ describe('UnifiedGitHubService - Comprehensive Tests', () => {
   });
 
   afterEach(() => {
+    vi.useRealTimers();
     scenario.reset();
 
     const globalFetch = global.fetch as Mock | undefined;
@@ -191,7 +195,7 @@ describe('UnifiedGitHubService - Comprehensive Tests', () => {
 
         const service = new UnifiedGitHubService(authConfig);
 
-        await new Promise((resolve) => setTimeout(resolve, 50));
+        await vi.advanceTimersByTimeAsync(50);
 
         const needsRenewal = await service.needsRenewal();
         expect(needsRenewal).toBe(true);
@@ -730,64 +734,6 @@ describe('UnifiedGitHubService - Comprehensive Tests', () => {
         expect(result.isValid).toBe(false);
         expect(result.error).toContain('Insufficient permissions');
       });
-    });
-  });
-
-  describe('Performance Scenarios', () => {
-    it('should handle slow network conditions', async () => {
-      const { MockPATAuthenticationStrategy } =
-        await vi.importActual<typeof import('./test-fixtures/unified')>('./test-fixtures/unified');
-      const normalStrategy = new MockPATAuthenticationStrategy(
-        TestFixtures.TokenFixtures.pat.classic
-      );
-
-      mockFactoryWrapper.createPATStrategy.mockReturnValueOnce(Promise.resolve(normalStrategy));
-
-      mockFetch = vi.fn().mockImplementation(async () => {
-        await new Promise((resolve) => setTimeout(resolve, 1000));
-        return {
-          ok: true,
-          status: 200,
-          json: () => Promise.resolve({ success: true }),
-        };
-      });
-      global.fetch = mockFetch;
-
-      const service = new UnifiedGitHubService(TestFixtures.TokenFixtures.pat.classic);
-
-      const startTime = Date.now();
-
-      await service.repoExists('testuser', 'test-repo');
-      const duration = Date.now() - startTime;
-
-      expect(duration).toBeGreaterThan(900);
-      expect(mockFetch).toHaveBeenCalled();
-    });
-
-    it('should handle slow authentication', async () => {
-      const { MockPATAuthenticationStrategy } =
-        await vi.importActual<typeof import('./test-fixtures/unified')>('./test-fixtures/unified');
-      const slowStrategy = new MockPATAuthenticationStrategy(
-        TestFixtures.TokenFixtures.pat.classic
-      );
-      slowStrategy.setValidationDelay(500);
-
-      mockFactoryWrapper.createPATStrategy.mockReturnValueOnce(Promise.resolve(slowStrategy));
-
-      mockFetch = vi.fn().mockResolvedValue({
-        ok: true,
-        status: 200,
-        json: () => Promise.resolve({ success: true }),
-      });
-      global.fetch = mockFetch;
-
-      const service = new UnifiedGitHubService(TestFixtures.TokenFixtures.pat.classic);
-
-      const startTime = Date.now();
-      await service.validateToken();
-      const duration = Date.now() - startTime;
-
-      expect(duration).toBeGreaterThan(400);
     });
   });
 

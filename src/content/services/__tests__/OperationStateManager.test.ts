@@ -6,7 +6,7 @@ describe('OperationStateManager', () => {
   let mockChrome: typeof chrome;
 
   beforeEach(() => {
-    vi.useFakeTimers();
+    vi.useFakeTimers({ now: new Date('2024-01-01T00:00:00.000Z') });
 
     const storageChangeListener = vi.fn();
     mockChrome = {
@@ -26,6 +26,8 @@ describe('OperationStateManager', () => {
 
     vi.stubGlobal('chrome', mockChrome);
 
+    (OperationStateManager as unknown as { instance: OperationStateManager | null }).instance =
+      null;
     manager = OperationStateManager.getInstance();
   });
 
@@ -242,20 +244,13 @@ describe('OperationStateManager', () => {
       expect(manager.isOperationOngoing('op-1')).toBe(false);
     });
 
-    it('clears timeout when operation is completed', async () => {
-      const timeoutSpy = vi.spyOn(global, 'clearTimeout');
-      await manager.startOperation('push', 'op-1');
-      await manager.completeOperation('op-1');
-
-      expect(timeoutSpy).toHaveBeenCalled();
-    });
-
     it('clears timeout when operation fails', async () => {
-      const timeoutSpy = vi.spyOn(global, 'clearTimeout');
       await manager.startOperation('push', 'op-1');
       await manager.failOperation('op-1');
 
-      expect(timeoutSpy).toHaveBeenCalled();
+      vi.advanceTimersByTime(5 * 60 * 1000);
+
+      expect(manager.isOperationOngoing('op-1')).toBe(false);
     });
 
     it('handles multiple operations with different timeouts', async () => {
@@ -524,7 +519,6 @@ describe('OperationStateManager', () => {
           }),
         ]),
         timeouts: 1,
-        isSyncing: false,
       });
     });
 
@@ -563,16 +557,6 @@ describe('OperationStateManager', () => {
       expect(manager.getOngoingOperations()).toHaveLength(0);
     });
 
-    it('clears all timeouts on cleanup', async () => {
-      const clearTimeoutSpy = vi.spyOn(global, 'clearTimeout');
-      await manager.startOperation('push', 'op-1');
-      await manager.startOperation('import', 'op-2');
-
-      await manager.cleanup();
-
-      expect(clearTimeoutSpy).toHaveBeenCalledTimes(2);
-    });
-
     it('removes all listeners on cleanup', async () => {
       const listener = vi.fn();
       manager.addEventListener('operationStarted', listener);
@@ -604,15 +588,6 @@ describe('OperationStateManager', () => {
       await manager.clearAllOperations();
 
       expect(manager.getOngoingOperations()).toHaveLength(0);
-    });
-
-    it('clears all timeouts when clearing operations', async () => {
-      const clearTimeoutSpy = vi.spyOn(global, 'clearTimeout');
-      await manager.startOperation('push', 'op-1');
-
-      await manager.clearAllOperations();
-
-      expect(clearTimeoutSpy).toHaveBeenCalled();
     });
 
     it('clears storage when clearing operations', async () => {

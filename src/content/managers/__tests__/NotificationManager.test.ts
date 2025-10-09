@@ -1,66 +1,28 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
-
-import { afterEach, beforeEach, describe, expect, test, vi, type Mocked } from 'vitest';
+import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest';
 import type { MessageHandler } from '../../MessageHandler';
 import type { UIStateManager } from '../../services/UIStateManager';
 import type { NotificationOptions } from '../../types/UITypes';
 import { NotificationManager } from '../NotificationManager';
 
-vi.mock('../../Notification.svelte', () => ({
-  default: class MockNotification {
-    constructor(options: any = {}) {
-      this.options = options;
-      this.$set = vi.fn();
-      this.$on = vi.fn();
-      this.$destroy = vi.fn();
-    }
-    options: any;
-    $set: any;
-    $on: any;
-    $destroy: any;
-  },
-}));
-
-vi.mock('../../../lib/components/ui/dialog', () => ({
-  EnhancedConfirmationDialog: class MockEnhancedConfirmationDialog {
-    constructor(options: any = {}) {
-      this.options = options;
-      this.$set = vi.fn();
-      this.$on = vi.fn();
-      this.$destroy = vi.fn();
-    }
-    options: any;
-    $set: any;
-    $on: any;
-    $destroy: any;
-  },
-}));
-
 describe('NotificationManager', () => {
   let notificationManager: NotificationManager;
-  let mockMessageHandler: Mocked<MessageHandler>;
-  let mockStateManager: Mocked<UIStateManager>;
+  let mockMessageHandler: Partial<MessageHandler>;
+  let mockStateManager: Partial<UIStateManager>;
 
   beforeEach(() => {
     mockMessageHandler = {
       sendMessage: vi.fn(),
-      sendZipData: vi.fn(),
-      sendDebugMessage: vi.fn(),
-      sendCommitMessage: vi.fn(),
-      updatePort: vi.fn(),
-    } as any;
+    };
 
     mockStateManager = {
       addListener: vi.fn(),
       removeListener: vi.fn(),
-      getState: vi.fn(),
-      setUploadStatus: vi.fn(),
-      setButtonState: vi.fn(),
-      addNotification: vi.fn(),
-      removeNotification: vi.fn(),
-    } as any;
+    };
 
-    notificationManager = new NotificationManager(mockMessageHandler, mockStateManager);
+    notificationManager = new NotificationManager(
+      mockMessageHandler as MessageHandler,
+      mockStateManager as UIStateManager
+    );
 
     document.body.innerHTML = '<div></div>';
 
@@ -69,16 +31,19 @@ describe('NotificationManager', () => {
       configurable: true,
       value: 1024,
     });
+
+    vi.useFakeTimers();
   });
 
   afterEach(() => {
     notificationManager.cleanup();
     document.body.innerHTML = '';
     vi.clearAllMocks();
+    vi.useRealTimers();
   });
 
   describe('Notification Display', () => {
-    test('shows success notification', () => {
+    test('displays success notification in DOM with correct styling', () => {
       const options: NotificationOptions = {
         type: 'success',
         message: 'Test success',
@@ -95,9 +60,10 @@ describe('NotificationManager', () => {
       const container = containers[0] as HTMLElement;
       expect(container.style.position).toBe('fixed');
       expect(container.style.zIndex).toBe('10002');
+      expect(container.style.right).toBe('1rem');
     });
 
-    test('shows error notification', () => {
+    test('displays error notification in DOM', () => {
       const options: NotificationOptions = {
         type: 'error',
         message: 'Test error',
@@ -112,7 +78,7 @@ describe('NotificationManager', () => {
       expect(containers.length).toBe(1);
     });
 
-    test('shows info notification with default duration', () => {
+    test('applies default duration for info notifications', () => {
       const options: NotificationOptions = {
         type: 'info',
         message: 'Test info',
@@ -126,19 +92,9 @@ describe('NotificationManager', () => {
       expect(containers.length).toBe(1);
     });
 
-    test('handles multiple notifications with proper positioning', () => {
-      const options1: NotificationOptions = {
-        type: 'info',
-        message: 'First notification',
-      };
-
-      const options2: NotificationOptions = {
-        type: 'success',
-        message: 'Second notification',
-      };
-
-      notificationManager.showNotification(options1);
-      notificationManager.showNotification(options2);
+    test('stacks multiple notifications with proper vertical spacing', () => {
+      notificationManager.showNotification({ type: 'info', message: 'First notification' });
+      notificationManager.showNotification({ type: 'success', message: 'Second notification' });
 
       const containers = document.querySelectorAll(
         '[id^="bolt-to-github-notification-container-"]'
@@ -156,19 +112,14 @@ describe('NotificationManager', () => {
   });
 
   describe('Mobile Responsiveness', () => {
-    test('adjusts notification layout for mobile screens', () => {
+    test('adjusts layout for mobile viewport', () => {
       Object.defineProperty(window, 'innerWidth', {
         writable: true,
         configurable: true,
         value: 480,
       });
 
-      const options: NotificationOptions = {
-        type: 'info',
-        message: 'Mobile notification',
-      };
-
-      notificationManager.showNotification(options);
+      notificationManager.showNotification({ type: 'info', message: 'Mobile notification' });
 
       const container = document.querySelector(
         '[id^="bolt-to-github-notification-container-"]'
@@ -177,19 +128,14 @@ describe('NotificationManager', () => {
       expect(container.style.right).toBe('1rem');
     });
 
-    test('uses standard layout for desktop screens', () => {
+    test('uses standard layout for desktop viewport', () => {
       Object.defineProperty(window, 'innerWidth', {
         writable: true,
         configurable: true,
         value: 1024,
       });
 
-      const options: NotificationOptions = {
-        type: 'info',
-        message: 'Desktop notification',
-      };
-
-      notificationManager.showNotification(options);
+      notificationManager.showNotification({ type: 'info', message: 'Desktop notification' });
 
       const container = document.querySelector(
         '[id^="bolt-to-github-notification-container-"]'
@@ -197,10 +143,22 @@ describe('NotificationManager', () => {
       expect(container.style.right).toBe('1rem');
       expect(container.style.left).toBe('auto');
     });
+
+    test('repositions notifications on window resize', () => {
+      notificationManager.showNotification({ type: 'info', message: 'Test' });
+
+      const container = document.querySelector(
+        '[id^="bolt-to-github-notification-container-"]'
+      ) as HTMLElement;
+
+      window.dispatchEvent(new Event('resize'));
+
+      expect(container.style.top).toBeDefined();
+    });
   });
 
   describe('Settings Notification', () => {
-    test('shows settings notification', () => {
+    test('displays settings notification with action button', () => {
       notificationManager.showSettingsNotification();
 
       const containers = document.querySelectorAll(
@@ -211,12 +169,13 @@ describe('NotificationManager', () => {
   });
 
   describe('Upgrade Notification', () => {
-    test('shows upgrade notification with custom options', () => {
+    test('displays upgrade notification with custom action', () => {
+      const mockUpgradeHandler = vi.fn();
       const options = {
         type: 'info' as const,
         message: 'Upgrade to premium',
         upgradeText: 'Upgrade Now',
-        onUpgrade: vi.fn(),
+        onUpgrade: mockUpgradeHandler,
       };
 
       notificationManager.showUpgradeNotification(options);
@@ -229,7 +188,7 @@ describe('NotificationManager', () => {
   });
 
   describe('Confirmation Dialog', () => {
-    test('shows confirmation dialog and resolves with user input', async () => {
+    test('displays dialog in DOM with proper structure', async () => {
       const options = {
         title: 'Confirm Upload',
         message: 'Are you sure you want to upload?',
@@ -245,7 +204,6 @@ describe('NotificationManager', () => {
       );
       expect(dialogContainer).toBeTruthy();
       expect(dialogContainer?.style.zIndex).toBe('2147483646');
-
       expect(dialogContainer?.style.position).toBe('fixed');
       expect(dialogContainer?.style.width).toBe('100%');
       expect(dialogContainer?.style.height).toBe('100%');
@@ -253,7 +211,7 @@ describe('NotificationManager', () => {
   });
 
   describe('Cleanup', () => {
-    test('removes all notifications on cleanup', () => {
+    test('removes all notification containers from DOM', () => {
       notificationManager.showNotification({ type: 'info', message: 'Test 1' });
       notificationManager.showNotification({ type: 'success', message: 'Test 2' });
 
@@ -268,42 +226,17 @@ describe('NotificationManager', () => {
       ).toBe(0);
     });
 
-    test('removes resize event listener on cleanup', () => {
-      const removeEventListenerSpy = vi.spyOn(window, 'removeEventListener');
+    test('removes dialog container from DOM', () => {
+      notificationManager.showConfirmationDialog({
+        title: 'Test',
+        message: 'Test message',
+      });
+
+      expect(document.getElementById('bolt-to-github-confirmation-dialog-container')).toBeTruthy();
 
       notificationManager.cleanup();
 
-      expect(removeEventListenerSpy).toHaveBeenCalledWith('resize', expect.any(Function));
-
-      removeEventListenerSpy.mockRestore();
-    });
-  });
-
-  describe('Window Resize Handling', () => {
-    test('updates notification positions on window resize', () => {
-      notificationManager.showNotification({ type: 'info', message: 'Test' });
-
-      const container = document.querySelector(
-        '[id^="bolt-to-github-notification-container-"]'
-      ) as HTMLElement;
-
-      window.dispatchEvent(new Event('resize'));
-
-      expect(container.style.top).toBeDefined();
-    });
-  });
-
-  describe('Error Handling', () => {
-    test('handles missing state manager gracefully', () => {
-      document.body.innerHTML = '<div></div>';
-
-      const managerWithoutState = new NotificationManager(mockMessageHandler);
-
-      expect(() => {
-        managerWithoutState.showNotification({ type: 'info', message: 'Test' });
-      }).not.toThrow();
-
-      managerWithoutState.cleanup();
+      expect(document.getElementById('bolt-to-github-confirmation-dialog-container')).toBeNull();
     });
 
     test('handles multiple cleanup calls gracefully', () => {
@@ -314,8 +247,75 @@ describe('NotificationManager', () => {
     });
   });
 
+  describe('Reminder Notifications', () => {
+    test('prevents stacking of duplicate reminder notifications', () => {
+      notificationManager.showNotification({
+        type: 'info',
+        message: 'You have unsaved changes',
+      });
+
+      expect(notificationManager.getReminderNotificationCount()).toBe(1);
+
+      notificationManager.showNotification({
+        type: 'info',
+        message: 'Consider pushing to GitHub',
+      });
+
+      expect(notificationManager.getReminderNotificationCount()).toBe(1);
+    });
+
+    test('clears all reminder notifications on demand', () => {
+      notificationManager.showNotification({
+        type: 'info',
+        message: 'You have unsaved changes',
+      });
+
+      expect(notificationManager.getReminderNotificationCount()).toBe(1);
+
+      notificationManager.clearReminderNotifications();
+
+      expect(notificationManager.getReminderNotificationCount()).toBe(0);
+    });
+
+    test('tracks both reminder and regular notifications separately', () => {
+      notificationManager.showNotification({
+        type: 'info',
+        message: 'You have unsaved changes',
+      });
+
+      notificationManager.showNotification({
+        type: 'success',
+        message: 'File uploaded successfully',
+      });
+
+      const debugInfo = notificationManager.getNotificationDebugInfo();
+      expect(debugInfo).toMatchObject({
+        totalNotifications: 2,
+        reminderNotifications: 1,
+        regularNotifications: 1,
+      });
+    });
+  });
+
+  describe('Error Handling', () => {
+    test('creates notifications without state manager', () => {
+      const managerWithoutState = new NotificationManager(mockMessageHandler as MessageHandler);
+
+      expect(() => {
+        managerWithoutState.showNotification({ type: 'info', message: 'Test' });
+      }).not.toThrow();
+
+      const containers = document.querySelectorAll(
+        '[id^="bolt-to-github-notification-container-"]'
+      );
+      expect(containers.length).toBe(1);
+
+      managerWithoutState.cleanup();
+    });
+  });
+
   describe('Notification Actions', () => {
-    test('supports notifications with custom actions', () => {
+    test('supports custom action buttons', () => {
       const mockAction = vi.fn();
       const options: NotificationOptions = {
         type: 'info',

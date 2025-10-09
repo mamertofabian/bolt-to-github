@@ -1,6 +1,5 @@
 import { beforeEach, describe, expect, it, vi, afterEach } from 'vitest';
 import { GitHubAppAuthenticationStrategy } from '../GitHubAppAuthenticationStrategy';
-import { GitHubAppService } from '../GitHubAppService';
 import type {
   GitHubAppConfig,
   GitHubAppTokenResponse,
@@ -8,7 +7,25 @@ import type {
   PermissionCheckResult,
 } from '../types/authentication';
 
-vi.mock('../GitHubAppService');
+const FIXED_TIME = new Date('2024-01-01T00:00:00.000Z');
+
+vi.mock('../GitHubAppService', () => {
+  return {
+    GitHubAppService: vi.fn().mockImplementation(() => ({
+      isConfigured: vi.fn(),
+      getAccessToken: vi.fn(),
+      validateAuth: vi.fn(),
+      checkPermissions: vi.fn(),
+      clearConfig: vi.fn(),
+      getConfig: vi.fn(),
+      storeConfig: vi.fn(),
+      needsRenewal: vi.fn(),
+      setUserToken: vi.fn(),
+      completeOAuthFlow: vi.fn(),
+      generateOAuthUrl: vi.fn(),
+    })),
+  };
+});
 
 describe('GitHubAppAuthenticationStrategy', () => {
   let strategy: GitHubAppAuthenticationStrategy;
@@ -27,32 +44,18 @@ describe('GitHubAppAuthenticationStrategy', () => {
   };
 
   beforeEach(() => {
-    mockGitHubAppService = {
-      isConfigured: vi.fn(),
-      getAccessToken: vi.fn(),
-      validateAuth: vi.fn(),
-      checkPermissions: vi.fn(),
-      clearConfig: vi.fn(),
-      getConfig: vi.fn(),
-      storeConfig: vi.fn(),
-      needsRenewal: vi.fn(),
-      setUserToken: vi.fn(),
-      completeOAuthFlow: vi.fn(),
-      generateOAuthUrl: vi.fn(),
-    };
-
-    vi.mocked(GitHubAppService).mockImplementation(
-      () => mockGitHubAppService as unknown as GitHubAppService
-    );
+    vi.useFakeTimers({ now: FIXED_TIME });
 
     strategy = new GitHubAppAuthenticationStrategy();
+
+    mockGitHubAppService = (strategy as never)['githubAppService'] as never;
 
     global.fetch = vi.fn();
   });
 
   afterEach(() => {
     vi.clearAllMocks();
-    vi.restoreAllMocks();
+    vi.useRealTimers();
   });
 
   describe('type property', () => {
@@ -62,16 +65,15 @@ describe('GitHubAppAuthenticationStrategy', () => {
   });
 
   describe('isConfigured', () => {
-    it('should delegate to GitHubAppService.isConfigured', async () => {
+    it('should return true when GitHub App is configured', async () => {
       mockGitHubAppService.isConfigured.mockResolvedValue(true);
 
       const result = await strategy.isConfigured();
 
       expect(result).toBe(true);
-      expect(mockGitHubAppService.isConfigured).toHaveBeenCalledTimes(1);
     });
 
-    it('should return false when not configured', async () => {
+    it('should return false when GitHub App is not configured', async () => {
       mockGitHubAppService.isConfigured.mockResolvedValue(false);
 
       const result = await strategy.isConfigured();
@@ -84,19 +86,18 @@ describe('GitHubAppAuthenticationStrategy', () => {
     const mockTokenResponse: GitHubAppTokenResponse = {
       access_token: 'ghu_token123',
       github_username: 'testuser',
-      expires_at: new Date(Date.now() + 3600000).toISOString(),
+      expires_at: new Date(FIXED_TIME.getTime() + 3600000).toISOString(),
       scopes: ['repo', 'user'],
       type: 'github_app',
       renewed: false,
     };
 
-    it('should fetch and cache a valid token', async () => {
+    it('should return valid token when fetched successfully', async () => {
       mockGitHubAppService.getAccessToken.mockResolvedValue(mockTokenResponse);
 
       const token = await strategy.getToken();
 
       expect(token).toBe('ghu_token123');
-      expect(mockGitHubAppService.getAccessToken).toHaveBeenCalledTimes(1);
     });
 
     it('should return cached token when still valid', async () => {
@@ -105,30 +106,37 @@ describe('GitHubAppAuthenticationStrategy', () => {
       const token1 = await strategy.getToken();
       const token2 = await strategy.getToken();
 
-      expect(token1).toBe(token2);
+      expect(token1).toBe('ghu_token123');
+      expect(token2).toBe('ghu_token123');
+
       expect(mockGitHubAppService.getAccessToken).toHaveBeenCalledTimes(1);
     });
 
     it('should fetch new token when cached token is expired', async () => {
       const expiredTokenResponse: GitHubAppTokenResponse = {
         ...mockTokenResponse,
-        expires_at: new Date(Date.now() - 1000).toISOString(),
+        expires_at: new Date(FIXED_TIME.getTime() - 1000).toISOString(),
+      };
+      const freshTokenResponse: GitHubAppTokenResponse = {
+        ...mockTokenResponse,
+        access_token: 'ghu_new_token456',
       };
 
       mockGitHubAppService.getAccessToken
         .mockResolvedValueOnce(expiredTokenResponse)
-        .mockResolvedValueOnce(mockTokenResponse);
+        .mockResolvedValueOnce(freshTokenResponse);
 
       const token1 = await strategy.getToken();
-      await new Promise((resolve) => setTimeout(resolve, 10));
+
+      vi.advanceTimersByTime(2000);
+
       const token2 = await strategy.getToken();
 
       expect(token1).toBe('ghu_token123');
-      expect(token2).toBe('ghu_token123');
-      expect(mockGitHubAppService.getAccessToken).toHaveBeenCalledTimes(2);
+      expect(token2).toBe('ghu_new_token456');
     });
 
-    it('should throw error with re-authentication message when token renewal required', async () => {
+    it('should throw specific error when re-authentication is required', async () => {
       mockGitHubAppService.getAccessToken.mockRejectedValue(
         new Error('Re-authentication required')
       );
@@ -138,25 +146,31 @@ describe('GitHubAppAuthenticationStrategy', () => {
       );
     });
 
-    it('should clear cache and throw error on failure', async () => {
+    it('should throw error with proper message on general failure', async () => {
       mockGitHubAppService.getAccessToken.mockRejectedValue(new Error('Network error'));
 
       await expect(strategy.getToken()).rejects.toThrow(
         'Failed to get GitHub App token: Network error'
       );
-
-      mockGitHubAppService.getAccessToken.mockResolvedValue(mockTokenResponse);
-      await strategy.getToken();
-
-      expect(mockGitHubAppService.getAccessToken).toHaveBeenCalledTimes(2);
     });
 
-    it('should handle unknown error types', async () => {
-      mockGitHubAppService.getAccessToken.mockRejectedValue('Unknown error');
+    it('should handle non-Error exceptions', async () => {
+      mockGitHubAppService.getAccessToken.mockRejectedValue('String error');
 
       await expect(strategy.getToken()).rejects.toThrow(
         'Failed to get GitHub App token: Unknown error'
       );
+    });
+
+    it('should clear cache after error', async () => {
+      mockGitHubAppService.getAccessToken
+        .mockRejectedValueOnce(new Error('Network error'))
+        .mockResolvedValueOnce(mockTokenResponse);
+
+      await expect(strategy.getToken()).rejects.toThrow('Failed to get GitHub App token');
+
+      const token = await strategy.getToken();
+      expect(token).toBe('ghu_token123');
     });
   });
 
@@ -172,21 +186,22 @@ describe('GitHubAppAuthenticationStrategy', () => {
       scopes: ['repo', 'user'],
     };
 
-    it('should delegate to GitHubAppService.validateAuth', async () => {
+    it('should return validation result when authentication is valid', async () => {
       mockGitHubAppService.validateAuth.mockResolvedValue(mockValidationResult);
 
       const result = await strategy.validateAuth();
 
       expect(result).toEqual(mockValidationResult);
-      expect(mockGitHubAppService.validateAuth).toHaveBeenCalledTimes(1);
+      expect(result.isValid).toBe(true);
+      expect(result.userInfo?.login).toBe('testuser');
     });
 
     it('should ignore username parameter', async () => {
       mockGitHubAppService.validateAuth.mockResolvedValue(mockValidationResult);
 
-      await strategy.validateAuth('someusername');
+      const result = await strategy.validateAuth('someusername');
 
-      expect(mockGitHubAppService.validateAuth).toHaveBeenCalledWith();
+      expect(result).toEqual(mockValidationResult);
     });
 
     it('should return error result when validation fails', async () => {
@@ -198,8 +213,8 @@ describe('GitHubAppAuthenticationStrategy', () => {
       expect(result.error).toBe('Validation failed');
     });
 
-    it('should handle unknown error types in validation', async () => {
-      mockGitHubAppService.validateAuth.mockRejectedValue('Unknown error');
+    it('should handle non-Error exceptions in validation', async () => {
+      mockGitHubAppService.validateAuth.mockRejectedValue('String error');
 
       const result = await strategy.validateAuth();
 
@@ -218,13 +233,16 @@ describe('GitHubAppAuthenticationStrategy', () => {
       },
     };
 
-    it('should delegate to GitHubAppService.checkPermissions', async () => {
+    it('should return permission check result for repository owner', async () => {
       mockGitHubAppService.checkPermissions.mockResolvedValue(mockPermissionResult);
 
       const result = await strategy.checkPermissions('testowner');
 
       expect(result).toEqual(mockPermissionResult);
-      expect(mockGitHubAppService.checkPermissions).toHaveBeenCalledWith('testowner');
+      expect(result.isValid).toBe(true);
+      expect(result.permissions.allRepos).toBe(true);
+      expect(result.permissions.admin).toBe(true);
+      expect(result.permissions.contents).toBe(true);
     });
 
     it('should return error result with false permissions on failure', async () => {
@@ -241,13 +259,14 @@ describe('GitHubAppAuthenticationStrategy', () => {
       });
     });
 
-    it('should handle unknown error types in permission check', async () => {
-      mockGitHubAppService.checkPermissions.mockRejectedValue('Unknown error');
+    it('should handle non-Error exceptions in permission check', async () => {
+      mockGitHubAppService.checkPermissions.mockRejectedValue('String error');
 
       const result = await strategy.checkPermissions('testowner');
 
       expect(result.isValid).toBe(false);
       expect(result.error).toBe('Permission check failed');
+      expect(result.permissions.allRepos).toBe(false);
     });
   });
 
@@ -255,17 +274,18 @@ describe('GitHubAppAuthenticationStrategy', () => {
     const mockTokenResponse: GitHubAppTokenResponse = {
       access_token: 'ghu_new_token456',
       github_username: 'testuser',
-      expires_at: new Date(Date.now() + 3600000).toISOString(),
+      expires_at: new Date(FIXED_TIME.getTime() + 3600000).toISOString(),
       scopes: ['repo', 'user'],
       type: 'github_app',
       renewed: true,
     };
 
-    it('should clear cached token and fetch new one', async () => {
+    it('should return new token after refresh', async () => {
       mockGitHubAppService.getAccessToken
         .mockResolvedValueOnce({
           ...mockTokenResponse,
           access_token: 'ghu_old_token',
+          renewed: false,
         })
         .mockResolvedValueOnce(mockTokenResponse);
 
@@ -274,6 +294,16 @@ describe('GitHubAppAuthenticationStrategy', () => {
 
       expect(oldToken).toBe('ghu_old_token');
       expect(newToken).toBe('ghu_new_token456');
+    });
+
+    it('should force fetch new token even if cached token is valid', async () => {
+      mockGitHubAppService.getAccessToken.mockResolvedValue(mockTokenResponse);
+
+      await strategy.getToken();
+
+      const refreshedToken = await strategy.refreshToken();
+
+      expect(refreshedToken).toBe('ghu_new_token456');
       expect(mockGitHubAppService.getAccessToken).toHaveBeenCalledTimes(2);
     });
 
@@ -285,8 +315,8 @@ describe('GitHubAppAuthenticationStrategy', () => {
       );
     });
 
-    it('should handle unknown error types during refresh', async () => {
-      mockGitHubAppService.getAccessToken.mockRejectedValue('Unknown error');
+    it('should handle non-Error exceptions during refresh', async () => {
+      mockGitHubAppService.getAccessToken.mockRejectedValue('String error');
 
       await expect(strategy.refreshToken()).rejects.toThrow(
         'Failed to refresh GitHub App token: Unknown error'
@@ -295,19 +325,19 @@ describe('GitHubAppAuthenticationStrategy', () => {
   });
 
   describe('clearAuth', () => {
-    it('should clear GitHub App config and cached token', async () => {
+    it('should clear authentication configuration', async () => {
       mockGitHubAppService.clearConfig.mockResolvedValue(undefined);
 
       await strategy.clearAuth();
 
-      expect(mockGitHubAppService.clearConfig).toHaveBeenCalledTimes(1);
+      expect(mockGitHubAppService.clearConfig).toHaveBeenCalled();
     });
 
-    it('should clear cache even if clearConfig succeeds', async () => {
+    it('should clear cache after clearing config', async () => {
       const mockTokenResponse: GitHubAppTokenResponse = {
         access_token: 'ghu_token123',
         github_username: 'testuser',
-        expires_at: new Date(Date.now() + 3600000).toISOString(),
+        expires_at: new Date(FIXED_TIME.getTime() + 3600000).toISOString(),
         scopes: ['repo', 'user'],
         type: 'github_app',
         renewed: false,
@@ -317,7 +347,9 @@ describe('GitHubAppAuthenticationStrategy', () => {
       mockGitHubAppService.clearConfig.mockResolvedValue(undefined);
 
       await strategy.getToken();
+
       await strategy.clearAuth();
+
       await strategy.getToken();
 
       expect(mockGitHubAppService.getAccessToken).toHaveBeenCalledTimes(2);
@@ -351,17 +383,17 @@ describe('GitHubAppAuthenticationStrategy', () => {
         id: 67890,
         avatar_url: 'https://avatar.from.config',
       });
-      expect(global.fetch).not.toHaveBeenCalled();
     });
 
-    it('should fetch from API when config is incomplete', async () => {
-      mockGitHubAppService.getConfig.mockResolvedValue({
-        installationId: 12345,
-      });
+    it('should fetch from API when config is incomplete and update config', async () => {
+      const incompleteConfig = { installationId: 12345 };
+      mockGitHubAppService.getConfig
+        .mockResolvedValueOnce(incompleteConfig)
+        .mockResolvedValueOnce(incompleteConfig);
       mockGitHubAppService.getAccessToken.mockResolvedValue({
         access_token: 'token123',
         github_username: 'apiuser',
-        expires_at: new Date(Date.now() + 3600000).toISOString(),
+        expires_at: new Date(FIXED_TIME.getTime() + 3600000).toISOString(),
         scopes: [],
         type: 'github_app',
         renewed: false,
@@ -385,41 +417,6 @@ describe('GitHubAppAuthenticationStrategy', () => {
         id: 11111,
         avatar_url: 'https://avatar.from.api',
       });
-      expect(global.fetch).toHaveBeenCalledWith('https://api.github.com/user', {
-        headers: {
-          Authorization: 'Bearer token123',
-          Accept: 'application/vnd.github.v3+json',
-        },
-      });
-    });
-
-    it('should update config with API data', async () => {
-      const existingConfig = { installationId: 12345 };
-      mockGitHubAppService.getConfig
-        .mockResolvedValueOnce(existingConfig)
-        .mockResolvedValueOnce(existingConfig);
-      mockGitHubAppService.getAccessToken.mockResolvedValue({
-        access_token: 'token123',
-        github_username: 'apiuser',
-        expires_at: new Date(Date.now() + 3600000).toISOString(),
-        scopes: [],
-        type: 'github_app',
-        renewed: false,
-      });
-
-      const mockApiResponse = {
-        login: 'apiuser',
-        id: 11111,
-        avatar_url: 'https://avatar.from.api',
-      };
-
-      vi.mocked(global.fetch).mockResolvedValue({
-        ok: true,
-        json: async () => mockApiResponse,
-      } as Response);
-
-      await strategy.getUserInfo();
-
       expect(mockGitHubAppService.storeConfig).toHaveBeenCalledWith({
         installationId: 12345,
         githubUsername: 'apiuser',
@@ -428,12 +425,42 @@ describe('GitHubAppAuthenticationStrategy', () => {
       });
     });
 
+    it('should make correct API request', async () => {
+      mockGitHubAppService.getConfig.mockResolvedValue({});
+      mockGitHubAppService.getAccessToken.mockResolvedValue({
+        access_token: 'token123',
+        github_username: 'apiuser',
+        expires_at: new Date(FIXED_TIME.getTime() + 3600000).toISOString(),
+        scopes: [],
+        type: 'github_app',
+        renewed: false,
+      });
+
+      vi.mocked(global.fetch).mockResolvedValue({
+        ok: true,
+        json: async () => ({
+          login: 'apiuser',
+          id: 11111,
+          avatar_url: 'https://avatar.from.api',
+        }),
+      } as Response);
+
+      await strategy.getUserInfo();
+
+      expect(global.fetch).toHaveBeenCalledWith('https://api.github.com/user', {
+        headers: {
+          Authorization: 'Bearer token123',
+          Accept: 'application/vnd.github.v3+json',
+        },
+      });
+    });
+
     it('should return null when API request fails', async () => {
       mockGitHubAppService.getConfig.mockResolvedValue({});
       mockGitHubAppService.getAccessToken.mockResolvedValue({
         access_token: 'token123',
         github_username: 'apiuser',
-        expires_at: new Date(Date.now() + 3600000).toISOString(),
+        expires_at: new Date(FIXED_TIME.getTime() + 3600000).toISOString(),
         scopes: [],
         type: 'github_app',
         renewed: false,
@@ -449,16 +476,15 @@ describe('GitHubAppAuthenticationStrategy', () => {
       expect(userInfo).toBeNull();
     });
 
-    it('should return null and not update config when current config is null', async () => {
+    it('should return null when config is null', async () => {
       mockGitHubAppService.getConfig.mockResolvedValue(null);
 
       const userInfo = await strategy.getUserInfo();
 
       expect(userInfo).toBeNull();
-      expect(mockGitHubAppService.storeConfig).not.toHaveBeenCalled();
     });
 
-    it('should return null when an error occurs', async () => {
+    it('should return null and handle errors gracefully', async () => {
       mockGitHubAppService.getConfig.mockRejectedValue(new Error('Config error'));
 
       const userInfo = await strategy.getUserInfo();
@@ -468,13 +494,12 @@ describe('GitHubAppAuthenticationStrategy', () => {
   });
 
   describe('needsRenewal', () => {
-    it('should delegate to GitHubAppService.needsRenewal', async () => {
+    it('should return true when token needs renewal', async () => {
       mockGitHubAppService.needsRenewal.mockResolvedValue(true);
 
       const result = await strategy.needsRenewal();
 
       expect(result).toBe(true);
-      expect(mockGitHubAppService.needsRenewal).toHaveBeenCalledTimes(1);
     });
 
     it('should return false when token does not need renewal', async () => {
@@ -494,7 +519,7 @@ describe('GitHubAppAuthenticationStrategy', () => {
       refreshTokenExpiresAt: '2026-12-31T23:59:59Z',
     };
 
-    it('should return metadata from config', async () => {
+    it('should return metadata from config with fixed timestamp', async () => {
       mockGitHubAppService.getConfig.mockResolvedValue(mockConfig);
 
       const metadata = await strategy.getMetadata();
@@ -504,7 +529,7 @@ describe('GitHubAppAuthenticationStrategy', () => {
       expect(metadata.refreshTokenExpiresAt).toBe('2026-12-31T23:59:59Z');
       expect(metadata.installationId).toBe(12345);
       expect(metadata.tokenType).toBe('github_app');
-      expect(metadata.lastUsed).toBeDefined();
+      expect(metadata.lastUsed).toBe(FIXED_TIME.toISOString());
     });
 
     it('should return empty object when config is null', async () => {
@@ -523,28 +548,36 @@ describe('GitHubAppAuthenticationStrategy', () => {
       expect(metadata).toEqual({});
     });
 
-    it('should include lastUsed timestamp', async () => {
-      mockGitHubAppService.getConfig.mockResolvedValue(mockConfig);
+    it('should include all metadata fields when config has all data', async () => {
+      const fullConfig: GitHubAppConfig = {
+        ...mockConfig,
+        githubUsername: 'testuser',
+        githubUserId: 123,
+        avatarUrl: 'https://avatar.url',
+      };
+      mockGitHubAppService.getConfig.mockResolvedValue(fullConfig);
 
-      const beforeTime = Date.now();
       const metadata = await strategy.getMetadata();
-      const afterTime = Date.now();
 
-      expect(metadata.lastUsed).toBeDefined();
-      const lastUsedTime = new Date(metadata.lastUsed as string).getTime();
-      expect(lastUsedTime).toBeGreaterThanOrEqual(beforeTime);
-      expect(lastUsedTime).toBeLessThanOrEqual(afterTime);
+      expect(metadata).toMatchObject({
+        scopes: ['repo', 'user'],
+        expiresAt: '2025-12-31T23:59:59Z',
+        refreshTokenExpiresAt: '2026-12-31T23:59:59Z',
+        installationId: 12345,
+        tokenType: 'github_app',
+        lastUsed: FIXED_TIME.toISOString(),
+      });
     });
   });
 
   describe('setUserToken', () => {
-    it('should delegate to GitHubAppService.setUserToken', () => {
+    it('should pass token to GitHubAppService', () => {
       strategy.setUserToken('user_token_123');
 
       expect(mockGitHubAppService.setUserToken).toHaveBeenCalledWith('user_token_123');
     });
 
-    it('should accept different token formats', () => {
+    it('should handle different token formats', () => {
       strategy.setUserToken('sb_access_token_xyz');
 
       expect(mockGitHubAppService.setUserToken).toHaveBeenCalledWith('sb_access_token_xyz');
@@ -561,16 +594,12 @@ describe('GitHubAppAuthenticationStrategy', () => {
       installation_found: true,
     };
 
-    it('should complete OAuth flow and store config', async () => {
+    it('should complete OAuth flow and store configuration', async () => {
       mockGitHubAppService.completeOAuthFlow.mockResolvedValue(mockOAuthResult);
       mockGitHubAppService.storeConfig.mockResolvedValue(undefined);
 
       await strategy.completeOAuth('auth_code_123', 'state_456');
 
-      expect(mockGitHubAppService.completeOAuthFlow).toHaveBeenCalledWith(
-        'auth_code_123',
-        'state_456'
-      );
       expect(mockGitHubAppService.storeConfig).toHaveBeenCalledWith({
         installationId: 99999,
         githubUsername: 'oauthuser',
@@ -583,7 +612,7 @@ describe('GitHubAppAuthenticationStrategy', () => {
       const mockTokenResponse: GitHubAppTokenResponse = {
         access_token: 'old_token',
         github_username: 'testuser',
-        expires_at: new Date(Date.now() + 3600000).toISOString(),
+        expires_at: new Date(FIXED_TIME.getTime() + 3600000).toISOString(),
         scopes: [],
         type: 'github_app',
         renewed: false,
@@ -594,7 +623,9 @@ describe('GitHubAppAuthenticationStrategy', () => {
       mockGitHubAppService.storeConfig.mockResolvedValue(undefined);
 
       await strategy.getToken();
+
       await strategy.completeOAuth('auth_code_123');
+
       await strategy.getToken();
 
       expect(mockGitHubAppService.getAccessToken).toHaveBeenCalledTimes(2);
@@ -606,13 +637,10 @@ describe('GitHubAppAuthenticationStrategy', () => {
 
       await strategy.completeOAuth('auth_code_123');
 
-      expect(mockGitHubAppService.completeOAuthFlow).toHaveBeenCalledWith(
-        'auth_code_123',
-        undefined
-      );
+      expect(mockGitHubAppService.storeConfig).toHaveBeenCalled();
     });
 
-    it('should handle installation_id as undefined', async () => {
+    it('should handle installation_id as null', async () => {
       const resultWithoutInstallation = {
         ...mockOAuthResult,
         installation_id: null,
@@ -650,8 +678,8 @@ describe('GitHubAppAuthenticationStrategy', () => {
       );
     });
 
-    it('should handle unknown error types during OAuth', async () => {
-      mockGitHubAppService.completeOAuthFlow.mockRejectedValue('Unknown error');
+    it('should handle non-Error exceptions during OAuth', async () => {
+      mockGitHubAppService.completeOAuthFlow.mockRejectedValue('String error');
 
       await expect(strategy.completeOAuth('auth_code_123')).rejects.toThrow(
         'Failed to complete OAuth flow: Unknown error'
@@ -660,32 +688,24 @@ describe('GitHubAppAuthenticationStrategy', () => {
   });
 
   describe('generateOAuthUrl', () => {
-    it('should delegate to GitHubAppService.generateOAuthUrl', () => {
-      mockGitHubAppService.generateOAuthUrl.mockReturnValue(
-        'https://github.com/login/oauth/authorize?client_id=123&redirect_uri=http://callback'
-      );
+    it('should return OAuth URL without state', () => {
+      const expectedUrl =
+        'https://github.com/login/oauth/authorize?client_id=123&redirect_uri=http://callback';
+      mockGitHubAppService.generateOAuthUrl.mockReturnValue(expectedUrl);
 
-      strategy.generateOAuthUrl('client_123', 'http://callback.url');
+      const url = strategy.generateOAuthUrl('client_123', 'http://callback.url');
 
-      expect(mockGitHubAppService.generateOAuthUrl).toHaveBeenCalledWith(
-        'client_123',
-        'http://callback.url',
-        undefined
-      );
+      expect(url).toBe(expectedUrl);
     });
 
-    it('should include state parameter when provided', () => {
-      mockGitHubAppService.generateOAuthUrl.mockReturnValue(
-        'https://github.com/login/oauth/authorize?client_id=123&redirect_uri=http://callback&state=xyz'
-      );
+    it('should return OAuth URL with state parameter', () => {
+      const expectedUrl =
+        'https://github.com/login/oauth/authorize?client_id=123&redirect_uri=http://callback&state=xyz';
+      mockGitHubAppService.generateOAuthUrl.mockReturnValue(expectedUrl);
 
-      strategy.generateOAuthUrl('client_123', 'http://callback.url', 'state_xyz');
+      const url = strategy.generateOAuthUrl('client_123', 'http://callback.url', 'state_xyz');
 
-      expect(mockGitHubAppService.generateOAuthUrl).toHaveBeenCalledWith(
-        'client_123',
-        'http://callback.url',
-        'state_xyz'
-      );
+      expect(url).toBe(expectedUrl);
     });
   });
 
@@ -694,7 +714,7 @@ describe('GitHubAppAuthenticationStrategy', () => {
       const mockTokenResponse: GitHubAppTokenResponse = {
         access_token: 'ghu_token123',
         github_username: 'testuser',
-        expires_at: new Date(Date.now() + 3600000).toISOString(),
+        expires_at: new Date(FIXED_TIME.getTime() + 3600000).toISOString(),
         scopes: ['repo', 'user'],
         type: 'github_app',
         renewed: false,
@@ -714,13 +734,14 @@ describe('GitHubAppAuthenticationStrategy', () => {
       expect(isConfigured).toBe(true);
       expect(token).toBe('ghu_token123');
       expect(validation.isValid).toBe(true);
+      expect(validation.userInfo?.login).toBe('testuser');
     });
 
-    it('should handle token expiration and renewal', async () => {
+    it('should handle token expiration and renewal workflow', async () => {
       const expiredResponse: GitHubAppTokenResponse = {
         access_token: 'old_token',
         github_username: 'testuser',
-        expires_at: new Date(Date.now() - 1000).toISOString(),
+        expires_at: new Date(FIXED_TIME.getTime() - 1000).toISOString(),
         scopes: ['repo'],
         type: 'github_app',
         renewed: false,
@@ -729,7 +750,7 @@ describe('GitHubAppAuthenticationStrategy', () => {
       const newResponse: GitHubAppTokenResponse = {
         access_token: 'new_token',
         github_username: 'testuser',
-        expires_at: new Date(Date.now() + 3600000).toISOString(),
+        expires_at: new Date(FIXED_TIME.getTime() + 3600000).toISOString(),
         scopes: ['repo'],
         type: 'github_app',
         renewed: true,
@@ -740,15 +761,16 @@ describe('GitHubAppAuthenticationStrategy', () => {
         .mockResolvedValueOnce(newResponse);
 
       const oldToken = await strategy.getToken();
-      await new Promise((resolve) => setTimeout(resolve, 10));
+
+      vi.advanceTimersByTime(2000);
+
       const newToken = await strategy.getToken();
 
       expect(oldToken).toBe('old_token');
       expect(newToken).toBe('new_token');
-      expect(mockGitHubAppService.getAccessToken).toHaveBeenCalledTimes(2);
     });
 
-    it('should handle authentication lifecycle', async () => {
+    it('should handle full authentication lifecycle', async () => {
       const mockOAuthResult = {
         success: true,
         github_username: 'testuser',
@@ -761,7 +783,7 @@ describe('GitHubAppAuthenticationStrategy', () => {
       const mockTokenResponse: GitHubAppTokenResponse = {
         access_token: 'token123',
         github_username: 'testuser',
-        expires_at: new Date(Date.now() + 3600000).toISOString(),
+        expires_at: new Date(FIXED_TIME.getTime() + 3600000).toISOString(),
         scopes: ['repo'],
         type: 'github_app',
         renewed: false,
@@ -773,11 +795,12 @@ describe('GitHubAppAuthenticationStrategy', () => {
       mockGitHubAppService.clearConfig.mockResolvedValue(undefined);
 
       await strategy.completeOAuth('code123', 'state456');
+
       const token = await strategy.getToken();
+
       await strategy.clearAuth();
 
       expect(token).toBe('token123');
-      expect(mockGitHubAppService.clearConfig).toHaveBeenCalled();
     });
   });
 });

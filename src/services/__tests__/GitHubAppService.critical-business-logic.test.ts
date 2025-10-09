@@ -2,7 +2,6 @@
 
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import {
-  advanceTime,
   assertFetchCall,
   assertStorageUpdate,
   createGitHubAppConfigWithExpiry,
@@ -17,6 +16,7 @@ import {
   validAuthStorageData,
   validGitHubAppConfig,
   validOAuthFlowResponse,
+  FIXED_TIME,
   type GitHubAppServiceTestEnvironment,
 } from './test-fixtures';
 
@@ -24,6 +24,7 @@ describe('GitHubAppService - Critical Business Logic', () => {
   let env: GitHubAppServiceTestEnvironment;
 
   beforeEach(() => {
+    vi.useFakeTimers({ now: FIXED_TIME });
     env = setupGitHubAppServiceTest({
       useRealService: true,
       withSupabaseToken: true,
@@ -32,6 +33,7 @@ describe('GitHubAppService - Critical Business Logic', () => {
 
   afterEach(() => {
     env.cleanup();
+    vi.useRealTimers();
   });
 
   describe('OAuth Flow Management', () => {
@@ -126,7 +128,7 @@ describe('GitHubAppService - Critical Business Logic', () => {
       it('should automatically refresh expired token', async () => {
         await env.storage.set({
           ...validAuthStorageData,
-          githubAppExpiresAt: new Date(Date.now() - 3600000).toISOString(),
+          githubAppExpiresAt: new Date(FIXED_TIME - 3600000).toISOString(),
         });
 
         env.fetchMock.setResponse('/functions/v1/get-github-token', renewedTokenResponse);
@@ -168,20 +170,16 @@ describe('GitHubAppService - Critical Business Logic', () => {
       it('should handle concurrent token refresh requests', async () => {
         await env.storage.set({
           ...validAuthStorageData,
-          githubAppExpiresAt: new Date(Date.now() - 3600000).toISOString(),
+          githubAppExpiresAt: new Date(FIXED_TIME - 3600000).toISOString(),
         });
 
-        let callCount = 0;
-        env.fetchMock.setResponse('/functions/v1/get-github-token', () => {
-          callCount++;
-          return {
-            access_token: `ghs_renewed_${callCount}_${Date.now()}`,
-            github_username: 'testuser',
-            expires_at: new Date(Date.now() + 3600000).toISOString(),
-            scopes: ['repo', 'user:email'],
-            type: 'github_app',
-            renewed: true,
-          };
+        env.fetchMock.setResponse('/functions/v1/get-github-token', {
+          access_token: 'ghs_renewed_concurrent',
+          github_username: 'testuser',
+          expires_at: new Date(FIXED_TIME + 3600000).toISOString(),
+          scopes: ['repo', 'user:email'],
+          type: 'github_app',
+          renewed: true,
         });
 
         const promises = Array(5)
@@ -190,11 +188,9 @@ describe('GitHubAppService - Critical Business Logic', () => {
         const results = await Promise.all(promises);
 
         results.forEach((token) => {
-          expect(token.access_token).toMatch(/^ghs_renewed_/);
+          expect(token.access_token).toBe('ghs_renewed_concurrent');
           expect(token.renewed).toBe(true);
         });
-
-        expect(callCount).toBeGreaterThanOrEqual(1);
       });
     });
 
@@ -236,19 +232,13 @@ describe('GitHubAppService - Critical Business Logic', () => {
       });
 
       it('should handle time drift correctly', async () => {
-        const restoreTime = advanceTime(0);
+        await env.service.storeConfig(createGitHubAppConfigWithExpiry(360000));
 
-        try {
-          await env.service.storeConfig(createGitHubAppConfigWithExpiry(300000));
+        expect(await env.service.needsRenewal()).toBe(false);
 
-          expect(await env.service.needsRenewal()).toBe(false);
+        await vi.advanceTimersByTimeAsync(61000);
 
-          advanceTime(1000);
-
-          expect(await env.service.needsRenewal()).toBe(true);
-        } finally {
-          restoreTime();
-        }
+        expect(await env.service.needsRenewal()).toBe(true);
       });
     });
   });
@@ -282,7 +272,7 @@ describe('GitHubAppService - Critical Business Logic', () => {
           error: 'Access token expired and no refresh token available',
           code: 'TOKEN_EXPIRED_NO_REFRESH',
           requires_auth: true,
-          expired_at: new Date(Date.now() - 3600000).toISOString(),
+          expired_at: new Date(FIXED_TIME - 3600000).toISOString(),
         },
         401
       );

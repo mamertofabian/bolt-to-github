@@ -5,6 +5,10 @@ import type { ProcessingStatus, ProjectSettings, PushRecord, UploadStatusState }
  * Provides realistic test data covering normal, edge, and error cases
  */
 
+// Fixed time for deterministic testing
+export const FIXED_TIME = new Date('2024-01-01T00:00:00.000Z').getTime();
+export const FIXED_UNIX_TIME = Math.floor(FIXED_TIME / 1000);
+
 // Test data for ZIP file contents
 export const ZIP_FILE_FIXTURES = {
   // Normal cases
@@ -173,7 +177,7 @@ export const GITHUB_API_RESPONSES = {
       core: {
         limit: 5000,
         remaining: 4999,
-        reset: Math.floor(Date.now() / 1000) + 3600,
+        reset: FIXED_UNIX_TIME + 3600, // 1 hour from FIXED_TIME
       },
     },
   },
@@ -183,7 +187,7 @@ export const GITHUB_API_RESPONSES = {
       core: {
         limit: 5000,
         remaining: 0,
-        reset: Math.floor(Date.now() / 1000) + 300, // Reset in 5 minutes
+        reset: FIXED_UNIX_TIME + 300, // 5 minutes from FIXED_TIME
       },
     },
   },
@@ -306,7 +310,7 @@ export const ERROR_SCENARIOS = {
 // Push statistics fixtures
 export const PUSH_STATISTICS_FIXTURES: PushRecord[] = [
   {
-    timestamp: Date.now() - 3600000, // 1 hour ago
+    timestamp: FIXED_TIME - 3600000, // 1 hour ago from FIXED_TIME
     success: true,
     projectId: 'project-123',
     repoOwner: 'test-owner',
@@ -316,7 +320,7 @@ export const PUSH_STATISTICS_FIXTURES: PushRecord[] = [
     commitMessage: 'Initial commit',
   },
   {
-    timestamp: Date.now() - 7200000, // 2 hours ago
+    timestamp: FIXED_TIME - 7200000, // 2 hours ago from FIXED_TIME
     success: false,
     projectId: 'project-456',
     repoOwner: 'test-owner',

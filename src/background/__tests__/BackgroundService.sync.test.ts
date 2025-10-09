@@ -1,7 +1,6 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import type { Mocked, MockedClass } from 'vitest';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { BoltProjectSyncService } from '../../services/BoltProjectSyncService';
+import type { SyncResponse } from '../../lib/types';
 import { BackgroundService } from '../BackgroundService';
 
 vi.mock('../../services/UnifiedGitHubService');
@@ -21,6 +20,7 @@ vi.mock('../../content/services/SupabaseAuthService', () => ({
       getAuthState: vi.fn().mockReturnValue({ isAuthenticated: true }),
       addAuthStateListener: vi.fn(),
       removeAuthStateListener: vi.fn(),
+      isPremium: vi.fn().mockReturnValue(false),
     })),
   },
 }));
@@ -45,276 +45,270 @@ vi.mock('../UsageTracker', () => ({
   UsageTracker: vi.fn(() => ({
     initializeUsageData: vi.fn().mockResolvedValue(undefined),
     updateUsageStats: vi.fn().mockResolvedValue(undefined),
+    trackError: vi.fn().mockResolvedValue(undefined),
+    setUninstallURL: vi.fn().mockResolvedValue(undefined),
   })),
 }));
-vi.mock('../../services/BoltProjectSyncService');
-
-const mockAlarms = {
-  create: vi.fn(),
-  clear: vi.fn(),
-  onAlarm: {
-    addListener: vi.fn(),
-    removeListener: vi.fn(),
+vi.mock('../WindowManager', () => ({
+  WindowManager: {
+    getInstance: vi.fn(() => ({
+      openPopupWindow: vi.fn(),
+      closePopupWindow: vi.fn(),
+    })),
   },
+}));
+
+const mockPerformOutwardSync = vi.fn();
+const mockPerformInwardSync = vi.fn();
+
+vi.mock('../../services/BoltProjectSyncService', () => ({
+  BoltProjectSyncService: vi.fn(() => ({
+    performOutwardSync: mockPerformOutwardSync,
+    performInwardSync: mockPerformInwardSync,
+  })),
+}));
+
+const createChromeAPIMock = () => {
+  const alarmListeners: ((alarm: chrome.alarms.Alarm) => void)[] = [];
+  const messageListeners: ((message: any, sender: any, sendResponse: any) => boolean | void)[] = [];
+
+  return {
+    alarms: {
+      create: vi.fn(),
+      clear: vi.fn(),
+      onAlarm: {
+        addListener: vi.fn((handler) => alarmListeners.push(handler)),
+        removeListener: vi.fn((handler) => {
+          const index = alarmListeners.indexOf(handler);
+          if (index !== -1) alarmListeners.splice(index, 1);
+        }),
+      },
+
+      _triggerAlarm: (alarm: chrome.alarms.Alarm) => {
+        alarmListeners.forEach((listener) => listener(alarm));
+      },
+    },
+    storage: {
+      local: {
+        get: vi.fn().mockResolvedValue({}),
+        set: vi.fn().mockResolvedValue(undefined),
+      },
+      sync: {
+        get: vi.fn().mockResolvedValue({}),
+        set: vi.fn().mockResolvedValue(undefined),
+      },
+      onChanged: {
+        addListener: vi.fn(),
+        removeListener: vi.fn(),
+      },
+    },
+    runtime: {
+      onInstalled: { addListener: vi.fn() },
+      onConnect: { addListener: vi.fn() },
+      onMessage: {
+        addListener: vi.fn((handler) => messageListeners.push(handler)),
+        removeListener: vi.fn(),
+      },
+      onStartup: { addListener: vi.fn() },
+      lastError: null,
+      getManifest: vi.fn(() => ({ version: '1.0.0' })),
+      sendMessage: vi.fn(),
+    },
+    tabs: {
+      get: vi.fn(),
+      onUpdated: { addListener: vi.fn() },
+      onRemoved: { addListener: vi.fn() },
+      onActivated: { addListener: vi.fn() },
+      query: vi.fn().mockResolvedValue([]),
+      create: vi.fn(),
+      sendMessage: vi.fn(),
+    },
+    action: {
+      openPopup: vi.fn(),
+    },
+
+    _sendMessage: (message: any, sender: any = {}) => {
+      const sendResponse = vi.fn();
+      messageListeners.forEach((listener) => listener(message, sender, sendResponse));
+      return sendResponse;
+    },
+  };
 };
-
-const mockStorage = {
-  local: {
-    get: vi.fn(),
-    set: vi.fn(),
-  },
-  sync: {
-    get: vi.fn(),
-    set: vi.fn(),
-  },
-  onChanged: {
-    addListener: vi.fn(),
-    removeListener: vi.fn(),
-  },
-};
-
-const mockRuntime = {
-  onInstalled: {
-    addListener: vi.fn(),
-  },
-  onConnect: {
-    addListener: vi.fn(),
-  },
-  onMessage: {
-    addListener: vi.fn(),
-  },
-  onStartup: {
-    addListener: vi.fn(),
-  },
-  lastError: null,
-};
-
-const mockTabs = {
-  get: vi.fn(),
-  onUpdated: {
-    addListener: vi.fn(),
-  },
-  onRemoved: {
-    addListener: vi.fn(),
-  },
-  onActivated: {
-    addListener: vi.fn(),
-  },
-};
-
-global.chrome = {
-  alarms: mockAlarms,
-  storage: mockStorage,
-  runtime: mockRuntime,
-  tabs: mockTabs,
-} as any;
 
 describe('BackgroundService - Sync Functionality', () => {
+  let chromeMock: ReturnType<typeof createChromeAPIMock>;
   let service: BackgroundService;
-  let mockSyncService: Mocked<BoltProjectSyncService>;
 
   beforeEach(() => {
     vi.clearAllMocks();
     vi.useFakeTimers();
 
-    mockStorage.sync.get.mockResolvedValue({});
-    mockStorage.local.get.mockResolvedValue({});
+    mockPerformOutwardSync.mockResolvedValue(null);
+    mockPerformInwardSync.mockResolvedValue(null);
 
-    mockSyncService = {
-      performOutwardSync: vi.fn().mockResolvedValue(null),
-      performInwardSync: vi.fn().mockResolvedValue(null),
-    } as any;
-    (BoltProjectSyncService as MockedClass<typeof BoltProjectSyncService>).mockImplementation(
-      () => mockSyncService
-    );
+    chromeMock = createChromeAPIMock();
+    global.chrome = chromeMock as any;
 
     service = new BackgroundService();
   });
 
   afterEach(() => {
+    service.destroy();
     vi.useRealTimers();
   });
 
-  describe('Sync Alarm Setup', () => {
-    it('should create sync alarm on initialization', async () => {
-      await vi.runOnlyPendingTimersAsync();
+  describe('Periodic Sync Behavior', () => {
+    it('should perform both outward and inward sync when periodic alarm fires', async () => {
+      await vi.advanceTimersByTimeAsync(5000);
 
-      expect(mockAlarms.create).toHaveBeenCalledWith('bolt-project-sync', { periodInMinutes: 5 });
+      mockPerformOutwardSync.mockClear();
+      mockPerformInwardSync.mockClear();
+
+      chromeMock.alarms._triggerAlarm({ name: 'bolt-project-sync' } as chrome.alarms.Alarm);
+
+      await vi.advanceTimersByTimeAsync(1000);
+
+      expect(mockPerformOutwardSync).toHaveBeenCalledTimes(1);
+      expect(mockPerformInwardSync).toHaveBeenCalledTimes(1);
     });
 
-    it('should add alarm listener on initialization', async () => {
-      await vi.runOnlyPendingTimersAsync();
+    it('should continue with inward sync even if outward sync fails', async () => {
+      await vi.advanceTimersByTimeAsync(5000);
 
-      expect(mockAlarms.onAlarm.addListener).toHaveBeenCalled();
+      mockPerformOutwardSync.mockClear();
+      mockPerformInwardSync.mockClear();
+
+      mockPerformOutwardSync.mockRejectedValue(new Error('Network error'));
+
+      chromeMock.alarms._triggerAlarm({ name: 'bolt-project-sync' } as chrome.alarms.Alarm);
+
+      await vi.advanceTimersByTimeAsync(1000);
+
+      expect(mockPerformOutwardSync).toHaveBeenCalled();
+      expect(mockPerformInwardSync).toHaveBeenCalled();
     });
 
-    it('should not create alarm if already exists', async () => {
-      mockAlarms.create.mockImplementation((name, config, callback) => {
-        chrome.runtime.lastError = { message: 'Alarm already exists' };
-        callback?.();
-      });
+    it('should not trigger sync for unrelated alarms', async () => {
+      await vi.advanceTimersByTimeAsync(5000);
 
-      service = new BackgroundService();
-      await vi.runOnlyPendingTimersAsync();
+      mockPerformOutwardSync.mockClear();
+      mockPerformInwardSync.mockClear();
 
-      expect(mockAlarms.create).toHaveBeenCalled();
+      chromeMock.alarms._triggerAlarm({ name: 'keepAlive' } as chrome.alarms.Alarm);
 
-      expect(mockAlarms.onAlarm.addListener).toHaveBeenCalled();
-    });
-  });
+      await vi.advanceTimersByTimeAsync(1000);
 
-  describe('Sync Alarm Handler', () => {
-    let alarmHandler: (alarm: chrome.alarms.Alarm) => void;
-
-    beforeEach(async () => {
-      mockAlarms.onAlarm.addListener.mockImplementation((handler) => {
-        alarmHandler = handler;
-      });
-
-      service = new BackgroundService();
-      await vi.runOnlyPendingTimersAsync();
-    });
-
-    it('should perform outward sync when alarm fires', async () => {
-      const mockAlarm = { name: 'bolt-project-sync' } as chrome.alarms.Alarm;
-
-      await alarmHandler(mockAlarm);
-
-      expect(mockSyncService.performOutwardSync).toHaveBeenCalled();
-    });
-
-    it('should perform inward sync when alarm fires', async () => {
-      const mockAlarm = { name: 'bolt-project-sync' } as chrome.alarms.Alarm;
-
-      await alarmHandler(mockAlarm);
-
-      expect(mockSyncService.performInwardSync).toHaveBeenCalled();
-    });
-
-    it('should ignore non-sync alarms', async () => {
-      const mockAlarm = { name: 'other-alarm' } as chrome.alarms.Alarm;
-
-      mockSyncService.performOutwardSync.mockClear();
-      mockSyncService.performInwardSync.mockClear();
-
-      await alarmHandler(mockAlarm);
-
-      expect(mockSyncService.performOutwardSync).not.toHaveBeenCalled();
-      expect(mockSyncService.performInwardSync).not.toHaveBeenCalled();
-    });
-
-    it('should handle sync errors gracefully', async () => {
-      const mockAlarm = { name: 'bolt-project-sync' } as chrome.alarms.Alarm;
-      const error = new Error('Sync failed');
-
-      mockSyncService.performOutwardSync.mockRejectedValue(error);
-
-      await alarmHandler(mockAlarm);
-
-      expect(mockSyncService.performOutwardSync).toHaveBeenCalled();
+      expect(mockPerformOutwardSync).not.toHaveBeenCalled();
+      expect(mockPerformInwardSync).not.toHaveBeenCalled();
     });
   });
 
   describe('Manual Sync Trigger', () => {
-    let messageHandler: (
-      message: any,
-      sender: any,
-      sendResponse: (response?: any) => void
-    ) => boolean | void;
+    it('should perform outward sync when manual sync is requested', async () => {
+      await vi.advanceTimersByTimeAsync(5000);
 
-    beforeEach(async () => {
-      mockRuntime.onMessage.addListener.mockClear();
+      mockPerformOutwardSync.mockClear();
+      mockPerformInwardSync.mockClear();
 
-      mockRuntime.onMessage.addListener.mockImplementation((handler) => {
-        messageHandler = handler;
-      });
-
-      service = new BackgroundService();
-      await vi.runOnlyPendingTimersAsync();
-
-      expect(mockRuntime.onMessage.addListener).toHaveBeenCalled();
-      expect(messageHandler).toBeDefined();
-    });
-
-    it('should handle SYNC_BOLT_PROJECTS message', async () => {
-      const sendResponse = vi.fn();
-      const message = { type: 'SYNC_BOLT_PROJECTS' };
-      const sender = {};
-
-      messageHandler(message, sender, sendResponse);
-
-      await vi.runOnlyPendingTimersAsync();
-
-      expect(mockSyncService.performOutwardSync).toHaveBeenCalled();
-
-      expect(sendResponse).toHaveBeenCalledWith({
+      const mockSyncResult: SyncResponse = {
         success: true,
-        message: 'Sync completed',
-        result: {
-          syncPerformed: false,
-        },
-      });
+        updatedProjects: [],
+        conflicts: [],
+        deletedProjects: [],
+      };
+      mockPerformOutwardSync.mockResolvedValue(mockSyncResult);
+
+      const sendResponse = chromeMock._sendMessage({ type: 'SYNC_BOLT_PROJECTS' });
+
+      await vi.advanceTimersByTimeAsync(1000);
+
+      expect(mockPerformOutwardSync).toHaveBeenCalled();
+
+      expect(sendResponse).toHaveBeenCalledWith(
+        expect.objectContaining({
+          success: true,
+          message: 'Sync completed',
+          result: expect.objectContaining({
+            syncPerformed: true,
+          }),
+        })
+      );
     });
 
-    it('should handle sync errors in manual trigger', async () => {
-      const sendResponse = vi.fn();
-      const message = { type: 'SYNC_BOLT_PROJECTS' };
-      const error = new Error('Sync failed');
+    it('should report sync failure when manual sync fails', async () => {
+      await vi.advanceTimersByTimeAsync(5000);
 
-      mockSyncService.performOutwardSync.mockRejectedValue(error);
+      mockPerformOutwardSync.mockRejectedValue(new Error('Sync failed'));
 
-      messageHandler(message, {}, sendResponse);
+      const sendResponse = chromeMock._sendMessage({ type: 'SYNC_BOLT_PROJECTS' });
 
-      await vi.runOnlyPendingTimersAsync();
+      await vi.advanceTimersByTimeAsync(1000);
 
-      expect(sendResponse).toHaveBeenCalledWith({
-        success: false,
-        error: 'Sync failed',
-      });
-    });
-  });
-
-  describe('Sync Service Initialization', () => {
-    it('should initialize sync service on startup', async () => {
-      service = new BackgroundService();
-      await vi.runOnlyPendingTimersAsync();
-
-      expect(BoltProjectSyncService).toHaveBeenCalled();
-    });
-
-    it('should perform initial inward sync on startup', async () => {
-      service = new BackgroundService();
-
-      await vi.runOnlyPendingTimersAsync();
-
-      vi.advanceTimersByTime(1);
-
-      expect(mockSyncService.performInwardSync).toHaveBeenCalled();
+      expect(sendResponse).toHaveBeenCalledWith(
+        expect.objectContaining({
+          success: false,
+          error: 'Sync failed',
+        })
+      );
     });
   });
 
-  describe('Cleanup', () => {
-    it('should clear sync alarm on service cleanup', async () => {
-      service = new BackgroundService();
-      await vi.runOnlyPendingTimersAsync();
+  describe('Initial Sync on Startup', () => {
+    it('should perform inward sync shortly after initialization', async () => {
+      await vi.advanceTimersByTimeAsync(5000);
 
-      service.destroy();
-
-      expect(mockAlarms.clear).toHaveBeenCalledWith('bolt-project-sync');
+      expect(mockPerformInwardSync).toHaveBeenCalled();
     });
 
-    it('should remove alarm listener on cleanup', async () => {
-      let alarmHandler: any;
-      mockAlarms.onAlarm.addListener.mockImplementation((handler) => {
-        alarmHandler = handler;
-      });
+    it('should skip concurrent sync operations', async () => {
+      await vi.advanceTimersByTimeAsync(5000);
 
-      service = new BackgroundService();
-      await vi.runOnlyPendingTimersAsync();
+      mockPerformInwardSync.mockClear();
+
+      let resolveSync: () => void;
+      const slowSync = new Promise<null>((resolve) => {
+        resolveSync = () => resolve(null);
+      });
+      mockPerformInwardSync.mockReturnValue(slowSync);
+
+      chromeMock.alarms._triggerAlarm({ name: 'bolt-project-sync' } as chrome.alarms.Alarm);
+
+      await vi.advanceTimersByTimeAsync(100);
+
+      chromeMock.alarms._triggerAlarm({ name: 'bolt-project-sync' } as chrome.alarms.Alarm);
+
+      await vi.advanceTimersByTimeAsync(100);
+
+      expect(mockPerformInwardSync).toHaveBeenCalledTimes(1);
+
+      resolveSync!();
+      await vi.advanceTimersByTimeAsync(100);
+    });
+  });
+
+  describe('Cleanup Behavior', () => {
+    it('should stop sync operations when service is destroyed', async () => {
+      await vi.advanceTimersByTimeAsync(5000);
 
       service.destroy();
 
-      expect(mockAlarms.onAlarm.removeListener).toHaveBeenCalledWith(alarmHandler);
+      mockPerformOutwardSync.mockClear();
+      mockPerformInwardSync.mockClear();
+
+      chromeMock.alarms._triggerAlarm({ name: 'bolt-project-sync' } as chrome.alarms.Alarm);
+
+      await vi.advanceTimersByTimeAsync(1000);
+
+      expect(mockPerformOutwardSync).not.toHaveBeenCalled();
+      expect(mockPerformInwardSync).not.toHaveBeenCalled();
+    });
+
+    it('should clear sync alarm when destroyed', async () => {
+      await vi.advanceTimersByTimeAsync(5000);
+
+      service.destroy();
+
+      expect(chromeMock.alarms.clear).toHaveBeenCalledWith('bolt-project-sync');
     });
   });
 });

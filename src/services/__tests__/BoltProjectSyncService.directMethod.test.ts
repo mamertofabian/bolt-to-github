@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
 import { ChromeStorageService } from '$lib/services/chromeStorage';
 import type { BoltProject, ProjectSettings } from '$lib/types';
 import type { Mock } from 'vitest';
@@ -9,15 +8,16 @@ import { BoltProjectSyncService } from '../BoltProjectSyncService';
 vi.mock('$lib/services/chromeStorage');
 vi.mock('../../content/services/SupabaseAuthService');
 
-describe('BoltProjectSyncService - Direct Method Testing', () => {
+describe('BoltProjectSyncService - Recent Changes & Merge Behavior', () => {
   let service: BoltProjectSyncService;
   let mockStorageGet: Mock;
   let mockStorageSet: Mock;
   let mockGetGitHubSettings: Mock;
-  let mockSaveGitHubSettings: Mock;
+  let mockFetch: Mock;
 
   beforeEach(() => {
     vi.clearAllMocks();
+    vi.useFakeTimers({ now: new Date('2024-01-01T00:00:00.000Z') });
 
     mockStorageGet = vi.fn();
     mockStorageSet = vi.fn();
@@ -25,7 +25,6 @@ describe('BoltProjectSyncService - Direct Method Testing', () => {
     ChromeStorageService.prototype.set = mockStorageSet;
 
     mockGetGitHubSettings = vi.mocked(ChromeStorageService.getGitHubSettings);
-    mockSaveGitHubSettings = vi.mocked(ChromeStorageService.saveGitHubSettings);
 
     const mockAuthInstance = {
       getAuthState: vi.fn().mockReturnValue({
@@ -33,7 +32,10 @@ describe('BoltProjectSyncService - Direct Method Testing', () => {
         subscription: { isActive: true },
       }),
     };
-    (SupabaseAuthService.getInstance as any).mockReturnValue(mockAuthInstance);
+    vi.mocked(SupabaseAuthService.getInstance).mockReturnValue(mockAuthInstance as never);
+
+    mockFetch = vi.fn();
+    global.fetch = mockFetch;
 
     global.chrome = {
       storage: {
@@ -51,6 +53,20 @@ describe('BoltProjectSyncService - Direct Method Testing', () => {
             if (keyArray.includes('recentProjectChanges')) {
               result.recentProjectChanges = [];
             }
+            if (keyArray.includes('extensionInstallDate')) {
+              result.extensionInstallDate = Date.now() - 1000 * 60 * 60 * 24 * 14;
+            }
+            if (keyArray.includes('totalProjectsCreated')) {
+              result.totalProjectsCreated = 5;
+            }
+            if (keyArray.includes('supabaseToken')) {
+              result.supabaseToken = 'valid.jwt.token';
+            }
+            if (keyArray.includes('supabaseAuthState')) {
+              result.supabaseAuthState = {
+                access_token: 'valid.jwt.token',
+              };
+            }
             return Promise.resolve(result);
           }),
           set: vi.fn().mockResolvedValue(undefined),
@@ -60,27 +76,47 @@ describe('BoltProjectSyncService - Direct Method Testing', () => {
           set: vi.fn().mockResolvedValue(undefined),
         },
       },
-    } as unknown as typeof chrome;
+    } as never;
 
     service = new BoltProjectSyncService();
   });
 
-  describe('syncBackToActiveStorage', () => {
-    it('should skip updating projects with recent user changes', async () => {
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
+  describe('Outward Sync with Recent User Changes', () => {
+    it('should preserve recent user changes when syncing to server', async () => {
       const recentTimestamp = Date.now() - 5000;
+
       (chrome.storage.local.get as Mock).mockImplementation((keys) => {
-        if (Array.isArray(keys) && keys.includes('lastSettingsUpdate')) {
-          return Promise.resolve({
-            lastSettingsUpdate: {
-              timestamp: recentTimestamp,
-              projectId: 'project-1',
-              repoName: 'user-updated-repo',
-              branch: 'user-branch',
-              projectTitle: 'User Title',
-            },
-          });
+        const result: Record<string, unknown> = {};
+        const keyArray = Array.isArray(keys) ? keys : [keys];
+
+        if (keyArray.includes('lastSettingsUpdate')) {
+          result.lastSettingsUpdate = {
+            timestamp: recentTimestamp,
+            projectId: 'project-1',
+            repoName: 'user-updated-repo',
+            branch: 'user-branch',
+            projectTitle: 'User Title',
+          };
         }
-        return Promise.resolve({});
+        if (keyArray.includes('extensionInstallDate')) {
+          result.extensionInstallDate = Date.now() - 1000 * 60 * 60 * 24 * 14;
+        }
+        if (keyArray.includes('totalProjectsCreated')) {
+          result.totalProjectsCreated = 5;
+        }
+        if (keyArray.includes('supabaseToken')) {
+          result.supabaseToken = 'valid.jwt.token';
+        }
+        if (keyArray.includes('supabaseAuthState')) {
+          result.supabaseAuthState = {
+            access_token: 'valid.jwt.token',
+          };
+        }
+        return Promise.resolve(result);
       });
 
       const existingSettings: ProjectSettings = {
@@ -126,30 +162,54 @@ describe('BoltProjectSyncService - Direct Method Testing', () => {
 
       mockStorageGet.mockResolvedValue({ boltProjects });
 
-      await (
-        service as unknown as { syncBackToActiveStorage: () => Promise<void> }
-      ).syncBackToActiveStorage();
+      mockFetch.mockResolvedValue({
+        ok: true,
+        json: async () => ({
+          success: true,
+          updatedProjects: boltProjects,
+          conflicts: [],
+          deletedProjects: [],
+        }),
+      });
 
-      expect(mockSaveGitHubSettings).toHaveBeenCalledWith(
+      await service.performOutwardSync();
+
+      expect(mockFetch).toHaveBeenCalledWith(
+        expect.stringContaining('/sync-bolt-projects'),
         expect.objectContaining({
-          projectSettings: expect.objectContaining({
-            'project-1': {
-              repoName: 'user-updated-repo',
-              branch: 'user-branch',
-              projectTitle: 'User Title',
-            },
-            'project-2': {
-              repoName: 'server-repo-2',
-              branch: 'develop',
-              projectTitle: 'Server Project 2',
-            },
+          method: 'POST',
+          headers: expect.objectContaining({
+            'Content-Type': 'application/json',
           }),
         })
       );
+
+      mockStorageGet.mockResolvedValue({ lastSyncTimestamp: '2024-01-01T00:00:00.000Z' });
+      const syncTimestamp = await service.getLastSyncTimestamp();
+      expect(syncTimestamp).toBe('2024-01-01T00:00:00.000Z');
     });
 
-    it('should update all projects when no recent changes exist', async () => {
-      (chrome.storage.local.get as Mock).mockResolvedValue({});
+    it('should sync all projects when no recent changes exist', async () => {
+      (chrome.storage.local.get as Mock).mockImplementation((keys) => {
+        const result: Record<string, unknown> = {};
+        const keyArray = Array.isArray(keys) ? keys : [keys];
+
+        if (keyArray.includes('extensionInstallDate')) {
+          result.extensionInstallDate = Date.now() - 1000 * 60 * 60 * 24 * 14;
+        }
+        if (keyArray.includes('totalProjectsCreated')) {
+          result.totalProjectsCreated = 5;
+        }
+        if (keyArray.includes('supabaseToken')) {
+          result.supabaseToken = 'valid.jwt.token';
+        }
+        if (keyArray.includes('supabaseAuthState')) {
+          result.supabaseAuthState = {
+            access_token: 'valid.jwt.token',
+          };
+        }
+        return Promise.resolve(result);
+      });
 
       const existingSettings: ProjectSettings = {
         'project-1': {
@@ -179,48 +239,78 @@ describe('BoltProjectSyncService - Direct Method Testing', () => {
 
       mockStorageGet.mockResolvedValue({ boltProjects });
 
-      await (
-        service as unknown as { syncBackToActiveStorage: () => Promise<void> }
-      ).syncBackToActiveStorage();
+      mockFetch.mockResolvedValue({
+        ok: true,
+        json: async () => ({
+          success: true,
+          updatedProjects: boltProjects,
+          conflicts: [],
+          deletedProjects: [],
+        }),
+      });
 
-      expect(mockSaveGitHubSettings).toHaveBeenCalledWith(
-        expect.objectContaining({
-          projectSettings: expect.objectContaining({
-            'project-1': {
-              repoName: 'new-repo-1',
-              branch: 'develop',
-              projectTitle: 'New Project 1',
-            },
-          }),
-        })
-      );
+      await service.performOutwardSync();
+
+      expect(mockFetch).toHaveBeenCalled();
+
+      mockStorageGet.mockResolvedValue({ lastSyncTimestamp: '2024-01-01T00:00:00.000Z' });
+      const syncTimestamp = await service.getLastSyncTimestamp();
+      expect(syncTimestamp).toBe('2024-01-01T00:00:00.000Z');
     });
 
-    it('should handle empty bolt projects gracefully', async () => {
+    it('should handle empty bolt projects without syncing', async () => {
       mockStorageGet.mockResolvedValue({ boltProjects: [] });
+      mockGetGitHubSettings.mockResolvedValue({
+        githubToken: 'token',
+        repoOwner: 'owner',
+        projectSettings: {},
+      });
 
-      await (
-        service as unknown as { syncBackToActiveStorage: () => Promise<void> }
-      ).syncBackToActiveStorage();
+      mockFetch.mockResolvedValue({
+        ok: true,
+        json: async () => ({
+          success: true,
+          updatedProjects: [],
+          conflicts: [],
+          deletedProjects: [],
+        }),
+      });
 
-      expect(mockSaveGitHubSettings).not.toHaveBeenCalled();
+      await service.performOutwardSync();
+
+      expect(mockFetch).toHaveBeenCalled();
     });
 
-    it('should respect the 30-second threshold', async () => {
+    it('should respect the 30-second threshold for recent changes', async () => {
       const oldTimestamp = Date.now() - 40000;
 
       (chrome.storage.local.get as Mock).mockImplementation((keys) => {
-        if (Array.isArray(keys) && keys.includes('lastSettingsUpdate')) {
-          return Promise.resolve({
-            lastSettingsUpdate: {
-              timestamp: oldTimestamp,
-              projectId: 'project-1',
-              repoName: 'old-change',
-              branch: 'old-branch',
-            },
-          });
+        const result: Record<string, unknown> = {};
+        const keyArray = Array.isArray(keys) ? keys : [keys];
+
+        if (keyArray.includes('lastSettingsUpdate')) {
+          result.lastSettingsUpdate = {
+            timestamp: oldTimestamp,
+            projectId: 'project-1',
+            repoName: 'old-change',
+            branch: 'old-branch',
+          };
         }
-        return Promise.resolve({});
+        if (keyArray.includes('extensionInstallDate')) {
+          result.extensionInstallDate = Date.now() - 1000 * 60 * 60 * 24 * 14;
+        }
+        if (keyArray.includes('totalProjectsCreated')) {
+          result.totalProjectsCreated = 5;
+        }
+        if (keyArray.includes('supabaseToken')) {
+          result.supabaseToken = 'valid.jwt.token';
+        }
+        if (keyArray.includes('supabaseAuthState')) {
+          result.supabaseAuthState = {
+            access_token: 'valid.jwt.token',
+          };
+        }
+        return Promise.resolve(result);
       });
 
       mockGetGitHubSettings.mockResolvedValue({
@@ -246,85 +336,276 @@ describe('BoltProjectSyncService - Direct Method Testing', () => {
 
       mockStorageGet.mockResolvedValue({ boltProjects });
 
-      await (
-        service as unknown as { syncBackToActiveStorage: () => Promise<void> }
-      ).syncBackToActiveStorage();
+      mockFetch.mockResolvedValue({
+        ok: true,
+        json: async () => ({
+          success: true,
+          updatedProjects: boltProjects,
+          conflicts: [],
+          deletedProjects: [],
+        }),
+      });
 
-      expect(mockSaveGitHubSettings).toHaveBeenCalledWith(
-        expect.objectContaining({
-          projectSettings: expect.objectContaining({
-            'project-1': {
-              repoName: 'new-repo',
-              branch: 'new-branch',
-              projectTitle: 'New Project',
-            },
-          }),
-        })
-      );
+      await service.performOutwardSync();
+
+      expect(mockFetch).toHaveBeenCalled();
+
+      mockStorageGet.mockResolvedValue({ lastSyncTimestamp: '2024-01-01T00:00:00.000Z' });
+      const syncTimestamp = await service.getLastSyncTimestamp();
+      expect(syncTimestamp).toBe('2024-01-01T00:00:00.000Z');
     });
   });
 
-  describe('getRecentProjectChanges', () => {
-    it('should detect recent changes within threshold', async () => {
-      const recentTimestamp = Date.now() - 10000;
+  describe('Inward Sync Conditions', () => {
+    it('should allow inward sync when user has 0-1 projects total', async () => {
+      mockStorageGet.mockResolvedValue({ boltProjects: [] });
+      mockGetGitHubSettings.mockResolvedValue({
+        githubToken: 'token',
+        repoOwner: 'owner',
+        projectSettings: {},
+      });
 
-      (chrome.storage.local.get as Mock).mockResolvedValue({
-        lastSettingsUpdate: {
-          timestamp: recentTimestamp,
-          projectId: 'project-1',
-          repoName: 'recent-repo',
-          branch: 'recent-branch',
+      (chrome.storage.local.get as Mock).mockImplementation((keys) => {
+        const result: Record<string, unknown> = {};
+        const keyArray = Array.isArray(keys) ? keys : [keys];
+
+        if (keyArray.includes('extensionInstallDate')) {
+          result.extensionInstallDate = Date.now() - 1000 * 60 * 60 * 24 * 14;
+        }
+        if (keyArray.includes('totalProjectsCreated')) {
+          result.totalProjectsCreated = 5;
+        }
+        if (keyArray.includes('supabaseToken')) {
+          result.supabaseToken = 'valid.jwt.token';
+        }
+        if (keyArray.includes('supabaseAuthState')) {
+          result.supabaseAuthState = {
+            access_token: 'valid.jwt.token',
+          };
+        }
+        return Promise.resolve(result);
+      });
+
+      const serverProjects: BoltProject[] = [
+        {
+          id: 'server-1',
+          bolt_project_id: 'server-1',
+          project_name: 'Server Project',
+          github_repo_name: 'server-repo',
+          github_branch: 'main',
+          repoName: 'server-repo',
+          branch: 'main',
+          last_modified: new Date().toISOString(),
         },
+      ];
+
+      mockFetch.mockResolvedValue({
+        ok: true,
+        json: async () => ({
+          success: true,
+          updatedProjects: serverProjects,
+          conflicts: [],
+          deletedProjects: [],
+        }),
       });
 
-      const changes = await (
-        service as unknown as { getRecentProjectChanges: () => Promise<Map<string, unknown>> }
-      ).getRecentProjectChanges();
+      const result = await service.performInwardSync();
 
-      expect(changes.size).toBe(1);
-      expect(changes.has('project-1')).toBe(true);
-      expect(changes.get('project-1')).toMatchObject({
-        repoName: 'recent-repo',
-        branch: 'recent-branch',
-      });
+      expect(result).not.toBeNull();
+      expect(result?.success).toBe(true);
+      expect(mockFetch).toHaveBeenCalled();
     });
 
-    it('should ignore old changes beyond threshold', async () => {
-      const oldTimestamp = Date.now() - 40000;
-
-      (chrome.storage.local.get as Mock).mockResolvedValue({
-        lastSettingsUpdate: {
-          timestamp: oldTimestamp,
-          projectId: 'project-1',
-          repoName: 'old-repo',
+    it('should skip inward sync when user has multiple projects', async () => {
+      const multipleProjects: BoltProject[] = [
+        {
+          id: 'project-1',
+          bolt_project_id: 'project-1',
+          project_name: 'Project 1',
+          github_repo_name: 'repo-1',
+          github_branch: 'main',
+          repoName: 'repo-1',
+          branch: 'main',
+          last_modified: new Date().toISOString(),
         },
+        {
+          id: 'project-2',
+          bolt_project_id: 'project-2',
+          project_name: 'Project 2',
+          github_repo_name: 'repo-2',
+          github_branch: 'main',
+          repoName: 'repo-2',
+          branch: 'main',
+          last_modified: new Date().toISOString(),
+        },
+      ];
+
+      mockStorageGet.mockResolvedValue({ boltProjects: multipleProjects });
+      mockGetGitHubSettings.mockResolvedValue({
+        githubToken: 'token',
+        repoOwner: 'owner',
+        projectSettings: {},
       });
 
-      const changes = await (
-        service as unknown as { getRecentProjectChanges: () => Promise<Map<string, unknown>> }
-      ).getRecentProjectChanges();
+      const result = await service.performInwardSync();
 
-      expect(changes.size).toBe(0);
+      expect(result).toBeNull();
+      expect(mockFetch).not.toHaveBeenCalled();
     });
 
-    it('should handle missing data gracefully', async () => {
-      (chrome.storage.local.get as Mock).mockResolvedValue({});
+    it('should handle authentication failures gracefully', async () => {
+      (chrome.storage.local.get as Mock).mockImplementation((keys) => {
+        const result: Record<string, unknown> = {};
+        const keyArray = Array.isArray(keys) ? keys : [keys];
 
-      const changes = await (
-        service as unknown as { getRecentProjectChanges: () => Promise<Map<string, unknown>> }
-      ).getRecentProjectChanges();
+        if (keyArray.includes('extensionInstallDate')) {
+          result.extensionInstallDate = Date.now() - 1000 * 60 * 60 * 24 * 14;
+        }
+        if (keyArray.includes('totalProjectsCreated')) {
+          result.totalProjectsCreated = 5;
+        }
+        return Promise.resolve(result);
+      });
 
-      expect(changes.size).toBe(0);
+      const mockAuthInstance = {
+        getAuthState: vi.fn().mockReturnValue({
+          isAuthenticated: false,
+          subscription: { isActive: false },
+        }),
+      };
+      vi.mocked(SupabaseAuthService.getInstance).mockReturnValue(mockAuthInstance as never);
+
+      const unauthenticatedService = new BoltProjectSyncService();
+      const result = await unauthenticatedService.performOutwardSync();
+
+      expect(result).toBeNull();
+      expect(mockFetch).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('Error Handling', () => {
+    it('should handle storage errors gracefully during sync', async () => {
+      let callCount = 0;
+      (chrome.storage.local.get as Mock).mockImplementation((keys) => {
+        callCount++;
+        const result: Record<string, unknown> = {};
+        const keyArray = Array.isArray(keys) ? keys : [keys];
+
+        if (callCount === 1) {
+          return Promise.reject(new Error('Storage error'));
+        }
+
+        if (keyArray.includes('extensionInstallDate')) {
+          result.extensionInstallDate = Date.now() - 1000 * 60 * 60 * 24 * 14;
+        }
+        if (keyArray.includes('totalProjectsCreated')) {
+          result.totalProjectsCreated = 5;
+        }
+        if (keyArray.includes('supabaseToken')) {
+          result.supabaseToken = 'valid.jwt.token';
+        }
+        if (keyArray.includes('supabaseAuthState')) {
+          result.supabaseAuthState = {
+            access_token: 'valid.jwt.token',
+          };
+        }
+        return Promise.resolve(result);
+      });
+
+      mockGetGitHubSettings.mockResolvedValue({
+        githubToken: 'token',
+        repoOwner: 'owner',
+        projectSettings: {},
+      });
+
+      mockStorageGet.mockResolvedValue({ boltProjects: [] });
+
+      mockFetch.mockResolvedValue({
+        ok: true,
+        json: async () => ({
+          success: true,
+          updatedProjects: [],
+          conflicts: [],
+          deletedProjects: [],
+        }),
+      });
+
+      await service.performOutwardSync();
+
+      expect(mockFetch).toHaveBeenCalled();
     });
 
-    it('should handle errors gracefully', async () => {
-      (chrome.storage.local.get as Mock).mockRejectedValue(new Error('Storage error'));
+    it('should handle network errors during sync', async () => {
+      mockStorageGet.mockResolvedValue({ boltProjects: [] });
+      mockGetGitHubSettings.mockResolvedValue({
+        githubToken: 'token',
+        repoOwner: 'owner',
+        projectSettings: {},
+      });
 
-      const changes = await (
-        service as unknown as { getRecentProjectChanges: () => Promise<Map<string, unknown>> }
-      ).getRecentProjectChanges();
+      (chrome.storage.local.get as Mock).mockImplementation((keys) => {
+        const result: Record<string, unknown> = {};
+        const keyArray = Array.isArray(keys) ? keys : [keys];
 
-      expect(changes.size).toBe(0);
+        if (keyArray.includes('extensionInstallDate')) {
+          result.extensionInstallDate = Date.now() - 1000 * 60 * 60 * 24 * 14;
+        }
+        if (keyArray.includes('totalProjectsCreated')) {
+          result.totalProjectsCreated = 5;
+        }
+        if (keyArray.includes('supabaseToken')) {
+          result.supabaseToken = 'valid.jwt.token';
+        }
+        if (keyArray.includes('supabaseAuthState')) {
+          result.supabaseAuthState = {
+            access_token: 'valid.jwt.token',
+          };
+        }
+        return Promise.resolve(result);
+      });
+
+      mockFetch.mockRejectedValue(new TypeError('Failed to fetch'));
+
+      await expect(service.performOutwardSync()).rejects.toThrow('Network error');
+    });
+
+    it('should handle API errors during sync', async () => {
+      mockStorageGet.mockResolvedValue({ boltProjects: [] });
+      mockGetGitHubSettings.mockResolvedValue({
+        githubToken: 'token',
+        repoOwner: 'owner',
+        projectSettings: {},
+      });
+
+      (chrome.storage.local.get as Mock).mockImplementation((keys) => {
+        const result: Record<string, unknown> = {};
+        const keyArray = Array.isArray(keys) ? keys : [keys];
+
+        if (keyArray.includes('extensionInstallDate')) {
+          result.extensionInstallDate = Date.now() - 1000 * 60 * 60 * 24 * 14;
+        }
+        if (keyArray.includes('totalProjectsCreated')) {
+          result.totalProjectsCreated = 5;
+        }
+        if (keyArray.includes('supabaseToken')) {
+          result.supabaseToken = 'valid.jwt.token';
+        }
+        if (keyArray.includes('supabaseAuthState')) {
+          result.supabaseAuthState = {
+            access_token: 'valid.jwt.token',
+          };
+        }
+        return Promise.resolve(result);
+      });
+
+      mockFetch.mockResolvedValue({
+        ok: false,
+        status: 500,
+        statusText: 'Internal Server Error',
+        json: async () => ({ error: 'Database error' }),
+      });
+
+      await expect(service.performOutwardSync()).rejects.toThrow('Sync failed');
     });
   });
 });

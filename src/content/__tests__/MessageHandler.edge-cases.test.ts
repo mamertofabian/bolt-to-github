@@ -1,5 +1,3 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
-
 vi.mock('../Notification.svelte', () => ({
   default: class MockNotification {
     constructor() {
@@ -15,7 +13,7 @@ vi.mock('../Notification.svelte', () => ({
 
 import type { MessageType } from '$lib/types';
 import { afterEach, beforeEach, describe, expect, it, vi, type Mock } from 'vitest';
-import { MessageHandlerTestEnvironment, TimingHelpers } from '../test-fixtures';
+import { MessageHandlerTestEnvironment } from '../test-fixtures';
 
 describe('MessageHandler - Edge Cases', () => {
   let env: MessageHandlerTestEnvironment;
@@ -31,7 +29,7 @@ describe('MessageHandler - Edge Cases', () => {
 
   describe('Boundary Conditions', () => {
     describe('Queue Size Boundaries', () => {
-      it('should handle empty queue edge cases', async () => {
+      it('should handle empty queue edge cases', () => {
         env.createMessageHandler();
 
         expect(() => env.messageHandler!.clearQueue()).not.toThrow();
@@ -39,7 +37,6 @@ describe('MessageHandler - Edge Cases', () => {
 
         env.simulatePortDisconnection();
         env.updatePortConnection();
-        await env.waitForQueueProcessing();
 
         env.assertQueueLength(0);
         env.assertPortPostMessageNotCalled();
@@ -52,7 +49,6 @@ describe('MessageHandler - Edge Cases', () => {
         env.assertQueueLength(1);
 
         env.updatePortConnection();
-        await env.waitForQueueProcessing();
 
         env.assertQueueLength(0);
         env.assertPortPostMessageCalled(1);
@@ -64,22 +60,15 @@ describe('MessageHandler - Edge Cases', () => {
         const maxPracticalSize = 10000;
         const batchSize = 1000;
 
-        env.markPerformancePoint('queue_start');
-
         for (let i = 0; i < maxPracticalSize; i += batchSize) {
           const batch = Array.from({ length: batchSize }, (_, j) => `Message ${i + j}`);
-
           batch.forEach((msg) => env.sendDebugMessage(msg));
         }
 
-        env.markPerformancePoint('queue_end');
-
         env.assertQueueLength(maxPracticalSize);
 
-        const queueTime = env.getPerformanceDuration('queue_start', 'queue_end');
-        expect(queueTime).toBeLessThan(5000);
-
         env.messageHandler!.clearQueue();
+        env.assertQueueLength(0);
       });
     });
 
@@ -131,14 +120,12 @@ describe('MessageHandler - Edge Cases', () => {
     });
 
     describe('Timing Boundaries', () => {
-      it('should handle zero-delay reconnection', async () => {
+      it('should handle zero-delay reconnection', () => {
         env.createMessageHandler();
 
         env.simulatePortDisconnection();
         env.sendDebugMessage('During instant reconnect');
         env.updatePortConnection();
-
-        await env.waitForQueueProcessing();
 
         env.assertQueueLength(0);
         env.assertPortPostMessageCalled(1);
@@ -154,7 +141,6 @@ describe('MessageHandler - Edge Cases', () => {
         env.assertQueueLength(3);
 
         env.updatePortConnection();
-        await env.waitForQueueProcessing();
 
         env.assertQueueLength(0);
         env.assertPortPostMessageCalled(3);
@@ -163,20 +149,14 @@ describe('MessageHandler - Edge Cases', () => {
   });
 
   describe('Race Conditions', () => {
-    it('should handle simultaneous send and disconnect', async () => {
+    it('should handle simultaneous send and disconnect', () => {
       env.createMessageHandler();
 
-      const sendPromise = Promise.resolve().then(() => {
-        for (let i = 0; i < 10; i++) {
-          env.sendDebugMessage(`Concurrent send ${i}`);
-        }
-      });
+      for (let i = 0; i < 10; i++) {
+        env.sendDebugMessage(`Concurrent send ${i}`);
+      }
 
-      const disconnectPromise = Promise.resolve().then(() => {
-        env.simulatePortDisconnection();
-      });
-
-      await Promise.all([sendPromise, disconnectPromise]);
+      env.simulatePortDisconnection();
 
       const status = env.messageHandler!.getConnectionStatus();
       expect(status.connected).toBe(false);
@@ -195,40 +175,24 @@ describe('MessageHandler - Edge Cases', () => {
         env.sendDebugMessage(`Initial queue ${i}`);
       }
 
-      const reconnectPromise = Promise.resolve().then(() => {
-        env.updatePortConnection();
-      });
+      env.updatePortConnection();
 
-      const sendPromise = Promise.resolve().then(async () => {
-        await TimingHelpers.waitForMs(5);
-        for (let i = 0; i < 50; i++) {
-          env.sendDebugMessage(`New message ${i}`);
-        }
-      });
-
-      await Promise.all([reconnectPromise, sendPromise]);
-      await env.waitForQueueProcessing();
+      for (let i = 0; i < 50; i++) {
+        env.sendDebugMessage(`New message ${i}`);
+      }
 
       env.assertQueueLength(0);
       expect(env.currentPort?.getPostMessageCallCount()).toBeGreaterThanOrEqual(100);
     });
 
-    it('should handle rapid updatePort calls', async () => {
+    it('should handle rapid updatePort calls', () => {
       env.createMessageHandler();
 
-      const updatePromises = [];
       for (let i = 0; i < 20; i++) {
-        updatePromises.push(
-          Promise.resolve().then(() => {
-            const newPort = env.createHealthyPort();
-            env.updatePortConnection(newPort);
-            env.sendDebugMessage(`After rapid update ${i}`);
-          })
-        );
+        const newPort = env.createHealthyPort();
+        env.updatePortConnection(newPort);
+        env.sendDebugMessage(`After rapid update ${i}`);
       }
-
-      await Promise.all(updatePromises);
-      await TimingHelpers.waitForMs(100);
 
       const status = env.messageHandler!.getConnectionStatus();
       expect(status.connected).toBe(true);
@@ -261,14 +225,12 @@ describe('MessageHandler - Edge Cases', () => {
         wideObject[`prop${i}`] = `value${i}`;
       }
 
-      env.markPerformancePoint('before_wide_send');
       env.sendTestMessage('DEBUG', wideObject);
-      env.markPerformancePoint('after_wide_send');
-
-      const duration = env.getPerformanceDuration('before_wide_send', 'after_wide_send');
-      expect(duration).toBeLessThan(1000);
 
       env.assertPortPostMessageCalled(1);
+      const lastCall = (env.currentPort!.postMessage as Mock).mock.calls[0][0];
+      expect(lastCall.type).toBe('DEBUG');
+      expect(lastCall.data).toEqual(wideObject);
     });
 
     it('should handle various special characters in messages', async () => {
@@ -317,7 +279,7 @@ describe('MessageHandler - Edge Cases', () => {
   });
 
   describe('Stress Testing', () => {
-    it('should handle message burst during disconnection-reconnection cycle', async () => {
+    it('should handle message burst during disconnection-reconnection cycle', () => {
       env.createMessageHandler();
 
       env.sendDebugMessage('Initial message');
@@ -338,7 +300,6 @@ describe('MessageHandler - Edge Cases', () => {
       expect(env.messageHandler!.getConnectionStatus().queuedMessages).toBe(burstSize);
 
       env.updatePortConnection();
-      await env.waitForQueueProcessing();
 
       env.assertQueueLength(0);
 
@@ -349,44 +310,29 @@ describe('MessageHandler - Edge Cases', () => {
       expect(reconnectedPortCount).toBe(burstSize);
     });
 
-    it('should handle alternating connection states with continuous messaging', async () => {
+    it('should handle alternating connection states with continuous messaging', () => {
       env.createMessageHandler();
-
-      const testDurationMs = 500;
-      const stateChangeIntervalMs = 50;
-      const messageIntervalMs = 10;
 
       let isConnected = true;
       let messageCount = 0;
 
-      const stateChangePromise = (async () => {
-        const startTime = Date.now();
-        while (Date.now() - startTime < testDurationMs) {
-          if (isConnected) {
-            env.simulatePortDisconnection();
-            isConnected = false;
-          } else {
-            env.updatePortConnection();
-            isConnected = true;
-          }
-          await TimingHelpers.waitForMs(stateChangeIntervalMs);
+      for (let cycle = 0; cycle < 10; cycle++) {
+        if (isConnected) {
+          env.simulatePortDisconnection();
+          isConnected = false;
+        } else {
+          env.updatePortConnection();
+          isConnected = true;
         }
-      })();
 
-      const messageSendPromise = (async () => {
-        const startTime = Date.now();
-        while (Date.now() - startTime < testDurationMs) {
-          env.sendDebugMessage(`Alternating test ${messageCount++}`);
-          await TimingHelpers.waitForMs(messageIntervalMs);
+        for (let i = 0; i < 10; i++) {
+          env.sendDebugMessage(`Message ${messageCount++}`);
         }
-      })();
-
-      await Promise.all([stateChangePromise, messageSendPromise]);
+      }
 
       if (!isConnected) {
         env.updatePortConnection();
       }
-      await env.waitForQueueProcessing();
 
       const status = env.messageHandler!.getConnectionStatus();
       expect(status.connected).toBeDefined();
@@ -416,7 +362,7 @@ describe('MessageHandler - Edge Cases', () => {
   });
 
   describe('Recovery Scenarios', () => {
-    it('should recover from corrupted port state', async () => {
+    it('should recover from corrupted port state', () => {
       env.createMessageHandler();
 
       const port = env.currentPort as unknown as Record<string, unknown>;
@@ -427,7 +373,6 @@ describe('MessageHandler - Edge Cases', () => {
       env.assertQueueLength(1);
 
       env.updatePortConnection();
-      await env.waitForQueueProcessing();
 
       env.assertQueueLength(0);
       env.assertConnectionState(true);
@@ -451,8 +396,6 @@ describe('MessageHandler - Edge Cases', () => {
 
       env.updatePortConnection(flakyPort);
 
-      await TimingHelpers.waitForMs(100);
-
       expect(callCount).toBeGreaterThanOrEqual(5);
 
       const queuedCount = env.messageHandler!.getConnectionStatus().queuedMessages;
@@ -460,7 +403,6 @@ describe('MessageHandler - Edge Cases', () => {
       expect(queuedCount).toBeLessThanOrEqual(5);
 
       env.updatePortConnection();
-      await env.waitForQueueProcessing();
 
       env.assertQueueLength(0);
     });

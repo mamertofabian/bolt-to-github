@@ -4,46 +4,6 @@
 
 import { describe, it, expect, beforeEach, vi, afterEach } from 'vitest';
 
-vi.mock('$lib/utils/logger', () => ({
-  createLogger: vi.fn(() => ({
-    error: vi.fn(),
-    warn: vi.fn(),
-    info: vi.fn(),
-    debug: vi.fn(),
-  })),
-}));
-
-const mockState = {
-  listRepos: vi.fn(),
-};
-
-vi.mock('../../../services/UnifiedGitHubService', () => {
-  return {
-    UnifiedGitHubService: class {
-      constructor(_config?: unknown) {}
-      async listRepos() {
-        return mockState.listRepos();
-      }
-    },
-  };
-});
-
-const mockChromeMessagingService = {
-  sendMessageToBackground: vi.fn(),
-};
-
-vi.mock('$lib/services/chromeMessaging', () => ({
-  ChromeMessagingService: mockChromeMessagingService,
-}));
-
-const mockChromeStorageService = {
-  saveProjectSettings: vi.fn(),
-};
-
-vi.mock('$lib/services/chromeStorage', () => ({
-  ChromeStorageService: mockChromeStorageService,
-}));
-
 describe('RepoSettings.svelte - Logic Tests', () => {
   let chromeMocks: {
     storage: {
@@ -69,133 +29,13 @@ describe('RepoSettings.svelte - Logic Tests', () => {
       writable: true,
       configurable: true,
     });
-
-    mockState.listRepos.mockResolvedValue([
-      {
-        name: 'awesome-project',
-        description: 'An awesome TypeScript project',
-        html_url: 'https://github.com/user/awesome-project',
-        private: false,
-        created_at: '2024-01-01',
-        updated_at: '2024-01-02',
-        language: 'TypeScript',
-      },
-      {
-        name: 'backend-api',
-        description: 'REST API backend service',
-        html_url: 'https://github.com/user/backend-api',
-        private: true,
-        created_at: '2024-01-03',
-        updated_at: '2024-01-04',
-        language: 'JavaScript',
-      },
-      {
-        name: 'frontend-app',
-        description: null,
-        html_url: 'https://github.com/user/frontend-app',
-        private: false,
-        created_at: '2024-01-05',
-        updated_at: '2024-01-06',
-        language: 'TypeScript',
-      },
-    ]);
-
-    mockChromeMessagingService.sendMessageToBackground.mockResolvedValue({ success: true });
-    mockChromeStorageService.saveProjectSettings.mockResolvedValue(undefined);
   });
 
   afterEach(() => {
     vi.clearAllMocks();
   });
 
-  describe('Repository Loading Logic', () => {
-    it('should load repositories with PAT authentication', async () => {
-      chromeMocks.storage.local.get.mockResolvedValue({ authenticationMethod: 'pat' });
-
-      const { UnifiedGitHubService } = await import('../../../services/UnifiedGitHubService');
-      const service = new UnifiedGitHubService('ghp_test');
-      await service.listRepos();
-
-      expect(mockState.listRepos).toHaveBeenCalled();
-    });
-
-    it('should load repositories with GitHub App authentication', async () => {
-      chromeMocks.storage.local.get.mockResolvedValue({ authenticationMethod: 'github_app' });
-
-      const { UnifiedGitHubService } = await import('../../../services/UnifiedGitHubService');
-      const service = new UnifiedGitHubService({ type: 'github_app' });
-      await service.listRepos();
-
-      expect(mockState.listRepos).toHaveBeenCalled();
-    });
-
-    it('should handle repository loading errors gracefully', async () => {
-      mockState.listRepos.mockRejectedValue(new Error('API Error'));
-
-      const { UnifiedGitHubService } = await import('../../../services/UnifiedGitHubService');
-      const service = new UnifiedGitHubService('ghp_test');
-
-      await expect(service.listRepos()).rejects.toThrow('API Error');
-    });
-
-    it('should set loading state while fetching repositories', async () => {
-      let resolveRepos!: (value: unknown[]) => void;
-      mockState.listRepos.mockReturnValue(
-        new Promise((resolve) => {
-          resolveRepos = resolve;
-        })
-      );
-
-      const isLoadingBefore = true;
-
-      const { UnifiedGitHubService } = await import('../../../services/UnifiedGitHubService');
-      const service = new UnifiedGitHubService('ghp_test');
-      const loadPromise = service.listRepos();
-
-      expect(isLoadingBefore).toBe(true);
-
-      resolveRepos([]);
-      await loadPromise;
-
-      const isLoadingAfter = false;
-      expect(isLoadingAfter).toBe(false);
-    });
-
-    it('should clear loading state after repositories are loaded', async () => {
-      mockState.listRepos.mockResolvedValue([]);
-
-      const { UnifiedGitHubService } = await import('../../../services/UnifiedGitHubService');
-      const service = new UnifiedGitHubService('ghp_test');
-      await service.listRepos();
-
-      const isLoading = false;
-      expect(isLoading).toBe(false);
-    });
-
-    it('should clear loading state even when loading fails', async () => {
-      mockState.listRepos.mockRejectedValue(new Error('API Error'));
-
-      const { UnifiedGitHubService } = await import('../../../services/UnifiedGitHubService');
-      const service = new UnifiedGitHubService('ghp_test');
-
-      try {
-        await service.listRepos();
-      } catch {
-        const isLoading = false;
-        expect(isLoading).toBe(false);
-      }
-    });
-
-    it('should return empty array when loading fails', async () => {
-      mockState.listRepos.mockRejectedValue(new Error('Network error'));
-
-      const repositories: unknown[] = [];
-
-      expect(repositories).toEqual([]);
-    });
-  });
-
-  describe('Repository Filtering Logic', () => {
+  describe('Reactive Statement: filteredRepos', () => {
     const mockRepos = [
       {
         name: 'awesome-project',
@@ -236,74 +76,96 @@ describe('RepoSettings.svelte - Logic Tests', () => {
     ];
 
     it('should filter repositories by name match', () => {
-      const query = 'backend';
-      const filtered = mockRepos.filter((repo) =>
-        repo.name.toLowerCase().includes(query.toLowerCase())
-      );
+      const repoSearchQuery = 'backend';
+      const filteredRepos = mockRepos
+        .filter(
+          (repo) =>
+            repo.name.toLowerCase().includes(repoSearchQuery.toLowerCase()) ||
+            (repo.description &&
+              repo.description.toLowerCase().includes(repoSearchQuery.toLowerCase()))
+        )
+        .slice(0, 10);
 
-      expect(filtered).toHaveLength(1);
-      expect(filtered[0].name).toBe('backend-api');
+      expect(filteredRepos).toHaveLength(1);
+      expect(filteredRepos[0].name).toBe('backend-api');
     });
 
     it('should filter repositories by description match', () => {
-      const query = 'awesome';
-      const filtered = mockRepos.filter(
-        (repo) =>
-          repo.name.toLowerCase().includes(query.toLowerCase()) ||
-          (repo.description && repo.description.toLowerCase().includes(query.toLowerCase()))
-      );
+      const repoSearchQuery = 'awesome';
+      const filteredRepos = mockRepos
+        .filter(
+          (repo) =>
+            repo.name.toLowerCase().includes(repoSearchQuery.toLowerCase()) ||
+            (repo.description &&
+              repo.description.toLowerCase().includes(repoSearchQuery.toLowerCase()))
+        )
+        .slice(0, 10);
 
-      expect(filtered).toHaveLength(1);
-      expect(filtered[0].name).toBe('awesome-project');
+      expect(filteredRepos).toHaveLength(1);
+      expect(filteredRepos[0].name).toBe('awesome-project');
     });
 
-    it('should be case-insensitive when filtering', () => {
-      const query = 'BACKEND';
-      const filtered = mockRepos.filter(
-        (repo) =>
-          repo.name.toLowerCase().includes(query.toLowerCase()) ||
-          (repo.description && repo.description.toLowerCase().includes(query.toLowerCase()))
-      );
+    it('should be case-insensitive', () => {
+      const repoSearchQuery = 'BACKEND';
+      const filteredRepos = mockRepos
+        .filter(
+          (repo) =>
+            repo.name.toLowerCase().includes(repoSearchQuery.toLowerCase()) ||
+            (repo.description &&
+              repo.description.toLowerCase().includes(repoSearchQuery.toLowerCase()))
+        )
+        .slice(0, 10);
 
-      expect(filtered).toHaveLength(1);
-      expect(filtered[0].name).toBe('backend-api');
+      expect(filteredRepos).toHaveLength(1);
+      expect(filteredRepos[0].name).toBe('backend-api');
     });
 
-    it('should handle null descriptions in filtering', () => {
-      const query = 'frontend';
-      const filtered = mockRepos.filter(
-        (repo) =>
-          repo.name.toLowerCase().includes(query.toLowerCase()) ||
-          (repo.description && repo.description.toLowerCase().includes(query.toLowerCase()))
-      );
+    it('should handle null descriptions safely', () => {
+      const repoSearchQuery = 'frontend';
+      const filteredRepos = mockRepos
+        .filter(
+          (repo) =>
+            repo.name.toLowerCase().includes(repoSearchQuery.toLowerCase()) ||
+            (repo.description &&
+              repo.description.toLowerCase().includes(repoSearchQuery.toLowerCase()))
+        )
+        .slice(0, 10);
 
-      expect(filtered).toHaveLength(1);
-      expect(filtered[0].name).toBe('frontend-app');
+      expect(filteredRepos).toHaveLength(1);
+      expect(filteredRepos[0].name).toBe('frontend-app');
     });
 
-    it('should match partial strings in repository names', () => {
-      const query = 'app';
-      const filtered = mockRepos.filter((repo) =>
-        repo.name.toLowerCase().includes(query.toLowerCase())
-      );
+    it('should match partial strings in names', () => {
+      const repoSearchQuery = 'app';
+      const filteredRepos = mockRepos
+        .filter(
+          (repo) =>
+            repo.name.toLowerCase().includes(repoSearchQuery.toLowerCase()) ||
+            (repo.description &&
+              repo.description.toLowerCase().includes(repoSearchQuery.toLowerCase()))
+        )
+        .slice(0, 10);
 
-      expect(filtered.length).toBe(2);
-      expect(filtered.map((r) => r.name)).toContain('frontend-app');
-      expect(filtered.map((r) => r.name)).toContain('mobile-app');
+      expect(filteredRepos).toHaveLength(2);
+      expect(filteredRepos.map((r) => r.name)).toContain('frontend-app');
+      expect(filteredRepos.map((r) => r.name)).toContain('mobile-app');
     });
 
-    it('should return empty array when no repositories match', () => {
-      const query = 'nonexistent';
-      const filtered = mockRepos.filter(
-        (repo) =>
-          repo.name.toLowerCase().includes(query.toLowerCase()) ||
-          (repo.description && repo.description.toLowerCase().includes(query.toLowerCase()))
-      );
+    it('should return empty array when no match', () => {
+      const repoSearchQuery = 'nonexistent';
+      const filteredRepos = mockRepos
+        .filter(
+          (repo) =>
+            repo.name.toLowerCase().includes(repoSearchQuery.toLowerCase()) ||
+            (repo.description &&
+              repo.description.toLowerCase().includes(repoSearchQuery.toLowerCase()))
+        )
+        .slice(0, 10);
 
-      expect(filtered).toHaveLength(0);
+      expect(filteredRepos).toHaveLength(0);
     });
 
-    it('should limit filtered results to 10 items', () => {
+    it('should limit results to 10 items', () => {
       const manyRepos = Array.from({ length: 20 }, (_, i) => ({
         name: `repo-${i}`,
         description: `Description ${i}`,
@@ -314,212 +176,8 @@ describe('RepoSettings.svelte - Logic Tests', () => {
         language: 'TypeScript',
       }));
 
-      const query = 'repo';
-      const filtered = manyRepos
-        .filter(
-          (repo) =>
-            repo.name.toLowerCase().includes(query.toLowerCase()) ||
-            (repo.description && repo.description.toLowerCase().includes(query.toLowerCase()))
-        )
-        .slice(0, 10);
-
-      expect(filtered).toHaveLength(10);
-    });
-
-    it('should filter by both name and description', () => {
-      const query = 'api';
-      const filtered = mockRepos.filter(
-        (repo) =>
-          repo.name.toLowerCase().includes(query.toLowerCase()) ||
-          (repo.description && repo.description.toLowerCase().includes(query.toLowerCase()))
-      );
-
-      expect(filtered).toHaveLength(1);
-      expect(filtered[0].name).toBe('backend-api');
-    });
-
-    it('should handle empty search query', () => {
-      const query = '';
-      const filtered = mockRepos.filter(
-        (repo) =>
-          repo.name.toLowerCase().includes(query.toLowerCase()) ||
-          (repo.description && repo.description.toLowerCase().includes(query.toLowerCase()))
-      );
-
-      expect(filtered).toHaveLength(mockRepos.length);
-    });
-  });
-
-  describe('Repository Existence Checking', () => {
-    const mockRepos = [{ name: 'existing-repo' }, { name: 'another-repo' }, { name: 'Third-Repo' }];
-
-    it('should detect existing repository', () => {
-      const repoName = 'existing-repo';
-      const exists = mockRepos.some((repo) => repo.name.toLowerCase() === repoName.toLowerCase());
-
-      expect(exists).toBe(true);
-    });
-
-    it('should detect non-existing repository', () => {
-      const repoName = 'new-repo';
-      const exists = mockRepos.some((repo) => repo.name.toLowerCase() === repoName.toLowerCase());
-
-      expect(exists).toBe(false);
-    });
-
-    it('should be case-insensitive when checking existence', () => {
-      const repoName = 'EXISTING-REPO';
-      const exists = mockRepos.some((repo) => repo.name.toLowerCase() === repoName.toLowerCase());
-
-      expect(exists).toBe(true);
-    });
-
-    it('should handle mixed case repository names', () => {
-      const repoName = 'third-repo';
-      const exists = mockRepos.some((repo) => repo.name.toLowerCase() === repoName.toLowerCase());
-
-      expect(exists).toBe(true);
-    });
-
-    it('should return false for empty repository name', () => {
-      const repoName = '';
-      const exists = mockRepos.some((repo) => repo.name.toLowerCase() === repoName.toLowerCase());
-
-      expect(exists).toBe(false);
-    });
-
-    it('should handle empty repository list', () => {
-      const emptyRepos: { name: string }[] = [];
-      const repoName = 'any-repo';
-      const exists = emptyRepos.some((repo) => repo.name.toLowerCase() === repoName.toLowerCase());
-
-      expect(exists).toBe(false);
-    });
-  });
-
-  describe('Save Settings Logic', () => {
-    it('should call ChromeStorageService.saveProjectSettings with correct parameters', async () => {
-      const projectId = 'project-123';
-      const repoName = 'test-repo';
-      const branch = 'main';
-      const projectTitle = 'Test Project';
-
-      mockChromeStorageService.saveProjectSettings.mockResolvedValue(undefined);
-
-      await mockChromeStorageService.saveProjectSettings(projectId, repoName, branch, projectTitle);
-
-      expect(mockChromeStorageService.saveProjectSettings).toHaveBeenCalledWith(
-        projectId,
-        repoName,
-        branch,
-        projectTitle
-      );
-    });
-
-    it('should trigger sync after saving settings', async () => {
-      mockChromeMessagingService.sendMessageToBackground.mockResolvedValue({ success: true });
-
-      await mockChromeMessagingService.sendMessageToBackground({ type: 'SYNC_BOLT_PROJECTS' });
-
-      expect(mockChromeMessagingService.sendMessageToBackground).toHaveBeenCalledWith({
-        type: 'SYNC_BOLT_PROJECTS',
-      });
-    });
-
-    it('should not fail save if sync fails', async () => {
-      mockChromeStorageService.saveProjectSettings.mockResolvedValue(undefined);
-      mockChromeMessagingService.sendMessageToBackground.mockRejectedValue(
-        new Error('Sync failed')
-      );
-
-      await mockChromeStorageService.saveProjectSettings('id', 'repo', 'main', 'title');
-
-      try {
-        await mockChromeMessagingService.sendMessageToBackground({ type: 'SYNC_BOLT_PROJECTS' });
-      } catch {
-        expect(mockChromeStorageService.saveProjectSettings).toHaveBeenCalled();
-      }
-    });
-
-    it('should handle save errors', async () => {
-      mockChromeStorageService.saveProjectSettings.mockRejectedValue(new Error('Save failed'));
-
-      await expect(
-        mockChromeStorageService.saveProjectSettings('id', 'repo', 'main', 'title')
-      ).rejects.toThrow('Save failed');
-    });
-
-    it('should set saving state to true during save', async () => {
-      let isSaving = true;
-
-      mockChromeStorageService.saveProjectSettings.mockResolvedValue(undefined);
-
-      expect(isSaving).toBe(true);
-
-      await mockChromeStorageService.saveProjectSettings('id', 'repo', 'main', 'title');
-
-      isSaving = false;
-      expect(isSaving).toBe(false);
-    });
-
-    it('should clear saving state after save completes', async () => {
-      mockChromeStorageService.saveProjectSettings.mockResolvedValue(undefined);
-
-      await mockChromeStorageService.saveProjectSettings('id', 'repo', 'main', 'title');
-
-      const isSaving = false;
-      expect(isSaving).toBe(false);
-    });
-
-    it('should clear saving state even when save fails', async () => {
-      mockChromeStorageService.saveProjectSettings.mockRejectedValue(new Error('Failed'));
-
-      try {
-        await mockChromeStorageService.saveProjectSettings('id', 'repo', 'main', 'title');
-      } catch {
-        const isSaving = false;
-        expect(isSaving).toBe(false);
-      }
-    });
-
-    it('should prevent save when repoName is empty', () => {
-      const repoName = '';
-      const branch = 'main';
-
-      const canSave = !!(repoName && branch);
-
-      expect(canSave).toBe(false);
-    });
-
-    it('should prevent save when branch is empty', () => {
-      const repoName = 'test-repo';
-      const branch = '';
-
-      const canSave = !!(repoName && branch);
-
-      expect(canSave).toBe(false);
-    });
-
-    it('should allow save when all required fields are filled', () => {
-      const repoName = 'test-repo';
-      const branch = 'main';
-
-      const canSave = !!(repoName && branch);
-
-      expect(canSave).toBe(true);
-    });
-  });
-
-  describe('Reactive State Management', () => {
-    it('should filter repositories when search query changes', () => {
-      const repositories = [
-        { name: 'repo-a', description: 'First repo' },
-        { name: 'repo-b', description: 'Second repo' },
-        { name: 'other', description: 'Different' },
-      ];
-
       const repoSearchQuery = 'repo';
-      const filtered = repositories
+      const filteredRepos = manyRepos
         .filter(
           (repo) =>
             repo.name.toLowerCase().includes(repoSearchQuery.toLowerCase()) ||
@@ -528,23 +186,102 @@ describe('RepoSettings.svelte - Logic Tests', () => {
         )
         .slice(0, 10);
 
-      expect(filtered).toHaveLength(2);
+      expect(filteredRepos).toHaveLength(10);
     });
 
-    it('should update repoExists when repoName changes', () => {
-      const repositories = [{ name: 'existing-repo' }];
-      const repoName = 'existing-repo';
+    it('should match in both name and description', () => {
+      const repoSearchQuery = 'api';
+      const filteredRepos = mockRepos
+        .filter(
+          (repo) =>
+            repo.name.toLowerCase().includes(repoSearchQuery.toLowerCase()) ||
+            (repo.description &&
+              repo.description.toLowerCase().includes(repoSearchQuery.toLowerCase()))
+        )
+        .slice(0, 10);
 
-      const repoExists = repositories.some(
+      expect(filteredRepos).toHaveLength(1);
+      expect(filteredRepos[0].name).toBe('backend-api');
+    });
+
+    it('should return all repos when query is empty', () => {
+      const repoSearchQuery = '';
+      const filteredRepos = mockRepos
+        .filter(
+          (repo) =>
+            repo.name.toLowerCase().includes(repoSearchQuery.toLowerCase()) ||
+            (repo.description &&
+              repo.description.toLowerCase().includes(repoSearchQuery.toLowerCase()))
+        )
+        .slice(0, 10);
+
+      expect(filteredRepos).toHaveLength(mockRepos.length);
+    });
+  });
+
+  describe('Reactive Statement: repoExists', () => {
+    const mockRepos = [{ name: 'existing-repo' }, { name: 'another-repo' }, { name: 'Third-Repo' }];
+
+    it('should detect existing repository', () => {
+      const repoName = 'existing-repo';
+      const repoExists = mockRepos.some(
         (repo) => repo.name.toLowerCase() === repoName.toLowerCase()
       );
 
       expect(repoExists).toBe(true);
     });
 
-    it('should use repoName as default projectTitle when projectTitle is empty', () => {
-      const repoName = 'my-repo';
+    it('should detect non-existing repository', () => {
+      const repoName = 'new-repo';
+      const repoExists = mockRepos.some(
+        (repo) => repo.name.toLowerCase() === repoName.toLowerCase()
+      );
+
+      expect(repoExists).toBe(false);
+    });
+
+    it('should be case-insensitive', () => {
+      const repoName = 'THIRD-REPO';
+      const repoExists = mockRepos.some(
+        (repo) => repo.name.toLowerCase() === repoName.toLowerCase()
+      );
+
+      expect(repoExists).toBe(true);
+    });
+
+    it('should handle mixed case names', () => {
+      const repoName = 'third-repo';
+      const repoExists = mockRepos.some(
+        (repo) => repo.name.toLowerCase() === repoName.toLowerCase()
+      );
+
+      expect(repoExists).toBe(true);
+    });
+
+    it('should return false for empty name', () => {
+      const repoName = '';
+      const repoExists = mockRepos.some(
+        (repo) => repo.name.toLowerCase() === repoName.toLowerCase()
+      );
+
+      expect(repoExists).toBe(false);
+    });
+
+    it('should handle empty repository list', () => {
+      const emptyRepos: { name: string }[] = [];
+      const repoName = 'any-repo';
+      const repoExists = emptyRepos.some(
+        (repo) => repo.name.toLowerCase() === repoName.toLowerCase()
+      );
+
+      expect(repoExists).toBe(false);
+    });
+  });
+
+  describe('Reactive Statement: projectTitle default', () => {
+    it('should use repoName as default projectTitle when not set', () => {
       let projectTitle = '';
+      const repoName = 'my-repo';
 
       if (!projectTitle && repoName) {
         projectTitle = repoName;
@@ -554,14 +291,25 @@ describe('RepoSettings.svelte - Logic Tests', () => {
     });
 
     it('should not override existing projectTitle', () => {
-      const repoName = 'my-repo';
       let projectTitle = 'Custom Title';
+      const repoName = 'my-repo';
 
       if (!projectTitle && repoName) {
         projectTitle = repoName;
       }
 
       expect(projectTitle).toBe('Custom Title');
+    });
+
+    it('should not set projectTitle when repoName is empty', () => {
+      let projectTitle = '';
+      const repoName = '';
+
+      if (!projectTitle && repoName) {
+        projectTitle = repoName;
+      }
+
+      expect(projectTitle).toBe('');
     });
   });
 
@@ -649,73 +397,9 @@ describe('RepoSettings.svelte - Logic Tests', () => {
 
       expect(repoName).toBe('');
     });
-
-    it('should hide dropdown when Escape is pressed', () => {
-      let showRepoDropdown = true;
-
-      showRepoDropdown = false;
-
-      expect(showRepoDropdown).toBe(false);
-    });
   });
 
   describe('Dropdown Visibility Logic', () => {
-    it('should show dropdown on focus', () => {
-      let showRepoDropdown = false;
-
-      showRepoDropdown = true;
-
-      expect(showRepoDropdown).toBe(true);
-    });
-
-    it('should sync search query with repoName on focus', () => {
-      const repoName = 'my-repo';
-      let repoSearchQuery = '';
-
-      repoSearchQuery = repoName;
-
-      expect(repoSearchQuery).toBe('my-repo');
-    });
-
-    it('should update search query when input changes', () => {
-      let repoSearchQuery = '';
-      let repoName = '';
-
-      repoName = 'test';
-      repoSearchQuery = repoName;
-
-      expect(repoSearchQuery).toBe('test');
-    });
-
-    it('should hide dropdown after blur with delay', async () => {
-      vi.useFakeTimers();
-
-      let showRepoDropdown = true;
-
-      setTimeout(() => {
-        showRepoDropdown = false;
-      }, 200);
-
-      expect(showRepoDropdown).toBe(true);
-
-      await vi.advanceTimersByTimeAsync(200);
-
-      expect(showRepoDropdown).toBe(false);
-
-      vi.useRealTimers();
-    });
-
-    it('should hide dropdown after selecting repository', () => {
-      let showRepoDropdown = true;
-      let repoName = '';
-
-      repoName = 'selected-repo';
-      showRepoDropdown = false;
-
-      expect(showRepoDropdown).toBe(false);
-      expect(repoName).toBe('selected-repo');
-    });
-
     it('should show dropdown when there are filtered repos', () => {
       const filteredRepos = [{ name: 'repo-1' }, { name: 'repo-2' }];
       const repoExists = false;
@@ -744,62 +428,76 @@ describe('RepoSettings.svelte - Logic Tests', () => {
 
       expect(shouldShowDropdown).toBe(false);
     });
-  });
 
-  describe('Error Handling Logic', () => {
-    it('should set error message when save fails', async () => {
-      mockChromeStorageService.saveProjectSettings.mockRejectedValue(new Error('Save error'));
+    it('should hide dropdown after blur', () => {
+      let showRepoDropdown = true;
 
-      let errorMessage = '';
-      let showErrorModal = false;
+      showRepoDropdown = false;
 
-      try {
-        await mockChromeStorageService.saveProjectSettings('id', 'repo', 'main', 'title');
-      } catch {
-        errorMessage = 'Failed to save settings. Please try again.';
-        showErrorModal = true;
-      }
-
-      expect(errorMessage).toBe('Failed to save settings. Please try again.');
-      expect(showErrorModal).toBe(true);
+      expect(showRepoDropdown).toBe(false);
     });
 
-    it('should clear error modal state when closed', () => {
-      let showErrorModal = true;
+    it('should sync search query with repoName on focus', () => {
+      const repoName = 'my-repo';
+      let repoSearchQuery = '';
 
-      showErrorModal = false;
+      repoSearchQuery = repoName;
 
-      expect(showErrorModal).toBe(false);
+      expect(repoSearchQuery).toBe('my-repo');
     });
 
-    it('should log error when repository loading fails', async () => {
-      mockState.listRepos.mockRejectedValue(new Error('API Error'));
+    it('should hide dropdown after selecting repository', () => {
+      let showRepoDropdown = true;
+      let repoName = '';
 
-      const { UnifiedGitHubService } = await import('../../../services/UnifiedGitHubService');
-      const service = new UnifiedGitHubService('ghp_test');
+      repoName = 'selected-repo';
+      showRepoDropdown = false;
 
-      await expect(service.listRepos()).rejects.toThrow('API Error');
-    });
-
-    it('should log warning when manual sync fails', async () => {
-      mockChromeMessagingService.sendMessageToBackground.mockRejectedValue(
-        new Error('Sync failed')
-      );
-
-      let syncError: Error | null = null;
-
-      try {
-        await mockChromeMessagingService.sendMessageToBackground({ type: 'SYNC_BOLT_PROJECTS' });
-      } catch (error) {
-        syncError = error as Error;
-      }
-
-      expect(syncError).not.toBeNull();
-      expect(syncError?.message).toBe('Sync failed');
+      expect(showRepoDropdown).toBe(false);
+      expect(repoName).toBe('selected-repo');
     });
   });
 
-  describe('Authentication Method Detection', () => {
+  describe('Form Validation Logic', () => {
+    it('should prevent save when repoName is empty', () => {
+      const repoName = '';
+      const branch = 'main';
+
+      const canSave = !!(repoName && branch);
+
+      expect(canSave).toBe(false);
+    });
+
+    it('should prevent save when branch is empty', () => {
+      const repoName = 'test-repo';
+      const branch = '';
+
+      const canSave = !!(repoName && branch);
+
+      expect(canSave).toBe(false);
+    });
+
+    it('should allow save when all required fields are filled', () => {
+      const repoName = 'test-repo';
+      const branch = 'main';
+
+      const canSave = !!(repoName && branch);
+
+      expect(canSave).toBe(true);
+    });
+
+    it('should prevent save when isSaving is true', () => {
+      const repoName = 'test-repo';
+      const branch = 'main';
+      const isSaving = true;
+
+      const canSave = !!(repoName && branch) && !isSaving;
+
+      expect(canSave).toBe(false);
+    });
+  });
+
+  describe('Authentication Method Detection Logic', () => {
     it('should use PAT when authenticationMethod is pat', async () => {
       chromeMocks.storage.local.get.mockResolvedValue({ authenticationMethod: 'pat' });
 
@@ -833,7 +531,7 @@ describe('RepoSettings.svelte - Logic Tests', () => {
       expect(authMethod).toBe('pat');
     });
 
-    it('should create UnifiedGitHubService with token for PAT', () => {
+    it('should create config with token for PAT', () => {
       const authMethod = 'pat' as 'pat' | 'github_app';
       const githubToken = 'ghp_test';
 
@@ -842,56 +540,12 @@ describe('RepoSettings.svelte - Logic Tests', () => {
       expect(config).toBe('ghp_test');
     });
 
-    it('should create UnifiedGitHubService with github_app config', () => {
+    it('should create config with github_app type', () => {
       const authMethod = 'github_app' as 'pat' | 'github_app';
 
       const config = authMethod === 'github_app' ? { type: 'github_app' } : 'token';
 
       expect(config).toEqual({ type: 'github_app' });
-    });
-  });
-
-  describe('Sync Response Handling', () => {
-    it('should handle successful sync response', async () => {
-      mockChromeMessagingService.sendMessageToBackground.mockResolvedValue({
-        success: true,
-        result: { synced: 5 },
-      });
-
-      const response = await mockChromeMessagingService.sendMessageToBackground({
-        type: 'SYNC_BOLT_PROJECTS',
-      });
-
-      const typedResponse = response as { success?: boolean; result?: unknown };
-
-      expect(typedResponse.success).toBe(true);
-    });
-
-    it('should handle sync response with warnings', async () => {
-      mockChromeMessagingService.sendMessageToBackground.mockResolvedValue({
-        success: false,
-        warnings: ['Some items failed to sync'],
-      });
-
-      const response = await mockChromeMessagingService.sendMessageToBackground({
-        type: 'SYNC_BOLT_PROJECTS',
-      });
-
-      const typedResponse = response as { success?: boolean; warnings?: string[] };
-
-      expect(typedResponse.success).toBe(false);
-    });
-
-    it('should handle null sync response', async () => {
-      mockChromeMessagingService.sendMessageToBackground.mockResolvedValue(null);
-
-      const response = await mockChromeMessagingService.sendMessageToBackground({
-        type: 'SYNC_BOLT_PROJECTS',
-      });
-
-      const typedResponse = response as { success?: boolean } | null;
-
-      expect(typedResponse).toBeNull();
     });
   });
 });

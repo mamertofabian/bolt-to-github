@@ -4,22 +4,27 @@ import {
   createTestBlob,
   createTestEnvironment,
   ERROR_SCENARIOS,
+  FIXED_TIME,
+  FIXED_UNIX_TIME,
   setupTestProject,
   TEST_PROJECTS,
   TestAssertions,
   ZIP_FILE_FIXTURES,
   type ZipHandlerTestEnvironment,
 } from './test-fixtures/ZipHandlerTestFixtures.index';
+import { vi, describe, it, expect, beforeEach, afterEach } from 'vitest';
 
 describe('ZipHandler', () => {
   let env: ZipHandlerTestEnvironment;
 
   beforeEach(async () => {
+    vi.useFakeTimers({ now: new Date(FIXED_TIME) });
     env = await createTestEnvironment();
   });
 
   afterEach(() => {
     cleanupTestEnvironment(env);
+    vi.useRealTimers();
   });
 
   describe('ZIP File Processing', () => {
@@ -420,7 +425,7 @@ describe('ZipHandler', () => {
     it('should fail if rate limit reset is too far away', async () => {
       setupTestProject(env, TEST_PROJECTS.default);
 
-      env.githubService.setRateLimit(5, Math.floor(Date.now() / 1000) + 600);
+      env.githubService.setRateLimit(5, FIXED_UNIX_TIME + 600);
 
       const blob = createTestBlob(ZIP_FILE_FIXTURES.simpleProject);
 
