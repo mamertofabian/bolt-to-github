@@ -9,20 +9,45 @@ applyTo: '**/*.ts'
 
 **BEFORE summarizing ANY work or declaring completion:**
 
-1. Run quality checks: `pnpm format && pnpm lint && pnpm check`
-2. Clean up test comments: `pnpm clean:test-comments`
-3. Update testing documentation files in `docs/` if test coverage or approaches changed
-4. Iterate until all errors are resolved
-5. Provide a properly formatted commit message
-6. ONLY THEN provide a summary
+1. Make all required file changes
+2. **Run tests FIRST**: `pnpm test` (or specific test file) - all must pass
+3. **ONLY THEN run quality checks**: `pnpm format && pnpm lint && pnpm check`
+4. Clean up test comments: `pnpm clean:test-comments`
+5. **If fixes were made during quality checks**, rerun tests to ensure they still pass
+6. Update testing documentation files in `docs/` if test coverage or approaches changed
+7. Iterate until both tests and quality checks have no errors
+8. Provide a properly formatted commit message
+9. ONLY THEN provide a summary
 
 ---
 
 ## 1. Code Quality Workflow
 
-### 1.1 Mandatory Pre-Summary Quality Checks
+### 1.1 Mandatory Pre-Summary Quality Workflow
 
-**BEFORE summarizing accomplishments or ending any task**, ALWAYS execute the following commands sequentially:
+**BEFORE summarizing accomplishments or ending any task**, ALWAYS follow this exact sequence:
+
+#### Step 1: Make File Changes
+- Implement the required changes to source files or test files
+- Ensure changes follow project standards
+- **Verify no `any` types are used** - use proper TypeScript types from the start
+- Use `unknown` for truly unknown types (then narrow with type guards) or `never` for test type assertions
+
+#### Step 2: Run Tests FIRST
+**After making any file changes**, IMMEDIATELY run the relevant tests to ensure they pass:
+
+```bash
+# For specific test file being worked on:
+pnpm test path/to/test-file.test.ts
+
+# OR for all tests if broader changes were made:
+pnpm test
+```
+
+**STOP here if tests fail.** Fix the code until all tests pass before proceeding.
+
+#### Step 3: Run Code Quality Checks
+**ONLY AFTER all tests are passing**, run quality checks sequentially:
 
 ```bash
 pnpm format
@@ -31,12 +56,28 @@ pnpm check
 pnpm clean:test-comments
 ```
 
+#### Step 4: Rerun Tests if Fixes Were Made
+**If any file changes were made** to resolve code quality check errors (formatting, linting, type errors):
+
+```bash
+# Rerun the same tests to ensure they still pass
+pnpm test path/to/test-file.test.ts
+# OR
+pnpm test
+```
+
+#### Step 5: Final State Verification
+Before proceeding to summary:
+- ✅ All tests passing
+- ✅ No code quality errors (format, lint, check)
+- ✅ Test comments cleaned
+
 **After running these commands:**
 - Update `docs/testing-overview.md` if test coverage changed significantly
 - Update `docs/testing-gaps.md` if new gaps were identified or closed
 - Update `docs/unit-testing-rules.md` if new testing patterns or rules were established
 
-**This is MANDATORY.** Iterate until all errors are resolved. Never skip these checks before providing a summary or completing work.
+**This workflow is MANDATORY.** Iterate until both tests and quality checks pass. Never skip these steps before providing a summary or completing work.
 
 ### 1.2 Pre-Summary Commit Process
 
@@ -46,7 +87,7 @@ pnpm clean:test-comments
 - Include bullet points for specific, concise descriptions of implemented changes if needed
 - Do not perform the actual commit unless explicitly requested
 
-**Quality checks (format, lint, check) must be completed BEFORE writing the commit message.**
+**Both tests and quality checks must be completed and passing BEFORE writing the commit message.**
 
 ---
 
@@ -54,10 +95,14 @@ pnpm clean:test-comments
 
 ### 2.1 Type Safety
 
-- Use proper TypeScript types, interfaces, and type aliases
-- Avoid the `any` type; use `unknown` if type is truly unknown, then narrow with type guards
+**CRITICAL: Never use `any` type when writing or editing code**
+
+- **ALWAYS use proper TypeScript types from the very start** - never write `any` with the intention to fix it later
+- For unknown types, use `unknown` and narrow with type guards, or use `never` for type assertions in tests
+- Use specific types, interfaces, and type aliases for all function parameters, return values, and variables
 - Never use ESLint disable comments (exception: rare, documented cases in test files only)
 - Leverage TypeScript's type inference when it improves readability
+- **Before saving any file**: Verify no `any` types exist (this prevents lint warnings)
 
 ### 2.2 Code Style
 
@@ -69,66 +114,24 @@ pnpm clean:test-comments
 
 ## 3. Testing Standards
 
-### 3.1 Test File Naming Convention
+### 3.1 Testing Documentation
 
-Follow this naming convention for all test files:
+**Before writing any tests**, review the appropriate testing guide:
 
-- **`*.component.test.ts`** - Component/UI behavior tests
-  - Use `@testing-library/svelte` to render components
-  - Test user interactions (click, type, keyboard events)
-  - Test rendering based on props and state
-  - Test accessibility
-  - Mock only external dependencies (APIs, Chrome APIs, services)
+- **[docs/unit-testing-rules.md](../../docs/unit-testing-rules.md)** - For testing classes, functions, services, and utilities
+- **[docs/component-testing-rules.md](../../docs/component-testing-rules.md)** - For testing Svelte components (.svelte files)
 
-- **`*.logic.test.ts`** - Business logic tests
-  - Test pure functions and utility methods
-  - Test data transformations and calculations
-  - Test internal component logic (by creating component instances if needed)
-  - No DOM rendering or user interaction simulation
-  - Focus on inputs, outputs, and edge cases
+> **⚠️ Critical:** Component tests and unit tests follow **fundamentally different rules**. Using the wrong approach will result in brittle, unmaintainable tests.
 
-- **`*.test.ts`** - General unit tests (for services, utilities, etc.)
-  - Use for non-component TypeScript files
-  - Follow logic test principles
+### 3.2 Key Testing Principles
 
-### 3.2 Testing Principles
+**All detailed rules, examples, and guidelines are in the documentation files above.** Key reminders:
 
-Strictly follow `docs/unit-testing-rules.md` for all test files. Key principles:
-
-1. **Test behavior, not implementation details**
-   - Focus on observable inputs and outputs
-   - Tests should remain valid when internal implementation changes
-   - Use descriptive test names: `should [expected behavior] when [condition]`
-
-2. **Minimize mocking**
-   - Only mock external systems you don't control (databases, APIs, file systems, Chrome APIs)
-   - Use real implementations of your own dependencies when possible
-   - If mocking is required, ensure mocks accurately reflect real behavior
-
-3. **Component testing with @testing-library/svelte**
-   - Render real components, not mocks of them
-   - Unmock UI components (Modal, Button, icons) to test actual rendering
-   - Test user interactions with `@testing-library/user-event`
-   - Verify visible content with `screen` queries
-   - Use `waitFor` for asynchronous state changes
-
-4. **Test quality over coverage**
-   - Write tests that catch real bugs
-   - Test edge cases and error conditions, not just happy paths
-   - One logical assertion per test
-   - Make tests deterministic and independent
-
-5. **Keep tests maintainable**
-   - Follow AAA pattern: Arrange, Act, Assert
-   - Tests should be simple, readable, and obvious
-   - Tests should serve as documentation
-   - Avoid brittle tests that fail due to minor, unrelated changes
-
-### 3.3 Test Execution
-
-- Fix failing tests rather than removing them if they follow established principles
-- All tests must pass before submitting work
-- Tests should run quickly to encourage frequent execution
+- **Unit tests**: Test behavior through public APIs only. Minimize mocking.
+- **Component tests**: Test from user's perspective using the DOM. Mock only external services.
+- **Test naming**: Use `*.component.test.ts` for components, `*.logic.test.ts` for business logic, `*.test.ts` for general unit tests
+- **Quality over coverage**: Write tests that catch real bugs, not just increase numbers
+- **All tests must pass** before submitting work
 
 ---
 
@@ -162,11 +165,13 @@ Strictly follow `docs/unit-testing-rules.md` for all test files. Key principles:
 
 Before submitting any work:
 
-1. ✅ Run `pnpm format && pnpm lint && pnpm check` - all must pass
-2. ✅ Run `pnpm test` - all tests must pass
-3. ✅ Write conventional commit message
-4. ✅ Provide clear summary of changes
-5. ✅ Reference related issues or documentation
+1. ✅ Make all required file changes
+2. ✅ Run tests - all must pass (`pnpm test` or `pnpm test path/to/test.ts`)
+3. ✅ Run quality checks - all must pass (`pnpm format && pnpm lint && pnpm check`)
+4. ✅ If fixes were made during quality checks, rerun tests to ensure they still pass
+5. ✅ Write conventional commit message
+6. ✅ Provide clear summary of changes
+7. ✅ Reference related issues or documentation
 
 ---
 
@@ -200,14 +205,16 @@ CONTINUATION PROMPT FOR NEXT CONVERSATION:
 
 Use this checklist before declaring work complete:
 
+- [ ] File changes completed
+- [ ] **No `any` types used** (verified before running tests)
+- [ ] Tests passing (`pnpm test` or specific test file)
 - [ ] Code formatted (`pnpm format`)
 - [ ] No lint errors (`pnpm lint`)
 - [ ] No TypeScript errors (`pnpm check`)
 - [ ] Test comments cleaned (`pnpm clean:test-comments`)
+- [ ] If fixes made during quality checks, tests rerun and passing
 - [ ] Testing docs updated (`docs/testing-overview.md`, `docs/testing-gaps.md`, `docs/unit-testing-rules.md`)
-- [ ] All tests passing (`pnpm test`)
 - [ ] Test coverage maintained or improved
-- [ ] No `any` types (except rare documented cases)
 - [ ] No ESLint disable comments (except rare documented cases in tests)
 - [ ] Documentation updated if needed
 - [ ] Commit message prepared
