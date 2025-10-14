@@ -13,10 +13,12 @@
     "lint": "eslint \"src/**/*.{js,ts,svelte}\"",
     "lint:fix": "eslint \"src/**/*.{js,ts,svelte}\" --fix",
     "lint-check": "pnpm run lint && pnpm run check",
-    "test": "vitest run",
+    "test": "vitest run --coverage",
+    "test:ci": "vitest run",
     "test:coverage": "vitest run --coverage",
     "test:ui": "vitest --ui",
     "test:watch": "vitest watch",
+    "test:watch:coverage": "vitest watch --coverage",
     "test:failed-files": "node scripts/find-failed-tests.js",
     "clean:test-comments": "npx tsx scripts/remove-test-comments.ts",
     "prepare": "husky"
