@@ -295,28 +295,7 @@ src/
 - lint-staged runs on: `*.{js,ts,svelte,css,json,md}`
 - Follow semantic versioning
 - Clean git history preferred
-
-#### Pre-commit Hook Options
-
-The pre-commit hook runs multiple quality checks. You can control its behavior with environment variables:
-
-- **Skip all tests** (for quick commits during active development):
-
-  ```bash
-  SKIP_TESTS=1 git commit -m "your message"
-  ```
-
-- **Run only changed tests** (faster for feature branches):
-
-  ```bash
-  SKIP_FULL_TESTS=1 git commit -m "your message"
-  ```
-
-- **Run full test suite** (default, recommended before PR):
-
-  ```bash
-  git commit -m "your message"
-  ```
+- Pre-commit hook configuration options documented in `.husky/pre-commit` file
 
 ## Security & Environment
 
