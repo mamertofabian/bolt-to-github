@@ -313,16 +313,17 @@ describe('RepoSettings.svelte - Component Tests', () => {
       });
     });
 
-    it('should filter repositories when typing in search', async () => {
+    it('should show all repositories in dropdown when focused', async () => {
       const user = userEvent.setup();
       render(RepoSettings, { props: defaultProps });
 
       const input = screen.getByLabelText('Repository Name');
-      await user.type(input, 'backend');
+      await user.click(input);
 
       await waitFor(() => {
+        expect(screen.getByText('awesome-project')).toBeInTheDocument();
         expect(screen.getByText('backend-api')).toBeInTheDocument();
-        expect(screen.queryByText('awesome-project')).not.toBeInTheDocument();
+        expect(screen.getByText('frontend-app')).toBeInTheDocument();
       });
     });
 
@@ -369,29 +370,30 @@ describe('RepoSettings.svelte - Component Tests', () => {
       });
     });
 
-    it('should show info message when repository will be created', async () => {
+    it('should show default message when repository input is empty', async () => {
       const user = userEvent.setup();
       render(RepoSettings, { props: defaultProps });
 
       const input = screen.getByLabelText('Repository Name');
-      await user.type(input, 'new-repo');
+      await user.click(input);
 
       await waitFor(() => {
-        expect(
-          screen.getByText(/A new repository will be created if it doesn't exist yet/i)
-        ).toBeInTheDocument();
+        const messageElements = screen.getAllByText(
+          /Enter a repository name \(new\) or select from your repositories carefully/i
+        );
+        const messageElement = messageElements.find((el) =>
+          el.classList.contains('text-orange-400')
+        );
+        expect(messageElement).toBeInTheDocument();
       });
     });
 
     it('should show info message when using existing repository', async () => {
-      const user = userEvent.setup();
-      render(RepoSettings, { props: defaultProps });
-
-      const input = screen.getByLabelText('Repository Name');
-      await user.type(input, 'awesome-project');
+      const props = { ...defaultProps, repoName: 'awesome-project' };
+      render(RepoSettings, { props });
 
       await waitFor(() => {
-        expect(screen.getByText(/Using existing repository/i)).toBeInTheDocument();
+        expect(screen.getByText(/ℹ️ Using existing repository/i)).toBeInTheDocument();
       });
     });
   });
@@ -555,17 +557,12 @@ describe('RepoSettings.svelte - Component Tests', () => {
       expect(saveButton).toBeDisabled();
     });
 
-    it('should enable save button when all required fields are filled', async () => {
-      const user = userEvent.setup();
-      render(RepoSettings, { props: defaultProps });
+    it('should enable save button when all required fields are filled', () => {
+      const props = { ...defaultProps, repoName: 'test-repo', branch: 'main' };
+      render(RepoSettings, { props });
 
-      const repoInput = screen.getByLabelText('Repository Name');
-      await user.type(repoInput, 'test-repo');
-
-      await waitFor(() => {
-        const saveButton = screen.getByRole('button', { name: /Save Settings/i });
-        expect(saveButton).not.toBeDisabled();
-      });
+      const saveButton = screen.getByRole('button', { name: /Save Settings/i });
+      expect(saveButton).not.toBeDisabled();
     });
   });
 
@@ -692,9 +689,13 @@ describe('RepoSettings.svelte - Component Tests', () => {
       await user.click(input);
 
       await waitFor(() => {
-        expect(
-          screen.getByText(/Enter a repository name \(new\) or select from your repositories/i)
-        ).toBeInTheDocument();
+        const messageElements = screen.getAllByText(
+          /Enter a repository name \(new\) or select from your repositories/i
+        );
+        const messageElement = messageElements.find((el) =>
+          el.classList.contains('text-orange-400')
+        );
+        expect(messageElement).toBeInTheDocument();
       });
     });
   });

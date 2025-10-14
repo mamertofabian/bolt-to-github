@@ -1,37 +1,15 @@
 import { describe, it, expect } from 'vitest';
 import type { FileChange } from '../../../services/FilePreviewService';
+import {
+  countChanges,
+  hasActualChanges,
+  generateNoChangesConfirmationMessage,
+  getTotalActualChanges,
+  shouldShowPushConfirmation,
+  type ChangeCounts,
+} from '../file-changes-modal';
 
-describe('FileChangesModal Logic', () => {
-  function countChanges(changes: Map<string, FileChange>) {
-    let added = 0,
-      modified = 0,
-      deleted = 0,
-      unchanged = 0;
-
-    changes.forEach((change) => {
-      switch (change.status) {
-        case 'added':
-          added++;
-          break;
-        case 'modified':
-          modified++;
-          break;
-        case 'deleted':
-          deleted++;
-          break;
-        case 'unchanged':
-          unchanged++;
-          break;
-      }
-    });
-
-    return { added, modified, deleted, unchanged, total: changes.size };
-  }
-
-  function hasActualChanges(changeCounts: ReturnType<typeof countChanges>): boolean {
-    return changeCounts.added > 0 || changeCounts.modified > 0 || changeCounts.deleted > 0;
-  }
-
+describe('FileChangesModal Business Logic', () => {
   describe('countChanges', () => {
     it('should count added files correctly', () => {
       const changes = new Map<string, FileChange>([
@@ -218,142 +196,6 @@ describe('FileChangesModal Logic', () => {
       expect(result.total).toBe(5);
       expect(result.total).toBe(result.added + result.modified + result.deleted + result.unchanged);
     });
-  });
-
-  describe('hasActualChanges', () => {
-    it('should return true when files are added', () => {
-      const counts = {
-        added: 1,
-        modified: 0,
-        deleted: 0,
-        unchanged: 0,
-        total: 1,
-      };
-
-      expect(hasActualChanges(counts)).toBe(true);
-    });
-
-    it('should return true when files are modified', () => {
-      const counts = {
-        added: 0,
-        modified: 1,
-        deleted: 0,
-        unchanged: 0,
-        total: 1,
-      };
-
-      expect(hasActualChanges(counts)).toBe(true);
-    });
-
-    it('should return true when files are deleted', () => {
-      const counts = {
-        added: 0,
-        modified: 0,
-        deleted: 1,
-        unchanged: 0,
-        total: 1,
-      };
-
-      expect(hasActualChanges(counts)).toBe(true);
-    });
-
-    it('should return true when there are multiple types of changes', () => {
-      const counts = {
-        added: 2,
-        modified: 1,
-        deleted: 1,
-        unchanged: 0,
-        total: 4,
-      };
-
-      expect(hasActualChanges(counts)).toBe(true);
-    });
-
-    it('should return false when all files are unchanged', () => {
-      const counts = {
-        added: 0,
-        modified: 0,
-        deleted: 0,
-        unchanged: 5,
-        total: 5,
-      };
-
-      expect(hasActualChanges(counts)).toBe(false);
-    });
-
-    it('should return false when there are no files', () => {
-      const counts = {
-        added: 0,
-        modified: 0,
-        deleted: 0,
-        unchanged: 0,
-        total: 0,
-      };
-
-      expect(hasActualChanges(counts)).toBe(false);
-    });
-
-    it('should return true even with unchanged files present', () => {
-      const counts = {
-        added: 1,
-        modified: 0,
-        deleted: 0,
-        unchanged: 10,
-        total: 11,
-      };
-
-      expect(hasActualChanges(counts)).toBe(true);
-    });
-  });
-
-  describe('Confirmation Message Generation', () => {
-    it('should generate correct message for no changes scenario', () => {
-      const unchangedCount = 5;
-      const expectedMessage = `No changes detected (${unchangedCount} unchanged files).
-
-Do you still want to push to GitHub?`;
-
-      expect(expectedMessage).toContain('No changes detected');
-      expect(expectedMessage).toContain('5 unchanged files');
-      expect(expectedMessage).toContain('Do you still want to push to GitHub?');
-    });
-
-    it('should format message with single unchanged file', () => {
-      const unchangedCount = 1;
-      const expectedMessage = `No changes detected (${unchangedCount} unchanged files).
-
-Do you still want to push to GitHub?`;
-
-      expect(expectedMessage).toContain('1 unchanged files');
-    });
-
-    it('should format message with zero unchanged files', () => {
-      const unchangedCount = 0;
-      const expectedMessage = `No changes detected (${unchangedCount} unchanged files).
-
-Do you still want to push to GitHub?`;
-
-      expect(expectedMessage).toContain('0 unchanged files');
-    });
-  });
-
-  describe('Edge Cases', () => {
-    it('should handle very large number of changes', () => {
-      const changes = new Map<string, FileChange>();
-
-      for (let i = 0; i < 1000; i++) {
-        changes.set(`file${i}.ts`, {
-          status: 'added',
-          path: `file${i}.ts`,
-          content: `content${i}`,
-        });
-      }
-
-      const result = countChanges(changes);
-
-      expect(result.added).toBe(1000);
-      expect(result.total).toBe(1000);
-    });
 
     it('should handle files with special characters in path', () => {
       const changes = new Map<string, FileChange>([
@@ -409,29 +251,316 @@ Do you still want to push to GitHub?`;
       expect(result.total).toBe(1);
     });
 
-    it('should handle all files being of same status except one', () => {
+    it('should handle very large number of changes', () => {
+      const changes = new Map<string, FileChange>();
+
+      for (let i = 0; i < 1000; i++) {
+        changes.set(`file${i}.ts`, {
+          status: 'added',
+          path: `file${i}.ts`,
+          content: `content${i}`,
+        });
+      }
+
+      const result = countChanges(changes);
+
+      expect(result.added).toBe(1000);
+      expect(result.total).toBe(1000);
+    });
+  });
+
+  describe('hasActualChanges', () => {
+    it('should return true when files are added', () => {
+      const counts: ChangeCounts = {
+        added: 1,
+        modified: 0,
+        deleted: 0,
+        unchanged: 0,
+        total: 1,
+      };
+
+      expect(hasActualChanges(counts)).toBe(true);
+    });
+
+    it('should return true when files are modified', () => {
+      const counts: ChangeCounts = {
+        added: 0,
+        modified: 1,
+        deleted: 0,
+        unchanged: 0,
+        total: 1,
+      };
+
+      expect(hasActualChanges(counts)).toBe(true);
+    });
+
+    it('should return true when files are deleted', () => {
+      const counts: ChangeCounts = {
+        added: 0,
+        modified: 0,
+        deleted: 1,
+        unchanged: 0,
+        total: 1,
+      };
+
+      expect(hasActualChanges(counts)).toBe(true);
+    });
+
+    it('should return true when there are multiple types of changes', () => {
+      const counts: ChangeCounts = {
+        added: 2,
+        modified: 1,
+        deleted: 1,
+        unchanged: 0,
+        total: 4,
+      };
+
+      expect(hasActualChanges(counts)).toBe(true);
+    });
+
+    it('should return false when all files are unchanged', () => {
+      const counts: ChangeCounts = {
+        added: 0,
+        modified: 0,
+        deleted: 0,
+        unchanged: 5,
+        total: 5,
+      };
+
+      expect(hasActualChanges(counts)).toBe(false);
+    });
+
+    it('should return false when there are no files', () => {
+      const counts: ChangeCounts = {
+        added: 0,
+        modified: 0,
+        deleted: 0,
+        unchanged: 0,
+        total: 0,
+      };
+
+      expect(hasActualChanges(counts)).toBe(false);
+    });
+
+    it('should return true even with unchanged files present', () => {
+      const counts: ChangeCounts = {
+        added: 1,
+        modified: 0,
+        deleted: 0,
+        unchanged: 10,
+        total: 11,
+      };
+
+      expect(hasActualChanges(counts)).toBe(true);
+    });
+  });
+
+  describe('generateNoChangesConfirmationMessage', () => {
+    it('should generate correct message for single unchanged file', () => {
+      const unchangedCount = 1;
+      const result = generateNoChangesConfirmationMessage(unchangedCount);
+
+      expect(result).toContain('No changes detected');
+      expect(result).toContain('1 unchanged files');
+      expect(result).toContain('Do you still want to push to GitHub?');
+    });
+
+    it('should generate correct message for multiple unchanged files', () => {
+      const unchangedCount = 5;
+      const result = generateNoChangesConfirmationMessage(unchangedCount);
+
+      expect(result).toContain('No changes detected');
+      expect(result).toContain('5 unchanged files');
+      expect(result).toContain('Do you still want to push to GitHub?');
+    });
+
+    it('should generate correct message for zero unchanged files', () => {
+      const unchangedCount = 0;
+      const result = generateNoChangesConfirmationMessage(unchangedCount);
+
+      expect(result).toContain('No changes detected');
+      expect(result).toContain('0 unchanged files');
+      expect(result).toContain('Do you still want to push to GitHub?');
+    });
+
+    it('should include proper line breaks in message', () => {
+      const unchangedCount = 3;
+      const result = generateNoChangesConfirmationMessage(unchangedCount);
+
+      const lines = result.split('\n');
+      expect(lines).toHaveLength(3);
+      expect(lines[0]).toContain('No changes detected');
+      expect(lines[1]).toBe('');
+      expect(lines[2]).toContain('Do you still want to push to GitHub?');
+    });
+  });
+
+  describe('getTotalActualChanges', () => {
+    it('should calculate total changes correctly', () => {
+      const counts: ChangeCounts = {
+        added: 2,
+        modified: 3,
+        deleted: 1,
+        unchanged: 5,
+        total: 11,
+      };
+
+      const result = getTotalActualChanges(counts);
+
+      expect(result).toBe(6);
+    });
+
+    it('should return zero when no actual changes', () => {
+      const counts: ChangeCounts = {
+        added: 0,
+        modified: 0,
+        deleted: 0,
+        unchanged: 5,
+        total: 5,
+      };
+
+      const result = getTotalActualChanges(counts);
+
+      expect(result).toBe(0);
+    });
+
+    it('should handle only added files', () => {
+      const counts: ChangeCounts = {
+        added: 4,
+        modified: 0,
+        deleted: 0,
+        unchanged: 0,
+        total: 4,
+      };
+
+      const result = getTotalActualChanges(counts);
+
+      expect(result).toBe(4);
+    });
+
+    it('should handle only modified files', () => {
+      const counts: ChangeCounts = {
+        added: 0,
+        modified: 3,
+        deleted: 0,
+        unchanged: 2,
+        total: 5,
+      };
+
+      const result = getTotalActualChanges(counts);
+
+      expect(result).toBe(3);
+    });
+
+    it('should handle only deleted files', () => {
+      const counts: ChangeCounts = {
+        added: 0,
+        modified: 0,
+        deleted: 2,
+        unchanged: 1,
+        total: 3,
+      };
+
+      const result = getTotalActualChanges(counts);
+
+      expect(result).toBe(2);
+    });
+  });
+
+  describe('shouldShowPushConfirmation', () => {
+    it('should return true when there are no changes', () => {
+      const hasChanges = false;
+
+      const result = shouldShowPushConfirmation(hasChanges);
+
+      expect(result).toBe(true);
+    });
+
+    it('should return false when there are changes', () => {
+      const hasChanges = true;
+
+      const result = shouldShowPushConfirmation(hasChanges);
+
+      expect(result).toBe(false);
+    });
+  });
+
+  describe('Integration scenarios', () => {
+    it('should work correctly with real-world file change scenarios', () => {
+      const changes = new Map<string, FileChange>([
+        [
+          'src/components/Button.svelte',
+          {
+            status: 'modified',
+            path: 'src/components/Button.svelte',
+            content: 'updated',
+            previousContent: 'old',
+          },
+        ],
+        [
+          'src/components/Modal.svelte',
+          { status: 'added', path: 'src/components/Modal.svelte', content: 'new component' },
+        ],
+        [
+          'src/utils/helpers.ts',
+          {
+            status: 'deleted',
+            path: 'src/utils/helpers.ts',
+            content: '',
+            previousContent: 'old helper',
+          },
+        ],
+        [
+          'src/lib/stores.ts',
+          { status: 'unchanged', path: 'src/lib/stores.ts', content: 'same content' },
+        ],
+        [
+          'src/lib/api.ts',
+          { status: 'unchanged', path: 'src/lib/api.ts', content: 'same content' },
+        ],
+      ]);
+
+      const counts = countChanges(changes);
+      const hasChanges = hasActualChanges(counts);
+      const totalChanges = getTotalActualChanges(counts);
+      const shouldConfirm = shouldShowPushConfirmation(hasChanges);
+
+      expect(counts).toEqual({
+        added: 1,
+        modified: 1,
+        deleted: 1,
+        unchanged: 2,
+        total: 5,
+      });
+      expect(hasChanges).toBe(true);
+      expect(totalChanges).toBe(3);
+      expect(shouldConfirm).toBe(false);
+    });
+
+    it('should handle edge case where all files are unchanged', () => {
       const changes = new Map<string, FileChange>([
         ['file1.ts', { status: 'unchanged', path: 'file1.ts', content: 'content1' }],
         ['file2.ts', { status: 'unchanged', path: 'file2.ts', content: 'content2' }],
         ['file3.ts', { status: 'unchanged', path: 'file3.ts', content: 'content3' }],
-        ['file4.ts', { status: 'unchanged', path: 'file4.ts', content: 'content4' }],
-        [
-          'file5.ts',
-          {
-            status: 'modified',
-            path: 'file5.ts',
-            content: 'new content',
-            previousContent: 'old content',
-          },
-        ],
       ]);
 
-      const result = countChanges(changes);
-      const hasChanges = hasActualChanges(result);
+      const counts = countChanges(changes);
+      const hasChanges = hasActualChanges(counts);
+      const totalChanges = getTotalActualChanges(counts);
+      const shouldConfirm = shouldShowPushConfirmation(hasChanges);
+      const message = generateNoChangesConfirmationMessage(counts.unchanged);
 
-      expect(result.unchanged).toBe(4);
-      expect(result.modified).toBe(1);
-      expect(hasChanges).toBe(true);
+      expect(counts).toEqual({
+        added: 0,
+        modified: 0,
+        deleted: 0,
+        unchanged: 3,
+        total: 3,
+      });
+      expect(hasChanges).toBe(false);
+      expect(totalChanges).toBe(0);
+      expect(shouldConfirm).toBe(true);
+      expect(message).toContain('3 unchanged files');
     });
   });
 });

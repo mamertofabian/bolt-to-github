@@ -2,72 +2,30 @@
  * @vitest-environment jsdom
  */
 
-import { describe, it, expect, beforeEach, afterEach } from 'vitest';
+import { describe, it, expect } from 'vitest';
+import {
+  hasRequiredSettings,
+  shouldBeExpanded,
+  filterRepositories,
+  repositoryExists,
+  setDefaultRepoNameFromProjectId,
+  generateStatusDisplayText,
+  clearValidationState,
+  isStorageQuotaError,
+  generateStorageQuotaErrorMessage,
+  shouldUpdateSettingsFromStorage,
+  needsPermissionCheck,
+  validateGitHubApp,
+  updateSettingsFromStorageChange,
+  updateSettingsFromSyncStorage,
+  type GitHubSettingsState,
+  type Repository,
+} from '$lib/utils/github-settings';
 
-describe('GitHubSettings.svelte - Logic Tests', () => {
-  let chromeMocks: {
-    storage: {
-      local: {
-        get: ReturnType<typeof vi.fn>;
-        set: ReturnType<typeof vi.fn>;
-      };
-      sync: {
-        get: ReturnType<typeof vi.fn>;
-      };
-      onChanged: {
-        addListener: ReturnType<typeof vi.fn>;
-        removeListener: ReturnType<typeof vi.fn>;
-      };
-    };
-    runtime: {
-      lastError?: { message: string } | null;
-    };
-  };
-
-  beforeEach(() => {
-    chromeMocks = {
-      storage: {
-        local: {
-          get: vi.fn().mockResolvedValue({ preferredAuthMethod: 'pat' }),
-          set: vi.fn().mockResolvedValue(undefined),
-        },
-        sync: {
-          get: vi.fn().mockResolvedValue({}),
-        },
-        onChanged: {
-          addListener: vi.fn(),
-          removeListener: vi.fn(),
-        },
-      },
-      runtime: {
-        lastError: null,
-      },
-    };
-
-    Object.defineProperty(window, 'chrome', {
-      value: chromeMocks,
-      writable: true,
-      configurable: true,
-    });
-  });
-
-  afterEach(() => {
-    vi.clearAllMocks();
-  });
-
-  describe('Reactive Statement: hasRequiredSettings', () => {
-    it('should be true when PAT credentials are complete', () => {
-      type State = {
-        authenticationMethod: 'pat' | 'github_app';
-        githubToken?: string;
-        githubAppInstallationId?: number | null;
-        repoOwner: string;
-        repoName: string;
-        branch: string;
-        isOnboarding: boolean;
-      };
-
-      const state: State = {
+describe('GitHubSettings Logic Functions', () => {
+  describe('hasRequiredSettings', () => {
+    it('should return true when PAT credentials are complete', () => {
+      const state: GitHubSettingsState = {
         authenticationMethod: 'pat',
         githubToken: 'ghp_test',
         repoOwner: 'testuser',
@@ -76,28 +34,11 @@ describe('GitHubSettings.svelte - Logic Tests', () => {
         isOnboarding: false,
       };
 
-      const hasRequiredSettings =
-        ((state.authenticationMethod === 'pat' && state.githubToken && state.repoOwner) ||
-          (state.authenticationMethod === 'github_app' &&
-            state.githubAppInstallationId &&
-            state.repoOwner)) &&
-        (!state.isOnboarding || (state.repoName && state.branch));
-
-      expect(hasRequiredSettings).toBe(true);
+      expect(hasRequiredSettings(state)).toBe(true);
     });
 
-    it('should be true when GitHub App is authenticated', () => {
-      type State = {
-        authenticationMethod: 'pat' | 'github_app';
-        githubToken?: string;
-        githubAppInstallationId?: number | null;
-        repoOwner: string;
-        repoName: string;
-        branch: string;
-        isOnboarding: boolean;
-      };
-
-      const state: State = {
+    it('should return true when GitHub App is authenticated', () => {
+      const state: GitHubSettingsState = {
         authenticationMethod: 'github_app',
         githubAppInstallationId: 12345,
         repoOwner: 'testuser',
@@ -106,28 +47,11 @@ describe('GitHubSettings.svelte - Logic Tests', () => {
         isOnboarding: false,
       };
 
-      const hasRequiredSettings =
-        ((state.authenticationMethod === 'pat' && state.githubToken && state.repoOwner) ||
-          (state.authenticationMethod === 'github_app' &&
-            state.githubAppInstallationId &&
-            state.repoOwner)) &&
-        (!state.isOnboarding || (state.repoName && state.branch));
-
-      expect(hasRequiredSettings).toBe(true);
+      expect(hasRequiredSettings(state)).toBe(true);
     });
 
-    it('should be false when PAT is missing token', () => {
-      type State = {
-        authenticationMethod: 'pat' | 'github_app';
-        githubToken?: string;
-        githubAppInstallationId?: number | null;
-        repoOwner: string;
-        repoName: string;
-        branch: string;
-        isOnboarding: boolean;
-      };
-
-      const state: State = {
+    it('should return false when PAT is missing token', () => {
+      const state: GitHubSettingsState = {
         authenticationMethod: 'pat',
         githubToken: undefined,
         repoOwner: 'testuser',
@@ -136,28 +60,11 @@ describe('GitHubSettings.svelte - Logic Tests', () => {
         isOnboarding: false,
       };
 
-      const hasRequiredSettings =
-        ((state.authenticationMethod === 'pat' && state.githubToken && state.repoOwner) ||
-          (state.authenticationMethod === 'github_app' &&
-            state.githubAppInstallationId &&
-            state.repoOwner)) &&
-        (!state.isOnboarding || (state.repoName && state.branch));
-
-      expect(hasRequiredSettings).toBe(false);
+      expect(hasRequiredSettings(state)).toBe(false);
     });
 
-    it('should be false when GitHub App is missing installation ID', () => {
-      type State = {
-        authenticationMethod: 'pat' | 'github_app';
-        githubToken?: string;
-        githubAppInstallationId?: number | null;
-        repoOwner: string;
-        repoName: string;
-        branch: string;
-        isOnboarding: boolean;
-      };
-
-      const state: State = {
+    it('should return false when GitHub App is missing installation ID', () => {
+      const state: GitHubSettingsState = {
         authenticationMethod: 'github_app',
         githubAppInstallationId: null,
         repoOwner: 'testuser',
@@ -166,66 +73,83 @@ describe('GitHubSettings.svelte - Logic Tests', () => {
         isOnboarding: false,
       };
 
-      const hasRequiredSettings = Boolean(
-        ((state.authenticationMethod === 'pat' && state.githubToken && state.repoOwner) ||
-          (state.authenticationMethod === 'github_app' &&
-            state.githubAppInstallationId &&
-            state.repoOwner)) &&
-          (!state.isOnboarding || (state.repoName && state.branch))
-      );
-
-      expect(hasRequiredSettings).toBe(false);
+      expect(hasRequiredSettings(state)).toBe(false);
     });
-  });
 
-  describe('Reactive Statement: isExpanded Collapsible Behavior', () => {
-    it('should collapse when hasRequiredSettings is true and not onboarding', () => {
-      const state = {
+    it('should return false when repoOwner is missing', () => {
+      const state: GitHubSettingsState = {
+        authenticationMethod: 'pat',
+        githubToken: 'ghp_test',
+        repoOwner: '',
+        repoName: 'testrepo',
+        branch: 'main',
         isOnboarding: false,
-        hasRequiredSettings: true,
-        manuallyToggled: false,
       };
 
-      const isExpanded = state.isOnboarding || !state.hasRequiredSettings;
-      expect(isExpanded).toBe(false);
+      expect(hasRequiredSettings(state)).toBe(false);
     });
 
-    it('should stay expanded during onboarding regardless of settings', () => {
-      const state = {
+    it('should return true during onboarding even without repoName and branch', () => {
+      const state: GitHubSettingsState = {
+        authenticationMethod: 'pat',
+        githubToken: 'ghp_test',
+        repoOwner: 'testuser',
+        repoName: '',
+        branch: '',
         isOnboarding: true,
-        hasRequiredSettings: true,
-        manuallyToggled: false,
       };
 
-      const isExpanded = state.isOnboarding || !state.hasRequiredSettings;
-      expect(isExpanded).toBe(true);
+      expect(hasRequiredSettings(state)).toBe(true);
     });
 
-    it('should stay expanded when settings are incomplete', () => {
-      const state = {
+    it('should return false when not onboarding and missing repoName', () => {
+      const state: GitHubSettingsState = {
+        authenticationMethod: 'pat',
+        githubToken: 'ghp_test',
+        repoOwner: 'testuser',
+        repoName: '',
+        branch: 'main',
         isOnboarding: false,
-        hasRequiredSettings: false,
-        manuallyToggled: false,
       };
 
-      const isExpanded = state.isOnboarding || !state.hasRequiredSettings;
-      expect(isExpanded).toBe(true);
+      expect(hasRequiredSettings(state)).toBe(false);
     });
 
-    it('should not auto-collapse when manually toggled', () => {
-      const state = {
+    it('should return false when not onboarding and missing branch', () => {
+      const state: GitHubSettingsState = {
+        authenticationMethod: 'pat',
+        githubToken: 'ghp_test',
+        repoOwner: 'testuser',
+        repoName: 'testrepo',
+        branch: '',
         isOnboarding: false,
-        hasRequiredSettings: true,
-        manuallyToggled: true,
-        isExpanded: true,
       };
 
-      expect(state.isExpanded).toBe(true);
+      expect(hasRequiredSettings(state)).toBe(false);
     });
   });
 
-  describe('Reactive Statement: filteredRepos', () => {
-    const mockRepos = [
+  describe('shouldBeExpanded', () => {
+    it('should return false when hasRequiredSettings is true and not onboarding', () => {
+      expect(shouldBeExpanded(false, true, false, true)).toBe(false);
+    });
+
+    it('should return true during onboarding regardless of settings', () => {
+      expect(shouldBeExpanded(true, true, false, false)).toBe(true);
+    });
+
+    it('should return true when settings are incomplete', () => {
+      expect(shouldBeExpanded(false, false, false, true)).toBe(true);
+    });
+
+    it('should return current state when manually toggled', () => {
+      expect(shouldBeExpanded(false, true, true, true)).toBe(true);
+      expect(shouldBeExpanded(false, true, true, false)).toBe(false);
+    });
+  });
+
+  describe('filterRepositories', () => {
+    const mockRepos: Repository[] = [
       {
         name: 'awesome-project',
         description: 'An awesome TypeScript project',
@@ -256,66 +180,30 @@ describe('GitHubSettings.svelte - Logic Tests', () => {
     ];
 
     it('should filter repositories by name match', () => {
-      const repoSearchQuery = 'backend';
-      const filteredRepos = mockRepos
-        .filter(
-          (repo) =>
-            repo.name.toLowerCase().includes(repoSearchQuery.toLowerCase()) ||
-            (repo.description &&
-              repo.description.toLowerCase().includes(repoSearchQuery.toLowerCase()))
-        )
-        .slice(0, 10);
-
-      expect(filteredRepos).toHaveLength(1);
-      expect(filteredRepos[0].name).toBe('backend-api');
+      const result = filterRepositories(mockRepos, 'backend');
+      expect(result).toHaveLength(1);
+      expect(result[0].name).toBe('backend-api');
     });
 
     it('should filter repositories by description match', () => {
-      const repoSearchQuery = 'awesome';
-      const filteredRepos = mockRepos
-        .filter(
-          (repo) =>
-            repo.name.toLowerCase().includes(repoSearchQuery.toLowerCase()) ||
-            (repo.description &&
-              repo.description.toLowerCase().includes(repoSearchQuery.toLowerCase()))
-        )
-        .slice(0, 10);
-
-      expect(filteredRepos).toHaveLength(1);
-      expect(filteredRepos[0].name).toBe('awesome-project');
+      const result = filterRepositories(mockRepos, 'awesome');
+      expect(result).toHaveLength(1);
+      expect(result[0].name).toBe('awesome-project');
     });
 
     it('should handle null descriptions safely', () => {
-      const repoSearchQuery = 'frontend';
-      const filteredRepos = mockRepos
-        .filter(
-          (repo) =>
-            repo.name.toLowerCase().includes(repoSearchQuery.toLowerCase()) ||
-            (repo.description &&
-              repo.description.toLowerCase().includes(repoSearchQuery.toLowerCase()))
-        )
-        .slice(0, 10);
-
-      expect(filteredRepos).toHaveLength(1);
-      expect(filteredRepos[0].name).toBe('frontend-app');
+      const result = filterRepositories(mockRepos, 'frontend');
+      expect(result).toHaveLength(1);
+      expect(result[0].name).toBe('frontend-app');
     });
 
     it('should be case-insensitive', () => {
-      const repoSearchQuery = 'BACKEND';
-      const filteredRepos = mockRepos
-        .filter(
-          (repo) =>
-            repo.name.toLowerCase().includes(repoSearchQuery.toLowerCase()) ||
-            (repo.description &&
-              repo.description.toLowerCase().includes(repoSearchQuery.toLowerCase()))
-        )
-        .slice(0, 10);
-
-      expect(filteredRepos).toHaveLength(1);
-      expect(filteredRepos[0].name).toBe('backend-api');
+      const result = filterRepositories(mockRepos, 'BACKEND');
+      expect(result).toHaveLength(1);
+      expect(result[0].name).toBe('backend-api');
     });
 
-    it('should limit results to 10 items', () => {
+    it('should limit results to specified number of items', () => {
       const manyRepos = Array.from({ length: 20 }, (_, i) => ({
         name: `repo-${i}`,
         description: `Description ${i}`,
@@ -326,398 +214,405 @@ describe('GitHubSettings.svelte - Logic Tests', () => {
         language: 'TypeScript',
       }));
 
-      const repoSearchQuery = 'repo';
-      const filteredRepos = manyRepos
-        .filter(
-          (repo) =>
-            repo.name.toLowerCase().includes(repoSearchQuery.toLowerCase()) ||
-            (repo.description &&
-              repo.description.toLowerCase().includes(repoSearchQuery.toLowerCase()))
-        )
-        .slice(0, 10);
-
-      expect(filteredRepos).toHaveLength(10);
+      const result = filterRepositories(manyRepos, 'repo', 10);
+      expect(result).toHaveLength(10);
     });
 
     it('should return empty array when no repositories match', () => {
-      const repoSearchQuery = 'nonexistent';
-      const filteredRepos = mockRepos
-        .filter(
-          (repo) =>
-            repo.name.toLowerCase().includes(repoSearchQuery.toLowerCase()) ||
-            (repo.description &&
-              repo.description.toLowerCase().includes(repoSearchQuery.toLowerCase()))
-        )
-        .slice(0, 10);
+      const result = filterRepositories(mockRepos, 'nonexistent');
+      expect(result).toHaveLength(0);
+    });
 
-      expect(filteredRepos).toHaveLength(0);
+    it('should return all repositories when search query is empty', () => {
+      const result = filterRepositories(mockRepos, '');
+      expect(result).toHaveLength(3);
+    });
+
+    it('should return all repositories when search query is whitespace', () => {
+      const result = filterRepositories(mockRepos, '   ');
+      expect(result).toHaveLength(3);
     });
   });
 
-  describe('Reactive Statement: repoExists', () => {
-    const mockRepos = [{ name: 'existing-repo' }, { name: 'another-repo' }, { name: 'Third-Repo' }];
+  describe('repositoryExists', () => {
+    const mockRepos: Repository[] = [
+      {
+        name: 'existing-repo',
+        description: null,
+        html_url: '',
+        private: false,
+        created_at: '',
+        updated_at: '',
+        language: null,
+      },
+      {
+        name: 'another-repo',
+        description: null,
+        html_url: '',
+        private: false,
+        created_at: '',
+        updated_at: '',
+        language: null,
+      },
+      {
+        name: 'Third-Repo',
+        description: null,
+        html_url: '',
+        private: false,
+        created_at: '',
+        updated_at: '',
+        language: null,
+      },
+    ];
 
-    it('should detect existing repository', () => {
-      const repoName = 'existing-repo';
-      const repoExists = mockRepos.some(
-        (repo) => repo.name.toLowerCase() === repoName.toLowerCase()
-      );
-
-      expect(repoExists).toBe(true);
+    it('should return true for existing repository', () => {
+      expect(repositoryExists(mockRepos, 'existing-repo')).toBe(true);
     });
 
-    it('should detect non-existing repository', () => {
-      const repoName = 'new-repo';
-      const repoExists = mockRepos.some(
-        (repo) => repo.name.toLowerCase() === repoName.toLowerCase()
-      );
-
-      expect(repoExists).toBe(false);
+    it('should return false for non-existing repository', () => {
+      expect(repositoryExists(mockRepos, 'new-repo')).toBe(false);
     });
 
     it('should be case-insensitive', () => {
-      const repoName = 'THIRD-REPO';
-      const repoExists = mockRepos.some(
-        (repo) => repo.name.toLowerCase() === repoName.toLowerCase()
-      );
+      expect(repositoryExists(mockRepos, 'THIRD-REPO')).toBe(true);
+      expect(repositoryExists(mockRepos, 'third-repo')).toBe(true);
+    });
 
-      expect(repoExists).toBe(true);
+    it('should return false for empty repository name', () => {
+      expect(repositoryExists(mockRepos, '')).toBe(false);
     });
   });
 
-  describe('Reactive Statement: repoName from projectId', () => {
-    it('should use projectId as default repoName when not set', () => {
-      const state = {
+  describe('setDefaultRepoNameFromProjectId', () => {
+    it('should set repoName from projectId when not set', () => {
+      const state: GitHubSettingsState = {
         projectId: 'my-project-123',
         repoName: '',
         isRepoNameFromProjectId: false,
+        authenticationMethod: 'pat',
+        repoOwner: 'testuser',
+        branch: 'main',
+        isOnboarding: false,
       };
 
-      if (state.projectId && !state.repoName && !state.isRepoNameFromProjectId) {
-        state.repoName = state.projectId;
-        state.isRepoNameFromProjectId = true;
-      }
-
-      expect(state.repoName).toBe('my-project-123');
-      expect(state.isRepoNameFromProjectId).toBe(true);
+      const result = setDefaultRepoNameFromProjectId(state);
+      expect(result.repoName).toBe('my-project-123');
+      expect(result.isRepoNameFromProjectId).toBe(true);
     });
 
     it('should not override existing repoName', () => {
-      const state = {
+      const state: GitHubSettingsState = {
         projectId: 'my-project-123',
         repoName: 'existing-repo',
         isRepoNameFromProjectId: false,
+        authenticationMethod: 'pat',
+        repoOwner: 'testuser',
+        branch: 'main',
+        isOnboarding: false,
       };
 
-      if (state.projectId && !state.repoName && !state.isRepoNameFromProjectId) {
-        state.repoName = state.projectId;
-        state.isRepoNameFromProjectId = true;
-      }
+      const result = setDefaultRepoNameFromProjectId(state);
+      expect(result.repoName).toBe('existing-repo');
+      expect(result.isRepoNameFromProjectId).toBe(false);
+    });
 
-      expect(state.repoName).toBe('existing-repo');
-      expect(state.isRepoNameFromProjectId).toBe(false);
+    it('should not set repoName when already set from projectId', () => {
+      const state: GitHubSettingsState = {
+        projectId: 'my-project-123',
+        repoName: 'existing-repo',
+        isRepoNameFromProjectId: true,
+        authenticationMethod: 'pat',
+        repoOwner: 'testuser',
+        branch: 'main',
+        isOnboarding: false,
+      };
+
+      const result = setDefaultRepoNameFromProjectId(state);
+      expect(result.repoName).toBe('existing-repo');
+      expect(result.isRepoNameFromProjectId).toBe(true);
+    });
+
+    it('should not set repoName when projectId is null', () => {
+      const state: GitHubSettingsState = {
+        projectId: null,
+        repoName: '',
+        isRepoNameFromProjectId: false,
+        authenticationMethod: 'pat',
+        repoOwner: 'testuser',
+        branch: 'main',
+        isOnboarding: false,
+      };
+
+      const result = setDefaultRepoNameFromProjectId(state);
+      expect(result.repoName).toBe('');
+      expect(result.isRepoNameFromProjectId).toBe(false);
     });
   });
 
-  describe('Reactive Statement: statusDisplayText', () => {
+  describe('generateStatusDisplayText', () => {
     it('should show GitHub App status when authenticated', () => {
-      const state = {
-        authenticationMethod: 'github_app' as 'pat' | 'github_app',
+      const state: GitHubSettingsState = {
+        authenticationMethod: 'github_app',
         githubAppInstallationId: 12345,
         githubAppUsername: 'testuser',
-        githubToken: '',
-        repoOwner: '',
-        repoName: '',
+        repoOwner: 'testuser',
+        repoName: 'testrepo',
+        branch: 'main',
+        isOnboarding: false,
       };
 
-      const statusDisplayText = (() => {
-        if (state.authenticationMethod === 'github_app') {
-          if (state.githubAppInstallationId && state.githubAppUsername) {
-            return `Connected via GitHub App as ${state.githubAppUsername}`;
-          }
-          return 'Connect with GitHub App to get started';
-        } else {
-          if (state.githubToken && state.repoOwner) {
-            return `Configured for ${state.repoOwner}${state.repoName ? `/${state.repoName}` : ''}`;
-          }
-          return 'Configure your GitHub repository settings';
-        }
-      })();
-
-      expect(statusDisplayText).toBe('Connected via GitHub App as testuser');
+      expect(generateStatusDisplayText(state)).toBe('Connected via GitHub App as testuser');
     });
 
     it('should show connection prompt when GitHub App not connected', () => {
-      const state = {
-        authenticationMethod: 'github_app' as 'pat' | 'github_app',
+      const state: GitHubSettingsState = {
+        authenticationMethod: 'github_app',
         githubAppInstallationId: null,
         githubAppUsername: null,
-        githubToken: '',
         repoOwner: '',
         repoName: '',
+        branch: '',
+        isOnboarding: false,
       };
 
-      const statusDisplayText = (() => {
-        if (state.authenticationMethod === 'github_app') {
-          if (state.githubAppInstallationId && state.githubAppUsername) {
-            return `Connected via GitHub App as ${state.githubAppUsername}`;
-          }
-          return 'Connect with GitHub App to get started';
-        } else {
-          if (state.githubToken && state.repoOwner) {
-            return `Configured for ${state.repoOwner}${state.repoName ? `/${state.repoName}` : ''}`;
-          }
-          return 'Configure your GitHub repository settings';
-        }
-      })();
-
-      expect(statusDisplayText).toBe('Connect with GitHub App to get started');
+      expect(generateStatusDisplayText(state)).toBe('Connect with GitHub App to get started');
     });
 
     it('should show repository configuration for PAT', () => {
-      const state = {
-        authenticationMethod: 'pat' as 'pat' | 'github_app',
-        githubAppInstallationId: null,
-        githubAppUsername: null,
+      const state: GitHubSettingsState = {
+        authenticationMethod: 'pat',
         githubToken: 'ghp_test',
         repoOwner: 'testuser',
         repoName: 'testrepo',
+        branch: 'main',
+        isOnboarding: false,
       };
 
-      const statusDisplayText = (() => {
-        if (state.authenticationMethod === 'github_app') {
-          if (state.githubAppInstallationId && state.githubAppUsername) {
-            return `Connected via GitHub App as ${state.githubAppUsername}`;
-          }
-          return 'Connect with GitHub App to get started';
-        } else {
-          if (state.githubToken && state.repoOwner) {
-            return `Configured for ${state.repoOwner}${state.repoName ? `/${state.repoName}` : ''}`;
-          }
-          return 'Configure your GitHub repository settings';
-        }
-      })();
+      expect(generateStatusDisplayText(state)).toBe('Configured for testuser/testrepo');
+    });
 
-      expect(statusDisplayText).toBe('Configured for testuser/testrepo');
+    it('should show default message for PAT without token', () => {
+      const state: GitHubSettingsState = {
+        authenticationMethod: 'pat',
+        githubToken: '',
+        repoOwner: '',
+        repoName: '',
+        branch: '',
+        isOnboarding: false,
+      };
+
+      expect(generateStatusDisplayText(state)).toBe('Configure your GitHub repository settings');
     });
   });
 
-  describe('Authentication Method State Clearing', () => {
-    it('should clear validation state when switching from PAT to GitHub App', () => {
-      const newState = {
-        isTokenValid: null,
-        validationError: null,
-        tokenType: null,
-        permissionStatus: {
-          allRepos: undefined,
-          admin: undefined,
-          contents: undefined,
-        },
-      };
+  describe('clearValidationState', () => {
+    it('should return cleared validation state', () => {
+      const result = clearValidationState();
 
-      expect(newState.isTokenValid).toBeNull();
-      expect(newState.validationError).toBeNull();
-      expect(newState.tokenType).toBeNull();
-      expect(newState.permissionStatus.allRepos).toBeUndefined();
-    });
-
-    it('should clear GitHub App state when switching to PAT', () => {
-      const newState = {
-        githubAppValidationResult: null,
-        githubAppConnectionError: null,
-      };
-
-      expect(newState.githubAppValidationResult).toBeNull();
-      expect(newState.githubAppConnectionError).toBeNull();
-    });
-
-    it('should save authentication method preference to storage', async () => {
-      await chromeMocks.storage.local.set({ preferredAuthMethod: 'github_app' });
-
-      expect(chromeMocks.storage.local.set).toHaveBeenCalledWith({
-        preferredAuthMethod: 'github_app',
+      expect(result.isTokenValid).toBeNull();
+      expect(result.validationError).toBeNull();
+      expect(result.tokenType).toBeNull();
+      expect(result.githubAppValidationResult).toBeNull();
+      expect(result.githubAppConnectionError).toBeNull();
+      expect(result.permissionStatus).toEqual({
+        allRepos: undefined,
+        admin: undefined,
+        contents: undefined,
       });
     });
   });
 
-  describe('Storage Quota Error Handling', () => {
-    it('should detect MAX_WRITE_OPERATIONS_PER_HOUR error', () => {
+  describe('isStorageQuotaError', () => {
+    it('should return true for MAX_WRITE_OPERATIONS_PER_HOUR error', () => {
       const error = new Error('Quota exceeded: MAX_WRITE_OPERATIONS_PER_HOUR');
-
-      expect(error.message).toContain('MAX_WRITE_OPERATIONS_PER_H');
+      expect(isStorageQuotaError(error)).toBe(true);
     });
 
-    it('should handle storage quota error from chrome.runtime.lastError', () => {
-      chromeMocks.runtime.lastError = {
-        message: 'Quota exceeded: MAX_WRITE_OPERATIONS_PER_HOUR',
-      };
-
-      expect(chromeMocks.runtime.lastError.message).toContain('MAX_WRITE_OPERATIONS_PER_H');
+    it('should return true for string error message', () => {
+      expect(isStorageQuotaError('Quota exceeded: MAX_WRITE_OPERATIONS_PER_HOUR')).toBe(true);
     });
 
-    it('should generate appropriate error message for quota exceeded', () => {
-      const errorMessage =
-        'Storage quota exceeded. You can only save settings 1800 times per hour (once every 2 seconds). Please wait a moment before trying again.';
-
-      expect(errorMessage).toContain('1800 times per hour');
-      expect(errorMessage).toContain('once every 2 seconds');
-    });
-
-    it('should clear storage quota error when cleared', () => {
-      const state = {
-        storageQuotaError: 'Storage quota exceeded',
-      };
-
-      state.storageQuotaError = null as unknown as string;
-
-      expect(state.storageQuotaError).toBeNull();
+    it('should return false for other errors', () => {
+      const error = new Error('Network error');
+      expect(isStorageQuotaError(error)).toBe(false);
     });
   });
 
-  describe('Storage Change Listeners', () => {
-    it('should update settings when lastSettingsUpdate changes for current project', () => {
-      const projectId = 'test-project';
+  describe('generateStorageQuotaErrorMessage', () => {
+    it('should return appropriate error message', () => {
+      const message = generateStorageQuotaErrorMessage();
+      expect(message).toContain('1800 times per hour');
+      expect(message).toContain('once every 2 seconds');
+    });
+  });
+
+  describe('shouldUpdateSettingsFromStorage', () => {
+    it('should return true when project IDs match', () => {
       const updateInfo = {
-        timestamp: Date.now(),
         projectId: 'test-project',
         repoName: 'new-repo',
         branch: 'develop',
       };
 
-      const state = {
-        projectId,
-        repoName: 'old-repo',
-        branch: 'main',
-      };
-
-      if (updateInfo.projectId === state.projectId) {
-        state.repoName = updateInfo.repoName;
-        state.branch = updateInfo.branch;
-      }
-
-      expect(state.repoName).toBe('new-repo');
-      expect(state.branch).toBe('develop');
+      expect(shouldUpdateSettingsFromStorage(updateInfo, 'test-project')).toBe(true);
     });
 
-    it('should not update settings when lastSettingsUpdate is for different project', () => {
-      const projectId = 'test-project';
+    it('should return false when project IDs do not match', () => {
       const updateInfo = {
-        timestamp: Date.now(),
         projectId: 'different-project',
         repoName: 'new-repo',
         branch: 'develop',
       };
 
-      const state = {
-        projectId,
-        repoName: 'old-repo',
-        branch: 'main',
-      };
-
-      if (updateInfo.projectId === state.projectId) {
-        state.repoName = updateInfo.repoName;
-        state.branch = updateInfo.branch;
-      }
-
-      expect(state.repoName).toBe('old-repo');
-      expect(state.branch).toBe('main');
+      expect(shouldUpdateSettingsFromStorage(updateInfo, 'test-project')).toBe(false);
     });
 
-    it('should update from sync storage when projectSettings change', () => {
-      const projectId = 'test-project';
-      const newSettings = {
+    it('should return false when current project ID is null', () => {
+      const updateInfo = {
+        projectId: 'test-project',
+        repoName: 'new-repo',
+        branch: 'develop',
+      };
+
+      expect(shouldUpdateSettingsFromStorage(updateInfo, null)).toBe(false);
+    });
+  });
+
+  describe('needsPermissionCheck', () => {
+    it('should return true when token changes', () => {
+      expect(needsPermissionCheck('old-token', 'new-token', Date.now())).toBe(true);
+    });
+
+    it('should return true when never checked', () => {
+      expect(needsPermissionCheck('token', 'token', null)).toBe(true);
+    });
+
+    it('should return true when check is expired', () => {
+      const thirtyOneDaysAgo = Date.now() - 31 * 24 * 60 * 60 * 1000;
+      expect(needsPermissionCheck('token', 'token', thirtyOneDaysAgo)).toBe(true);
+    });
+
+    it('should return false when token unchanged and check is recent', () => {
+      const oneDayAgo = Date.now() - 24 * 60 * 60 * 1000;
+      expect(needsPermissionCheck('token', 'token', oneDayAgo)).toBe(false);
+    });
+  });
+
+  describe('validateGitHubApp', () => {
+    it('should return valid result when installation ID exists', () => {
+      const result = validateGitHubApp(12345, 'testuser', 'https://example.com/avatar.jpg');
+
+      expect(result.isValid).toBe(true);
+      expect(result.userInfo?.login).toBe('testuser');
+      expect(result.userInfo?.avatar_url).toBe('https://example.com/avatar.jpg');
+    });
+
+    it('should return invalid result when no installation ID', () => {
+      const result = validateGitHubApp(null);
+
+      expect(result.isValid).toBe(false);
+      expect(result.error).toBe('No GitHub App installation found');
+    });
+
+    it('should use default username when not provided', () => {
+      const result = validateGitHubApp(12345);
+
+      expect(result.isValid).toBe(true);
+      expect(result.userInfo?.login).toBe('GitHub User');
+    });
+  });
+
+  describe('updateSettingsFromStorageChange', () => {
+    it('should update settings with new values', () => {
+      const state: GitHubSettingsState = {
+        projectId: 'test-project',
+        repoName: 'old-repo',
+        branch: 'main',
+        authenticationMethod: 'pat',
+        repoOwner: 'testuser',
+        isOnboarding: false,
+      };
+
+      const updateInfo = {
+        repoName: 'new-repo',
+        branch: 'develop',
+      };
+
+      const result = updateSettingsFromStorageChange(state, updateInfo);
+
+      expect(result.repoName).toBe('new-repo');
+      expect(result.branch).toBe('develop');
+    });
+  });
+
+  describe('updateSettingsFromSyncStorage', () => {
+    it('should update settings when project exists in sync storage', () => {
+      const state: GitHubSettingsState = {
+        projectId: 'test-project',
+        repoName: 'old-repo',
+        branch: 'main',
+        authenticationMethod: 'pat',
+        repoOwner: 'testuser',
+        isOnboarding: false,
+      };
+
+      const projectSettings = {
         'test-project': {
           repoName: 'synced-repo',
           branch: 'feature',
         },
       };
 
-      const state = {
-        projectId,
+      const result = updateSettingsFromSyncStorage(state, projectSettings);
+
+      expect(result.repoName).toBe('synced-repo');
+      expect(result.branch).toBe('feature');
+    });
+
+    it('should not update settings when project does not exist in sync storage', () => {
+      const state: GitHubSettingsState = {
+        projectId: 'test-project',
         repoName: 'old-repo',
         branch: 'main',
+        authenticationMethod: 'pat',
+        repoOwner: 'testuser',
+        isOnboarding: false,
       };
 
-      if (newSettings[projectId]) {
-        state.repoName = newSettings[projectId].repoName;
-        state.branch = newSettings[projectId].branch;
-      }
-
-      expect(state.repoName).toBe('synced-repo');
-      expect(state.branch).toBe('feature');
-    });
-
-    it('should register storage change listener on mount', () => {
-      const listenerFn = vi.fn();
-      chromeMocks.storage.onChanged.addListener(listenerFn);
-
-      expect(chromeMocks.storage.onChanged.addListener).toHaveBeenCalledWith(listenerFn);
-    });
-
-    it('should remove storage change listener on unmount', () => {
-      const listenerFn = vi.fn();
-      chromeMocks.storage.onChanged.removeListener(listenerFn);
-
-      expect(chromeMocks.storage.onChanged.removeListener).toHaveBeenCalledWith(listenerFn);
-    });
-  });
-
-  describe('Permission Check Timing Logic', () => {
-    it('should check permissions when token changes', () => {
-      const previousToken = 'ghp_old_token';
-      const currentToken = 'ghp_new_token';
-
-      const needsCheck = (previousToken as string) !== (currentToken as string);
-
-      expect(needsCheck).toBe(true);
-    });
-
-    it('should check permissions when more than 30 days have passed', () => {
-      const THIRTY_DAYS = 30 * 24 * 60 * 60 * 1000;
-      const moreThan30DaysAgo = Date.now() - 31 * 24 * 60 * 60 * 1000;
-
-      const needsCheck = Date.now() - moreThan30DaysAgo > THIRTY_DAYS;
-
-      expect(needsCheck).toBe(true);
-    });
-
-    it('should not check permissions within 30 days if token unchanged', () => {
-      const THIRTY_DAYS = 30 * 24 * 60 * 60 * 1000;
-      const twentyDaysAgo = Date.now() - 20 * 24 * 60 * 60 * 1000;
-      const previousToken = 'ghp_token';
-      const currentToken = 'ghp_token';
-
-      const needsCheck =
-        (previousToken as string) !== (currentToken as string) ||
-        Date.now() - twentyDaysAgo > THIRTY_DAYS;
-
-      expect(needsCheck).toBe(false);
-    });
-  });
-
-  describe('GitHub App Validation Logic', () => {
-    it('should validate when installation ID exists', () => {
-      const githubAppInstallationId = 12345;
-
-      const validationResult = {
-        isValid: !!githubAppInstallationId,
-        userInfo: {
-          login: 'testuser',
-          avatar_url: 'https://example.com/avatar.jpg',
+      const projectSettings = {
+        'different-project': {
+          repoName: 'synced-repo',
+          branch: 'feature',
         },
       };
 
-      expect(validationResult.isValid).toBe(true);
-      expect(validationResult.userInfo.login).toBe('testuser');
+      const result = updateSettingsFromSyncStorage(state, projectSettings);
+
+      expect(result.repoName).toBe('old-repo');
+      expect(result.branch).toBe('main');
     });
 
-    it('should fail validation when no installation ID', () => {
-      const validationResult = {
-        isValid: false,
-        error: 'No GitHub App installation found',
+    it('should not update settings when projectId is null', () => {
+      const state: GitHubSettingsState = {
+        projectId: null,
+        repoName: 'old-repo',
+        branch: 'main',
+        authenticationMethod: 'pat',
+        repoOwner: 'testuser',
+        isOnboarding: false,
       };
 
-      expect(validationResult.isValid).toBe(false);
+      const projectSettings = {
+        'test-project': {
+          repoName: 'synced-repo',
+          branch: 'feature',
+        },
+      };
+
+      const result = updateSettingsFromSyncStorage(state, projectSettings);
+
+      expect(result.repoName).toBe('old-repo');
+      expect(result.branch).toBe('main');
     });
   });
 });
