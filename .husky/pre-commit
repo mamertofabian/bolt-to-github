@@ -1,6 +1,7 @@
 # Configuration flags (can be overridden via environment variables)
 : ${RUN_LINT:=TRUE}
 : ${RUN_CHECK:=TRUE}
+: ${SKIP_TESTS:=FALSE}
 : ${UPDATED_TESTS_ONLY:=TRUE}
 
 echo "🔍 Running pre-commit checks..."
@@ -36,8 +37,8 @@ else
   echo "⏭️  Skipping TypeScript type checking (RUN_CHECK=FALSE)"
 fi
 
-# 4. Run tests to ensure nothing is broken (can skip with SKIP_TESTS=1)
-if [ -z "$SKIP_TESTS" ]; then
+# 4. Run tests to ensure nothing is broken (can skip with SKIP_TESTS=TRUE)
+if [ "$SKIP_TESTS" != "TRUE" ]; then
   # Option to run only changed/updated tests (default behavior)
   if [ "$UPDATED_TESTS_ONLY" != "FALSE" ]; then
     echo "🧪 Running tests on changed files only..."
@@ -45,7 +46,7 @@ if [ -z "$SKIP_TESTS" ]; then
     if [ $? -ne 0 ]; then
       echo "❌ Tests on changed files failed. Please fix failing tests before committing."
       echo "💡 To run full test suite, use: UPDATED_TESTS_ONLY=FALSE git commit"
-      echo "💡 To skip tests temporarily, use: SKIP_TESTS=1 git commit"
+      echo "💡 To skip tests temporarily, use: SKIP_TESTS=TRUE git commit"
       exit 1
     fi
   else
@@ -53,13 +54,13 @@ if [ -z "$SKIP_TESTS" ]; then
     pnpm test
     if [ $? -ne 0 ]; then
       echo "❌ Tests failed. Please fix failing tests before committing."
-      echo "💡 To skip tests temporarily during development, use: SKIP_TESTS=1 git commit"
+      echo "💡 To skip tests temporarily during development, use: SKIP_TESTS=TRUE git commit"
       echo "💡 To run only changed tests, use: UPDATED_TESTS_ONLY=TRUE git commit"
       exit 1
     fi
   fi
 else
-  echo "⏭️  Skipping tests (SKIP_TESTS is set)"
+  echo "⏭️  Skipping tests (SKIP_TESTS=TRUE)"
 fi
 
 echo "✅ All pre-commit checks passed!"
