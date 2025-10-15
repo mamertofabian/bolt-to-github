@@ -274,9 +274,19 @@ export class OperationStateManager {
     const operation = this.operations.get(id);
     if (operation) {
       const duration = Date.now() - operation.startTime;
+
+      // Better error serialization for logging
+      const errorDetails = error
+        ? {
+            message: error.message,
+            name: error.name,
+            stack: error.stack?.split('\n').slice(0, 3).join('\n'), // First 3 lines
+          }
+        : undefined;
+
       logger.info(
         `❌ OperationStateManager [${this.context}]: Failed operation ${operation.type}:${id} after ${Math.round(duration / 1000)}s`,
-        error
+        errorDetails
       );
 
       this.operations.delete(id);

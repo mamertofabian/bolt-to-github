@@ -380,6 +380,11 @@ export class BackgroundService {
         logger.info('🧹 Emergency log clearing requested');
         this.handleEmergencyLogClear(sendResponse);
         return true; // Will respond asynchronously
+      } else if (message.type === 'RELOAD_EXTENSION') {
+        // Handle extension reload request (self-healing for auth failures)
+        logger.info('🔄 Extension reload requested for authentication recovery');
+        this.handleExtensionReload(message.data, sendResponse);
+        return true; // Will respond asynchronously
       }
 
       // Return true to indicate we'll send a response asynchronously
@@ -757,7 +762,7 @@ export class BackgroundService {
     base64Data: string,
     currentProjectId?: string | null
   ): Promise<void> {
-    logger.info('🔄 Handling ZIP data for tab:', tabId);
+    logger.info('🔄 Handling ZIP data for tab:', tabId, '- ZIP size:', base64Data.length, 'chars');
     const port = this.ports.get(tabId);
     if (!port) return;
 
@@ -787,8 +792,32 @@ export class BackgroundService {
     } = {};
 
     try {
+      // Proactively try to initialize GitHub service if not already initialized
       if (!this.githubService) {
-        throw new Error('GitHub service is not initialized. Please check your GitHub settings.');
+        logger.warn('⚠️ GitHub service not initialized, attempting to initialize now...');
+        const githubService = await this.initializeGitHubService();
+        if (githubService) {
+          logger.info('✅ GitHub service initialized successfully during ZIP processing');
+          this.setupZipHandler(githubService);
+        } else {
+          // Provide detailed diagnostics for why initialization failed
+          const settings = await this.stateManager.getGitHubSettings();
+          const localSettings = await chrome.storage.local.get(['authenticationMethod']);
+          const authMethod = localSettings.authenticationMethod || 'pat';
+
+          logger.error('❌ GitHub service initialization failed. Diagnostics:', {
+            authMethod,
+            hasSettings: !!settings,
+            hasGitHubSettings: !!settings?.gitHubSettings,
+            hasToken: !!settings?.gitHubSettings?.githubToken,
+            hasRepoOwner: !!settings?.gitHubSettings?.repoOwner,
+          });
+
+          throw new Error(
+            'GitHub service is not initialized. Please ensure you have configured your GitHub authentication in the extension settings. ' +
+              `Current auth method: ${authMethod}${authMethod === 'pat' ? ' (requires GitHub token and repo owner)' : ' (requires GitHub App connection)'}`
+          );
+        }
       }
 
       if (!this.zipHandler) {
@@ -972,7 +1001,17 @@ export class BackgroundService {
         }
       }
     } catch (error) {
-      logger.error('Error processing ZIP:', error);
+      // Better error serialization for logging
+      const errorDetails =
+        error instanceof Error
+          ? {
+              message: error.message,
+              name: error.name,
+              stack: error.stack?.split('\n').slice(0, 3).join('\n'), // First 3 lines of stack
+            }
+          : { error: String(error) };
+
+      logger.error('Error processing ZIP:', errorDetails);
 
       if (!uploadSuccess) {
         const duration = Date.now() - startTime;
@@ -1665,6 +1704,80 @@ export class BackgroundService {
   }
 
   /**
+   * Handle extension reload request (self-healing for authentication failures)
+   * Shows a notification and then reloads the extension to clear stale state
+   */
+  private async handleExtensionReload(
+    data: {
+      reason?: string;
+    },
+    sendResponse: (response: { success: boolean; error?: string }) => void
+  ): Promise<void> {
+    try {
+      logger.info('🔄 Handling extension reload request:', data);
+
+      // Track reload event in analytics
+      await analytics.trackEvent({
+        category: 'authentication',
+        action: 'extension_reload_triggered',
+        label: JSON.stringify({
+          reason: data.reason || 'unknown',
+          context: 'self_healing',
+        }),
+      });
+
+      // Send notification to all bolt.new tabs about the reload (best effort)
+      try {
+        const tabs = await chrome.tabs.query({ url: 'https://bolt.new/*' });
+        for (const tab of tabs) {
+          if (tab.id) {
+            chrome.tabs
+              .sendMessage(tab.id, {
+                type: 'SHOW_EXTENSION_RELOAD_NOTIFICATION',
+                data: {
+                  message:
+                    'Extension needs to restart to fix authentication. Restarting in 3 seconds...',
+                  countdown: 3,
+                },
+              })
+              .catch(() => {
+                // Tab might not have content script injected - ignore
+              });
+          }
+        }
+      } catch (notificationError) {
+        logger.warn('Failed to send reload notification to tabs:', notificationError);
+        // Continue with reload even if notification fails
+      }
+
+      // Schedule extension reload using chrome.alarms (reliable in Manifest V3 service workers)
+      // setTimeout is unreliable as service workers can go inactive
+      const RELOAD_DELAY_MINUTES = 3 / 60; // 3 seconds = 0.05 minutes
+      try {
+        await chrome.alarms.create('self-heal-reload', { delayInMinutes: RELOAD_DELAY_MINUTES });
+        logger.info('✅ Scheduled extension reload via chrome.alarms in 3 seconds');
+      } catch (alarmError) {
+        logger.error('❌ Failed to schedule reload alarm:', alarmError);
+        // Fallback: try immediate reload if alarm creation fails
+        try {
+          chrome.runtime.reload();
+        } catch (reloadError) {
+          logger.error('❌ Fallback reload also failed:', reloadError);
+        }
+      }
+
+      // Respond immediately (before reload happens)
+      sendResponse({ success: true });
+    } catch (error) {
+      logger.error('❌ Error handling extension reload:', error);
+      sendResponse({
+        success: false,
+        error: error instanceof Error ? error.message : 'Failed to reload extension',
+      });
+    }
+  }
+
+  /**
    * Track project creation for fresh install detection
    */
   private async trackProjectCreation(): Promise<void> {
@@ -1765,6 +1878,14 @@ export class BackgroundService {
         this.rotateOldLogs();
       } else if (alarm.name === 'bolt-project-sync') {
         this.handleSyncAlarm();
+      } else if (alarm.name === 'self-heal-reload') {
+        // Handle extension reload for authentication self-healing
+        logger.info('🔄 Self-heal alarm triggered - reloading extension now...');
+        try {
+          chrome.runtime.reload();
+        } catch (reloadError) {
+          logger.error('❌ Failed to reload extension from alarm:', reloadError);
+        }
       }
     };
 
