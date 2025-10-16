@@ -7,6 +7,7 @@ import type {
   CommitsServiceOptions,
 } from '../../types/commits';
 import type { GitHubCommit } from '../../../services/types/repository';
+import type { UnifiedGitHubService } from '../../../services/UnifiedGitHubService';
 
 describe('CommitsService', () => {
   let service: CommitsService;
@@ -90,7 +91,7 @@ describe('CommitsService', () => {
       const result = await service.fetchCommits(
         TEST_OPTIONS,
         pagination,
-        mockUnifiedGitHubService as any
+        mockUnifiedGitHubService as unknown as UnifiedGitHubService
       );
 
       expect(mockUnifiedGitHubService.request).toHaveBeenCalledWith(
@@ -123,7 +124,11 @@ describe('CommitsService', () => {
         hasMore: false,
       };
 
-      await service.fetchCommits(TEST_OPTIONS, pagination, mockUnifiedGitHubService as any);
+      await service.fetchCommits(
+        TEST_OPTIONS,
+        pagination,
+        mockUnifiedGitHubService as unknown as UnifiedGitHubService
+      );
 
       expect(mockUnifiedGitHubService.request).toHaveBeenCalledWith(
         'GET',
@@ -152,7 +157,7 @@ describe('CommitsService', () => {
       const result = await service.fetchCommits(
         TEST_OPTIONS,
         pagination,
-        mockUnifiedGitHubService as any
+        mockUnifiedGitHubService as unknown as UnifiedGitHubService
       );
 
       expect(result.hasMore).toBe(true);
@@ -172,7 +177,7 @@ describe('CommitsService', () => {
       const result = await service.fetchCommits(
         TEST_OPTIONS,
         pagination,
-        mockUnifiedGitHubService as any
+        mockUnifiedGitHubService as unknown as UnifiedGitHubService
       );
 
       expect(result.hasMore).toBe(false);
@@ -189,10 +194,18 @@ describe('CommitsService', () => {
       };
 
       // First call
-      await service.fetchCommits(TEST_OPTIONS, pagination, mockUnifiedGitHubService as any);
+      await service.fetchCommits(
+        TEST_OPTIONS,
+        pagination,
+        mockUnifiedGitHubService as unknown as UnifiedGitHubService
+      );
 
       // Second call should use cache
-      await service.fetchCommits(TEST_OPTIONS, pagination, mockUnifiedGitHubService as any);
+      await service.fetchCommits(
+        TEST_OPTIONS,
+        pagination,
+        mockUnifiedGitHubService as unknown as UnifiedGitHubService
+      );
 
       // Should only call API once due to caching
       expect(mockUnifiedGitHubService.request).toHaveBeenCalledTimes(1);
@@ -212,7 +225,7 @@ describe('CommitsService', () => {
       const result = await service.fetchCommits(
         TEST_OPTIONS,
         pagination,
-        mockUnifiedGitHubService as any
+        mockUnifiedGitHubService as unknown as UnifiedGitHubService
       );
 
       expect(result.commits[0].author.login).toBeNull();
@@ -230,7 +243,11 @@ describe('CommitsService', () => {
       };
 
       await expect(
-        service.fetchCommits(TEST_OPTIONS, pagination, mockUnifiedGitHubService as any)
+        service.fetchCommits(
+          TEST_OPTIONS,
+          pagination,
+          mockUnifiedGitHubService as unknown as UnifiedGitHubService
+        )
       ).rejects.toThrow('API Error');
     });
 
@@ -248,7 +265,7 @@ describe('CommitsService', () => {
       const result = await service.fetchCommits(
         TEST_OPTIONS,
         pagination,
-        mockUnifiedGitHubService as any
+        mockUnifiedGitHubService as unknown as UnifiedGitHubService
       );
 
       expect(result.commits[0].message).toBe('First line');
@@ -412,7 +429,7 @@ describe('CommitsService', () => {
         'test-repo',
         'sha1abcdef',
         'test-token',
-        mockUnifiedGitHubService as any
+        mockUnifiedGitHubService as unknown as UnifiedGitHubService
       );
 
       expect(mockUnifiedGitHubService.request).toHaveBeenCalledWith(
@@ -432,7 +449,7 @@ describe('CommitsService', () => {
           'test-repo',
           'invalid-sha',
           'test-token',
-          mockUnifiedGitHubService as any
+          mockUnifiedGitHubService as unknown as UnifiedGitHubService
         )
       ).rejects.toThrow('Commit not found');
     });
@@ -450,7 +467,11 @@ describe('CommitsService', () => {
       };
 
       // Fetch to populate cache
-      await service.fetchCommits(TEST_OPTIONS, pagination, mockUnifiedGitHubService as any);
+      await service.fetchCommits(
+        TEST_OPTIONS,
+        pagination,
+        mockUnifiedGitHubService as unknown as UnifiedGitHubService
+      );
 
       // Clear cache
       CommitsService.clearCache();
@@ -459,7 +480,11 @@ describe('CommitsService', () => {
       const newService = new CommitsService();
 
       // Fetch again - should call API since cache is cleared
-      await newService.fetchCommits(TEST_OPTIONS, pagination, mockUnifiedGitHubService as any);
+      await newService.fetchCommits(
+        TEST_OPTIONS,
+        pagination,
+        mockUnifiedGitHubService as unknown as UnifiedGitHubService
+      );
 
       expect(mockUnifiedGitHubService.request).toHaveBeenCalledTimes(2);
     });
@@ -480,7 +505,7 @@ describe('CommitsService', () => {
       const result = await service.fetchCommits(
         TEST_OPTIONS,
         pagination,
-        mockUnifiedGitHubService as any
+        mockUnifiedGitHubService as unknown as UnifiedGitHubService
       );
 
       expect(result.commits[0].shortSha).toBe('abcdefg');
@@ -499,7 +524,7 @@ describe('CommitsService', () => {
       const result = await service.fetchCommits(
         TEST_OPTIONS,
         pagination,
-        mockUnifiedGitHubService as any
+        mockUnifiedGitHubService as unknown as UnifiedGitHubService
       );
 
       // For MVP, filesChangedCount is set to 0

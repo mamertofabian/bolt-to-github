@@ -148,12 +148,9 @@
     <!-- Header -->
     <div class="border-b border-slate-700 pb-4 mb-4">
       <div class="flex items-center justify-between">
-        <div>
-          <h2 class="text-lg font-semibold text-white">Commits History</h2>
-          <p class="text-sm text-slate-400 mt-1">
-            {repoOwner}/{repoName} - {branch}
-          </p>
-        </div>
+        <p class="text-sm text-slate-400">
+          {repoOwner}/{repoName} - {branch}
+        </p>
         <div class="text-sm text-slate-400">
           {totalCommits} commit{totalCommits === 1 ? '' : 's'}
         </div>
@@ -177,7 +174,7 @@
     </div>
 
     <!-- Commits List -->
-    <div class="commits-list min-h-[400px] max-h-[500px] overflow-y-auto mb-4">
+    <div class="commits-list min-h-[200px] max-h-[300px] overflow-y-auto mb-4">
       {#if isLoading}
         <div class="flex flex-col items-center justify-center py-12">
           <Loader2 size={32} class="text-blue-400 animate-spin mb-2" />
