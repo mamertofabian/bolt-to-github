@@ -7,7 +7,14 @@
   import { UnifiedGitHubService } from '../../services/UnifiedGitHubService';
   import { createLogger } from '$lib/utils/logger';
   import type { CommitListItem, CommitsPagination, CommitsFilter } from '../types/commits';
-  import { Search, ChevronLeft, ChevronRight, Loader2, AlertCircle } from 'lucide-svelte';
+  import {
+    Search,
+    ChevronLeft,
+    ChevronRight,
+    Loader2,
+    AlertCircle,
+    ExternalLink,
+  } from 'lucide-svelte';
 
   const logger = createLogger('CommitsModal');
   const dispatch = createEventDispatcher();
@@ -215,11 +222,27 @@
           Previous
         </Button>
 
-        <div class="text-sm text-slate-400">
-          Page {pagination.page}
-          {#if pagination.hasMore}
-            <span class="text-slate-500">• More available</span>
-          {/if}
+        <div class="flex flex-col items-center gap-1">
+          <div class="text-sm text-slate-400">
+            Page {pagination.page}
+            {#if pagination.hasMore}
+              <span class="text-slate-500">• More available</span>
+            {:else}
+              <span class="text-green-400">• End of history</span>
+            {/if}
+          </div>
+
+          <!-- View on GitHub link -->
+          <a
+            href="https://github.com/{repoOwner}/{repoName}/commits/{branch}"
+            target="_blank"
+            rel="noopener noreferrer"
+            class="text-xs text-blue-400 hover:text-blue-300 flex items-center gap-1 transition-colors"
+            title="View full commit history on GitHub"
+          >
+            View full history
+            <ExternalLink size={12} />
+          </a>
         </div>
 
         <Button
