@@ -3,7 +3,7 @@
  */
 
 import { describe, it, expect, beforeEach, vi, afterEach } from 'vitest';
-import { render, screen, within } from '@testing-library/svelte';
+import { render, screen } from '@testing-library/svelte';
 import userEvent from '@testing-library/user-event';
 import CommitCard from '../CommitCard.svelte';
 import type { CommitListItem } from '../../types/commits';
@@ -17,7 +17,7 @@ global.chrome = {
   tabs: {
     create: mockTabsCreate,
   },
-} as any;
+} as unknown as typeof chrome;
 
 describe('CommitCard.svelte - Component Tests', () => {
   const mockCommit: CommitListItem = {
