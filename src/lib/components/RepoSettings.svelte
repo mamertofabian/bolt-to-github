@@ -19,6 +19,11 @@
     canSaveForm,
     getAuthenticationMethod,
     createGitHubServiceConfig,
+    filterBranches,
+    checkBranchExists,
+    shouldShowCreateBranch,
+    shouldShowBranchDropdown,
+    getBranchStatusMessage,
     type Repository,
   } from '$lib/utils/repo-settings';
 
@@ -43,9 +48,30 @@
   let showErrorModal = false;
   let errorMessage = '';
 
+  // Branch-related state
+  let isLoadingBranches = false;
+  let branches: string[] = [];
+  let showBranchDropdown = false;
+  let branchExists = false;
+  let branchSelectedIndex = -1;
+
   $: filteredRepos = filterRepositories(repositories, repoName);
 
   $: repoExists = checkRepositoryExists(repositories, repoName);
+
+  // Branch-related reactive statements
+  $: filteredBranches = filterBranches(branches, branch);
+
+  $: branchExists = checkBranchExists(branches, branch);
+
+  $: showCreateBranchOption = shouldShowCreateBranch(branch, branchExists);
+
+  $: branchStatusMessage = getBranchStatusMessage(branch, branchExists);
+
+  // Load branches when repository changes and exists
+  $: if (repoName && repoExists && repoOwner) {
+    loadBranches();
+  }
 
   async function loadRepositories() {
     try {
@@ -106,6 +132,80 @@
     // Delay hiding dropdown to allow click events to register
     setTimeout(() => {
       showRepoDropdown = false;
+    }, 200);
+  }
+
+  // Branch dropdown functions
+  async function loadBranches() {
+    try {
+      isLoadingBranches = true;
+
+      // Get authentication method
+      const authSettings = await chrome.storage.local.get(['authenticationMethod']);
+      const authMethod = getAuthenticationMethod(authSettings);
+
+      let githubService: UnifiedGitHubService;
+
+      if (authMethod === 'github_app') {
+        githubService = new UnifiedGitHubService({ type: 'github_app' });
+      } else {
+        if (!githubToken || !repoOwner) return;
+        const config = createGitHubServiceConfig(authMethod, githubToken);
+        githubService = new UnifiedGitHubService(config);
+      }
+
+      const branchData = await githubService.listBranches(repoOwner, repoName);
+      branches = branchData.map((b) => b.name);
+    } catch (error) {
+      logger.error('Error loading branches:', error);
+      branches = [];
+    } finally {
+      isLoadingBranches = false;
+    }
+  }
+
+  function selectBranch(branchName: string) {
+    branch = branchName;
+    showBranchDropdown = false;
+  }
+
+  function handleBranchKeydown(event: KeyboardEvent) {
+    if (!showBranchDropdown) return;
+
+    // For branch dropdown, we need to handle navigation with the "+ Create new branch" option
+    const items = showCreateBranchOption ? ['__CREATE__', ...filteredBranches] : filteredBranches;
+
+    if (event.key === 'ArrowDown') {
+      event.preventDefault();
+      branchSelectedIndex = Math.min(branchSelectedIndex + 1, items.length - 1);
+    } else if (event.key === 'ArrowUp') {
+      event.preventDefault();
+      branchSelectedIndex = Math.max(branchSelectedIndex - 1, -1);
+    } else if (event.key === 'Enter') {
+      event.preventDefault();
+      if (branchSelectedIndex >= 0 && items[branchSelectedIndex]) {
+        const selectedItem = items[branchSelectedIndex];
+        if (selectedItem === '__CREATE__') {
+          // Create new branch - just close dropdown, branch value is already set
+          showBranchDropdown = false;
+        } else {
+          selectBranch(selectedItem);
+        }
+      }
+    } else if (event.key === 'Escape') {
+      event.preventDefault();
+      showBranchDropdown = false;
+    }
+  }
+
+  function handleBranchFocus() {
+    showBranchDropdown = true;
+  }
+
+  function handleBranchBlur() {
+    // Delay hiding dropdown to allow click events to register
+    setTimeout(() => {
+      showBranchDropdown = false;
     }, 200);
   }
 
@@ -268,17 +368,83 @@
             Branch
             <span class="text-sm text-slate-400 ml-2">(Usually "main")</span>
           </Label>
-          <Input
-            type="text"
-            id="branch"
-            bind:value={branch}
-            placeholder="main"
-            class="bg-slate-800 border-slate-700 text-slate-200 placeholder:text-slate-500"
-          />
-          <p class="text-sm text-slate-400">
-            💡 If the branch doesn't exist, it will be created automatically from the default
-            branch.
-          </p>
+          <div class="relative">
+            <div class="relative">
+              <Input
+                type="text"
+                id="branch"
+                bind:value={branch}
+                on:focus={handleBranchFocus}
+                on:blur={handleBranchBlur}
+                on:keydown={handleBranchKeydown}
+                placeholder="main"
+                class="bg-slate-800 border-slate-700 text-slate-200 placeholder:text-slate-500 pr-10"
+                autocomplete="off"
+              />
+              <div class="absolute right-3 top-1/2 -translate-y-1/2">
+                {#if isLoadingBranches}
+                  <Loader2 class="h-4 w-4 animate-spin text-slate-400" />
+                {:else}
+                  <Search class="h-4 w-4 text-slate-400" />
+                {/if}
+              </div>
+            </div>
+
+            {#if shouldShowBranchDropdown(showBranchDropdown, filteredBranches, branchExists)}
+              <div
+                class="absolute z-10 w-full mt-1 bg-slate-800 border border-slate-700 rounded-lg shadow-lg max-h-60 overflow-y-auto"
+              >
+                <ul class="py-1">
+                  {#if showCreateBranchOption}
+                    <li>
+                      <button
+                        type="button"
+                        class="w-full text-left px-3 py-2 hover:bg-slate-700 transition-colors {branchSelectedIndex ===
+                        0
+                          ? 'bg-slate-700'
+                          : ''}"
+                        on:click={() => {
+                          showBranchDropdown = false;
+                        }}
+                      >
+                        <p class="text-sm font-medium text-emerald-400">
+                          + Create new branch "{branch.trim()}"
+                        </p>
+                      </button>
+                    </li>
+                  {/if}
+                  {#each filteredBranches as branchName, index}
+                    {@const adjustedIndex = showCreateBranchOption ? index + 1 : index}
+                    <li>
+                      <button
+                        type="button"
+                        class="w-full text-left px-3 py-2 hover:bg-slate-700 transition-colors {branchSelectedIndex ===
+                        adjustedIndex
+                          ? 'bg-slate-700'
+                          : ''}"
+                        on:click={() => selectBranch(branchName)}
+                      >
+                        <p class="text-sm font-medium text-slate-200">{branchName}</p>
+                      </button>
+                    </li>
+                  {/each}
+                </ul>
+              </div>
+            {/if}
+          </div>
+          {#if branchStatusMessage.type === 'info'}
+            <p class="text-sm text-blue-400">
+              {branchStatusMessage.message}
+            </p>
+          {:else if branchStatusMessage.type === 'success'}
+            <p class="text-sm text-emerald-400">
+              {branchStatusMessage.message}
+            </p>
+          {:else}
+            <p class="text-sm text-orange-400">
+              {branchStatusMessage.message}
+            </p>
+          {/if}
         </div>
 
         <div class="flex justify-end space-x-2 mt-6">

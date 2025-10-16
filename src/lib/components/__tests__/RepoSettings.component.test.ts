@@ -538,9 +538,7 @@ describe('RepoSettings.svelte - Component Tests', () => {
     it('should show branch creation info message', () => {
       render(RepoSettings, { props: defaultProps });
 
-      expect(
-        screen.getByText(/If the branch doesn't exist, it will be created automatically/i)
-      ).toBeInTheDocument();
+      expect(screen.getByText(/new branch will be created/i)).toBeInTheDocument();
     });
   });
 
@@ -729,9 +727,30 @@ describe('RepoSettings.svelte - Component Tests', () => {
       ]);
 
       mockState.listBranches.mockResolvedValue([
-        { name: 'main', commit: { sha: 'abc123', url: 'https://api.github.com/repos/user/test-repo/commits/abc123' }, protected: false },
-        { name: 'develop', commit: { sha: 'def456', url: 'https://api.github.com/repos/user/test-repo/commits/def456' }, protected: false },
-        { name: 'feature/auth', commit: { sha: 'ghi789', url: 'https://api.github.com/repos/user/test-repo/commits/ghi789' }, protected: false },
+        {
+          name: 'main',
+          commit: {
+            sha: 'abc123',
+            url: 'https://api.github.com/repos/user/test-repo/commits/abc123',
+          },
+          protected: false,
+        },
+        {
+          name: 'develop',
+          commit: {
+            sha: 'def456',
+            url: 'https://api.github.com/repos/user/test-repo/commits/def456',
+          },
+          protected: false,
+        },
+        {
+          name: 'feature/auth',
+          commit: {
+            sha: 'ghi789',
+            url: 'https://api.github.com/repos/user/test-repo/commits/ghi789',
+          },
+          protected: false,
+        },
       ]);
     });
 
