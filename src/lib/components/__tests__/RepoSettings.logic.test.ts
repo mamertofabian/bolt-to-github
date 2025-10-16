@@ -14,6 +14,11 @@ import {
   createGitHubServiceConfig,
   handleKeyboardNavigation,
   getRepositoryStatusMessage,
+  filterBranches,
+  checkBranchExists,
+  shouldShowCreateBranch,
+  shouldShowBranchDropdown,
+  getBranchStatusMessage,
   type Repository,
   type AuthSettings,
 } from '$lib/utils/repo-settings';
@@ -456,6 +461,216 @@ describe('RepoSettings Business Logic', () => {
 
       expect(result.type).toBe('warning');
       expect(result.message).toContain('Enter a repository name');
+    });
+  });
+
+  describe('filterBranches', () => {
+    const mockBranches = ['main', 'develop', 'feature/auth', 'feature/ui', 'hotfix/bug-123'];
+
+    it('should filter branches by name match', () => {
+      const result = filterBranches(mockBranches, 'feature');
+
+      expect(result).toHaveLength(2);
+      expect(result).toContain('feature/auth');
+      expect(result).toContain('feature/ui');
+    });
+
+    it('should be case-insensitive', () => {
+      const result = filterBranches(mockBranches, 'MAIN');
+
+      expect(result).toHaveLength(1);
+      expect(result[0]).toBe('main');
+    });
+
+    it('should return all branches when query is empty', () => {
+      const result = filterBranches(mockBranches, '');
+
+      expect(result).toHaveLength(mockBranches.length);
+    });
+
+    it('should return all branches when query is whitespace only', () => {
+      const result = filterBranches(mockBranches, '   ');
+
+      expect(result).toHaveLength(mockBranches.length);
+    });
+
+    it('should return empty array when no match', () => {
+      const result = filterBranches(mockBranches, 'nonexistent');
+
+      expect(result).toHaveLength(0);
+    });
+
+    it('should limit results to specified maximum', () => {
+      const manyBranches = Array.from({ length: 20 }, (_, i) => `branch-${i}`);
+      const result = filterBranches(manyBranches, 'branch', 5);
+
+      expect(result).toHaveLength(5);
+    });
+
+    it('should match partial strings', () => {
+      const result = filterBranches(mockBranches, 'fix');
+
+      expect(result).toHaveLength(1);
+      expect(result[0]).toBe('hotfix/bug-123');
+    });
+
+    it('should handle empty branch list', () => {
+      const result = filterBranches([], 'main');
+
+      expect(result).toHaveLength(0);
+    });
+
+    it('should use default maxResults of 10', () => {
+      const manyBranches = Array.from({ length: 20 }, (_, i) => `branch-${i}`);
+      const result = filterBranches(manyBranches, 'branch');
+
+      expect(result).toHaveLength(10);
+    });
+  });
+
+  describe('checkBranchExists', () => {
+    const mockBranches = ['main', 'develop', 'feature/auth'];
+
+    it('should detect existing branch', () => {
+      const result = checkBranchExists(mockBranches, 'main');
+
+      expect(result).toBe(true);
+    });
+
+    it('should detect non-existing branch', () => {
+      const result = checkBranchExists(mockBranches, 'new-branch');
+
+      expect(result).toBe(false);
+    });
+
+    it('should be case-insensitive', () => {
+      const result = checkBranchExists(mockBranches, 'MAIN');
+
+      expect(result).toBe(true);
+    });
+
+    it('should handle mixed case names', () => {
+      const result = checkBranchExists(mockBranches, 'Feature/Auth');
+
+      expect(result).toBe(true);
+    });
+
+    it('should return false for empty name', () => {
+      const result = checkBranchExists(mockBranches, '');
+
+      expect(result).toBe(false);
+    });
+
+    it('should return false for whitespace-only name', () => {
+      const result = checkBranchExists(mockBranches, '   ');
+
+      expect(result).toBe(false);
+    });
+
+    it('should handle empty branch list', () => {
+      const result = checkBranchExists([], 'any-branch');
+
+      expect(result).toBe(false);
+    });
+
+    it('should trim branch name before checking', () => {
+      const result = checkBranchExists(mockBranches, '  main  ');
+
+      expect(result).toBe(true);
+    });
+  });
+
+  describe('shouldShowCreateBranch', () => {
+    it('should show create option when input exists and branch does not exist', () => {
+      const result = shouldShowCreateBranch('new-branch', false);
+
+      expect(result).toBe(true);
+    });
+
+    it('should hide create option when branch exists', () => {
+      const result = shouldShowCreateBranch('main', true);
+
+      expect(result).toBe(false);
+    });
+
+    it('should hide create option when input is empty', () => {
+      const result = shouldShowCreateBranch('', false);
+
+      expect(result).toBe(false);
+    });
+
+    it('should hide create option when input is whitespace only', () => {
+      const result = shouldShowCreateBranch('   ', false);
+
+      expect(result).toBe(false);
+    });
+
+    it('should handle trimmed input correctly', () => {
+      const result = shouldShowCreateBranch('  new-branch  ', false);
+
+      expect(result).toBe(true);
+    });
+  });
+
+  describe('shouldShowBranchDropdown', () => {
+    it('should show dropdown when focused with filtered results', () => {
+      const result = shouldShowBranchDropdown(true, ['main', 'develop'], false);
+
+      expect(result).toBe(true);
+    });
+
+    it('should show dropdown when focused and can create new branch', () => {
+      const result = shouldShowBranchDropdown(true, [], false);
+
+      expect(result).toBe(true);
+    });
+
+    it('should hide dropdown when not focused', () => {
+      const result = shouldShowBranchDropdown(false, ['main'], false);
+
+      expect(result).toBe(false);
+    });
+
+    it('should hide dropdown when focused but no results and branch exists', () => {
+      const result = shouldShowBranchDropdown(true, [], true);
+
+      expect(result).toBe(false);
+    });
+
+    it('should show dropdown when focused, branch exists, but has filtered results', () => {
+      const result = shouldShowBranchDropdown(true, ['main', 'develop'], true);
+
+      expect(result).toBe(true);
+    });
+  });
+
+  describe('getBranchStatusMessage', () => {
+    it('should return info message when branch exists', () => {
+      const result = getBranchStatusMessage('main', true);
+
+      expect(result.type).toBe('info');
+      expect(result.message).toContain('Using existing branch');
+    });
+
+    it('should return success message when branch does not exist but name is provided', () => {
+      const result = getBranchStatusMessage('new-branch', false);
+
+      expect(result.type).toBe('success');
+      expect(result.message).toContain('new branch will be created');
+    });
+
+    it('should return warning message when no branch name is provided', () => {
+      const result = getBranchStatusMessage('', false);
+
+      expect(result.type).toBe('warning');
+      expect(result.message).toContain('Enter a branch name');
+    });
+
+    it('should return warning message when branch name is whitespace only', () => {
+      const result = getBranchStatusMessage('   ', false);
+
+      expect(result.type).toBe('warning');
+      expect(result.message).toContain('Enter a branch name');
     });
   });
 });
