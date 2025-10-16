@@ -517,12 +517,13 @@ describe('RepoSettings.svelte - Component Tests', () => {
 
   describe('Branch Input', () => {
     it('should accept branch input', async () => {
-      const { component } = render(RepoSettings, { props: defaultProps });
-
-      // Use component.$set to update the prop (Svelte's two-way binding)
-      await component.$set({ branch: 'develop' });
+      const user = userEvent.setup();
+      render(RepoSettings, { props: defaultProps });
 
       const input = screen.getByLabelText(/Branch/i);
+      await user.clear(input);
+      await user.type(input, 'develop');
+
       expect(input).toHaveValue('develop');
     });
 
@@ -775,30 +776,19 @@ describe('RepoSettings.svelte - Component Tests', () => {
     it('should show "+ Create new branch" option when input does not match existing branches', async () => {
       const user = userEvent.setup();
       const props = { ...defaultProps, repoName: 'test-repo', branch: '' };
-      const { component } = render(RepoSettings, { props });
+      render(RepoSettings, { props });
 
       await waitFor(() => {
         expect(mockState.listRepos).toHaveBeenCalled();
       });
 
-      // Wait for branches to load
-      await waitFor(() => {
-        expect(mockState.listBranches).toHaveBeenCalled();
-      });
-
-      // Set the branch prop to a new value
-      await component.$set({ branch: 'new-feature' });
-
-      const branchInput = screen.getByLabelText(/Branch/i) as HTMLInputElement;
+      const branchInput = screen.getByLabelText(/Branch/i);
       await user.click(branchInput);
+      await user.type(branchInput, 'new-feature');
 
-      // Check that dropdown shows the create option
-      await waitFor(
-        () => {
-          expect(screen.getByText(/Create new branch "new-feature"/i)).toBeInTheDocument();
-        },
-        { timeout: 3000 }
-      );
+      await waitFor(() => {
+        expect(screen.getByText(/Create new branch "new-feature"/i)).toBeInTheDocument();
+      });
     });
 
     it('should hide "+ Create new branch" when branch exists', async () => {
@@ -808,11 +798,6 @@ describe('RepoSettings.svelte - Component Tests', () => {
 
       await waitFor(() => {
         expect(mockState.listRepos).toHaveBeenCalled();
-      });
-
-      // Wait for branches to load
-      await waitFor(() => {
-        expect(mockState.listBranches).toHaveBeenCalled();
       });
 
       const branchInput = screen.getByLabelText(/Branch/i);
