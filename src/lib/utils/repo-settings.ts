@@ -230,3 +230,94 @@ export function getRepositoryStatusMessage(
     };
   }
 }
+
+/**
+ * Filters branches based on search query
+ * @param branches - Array of branch names to filter
+ * @param searchQuery - Search term to filter by
+ * @param maxResults - Maximum number of results to return (default: 10)
+ * @returns Filtered array of branch names
+ */
+export function filterBranches(
+  branches: string[],
+  searchQuery: string,
+  maxResults: number = 10
+): string[] {
+  if (!searchQuery.trim()) {
+    return branches.slice(0, maxResults);
+  }
+
+  const query = searchQuery.toLowerCase();
+
+  return branches.filter((branch) => branch.toLowerCase().includes(query)).slice(0, maxResults);
+}
+
+/**
+ * Checks if a branch exists in the given list
+ * @param branches - Array of branch names to search
+ * @param branchName - Name of branch to check
+ * @returns True if branch exists, false otherwise
+ */
+export function checkBranchExists(branches: string[], branchName: string): boolean {
+  if (!branchName.trim()) {
+    return false;
+  }
+
+  return branches.some((branch) => branch.toLowerCase() === branchName.trim().toLowerCase());
+}
+
+/**
+ * Determines if "Create new branch" option should be shown
+ * @param branchInput - Current branch input value
+ * @param branchExists - Whether the branch already exists
+ * @returns True if create option should be shown
+ */
+export function shouldShowCreateBranch(branchInput: string, branchExists: boolean): boolean {
+  return !!(branchInput.trim() && !branchExists);
+}
+
+/**
+ * Determines if branch dropdown should be visible
+ * @param showDropdown - Current dropdown visibility state
+ * @param filteredBranches - Array of filtered branch names
+ * @param branchExists - Whether the current branch name exists
+ * @returns True if dropdown should be visible
+ */
+export function shouldShowBranchDropdown(
+  showDropdown: boolean,
+  filteredBranches: string[],
+  branchExists: boolean
+): boolean {
+  return showDropdown && (filteredBranches.length > 0 || !branchExists);
+}
+
+/**
+ * Gets the branch status message based on current state
+ * @param branchName - Current branch name
+ * @param branchExists - Whether branch exists
+ * @returns Status message object
+ */
+export function getBranchStatusMessage(
+  branchName: string,
+  branchExists: boolean
+): {
+  type: 'info' | 'success' | 'warning';
+  message: string;
+} {
+  if (branchExists) {
+    return {
+      type: 'info',
+      message: 'ℹ️ Using existing branch. Make sure it is correct.',
+    };
+  } else if (branchName && branchName.trim()) {
+    return {
+      type: 'success',
+      message: "✨ A new branch will be created on first Push if it doesn't exist yet.",
+    };
+  } else {
+    return {
+      type: 'warning',
+      message: 'Enter a branch name (new) or select from existing branches carefully.',
+    };
+  }
+}
