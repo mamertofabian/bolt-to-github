@@ -10,6 +10,7 @@
   import { createLogger } from '$lib/utils/logger';
   import { ChromeMessagingService } from '$lib/services/chromeMessaging';
   import { ChromeStorageService } from '$lib/services/chromeStorage';
+  import { debounce } from '$lib/utils/debounce';
   import {
     filterRepositories,
     checkRepositoryExists,
@@ -54,6 +55,7 @@
   let showBranchDropdown = false;
   let branchExists = false;
   let branchSelectedIndex = -1;
+  let lastLoadedRepo = ''; // Track last loaded repo to prevent redundant API calls
 
   $: filteredRepos = filterRepositories(repositories, repoName);
 
@@ -68,9 +70,19 @@
 
   $: branchStatusMessage = getBranchStatusMessage(branch, branchExists);
 
-  // Load branches when repository changes and exists
+  // Debounced branch loading to prevent excessive API calls while typing
+  const debouncedLoadBranches = debounce((owner: string, repo: string) => {
+    // Only load if this is a different repo than the last one loaded
+    const repoKey = `${owner}/${repo}`;
+    if (repoKey !== lastLoadedRepo) {
+      loadBranches(owner, repo);
+      lastLoadedRepo = repoKey;
+    }
+  }, 300);
+
+  // Trigger debounced load when repository changes
   $: if (repoName && repoExists && repoOwner) {
-    loadBranches();
+    debouncedLoadBranches(repoOwner, repoName);
   }
 
   async function loadRepositories() {
@@ -105,6 +117,15 @@
   function selectRepo(repo: (typeof repositories)[0]) {
     repoName = repo.name;
     showRepoDropdown = false;
+
+    // Load branches immediately when selecting from dropdown (bypass debounce)
+    if (repoName && repoOwner) {
+      const repoKey = `${repoOwner}/${repoName}`;
+      if (repoKey !== lastLoadedRepo) {
+        loadBranches(repoOwner, repoName);
+        lastLoadedRepo = repoKey;
+      }
+    }
   }
 
   function handleRepoKeydown(event: KeyboardEvent) {
@@ -136,7 +157,7 @@
   }
 
   // Branch dropdown functions
-  async function loadBranches() {
+  async function loadBranches(owner: string, repo: string) {
     try {
       isLoadingBranches = true;
 
@@ -149,12 +170,12 @@
       if (authMethod === 'github_app') {
         githubService = new UnifiedGitHubService({ type: 'github_app' });
       } else {
-        if (!githubToken || !repoOwner) return;
+        if (!githubToken || !owner) return;
         const config = createGitHubServiceConfig(authMethod, githubToken);
         githubService = new UnifiedGitHubService(config);
       }
 
-      const branchData = await githubService.listBranches(repoOwner, repoName);
+      const branchData = await githubService.listBranches(owner, repo);
       branches = branchData.map((b) => b.name);
     } catch (error) {
       logger.error('Error loading branches:', error);
