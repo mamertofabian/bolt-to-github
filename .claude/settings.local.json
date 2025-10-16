@@ -39,7 +39,8 @@
       "Bash(pnpm type-check:*)",
       "Bash(npm run lint:*)",
       "Bash(./node_modules/.bin/eslint:*)",
-      "Bash(pnpm install:*)"
+      "Bash(pnpm install:*)",
+      "Bash(pnpm test:ci:*)"
     ],
     "deny": []
   }
