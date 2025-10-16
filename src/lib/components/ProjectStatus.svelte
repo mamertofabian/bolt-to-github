@@ -2,6 +2,7 @@
   import IssueManager from '$lib/components/IssueManager.svelte';
   import QuickIssueForm from '$lib/components/QuickIssueForm.svelte';
   import RepoSettings from '$lib/components/RepoSettings.svelte';
+  import CommitsModal from '$lib/components/CommitsModal.svelte';
   import { issuesStore } from '$lib/stores/issuesStore';
   import { isPremium } from '$lib/stores/premiumStore';
   import { createLogger } from '$lib/utils/logger';
@@ -25,6 +26,7 @@
   let hasFileChanges = false;
   let showIssueManager = false;
   let showQuickIssueForm = false;
+  let showCommitsModal = false;
   let effectiveToken = '';
 
   // Premium status
@@ -434,6 +436,18 @@
     showIssueManager = false;
     // Issue count will be updated automatically via the store
   }
+
+  function openCommitsModal(event: MouseEvent | KeyboardEvent) {
+    event.stopPropagation();
+
+    // Check if user has premium access
+    if (!isUserPremium) {
+      handleUpgradeClick('commits');
+      return;
+    }
+
+    showCommitsModal = true;
+  }
 </script>
 
 <div class="border border-green-900 bg-green-950 rounded-lg overflow-hidden">
@@ -588,6 +602,41 @@
           {/if}
         </div>
 
+        <!-- View Commits button (PRO) -->
+        <div class="relative">
+          <button
+            class="tooltip-container w-8 h-8 flex items-center justify-center border border-slate-700 rounded-full text-slate-400 hover:bg-slate-800 hover:text-slate-300 transition-colors {!isUserPremium
+              ? 'opacity-75'
+              : ''}"
+            on:click|stopPropagation={openCommitsModal}
+            disabled={isLoading.repoStatus || !repoExists}
+            aria-label="View Commits{!isUserPremium ? ' (Pro)' : ''}"
+          >
+            <svg
+              width="16"
+              height="16"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+            >
+              <circle cx="18" cy="18" r="3"></circle>
+              <circle cx="6" cy="6" r="3"></circle>
+              <path d="M13 6h3a2 2 0 0 1 2 2v7"></path>
+              <line x1="6" y1="9" x2="6" y2="21"></line>
+            </svg>
+            <span class="tooltip">View Commits{!isUserPremium ? ' (Pro)' : ''}</span>
+          </button>
+          {#if !isUserPremium}
+            <span
+              class="absolute -top-1 -right-1 text-[8px] bg-gradient-to-r from-blue-500 to-purple-600 text-white px-1 py-0.5 rounded-full font-bold leading-none"
+              >PRO</span
+            >
+          {/if}
+        </div>
+
         <!-- File Changes buttons -->
         {#if hasFileChanges}
           <!-- View File Changes button - show when there are changes -->
@@ -721,6 +770,17 @@
     {repoName}
     on:success={handleIssueSuccess}
     on:close={() => (showQuickIssueForm = false)}
+  />
+{/if}
+
+{#if showCommitsModal}
+  <CommitsModal
+    show={showCommitsModal}
+    githubToken={effectiveToken}
+    repoOwner={gitHubUsername}
+    {repoName}
+    {branch}
+    on:close={() => (showCommitsModal = false)}
   />
 {/if}
 
