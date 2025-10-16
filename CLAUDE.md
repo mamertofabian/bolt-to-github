@@ -149,16 +149,62 @@ When working on GitHub issues, follow this structured approach:
 
 ### Testing
 
-- Test: `pnpm run test` - Run Vitest tests
-- Test (CI): `pnpm run test:ci` - Run tests in CI mode
+- Test: `pnpm run test` - Run Vitest tests with coverage
+- Test (CI): `pnpm run test:ci` - Run tests in CI mode without coverage
 - Test Watch: `pnpm run test:watch` - Run tests in watch mode
 - Test UI: `pnpm run test:ui` - Run tests with Vitest UI
 - Test Failed Files: `pnpm run test:failed-files` - Extract and display only the filenames of failing test files (useful for debugging test failures)
+- **Run specific test file**: `pnpm exec vitest run path/to/test.file.test.ts` - Run a single test file
+- **Run specific test suite**: `pnpm exec vitest run -t "suite name"` - Run tests matching a specific name pattern
+- **Run with timeout**: Use `--testTimeout=60000` flag to increase timeout for slow tests
+- **Run tests for changed source files**: `pnpm test --changed` - Runs tests affected by source file changes (not test file changes)
+
+#### Important Testing Notes
+
+1. **Use specific test file command for debugging**: When a test fails, run only that file:
+
+   ```bash
+   pnpm exec vitest run src/path/to/file.test.ts --reporter=verbose --no-coverage
+   ```
+
+2. **Understanding `--changed` flag**:
+
+   - Runs tests for SOURCE files that have changed (e.g., if you change `RepoSettings.svelte`, it runs `RepoSettings*.test.ts`)
+   - Does NOT just run test files that you've modified
+   - Useful for pre-commit hooks to only test affected code
+
+3. **When tests timeout**:
+   - Component tests can be slow due to rendering
+   - Use specific test file command instead of full suite
+   - Default timeout is 30 seconds (configured in vitest.config.ts)
 
 ### Git Hooks
 
 - Prepare: `pnpm run prepare` - Set up Husky git hooks
-- Pre-commit: Automatically formats code using lint-staged
+- Pre-commit: Automatically formats code using lint-staged and runs quality checks
+
+#### Pre-commit Hook Configuration
+
+The pre-commit hook (`.husky/pre-commit`) runs the following checks:
+
+1. **Code Formatting** (always runs): `lint-staged` formats staged files
+2. **Linting** (default: enabled): ESLint on all source files
+3. **Type Checking** (default: enabled): TypeScript validation with `svelte-check`
+4. **Testing** (default: changed tests only): Runs tests affected by source changes
+
+**Environment Variables** (configured at top of `.husky/pre-commit`):
+
+- `RUN_LINT` - Set to `FALSE` to skip linting (default: `TRUE`)
+- `RUN_CHECK` - Set to `FALSE` to skip type checking (default: `TRUE`)
+- `RUN_ALL_TESTS` - Set to `FALSE` to skip all tests (default: `FALSE`)
+- `RUN_UPDATED_TESTS_ONLY` - Set to `TRUE` to run only changed tests (default: `TRUE`)
+
+**IMPORTANT**:
+
+- **NEVER bypass these variables manually** unless debugging a specific hook issue
+- Let the pre-commit hook run normally - it's configured correctly
+- If tests fail, fix them rather than skipping
+- The `--changed` flag works correctly: it runs tests for changed SOURCE files, not just changed test files
 
 ## Architecture
 
