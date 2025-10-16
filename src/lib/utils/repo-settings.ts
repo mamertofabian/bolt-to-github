@@ -312,7 +312,7 @@ export function getBranchStatusMessage(
   } else if (branchName && branchName.trim()) {
     return {
       type: 'success',
-      message: "✨ A new branch will be created if it doesn't exist yet.",
+      message: "✨ A new branch will be created on first Push if it doesn't exist yet.",
     };
   } else {
     return {
