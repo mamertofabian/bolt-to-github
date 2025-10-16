@@ -251,7 +251,7 @@ export class GitHubComparisonService {
         // Create a map with all GitHub paths to test against gitignore
         const allPathsMap = new Map<string, string>();
         for (const path of existingFiles.keys()) {
-          allPathsMap.set(path, ''); // Content doesn't matter, just need the path
+          allPathsMap.set(path, 'dummy'); // Use non-empty content so processFilesWithGitignore doesn't skip it
         }
 
         // Process with gitignore to get the non-ignored files

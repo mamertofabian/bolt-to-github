@@ -2,7 +2,6 @@ import { processFilesWithGitignore } from '$lib/fileUtils';
 import { beforeEach, describe, expect, it, type Mock, vi } from 'vitest';
 import { ReadmeGeneratorService } from '../ReadmeGeneratorService';
 
-// Mock dependencies
 vi.mock('$lib/fileUtils');
 vi.mock('$lib/utils/logger', () => ({
   createLogger: () => ({
@@ -17,7 +16,6 @@ describe('ZipHandler - README Generation Integration', () => {
   beforeEach(() => {
     vi.clearAllMocks();
 
-    // Mock processFilesWithGitignore to return input unchanged
     (processFilesWithGitignore as Mock).mockImplementation((files) => Promise.resolve(files));
   });
 
@@ -27,13 +25,11 @@ describe('ZipHandler - README Generation Integration', () => {
       ['project/package.json', '{"name": "test"}'],
     ]);
 
-    // Process files with README generation
     const processedFiles = ReadmeGeneratorService.processFilesWithReadme(
       filesWithoutReadme,
       'test-repo'
     );
 
-    // Verify README was added
     expect(processedFiles.has('project/README.md')).toBe(true);
     const readmeContent = processedFiles.get('project/README.md');
     expect(readmeContent).toContain('# test-repo');
@@ -46,13 +42,11 @@ describe('ZipHandler - README Generation Integration', () => {
       ['project/README.md', ''],
     ]);
 
-    // Process files with README generation
     const processedFiles = ReadmeGeneratorService.processFilesWithReadme(
       filesWithEmptyReadme,
       'test-repo'
     );
 
-    // Verify README was replaced
     expect(processedFiles.has('project/README.md')).toBe(true);
     const readmeContent = processedFiles.get('project/README.md');
     expect(readmeContent).not.toBe('');
@@ -66,29 +60,25 @@ describe('ZipHandler - README Generation Integration', () => {
       ['project/README.md', meaningfulContent],
     ]);
 
-    // Process files with README generation
     const processedFiles = ReadmeGeneratorService.processFilesWithReadme(
       filesWithReadme,
       'test-repo'
     );
 
-    // Verify README was NOT replaced
     expect(processedFiles.get('project/README.md')).toBe(meaningfulContent);
   });
 
   it('should handle case-insensitive README files', async () => {
     const filesWithLowercaseReadme = new Map([
       ['project/index.js', 'console.log("Hello");'],
-      ['project/readme.md', '   '], // Whitespace only
+      ['project/readme.md', '   '],
     ]);
 
-    // Process files with README generation
     const processedFiles = ReadmeGeneratorService.processFilesWithReadme(
       filesWithLowercaseReadme,
       'test-repo'
     );
 
-    // Verify lowercase readme was replaced with proper case README.md
     expect(processedFiles.has('project/readme.md')).toBe(false);
     expect(processedFiles.has('project/README.md')).toBe(true);
     const readmeContent = processedFiles.get('project/README.md');
@@ -101,22 +91,16 @@ describe('ZipHandler - README Generation Integration', () => {
       ['package.json', '{"name": "test"}'],
     ]);
 
-    // Process files with README generation
     const processedFiles = ReadmeGeneratorService.processFilesWithReadme(
       filesWithoutProjectPrefix,
       'test-repo'
     );
 
-    // Verify README was added at root
     expect(processedFiles.has('README.md')).toBe(true);
     expect(processedFiles.has('project/README.md')).toBe(false);
   });
 
   it('should verify integration with zipHandler processZipFile flow', async () => {
-    // This test verifies that the ReadmeGeneratorService is properly integrated
-    // by checking that all required methods exist and are functions
-
-    // Verify the service has the expected methods
     expect(typeof ReadmeGeneratorService.processFilesWithReadme).toBe('function');
     expect(typeof ReadmeGeneratorService.shouldGenerateReadme).toBe('function');
     expect(typeof ReadmeGeneratorService.generateReadmeContent).toBe('function');

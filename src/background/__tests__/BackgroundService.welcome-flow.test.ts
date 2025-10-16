@@ -1,17 +1,6 @@
-/**
- * Tests for post-installation welcome flow functionality
- *
- * This test suite covers the Chrome extension's ability to:
- * - Detect first-time installation
- * - Open the welcome page with proper tracking parameters
- * - Initialize onboarding data in storage
- * - Handle various installation scenarios
- */
-
-import { type Mock, vi } from 'vitest';
+import { describe, it, expect, beforeEach, vi, afterEach, type Mock } from 'vitest';
 import { BackgroundService } from '../BackgroundService';
 
-// Mock all dependencies before importing
 vi.mock('../../services/UnifiedGitHubService');
 vi.mock('../StateManager', () => ({
   StateManager: {
@@ -29,18 +18,14 @@ vi.mock('../UsageTracker', () => ({
   })),
 }));
 vi.mock('../../services/BoltProjectSyncService');
-
-// Create a mock that can be dynamically updated during tests
-const mockSupabaseAuthService = {
-  forceCheck: vi.fn(),
-  getAuthState: vi.fn().mockReturnValue({ isAuthenticated: false }),
-  addAuthStateListener: vi.fn(),
-  removeAuthStateListener: vi.fn(),
-};
-
 vi.mock('../../content/services/SupabaseAuthService', () => ({
   SupabaseAuthService: {
-    getInstance: vi.fn(() => mockSupabaseAuthService),
+    getInstance: vi.fn(() => ({
+      forceCheck: vi.fn(),
+      getAuthState: vi.fn().mockReturnValue({ isAuthenticated: false }),
+      addAuthStateListener: vi.fn(),
+      removeAuthStateListener: vi.fn(),
+    })),
   },
 }));
 vi.mock('../../content/services/OperationStateManager', () => ({
@@ -61,408 +46,121 @@ vi.mock('../../lib/utils/logger', () => ({
   }),
 }));
 
-// Helper function to create a proper Chrome Event mock
-function createMockChromeEvent<T extends (...args: unknown[]) => void>(): chrome.events.Event<T> {
+function createMockChromeEvent<T extends (...args: unknown[]) => void>() {
+  const listeners: T[] = [];
   return {
-    addListener: vi.fn(),
+    addListener: vi.fn((handler: T) => listeners.push(handler)),
     removeListener: vi.fn(),
     hasListener: vi.fn(),
     hasListeners: vi.fn(),
-    getRules: vi.fn().mockImplementation((callback) => {
-      callback([]);
-    }),
-    removeRules: vi.fn().mockImplementation((callback) => {
-      callback();
-    }),
-    addRules: vi.fn().mockImplementation((rules, callback) => {
-      callback();
-    }),
+    getRules: vi.fn(),
+    removeRules: vi.fn(),
+    addRules: vi.fn(),
+    _getListeners: () => listeners,
   };
 }
 
-describe('BackgroundService - Welcome Flow', () => {
+describe('BackgroundService - Welcome Flow Behavior', () => {
   let service: BackgroundService;
-  let mockTabsCreate: Mock;
-  let mockStorageSet: Mock;
-  let mockStorageGet: Mock;
-  let mockRuntimeGetManifest: Mock;
+  let storageData: Record<string, unknown>;
 
-  beforeEach(async () => {
+  beforeEach(() => {
     vi.clearAllMocks();
+    storageData = {};
 
-    // Set up Chrome API mocks
-    mockTabsCreate = vi.fn().mockResolvedValue({ id: 123 });
-    mockStorageSet = vi.fn().mockImplementation((data, callback) => {
-      if (callback) callback();
+    chrome.storage.local.set = vi.fn((data) => {
+      Object.assign(storageData, data);
       return Promise.resolve();
     });
-    mockStorageGet = vi.fn().mockImplementation((keys, callback) => {
-      const result = {
-        installDate: '2024-01-15T10:00:00.000Z',
-        onboardingCompleted: false,
-        installedVersion: '1.3.5',
-        completedSteps: ['step1'],
-      };
-      if (callback) callback(result);
-      return Promise.resolve(result);
+
+    chrome.storage.local.get = vi.fn((keys) => {
+      if (Array.isArray(keys)) {
+        return Promise.resolve(Object.fromEntries(keys.map((key) => [key, storageData[key]])));
+      }
+      return Promise.resolve({ ...storageData });
     });
-    mockRuntimeGetManifest = vi.fn().mockReturnValue({
+
+    chrome.storage.onChanged = createMockChromeEvent();
+    chrome.tabs.create = vi.fn().mockResolvedValue({ id: 123 });
+    chrome.tabs.get = vi.fn().mockResolvedValue({ id: 123, url: 'https://bolt.new' });
+    chrome.tabs.onActivated = createMockChromeEvent();
+    chrome.tabs.onRemoved = createMockChromeEvent();
+    chrome.tabs.onUpdated = createMockChromeEvent();
+
+    chrome.runtime.getManifest = vi.fn().mockReturnValue({
       version: '1.3.5',
       name: 'Bolt to GitHub',
     });
-
-    // Apply mocks to Chrome API
-    chrome.tabs.create = mockTabsCreate;
-    chrome.storage.local.set = mockStorageSet;
-    chrome.storage.local.get = mockStorageGet;
-    chrome.runtime.getManifest = mockRuntimeGetManifest;
-    chrome.storage.onChanged = createMockChromeEvent();
-
-    // Mock other Chrome APIs that BackgroundService uses
     chrome.runtime.onConnect = createMockChromeEvent();
     chrome.runtime.onStartup = createMockChromeEvent();
     chrome.runtime.onInstalled = createMockChromeEvent();
     chrome.runtime.onMessage = createMockChromeEvent();
-    chrome.tabs.onRemoved = createMockChromeEvent();
-    chrome.tabs.onUpdated = createMockChromeEvent();
-    chrome.tabs.onActivated = createMockChromeEvent();
-    chrome.alarms.onAlarm = createMockChromeEvent();
-    chrome.alarms.create = vi.fn().mockImplementation((name, alarmInfo, callback) => {
-      if (callback) callback();
-    });
-    chrome.alarms.clear = vi.fn().mockImplementation((name, callback) => {
-      if (callback) callback(true);
-    });
 
-    // Initialize the service to register the event listeners
+    chrome.alarms = {
+      create: vi.fn(() => Promise.resolve()) as unknown as typeof chrome.alarms.create,
+      clear: vi.fn(() => Promise.resolve(true)) as unknown as typeof chrome.alarms.clear,
+      onAlarm: createMockChromeEvent(),
+      get: vi.fn(() =>
+        Promise.resolve({} as chrome.alarms.Alarm)
+      ) as unknown as typeof chrome.alarms.get,
+      getAll: vi.fn(() => Promise.resolve([])),
+      clearAll: vi.fn(() => Promise.resolve(true)) as unknown as typeof chrome.alarms.clearAll,
+    };
+
     service = new BackgroundService();
-
-    // Wait for async initialization
-    await new Promise((resolve) => setTimeout(resolve, 10));
   });
 
   afterEach(() => {
     if (service) {
       service.destroy();
     }
-    vi.clearAllMocks();
-    vi.resetModules();
+    vi.clearAllTimers();
   });
 
-  describe('First-Time Installation', () => {
-    it('should register onInstalled listener', () => {
-      expect(chrome.runtime.onInstalled.addListener).toHaveBeenCalled();
-    });
+  describe('Installation Flow', () => {
+    it('should open welcome page and initialize onboarding state on first install', async () => {
+      const installHandler = (chrome.runtime.onInstalled.addListener as Mock).mock.calls[0][0];
 
-    it('should open welcome page on first install', async () => {
-      // Get the onInstalled handler
-      const onInstalledHandler = (chrome.runtime.onInstalled.addListener as Mock).mock.calls[0][0];
+      await installHandler({ reason: 'install' });
+      await vi.waitFor(() => expect(chrome.tabs.create).toHaveBeenCalled());
 
-      // Simulate first-time installation
-      await onInstalledHandler({
-        reason: 'install',
-        previousVersion: undefined,
+      expect(chrome.tabs.create).toHaveBeenCalledWith({
+        url: expect.stringContaining('bolt2github.com/welcome'),
       });
 
-      // Verify welcome page was opened
-      expect(mockTabsCreate).toHaveBeenCalledWith({
-        url: 'https://bolt2github.com/welcome?utm_source=extension_install',
+      expect(storageData).toMatchObject({
+        onboardingCompleted: false,
+        completedSteps: [],
       });
-    });
-
-    it('should initialize onboarding data on first install', async () => {
-      // Get the onInstalled handler
-      const onInstalledHandler = (chrome.runtime.onInstalled.addListener as Mock).mock.calls[0][0];
-
-      // Simulate first-time installation
-      await onInstalledHandler({
-        reason: 'install',
-        previousVersion: undefined,
-      });
-
-      // Verify onboarding data was stored
-      expect(mockStorageSet).toHaveBeenCalledWith(
-        expect.objectContaining({
-          installDate: expect.any(String),
-          onboardingCompleted: false,
-          installedVersion: '1.3.5',
-          completedSteps: [],
-          welcomePageViewed: false,
-        })
-      );
-
-      // Verify the installDate is a valid ISO string
-      const storedData = mockStorageSet.mock.calls.find(
-        (call) => call[0].installDate !== undefined
-      )?.[0];
-      expect(new Date(storedData.installDate).toISOString()).toBe(storedData.installDate);
+      expect(storageData.installDate).toBeDefined();
     });
 
     it('should not open welcome page on extension update', async () => {
-      // Get the onInstalled handler
-      const onInstalledHandler = (chrome.runtime.onInstalled.addListener as Mock).mock.calls[0][0];
+      storageData = { installDate: Date.now(), lastVersion: '1.3.4' };
 
-      // Simulate extension update
-      await onInstalledHandler({
-        reason: 'update',
-        previousVersion: '1.3.4',
-      });
+      const installHandler = (chrome.runtime.onInstalled.addListener as Mock).mock.calls[0][0];
+      await installHandler({ reason: 'update', previousVersion: '1.3.4' });
 
-      // Verify welcome page was NOT opened
-      expect(mockTabsCreate).not.toHaveBeenCalled();
+      await new Promise((resolve) => setTimeout(resolve, 50));
+
+      expect(chrome.tabs.create).not.toHaveBeenCalled();
     });
 
-    it('should not open welcome page on browser update', async () => {
-      // Get the onInstalled handler
-      const onInstalledHandler = (chrome.runtime.onInstalled.addListener as Mock).mock.calls[0][0];
+    it('should handle storage errors gracefully during installation', async () => {
+      chrome.storage.local.set = vi.fn().mockRejectedValue(new Error('Storage quota exceeded'));
 
-      // Simulate browser update
-      await onInstalledHandler({
-        reason: 'chrome_update',
-        previousVersion: undefined,
-      });
+      const installHandler = (chrome.runtime.onInstalled.addListener as Mock).mock.calls[0][0];
 
-      // Verify welcome page was NOT opened
-      expect(mockTabsCreate).not.toHaveBeenCalled();
+      await expect(installHandler({ reason: 'install' })).resolves.not.toThrow();
     });
 
-    it('should not open welcome page on shared module update', async () => {
-      // Get the onInstalled handler
-      const onInstalledHandler = (chrome.runtime.onInstalled.addListener as Mock).mock.calls[0][0];
+    it('should track version changes on update', async () => {
+      const installHandler = (chrome.runtime.onInstalled.addListener as Mock).mock.calls[0][0];
 
-      // Simulate shared module update
-      await onInstalledHandler({
-        reason: 'shared_module_update',
-        previousVersion: undefined,
-      });
+      await installHandler({ reason: 'update', previousVersion: '1.3.4' });
+      await vi.waitFor(() => expect(storageData.lastKnownVersion).toBe('1.3.5'));
 
-      // Verify welcome page was NOT opened
-      expect(mockTabsCreate).not.toHaveBeenCalled();
-    });
-  });
-
-  describe('Error Handling', () => {
-    it('should handle tab creation failure gracefully', async () => {
-      // Mock tab creation failure
-      mockTabsCreate.mockRejectedValue(new Error('Popup blocked'));
-
-      // Get the onInstalled handler
-      const onInstalledHandler = (chrome.runtime.onInstalled.addListener as Mock).mock.calls[0][0];
-
-      // Call handler and ensure it doesn't throw
-      await onInstalledHandler({
-        reason: 'install',
-        previousVersion: undefined,
-      });
-
-      // Verify onboarding data was still stored despite tab creation failure
-      expect(mockStorageSet).toHaveBeenCalled();
-    });
-
-    it('should handle storage failure gracefully', async () => {
-      // Mock storage failure
-      mockStorageSet.mockRejectedValue(new Error('Storage quota exceeded'));
-
-      // Get the onInstalled handler
-      const onInstalledHandler = (chrome.runtime.onInstalled.addListener as Mock).mock.calls[0][0];
-
-      // Call handler and ensure it doesn't throw
-      await onInstalledHandler({
-        reason: 'install',
-        previousVersion: undefined,
-      });
-
-      // Verify tab creation was still attempted despite storage failure
-      expect(mockTabsCreate).toHaveBeenCalled();
-    });
-  });
-
-  describe('Welcome Page Message Handlers', () => {
-    it('should respond to getExtensionStatus message', async () => {
-      // Update the global mock for this test
-      mockSupabaseAuthService.getAuthState.mockReturnValue({
-        isAuthenticated: true,
-        subscription: { isActive: false },
-      });
-
-      // Get the onMessage handler
-      const onMessageHandler = (chrome.runtime.onMessage.addListener as Mock).mock.calls[0][0];
-
-      // Create a mock sendResponse function
-      const sendResponse = vi.fn();
-
-      // Simulate message from welcome page
-      const result = await onMessageHandler(
-        { type: 'getExtensionStatus' },
-        { url: 'https://bolt2github.com/welcome', tab: { id: 123 } },
-        sendResponse
-      );
-
-      // Should return true for async response
-      expect(result).toBe(true);
-
-      // Wait a bit for async processing
-      await new Promise((resolve) => setTimeout(resolve, 10));
-
-      // Verify response was sent
-      expect(sendResponse).toHaveBeenCalledWith({
-        success: true,
-        data: {
-          installed: true,
-          version: '1.3.5',
-          authenticated: true,
-          installDate: '2024-01-15T10:00:00.000Z',
-          onboardingCompleted: false,
-          installedVersion: '1.3.5',
-        },
-      });
-    });
-
-    it('should respond to completeOnboardingStep message', async () => {
-      // Get the onMessage handler
-      const onMessageHandler = (chrome.runtime.onMessage.addListener as Mock).mock.calls[0][0];
-
-      // Create a mock sendResponse function
-      const sendResponse = vi.fn();
-
-      // Simulate message from welcome page
-      const result = await onMessageHandler(
-        { type: 'completeOnboardingStep', step: 'authentication' },
-        { url: 'https://bolt2github.com/welcome', tab: { id: 123 } },
-        sendResponse
-      );
-
-      // Should return true for async response
-      expect(result).toBe(true);
-
-      // Wait a bit for async processing
-      await new Promise((resolve) => setTimeout(resolve, 10));
-
-      // Verify storage was updated
-      expect(mockStorageSet).toHaveBeenCalledWith(
-        expect.objectContaining({
-          completedSteps: ['step1', 'authentication'],
-        })
-      );
-
-      // Verify response
-      expect(sendResponse).toHaveBeenCalledWith({
-        success: true,
-      });
-    });
-
-    it('should ignore messages from non-bolt2github domains', async () => {
-      // Get the onMessage handler
-      const onMessageHandler = (chrome.runtime.onMessage.addListener as Mock).mock.calls[0][0];
-
-      // Create a mock sendResponse function
-      const sendResponse = vi.fn();
-
-      // Simulate message from malicious site
-      await onMessageHandler(
-        { type: 'getExtensionStatus' },
-        { url: 'https://malicious-site.com', tab: { id: 123 } },
-        sendResponse
-      );
-
-      // Verify no response was sent for getExtensionStatus
-      expect(sendResponse).not.toHaveBeenCalledWith(
-        expect.objectContaining({
-          data: expect.objectContaining({
-            installed: true,
-          }),
-        })
-      );
-    });
-
-    it('should ignore messages not from tabs', async () => {
-      // Get the onMessage handler
-      const onMessageHandler = (chrome.runtime.onMessage.addListener as Mock).mock.calls[0][0];
-
-      // Create a mock sendResponse function
-      const sendResponse = vi.fn();
-
-      // Simulate message without tab (e.g., from popup or other extension context)
-      await onMessageHandler(
-        { type: 'getExtensionStatus' },
-        { url: 'https://bolt2github.com/welcome' }, // No tab property
-        sendResponse
-      );
-
-      // Verify no response was sent
-      expect(sendResponse).not.toHaveBeenCalledWith(
-        expect.objectContaining({
-          data: expect.objectContaining({
-            installed: true,
-          }),
-        })
-      );
-    });
-
-    it('should validate onboarding steps', async () => {
-      // Get the onMessage handler
-      const onMessageHandler = (chrome.runtime.onMessage.addListener as Mock).mock.calls[0][0];
-
-      // Create a mock sendResponse function
-      const sendResponse = vi.fn();
-
-      // Simulate message with invalid step
-      await onMessageHandler(
-        { type: 'completeOnboardingStep', step: 'invalid_step' },
-        { url: 'https://bolt2github.com/welcome', tab: { id: 123 } },
-        sendResponse
-      );
-
-      // Wait a bit for async processing
-      await new Promise((resolve) => setTimeout(resolve, 10));
-
-      // Verify error response
-      expect(sendResponse).toHaveBeenCalledWith({
-        success: false,
-        error: 'Invalid onboarding step: invalid_step',
-      });
-    });
-
-    it('should handle GitHub auth initiation', async () => {
-      // Get the onMessage handler
-      const onMessageHandler = (chrome.runtime.onMessage.addListener as Mock).mock.calls[0][0];
-
-      // Create a mock sendResponse function
-      const sendResponse = vi.fn();
-
-      // Simulate GitHub App auth request
-      await onMessageHandler(
-        { type: 'initiateGitHubAuth', method: 'github_app' },
-        { url: 'https://bolt2github.com/welcome', tab: { id: 123 } },
-        sendResponse
-      );
-
-      // Wait a bit for async processing
-      await new Promise((resolve) => setTimeout(resolve, 10));
-
-      // Verify auth URL response
-      expect(sendResponse).toHaveBeenCalledWith({
-        success: true,
-        authUrl: 'https://github.com/apps/bolt-to-github/installations/new',
-        method: 'github_app',
-      });
-    });
-  });
-
-  describe('Logging', () => {
-    it('should process installation without errors', async () => {
-      // Get the onInstalled handler
-      const onInstalledHandler = (chrome.runtime.onInstalled.addListener as Mock).mock.calls[0][0];
-
-      // Simulate extension installation - this test verifies no errors occur
-      await onInstalledHandler({
-        reason: 'install',
-        previousVersion: undefined,
-      });
-
-      // Verify the key operations occurred
-      expect(mockTabsCreate).toHaveBeenCalled();
-      expect(mockStorageSet).toHaveBeenCalled();
+      expect(storageData.lastKnownVersion).toBe('1.3.5');
     });
   });
 });

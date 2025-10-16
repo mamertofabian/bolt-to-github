@@ -1,8 +1,6 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { ChromeStorageService } from '../chromeStorage';
 
-// Mock logger to avoid console output during tests
 vi.mock('../../utils/logger', () => ({
   createLogger: vi.fn(() => ({
     debug: vi.fn(),
@@ -12,7 +10,6 @@ vi.mock('../../utils/logger', () => ({
   })),
 }));
 
-// Mock chrome.storage
 const mockChromeStorage = {
   sync: {
     get: vi.fn(),
@@ -24,18 +21,26 @@ const mockChromeStorage = {
   },
 };
 
-(global as any).chrome = {
+interface ChromeNamespace {
+  storage: typeof mockChromeStorage;
+}
+
+interface GlobalWithChrome {
+  chrome: ChromeNamespace;
+}
+
+(global as unknown as GlobalWithChrome).chrome = {
   storage: mockChromeStorage,
 };
 
 describe('ChromeStorageService - GitHub.com Project Cleanup', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    mockChromeStorage.sync.set.mockResolvedValue(undefined);
   });
 
   describe('cleanupGitHubComProjects', () => {
-    it('should remove projects with repoName = "github.com"', async () => {
-      // Setup: Projects with mixed repoNames including github.com
+    it('should remove projects with repoName = "github.com" and return count', async () => {
       const projectSettings = {
         'normal-project': {
           repoName: 'my-repo',
@@ -63,31 +68,31 @@ describe('ChromeStorageService - GitHub.com Project Cleanup', () => {
         projectSettings,
       });
 
-      // Execute cleanup
       const cleanedCount = await ChromeStorageService.cleanupGitHubComProjects();
 
-      // Verify it returns the correct count
       expect(cleanedCount).toBe(2);
 
-      // Verify chrome.storage.sync.set was called with cleaned projects
-      expect(mockChromeStorage.sync.set).toHaveBeenCalledWith({
-        projectSettings: {
-          'normal-project': {
-            repoName: 'my-repo',
-            branch: 'main',
-            projectTitle: 'Normal Project',
-          },
-          'another-normal-project': {
-            repoName: 'another-repo',
-            branch: 'dev',
-            projectTitle: 'Another Normal Project',
-          },
+      const savedData = mockChromeStorage.sync.set.mock.calls[0]?.[0];
+      expect(savedData).toBeDefined();
+      expect(savedData?.projectSettings).toEqual({
+        'normal-project': {
+          repoName: 'my-repo',
+          branch: 'main',
+          projectTitle: 'Normal Project',
+        },
+        'another-normal-project': {
+          repoName: 'another-repo',
+          branch: 'dev',
+          projectTitle: 'Another Normal Project',
         },
       });
+
+      expect(Object.keys(savedData?.projectSettings || {})).toHaveLength(2);
+      expect(savedData?.projectSettings?.['github-com-project-1']).toBeUndefined();
+      expect(savedData?.projectSettings?.['github-com-project-2']).toBeUndefined();
     });
 
-    it('should return 0 when no github.com projects exist', async () => {
-      // Setup: Only normal projects
+    it('should return 0 and not modify storage when no github.com projects exist', async () => {
       const projectSettings = {
         'normal-project-1': {
           repoName: 'my-repo',
@@ -105,62 +110,43 @@ describe('ChromeStorageService - GitHub.com Project Cleanup', () => {
         projectSettings,
       });
 
-      // Execute cleanup
       const cleanedCount = await ChromeStorageService.cleanupGitHubComProjects();
 
-      // Verify no projects were removed
       expect(cleanedCount).toBe(0);
-
-      // Verify chrome.storage.sync.set was not called since no changes needed
       expect(mockChromeStorage.sync.set).not.toHaveBeenCalled();
     });
 
-    it('should handle empty project settings', async () => {
-      // Setup: Empty projectSettings
+    it('should return 0 and not modify storage for empty project settings', async () => {
       mockChromeStorage.sync.get.mockResolvedValue({
         projectSettings: {},
       });
 
-      // Execute cleanup
       const cleanedCount = await ChromeStorageService.cleanupGitHubComProjects();
 
-      // Verify no projects were removed
       expect(cleanedCount).toBe(0);
-
-      // Verify chrome.storage.sync.set was not called
       expect(mockChromeStorage.sync.set).not.toHaveBeenCalled();
     });
 
-    it('should handle missing projectSettings key', async () => {
-      // Setup: No projectSettings key at all
+    it('should handle missing projectSettings key and return 0', async () => {
       mockChromeStorage.sync.get.mockResolvedValue({});
 
-      // Execute cleanup
       const cleanedCount = await ChromeStorageService.cleanupGitHubComProjects();
 
-      // Verify no projects were removed
       expect(cleanedCount).toBe(0);
-
-      // Verify chrome.storage.sync.set was not called
       expect(mockChromeStorage.sync.set).not.toHaveBeenCalled();
     });
 
-    it('should handle chrome storage errors gracefully', async () => {
-      // Setup: Chrome storage get throws error
+    it('should propagate chrome storage errors', async () => {
       const storageError = new Error('Storage access denied');
       mockChromeStorage.sync.get.mockRejectedValue(storageError);
 
-      // Execute cleanup and expect it to throw
       await expect(ChromeStorageService.cleanupGitHubComProjects()).rejects.toThrow(
         'Storage access denied'
       );
-
-      // Verify set was not called
       expect(mockChromeStorage.sync.set).not.toHaveBeenCalled();
     });
 
-    it('should handle all projects being github.com projects', async () => {
-      // Setup: All projects are github.com projects
+    it('should remove all projects when all are github.com projects', async () => {
       const projectSettings = {
         'temp-project-1': {
           repoName: 'github.com',
@@ -183,20 +169,17 @@ describe('ChromeStorageService - GitHub.com Project Cleanup', () => {
         projectSettings,
       });
 
-      // Execute cleanup
       const cleanedCount = await ChromeStorageService.cleanupGitHubComProjects();
 
-      // Verify all projects were removed
       expect(cleanedCount).toBe(3);
 
-      // Verify chrome.storage.sync.set was called with empty projectSettings
-      expect(mockChromeStorage.sync.set).toHaveBeenCalledWith({
-        projectSettings: {},
-      });
+      const savedData = mockChromeStorage.sync.set.mock.calls[0]?.[0];
+      expect(savedData).toBeDefined();
+      expect(savedData?.projectSettings).toEqual({});
+      expect(Object.keys(savedData?.projectSettings || {})).toHaveLength(0);
     });
 
     it('should preserve projects with null or undefined repoName', async () => {
-      // Setup: Projects with missing repoName properties
       const projectSettings = {
         'normal-project': {
           repoName: 'my-repo',
@@ -206,7 +189,6 @@ describe('ChromeStorageService - GitHub.com Project Cleanup', () => {
         'project-without-repo': {
           branch: 'main',
           projectTitle: 'Project Without Repo',
-          // repoName is missing
         },
         'github-com-project': {
           repoName: 'github.com',
@@ -219,26 +201,121 @@ describe('ChromeStorageService - GitHub.com Project Cleanup', () => {
         projectSettings,
       });
 
-      // Execute cleanup
       const cleanedCount = await ChromeStorageService.cleanupGitHubComProjects();
 
-      // Verify only the github.com project was removed
       expect(cleanedCount).toBe(1);
 
-      // Verify the project without repoName was preserved
-      expect(mockChromeStorage.sync.set).toHaveBeenCalledWith({
-        projectSettings: {
-          'normal-project': {
-            repoName: 'my-repo',
-            branch: 'main',
-            projectTitle: 'Normal Project',
-          },
-          'project-without-repo': {
-            branch: 'main',
-            projectTitle: 'Project Without Repo',
-          },
+      const savedData = mockChromeStorage.sync.set.mock.calls[0]?.[0];
+      expect(savedData).toBeDefined();
+      expect(savedData?.projectSettings).toEqual({
+        'normal-project': {
+          repoName: 'my-repo',
+          branch: 'main',
+          projectTitle: 'Normal Project',
+        },
+        'project-without-repo': {
+          branch: 'main',
+          projectTitle: 'Project Without Repo',
         },
       });
+      expect(Object.keys(savedData?.projectSettings || {})).toHaveLength(2);
+      expect(savedData?.projectSettings?.['project-without-repo']).toBeDefined();
+    });
+
+    it('should preserve all project properties when filtering out github.com projects', async () => {
+      const projectSettings = {
+        'valid-project': {
+          repoName: 'my-repo',
+          branch: 'main',
+          projectTitle: 'Valid Project',
+          customProperty: 'custom-value',
+          metadata_last_updated: '2024-01-01T00:00:00.000Z',
+        },
+        'temp-project': {
+          repoName: 'github.com',
+          branch: 'main',
+          projectTitle: 'Temp',
+        },
+      };
+
+      mockChromeStorage.sync.get.mockResolvedValue({
+        projectSettings,
+      });
+
+      const cleanedCount = await ChromeStorageService.cleanupGitHubComProjects();
+
+      expect(cleanedCount).toBe(1);
+
+      const savedData = mockChromeStorage.sync.set.mock.calls[0]?.[0];
+      expect(savedData?.projectSettings?.['valid-project']).toEqual({
+        repoName: 'my-repo',
+        branch: 'main',
+        projectTitle: 'Valid Project',
+        customProperty: 'custom-value',
+        metadata_last_updated: '2024-01-01T00:00:00.000Z',
+      });
+    });
+
+    it('should handle storage set errors appropriately', async () => {
+      const projectSettings = {
+        'github-com-project': {
+          repoName: 'github.com',
+          branch: 'main',
+          projectTitle: 'Temp',
+        },
+      };
+
+      mockChromeStorage.sync.get.mockResolvedValue({
+        projectSettings,
+      });
+
+      const setError = new Error('Storage write failed');
+      mockChromeStorage.sync.set.mockRejectedValue(setError);
+
+      await expect(ChromeStorageService.cleanupGitHubComProjects()).rejects.toThrow(
+        'Storage write failed'
+      );
+    });
+
+    it('should correctly identify github.com projects by exact match only', async () => {
+      const projectSettings = {
+        'exact-match': {
+          repoName: 'github.com',
+          branch: 'main',
+        },
+        'prefix-match': {
+          repoName: 'github.com-test',
+          branch: 'main',
+        },
+        'suffix-match': {
+          repoName: 'test-github.com',
+          branch: 'main',
+        },
+        'contains-match': {
+          repoName: 'test-github.com-test',
+          branch: 'main',
+        },
+        'case-different': {
+          repoName: 'GitHub.com',
+          branch: 'main',
+        },
+      };
+
+      mockChromeStorage.sync.get.mockResolvedValue({
+        projectSettings,
+      });
+
+      const cleanedCount = await ChromeStorageService.cleanupGitHubComProjects();
+
+      expect(cleanedCount).toBe(1);
+
+      const savedData = mockChromeStorage.sync.set.mock.calls[0]?.[0];
+      expect(savedData?.projectSettings?.['exact-match']).toBeUndefined();
+      expect(savedData?.projectSettings?.['prefix-match']).toBeDefined();
+      expect(savedData?.projectSettings?.['suffix-match']).toBeDefined();
+      expect(savedData?.projectSettings?.['contains-match']).toBeDefined();
+      expect(savedData?.projectSettings?.['case-different']).toBeDefined();
+      expect(Object.keys(savedData?.projectSettings || {})).toHaveLength(4);
     });
   });
 });

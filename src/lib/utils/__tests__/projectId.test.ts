@@ -1,6 +1,5 @@
 import { extractProjectIdFromUrl, getCurrentProjectId, isProjectPage } from '../projectId';
 
-// Mock window.location
 const mockLocation = (href: string, pathname: string = '') => {
   Object.defineProperty(window, 'location', {
     value: { href, pathname },

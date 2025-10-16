@@ -140,9 +140,9 @@ export const fileChangesActions = {
   async getCurrentState(): Promise<FileChangesState> {
     return new Promise((resolve) => {
       const unsubscribe = fileChangesStore.subscribe((state) => {
-        unsubscribe();
         resolve(state);
       });
+      unsubscribe();
     });
   },
 

@@ -2,12 +2,8 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { IdleMonitorService } from '../IdleMonitorService';
 
-// Define test types without colliding with chrome namespace
 type IdleStateType = 'active' | 'idle' | 'locked';
 
-/**
- * Mock implementation of chrome.idle API
- */
 class MockChromeIdle {
   private detectionInterval: number = 60;
   private currentState: IdleStateType = 'active';
@@ -29,15 +25,13 @@ class MockChromeIdle {
     }
   );
 
-  // Helper method to simulate state changes
   simulateStateChange(newState: IdleStateType) {
     this.currentState = newState;
-    // Create a copy of listeners array to avoid modification during iteration
+
     const listeners = [...this.stateChangeListeners];
     listeners.forEach((listener) => listener(newState));
   }
 
-  // Helper method to get current detection interval
   getDetectionInterval() {
     return this.detectionInterval;
   }
@@ -50,10 +44,8 @@ describe('IdleMonitorService', () => {
   beforeEach(() => {
     mockChromeIdle = new MockChromeIdle();
 
-    // Reset singleton instance
     IdleMonitorService.resetInstance();
 
-    // Create a new instance with mock
     idleMonitorService = IdleMonitorService.getInstance(
       mockChromeIdle as unknown as typeof chrome.idle
     );
@@ -90,24 +82,19 @@ describe('IdleMonitorService', () => {
     });
 
     it('should handle missing chrome.idle API gracefully', () => {
-      // Create a service instance first
       const service = IdleMonitorService.getInstance(
         mockChromeIdle as unknown as typeof chrome.idle
       );
 
-      // Reset call counts
       mockChromeIdle.setDetectionInterval.mockClear();
       mockChromeIdle.onStateChanged.addListener.mockClear();
       mockChromeIdle.queryState.mockClear();
 
-      // Store the initialized state
       const wasInitialized = (service as any).initialized;
 
-      // Create a new instance with null chrome idle
       const nullChromeIdle = null as unknown as typeof chrome.idle;
       const serviceWithNullIdle = IdleMonitorService.getInstance(nullChromeIdle);
 
-      // Should return the existing instance
       expect(serviceWithNullIdle).toBe(service);
       expect(mockChromeIdle.setDetectionInterval).not.toHaveBeenCalled();
       expect((serviceWithNullIdle as any).initialized).toBe(wasInitialized);
@@ -133,7 +120,6 @@ describe('IdleMonitorService', () => {
     });
 
     it('should handle state transitions correctly', () => {
-      // Test transition sequence: active -> idle -> locked -> active
       expect(idleMonitorService.getCurrentState()).toBe('active');
       expect(idleMonitorService.isIdle()).toBe(false);
 
@@ -151,10 +137,8 @@ describe('IdleMonitorService', () => {
     });
 
     it('should update state from chrome.idle.queryState callback', () => {
-      // Capture the callback from queryState
       const queryStateCallback = mockChromeIdle.queryState.mock.calls[0][1];
 
-      // Simulate callback with different states
       queryStateCallback('idle');
       expect(idleMonitorService.getCurrentState()).toBe('idle');
       expect(idleMonitorService.isIdle()).toBe(true);
@@ -202,7 +186,6 @@ describe('IdleMonitorService', () => {
       expect(listener2).toHaveBeenCalledWith('idle');
       expect(listener3).toHaveBeenCalledWith('idle');
 
-      // Verify call order
       expect(listener1.mock.invocationCallOrder[0]).toBeLessThan(
         listener2.mock.invocationCallOrder[0]
       );
@@ -212,73 +195,55 @@ describe('IdleMonitorService', () => {
     });
 
     it('should support removing listeners while iterating', () => {
-      // Looking at the IdleMonitorService implementation, we can see it uses
-      // filter to create a new array when removing listeners, which is safe
       const listener1 = vi.fn();
       const listener2 = vi.fn().mockImplementation(() => {
-        // This will remove listener3 from the array during iteration
         idleMonitorService.removeListener(listener3);
       });
       const listener3 = vi.fn();
 
-      // Add all listeners
       idleMonitorService.addListener(listener1);
       idleMonitorService.addListener(listener2);
       idleMonitorService.addListener(listener3);
 
-      // Setup a spy on the notifyListeners method
       const notifyListenersSpy = vi.spyOn(idleMonitorService as any, 'notifyListeners');
 
-      // The implementation of notifyListeners in IdleMonitorService uses forEach
-      // on the listeners array, which internally makes a snapshot of the array
-      // So removing a listener during iteration doesn't affect the current loop
       mockChromeIdle.simulateStateChange('idle');
 
-      // Both should be called because the loop iterates over a snapshot
       expect(listener1).toHaveBeenCalledWith('idle');
       expect(listener2).toHaveBeenCalledWith('idle');
       expect(listener3).toHaveBeenCalledWith('idle');
 
-      // Verify listener3 was actually removed for future notifications
       listener1.mockClear();
       listener2.mockClear();
       listener3.mockClear();
 
-      // Trigger another notification
       mockChromeIdle.simulateStateChange('locked');
 
-      // Now listener3 should not be called
       expect(listener1).toHaveBeenCalledWith('locked');
       expect(listener2).toHaveBeenCalledWith('locked');
       expect(listener3).not.toHaveBeenCalled();
 
-      // Clean up
       notifyListenersSpy.mockRestore();
     });
 
     it('should not break if removing a non-existent listener', () => {
       const nonExistentListener = vi.fn();
 
-      // Should not throw an error
       expect(() => {
         idleMonitorService.removeListener(nonExistentListener);
       }).not.toThrow();
     });
 
     it('should call the same listener multiple times if added multiple times', () => {
-      // Based on the implementation, IdleMonitorService does not filter out duplicate listeners
       const listener = vi.fn();
 
-      // Add the listener twice
       idleMonitorService.addListener(listener);
       idleMonitorService.addListener(listener);
 
-      // Verify it was added twice by checking the listeners array
       const listenersArray = (idleMonitorService as any).listeners;
       const count = listenersArray.filter((l: any) => l === listener).length;
       expect(count).toBe(2);
 
-      // It should be called twice when state changes
       mockChromeIdle.simulateStateChange('idle');
       expect(listener).toHaveBeenCalledTimes(2);
       expect(listener).toHaveBeenNthCalledWith(1, 'idle');

@@ -24,7 +24,6 @@ describe('ZipHandler - Critical Scenarios', () => {
     it('should handle sequential uploads to the same project', async () => {
       setupTestProject(env, TEST_PROJECTS.default);
 
-      // Configure comparison service for first upload
       env.comparisonService.setComparisonResult({
         changes: new Map([['v1.js', { status: 'added' as const, content: 'version 1' }]]),
         repoData: COMPARISON_RESULTS.allNew.repoData,
@@ -33,7 +32,6 @@ describe('ZipHandler - Critical Scenarios', () => {
       const blob1 = createTestBlob(new Map([['v1.js', 'version 1']]));
       await env.zipHandler.processZipFile(blob1, TEST_PROJECTS.default.projectId, 'First commit');
 
-      // Configure comparison service for second upload
       env.comparisonService.setComparisonResult({
         changes: new Map([['v2.js', { status: 'added' as const, content: 'version 2' }]]),
         repoData: COMPARISON_RESULTS.allNew.repoData,
@@ -42,13 +40,11 @@ describe('ZipHandler - Critical Scenarios', () => {
       const blob2 = createTestBlob(new Map([['v2.js', 'version 2']]));
       await env.zipHandler.processZipFile(blob2, TEST_PROJECTS.default.projectId, 'Second commit');
 
-      // Both should succeed
       const successStatuses = env.statusCallback.getHistory().filter((s) => s.status === 'success');
       expect(successStatuses.length).toBeGreaterThanOrEqual(2);
     });
 
     it('should handle uploading to different projects', async () => {
-      // Setup two projects (realistic user scenario)
       env.chromeStorage.setData({
         repoOwner: 'test-owner',
         projectSettings: {
@@ -57,7 +53,6 @@ describe('ZipHandler - Critical Scenarios', () => {
         },
       });
 
-      // Configure GitHub service responses for both repos
       env.githubService.setResponse('GET', '/repos/test-owner/repo-1', {
         name: 'repo-1',
         owner: { login: 'test-owner' },
@@ -69,7 +64,6 @@ describe('ZipHandler - Critical Scenarios', () => {
         default_branch: 'main',
       });
 
-      // Configure branch refs for both repos
       env.githubService.setResponse('GET', '/repos/test-owner/repo-1/git/refs/heads/main', {
         ref: 'refs/heads/main',
         object: { sha: 'abc123' },
@@ -79,7 +73,6 @@ describe('ZipHandler - Critical Scenarios', () => {
         object: { sha: 'def456' },
       });
 
-      // Configure commit info for both repos
       env.githubService.setResponse('GET', '/repos/test-owner/repo-1/git/commits/abc123', {
         sha: 'abc123',
         tree: { sha: 'tree123-1' },
@@ -91,7 +84,6 @@ describe('ZipHandler - Critical Scenarios', () => {
         parents: [],
       });
 
-      // Configure comparison service for both uploads
       env.comparisonService.setComparisonResult({
         changes: new Map([['file1.js', { status: 'added' as const, content: 'content1' }]]),
         repoData: COMPARISON_RESULTS.allNew.repoData,
@@ -100,7 +92,6 @@ describe('ZipHandler - Critical Scenarios', () => {
       const blob1 = createTestBlob(new Map([['file1.js', 'content1']]));
       await env.zipHandler.processZipFile(blob1, 'project-1', 'Commit 1');
 
-      // Configure comparison service for second upload
       env.comparisonService.setComparisonResult({
         changes: new Map([['file2.js', { status: 'added' as const, content: 'content2' }]]),
         repoData: COMPARISON_RESULTS.allNew.repoData,
@@ -109,7 +100,6 @@ describe('ZipHandler - Critical Scenarios', () => {
       const blob2 = createTestBlob(new Map([['file2.js', 'content2']]));
       await env.zipHandler.processZipFile(blob2, 'project-2', 'Commit 2');
 
-      // Both should succeed
       const successStatuses = env.statusCallback.getHistory().filter((s) => s.status === 'success');
       expect(successStatuses.length).toBeGreaterThanOrEqual(2);
     });
@@ -119,7 +109,6 @@ describe('ZipHandler - Critical Scenarios', () => {
     it('should handle simple network errors gracefully', async () => {
       setupTestProject(env, TEST_PROJECTS.default);
 
-      // Simulate a simple network error (more realistic)
       env.githubService.setError(new Error('Request timeout'));
 
       const blob = createTestBlob(new Map([['test.js', 'content']]));
@@ -132,7 +121,6 @@ describe('ZipHandler - Critical Scenarios', () => {
         )
       ).rejects.toThrow('Request timeout');
 
-      // Should record failure in statistics
       const failureRecord = env.pushStats.getLastRecord();
       expect(failureRecord).toMatchObject({
         action: 'failure',
@@ -143,7 +131,6 @@ describe('ZipHandler - Critical Scenarios', () => {
     it('should handle authentication errors', async () => {
       setupTestProject(env, TEST_PROJECTS.default);
 
-      // Simulate auth error (realistic scenario)
       const authError = new Error('Bad credentials') as Error & { status?: number };
       authError.status = 401;
       env.githubService.setError(authError);
@@ -170,7 +157,6 @@ describe('ZipHandler - Critical Scenarios', () => {
         'unicode.txt': '🚀 Unicode test: αβγ δεζ 中文字符',
       };
 
-      // Configure comparison service to return all files as new
       env.comparisonService.setComparisonResult({
         changes: new Map([
           ['test.js', { status: 'added' as const, content: testContent['test.js'] }],
@@ -189,11 +175,9 @@ describe('ZipHandler - Critical Scenarios', () => {
         TEST_PROJECTS.default.commitMessage
       );
 
-      // Verify the upload completed successfully - this tests that content was properly processed
       const lastStatus = env.statusCallback.getLastStatus();
       expect(lastStatus?.status).toBe('success');
 
-      // Verify that blob operations were performed (indicating content was processed)
       const blobCalls = env.githubService.getRequestCount('POST', '/git/blobs');
       expect(blobCalls).toBeGreaterThan(0);
     });
@@ -207,7 +191,6 @@ describe('ZipHandler - Critical Scenarios', () => {
         ['mixed.txt', 'Line 1\nLine 2\r\nLine 3'],
       ]);
 
-      // Configure comparison service to return all files as new
       env.comparisonService.setComparisonResult({
         changes: new Map([
           ['unix.txt', { status: 'added' as const, content: 'Line 1\nLine 2\nLine 3' }],
@@ -225,7 +208,6 @@ describe('ZipHandler - Critical Scenarios', () => {
         TEST_PROJECTS.default.commitMessage
       );
 
-      // All files should be processed successfully
       const lastStatus = env.statusCallback.getLastStatus();
       expect(lastStatus?.status).toBe('success');
       expect(lastStatus?.message).toContain('3 files');
@@ -241,7 +223,6 @@ describe('ZipHandler - Critical Scenarios', () => {
         ['app.js', 'console.log("app");'],
       ]);
 
-      // Configure comparison service to return files as new
       env.comparisonService.setComparisonResult({
         changes: new Map([
           ['index.html', { status: 'added' as const, content: '<html></html>' }],
@@ -258,7 +239,6 @@ describe('ZipHandler - Critical Scenarios', () => {
         TEST_PROJECTS.default.commitMessage
       );
 
-      // Should complete successfully
       const lastStatus = env.statusCallback.getLastStatus();
       expect(lastStatus?.status).toBe('success');
     });
@@ -266,7 +246,6 @@ describe('ZipHandler - Critical Scenarios', () => {
     it('should handle repository access errors', async () => {
       setupTestProject(env, TEST_PROJECTS.default);
 
-      // Simulate simple access error (more realistic than deletion during upload)
       env.githubService.setResponse('GET', '/repos/test-owner/test-repo', () => {
         const error = new Error('Not Found') as Error & { status?: number };
         error.status = 404;
@@ -275,7 +254,6 @@ describe('ZipHandler - Critical Scenarios', () => {
 
       const blob = createTestBlob(ZIP_FILE_FIXTURES.simpleProject);
 
-      // Should fail with repository not found error
       await expect(
         env.zipHandler.processZipFile(
           blob,
@@ -290,14 +268,12 @@ describe('ZipHandler - Critical Scenarios', () => {
     it('should handle normal-sized files efficiently', async () => {
       setupTestProject(env, TEST_PROJECTS.default);
 
-      // Create realistic file sizes with meaningful content
       const files = new Map([
-        ['app.js', 'x'.repeat(1000)], // 1KB - sufficient for testing
-        ['styles.css', 'x'.repeat(500)], // 500B
+        ['app.js', 'x'.repeat(1000)],
+        ['styles.css', 'x'.repeat(500)],
         ['small-file.txt', 'small content'],
       ]);
 
-      // Configure comparison service to return all files as new
       env.comparisonService.setComparisonResult({
         changes: new Map([
           ['app.js', { status: 'added' as const, content: 'x'.repeat(50000) }],
@@ -315,7 +291,6 @@ describe('ZipHandler - Critical Scenarios', () => {
         TEST_PROJECTS.default.commitMessage
       );
 
-      // Should handle normal file sizes without issues
       const lastStatus = env.statusCallback.getLastStatus();
       expect(lastStatus?.status).toBe('success');
     });
@@ -328,7 +303,6 @@ describe('ZipHandler - Critical Scenarios', () => {
         ['app.js', 'console.log("app");'],
       ]);
 
-      // Configure comparison service to return files as new
       env.comparisonService.setComparisonResult({
         changes: new Map([
           ['index.html', { status: 'added' as const, content: '<html></html>' }],
@@ -345,11 +319,9 @@ describe('ZipHandler - Critical Scenarios', () => {
         TEST_PROJECTS.default.commitMessage
       );
 
-      // Should complete successfully and record success
       const lastStatus = env.statusCallback.getLastStatus();
       expect(lastStatus?.status).toBe('success');
 
-      // Verify push success was recorded
       const successRecord = env.pushStats.getLastRecord();
       expect(successRecord?.action).toBe('success');
     });
@@ -365,7 +337,6 @@ describe('ZipHandler - Critical Scenarios', () => {
         ['file3.js', 'content3'],
       ]);
 
-      // Configure comparison service to return files as new
       env.comparisonService.setComparisonResult({
         changes: new Map([
           ['file1.js', { status: 'added' as const, content: 'content1' }],
@@ -383,7 +354,6 @@ describe('ZipHandler - Critical Scenarios', () => {
         TEST_PROJECTS.default.commitMessage
       );
 
-      // Should complete successfully with proper authentication
       const lastStatus = env.statusCallback.getLastStatus();
       expect(lastStatus?.status).toBe('success');
     });
@@ -396,7 +366,6 @@ describe('ZipHandler - Critical Scenarios', () => {
         ['app.js', 'console.log("app");'],
       ]);
 
-      // Configure comparison service to return files as new
       env.comparisonService.setComparisonResult({
         changes: new Map([
           ['index.html', { status: 'added' as const, content: '<html></html>' }],
@@ -413,7 +382,6 @@ describe('ZipHandler - Critical Scenarios', () => {
         TEST_PROJECTS.default.commitMessage
       );
 
-      // Should complete successfully with proper permissions
       const lastStatus = env.statusCallback.getLastStatus();
       expect(lastStatus?.status).toBe('success');
     });
@@ -437,7 +405,6 @@ describe('ZipHandler - Critical Scenarios', () => {
         TEST_PROJECTS.default.commitMessage
       );
 
-      // Should handle files without extensions
       const lastStatus = env.statusCallback.getLastStatus();
       expect(lastStatus?.status).toBe('success');
     });
@@ -450,7 +417,6 @@ describe('ZipHandler - Critical Scenarios', () => {
         ['shallow.txt', 'Shallow file'],
       ]);
 
-      // Configure comparison service to return files as new
       env.comparisonService.setComparisonResult({
         changes: new Map([
           [
@@ -470,7 +436,6 @@ describe('ZipHandler - Critical Scenarios', () => {
         TEST_PROJECTS.default.commitMessage
       );
 
-      // Should preserve directory structure
       const treeCreation = env.githubService
         .getRequestHistory()
         .find((req) => req.method === 'POST' && req.path.includes('/git/trees'));
@@ -492,7 +457,6 @@ describe('ZipHandler - Critical Scenarios', () => {
         ['backup/file1.js', identicalContent],
       ]);
 
-      // Configure comparison service to return files as new
       env.comparisonService.setComparisonResult({
         changes: new Map([
           ['file1.js', { status: 'added' as const, content: identicalContent }],
@@ -510,11 +474,9 @@ describe('ZipHandler - Critical Scenarios', () => {
         TEST_PROJECTS.default.commitMessage
       );
 
-      // All files should be created even with identical content
       const blobCreations = env.githubService.getRequestCount('POST', '/git/blobs');
       expect(blobCreations).toBe(3);
 
-      // Tree should contain all files
       const treeCreation = env.githubService
         .getRequestHistory()
         .find((req) => req.method === 'POST' && req.path.includes('/git/trees'));

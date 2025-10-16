@@ -18,7 +18,7 @@
     progress: 0,
   };
 
-  let notificationVisible = false;
+  // let notificationVisible = false; // Removed as it's not used in the current implementation
   let mounted = false;
   let hideTimeout: number | null = null;
   let animationClass = '';
@@ -38,12 +38,15 @@
     updateReassuringMessages(status);
   }
 
-  // Respect user's motion preferences
-  const prefersReducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  let prefersReducedMotion = false;
 
   onMount(() => {
     logger.info('🔄 UploadStatus component mounted');
     mounted = true;
+
+    // Respect user's motion preferences
+    prefersReducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
     // Process any status that might have been set before mounting
     updateNotificationUI(status);
   });
@@ -67,7 +70,7 @@
       animationClass = 'notification-exit';
       setTimeout(
         () => {
-          notificationVisible = false;
+          // notificationVisible = false; // Removed as it's not used
           animationClass = '';
           reassuringMessage = '';
           contextualMessage = '';
@@ -78,7 +81,7 @@
     }
 
     // Always make visible for non-idle states
-    notificationVisible = true;
+    // notificationVisible = true; // Removed as it's not used
     animationClass = 'notification-enter';
 
     // Remove enter animation class after animation completes
@@ -155,7 +158,7 @@
     // Reset state after animation completes
     setTimeout(
       () => {
-        notificationVisible = false;
+        // notificationVisible = false; // Removed as it's not used
         animationClass = '';
         status = { status: 'idle' };
         reassuringMessage = '';
@@ -209,7 +212,7 @@
 <div id="bolt-upload-status">
   <div
     class="bolt-notification {animationClass}"
-    class:notification-visible={notificationVisible && status.status !== 'idle'}
+    class:notification-visible={status.status !== 'idle'}
     class:status-uploading={status.status === 'uploading'}
     class:status-loading={status.status === 'loading'}
     class:status-analyzing={status.status === 'analyzing'}
