@@ -1,5 +1,3 @@
-import type { GitHubCommit } from '../../services/types/repository';
-
 /**
  * Simplified commit item for display in the commits list
  */
