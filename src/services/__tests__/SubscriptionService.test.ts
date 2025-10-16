@@ -1,10 +1,11 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import type { MockedFunction } from 'vitest';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { beforeEach, describe, expect, it, vi, afterEach } from 'vitest';
 import { SUPABASE_CONFIG } from '../../lib/constants/supabase';
 import { SubscriptionService } from '../SubscriptionService';
 
-// Mock chrome API
+const FIXED_TIME = new Date('2024-01-01T00:00:00.000Z').getTime();
+
 const mockChrome = {
   storage: {
     sync: {
@@ -19,12 +20,16 @@ const mockChrome = {
 
 global.chrome = mockChrome as unknown as typeof chrome;
 
-// Mock fetch
 global.fetch = vi.fn() as MockedFunction<typeof fetch>;
 
 describe('SubscriptionService', () => {
   beforeEach(() => {
+    vi.useFakeTimers({ now: FIXED_TIME });
     vi.clearAllMocks();
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
   });
 
   describe('getSubscriptionStatus', () => {
@@ -56,8 +61,6 @@ describe('SubscriptionService', () => {
   describe('saveSubscriptionStatus', () => {
     it('should save subscription status with current date', async () => {
       const email = 'test@example.com';
-      const mockDate = new Date('2023-01-01T00:00:00.000Z');
-      vi.spyOn(global, 'Date').mockImplementation(() => mockDate as unknown as Date);
 
       await SubscriptionService.saveSubscriptionStatus(email);
 
@@ -65,7 +68,7 @@ describe('SubscriptionService', () => {
         newsletterSubscription: {
           subscribed: true,
           email,
-          date: '2023-01-01T00:00:00.000Z',
+          date: new Date(FIXED_TIME).toISOString(),
         },
       });
     });
@@ -130,7 +133,6 @@ describe('SubscriptionService', () => {
 
   describe('shouldShowSubscriptionPrompt', () => {
     beforeEach(() => {
-      // Mock the static methods that are called
       vi.spyOn(SubscriptionService, 'getSubscriptionStatus').mockResolvedValue({
         subscribed: false,
       } as never);
@@ -180,8 +182,7 @@ describe('SubscriptionService', () => {
     });
 
     it('should not show prompt if last prompt was less than 30 days ago', async () => {
-      const recentDate = new Date();
-      recentDate.setDate(recentDate.getDate() - 15); // 15 days ago
+      const recentDate = new Date(FIXED_TIME - 15 * 24 * 60 * 60 * 1000);
 
       vi.spyOn(SubscriptionService, 'getUsageStats').mockResolvedValue({
         interactionCount: 5,
@@ -194,8 +195,7 @@ describe('SubscriptionService', () => {
     });
 
     it('should show prompt if last prompt was more than 30 days ago', async () => {
-      const oldDate = new Date();
-      oldDate.setDate(oldDate.getDate() - 35); // 35 days ago
+      const oldDate = new Date(FIXED_TIME - 35 * 24 * 60 * 60 * 1000);
 
       vi.spyOn(SubscriptionService, 'getUsageStats').mockResolvedValue({
         interactionCount: 5,
@@ -204,7 +204,7 @@ describe('SubscriptionService', () => {
 
       const shouldShow = await SubscriptionService.shouldShowSubscriptionPrompt();
 
-      expect(shouldShow).toBe(false); // Should be false because interactionCount is not 3 or 10
+      expect(shouldShow).toBe(false);
     });
   });
 

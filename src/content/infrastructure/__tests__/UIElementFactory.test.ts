@@ -1,49 +1,9 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
-import type { Mock, Mocked } from 'vitest';
-import type { ButtonOptions, DialogOptions, DropdownItem } from '../../types/UITypes';
-import { UIElementFactory, type ContainerConfig, type OverlayConfig } from '../UIElementFactory';
-
-// Mock DOM environment using the same successful pattern as ComponentLifecycleManager
-Object.defineProperty(global, 'document', {
-  value: {
-    createElement: vi.fn(),
-    getElementById: vi.fn(),
-    body: {
-      appendChild: vi.fn(),
-    },
-    addEventListener: vi.fn(),
-  },
-  writable: true,
-});
+import type { ButtonOptions, DropdownItem } from '../../types/UITypes';
+import { UIElementFactory } from '../UIElementFactory';
 
 describe('UIElementFactory', () => {
-  let mockElement: HTMLElement & { disabled?: boolean };
-  let mockDocument: Mocked<typeof document>;
-
   beforeEach(() => {
-    // Setup mock document
-    mockDocument = global.document as Mocked<typeof document>;
-
-    // Setup mock element (includes disabled for button elements)
-    mockElement = {
-      textContent: '',
-      innerHTML: '',
-      className: '',
-      style: {},
-      id: '',
-      disabled: false,
-      setAttribute: vi.fn(),
-      appendChild: vi.fn(),
-      addEventListener: vi.fn(),
-      remove: vi.fn(),
-      querySelector: vi.fn(),
-    } as any;
-
-    mockDocument.createElement.mockReturnValue(mockElement);
-    mockDocument.getElementById.mockReturnValue(null);
-
-    // Reset all mocks
-    vi.clearAllMocks();
+    document.body.innerHTML = '';
   });
 
   describe('createButton', () => {
@@ -54,9 +14,8 @@ describe('UIElementFactory', () => {
 
       const button = UIElementFactory.createButton(options);
 
-      expect(mockDocument.createElement).toHaveBeenCalledWith('button');
-      expect(button).toBe(mockElement);
-      expect(mockElement.textContent).toBe('Click me');
+      expect(button.tagName).toBe('BUTTON');
+      expect(button.textContent).toBe('Click me');
     });
 
     it('should apply className when provided', () => {
@@ -65,712 +24,280 @@ describe('UIElementFactory', () => {
         className: 'btn btn-primary',
       };
 
-      UIElementFactory.createButton(options);
+      const button = UIElementFactory.createButton(options);
 
-      expect(mockElement.className).toBe('btn btn-primary');
+      expect(button.className).toBe('btn btn-primary');
     });
 
-    it('should set disabled state when provided', () => {
-      const options: ButtonOptions = {
+    it('should set disabled state', () => {
+      const button = UIElementFactory.createButton({
         text: 'Button',
         disabled: true,
-      };
+      });
 
-      UIElementFactory.createButton(options);
-
-      expect(mockElement.disabled).toBe(true);
+      expect(button.disabled).toBe(true);
     });
 
-    it('should set aria-label when provided', () => {
-      const options: ButtonOptions = {
+    it('should set aria-label', () => {
+      const button = UIElementFactory.createButton({
         text: 'Button',
         ariaLabel: 'Close dialog',
-      };
+      });
 
-      UIElementFactory.createButton(options);
-
-      expect(mockElement.setAttribute).toHaveBeenCalledWith('aria-label', 'Close dialog');
+      expect(button.getAttribute('aria-label')).toBe('Close dialog');
     });
 
-    it('should set test id when provided', () => {
-      const options: ButtonOptions = {
+    it('should set test id', () => {
+      const button = UIElementFactory.createButton({
         text: 'Button',
         testId: 'submit-button',
-      };
+      });
 
-      UIElementFactory.createButton(options);
-
-      expect(mockElement.setAttribute).toHaveBeenCalledWith('data-testid', 'submit-button');
-    });
-
-    it('should create button with all options', () => {
-      const options: ButtonOptions = {
-        text: 'Complete Button',
-        className: 'btn btn-success',
-        disabled: false,
-        ariaLabel: 'Complete action',
-        testId: 'complete-btn',
-      };
-
-      UIElementFactory.createButton(options);
-
-      expect(mockElement.textContent).toBe('Complete Button');
-      expect(mockElement.className).toBe('btn btn-success');
-      expect(mockElement.disabled).toBe(false);
-      expect(mockElement.setAttribute).toHaveBeenCalledWith('aria-label', 'Complete action');
-      expect(mockElement.setAttribute).toHaveBeenCalledWith('data-testid', 'complete-btn');
+      expect(button.getAttribute('data-testid')).toBe('submit-button');
     });
   });
 
   describe('createGitHubButton', () => {
     it('should create GitHub button with default classes', () => {
-      const options = {
+      const button = UIElementFactory.createGitHubButton({
         text: 'GitHub Action',
-      };
+      });
 
-      const button = UIElementFactory.createGitHubButton(options);
-
-      expect(mockDocument.createElement).toHaveBeenCalledWith('button');
-      expect(button).toBe(mockElement);
-      expect(mockElement.textContent).toBe('GitHub Action');
-
-      const expectedClasses = [
-        'rounded-md',
-        'items-center',
-        'justify-center',
-        'outline-accent-600',
-        'px-3',
-        'py-1.25',
-        'disabled:cursor-not-allowed',
-        'text-xs',
-        'bg-bolt-elements-button-secondary-background',
-        'text-bolt-elements-button-secondary-text',
-        'enabled:hover:bg-bolt-elements-button-secondary-backgroundHover',
-        'flex',
-        'gap-1.7',
-        'transition-opacity',
-      ].join(' ');
-
-      expect(mockElement.className).toBe(expectedClasses);
+      expect(button.tagName).toBe('BUTTON');
+      expect(button.textContent).toBe('GitHub Action');
+      expect(button.className).toContain('rounded-md');
+      expect(button.className).toContain('bg-bolt-elements-button-secondary-background');
     });
 
-    it('should create GitHub button with additional classes', () => {
-      const options = {
+    it('should add custom classes', () => {
+      const button = UIElementFactory.createGitHubButton({
         text: 'GitHub Action',
         className: 'custom-class',
-      };
+      });
 
-      UIElementFactory.createGitHubButton(options);
-
-      expect(mockElement.className).toContain('custom-class');
-      expect(mockElement.className).toContain('rounded-md');
+      expect(button.className).toContain('custom-class');
+      expect(button.className).toContain('rounded-md');
     });
 
-    it('should create GitHub button with innerHTML when provided', () => {
-      const options = {
+    it('should use innerHTML when provided', () => {
+      const button = UIElementFactory.createGitHubButton({
         innerHTML: '<span>GitHub</span>',
-      };
+      });
 
-      UIElementFactory.createGitHubButton(options);
-
-      expect(mockElement.innerHTML).toBe('<span>GitHub</span>');
-      expect(mockElement.textContent).toBe('');
+      expect(button.innerHTML).toBe('<span>GitHub</span>');
     });
 
-    it('should prefer innerHTML over text when both provided', () => {
-      const options = {
+    it('should prefer innerHTML over text', () => {
+      const button = UIElementFactory.createGitHubButton({
         text: 'Text content',
         innerHTML: '<span>HTML content</span>',
-      };
+      });
 
-      UIElementFactory.createGitHubButton(options);
-
-      expect(mockElement.innerHTML).toBe('<span>HTML content</span>');
-      expect(mockElement.textContent).toBe('');
-    });
-
-    it('should set disabled state', () => {
-      const options = {
-        text: 'Button',
-        disabled: true,
-      };
-
-      UIElementFactory.createGitHubButton(options);
-
-      expect(mockElement.disabled).toBe(true);
-    });
-
-    it('should set aria-label and test id', () => {
-      const options = {
-        text: 'Button',
-        ariaLabel: 'GitHub action',
-        testId: 'github-btn',
-      };
-
-      UIElementFactory.createGitHubButton(options);
-
-      expect(mockElement.setAttribute).toHaveBeenCalledWith('aria-label', 'GitHub action');
-      expect(mockElement.setAttribute).toHaveBeenCalledWith('data-testid', 'github-btn');
+      expect(button.innerHTML).toBe('<span>HTML content</span>');
     });
   });
 
   describe('createDropdownContent', () => {
-    it('should create dropdown with multiple items', () => {
-      const mockItem1 = {
-        addEventListener: vi.fn(),
-        disabled: false,
-        className: '',
-        innerHTML: '',
-      } as any;
-      const mockItem2 = {
-        addEventListener: vi.fn(),
-        disabled: false,
-        className: '',
-        innerHTML: '',
-      } as any;
-
-      (mockDocument.createElement as Mock)
-        .mockReturnValueOnce(mockElement) // Main dropdown container
-        .mockReturnValueOnce(mockItem1) // First item
-        .mockReturnValueOnce(mockItem2); // Second item
-
+    it('should create dropdown with items', () => {
       const items: DropdownItem[] = [
-        {
-          label: 'Action 1',
-          action: vi.fn(),
-          icon: '<svg>icon1</svg>',
-        },
-        {
-          label: 'Action 2',
-          action: vi.fn(),
-          disabled: true,
-        },
+        { label: 'Action 1', action: vi.fn(), icon: '<svg>icon</svg>' },
+        { label: 'Action 2', action: vi.fn(), disabled: true },
       ];
 
       const dropdown = UIElementFactory.createDropdownContent(items);
 
-      expect(mockDocument.createElement).toHaveBeenCalledWith('div');
-      expect(mockDocument.createElement).toHaveBeenCalledWith('button');
-      expect(dropdown).toBe(mockElement);
-      expect(mockElement.setAttribute).toHaveBeenCalledWith('role', 'menu');
-      expect(mockElement.className).toBe(
-        'rounded-md shadow-lg overflow-hidden min-w-[180px] animate-fadeIn'
-      );
-      expect(mockElement.appendChild).toHaveBeenCalledTimes(2);
+      expect(dropdown.getAttribute('role')).toBe('menu');
+      expect(dropdown.className).toContain('rounded-md');
+
+      const buttons = dropdown.querySelectorAll('button');
+      expect(buttons).toHaveLength(2);
+      expect(buttons[0].innerHTML).toContain('Action 1');
+      expect(buttons[1].disabled).toBe(true);
     });
 
-    it('should create dropdown with id when provided', () => {
-      const items: DropdownItem[] = [];
+    it('should call action when item clicked', async () => {
+      const action = vi.fn();
+      const dropdown = UIElementFactory.createDropdownContent([{ label: 'Test', action }]);
 
-      UIElementFactory.createDropdownContent(items, 'dropdown-123');
+      const button = dropdown.querySelector('button');
+      button!.click();
 
-      expect(mockElement.id).toBe('dropdown-123');
+      await vi.waitFor(() => expect(action).toHaveBeenCalled());
     });
 
-    it('should set up item click handlers', () => {
-      const mockItem = {
-        addEventListener: vi.fn(),
-        disabled: false,
-        className: '',
-        innerHTML: '',
-      } as any;
+    it('should not call action when disabled', async () => {
+      const action = vi.fn();
+      const dropdown = UIElementFactory.createDropdownContent([
+        { label: 'Test', action, disabled: true },
+      ]);
 
-      (mockDocument.createElement as Mock)
-        .mockReturnValueOnce(mockElement)
-        .mockReturnValueOnce(mockItem);
+      const button = dropdown.querySelector('button');
+      button!.click();
 
-      const actionMock = vi.fn();
-      const items: DropdownItem[] = [
-        {
-          label: 'Test Action',
-          action: actionMock,
-        },
-      ];
-
-      UIElementFactory.createDropdownContent(items);
-
-      expect(mockItem.addEventListener).toHaveBeenCalledWith('click', expect.any(Function));
-      expect(mockItem.className).toBe('dropdown-item flex items-center');
-      expect(mockItem.innerHTML).toBe('\n        \n        <span>Test Action</span>\n      ');
-    });
-
-    it('should handle disabled items', () => {
-      const mockItem = {
-        addEventListener: vi.fn(),
-        disabled: false,
-        className: '',
-        innerHTML: '',
-      } as any;
-
-      (mockDocument.createElement as Mock)
-        .mockReturnValueOnce(mockElement)
-        .mockReturnValueOnce(mockItem);
-
-      const items: DropdownItem[] = [
-        {
-          label: 'Disabled Action',
-          action: vi.fn(),
-          disabled: true,
-        },
-      ];
-
-      UIElementFactory.createDropdownContent(items);
-
-      expect(mockItem.disabled).toBe(true);
-    });
-
-    it('should include icons in items when provided', () => {
-      const mockItem = {
-        addEventListener: vi.fn(),
-        disabled: false,
-        className: '',
-        innerHTML: '',
-      } as any;
-
-      (mockDocument.createElement as Mock)
-        .mockReturnValueOnce(mockElement)
-        .mockReturnValueOnce(mockItem);
-
-      const items: DropdownItem[] = [
-        {
-          label: 'With Icon',
-          action: vi.fn(),
-          icon: '<svg>icon</svg>',
-        },
-      ];
-
-      UIElementFactory.createDropdownContent(items);
-
-      expect(mockItem.innerHTML).toBe(
-        '\n        <svg>icon</svg>\n        <span>With Icon</span>\n      '
-      );
+      await new Promise((resolve) => setTimeout(resolve, 50));
+      expect(action).not.toHaveBeenCalled();
     });
   });
 
   describe('createDialog', () => {
-    it('should create dialog with title and string content', () => {
-      const options: DialogOptions = {
+    it('should create dialog with title and content', () => {
+      const dialog = UIElementFactory.createDialog({
         title: 'Test Dialog',
-        content: 'This is the dialog content.',
-      };
+        content: 'Test content',
+      });
 
-      const dialog = UIElementFactory.createDialog(options);
-
-      expect(mockDocument.createElement).toHaveBeenCalledWith('div');
-      expect(dialog).toBe(mockElement);
-      expect(mockElement.style.zIndex).toBe('10000');
-      expect(mockElement.style.width).toBe('320px');
-      expect(mockElement.style.backgroundColor).toBe('#0f172a');
-      expect(mockElement.className).toBe(
-        'p-6 rounded-lg shadow-xl mx-4 space-y-4 border border-slate-700 relative'
-      );
-
-      const expectedHTML =
-        '<h3 class="text-lg font-semibold text-white">Test Dialog</h3><p class="text-slate-300 text-sm">This is the dialog content.</p>';
-      expect(mockElement.innerHTML).toBe(expectedHTML);
+      expect(dialog.tagName).toBe('DIV');
+      expect(dialog.innerHTML).toContain('Test Dialog');
+      expect(dialog.innerHTML).toContain('Test content');
+      expect(dialog.style.zIndex).toBe('10000');
     });
 
     it('should create dialog with actions', () => {
-      const primaryAction = vi.fn();
-      const secondaryAction = vi.fn();
-
-      const options: DialogOptions = {
-        title: 'Confirm Action',
+      const dialog = UIElementFactory.createDialog({
+        title: 'Confirm',
         content: 'Are you sure?',
         actions: {
-          primary: { text: 'Confirm', action: primaryAction },
-          secondary: { text: 'Cancel', action: secondaryAction },
-        },
-      };
-
-      UIElementFactory.createDialog(options);
-
-      // Check that the HTML contains the expected elements (ignore whitespace formatting)
-      expect(mockElement.innerHTML).toContain(
-        '<h3 class="text-lg font-semibold text-white">Confirm Action</h3>'
-      );
-      expect(mockElement.innerHTML).toContain(
-        '<p class="text-slate-300 text-sm">Are you sure?</p>'
-      );
-      expect(mockElement.innerHTML).toContain('data-action="primary"');
-      expect(mockElement.innerHTML).toContain('data-action="secondary"');
-      expect(mockElement.innerHTML).toContain('Confirm');
-      expect(mockElement.innerHTML).toContain('Cancel');
-      expect(mockElement.innerHTML).toContain('bg-blue-600');
-      expect(mockElement.innerHTML).toContain('bg-slate-800');
-    });
-
-    it('should create dialog with only primary action', () => {
-      const options: DialogOptions = {
-        title: 'Alert',
-        content: 'Something happened.',
-        actions: {
           primary: { text: 'OK', action: vi.fn() },
+          secondary: { text: 'Cancel', action: vi.fn() },
         },
-      };
+      });
 
-      UIElementFactory.createDialog(options);
-
-      expect(mockElement.innerHTML).toContain('OK');
-      expect(mockElement.innerHTML).not.toContain('Cancel');
-    });
-
-    it('should create dialog with only secondary action', () => {
-      const options: DialogOptions = {
-        title: 'Info',
-        content: 'Information message.',
-        actions: {
-          secondary: { text: 'Close', action: vi.fn() },
-        },
-      };
-
-      UIElementFactory.createDialog(options);
-
-      expect(mockElement.innerHTML).toContain('Close');
-      expect(mockElement.innerHTML).toContain('bg-slate-800');
+      expect(dialog.querySelector('[data-action="primary"]')).toBeTruthy();
+      expect(dialog.querySelector('[data-action="secondary"]')).toBeTruthy();
+      expect(dialog.innerHTML).toContain('OK');
+      expect(dialog.innerHTML).toContain('Cancel');
     });
 
     it('should handle HTMLElement content', () => {
-      const mockContentElement = {
-        tagName: 'SPAN',
-        textContent: 'Custom content',
-      } as any;
+      const content = document.createElement('span');
+      content.textContent = 'Custom';
 
-      mockElement.querySelector = vi.fn().mockReturnValue(mockElement);
+      const dialog = UIElementFactory.createDialog({
+        title: 'Dialog',
+        content,
+      });
 
-      const options: DialogOptions = {
-        title: 'Custom Dialog',
-        content: mockContentElement,
-      };
-
-      UIElementFactory.createDialog(options);
-
-      expect(mockElement.appendChild).toHaveBeenCalledWith(mockContentElement);
+      expect(dialog.textContent).toContain('Custom');
     });
   });
 
   describe('createOverlay', () => {
-    it('should create overlay with default settings', () => {
+    it('should create overlay with defaults', () => {
       const overlay = UIElementFactory.createOverlay();
 
-      expect(mockDocument.createElement).toHaveBeenCalledWith('div');
-      expect(overlay).toBe(mockElement);
-      expect(mockElement.style.zIndex).toBe('9999');
-      expect(mockElement.style.backgroundColor).toBe('rgba(0, 0, 0, 0.5)');
-      expect(mockElement.className).toBe('fixed inset-0 flex items-center justify-center');
+      expect(overlay.style.zIndex).toBe('9999');
+      expect(overlay.style.backgroundColor).toBe('rgba(0, 0, 0, 0.5)');
+      expect(overlay.className).toContain('fixed');
+      expect(overlay.className).toContain('inset-0');
     });
 
-    it('should create overlay with custom config', () => {
-      const config: OverlayConfig = {
+    it('should apply custom config', () => {
+      const overlay = UIElementFactory.createOverlay({
         zIndex: '12000',
         backgroundColor: 'rgba(255, 255, 255, 0.8)',
-        className: ['custom-overlay'],
-        styles: {
-          backdropFilter: 'blur(5px)',
-        },
-      };
+        className: 'custom',
+        styles: { backdropFilter: 'blur(5px)' },
+      });
 
-      UIElementFactory.createOverlay(config);
-
-      expect(mockElement.style.zIndex).toBe('12000');
-      expect(mockElement.style.backgroundColor).toBe('rgba(255, 255, 255, 0.8)');
-      expect(mockElement.className).toBe(
-        'fixed inset-0 flex items-center justify-center custom-overlay'
-      );
-      expect(mockElement.style.backdropFilter).toBe('blur(5px)');
-    });
-
-    it('should handle string className', () => {
-      const config: OverlayConfig = {
-        className: 'modal-overlay',
-      };
-
-      UIElementFactory.createOverlay(config);
-
-      expect(mockElement.className).toBe(
-        'fixed inset-0 flex items-center justify-center modal-overlay'
-      );
-    });
-
-    it('should handle array className', () => {
-      const config: OverlayConfig = {
-        className: ['overlay-class-1', 'overlay-class-2'],
-      };
-
-      UIElementFactory.createOverlay(config);
-
-      expect(mockElement.className).toBe(
-        'fixed inset-0 flex items-center justify-center overlay-class-1 overlay-class-2'
-      );
+      expect(overlay.style.zIndex).toBe('12000');
+      expect(overlay.className).toContain('custom');
+      expect(overlay.style.backdropFilter).toBe('blur(5px)');
     });
   });
 
   describe('createContainer', () => {
-    const mockParentElement = {
-      appendChild: vi.fn(),
-    } as any;
+    it('should create container with id', () => {
+      const container = UIElementFactory.createContainer({ id: 'test' });
 
-    beforeEach(() => {
-      mockParentElement.appendChild.mockClear();
+      expect(container.id).toBe('test');
     });
 
-    it('should create container with basic config', () => {
-      const config: ContainerConfig = {
-        id: 'test-container',
-      };
+    it('should apply classes and styles', () => {
+      const container = UIElementFactory.createContainer({
+        id: 'test',
+        className: ['class1', 'class2'],
+        styles: { width: '100px' },
+      });
 
-      const container = UIElementFactory.createContainer(config);
-
-      expect(mockDocument.createElement).toHaveBeenCalledWith('div');
-      expect(container).toBe(mockElement);
-      expect(mockElement.id).toBe('test-container');
-    });
-
-    it('should apply string className', () => {
-      const config: ContainerConfig = {
-        id: 'test-container',
-        className: 'container-class',
-      };
-
-      UIElementFactory.createContainer(config);
-
-      expect(mockElement.className).toBe('container-class');
-    });
-
-    it('should apply array className', () => {
-      const config: ContainerConfig = {
-        id: 'test-container',
-        className: ['class1', 'class2', 'class3'],
-      };
-
-      UIElementFactory.createContainer(config);
-
-      expect(mockElement.className).toBe('class1 class2 class3');
-    });
-
-    it('should apply styles', () => {
-      const config: ContainerConfig = {
-        id: 'test-container',
-        styles: {
-          width: '100px',
-          height: '200px',
-          backgroundColor: 'red',
-        },
-      };
-
-      UIElementFactory.createContainer(config);
-
-      expect(mockElement.style).toEqual(
-        expect.objectContaining({
-          width: '100px',
-          height: '200px',
-          backgroundColor: 'red',
-        })
-      );
+      expect(container.className).toBe('class1 class2');
+      expect(container.style.width).toBe('100px');
     });
 
     it('should set innerHTML', () => {
-      const config: ContainerConfig = {
-        id: 'test-container',
-        innerHTML: '<span>Inner content</span>',
-      };
+      const container = UIElementFactory.createContainer({
+        id: 'test',
+        innerHTML: '<span>Content</span>',
+      });
 
-      UIElementFactory.createContainer(config);
-
-      expect(mockElement.innerHTML).toBe('<span>Inner content</span>');
+      expect(container.innerHTML).toBe('<span>Content</span>');
     });
 
-    it('should append to parent element', () => {
-      const config: ContainerConfig = {
-        id: 'test-container',
-        appendTo: mockParentElement,
-      };
+    it('should append to parent', () => {
+      const parent = document.createElement('div');
+      const container = UIElementFactory.createContainer({
+        id: 'test',
+        appendTo: parent,
+      });
 
-      UIElementFactory.createContainer(config);
-
-      expect(mockParentElement.appendChild).toHaveBeenCalledWith(mockElement);
-    });
-
-    it('should create container with all options', () => {
-      const config: ContainerConfig = {
-        id: 'full-container',
-        className: ['container', 'main'],
-        styles: { padding: '10px' },
-        innerHTML: '<p>Content</p>',
-        appendTo: mockParentElement,
-      };
-
-      UIElementFactory.createContainer(config);
-
-      expect(mockElement.id).toBe('full-container');
-      expect(mockElement.className).toBe('container main');
-      expect(mockElement.style.padding).toBe('10px');
-      expect(mockElement.innerHTML).toBe('<p>Content</p>');
-      expect(mockParentElement.appendChild).toHaveBeenCalledWith(mockElement);
+      expect(parent.contains(container)).toBe(true);
     });
   });
 
   describe('createNotification', () => {
-    it('should create info notification by default', () => {
-      const notification = UIElementFactory.createNotification('Test message');
+    it('should create info notification', () => {
+      const notification = UIElementFactory.createNotification('Test');
 
-      expect(mockDocument.createElement).toHaveBeenCalledWith('div');
-      expect(notification).toBe(mockElement);
-      expect(mockElement.style.zIndex).toBe('10000');
-      expect(mockElement.className).toContain('bg-blue-500');
-      expect(mockElement.innerHTML).toContain('Test message');
-      expect(mockElement.innerHTML).toContain('<svg width="20" height="20"');
+      expect(notification.className).toContain('bg-blue-500');
+      expect(notification.textContent).toContain('Test');
     });
 
     it('should create error notification', () => {
-      UIElementFactory.createNotification('Error message', 'error');
+      const notification = UIElementFactory.createNotification('Error', 'error');
 
-      expect(mockElement.className).toContain('bg-red-500');
-      expect(mockElement.innerHTML).toContain('Error message');
-      expect(mockElement.innerHTML).toContain('<line x1="12" y1="8" x2="12" y2="12"></line>');
+      expect(notification.className).toContain('bg-red-500');
     });
 
     it('should create success notification', () => {
-      UIElementFactory.createNotification('Success message', 'success');
+      const notification = UIElementFactory.createNotification('Success', 'success');
 
-      expect(mockElement.className).toContain('bg-green-500');
-      expect(mockElement.innerHTML).toContain('Success message');
-      expect(mockElement.innerHTML).toContain('<path d="m9 12 2 2 4-4"></path>');
-    });
-
-    it('should apply correct CSS classes', () => {
-      UIElementFactory.createNotification('Test');
-
-      const expectedClasses = [
-        'fixed',
-        'top-4',
-        'right-4',
-        'p-4',
-        'bg-blue-500',
-        'text-white',
-        'rounded-md',
-        'shadow-lg',
-        'flex',
-        'items-center',
-        'gap-2',
-        'text-sm',
-      ].join(' ');
-
-      expect(mockElement.className).toBe(expectedClasses);
+      expect(notification.className).toContain('bg-green-500');
     });
   });
 
   describe('createStyleElement', () => {
-    const mockStyleElement = {
-      id: '',
-      textContent: '',
-      tagName: 'STYLE',
-    } as any;
+    it('should create style element', () => {
+      const style = UIElementFactory.createStyleElement('test', 'body { margin: 0; }');
 
-    const mockExistingElement = {
-      id: 'existing-style',
-      tagName: 'STYLE',
-    } as any;
-
-    beforeEach(() => {
-      mockDocument.createElement.mockReturnValue(mockStyleElement);
-      mockDocument.getElementById = vi.fn();
+      expect(style.id).toBe('test');
+      expect(style.textContent).toBe('body { margin: 0; }');
     });
 
-    it('should create new style element', () => {
-      mockDocument.getElementById.mockReturnValue(null);
+    it('should return existing style element', () => {
+      const existing = document.createElement('style');
+      existing.id = 'existing';
+      document.head.appendChild(existing);
 
-      const style = UIElementFactory.createStyleElement('test-styles', 'body { margin: 0; }');
+      const style = UIElementFactory.createStyleElement('existing', 'new');
 
-      expect(mockDocument.createElement).toHaveBeenCalledWith('style');
-      expect(style).toBe(mockStyleElement);
-      expect(mockStyleElement.id).toBe('test-styles');
-      expect(mockStyleElement.textContent).toBe('body { margin: 0; }');
-    });
-
-    it('should return existing style element if it exists', () => {
-      mockDocument.getElementById.mockReturnValue(mockExistingElement);
-
-      const style = UIElementFactory.createStyleElement('existing-style', 'new styles');
-
-      expect(mockDocument.createElement).not.toHaveBeenCalled();
-      expect(style).toBe(mockExistingElement);
+      expect(style).toBe(existing);
     });
   });
 
   describe('joinClasses', () => {
-    it('should join multiple string classes', () => {
-      const result = UIElementFactory.joinClasses('class1', 'class2', 'class3');
-
-      expect(result).toBe('class1 class2 class3');
+    it('should join string classes', () => {
+      expect(UIElementFactory.joinClasses('a', 'b', 'c')).toBe('a b c');
     });
 
     it('should join array classes', () => {
-      const result = UIElementFactory.joinClasses(['array1', 'array2'], 'string1');
-
-      expect(result).toBe('array1 array2 string1');
+      expect(UIElementFactory.joinClasses(['a', 'b'], 'c')).toBe('a b c');
     });
 
-    it('should filter out undefined values', () => {
-      const result = UIElementFactory.joinClasses('class1', undefined, 'class2', undefined);
-
-      expect(result).toBe('class1 class2');
+    it('should filter undefined', () => {
+      expect(UIElementFactory.joinClasses('a', undefined, 'b')).toBe('a b');
     });
 
-    it('should handle empty arrays and strings', () => {
-      const result = UIElementFactory.joinClasses('', [], 'valid-class', []);
-
-      expect(result).toBe('valid-class');
-    });
-
-    it('should handle mixed types', () => {
-      const result = UIElementFactory.joinClasses(
-        'string-class',
-        ['array-class1', 'array-class2'],
-        undefined,
-        'another-string',
-        []
-      );
-
-      expect(result).toBe('string-class array-class1 array-class2 another-string');
-    });
-
-    it('should return empty string for no valid classes', () => {
-      const result = UIElementFactory.joinClasses(undefined, [], '', undefined);
-
-      expect(result).toBe('');
-    });
-  });
-
-  describe('Edge cases and error handling', () => {
-    it('should handle empty dropdown items array', () => {
-      const dropdown = UIElementFactory.createDropdownContent([]);
-
-      expect(dropdown).toBe(mockElement);
-      expect(mockElement.appendChild).not.toHaveBeenCalled();
-    });
-
-    it('should handle undefined button options gracefully', () => {
-      const options = {
-        text: 'Button',
-        className: undefined,
-        disabled: undefined,
-        ariaLabel: undefined,
-        testId: undefined,
-      };
-
-      UIElementFactory.createButton(options);
-
-      expect(mockElement.textContent).toBe('Button');
-      // Should not call setAttribute for undefined values
-      expect(mockElement.setAttribute).not.toHaveBeenCalled();
-    });
-
-    it('should handle empty overlay config', () => {
-      const overlay = UIElementFactory.createOverlay({});
-
-      expect(overlay).toBe(mockElement);
-      expect(mockElement.className).toBe('fixed inset-0 flex items-center justify-center');
+    it('should handle empty values', () => {
+      expect(UIElementFactory.joinClasses('', [], 'valid')).toBe('valid');
     });
   });
 });

@@ -12,29 +12,21 @@ describe('DropdownManager', () => {
   let mockPushCallback: Mock;
 
   beforeEach(() => {
-    // Reset DOM
     document.body.innerHTML = '';
     document.head.innerHTML = '';
 
-    // Reset mocks
     vi.clearAllMocks();
 
-    // Mock MessageHandler
     mockMessageHandler = {
       sendMessage: vi.fn(),
     } as any;
 
-    // Mock UIStateManager
-    mockStateManager = {
-      // Add any needed methods here
-    } as any;
+    mockStateManager = {} as any;
 
-    // Mock callback functions
     mockPushCallback = vi.fn().mockResolvedValue(undefined);
 
     dropdownManager = new DropdownManager(mockMessageHandler, mockStateManager, mockPushCallback);
 
-    // Mock setTimeout and addEventListener for proper async handling
     vi.spyOn(window, 'setTimeout').mockImplementation((callback) => {
       if (typeof callback === 'function') {
         callback();
@@ -80,15 +72,14 @@ describe('DropdownManager', () => {
       const content = dropdownManager.createContent();
       const buttons = content.querySelectorAll('button');
 
-      expect(buttons.length).toBe(6); // Push, Dashboard, Show Changed Files, Manage Issues, Projects, Settings
+      expect(buttons.length).toBe(6);
 
-      // Check button texts - account for the fact that premium buttons include "PRO" badge
       const buttonTexts = Array.from(buttons).map((btn) => btn.textContent?.trim());
 
       expect(buttonTexts[0]).toBe('Push to GitHub');
       expect(buttonTexts[1]).toBe('Project Dashboard');
-      expect(buttonTexts[2]).toContain('Show Changed Files'); // Premium item with "PRO" badge
-      expect(buttonTexts[3]).toContain('Manage Issues'); // Premium item with "PRO" badge
+      expect(buttonTexts[2]).toContain('Show Changed Files');
+      expect(buttonTexts[3]).toContain('Manage Issues');
       expect(buttonTexts[4]).toBe('Projects');
       expect(buttonTexts[5]).toBe('Settings');
     });
@@ -146,11 +137,9 @@ describe('DropdownManager', () => {
     });
 
     test('removes existing dropdown before creating new one', async () => {
-      // Create first dropdown
       await dropdownManager.show(mockButton);
       const firstDropdown = document.getElementById('github-dropdown-content');
 
-      // Create second dropdown
       await dropdownManager.show(mockButton);
       const allDropdowns = document.querySelectorAll('#github-dropdown-content');
 
@@ -161,13 +150,11 @@ describe('DropdownManager', () => {
 
   describe('Dropdown Hide Functionality', () => {
     test('hides dropdown correctly', () => {
-      // Create a dropdown element
       const dropdown = document.createElement('div');
       dropdown.id = 'github-dropdown-content';
       dropdown.style.display = 'block';
       document.body.appendChild(dropdown);
 
-      // Set it as current dropdown
       (dropdownManager as any).currentDropdown = dropdown;
 
       dropdownManager.hide();
@@ -194,10 +181,8 @@ describe('DropdownManager', () => {
 
       expect(pushButton).toBeTruthy();
 
-      // Mock the current dropdown
       (dropdownManager as any).currentDropdown = { style: { display: 'block' } };
 
-      // Simulate click
       pushButton?.click();
 
       expect(mockPushCallback).toHaveBeenCalled();
@@ -213,10 +198,8 @@ describe('DropdownManager', () => {
 
       expect(dashboardButton).toBeTruthy();
 
-      // Mock the current dropdown
       (dropdownManager as any).currentDropdown = { style: { display: 'block' } };
 
-      // Simulate click
       dashboardButton?.click();
 
       expect(mockMessageHandler.sendMessage).toHaveBeenCalledWith('OPEN_HOME');
@@ -226,14 +209,12 @@ describe('DropdownManager', () => {
       const content = dropdownManager.createContent();
       const buttons = content.querySelectorAll('button');
 
-      // Check Show Changed Files button
       const changedFilesButton = Array.from(buttons).find((btn) =>
         btn.textContent?.includes('Show Changed Files')
       );
       expect(changedFilesButton?.innerHTML).toContain('PRO');
       expect(changedFilesButton?.className).toContain('opacity-75');
 
-      // Check Manage Issues button
       const issuesButton = Array.from(buttons).find((btn) =>
         btn.textContent?.includes('Manage Issues')
       );
@@ -249,10 +230,8 @@ describe('DropdownManager', () => {
         btn.textContent?.includes('Settings')
       );
 
-      // Mock the current dropdown
       (dropdownManager as any).currentDropdown = { style: { display: 'block' } };
 
-      // Simulate click
       settingsButton?.click();
 
       expect(mockMessageHandler.sendMessage).toHaveBeenCalledWith('OPEN_SETTINGS');
@@ -266,10 +245,8 @@ describe('DropdownManager', () => {
         btn.textContent?.includes('Projects')
       );
 
-      // Mock the current dropdown
       (dropdownManager as any).currentDropdown = { style: { display: 'block' } };
 
-      // Simulate click
       projectsButton?.click();
 
       expect(mockMessageHandler.sendMessage).toHaveBeenCalledWith('OPEN_PROJECTS');
@@ -287,7 +264,7 @@ describe('DropdownManager', () => {
     });
 
     test('removes styles on cleanup', () => {
-      dropdownManager.createContent(); // This adds styles
+      dropdownManager.createContent();
 
       dropdownManager.cleanup();
 

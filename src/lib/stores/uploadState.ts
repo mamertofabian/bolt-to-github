@@ -1,4 +1,4 @@
-import { writable, type Writable } from 'svelte/store';
+import { get, writable, type Writable } from 'svelte/store';
 import type { ProcessingStatus } from '../types';
 import { createLogger } from '../utils/logger';
 
@@ -92,7 +92,7 @@ export const uploadStateActions = {
       uploadStatus: status,
       uploadProgress:
         progress !== undefined ? Math.max(0, Math.min(100, progress)) : state.uploadProgress,
-      uploadMessage: message || state.uploadMessage,
+      uploadMessage: message !== undefined ? message : state.uploadMessage,
     }));
   },
 
@@ -138,13 +138,8 @@ export const uploadStateActions = {
   /**
    * Get current upload state
    */
-  async getCurrentState(): Promise<UploadState> {
-    return new Promise((resolve) => {
-      const unsubscribe = uploadStateStore.subscribe((state) => {
-        unsubscribe();
-        resolve(state);
-      });
-    });
+  getCurrentState(): Promise<UploadState> {
+    return Promise.resolve(get(uploadStateStore));
   },
 
   /**
@@ -169,11 +164,6 @@ export const uploadStateActions = {
    * Check if upload is in progress
    */
   isUploading(): Promise<boolean> {
-    return new Promise((resolve) => {
-      const unsubscribe = uploadStateStore.subscribe((state) => {
-        unsubscribe();
-        resolve(state.uploadStatus === 'uploading');
-      });
-    });
+    return Promise.resolve(get(uploadStateStore).uploadStatus === 'uploading');
   },
 };

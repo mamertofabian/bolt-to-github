@@ -10,6 +10,17 @@
   import { createLogger } from '$lib/utils/logger';
   import { ChromeMessagingService } from '$lib/services/chromeMessaging';
   import { ChromeStorageService } from '$lib/services/chromeStorage';
+  import {
+    filterRepositories,
+    checkRepositoryExists,
+    getDefaultProjectTitle,
+    handleKeyboardNavigation,
+    shouldShowDropdown,
+    canSaveForm,
+    getAuthenticationMethod,
+    createGitHubServiceConfig,
+    type Repository,
+  } from '$lib/utils/repo-settings';
 
   const logger = createLogger('RepoSettings');
 
@@ -24,34 +35,17 @@
   export let projectTitle: string = '';
 
   let isLoadingRepos = false;
-  let repositories: Array<{
-    name: string;
-    description: string | null;
-    html_url: string;
-    private: boolean;
-    created_at: string;
-    updated_at: string;
-    language: string | null;
-  }> = [];
+  let repositories: Repository[] = [];
   let showRepoDropdown = false;
-  let repoSearchQuery = '';
   let repoExists = false;
   let selectedIndex = -1;
   let isSaving = false;
   let showErrorModal = false;
   let errorMessage = '';
 
-  $: filteredRepos = repositories
-    .filter(
-      (repo) =>
-        repo.name.toLowerCase().includes(repoSearchQuery.toLowerCase()) ||
-        (repo.description && repo.description.toLowerCase().includes(repoSearchQuery.toLowerCase()))
-    )
-    .slice(0, 10);
+  $: filteredRepos = filterRepositories(repositories, repoName);
 
-  $: if (repoName) {
-    repoExists = repositories.some((repo) => repo.name.toLowerCase() === repoName.toLowerCase());
-  }
+  $: repoExists = checkRepositoryExists(repositories, repoName);
 
   async function loadRepositories() {
     try {
@@ -59,7 +53,7 @@
 
       // Get authentication method to determine how to create the service
       const authSettings = await chrome.storage.local.get(['authenticationMethod']);
-      const authMethod = authSettings.authenticationMethod || 'pat';
+      const authMethod = getAuthenticationMethod(authSettings);
 
       let githubService: UnifiedGitHubService;
 
@@ -69,7 +63,8 @@
       } else {
         // Use PAT authentication (backward compatible)
         if (!githubToken || !repoOwner) return;
-        githubService = new UnifiedGitHubService(githubToken);
+        const config = createGitHubServiceConfig(authMethod, githubToken);
+        githubService = new UnifiedGitHubService(config);
       }
 
       repositories = await githubService.listRepos();
@@ -81,44 +76,30 @@
     }
   }
 
-  function handleRepoInput() {
-    repoSearchQuery = repoName;
-  }
-
   function selectRepo(repo: (typeof repositories)[0]) {
     repoName = repo.name;
     showRepoDropdown = false;
-    repoSearchQuery = repo.name;
   }
 
   function handleRepoKeydown(event: KeyboardEvent) {
     if (!showRepoDropdown) return;
 
-    switch (event.key) {
-      case 'ArrowDown':
-        event.preventDefault();
-        selectedIndex = Math.min(selectedIndex + 1, filteredRepos.length - 1);
-        break;
-      case 'ArrowUp':
-        event.preventDefault();
-        selectedIndex = Math.max(selectedIndex - 1, -1);
-        break;
-      case 'Enter':
-        event.preventDefault();
-        if (selectedIndex >= 0 && filteredRepos[selectedIndex]) {
-          selectRepo(filteredRepos[selectedIndex]);
-        }
-        break;
-      case 'Escape':
-        event.preventDefault();
-        showRepoDropdown = false;
-        break;
+    const result = handleKeyboardNavigation(event.key, selectedIndex, filteredRepos);
+
+    event.preventDefault();
+    selectedIndex = result.newIndex;
+
+    if (result.selectedRepo) {
+      selectRepo(result.selectedRepo);
+    }
+
+    if (result.shouldCloseDropdown) {
+      showRepoDropdown = false;
     }
   }
 
   function handleRepoFocus() {
     showRepoDropdown = true;
-    repoSearchQuery = repoName;
   }
 
   function handleRepoBlur() {
@@ -129,7 +110,7 @@
   }
 
   async function saveSettings() {
-    if (!repoName || !branch) return;
+    if (!canSaveForm(repoName, branch, isSaving)) return;
 
     try {
       isSaving = true;
@@ -174,9 +155,7 @@
   }
 
   // Ensure projectTitle is set correctly
-  $: if (!projectTitle && repoName) {
-    projectTitle = repoName;
-  }
+  $: projectTitle = getDefaultProjectTitle(projectTitle, repoName);
 
   // Load repositories when component is mounted
   loadRepositories();
@@ -210,7 +189,6 @@
                 type="text"
                 id="repoName"
                 bind:value={repoName}
-                on:input={handleRepoInput}
                 on:focus={handleRepoFocus}
                 on:blur={handleRepoBlur}
                 on:keydown={handleRepoKeydown}
@@ -226,7 +204,7 @@
                 {/if}
               </div>
             </div>
-            {#if showRepoDropdown && (filteredRepos.length > 0 || !repoExists)}
+            {#if shouldShowDropdown(showRepoDropdown, filteredRepos, repoExists)}
               <div
                 class="absolute z-50 w-full mt-1 bg-slate-800 border border-slate-700 rounded-md shadow-lg"
               >
@@ -274,9 +252,13 @@
             <p class="text-sm text-blue-400">
               ℹ️ Using existing repository. Make sure it is correct.
             </p>
-          {:else if repoName}
+          {:else if repoName && repoName.trim()}
             <p class="text-sm text-emerald-400">
               ✨ A new repository will be created if it doesn't exist yet.
+            </p>
+          {:else}
+            <p class="text-sm text-orange-400">
+              Enter a repository name (new) or select from your repositories carefully.
             </p>
           {/if}
         </div>
@@ -311,7 +293,7 @@
             variant="default"
             class="text-xs py-1 h-8 bg-blue-600 hover:bg-blue-700"
             on:click={saveSettings}
-            disabled={!repoName || !branch || isSaving}
+            disabled={!canSaveForm(repoName, branch, isSaving)}
           >
             {#if isSaving}
               <Loader2 class="h-3 w-3 mr-1 animate-spin" />

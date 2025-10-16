@@ -5,7 +5,6 @@ import type { UploadStatusState } from '../../../lib/types';
 import type { UIStateManager } from '../../services/UIStateManager';
 import { UploadStatusManager } from '../UploadStatusManager';
 
-// Mock the Svelte component
 const mockSvelteComponent = {
   $set: vi.fn(),
   $destroy: vi.fn(),
@@ -28,13 +27,10 @@ describe('UploadStatusManager', () => {
   let mockStateManager: Mocked<UIStateManager>;
 
   beforeEach(() => {
-    // Reset DOM
     document.body.innerHTML = '';
 
-    // Reset mocks
     vi.clearAllMocks();
 
-    // Mock state manager
     mockStateManager = {
       setUploadStatus: vi.fn(),
     } as any;
@@ -72,7 +68,6 @@ describe('UploadStatusManager', () => {
     });
 
     test('removes existing container before creating new one', () => {
-      // Create a pre-existing container
       const existingContainer = document.createElement('div');
       existingContainer.id = 'bolt-to-github-upload-status-container';
       document.body.appendChild(existingContainer);
@@ -84,21 +79,18 @@ describe('UploadStatusManager', () => {
     });
 
     test('handles document body not being available', () => {
-      // Temporarily remove document.body
       const originalBody = document.body;
       Object.defineProperty(document, 'body', {
         writable: true,
         value: null,
       });
 
-      // Mock addEventListener
       const addEventListenerSpy = vi.spyOn(document, 'addEventListener');
 
       uploadStatusManager.initialize();
 
       expect(addEventListenerSpy).toHaveBeenCalledWith('DOMContentLoaded', expect.any(Function));
 
-      // Restore document.body
       Object.defineProperty(document, 'body', {
         writable: true,
         value: originalBody,
@@ -144,7 +136,6 @@ describe('UploadStatusManager', () => {
     });
 
     test('initializes component if not already initialized', () => {
-      // Create uninitialized manager
       const uninitializedManager = new UploadStatusManager(mockStateManager);
       const initSpy = vi.spyOn(uninitializedManager, 'initialize');
 
@@ -160,7 +151,6 @@ describe('UploadStatusManager', () => {
     });
 
     test('handles missing container gracefully', () => {
-      // Remove container after initialization
       const container = document.getElementById('bolt-to-github-upload-status-container');
       container?.remove();
 
@@ -170,7 +160,6 @@ describe('UploadStatusManager', () => {
         message: 'Upload failed',
       };
 
-      // Should not throw error
       expect(() => {
         uploadStatusManager.updateStatus(status);
       }).not.toThrow();
@@ -193,7 +182,6 @@ describe('UploadStatusManager', () => {
     });
 
     test('handles reinitialization when container is missing', () => {
-      // Remove container to trigger reinitialization
       const container = document.getElementById('bolt-to-github-upload-status-container');
       container?.remove();
 
@@ -203,7 +191,6 @@ describe('UploadStatusManager', () => {
         message: 'Almost done...',
       };
 
-      // Should not throw error and should attempt reinitialization
       expect(() => {
         uploadStatusManager.updateStatus(status);
       }).not.toThrow();
@@ -226,7 +213,7 @@ describe('UploadStatusManager', () => {
       expect(container?.style.top).toBe('50px');
       expect(container?.style.left).toBe('100px');
       expect(container?.style.zIndex).toBe('20000');
-      // Right should still be set from default
+
       expect(container?.style.right).toBe('1rem');
     });
 
@@ -241,11 +228,10 @@ describe('UploadStatusManager', () => {
       });
 
       expect(container?.style.bottom).toBe('30px');
-      expect(container?.style.top).toBe('4rem'); // Should maintain existing top
+      expect(container?.style.top).toBe('4rem');
     });
 
     test('handles position update when container does not exist', () => {
-      // Should not throw error
       expect(() => {
         uploadStatusManager.setPosition({ top: '100px' });
       }).not.toThrow();
@@ -257,8 +243,8 @@ describe('UploadStatusManager', () => {
 
       const container = document.getElementById('bolt-to-github-upload-status-container');
       expect(container?.style.left).toBe('200px');
-      expect(container?.style.top).toBe('4rem'); // Default maintained
-      expect(container?.style.right).toBe('1rem'); // Default maintained
+      expect(container?.style.top).toBe('4rem');
+      expect(container?.style.right).toBe('1rem');
     });
   });
 
@@ -329,7 +315,6 @@ describe('UploadStatusManager', () => {
     });
 
     test('handles cleanup when component is not initialized', () => {
-      // Should not throw error
       expect(() => {
         uploadStatusManager.cleanup();
       }).not.toThrow();
@@ -338,11 +323,9 @@ describe('UploadStatusManager', () => {
     test('handles cleanup when container does not exist', () => {
       uploadStatusManager.initialize();
 
-      // Manually remove container
       const container = document.getElementById('bolt-to-github-upload-status-container');
       container?.remove();
 
-      // Should not throw error
       expect(() => {
         uploadStatusManager.cleanup();
       }).not.toThrow();
@@ -367,7 +350,6 @@ describe('UploadStatusManager', () => {
     test('handles missing DOM gracefully', () => {
       uploadStatusManager.initialize();
 
-      // Remove entire document body
       document.body.innerHTML = '';
 
       const status: UploadStatusState = {
@@ -376,7 +358,6 @@ describe('UploadStatusManager', () => {
         message: 'Test',
       };
 
-      // Should not throw error
       expect(() => {
         uploadStatusManager.updateStatus(status);
       }).not.toThrow();

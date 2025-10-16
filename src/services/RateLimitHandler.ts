@@ -7,6 +7,10 @@ export class RateLimitHandler {
   private readonly MIN_REQUEST_INTERVAL = 1000; // 1 second between mutative requests
 
   async handleRateLimit(response: Response): Promise<void> {
+    if (this.retryCount >= this.MAX_RETRIES) {
+      throw new Error('Maximum retry attempts exceeded');
+    }
+
     const retryAfter = response.headers.get('retry-after');
     const rateLimit = {
       remaining: parseInt(response.headers.get('x-ratelimit-remaining') || '1'),
@@ -25,9 +29,6 @@ export class RateLimitHandler {
     }
 
     this.retryCount++;
-    if (this.retryCount >= this.MAX_RETRIES) {
-      throw new Error('Maximum retry attempts exceeded');
-    }
   }
 
   async beforeRequest(): Promise<void> {

@@ -170,9 +170,9 @@ export const projectSettingsActions = {
   async getCurrentState(): Promise<ProjectSettingsState> {
     return new Promise((resolve) => {
       const unsubscribe = projectSettingsStore.subscribe((state) => {
-        unsubscribe();
         resolve(state);
       });
+      unsubscribe();
     });
   },
 

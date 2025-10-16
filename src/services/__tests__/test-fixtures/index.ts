@@ -2,11 +2,11 @@
  * Test Fixtures Index
  *
  * Centralized export for all test fixtures, mocks, and utilities.
- * This module provides easy access to comprehensive testing infrastructure.
+ * All test tokens use TEST_ prefix for security.
  */
 
-// Export UnifiedGitHubService test fixtures
-export * from './UnifiedGitHubServiceFixtures';
+// Export UnifiedGitHubService test fixtures (modular structure)
+export * from './unified';
 
 // Export GitHubAppService test fixtures
 export * from './GitHubAppServiceTestFixtures';
@@ -20,7 +20,7 @@ export {
   TestDoubles as UnifiedMocks,
   TestScenarios as UnifiedScenarios,
   TestHelpers as UnifiedHelpers,
-} from './UnifiedGitHubServiceFixtures';
+} from './unified';
 
 // Export specific commonly used classes for direct import
 export {
@@ -31,7 +31,7 @@ export {
   MockChromeStorage,
   UnifiedGitHubServiceTestScenarios,
   UnifiedGitHubServiceTestHelpers,
-} from './UnifiedGitHubServiceFixtures';
+} from './unified';
 
 // Export GitHubAppService specific utilities
 export { MockGitHubAppService, GitHubAppServiceTestScenario } from './GitHubAppServiceMocks';

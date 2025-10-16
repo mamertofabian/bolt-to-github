@@ -4,6 +4,11 @@
   import { Input } from '$lib/components/ui/input';
   import { Label } from '$lib/components/ui/label';
   import { issuesStore } from '$lib/stores/issuesStore';
+  import {
+    canSubmitIssueForm,
+    createIssuePayload,
+    sanitizeIssueFormData,
+  } from '$lib/utils/issue-form';
 
   export let show: boolean;
   export let githubToken: string;
@@ -17,17 +22,20 @@
   let isSubmitting = false;
   let error: string | null = null;
 
+  // Reactive statement to check if form can be submitted
+  $: canSubmit = canSubmitIssueForm({ title, body });
+
   async function handleSubmit() {
-    if (!title.trim()) return;
+    if (!canSubmit) return;
 
     isSubmitting = true;
     error = null;
 
     try {
-      await issuesStore.createIssue(repoOwner, repoName, githubToken, {
-        title: title.trim(),
-        body: body.trim(),
-      });
+      const sanitizedData = sanitizeIssueFormData({ title, body });
+      const payload = createIssuePayload(sanitizedData);
+
+      await issuesStore.createIssue(repoOwner, repoName, githubToken, payload);
 
       // Reset form
       title = '';
@@ -148,7 +156,7 @@
             <Button
               type="submit"
               size="sm"
-              disabled={isSubmitting || !title.trim()}
+              disabled={isSubmitting || !canSubmit}
               class="bg-green-600 hover:bg-green-700 text-white"
             >
               {isSubmitting ? 'Creating...' : 'Create Issue'}

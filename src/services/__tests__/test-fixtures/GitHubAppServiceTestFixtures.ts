@@ -14,6 +14,12 @@ import type {
 } from '../../types/authentication';
 
 // ===========================
+// Time Constants for Deterministic Testing
+// ===========================
+
+export const FIXED_TIME = new Date('2024-01-01T00:00:00.000Z').getTime();
+
+// ===========================
 // Normal Case Test Data
 // ===========================
 
@@ -21,8 +27,8 @@ export const validGitHubAppConfig: GitHubAppConfig = {
   installationId: 12345678,
   accessToken: 'ghs_1234567890abcdefghijklmnopqrstuvwxyz12',
   refreshToken: 'ghr_refresh1234567890abcdefghijklmnopqrstuvwxyz',
-  expiresAt: new Date(Date.now() + 3600000).toISOString(), // 1 hour from now
-  refreshTokenExpiresAt: new Date(Date.now() + 15552000000).toISOString(), // 6 months from now
+  expiresAt: new Date(FIXED_TIME + 3600000).toISOString(), // 1 hour from now
+  refreshTokenExpiresAt: new Date(FIXED_TIME + 15552000000).toISOString(), // 6 months from now
   githubUsername: 'testuser',
   githubUserId: 1234567,
   avatarUrl: 'https://avatars.githubusercontent.com/u/1234567?v=4',
@@ -65,7 +71,7 @@ export const validInstallation: GitHubAppInstallation = {
 export const validTokenResponse: GitHubAppTokenResponse = {
   access_token: 'ghs_1234567890abcdefghijklmnopqrstuvwxyz12',
   github_username: 'testuser',
-  expires_at: new Date(Date.now() + 3600000).toISOString(),
+  expires_at: new Date(FIXED_TIME + 3600000).toISOString(),
   scopes: ['repo', 'user:email'],
   type: 'github_app',
   renewed: false,
@@ -80,7 +86,7 @@ export const renewedTokenResponse: GitHubAppTokenResponse = {
 export const validInstallationTokenResponse = {
   github_username: 'testuser',
   token: 'ghs_installation567890abcdefghijklmnopqrstuv',
-  expires_at: new Date(Date.now() + 3600000).toISOString(),
+  expires_at: new Date(FIXED_TIME + 3600000).toISOString(),
   type: 'installation' as const,
   installation_id: 12345678,
   permissions: {
@@ -118,13 +124,13 @@ export const validPermissionCheckResult: PermissionCheckResult = {
 
 export const expiredGitHubAppConfig: GitHubAppConfig = {
   ...validGitHubAppConfig,
-  expiresAt: new Date(Date.now() - 3600000).toISOString(), // 1 hour ago
-  refreshTokenExpiresAt: new Date(Date.now() + 86400000).toISOString(), // Still valid
+  expiresAt: new Date(FIXED_TIME - 3600000).toISOString(), // 1 hour ago
+  refreshTokenExpiresAt: new Date(FIXED_TIME + 86400000).toISOString(), // Still valid
 };
 
 export const nearExpiryGitHubAppConfig: GitHubAppConfig = {
   ...validGitHubAppConfig,
-  expiresAt: new Date(Date.now() + 240000).toISOString(), // 4 minutes from now
+  expiresAt: new Date(FIXED_TIME + 240000).toISOString(), // 4 minutes from now
 };
 
 export const minimalGitHubAppConfig: GitHubAppConfig = {
@@ -192,7 +198,7 @@ export const tokenExpiredNoRefreshError: GitHubAppErrorResponse = {
   error: 'Access token expired and no refresh token available',
   code: 'TOKEN_EXPIRED_NO_REFRESH',
   requires_auth: true,
-  expired_at: new Date(Date.now() - 3600000).toISOString(),
+  expired_at: new Date(FIXED_TIME - 3600000).toISOString(),
 };
 
 export const tokenRenewalFailedError: GitHubAppErrorResponse = {
@@ -241,8 +247,8 @@ export const validAuthStorageData: AuthenticationStorage = {
   githubAppInstallationId: 12345678,
   githubAppAccessToken: 'ghs_1234567890abcdefghijklmnopqrstuvwxyz12',
   githubAppRefreshToken: 'ghr_refresh1234567890abcdefghijklmnopqrstuvwxyz',
-  githubAppExpiresAt: new Date(Date.now() + 3600000).toISOString(),
-  githubAppRefreshTokenExpiresAt: new Date(Date.now() + 15552000000).toISOString(),
+  githubAppExpiresAt: new Date(FIXED_TIME + 3600000).toISOString(),
+  githubAppRefreshTokenExpiresAt: new Date(FIXED_TIME + 15552000000).toISOString(),
   githubAppUsername: 'testuser',
   githubAppUserId: 1234567,
   githubAppAvatarUrl: 'https://avatars.githubusercontent.com/u/1234567?v=4',
@@ -252,7 +258,7 @@ export const validAuthStorageData: AuthenticationStorage = {
 
 export const expiredAuthStorageData: AuthenticationStorage = {
   ...validAuthStorageData,
-  githubAppExpiresAt: new Date(Date.now() - 3600000).toISOString(),
+  githubAppExpiresAt: new Date(FIXED_TIME - 3600000).toISOString(),
 };
 
 export const minimalAuthStorageData: AuthenticationStorage = {
@@ -329,7 +335,7 @@ export const unauthorizedErrorResponse = {
 export function createGitHubAppConfigWithExpiry(expiresInMs: number): GitHubAppConfig {
   return {
     ...validGitHubAppConfig,
-    expiresAt: new Date(Date.now() + expiresInMs).toISOString(),
+    expiresAt: new Date(FIXED_TIME + expiresInMs).toISOString(),
   };
 }
 

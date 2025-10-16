@@ -5,6 +5,13 @@
   import { RotateCcw, Upload } from 'lucide-svelte';
   import FileChanges from '../../components/FileChanges.svelte';
   import type { FileChange } from '../../services/FilePreviewService';
+  import {
+    countChanges,
+    hasActualChanges,
+    generateNoChangesConfirmationMessage,
+    getTotalActualChanges,
+    shouldShowPushConfirmation,
+  } from './file-changes-modal';
 
   export let show = false;
   export let fileChanges: Map<string, FileChange> | null = null;
@@ -19,34 +26,8 @@
   $: changeCounts = fileChanges
     ? countChanges(fileChanges)
     : { added: 0, modified: 0, deleted: 0, unchanged: 0, total: 0 };
-  $: hasActualChanges =
-    changeCounts.added > 0 || changeCounts.modified > 0 || changeCounts.deleted > 0;
-
-  function countChanges(changes: Map<string, FileChange>) {
-    let added = 0,
-      modified = 0,
-      deleted = 0,
-      unchanged = 0;
-
-    changes.forEach((change) => {
-      switch (change.status) {
-        case 'added':
-          added++;
-          break;
-        case 'modified':
-          modified++;
-          break;
-        case 'deleted':
-          deleted++;
-          break;
-        case 'unchanged':
-          unchanged++;
-          break;
-      }
-    });
-
-    return { added, modified, deleted, unchanged, total: changes.size };
-  }
+  $: hasChanges = hasActualChanges(changeCounts);
+  $: totalChanges = getTotalActualChanges(changeCounts);
 
   function handleClose() {
     show = false;
@@ -56,11 +37,9 @@
     event.stopPropagation();
 
     // Check if there are actual changes
-    if (!hasActualChanges) {
+    if (shouldShowPushConfirmation(hasChanges)) {
       // Show confirmation dialog for no changes
-      confirmationMessage = `No changes detected (${changeCounts.unchanged} unchanged files).
-
-Do you still want to push to GitHub?`;
+      confirmationMessage = generateNoChangesConfirmationMessage(changeCounts.unchanged);
       pendingPushAction = () => {
         // Send a message to trigger the GitHub push action
         chrome.runtime.sendMessage({ action: 'PUSH_TO_GITHUB' });
@@ -132,7 +111,7 @@ Do you still want to push to GitHub?`;
         <h3 class="text-base font-medium text-slate-200">File Changes</h3>
         {#if fileChanges}
           <p class="text-sm text-slate-400 leading-relaxed">
-            {#if hasActualChanges}
+            {#if hasChanges}
               {changeCounts.added > 0 ? `${changeCounts.added} added` : ''}
               {changeCounts.modified > 0
                 ? `${changeCounts.added > 0 ? ', ' : ''}${changeCounts.modified} modified`
@@ -167,19 +146,19 @@ Do you still want to push to GitHub?`;
         <Button
           variant="default"
           size="sm"
-          class="bg-blue-600 hover:bg-blue-700 text-xs py-1.5 h-8 flex items-center gap-1.5 {!hasActualChanges
+          class="bg-blue-600 hover:bg-blue-700 text-xs py-1.5 h-8 flex items-center gap-1.5 {!hasChanges
             ? 'opacity-50'
             : ''}"
           on:click={pushToGitHub}
           on:keydown={(e) => e.key === 'Enter' && pushToGitHub(e)}
           disabled={isRefreshing}
-          title={hasActualChanges
-            ? `Push ${changeCounts.added + changeCounts.modified + changeCounts.deleted} changes to GitHub`
+          title={hasChanges
+            ? `Push ${totalChanges} changes to GitHub`
             : 'No changes to push (will show confirmation)'}
         >
           <Upload size={14} />
-          {#if hasActualChanges}
-            Push ({changeCounts.added + changeCounts.modified + changeCounts.deleted})
+          {#if hasChanges}
+            Push ({totalChanges})
           {:else}
             Push (No changes)
           {/if}

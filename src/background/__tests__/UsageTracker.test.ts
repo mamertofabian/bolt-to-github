@@ -1,15 +1,7 @@
-/**
- * UsageTracker Tests
- *
- * Tests for tracking extension usage statistics, error logging, and uninstall URL generation
- * for the uninstall feedback feature.
- */
-
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { ErrorLogEntry, UsageData } from '../../lib/types';
 import { UsageTracker } from '../UsageTracker';
 
-// Mock chrome APIs
 const mockChromeStorage = {
   local: {
     get: vi.fn(),
@@ -26,7 +18,6 @@ const mockChromeRuntime = {
   setUninstallURL: vi.fn(),
 };
 
-// Replace global chrome object
 global.chrome = {
   storage: mockChromeStorage,
   runtime: mockChromeRuntime,
@@ -36,11 +27,14 @@ describe('UsageTracker', () => {
   let usageTracker: UsageTracker;
 
   beforeEach(() => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date('2024-02-15T10:00:00.000Z'));
     vi.clearAllMocks();
     usageTracker = new UsageTracker();
   });
 
   afterEach(() => {
+    vi.useRealTimers();
     vi.restoreAllMocks();
   });
 
@@ -65,8 +59,8 @@ describe('UsageTracker', () => {
       expect(mockChromeStorage.local.get).toHaveBeenCalledWith(['usageData'], expect.any(Function));
 
       expect(savedData.usageData).toMatchObject({
-        installDate: expect.any(String),
-        lastActiveDate: expect.any(String),
+        installDate: '2024-02-15T10:00:00.000Z',
+        lastActiveDate: '2024-02-15T10:00:00.000Z',
         totalPushes: 0,
         authMethod: 'none',
         extensionVersion: '1.3.5',
@@ -99,7 +93,7 @@ describe('UsageTracker', () => {
 
       expect(savedData.usageData).toMatchObject({
         ...existingData,
-        extensionVersion: '1.3.5', // Should update version
+        extensionVersion: '1.3.5',
       });
     });
   });
@@ -130,7 +124,7 @@ describe('UsageTracker', () => {
       expect(savedData.usageData).toMatchObject({
         ...existingData,
         totalPushes: 6,
-        lastActiveDate: expect.any(String),
+        lastActiveDate: '2024-02-15T10:00:00.000Z',
       });
     });
 
@@ -148,8 +142,7 @@ describe('UsageTracker', () => {
         callback({ usageData: existingData });
       });
 
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      let savedData: Record<string, any> = {};
+      let savedData: Record<string, unknown> = {};
       mockChromeStorage.local.set.mockImplementation((data, callback) => {
         savedData = data;
         if (callback) callback();
@@ -157,7 +150,8 @@ describe('UsageTracker', () => {
 
       await usageTracker.updateUsageStats('auth_method_changed', { authMethod: 'github-app' });
 
-      expect(savedData.usageData.authMethod).toBe('github-app');
+      const usageData = savedData.usageData as UsageData;
+      expect(usageData.authMethod).toBe('github-app');
     });
   });
 
@@ -180,8 +174,7 @@ describe('UsageTracker', () => {
         }
       });
 
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      let savedData: Record<string, any> = {};
+      let savedData: Record<string, unknown> = {};
       mockChromeStorage.local.set.mockImplementation((data, callback) => {
         savedData = data;
         if (callback) callback();
@@ -190,16 +183,18 @@ describe('UsageTracker', () => {
       const error = new Error('Test error message');
       await usageTracker.trackError(error, 'test_context');
 
-      expect(savedData.errorLog).toHaveLength(1);
-      expect(savedData.errorLog[0]).toMatchObject({
-        timestamp: expect.any(String),
+      const errorLog = savedData.errorLog as ErrorLogEntry[];
+      expect(errorLog).toHaveLength(1);
+      expect(errorLog[0]).toMatchObject({
+        timestamp: '2024-02-15T10:00:00.000Z',
         message: 'Test error message',
         context: 'test_context',
         stack: expect.any(String),
       });
 
-      expect(savedData.usageData.errorCount).toBe(2);
-      expect(savedData.usageData.lastError).toBe('Test error message');
+      const usageData = savedData.usageData as UsageData;
+      expect(usageData.errorCount).toBe(2);
+      expect(usageData.lastError).toBe('Test error message');
     });
 
     it('should keep only last 10 errors', async () => {
@@ -223,8 +218,7 @@ describe('UsageTracker', () => {
         });
       });
 
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      let savedData: Record<string, any> = {};
+      let savedData: Record<string, unknown> = {};
       mockChromeStorage.local.set.mockImplementation((data, callback) => {
         savedData = data;
         if (callback) callback();
@@ -233,17 +227,20 @@ describe('UsageTracker', () => {
       const newError = new Error('New error');
       await usageTracker.trackError(newError, 'new_context');
 
-      expect(savedData.errorLog).toHaveLength(10);
-      expect(savedData.errorLog[9].message).toBe('New error');
-      expect(savedData.errorLog[0].message).toBe('Error 1'); // First error should be removed
+      const errorLog = savedData.errorLog as ErrorLogEntry[];
+      expect(errorLog).toHaveLength(10);
+      expect(errorLog[9].message).toBe('New error');
+      expect(errorLog[0].message).toBe('Error 1');
     });
   });
 
   describe('setUninstallURL', () => {
     it('should generate correct uninstall URL with usage parameters', async () => {
+      vi.setSystemTime(new Date('2024-01-31T10:00:00.000Z'));
+
       const usageData: UsageData = {
-        installDate: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString(), // 30 days ago
-        lastActiveDate: new Date().toISOString(),
+        installDate: '2024-01-01T10:00:00.000Z',
+        lastActiveDate: '2024-01-31T10:00:00.000Z',
         totalPushes: 15,
         authMethod: 'github-app',
         extensionVersion: '1.3.5',
@@ -283,8 +280,8 @@ describe('UsageTracker', () => {
       mockChromeStorage.local.get.mockImplementation((keys, callback) => {
         callback({
           usageData: {
-            installDate: new Date().toISOString(),
-            lastActiveDate: new Date().toISOString(),
+            installDate: '2024-02-15T10:00:00.000Z',
+            lastActiveDate: '2024-02-15T10:00:00.000Z',
             totalPushes: 0,
             authMethod: 'none',
             extensionVersion: '1.3.5',
@@ -327,13 +324,15 @@ describe('UsageTracker', () => {
 
   describe('calculateDaysSinceInstall', () => {
     it('should calculate correct days since install', () => {
-      const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString();
+      vi.setSystemTime(new Date('2024-01-31T10:00:00.000Z'));
+      const thirtyDaysAgo = '2024-01-01T10:00:00.000Z';
       const days = usageTracker['calculateDaysSinceInstall'](thirtyDaysAgo);
       expect(days).toBe(30);
     });
 
     it('should return 0 for future dates', () => {
-      const tomorrow = new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString();
+      vi.setSystemTime(new Date('2024-01-15T10:00:00.000Z'));
+      const tomorrow = '2024-01-16T10:00:00.000Z';
       const days = usageTracker['calculateDaysSinceInstall'](tomorrow);
       expect(days).toBe(0);
     });

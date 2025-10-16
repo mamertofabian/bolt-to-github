@@ -20,14 +20,22 @@
   let hasProAccess = false;
   let showUpgrade = false;
 
+  let previousKey = '';
+
   onMount(async () => {
     if (show && owner && repo) {
+      previousKey = `${owner}/${repo}`;
       await Promise.all([loadBranches(), checkProAccess()]);
     }
   });
 
-  $: if (show && owner && repo && branches.length === 0) {
-    Promise.all([loadBranches(), checkProAccess()]);
+  $: {
+    const currentKey = `${owner}/${repo}`;
+    if (show && owner && repo && currentKey !== previousKey) {
+      previousKey = currentKey;
+      branches = []; // Reset branches
+      void Promise.all([loadBranches(), checkProAccess()]);
+    }
   }
 
   async function checkProAccess() {

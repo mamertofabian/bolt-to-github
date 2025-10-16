@@ -1,11 +1,3 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
-/**
- * Focused Test Suite for UnifiedGitHubService
- *
- * This test file focuses on the most critical functionality with reliable testing patterns.
- * It covers the core use cases that work consistently with our test fixtures.
- */
-
 import type { Mock } from 'vitest';
 import { UnifiedGitHubService } from '../UnifiedGitHubService';
 import {
@@ -17,7 +9,8 @@ import {
   UnifiedGitHubServiceTestHelpers,
 } from './test-fixtures';
 
-// Mock the AuthenticationStrategyFactory with controlled behavior
+const FIXED_TIME = new Date('2024-01-01T00:00:00.000Z').getTime();
+
 const mockPATStrategy = new MockPATAuthenticationStrategy(TestFixtures.TokenFixtures.pat.classic);
 const mockGitHubAppStrategy = new MockGitHubAppAuthenticationStrategy(
   TestFixtures.TokenFixtures.oauth.accessToken
@@ -25,11 +18,9 @@ const mockGitHubAppStrategy = new MockGitHubAppAuthenticationStrategy(
 
 const mockFactory = {
   createPATStrategy: vi.fn(async (token: string) => {
-    const { MockPATAuthenticationStrategy } = await import(
-      './test-fixtures/UnifiedGitHubServiceFixtures'
-    );
+    const { MockPATAuthenticationStrategy } = await import('./test-fixtures/unified');
     const strategy = new MockPATAuthenticationStrategy(token);
-    // Apply test configurations that would have been set up
+
     if (token === TestFixtures.TokenFixtures.pat.invalid) {
       strategy.setShouldFail(true);
     }
@@ -50,14 +41,14 @@ describe('UnifiedGitHubService - Focused Tests', () => {
   let mockStorage: MockChromeStorage;
 
   beforeEach(async () => {
+    vi.useFakeTimers({ now: FIXED_TIME });
+
     mockFetch = new MockFetchResponseBuilder();
     mockStorage = new MockChromeStorage();
 
-    // Setup basic authentication and storage
     mockStorage.loadGitHubSettings();
     mockStorage.loadAuthenticationMethod('pat');
 
-    // Reset strategy mocks
     mockPATStrategy.reset();
     mockGitHubAppStrategy.reset();
 
@@ -65,6 +56,8 @@ describe('UnifiedGitHubService - Focused Tests', () => {
   });
 
   afterEach(() => {
+    vi.useRealTimers();
+
     mockFetch.reset();
     mockStorage.reset();
 
@@ -126,11 +119,9 @@ describe('UnifiedGitHubService - Focused Tests', () => {
     });
 
     it('should identify fine-grained PAT tokens', async () => {
-      // Test the token format directly since the service checks the token format
       const fineGrainedToken = TestFixtures.TokenFixtures.pat.fineGrained;
-      expect(fineGrainedToken.startsWith('github_pat_')).toBe(true);
+      expect(fineGrainedToken.startsWith('TEST_github_pat_')).toBe(true);
 
-      // The service constructor will create a new strategy with the fine-grained token
       const service = new UnifiedGitHubService(fineGrainedToken);
       const isFineGrained = await service.isFineGrainedToken();
       expect(isFineGrained).toBe(true);
@@ -157,7 +148,6 @@ describe('UnifiedGitHubService - Focused Tests', () => {
     });
 
     it('should handle permission verification failures', async () => {
-      // Create a strategy that will fail permissions and override the mock factory temporarily
       const failingStrategy = new MockPATAuthenticationStrategy(
         TestFixtures.TokenFixtures.pat.classic
       );
@@ -290,7 +280,6 @@ describe('UnifiedGitHubService - Focused Tests', () => {
     });
 
     it('should initialize empty repo with .gitkeep instead of README', async () => {
-      // Set up mock for the .gitkeep file creation
       mockFetch.reset();
       mockFetch.mockPushFile('testuser', 'test-repo', '.gitkeep').build();
 
@@ -305,7 +294,6 @@ describe('UnifiedGitHubService - Focused Tests', () => {
         })
       );
 
-      // Verify it's NOT trying to create README.md
       expect(global.fetch).not.toHaveBeenCalledWith(
         expect.stringContaining('/contents/README.md'),
         expect.any(Object)
@@ -366,16 +354,19 @@ describe('UnifiedGitHubService - Focused Tests', () => {
       expect(comment.url).toContain('/comments/');
     });
 
-    it('should get issues with force refresh', async () => {
+    it('should get issues with force refresh and cache-busting timestamp', async () => {
       const service = new UnifiedGitHubService(TestFixtures.TokenFixtures.pat.classic);
-      await service.getIssues('testuser', 'test-repo', 'open', true);
+      const issues = await service.getIssues('testuser', 'test-repo', 'open', true);
 
-      // Verify cache-busting headers
+      expect(Array.isArray(issues)).toBe(true);
+      expect(issues.length).toBeGreaterThan(0);
+
       expect(global.fetch).toHaveBeenCalledWith(
-        expect.stringContaining('_t='),
+        `https://api.github.com/repos/testuser/test-repo/issues?state=open&_t=${FIXED_TIME}`,
         expect.objectContaining({
           headers: expect.objectContaining({
             'Cache-Control': 'no-cache, no-store, must-revalidate',
+            Pragma: 'no-cache',
           }),
         })
       );
@@ -476,15 +467,12 @@ describe('UnifiedGitHubService - Focused Tests', () => {
     });
 
     it('should handle network failures', async () => {
-      // Test that the service gracefully handles network failures
-      // Instead of expecting an exception, test that it returns false for network errors
       mockFetch.reset();
       const mockFetchFn = vi.fn().mockRejectedValue(new Error('Network request failed'));
       global.fetch = mockFetchFn;
 
       const service = new UnifiedGitHubService(TestFixtures.TokenFixtures.pat.classic);
 
-      // The service should handle the error and return false rather than throwing
       const exists = await service.repoExists('testuser', 'test-repo');
       expect(exists).toBe(false);
       expect(mockFetchFn).toHaveBeenCalled();
@@ -498,11 +486,12 @@ describe('UnifiedGitHubService - Focused Tests', () => {
 
       const service = new UnifiedGitHubService(TestFixtures.TokenFixtures.pat.classic);
 
-      const startTime = Date.now();
-      await service.repoExists('testuser', 'test-repo');
-      const duration = Date.now() - startTime;
+      const repoExistsPromise = service.repoExists('testuser', 'test-repo');
 
-      expect(duration).toBeGreaterThan(90);
+      await vi.advanceTimersByTimeAsync(100);
+
+      const exists = await repoExistsPromise;
+      expect(exists).toBe(true);
     });
 
     it('should handle multiple concurrent requests', async () => {
@@ -542,7 +531,7 @@ describe('UnifiedGitHubService - Focused Tests', () => {
       const service = new UnifiedGitHubService(TestFixtures.TokenFixtures.pat.classic);
       const result = await service.request('GET', '/user');
 
-      expect((result as any).login).toBe('testuser');
+      expect((result as { login: string }).login).toBe('testuser');
       expect(global.fetch).toHaveBeenCalledWith(
         'https://api.github.com/user',
         expect.objectContaining({
