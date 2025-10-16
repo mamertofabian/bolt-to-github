@@ -13,14 +13,13 @@
   import {
     filterRepositories,
     checkRepositoryExists,
-    getDefaultProjectTitle,
     handleKeyboardNavigation,
     shouldShowDropdown,
     canSaveForm,
     getAuthenticationMethod,
     createGitHubServiceConfig,
     type Repository,
-  } from '$lib/utils/repo-settings';
+  } from '$lib/utils/RepoSettings.logic';
 
   const logger = createLogger('RepoSettings');
 
@@ -37,13 +36,18 @@
   let isLoadingRepos = false;
   let repositories: Repository[] = [];
   let showRepoDropdown = false;
+  let repoSearchQuery = '';
   let repoExists = false;
   let selectedIndex = -1;
   let isSaving = false;
   let showErrorModal = false;
   let errorMessage = '';
 
-  $: filteredRepos = filterRepositories(repositories, repoName);
+  // Track the initial prop values to set defaults only once
+  let initialProjectTitle = projectTitle;
+  let initialRepoName = repoName;
+
+  $: filteredRepos = filterRepositories(repositories, repoSearchQuery);
 
   $: repoExists = checkRepositoryExists(repositories, repoName);
 
@@ -76,8 +80,13 @@
     }
   }
 
+  function handleRepoInput() {
+    repoSearchQuery = repoName;
+  }
+
   function selectRepo(repo: (typeof repositories)[0]) {
     repoName = repo.name;
+    repoSearchQuery = repo.name;
     showRepoDropdown = false;
   }
 
@@ -86,7 +95,10 @@
 
     const result = handleKeyboardNavigation(event.key, selectedIndex, filteredRepos);
 
-    event.preventDefault();
+    if (result.shouldPreventDefault) {
+      event.preventDefault();
+    }
+
     selectedIndex = result.newIndex;
 
     if (result.selectedRepo) {
@@ -99,6 +111,7 @@
   }
 
   function handleRepoFocus() {
+    repoSearchQuery = repoName;
     showRepoDropdown = true;
   }
 
@@ -154,8 +167,11 @@
     }
   }
 
-  // Ensure projectTitle is set correctly
-  $: projectTitle = getDefaultProjectTitle(projectTitle, repoName);
+  // Set default project title only once if initially empty
+  // This runs synchronously during initialization, not reactively
+  if (!initialProjectTitle && initialRepoName) {
+    projectTitle = initialRepoName;
+  }
 
   // Load repositories when component is mounted
   loadRepositories();
@@ -189,6 +205,7 @@
                 type="text"
                 id="repoName"
                 bind:value={repoName}
+                on:input={handleRepoInput}
                 on:focus={handleRepoFocus}
                 on:blur={handleRepoBlur}
                 on:keydown={handleRepoKeydown}

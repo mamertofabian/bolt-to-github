@@ -3,7 +3,7 @@
  */
 
 import { describe, it, expect, beforeEach, vi, afterEach } from 'vitest';
-import { render, screen, waitFor } from '@testing-library/svelte';
+import { render, screen, waitFor, fireEvent } from '@testing-library/svelte';
 import userEvent from '@testing-library/user-event';
 import RepoSettings from '../RepoSettings.svelte';
 
@@ -701,12 +701,111 @@ describe('RepoSettings.svelte - Component Tests', () => {
   });
 
   describe('Default Project Title', () => {
-    it('should use repository name as default project title when rendered with repoName', () => {
+    it('should use repository name as default project title when rendered with repoName', async () => {
       const props = { ...defaultProps, projectTitle: '', repoName: 'my-repo' };
       render(RepoSettings, { props });
 
       const titleInput = screen.getByLabelText('Project Title');
-      expect(titleInput).toHaveValue('my-repo');
+
+      // Wait for onMount to set the default title
+      await waitFor(() => {
+        expect(titleInput).toHaveValue('my-repo');
+      });
+    });
+  });
+
+  describe('Editable Fields', () => {
+    it('should allow editing project title after it has been set', async () => {
+      const user = userEvent.setup();
+      const props = { ...defaultProps, projectTitle: 'Initial Title', repoName: 'my-repo' };
+      render(RepoSettings, { props });
+
+      const titleInput = screen.getByLabelText('Project Title') as HTMLInputElement;
+      expect(titleInput).toHaveValue('Initial Title');
+
+      // Triple click to select all text, then type new value
+      await user.tripleClick(titleInput);
+      await user.keyboard('New Project Title');
+
+      expect(titleInput).toHaveValue('New Project Title');
+    });
+
+    it('should allow editing project title without being overridden by repository name', async () => {
+      const user = userEvent.setup();
+      const props = { ...defaultProps, projectTitle: '', repoName: 'my-repo' };
+      render(RepoSettings, { props });
+
+      const titleInput = screen.getByLabelText('Project Title');
+
+      // Wait for onMount to set the default title
+      await waitFor(() => {
+        expect(titleInput).toHaveValue('my-repo');
+      });
+
+      // User edits the title
+      await user.clear(titleInput);
+      await user.type(titleInput, 'Custom Title');
+
+      // Should retain user's custom title
+      expect(titleInput).toHaveValue('Custom Title');
+    });
+
+    it('should allow editing repository name after initial selection', async () => {
+      const props = { ...defaultProps, repoName: 'initial-repo' };
+      render(RepoSettings, { props });
+
+      const repoInput = screen.getByLabelText('Repository Name') as HTMLInputElement;
+      expect(repoInput).toHaveValue('initial-repo');
+
+      // Directly set input value and trigger input event (simulating user typing over selection)
+      fireEvent.input(repoInput, { target: { value: 'new-repo-name' } });
+
+      expect(repoInput).toHaveValue('new-repo-name');
+    });
+
+    it('should allow changing repository name after selecting from dropdown', async () => {
+      const user = userEvent.setup();
+      render(RepoSettings, { props: defaultProps });
+
+      const repoInput = screen.getByLabelText('Repository Name') as HTMLInputElement;
+
+      // Select from dropdown
+      await user.click(repoInput);
+      await waitFor(() => {
+        expect(screen.getByText('awesome-project')).toBeInTheDocument();
+      });
+
+      const repoButton = screen.getByText('awesome-project').closest('button');
+      if (repoButton) {
+        await user.click(repoButton);
+      }
+
+      await waitFor(() => {
+        expect(repoInput).toHaveValue('awesome-project');
+      });
+
+      // Directly set input value and trigger input event (simulating user typing over selection)
+      fireEvent.input(repoInput, { target: { value: 'modified-awesome-project' } });
+
+      expect(repoInput).toHaveValue('modified-awesome-project');
+    });
+
+    it('should not override project title when repository name changes', async () => {
+      const user = userEvent.setup();
+      const props = { ...defaultProps, projectTitle: 'My Custom Title', repoName: 'repo1' };
+      render(RepoSettings, { props });
+
+      const titleInput = screen.getByLabelText('Project Title');
+      const repoInput = screen.getByLabelText('Repository Name');
+
+      expect(titleInput).toHaveValue('My Custom Title');
+
+      // Change repository name
+      await user.clear(repoInput);
+      await user.type(repoInput, 'repo2');
+
+      // Project title should remain unchanged
+      expect(titleInput).toHaveValue('My Custom Title');
     });
   });
 });

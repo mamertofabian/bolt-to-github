@@ -16,7 +16,7 @@ import {
   getRepositoryStatusMessage,
   type Repository,
   type AuthSettings,
-} from '$lib/utils/repo-settings';
+} from '$lib/utils/RepoSettings.logic';
 
 describe('RepoSettings Business Logic', () => {
   const mockRepositories: Repository[] = [

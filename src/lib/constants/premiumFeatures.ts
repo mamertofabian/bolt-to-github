@@ -59,6 +59,18 @@ export const PREMIUM_FEATURES: PremiumFeature[] = [
     ],
     icon: '🐛',
   },
+  {
+    id: 'commits-list',
+    name: 'Commits History Viewer',
+    description: 'View and browse through repository commits with search and pagination',
+    benefits: [
+      'View detailed commit history',
+      'Search commits by message or author',
+      'Navigate through commits with pagination',
+      'Quick access to GitHub commit details',
+    ],
+    icon: '📝',
+  },
 ];
 
 /**
@@ -90,6 +102,12 @@ export const UPGRADE_MODAL_CONFIGS = {
     feature: 'issues',
     reason:
       'GitHub Issues management is a Pro feature. Upgrade to create and manage issues directly from Bolt!',
+    features: PREMIUM_FEATURES,
+  },
+  commits: {
+    feature: 'commits-list',
+    reason:
+      'Commits history viewer is a Pro feature. Upgrade to view and search through repository commits!',
     features: PREMIUM_FEATURES,
   },
 } as const;
