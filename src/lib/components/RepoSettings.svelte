@@ -25,12 +25,15 @@
     shouldShowCreateBranch,
     shouldShowBranchDropdown,
     getBranchStatusMessage,
+    handleBranchKeyboardNavigation,
     type Repository,
   } from '$lib/utils/repo-settings';
 
   const logger = createLogger('RepoSettings');
 
   const dispatch = createEventDispatcher();
+
+  const DROPDOWN_CLOSE_DELAY_MS = 200;
 
   export let show = false;
   export let repoOwner: string = '';
@@ -153,7 +156,7 @@
     // Delay hiding dropdown to allow click events to register
     setTimeout(() => {
       showRepoDropdown = false;
-    }, 200);
+    }, DROPDOWN_CLOSE_DELAY_MS);
   }
 
   // Branch dropdown functions
@@ -193,28 +196,21 @@
   function handleBranchKeydown(event: KeyboardEvent) {
     if (!showBranchDropdown) return;
 
-    // For branch dropdown, we need to handle navigation with the "+ Create new branch" option
-    const items = showCreateBranchOption ? ['__CREATE__', ...filteredBranches] : filteredBranches;
+    const result = handleBranchKeyboardNavigation(
+      event.key,
+      branchSelectedIndex,
+      filteredBranches,
+      showCreateBranchOption
+    );
 
-    if (event.key === 'ArrowDown') {
-      event.preventDefault();
-      branchSelectedIndex = Math.min(branchSelectedIndex + 1, items.length - 1);
-    } else if (event.key === 'ArrowUp') {
-      event.preventDefault();
-      branchSelectedIndex = Math.max(branchSelectedIndex - 1, -1);
-    } else if (event.key === 'Enter') {
-      event.preventDefault();
-      if (branchSelectedIndex >= 0 && items[branchSelectedIndex]) {
-        const selectedItem = items[branchSelectedIndex];
-        if (selectedItem === '__CREATE__') {
-          // Create new branch - just close dropdown, branch value is already set
-          showBranchDropdown = false;
-        } else {
-          selectBranch(selectedItem);
-        }
-      }
-    } else if (event.key === 'Escape') {
-      event.preventDefault();
+    event.preventDefault();
+    branchSelectedIndex = result.newIndex;
+
+    if (result.selectedBranch) {
+      selectBranch(result.selectedBranch);
+    }
+
+    if (result.shouldCloseDropdown) {
       showBranchDropdown = false;
     }
   }
@@ -227,7 +223,7 @@
     // Delay hiding dropdown to allow click events to register
     setTimeout(() => {
       showBranchDropdown = false;
-    }, 200);
+    }, DROPDOWN_CLOSE_DELAY_MS);
   }
 
   async function saveSettings() {
