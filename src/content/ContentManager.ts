@@ -684,6 +684,22 @@ export class ContentManager {
             return;
           }
 
+          // Task 3.3: Handle snooze for specific duration
+          if (message.type === 'SNOOZE_FOR_DURATION') {
+            if (this.uiManager) {
+              const duration = message.data?.duration;
+              if (duration !== undefined) {
+                this.uiManager.snoozeForDuration(duration);
+                sendResponse({ success: true });
+              } else {
+                sendResponse({ error: 'Duration parameter missing' });
+              }
+            } else {
+              sendResponse({ error: 'UI manager not available' });
+            }
+            return;
+          }
+
           if (message.type === 'UPDATE_PREMIUM_STATUS') {
             // Check for message deduplication
             const messageId =

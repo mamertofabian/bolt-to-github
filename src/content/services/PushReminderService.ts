@@ -15,10 +15,14 @@ export interface PushReminderSettings {
   snoozeInterval: number; // minutes
   minimumChanges: number; // minimum files changed to trigger reminder
   maxRemindersPerSession: number;
-  // New scheduled reminder settings
   scheduledEnabled: boolean; // separate enable/disable for scheduled reminders
   scheduledInterval: number; // minutes - fixed interval regardless of activity
   maxScheduledPerSession: number; // max scheduled reminders per session
+  globalNotificationRateLimitMinutes?: number; // global rate limit across all notification types
+  perTypeRateLimits?: boolean; // whether to use separate rate limits per notification type
+  activityRateLimitMinutes?: number; // rate limit for activity reminders
+  scheduledRateLimitMinutes?: number; // rate limit for scheduled reminders
+  showMostRecentFromQueue?: boolean; // whether to show most recent notification from queue when tab becomes visible
 }
 
 export interface ReminderState {
@@ -26,9 +30,31 @@ export interface ReminderState {
   lastSnoozeTime: number;
   reminderCount: number;
   sessionStartTime: number;
-  // New scheduled reminder state
   lastScheduledReminderTime: number;
   scheduledReminderCount: number;
+  snoozeEndTime?: number;
+}
+
+interface NotificationHistoryEntry {
+  type: 'activity' | 'scheduled';
+  timestamp: number;
+}
+
+interface TabVisibilityState {
+  isVisible: boolean;
+  lastVisibilityChange: number;
+  hiddenStartTime: number;
+  hiddenDuration: number;
+}
+
+interface GlobalRateLimit {
+  lastNotificationTime: number;
+  intervalMs: number;
+}
+
+interface PendingNotification {
+  type: 'activity' | 'scheduled';
+  timestamp: number;
 }
 
 /**
@@ -40,12 +66,34 @@ export class PushReminderService {
   private notificationManager: INotificationManager;
   private activityMonitor: ActivityMonitor;
   private isEnabled: boolean = true;
-  private checkInterval: NodeJS.Timeout | null = null;
-  // New scheduled reminder interval
-  private scheduledInterval: NodeJS.Timeout | null = null;
+  private checkTimeout: NodeJS.Timeout | null = null;
+  private scheduledTimeout: NodeJS.Timeout | null = null;
   private state: ReminderState;
   private premiumService: PremiumService | null = null;
   private operationStateManager: OperationStateManager;
+
+  private tabVisibility: TabVisibilityState = {
+    isVisible: true,
+    lastVisibilityChange: Date.now(),
+    hiddenStartTime: 0,
+    hiddenDuration: 0,
+  };
+  private visibilityChangeHandler: ((event: Event) => void) | null = null;
+  private timersActive: boolean = true;
+
+  private notificationHistory: NotificationHistoryEntry[] = [];
+  private readonly NOTIFICATION_COOLDOWN_MS = 5 * 60 * 1000; // 5 minutes
+  private readonly HISTORY_CLEANUP_AGE_MS = 60 * 60 * 1000; // 1 hour
+  private lastNotification: { type: string; timestamp: number } | null = null;
+
+  private timerType = 'setTimeout' as const;
+  private activeTimerId: NodeJS.Timeout | null = null;
+  private nextCheckTime: number = 0;
+
+  private globalRateLimit: GlobalRateLimit = {
+    lastNotificationTime: 0,
+    intervalMs: 5 * 60 * 1000, // 5 minutes default
+  };
 
   // Default settings
   private settings: PushReminderSettings = {
@@ -54,13 +102,19 @@ export class PushReminderService {
     snoozeInterval: 10, // 10 minutes
     minimumChanges: 3, // at least 3 files changed
     maxRemindersPerSession: 5, // max 5 reminders per session
-    scheduledEnabled: true,
-    scheduledInterval: 15, // 15 minutes for scheduled reminders
-    maxScheduledPerSession: 10, // max 10 scheduled reminders per session
+    // Scheduled reminders default to disabled (opt-in) to reduce notification spam
+    // Users can enable them via settings UI if they want fixed-interval reminders
+    scheduledEnabled: false,
+    scheduledInterval: 15,
+    maxScheduledPerSession: 10,
   };
 
-  // Debug mode for testing (shorter intervals)
   private debugMode: boolean = false;
+
+  private sessionResetHandlers: Array<(event: { timestamp: number; reason: string }) => void> = [];
+
+  private pendingNotificationQueue: PendingNotification[] = [];
+  private readonly MAX_QUEUE_SIZE = 5;
 
   constructor(messageHandler: MessageHandler, notificationManager: INotificationManager) {
     this.messageHandler = messageHandler;
@@ -81,8 +135,56 @@ export class PushReminderService {
     logger.info('🔧 Push reminder: Debug mode:', this.debugMode);
     logger.info('🔧 Push reminder: Initial state:', this.state);
 
-    this.loadSettings();
+    this.initialize();
+  }
+
+  private async initialize(): Promise<void> {
+    await this.loadSettings();
+    await this.loadState();
+    this.setupTabVisibilityMonitoring();
     this.setupActivityMonitoring();
+  }
+
+  private setupTabVisibilityMonitoring(): void {
+    this.visibilityChangeHandler = () => {
+      const isVisible = document.visibilityState === 'visible';
+      const now = Date.now();
+
+      if (!isVisible && this.tabVisibility.isVisible) {
+        this.tabVisibility.hiddenStartTime = now;
+        this.pauseTimers();
+      } else if (isVisible && !this.tabVisibility.isVisible) {
+        this.tabVisibility.hiddenDuration = now - this.tabVisibility.hiddenStartTime;
+        this.resumeTimers();
+
+        this.processPendingNotificationQueue();
+      }
+
+      this.tabVisibility.isVisible = isVisible;
+      this.tabVisibility.lastVisibilityChange = now;
+    };
+
+    document.addEventListener('visibilitychange', this.visibilityChangeHandler);
+  }
+
+  private pauseTimers(): void {
+    this.timersActive = false;
+    if (this.checkTimeout) {
+      clearTimeout(this.checkTimeout);
+      this.checkTimeout = null;
+    }
+    if (this.scheduledTimeout) {
+      clearTimeout(this.scheduledTimeout);
+      this.scheduledTimeout = null;
+    }
+  }
+
+  private resumeTimers(): void {
+    this.timersActive = true;
+    this.scheduleNextCheck();
+    if (this.settings.scheduledEnabled) {
+      this.scheduleNextScheduledCheck();
+    }
   }
 
   /**
@@ -99,6 +201,38 @@ export class PushReminderService {
     }
   }
 
+  private async loadState(): Promise<void> {
+    try {
+      const result = await chrome.storage.local.get(['pushReminderState']);
+      if (result.pushReminderState) {
+        const loadedState = result.pushReminderState as ReminderState;
+
+        const sessionAge = Date.now() - loadedState.sessionStartTime;
+        const twentyFourHours = 24 * 60 * 60 * 1000;
+
+        if (sessionAge > twentyFourHours) {
+          logger.info('🔄 Push reminder: Session is >24 hours old, resetting counts');
+          this.state = {
+            ...this.state,
+            ...loadedState,
+            reminderCount: 0,
+            scheduledReminderCount: 0,
+            sessionStartTime: Date.now(),
+          };
+          this.emitSessionReset({ timestamp: Date.now(), reason: 'automatic' });
+        } else {
+          this.state = { ...this.state, ...loadedState };
+        }
+
+        logger.info('🔧 Push reminder: Loaded state from storage:', this.state);
+      }
+
+      await this.saveState(true);
+    } catch (error) {
+      logger.warn('Failed to load push reminder state:', error);
+    }
+  }
+
   /**
    * Save user settings to storage
    */
@@ -110,24 +244,86 @@ export class PushReminderService {
     }
   }
 
-  /**
-   * Set up activity monitoring and periodic checks
-   */
+  private saveStateTimeout: NodeJS.Timeout | null = null;
+  private readonly STATE_SAVE_DEBOUNCE_MS = 1000;
+
+  private async saveState(immediate = false): Promise<void> {
+    if (this.saveStateTimeout) {
+      clearTimeout(this.saveStateTimeout);
+      this.saveStateTimeout = null;
+    }
+
+    if (immediate) {
+      try {
+        await chrome.storage.local.set({ pushReminderState: this.state });
+        logger.info('💾 Push reminder: State saved to storage (immediate)');
+      } catch (error) {
+        logger.warn('Failed to save push reminder state:', error);
+      }
+      return;
+    }
+
+    this.saveStateTimeout = setTimeout(async () => {
+      try {
+        await chrome.storage.local.set({ pushReminderState: this.state });
+        logger.info('💾 Push reminder: State saved to storage');
+      } catch (error) {
+        logger.warn('Failed to save push reminder state:', error);
+      }
+    }, this.STATE_SAVE_DEBOUNCE_MS);
+  }
+
   private setupActivityMonitoring(): void {
     this.activityMonitor.start();
 
-    // Check every 2 minutes for reminder opportunities (or 10 seconds in debug mode)
+    this.scheduleNextCheck();
+
+    this.setupScheduledReminders();
+  }
+
+  private scheduleNextCheck(): void {
+    if (this.checkTimeout) {
+      clearTimeout(this.checkTimeout);
+      this.checkTimeout = null;
+    }
+
+    if (!this.timersActive) {
+      return;
+    }
+
     const checkInterval = this.debugMode ? 10 * 1000 : 2 * 60 * 1000;
+    this.nextCheckTime = Date.now() + checkInterval;
+
     logger.info(
-      `🔧 Push reminder: Setting up monitoring with ${checkInterval / 1000}s check interval (debug: ${this.debugMode})`
+      `🔧 Push reminder: Scheduling next check in ${checkInterval / 1000}s (debug: ${this.debugMode})`
     );
 
-    this.checkInterval = setInterval(() => {
+    this.checkTimeout = setTimeout(() => {
       this.checkForReminderOpportunity();
+      this.scheduleNextCheck();
     }, checkInterval);
 
-    // Set up scheduled reminders (independent of activity)
-    this.setupScheduledReminders();
+    this.activeTimerId = this.checkTimeout;
+  }
+
+  private scheduleNextScheduledCheck(): void {
+    if (this.scheduledTimeout) {
+      clearTimeout(this.scheduledTimeout);
+      this.scheduledTimeout = null;
+    }
+
+    if (!this.timersActive) {
+      return;
+    }
+
+    const scheduledInterval = this.debugMode
+      ? 60 * 1000
+      : this.settings.scheduledInterval * 60 * 1000;
+
+    this.scheduledTimeout = setTimeout(() => {
+      this.checkForScheduledReminder();
+      this.scheduleNextScheduledCheck();
+    }, scheduledInterval);
   }
 
   /**
@@ -135,6 +331,13 @@ export class PushReminderService {
    */
   private async checkForReminderOpportunity(): Promise<void> {
     logger.info('🔍 Push reminder: Checking for reminder opportunity...');
+
+    const sessionAge = Date.now() - this.state.sessionStartTime;
+    const twentyFourHours = 24 * 60 * 60 * 1000;
+    if (sessionAge > twentyFourHours) {
+      logger.info('🔄 Push reminder: Session is >24 hours old, resetting');
+      await this.resetSession('automatic');
+    }
 
     if (!this.settings.enabled || !this.isEnabled) {
       logger.info(
@@ -245,26 +448,21 @@ export class PushReminderService {
     await this.showPushReminder();
   }
 
-  /**
-   * Check if we're currently in a snooze interval
-   */
   private isInSnoozeInterval(): boolean {
     if (this.state.lastSnoozeTime === 0) return false;
+
+    if (this.state.snoozeEndTime !== undefined) {
+      return Date.now() < this.state.snoozeEndTime;
+    }
 
     const snoozeUntil = this.state.lastSnoozeTime + this.settings.snoozeInterval * 60 * 1000;
     return Date.now() < snoozeUntil;
   }
 
-  /**
-   * Check if enough time has passed since the last reminder
-   */
   private hasReminderIntervalPassed(): boolean {
     if (this.state.lastReminderTime === 0) return true;
 
-    // Use debug intervals for testing: 30 seconds instead of configured minutes
-    const intervalMs = this.debugMode
-      ? 30 * 1000 // 30 seconds in debug mode
-      : this.settings.reminderInterval * 60 * 1000;
+    const intervalMs = this.debugMode ? 30 * 1000 : this.settings.reminderInterval * 60 * 1000;
     const timeSinceLastReminder = Date.now() - this.state.lastReminderTime;
     return timeSinceLastReminder >= intervalMs;
   }
@@ -326,18 +524,104 @@ export class PushReminderService {
     }
   }
 
-  /**
-   * Show the push reminder notification
-   */
+  private isNotificationAllowed(type: 'activity' | 'scheduled'): boolean {
+    const now = Date.now();
+
+    this.cleanupNotificationHistory();
+
+    const recentSameType = this.notificationHistory.find(
+      (entry) => entry.type === type && now - entry.timestamp < this.NOTIFICATION_COOLDOWN_MS
+    );
+
+    return !recentSameType;
+  }
+
+  private cleanupNotificationHistory(): void {
+    const now = Date.now();
+    this.notificationHistory = this.notificationHistory.filter(
+      (entry) => now - entry.timestamp < this.HISTORY_CLEANUP_AGE_MS
+    );
+  }
+
+  private recordNotification(type: 'activity' | 'scheduled'): void {
+    const now = Date.now();
+    this.notificationHistory.push({ type, timestamp: now });
+    this.lastNotification = { type, timestamp: now };
+  }
+
+  private isGlobalRateLimitPassed(): boolean {
+    if (this.settings.perTypeRateLimits) {
+      return true;
+    }
+
+    const now = Date.now();
+    const timeSinceLastNotification = now - this.globalRateLimit.lastNotificationTime;
+    return timeSinceLastNotification >= this.globalRateLimit.intervalMs;
+  }
+
+  private isPerTypeRateLimitPassed(type: 'activity' | 'scheduled'): boolean {
+    if (!this.settings.perTypeRateLimits) {
+      return true;
+    }
+
+    const now = Date.now();
+    const lastOfType = this.notificationHistory
+      .filter((entry) => entry.type === type)
+      .sort((a, b) => b.timestamp - a.timestamp)[0];
+
+    if (!lastOfType) {
+      return true;
+    }
+
+    const rateLimitMinutes =
+      type === 'activity'
+        ? this.settings.activityRateLimitMinutes || 5
+        : this.settings.scheduledRateLimitMinutes || 10;
+
+    const rateLimitMs = rateLimitMinutes * 60 * 1000;
+    const timeSinceLast = now - lastOfType.timestamp;
+
+    return timeSinceLast >= rateLimitMs;
+  }
+
+  private updateGlobalRateLimit(): void {
+    this.globalRateLimit.lastNotificationTime = Date.now();
+  }
+
+  public clearNotificationHistory(): void {
+    this.notificationHistory = [];
+    this.lastNotification = null;
+  }
+
   private async showPushReminder(): Promise<void> {
     try {
+      if (!this.tabVisibility.isVisible) {
+        logger.info('❌ Push reminder: Tab is hidden, queuing notification');
+        this.queueNotification('activity');
+        return;
+      }
+
+      if (!this.isGlobalRateLimitPassed()) {
+        logger.info('❌ Push reminder: Blocked by global rate limit');
+        return;
+      }
+
+      if (!this.isPerTypeRateLimitPassed('activity')) {
+        logger.info('❌ Push reminder: Blocked by per-type rate limit');
+        return;
+      }
+
+      if (!this.isNotificationAllowed('activity')) {
+        logger.info('❌ Push reminder: Blocked by deduplication (within cooldown)');
+        return;
+      }
+
       logger.info('🎯 Push reminder: Generating reminder message...');
       const changes = await this.getChangesSummary();
 
       const message = `💾 You have ${changes.count} unsaved changes. Consider pushing to GitHub! ${changes.summary}`;
       logger.info('📢 Push reminder: Showing notification:', message);
 
-      // Log existing reminder count before showing new one
       const existingReminders = this.notificationManager.getReminderNotificationCount();
       if (existingReminders > 0) {
         logger.info(
@@ -348,7 +632,7 @@ export class PushReminderService {
       this.notificationManager.showNotification({
         type: 'info',
         message: message,
-        duration: 0, // Make reminder persistent - user must take action or close manually
+        duration: 0,
         actions: [
           {
             text: 'Push to GitHub',
@@ -356,10 +640,8 @@ export class PushReminderService {
             action: async () => {
               logger.info('🚀 Push reminder: User clicked "Push to GitHub" button');
               try {
-                // Send message to runtime to trigger GitHub push
                 chrome.runtime.sendMessage({ action: 'PUSH_TO_GITHUB' });
 
-                // Reset reminder state since user is taking action
                 this.resetReminderState();
 
                 logger.info('✅ Push reminder: GitHub push initiated from notification');
@@ -379,10 +661,14 @@ export class PushReminderService {
         ],
       });
 
-      // Update state
       const oldState = { ...this.state };
       this.state.lastReminderTime = Date.now();
       this.state.reminderCount++;
+
+      this.recordNotification('activity');
+      this.updateGlobalRateLimit();
+
+      await this.saveState();
 
       logger.info('📊 Push reminder: State updated:', {
         oldReminderCount: oldState.reminderCount,
@@ -438,9 +724,29 @@ export class PushReminderService {
   /**
    * Snooze reminders for the configured interval
    */
-  public snoozeReminders(): void {
+  public async snoozeReminders(): Promise<void> {
     this.state.lastSnoozeTime = Date.now();
     logger.info(`🔊 Push reminders snoozed for ${this.settings.snoozeInterval} minutes`);
+
+    await this.saveState();
+  }
+
+  public async snoozeForDuration(duration: number | 'untilTomorrow'): Promise<void> {
+    const now = Date.now();
+    this.state.lastSnoozeTime = now;
+
+    if (duration === 'untilTomorrow') {
+      const tomorrow = new Date();
+      tomorrow.setUTCDate(tomorrow.getUTCDate() + 1);
+      tomorrow.setUTCHours(0, 0, 0, 0);
+      this.state.snoozeEndTime = tomorrow.getTime();
+      logger.info(`🔊 Push reminders snoozed until tomorrow (${tomorrow.toISOString()})`);
+    } else {
+      this.state.snoozeEndTime = now + duration * 60 * 1000;
+      logger.info(`🔊 Push reminders snoozed for ${duration} minutes`);
+    }
+
+    await this.saveState();
   }
 
   /**
@@ -459,15 +765,15 @@ export class PushReminderService {
     logger.info('🔊 Push reminders disabled');
   }
 
-  /**
-   * Update reminder settings
-   */
   public async updateSettings(newSettings: Partial<PushReminderSettings>): Promise<void> {
     this.settings = { ...this.settings, ...newSettings };
     await this.saveSettings();
     logger.info('🔊 Push reminder settings updated:', this.settings);
 
-    // Restart scheduled reminders if settings changed
+    if (newSettings.globalNotificationRateLimitMinutes !== undefined) {
+      this.globalRateLimit.intervalMs = newSettings.globalNotificationRateLimitMinutes * 60 * 1000;
+    }
+
     if (newSettings.scheduledEnabled !== undefined || newSettings.scheduledInterval !== undefined) {
       this.setupScheduledReminders();
     }
@@ -476,13 +782,91 @@ export class PushReminderService {
   /**
    * Reset reminder state (useful when user pushes changes)
    */
-  public resetReminderState(): void {
+  public async resetReminderState(): Promise<void> {
     this.state.lastReminderTime = Date.now();
     this.state.reminderCount = 0;
-    // Also reset scheduled reminder count when user pushes
     this.state.scheduledReminderCount = 0;
     this.state.lastScheduledReminderTime = Date.now();
     logger.info('🔊 Push reminder state reset (both idle and scheduled)');
+
+    await this.saveState();
+  }
+
+  public async resetSession(reason: 'manual' | 'automatic' = 'manual'): Promise<void> {
+    logger.info(`🔄 Push reminder: Resetting session (reason: ${reason})`);
+
+    const timestamp = Date.now();
+
+    this.state.reminderCount = 0;
+    this.state.scheduledReminderCount = 0;
+    this.state.sessionStartTime = timestamp;
+    this.state.lastReminderTime = 0;
+    this.state.lastScheduledReminderTime = 0;
+
+    this.emitSessionReset({ timestamp, reason });
+
+    await this.saveState();
+
+    logger.info('✅ Push reminder: Session reset complete');
+  }
+
+  public onSessionReset(handler: (event: { timestamp: number; reason: string }) => void): void {
+    this.sessionResetHandlers.push(handler);
+  }
+
+  private emitSessionReset(event: { timestamp: number; reason: string }): void {
+    this.sessionResetHandlers.forEach((handler) => {
+      try {
+        handler(event);
+      } catch (error) {
+        logger.warn('Error in session reset handler:', error);
+      }
+    });
+  }
+
+  private queueNotification(type: 'activity' | 'scheduled'): void {
+    if (this.pendingNotificationQueue.length < this.MAX_QUEUE_SIZE) {
+      this.pendingNotificationQueue.push({
+        type,
+        timestamp: Date.now(),
+      });
+      logger.info(
+        `📋 Push reminder: Queued ${type} notification (queue size: ${this.pendingNotificationQueue.length})`
+      );
+    } else {
+      logger.info(
+        `📋 Push reminder: Queue is full (${this.MAX_QUEUE_SIZE}), not queuing ${type} notification`
+      );
+    }
+  }
+
+  private async processPendingNotificationQueue(): Promise<void> {
+    if (this.pendingNotificationQueue.length === 0) {
+      return;
+    }
+
+    logger.info(
+      `📋 Push reminder: Processing ${this.pendingNotificationQueue.length} pending notifications`
+    );
+
+    if (this.settings.showMostRecentFromQueue && this.pendingNotificationQueue.length > 0) {
+      const mostRecent = this.pendingNotificationQueue[this.pendingNotificationQueue.length - 1];
+
+      this.pendingNotificationQueue = [];
+
+      logger.info(
+        `📋 Push reminder: Showing most recent ${mostRecent.type} notification from queue`
+      );
+
+      if (mostRecent.type === 'activity') {
+        await this.showPushReminder();
+      } else {
+        await this.showScheduledReminder();
+      }
+    } else {
+      logger.info('📋 Push reminder: Clearing queue without showing notifications');
+      this.pendingNotificationQueue = [];
+    }
   }
 
   /**
@@ -499,10 +883,11 @@ export class PushReminderService {
     return { ...this.state };
   }
 
-  /**
-   * Get debug information
-   */
   public getDebugInfo(): object {
+    const now = Date.now();
+    const snoozeTimeRemaining =
+      this.state.snoozeEndTime !== undefined ? Math.max(0, this.state.snoozeEndTime - now) : 0;
+
     return {
       settings: this.settings,
       state: this.state,
@@ -512,39 +897,62 @@ export class PushReminderService {
       hasIntervalPassed: this.hasReminderIntervalPassed(),
       activityMonitor: this.activityMonitor.getDebugInfo(),
       operationState: this.operationStateManager.getDebugInfo(),
+      tabVisibility: {
+        isVisible: this.tabVisibility.isVisible,
+        lastVisibilityChange: this.tabVisibility.lastVisibilityChange,
+        hiddenDuration: this.tabVisibility.hiddenDuration,
+      },
+      timersActive: this.timersActive,
+      notificationHistory: this.notificationHistory,
+      lastNotification: this.lastNotification,
+      timerType: this.timerType,
+      activeTimerId: this.activeTimerId,
+      activeTimerCount: this.activeTimerId ? 1 : 0,
+      nextCheckTime: this.nextCheckTime,
+      globalRateLimit: {
+        lastNotificationTime: this.globalRateLimit.lastNotificationTime,
+        intervalMs: this.globalRateLimit.intervalMs,
+        timeUntilNextAllowed: Math.max(
+          0,
+          this.globalRateLimit.intervalMs - (Date.now() - this.globalRateLimit.lastNotificationTime)
+        ),
+      },
+      pendingNotificationQueue: this.pendingNotificationQueue,
+      snoozeStatus: {
+        isSnoozed: this.isInSnoozeInterval(),
+        snoozeEndTime: this.state.snoozeEndTime,
+        timeRemainingMs: snoozeTimeRemaining,
+        timeRemainingMinutes: Math.ceil(snoozeTimeRemaining / 60000),
+      },
     };
   }
 
-  /**
-   * Enable debug mode for faster testing (shorter intervals)
-   */
   public enableDebugMode(): void {
     logger.info('🔊 Push reminder DEBUG MODE enabled - using shorter intervals for testing');
     this.debugMode = true;
 
-    // Restart monitoring with new intervals
-    if (this.checkInterval) {
-      clearInterval(this.checkInterval);
+    if (this.checkTimeout) {
+      clearTimeout(this.checkTimeout);
+      this.checkTimeout = null;
     }
-    if (this.scheduledInterval) {
-      clearInterval(this.scheduledInterval);
+    if (this.scheduledTimeout) {
+      clearTimeout(this.scheduledTimeout);
+      this.scheduledTimeout = null;
     }
     this.setupActivityMonitoring();
   }
 
-  /**
-   * Disable debug mode (back to normal intervals)
-   */
   public disableDebugMode(): void {
     logger.info('🔊 Push reminder debug mode disabled - using normal intervals');
     this.debugMode = false;
 
-    // Restart monitoring with normal intervals
-    if (this.checkInterval) {
-      clearInterval(this.checkInterval);
+    if (this.checkTimeout) {
+      clearTimeout(this.checkTimeout);
+      this.checkTimeout = null;
     }
-    if (this.scheduledInterval) {
-      clearInterval(this.scheduledInterval);
+    if (this.scheduledTimeout) {
+      clearTimeout(this.scheduledTimeout);
+      this.scheduledTimeout = null;
     }
     this.setupActivityMonitoring();
   }
@@ -603,55 +1011,42 @@ export class PushReminderService {
     });
   }
 
-  /**
-   * Clean up resources
-   */
   public cleanup(): void {
     logger.info('🔊 Cleaning up push reminder service');
     logger.info('🔍 Push reminder cleanup stack trace:');
 
-    if (this.checkInterval) {
-      clearInterval(this.checkInterval);
-      this.checkInterval = null;
-      logger.info('🔧 Push reminder: Cleared check interval');
+    if (this.visibilityChangeHandler) {
+      document.removeEventListener('visibilitychange', this.visibilityChangeHandler);
+      this.visibilityChangeHandler = null;
+      logger.info('🔧 Push reminder: Removed visibility change listener');
     }
 
-    if (this.scheduledInterval) {
-      clearInterval(this.scheduledInterval);
-      this.scheduledInterval = null;
-      logger.info('🔧 Push reminder: Cleared scheduled interval');
+    if (this.checkTimeout) {
+      clearTimeout(this.checkTimeout);
+      this.checkTimeout = null;
+      this.activeTimerId = null;
+      logger.info('🔧 Push reminder: Cleared check timeout');
+    }
+
+    if (this.scheduledTimeout) {
+      clearTimeout(this.scheduledTimeout);
+      this.scheduledTimeout = null;
+      logger.info('🔧 Push reminder: Cleared scheduled timeout');
     }
 
     this.activityMonitor.stop();
     logger.info('🔧 Push reminder: Stopped activity monitor');
   }
 
-  /**
-   * Set up scheduled reminders that run on fixed intervals regardless of activity
-   */
   private setupScheduledReminders(): void {
     if (!this.settings.scheduledEnabled) {
       logger.info('🔧 Push reminder: Scheduled reminders disabled');
       return;
     }
 
-    // Clear any existing scheduled interval
-    if (this.scheduledInterval) {
-      clearInterval(this.scheduledInterval);
-    }
+    logger.info('🔧 Push reminder: Setting up scheduled reminders');
 
-    // Set up scheduled reminder interval (or shorter interval in debug mode)
-    const scheduledInterval = this.debugMode
-      ? 60 * 1000 // 1 minute in debug mode
-      : this.settings.scheduledInterval * 60 * 1000;
-
-    logger.info(
-      `🔧 Push reminder: Setting up scheduled reminders with ${scheduledInterval / 1000}s interval (debug: ${this.debugMode})`
-    );
-
-    this.scheduledInterval = setInterval(() => {
-      this.checkForScheduledReminder();
-    }, scheduledInterval);
+    this.scheduleNextScheduledCheck();
   }
 
   /**
@@ -725,18 +1120,35 @@ export class PushReminderService {
     await this.showScheduledReminder();
   }
 
-  /**
-   * Show a scheduled push reminder notification
-   */
   private async showScheduledReminder(): Promise<void> {
     try {
+      if (!this.tabVisibility.isVisible) {
+        logger.info('❌ Scheduled reminder: Tab is hidden, queuing notification');
+        this.queueNotification('scheduled');
+        return;
+      }
+
+      if (!this.isGlobalRateLimitPassed()) {
+        logger.info('❌ Scheduled reminder: Blocked by global rate limit');
+        return;
+      }
+
+      if (!this.isPerTypeRateLimitPassed('scheduled')) {
+        logger.info('❌ Scheduled reminder: Blocked by per-type rate limit');
+        return;
+      }
+
+      if (!this.isNotificationAllowed('scheduled')) {
+        logger.info('❌ Scheduled reminder: Blocked by deduplication (within cooldown)');
+        return;
+      }
+
       logger.info('⏰ Scheduled reminder: Generating scheduled reminder message...');
       const changes = await this.getChangesSummary();
 
       const message = `⏰ Scheduled reminder: You have ${changes.count} unsaved changes. Consider pushing to GitHub! ${changes.summary}`;
       logger.info('📢 Scheduled reminder: Showing notification:', message);
 
-      // Log existing reminder count before showing new one
       const existingReminders = this.notificationManager.getReminderNotificationCount();
       if (existingReminders > 0) {
         logger.info(
@@ -747,7 +1159,7 @@ export class PushReminderService {
       this.notificationManager.showNotification({
         type: 'info',
         message: message,
-        duration: 0, // Make reminder persistent - user must take action or close manually
+        duration: 0,
         actions: [
           {
             text: 'Push to GitHub',
@@ -755,10 +1167,8 @@ export class PushReminderService {
             action: async () => {
               logger.info('🚀 Scheduled reminder: User clicked "Push to GitHub" button');
               try {
-                // Send message to runtime to trigger GitHub push
                 chrome.runtime.sendMessage({ action: 'PUSH_TO_GITHUB' });
 
-                // Reset reminder state since user is taking action
                 this.resetReminderState();
 
                 logger.info('✅ Scheduled reminder: GitHub push initiated from notification');
@@ -778,10 +1188,14 @@ export class PushReminderService {
         ],
       });
 
-      // Update scheduled reminder state
       const oldState = { ...this.state };
       this.state.lastScheduledReminderTime = Date.now();
       this.state.scheduledReminderCount++;
+
+      this.recordNotification('scheduled');
+      this.updateGlobalRateLimit();
+
+      await this.saveState();
 
       logger.info('📊 Scheduled reminder: State updated:', {
         oldScheduledCount: oldState.scheduledReminderCount,
@@ -798,11 +1212,7 @@ export class PushReminderService {
     }
   }
 
-  /**
-   * Check for ongoing operations that should suppress reminders
-   */
   private async hasOngoingOperations(): Promise<boolean> {
-    // Check for push operations, import operations, comparison operations, and other conflicting operations
     const conflictingOperationTypes: ('push' | 'import' | 'clone' | 'sync' | 'comparison')[] = [
       'push',
       'import',
@@ -829,10 +1239,7 @@ export class PushReminderService {
       return true;
     }
 
-    // Additional checks for upload status through UIStateManager if available
     try {
-      // Check if there's an active upload by looking at UI state
-      // This covers cases where operations might not be tracked by OperationStateManager
       const uiState = await this.checkUIUploadState();
       if (uiState.isUploading) {
         logger.info('🔍 Push reminder: Found active upload through UI state check');
@@ -845,18 +1252,14 @@ export class PushReminderService {
     return false;
   }
 
-  /**
-   * Check UI upload state to detect ongoing uploads
-   */
   private async checkUIUploadState(): Promise<{ isUploading: boolean }> {
     try {
-      // Try to access upload state from storage or UI state
       const result = await chrome.storage.local.get(['uploadState']);
       if (result.uploadState && result.uploadState.uploadStatus === 'uploading') {
         return { isUploading: true };
       }
     } catch {
-      // Storage access might fail, continue to other checks
+      // Storage access might fail
     }
 
     return { isUploading: false };
