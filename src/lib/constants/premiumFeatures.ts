@@ -59,6 +59,18 @@ export const PREMIUM_FEATURES: PremiumFeature[] = [
     ],
     icon: '🐛',
   },
+  {
+    id: 'commit-history',
+    name: 'Commit History & Branch Creation',
+    description: 'View commit history and create branches from any commit',
+    benefits: [
+      'Browse complete commit history',
+      'Revert to any point in time',
+      'Create branches from historical commits',
+      'Experiment safely with new branches',
+    ],
+    icon: '🕒',
+  },
 ];
 
 /**
@@ -90,6 +102,12 @@ export const UPGRADE_MODAL_CONFIGS = {
     feature: 'issues',
     reason:
       'GitHub Issues management is a Pro feature. Upgrade to create and manage issues directly from Bolt!',
+    features: PREMIUM_FEATURES,
+  },
+  commitHistory: {
+    feature: 'commit-history',
+    reason:
+      'Commit history and branch creation is a Pro feature. Upgrade to view commit history and create branches from any commit!',
     features: PREMIUM_FEATURES,
   },
 } as const;
