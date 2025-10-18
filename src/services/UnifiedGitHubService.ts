@@ -12,6 +12,7 @@ import { createLogger } from '$lib/utils/logger';
 import type {
   GitHubBranch,
   GitHubComment,
+  GitHubCommit,
   GitHubCreateOrUpdateFileRequest,
   GitHubFileResponse,
   GitHubIssue,
@@ -552,6 +553,119 @@ export class UnifiedGitHubService {
     }
 
     return await response.json();
+  }
+
+  /**
+   * Get commit history for a repository branch
+   */
+  async getCommits(
+    owner: string,
+    repo: string,
+    branch: string,
+    page: number = 1,
+    perPage: number = 30
+  ): Promise<GitHubCommit[]> {
+    const token = await this.getToken();
+    const response = await fetch(
+      `https://api.github.com/repos/${owner}/${repo}/commits?sha=${branch}&per_page=${perPage}&page=${page}`,
+      {
+        headers: {
+          Authorization: `Bearer ${token}`,
+          Accept: 'application/vnd.github.v3+json',
+        },
+      }
+    );
+
+    if (!response.ok) {
+      throw new Error(`Failed to get commits: ${response.statusText}`);
+    }
+
+    return await response.json();
+  }
+
+  /**
+   * Get a single commit by SHA
+   */
+  async getCommit(owner: string, repo: string, sha: string): Promise<GitHubCommit> {
+    const token = await this.getToken();
+    const response = await fetch(`https://api.github.com/repos/${owner}/${repo}/commits/${sha}`, {
+      headers: {
+        Authorization: `Bearer ${token}`,
+        Accept: 'application/vnd.github.v3+json',
+      },
+    });
+
+    if (!response.ok) {
+      throw new Error(`Failed to get commit: ${response.statusText}`);
+    }
+
+    return await response.json();
+  }
+
+  /**
+   * Create a new branch from a commit SHA
+   */
+  async createBranchFromCommit(
+    owner: string,
+    repo: string,
+    sourceSha: string,
+    newBranchName: string
+  ): Promise<{ success: boolean; branch?: string; error?: string }> {
+    try {
+      const token = await this.getToken();
+      const response = await fetch(`https://api.github.com/repos/${owner}/${repo}/git/refs`, {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${token}`,
+          Accept: 'application/vnd.github.v3+json',
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          ref: `refs/heads/${newBranchName}`,
+          sha: sourceSha,
+        }),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        return {
+          success: false,
+          error: errorData.message || response.statusText,
+        };
+      }
+
+      return {
+        success: true,
+        branch: newBranchName,
+      };
+    } catch (error) {
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : 'Unknown error',
+      };
+    }
+  }
+
+  /**
+   * Check if a branch exists
+   */
+  async checkBranchExists(owner: string, repo: string, branchName: string): Promise<boolean> {
+    try {
+      const token = await this.getToken();
+      const response = await fetch(
+        `https://api.github.com/repos/${owner}/${repo}/branches/${branchName}`,
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+            Accept: 'application/vnd.github.v3+json',
+          },
+        }
+      );
+
+      return response.ok;
+    } catch {
+      return false;
+    }
   }
 
   /**

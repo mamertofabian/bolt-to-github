@@ -12,6 +12,7 @@ export interface PremiumStatus {
     pushReminders: boolean;
     branchSelector: boolean;
     githubIssues: boolean;
+    commitHistory: boolean;
   };
 }
 
@@ -44,6 +45,7 @@ export class PremiumService {
         pushReminders: false,
         branchSelector: false,
         githubIssues: false,
+        commitHistory: false,
       },
     };
 
@@ -146,6 +148,7 @@ export class PremiumService {
         pushReminders: authData.isPremium,
         branchSelector: authData.isPremium,
         githubIssues: authData.isPremium,
+        commitHistory: authData.isPremium,
       },
     });
 
@@ -365,6 +368,26 @@ export class PremiumService {
   }
 
   /**
+   * Check if user can use commit history feature
+   * Now includes server-side validation
+   */
+  public async canUseCommitHistory(): Promise<{
+    allowed: boolean;
+    reason?: string;
+  }> {
+    const hasAccess = await this.hasFeature('commitHistory');
+
+    if (hasAccess) {
+      return { allowed: true };
+    }
+
+    return {
+      allowed: false,
+      reason: 'Premium feature required',
+    };
+  }
+
+  /**
    * Get usage information for display
    */
   public getUsageInfo(): PremiumStatus {
@@ -397,6 +420,7 @@ export class PremiumService {
         pushReminders: true,
         branchSelector: true,
         githubIssues: true,
+        commitHistory: true,
       };
     } else {
       this.premiumStatus.features = {
@@ -404,6 +428,7 @@ export class PremiumService {
         pushReminders: false,
         branchSelector: false,
         githubIssues: false,
+        commitHistory: false,
       };
     }
   }
@@ -508,6 +533,7 @@ export class PremiumService {
         pushReminders: false,
         branchSelector: false,
         githubIssues: false,
+        commitHistory: false,
       },
     });
   }
@@ -533,7 +559,13 @@ export class PremiumService {
     }
 
     const features = obj.features as Record<string, unknown>;
-    const requiredFeatures = ['viewFileChanges', 'pushReminders', 'branchSelector', 'githubIssues'];
+    const requiredFeatures = [
+      'viewFileChanges',
+      'pushReminders',
+      'branchSelector',
+      'githubIssues',
+      'commitHistory',
+    ];
     for (const feature of requiredFeatures) {
       if (typeof features[feature] !== 'boolean') {
         return false;
