@@ -76,6 +76,14 @@ jobs:
             echo "Error: manifest.json not found in dist"
             exit 1
           fi
+          if [ ! -f "dist/src/popup/index.html" ]; then
+            echo "Error: popup file not found at dist/src/popup/index.html"
+            echo "Contents of dist:"
+            ls -la dist/
+            echo "Contents of dist/src:"
+            ls -la dist/src/ || echo "dist/src not found"
+            exit 1
+          fi
           echo "Build verification successful"
 
       # Cache Playwright browsers

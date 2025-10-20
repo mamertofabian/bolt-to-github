@@ -58,7 +58,7 @@ test.describe('Extension Lifecycle', () => {
     test('should request necessary permissions on first run', async ({ context, extensionId }) => {
       // Extension should have storage, tabs, and activeTab permissions
       const page = await context.newPage();
-      await page.goto(`chrome-extension://${extensionId}/popup.html`);
+      await page.goto(`chrome-extension://${extensionId}/src/popup/index.html`);
 
       // Check that chrome APIs are available
       const hasPermissions = await page.evaluate(() => {
@@ -162,7 +162,7 @@ test.describe('Extension Lifecycle', () => {
     test('should handle version migration gracefully', async ({ context, extensionId }) => {
       // Simulate old version settings format
       const page = await context.newPage();
-      await page.goto(`chrome-extension://${extensionId}/popup.html`);
+      await page.goto(`chrome-extension://${extensionId}/src/popup/index.html`);
 
       await page.evaluate(() => {
         return chrome.storage.local.set({
@@ -192,7 +192,7 @@ test.describe('Extension Lifecycle', () => {
       await page.goto(`chrome://extensions`);
 
       // Navigate to service worker section for this extension
-      await page.goto(`chrome-extension://${extensionId}/popup.html`);
+      await page.goto(`chrome-extension://${extensionId}/src/popup/index.html`);
 
       // Check service worker is registered
       const swRegistered = await page.evaluate(async () => {
@@ -564,7 +564,7 @@ test.describe('Extension Lifecycle', () => {
       // which is complex in Playwright. For now, just verify state.
 
       const page = await context.newPage();
-      await page.goto(`chrome-extension://${extensionId}/popup.html`);
+      await page.goto(`chrome-extension://${extensionId}/src/popup/index.html`);
 
       // Extension should be loaded
       const hasChrome = await page.evaluate(() => {
