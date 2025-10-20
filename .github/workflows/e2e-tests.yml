@@ -1,0 +1,251 @@
+name: E2E Tests
+
+on:
+  # Run on pull requests to main and dev branches
+  pull_request:
+    branches:
+      - main
+      - 'dev-v*'
+
+  # Run on push to main
+  push:
+    branches:
+      - main
+
+  # Allow manual workflow dispatch
+  workflow_dispatch:
+
+  # Optional: Run on schedule (e.g., nightly)
+  # schedule:
+  #   - cron: '0 2 * * *' # Run at 2 AM UTC daily
+
+jobs:
+  e2e-tests:
+    name: Run E2E Tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+
+    steps:
+      # Checkout code
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      # Setup Node.js
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      # Setup pnpm
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 8
+
+      # Get pnpm store directory
+      - name: Get pnpm store directory
+        shell: bash
+        run: |
+          echo "STORE_PATH=$(pnpm store path --silent)" >> $GITHUB_ENV
+
+      # Cache pnpm dependencies
+      - name: Setup pnpm cache
+        uses: actions/cache@v4
+        with:
+          path: ${{ env.STORE_PATH }}
+          key: ${{ runner.os }}-pnpm-store-${{ hashFiles('**/pnpm-lock.yaml') }}
+          restore-keys: |
+            ${{ runner.os }}-pnpm-store-
+
+      # Install dependencies
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      # Build extension
+      - name: Build extension
+        run: pnpm run build
+
+      # Verify build output
+      - name: Verify build output
+        run: |
+          if [ ! -d "dist" ]; then
+            echo "Error: dist directory not found"
+            exit 1
+          fi
+          if [ ! -f "dist/manifest.json" ]; then
+            echo "Error: manifest.json not found in dist"
+            exit 1
+          fi
+          echo "Build verification successful"
+
+      # Cache Playwright browsers
+      - name: Cache Playwright browsers
+        uses: actions/cache@v4
+        id: playwright-cache
+        with:
+          path: ~/.cache/ms-playwright
+          key: ${{ runner.os }}-playwright-${{ hashFiles('**/pnpm-lock.yaml') }}
+          restore-keys: |
+            ${{ runner.os }}-playwright-
+
+      # Install Playwright browsers
+      - name: Install Playwright browsers
+        if: steps.playwright-cache.outputs.cache-hit != 'true'
+        run: npx playwright install --with-deps chromium
+
+      # Install Playwright system dependencies (if cache hit)
+      - name: Install Playwright system dependencies
+        if: steps.playwright-cache.outputs.cache-hit == 'true'
+        run: npx playwright install-deps chromium
+
+      # Run E2E tests
+      - name: Run Playwright tests
+        run: pnpm run test:e2e
+        env:
+          CI: true
+          # Add any custom environment variables needed for tests
+          # GITHUB_TEST_TOKEN: ${{ secrets.GITHUB_TEST_TOKEN }}
+
+      # Upload test report on failure
+      - name: Upload test report
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-report
+          path: playwright-report/
+          retention-days: 30
+
+      # Upload test results
+      - name: Upload test results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-results
+          path: test-results/
+          retention-days: 30
+
+      # Upload screenshots on failure
+      - name: Upload screenshots
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: screenshots
+          path: test-results/**/*.png
+          retention-days: 30
+          if-no-files-found: ignore
+
+      # Upload videos on failure
+      - name: Upload videos
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: videos
+          path: test-results/**/*.webm
+          retention-days: 30
+          if-no-files-found: ignore
+
+      # Upload traces on failure
+      - name: Upload traces
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: traces
+          path: test-results/**/*.zip
+          retention-days: 30
+          if-no-files-found: ignore
+
+      # Comment on PR with test results (optional)
+      - name: Comment PR with test results
+        if: github.event_name == 'pull_request' && always()
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+            const path = require('path');
+
+            // Read test results if available
+            let testResults = 'E2E test results not available';
+            const resultsPath = 'playwright-report/results.json';
+
+            if (fs.existsSync(resultsPath)) {
+              try {
+                const results = JSON.parse(fs.readFileSync(resultsPath, 'utf8'));
+                const total = results.suites.reduce((acc, suite) => {
+                  return acc + suite.specs.length;
+                }, 0);
+                const passed = results.suites.reduce((acc, suite) => {
+                  return acc + suite.specs.filter(spec =>
+                    spec.tests.every(test => test.results.every(result => result.status === 'passed'))
+                  ).length;
+                }, 0);
+                const failed = total - passed;
+
+                testResults = `## E2E Test Results\n\n` +
+                  `- **Total Tests**: ${total}\n` +
+                  `- **Passed**: ${passed} ✅\n` +
+                  `- **Failed**: ${failed} ❌\n\n` +
+                  (failed > 0 ? `Please check the [test artifacts](https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}) for details.` : 'All tests passed! 🎉');
+              } catch (error) {
+                console.error('Error parsing test results:', error);
+              }
+            }
+
+            // Comment on PR
+            github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: testResults
+            });
+
+  # Optional: Separate job for test results summary
+  test-summary:
+    name: Test Results Summary
+    runs-on: ubuntu-latest
+    needs: e2e-tests
+    if: always()
+
+    steps:
+      - name: Download test results
+        uses: actions/download-artifact@v4
+        with:
+          name: test-results
+          path: test-results/
+        continue-on-error: true
+
+      - name: Download test report
+        uses: actions/download-artifact@v4
+        with:
+          name: playwright-report
+          path: playwright-report/
+        continue-on-error: true
+
+      - name: Generate summary
+        run: |
+          echo "## E2E Test Summary" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+
+          if [ -f "playwright-report/results.json" ]; then
+            echo "✅ Test report generated successfully" >> $GITHUB_STEP_SUMMARY
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo "View the full [HTML report](https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}) in the artifacts." >> $GITHUB_STEP_SUMMARY
+          else
+            echo "❌ Test report not available" >> $GITHUB_STEP_SUMMARY
+          fi
+
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### Artifacts" >> $GITHUB_STEP_SUMMARY
+          echo "- Test Results" >> $GITHUB_STEP_SUMMARY
+          echo "- HTML Report" >> $GITHUB_STEP_SUMMARY
+
+          if [ -d "test-results" ] && [ "$(ls -A test-results/**/*.png 2>/dev/null)" ]; then
+            echo "- Screenshots (failures)" >> $GITHUB_STEP_SUMMARY
+          fi
+
+          if [ -d "test-results" ] && [ "$(ls -A test-results/**/*.webm 2>/dev/null)" ]; then
+            echo "- Videos (failures)" >> $GITHUB_STEP_SUMMARY
+          fi
+
+          if [ -d "test-results" ] && [ "$(ls -A test-results/**/*.zip 2>/dev/null)" ]; then
+            echo "- Traces (failures)" >> $GITHUB_STEP_SUMMARY
+          fi
