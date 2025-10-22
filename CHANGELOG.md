@@ -1,5 +1,27 @@
 # Changelog
 
+## 2025-XX-XX - Version 1.3.14
+
+### 🎉 New Features
+
+- [To be added]
+
+### 🔧 Performance & Stability
+
+- [To be added]
+
+### 🧪 Testing & Quality
+
+- [To be added]
+
+### 🐛 Bug Fixes
+
+- [To be added]
+
+### 📚 Documentation
+
+- [To be added]
+
 ## 2025-01-15 - Version 1.3.13
 
 ### 🔔 Notification Improvements

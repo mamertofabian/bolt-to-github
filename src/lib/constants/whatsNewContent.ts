@@ -6,6 +6,16 @@ export interface WhatsNewVersion {
 }
 
 export const whatsNewContent: Record<string, WhatsNewVersion> = {
+  '1.3.14': {
+    date: '2025-XX-XX',
+    highlights: [
+      '[Highlight 1 - To be added]',
+      '[Highlight 2 - To be added]',
+      '[Highlight 3 - To be added]',
+    ],
+    details: `[Detailed description of the changes in this version - To be added]`,
+    type: 'patch',
+  },
   '1.3.13': {
     date: '2025-10-22',
     highlights: [
