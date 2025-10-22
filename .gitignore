@@ -9,6 +9,7 @@ bolt-to-github*.zip
 .DS_Store
 *.log
 *.lock
+!pnpm-lock.yaml
 .env.local
 .env.*.local
 npm-debug.log*
@@ -23,3 +24,7 @@ vite.config.ts.timestamp*
 coverage/
 .idea
 
+# Playwright E2E test artifacts
+test-results/
+playwright-report/
+playwright/.cache/
