@@ -2,9 +2,9 @@
  * @vitest-environment jsdom
  */
 
-import { describe, it, expect, beforeEach, vi, afterEach } from 'vitest';
 import { render, screen, waitFor } from '@testing-library/svelte';
 import userEvent from '@testing-library/user-event';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import FeedbackModal from '../FeedbackModal.svelte';
 
 vi.unmock('$lib/components/ui/modal/Modal.svelte');
@@ -67,7 +67,7 @@ describe('FeedbackModal.svelte', () => {
   };
 
   const mockManifest = {
-    version: '1.3.12',
+    version: '1.3.13',
     name: 'Bolt to GitHub',
   };
 
@@ -246,7 +246,7 @@ describe('FeedbackModal.svelte', () => {
           message: 'Found a bug',
           metadata: {
             browserInfo: expect.any(String),
-            extensionVersion: '1.3.12',
+            extensionVersion: '1.3.13',
           },
         });
       });

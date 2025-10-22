@@ -5,12 +5,12 @@
  * for testing the main App component across multiple test files.
  */
 
-import { vi } from 'vitest';
+import type { FileChangesState } from '$lib/stores/fileChanges';
 import type { GitHubSettingsState } from '$lib/stores/githubSettings';
 import type { ProjectSettingsState } from '$lib/stores/projectSettings';
 import type { UIState } from '$lib/stores/uiState';
-import type { FileChangesState } from '$lib/stores/fileChanges';
 import type { UploadState } from '$lib/stores/uploadState';
+import { vi } from 'vitest';
 
 /**
  * Create a mock store with subscribe method
@@ -88,7 +88,7 @@ export const VALID_GITHUB_APP_SETTINGS: GitHubSettingsState = {
  * Default project settings for tests
  */
 export const DEFAULT_PROJECT_SETTINGS: ProjectSettingsState = {
-  version: '1.3.12',
+  version: '1.3.13',
   currentUrl: '',
   parsedProjectId: null,
   isBoltSite: false,
@@ -99,7 +99,7 @@ export const DEFAULT_PROJECT_SETTINGS: ProjectSettingsState = {
  * Project settings for when user is on a Bolt project
  */
 export const ON_BOLT_PROJECT_SETTINGS: ProjectSettingsState = {
-  version: '1.3.12',
+  version: '1.3.13',
   currentUrl: 'https://bolt.new/~/test-project',
   parsedProjectId: 'test-project',
   isBoltSite: true,
