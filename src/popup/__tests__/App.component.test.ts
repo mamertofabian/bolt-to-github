@@ -2,9 +2,9 @@
  * @vitest-environment jsdom
  */
 
-import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { render, screen, waitFor } from '@testing-library/svelte';
 import userEvent from '@testing-library/user-event';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import App from '../App.svelte';
 
 vi.unmock('$lib/components/ui/modal/Modal.svelte');
@@ -99,7 +99,7 @@ vi.mock('$lib/stores', () => {
   });
 
   const projectSettingsStore = createStore({
-    version: '1.3.12',
+    version: '1.3.13',
   });
 
   const uiStateStore = createStore({
@@ -266,7 +266,7 @@ describe('App.svelte - Component Tests', () => {
       authenticationMethod: 'pat' as 'pat' | 'github_app',
       githubAppInstallationId: null as number | null,
     });
-    stores.projectSettingsStore.set({ version: '1.3.12' });
+    stores.projectSettingsStore.set({ version: '1.3.13' });
     stores.uiStateStore.set({
       activeTab: 'home' as const,
       statusMessage: '',
@@ -289,7 +289,7 @@ describe('App.svelte - Component Tests', () => {
     chromeMocks = {
       runtime: {
         sendMessage: vi.fn().mockResolvedValue(undefined),
-        getManifest: vi.fn().mockReturnValue({ version: '1.3.12' }),
+        getManifest: vi.fn().mockReturnValue({ version: '1.3.13' }),
         onMessage: {
           addListener: vi.fn(),
         },
@@ -337,7 +337,7 @@ describe('App.svelte - Component Tests', () => {
       render(App);
 
       expect(screen.getByText('Bolt to GitHub')).toBeInTheDocument();
-      expect(screen.getByText('v1.3.12')).toBeInTheDocument();
+      expect(screen.getByText('v1.3.13')).toBeInTheDocument();
     });
 
     it('should render the app description', () => {
