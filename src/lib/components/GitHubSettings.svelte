@@ -17,6 +17,23 @@
   import { onMount, tick } from 'svelte';
   import { UnifiedGitHubService } from '../../services/UnifiedGitHubService';
   import { GITHUB_APP_AUTH_URL } from '$lib/constants';
+  import {
+    hasRequiredSettings,
+    shouldBeExpanded,
+    filterRepositories,
+    repositoryExists,
+    setDefaultRepoNameFromProjectId,
+    generateStatusDisplayText,
+    clearValidationState,
+    isStorageQuotaError,
+    generateStorageQuotaErrorMessage,
+    shouldUpdateSettingsFromStorage,
+    needsPermissionCheck,
+    validateGitHubApp,
+    updateSettingsFromStorageChange,
+    updateSettingsFromSyncStorage,
+    type PermissionStatus,
+  } from '$lib/utils/github-settings';
 
   const logger = createLogger('GitHubSettings');
 
@@ -66,10 +83,10 @@
   let isCheckingPermissions = false;
   let lastPermissionCheck: number | null = null;
   let currentCheck: 'repos' | 'admin' | 'code' | null = null;
-  let permissionStatus = {
-    allRepos: undefined as boolean | undefined,
-    admin: undefined as boolean | undefined,
-    contents: undefined as boolean | undefined,
+  let permissionStatus: PermissionStatus = {
+    allRepos: undefined,
+    admin: undefined,
+    contents: undefined,
   };
 
   // Individual permission status variables for better reactivity
@@ -90,16 +107,24 @@
   let isExpanded = true; // Initially expanded
 
   // Collapsible state - collapsed by default if settings are populated
-  $: hasRequiredSettings =
-    ((authenticationMethod === 'pat' && githubToken && repoOwner) ||
-      (authenticationMethod === 'github_app' && githubAppInstallationId && repoOwner)) &&
-    (isOnboarding || (repoName && branch));
+  $: hasRequiredSettingsValue = hasRequiredSettings({
+    authenticationMethod,
+    githubToken,
+    githubAppInstallationId,
+    repoOwner,
+    repoName,
+    branch,
+    isOnboarding,
+  });
 
   $: {
     // Only auto-collapse if not manually toggled by user
-    if (!manuallyToggled) {
-      isExpanded = isOnboarding || !hasRequiredSettings;
-    }
+    isExpanded = shouldBeExpanded(
+      isOnboarding,
+      hasRequiredSettingsValue,
+      manuallyToggled,
+      isExpanded
+    );
   }
 
   // Handle authentication method changes
@@ -115,17 +140,14 @@
     }
 
     // Clear all validation state when switching methods
-    isTokenValid = null;
-    validationError = null;
-    githubAppValidationResult = null;
-    githubAppConnectionError = null;
-    tokenType = null;
+    const clearedState = clearValidationState();
+    isTokenValid = clearedState.isTokenValid;
+    validationError = clearedState.validationError;
+    githubAppValidationResult = clearedState.githubAppValidationResult;
+    githubAppConnectionError = clearedState.githubAppConnectionError;
+    tokenType = clearedState.tokenType;
     permissionError = null;
-    permissionStatus = {
-      allRepos: undefined,
-      admin: undefined,
-      contents: undefined,
-    };
+    permissionStatus = clearedState.permissionStatus;
     reposPermission = undefined;
     adminPermission = undefined;
     contentsPermission = undefined;
@@ -148,7 +170,7 @@
     if (method === 'pat' && githubToken && repoOwner) {
       validateSettings();
     } else if (method === 'github_app' && githubAppInstallationId) {
-      validateGitHubApp();
+      validateGitHubApp(githubAppInstallationId, githubAppUsername, githubAppAvatarUrl);
     }
   }
 
@@ -157,21 +179,29 @@
     manuallyToggled = true; // Mark as manually toggled
   }
 
-  $: filteredRepos = repositories
-    .filter(
-      (repo) =>
-        repo.name.toLowerCase().includes(repoSearchQuery.toLowerCase()) ||
-        (repo.description && repo.description.toLowerCase().includes(repoSearchQuery.toLowerCase()))
-    )
-    .slice(0, 10);
+  $: filteredRepos = filterRepositories(repositories, repoSearchQuery, 10);
 
-  $: if (repoName) {
-    repoExists = repositories.some((repo) => repo.name.toLowerCase() === repoName.toLowerCase());
-  }
+  $: repoExists = repositoryExists(repositories, repoName);
 
-  $: if (projectId && !repoName && !isRepoNameFromProjectId) {
-    repoName = projectId;
-    isRepoNameFromProjectId = true;
+  $: {
+    const updatedState = setDefaultRepoNameFromProjectId({
+      projectId,
+      repoName,
+      isRepoNameFromProjectId,
+      authenticationMethod,
+      githubToken,
+      githubAppInstallationId,
+      repoOwner,
+      branch,
+      isOnboarding,
+    });
+    if (
+      updatedState.repoName !== repoName ||
+      updatedState.isRepoNameFromProjectId !== isRepoNameFromProjectId
+    ) {
+      repoName = updatedState.repoName;
+      isRepoNameFromProjectId = updatedState.isRepoNameFromProjectId ?? false;
+    }
   }
 
   // Helper function to create GitHub service respecting user's authentication method choice
@@ -316,9 +346,22 @@
       logger.info('Settings update detected:', updateInfo);
 
       // If the update is for the current project, update the local state
-      if (projectId && updateInfo && updateInfo.projectId === projectId) {
-        repoName = updateInfo.repoName;
-        branch = updateInfo.branch;
+      if (shouldUpdateSettingsFromStorage(updateInfo, projectId)) {
+        const updatedState = updateSettingsFromStorageChange(
+          {
+            projectId,
+            repoName,
+            branch,
+            authenticationMethod,
+            githubToken,
+            githubAppInstallationId,
+            repoOwner,
+            isOnboarding,
+          },
+          updateInfo
+        );
+        repoName = updatedState.repoName;
+        branch = updatedState.branch;
         logger.info('Updated local state with new project settings:', repoName, branch);
       }
     }
@@ -329,9 +372,22 @@
         string,
         { repoName: string; branch: string }
       >;
-      if (newSettings[projectId]) {
-        repoName = newSettings[projectId].repoName;
-        branch = newSettings[projectId].branch;
+      const updatedState = updateSettingsFromSyncStorage(
+        {
+          projectId,
+          repoName,
+          branch,
+          authenticationMethod,
+          githubToken,
+          githubAppInstallationId,
+          repoOwner,
+          isOnboarding,
+        },
+        newSettings
+      );
+      if (updatedState.repoName !== repoName || updatedState.branch !== branch) {
+        repoName = updatedState.repoName;
+        branch = updatedState.branch;
         logger.info('Updated from sync storage:', repoName, branch);
       }
     }
@@ -424,7 +480,7 @@
     } else if (authenticationMethod === 'github_app') {
       // For GitHub App, we don't validate tokens the same way
       if (githubAppInstallationId) {
-        await validateGitHubApp();
+        await validateGitHubAppAuth();
         // Load repositories if GitHub App is valid
         if (githubAppValidationResult?.isValid) {
           await loadRepositories();
@@ -541,10 +597,12 @@
     // Only check token permissions for PAT authentication
     if (authenticationMethod === 'pat') {
       const THIRTY_DAYS = 30 * 24 * 60 * 60 * 1000;
-      const needsCheck =
-        previousToken !== githubToken ||
-        !lastPermissionCheck ||
-        Date.now() - lastPermissionCheck > THIRTY_DAYS;
+      const needsCheck = needsPermissionCheck(
+        previousToken,
+        githubToken,
+        lastPermissionCheck,
+        THIRTY_DAYS
+      );
 
       if (needsCheck) {
         await checkTokenPermissions();
@@ -563,20 +621,19 @@
       setTimeout(() => {
         if (
           chrome.runtime.lastError &&
-          chrome.runtime.lastError.message?.includes('MAX_WRITE_OPERATIONS_PER_H')
+          chrome.runtime.lastError.message &&
+          isStorageQuotaError(chrome.runtime.lastError.message)
         ) {
           const errorMsg = chrome.runtime.lastError.message;
-          storageQuotaError =
-            'Storage quota exceeded. You can only save settings 1800 times per hour (once every 2 seconds). Please wait a moment before trying again.';
+          storageQuotaError = generateStorageQuotaErrorMessage();
           if (onError) {
             onError(errorMsg);
           }
         }
       }, 100);
     } catch (error) {
-      if (error instanceof Error && error.message.includes('MAX_WRITE_OPERATIONS_PER_H')) {
-        storageQuotaError =
-          'Storage quota exceeded. You can only save settings 1800 times per hour (once every 2 seconds). Please wait a moment before trying again.';
+      if (error instanceof Error && isStorageQuotaError(error)) {
+        storageQuotaError = generateStorageQuotaErrorMessage();
         if (onError) {
           onError(error.message);
         }
@@ -627,25 +684,15 @@
   }
 
   // Validate GitHub App authentication
-  async function validateGitHubApp() {
-    if (!githubAppInstallationId) {
-      githubAppValidationResult = {
-        isValid: false,
-        error: 'No GitHub App installation found',
-      };
-      return;
-    }
-
+  async function validateGitHubAppAuth() {
     try {
       // This would normally call the GitHubAppService to validate
       // For now, we'll assume it's valid if we have an installation ID
-      githubAppValidationResult = {
-        isValid: true,
-        userInfo: {
-          login: githubAppUsername || 'GitHub User',
-          avatar_url: githubAppAvatarUrl,
-        },
-      };
+      githubAppValidationResult = validateGitHubApp(
+        githubAppInstallationId,
+        githubAppUsername,
+        githubAppAvatarUrl
+      );
     } catch (error) {
       githubAppValidationResult = {
         isValid: false,
@@ -655,23 +702,37 @@
   }
 
   // Update the status display text
-  $: statusDisplayText = (() => {
-    if (authenticationMethod === 'github_app') {
-      if (githubAppInstallationId && githubAppUsername) {
-        return `Connected via GitHub App as ${githubAppUsername}`;
-      }
-      return 'Connect with GitHub App to get started';
-    } else {
-      if (githubToken && repoOwner) {
-        return `Configured for ${repoOwner}${repoName ? `/${repoName}` : ''}`;
-      }
-      return 'Configure your GitHub repository settings';
-    }
-  })();
+  $: statusDisplayText = generateStatusDisplayText({
+    authenticationMethod,
+    githubToken,
+    githubAppInstallationId,
+    githubAppUsername,
+    repoOwner,
+    repoName,
+    branch,
+    isOnboarding,
+  });
 
-  $: if (!isOnboarding && projectId && projectSettings[projectId]) {
-    repoName = projectSettings[projectId].repoName;
-    branch = projectSettings[projectId].branch;
+  $: {
+    if (!isOnboarding && projectId && projectSettings[projectId]) {
+      const updatedState = updateSettingsFromSyncStorage(
+        {
+          projectId,
+          repoName,
+          branch,
+          authenticationMethod,
+          githubToken,
+          githubAppInstallationId,
+          repoOwner,
+          isOnboarding,
+        },
+        projectSettings
+      );
+      if (updatedState.repoName !== repoName || updatedState.branch !== branch) {
+        repoName = updatedState.repoName;
+        branch = updatedState.branch;
+      }
+    }
   }
 </script>
 
@@ -696,7 +757,7 @@
         </div>
       </div>
       <div class="flex items-center gap-2">
-        {#if hasRequiredSettings && !isOnboarding}
+        {#if hasRequiredSettingsValue && !isOnboarding}
           <div class="flex items-center gap-1">
             {#if authenticationMethod === 'github_app'}
               {#if githubAppValidationResult?.isValid === true}
@@ -830,7 +891,12 @@
                         variant="outline"
                         size="sm"
                         class="text-xs"
-                        on:click={validateGitHubApp}
+                        on:click={() =>
+                          validateGitHubApp(
+                            githubAppInstallationId,
+                            githubAppUsername,
+                            githubAppAvatarUrl
+                          )}
                       >
                         Refresh
                       </Button>

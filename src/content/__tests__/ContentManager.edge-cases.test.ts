@@ -1,17 +1,7 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-/**
- * ContentManager Edge Cases Tests
- *
- * Tests unusual scenarios and boundary conditions:
- * - Rapid state changes and race conditions
- * - Unusual timing scenarios
- * - Boundary value testing
- * - Error injection and fault tolerance
- */
 
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 
-// Mock WhatsNewModal component
 vi.mock('$lib/components/WhatsNewModal.svelte', () => ({
   default: vi.fn().mockImplementation(function (this: unknown, options: Record<string, unknown>) {
     (this as Record<string, unknown>).target = options.target;
@@ -22,10 +12,8 @@ vi.mock('$lib/components/WhatsNewModal.svelte', () => ({
   }),
 }));
 
-// Mock UIManager
 vi.mock('../UIManager');
 
-// Mock console methods using spies
 beforeAll(() => {
   vi.spyOn(console, 'log').mockImplementation(() => {});
   vi.spyOn(console, 'warn').mockImplementation(() => {});
@@ -58,12 +46,11 @@ describe('ContentManager - Edge Cases', () => {
   let testEnv: TestEnvironment;
 
   beforeEach(async () => {
-    // Clear all mocks before each test
     vi.clearAllMocks();
     vi.spyOn(console, 'warn').mockImplementation(() => {});
     vi.spyOn(console, 'error').mockImplementation(() => {});
     vi.spyOn(console, 'debug').mockImplementation(() => {});
-    // Reset UIManager singleton
+
     const { UIManager } = await import('../UIManager');
     if (UIManager.resetInstance) {
       UIManager.resetInstance();
@@ -90,11 +77,9 @@ describe('ContentManager - Edge Cases', () => {
       const contentManager = new ContentManager();
       await wait(100);
 
-      // Should initialize successfully
       const state = getContentManagerState(contentManager);
       expect(state.hasPort).toBe(true);
 
-      // Test environment cleanup handles ContentManager cleanup
       expect(contentManager).toBeDefined();
     });
 
@@ -106,11 +91,9 @@ describe('ContentManager - Edge Cases', () => {
       const contentManager = new ContentManager();
       await wait(100);
 
-      // Call reinitialize
       await contentManager.reinitialize();
       await wait(100);
 
-      // Should still be functional
       const state = getContentManagerState(contentManager);
       expect(state).toBeDefined();
     });
@@ -123,11 +106,9 @@ describe('ContentManager - Edge Cases', () => {
       const contentManager = new ContentManager();
       await wait(100);
 
-      // Simulate connection loss
       await simulatePortState(testEnv, TestPortStates.DISCONNECTED_NORMAL);
       await wait(200);
 
-      // Should still exist
       expect(contentManager).toBeDefined();
     });
 
@@ -139,7 +120,6 @@ describe('ContentManager - Edge Cases', () => {
       new ContentManager();
       await wait(100);
 
-      // Send messages
       if (testEnv.mockPort) {
         expect(() => {
           testEnv.mockPort!.simulateMessage(TestMessages.UPLOAD_STATUS_UPLOADING);
@@ -157,13 +137,11 @@ describe('ContentManager - Edge Cases', () => {
       const contentManager = new ContentManager();
       await wait(100);
 
-      // Disconnect and reconnect
       await simulatePortState(testEnv, TestPortStates.DISCONNECTED_NORMAL);
       await wait(100);
       await simulatePortState(testEnv, TestPortStates.CONNECTED);
       await wait(100);
 
-      // Should still be functional
       expect(contentManager).toBeDefined();
     });
 
@@ -174,14 +152,12 @@ describe('ContentManager - Edge Cases', () => {
 
       const contentManager = new ContentManager();
 
-      // Send message early
       if (testEnv.mockMessageHandler) {
         testEnv.mockMessageHandler.sendDebugMessage('early message');
       }
 
       await wait(150);
 
-      // Should still initialize
       const state = getContentManagerState(contentManager);
       expect(state).toBeDefined();
     });
@@ -194,11 +170,9 @@ describe('ContentManager - Edge Cases', () => {
       const contentManager = new ContentManager();
       await wait(100);
 
-      // Simulate connection loss
       await simulatePortState(testEnv, TestPortStates.DISCONNECTED_NORMAL);
       await wait(150);
 
-      // Should still exist
       expect(contentManager).toBeDefined();
     });
 
@@ -209,7 +183,6 @@ describe('ContentManager - Edge Cases', () => {
       const contentManager = new ContentManager();
       await wait(50);
 
-      // Test environment cleanup handles ContentManager cleanup
       const state = getContentManagerState(contentManager);
       expect(state).toBeDefined();
     });
@@ -224,7 +197,6 @@ describe('ContentManager - Edge Cases', () => {
       const contentManager = new ContentManager();
       await wait(100);
 
-      // Should not initialize without runtime
       const state = getContentManagerState(contentManager);
       expect(state.hasPort).toBe(false);
     });
@@ -233,14 +205,12 @@ describe('ContentManager - Edge Cases', () => {
       testEnv = createTestEnvironment();
       setupChromeAPIMocks(testEnv, { hasRuntimeId: true });
 
-      // Create long URL
       const longPath = 'a'.repeat(100);
       const longUrl = `https://bolt.new/project/${longPath}`;
       setupWindowMocks(longUrl);
 
       const contentManager = new ContentManager();
 
-      // Should initialize normally
       const state = getContentManagerState(contentManager);
       expect(state.hasPort).toBe(true);
     });
@@ -252,7 +222,6 @@ describe('ContentManager - Edge Cases', () => {
 
       const contentManager = new ContentManager();
 
-      // Should initialize normally
       const state = getContentManagerState(contentManager);
       expect(state.hasPort).toBe(true);
     });
@@ -274,7 +243,6 @@ describe('ContentManager - Edge Cases', () => {
       new ContentManager();
       await wait(100);
 
-      // Should have called storage operations
       expect(chrome.storage.local.remove).toHaveBeenCalled();
     });
   });
@@ -288,13 +256,11 @@ describe('ContentManager - Edge Cases', () => {
       new ContentManager();
       await wait(100);
 
-      // Mock port.postMessage to throw
       if (testEnv.mockPort) {
         testEnv.mockPort.postMessage = vi.fn(() => {
           throw new Error('Mock postMessage failure');
         });
 
-        // Should handle gracefully
         if (testEnv.mockMessageHandler) {
           expect(() => {
             testEnv.mockMessageHandler!.sendDebugMessage('test');
@@ -308,11 +274,9 @@ describe('ContentManager - Edge Cases', () => {
       setupChromeAPIMocks(testEnv, { hasRuntimeId: true });
       setupWindowMocks(TestUrls.BOLT_NEW_PROJECT);
 
-      // Mock storage to throw errors
       (chrome.storage.local.get as any).mockRejectedValue(new Error('Storage error'));
       (chrome.storage.local.remove as any).mockRejectedValue(new Error('Storage error'));
 
-      // Should not throw during creation
       expect(() => new ContentManager()).not.toThrow();
     });
 
@@ -321,14 +285,11 @@ describe('ContentManager - Edge Cases', () => {
       setupChromeAPIMocks(testEnv, { hasRuntimeId: true });
       setupWindowMocks(TestUrls.BOLT_NEW_PROJECT);
 
-      // Mock chrome.runtime.connect to return null
       const originalConnect = chrome.runtime.connect;
       (chrome.runtime as Record<string, unknown>).connect = vi.fn(() => null);
 
-      // Should not throw
       expect(() => new ContentManager()).not.toThrow();
 
-      // Restore original function
       (chrome.runtime as Record<string, unknown>).connect = originalConnect;
     });
   });

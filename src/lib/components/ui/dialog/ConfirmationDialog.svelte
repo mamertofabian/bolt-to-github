@@ -1,44 +1,43 @@
 <script lang="ts">
   import { Button } from '$lib/components/ui/button';
   import { AlertTriangle, Info } from 'lucide-svelte';
+  import {
+    getIconComponent,
+    getIconColor,
+    getConfirmButtonClass,
+    handleKeydown as handleKeydownUtil,
+    handleConfirm as handleConfirmUtil,
+    handleCancel as handleCancelUtil,
+    type DialogType,
+  } from './confirmation-dialog';
 
   export let show = false;
   export let title: string;
   export let message: string;
   export let confirmText = 'Confirm';
   export let cancelText = 'Cancel';
-  export let type: 'warning' | 'info' | 'danger' = 'info';
+  export let type: DialogType = 'info';
   export let onConfirm: () => void = () => {};
   export let onCancel: () => void = () => {};
 
   function handleConfirm() {
-    show = false;
-    onConfirm();
+    const result = handleConfirmUtil(onConfirm);
+    show = result.show;
   }
 
   function handleCancel() {
-    show = false;
-    onCancel();
+    const result = handleCancelUtil(onCancel);
+    show = result.show;
   }
 
   function handleKeydown(event: KeyboardEvent) {
-    if (event.key === 'Escape') {
-      handleCancel();
-    } else if (event.key === 'Enter') {
-      handleConfirm();
-    }
+    handleKeydownUtil(event, onConfirm, onCancel);
   }
 
-  // Icon and color based on type
-  $: iconComponent = type === 'warning' || type === 'danger' ? AlertTriangle : Info;
-  $: iconColor =
-    type === 'danger' ? 'text-red-500' : type === 'warning' ? 'text-yellow-500' : 'text-blue-500';
-  $: confirmButtonClass =
-    type === 'danger'
-      ? 'bg-red-600 hover:bg-red-700'
-      : type === 'warning'
-        ? 'bg-yellow-600 hover:bg-yellow-700'
-        : 'bg-blue-600 hover:bg-blue-700';
+  // Icon and color based on type using utility functions
+  $: iconComponent = getIconComponent(type) === 'AlertTriangle' ? AlertTriangle : Info;
+  $: iconColor = getIconColor(type);
+  $: confirmButtonClass = getConfirmButtonClass(type);
 </script>
 
 {#if show}

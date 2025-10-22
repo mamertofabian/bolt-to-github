@@ -1,4 +1,4 @@
-import { writable, type Writable } from 'svelte/store';
+import { get, writable, type Writable } from 'svelte/store';
 
 // Temp Repo Metadata Interface
 export interface TempRepoMetadata {
@@ -126,24 +126,16 @@ export const uiStateActions = {
    * Check if both temp repo actions are completed
    */
   canCloseTempRepoModal(): Promise<boolean> {
-    return new Promise((resolve) => {
-      const unsubscribe = uiStateStore.subscribe((state) => {
-        unsubscribe();
-        resolve(state.hasDeletedTempRepo && state.hasUsedTempRepoName);
-      });
-    });
+    return Promise.resolve(
+      get(uiStateStore).hasDeletedTempRepo && get(uiStateStore).hasUsedTempRepoName
+    );
   },
 
   /**
    * Get current UI state
    */
   async getCurrentState(): Promise<UIState> {
-    return new Promise((resolve) => {
-      const unsubscribe = uiStateStore.subscribe((state) => {
-        unsubscribe();
-        resolve(state);
-      });
-    });
+    return Promise.resolve(get(uiStateStore));
   },
 
   /**

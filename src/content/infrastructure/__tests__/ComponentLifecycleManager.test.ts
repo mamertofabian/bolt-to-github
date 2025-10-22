@@ -1,4 +1,3 @@
-// Mock the logger module
 vi.mock('../../../lib/utils/logger', () => ({
   createLogger: vi.fn().mockReturnValue({
     error: vi.fn(),
@@ -14,16 +13,14 @@ import type { Logger } from '../../../lib/utils/logger';
 import { createLogger } from '../../../lib/utils/logger';
 import { ComponentLifecycleManager, type ComponentConfig } from '../ComponentLifecycleManager';
 
-// Get fresh mocked logger instance in beforeEach
 let mockLogger: Mocked<Logger>;
 
-// Mock Svelte component constructor
 class MockSvelteComponent {
   public target: HTMLElement;
   public props: Record<string, unknown>;
   public $setCallCount = 0;
   public $destroyCallCount = 0;
-  // Add required SvelteComponent properties for type checking
+
   public $$prop_def: Record<string, unknown> = {};
   public $$events_def: Record<string, unknown> = {};
   public $$slot_def: Record<string, unknown> = {};
@@ -31,7 +28,7 @@ class MockSvelteComponent {
   public $$set: unknown = () => {};
   public $capture_state = () => ({});
   public $inject_state = () => {};
-  // Allow any additional properties
+
   [prop: string]: unknown;
 
   constructor({
@@ -62,7 +59,6 @@ class MockSvelteComponent {
   }
 }
 
-// Mock DOM environment
 Object.defineProperty(global, 'document', {
   value: {
     createElement: vi.fn(),
@@ -88,17 +84,14 @@ describe('ComponentLifecycleManager', () => {
 
     lifecycleManager = new ComponentLifecycleManager();
 
-    // Reset all mocks
     vi.clearAllMocks();
     mockLogger.error.mockClear();
     mockLogger.warn.mockClear();
     mockLogger.info.mockClear();
     mockLogger.debug.mockClear();
 
-    // Setup mock document
     mockDocument = global.document as Mocked<typeof document>;
 
-    // Setup mock element
     mockElement = {
       id: '',
       className: '',
@@ -113,7 +106,6 @@ describe('ComponentLifecycleManager', () => {
     mockDocument.createElement.mockReturnValue(mockElement);
     mockDocument.getElementById.mockReturnValue(null);
 
-    // Setup mock document.body
     Object.defineProperty(global.document, 'body', {
       value: {
         appendChild: vi.fn(),
@@ -216,7 +208,6 @@ describe('ComponentLifecycleManager', () => {
     });
 
     it('should warn when document.body is not available and appendToBody is true', async () => {
-      // Set body to null
       Object.defineProperty(global.document, 'body', {
         value: null,
         writable: true,
@@ -232,7 +223,6 @@ describe('ComponentLifecycleManager', () => {
     });
 
     it('should remove existing container with same id before creating new one', async () => {
-      // Create existing element
       const existingElement = {
         id: 'test-container',
         parentNode: {
@@ -253,7 +243,6 @@ describe('ComponentLifecycleManager', () => {
       const config = createBasicConfig();
       const firstComponent = await lifecycleManager.createComponent('test-component', config);
 
-      // Create new component with same id
       const secondComponent = await lifecycleManager.createComponent('test-component', config);
 
       expect(firstComponent.$destroyCallCount).toBe(1);
@@ -261,7 +250,6 @@ describe('ComponentLifecycleManager', () => {
     });
 
     it('should wait for DOMContentLoaded when waitForBody is true and body is not available', async () => {
-      // Set body to null
       Object.defineProperty(global.document, 'body', {
         value: null,
         writable: true,
@@ -274,7 +262,6 @@ describe('ComponentLifecycleManager', () => {
 
       const createPromise = lifecycleManager.createComponent('test-component', config);
 
-      // Component should not be created yet
       expect(lifecycleManager.hasComponent('test-component')).toBe(false);
       expect(mockLogger.info).toHaveBeenCalledWith(
         "Waiting for body to be available for component 'test-component'"
@@ -284,7 +271,6 @@ describe('ComponentLifecycleManager', () => {
         expect.any(Function)
       );
 
-      // Simulate DOMContentLoaded
       const [[, callback]] = mockDocument.addEventListener.mock.calls;
       Object.defineProperty(global.document, 'body', {
         value: { appendChild: vi.fn() },
@@ -317,7 +303,6 @@ describe('ComponentLifecycleManager', () => {
     });
 
     it('should handle unexpected errors during component creation', async () => {
-      // Cause document.createElement to fail
       mockDocument.createElement.mockImplementation(() => {
         throw new Error('Unexpected error');
       });
@@ -355,7 +340,6 @@ describe('ComponentLifecycleManager', () => {
     it('should warn when component does not support $set', async () => {
       const ComponentWithoutSet = vi.fn().mockImplementation(({ target }) => ({
         target,
-        // No $set method
       }));
 
       const config: ComponentConfig = {
@@ -402,7 +386,6 @@ describe('ComponentLifecycleManager', () => {
     it('should handle component without $destroy method gracefully', async () => {
       const ComponentWithoutDestroy = vi.fn().mockImplementation(({ target }) => ({
         target,
-        // No $destroy method
       }));
 
       const config: ComponentConfig = {
@@ -418,11 +401,9 @@ describe('ComponentLifecycleManager', () => {
     });
 
     it('should handle container without parent node gracefully', async () => {
-      // Create component
       const config = createBasicConfig();
       await lifecycleManager.createComponent('test-component', config);
 
-      // Remove parent node
       Object.defineProperty(mockElement, 'parentNode', {
         value: null,
         writable: true,
@@ -576,7 +557,6 @@ describe('ComponentLifecycleManager', () => {
         containerId: 'container-2',
       };
 
-      // Create multiple components
       const comp1 = (await lifecycleManager.createComponent(
         'comp-1',
         config1
@@ -586,20 +566,17 @@ describe('ComponentLifecycleManager', () => {
         config2
       )) as unknown as MockSvelteComponent;
 
-      // Update them
       lifecycleManager.updateComponent('comp-1', { updated: true });
       lifecycleManager.updateComponent('comp-2', { updated: true });
 
       expect(comp1.$setCallCount).toBe(1);
       expect(comp2.$setCallCount).toBe(1);
 
-      // Destroy one
       lifecycleManager.destroyComponent('comp-1');
 
       expect(lifecycleManager.hasComponent('comp-1')).toBe(false);
       expect(lifecycleManager.hasComponent('comp-2')).toBe(true);
 
-      // Clean up all
       lifecycleManager.cleanupAll();
 
       expect(lifecycleManager.getActiveComponentIds()).toEqual([]);

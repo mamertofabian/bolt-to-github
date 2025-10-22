@@ -6,192 +6,258 @@ import {
   resetLogger,
 } from '../logger';
 
-// Mock console methods
-const mockConsole = {
-  log: vi.fn(),
-  info: vi.fn(),
-  warn: vi.fn(),
-  error: vi.fn(),
-};
-
-// Mock localStorage
-const mockLocalStorage = {
-  getItem: vi.fn(),
-  setItem: vi.fn(),
-  removeItem: vi.fn(),
-};
-
-// Mock import.meta.env is not needed since we use fallback in logger
-
 describe('Logger', () => {
+  let consoleSpy: {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    log: any;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    info: any;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    warn: any;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    error: any;
+  };
+
   beforeEach(() => {
-    // Reset mocks
-    vi.clearAllMocks();
+    consoleSpy = {
+      log: vi.spyOn(console, 'log').mockImplementation(() => {}),
+      info: vi.spyOn(console, 'info').mockImplementation(() => {}),
+      warn: vi.spyOn(console, 'warn').mockImplementation(() => {}),
+      error: vi.spyOn(console, 'error').mockImplementation(() => {}),
+    };
 
-    // Mock console
-    Object.assign(console, mockConsole);
+    localStorage.clear();
 
-    // Mock localStorage
-    Object.defineProperty(window, 'localStorage', {
-      value: mockLocalStorage,
-      writable: true,
-    });
-
-    // Mock process.env for testing (set to production by default)
     process.env.NODE_ENV = 'production';
 
-    // Reset logger to pick up new environment
     resetLogger();
   });
 
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
   describe('default logger', () => {
-    it('should log info, warn, and error messages', () => {
+    it('should format and output info messages correctly', () => {
       logger.info('Info message');
+
+      expect(consoleSpy.info).toHaveBeenCalledTimes(1);
+      const args = consoleSpy.info.mock.calls[0];
+      expect(args[0]).toBe('[INFO]');
+      expect(args[1]).toBe('Info message');
+    });
+
+    it('should format and output warn messages correctly', () => {
       logger.warn('Warning message');
+
+      expect(consoleSpy.warn).toHaveBeenCalledTimes(1);
+      const args = consoleSpy.warn.mock.calls[0];
+      expect(args[0]).toBe('[WARN]');
+      expect(args[1]).toBe('Warning message');
+    });
+
+    it('should format and output error messages correctly', () => {
       logger.error('Error message');
 
-      expect(mockConsole.info).toHaveBeenCalledWith('[INFO]', 'Info message');
-      expect(mockConsole.warn).toHaveBeenCalledWith('[WARN]', 'Warning message');
-      expect(mockConsole.error).toHaveBeenCalledWith('[ERROR]', 'Error message');
+      expect(consoleSpy.error).toHaveBeenCalledTimes(1);
+      const args = consoleSpy.error.mock.calls[0];
+      expect(args[0]).toBe('[ERROR]');
+      expect(args[1]).toBe('Error message');
     });
 
-    it('should log debug messages in production by default', () => {
-      mockLocalStorage.getItem.mockReturnValue(null);
-
+    it('should output debug messages in production by default', () => {
       logger.debug('Debug message');
 
-      expect(mockConsole.log).toHaveBeenCalled();
+      expect(consoleSpy.log).toHaveBeenCalledTimes(1);
+      const args = consoleSpy.log.mock.calls[0];
+      expect(args[0]).toBe('[DEBUG]');
+      expect(args[1]).toBe('Debug message');
     });
 
-    it('should log debug messages when enableDebugInProduction is true', () => {
-      mockLocalStorage.getItem.mockReturnValue('true');
+    it('should handle multiple arguments in log messages', () => {
+      const obj = { error: 'details' };
+      logger.warn('Warning:', obj, 123);
 
-      // Create a new logger instance with debug enabled in production
-      const testLogger = createLogger('Test', { enableDebugInProduction: true });
-      testLogger.debug('Debug message');
-
-      expect(mockConsole.log).toHaveBeenCalledWith('[Test] [DEBUG]', 'Debug message');
+      expect(consoleSpy.warn).toHaveBeenCalledTimes(1);
+      const args = consoleSpy.warn.mock.calls[0];
+      expect(args).toEqual(['[WARN]', 'Warning:', obj, 123]);
     });
   });
 
   describe('createLogger', () => {
-    it('should create logger with module prefix', () => {
+    it('should create logger with module prefix in formatted output', () => {
       const moduleLogger = createLogger('TestModule');
 
       moduleLogger.info('Test message');
 
-      expect(mockConsole.info).toHaveBeenCalledWith('[TestModule] [INFO]', 'Test message');
+      expect(consoleSpy.info).toHaveBeenCalledTimes(1);
+      const args = consoleSpy.info.mock.calls[0];
+      expect(args[0]).toBe('[TestModule] [INFO]');
+      expect(args[1]).toBe('Test message');
     });
 
-    it('should support custom configuration', () => {
-      const customLogger = createLogger('Custom', {
-        isDevelopment: true,
-        enableTimestamps: true,
-      });
-
-      customLogger.debug('Debug message');
-
-      // Should include timestamp, module prefix, and level
-      const call = mockConsole.log.mock.calls[0];
-      expect(call[0]).toMatch(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z \[Custom\] \[DEBUG\]$/);
-      expect(call[1]).toBe('Debug message');
-    });
-
-    it('should log debug messages in development mode', () => {
-      const devLogger = createLogger('Dev', { isDevelopment: true });
-
-      devLogger.debug('Development debug');
-
-      expect(mockConsole.log).toHaveBeenCalledWith('[Dev] [DEBUG]', 'Development debug');
-    });
-  });
-
-  describe('production debug control', () => {
-    it('should enable production debug and set localStorage', () => {
-      enableProductionDebug();
-
-      expect(mockLocalStorage.setItem).toHaveBeenCalledWith('bolt-to-github-debug', 'true');
-      expect(mockConsole.info).toHaveBeenCalledWith(
-        '[INFO]',
-        'Production debug logging enabled. Reload the page to take effect.'
-      );
-    });
-
-    it('should disable production debug and remove from localStorage', () => {
-      disableProductionDebug();
-
-      expect(mockLocalStorage.removeItem).toHaveBeenCalledWith('bolt-to-github-debug');
-      expect(mockConsole.info).toHaveBeenCalledWith(
-        '[INFO]',
-        'Production debug logging disabled. Reload the page to take effect.'
-      );
-    });
-
-    it('should handle missing localStorage gracefully', () => {
-      // Remove window to simulate environment without localStorage
-      const originalWindow = global.window;
-      // @ts-expect-error - this is a test
-      delete global.window;
-
-      expect(() => enableProductionDebug()).not.toThrow();
-      expect(() => disableProductionDebug()).not.toThrow();
-
-      // Restore window
-      global.window = originalWindow;
-    });
-
-    it('should handle localStorage errors gracefully', () => {
-      // Mock localStorage to throw an error
-      mockLocalStorage.setItem.mockImplementation(() => {
-        throw new Error('localStorage access denied');
-      });
-      mockLocalStorage.removeItem.mockImplementation(() => {
-        throw new Error('localStorage access denied');
-      });
-
-      expect(() => enableProductionDebug()).not.toThrow();
-      expect(() => disableProductionDebug()).not.toThrow();
-
-      expect(mockConsole.warn).toHaveBeenCalledWith(
-        '[WARN]',
-        'Failed to enable production debug logging: localStorage unavailable'
-      );
-      expect(mockConsole.warn).toHaveBeenCalledWith(
-        '[WARN]',
-        'Failed to disable production debug logging: localStorage unavailable'
-      );
-    });
-  });
-
-  describe('message formatting', () => {
-    it('should format messages without prefix when no module specified', () => {
-      const simpleLogger = createLogger('', { enableTimestamps: false });
-
-      simpleLogger.info('Simple message');
-
-      expect(mockConsole.info).toHaveBeenCalledWith('[INFO]', 'Simple message');
-    });
-
-    it('should handle multiple arguments', () => {
-      const testLogger = createLogger('Multi');
-
-      testLogger.warn('Warning:', { error: 'details' }, 123);
-
-      expect(mockConsole.warn).toHaveBeenCalledWith(
-        '[Multi] [WARN]',
-        'Warning:',
-        { error: 'details' },
-        123
-      );
-    });
-
-    it('should format timestamps when enabled', () => {
+    it('should include timestamps in formatted output when enabled', () => {
       const timestampLogger = createLogger('Time', { enableTimestamps: true });
 
       timestampLogger.error('Error with timestamp');
 
-      const call = mockConsole.error.mock.calls[0];
-      expect(call[0]).toMatch(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z \[Time\] \[ERROR\]$/);
+      expect(consoleSpy.error).toHaveBeenCalledTimes(1);
+      const args = consoleSpy.error.mock.calls[0];
+
+      expect(args[0]).toMatch(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z \[Time\] \[ERROR\]$/);
+      expect(args[1]).toBe('Error with timestamp');
+    });
+
+    it('should output debug messages when isDevelopment is true', () => {
+      const devLogger = createLogger('Dev', { isDevelopment: true });
+
+      devLogger.debug('Development debug');
+
+      expect(consoleSpy.log).toHaveBeenCalledTimes(1);
+      const args = consoleSpy.log.mock.calls[0];
+      expect(args[0]).toBe('[Dev] [DEBUG]');
+      expect(args[1]).toBe('Development debug');
+    });
+
+    it('should output debug messages when enableDebugInProduction is true', () => {
+      const prodDebugLogger = createLogger('ProdDebug', { enableDebugInProduction: true });
+
+      prodDebugLogger.debug('Production debug message');
+
+      expect(consoleSpy.log).toHaveBeenCalledTimes(1);
+      const args = consoleSpy.log.mock.calls[0];
+      expect(args[0]).toBe('[ProdDebug] [DEBUG]');
+      expect(args[1]).toBe('Production debug message');
+    });
+
+    it('should not output debug messages when both isDevelopment and enableDebugInProduction are false', () => {
+      const restrictedLogger = createLogger('Restricted', {
+        isDevelopment: false,
+        enableDebugInProduction: false,
+      });
+
+      restrictedLogger.debug('Should not appear');
+
+      expect(consoleSpy.log).not.toHaveBeenCalled();
+    });
+
+    it('should format messages without module prefix when empty string is provided', () => {
+      const simpleLogger = createLogger('', { enableTimestamps: false });
+
+      simpleLogger.info('Simple message');
+
+      expect(consoleSpy.info).toHaveBeenCalledTimes(1);
+      const args = consoleSpy.info.mock.calls[0];
+      expect(args[0]).toBe('[INFO]');
+      expect(args[1]).toBe('Simple message');
+    });
+  });
+
+  describe('production debug control', () => {
+    it('should save enableDebugInProduction flag to localStorage and log confirmation', () => {
+      enableProductionDebug();
+
+      const storedValue = localStorage.getItem('bolt-to-github-debug');
+      expect(storedValue).toBe('true');
+
+      expect(consoleSpy.info).toHaveBeenCalledTimes(1);
+      const args = consoleSpy.info.mock.calls[0];
+      expect(args).toEqual([
+        '[INFO]',
+        'Production debug logging enabled. Reload the page to take effect.',
+      ]);
+    });
+
+    it('should remove enableDebugInProduction flag from localStorage and log confirmation', () => {
+      localStorage.setItem('bolt-to-github-debug', 'true');
+
+      disableProductionDebug();
+
+      const storedValue = localStorage.getItem('bolt-to-github-debug');
+      expect(storedValue).toBeNull();
+
+      expect(consoleSpy.info).toHaveBeenCalledTimes(1);
+      const args = consoleSpy.info.mock.calls[0];
+      expect(args).toEqual([
+        '[INFO]',
+        'Production debug logging disabled. Reload the page to take effect.',
+      ]);
+    });
+
+    it('should handle missing window gracefully when enabling debug', () => {
+      const originalWindow = global.window;
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      delete (global as any).window;
+
+      expect(() => enableProductionDebug()).not.toThrow();
+
+      global.window = originalWindow;
+    });
+
+    it('should handle missing window gracefully when disabling debug', () => {
+      const originalWindow = global.window;
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      delete (global as any).window;
+
+      expect(() => disableProductionDebug()).not.toThrow();
+
+      global.window = originalWindow;
+    });
+
+    it('should log warning when localStorage.setItem throws error', () => {
+      const throwingStorage = {
+        getItem: () => null,
+        setItem: () => {
+          throw new Error('localStorage access denied');
+        },
+        removeItem: () => null,
+        clear: () => null,
+        key: () => null,
+        length: 0,
+      };
+
+      Object.defineProperty(window, 'localStorage', {
+        value: throwingStorage,
+        writable: true,
+        configurable: true,
+      });
+
+      enableProductionDebug();
+
+      expect(consoleSpy.warn).toHaveBeenCalledTimes(1);
+      const args = consoleSpy.warn.mock.calls[0];
+      expect(args).toEqual([
+        '[WARN]',
+        'Failed to enable production debug logging: localStorage unavailable',
+      ]);
+    });
+
+    it('should log warning when localStorage.removeItem throws error', () => {
+      const throwingStorage = {
+        getItem: () => null,
+        setItem: () => null,
+        removeItem: () => {
+          throw new Error('localStorage access denied');
+        },
+        clear: () => null,
+        key: () => null,
+        length: 0,
+      };
+
+      Object.defineProperty(window, 'localStorage', {
+        value: throwingStorage,
+        writable: true,
+        configurable: true,
+      });
+
+      disableProductionDebug();
+
+      expect(consoleSpy.warn).toHaveBeenCalledTimes(1);
+      const args = consoleSpy.warn.mock.calls[0];
+      expect(args).toEqual([
+        '[WARN]',
+        'Failed to disable production debug logging: localStorage unavailable',
+      ]);
     });
   });
 
@@ -199,16 +265,87 @@ describe('Logger', () => {
     it('should detect development environment from process.env.NODE_ENV', () => {
       process.env.NODE_ENV = 'development';
 
-      const devLogger = createLogger('EnvTest', { isDevelopment: true });
+      const devLogger = createLogger('EnvTest', {
+        isDevelopment: true,
+        enableTimestamps: false,
+      });
       devLogger.debug('Should log in development');
 
-      expect(mockConsole.log).toHaveBeenCalled();
+      expect(consoleSpy.log).toHaveBeenCalledTimes(1);
+      const args = consoleSpy.log.mock.calls[0];
+      expect(args[0]).toBe('[EnvTest] [DEBUG]');
+      expect(args[1]).toBe('Should log in development');
     });
 
-    it('should handle missing environment variables gracefully', () => {
+    it('should handle missing NODE_ENV gracefully', () => {
+      const originalNodeEnv = process.env.NODE_ENV;
       delete process.env.NODE_ENV;
 
       expect(() => createLogger('Fallback')).not.toThrow();
+
+      process.env.NODE_ENV = originalNodeEnv;
+    });
+
+    it('should treat test environment as non-development', () => {
+      process.env.NODE_ENV = 'test';
+
+      const testLogger = createLogger('TestEnv', {
+        isDevelopment: false,
+        enableDebugInProduction: false,
+      });
+
+      testLogger.debug('Should not log in test mode');
+
+      expect(consoleSpy.log).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('message formatting edge cases', () => {
+    it('should handle objects in log messages', () => {
+      const testLogger = createLogger('ObjectTest');
+      const testObj = { key: 'value', nested: { deep: 'data' } };
+
+      testLogger.info('Object:', testObj);
+
+      expect(consoleSpy.info).toHaveBeenCalledTimes(1);
+      const args = consoleSpy.info.mock.calls[0];
+      expect(args[0]).toBe('[ObjectTest] [INFO]');
+      expect(args[1]).toBe('Object:');
+      expect(args[2]).toEqual(testObj);
+    });
+
+    it('should handle arrays in log messages', () => {
+      const testLogger = createLogger('ArrayTest');
+      const testArray = [1, 2, 3, 'four'];
+
+      testLogger.warn('Array:', testArray);
+
+      expect(consoleSpy.warn).toHaveBeenCalledTimes(1);
+      const args = consoleSpy.warn.mock.calls[0];
+      expect(args[0]).toBe('[ArrayTest] [WARN]');
+      expect(args[1]).toBe('Array:');
+      expect(args[2]).toEqual(testArray);
+    });
+
+    it('should handle null and undefined values', () => {
+      const testLogger = createLogger('NullTest');
+
+      testLogger.error('Null:', null, 'Undefined:', undefined);
+
+      expect(consoleSpy.error).toHaveBeenCalledTimes(1);
+      const args = consoleSpy.error.mock.calls[0];
+      expect(args).toEqual(['[NullTest] [ERROR]', 'Null:', null, 'Undefined:', undefined]);
+    });
+
+    it('should handle empty log messages', () => {
+      const testLogger = createLogger('EmptyTest');
+
+      testLogger.info();
+
+      expect(consoleSpy.info).toHaveBeenCalledTimes(1);
+      const args = consoleSpy.info.mock.calls[0];
+      expect(args[0]).toBe('[EmptyTest] [INFO]');
+      expect(args.length).toBe(1);
     });
   });
 });

@@ -1,474 +1,232 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
-
-import type { Mock } from 'vitest';
 import { DOMObserver } from '../DOMObserver';
 
 describe('DOMObserver', () => {
-  let domObserver: DOMObserver;
-  let mockCallback: Mock;
-  let mockOnError: Mock;
-  let mockMutationObserver: Mock;
-  let mockObserverInstance: any;
-
   beforeEach(() => {
-    // Reset DOM
     document.body.innerHTML = '';
-
-    // Reset mocks
     vi.clearAllMocks();
-
-    // Mock callback functions
-    mockCallback = vi.fn();
-    mockOnError = vi.fn();
-
-    // Mock MutationObserver
-    mockObserverInstance = {
-      observe: vi.fn(),
-      disconnect: vi.fn(),
-    };
-
-    mockMutationObserver = vi.fn().mockImplementation(() => mockObserverInstance);
-
-    // Replace global MutationObserver
-    global.MutationObserver = mockMutationObserver;
-
-    // Mock window.setTimeout and clearTimeout
-    vi.spyOn(window, 'setTimeout').mockImplementation((_callback) => {
-      const id = Math.random();
-      return id as any;
-    });
-
-    vi.spyOn(window, 'clearTimeout').mockImplementation(() => {});
-
-    domObserver = new DOMObserver();
+    vi.useFakeTimers();
   });
 
   afterEach(() => {
-    domObserver.stop();
-    vi.restoreAllMocks();
+    vi.useRealTimers();
   });
 
-  describe('Initialization', () => {
-    test('initializes with default parameters', () => {
-      expect(domObserver).toBeInstanceOf(DOMObserver);
-      expect(domObserver.isActive()).toBe(false);
-      expect(domObserver.getRetryCount()).toBe(0);
+  describe('Observing behavior', () => {
+    it('should call callback immediately on start', () => {
+      const callback = vi.fn();
+      const observer = new DOMObserver();
+
+      observer.start(callback);
+
+      expect(callback).toHaveBeenCalledTimes(1);
+      observer.stop();
     });
 
-    test('initializes with custom parameters', () => {
-      const customObserver = new DOMObserver(5, 2000, 1000);
-      expect(customObserver).toBeInstanceOf(DOMObserver);
-      expect(customObserver.isActive()).toBe(false);
-      expect(customObserver.getRetryCount()).toBe(0);
+    it('should track active state correctly', () => {
+      const observer = new DOMObserver();
+
+      expect(observer.isActive()).toBe(false);
+
+      observer.start(vi.fn());
+      expect(observer.isActive()).toBe(true);
+
+      observer.stop();
+      expect(observer.isActive()).toBe(false);
     });
 
-    test('starts in inactive state', () => {
-      expect(domObserver.isActive()).toBe(false);
-    });
-  });
+    it('should allow restart after stop', () => {
+      const callback1 = vi.fn();
+      const callback2 = vi.fn();
+      const observer = new DOMObserver();
 
-  describe('Observer Start/Stop', () => {
-    test('starts observing correctly', () => {
-      domObserver.start(mockCallback);
+      observer.start(callback1);
+      observer.stop();
+      observer.start(callback2);
 
-      expect(domObserver.isActive()).toBe(true);
-      expect(mockMutationObserver).toHaveBeenCalled();
-      expect(mockObserverInstance.observe).toHaveBeenCalledWith(document.body, {
-        childList: true,
-        subtree: true,
-      });
+      expect(callback1).toHaveBeenCalledTimes(1);
+      expect(callback2).toHaveBeenCalledTimes(1);
+      expect(observer.isActive()).toBe(true);
+      observer.stop();
     });
 
-    test('calls callback immediately on start', () => {
-      domObserver.start(mockCallback);
+    it('should not start multiple times', () => {
+      const callback = vi.fn();
+      const observer = new DOMObserver();
+      const spy = vi.spyOn(console, 'warn').mockImplementation(() => {});
 
-      expect(mockCallback).toHaveBeenCalled();
-    });
+      observer.start(callback);
+      callback.mockClear();
+      observer.start(callback);
 
-    test('prevents multiple starts', () => {
-      const consoleSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+      expect(spy).toHaveBeenCalledWith('[DOMObserver] [WARN]', 'DOMObserver is already observing');
+      expect(callback).not.toHaveBeenCalled();
 
-      domObserver.start(mockCallback);
-      domObserver.start(mockCallback);
-
-      expect(consoleSpy).toHaveBeenCalledWith(
-        '[DOMObserver] [WARN]',
-        'DOMObserver is already observing'
-      );
-      expect(mockMutationObserver).toHaveBeenCalledTimes(1);
-
-      consoleSpy.mockRestore();
-    });
-
-    test('stops observing correctly', () => {
-      domObserver.start(mockCallback);
-      expect(domObserver.isActive()).toBe(true);
-
-      domObserver.stop();
-
-      expect(domObserver.isActive()).toBe(false);
-      expect(mockObserverInstance.disconnect).toHaveBeenCalled();
-      expect(domObserver.getRetryCount()).toBe(0);
-    });
-
-    test('handles stop when not observing', () => {
-      expect(() => {
-        domObserver.stop();
-      }).not.toThrow();
-
-      expect(domObserver.isActive()).toBe(false);
+      spy.mockRestore();
+      observer.stop();
     });
   });
 
-  describe('DOM Body Availability', () => {
-    test('observes immediately when body is available', () => {
-      // Body is available by default in JSDOM
-      domObserver.start(mockCallback);
-
-      expect(mockObserverInstance.observe).toHaveBeenCalledWith(document.body, {
-        childList: true,
-        subtree: true,
-      });
-    });
-
-    test('waits for DOMContentLoaded when body is not available', () => {
-      // Mock missing body
-      const originalBody = document.body;
-      Object.defineProperty(document, 'body', {
-        writable: true,
-        value: null,
-      });
-
-      const addEventListenerSpy = vi.spyOn(document, 'addEventListener');
-
-      domObserver.start(mockCallback);
-
-      expect(addEventListenerSpy).toHaveBeenCalledWith('DOMContentLoaded', expect.any(Function));
-
-      // Restore body
-      Object.defineProperty(document, 'body', {
-        writable: true,
-        value: originalBody,
-      });
-    });
-
-    test('observes after DOMContentLoaded when body becomes available', () => {
-      // Mock missing body initially
-      const originalBody = document.body;
-      Object.defineProperty(document, 'body', {
-        writable: true,
-        value: null,
-      });
-
-      let domContentLoadedCallback: (() => void) | undefined;
-      vi.spyOn(document, 'addEventListener').mockImplementation((event, callback) => {
-        if (event === 'DOMContentLoaded') {
-          domContentLoadedCallback = callback as () => void;
+  describe('Error handling and retries', () => {
+    it('should retry on callback failure', () => {
+      let attempts = 0;
+      const callback = vi.fn(() => {
+        attempts++;
+        if (attempts < 2) {
+          throw new Error('Test error');
         }
       });
+      const observer = new DOMObserver(3, 100, 50);
 
-      domObserver.start(mockCallback);
+      observer.start(callback);
 
-      // Body becomes available
-      Object.defineProperty(document, 'body', {
-        writable: true,
-        value: originalBody,
-      });
+      expect(callback).toHaveBeenCalledTimes(1);
+      expect(observer.getRetryCount()).toBe(1);
 
-      // Trigger DOMContentLoaded
-      if (domContentLoadedCallback) {
-        domContentLoadedCallback();
-      }
+      vi.advanceTimersByTime(100);
 
-      expect(mockObserverInstance.observe).toHaveBeenCalledWith(document.body, {
-        childList: true,
-        subtree: true,
-      });
-    });
-  });
+      expect(callback).toHaveBeenCalledTimes(2);
+      expect(observer.getRetryCount()).toBe(0);
 
-  describe('Mutation Handling', () => {
-    test('creates mutation observer with correct callback', () => {
-      let mutationCallback: (() => void) | undefined;
-
-      mockMutationObserver.mockImplementation((callback) => {
-        mutationCallback = callback;
-        return mockObserverInstance;
-      });
-
-      domObserver.start(mockCallback);
-
-      expect(mockMutationObserver).toHaveBeenCalledWith(expect.any(Function));
-      expect(typeof mutationCallback).toBe('function');
+      observer.stop();
     });
 
-    test('sets up timeout management on mutations', () => {
-      let mutationCallback: (() => void) | undefined;
-
-      mockMutationObserver.mockImplementation((callback) => {
-        mutationCallback = callback;
-        return mockObserverInstance;
-      });
-
-      domObserver.start(mockCallback);
-
-      // Trigger mutation should set up timeout management
-      if (mutationCallback) {
-        mutationCallback();
-      }
-
-      expect(window.setTimeout).toHaveBeenCalled();
-    });
-  });
-
-  describe('Retry Logic', () => {
-    test('handles successful callback execution', () => {
-      const customObserver = new DOMObserver(3, 100, 50);
-      const successCallback = vi.fn();
-
-      customObserver.start(successCallback);
-
-      expect(successCallback).toHaveBeenCalled();
-      expect(customObserver.getRetryCount()).toBe(0);
-    });
-
-    test('handles callback failure and sets up retry', () => {
-      const customObserver = new DOMObserver(2, 100, 50);
-      const consoleSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
-
-      const failingCallback = vi.fn(() => {
-        throw new Error('Test error');
-      });
-
-      customObserver.start(failingCallback, mockOnError);
-
-      expect(failingCallback).toHaveBeenCalled();
-      expect(window.setTimeout).toHaveBeenCalled();
-      expect(consoleSpy).toHaveBeenCalledWith(
-        '[DOMObserver] [WARN]',
-        'Initialization attempt failed:',
-        expect.any(Error)
-      );
-
-      consoleSpy.mockRestore();
-    });
-
-    test('handles missing onError callback gracefully', () => {
-      const customObserver = new DOMObserver(1, 100, 50);
-
-      const alwaysFailingCallback = vi.fn(() => {
+    it('should call onError after max retries', () => {
+      const callback = vi.fn(() => {
         throw new Error('Always fails');
       });
+      const onError = vi.fn();
+      const observer = new DOMObserver(2, 100, 50);
 
-      expect(() => {
-        customObserver.start(alwaysFailingCallback);
-      }).not.toThrow();
+      observer.start(callback, onError);
 
-      expect(alwaysFailingCallback).toHaveBeenCalled();
+      expect(callback).toHaveBeenCalledTimes(1);
+
+      vi.advanceTimersByTime(100);
+      expect(callback).toHaveBeenCalledTimes(2);
+
+      vi.advanceTimersByTime(100);
+      expect(callback).toHaveBeenCalledTimes(3);
+
+      vi.advanceTimersByTime(100);
+      expect(onError).toHaveBeenCalledTimes(1);
+
+      observer.stop();
     });
 
-    test('tracks retry count correctly', () => {
-      const customObserver = new DOMObserver(3, 100, 50);
-
-      expect(customObserver.getRetryCount()).toBe(0);
-    });
-
-    test('resets retry count manually', () => {
-      const customObserver = new DOMObserver(3, 100, 50);
-
-      customObserver.resetRetryCount();
-      expect(customObserver.getRetryCount()).toBe(0);
-    });
-  });
-
-  describe('State Management', () => {
-    test('tracks active state correctly', () => {
-      expect(domObserver.isActive()).toBe(false);
-
-      domObserver.start(mockCallback);
-      expect(domObserver.isActive()).toBe(true);
-
-      domObserver.stop();
-      expect(domObserver.isActive()).toBe(false);
-    });
-
-    test('returns correct retry count', () => {
-      const customObserver = new DOMObserver(3, 100, 50);
-
-      expect(customObserver.getRetryCount()).toBe(0);
-      expect(typeof customObserver.getRetryCount()).toBe('number');
-    });
-
-    test('can restart after stopping', () => {
-      domObserver.start(mockCallback);
-      expect(domObserver.isActive()).toBe(true);
-
-      domObserver.stop();
-      expect(domObserver.isActive()).toBe(false);
-
-      domObserver.start(mockCallback);
-      expect(domObserver.isActive()).toBe(true);
-
-      expect(mockMutationObserver).toHaveBeenCalledTimes(2);
-    });
-  });
-
-  describe('Resource Management', () => {
-    test('cleans up resources on stop', () => {
-      domObserver.start(mockCallback);
-
-      domObserver.stop();
-
-      expect(mockObserverInstance.disconnect).toHaveBeenCalled();
-      expect(domObserver.isActive()).toBe(false);
-    });
-
-    test('handles stop when observer is null', () => {
-      // Start and manually set observer to null to test edge case
-      domObserver.start(mockCallback);
-
-      // Access private property for testing
-      (domObserver as any).observer = null;
-
-      expect(() => {
-        domObserver.stop();
-      }).not.toThrow();
-    });
-
-    test('clears timeout on mutations', () => {
-      let mutationCallback: (() => void) | undefined;
-
-      mockMutationObserver.mockImplementation((callback) => {
-        mutationCallback = callback;
-        return mockObserverInstance;
-      });
-
-      domObserver.start(mockCallback);
-
-      // Trigger mutation should call clearTimeout if there's an existing timeout
-      if (mutationCallback) {
-        mutationCallback();
-      }
-
-      // Should call setTimeout for the new timeout
-      expect(window.setTimeout).toHaveBeenCalled();
-    });
-  });
-
-  describe('Error Handling', () => {
-    test('handles callback errors gracefully', () => {
-      const consoleSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
-
-      const errorCallback = vi.fn(() => {
+    it('should not crash without onError callback', () => {
+      const callback = vi.fn(() => {
         throw new Error('Test error');
       });
-
-      domObserver.start(errorCallback, mockOnError);
-
-      expect(consoleSpy).toHaveBeenCalledWith(
-        '[DOMObserver] [WARN]',
-        'Initialization attempt failed:',
-        expect.any(Error)
-      );
-
-      consoleSpy.mockRestore();
-    });
-
-    test('continues operating after callback errors', () => {
-      const errorCallback = vi.fn(() => {
-        throw new Error('Test error');
-      });
-
-      domObserver.start(errorCallback);
-
-      expect(domObserver.isActive()).toBe(true);
-      expect(errorCallback).toHaveBeenCalled();
-    });
-
-    test('handles missing MutationObserver gracefully', () => {
-      // Mock missing MutationObserver
-      const originalMutationObserver = global.MutationObserver;
-      delete (global as any).MutationObserver;
+      const observer = new DOMObserver(1, 100, 50);
 
       expect(() => {
-        new DOMObserver().start(mockCallback);
-      }).toThrow();
+        observer.start(callback);
+        vi.advanceTimersByTime(100);
+        vi.advanceTimersByTime(100);
+      }).not.toThrow();
 
-      // Restore MutationObserver
-      global.MutationObserver = originalMutationObserver;
+      observer.stop();
     });
-  });
 
-  describe('Integration Scenarios', () => {
-    test('handles rapid DOM changes', () => {
-      let mutationCallback: (() => void) | undefined;
-
-      mockMutationObserver.mockImplementation((callback) => {
-        mutationCallback = callback;
-        return mockObserverInstance;
+    it('should reset retry count manually', () => {
+      const callback = vi.fn(() => {
+        throw new Error('Test');
       });
+      const observer = new DOMObserver(3, 100, 50);
 
-      domObserver.start(mockCallback);
+      observer.start(callback);
+      expect(observer.getRetryCount()).toBe(1);
 
-      // Clear initial callback call
-      mockCallback.mockClear();
+      observer.resetRetryCount();
+      expect(observer.getRetryCount()).toBe(0);
 
-      // Trigger multiple rapid mutations
-      for (let i = 0; i < 5; i++) {
-        if (mutationCallback) {
-          mutationCallback();
+      observer.stop();
+    });
+
+    it('should reset retry count on successful callback', () => {
+      let attempts = 0;
+      const callback = vi.fn(() => {
+        attempts++;
+        if (attempts === 1) {
+          throw new Error('First fails');
         }
-      }
+      });
+      const observer = new DOMObserver(3, 100, 50);
 
-      // Should call setTimeout for each mutation
-      expect(window.setTimeout).toHaveBeenCalled();
+      observer.start(callback);
+      expect(observer.getRetryCount()).toBe(1);
+
+      vi.advanceTimersByTime(100);
+      expect(observer.getRetryCount()).toBe(0);
+
+      observer.stop();
+    });
+  });
+
+  describe('Stop behavior', () => {
+    it('should stop observing', () => {
+      const observer = new DOMObserver();
+
+      observer.start(vi.fn());
+      observer.stop();
+
+      expect(observer.isActive()).toBe(false);
     });
 
-    test('works with different callback signatures', () => {
-      const voidCallback = vi.fn();
-      const returningCallback = vi.fn(() => 'result');
-      const asyncCallback = vi.fn(async () => Promise.resolve());
+    it('should handle stop when not observing', () => {
+      const observer = new DOMObserver();
 
-      // Test void callback
-      domObserver.start(voidCallback);
-      domObserver.stop();
-
-      // Test returning callback
-      domObserver.start(returningCallback);
-      domObserver.stop();
-
-      // Test async callback (should work as it's not awaited)
-      domObserver.start(asyncCallback);
-
-      expect(voidCallback).toHaveBeenCalled();
-      expect(returningCallback).toHaveBeenCalled();
-      expect(asyncCallback).toHaveBeenCalled();
+      expect(() => observer.stop()).not.toThrow();
+      expect(observer.isActive()).toBe(false);
     });
 
-    test('maintains state across multiple callback executions', () => {
-      let executionCount = 0;
-      const trackingCallback = vi.fn(() => {
-        executionCount++;
+    it('should reset retry count on stop', () => {
+      const callback = vi.fn(() => {
+        throw new Error('Test');
       });
+      const observer = new DOMObserver(3, 100, 50);
 
-      domObserver.start(trackingCallback);
+      observer.start(callback);
+      expect(observer.getRetryCount()).toBe(1);
 
-      // Simulate mutation
-      let mutationCallback: (() => void) | undefined;
-      mockMutationObserver.mockImplementation((callback) => {
-        mutationCallback = callback;
-        return mockObserverInstance;
+      observer.stop();
+      expect(observer.getRetryCount()).toBe(0);
+    });
+  });
+
+  describe('Configuration', () => {
+    it('should use default configuration', () => {
+      const observer = new DOMObserver();
+
+      expect(observer.getRetryCount()).toBe(0);
+      expect(observer.isActive()).toBe(false);
+    });
+
+    it('should use custom configuration', () => {
+      const observer = new DOMObserver(5, 2000, 1000);
+
+      expect(observer.getRetryCount()).toBe(0);
+      expect(observer.isActive()).toBe(false);
+    });
+
+    it('should respect custom max retries', () => {
+      const callback = vi.fn(() => {
+        throw new Error('Fail');
       });
+      const onError = vi.fn();
+      const maxRetries = 5;
+      const observer = new DOMObserver(maxRetries, 100, 50);
 
-      domObserver.stop();
-      domObserver.start(trackingCallback);
+      observer.start(callback, onError);
 
-      if (mutationCallback) {
-        mutationCallback();
+      for (let i = 0; i < maxRetries; i++) {
+        vi.advanceTimersByTime(100);
       }
 
-      expect(executionCount).toBeGreaterThan(1);
-      expect(domObserver.isActive()).toBe(true);
+      vi.advanceTimersByTime(100);
+      expect(onError).toHaveBeenCalledTimes(1);
+
+      observer.stop();
     });
   });
 });

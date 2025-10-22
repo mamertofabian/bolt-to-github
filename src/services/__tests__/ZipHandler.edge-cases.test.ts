@@ -31,7 +31,6 @@ describe('ZipHandler - Edge Cases', () => {
         ['file.name.with.many.dots.txt', 'content'],
       ]);
 
-      // Configure comparison service to return all files as new
       env.comparisonService.setComparisonResult({
         changes: new Map([
           ['app.min.js', { status: 'added' as const, content: 'minified code' }],
@@ -50,7 +49,6 @@ describe('ZipHandler - Edge Cases', () => {
         TEST_PROJECTS.default.commitMessage
       );
 
-      // All files should be processed correctly
       const treeCreation = env.githubService
         .getRequestHistory()
         .find((req) => req.method === 'POST' && req.path.includes('/git/trees'));
@@ -81,7 +79,6 @@ describe('ZipHandler - Edge Cases', () => {
         TEST_PROJECTS.default.commitMessage
       );
 
-      // System-like files should be uploaded
       const lastStatus = env.statusCallback.getLastStatus();
       expect(lastStatus?.status).toBe('success');
     });
@@ -104,7 +101,6 @@ describe('ZipHandler - Edge Cases', () => {
         TEST_PROJECTS.default.commitMessage
       );
 
-      // Should handle whitespace in filenames
       const treeCreation = env.githubService
         .getRequestHistory()
         .find((req) => req.method === 'POST' && req.path.includes('/git/trees'));
@@ -127,7 +123,6 @@ describe('ZipHandler - Edge Cases', () => {
         changes.set(`file${i}.js`, { status: 'added' as const, content: `content ${i}` });
       }
 
-      // Configure comparison service to return all files as new
       env.comparisonService.setComparisonResult({
         changes,
         repoData: COMPARISON_RESULTS.allNew.repoData,
@@ -141,7 +136,6 @@ describe('ZipHandler - Edge Cases', () => {
         TEST_PROJECTS.default.commitMessage
       );
 
-      // Should process exactly one batch
       const batchStatuses = env.statusCallback
         .getHistory()
         .filter((s) => s.message?.includes('Processing batch'));
@@ -160,7 +154,6 @@ describe('ZipHandler - Edge Cases', () => {
         changes.set(`file${i}.js`, { status: 'added' as const, content: `content ${i}` });
       }
 
-      // Configure comparison service to return all files as new
       env.comparisonService.setComparisonResult({
         changes,
         repoData: COMPARISON_RESULTS.allNew.repoData,
@@ -174,7 +167,6 @@ describe('ZipHandler - Edge Cases', () => {
         TEST_PROJECTS.default.commitMessage
       );
 
-      // Should process two batches
       const batchStatuses = env.statusCallback
         .getHistory()
         .filter((s) => s.message?.includes('Processing batch'));
@@ -187,7 +179,6 @@ describe('ZipHandler - Edge Cases', () => {
     it('should handle file at exactly 50MB limit', async () => {
       setupTestProject(env, TEST_PROJECTS.default);
 
-      // Create blob exactly at 50MB
       const exactLimit = new Blob([new Uint8Array(50 * 1024 * 1024)]);
 
       await env.zipHandler.processZipFile(
@@ -196,7 +187,6 @@ describe('ZipHandler - Edge Cases', () => {
         TEST_PROJECTS.default.commitMessage
       );
 
-      // Should succeed at exact limit
       const lastStatus = env.statusCallback.getLastStatus();
       expect(lastStatus?.status).toBe('success');
     });
@@ -210,7 +200,6 @@ describe('ZipHandler - Edge Cases', () => {
         ['has-content.txt', 'some content'],
       ]);
 
-      // Configure comparison service to return all files as new
       env.comparisonService.setComparisonResult({
         changes: new Map([
           ['empty.txt', { status: 'added' as const, content: '' }],
@@ -228,7 +217,6 @@ describe('ZipHandler - Edge Cases', () => {
         TEST_PROJECTS.default.commitMessage
       );
 
-      // Empty files should still be created
       const blobCreations = env.githubService.getRequestCount('POST', '/git/blobs');
       expect(blobCreations).toBe(3);
     });
@@ -238,13 +226,11 @@ describe('ZipHandler - Edge Cases', () => {
     it('should handle status callback errors gracefully', async () => {
       setupTestProject(env, TEST_PROJECTS.default);
 
-      // Configure comparison service
       env.comparisonService.setComparisonResult({
         changes: new Map([['test.js', { status: 'added' as const, content: 'content' }]]),
         repoData: COMPARISON_RESULTS.allNew.repoData,
       });
 
-      // Create a failing status callback
       let callCount = 0;
       const failingCallback = (status: any) => {
         callCount++;
@@ -254,41 +240,28 @@ describe('ZipHandler - Edge Cases', () => {
         env.statusCallback.getCallback()(status);
       };
 
-      // Configure comparison service for this test
       env.comparisonService.setComparisonResult({
         changes: new Map([['test.js', { status: 'added' as const, content: 'content' }]]),
         repoData: COMPARISON_RESULTS.allNew.repoData,
       });
 
-      // Create a new environment with the failing callback
       const { ZipHandler } = await import('../zipHandler');
       const handler = new ZipHandler(env.githubService as any, failingCallback);
       const blob = createTestBlob(new Map([['test.js', 'content']]));
 
-      // Should continue despite callback errors
       await handler.processZipFile(
         blob,
         TEST_PROJECTS.default.projectId,
         TEST_PROJECTS.default.commitMessage
       );
 
-      // Upload should still succeed
       const pushRecords = env.pushStats.getRecords();
       expect(pushRecords).toContainEqual(expect.objectContaining({ action: 'success' }));
     });
-
-    // Removed: Testing chrome storage errors is an implementation detail
-    // The important behavior is that operations fail gracefully, not specific error messages
-
-    // Removed: Testing rate limit reset timing is an implementation detail
-    // The behavior is already tested in the main rate limiting tests
   });
 
   describe('Special Content Handling', () => {
     it('should handle standard text files correctly', () => {
-      // This test suite has been intentionally left minimal
-      // Special content handling edge cases are covered in integration tests
-      // Focus is on realistic file upload scenarios
       expect(true).toBe(true);
     });
   });
@@ -297,12 +270,8 @@ describe('ZipHandler - Edge Cases', () => {
     it('should handle comparison returning undefined for some files', async () => {
       setupTestProject(env, TEST_PROJECTS.default);
 
-      // Mock comparison to return partial results (realistic scenario)
       env.comparisonService.setComparisonResult({
-        changes: new Map([
-          ['file1.js', { status: 'added' as const, content: 'new file' }],
-          // file2.js exists locally but comparison doesn't return it (unchanged)
-        ]),
+        changes: new Map([['file1.js', { status: 'added' as const, content: 'new file' }]]),
         repoData: COMPARISON_RESULTS.withChanges.repoData,
       });
 
@@ -319,25 +288,16 @@ describe('ZipHandler - Edge Cases', () => {
         TEST_PROJECTS.default.commitMessage
       );
 
-      // Should only upload files marked as changed
       const blobCreations = env.githubService.getRequestCount('POST', '/git/blobs');
       expect(blobCreations).toBe(1);
     });
-
-    // Removed: Testing SHA handling with no changes is contradictory
-    // If there are no changes, no tree should be created
   });
 
   describe('Error Recovery Edge Cases', () => {
-    // Removed: Testing push statistics errors is testing implementation details
-    // Statistics are a side effect, not core behavior
-
     it('should handle malformed GitHub API responses', async () => {
       setupTestProject(env, TEST_PROJECTS.default);
 
-      // Return malformed response for commit lookup
       env.githubService.setResponse('GET', '/repos/test-owner/test-repo/git/commits/abc123def456', {
-        // Missing required 'tree' property
         sha: 'abc123def456',
         parents: [],
       });
@@ -352,8 +312,5 @@ describe('ZipHandler - Edge Cases', () => {
         )
       ).rejects.toThrow();
     });
-
-    // Removed: Testing branch creation race conditions is testing implementation details
-    // This is an extremely unlikely scenario in a single-threaded extension
   });
 });

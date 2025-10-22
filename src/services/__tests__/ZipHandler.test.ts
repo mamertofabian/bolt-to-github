@@ -4,22 +4,27 @@ import {
   createTestBlob,
   createTestEnvironment,
   ERROR_SCENARIOS,
+  FIXED_TIME,
+  FIXED_UNIX_TIME,
   setupTestProject,
   TEST_PROJECTS,
   TestAssertions,
   ZIP_FILE_FIXTURES,
   type ZipHandlerTestEnvironment,
 } from './test-fixtures/ZipHandlerTestFixtures.index';
+import { vi, describe, it, expect, beforeEach, afterEach } from 'vitest';
 
 describe('ZipHandler', () => {
   let env: ZipHandlerTestEnvironment;
 
   beforeEach(async () => {
+    vi.useFakeTimers({ now: new Date(FIXED_TIME) });
     env = await createTestEnvironment();
   });
 
   afterEach(() => {
     cleanupTestEnvironment(env);
+    vi.useRealTimers();
   });
 
   describe('ZIP File Processing', () => {
@@ -33,17 +38,15 @@ describe('ZipHandler', () => {
         TEST_PROJECTS.default.commitMessage
       );
 
-      // Verify files were processed
       const blobCreationCalls = env.githubService.getRequestCount('POST', '/git/blobs');
       expect(blobCreationCalls).toBeGreaterThan(0);
 
-      // Verify success status
       TestAssertions.expectSuccessfulUpload(env, ZIP_FILE_FIXTURES.simpleProject.size);
     });
 
     it('should reject ZIP files larger than 50MB', async () => {
       setupTestProject(env, TEST_PROJECTS.default);
-      const largeBlob = new Blob([new Uint8Array(51 * 1024 * 1024)]); // 51MB
+      const largeBlob = new Blob([new Uint8Array(51 * 1024 * 1024)]);
 
       await expect(
         env.zipHandler.processZipFile(
@@ -53,7 +56,6 @@ describe('ZipHandler', () => {
         )
       ).rejects.toThrow('File too large. Maximum size is 50MB');
 
-      // Verify error status was reported
       const errorStatus = env.statusCallback.findStatus((s) => s.status === 'error');
       expect(errorStatus?.message).toContain('File too large');
     });
@@ -74,7 +76,6 @@ describe('ZipHandler', () => {
     });
 
     it('should require GitHub service to be initialized', async () => {
-      // Test by setting github service to null after creation
       const testHandler = env.zipHandler as unknown as {
         githubService: typeof env.githubService | null;
         processZipFile: (
@@ -95,7 +96,6 @@ describe('ZipHandler', () => {
       const errorStatus = env.statusCallback.findStatus((s) => s.status === 'error');
       expect(errorStatus?.message).toContain('GitHub service not initialized');
 
-      // Restore original service
       testHandler.githubService = originalService;
     });
 
@@ -122,13 +122,12 @@ describe('ZipHandler', () => {
         TEST_PROJECTS.default.commitMessage
       );
 
-      // Verify repository existence was checked
       expect(env.githubService.getRequestCount('GET', '/repos/')).toBeGreaterThan(0);
     });
 
     it('should initialize empty repositories before uploading', async () => {
       setupTestProject(env, TEST_PROJECTS.default);
-      // Mock empty repository
+
       env.githubService.setResponse(
         'GET',
         '/repos/test-owner/test-repo/git/refs/heads/main',
@@ -143,7 +142,6 @@ describe('ZipHandler', () => {
         TEST_PROJECTS.default.commitMessage
       );
 
-      // Verify initialization was called
       const history = env.githubService.getRequestHistory();
       expect(history).toContainEqual(
         expect.objectContaining({
@@ -152,12 +150,6 @@ describe('ZipHandler', () => {
         })
       );
     });
-
-    // Removed: Testing branch creation is an implementation detail
-    // The ZipHandler should work with existing branches
-
-    // Removed: Project settings creation is an implementation detail
-    // Tests should focus on the upload behavior, not storage side effects
 
     it('should fail if repository owner is not configured', async () => {
       env.chromeStorage.setData({
@@ -186,10 +178,8 @@ describe('ZipHandler', () => {
         TEST_PROJECTS.default.commitMessage
       );
 
-      // Verify no blobs were created
       expect(env.githubService.getRequestCount('POST', '/git/blobs')).toBe(0);
 
-      // Verify success message indicates no changes
       const successStatus = env.statusCallback.findStatus((s) => s.status === 'success');
       expect(successStatus?.message).toContain('No changes detected');
     });
@@ -206,7 +196,6 @@ describe('ZipHandler', () => {
         TEST_PROJECTS.default.commitMessage
       );
 
-      // Verify only changed files created blobs
       const blobCreations = env.githubService.getRequestCount('POST', '/git/blobs');
       expect(blobCreations).toBe(COMPARISON_RESULTS.withChanges.changes.size);
 
@@ -216,13 +205,11 @@ describe('ZipHandler', () => {
     it('should handle file path normalization', async () => {
       setupTestProject(env, TEST_PROJECTS.default);
 
-      // Create files with 'project/' prefix
       const filesWithPrefix = new Map([
         ['project/index.js', 'console.log("test");'],
         ['project/src/app.js', 'export default App;'],
       ]);
 
-      // Set comparison to show these as new files
       env.comparisonService.setComparisonResult({
         changes: new Map([
           ['index.js', { status: 'added' as const, content: 'console.log("test");' }],
@@ -243,12 +230,10 @@ describe('ZipHandler', () => {
         TEST_PROJECTS.default.commitMessage
       );
 
-      // Verify paths were normalized (project/ prefix removed)
       env.githubService
         .getRequestHistory()
         .filter((req) => req.method === 'POST' && req.path.includes('/git/blobs'));
 
-      // The normalized paths should be in the tree creation
       const treeCreation = env.githubService
         .getRequestHistory()
         .find((req) => req.method === 'POST' && req.path.includes('/git/trees'));
@@ -278,7 +263,6 @@ describe('ZipHandler', () => {
         TEST_PROJECTS.default.commitMessage
       );
 
-      // Verify ignored files were not uploaded
       const treeCreation = env.githubService
         .getRequestHistory()
         .find((req) => req.method === 'POST' && req.path.includes('/git/trees'));
@@ -311,7 +295,6 @@ describe('ZipHandler', () => {
 
       const history = env.githubService.getRequestHistory();
 
-      // Find indices of different operations
       const firstBlobIndex = history.findIndex(
         (req) => req.method === 'POST' && req.path.includes('/git/blobs')
       );
@@ -325,7 +308,6 @@ describe('ZipHandler', () => {
         (req) => req.method === 'PATCH' && req.path.includes('/git/refs/heads/')
       );
 
-      // Verify order
       expect(firstBlobIndex).toBeGreaterThanOrEqual(0);
       expect(treeIndex).toBeGreaterThan(firstBlobIndex);
       expect(commitIndex).toBeGreaterThan(treeIndex);
@@ -384,13 +366,12 @@ describe('ZipHandler', () => {
         TEST_PROJECTS.default.commitMessage
       );
 
-      // Verify rate limit was checked
       expect(env.githubService.getRequestCount('GET', '/rate_limit')).toBeGreaterThan(0);
     });
 
     it('should warn when rate limit is low', async () => {
       setupTestProject(env, TEST_PROJECTS.default);
-      // Set comparison to return all files as changed
+
       env.comparisonService.setComparisonResult({
         changes: new Map([
           [
@@ -425,7 +406,6 @@ describe('ZipHandler', () => {
         repoData: COMPARISON_RESULTS.withChanges.repoData,
       });
 
-      // Set rate limit to trigger warning (4 files + 10 = 14, so set to 13)
       env.githubService.setRateLimit(13);
 
       const blob = createTestBlob(ZIP_FILE_FIXTURES.simpleProject);
@@ -436,23 +416,16 @@ describe('ZipHandler', () => {
         TEST_PROJECTS.default.commitMessage
       );
 
-      // Should have warning about rate limit
       const warningStatus = env.statusCallback.findStatus((s) =>
         Boolean(s.message?.includes('Rate limit warning'))
       );
       expect(warningStatus).toBeDefined();
     });
 
-    // Removed: Rate limit waiting with fake timers is testing implementation details
-    // Real rate limiting behavior is better tested in integration tests
-
-    // Removed: Complex rate limit retry logic with fake timers
-    // This is testing implementation details, not behavior
-
     it('should fail if rate limit reset is too far away', async () => {
       setupTestProject(env, TEST_PROJECTS.default);
-      // Set rate limit to reset in 10 minutes
-      env.githubService.setRateLimit(5, Math.floor(Date.now() / 1000) + 600);
+
+      env.githubService.setRateLimit(5, FIXED_UNIX_TIME + 600);
 
       const blob = createTestBlob(ZIP_FILE_FIXTURES.simpleProject);
 
@@ -467,15 +440,6 @@ describe('ZipHandler', () => {
   });
 
   describe('Progress Tracking', () => {
-    // Removed: This test was testing implementation details of rate limiting
-    // The important behavior is that uploads complete, not the specific rate limit handling
-
-    // Removed: Testing duplicate status updates is an implementation detail
-    // Status broadcasting internals should not be tested
-
-    // Removed: Push statistics recording is an implementation detail
-    // Focus on the upload behavior, not side effects
-
     it('should record push statistics on failure', async () => {
       setupTestProject(env, TEST_PROJECTS.default);
       env.githubService.setError(ERROR_SCENARIOS.networkError);
@@ -492,7 +456,6 @@ describe('ZipHandler', () => {
 
       const records = env.pushStats.getRecords();
 
-      // Should have attempt and failure
       expect(records).toContainEqual(
         expect.objectContaining({
           action: 'attempt',
@@ -512,22 +475,15 @@ describe('ZipHandler', () => {
 
   describe('Large File Handling', () => {
     it('should handle large file uploads within limits', () => {
-      // This test suite has been intentionally left minimal
-      // Large file handling is tested through integration tests
-      // and boundary tests in edge-cases.test.ts
       expect(true).toBe(true);
     });
   });
 
   describe('Error Recovery', () => {
-    // Removed: Retry logic is an implementation detail
-    // The behavior is that uploads eventually succeed, not how many times we retry
-
     it('should handle persistent network errors', async () => {
       setupTestProject(env, TEST_PROJECTS.default);
       env.githubService.resetRateLimit();
 
-      // Always fail blob creation
       env.githubService.setResponse('POST', '/repos/test-owner/test-repo/git/blobs', () => {
         throw new Error('Network error');
       });
@@ -548,7 +504,6 @@ describe('ZipHandler', () => {
     it('should handle empty ZIP files', async () => {
       setupTestProject(env, TEST_PROJECTS.default);
 
-      // Set comparison to show no changes for empty project
       env.comparisonService.setComparisonResult(COMPARISON_RESULTS.noChanges);
 
       const blob = createTestBlob(ZIP_FILE_FIXTURES.emptyProject);
@@ -559,17 +514,10 @@ describe('ZipHandler', () => {
         TEST_PROJECTS.default.commitMessage
       );
 
-      // Should complete but with no changes
       const successStatus = env.statusCallback.findStatus((s) => s.status === 'success');
       expect(successStatus).toBeDefined();
       expect(successStatus?.message).toContain('No changes detected');
     });
-
-    // Removed: Special characters in filenames is adequately tested by normal operations
-    // This is an edge case that's not worth complex test setup
-
-    // Removed: Binary file handling is an implementation detail
-    // The important behavior is that files are uploaded, not their encoding
 
     it('should handle comparison service errors gracefully', async () => {
       setupTestProject(env, TEST_PROJECTS.default);

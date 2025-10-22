@@ -153,6 +153,7 @@ When working on GitHub issues, follow this structured approach:
 - Test (CI): `pnpm run test:ci` - Run tests in CI mode
 - Test Watch: `pnpm run test:watch` - Run tests in watch mode
 - Test UI: `pnpm run test:ui` - Run tests with Vitest UI
+- Test Failed Files: `pnpm run test:failed-files` - Extract and display only the filenames of failing test files (useful for debugging test failures)
 
 ### Git Hooks
 
@@ -294,6 +295,7 @@ src/
 - lint-staged runs on: `*.{js,ts,svelte,css,json,md}`
 - Follow semantic versioning
 - Clean git history preferred
+- Pre-commit hook configuration options documented in `.husky/pre-commit` file
 
 ## Security & Environment
 

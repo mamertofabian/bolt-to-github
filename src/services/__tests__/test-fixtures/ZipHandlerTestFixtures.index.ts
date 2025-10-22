@@ -34,6 +34,8 @@ export {
   TEST_PROJECTS,
   CHROME_STORAGE_FIXTURES,
   COMPARISON_RESULTS,
+  FIXED_TIME,
+  FIXED_UNIX_TIME,
 } from './ZipHandlerTestFixtures';
 
 export {

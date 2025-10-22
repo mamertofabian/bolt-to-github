@@ -404,7 +404,8 @@ export class LogStorageManager {
       // Reset quota flag after cleanup
       this.quotaExceeded = false;
     } catch (error) {
-      // Silent fail to prevent cascading errors during emergency cleanup
+      // Log to console for debugging, but don't re-throw to prevent cascading failures.
+      console.error('LogStorage: Emergency cleanup failed:', error);
     }
   }
 
@@ -434,7 +435,8 @@ export class LogStorageManager {
         },
       });
     } catch (error) {
-      // Silent fail
+      // Log to console for debugging, but don't re-throw.
+      console.error('LogStorage: Failed to clear all logs:', error);
     }
   }
 }

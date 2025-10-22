@@ -1,6 +1,11 @@
-- Tests are using vitest
-
 # Rules for Effective Unit Testing
+
+> **Note:** These rules apply to unit testing **classes, functions, and services**.  
+> For Svelte components, see **[component-testing-rules.md](./component-testing-rules.md)** which has adapted rules for UI testing.
+
+**Testing Framework:** Vitest
+
+---
 
 1. **Test behavior, not implementation details**
 

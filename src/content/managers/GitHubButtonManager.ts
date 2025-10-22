@@ -42,8 +42,8 @@ export class GitHubButtonManager implements IGitHubButtonManager {
 
     const settings = await SettingsService.getGitHubSettings();
     const button = this.createGitHubButton();
-    this.updateState(settings.isSettingsValid);
     this.uploadButton = button;
+    this.updateState(settings.isSettingsValid);
 
     // Look for the GitHub button container (div.flex.gap-1) within the main container
     // Find all div.flex.gap-1 and filter out the one with empty:hidden class

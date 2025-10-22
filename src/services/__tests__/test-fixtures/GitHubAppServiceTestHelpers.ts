@@ -12,7 +12,7 @@ import {
   createMockChromeStorageAPI,
   createControlledFetch,
 } from './GitHubAppServiceMocks';
-import { validGitHubAppConfig } from './GitHubAppServiceTestFixtures';
+import { validGitHubAppConfig, FIXED_TIME } from './GitHubAppServiceTestFixtures';
 import type { GitHubAppConfig } from '../../types/authentication';
 
 // ===========================
@@ -154,7 +154,7 @@ export function setupCommonMockResponses(
       fetchMock.setResponse('/functions/v1/get-github-token', {
         access_token: 'ghs_1234567890abcdefghijklmnopqrstuvwxyz12',
         github_username: 'testuser',
-        expires_at: new Date(Date.now() + 3600000).toISOString(),
+        expires_at: new Date(FIXED_TIME + 3600000).toISOString(),
         scopes: ['repo', 'user:email'],
         type: 'github_app',
         renewed: false,
@@ -163,7 +163,7 @@ export function setupCommonMockResponses(
       fetchMock.setResponse('/functions/v1/get-installation-token', {
         github_username: 'testuser',
         token: 'ghs_installation567890abcdefghijklmnopqrstuv',
-        expires_at: new Date(Date.now() + 3600000).toISOString(),
+        expires_at: new Date(FIXED_TIME + 3600000).toISOString(),
         type: 'installation',
         installation_id: 12345678,
         permissions: { contents: 'write', metadata: 'read' },
@@ -214,7 +214,7 @@ export function setupCommonMockResponses(
           return {
             access_token: 'ghs_renewed567890abcdefghijklmnopqrstuvwxyz',
             github_username: 'testuser',
-            expires_at: new Date(Date.now() + 3600000).toISOString(),
+            expires_at: new Date(FIXED_TIME + 3600000).toISOString(),
             scopes: ['repo', 'user:email'],
             type: 'github_app',
             renewed: true,
@@ -311,27 +311,14 @@ export function assertStorageUpdate(
 // ===========================
 
 /**
- * Advance time for testing token expiry
- */
-export function advanceTime(ms: number) {
-  const originalDateNow = Date.now;
-  const currentTime = Date.now();
-
-  Date.now = () => currentTime + ms;
-
-  return () => {
-    Date.now = originalDateNow;
-  };
-}
-
-/**
  * Create a token that expires at a specific time
+ * @deprecated Use vi.useFakeTimers() instead for deterministic time testing
  */
 export function createExpiringToken(expiresInMs: number) {
   return {
     ...validGitHubAppConfig,
-    accessToken: `ghs_expiring_${Date.now()}_${expiresInMs}`,
-    expiresAt: new Date(Date.now() + expiresInMs).toISOString(),
+    accessToken: `ghs_expiring_${FIXED_TIME}_${expiresInMs}`,
+    expiresAt: new Date(FIXED_TIME + expiresInMs).toISOString(),
   };
 }
 
@@ -346,7 +333,7 @@ export async function simulateTokenRenewal(
   fetchMock.setResponse('/functions/v1/get-github-token', {
     access_token: 'ghs_renewed567890abcdefghijklmnopqrstuvwxyz',
     github_username: 'testuser',
-    expires_at: new Date(Date.now() + 3600000).toISOString(),
+    expires_at: new Date(FIXED_TIME + 3600000).toISOString(),
     scopes: ['repo', 'user:email'],
     type: 'github_app',
     renewed: true,

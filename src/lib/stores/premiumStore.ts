@@ -1,4 +1,4 @@
-import { writable, derived } from 'svelte/store';
+import { writable, derived, get } from 'svelte/store';
 import { createLogger } from '../utils/logger';
 
 const logger = createLogger('premiumStore');
@@ -93,12 +93,7 @@ export const premiumStatusActions = {
    * Get current premium status value
    */
   getCurrentStatus(): Promise<PopupPremiumStatus> {
-    return new Promise((resolve) => {
-      const unsubscribe = premiumStatusStore.subscribe((status) => {
-        unsubscribe();
-        resolve(status);
-      });
-    });
+    return Promise.resolve(get(premiumStatusStore));
   },
 
   /**

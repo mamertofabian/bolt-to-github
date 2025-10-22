@@ -3,7 +3,6 @@
 import type { Mock } from 'vitest';
 import { PremiumService } from '../PremiumService';
 
-// Mock chrome API
 global.chrome = {
   storage: {
     local: {
@@ -20,7 +19,6 @@ global.chrome = {
   },
 } as any;
 
-// Mock the SupabaseAuthService import
 vi.mock('../SupabaseAuthService', () => ({
   SupabaseAuthService: {
     getInstance: vi.fn().mockReturnValue({
@@ -76,20 +74,18 @@ describe('PremiumService', () => {
       const status = premiumService.getStatus();
       expect(status.isPremium).toBe(true);
       expect(status.isAuthenticated).toBe(true);
-      // Features should be enabled for premium users
+
       expect(status.features.viewFileChanges).toBe(true);
       expect(status.features.pushReminders).toBe(true);
     });
 
     test('synchronous premium check', () => {
-      // Default should be false
       expect(premiumService.isPremiumSync()).toBe(false);
     });
   });
 
   describe('Feature Access', () => {
     test('provides synchronous feature checking', () => {
-      // Default free user
       expect(premiumService.hasFeatureSync('viewFileChanges')).toBe(false);
       expect(premiumService.hasFeatureSync('pushReminders')).toBe(false);
     });
@@ -140,7 +136,6 @@ describe('PremiumService', () => {
 
   describe('Server Integration', () => {
     test('triggers premium status check', async () => {
-      // Mock chrome.runtime.sendMessage
       global.chrome.runtime = {
         sendMessage: vi.fn().mockResolvedValue({}),
       } as any;
@@ -153,12 +148,10 @@ describe('PremiumService', () => {
     });
 
     test('handles server check errors gracefully', async () => {
-      // Mock chrome.runtime.sendMessage to fail
       global.chrome.runtime = {
         sendMessage: vi.fn().mockRejectedValue(new Error('No connection')),
       } as any;
 
-      // Should not throw error
       await expect(premiumService.checkPremiumStatusFromServer()).resolves.not.toThrow();
     });
   });
@@ -167,8 +160,6 @@ describe('PremiumService', () => {
     test('opens upgrade/signup page', async () => {
       premiumService.openUpgradePage();
 
-      // The openUpgradePage method calls checkAuthenticationAndRedirect internally,
-      // which is async and creates tabs, so we need to wait for the next tick
       await new Promise((resolve) => setTimeout(resolve, 0));
 
       expect(chrome.tabs.create).toHaveBeenCalled();
@@ -183,8 +174,6 @@ describe('PremiumService', () => {
         isPremium: true,
       });
 
-      // Wait for throttled update (1000ms) and debounced save (100ms)
-      // Wait for throttled update (1000ms) and debounced save (100ms)
       await new Promise((resolve) => setTimeout(resolve, 1200));
 
       expect(mockSet).toHaveBeenCalled();
@@ -194,7 +183,6 @@ describe('PremiumService', () => {
       const mockSet = chrome.storage.local.set as Mock;
       mockSet.mockRejectedValue(new Error('Storage quota exceeded'));
 
-      // Should not throw error
       await expect(
         premiumService.updatePremiumStatus({
           isPremium: true,

@@ -57,7 +57,7 @@ export class WindowManager {
         try {
           await chrome.windows.remove(this.popupWindowId);
           logger.info('🗑️ Closed existing popup window');
-        } catch (error) {
+        } catch {
           logger.warn('⚠️ Could not close existing window (may already be closed)');
         }
         this.popupWindowId = null;
@@ -114,7 +114,7 @@ export class WindowManager {
     try {
       await chrome.windows.get(this.popupWindowId);
       return true;
-    } catch (error) {
+    } catch {
       // Window doesn't exist anymore
       this.popupWindowId = null;
       return false;

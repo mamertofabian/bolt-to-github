@@ -1,20 +1,17 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { DownloadService } from '../DownloadService';
 
-// Type for accessing private methods in tests
 interface DownloadServiceWithPrivateMethods {
   findAndClickDownloadButton: () => Promise<void>;
   findAndClickExportButton: () => Promise<void>;
 }
 
-// Mock PointerEvent for test environment
 global.PointerEvent = class PointerEvent extends Event {
   constructor(type: string, eventInitDict?: PointerEventInit) {
     super(type, eventInitDict);
   }
 } as unknown as typeof PointerEvent;
 
-// Mock dependencies
 vi.mock('../../lib/utils/logger', () => ({
   createLogger: () => ({
     info: vi.fn(),
@@ -50,27 +47,21 @@ describe('DownloadService', () => {
   let downloadService: DownloadService;
 
   beforeEach(() => {
-    // Reset DOM
     document.body.innerHTML = '';
 
-    // Create fresh instance
     downloadService = new DownloadService();
 
-    // Mock addEventListener
-    vi.spyOn(document, 'addEventListener').mockImplementation(() => {
-      // Mock implementation
-    });
+    vi.spyOn(document, 'addEventListener').mockImplementation(() => {});
   });
 
   afterEach(() => {
     vi.clearAllMocks();
-    // Clear any pending timeouts
+
     document.body.innerHTML = '';
   });
 
   describe('findAndClickDownloadButton', () => {
     it('should find download button with file-archive icon', async () => {
-      // Create dropdown with download menuitem
       const dropdown = document.createElement('div');
       dropdown.setAttribute('role', 'menu');
 
@@ -96,7 +87,6 @@ describe('DownloadService', () => {
     });
 
     it('should find download button by text content as fallback', async () => {
-      // Create dropdown with download menuitem that has no icon
       const dropdown = document.createElement('div');
       dropdown.setAttribute('role', 'menu');
 
@@ -118,7 +108,6 @@ describe('DownloadService', () => {
     });
 
     it('should find download button in button element as fallback', async () => {
-      // Create dropdown with download button
       const dropdown = document.createElement('div');
       dropdown.setAttribute('role', 'menu');
 
@@ -143,7 +132,6 @@ describe('DownloadService', () => {
     });
 
     it('should throw error when no download button is found', async () => {
-      // Create dropdown without download button
       const dropdown = document.createElement('div');
       dropdown.setAttribute('role', 'menu');
       dropdown.innerHTML = '<div role="menuitem">Other Item</div>';
@@ -161,7 +149,6 @@ describe('DownloadService', () => {
 
   describe('findAndClickExportButton', () => {
     it('should find project status dropdown button', async () => {
-      // Create project status button
       const projectStatusButton = document.createElement('button');
       projectStatusButton.setAttribute('aria-haspopup', 'menu');
       projectStatusButton.textContent = 'Memory Palace Trainer App';
@@ -174,7 +161,6 @@ describe('DownloadService', () => {
       container.appendChild(innerContainer);
       document.body.appendChild(container);
 
-      // Create export menu item
       const exportMenuItem = document.createElement('div');
       exportMenuItem.setAttribute('role', 'menuitem');
       exportMenuItem.textContent = 'Export';

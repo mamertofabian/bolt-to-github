@@ -8,7 +8,6 @@ import {
   WindowModeStateSync,
 } from '../windowMode';
 
-// Mock window.location
 const mockLocation = {
   search: '',
 };
@@ -18,7 +17,6 @@ Object.defineProperty(window, 'location', {
   writable: true,
 });
 
-// Mock Chrome APIs
 const mockChrome = {
   runtime: {
     sendMessage: vi.fn(),
@@ -136,7 +134,6 @@ describe('windowMode utilities', () => {
         const value = { test: 'data' };
         mockChrome.storage.local.set.mockRejectedValue(new Error('Storage error'));
 
-        // Should not throw
         await expect(stateSync.saveSharedState(key, value)).resolves.toBeUndefined();
       });
     });
@@ -199,7 +196,6 @@ describe('windowMode utilities', () => {
         const key = 'testKey';
         mockChrome.storage.local.remove.mockRejectedValue(new Error('Storage error'));
 
-        // Should not throw
         await expect(stateSync.clearSharedState(key)).resolves.toBeUndefined();
       });
     });

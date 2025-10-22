@@ -2,9 +2,17 @@
   import { Badge } from '$lib/components/ui/badge';
   import { Button } from '$lib/components/ui/button';
   import { Input } from '$lib/components/ui/input';
-  import { clearLogs, exportLogsForBugReport, getLogStorage } from '$lib/utils/logger';
+  import { clearLogs, getLogStorage } from '$lib/utils/logger';
   import type { LogEntry } from '$lib/utils/logStorage';
   import { clearLogsEmergency } from '$lib/utils/logStorage';
+  import {
+    filterLogs,
+    calculateLogStats,
+    formatLogsForTextExport,
+    createLogExportData,
+    generateLogFilename,
+    isAtScrollBottom,
+  } from '$lib/utils/log-filtering';
   import { X } from 'lucide-svelte';
   import { onDestroy, onMount } from 'svelte';
 
@@ -52,32 +60,11 @@
   }
 
   function applyFilters() {
-    filteredLogs = logs.filter((log) => {
-      // Level filter
-      if (selectedLevel !== 'all' && log.level !== selectedLevel) {
-        return false;
-      }
-
-      // Context filter
-      if (selectedContext !== 'all' && log.context !== selectedContext) {
-        return false;
-      }
-
-      // Search filter
-      if (debouncedSearchTerm) {
-        const searchLower = debouncedSearchTerm.toLowerCase();
-        return (
-          log.message.toLowerCase().includes(searchLower) ||
-          log.module.toLowerCase().includes(searchLower) ||
-          (log.data && JSON.stringify(log.data).toLowerCase().includes(searchLower))
-        );
-      }
-
-      return true;
+    filteredLogs = filterLogs(logs, {
+      level: selectedLevel,
+      context: selectedContext,
+      searchTerm: debouncedSearchTerm,
     });
-
-    // Sort by timestamp ascending (oldest first, newest at bottom)
-    filteredLogs.sort((a, b) => a.timestamp.localeCompare(b.timestamp));
   }
 
   async function handleClearLogs() {
@@ -102,13 +89,13 @@
   async function handleExport() {
     isExporting = true;
     try {
-      const exportData = await exportLogsForBugReport();
-
-      // Create a blob with the export data
-      const fullExport = {
-        metadata: exportData.metadata,
-        logs: exportData.logs,
-      };
+      const logStorage = getLogStorage();
+      const allLogs = await logStorage.getAllLogs();
+      const fullExport = createLogExportData(allLogs, {
+        timestamp: new Date().toISOString(),
+        version: '1.0.0',
+      });
+      const filename = generateLogFilename('bolt-to-github-logs', 'json');
 
       const blob = new Blob([JSON.stringify(fullExport, null, 2)], {
         type: 'application/json',
@@ -118,7 +105,7 @@
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
-      a.download = `bolt-to-github-logs-${new Date().toISOString().split('T')[0]}.json`;
+      a.download = filename;
       document.body.appendChild(a);
       a.click();
       document.body.removeChild(a);
@@ -129,18 +116,14 @@
   }
 
   function handleDownloadText() {
-    const textContent = filteredLogs
-      .map((log) => {
-        const dataStr = log.data ? ` | Data: ${JSON.stringify(log.data)}` : '';
-        return `[${log.timestamp}] [${log.level.toUpperCase()}] [${log.context}] [${log.module}] ${log.message}${dataStr}`;
-      })
-      .join('\n');
+    const textContent = formatLogsForTextExport(filteredLogs);
+    const filename = generateLogFilename('bolt-to-github-logs', 'txt');
 
     const blob = new Blob([textContent], { type: 'text/plain' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = `bolt-to-github-logs-${new Date().toISOString().split('T')[0]}.txt`;
+    a.download = filename;
     document.body.appendChild(a);
     a.click();
     document.body.removeChild(a);
@@ -195,8 +178,12 @@
     if (!logsContainer) return;
 
     // Check if user is at the bottom (with 50px tolerance)
-    const isAtBottom =
-      logsContainer.scrollHeight - logsContainer.scrollTop - logsContainer.clientHeight < 50;
+    const isAtBottom = isAtScrollBottom(
+      logsContainer.scrollTop,
+      logsContainer.scrollHeight,
+      logsContainer.clientHeight,
+      50
+    );
 
     // If user scrolled up manually, disable auto-scroll temporarily
     if (!isAtBottom) {
@@ -329,7 +316,10 @@
     </div>
 
     <div class="stats text-sm text-slate-400">
-      Showing {filteredLogs.length} of {logs.length} logs
+      Showing {calculateLogStats(logs, filteredLogs).filtered} of {calculateLogStats(
+        logs,
+        filteredLogs
+      ).total} logs
     </div>
   </div>
 

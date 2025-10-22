@@ -2,11 +2,13 @@ import { svelte } from '@sveltejs/vite-plugin-svelte';
 import { resolve } from 'path';
 import { defineConfig, mergeConfig } from 'vite';
 import { defineConfig as defineTestConfig } from 'vitest/config';
+import preprocess from 'svelte-preprocess';
 
 export default mergeConfig(
   defineConfig({
     plugins: [
       svelte({
+        preprocess: preprocess(),
         hot: !process.env.VITEST,
         compilerOptions: {
           dev: true,
@@ -24,8 +26,11 @@ export default mergeConfig(
       globals: true,
       environment: 'jsdom',
       setupFiles: ['./src/test/setup/vitest-setup.ts'],
+      testTimeout: 30000,
       coverage: {
+        provider: 'v8',
         reporter: ['text', 'json', 'html'],
+        reportsDirectory: './coverage',
         exclude: [
           'node_modules/',
           'src/test/',

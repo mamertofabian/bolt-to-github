@@ -6,6 +6,25 @@ export interface WhatsNewVersion {
 }
 
 export const whatsNewContent: Record<string, WhatsNewVersion> = {
+  '1.3.13': {
+    date: '2025-10-22',
+    highlights: [
+      'Fixed notification spam when Bolt.new tabs are in background',
+      'Smart rate limiting - notifications limited to once every 5 minutes',
+      'Background tab detection for better user experience',
+      'Persistent reminder settings that survive browser restarts',
+      'Scheduled reminders now disabled by default (opt-in)',
+      'Better timer management for Chrome background tab throttling',
+      'State persistence to browser storage',
+      '24-hour inactivity reset for relevant notifications',
+      'Improved pending notification queue management',
+      'Eliminated notification spam in background tabs',
+      'Fixed notification buildup when tabs become visible again',
+      'Improved handling of Chrome timer throttling',
+    ],
+    details: `No more notification spam! This update eliminates the annoying notification buildup that occurred when Bolt.new tabs were running in the background. Chrome throttles timers in background tabs, causing queued notifications to fire rapidly when tabs become visible again. The extension now includes smart rate limiting, background tab detection, and persistent settings to provide a much cleaner user experience.`,
+    type: 'patch',
+  },
   '1.3.12': {
     date: '2025-10-01',
     highlights: [
