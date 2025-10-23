@@ -22,6 +22,7 @@ vi.unmock('bits-ui');
 
 const mockState = {
   listRepos: vi.fn(),
+  listBranches: vi.fn(),
 };
 
 vi.mock('../../../services/UnifiedGitHubService', () => {
@@ -30,6 +31,9 @@ vi.mock('../../../services/UnifiedGitHubService', () => {
       constructor(_config?: unknown) {}
       async listRepos() {
         return mockState.listRepos();
+      }
+      async listBranches(owner: string, repo: string) {
+        return mockState.listBranches(owner, repo);
       }
     },
   };
@@ -534,9 +538,7 @@ describe('RepoSettings.svelte - Component Tests', () => {
     it('should show branch creation info message', () => {
       render(RepoSettings, { props: defaultProps });
 
-      expect(
-        screen.getByText(/If the branch doesn't exist, it will be created automatically/i)
-      ).toBeInTheDocument();
+      expect(screen.getByText(/new branch will be created/i)).toBeInTheDocument();
     });
   });
 
@@ -707,6 +709,360 @@ describe('RepoSettings.svelte - Component Tests', () => {
 
       const titleInput = screen.getByLabelText('Project Title');
       expect(titleInput).toHaveValue('my-repo');
+    });
+  });
+
+  describe('Branch Dropdown', () => {
+    beforeEach(() => {
+      mockState.listRepos.mockResolvedValue([
+        {
+          name: 'test-repo',
+          description: 'Test repository',
+          html_url: 'https://github.com/user/test-repo',
+          private: false,
+          created_at: '2024-01-01',
+          updated_at: '2024-01-02',
+          language: 'TypeScript',
+        },
+      ]);
+
+      mockState.listBranches.mockResolvedValue([
+        {
+          name: 'main',
+          commit: {
+            sha: 'abc123',
+            url: 'https://api.github.com/repos/user/test-repo/commits/abc123',
+          },
+          protected: false,
+        },
+        {
+          name: 'develop',
+          commit: {
+            sha: 'def456',
+            url: 'https://api.github.com/repos/user/test-repo/commits/def456',
+          },
+          protected: false,
+        },
+        {
+          name: 'feature/auth',
+          commit: {
+            sha: 'ghi789',
+            url: 'https://api.github.com/repos/user/test-repo/commits/ghi789',
+          },
+          protected: false,
+        },
+      ]);
+    });
+
+    it('should show branch dropdown when branch input is focused', async () => {
+      const user = userEvent.setup();
+      const props = { ...defaultProps, repoName: 'test-repo', branch: 'main' };
+      render(RepoSettings, { props });
+
+      // Wait for repositories to load
+      await waitFor(() => {
+        expect(mockState.listRepos).toHaveBeenCalled();
+      });
+
+      const branchInput = screen.getByLabelText(/Branch/i);
+      await user.click(branchInput);
+
+      await waitFor(() => {
+        const dropdown = screen.queryByText('main');
+        expect(dropdown).toBeInTheDocument();
+      });
+    });
+
+    it('should show "+ Create new branch" option when input does not match existing branches', async () => {
+      const user = userEvent.setup();
+      const props = { ...defaultProps, repoName: 'test-repo', branch: '' };
+      render(RepoSettings, { props });
+
+      await waitFor(() => {
+        expect(mockState.listRepos).toHaveBeenCalled();
+      });
+
+      const branchInput = screen.getByLabelText(/Branch/i);
+      await user.click(branchInput);
+      await user.type(branchInput, 'new-feature');
+
+      await waitFor(() => {
+        expect(screen.getByText(/Create new branch "new-feature"/i)).toBeInTheDocument();
+      });
+    });
+
+    it('should hide "+ Create new branch" when branch exists', async () => {
+      const user = userEvent.setup();
+      const props = { ...defaultProps, repoName: 'test-repo', branch: 'main' };
+      render(RepoSettings, { props });
+
+      await waitFor(() => {
+        expect(mockState.listRepos).toHaveBeenCalled();
+      });
+
+      const branchInput = screen.getByLabelText(/Branch/i);
+      await user.click(branchInput);
+
+      await waitFor(() => {
+        const createOption = screen.queryByText(/Create new branch/i);
+        expect(createOption).not.toBeInTheDocument();
+      });
+    });
+
+    it('should filter branches based on input text', async () => {
+      const user = userEvent.setup();
+      const props = { ...defaultProps, repoName: 'test-repo', branch: '' };
+      render(RepoSettings, { props });
+
+      await waitFor(() => {
+        expect(mockState.listRepos).toHaveBeenCalled();
+      });
+
+      const branchInput = screen.getByLabelText(/Branch/i);
+      await user.click(branchInput);
+      await user.type(branchInput, 'feat');
+
+      await waitFor(() => {
+        const filteredBranches = screen.queryAllByText(/feature/i);
+        expect(filteredBranches.length).toBeGreaterThan(0);
+      });
+    });
+
+    it('should select branch when clicked from dropdown', async () => {
+      const user = userEvent.setup();
+      const props = { ...defaultProps, repoName: 'test-repo', branch: '' };
+      render(RepoSettings, { props });
+
+      await waitFor(() => {
+        expect(mockState.listRepos).toHaveBeenCalled();
+      });
+
+      const branchInput = screen.getByLabelText(/Branch/i);
+      await user.click(branchInput);
+
+      await waitFor(() => {
+        const mainBranch = screen.getByText('main');
+        expect(mainBranch).toBeInTheDocument();
+      });
+
+      const mainBranchButton = screen.getByText('main').closest('button');
+      if (mainBranchButton) {
+        await user.click(mainBranchButton);
+      }
+
+      await waitFor(() => {
+        expect(branchInput).toHaveValue('main');
+      });
+    });
+
+    it('should close dropdown after selecting branch', async () => {
+      const user = userEvent.setup();
+      const props = { ...defaultProps, repoName: 'test-repo', branch: '' };
+      render(RepoSettings, { props });
+
+      await waitFor(() => {
+        expect(mockState.listRepos).toHaveBeenCalled();
+      });
+
+      const branchInput = screen.getByLabelText(/Branch/i);
+      await user.click(branchInput);
+
+      await waitFor(() => {
+        expect(screen.getByText('main')).toBeInTheDocument();
+      });
+
+      const mainBranchButton = screen.getByText('main').closest('button');
+      if (mainBranchButton) {
+        await user.click(mainBranchButton);
+      }
+
+      await waitFor(() => {
+        const dropdown = screen.queryByRole('button', { name: /main/i });
+        expect(dropdown).not.toBeInTheDocument();
+      });
+    });
+
+    it('should handle keyboard navigation in branch dropdown', async () => {
+      const user = userEvent.setup();
+      const props = { ...defaultProps, repoName: 'test-repo', branch: '' };
+      render(RepoSettings, { props });
+
+      await waitFor(() => {
+        expect(mockState.listRepos).toHaveBeenCalled();
+      });
+
+      const branchInput = screen.getByLabelText(/Branch/i);
+      await user.click(branchInput);
+
+      await waitFor(() => {
+        expect(screen.getByText('main')).toBeInTheDocument();
+      });
+
+      await user.keyboard('{ArrowDown}');
+      await user.keyboard('{Enter}');
+
+      await waitFor(() => {
+        expect(branchInput).toHaveValue('main');
+      });
+    });
+
+    it('should show appropriate status message for existing branch', async () => {
+      const props = { ...defaultProps, repoName: 'test-repo', branch: 'main' };
+      render(RepoSettings, { props });
+
+      await waitFor(() => {
+        expect(mockState.listRepos).toHaveBeenCalled();
+      });
+
+      await waitFor(() => {
+        expect(screen.getByText(/Using existing branch/i)).toBeInTheDocument();
+      });
+    });
+
+    it('should show appropriate status message for new branch', async () => {
+      const props = { ...defaultProps, repoName: 'test-repo', branch: 'new-feature' };
+      render(RepoSettings, { props });
+
+      await waitFor(() => {
+        expect(mockState.listRepos).toHaveBeenCalled();
+      });
+
+      await waitFor(() => {
+        expect(screen.getByText(/new branch will be created/i)).toBeInTheDocument();
+      });
+    });
+  });
+
+  describe('Branch Loading Performance (Debouncing)', () => {
+    beforeEach(() => {
+      mockState.listRepos.mockResolvedValue([
+        {
+          name: 'test-repo',
+          description: 'Test repository',
+          html_url: 'https://github.com/user/test-repo',
+          private: false,
+          created_at: '2024-01-01',
+          updated_at: '2024-01-02',
+          language: 'TypeScript',
+        },
+      ]);
+
+      mockState.listBranches.mockResolvedValue([
+        {
+          name: 'main',
+          commit: {
+            sha: 'abc123',
+            url: 'https://api.github.com/repos/user/test-repo/commits/abc123',
+          },
+          protected: false,
+        },
+      ]);
+    });
+
+    it('should not call listBranches immediately while typing repository name', async () => {
+      const user = userEvent.setup();
+      render(RepoSettings, { props: defaultProps });
+
+      // Wait for initial repo load
+      await waitFor(() => {
+        expect(mockState.listRepos).toHaveBeenCalled();
+      });
+
+      mockState.listBranches.mockClear();
+
+      const repoInput = screen.getByLabelText('Repository Name');
+
+      // Type first characters quickly
+      await user.type(repoInput, 'tes');
+
+      // Check immediately - should not be called yet due to debounce
+      expect(mockState.listBranches).not.toHaveBeenCalled();
+    });
+
+    it('should call listBranches after debounce delay when typing stops', async () => {
+      const user = userEvent.setup();
+      render(RepoSettings, { props: defaultProps });
+
+      // Wait for initial repos to load (test-repo is in the mock)
+      await waitFor(() => {
+        expect(mockState.listRepos).toHaveBeenCalled();
+      });
+
+      mockState.listBranches.mockClear();
+
+      const repoInput = screen.getByLabelText('Repository Name');
+
+      // Type repository name (test-repo exists in mock, so repoExists becomes true on last char)
+      await user.type(repoInput, 'test-repo');
+
+      // The debounce should fire after typing the last character
+      // Wait for debounce delay (300ms) + some buffer for reactivity
+      await new Promise((resolve) => setTimeout(resolve, 500));
+
+      // Should be called after debounce completes
+      expect(mockState.listBranches).toHaveBeenCalled();
+      expect(mockState.listBranches).toHaveBeenCalledWith('testuser', 'test-repo');
+    });
+
+    it('should load branches immediately when selecting from dropdown', async () => {
+      const user = userEvent.setup();
+      render(RepoSettings, { props: defaultProps });
+
+      // Wait for repos to load (test-repo is in the mock from beforeEach)
+      await waitFor(() => {
+        expect(mockState.listRepos).toHaveBeenCalled();
+      });
+
+      mockState.listBranches.mockClear();
+
+      const repoInput = screen.getByLabelText('Repository Name');
+      await user.click(repoInput);
+
+      await waitFor(() => {
+        expect(screen.getByText('test-repo')).toBeInTheDocument();
+      });
+
+      const repoButton = screen.getByText('test-repo').closest('button');
+      if (repoButton) {
+        await user.click(repoButton);
+      }
+
+      // Should load branches quickly when selecting from dropdown (bypasses debounce)
+      await waitFor(() => {
+        expect(mockState.listBranches).toHaveBeenCalledTimes(1);
+        expect(mockState.listBranches).toHaveBeenCalledWith('testuser', 'test-repo');
+      });
+    });
+
+    it('should not load branches multiple times for the same repository', async () => {
+      const user = userEvent.setup();
+      const props = { ...defaultProps, repoName: 'test-repo' };
+      render(RepoSettings, { props });
+
+      await waitFor(() => {
+        expect(mockState.listRepos).toHaveBeenCalled();
+      });
+
+      // Wait for initial branch load
+      await new Promise((resolve) => setTimeout(resolve, 400));
+
+      await waitFor(() => {
+        expect(mockState.listBranches).toHaveBeenCalledTimes(1);
+      });
+
+      const initialCallCount = mockState.listBranches.mock.calls.length;
+
+      const repoInput = screen.getByLabelText('Repository Name');
+
+      // Clear and type the same repo name again
+      await user.clear(repoInput);
+      await user.type(repoInput, 'test-repo');
+
+      // Wait for debounce
+      await new Promise((resolve) => setTimeout(resolve, 400));
+
+      // Should not load branches again for same repo
+      expect(mockState.listBranches).toHaveBeenCalledTimes(initialCallCount);
     });
   });
 });

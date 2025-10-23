@@ -41,7 +41,8 @@
       "Bash(./node_modules/.bin/eslint:*)",
       "Bash(pnpm install:*)",
       "Bash(pnpm exec vitest:*)",
-      "Bash(pkill:*)"
+      "Bash(pkill:*)",
+      "Bash(pnpm test:ci:*)"
     ],
     "deny": []
   }
