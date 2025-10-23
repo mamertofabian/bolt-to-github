@@ -31,7 +31,42 @@ A Chrome extension that automatically captures ZIP file downloads from bolt.new,
   <img src="https://img.shields.io/badge/Install%20from-Chrome%20Web%20Store-blue?style=for-the-badge&logo=google-chrome&logoColor=white" alt="Install from Chrome Web Store" height="40">
 </a>
 
-### Latest Version: v1.3.12 (Development)
+### Latest Version: v1.3.14 (Development)
+
+#### 📝 Version 1.3.14 – [Title To Be Added]
+
+**What's new:**
+
+- [Feature 1 - To be added]
+- [Feature 2 - To be added]
+- [Feature 3 - To be added]
+
+**Key Benefits:**
+
+- [Benefit 1 - To be added]
+- [Benefit 2 - To be added]
+- [Benefit 3 - To be added]
+
+### Previous Version: v1.3.13
+
+#### 📝 Version 1.3.13 – Notification Spam Fix
+
+**What's new:**
+
+- **Fixed Notification Spam** – No more annoying notification spam when Bolt.new tabs are in the background
+- **Smart Rate Limiting** – Notifications limited to once every 5 minutes to prevent overwhelming users
+- **Background Tab Detection** – Extension detects when tabs are backgrounded and adjusts behavior accordingly
+- **Persistent Settings** – Your notification preferences are saved and survive browser restarts
+- **Opt-in Reminders** – Scheduled reminders disabled by default for a cleaner experience
+
+**Key Benefits:**
+
+- **No More Notification Spam** – Clean, distraction-free experience when working with background tabs
+- **Smart Rate Limiting** – Prevents overwhelming users with too many notifications
+- **Persistent Preferences** – Your settings are remembered across browser sessions
+- **Better Default Experience** – Reminders are opt-in, reducing notification fatigue
+
+### Previous Version: v1.3.12
 
 #### 📝 Version 1.3.12 – Enhanced Auth Recovery
 

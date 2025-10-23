@@ -110,10 +110,26 @@ describe('PushReminderService', () => {
         snoozeInterval: 10,
         minimumChanges: 3,
         maxRemindersPerSession: 5,
-        scheduledEnabled: true,
+        scheduledEnabled: false,
         scheduledInterval: 15,
         maxScheduledPerSession: 10,
       });
+    });
+
+    it('should default scheduledEnabled to false for new users', () => {
+      const settings = service.getSettings();
+
+      expect(settings.scheduledEnabled).toBe(false);
+    });
+
+    it('should allow scheduled reminders to be enabled via settings', async () => {
+      const settings = service.getSettings();
+      expect(settings.scheduledEnabled).toBe(false);
+
+      await service.updateSettings({ scheduledEnabled: true });
+
+      const updatedSettings = service.getSettings();
+      expect(updatedSettings.scheduledEnabled).toBe(true);
     });
 
     it('should initialize with default state', () => {
@@ -129,8 +145,10 @@ describe('PushReminderService', () => {
       expect(state.sessionStartTime).toBeGreaterThan(0);
     });
 
-    it('should start activity monitor on initialization', () => {
-      expect(mockActivityMonitor.start).toHaveBeenCalledOnce();
+    it('should start activity monitor on initialization', async () => {
+      await vi.waitFor(() => {
+        expect(mockActivityMonitor.start).toHaveBeenCalledOnce();
+      });
     });
 
     it('should set up check interval on initialization', () => {
@@ -266,6 +284,99 @@ describe('PushReminderService', () => {
       expect(state).toHaveProperty('sessionStartTime');
     });
 
+    describe('Enhanced Snooze Duration', () => {
+      it('should snooze for 30 minutes', async () => {
+        const beforeTime = Date.now();
+        await service.snoozeForDuration(30);
+
+        const state = service.getState();
+        expect(state.lastSnoozeTime).toBeGreaterThanOrEqual(beforeTime);
+        expect(state.snoozeEndTime).toBe(beforeTime + 30 * 60 * 1000);
+      });
+
+      it('should snooze for 60 minutes (1 hour)', async () => {
+        const beforeTime = Date.now();
+        await service.snoozeForDuration(60);
+
+        const state = service.getState();
+        expect(state.snoozeEndTime).toBe(beforeTime + 60 * 60 * 1000);
+      });
+
+      it('should snooze for 180 minutes (3 hours)', async () => {
+        const beforeTime = Date.now();
+        await service.snoozeForDuration(180);
+
+        const state = service.getState();
+        expect(state.snoozeEndTime).toBe(beforeTime + 180 * 60 * 1000);
+      });
+
+      it('should calculate "until tomorrow" correctly (next day at midnight)', async () => {
+        // Set time to 10 PM
+        const now = new Date('2024-01-01T22:00:00.000Z');
+        vi.setSystemTime(now);
+
+        await service.snoozeForDuration('untilTomorrow');
+
+        const state = service.getState();
+        const expectedTomorrow = new Date('2024-01-02T00:00:00.000Z').getTime();
+
+        expect(state.snoozeEndTime).toBe(expectedTomorrow);
+      });
+
+      it('should handle "until tomorrow" across midnight correctly', async () => {
+        // Set time to 11:59 PM
+        const now = new Date('2024-01-01T23:59:00.000Z');
+        vi.setSystemTime(now);
+
+        await service.snoozeForDuration('untilTomorrow');
+
+        const state = service.getState();
+        const expectedTomorrow = new Date('2024-01-02T00:00:00.000Z').getTime();
+
+        expect(state.snoozeEndTime).toBe(expectedTomorrow);
+      });
+
+      it('should handle "until tomorrow" early in the day', async () => {
+        // Set time to 8 AM
+        const now = new Date('2024-01-01T08:00:00.000Z');
+        vi.setSystemTime(now);
+
+        await service.snoozeForDuration('untilTomorrow');
+
+        const state = service.getState();
+        const expectedTomorrow = new Date('2024-01-02T00:00:00.000Z').getTime();
+
+        expect(state.snoozeEndTime).toBe(expectedTomorrow);
+      });
+
+      it('should persist snooze end time to storage', async () => {
+        await service.snoozeForDuration(30);
+        await vi.advanceTimersByTimeAsync(1100); // Wait for debounced save
+
+        expect(mockChrome.storage.local.set).toHaveBeenCalledWith({
+          pushReminderState: expect.objectContaining({
+            snoozeEndTime: expect.any(Number),
+          }),
+        });
+      });
+
+      it('should check snooze status using snooze end time', async () => {
+        await service.snoozeForDuration(10); // 10 minutes
+
+        // Advance time by 5 minutes (still in snooze)
+        vi.advanceTimersByTime(5 * 60 * 1000);
+
+        await service.forceReminderCheck();
+        expect(mockNotificationManager.showNotification).not.toHaveBeenCalled();
+
+        // Advance time by another 6 minutes (past snooze period)
+        vi.advanceTimersByTime(6 * 60 * 1000);
+
+        const debugInfo = service.getDebugInfo() as { isInSnooze: boolean };
+        expect(debugInfo.isInSnooze).toBe(false);
+      });
+    });
+
     it('should return a copy of state', () => {
       const state1 = service.getState();
       const state2 = service.getState();
@@ -346,6 +457,7 @@ describe('PushReminderService', () => {
       await service.updateSettings({ maxRemindersPerSession: 2 });
 
       await service.forceShowReminder();
+      vi.advanceTimersByTime(5 * 60 * 1000 + 1000); // Advance past global rate limit
       await service.forceShowReminder();
       await service.forceReminderCheck();
 
@@ -607,7 +719,8 @@ describe('PushReminderService', () => {
       }));
     });
 
-    it('should set up scheduled reminder interval on initialization', () => {
+    it('should set up scheduled reminder interval on initialization when enabled', async () => {
+      await service.updateSettings({ scheduledEnabled: true });
       const settings = service.getSettings();
 
       expect(settings.scheduledEnabled).toBe(true);
@@ -633,6 +746,7 @@ describe('PushReminderService', () => {
       await service.updateSettings({ maxScheduledPerSession: 2 });
 
       await service.forceShowScheduledReminder();
+      vi.advanceTimersByTime(5 * 60 * 1000 + 1000); // Advance past global rate limit
       await service.forceShowScheduledReminder();
       await service.forceScheduledReminderCheck();
 
@@ -827,7 +941,9 @@ describe('PushReminderService', () => {
       await service.updateSettings({ maxRemindersPerSession: 3 });
 
       await service.forceShowReminder();
+      vi.advanceTimersByTime(5 * 60 * 1000 + 1000); // Advance past global rate limit
       await service.forceShowReminder();
+      vi.advanceTimersByTime(5 * 60 * 1000 + 1000); // Advance past global rate limit
       await service.forceShowReminder();
 
       const state = service.getState();
@@ -836,6 +952,7 @@ describe('PushReminderService', () => {
 
     it('should handle mixed idle and scheduled reminders', async () => {
       await service.forceShowReminder();
+      vi.advanceTimersByTime(5 * 60 * 1000 + 1000); // Advance past global rate limit
       await service.forceShowScheduledReminder();
 
       const state = service.getState();
@@ -942,6 +1059,310 @@ describe('PushReminderService', () => {
       service.setPremiumService(mockPremiumService);
 
       expect(() => service.setPremiumService(mockPremiumService)).not.toThrow();
+    });
+  });
+
+  describe('Phase 1: Tab Visibility & Notification Management', () => {
+    let phaseService: PushReminderService;
+    let storageData: Record<string, unknown> = {};
+    let listeners: Map<string, ((...args: unknown[]) => void)[]>;
+    let mockDoc: {
+      visibilityState: string;
+      addEventListener: (event: string, handler: (...args: unknown[]) => void) => void;
+      removeEventListener: (event: string, handler: (...args: unknown[]) => void) => void;
+      dispatchEvent: (event: Event) => boolean;
+    };
+
+    beforeEach(() => {
+      storageData = {};
+      listeners = new Map();
+
+      // Override chrome mock with storage support
+      const mockChromeWithStorage = {
+        storage: {
+          local: {
+            get: vi.fn((keys) => {
+              if (Array.isArray(keys)) {
+                const result: Record<string, unknown> = {};
+                keys.forEach((key) => {
+                  if (key in storageData) result[key] = storageData[key];
+                });
+                return Promise.resolve(result);
+              }
+              return Promise.resolve(storageData);
+            }),
+            set: vi.fn((items) => {
+              Object.assign(storageData, items);
+              return Promise.resolve();
+            }),
+          },
+        },
+        runtime: { sendMessage: vi.fn() },
+      } as unknown as typeof chrome;
+
+      vi.stubGlobal('chrome', mockChromeWithStorage);
+
+      // Mock document with event dispatching
+      mockDoc = {
+        visibilityState: 'visible',
+        addEventListener: vi.fn((event: string, handler: (...args: unknown[]) => void) => {
+          if (!listeners.has(event)) listeners.set(event, []);
+          listeners.get(event)!.push(handler);
+        }),
+        removeEventListener: vi.fn((event: string, handler: (...args: unknown[]) => void) => {
+          const eventListeners = listeners.get(event);
+          if (eventListeners) {
+            const index = eventListeners.indexOf(handler);
+            if (index > -1) eventListeners.splice(index, 1);
+          }
+        }),
+        dispatchEvent: vi.fn((event: Event) => {
+          const eventListeners = listeners.get(event.type);
+          if (eventListeners) eventListeners.forEach((handler) => handler(event));
+          return true;
+        }),
+      };
+
+      vi.stubGlobal('document', mockDoc);
+
+      // Create new service for phase tests
+      phaseService = new PushReminderService(mockMessageHandler, mockNotificationManager);
+    });
+
+    afterEach(() => {
+      if (phaseService) {
+        phaseService.cleanup();
+      }
+    });
+
+    describe('Tab Visibility Detection', () => {
+      it('should track visibility state and pause/resume timers', async () => {
+        // Wait for initialization to complete
+        await vi.waitFor(() => {
+          expect(mockDoc.addEventListener).toHaveBeenCalled();
+        });
+
+        mockDoc.visibilityState = 'hidden';
+        mockDoc.dispatchEvent(new Event('visibilitychange'));
+
+        const debugInfo = phaseService.getDebugInfo() as { timersActive: boolean };
+        expect(debugInfo.timersActive).toBe(false);
+
+        mockDoc.visibilityState = 'visible';
+        mockDoc.dispatchEvent(new Event('visibilitychange'));
+
+        const debugInfoAfter = phaseService.getDebugInfo() as { timersActive: boolean };
+        expect(debugInfoAfter.timersActive).toBe(true);
+      });
+
+      it('should queue notifications when tab is hidden', async () => {
+        // Wait for initialization to complete
+        await vi.waitFor(() => {
+          expect(mockDoc.addEventListener).toHaveBeenCalled();
+        });
+
+        phaseService.enableDebugMode();
+
+        vi.doMock('../../handlers/FileChangeHandler', () => ({
+          FileChangeHandler: vi.fn().mockImplementation(() => ({
+            getChangedFiles: vi.fn().mockResolvedValue(
+              new Map([
+                ['file1.ts', { status: 'added', path: 'file1.ts' }],
+                ['file2.ts', { status: 'modified', path: 'file2.ts' }],
+                ['file3.ts', { status: 'added', path: 'file3.ts' }],
+              ])
+            ),
+          })),
+        }));
+
+        mockDoc.visibilityState = 'hidden';
+        mockDoc.dispatchEvent(new Event('visibilitychange'));
+
+        await phaseService.forceShowReminder();
+
+        const debugInfo = phaseService.getDebugInfo() as { pendingNotificationQueue?: unknown[] };
+        expect(debugInfo.pendingNotificationQueue).toBeDefined();
+        expect(debugInfo.pendingNotificationQueue!.length).toBeGreaterThan(0);
+      });
+    });
+
+    describe('Notification Deduplication', () => {
+      it('should prevent duplicate notifications within cooldown period', async () => {
+        phaseService.enableDebugMode();
+
+        vi.doMock('../../handlers/FileChangeHandler', () => ({
+          FileChangeHandler: vi.fn().mockImplementation(() => ({
+            getChangedFiles: vi.fn().mockResolvedValue(
+              new Map([
+                ['file1.ts', { status: 'added', path: 'file1.ts' }],
+                ['file2.ts', { status: 'modified', path: 'file2.ts' }],
+                ['file3.ts', { status: 'added', path: 'file3.ts' }],
+              ])
+            ),
+          })),
+        }));
+
+        await phaseService.forceShowReminder();
+        const firstCallCount = vi.mocked(mockNotificationManager.showNotification).mock.calls
+          .length;
+
+        await phaseService.forceShowReminder();
+        const secondCallCount = vi.mocked(mockNotificationManager.showNotification).mock.calls
+          .length;
+
+        expect(secondCallCount).toBe(firstCallCount);
+      });
+    });
+  });
+
+  describe('Phase 2: State Persistence & Session Management', () => {
+    let phaseService: PushReminderService;
+    let storageData: Record<string, unknown> = {};
+    let mockDoc: {
+      visibilityState: string;
+      addEventListener: (event: string, handler: (...args: unknown[]) => void) => void;
+      removeEventListener: (event: string, handler: (...args: unknown[]) => void) => void;
+      dispatchEvent: (event: Event) => boolean;
+    };
+    let listeners: Map<string, ((...args: unknown[]) => void)[]>;
+
+    beforeEach(() => {
+      storageData = {};
+      listeners = new Map();
+
+      const mockChromeWithStorage = {
+        storage: {
+          local: {
+            get: vi.fn((keys) => {
+              if (Array.isArray(keys)) {
+                const result: Record<string, unknown> = {};
+                keys.forEach((key) => {
+                  if (key in storageData) result[key] = storageData[key];
+                });
+                return Promise.resolve(result);
+              }
+              return Promise.resolve(storageData);
+            }),
+            set: vi.fn((items) => {
+              Object.assign(storageData, items);
+              return Promise.resolve();
+            }),
+          },
+        },
+        runtime: { sendMessage: vi.fn() },
+      } as unknown as typeof chrome;
+
+      vi.stubGlobal('chrome', mockChromeWithStorage);
+
+      // Mock document with event dispatching
+      mockDoc = {
+        visibilityState: 'visible',
+        addEventListener: vi.fn((event: string, handler: (...args: unknown[]) => void) => {
+          if (!listeners.has(event)) listeners.set(event, []);
+          listeners.get(event)!.push(handler);
+        }),
+        removeEventListener: vi.fn((event: string, handler: (...args: unknown[]) => void) => {
+          const eventListeners = listeners.get(event);
+          if (eventListeners) {
+            const index = eventListeners.indexOf(handler);
+            if (index > -1) eventListeners.splice(index, 1);
+          }
+        }),
+        dispatchEvent: vi.fn((event: Event) => {
+          const eventListeners = listeners.get(event.type);
+          if (eventListeners) eventListeners.forEach((handler) => handler(event));
+          return true;
+        }),
+      };
+
+      vi.stubGlobal('document', mockDoc);
+
+      // Create new service for phase tests
+      phaseService = new PushReminderService(mockMessageHandler, mockNotificationManager);
+    });
+
+    afterEach(() => {
+      if (phaseService) {
+        phaseService.cleanup();
+      }
+    });
+
+    describe('State Persistence', () => {
+      it('should persist state changes to storage', async () => {
+        phaseService.enableDebugMode();
+
+        vi.doMock('../../handlers/FileChangeHandler', () => ({
+          FileChangeHandler: vi.fn().mockImplementation(() => ({
+            getChangedFiles: vi.fn().mockResolvedValue(
+              new Map([
+                ['file1.ts', { status: 'added', path: 'file1.ts' }],
+                ['file2.ts', { status: 'modified', path: 'file2.ts' }],
+                ['file3.ts', { status: 'added', path: 'file3.ts' }],
+              ])
+            ),
+          })),
+        }));
+
+        await phaseService.forceShowReminder();
+        await vi.advanceTimersByTimeAsync(1100);
+
+        expect(storageData['pushReminderState']).toBeDefined();
+      });
+    });
+
+    describe('Session Reset Logic', () => {
+      it('should provide manual reset method', async () => {
+        const initialState = phaseService.getState();
+
+        await phaseService.resetSession();
+
+        const newState = phaseService.getState();
+        expect(newState.reminderCount).toBe(0);
+        expect(newState.scheduledReminderCount).toBe(0);
+        expect(newState.sessionStartTime).toBeGreaterThanOrEqual(initialState.sessionStartTime);
+      });
+
+      it('should emit events when session resets', async () => {
+        const resetHandler = vi.fn();
+        phaseService.onSessionReset(resetHandler);
+
+        await phaseService.resetSession();
+
+        expect(resetHandler).toHaveBeenCalledTimes(1);
+        expect(resetHandler).toHaveBeenCalledWith({
+          timestamp: expect.any(Number),
+          reason: 'manual',
+        });
+      });
+    });
+
+    describe('Pending Notification Queue', () => {
+      it('should limit queue size to prevent memory issues', async () => {
+        phaseService.enableDebugMode();
+
+        vi.doMock('../../handlers/FileChangeHandler', () => ({
+          FileChangeHandler: vi.fn().mockImplementation(() => ({
+            getChangedFiles: vi.fn().mockResolvedValue(
+              new Map([
+                ['file1.ts', { status: 'added', path: 'file1.ts' }],
+                ['file2.ts', { status: 'modified', path: 'file2.ts' }],
+                ['file3.ts', { status: 'added', path: 'file3.ts' }],
+              ])
+            ),
+          })),
+        }));
+
+        mockDoc.visibilityState = 'hidden';
+        mockDoc.dispatchEvent(new Event('visibilitychange'));
+
+        for (let i = 0; i < 10; i++) {
+          await phaseService.forceShowReminder();
+        }
+
+        const debugInfo = phaseService.getDebugInfo() as { pendingNotificationQueue?: unknown[] };
+        expect(debugInfo.pendingNotificationQueue).toBeDefined();
+        expect(debugInfo.pendingNotificationQueue!.length).toBeLessThanOrEqual(5);
+      });
     });
   });
 });

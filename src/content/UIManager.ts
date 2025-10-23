@@ -618,6 +618,13 @@ export class UIManager {
   }
 
   /**
+   * Task 3.3: Snooze push reminders for a specific duration
+   */
+  public snoozeForDuration(duration: number | 'untilTomorrow'): void {
+    this.pushReminderService.snoozeForDuration(duration);
+  }
+
+  /**
    * Enable debug mode for push reminders (faster testing)
    */
   public enablePushReminderDebugMode(): void {

@@ -1,5 +1,49 @@
 # Changelog
 
+## 2025-XX-XX - Version 1.3.14
+
+### 🎉 New Features
+
+- [To be added]
+
+### 🔧 Performance & Stability
+
+- [To be added]
+
+### 🧪 Testing & Quality
+
+- [To be added]
+
+### 🐛 Bug Fixes
+
+- [To be added]
+
+### 📚 Documentation
+
+- [To be added]
+
+## 2025-01-15 - Version 1.3.13
+
+### 🔔 Notification Improvements
+
+- **Fixed Notification Spam** - Eliminated annoying notification spam when Bolt.new tabs are running in the background
+- **Smart Rate Limiting** - Notifications now limited to once every 5 minutes to prevent overwhelming users
+- **Background Tab Detection** - Extension now detects when tabs are backgrounded and adjusts notification behavior accordingly
+- **Persistent Reminder Settings** - Your notification preferences are now saved and survive browser restarts
+- **Opt-in Reminders** - Scheduled reminders are now disabled by default for a cleaner experience
+
+### 🔧 Technical Improvements
+
+- **Better Timer Management** - Improved how the extension handles timing to work better with Chrome's background tab throttling
+- **State Persistence** - Notification settings and state are now properly saved to browser storage
+- **Session Management** - Added 24-hour inactivity reset to keep notifications relevant
+- **Queue Management** - Better handling of pending notifications to prevent buildup
+
+### 🧪 Testing & Quality
+
+- **Comprehensive Test Coverage** - Added extensive unit tests for all notification features
+- **Edge Case Handling** - Improved handling of various browser states and scenarios
+
 ## 2025-10-01 - Version 1.3.12
 
 ### 🔧 Performance & Stability
