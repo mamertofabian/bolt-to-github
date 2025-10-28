@@ -650,6 +650,7 @@ export class SupabaseAuthService {
         'supabaseToken',
         'supabaseRefreshToken',
         'supabaseTokenExpiry',
+        'refreshTokenIssuedAt', // Track when refresh token was issued
       ]);
 
       if (!storedTokens.supabaseToken) {
@@ -665,6 +666,28 @@ export class SupabaseAuthService {
         logger.info('✅ Using stored access token (valid)');
         return storedTokens.supabaseToken;
       } else if (storedTokens.supabaseRefreshToken) {
+        /* Check if refresh token might be too old (Supabase refresh tokens expire after ~30 days of inactivity) */
+        const refreshTokenAge = storedTokens.refreshTokenIssuedAt
+          ? now - storedTokens.refreshTokenIssuedAt
+          : 0;
+        const REFRESH_TOKEN_MAX_AGE = 30 * 24 * 60 * 60 * 1000; // 30 days
+
+        if (refreshTokenAge > REFRESH_TOKEN_MAX_AGE) {
+          logger.warn(
+            `🕐 Refresh token is very old (${Math.round(
+              refreshTokenAge / (24 * 60 * 60 * 1000)
+            )} days). Likely expired. Clearing tokens to force re-authentication.`
+          );
+          /* Clear tokens immediately if refresh token is too old */
+          await chrome.storage.local.remove([
+            'supabaseToken',
+            'supabaseRefreshToken',
+            'supabaseTokenExpiry',
+            'refreshTokenIssuedAt',
+          ]);
+          return null;
+        }
+
         /* Token expired or expires soon, try to refresh */
         logger.info('🔄 Stored token expired/expiring, refreshing...');
         return await this.refreshStoredToken();
@@ -694,6 +717,8 @@ export class SupabaseAuthService {
       /* Only store refresh token if it exists and is not empty */
       if (tokenData.refresh_token && tokenData.refresh_token.trim() !== '') {
         storageData.supabaseRefreshToken = tokenData.refresh_token;
+        /* Track when refresh token was issued to detect expired refresh tokens */
+        storageData.refreshTokenIssuedAt = Date.now();
         logger.info('💾 Storing refresh token (length:', tokenData.refresh_token.length, ')');
       } else {
         logger.error('⚠️ No valid refresh token to store');
@@ -996,7 +1021,10 @@ export class SupabaseAuthService {
    */
   private async refreshStoredToken(): Promise<string | null> {
     try {
-      const result = await chrome.storage.local.get(['supabaseRefreshToken']);
+      const result = await chrome.storage.local.get([
+        'supabaseRefreshToken',
+        'refreshTokenIssuedAt',
+      ]);
       const refreshToken = result.supabaseRefreshToken;
 
       if (!refreshToken) {
@@ -1005,7 +1033,14 @@ export class SupabaseAuthService {
       }
 
       logger.info('🔄 Attempting to refresh stored token...');
-      return await this.performTokenRefresh(refreshToken);
+      const refreshedToken = await this.performTokenRefresh(refreshToken);
+
+      /* If refresh was successful, update the refresh token issue timestamp */
+      if (refreshedToken) {
+        await chrome.storage.local.set({ refreshTokenIssuedAt: Date.now() });
+      }
+
+      return refreshedToken;
     } catch (error) {
       logger.error('❌ Error refreshing stored token:', error);
       return null;
@@ -1048,11 +1083,24 @@ export class SupabaseAuthService {
         const errorData = await response.json().catch(() => ({}));
         logger.warn('❌ Token refresh failed:', response.status, errorData);
 
+        /* Check if refresh token itself is expired or invalid */
+        const isRefreshTokenExpired =
+          response.status === 400 && errorData.error_description?.includes('refresh');
+        const isInvalidGrant =
+          errorData.error === 'invalid_grant' || errorData.error_description?.includes('invalid');
+
+        if (isRefreshTokenExpired || isInvalidGrant) {
+          logger.error(
+            '🕐 Refresh token is expired or invalid. Both access and refresh tokens need re-authentication.'
+          );
+        }
+
         /* If refresh failed, clear stored tokens */
         await chrome.storage.local.remove([
           'supabaseToken',
           'supabaseRefreshToken',
           'supabaseTokenExpiry',
+          'refreshTokenIssuedAt',
         ]);
         return null;
       }
@@ -1205,8 +1253,19 @@ export class SupabaseAuthService {
    * Handle session invalidation by clearing tokens and showing re-auth modal
    */
   private async handleSessionInvalidation(): Promise<void> {
-    /* Clear all stored tokens since session is invalid */
-    await this.clearStoredTokens();
+    /* Clear all stored tokens including refresh token issue date */
+    await chrome.storage.local.remove([
+      'supabaseToken',
+      'supabaseRefreshToken',
+      'supabaseTokenExpiry',
+      'refreshTokenIssuedAt',
+    ]);
+    /* Reset internal auth state */
+    this.authState = {
+      isAuthenticated: false,
+      user: null,
+      subscription: { isActive: false, plan: 'free' },
+    };
     /* Show re-authentication modal */
     await this.showReauthenticationModal();
   }
@@ -1431,6 +1490,7 @@ export class SupabaseAuthService {
         'supabaseRefreshToken',
         'supabaseTokenExpiry',
         'supabaseAuthState',
+        'refreshTokenIssuedAt',
       ]);
 
       /* Reset internal auth state */
