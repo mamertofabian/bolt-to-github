@@ -156,6 +156,7 @@ export function handleKeyboardNavigation(
   newIndex: number;
   selectedRepo: Repository | null;
   shouldCloseDropdown: boolean;
+  shouldPreventDefault: boolean;
 } {
   const maxIndex = filteredRepos.length - 1;
 
@@ -165,12 +166,14 @@ export function handleKeyboardNavigation(
         newIndex: calculateNextSelectedIndex(currentIndex, 'down', maxIndex),
         selectedRepo: null,
         shouldCloseDropdown: false,
+        shouldPreventDefault: true,
       };
     case 'ArrowUp':
       return {
         newIndex: calculateNextSelectedIndex(currentIndex, 'up', maxIndex),
         selectedRepo: null,
         shouldCloseDropdown: false,
+        shouldPreventDefault: true,
       };
     case 'Enter':
       if (currentIndex >= 0 && filteredRepos[currentIndex]) {
@@ -178,24 +181,28 @@ export function handleKeyboardNavigation(
           newIndex: currentIndex,
           selectedRepo: filteredRepos[currentIndex],
           shouldCloseDropdown: true,
+          shouldPreventDefault: true,
         };
       }
       return {
         newIndex: currentIndex,
         selectedRepo: null,
         shouldCloseDropdown: false,
+        shouldPreventDefault: true,
       };
     case 'Escape':
       return {
         newIndex: currentIndex,
         selectedRepo: null,
         shouldCloseDropdown: true,
+        shouldPreventDefault: true,
       };
     default:
       return {
         newIndex: currentIndex,
         selectedRepo: null,
         shouldCloseDropdown: false,
+        shouldPreventDefault: false,
       };
   }
 }

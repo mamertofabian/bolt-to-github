@@ -218,7 +218,7 @@ describe('ProjectStatus.svelte - Component Tests', () => {
       render(ProjectStatus, { props: defaultProps });
 
       const proBadges = screen.getAllByText('PRO');
-      expect(proBadges).toHaveLength(3);
+      expect(proBadges).toHaveLength(4);
     });
 
     it('should show premium feature buttons with PRO labels', () => {
