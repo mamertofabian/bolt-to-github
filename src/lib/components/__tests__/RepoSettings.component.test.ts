@@ -3,9 +3,9 @@
  */
 
 import { describe, it, expect, beforeEach, vi, afterEach } from 'vitest';
-import { render, screen, waitFor } from '@testing-library/svelte';
+import { render, screen, waitFor, fireEvent } from '@testing-library/svelte';
 import userEvent from '@testing-library/user-event';
-import RepoSettings from '../RepoSettings.svelte';
+import RepoSettings, { resetBranchCache } from '../RepoSettings.svelte';
 
 vi.unmock('$lib/components/ui/modal/Modal.svelte');
 vi.unmock('$lib/components/ui/button');
@@ -81,6 +81,7 @@ describe('RepoSettings.svelte - Component Tests', () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
+    resetBranchCache();
 
     mockState.listRepos.mockResolvedValue([
       {
@@ -800,6 +801,11 @@ describe('RepoSettings.svelte - Component Tests', () => {
         expect(mockState.listRepos).toHaveBeenCalled();
       });
 
+      // Wait for branches to load via debounce so branchExists is accurate
+      await waitFor(() => {
+        expect(mockState.listBranches).toHaveBeenCalled();
+      });
+
       const branchInput = screen.getByLabelText(/Branch/i);
       await user.click(branchInput);
 
@@ -980,7 +986,6 @@ describe('RepoSettings.svelte - Component Tests', () => {
     });
 
     it('should call listBranches after debounce delay when typing stops', async () => {
-      const user = userEvent.setup();
       render(RepoSettings, { props: defaultProps });
 
       // Wait for initial repos to load (test-repo is in the mock)
@@ -990,18 +995,19 @@ describe('RepoSettings.svelte - Component Tests', () => {
 
       mockState.listBranches.mockClear();
 
-      const repoInput = screen.getByLabelText('Repository Name');
+      const repoInput = screen.getByLabelText('Repository Name') as HTMLInputElement;
 
-      // Type repository name (test-repo exists in mock, so repoExists becomes true on last char)
-      await user.type(repoInput, 'test-repo');
+      // Set input value directly to trigger Svelte binding update
+      fireEvent.input(repoInput, { target: { value: 'test-repo' } });
 
-      // The debounce should fire after typing the last character
-      // Wait for debounce delay (300ms) + some buffer for reactivity
-      await new Promise((resolve) => setTimeout(resolve, 500));
-
-      // Should be called after debounce completes
-      expect(mockState.listBranches).toHaveBeenCalled();
-      expect(mockState.listBranches).toHaveBeenCalledWith('testuser', 'test-repo');
+      // Wait for debounce (300ms) to fire and async loadBranches to complete
+      await waitFor(
+        () => {
+          expect(mockState.listBranches).toHaveBeenCalled();
+          expect(mockState.listBranches).toHaveBeenCalledWith('testuser', 'test-repo');
+        },
+        { timeout: 2000 }
+      );
     });
 
     it('should load branches immediately when selecting from dropdown', async () => {

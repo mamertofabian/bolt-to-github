@@ -1,10 +1,20 @@
+<script context="module" lang="ts">
+  // Module-level cache persists across popup open/close cycles
+  let lastLoadedRepo = '';
+
+  /** Reset the branch cache (used in tests for isolation) */
+  export function resetBranchCache() {
+    lastLoadedRepo = '';
+  }
+</script>
+
 <script lang="ts">
   import { Button } from '$lib/components/ui/button';
   import { Input } from '$lib/components/ui/input';
   import { Label } from '$lib/components/ui/label';
   import { Search, Loader2 } from 'lucide-svelte';
   import { UnifiedGitHubService } from '../../services/UnifiedGitHubService';
-  import { createEventDispatcher } from 'svelte';
+  import { createEventDispatcher, onDestroy } from 'svelte';
   import { githubSettingsActions } from '$lib/stores';
   import Modal from '$lib/components/ui/modal/Modal.svelte';
   import { createLogger } from '$lib/utils/logger';
@@ -55,7 +65,6 @@
   let showBranchDropdown = false;
   let branchExists = false;
   let branchSelectedIndex = -1;
-  let lastLoadedRepo = ''; // Track last loaded repo to prevent redundant API calls
 
   $: filteredRepos = filterRepositories(repositories, repoName);
 
@@ -79,6 +88,10 @@
       lastLoadedRepo = repoKey;
     }
   }, 300);
+
+  onDestroy(() => {
+    debouncedLoadBranches.cancel();
+  });
 
   // Trigger debounced load when repository changes
   $: if (repoName && repoExists && repoOwner) {
@@ -411,7 +424,7 @@
               </div>
             </div>
 
-            {#if shouldShowBranchDropdown(showBranchDropdown, filteredBranches, branchExists)}
+            {#if shouldShowBranchDropdown(showBranchDropdown, filteredBranches, branchExists) && !isLoadingBranches}
               <div
                 class="absolute z-10 w-full mt-1 bg-slate-800 border border-slate-700 rounded-lg shadow-lg max-h-60 overflow-y-auto"
               >
