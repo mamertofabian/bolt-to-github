@@ -31,7 +31,23 @@ A Chrome extension that automatically captures ZIP file downloads from bolt.new,
   <img src="https://img.shields.io/badge/Install%20from-Chrome%20Web%20Store-blue?style=for-the-badge&logo=google-chrome&logoColor=white" alt="Install from Chrome Web Store" height="40">
 </a>
 
-### Latest Version: v1.3.13 (Development)
+### Latest Version: v1.3.14 (Development)
+
+#### 📝 Version 1.3.14 – Branch Dropdown & bolt.new UI Fix
+
+**What's new:**
+
+- Branch dropdown with auto-filtering in repo settings
+- Fixed button injection for bolt.new's updated UI
+- Dropdown toggle and updated button styling
+
+**Key Benefits:**
+
+- Select or create branches directly from the extension
+- Seamless integration with bolt.new's latest design
+- Cleaner UI with proper dropdown toggle behavior
+
+### Previous Version: v1.3.13
 
 #### 📝 Version 1.3.13 – Notification Spam Fix
 
@@ -49,6 +65,8 @@ A Chrome extension that automatically captures ZIP file downloads from bolt.new,
 - **Smart Rate Limiting** – Prevents overwhelming users with too many notifications
 - **Persistent Preferences** – Your settings are remembered across browser sessions
 - **Better Default Experience** – Reminders are opt-in, reducing notification fatigue
+
+### Previous Version: v1.3.12
 
 #### 📝 Version 1.3.12 – Enhanced Auth Recovery
 

@@ -29,7 +29,9 @@ export class GitHubButtonManager implements IGitHubButtonManager {
   public async initialize(): Promise<void> {
     logger.info('🔊 Initializing GitHub upload button');
 
-    const buttonContainer = document.querySelector('div.ml-auto > div.flex.gap-3');
+    const buttonContainer =
+      document.querySelector('div.ml-auto > div.flex.gap-2') ||
+      document.querySelector('div.ml-auto > div.flex.gap-3');
     logger.debug('Button container found:', !!buttonContainer);
 
     const existingButton = document.querySelector('[data-github-upload]');
@@ -81,30 +83,29 @@ export class GitHubButtonManager implements IGitHubButtonManager {
     button.setAttribute('data-testid', 'github-upload-button');
     button.setAttribute('aria-haspopup', 'menu');
     button.className = [
-      'rounded-md',
+      'flex',
       'items-center',
       'justify-center',
-      'outline-accent-600',
-      'px-3',
-      'py-1.25',
+      'font-medium',
+      'shrink-0',
+      'min-w-0',
+      'max-w-full',
+      'rounded-md',
+      'focus-visible:outline-2',
+      'disabled:op-50',
+      'relative',
       'disabled:cursor-not-allowed',
-      'text-xs',
-      'bg-bolt-elements-button-secondary-background',
-      'text-bolt-elements-button-secondary-text',
-      'enabled:hover:bg-bolt-elements-button-secondary-backgroundHover',
-      'flex',
+      'transition-colors',
+      'bg-bolt-ds-inverseSurface/10',
+      '[&:hover:where(:not(:disabled))]:bg-bolt-ds-inverseSurface/15',
+      'text-bolt-ds-textPrimary',
       'gap-1.7',
-      'transition-opacity',
+      'text-sm',
+      'h-8',
+      'px-3',
     ].join(' ');
 
     button.innerHTML = this.getButtonHTML();
-
-    // Apply inline styles immediately to prevent initial flash
-    button.style.backgroundColor = '#1E1E21';
-    button.style.borderColor = '#2A2A2D';
-    button.style.color = '#ffffff';
-    button.style.border = '1px solid #2A2A2D';
-    button.style.transition = 'background-color 0.15s ease, border-color 0.15s ease';
 
     // Add click event listener that delegates to the dropdown handler
     button.addEventListener('click', async () => {
@@ -138,19 +139,7 @@ export class GitHubButtonManager implements IGitHubButtonManager {
   public updateState(isValid: boolean): void {
     if (!this.uploadButton) return;
 
-    if (isValid) {
-      this.uploadButton.classList.remove('opacity-50');
-      this.uploadButton.classList.add(
-        'enabled:hover:bg-bolt-elements-button-secondary-backgroundHover'
-      );
-      (this.uploadButton as HTMLButtonElement).disabled = false;
-    } else {
-      this.uploadButton.classList.add('opacity-50');
-      this.uploadButton.classList.remove(
-        'enabled:hover:bg-bolt-elements-button-secondary-backgroundHover'
-      );
-      (this.uploadButton as HTMLButtonElement).disabled = true;
-    }
+    (this.uploadButton as HTMLButtonElement).disabled = !isValid;
 
     // Update centralized state if state manager is available
     if (this.stateManager) {

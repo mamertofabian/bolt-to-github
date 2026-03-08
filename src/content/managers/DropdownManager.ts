@@ -18,8 +18,7 @@ export class DropdownManager implements IDropdownManager {
   private onUpgradePromptCallback?: (feature: string) => Promise<void>;
   private premiumService?: PremiumService;
   private currentDropdown: HTMLElement | null = null;
-  private resizeListener?: () => void;
-  private clickOutsideListener?: (e: MouseEvent) => void;
+  private abortController?: AbortController;
 
   constructor(
     messageHandler: MessageHandler,
@@ -49,6 +48,13 @@ export class DropdownManager implements IDropdownManager {
   public async show(button: HTMLButtonElement): Promise<void> {
     logger.debug('Handling GitHub dropdown click');
 
+    // Toggle: if dropdown is already visible, hide it and return
+    const existingDropdown = document.getElementById('github-dropdown-content');
+    if (existingDropdown) {
+      this.hide();
+      return;
+    }
+
     // Dispatch keydown event to open dropdown
     const keydownEvent = new KeyboardEvent('keydown', {
       key: 'Enter',
@@ -75,6 +81,10 @@ export class DropdownManager implements IDropdownManager {
 
     this.currentDropdown = dropdownContent;
 
+    // AbortController groups all event listeners for clean teardown
+    this.abortController = new AbortController();
+    const { signal } = this.abortController;
+
     // Always update position when showing the dropdown
     if (dropdownContent) {
       dropdownContent.style.display = 'block';
@@ -90,43 +100,28 @@ export class DropdownManager implements IDropdownManager {
       updatePosition();
 
       // Add window resize listener to keep dropdown aligned with button
-      this.resizeListener = () => updatePosition();
-      window.addEventListener('resize', this.resizeListener);
-
-      // Clean up resize listener when dropdown is closed
-      const removeResizeListener = () => {
-        if (dropdownContent.style.display === 'none') {
-          if (this.resizeListener) {
-            window.removeEventListener('resize', this.resizeListener);
-            this.resizeListener = undefined;
-          }
-          if (this.clickOutsideListener) {
-            document.removeEventListener('click', this.clickOutsideListener);
-            this.clickOutsideListener = undefined;
-          }
-        }
-      };
-
-      // Add listener to clean up when dropdown is closed
-      document.addEventListener('click', removeResizeListener);
+      window.addEventListener('resize', updatePosition, { signal });
     }
 
     // Add click event listener to close dropdown when clicking outside
-    this.clickOutsideListener = (e: MouseEvent) => {
-      if (
-        e.target !== button &&
-        e.target !== dropdownContent &&
-        !dropdownContent?.contains(e.target as Node)
-      ) {
-        this.hide();
-      }
-    };
-
-    // Add the event listener with a slight delay to avoid immediate closing
+    // Slight delay avoids immediate closing from the same click that opened it
     setTimeout(() => {
-      if (this.clickOutsideListener) {
-        document.addEventListener('click', this.clickOutsideListener);
-      }
+      if (signal.aborted) return;
+      document.addEventListener(
+        'click',
+        (e: MouseEvent) => {
+          const target = e.target as Node;
+          if (
+            target !== button &&
+            !button.contains(target) &&
+            target !== dropdownContent &&
+            !dropdownContent?.contains(target)
+          ) {
+            this.hide();
+          }
+        },
+        { signal }
+      );
     }, 100);
   }
 
@@ -135,18 +130,19 @@ export class DropdownManager implements IDropdownManager {
    */
   public hide(): void {
     if (this.currentDropdown) {
-      this.currentDropdown.style.display = 'none';
+      this.currentDropdown.remove();
       this.currentDropdown = null;
     }
-
-    // Clean up event listeners
-    if (this.resizeListener) {
-      window.removeEventListener('resize', this.resizeListener);
-      this.resizeListener = undefined;
+    // Also remove any orphaned dropdown from DOM
+    const orphaned = document.getElementById('github-dropdown-content');
+    if (orphaned) {
+      orphaned.remove();
     }
-    if (this.clickOutsideListener) {
-      document.removeEventListener('click', this.clickOutsideListener);
-      this.clickOutsideListener = undefined;
+
+    // Abort all event listeners (resize, click-outside) in one call
+    if (this.abortController) {
+      this.abortController.abort();
+      this.abortController = undefined;
     }
   }
 
@@ -224,27 +220,6 @@ export class DropdownManager implements IDropdownManager {
       /* Remove border between items to match Export dropdown */
       #github-dropdown-content button:first-child {
         border-bottom: none;
-      }
-      /* Override GitHub button background to match new Bolt.new page */
-      button[data-github-upload="true"] {
-        background-color: #1E1E21 !important;
-        border: 1px solid #2A2A2D !important;
-        color: #ffffff !important;
-        transition: background-color 0.15s ease, border-color 0.15s ease !important;
-      }
-      button[data-github-upload="true"]:hover {
-        background-color: #2A2A2D !important;
-        border-color: #3A3A3D !important;
-      }
-      /* Prevent initial flash by targeting all possible button states */
-      button[data-github-upload="true"]:not(:hover):not(:active):not(:focus) {
-        background-color: #1E1E21 !important;
-        border-color: #2A2A2D !important;
-      }
-      /* Override any Bolt.new specific classes that might be applied */
-      button[data-github-upload="true"].bg-bolt-elements-button-secondary-background,
-      button[data-github-upload="true"][class*="bg-"] {
-        background-color: #1E1E21 !important;
       }
     `;
     document.head.appendChild(style);
