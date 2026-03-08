@@ -49,6 +49,13 @@ export class DropdownManager implements IDropdownManager {
   public async show(button: HTMLButtonElement): Promise<void> {
     logger.debug('Handling GitHub dropdown click');
 
+    // Toggle: if dropdown is already visible, hide it and return
+    const existingDropdown = document.getElementById('github-dropdown-content');
+    if (existingDropdown) {
+      this.hide();
+      return;
+    }
+
     // Dispatch keydown event to open dropdown
     const keydownEvent = new KeyboardEvent('keydown', {
       key: 'Enter',
@@ -92,31 +99,16 @@ export class DropdownManager implements IDropdownManager {
       // Add window resize listener to keep dropdown aligned with button
       this.resizeListener = () => updatePosition();
       window.addEventListener('resize', this.resizeListener);
-
-      // Clean up resize listener when dropdown is closed
-      const removeResizeListener = () => {
-        if (dropdownContent.style.display === 'none') {
-          if (this.resizeListener) {
-            window.removeEventListener('resize', this.resizeListener);
-            this.resizeListener = undefined;
-          }
-          if (this.clickOutsideListener) {
-            document.removeEventListener('click', this.clickOutsideListener);
-            this.clickOutsideListener = undefined;
-          }
-        }
-      };
-
-      // Add listener to clean up when dropdown is closed
-      document.addEventListener('click', removeResizeListener);
     }
 
     // Add click event listener to close dropdown when clicking outside
     this.clickOutsideListener = (e: MouseEvent) => {
+      const target = e.target as Node;
       if (
-        e.target !== button &&
-        e.target !== dropdownContent &&
-        !dropdownContent?.contains(e.target as Node)
+        target !== button &&
+        !button.contains(target) &&
+        target !== dropdownContent &&
+        !dropdownContent?.contains(target)
       ) {
         this.hide();
       }
@@ -135,8 +127,13 @@ export class DropdownManager implements IDropdownManager {
    */
   public hide(): void {
     if (this.currentDropdown) {
-      this.currentDropdown.style.display = 'none';
+      this.currentDropdown.remove();
       this.currentDropdown = null;
+    }
+    // Also remove any orphaned dropdown from DOM
+    const orphaned = document.getElementById('github-dropdown-content');
+    if (orphaned) {
+      orphaned.remove();
     }
 
     // Clean up event listeners
@@ -224,27 +221,6 @@ export class DropdownManager implements IDropdownManager {
       /* Remove border between items to match Export dropdown */
       #github-dropdown-content button:first-child {
         border-bottom: none;
-      }
-      /* Override GitHub button background to match new Bolt.new page */
-      button[data-github-upload="true"] {
-        background-color: #1E1E21 !important;
-        border: 1px solid #2A2A2D !important;
-        color: #ffffff !important;
-        transition: background-color 0.15s ease, border-color 0.15s ease !important;
-      }
-      button[data-github-upload="true"]:hover {
-        background-color: #2A2A2D !important;
-        border-color: #3A3A3D !important;
-      }
-      /* Prevent initial flash by targeting all possible button states */
-      button[data-github-upload="true"]:not(:hover):not(:active):not(:focus) {
-        background-color: #1E1E21 !important;
-        border-color: #2A2A2D !important;
-      }
-      /* Override any Bolt.new specific classes that might be applied */
-      button[data-github-upload="true"].bg-bolt-elements-button-secondary-background,
-      button[data-github-upload="true"][class*="bg-"] {
-        background-color: #1E1E21 !important;
       }
     `;
     document.head.appendChild(style);
