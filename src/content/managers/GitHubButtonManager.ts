@@ -29,7 +29,9 @@ export class GitHubButtonManager implements IGitHubButtonManager {
   public async initialize(): Promise<void> {
     logger.info('🔊 Initializing GitHub upload button');
 
-    const buttonContainer = document.querySelector('div.ml-auto > div.flex.gap-3');
+    const buttonContainer =
+      document.querySelector('div.ml-auto > div.flex.gap-2') ||
+      document.querySelector('div.ml-auto > div.flex.gap-3');
     logger.debug('Button container found:', !!buttonContainer);
 
     const existingButton = document.querySelector('[data-github-upload]');

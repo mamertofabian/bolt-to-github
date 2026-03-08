@@ -14,7 +14,7 @@ function createButtonContainer() {
   mlAuto.className = 'ml-auto';
 
   const flexContainer = document.createElement('div');
-  flexContainer.className = 'flex gap-3';
+  flexContainer.className = 'flex 2xl:gap-3 gap-2';
 
   const emptyDiv = document.createElement('div');
   emptyDiv.className = 'flex gap-1 empty:hidden';
