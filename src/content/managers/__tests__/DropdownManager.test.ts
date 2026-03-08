@@ -136,15 +136,21 @@ describe('DropdownManager', () => {
       expect(spy).toHaveBeenCalledWith(expect.any(KeyboardEvent));
     });
 
-    test('removes existing dropdown before creating new one', async () => {
+    test('toggles dropdown closed when clicked while open', async () => {
       await dropdownManager.show(mockButton);
-      const firstDropdown = document.getElementById('github-dropdown-content');
+      expect(document.getElementById('github-dropdown-content')).toBeTruthy();
 
       await dropdownManager.show(mockButton);
-      const allDropdowns = document.querySelectorAll('#github-dropdown-content');
+      expect(document.getElementById('github-dropdown-content')).toBeNull();
+    });
 
-      expect(allDropdowns.length).toBe(1);
-      expect(firstDropdown).not.toBe(document.getElementById('github-dropdown-content'));
+    test('reopens dropdown after toggling closed', async () => {
+      await dropdownManager.show(mockButton);
+      await dropdownManager.show(mockButton); // close
+      expect(document.getElementById('github-dropdown-content')).toBeNull();
+
+      await dropdownManager.show(mockButton);
+      expect(document.getElementById('github-dropdown-content')).toBeTruthy();
     });
   });
 
@@ -159,7 +165,7 @@ describe('DropdownManager', () => {
 
       dropdownManager.hide();
 
-      expect(dropdown.style.display).toBe('none');
+      expect(document.getElementById('github-dropdown-content')).toBeNull();
       expect((dropdownManager as any).currentDropdown).toBeNull();
     });
 
@@ -181,7 +187,7 @@ describe('DropdownManager', () => {
 
       expect(pushButton).toBeTruthy();
 
-      (dropdownManager as any).currentDropdown = { style: { display: 'block' } };
+      (dropdownManager as any).currentDropdown = { style: { display: 'block' }, remove: vi.fn() };
 
       pushButton?.click();
 
@@ -198,7 +204,7 @@ describe('DropdownManager', () => {
 
       expect(dashboardButton).toBeTruthy();
 
-      (dropdownManager as any).currentDropdown = { style: { display: 'block' } };
+      (dropdownManager as any).currentDropdown = { style: { display: 'block' }, remove: vi.fn() };
 
       dashboardButton?.click();
 
@@ -230,7 +236,7 @@ describe('DropdownManager', () => {
         btn.textContent?.includes('Settings')
       );
 
-      (dropdownManager as any).currentDropdown = { style: { display: 'block' } };
+      (dropdownManager as any).currentDropdown = { style: { display: 'block' }, remove: vi.fn() };
 
       settingsButton?.click();
 
@@ -245,7 +251,7 @@ describe('DropdownManager', () => {
         btn.textContent?.includes('Projects')
       );
 
-      (dropdownManager as any).currentDropdown = { style: { display: 'block' } };
+      (dropdownManager as any).currentDropdown = { style: { display: 'block' }, remove: vi.fn() };
 
       projectsButton?.click();
 

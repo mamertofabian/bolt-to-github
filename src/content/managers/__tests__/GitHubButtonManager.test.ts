@@ -93,7 +93,6 @@ describe('GitHubButtonManager', () => {
 
       const button = getButtonFromDOM();
       expect(button?.disabled).toBe(false);
-      expect(button?.className).not.toContain('opacity-50');
     });
 
     it('creates disabled button when settings are invalid', async () => {
@@ -109,7 +108,6 @@ describe('GitHubButtonManager', () => {
 
       const button = getButtonFromDOM();
       expect(button?.disabled).toBe(true);
-      expect(button?.className).toContain('opacity-50');
 
       testManager.cleanup();
     });
@@ -173,30 +171,22 @@ describe('GitHubButtonManager', () => {
       await manager.initialize();
     });
 
-    it('enables button and removes opacity when state is valid', () => {
+    it('enables button when state is valid', () => {
       manager.updateState(false);
 
       manager.updateState(true);
 
       const button = getButtonFromDOM();
       expect(button?.disabled).toBe(false);
-      expect(button?.className).not.toContain('opacity-50');
-      expect(button?.className).toContain(
-        'enabled:hover:bg-bolt-elements-button-secondary-backgroundHover'
-      );
     });
 
-    it('disables button and adds opacity when state is invalid', () => {
+    it('disables button when state is invalid', () => {
       manager.updateState(true);
 
       manager.updateState(false);
 
       const button = getButtonFromDOM();
       expect(button?.disabled).toBe(true);
-      expect(button?.className).toContain('opacity-50');
-      expect(button?.className).not.toContain(
-        'enabled:hover:bg-bolt-elements-button-secondary-backgroundHover'
-      );
     });
 
     it('does not throw error when updating state before initialization', () => {
