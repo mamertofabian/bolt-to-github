@@ -7,13 +7,14 @@ export interface WhatsNewVersion {
 
 export const whatsNewContent: Record<string, WhatsNewVersion> = {
   '1.3.14': {
-    date: '2025-XX-XX',
+    date: '2026-03-08',
     highlights: [
-      '[Highlight 1 - To be added]',
-      '[Highlight 2 - To be added]',
-      '[Highlight 3 - To be added]',
+      '🌿 Branch Dropdown – Select or create branches directly from repo settings with auto-filtering',
+      "🔧 Fixed Button Injection – Updated for bolt.new's latest UI changes",
+      "🎨 Updated Styling – Button now matches bolt.new's current design system",
+      '🔄 Dropdown Toggle – Click the GitHub button again to close the dropdown',
     ],
-    details: `[Detailed description of the changes in this version - To be added]`,
+    details: `This update fixes the GitHub button injection that broke after bolt.new updated their toolbar layout. The button styling now uses bolt.new's latest design tokens for a seamless look. Plus, you can now select or create branches directly from the repo settings with a new auto-filtering dropdown.`,
     type: 'patch',
   },
   '1.3.13': {

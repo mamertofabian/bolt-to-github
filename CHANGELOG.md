@@ -1,26 +1,23 @@
 # Changelog
 
-## 2025-XX-XX - Version 1.3.14
+## 2026-03-08 - Version 1.3.14
 
 ### 🎉 New Features
 
-- [To be added]
+- **Branch Dropdown with Auto-Filtering** - Select or create branches directly from the repo settings with debounced search and filtering
+- **Dropdown Toggle** - Clicking the GitHub button while the dropdown is open now properly closes it
 
 ### 🔧 Performance & Stability
 
-- [To be added]
-
-### 🧪 Testing & Quality
-
-- [To be added]
+- **Debounced Branch Loading** - Optimized API calls with smart caching to avoid redundant branch fetches
+- **Event Listener Cleanup** - Removed leaked resize/click listeners that accumulated on every dropdown open
 
 ### 🐛 Bug Fixes
 
-- [To be added]
-
-### 📚 Documentation
-
-- [To be added]
+- **Fixed Button Injection for bolt.new UI Update** - Updated selectors to match bolt.new's changed toolbar container classes (`flex gap-3` → `flex 2xl:gap-3 gap-2`) with fallback for backward compatibility
+- **Updated Button Styling** - Migrated from deprecated `bolt-elements-*` to `bolt-ds-*` design tokens to match bolt.new's current design system
+- **Removed Forced Style Overrides** - Eliminated injected CSS with `!important` rules that caused button style to revert after clicking
+- **Fixed Branch Status Message** - Clarified that new branches are created on first push
 
 ## 2025-01-15 - Version 1.3.13
 

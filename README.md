@@ -33,19 +33,19 @@ A Chrome extension that automatically captures ZIP file downloads from bolt.new,
 
 ### Latest Version: v1.3.14 (Development)
 
-#### 📝 Version 1.3.14 – [Title To Be Added]
+#### 📝 Version 1.3.14 – Branch Dropdown & bolt.new UI Fix
 
 **What's new:**
 
-- [Feature 1 - To be added]
-- [Feature 2 - To be added]
-- [Feature 3 - To be added]
+- Branch dropdown with auto-filtering in repo settings
+- Fixed button injection for bolt.new's updated UI
+- Dropdown toggle and updated button styling
 
 **Key Benefits:**
 
-- [Benefit 1 - To be added]
-- [Benefit 2 - To be added]
-- [Benefit 3 - To be added]
+- Select or create branches directly from the extension
+- Seamless integration with bolt.new's latest design
+- Cleaner UI with proper dropdown toggle behavior
 
 ### Previous Version: v1.3.13
 

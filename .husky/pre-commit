@@ -44,7 +44,7 @@ if [ "$RUN_UPDATED_TESTS_ONLY" = "TRUE" ]; then
   if [ $? -ne 0 ]; then
     echo "❌ Tests on changed files failed. Please fix failing tests before committing."
     echo "💡 To run full test suite, use: RUN_UPDATED_TESTS_ONLY=FALSE git commit"
-    echo "💡 To skip tests temporarily, use: RUN_ALL_TESTS=FALSE git commit"
+    echo "💡 To skip tests temporarily, use: RUN_UPDATED_TESTS_ONLY=FALSE git commit"
     exit 1
   fi
 elif [ "$RUN_ALL_TESTS" = "FALSE" ]; then
