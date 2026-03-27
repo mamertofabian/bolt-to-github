@@ -234,32 +234,24 @@ export class SupabaseAuthService {
       useAlarm = true;
     }
 
-    if (useAlarm) {
+    if (useAlarm && typeof chrome.alarms?.create === 'function') {
       /* chrome.alarms survives service worker termination — reliable for long intervals.
        * The alarm handler in BackgroundService.setupAlarms() dispatches to checkAuthStatus(). */
       const periodInMinutes = Math.max(interval / 60000, 1); // chrome.alarms minimum is 1 minute
-      try {
-        chrome.alarms?.create?.('auth-periodic-check', { periodInMinutes });
-        logger.info(
-          `🔄 Started auth checks via chrome.alarms every ${periodInMinutes}min (${mode})`
-        );
-      } catch {
-        /* Fallback to setInterval if alarms API unavailable (e.g. content script context) */
-        this.checkInterval = setInterval(() => {
-          this.checkAuthStatus();
-        }, interval);
-        logger.info(`🔄 Started auth checks via setInterval every ${interval / 1000}s (${mode})`);
-      }
+      chrome.alarms.create('auth-periodic-check', { periodInMinutes });
+      logger.info(`🔄 Started auth checks via chrome.alarms every ${periodInMinutes}min (${mode})`);
     } else {
-      /* Short intervals for aggressive detection — setInterval is fine for these
-       * since they only last ~60 seconds and the service worker stays alive during active use */
+      /* Fallback to setInterval when alarms API is unavailable or for short-interval modes.
+       * Short intervals for aggressive detection only last ~60s and don't need alarm persistence. */
       this.checkInterval = setInterval(() => {
         this.checkAuthStatus();
       }, interval);
-      /* Clear the alarm if we're switching to short-interval mode */
-      chrome.alarms?.clear?.('auth-periodic-check')?.catch?.(() => {
-        /* Alarm might not exist — ignore */
-      });
+      /* Clear any existing alarm when switching to setInterval mode */
+      if (typeof chrome.alarms?.clear === 'function') {
+        chrome.alarms.clear('auth-periodic-check').catch(() => {
+          /* Alarm might not exist — ignore */
+        });
+      }
       logger.info(`🔄 Started auth checks every ${interval / 1000}s (${mode})`);
     }
   }
@@ -1317,19 +1309,15 @@ export class SupabaseAuthService {
    * Handle session invalidation by clearing tokens and showing re-auth modal
    */
   private async handleSessionInvalidation(): Promise<void> {
-    /* Clear all stored tokens including refresh token issue date */
-    await chrome.storage.local.remove([
-      'supabaseToken',
-      'supabaseRefreshToken',
-      'supabaseTokenExpiry',
-      'refreshTokenIssuedAt',
-    ]);
-    /* Reset internal auth state */
-    this.authState = {
+    /* Clear all stored tokens (reuses clearStoredTokens to avoid key list duplication) */
+    await this.clearStoredTokens();
+    /* Notify listeners and persist auth state via updateAuthState (not direct mutation)
+     * so that storage, premium service, and periodic-check reconfiguration all update */
+    this.updateAuthState({
       isAuthenticated: false,
       user: null,
       subscription: { isActive: false, plan: 'free' },
-    };
+    });
     /* Show re-authentication modal */
     await this.showReauthenticationModal();
   }
@@ -1610,9 +1598,11 @@ export class SupabaseAuthService {
     }
 
     /* Clear the auth alarm if active */
-    chrome.alarms?.clear?.('auth-periodic-check')?.catch?.(() => {
-      /* Alarm might not exist — ignore */
-    });
+    if (typeof chrome.alarms?.clear === 'function') {
+      chrome.alarms.clear('auth-periodic-check').catch(() => {
+        /* Alarm might not exist — ignore */
+      });
+    }
 
     this.stopAggressiveDetection();
 
