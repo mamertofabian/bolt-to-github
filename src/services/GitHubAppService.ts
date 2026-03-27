@@ -3,15 +3,15 @@
  * Communicates with Supabase Edge Functions for OAuth flow and token management
  */
 
-import type {
-  GitHubAppConfig,
-  GitHubAppTokenResponse,
-  GitHubAppErrorResponse,
-  TokenValidationResult,
-  PermissionCheckResult,
-} from './types/authentication';
 import { SUPABASE_CONFIG } from '../lib/constants/supabase';
 import { createLogger } from '../lib/utils/logger';
+import type {
+  GitHubAppConfig,
+  GitHubAppErrorResponse,
+  GitHubAppTokenResponse,
+  PermissionCheckResult,
+  TokenValidationResult,
+} from './types/authentication';
 
 const logger = createLogger('GitHubAppService');
 
@@ -41,15 +41,59 @@ export class GitHubAppService {
     // Try to extract from Supabase auth storage
     try {
       const authKey = `sb-${SUPABASE_CONFIG.URL.split('//')[1].split('.')[0]}-auth-token`;
-      const result = await chrome.storage.local.get(authKey);
+      const result = await chrome.storage.local.get([
+        authKey,
+        'supabaseToken',
+        'supabaseTokenExpiry',
+        'refreshTokenIssuedAt',
+      ]);
       const authData = result[authKey];
 
       if (authData?.access_token) {
+        // Check if the Supabase token might be expired
+        const tokenExpiry = result.supabaseTokenExpiry || 0;
+        const now = Date.now();
+
+        // If token is expired, check refresh token age
+        if (tokenExpiry < now) {
+          // If refreshTokenIssuedAt is missing, we can't determine token age
+          // This happens for existing users before the fix was deployed
+          // In this case, let it through but log a warning - SupabaseAuthService will handle validation
+          if (!result.refreshTokenIssuedAt) {
+            logger.warn(
+              '⚠️ Supabase token is expired and refresh token age is unknown (legacy installation). ' +
+                'Allowing through - SupabaseAuthService will validate and trigger re-auth if needed.'
+            );
+          } else {
+            const refreshTokenAge = now - result.refreshTokenIssuedAt;
+            const REFRESH_TOKEN_MAX_AGE = 30 * 24 * 60 * 60 * 1000; // 30 days
+
+            if (refreshTokenAge > REFRESH_TOKEN_MAX_AGE) {
+              logger.warn(
+                `🕐 Supabase refresh token is very old (${Math.round(
+                  refreshTokenAge / (24 * 60 * 60 * 1000)
+                )} days). GitHub operations will likely fail. User needs to re-authenticate.`
+              );
+              throw new Error(
+                'Supabase authentication expired. Please re-authenticate via bolt2github.com.'
+              );
+            }
+
+            logger.warn(
+              '⚠️ Supabase token is expired but refresh token might work. Attempting to use it anyway.'
+            );
+          }
+        }
+
         this.userToken = authData.access_token;
         return authData.access_token;
       }
     } catch (error) {
       logger.error('Failed to get user token from storage:', error);
+      // Re-throw the error if it's our custom expiration error
+      if (error instanceof Error && error.message.includes('Supabase authentication expired')) {
+        throw error;
+      }
     }
 
     throw new Error('No user token available. Please authenticate with bolt2github.com first.');
