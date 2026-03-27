@@ -54,6 +54,8 @@ export class BackgroundService {
   private initialAuthCheckCompleted: boolean = false;
   // Track delayed sync timeout for cancellation
   private delayedSyncTimeout: NodeJS.Timeout | null = null;
+  // Track immediate auth check timeout for cleanup
+  private immediateAuthCheckTimeout: NodeJS.Timeout | null = null;
   // Prevent concurrent sync operations (with auto-reset to avoid stuck state after SW restart)
   private syncInProgress: boolean = false;
   private syncStartedAt: number = 0;
@@ -1838,6 +1840,12 @@ export class BackgroundService {
       this.delayedSyncTimeout = null;
     }
 
+    // Clean up immediate auth check timeout
+    if (this.immediateAuthCheckTimeout) {
+      clearTimeout(this.immediateAuthCheckTimeout);
+      this.immediateAuthCheckTimeout = null;
+    }
+
     if (this.storageListener) {
       chrome.storage.onChanged.removeListener(this.storageListener);
       this.storageListener = null;
@@ -1991,9 +1999,10 @@ export class BackgroundService {
     }, 3000); // Wait 3 seconds to allow auth check to complete
 
     // Also try sync immediately if already authenticated
-    setTimeout(() => {
-      const authState = this.supabaseAuthService.getAuthState();
-      if (authState.isAuthenticated) {
+    this.immediateAuthCheckTimeout = setTimeout(() => {
+      this.immediateAuthCheckTimeout = null;
+      const authState = this.supabaseAuthService?.getAuthState();
+      if (authState?.isAuthenticated) {
         logger.info('✅ User already authenticated - triggering immediate initial sync');
 
         // Cancel delayed sync since we're doing immediate sync

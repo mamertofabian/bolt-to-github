@@ -31,7 +31,27 @@ A Chrome extension that automatically captures ZIP file downloads from bolt.new,
   <img src="https://img.shields.io/badge/Install%20from-Chrome%20Web%20Store-blue?style=for-the-badge&logo=google-chrome&logoColor=white" alt="Install from Chrome Web Store" height="40">
 </a>
 
-### Latest Version: v1.3.14 (Development)
+### Latest Version: v1.3.15 (Development)
+
+#### 📝 Version 1.3.15 – Auth Lifecycle Recovery
+
+**What's new:**
+
+- Supabase refresh token 30-day expiration handling
+- GitHub App token validation with Supabase token expiry checks
+- Comprehensive auth lifecycle recovery for MV3 service worker
+- Handles both 401 and 403 responses for expired tokens
+- Chrome alarms API for periodic auth checks surviving service worker termination
+- Sync-in-progress timeout auto-reset (5min) prevents stuck state
+
+**Key Benefits:**
+
+- No more persistent auth failures after inactivity
+- No need to manually toggle the extension off/on to recover
+- Proactive token validation before refresh attempts
+- Robust auth state management across service worker restarts
+
+### Previous Version: v1.3.14
 
 #### 📝 Version 1.3.14 – Branch Dropdown & bolt.new UI Fix
 
