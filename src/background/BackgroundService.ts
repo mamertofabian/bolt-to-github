@@ -54,8 +54,10 @@ export class BackgroundService {
   private initialAuthCheckCompleted: boolean = false;
   // Track delayed sync timeout for cancellation
   private delayedSyncTimeout: NodeJS.Timeout | null = null;
-  // Prevent concurrent sync operations
+  // Prevent concurrent sync operations (with auto-reset to avoid stuck state after SW restart)
   private syncInProgress: boolean = false;
+  private syncStartedAt: number = 0;
+  private readonly SYNC_TIMEOUT_MS = 5 * 60 * 1000; // 5 minutes max sync duration
 
   constructor() {
     logger.info('🚀 Background service initializing...');
@@ -1878,6 +1880,10 @@ export class BackgroundService {
         this.rotateOldLogs();
       } else if (alarm.name === 'bolt-project-sync') {
         this.handleSyncAlarm();
+      } else if (alarm.name === 'auth-periodic-check') {
+        // Handle periodic auth check alarm (survives service worker termination)
+        logger.info('🔐 Auth periodic check alarm triggered');
+        this.supabaseAuthService.forceCheck();
       } else if (alarm.name === 'self-heal-reload') {
         // Handle extension reload for authentication self-healing
         logger.info('🔄 Self-heal alarm triggered - reloading extension now...');
@@ -1896,12 +1902,25 @@ export class BackgroundService {
    * Safely perform inward sync with concurrency protection
    */
   private async safePerformInwardSync(context: string): Promise<void> {
+    // Auto-reset stuck syncInProgress flag (e.g. if service worker restarted mid-sync)
+    if (this.syncInProgress && this.syncStartedAt > 0) {
+      const elapsed = Date.now() - this.syncStartedAt;
+      if (elapsed > this.SYNC_TIMEOUT_MS) {
+        logger.warn(
+          `⚠️ Sync has been in progress for ${Math.round(elapsed / 1000)}s — resetting stuck flag`
+        );
+        this.syncInProgress = false;
+        this.syncStartedAt = 0;
+      }
+    }
+
     if (this.syncInProgress) {
       logger.info(`⏸️ Sync already in progress, skipping ${context} sync request`);
       return;
     }
 
     this.syncInProgress = true;
+    this.syncStartedAt = Date.now();
     logger.info(`🔄 Starting ${context} inward sync`);
 
     try {
@@ -1911,6 +1930,7 @@ export class BackgroundService {
       logger.error(`💥 ${context} inward sync failed:`, error);
     } finally {
       this.syncInProgress = false;
+      this.syncStartedAt = 0;
     }
   }
 
