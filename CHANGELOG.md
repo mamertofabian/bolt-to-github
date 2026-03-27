@@ -1,5 +1,27 @@
 # Changelog
 
+## 2026-03-27 - Version 1.3.15
+
+### 🔧 Performance & Stability
+
+- **Supabase Refresh Token Expiration Handling** - Tracks refresh token issuance time to detect 30-day expiration, adds proactive validation before refresh attempts
+- **GitHub App Token Validation** - Validates Supabase token expiration in GitHubAppService to prevent cascade failures to GitHub App authentication
+- **Auth Lifecycle Recovery for MV3 Service Worker** - Fixed persistent authentication failure after inactivity that required manually toggling the extension off/on to recover:
+  - Handle both 401 and 403 responses in token validation (Supabase returns either for expired tokens)
+  - Eliminated stale Supabase token caching in GitHubAppService - always reads fresh from storage
+  - Proper token precedence: managed supabaseToken (refreshed by SupabaseAuthService) over raw auth-key token
+  - Sync-in-progress timeout auto-reset (5min) prevents stuck state after service worker restart
+  - Guards against duplicate Chrome event listener registration in auth detection
+  - Uses chrome.alarms API for periodic auth checks in authenticated/premium modes so they survive MV3 service worker termination
+  - Added auth-periodic-check alarm handler in BackgroundService.setupAlarms
+
+### 🧪 Testing & Quality
+
+- **Comprehensive Test Coverage** - Added extensive tests for auth lifecycle recovery:
+  - BackgroundService.auth-lifecycle.test.ts - 235 lines for periodic auth checks and alarm handling
+  - SupabaseAuthService.auth-recovery.test.ts - 364 lines for authentication recovery scenarios
+  - GitHubAppService.token-validation.test.ts - 116 lines for token validation logic
+
 ## 2026-03-08 - Version 1.3.14
 
 ### 🎉 New Features
