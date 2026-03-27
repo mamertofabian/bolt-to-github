@@ -71,6 +71,10 @@ export class SupabaseAuthService {
   private postConnectionStartTime: number = 0;
   private aggressiveDetectionInterval: number | null = null;
 
+  /* Guards against duplicate Chrome event listener registration */
+  private initialAuthDetectionSetup: boolean = false;
+  private subscriptionDetectionSetup: boolean = false;
+
   /* Extension reload tracking for self-healing */
   private consecutiveAuthFailures: number = 0;
   private lastReloadTimestamp: number = 0;
@@ -171,16 +175,24 @@ export class SupabaseAuthService {
   }
 
   /**
-   * Start periodic authentication checks with aggressive detection during onboarding
+   * Start periodic authentication checks with aggressive detection during onboarding.
+   *
+   * Uses chrome.alarms for long-running intervals (authenticated/premium modes)
+   * since they survive service worker termination in MV3. Falls back to setInterval
+   * for short aggressive detection modes (1-2s) where alarms aren't practical
+   * (chrome.alarms minimum is 1 minute) and the modes only last ~60 seconds anyway.
    */
   private startPeriodicChecks(): void {
+    /* Clear any existing interval timer */
     if (this.checkInterval) {
       clearInterval(this.checkInterval);
+      this.checkInterval = null;
     }
 
     /* Use different intervals based on authentication and subscription status */
     let interval: number;
     let mode: string;
+    let useAlarm = false;
 
     if (!this.authState.isAuthenticated) {
       /* Check if we're in post-connection aggressive mode */
@@ -218,13 +230,38 @@ export class SupabaseAuthService {
         interval = this.CHECK_INTERVAL_AUTHENTICATED;
         mode = 'authenticated';
       }
+      /* Use chrome.alarms for long-running authenticated modes (survives SW termination) */
+      useAlarm = true;
     }
 
-    this.checkInterval = setInterval(() => {
-      this.checkAuthStatus();
-    }, interval);
-
-    logger.info(`🔄 Started auth checks every ${interval / 1000}s (${mode})`);
+    if (useAlarm) {
+      /* chrome.alarms survives service worker termination — reliable for long intervals.
+       * The alarm handler in BackgroundService.setupAlarms() dispatches to checkAuthStatus(). */
+      const periodInMinutes = Math.max(interval / 60000, 1); // chrome.alarms minimum is 1 minute
+      try {
+        chrome.alarms?.create?.('auth-periodic-check', { periodInMinutes });
+        logger.info(
+          `🔄 Started auth checks via chrome.alarms every ${periodInMinutes}min (${mode})`
+        );
+      } catch {
+        /* Fallback to setInterval if alarms API unavailable (e.g. content script context) */
+        this.checkInterval = setInterval(() => {
+          this.checkAuthStatus();
+        }, interval);
+        logger.info(`🔄 Started auth checks via setInterval every ${interval / 1000}s (${mode})`);
+      }
+    } else {
+      /* Short intervals for aggressive detection — setInterval is fine for these
+       * since they only last ~60 seconds and the service worker stays alive during active use */
+      this.checkInterval = setInterval(() => {
+        this.checkAuthStatus();
+      }, interval);
+      /* Clear the alarm if we're switching to short-interval mode */
+      chrome.alarms?.clear?.('auth-periodic-check')?.catch?.(() => {
+        /* Alarm might not exist — ignore */
+      });
+      logger.info(`🔄 Started auth checks every ${interval / 1000}s (${mode})`);
+    }
   }
 
   /**
@@ -303,6 +340,15 @@ export class SupabaseAuthService {
         logger.info('🔐 User already authenticated, skipping initial auth detection');
         return;
       }
+
+      /* Prevent duplicate Chrome event listener registration.
+       * Chrome listeners accumulate — they cannot be removed without a reference,
+       * and re-calling addListener adds another copy. */
+      if (this.initialAuthDetectionSetup) {
+        logger.info('🔐 Initial auth detection listeners already registered, skipping');
+        return;
+      }
+      this.initialAuthDetectionSetup = true;
 
       logger.info('🔍 Setting up enhanced initial authentication detection for bolt2github.com');
 
@@ -401,6 +447,13 @@ export class SupabaseAuthService {
    */
   private setupSubscriptionUpgradeDetection(): void {
     try {
+      /* Prevent duplicate Chrome event listener registration */
+      if (this.subscriptionDetectionSetup) {
+        logger.info('💰 Subscription detection listeners already registered, skipping');
+        return;
+      }
+      this.subscriptionDetectionSetup = true;
+
       /* Only listen for specific upgrade/billing related pages */
       chrome.tabs.onUpdated.addListener(async (tabId, changeInfo, tab) => {
         /* Only check if user is authenticated and on upgrade/billing pages */
@@ -1134,9 +1187,10 @@ export class SupabaseAuthService {
           created_at: user.created_at,
           updated_at: user.updated_at,
         };
-      } else if (response.status === 403) {
+      } else if (response.status === 401 || response.status === 403) {
+        /* Supabase can return either 401 or 403 for expired/invalid tokens */
         const errorData = await response.json().catch(() => ({}));
-        logger.warn('🔐 Token verification failed (403):', errorData);
+        logger.warn(`🔐 Token verification failed (${response.status}):`, errorData);
 
         /* Check if session is completely invalidated (user logged out) */
         if (errorData.error_code === 'session_not_found') {
@@ -1146,7 +1200,12 @@ export class SupabaseAuthService {
         }
 
         /* Check if it's an expired token error that can be refreshed */
-        if (errorData.error_code === 'bad_jwt' || errorData.msg?.includes('expired')) {
+        if (
+          errorData.error_code === 'bad_jwt' ||
+          errorData.msg?.includes('expired') ||
+          errorData.error_description?.includes('expired') ||
+          response.status === 401
+        ) {
           logger.info('🔄 Token expired, attempting to refresh...');
           const refreshedToken = await this.refreshStoredToken();
           if (refreshedToken) {
@@ -1220,9 +1279,9 @@ export class SupabaseAuthService {
           subscriptionId: undefined /* Not provided in this response */,
           customerId: undefined /* Not provided in this response */,
         };
-      } else if (response.status === 403) {
+      } else if (response.status === 401 || response.status === 403) {
         const errorData = await response.json().catch(() => ({}));
-        logger.warn('🔐 Subscription check failed (403):', errorData);
+        logger.warn(`🔐 Subscription check failed (${response.status}):`, errorData);
 
         /* Check if session is completely invalidated */
         if (errorData.error_code === 'session_not_found') {
@@ -1232,7 +1291,12 @@ export class SupabaseAuthService {
         }
 
         /* Check if it's an expired token error that can be refreshed */
-        if (errorData.error_code === 'bad_jwt' || errorData.msg?.includes('expired')) {
+        if (
+          errorData.error_code === 'bad_jwt' ||
+          errorData.msg?.includes('expired') ||
+          errorData.error_description?.includes('expired') ||
+          response.status === 401
+        ) {
           logger.info('🔄 Token expired during subscription check, attempting to refresh...');
           const refreshedToken = await this.refreshStoredToken();
           if (refreshedToken) {
@@ -1545,12 +1609,21 @@ export class SupabaseAuthService {
       this.checkInterval = null;
     }
 
+    /* Clear the auth alarm if active */
+    chrome.alarms?.clear?.('auth-periodic-check')?.catch?.(() => {
+      /* Alarm might not exist — ignore */
+    });
+
     this.stopAggressiveDetection();
 
     /* Reset aggressive detection state */
     this.isInitialOnboarding = true;
     this.isPostConnectionMode = false;
     this.postConnectionStartTime = 0;
+
+    /* Reset listener guards so they can be re-registered after cleanup */
+    this.initialAuthDetectionSetup = false;
+    this.subscriptionDetectionSetup = false;
 
     /* Reset failure counter and reload flag (but preserve reload timestamp to prevent loops) */
     this.consecutiveAuthFailures = 0;
