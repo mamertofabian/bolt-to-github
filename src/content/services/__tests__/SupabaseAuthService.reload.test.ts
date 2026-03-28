@@ -37,6 +37,7 @@ const mockChromeTabs = {
 
 const mockChromeAlarms = {
   create: vi.fn(),
+  clear: vi.fn().mockResolvedValue(true),
   onAlarm: {
     addListener: vi.fn(),
   },

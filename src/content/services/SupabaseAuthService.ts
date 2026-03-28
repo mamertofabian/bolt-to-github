@@ -71,6 +71,10 @@ export class SupabaseAuthService {
   private postConnectionStartTime: number = 0;
   private aggressiveDetectionInterval: number | null = null;
 
+  /* Guards against duplicate Chrome event listener registration */
+  private initialAuthDetectionSetup: boolean = false;
+  private subscriptionDetectionSetup: boolean = false;
+
   /* Extension reload tracking for self-healing */
   private consecutiveAuthFailures: number = 0;
   private lastReloadTimestamp: number = 0;
@@ -171,16 +175,24 @@ export class SupabaseAuthService {
   }
 
   /**
-   * Start periodic authentication checks with aggressive detection during onboarding
+   * Start periodic authentication checks with aggressive detection during onboarding.
+   *
+   * Uses chrome.alarms for long-running intervals (authenticated/premium modes)
+   * since they survive service worker termination in MV3. Falls back to setInterval
+   * for short aggressive detection modes (1-2s) where alarms aren't practical
+   * (chrome.alarms minimum is 1 minute) and the modes only last ~60 seconds anyway.
    */
   private startPeriodicChecks(): void {
+    /* Clear any existing interval timer */
     if (this.checkInterval) {
       clearInterval(this.checkInterval);
+      this.checkInterval = null;
     }
 
     /* Use different intervals based on authentication and subscription status */
     let interval: number;
     let mode: string;
+    let useAlarm = false;
 
     if (!this.authState.isAuthenticated) {
       /* Check if we're in post-connection aggressive mode */
@@ -218,13 +230,30 @@ export class SupabaseAuthService {
         interval = this.CHECK_INTERVAL_AUTHENTICATED;
         mode = 'authenticated';
       }
+      /* Use chrome.alarms for long-running authenticated modes (survives SW termination) */
+      useAlarm = true;
     }
 
-    this.checkInterval = setInterval(() => {
-      this.checkAuthStatus();
-    }, interval);
-
-    logger.info(`🔄 Started auth checks every ${interval / 1000}s (${mode})`);
+    if (useAlarm && typeof chrome.alarms?.create === 'function') {
+      /* chrome.alarms survives service worker termination — reliable for long intervals.
+       * The alarm handler in BackgroundService.setupAlarms() dispatches to checkAuthStatus(). */
+      const periodInMinutes = Math.max(interval / 60000, 1); // chrome.alarms minimum is 1 minute
+      chrome.alarms.create('auth-periodic-check', { periodInMinutes });
+      logger.info(`🔄 Started auth checks via chrome.alarms every ${periodInMinutes}min (${mode})`);
+    } else {
+      /* Fallback to setInterval when alarms API is unavailable or for short-interval modes.
+       * Short intervals for aggressive detection only last ~60s and don't need alarm persistence. */
+      this.checkInterval = setInterval(() => {
+        this.checkAuthStatus();
+      }, interval);
+      /* Clear any existing alarm when switching to setInterval mode */
+      if (typeof chrome.alarms?.clear === 'function') {
+        chrome.alarms.clear('auth-periodic-check').catch(() => {
+          /* Alarm might not exist — ignore */
+        });
+      }
+      logger.info(`🔄 Started auth checks every ${interval / 1000}s (${mode})`);
+    }
   }
 
   /**
@@ -303,6 +332,15 @@ export class SupabaseAuthService {
         logger.info('🔐 User already authenticated, skipping initial auth detection');
         return;
       }
+
+      /* Prevent duplicate Chrome event listener registration.
+       * Chrome listeners accumulate — they cannot be removed without a reference,
+       * and re-calling addListener adds another copy. */
+      if (this.initialAuthDetectionSetup) {
+        logger.info('🔐 Initial auth detection listeners already registered, skipping');
+        return;
+      }
+      this.initialAuthDetectionSetup = true;
 
       logger.info('🔍 Setting up enhanced initial authentication detection for bolt2github.com');
 
@@ -401,6 +439,13 @@ export class SupabaseAuthService {
    */
   private setupSubscriptionUpgradeDetection(): void {
     try {
+      /* Prevent duplicate Chrome event listener registration */
+      if (this.subscriptionDetectionSetup) {
+        logger.info('💰 Subscription detection listeners already registered, skipping');
+        return;
+      }
+      this.subscriptionDetectionSetup = true;
+
       /* Only listen for specific upgrade/billing related pages */
       chrome.tabs.onUpdated.addListener(async (tabId, changeInfo, tab) => {
         /* Only check if user is authenticated and on upgrade/billing pages */
@@ -650,6 +695,7 @@ export class SupabaseAuthService {
         'supabaseToken',
         'supabaseRefreshToken',
         'supabaseTokenExpiry',
+        'refreshTokenIssuedAt', // Track when refresh token was issued
       ]);
 
       if (!storedTokens.supabaseToken) {
@@ -665,6 +711,28 @@ export class SupabaseAuthService {
         logger.info('✅ Using stored access token (valid)');
         return storedTokens.supabaseToken;
       } else if (storedTokens.supabaseRefreshToken) {
+        /* Check if refresh token might be too old (Supabase refresh tokens expire after ~30 days of inactivity) */
+        const refreshTokenAge = storedTokens.refreshTokenIssuedAt
+          ? now - storedTokens.refreshTokenIssuedAt
+          : 0;
+        const REFRESH_TOKEN_MAX_AGE = 30 * 24 * 60 * 60 * 1000; // 30 days
+
+        if (refreshTokenAge > REFRESH_TOKEN_MAX_AGE) {
+          logger.warn(
+            `🕐 Refresh token is very old (${Math.round(
+              refreshTokenAge / (24 * 60 * 60 * 1000)
+            )} days). Likely expired. Clearing tokens to force re-authentication.`
+          );
+          /* Clear tokens immediately if refresh token is too old */
+          await chrome.storage.local.remove([
+            'supabaseToken',
+            'supabaseRefreshToken',
+            'supabaseTokenExpiry',
+            'refreshTokenIssuedAt',
+          ]);
+          return null;
+        }
+
         /* Token expired or expires soon, try to refresh */
         logger.info('🔄 Stored token expired/expiring, refreshing...');
         return await this.refreshStoredToken();
@@ -694,6 +762,8 @@ export class SupabaseAuthService {
       /* Only store refresh token if it exists and is not empty */
       if (tokenData.refresh_token && tokenData.refresh_token.trim() !== '') {
         storageData.supabaseRefreshToken = tokenData.refresh_token;
+        /* Track when refresh token was issued to detect expired refresh tokens */
+        storageData.refreshTokenIssuedAt = Date.now();
         logger.info('💾 Storing refresh token (length:', tokenData.refresh_token.length, ')');
       } else {
         logger.error('⚠️ No valid refresh token to store');
@@ -996,7 +1066,10 @@ export class SupabaseAuthService {
    */
   private async refreshStoredToken(): Promise<string | null> {
     try {
-      const result = await chrome.storage.local.get(['supabaseRefreshToken']);
+      const result = await chrome.storage.local.get([
+        'supabaseRefreshToken',
+        'refreshTokenIssuedAt',
+      ]);
       const refreshToken = result.supabaseRefreshToken;
 
       if (!refreshToken) {
@@ -1005,7 +1078,14 @@ export class SupabaseAuthService {
       }
 
       logger.info('🔄 Attempting to refresh stored token...');
-      return await this.performTokenRefresh(refreshToken);
+      const refreshedToken = await this.performTokenRefresh(refreshToken);
+
+      /* If refresh was successful, update the refresh token issue timestamp */
+      if (refreshedToken) {
+        await chrome.storage.local.set({ refreshTokenIssuedAt: Date.now() });
+      }
+
+      return refreshedToken;
     } catch (error) {
       logger.error('❌ Error refreshing stored token:', error);
       return null;
@@ -1048,11 +1128,24 @@ export class SupabaseAuthService {
         const errorData = await response.json().catch(() => ({}));
         logger.warn('❌ Token refresh failed:', response.status, errorData);
 
+        /* Check if refresh token itself is expired or invalid */
+        const isRefreshTokenExpired =
+          response.status === 400 && errorData.error_description?.includes('refresh');
+        const isInvalidGrant =
+          errorData.error === 'invalid_grant' || errorData.error_description?.includes('invalid');
+
+        if (isRefreshTokenExpired || isInvalidGrant) {
+          logger.error(
+            '🕐 Refresh token is expired or invalid. Both access and refresh tokens need re-authentication.'
+          );
+        }
+
         /* If refresh failed, clear stored tokens */
         await chrome.storage.local.remove([
           'supabaseToken',
           'supabaseRefreshToken',
           'supabaseTokenExpiry',
+          'refreshTokenIssuedAt',
         ]);
         return null;
       }
@@ -1086,9 +1179,10 @@ export class SupabaseAuthService {
           created_at: user.created_at,
           updated_at: user.updated_at,
         };
-      } else if (response.status === 403) {
+      } else if (response.status === 401 || response.status === 403) {
+        /* Supabase can return either 401 or 403 for expired/invalid tokens */
         const errorData = await response.json().catch(() => ({}));
-        logger.warn('🔐 Token verification failed (403):', errorData);
+        logger.warn(`🔐 Token verification failed (${response.status}):`, errorData);
 
         /* Check if session is completely invalidated (user logged out) */
         if (errorData.error_code === 'session_not_found') {
@@ -1098,7 +1192,12 @@ export class SupabaseAuthService {
         }
 
         /* Check if it's an expired token error that can be refreshed */
-        if (errorData.error_code === 'bad_jwt' || errorData.msg?.includes('expired')) {
+        if (
+          errorData.error_code === 'bad_jwt' ||
+          errorData.msg?.includes('expired') ||
+          errorData.error_description?.includes('expired') ||
+          response.status === 401
+        ) {
           logger.info('🔄 Token expired, attempting to refresh...');
           const refreshedToken = await this.refreshStoredToken();
           if (refreshedToken) {
@@ -1172,9 +1271,9 @@ export class SupabaseAuthService {
           subscriptionId: undefined /* Not provided in this response */,
           customerId: undefined /* Not provided in this response */,
         };
-      } else if (response.status === 403) {
+      } else if (response.status === 401 || response.status === 403) {
         const errorData = await response.json().catch(() => ({}));
-        logger.warn('🔐 Subscription check failed (403):', errorData);
+        logger.warn(`🔐 Subscription check failed (${response.status}):`, errorData);
 
         /* Check if session is completely invalidated */
         if (errorData.error_code === 'session_not_found') {
@@ -1184,7 +1283,12 @@ export class SupabaseAuthService {
         }
 
         /* Check if it's an expired token error that can be refreshed */
-        if (errorData.error_code === 'bad_jwt' || errorData.msg?.includes('expired')) {
+        if (
+          errorData.error_code === 'bad_jwt' ||
+          errorData.msg?.includes('expired') ||
+          errorData.error_description?.includes('expired') ||
+          response.status === 401
+        ) {
           logger.info('🔄 Token expired during subscription check, attempting to refresh...');
           const refreshedToken = await this.refreshStoredToken();
           if (refreshedToken) {
@@ -1205,8 +1309,15 @@ export class SupabaseAuthService {
    * Handle session invalidation by clearing tokens and showing re-auth modal
    */
   private async handleSessionInvalidation(): Promise<void> {
-    /* Clear all stored tokens since session is invalid */
+    /* Clear all stored tokens (reuses clearStoredTokens to avoid key list duplication) */
     await this.clearStoredTokens();
+    /* Notify listeners and persist auth state via updateAuthState (not direct mutation)
+     * so that storage, premium service, and periodic-check reconfiguration all update */
+    this.updateAuthState({
+      isAuthenticated: false,
+      user: null,
+      subscription: { isActive: false, plan: 'free' },
+    });
     /* Show re-authentication modal */
     await this.showReauthenticationModal();
   }
@@ -1431,6 +1542,7 @@ export class SupabaseAuthService {
         'supabaseRefreshToken',
         'supabaseTokenExpiry',
         'supabaseAuthState',
+        'refreshTokenIssuedAt',
       ]);
 
       /* Reset internal auth state */
@@ -1485,12 +1597,23 @@ export class SupabaseAuthService {
       this.checkInterval = null;
     }
 
+    /* Clear the auth alarm if active */
+    if (typeof chrome.alarms?.clear === 'function') {
+      chrome.alarms.clear('auth-periodic-check').catch(() => {
+        /* Alarm might not exist — ignore */
+      });
+    }
+
     this.stopAggressiveDetection();
 
     /* Reset aggressive detection state */
     this.isInitialOnboarding = true;
     this.isPostConnectionMode = false;
     this.postConnectionStartTime = 0;
+
+    /* Reset listener guards so they can be re-registered after cleanup */
+    this.initialAuthDetectionSetup = false;
+    this.subscriptionDetectionSetup = false;
 
     /* Reset failure counter and reload flag (but preserve reload timestamp to prevent loops) */
     this.consecutiveAuthFailures = 0;

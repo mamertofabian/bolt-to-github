@@ -3,15 +3,15 @@
  * Communicates with Supabase Edge Functions for OAuth flow and token management
  */
 
-import type {
-  GitHubAppConfig,
-  GitHubAppTokenResponse,
-  GitHubAppErrorResponse,
-  TokenValidationResult,
-  PermissionCheckResult,
-} from './types/authentication';
 import { SUPABASE_CONFIG } from '../lib/constants/supabase';
 import { createLogger } from '../lib/utils/logger';
+import type {
+  GitHubAppConfig,
+  GitHubAppErrorResponse,
+  GitHubAppTokenResponse,
+  PermissionCheckResult,
+  TokenValidationResult,
+} from './types/authentication';
 
 const logger = createLogger('GitHubAppService');
 
@@ -31,9 +31,12 @@ export class GitHubAppService {
   }
 
   /**
-   * Get the user token, extracting from Supabase auth if needed
+   * Get the user token, extracting from Supabase auth if needed.
+   * Always reads fresh from storage to avoid using stale tokens after
+   * service worker restarts or token refreshes by SupabaseAuthService.
    */
   private async getUserToken(): Promise<string> {
+    // If explicitly set via setUserToken(), use it (short-lived caller context)
     if (this.userToken) {
       return this.userToken;
     }
@@ -41,15 +44,57 @@ export class GitHubAppService {
     // Try to extract from Supabase auth storage
     try {
       const authKey = `sb-${SUPABASE_CONFIG.URL.split('//')[1].split('.')[0]}-auth-token`;
-      const result = await chrome.storage.local.get(authKey);
-      const authData = result[authKey];
+      const result = await chrome.storage.local.get([
+        authKey,
+        'supabaseToken',
+        'supabaseTokenExpiry',
+        'refreshTokenIssuedAt',
+      ]);
 
+      const now = Date.now();
+      const tokenExpiry = result.supabaseTokenExpiry || 0;
+
+      // Prefer the managed supabaseToken (refreshed by SupabaseAuthService) if it's still valid
+      if (result.supabaseToken && tokenExpiry > now + 60 * 1000) {
+        return result.supabaseToken;
+      }
+
+      // Fall back to the Supabase auth-key token
+      const authData = result[authKey];
       if (authData?.access_token) {
-        this.userToken = authData.access_token;
+        // If token is expired, check refresh token age before using
+        if (tokenExpiry > 0 && tokenExpiry < now) {
+          if (result.refreshTokenIssuedAt) {
+            const refreshTokenAge = now - result.refreshTokenIssuedAt;
+            const REFRESH_TOKEN_MAX_AGE = 30 * 24 * 60 * 60 * 1000; // 30 days
+
+            if (refreshTokenAge > REFRESH_TOKEN_MAX_AGE) {
+              logger.warn(
+                `🕐 Supabase refresh token is very old (${Math.round(
+                  refreshTokenAge / (24 * 60 * 60 * 1000)
+                )} days). User needs to re-authenticate.`
+              );
+              throw new Error(
+                'Supabase authentication expired. Please re-authenticate via bolt2github.com.'
+              );
+            }
+          }
+
+          logger.warn(
+            '⚠️ Supabase token is expired but refresh token might work. ' +
+              'Allowing through - SupabaseAuthService will handle refresh.'
+          );
+        }
+
+        // Do NOT cache in this.userToken — always read fresh from storage
         return authData.access_token;
       }
     } catch (error) {
       logger.error('Failed to get user token from storage:', error);
+      // Re-throw the error if it's our custom expiration error
+      if (error instanceof Error && error.message.includes('Supabase authentication expired')) {
+        throw error;
+      }
     }
 
     throw new Error('No user token available. Please authenticate with bolt2github.com first.');

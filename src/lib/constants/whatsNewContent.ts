@@ -6,6 +6,17 @@ export interface WhatsNewVersion {
 }
 
 export const whatsNewContent: Record<string, WhatsNewVersion> = {
+  '1.3.15': {
+    date: '2026-03-27',
+    highlights: [
+      '🔧 Auth Lifecycle Recovery – Fixed persistent auth failure after inactivity in MV3 service worker',
+      '🔑 Supabase Token Handling – Tracks 30-day refresh token expiration with proactive validation',
+      '🛡️ GitHub App Token Validation – Validates Supabase token expiry to prevent cascade failures',
+      '⏰ Chrome Alarms API – Periodic auth checks survive service worker termination',
+    ],
+    details: `This release fixes a critical authentication issue where the extension would stop working after periods of inactivity, requiring users to manually toggle the extension off/on. Auth recovery now handles both 401 and 403 responses, eliminates stale token caching, and uses Chrome alarms for periodic checks that survive MV3 service worker restarts.`,
+    type: 'patch',
+  },
   '1.3.14': {
     date: '2026-03-08',
     highlights: [
