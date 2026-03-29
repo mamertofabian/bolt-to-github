@@ -59,19 +59,6 @@ export function checkRepositoryExists(repositories: Repository[], repoName: stri
 }
 
 /**
- * Gets the default project title based on repository name
- * @param currentTitle - Current project title
- * @param repoName - Repository name
- * @returns Default title to use
- */
-export function getDefaultProjectTitle(currentTitle: string, repoName: string): string {
-  if (!currentTitle && repoName && repoName.trim()) {
-    return repoName;
-  }
-  return currentTitle;
-}
-
-/**
  * Calculates the next selected index for keyboard navigation
  * @param currentIndex - Current selected index
  * @param direction - Direction to move ('up' or 'down')
@@ -156,6 +143,7 @@ export function handleKeyboardNavigation(
   newIndex: number;
   selectedRepo: Repository | null;
   shouldCloseDropdown: boolean;
+  shouldPreventDefault: boolean;
 } {
   const maxIndex = filteredRepos.length - 1;
 
@@ -165,12 +153,14 @@ export function handleKeyboardNavigation(
         newIndex: calculateNextSelectedIndex(currentIndex, 'down', maxIndex),
         selectedRepo: null,
         shouldCloseDropdown: false,
+        shouldPreventDefault: true,
       };
     case 'ArrowUp':
       return {
         newIndex: calculateNextSelectedIndex(currentIndex, 'up', maxIndex),
         selectedRepo: null,
         shouldCloseDropdown: false,
+        shouldPreventDefault: true,
       };
     case 'Enter':
       if (currentIndex >= 0 && filteredRepos[currentIndex]) {
@@ -178,24 +168,28 @@ export function handleKeyboardNavigation(
           newIndex: currentIndex,
           selectedRepo: filteredRepos[currentIndex],
           shouldCloseDropdown: true,
+          shouldPreventDefault: true,
         };
       }
       return {
         newIndex: currentIndex,
         selectedRepo: null,
         shouldCloseDropdown: false,
+        shouldPreventDefault: true,
       };
     case 'Escape':
       return {
         newIndex: currentIndex,
         selectedRepo: null,
         shouldCloseDropdown: true,
+        shouldPreventDefault: true,
       };
     default:
       return {
         newIndex: currentIndex,
         selectedRepo: null,
         shouldCloseDropdown: false,
+        shouldPreventDefault: false,
       };
   }
 }

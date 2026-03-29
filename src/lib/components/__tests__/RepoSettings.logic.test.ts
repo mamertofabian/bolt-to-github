@@ -6,7 +6,6 @@ import { describe, it, expect } from 'vitest';
 import {
   filterRepositories,
   checkRepositoryExists,
-  getDefaultProjectTitle,
   calculateNextSelectedIndex,
   shouldShowDropdown,
   canSaveForm,
@@ -186,38 +185,6 @@ describe('RepoSettings Business Logic', () => {
     });
   });
 
-  describe('getDefaultProjectTitle', () => {
-    it('should use repoName as default when projectTitle is empty', () => {
-      const result = getDefaultProjectTitle('', 'my-repo');
-
-      expect(result).toBe('my-repo');
-    });
-
-    it('should not override existing projectTitle', () => {
-      const result = getDefaultProjectTitle('Custom Title', 'my-repo');
-
-      expect(result).toBe('Custom Title');
-    });
-
-    it('should not set projectTitle when repoName is empty', () => {
-      const result = getDefaultProjectTitle('', '');
-
-      expect(result).toBe('');
-    });
-
-    it('should not set projectTitle when repoName is whitespace only', () => {
-      const result = getDefaultProjectTitle('', '   ');
-
-      expect(result).toBe('');
-    });
-
-    it('should preserve existing title when repoName is empty', () => {
-      const result = getDefaultProjectTitle('Existing Title', '');
-
-      expect(result).toBe('Existing Title');
-    });
-  });
-
   describe('calculateNextSelectedIndex', () => {
     it('should increment selectedIndex when moving down', () => {
       const result = calculateNextSelectedIndex(0, 'down', 5);
@@ -383,6 +350,7 @@ describe('RepoSettings Business Logic', () => {
       expect(result.newIndex).toBe(1);
       expect(result.selectedRepo).toBeNull();
       expect(result.shouldCloseDropdown).toBe(false);
+      expect(result.shouldPreventDefault).toBe(true);
     });
 
     it('should handle ArrowUp key', () => {
@@ -391,6 +359,7 @@ describe('RepoSettings Business Logic', () => {
       expect(result.newIndex).toBe(1);
       expect(result.selectedRepo).toBeNull();
       expect(result.shouldCloseDropdown).toBe(false);
+      expect(result.shouldPreventDefault).toBe(true);
     });
 
     it('should handle Enter key with valid selection', () => {
@@ -399,6 +368,7 @@ describe('RepoSettings Business Logic', () => {
       expect(result.newIndex).toBe(1);
       expect(result.selectedRepo).toEqual(mockRepositories[1]);
       expect(result.shouldCloseDropdown).toBe(true);
+      expect(result.shouldPreventDefault).toBe(true);
     });
 
     it('should handle Enter key with invalid selection', () => {
@@ -407,6 +377,7 @@ describe('RepoSettings Business Logic', () => {
       expect(result.newIndex).toBe(-1);
       expect(result.selectedRepo).toBeNull();
       expect(result.shouldCloseDropdown).toBe(false);
+      expect(result.shouldPreventDefault).toBe(true);
     });
 
     it('should handle Escape key', () => {
@@ -415,6 +386,7 @@ describe('RepoSettings Business Logic', () => {
       expect(result.newIndex).toBe(1);
       expect(result.selectedRepo).toBeNull();
       expect(result.shouldCloseDropdown).toBe(true);
+      expect(result.shouldPreventDefault).toBe(true);
     });
 
     it('should handle unknown key', () => {
@@ -423,6 +395,7 @@ describe('RepoSettings Business Logic', () => {
       expect(result.newIndex).toBe(1);
       expect(result.selectedRepo).toBeNull();
       expect(result.shouldCloseDropdown).toBe(false);
+      expect(result.shouldPreventDefault).toBe(false);
     });
 
     it('should handle Enter with empty repository list', () => {
@@ -431,6 +404,7 @@ describe('RepoSettings Business Logic', () => {
       expect(result.newIndex).toBe(0);
       expect(result.selectedRepo).toBeNull();
       expect(result.shouldCloseDropdown).toBe(false);
+      expect(result.shouldPreventDefault).toBe(true);
     });
   });
 
