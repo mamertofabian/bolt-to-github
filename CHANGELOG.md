@@ -1,5 +1,17 @@
 # Changelog
 
+## 2026-XX-XX - Version 1.3.16
+
+### 🎉 New Features
+
+### 🔧 Performance & Stability
+
+### 🧪 Testing & Quality
+
+### 🐛 Bug Fixes
+
+### 📚 Documentation
+
 ## 2026-03-27 - Version 1.3.15
 
 ### 🔧 Performance & Stability

@@ -31,7 +31,19 @@ A Chrome extension that automatically captures ZIP file downloads from bolt.new,
   <img src="https://img.shields.io/badge/Install%20from-Chrome%20Web%20Store-blue?style=for-the-badge&logo=google-chrome&logoColor=white" alt="Install from Chrome Web Store" height="40">
 </a>
 
-### Latest Version: v1.3.15 (Development)
+### Latest Version: v1.3.16 (Development)
+
+#### 📝 Version 1.3.16
+
+**What's new:**
+
+- Coming soon
+
+**Key Benefits:**
+
+- Coming soon
+
+### Previous Version: v1.3.15
 
 #### 📝 Version 1.3.15 – Auth Lifecycle Recovery
 
