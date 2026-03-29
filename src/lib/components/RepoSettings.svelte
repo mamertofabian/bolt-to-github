@@ -35,7 +35,7 @@
     shouldShowBranchDropdown,
     getBranchStatusMessage,
     type Repository,
-  } from '$lib/utils/RepoSettings.logic';
+  } from '$lib/utils/repo-settings';
 
   const logger = createLogger('RepoSettings');
 

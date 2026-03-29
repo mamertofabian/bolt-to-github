@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { onMount, createEventDispatcher } from 'svelte';
+  import { onMount, onDestroy, createEventDispatcher } from 'svelte';
   import { Button } from '$lib/components/ui/button';
   import Modal from '$lib/components/ui/modal/Modal.svelte';
   import CommitCard from './CommitCard.svelte';
@@ -38,12 +38,17 @@
 
   const commitsService = new CommitsService();
   let githubService: UnifiedGitHubService;
+  let authMethod = 'pat';
   let searchTimeout: ReturnType<typeof setTimeout> | null = null;
 
   onMount(async () => {
-    if (show) {
-      await initializeService();
-      await loadCommits();
+    await initializeService();
+    await loadCommits();
+  });
+
+  onDestroy(() => {
+    if (searchTimeout) {
+      clearTimeout(searchTimeout);
     }
   });
 
@@ -51,7 +56,7 @@
     try {
       // Get authentication method
       const authSettings = await chrome.storage.local.get(['authenticationMethod']);
-      const authMethod = authSettings.authenticationMethod || 'pat';
+      authMethod = authSettings.authenticationMethod || 'pat';
 
       if (authMethod === 'github_app') {
         githubService = new UnifiedGitHubService({ type: 'github_app' });
@@ -85,7 +90,7 @@
           owner: repoOwner,
           repo: repoName,
           branch,
-          token: githubToken,
+          authMethod,
         },
         pagination,
         githubService
@@ -261,14 +266,8 @@
 
 <style>
   .commits-modal {
-    min-width: 600px;
+    min-width: min(600px, 100%);
     max-width: 800px;
-  }
-
-  @media (max-width: 640px) {
-    .commits-modal {
-      min-width: 100%;
-    }
   }
 
   .commits-list::-webkit-scrollbar {

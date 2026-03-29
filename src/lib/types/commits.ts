@@ -13,7 +13,6 @@ export interface CommitListItem {
   };
   date: string;
   htmlUrl: string;
-  filesChangedCount: number;
 }
 
 /**
@@ -41,7 +40,7 @@ export interface CommitsServiceOptions {
   owner: string;
   repo: string;
   branch: string;
-  token: string;
+  authMethod?: string;
 }
 
 /**

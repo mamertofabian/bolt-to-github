@@ -19,7 +19,6 @@ describe('CommitsService', () => {
     owner: 'test-owner',
     repo: 'test-repo',
     branch: 'main',
-    token: 'test-token',
   };
 
   const createMockCommit = (index: number): GitHubCommit => ({
@@ -289,7 +288,6 @@ describe('CommitsService', () => {
           },
           date: '2024-01-01T10:00:00Z',
           htmlUrl: 'https://github.com/test/repo/commit/sha1',
-          filesChangedCount: 3,
         },
         {
           sha: 'sha2',
@@ -303,7 +301,6 @@ describe('CommitsService', () => {
           },
           date: '2024-01-02T10:00:00Z',
           htmlUrl: 'https://github.com/test/repo/commit/sha2',
-          filesChangedCount: 2,
         },
         {
           sha: 'sha3',
@@ -317,7 +314,6 @@ describe('CommitsService', () => {
           },
           date: '2024-01-03T10:00:00Z',
           htmlUrl: 'https://github.com/test/repo/commit/sha3',
-          filesChangedCount: 1,
         },
       ];
     });
@@ -428,7 +424,6 @@ describe('CommitsService', () => {
         'test-owner',
         'test-repo',
         'sha1abcdef',
-        'test-token',
         mockUnifiedGitHubService as unknown as UnifiedGitHubService
       );
 
@@ -448,7 +443,6 @@ describe('CommitsService', () => {
           'test-owner',
           'test-repo',
           'invalid-sha',
-          'test-token',
           mockUnifiedGitHubService as unknown as UnifiedGitHubService
         )
       ).rejects.toThrow('Commit not found');
@@ -509,27 +503,6 @@ describe('CommitsService', () => {
       );
 
       expect(result.commits[0].shortSha).toBe('abcdefg');
-    });
-
-    it('should set filesChangedCount to 0 (placeholder for now)', async () => {
-      const mockCommit = createMockCommit(1);
-      mockUnifiedGitHubService.request.mockResolvedValue([mockCommit]);
-
-      const pagination: CommitsPagination = {
-        page: 1,
-        perPage: 30,
-        hasMore: false,
-      };
-
-      const result = await service.fetchCommits(
-        TEST_OPTIONS,
-        pagination,
-        mockUnifiedGitHubService as unknown as UnifiedGitHubService
-      );
-
-      // For MVP, filesChangedCount is set to 0
-      // Can be enhanced later to fetch actual file count
-      expect(result.commits[0].filesChangedCount).toBe(0);
     });
   });
 });

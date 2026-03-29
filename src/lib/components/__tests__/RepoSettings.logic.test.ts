@@ -6,7 +6,6 @@ import { describe, it, expect } from 'vitest';
 import {
   filterRepositories,
   checkRepositoryExists,
-  getDefaultProjectTitle,
   calculateNextSelectedIndex,
   shouldShowDropdown,
   canSaveForm,
@@ -21,7 +20,7 @@ import {
   getBranchStatusMessage,
   type Repository,
   type AuthSettings,
-} from '$lib/utils/RepoSettings.logic';
+} from '$lib/utils/repo-settings';
 
 describe('RepoSettings Business Logic', () => {
   const mockRepositories: Repository[] = [
@@ -183,38 +182,6 @@ describe('RepoSettings Business Logic', () => {
       const result = checkRepositoryExists([], 'any-repo');
 
       expect(result).toBe(false);
-    });
-  });
-
-  describe('getDefaultProjectTitle', () => {
-    it('should use repoName as default when projectTitle is empty', () => {
-      const result = getDefaultProjectTitle('', 'my-repo');
-
-      expect(result).toBe('my-repo');
-    });
-
-    it('should not override existing projectTitle', () => {
-      const result = getDefaultProjectTitle('Custom Title', 'my-repo');
-
-      expect(result).toBe('Custom Title');
-    });
-
-    it('should not set projectTitle when repoName is empty', () => {
-      const result = getDefaultProjectTitle('', '');
-
-      expect(result).toBe('');
-    });
-
-    it('should not set projectTitle when repoName is whitespace only', () => {
-      const result = getDefaultProjectTitle('', '   ');
-
-      expect(result).toBe('');
-    });
-
-    it('should preserve existing title when repoName is empty', () => {
-      const result = getDefaultProjectTitle('Existing Title', '');
-
-      expect(result).toBe('Existing Title');
     });
   });
 

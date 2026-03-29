@@ -29,11 +29,11 @@ export class CommitsService {
     pagination: CommitsPagination,
     githubService: UnifiedGitHubService
   ): Promise<FetchCommitsResponse> {
-    const { owner, repo, branch } = options;
+    const { owner, repo, branch, authMethod } = options;
     const { page, perPage } = pagination;
 
-    // Generate cache key
-    const cacheKey = `${owner}/${repo}/${branch}/${page}/${perPage}`;
+    // Generate cache key (includes auth method to prevent cross-account cache hits)
+    const cacheKey = `${authMethod || 'default'}:${owner}/${repo}/${branch}/${page}/${perPage}`;
 
     // Check cache first
     if (this.isCacheValid(cacheKey)) {
@@ -123,7 +123,6 @@ export class CommitsService {
     owner: string,
     repo: string,
     sha: string,
-    token: string,
     githubService: UnifiedGitHubService
   ): Promise<GitHubCommit> {
     try {
@@ -166,7 +165,6 @@ export class CommitsService {
       author,
       date: commit.commit.author.date,
       htmlUrl: commit.html_url,
-      filesChangedCount: 0, // Placeholder - can be enhanced to fetch actual file count
     };
   }
 

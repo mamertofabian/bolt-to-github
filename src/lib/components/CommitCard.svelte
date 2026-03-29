@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { onDestroy } from 'svelte';
   import { User, Copy, Check } from 'lucide-svelte';
   import type { CommitListItem } from '../types/commits';
 
@@ -6,6 +7,12 @@
 
   let copied = false;
   let copyTimeout: ReturnType<typeof setTimeout> | null = null;
+
+  onDestroy(() => {
+    if (copyTimeout) {
+      clearTimeout(copyTimeout);
+    }
+  });
 
   function formatRelativeTime(dateString: string): string {
     const date = new Date(dateString);
@@ -121,13 +128,6 @@
             <span class="text-xs text-green-400">Copied!</span>
           {/if}
         </div>
-
-        <!-- Files Changed (if > 0) -->
-        {#if commit.filesChangedCount > 0}
-          <span class="text-xs text-slate-400">
-            {commit.filesChangedCount} file{commit.filesChangedCount === 1 ? '' : 's'} changed
-          </span>
-        {/if}
       </div>
     </div>
   </div>

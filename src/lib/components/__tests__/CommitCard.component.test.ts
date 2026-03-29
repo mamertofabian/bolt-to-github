@@ -32,7 +32,6 @@ describe('CommitCard.svelte - Component Tests', () => {
     },
     date: '2024-01-15T10:30:00Z',
     htmlUrl: 'https://github.com/test/repo/commit/abc123def456789012345678901234567890',
-    filesChangedCount: 5,
   };
 
   const mockCommitWithLongMessage: CommitListItem = {
@@ -229,20 +228,6 @@ describe('CommitCard.svelte - Component Tests', () => {
       const card = screen.getByRole('button', { name: /Commit abc123d/i });
       // Check for hover class or cursor pointer
       expect(card).toHaveClass(/cursor-pointer|hover/);
-    });
-
-    it('should display files changed count when greater than 0', () => {
-      const commitWithFiles = { ...mockCommit, filesChangedCount: 5 };
-      render(CommitCard, { props: { commit: commitWithFiles } });
-
-      expect(screen.getByText(/5.*file/i)).toBeInTheDocument();
-    });
-
-    it('should not display files changed count when 0', () => {
-      const commitWithNoFiles = { ...mockCommit, filesChangedCount: 0 };
-      render(CommitCard, { props: { commit: commitWithNoFiles } });
-
-      expect(screen.queryByText(/0.*file/i)).not.toBeInTheDocument();
     });
   });
 
