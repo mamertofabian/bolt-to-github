@@ -116,7 +116,9 @@
             aria-label="Copy SHA to clipboard"
             class="text-slate-400 hover:text-slate-200 transition-colors p-1"
             on:click={copySHA}
-            on:keydown={copySHA}
+            on:keydown={(e) => {
+              if (e.key === 'Enter' || e.key === ' ') copySHA(e);
+            }}
           >
             {#if copied}
               <Check size={14} class="text-green-400" />

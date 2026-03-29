@@ -4,6 +4,7 @@
 
   export let show = false;
   export let title: string;
+  export let maxWidth: string = 'max-w-md';
 
   const dispatch = createEventDispatcher();
 
@@ -35,7 +36,9 @@
     aria-labelledby="modal-title"
     tabindex="-1"
   >
-    <div class="bg-slate-900 p-6 rounded-lg shadow-xl max-w-md w-full mx-4 border border-slate-800">
+    <div
+      class="bg-slate-900 p-6 rounded-lg shadow-xl {maxWidth} w-full mx-4 border border-slate-800"
+    >
       <div class="flex items-center justify-between mb-4">
         <h2 id="modal-title" class="text-xl font-semibold">{title}</h2>
         <button

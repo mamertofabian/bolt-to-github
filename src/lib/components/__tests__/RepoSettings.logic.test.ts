@@ -350,6 +350,7 @@ describe('RepoSettings Business Logic', () => {
       expect(result.newIndex).toBe(1);
       expect(result.selectedRepo).toBeNull();
       expect(result.shouldCloseDropdown).toBe(false);
+      expect(result.shouldPreventDefault).toBe(true);
     });
 
     it('should handle ArrowUp key', () => {
@@ -358,6 +359,7 @@ describe('RepoSettings Business Logic', () => {
       expect(result.newIndex).toBe(1);
       expect(result.selectedRepo).toBeNull();
       expect(result.shouldCloseDropdown).toBe(false);
+      expect(result.shouldPreventDefault).toBe(true);
     });
 
     it('should handle Enter key with valid selection', () => {
@@ -366,6 +368,7 @@ describe('RepoSettings Business Logic', () => {
       expect(result.newIndex).toBe(1);
       expect(result.selectedRepo).toEqual(mockRepositories[1]);
       expect(result.shouldCloseDropdown).toBe(true);
+      expect(result.shouldPreventDefault).toBe(true);
     });
 
     it('should handle Enter key with invalid selection', () => {
@@ -374,6 +377,7 @@ describe('RepoSettings Business Logic', () => {
       expect(result.newIndex).toBe(-1);
       expect(result.selectedRepo).toBeNull();
       expect(result.shouldCloseDropdown).toBe(false);
+      expect(result.shouldPreventDefault).toBe(true);
     });
 
     it('should handle Escape key', () => {
@@ -382,6 +386,7 @@ describe('RepoSettings Business Logic', () => {
       expect(result.newIndex).toBe(1);
       expect(result.selectedRepo).toBeNull();
       expect(result.shouldCloseDropdown).toBe(true);
+      expect(result.shouldPreventDefault).toBe(true);
     });
 
     it('should handle unknown key', () => {
@@ -390,6 +395,7 @@ describe('RepoSettings Business Logic', () => {
       expect(result.newIndex).toBe(1);
       expect(result.selectedRepo).toBeNull();
       expect(result.shouldCloseDropdown).toBe(false);
+      expect(result.shouldPreventDefault).toBe(false);
     });
 
     it('should handle Enter with empty repository list', () => {
@@ -398,6 +404,7 @@ describe('RepoSettings Business Logic', () => {
       expect(result.newIndex).toBe(0);
       expect(result.selectedRepo).toBeNull();
       expect(result.shouldCloseDropdown).toBe(false);
+      expect(result.shouldPreventDefault).toBe(true);
     });
   });
 

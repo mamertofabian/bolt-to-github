@@ -155,7 +155,7 @@
   $: displayCommits = filteredCommits.length > 0 || searchQuery ? filteredCommits : commits;
 </script>
 
-<Modal {show} title="Commits History" on:close={handleClose}>
+<Modal {show} title="Commits History" maxWidth="max-w-3xl" on:close={handleClose}>
   <div class="commits-modal">
     <!-- Header -->
     <div class="border-b border-slate-700 pb-4 mb-4">
@@ -164,7 +164,7 @@
           {repoOwner}/{repoName} - {branch}
         </p>
         <div class="text-sm text-slate-400">
-          {totalCommits} commit{totalCommits === 1 ? '' : 's'}
+          Showing {totalCommits} commit{totalCommits === 1 ? '' : 's'}
         </div>
       </div>
     </div>
@@ -177,7 +177,7 @@
         </div>
         <input
           type="search"
-          placeholder="Search commits by message or author..."
+          placeholder="Filter commits by message or author..."
           class="w-full pl-10 pr-4 py-2 bg-slate-800 border border-slate-700 rounded-md text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500"
           value={searchQuery}
           on:input={handleSearchInput}
@@ -265,11 +265,6 @@
 </Modal>
 
 <style>
-  .commits-modal {
-    min-width: min(600px, 100%);
-    max-width: 800px;
-  }
-
   .commits-list::-webkit-scrollbar {
     width: 8px;
   }
