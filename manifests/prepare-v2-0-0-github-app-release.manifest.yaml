@@ -1,0 +1,338 @@
+schema: '2'
+goal: Prepare the GitHub App-only authentication release as the upcoming v2.0.0 major version
+description: |
+  Replace the unreleased v1.3.22 release identity with v2.0.0 because retiring
+  personal access token authentication changes the product's original GitHub
+  integration contract. Keep the release focused on the Bolt2GitHub account
+  and GitHub App migration, including the earlier session-aware onboarding fix,
+  while leaving room for later small release updates discovered during manual
+  testing and review.
+
+  This contract supersedes the overlapping v1.3.21 release-version contract
+  and the v1.3.22 GitHub App release-regression contract. It retains the latter's
+  browser-fixture, source-guard, migration-copy, and setup-test artifacts while
+  replacing only the unreleased version identity and release-facing copy.
+  The changelog and README describe v2.0.0 as upcoming; they must not claim that
+  manual release testing, review, tagging, or Chrome Web Store submission is
+  complete.
+temptations:
+- risk: Do not leave 1.3.22 as an accessible release entry after renumbering the same unreleased work to 2.0.0.
+  instead: Replace the current 1.3.22 entry across package, Chrome manifest, changelog, README, development guide, in-app content, and release tests.
+- risk: Do not present the preliminary metadata update as a completed or published release.
+  instead: Label repository release copy as upcoming or unreleased while keeping the user-facing migration explanation release-ready.
+- risk: Do not broaden the v2.0.0 headline to the separately branched production-readiness system.
+  instead: Limit v2.0.0 copy to GitHub App-only authentication, PAT retirement, preserved mappings, migration guidance, and session-aware onboarding.
+- risk: Do not discard the source guard or GitHub App browser-fixture contracts when superseding the v1.3.22 release manifest.
+  instead: Redeclare their complete retained public artifacts and run the original focused regression gate.
+type: fix
+supersedes:
+- 08-github-app-only-release-regression
+- release-v1-3-21
+files:
+  edit:
+  - path: package.json
+    artifacts:
+    - kind: namespace
+      name: PackageVersion_2_0_0
+      description: Package metadata version is exactly 2.0.0.
+  - path: manifest.json
+    artifacts:
+    - kind: namespace
+      name: ChromeManifestVersion_2_0_0
+      description: Chrome extension manifest version is exactly 2.0.0.
+  - path: CHANGELOG.md
+    artifacts:
+    - kind: namespace
+      name: Version_2_0_0_Changelog
+      description: Upcoming v2.0.0 developer release record focused on GitHub App-only authentication and PAT retirement.
+    - kind: namespace
+      name: Version_1_3_21_Changelog
+      description: Preserved historical v1.3.21 developer release record.
+  - path: README.md
+    artifacts:
+    - kind: namespace
+      name: Version_2_0_0_Readme
+      description: Upcoming v2.0.0 user-facing summary and migration steps, with v1.3.21 retained as the previous release.
+    - kind: namespace
+      name: Version_1_3_21_Readme
+      description: Preserved historical v1.3.21 user-facing release summary.
+  - path: CLAUDE.md
+    artifacts:
+    - kind: namespace
+      name: DevelopmentGuideVersion_2_0_0
+      description: Repository development guidance identifies v2.0.0 as the current development release.
+  - path: e2e/helpers/storage.ts
+    artifacts:
+    - kind: interface
+      name: GitHubAppE2ESettings
+      description: Optional GitHub App identity, session, repository, and project overrides for connected browser fixtures.
+    - kind: attribute
+      name: userId
+      of: GitHubAppE2ESettings
+      type: string | undefined
+    - kind: attribute
+      name: email
+      of: GitHubAppE2ESettings
+      type: string | undefined
+    - kind: attribute
+      name: installationId
+      of: GitHubAppE2ESettings
+      type: number | undefined
+    - kind: attribute
+      name: username
+      of: GitHubAppE2ESettings
+      type: string | undefined
+    - kind: attribute
+      name: avatarUrl
+      of: GitHubAppE2ESettings
+      type: string | undefined
+    - kind: attribute
+      name: repoOwner
+      of: GitHubAppE2ESettings
+      type: string | undefined
+    - kind: attribute
+      name: projectSettings
+      of: GitHubAppE2ESettings
+      type: ProjectSettings | undefined
+    - kind: interface
+      name: LegacyPatE2ESettings
+      description: Explicit migration-only legacy credential and preserved repository overrides.
+    - kind: attribute
+      name: token
+      of: LegacyPatE2ESettings
+      type: string | undefined
+    - kind: attribute
+      name: repoOwner
+      of: LegacyPatE2ESettings
+      type: string | undefined
+    - kind: attribute
+      name: projectSettings
+      of: LegacyPatE2ESettings
+      type: ProjectSettings | undefined
+    - kind: function
+      name: seedConnectedGitHubApp
+      args:
+      - name: context
+        type: BrowserContext
+      - name: extensionId
+        type: string
+      - name: settings
+        type: GitHubAppE2ESettings | undefined
+      returns: Promise<void>
+      description: Seeds live session, installation, repository, and project state without PAT credentials.
+    - kind: function
+      name: seedLegacyPatMigration
+      args:
+      - name: context
+        type: BrowserContext
+      - name: extensionId
+        type: string
+      - name: settings
+        type: LegacyPatE2ESettings | undefined
+      returns: Promise<void>
+      description: Seeds a legacy PAT plus preserved repository data for migration-only browser coverage.
+  - path: src/test/e2e-helpers/popup-helpers.test.ts
+    artifacts:
+    - kind: test_function
+      name: product auth helper seeds GitHub App session and installation without PAT
+    - kind: test_function
+      name: migration helper seeds legacy PAT only for the explicit upgrade scenario
+  - path: src/lib/constants/whatsNewContent.ts
+    artifacts:
+    - kind: attribute
+      name: whatsNewContent
+      type: Record<string, WhatsNewVersion>
+      description: Exposes v2.0.0 as the major GitHub App-only release and retains accurate historical entries without an unreleased v1.3.22 duplicate.
+  - path: src/lib/constants/__tests__/whatsNewContent.test.ts
+    artifacts:
+    - kind: test_function
+      name: keeps package and Chrome manifest versions aligned for 2.0.0
+    - kind: test_function
+      name: keeps the preliminary v2.0.0 release surfaces focused and user-facing
+    - kind: test_function
+      name: GitHub App-only release notes explain the required account migration without zero-usage claims
+    - kind: test_function
+      name: accessible release history no longer advertises PAT or dual authentication as a current option
+    - kind: test_function
+      name: keeps the v1.3.21 release in accessible history
+  - path: src/lib/components/__tests__/WelcomeHero.component.test.ts
+    artifacts:
+    - kind: test_function
+      name: presents Bolt2GitHub sign-in and the GitHub App as required setup
+  - path: src/test/auth/githubAppOnlySourceGuard.test.ts
+    artifacts:
+    - kind: test_function
+      name: production source exposes no PAT strategy selector token constructor creation link or setup guidance
+      description: Rejects PAT execution identifiers and actionable setup phrases outside the explicit migration boundary.
+    - kind: test_function
+      name: legacy PAT identifiers are confined to migration handling third-party error compatibility and negative assertions
+      description: Keeps retired credentials out of steady product and test authentication while allowing explicit migration compatibility.
+  read:
+  - manifests/08-github-app-only-release-regression.manifest.yaml
+  - manifests/release-v1-3-21.manifest.yaml
+  - manifests/01-github-app-only-migration-policy.manifest.yaml
+  - manifests/02-github-app-only-primary-setup.manifest.yaml
+  - manifests/03-github-app-only-runtime-enforcement.manifest.yaml
+  - manifests/04-github-app-only-repository-surfaces.manifest.yaml
+  - manifests/05-github-app-only-issue-feedback-surfaces.manifest.yaml
+  - manifests/06-retire-pat-strategy-and-factory.manifest.yaml
+  - manifests/07-remove-legacy-pat-storage-and-types.manifest.yaml
+validate:
+- pnpm exec vitest run src/test/auth/githubAppOnlySourceGuard.test.ts src/test/e2e-helpers/popup-helpers.test.ts src/lib/constants/__tests__/whatsNewContent.test.ts src/lib/components/__tests__/WelcomeHero.component.test.ts
+- ./scripts/maid validate manifests/prepare-v2-0-0-github-app-release.manifest.yaml --mode behavioral
+- pnpm lint
+- pnpm check
+- pnpm build
+created: '2026-07-13T22:38:55Z'
+metadata:
+  tags:
+  - release
+  - chrome-web-store
+  - auth
+  - github-app
+  - pat-retirement
+  - major-version
+  priority: high
+  promotable: true
+  release_version: 2.0.0
+  release_status: upcoming
+  release_scope:
+  - GitHub App-only authentication
+  - Personal access token retirement and migration
+  - Session-aware Bolt2GitHub onboarding
+  - Preserved repository and project mappings
+  excluded_scope:
+  - Production readiness checks
+  release_validation:
+  - pnpm test:ci
+  - pnpm exec playwright test e2e/auth.spec.ts e2e/lifecycle.spec.ts e2e/error-flow-product.spec.ts e2e/manual-repo.spec.ts --reporter=line
+  external_release_tasks:
+  - Complete manual upgrade, migration, disconnected-state, and reconnect testing before tagging or Chrome Web Store submission.
+  - Update the Chrome Web Store listing to state that Bolt2GitHub account sign-in and GitHub App connection are required.
+  - Update support macros and linked tutorial media that still demonstrate PAT setup.
+  notes: Browser and manual checks remain deferred release evidence and do not belong in the fast MAID validate gate.
+removed_artifacts:
+- kind: function
+  name: setupPATAuth
+  file: e2e/helpers/storage.ts
+  reason: Connected browser fixtures must satisfy the GitHub App-only authority instead of bypassing it with PAT storage.
+- kind: function
+  name: setupGitHubAppAuth
+  file: e2e/helpers/storage.ts
+  reason: The replacement fixture also seeds the required Bolt2GitHub session and verified live-connection cache.
+- kind: function
+  name: fillOnboardingPAT
+  file: e2e/helpers/popup.ts
+  reason: The popup no longer exposes a PAT selector or credential input.
+- kind: attribute
+  name: PAT_AUTH_ADOPTED
+  of: ANALYTICS_EVENTS
+  file: src/lib/utils/analytics.ts
+  reason: PAT adoption remains unsupported after GitHub App-only enforcement.
+outcome:
+  status: completed
+  completed_at: '2026-07-13T22:52:09Z'
+  summary: |
+    Prepared the current development branch as the upcoming v2.0.0 release.
+    Package metadata, Chrome manifest metadata, development guidance, README,
+    changelog, and in-app release content now consistently identify the major
+    GitHub App-only authentication release. The unreleased v1.3.22 entry was
+    replaced rather than retained as false release history, while v1.3.21
+    remains accessible as the previous release. Production-readiness checks
+    remain excluded for their separate feature branch.
+  rationale: |
+    Retiring the original personal access token integration changes a core
+    product compatibility boundary, so a major version communicates the scope
+    more accurately than v1.3.22. Repository copy remains explicitly upcoming
+    or unreleased because manual upgrade testing, focused Playwright release
+    checks, tagging, and Chrome Web Store submission are intentionally deferred.
+  lessons:
+  - lesson_type: release-contract-evolution
+    summary: |
+      When an unreleased version is renumbered, replace its current-version test
+      artifacts through a superseding manifest while retaining historical
+      changelog and README namespace artifacts that still exist.
+    tags: [release, supersession, versioning]
+    paths:
+    - manifests/prepare-v2-0-0-github-app-release.manifest.yaml
+    - src/lib/constants/__tests__/whatsNewContent.test.ts
+  - lesson_type: release-copy-boundary
+    summary: |
+      Assert authentication migration claims independently on in-app, changelog,
+      and README surfaces so one complete surface cannot hide omissions in
+      another, and explicitly reject separately branched feature terminology.
+    tags: [release-notes, testing, scope]
+    paths:
+    - CHANGELOG.md
+    - README.md
+    - src/lib/constants/whatsNewContent.ts
+    - src/lib/constants/__tests__/whatsNewContent.test.ts
+  - lesson_type: non-code-validation
+    summary: |
+      MAID cannot structurally verify removed namespace markers in JSON or
+      Markdown. Preserve historical document namespaces that still exist, keep
+      replacement warnings for live version markers visible, and do not add
+      unverifiable removed_artifacts merely to silence E110.
+    tags: [maid, validation, non-code]
+    paths:
+    - package.json
+    - manifest.json
+    - CLAUDE.md
+  review_notes:
+  - source: independent reviewer /root/v2_release_implementation_review
+    severity: findings-fixed
+    summary: |
+      Found missing preservation declarations for the retained v1.3.21
+      changelog and README namespaces plus aggregate-only release assertions.
+      Both findings were accepted, the plan lock was revised, and focused
+      validation was rerun.
+  - source: independent reviewer /root/v2_release_review_round2
+    severity: ready
+    summary: |
+      Final read-only review found no P0, P1, or P2 findings; confirmed version
+      consistency, per-surface release assertions, PRS exclusion, revision-4
+      lock integrity, honest deferred release checks, and the reduced warning set.
+  validation:
+  - command:
+    - pnpm
+    - exec
+    - vitest
+    - run
+    - src/test/auth/githubAppOnlySourceGuard.test.ts
+    - src/test/e2e-helpers/popup-helpers.test.ts
+    - src/lib/constants/__tests__/whatsNewContent.test.ts
+    - src/lib/components/__tests__/WelcomeHero.component.test.ts
+    status: passed
+    summary: Four focused files passed all 34 release, migration, fixture, and source-guard tests.
+  - command:
+    - ./scripts/maid
+    - validate
+    - manifests/prepare-v2-0-0-github-app-release.manifest.yaml
+    - --mode
+    - implementation
+    status: passed
+    summary: Implementation validation passed with three disclosed E110 live-version namespace warnings and non-code E307 notices.
+  - command: [pnpm, lint]
+    status: passed
+    summary: ESLint passed after implementation and again after review fixes.
+  - command: [pnpm, check]
+    status: passed
+    summary: Svelte and TypeScript checking completed with zero errors and zero warnings after review fixes.
+  - command: [pnpm, build]
+    status: passed
+    summary: The production extension build completed successfully with v2.0.0 metadata.
+  - command: [pnpm, test:ci]
+    status: passed
+    summary: The full Vitest suite passed 198 files and 4,007 tests.
+  - command:
+    - ./scripts/maid
+    - verify
+    - --summary
+    - --require-plan-lock
+    - --require-red-evidence
+    - --advisory
+    status: failed
+    summary: |
+      Schema, behavioral, implementation, and coherence stages passed. The
+      repository-wide gate remains blocked by 177 pre-existing brownfield
+      undeclared files; three current-version namespace warnings remain visible.

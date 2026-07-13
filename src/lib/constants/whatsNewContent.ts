@@ -6,16 +6,17 @@ export interface WhatsNewVersion {
 }
 
 export const whatsNewContent: Record<string, WhatsNewVersion> = {
-  '1.3.22': {
-    date: '2026-07-13',
+  '2.0.0': {
+    date: '2026-07-14',
     highlights: [
       '🔐 GitHub App Required - A Bolt2GitHub account and GitHub App connection now protect every GitHub action',
       '🧭 Clear Migration Guidance - Personal access token support has ended and the extension explains how to reconnect',
       '💾 Project Mappings Preserved - Existing repository and project mappings are preserved during migration',
+      '👋 Session-Aware Onboarding - Onboarding now follows the live Bolt2GitHub session before GitHub App connection',
       '🧹 Simpler Setup - One supported GitHub connection removes the confusing dual-integration path',
     ],
-    details: `Bolt to GitHub now requires a Bolt2GitHub account and the GitHub App for GitHub features. Personal access token support has ended. If the extension finds retired credentials, it removes them, preserves your repository and project mappings, and shows the sign-in and GitHub App connection steps required to continue. This intentional simplification follows more than a year of recommending the GitHub App; historical standalone usage could not be measured reliably, so this release makes no zero-usage claim.`,
-    type: 'patch',
+    details: `Bolt to GitHub now requires a Bolt2GitHub account and the GitHub App for GitHub features. Personal access token support has ended. If the extension finds retired credentials, it removes them, preserves your repository and project mappings, and shows the sign-in and GitHub App connection steps required to continue. Onboarding follows the live Bolt2GitHub session so signed-in users can continue directly to GitHub App connection. This intentional simplification follows more than a year of recommending the GitHub App; historical standalone usage could not be measured reliably, so this release makes no zero-usage claim.`,
+    type: 'major',
   },
   '1.3.21': {
     date: '2026-07-13',

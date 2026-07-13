@@ -1,0 +1,323 @@
+{
+  "manifest_path": "manifests/prepare-v2-0-0-github-app-release.manifest.yaml",
+  "manifest_hash": "sha256:af06b3c0f25bb0ec43d208229ebbccfaeb679d9e5192e96e644c2aaa84ff651d",
+  "test_hashes": {
+    "src/test/e2e-helpers/popup-helpers.test.ts": "sha256:b7f03879c3a954d4283be20d7c733fc9cd7b2d7addfe9306fe7d1de89fb4e0a9",
+    "src/lib/constants/__tests__/whatsNewContent.test.ts": "sha256:1bf261d07283e09b866484955729c208ac6ede42cb11ed38b3bf6cf6fd47c2d3",
+    "src/lib/components/__tests__/WelcomeHero.component.test.ts": "sha256:21d15970e5c137bb754ca3bb0617f41fc8f1f9f6537e2300902bfd0ed5a2c04e",
+    "src/test/auth/githubAppOnlySourceGuard.test.ts": "sha256:604ea8e95bbd680d847afaf2cfe6cc3ce95ec0611b85ebdab5935d1283084c7f"
+  },
+  "created_at": "2026-07-13T22:38:26.375532+00:00",
+  "revision": 6,
+  "revisions": [
+    {
+      "prior_manifest_hash": "sha256:0cf3ba53a406b9fc62f9d7d11a0bcafd40ff2b68b9c50c2cf5b1b4cf5e2140fe",
+      "prior_test_hashes": {
+        "src/test/e2e-helpers/popup-helpers.test.ts": "sha256:b7f03879c3a954d4283be20d7c733fc9cd7b2d7addfe9306fe7d1de89fb4e0a9",
+        "src/lib/constants/__tests__/whatsNewContent.test.ts": "sha256:3dcf2f8c52f171f7104b42877e2ea3e797ebefdd66879787df112dbd88600174",
+        "src/lib/components/__tests__/WelcomeHero.component.test.ts": "sha256:21d15970e5c137bb754ca3bb0617f41fc8f1f9f6537e2300902bfd0ed5a2c04e",
+        "src/test/auth/githubAppOnlySourceGuard.test.ts": "sha256:604ea8e95bbd680d847afaf2cfe6cc3ce95ec0611b85ebdab5935d1283084c7f"
+      },
+      "revised_at": "2026-07-13T22:38:55.120002+00:00",
+      "reason": "Migrated by maid manifest promote: manifests/drafts/prepare-v2-0-0-github-app-release.manifest.yaml -> manifests/prepare-v2-0-0-github-app-release.manifest.yaml",
+      "agent": null,
+      "contract_delta": {
+        "artifacts_added": [],
+        "artifacts_removed": [],
+        "files_added": [],
+        "files_removed": [],
+        "validate_commands_added": [],
+        "validate_commands_removed": []
+      }
+    },
+    {
+      "prior_manifest_hash": "sha256:b571d8ceb1a129c847282725e1ca3aa2958e52cf379f690297defdb2cc1ea8bc",
+      "prior_test_hashes": {
+        "src/test/e2e-helpers/popup-helpers.test.ts": "sha256:b7f03879c3a954d4283be20d7c733fc9cd7b2d7addfe9306fe7d1de89fb4e0a9",
+        "src/lib/constants/__tests__/whatsNewContent.test.ts": "sha256:3dcf2f8c52f171f7104b42877e2ea3e797ebefdd66879787df112dbd88600174",
+        "src/lib/components/__tests__/WelcomeHero.component.test.ts": "sha256:21d15970e5c137bb754ca3bb0617f41fc8f1f9f6537e2300902bfd0ed5a2c04e",
+        "src/test/auth/githubAppOnlySourceGuard.test.ts": "sha256:604ea8e95bbd680d847afaf2cfe6cc3ce95ec0611b85ebdab5935d1283084c7f"
+      },
+      "revised_at": "2026-07-13T22:40:34.683015+00:00",
+      "reason": "Drop unverifiable namespace removed_artifacts after implementation validation returned E311 for JSON and Markdown release surfaces",
+      "agent": {
+        "model": "gpt-5",
+        "provider": "openai",
+        "client": "codex",
+        "skills": ["maid-implement-draft", "maid-evolver"],
+        "source": "flags"
+      },
+      "contract_delta": {
+        "artifacts_added": [],
+        "artifacts_removed": [],
+        "files_added": [],
+        "files_removed": [],
+        "validate_commands_added": [],
+        "validate_commands_removed": []
+      }
+    },
+    {
+      "prior_manifest_hash": "sha256:84c17596ce8c13544a77ef4b932a92a30c2a3aa8644140a2a49f1f667e220324",
+      "prior_test_hashes": {
+        "src/test/e2e-helpers/popup-helpers.test.ts": "sha256:b7f03879c3a954d4283be20d7c733fc9cd7b2d7addfe9306fe7d1de89fb4e0a9",
+        "src/lib/constants/__tests__/whatsNewContent.test.ts": "sha256:3dcf2f8c52f171f7104b42877e2ea3e797ebefdd66879787df112dbd88600174",
+        "src/lib/components/__tests__/WelcomeHero.component.test.ts": "sha256:21d15970e5c137bb754ca3bb0617f41fc8f1f9f6537e2300902bfd0ed5a2c04e",
+        "src/test/auth/githubAppOnlySourceGuard.test.ts": "sha256:604ea8e95bbd680d847afaf2cfe6cc3ce95ec0611b85ebdab5935d1283084c7f"
+      },
+      "revised_at": "2026-07-13T22:48:06.862340+00:00",
+      "reason": "Retain v1.3.21 changelog and README namespace artifacts and harden per-surface release assertions after implementation review",
+      "agent": {
+        "model": "gpt-5",
+        "provider": "openai",
+        "client": "codex",
+        "skills": ["maid-implement-draft", "maid-implementation-review"],
+        "source": "flags"
+      },
+      "contract_delta": {
+        "artifacts_added": [
+          "CHANGELOG.md:namespace:Version_1_3_21_Changelog",
+          "CHANGELOG.md:namespace:Version_1_3_21_Changelog:kind=namespace",
+          "README.md:namespace:Version_1_3_21_Readme",
+          "README.md:namespace:Version_1_3_21_Readme:kind=namespace"
+        ],
+        "artifacts_removed": [],
+        "files_added": [],
+        "files_removed": [],
+        "validate_commands_added": [],
+        "validate_commands_removed": []
+      }
+    },
+    {
+      "prior_manifest_hash": "sha256:d076e864b8a8156e38648e77a5e68342711b95e12089a8ad749461abdd333ee8",
+      "prior_test_hashes": {
+        "src/test/e2e-helpers/popup-helpers.test.ts": "sha256:b7f03879c3a954d4283be20d7c733fc9cd7b2d7addfe9306fe7d1de89fb4e0a9",
+        "src/lib/constants/__tests__/whatsNewContent.test.ts": "sha256:2abbf8fbc2f236608fb54068d41f5a2c292b90b53bb455e603a93147f71c502c",
+        "src/lib/components/__tests__/WelcomeHero.component.test.ts": "sha256:21d15970e5c137bb754ca3bb0617f41fc8f1f9f6537e2300902bfd0ed5a2c04e",
+        "src/test/auth/githubAppOnlySourceGuard.test.ts": "sha256:604ea8e95bbd680d847afaf2cfe6cc3ce95ec0611b85ebdab5935d1283084c7f"
+      },
+      "revised_at": "2026-07-13T22:52:58.156369+00:00",
+      "reason": "Capture evidence-backed Outcome after final implementation review",
+      "agent": {
+        "model": "gpt-5",
+        "provider": "openai",
+        "client": "codex",
+        "skills": ["maid-implement-draft", "maid-implementation-review"],
+        "source": "flags"
+      },
+      "contract_delta": {
+        "artifacts_added": [],
+        "artifacts_removed": [],
+        "files_added": [],
+        "files_removed": [],
+        "validate_commands_added": [],
+        "validate_commands_removed": []
+      }
+    },
+    {
+      "prior_manifest_hash": "sha256:af06b3c0f25bb0ec43d208229ebbccfaeb679d9e5192e96e644c2aaa84ff651d",
+      "prior_test_hashes": {
+        "src/test/e2e-helpers/popup-helpers.test.ts": "sha256:b7f03879c3a954d4283be20d7c733fc9cd7b2d7addfe9306fe7d1de89fb4e0a9",
+        "src/lib/constants/__tests__/whatsNewContent.test.ts": "sha256:2abbf8fbc2f236608fb54068d41f5a2c292b90b53bb455e603a93147f71c502c",
+        "src/lib/components/__tests__/WelcomeHero.component.test.ts": "sha256:21d15970e5c137bb754ca3bb0617f41fc8f1f9f6537e2300902bfd0ed5a2c04e",
+        "src/test/auth/githubAppOnlySourceGuard.test.ts": "sha256:604ea8e95bbd680d847afaf2cfe6cc3ce95ec0611b85ebdab5935d1283084c7f"
+      },
+      "revised_at": "2026-07-13T22:55:57.601728+00:00",
+      "reason": "Refresh behavioral test hash after pre-commit Prettier formatting with no semantic contract change",
+      "agent": {
+        "model": "gpt-5",
+        "provider": "openai",
+        "client": "codex",
+        "skills": ["maid-implement-draft", "maid-implementation-review"],
+        "source": "flags"
+      },
+      "contract_delta": {
+        "artifacts_added": [],
+        "artifacts_removed": [],
+        "files_added": [],
+        "files_removed": [],
+        "validate_commands_added": [],
+        "validate_commands_removed": []
+      }
+    }
+  ],
+  "red_evidence": {
+    "red": true,
+    "captured_at": "2026-07-13T22:48:32.342149+00:00",
+    "commands": [
+      {
+        "command": "pnpm exec vitest run src/test/auth/githubAppOnlySourceGuard.test.ts src/test/e2e-helpers/popup-helpers.test.ts src/lib/constants/__tests__/whatsNewContent.test.ts src/lib/components/__tests__/WelcomeHero.component.test.ts",
+        "exit_code": 1,
+        "output_tail": "\n FAIL  src/lib/constants/__tests__/whatsNewContent.test.ts > whatsNewContent > GitHub App-only release notes explain the required account migration without zero-usage claims\nAssertionError: expected '' to match /Bolt2GitHub account/i\n\n- Expected: \n/Bolt2GitHub account/i\n\n+ Received: \n\"\"\n\n \u276f src/lib/constants/__tests__/whatsNewContent.test.ts:77:28\n     75| \n     76|     for (const releaseNotes of releaseSurfaces) {\n     77|       expect(releaseNotes).toMatch(/Bolt2GitHub account/i);\n       |                            ^\n     78|       expect(releaseNotes).toMatch(/GitHub App/i);\n     79|       expect(releaseNotes).toMatch(/personal access token support (?:h\u2026\n\n\u23af\u23af\u23af\u23af\u23af\u23af\u23af\u23af\u23af\u23af\u23af\u23af\u23af\u23af\u23af\u23af\u23af\u23af\u23af\u23af\u23af\u23af\u23af\u23af[3/3]\u23af\n",
+        "classification": "red"
+      },
+      {
+        "command": "./scripts/maid validate manifests/prepare-v2-0-0-github-app-release.manifest.yaml --mode behavioral",
+        "exit_code": 0,
+        "output_tail": "PASS prepare-v2-0-0-github-app-release\n  Mode: behavioral\n  Duration: 392ms\n  Warnings (3):\n    E110 Manifest 'prepare-v2-0-0-github-app-release' supersedes 'release-v1-3-21' but drops artifact 'PackageVersion_1_3_21' (namespace) at package.json\n      Location: /home/atomrem/projects/codefrost-dev/bolt-to-github/manifests/prepare-v2-0-0-github-app-release.manifest.yaml\n      Suggestion: Re-declare the artifact in the replacement manifest, list its file under files.delete, or list the symbol under removed_artifacts.\n    E110 Manifest 'prepare-v2-0-0-github-app-release' supersedes 'release-v1-3-21' but drops artifact 'ChromeManifestVersion_1_3_21' (namespace) at manifest.json\n      Location: /home/atomrem/projects/codefrost-dev/bolt-to-github/manifests/prepare-v2-0-0-github-app-release.manifest.yaml\n      Suggestion: Re-declare the artifact in the replacement manifest, list its file under files.delete, or list the symbol under removed_artifacts.\n    E110 Manifest 'prepare-v2-0-0-github-app-release' supersedes 'release-v1-3-21' but drops artifact 'DevelopmentGuideVersion_1_3_21' (namespace) at CLAUDE.md\n      Location: /home/atomrem/projects/codefrost-dev/bolt-to-github/manifests/prepare-v2-0-0-github-app-release.manifest.yaml\n      Suggestion: Re-declare the artifact in the replacement manifest, list its file under files.delete, or list the symbol under removed_artifacts.",
+        "classification": "not_red"
+      },
+      {
+        "command": "pnpm lint",
+        "exit_code": 0,
+        "output_tail": "\n> bolt-to-github@1.3.22 lint /home/atomrem/projects/codefrost-dev/bolt-to-github\n> eslint \"src/**/*.{js,ts,svelte}\"\n",
+        "classification": "not_red"
+      },
+      {
+        "command": "pnpm check",
+        "exit_code": 0,
+        "output_tail": "\n> bolt-to-github@1.3.22 check /home/atomrem/projects/codefrost-dev/bolt-to-github\n> svelte-check --tsconfig ./tsconfig.json\n\n\n====================================\nLoading svelte-check in workspace: /home/atomrem/projects/codefrost-dev/bolt-to-github\nGetting Svelte diagnostics...\n\n====================================\nsvelte-check found 0 errors and 0 warnings",
+        "classification": "not_red"
+      },
+      {
+        "command": "pnpm build",
+        "exit_code": 0,
+        "output_tail": "dist/assets/index-BnArqU_7.js                                 2.56 kB \u2502 gzip:   1.25 kB\ndist/assets/WelcomePageContentScript.ts-D1t7FgTm.js           2.66 kB \u2502 gzip:   0.79 kB\ndist/assets/GitHubCacheService-Bcgnv6OU.js                    3.68 kB \u2502 gzip:   1.30 kB\ndist/assets/TempRepoManager-DMDow60D.js                       5.70 kB \u2502 gzip:   2.18 kB\ndist/assets/logger-CcH-GVeY.js                                8.19 kB \u2502 gzip:   2.69 kB\ndist/pages/logs.js                                           15.32 kB \u2502 gzip:   5.72 kB\ndist/assets/debounce-CtuLBKyC.js                             22.12 kB \u2502 gzip:   6.78 kB\ndist/assets/input-CjMOwtNQ.js                                72.26 kB \u2502 gzip:  25.08 kB\ndist/assets/GitHubComparisonService-BtJO1k0S.js              80.42 kB \u2502 gzip:  23.34 kB\ndist/background/background.js                               109.91 kB \u2502 gzip:  29.33 kB\ndist/content/content.js                                     246.45 kB \u2502 gzip:  72.47 kB\ndist/assets/index.html-BjdfYsrg.js                          466.64 kB \u2502 gzip: 120.49 kB\n\u2713 built in 8.46s\n\n[plugin:vite:reporter] [plugin vite:reporter] \n(!) /home/atomrem/projects/codefrost-dev/bolt-to-github/src/lib/constants/supabase.ts is dynamically imported by /home/atomrem/projects/codefrost-dev/bolt-to-github/src/services/UnifiedGitHubService.ts but also statically imported by /home/atomrem/projects/codefrost-dev/bolt-to-github/src/content/services/SupabaseAuthService.ts, /home/atomrem/projects/codefrost-dev/bolt-to-github/src/services/BoltProjectSyncService.ts, /home/atomrem/projects/codefrost-dev/bolt-to-github/src/services/GitHubAppService.ts, /home/atomrem/projects/codefrost-dev/bolt-to-github/src/services/SubscriptionService.ts, dynamic import will not move module into another chunk.\n\n[plugin:vite:reporter] [plugin vite:reporter] \n(!) /home/atomrem/projects/codefrost-dev/bolt-to-github/src/content/handlers/FileChangeHandler.ts is dynamically imported by /home/atomrem/projects/codefrost-dev/bolt-to-github/src/content/handlers/GitHubUploadHandler.ts, /home/atomrem/projects/codefrost-dev/bolt-to-github/src/content/services/PushReminderService.ts, /home/atomrem/projects/codefrost-dev/bolt-to-github/src/content/services/PushReminderService.ts but also statically imported by /home/atomrem/projects/codefrost-dev/bolt-to-github/src/content/UIManager.ts, dynamic import will not move module into another chunk.\n",
+        "classification": "not_red"
+      }
+    ]
+  },
+  "agent": {
+    "model": "gpt-5",
+    "provider": "openai",
+    "client": "codex",
+    "skills": ["maid-implement-draft", "maid-evolver"],
+    "source": "flags"
+  },
+  "_manifest_contract": {
+    "artifacts": [
+      "CHANGELOG.md:namespace:Version_1_3_21_Changelog",
+      "CHANGELOG.md:namespace:Version_1_3_21_Changelog:kind=namespace",
+      "CHANGELOG.md:namespace:Version_2_0_0_Changelog",
+      "CHANGELOG.md:namespace:Version_2_0_0_Changelog:kind=namespace",
+      "CLAUDE.md:namespace:DevelopmentGuideVersion_2_0_0",
+      "CLAUDE.md:namespace:DevelopmentGuideVersion_2_0_0:kind=namespace",
+      "README.md:namespace:Version_1_3_21_Readme",
+      "README.md:namespace:Version_1_3_21_Readme:kind=namespace",
+      "README.md:namespace:Version_2_0_0_Readme",
+      "README.md:namespace:Version_2_0_0_Readme:kind=namespace",
+      "e2e/helpers/storage.ts:attribute:GitHubAppE2ESettings.avatarUrl",
+      "e2e/helpers/storage.ts:attribute:GitHubAppE2ESettings.avatarUrl:kind=attribute",
+      "e2e/helpers/storage.ts:attribute:GitHubAppE2ESettings.avatarUrl:of=GitHubAppE2ESettings",
+      "e2e/helpers/storage.ts:attribute:GitHubAppE2ESettings.avatarUrl:type=string | undefined",
+      "e2e/helpers/storage.ts:attribute:GitHubAppE2ESettings.email",
+      "e2e/helpers/storage.ts:attribute:GitHubAppE2ESettings.email:kind=attribute",
+      "e2e/helpers/storage.ts:attribute:GitHubAppE2ESettings.email:of=GitHubAppE2ESettings",
+      "e2e/helpers/storage.ts:attribute:GitHubAppE2ESettings.email:type=string | undefined",
+      "e2e/helpers/storage.ts:attribute:GitHubAppE2ESettings.installationId",
+      "e2e/helpers/storage.ts:attribute:GitHubAppE2ESettings.installationId:kind=attribute",
+      "e2e/helpers/storage.ts:attribute:GitHubAppE2ESettings.installationId:of=GitHubAppE2ESettings",
+      "e2e/helpers/storage.ts:attribute:GitHubAppE2ESettings.installationId:type=number | undefined",
+      "e2e/helpers/storage.ts:attribute:GitHubAppE2ESettings.projectSettings",
+      "e2e/helpers/storage.ts:attribute:GitHubAppE2ESettings.projectSettings:kind=attribute",
+      "e2e/helpers/storage.ts:attribute:GitHubAppE2ESettings.projectSettings:of=GitHubAppE2ESettings",
+      "e2e/helpers/storage.ts:attribute:GitHubAppE2ESettings.projectSettings:type=ProjectSettings | undefined",
+      "e2e/helpers/storage.ts:attribute:GitHubAppE2ESettings.repoOwner",
+      "e2e/helpers/storage.ts:attribute:GitHubAppE2ESettings.repoOwner:kind=attribute",
+      "e2e/helpers/storage.ts:attribute:GitHubAppE2ESettings.repoOwner:of=GitHubAppE2ESettings",
+      "e2e/helpers/storage.ts:attribute:GitHubAppE2ESettings.repoOwner:type=string | undefined",
+      "e2e/helpers/storage.ts:attribute:GitHubAppE2ESettings.userId",
+      "e2e/helpers/storage.ts:attribute:GitHubAppE2ESettings.userId:kind=attribute",
+      "e2e/helpers/storage.ts:attribute:GitHubAppE2ESettings.userId:of=GitHubAppE2ESettings",
+      "e2e/helpers/storage.ts:attribute:GitHubAppE2ESettings.userId:type=string | undefined",
+      "e2e/helpers/storage.ts:attribute:GitHubAppE2ESettings.username",
+      "e2e/helpers/storage.ts:attribute:GitHubAppE2ESettings.username:kind=attribute",
+      "e2e/helpers/storage.ts:attribute:GitHubAppE2ESettings.username:of=GitHubAppE2ESettings",
+      "e2e/helpers/storage.ts:attribute:GitHubAppE2ESettings.username:type=string | undefined",
+      "e2e/helpers/storage.ts:attribute:LegacyPatE2ESettings.projectSettings",
+      "e2e/helpers/storage.ts:attribute:LegacyPatE2ESettings.projectSettings:kind=attribute",
+      "e2e/helpers/storage.ts:attribute:LegacyPatE2ESettings.projectSettings:of=LegacyPatE2ESettings",
+      "e2e/helpers/storage.ts:attribute:LegacyPatE2ESettings.projectSettings:type=ProjectSettings | undefined",
+      "e2e/helpers/storage.ts:attribute:LegacyPatE2ESettings.repoOwner",
+      "e2e/helpers/storage.ts:attribute:LegacyPatE2ESettings.repoOwner:kind=attribute",
+      "e2e/helpers/storage.ts:attribute:LegacyPatE2ESettings.repoOwner:of=LegacyPatE2ESettings",
+      "e2e/helpers/storage.ts:attribute:LegacyPatE2ESettings.repoOwner:type=string | undefined",
+      "e2e/helpers/storage.ts:attribute:LegacyPatE2ESettings.token",
+      "e2e/helpers/storage.ts:attribute:LegacyPatE2ESettings.token:kind=attribute",
+      "e2e/helpers/storage.ts:attribute:LegacyPatE2ESettings.token:of=LegacyPatE2ESettings",
+      "e2e/helpers/storage.ts:attribute:LegacyPatE2ESettings.token:type=string | undefined",
+      "e2e/helpers/storage.ts:function:seedConnectedGitHubApp",
+      "e2e/helpers/storage.ts:function:seedConnectedGitHubApp:arg=context:type=BrowserContext:default=None",
+      "e2e/helpers/storage.ts:function:seedConnectedGitHubApp:arg=extensionId:type=string:default=None",
+      "e2e/helpers/storage.ts:function:seedConnectedGitHubApp:arg=settings:type=GitHubAppE2ESettings | undefined:default=None",
+      "e2e/helpers/storage.ts:function:seedConnectedGitHubApp:kind=function",
+      "e2e/helpers/storage.ts:function:seedConnectedGitHubApp:returns=Promise<void>",
+      "e2e/helpers/storage.ts:function:seedLegacyPatMigration",
+      "e2e/helpers/storage.ts:function:seedLegacyPatMigration:arg=context:type=BrowserContext:default=None",
+      "e2e/helpers/storage.ts:function:seedLegacyPatMigration:arg=extensionId:type=string:default=None",
+      "e2e/helpers/storage.ts:function:seedLegacyPatMigration:arg=settings:type=LegacyPatE2ESettings | undefined:default=None",
+      "e2e/helpers/storage.ts:function:seedLegacyPatMigration:kind=function",
+      "e2e/helpers/storage.ts:function:seedLegacyPatMigration:returns=Promise<void>",
+      "e2e/helpers/storage.ts:interface:GitHubAppE2ESettings",
+      "e2e/helpers/storage.ts:interface:GitHubAppE2ESettings:kind=interface",
+      "e2e/helpers/storage.ts:interface:LegacyPatE2ESettings",
+      "e2e/helpers/storage.ts:interface:LegacyPatE2ESettings:kind=interface",
+      "manifest.json:namespace:ChromeManifestVersion_2_0_0",
+      "manifest.json:namespace:ChromeManifestVersion_2_0_0:kind=namespace",
+      "package.json:namespace:PackageVersion_2_0_0",
+      "package.json:namespace:PackageVersion_2_0_0:kind=namespace",
+      "src/lib/components/__tests__/WelcomeHero.component.test.ts:presents Bolt2GitHub sign-in and the GitHub App as required setup",
+      "src/lib/components/__tests__/WelcomeHero.component.test.ts:presents Bolt2GitHub sign-in and the GitHub App as required setup:kind=test_function",
+      "src/lib/constants/__tests__/whatsNewContent.test.ts:GitHub App-only release notes explain the required account migration without zero-usage claims",
+      "src/lib/constants/__tests__/whatsNewContent.test.ts:GitHub App-only release notes explain the required account migration without zero-usage claims:kind=test_function",
+      "src/lib/constants/__tests__/whatsNewContent.test.ts:accessible release history no longer advertises PAT or dual authentication as a current option",
+      "src/lib/constants/__tests__/whatsNewContent.test.ts:accessible release history no longer advertises PAT or dual authentication as a current option:kind=test_function",
+      "src/lib/constants/__tests__/whatsNewContent.test.ts:keeps package and Chrome manifest versions aligned for 2.0.0",
+      "src/lib/constants/__tests__/whatsNewContent.test.ts:keeps package and Chrome manifest versions aligned for 2.0.0:kind=test_function",
+      "src/lib/constants/__tests__/whatsNewContent.test.ts:keeps the preliminary v2.0.0 release surfaces focused and user-facing",
+      "src/lib/constants/__tests__/whatsNewContent.test.ts:keeps the preliminary v2.0.0 release surfaces focused and user-facing:kind=test_function",
+      "src/lib/constants/__tests__/whatsNewContent.test.ts:keeps the v1.3.21 release in accessible history",
+      "src/lib/constants/__tests__/whatsNewContent.test.ts:keeps the v1.3.21 release in accessible history:kind=test_function",
+      "src/lib/constants/whatsNewContent.ts:attribute:whatsNewContent",
+      "src/lib/constants/whatsNewContent.ts:attribute:whatsNewContent:kind=attribute",
+      "src/lib/constants/whatsNewContent.ts:attribute:whatsNewContent:type=Record<string, WhatsNewVersion>",
+      "src/test/auth/githubAppOnlySourceGuard.test.ts:legacy PAT identifiers are confined to migration handling third-party error compatibility and negative assertions",
+      "src/test/auth/githubAppOnlySourceGuard.test.ts:legacy PAT identifiers are confined to migration handling third-party error compatibility and negative assertions:kind=test_function",
+      "src/test/auth/githubAppOnlySourceGuard.test.ts:production source exposes no PAT strategy selector token constructor creation link or setup guidance",
+      "src/test/auth/githubAppOnlySourceGuard.test.ts:production source exposes no PAT strategy selector token constructor creation link or setup guidance:kind=test_function",
+      "src/test/e2e-helpers/popup-helpers.test.ts:migration helper seeds legacy PAT only for the explicit upgrade scenario",
+      "src/test/e2e-helpers/popup-helpers.test.ts:migration helper seeds legacy PAT only for the explicit upgrade scenario:kind=test_function",
+      "src/test/e2e-helpers/popup-helpers.test.ts:product auth helper seeds GitHub App session and installation without PAT",
+      "src/test/e2e-helpers/popup-helpers.test.ts:product auth helper seeds GitHub App session and installation without PAT:kind=test_function"
+    ],
+    "files": {
+      "create": [],
+      "edit": [
+        "CHANGELOG.md",
+        "CLAUDE.md",
+        "README.md",
+        "e2e/helpers/storage.ts",
+        "manifest.json",
+        "package.json",
+        "src/lib/components/__tests__/WelcomeHero.component.test.ts",
+        "src/lib/constants/__tests__/whatsNewContent.test.ts",
+        "src/lib/constants/whatsNewContent.ts",
+        "src/test/auth/githubAppOnlySourceGuard.test.ts",
+        "src/test/e2e-helpers/popup-helpers.test.ts"
+      ],
+      "read": [
+        "manifests/01-github-app-only-migration-policy.manifest.yaml",
+        "manifests/02-github-app-only-primary-setup.manifest.yaml",
+        "manifests/03-github-app-only-runtime-enforcement.manifest.yaml",
+        "manifests/04-github-app-only-repository-surfaces.manifest.yaml",
+        "manifests/05-github-app-only-issue-feedback-surfaces.manifest.yaml",
+        "manifests/06-retire-pat-strategy-and-factory.manifest.yaml",
+        "manifests/07-remove-legacy-pat-storage-and-types.manifest.yaml",
+        "manifests/08-github-app-only-release-regression.manifest.yaml",
+        "manifests/release-v1-3-21.manifest.yaml"
+      ]
+    },
+    "test_files": [
+      "src/lib/components/__tests__/WelcomeHero.component.test.ts",
+      "src/lib/constants/__tests__/whatsNewContent.test.ts",
+      "src/test/auth/githubAppOnlySourceGuard.test.ts",
+      "src/test/e2e-helpers/popup-helpers.test.ts"
+    ],
+    "validate_commands": [
+      "pnpm exec vitest run src/test/auth/githubAppOnlySourceGuard.test.ts src/test/e2e-helpers/popup-helpers.test.ts src/lib/constants/__tests__/whatsNewContent.test.ts src/lib/components/__tests__/WelcomeHero.component.test.ts",
+      "./scripts/maid validate manifests/prepare-v2-0-0-github-app-release.manifest.yaml --mode behavioral",
+      "pnpm lint",
+      "pnpm check",
+      "pnpm build"
+    ]
+  }
+}

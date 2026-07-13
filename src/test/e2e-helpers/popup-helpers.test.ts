@@ -55,7 +55,17 @@ function createLocator(options: { visible?: boolean; text?: string } = {}): Loca
 
 describe('popup E2E helper characterization', () => {
   it('product auth helper seeds GitHub App session and installation without PAT', () => {
-    const connectedOverrides: GitHubAppE2ESettings = { username: 'testuser' };
+    const connectedOverrides: GitHubAppE2ESettings = {
+      userId: 'release-user',
+      email: 'release@example.com',
+      installationId: 12345,
+      username: 'testuser',
+      avatarUrl: 'https://avatars.githubusercontent.com/u/12345',
+      repoOwner: 'release-owner',
+      projectSettings: {
+        releaseProject: { repoName: 'release-repo', branch: 'main' },
+      },
+    };
     const storageHelper = readFileSync(join(process.cwd(), 'e2e/helpers/storage.ts'), 'utf8');
     const errorFlowSpec = readFileSync(
       join(process.cwd(), 'e2e/error-flow-product.spec.ts'),
@@ -63,6 +73,16 @@ describe('popup E2E helper characterization', () => {
     );
 
     expect(seedConnectedGitHubApp).toBeTypeOf('function');
+    expect(connectedOverrides.userId).toBe('release-user');
+    expect(connectedOverrides.email).toBe('release@example.com');
+    expect(connectedOverrides.installationId).toBe(12345);
+    expect(connectedOverrides.username).toBe('testuser');
+    expect(connectedOverrides.avatarUrl).toContain('avatars.githubusercontent.com');
+    expect(connectedOverrides.repoOwner).toBe('release-owner');
+    expect(connectedOverrides.projectSettings?.releaseProject).toMatchObject({
+      repoName: 'release-repo',
+      branch: 'main',
+    });
     expect(connectedOverrides).not.toHaveProperty('githubToken');
     expect(storageHelper).toContain('export async function seedConnectedGitHubApp');
     expect(storageHelper).toContain('supabaseAuthState');
@@ -77,7 +97,13 @@ describe('popup E2E helper characterization', () => {
   });
 
   it('migration helper seeds legacy PAT only for the explicit upgrade scenario', () => {
-    const migrationOverrides: LegacyPatE2ESettings = { token: 'migration-only' };
+    const migrationOverrides: LegacyPatE2ESettings = {
+      token: 'migration-only',
+      repoOwner: 'preserved-owner',
+      projectSettings: {
+        preservedProject: { repoName: 'preserved-repo', branch: 'dev' },
+      },
+    };
     const storageHelper = readFileSync(join(process.cwd(), 'e2e/helpers/storage.ts'), 'utf8');
     const authSpec = readFileSync(join(process.cwd(), 'e2e/auth.spec.ts'), 'utf8');
     const nonMigrationSpecs = [
@@ -89,6 +115,11 @@ describe('popup E2E helper characterization', () => {
 
     expect(seedLegacyPatMigration).toBeTypeOf('function');
     expect(migrationOverrides.token).toBe('migration-only');
+    expect(migrationOverrides.repoOwner).toBe('preserved-owner');
+    expect(migrationOverrides.projectSettings?.preservedProject).toMatchObject({
+      repoName: 'preserved-repo',
+      branch: 'dev',
+    });
     expect(storageHelper).toContain('export async function seedLegacyPatMigration');
     expect(storageHelper).toContain("authenticationMethod: 'pat'");
     expect(storageHelper).toContain('githubToken');

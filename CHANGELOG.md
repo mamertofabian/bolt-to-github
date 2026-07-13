@@ -1,12 +1,13 @@
 # Changelog
 
-## 2026-07-13 - Version 1.3.22
+## Unreleased - Version 2.0.0
 
 ### 🔐 Authentication
 
 - **GitHub App-Only Connection** - A Bolt2GitHub account and GitHub App installation are now required for GitHub features; personal access token support has ended
 - **Visible Legacy Migration** - Users with retired credentials receive explicit sign-in and GitHub App connection guidance instead of a silent failure or automatic navigation
 - **Preserved Project State** - Existing repository and project mappings are preserved while legacy credential and authentication-selector fields are removed
+- **Session-Aware Onboarding** - Onboarding now follows the live Bolt2GitHub session so signed-in users can continue to GitHub App connection without repeating sign-in
 
 ### 📚 Documentation
 

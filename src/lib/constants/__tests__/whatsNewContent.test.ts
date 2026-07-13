@@ -10,44 +10,47 @@ function textBefore(contents: string, marker: string): string {
 }
 
 describe('whatsNewContent', () => {
-  it('keeps package and Chrome manifest versions aligned for 1.3.22', () => {
-    const packageMetadata = JSON.parse(
+  it('keeps package and Chrome manifest versions aligned for 2.0.0', () => {
+    const PackageVersion_2_0_0 = JSON.parse(
       readFileSync(join(process.cwd(), 'package.json'), 'utf8')
     ) as { version: string };
-    const chromeManifest = JSON.parse(
+    const ChromeManifestVersion_2_0_0 = JSON.parse(
       readFileSync(join(process.cwd(), 'manifest.json'), 'utf8')
     ) as { version: string };
-    const developmentGuide = readFileSync(join(process.cwd(), 'CLAUDE.md'), 'utf8');
+    const DevelopmentGuideVersion_2_0_0 = readFileSync(join(process.cwd(), 'CLAUDE.md'), 'utf8');
 
-    expect(packageMetadata.version).toBe('1.3.22');
-    expect(chromeManifest.version).toBe('1.3.22');
-    expect(developmentGuide).toContain('**Current Version**: v1.3.22');
+    expect(PackageVersion_2_0_0.version).toBe('2.0.0');
+    expect(ChromeManifestVersion_2_0_0.version).toBe('2.0.0');
+    expect(DevelopmentGuideVersion_2_0_0).toContain('**Current Version**: v2.0.0');
   });
 
-  it('keeps the v1.3.22 release surfaces final and user-facing', () => {
-    const release = whatsNewContent['1.3.22'];
-    const changelog = readFileSync(join(process.cwd(), 'CHANGELOG.md'), 'utf8');
-    const readme = readFileSync(join(process.cwd(), 'README.md'), 'utf8');
-    const currentChangelog = textBefore(changelog, '## 2026-07-13 - Version 1.3.21');
-    const currentReadme = textBefore(readme, '### Previous Version: v1.3.21');
+  it('keeps the preliminary v2.0.0 release surfaces focused and user-facing', () => {
+    const release = whatsNewContent['2.0.0'];
+    const Version_2_0_0_Changelog = readFileSync(join(process.cwd(), 'CHANGELOG.md'), 'utf8');
+    const Version_2_0_0_Readme = readFileSync(join(process.cwd(), 'README.md'), 'utf8');
+    const currentChangelog = textBefore(Version_2_0_0_Changelog, '## 2026-07-13 - Version 1.3.21');
+    const currentReadme = textBefore(Version_2_0_0_Readme, '### Previous Version: v1.3.21');
 
     expect(release).toBeDefined();
-    expect(release.date).toBe('2026-07-13');
-    expect(release.type).toBe('patch');
-    expect(changelog).toContain('## 2026-07-13 - Version 1.3.22');
-    expect(readme).toContain('### Latest Version: v1.3.22');
-    expect(readme).toContain('Bolt2GitHub account');
-    expect(readme).toContain('GitHub App');
+    expect(release.date).toBe('2026-07-14');
+    expect(release.type).toBe('major');
+    expect(whatsNewContent['1.3.22']).toBeUndefined();
+    expect(Version_2_0_0_Changelog).toContain('## Unreleased - Version 2.0.0');
+    expect(Version_2_0_0_Readme).toContain('### Upcoming Version: v2.0.0');
+    expect(Version_2_0_0_Readme).toContain('Bolt2GitHub account');
+    expect(Version_2_0_0_Readme).toContain('GitHub App');
     expect(
       [release.details, ...release.highlights, currentChangelog, currentReadme].join(' ')
     ).not.toMatch(/TBD|In Development|MAID|Vitest|Playwright/);
+    expect(
+      [release.details, ...release.highlights, currentChangelog, currentReadme].join(' ')
+    ).not.toMatch(/\bPRS\b|production[- ]readiness|dependency drift|secret detector|diff engine/i);
   });
 
   it('GitHub App-only release notes explain the required account migration without zero-usage claims', () => {
-    const release = whatsNewContent['1.3.22'];
-    const releaseNotes = [
-      release?.details,
-      ...(release?.highlights ?? []),
+    const release = whatsNewContent['2.0.0'];
+    const releaseSurfaces = [
+      [release?.details, ...(release?.highlights ?? [])].join(' '),
       textBefore(
         readFileSync(join(process.cwd(), 'CHANGELOG.md'), 'utf8'),
         '## 2026-07-13 - Version 1.3.21'
@@ -56,14 +59,19 @@ describe('whatsNewContent', () => {
         readFileSync(join(process.cwd(), 'README.md'), 'utf8'),
         '### Previous Version: v1.3.21'
       ),
-    ].join(' ');
+    ];
 
-    expect(releaseNotes).toMatch(/Bolt2GitHub account/i);
-    expect(releaseNotes).toMatch(/GitHub App/i);
-    expect(releaseNotes).toMatch(/personal access token support (?:has )?ended/i);
-    expect(releaseNotes).toMatch(/repository (?:and project )?mappings? (?:are )?preserved/i);
-    expect(releaseNotes).not.toMatch(/(?:zero|no) PAT users|nobody uses PAT|telemetry proved/i);
-    expect(releaseNotes).not.toMatch(/database (?:count|query).*PAT/i);
+    for (const releaseNotes of releaseSurfaces) {
+      expect(releaseNotes).toMatch(/Bolt2GitHub account/i);
+      expect(releaseNotes).toMatch(/GitHub App/i);
+      expect(releaseNotes).toMatch(/personal access token support (?:has )?ended/i);
+      expect(releaseNotes).toMatch(/repository (?:and project )?mappings? (?:are )?preserved/i);
+      expect(releaseNotes).toMatch(
+        /onboarding[^.]*Bolt2GitHub session|Bolt2GitHub session[^.]*onboarding/i
+      );
+      expect(releaseNotes).not.toMatch(/(?:zero|no) PAT users|nobody uses PAT|telemetry proved/i);
+      expect(releaseNotes).not.toMatch(/database (?:count|query).*PAT/i);
+    }
   });
 
   it('accessible release history no longer advertises PAT or dual authentication as a current option', () => {
@@ -72,31 +80,6 @@ describe('whatsNewContent', () => {
 
     expect(historicalCopy).toContain('GitHub App');
     expect(historicalCopy).not.toMatch(/\bPAT\b|personal access token|dual auth/i);
-  });
-
-  it('keeps package and Chrome manifest versions aligned for 1.3.21', () => {
-    const PackageVersion_1_3_21 = JSON.parse(
-      readFileSync(join(process.cwd(), 'package.json'), 'utf8')
-    ) as { version: string };
-    const ChromeManifestVersion_1_3_21 = JSON.parse(
-      readFileSync(join(process.cwd(), 'manifest.json'), 'utf8')
-    ) as { version: string };
-    const DevelopmentGuideVersion_1_3_21 = readFileSync(join(process.cwd(), 'CLAUDE.md'), 'utf8');
-
-    expect(PackageVersion_1_3_21.version).toBe('1.3.22');
-    expect(ChromeManifestVersion_1_3_21.version).toBe('1.3.22');
-    expect(DevelopmentGuideVersion_1_3_21).toContain('**Current Version**: v1.3.22');
-    expect(whatsNewContent['1.3.21']).toBeDefined();
-  });
-
-  it('keeps the v1.3.21 release surfaces final and user-facing', () => {
-    const release = whatsNewContent['1.3.21'];
-    const changelog = readFileSync(join(process.cwd(), 'CHANGELOG.md'), 'utf8');
-    const readme = readFileSync(join(process.cwd(), 'README.md'), 'utf8');
-
-    expect(release.date).toBe('2026-07-13');
-    expect(changelog).toContain('## 2026-07-13 - Version 1.3.21');
-    expect(readme).toContain('### Previous Version: v1.3.21');
   });
 
   it('keeps the v1.3.21 release in accessible history', () => {
