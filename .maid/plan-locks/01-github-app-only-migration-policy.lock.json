@@ -1,0 +1,328 @@
+{
+  "manifest_path": "manifests/01-github-app-only-migration-policy.manifest.yaml",
+  "manifest_hash": "sha256:1a1a062a287b79c61ca532885396251e62e899092311eaf1fb6d083d8fcd1089",
+  "test_hashes": {
+    "src/lib/services/__tests__/githubAuthMigration.test.ts": "sha256:2c337d494854e184cc6108fd11c91b2e8f248da0942f149d6afc4c942cf101c4"
+  },
+  "created_at": "2026-07-13T09:18:37.854948+00:00",
+  "revision": 8,
+  "revisions": [
+    {
+      "prior_manifest_hash": "sha256:10f4834c8fbd9daa704edbedc1089030e3bae129f881a5615f204890056b8ce2",
+      "prior_test_hashes": {
+        "src/lib/services/__tests__/githubAuthMigration.test.ts": "sha256:a2bc19674b62efb993a960c3306de14d9a00d85a3162a3424c7503e37313c12f"
+      },
+      "revised_at": "2026-07-13T09:19:31.773034+00:00",
+      "reason": "Clarify that stored GitHub App installation state is locally migration-complete while live readiness remains a separate runtime check",
+      "agent": {
+        "model": "gpt-5",
+        "provider": "openai",
+        "client": "codex",
+        "skills": ["maid-implement-draft"],
+        "source": "flags"
+      },
+      "contract_delta": {
+        "artifacts_added": [],
+        "artifacts_removed": [],
+        "files_added": [],
+        "files_removed": [],
+        "validate_commands_added": [],
+        "validate_commands_removed": []
+      }
+    },
+    {
+      "prior_manifest_hash": "sha256:10f4834c8fbd9daa704edbedc1089030e3bae129f881a5615f204890056b8ce2",
+      "prior_test_hashes": {
+        "src/lib/services/__tests__/githubAuthMigration.test.ts": "sha256:80e9de4312db7ce35e6e15c5ce4bd19db2b78ad235fa2734d170b9b9b59f7997"
+      },
+      "revised_at": "2026-07-13T09:24:12.169848+00:00",
+      "reason": "Refresh promoted contract lifecycle metadata after behavioral validation and captured red evidence",
+      "agent": {
+        "model": "gpt-5",
+        "provider": "openai",
+        "client": "codex",
+        "skills": ["maid-implement-draft"],
+        "source": "flags"
+      },
+      "contract_delta": {
+        "artifacts_added": [],
+        "artifacts_removed": [],
+        "files_added": [],
+        "files_removed": [],
+        "validate_commands_added": [],
+        "validate_commands_removed": []
+      }
+    },
+    {
+      "prior_manifest_hash": "sha256:7be18308b84cfecc31e473aa0aadfb38eaef89ba82676c4d891cc6d87183fc93",
+      "prior_test_hashes": {
+        "src/lib/services/__tests__/githubAuthMigration.test.ts": "sha256:80e9de4312db7ce35e6e15c5ce4bd19db2b78ad235fa2734d170b9b9b59f7997"
+      },
+      "revised_at": "2026-07-13T09:30:12.538330+00:00",
+      "reason": "Strengthen reviewer-requested coverage for preferredAuthMethod cleanup and a stateful second migration run",
+      "agent": {
+        "model": "gpt-5",
+        "provider": "openai",
+        "client": "codex",
+        "skills": ["maid-implement-draft", "maid-implementation-review"],
+        "source": "flags"
+      },
+      "contract_delta": {
+        "artifacts_added": [],
+        "artifacts_removed": [],
+        "files_added": [],
+        "files_removed": [],
+        "validate_commands_added": [],
+        "validate_commands_removed": []
+      }
+    },
+    {
+      "prior_manifest_hash": "sha256:7be18308b84cfecc31e473aa0aadfb38eaef89ba82676c4d891cc6d87183fc93",
+      "prior_test_hashes": {
+        "src/lib/services/__tests__/githubAuthMigration.test.ts": "sha256:a538cff46f621076b0e005a4c9e48dcf7bc0452e6863536d95d3d2b0632120d7"
+      },
+      "revised_at": "2026-07-13T09:31:12.015658+00:00",
+      "reason": "Restore direct migrationRequired snapshot coverage after the stateful idempotency rewrite",
+      "agent": {
+        "model": "gpt-5",
+        "provider": "openai",
+        "client": "codex",
+        "skills": ["maid-implement-draft", "maid-implementation-review"],
+        "source": "flags"
+      },
+      "contract_delta": {
+        "artifacts_added": [],
+        "artifacts_removed": [],
+        "files_added": [],
+        "files_removed": [],
+        "validate_commands_added": [],
+        "validate_commands_removed": []
+      }
+    },
+    {
+      "prior_manifest_hash": "sha256:7be18308b84cfecc31e473aa0aadfb38eaef89ba82676c4d891cc6d87183fc93",
+      "prior_test_hashes": {
+        "src/lib/services/__tests__/githubAuthMigration.test.ts": "sha256:1cfbd2971d265555124471d5aca606a5eabb33c73624a0905f18f9779c218abe"
+      },
+      "revised_at": "2026-07-13T09:34:58.756691+00:00",
+      "reason": "Cover the reviewer-identified crash window after PAT deletion but before legacy local-auth cleanup",
+      "agent": {
+        "model": "gpt-5",
+        "provider": "openai",
+        "client": "codex",
+        "skills": ["maid-implement-draft", "maid-implementation-review"],
+        "source": "flags"
+      },
+      "contract_delta": {
+        "artifacts_added": [
+          "src/lib/services/__tests__/githubAuthMigration.test.ts:retry repairs a token-removed local-auth-not-yet-cleaned partial migration",
+          "src/lib/services/__tests__/githubAuthMigration.test.ts:retry repairs a token-removed local-auth-not-yet-cleaned partial migration:kind=test_function",
+          "src/lib/services/githubAuthMigration.ts:attribute:LegacyGitHubAuthSnapshot.lastMigrationPrompt",
+          "src/lib/services/githubAuthMigration.ts:attribute:LegacyGitHubAuthSnapshot.lastMigrationPrompt:kind=attribute",
+          "src/lib/services/githubAuthMigration.ts:attribute:LegacyGitHubAuthSnapshot.lastMigrationPrompt:of=LegacyGitHubAuthSnapshot",
+          "src/lib/services/githubAuthMigration.ts:attribute:LegacyGitHubAuthSnapshot.lastMigrationPrompt:type=string | undefined",
+          "src/lib/services/githubAuthMigration.ts:attribute:LegacyGitHubAuthSnapshot.migrationPromptShown",
+          "src/lib/services/githubAuthMigration.ts:attribute:LegacyGitHubAuthSnapshot.migrationPromptShown:kind=attribute",
+          "src/lib/services/githubAuthMigration.ts:attribute:LegacyGitHubAuthSnapshot.migrationPromptShown:of=LegacyGitHubAuthSnapshot",
+          "src/lib/services/githubAuthMigration.ts:attribute:LegacyGitHubAuthSnapshot.migrationPromptShown:type=boolean | undefined",
+          "src/lib/services/githubAuthMigration.ts:attribute:LegacyGitHubAuthSnapshot.preferredAuthMethod",
+          "src/lib/services/githubAuthMigration.ts:attribute:LegacyGitHubAuthSnapshot.preferredAuthMethod:kind=attribute",
+          "src/lib/services/githubAuthMigration.ts:attribute:LegacyGitHubAuthSnapshot.preferredAuthMethod:of=LegacyGitHubAuthSnapshot",
+          "src/lib/services/githubAuthMigration.ts:attribute:LegacyGitHubAuthSnapshot.preferredAuthMethod:type='pat' | 'github_app' | undefined"
+        ],
+        "artifacts_removed": [],
+        "files_added": [],
+        "files_removed": [],
+        "validate_commands_added": [],
+        "validate_commands_removed": []
+      }
+    },
+    {
+      "prior_manifest_hash": "sha256:1d1c77f18411106a74da6579daf184faeeeb0391ad8875aab8141fe777e077f7",
+      "prior_test_hashes": {
+        "src/lib/services/__tests__/githubAuthMigration.test.ts": "sha256:2c337d494854e184cc6108fd11c91b2e8f248da0942f149d6afc4c942cf101c4"
+      },
+      "revised_at": "2026-07-13T09:40:42.463834+00:00",
+      "reason": "Capture the required post-review completed Outcome with validation and reviewer evidence",
+      "agent": {
+        "model": "gpt-5",
+        "provider": "openai",
+        "client": "codex",
+        "skills": ["maid-implement-draft", "maid-implementation-review"],
+        "source": "flags"
+      },
+      "contract_delta": {
+        "artifacts_added": [],
+        "artifacts_removed": [],
+        "files_added": [],
+        "files_removed": [],
+        "validate_commands_added": [],
+        "validate_commands_removed": []
+      }
+    },
+    {
+      "prior_manifest_hash": "sha256:3abc6dd69d552d4b0d290832f651c569f55b8cba6b08781154c7c7685b056c38",
+      "prior_test_hashes": {
+        "src/lib/services/__tests__/githubAuthMigration.test.ts": "sha256:2c337d494854e184cc6108fd11c91b2e8f248da0942f149d6afc4c942cf101c4"
+      },
+      "revised_at": "2026-07-13T09:41:32.506486+00:00",
+      "reason": "Refresh the manifest hash after deterministic pre-commit YAML formatting",
+      "agent": {
+        "model": "gpt-5",
+        "provider": "openai",
+        "client": "codex",
+        "skills": ["maid-implement-draft"],
+        "source": "flags"
+      },
+      "contract_delta": {
+        "artifacts_added": [],
+        "artifacts_removed": [],
+        "files_added": [],
+        "files_removed": [],
+        "validate_commands_added": [],
+        "validate_commands_removed": []
+      }
+    }
+  ],
+  "red_evidence": {
+    "red": false,
+    "captured_at": "2026-07-13T09:41:46.811236+00:00",
+    "commands": [
+      {
+        "command": "pnpm exec vitest run src/lib/services/__tests__/githubAuthMigration.test.ts",
+        "exit_code": 0,
+        "output_tail": "\n RUN  v1.6.1 /home/atomrem/projects/codefrost-dev/bolt-to-github\n\n \u2713 src/lib/services/__tests__/githubAuthMigration.test.ts  (8 tests) 6ms\n\n Test Files  1 passed (1)\n      Tests  8 passed (8)\n   Start at  17:41:33\n   Duration  603ms (transform 42ms, setup 54ms, collect 11ms, tests 6ms, environment 182ms, prepare 81ms)\n",
+        "classification": "not_red"
+      },
+      {
+        "command": "./scripts/maid validate manifests/01-github-app-only-migration-policy.manifest.yaml --mode behavioral",
+        "exit_code": 0,
+        "output_tail": "PASS 01-github-app-only-migration-policy\n  Mode: behavioral\n  Duration: 250ms",
+        "classification": "not_red"
+      },
+      {
+        "command": "pnpm lint",
+        "exit_code": 0,
+        "output_tail": "\n> bolt-to-github@1.3.21 lint /home/atomrem/projects/codefrost-dev/bolt-to-github\n> eslint \"src/**/*.{js,ts,svelte}\"\n",
+        "classification": "not_red"
+      },
+      {
+        "command": "pnpm check",
+        "exit_code": 0,
+        "output_tail": "\n> bolt-to-github@1.3.21 check /home/atomrem/projects/codefrost-dev/bolt-to-github\n> svelte-check --tsconfig ./tsconfig.json\n\n\n====================================\nLoading svelte-check in workspace: /home/atomrem/projects/codefrost-dev/bolt-to-github\nGetting Svelte diagnostics...\n\n====================================\nsvelte-check found 0 errors and 0 warnings",
+        "classification": "not_red"
+      }
+    ]
+  },
+  "agent": {
+    "model": "gpt-5",
+    "provider": "openai",
+    "client": "codex",
+    "skills": ["maid-implement-draft"],
+    "source": "flags"
+  },
+  "_manifest_contract": {
+    "artifacts": [
+      "src/lib/services/__tests__/githubAuthMigration.test.ts:completion requires both a live session and installation",
+      "src/lib/services/__tests__/githubAuthMigration.test.ts:completion requires both a live session and installation:kind=test_function",
+      "src/lib/services/__tests__/githubAuthMigration.test.ts:fresh unconfigured storage is not mislabeled as a PAT migration",
+      "src/lib/services/__tests__/githubAuthMigration.test.ts:fresh unconfigured storage is not mislabeled as a PAT migration:kind=test_function",
+      "src/lib/services/__tests__/githubAuthMigration.test.ts:legacy PAT becomes migration required and the token is removed",
+      "src/lib/services/__tests__/githubAuthMigration.test.ts:legacy PAT becomes migration required and the token is removed:kind=test_function",
+      "src/lib/services/__tests__/githubAuthMigration.test.ts:migration preserves repository owner and every project mapping",
+      "src/lib/services/__tests__/githubAuthMigration.test.ts:migration preserves repository owner and every project mapping:kind=test_function",
+      "src/lib/services/__tests__/githubAuthMigration.test.ts:repeated migration is idempotent",
+      "src/lib/services/__tests__/githubAuthMigration.test.ts:repeated migration is idempotent:kind=test_function",
+      "src/lib/services/__tests__/githubAuthMigration.test.ts:retry repairs a marker-written token-not-yet-removed partial migration",
+      "src/lib/services/__tests__/githubAuthMigration.test.ts:retry repairs a marker-written token-not-yet-removed partial migration:kind=test_function",
+      "src/lib/services/__tests__/githubAuthMigration.test.ts:retry repairs a token-removed local-auth-not-yet-cleaned partial migration",
+      "src/lib/services/__tests__/githubAuthMigration.test.ts:retry repairs a token-removed local-auth-not-yet-cleaned partial migration:kind=test_function",
+      "src/lib/services/__tests__/githubAuthMigration.test.ts:stale PAT beside a connected GitHub App is removed without migration blocking",
+      "src/lib/services/__tests__/githubAuthMigration.test.ts:stale PAT beside a connected GitHub App is removed without migration blocking:kind=test_function",
+      "src/lib/services/githubAuthMigration.ts:attribute:GitHubAuthMigrationDecision.persistMigrationRequired",
+      "src/lib/services/githubAuthMigration.ts:attribute:GitHubAuthMigrationDecision.persistMigrationRequired:kind=attribute",
+      "src/lib/services/githubAuthMigration.ts:attribute:GitHubAuthMigrationDecision.persistMigrationRequired:of=GitHubAuthMigrationDecision",
+      "src/lib/services/githubAuthMigration.ts:attribute:GitHubAuthMigrationDecision.persistMigrationRequired:type=boolean",
+      "src/lib/services/githubAuthMigration.ts:attribute:GitHubAuthMigrationDecision.removeLegacyMethodKeys",
+      "src/lib/services/githubAuthMigration.ts:attribute:GitHubAuthMigrationDecision.removeLegacyMethodKeys:kind=attribute",
+      "src/lib/services/githubAuthMigration.ts:attribute:GitHubAuthMigrationDecision.removeLegacyMethodKeys:of=GitHubAuthMigrationDecision",
+      "src/lib/services/githubAuthMigration.ts:attribute:GitHubAuthMigrationDecision.removeLegacyMethodKeys:type=boolean",
+      "src/lib/services/githubAuthMigration.ts:attribute:GitHubAuthMigrationDecision.removeStoredPat",
+      "src/lib/services/githubAuthMigration.ts:attribute:GitHubAuthMigrationDecision.removeStoredPat:kind=attribute",
+      "src/lib/services/githubAuthMigration.ts:attribute:GitHubAuthMigrationDecision.removeStoredPat:of=GitHubAuthMigrationDecision",
+      "src/lib/services/githubAuthMigration.ts:attribute:GitHubAuthMigrationDecision.removeStoredPat:type=boolean",
+      "src/lib/services/githubAuthMigration.ts:attribute:GitHubAuthMigrationDecision.status",
+      "src/lib/services/githubAuthMigration.ts:attribute:GitHubAuthMigrationDecision.status:kind=attribute",
+      "src/lib/services/githubAuthMigration.ts:attribute:GitHubAuthMigrationDecision.status:of=GitHubAuthMigrationDecision",
+      "src/lib/services/githubAuthMigration.ts:attribute:GitHubAuthMigrationDecision.status:type=GitHubAppMigrationStatus",
+      "src/lib/services/githubAuthMigration.ts:attribute:LegacyGitHubAuthSnapshot.authenticationMethod",
+      "src/lib/services/githubAuthMigration.ts:attribute:LegacyGitHubAuthSnapshot.authenticationMethod:kind=attribute",
+      "src/lib/services/githubAuthMigration.ts:attribute:LegacyGitHubAuthSnapshot.authenticationMethod:of=LegacyGitHubAuthSnapshot",
+      "src/lib/services/githubAuthMigration.ts:attribute:LegacyGitHubAuthSnapshot.authenticationMethod:type='pat' | 'github_app' | undefined",
+      "src/lib/services/githubAuthMigration.ts:attribute:LegacyGitHubAuthSnapshot.githubAppInstallationId",
+      "src/lib/services/githubAuthMigration.ts:attribute:LegacyGitHubAuthSnapshot.githubAppInstallationId:kind=attribute",
+      "src/lib/services/githubAuthMigration.ts:attribute:LegacyGitHubAuthSnapshot.githubAppInstallationId:of=LegacyGitHubAuthSnapshot",
+      "src/lib/services/githubAuthMigration.ts:attribute:LegacyGitHubAuthSnapshot.githubAppInstallationId:type=number | undefined",
+      "src/lib/services/githubAuthMigration.ts:attribute:LegacyGitHubAuthSnapshot.githubToken",
+      "src/lib/services/githubAuthMigration.ts:attribute:LegacyGitHubAuthSnapshot.githubToken:kind=attribute",
+      "src/lib/services/githubAuthMigration.ts:attribute:LegacyGitHubAuthSnapshot.githubToken:of=LegacyGitHubAuthSnapshot",
+      "src/lib/services/githubAuthMigration.ts:attribute:LegacyGitHubAuthSnapshot.githubToken:type=string | undefined",
+      "src/lib/services/githubAuthMigration.ts:attribute:LegacyGitHubAuthSnapshot.lastMigrationPrompt",
+      "src/lib/services/githubAuthMigration.ts:attribute:LegacyGitHubAuthSnapshot.lastMigrationPrompt:kind=attribute",
+      "src/lib/services/githubAuthMigration.ts:attribute:LegacyGitHubAuthSnapshot.lastMigrationPrompt:of=LegacyGitHubAuthSnapshot",
+      "src/lib/services/githubAuthMigration.ts:attribute:LegacyGitHubAuthSnapshot.lastMigrationPrompt:type=string | undefined",
+      "src/lib/services/githubAuthMigration.ts:attribute:LegacyGitHubAuthSnapshot.migrationPromptShown",
+      "src/lib/services/githubAuthMigration.ts:attribute:LegacyGitHubAuthSnapshot.migrationPromptShown:kind=attribute",
+      "src/lib/services/githubAuthMigration.ts:attribute:LegacyGitHubAuthSnapshot.migrationPromptShown:of=LegacyGitHubAuthSnapshot",
+      "src/lib/services/githubAuthMigration.ts:attribute:LegacyGitHubAuthSnapshot.migrationPromptShown:type=boolean | undefined",
+      "src/lib/services/githubAuthMigration.ts:attribute:LegacyGitHubAuthSnapshot.migrationRequired",
+      "src/lib/services/githubAuthMigration.ts:attribute:LegacyGitHubAuthSnapshot.migrationRequired:kind=attribute",
+      "src/lib/services/githubAuthMigration.ts:attribute:LegacyGitHubAuthSnapshot.migrationRequired:of=LegacyGitHubAuthSnapshot",
+      "src/lib/services/githubAuthMigration.ts:attribute:LegacyGitHubAuthSnapshot.migrationRequired:type=boolean | undefined",
+      "src/lib/services/githubAuthMigration.ts:attribute:LegacyGitHubAuthSnapshot.preferredAuthMethod",
+      "src/lib/services/githubAuthMigration.ts:attribute:LegacyGitHubAuthSnapshot.preferredAuthMethod:kind=attribute",
+      "src/lib/services/githubAuthMigration.ts:attribute:LegacyGitHubAuthSnapshot.preferredAuthMethod:of=LegacyGitHubAuthSnapshot",
+      "src/lib/services/githubAuthMigration.ts:attribute:LegacyGitHubAuthSnapshot.preferredAuthMethod:type='pat' | 'github_app' | undefined",
+      "src/lib/services/githubAuthMigration.ts:function:completeGitHubAppMigration",
+      "src/lib/services/githubAuthMigration.ts:function:completeGitHubAppMigration:arg=installationConnected:type=boolean:default=None",
+      "src/lib/services/githubAuthMigration.ts:function:completeGitHubAppMigration:arg=liveSessionConnected:type=boolean:default=None",
+      "src/lib/services/githubAuthMigration.ts:function:completeGitHubAppMigration:kind=function",
+      "src/lib/services/githubAuthMigration.ts:function:completeGitHubAppMigration:returns=Promise<boolean>",
+      "src/lib/services/githubAuthMigration.ts:function:migrateLegacyGitHubAuthentication",
+      "src/lib/services/githubAuthMigration.ts:function:migrateLegacyGitHubAuthentication:kind=function",
+      "src/lib/services/githubAuthMigration.ts:function:migrateLegacyGitHubAuthentication:returns=Promise<GitHubAuthMigrationDecision>",
+      "src/lib/services/githubAuthMigration.ts:function:resolveGitHubAuthMigration",
+      "src/lib/services/githubAuthMigration.ts:function:resolveGitHubAuthMigration:arg=snapshot:type=LegacyGitHubAuthSnapshot:default=None",
+      "src/lib/services/githubAuthMigration.ts:function:resolveGitHubAuthMigration:kind=function",
+      "src/lib/services/githubAuthMigration.ts:function:resolveGitHubAuthMigration:returns=GitHubAuthMigrationDecision",
+      "src/lib/services/githubAuthMigration.ts:interface:GitHubAuthMigrationDecision",
+      "src/lib/services/githubAuthMigration.ts:interface:GitHubAuthMigrationDecision:kind=interface",
+      "src/lib/services/githubAuthMigration.ts:interface:LegacyGitHubAuthSnapshot",
+      "src/lib/services/githubAuthMigration.ts:interface:LegacyGitHubAuthSnapshot:kind=interface",
+      "src/lib/services/githubAuthMigration.ts:type:GitHubAppMigrationStatus",
+      "src/lib/services/githubAuthMigration.ts:type:GitHubAppMigrationStatus:kind=type",
+      "src/lib/services/githubAuthMigration.ts:type:GitHubAppMigrationStatus:type='not_required' | 'migration_required' | 'completed'"
+    ],
+    "files": {
+      "create": [
+        "src/lib/services/__tests__/githubAuthMigration.test.ts",
+        "src/lib/services/githubAuthMigration.ts"
+      ],
+      "edit": [],
+      "read": [
+        "manifests/drafts/github-app-only-authentication.manifest.yaml",
+        "src/content/services/SupabaseAuthService.ts",
+        "src/lib/services/chromeStorage.ts",
+        "src/lib/types.ts",
+        "src/lib/utils/githubConnection.ts"
+      ]
+    },
+    "test_files": ["src/lib/services/__tests__/githubAuthMigration.test.ts"],
+    "validate_commands": [
+      "pnpm exec vitest run src/lib/services/__tests__/githubAuthMigration.test.ts",
+      "./scripts/maid validate manifests/01-github-app-only-migration-policy.manifest.yaml --mode behavioral",
+      "pnpm lint",
+      "pnpm check"
+    ]
+  }
+}

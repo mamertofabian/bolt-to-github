@@ -4,10 +4,11 @@
   "test_hashes": {
     "src/lib/utils/__tests__/upgradeModal.test.ts": "sha256:c6a93b05f596d79496b75a0a58c8595d2c58065bf7de8a97a1093c62d1eff0ed",
     "src/popup/components/__tests__/UpgradeModal.component.test.ts": "sha256:f95b1516be05942e53064eb8623413d14e3ca976d87309f90b72eb377de2f527",
-    "src/popup/__tests__/App.component.test.ts": "sha256:3d2ee4be944f8f325fdf03bd96190f81e1b06a44f4cfa3cb6211a488f626f49d"
+    "src/popup/__tests__/App.component.test.ts": "sha256:aa55e7bc2b0b34733eb65bbed5b9cf4de249b848f732347d95730b05a120b601",
+    "src/lib/utils/__tests__/analytics.test.ts": "sha256:fb78988a9299593e04ab48be674f78050fe49a34cf48111f89e19f319c4c4002"
   },
   "created_at": "2026-07-07T05:54:23.513352+00:00",
-  "revision": 5,
+  "revision": 6,
   "revisions": [
     {
       "prior_manifest_hash": "sha256:8e1a51338f237971792141bf5f30d4d13cc987e77c016b49ec224285b2e15480",
@@ -16,7 +17,9 @@
         "src/popup/components/__tests__/UpgradeModal.component.test.ts": "sha256:f95b1516be05942e53064eb8623413d14e3ca976d87309f90b72eb377de2f527"
       },
       "revised_at": "2026-07-07T06:03:36.140075+00:00",
-      "reason": "Add popupContext upgrade path to tracked modal_shown seam after implementation review found content-opened popup impressions bypassed setUpgradeModalState"
+      "reason": "Add popupContext upgrade path to tracked modal_shown seam after implementation review found content-opened popup impressions bypassed setUpgradeModalState",
+      "agent": null,
+      "contract_delta": null
     },
     {
       "prior_manifest_hash": "sha256:e33eb7fc882fb9e2b96cdc4da5c3978afbce2001318b0fa80e419fa0b9f944f2",
@@ -26,7 +29,9 @@
         "src/popup/__tests__/App.component.test.ts": "sha256:da2b761047e6db998b9dee7aa864d9f0b1cb44f2179cf45ff134d96f7ed28bd0"
       },
       "revised_at": "2026-07-07T06:10:45.013663+00:00",
-      "reason": "Align popupContext upgrade tracking with exported helper artifact after App render harness could not exercise onMount"
+      "reason": "Align popupContext upgrade tracking with exported helper artifact after App render harness could not exercise onMount",
+      "agent": null,
+      "contract_delta": null
     },
     {
       "prior_manifest_hash": "sha256:58b996e894171ae01be55573f2fb3629369e7f671f5d6460cc74a7d20b8d06f8",
@@ -36,7 +41,9 @@
         "src/popup/__tests__/App.component.test.ts": "sha256:6089d19f992f44d9e964270d538d0e06209ff601733918a6396f5b3cab318350"
       },
       "revised_at": "2026-07-07T06:16:48.542138+00:00",
-      "reason": "Add commits popupContext coverage after implementation review found the context fell back to general"
+      "reason": "Add commits popupContext coverage after implementation review found the context fell back to general",
+      "agent": null,
+      "contract_delta": null
     },
     {
       "prior_manifest_hash": "sha256:6a347ba308011db0ce8e58d2668ed7bde12e2785d23ce23e8e533fd8e5ef4590",
@@ -46,7 +53,41 @@
         "src/popup/__tests__/App.component.test.ts": "sha256:3d2ee4be944f8f325fdf03bd96190f81e1b06a44f4cfa3cb6211a488f626f49d"
       },
       "revised_at": "2026-07-07T09:53:49.982242+00:00",
-      "reason": "Align trackUpgradeFunnelEvent metadata contract with Prettier-normal TypeScript single-quoted literal types"
+      "reason": "Align trackUpgradeFunnelEvent metadata contract with Prettier-normal TypeScript single-quoted literal types",
+      "agent": null,
+      "contract_delta": null
+    },
+    {
+      "prior_manifest_hash": "sha256:26e00cf467a4729a911369e60d37a3c6d7321d564de1fd3b4882f4b683d91f0f",
+      "prior_test_hashes": {
+        "src/lib/utils/__tests__/upgradeModal.test.ts": "sha256:c6a93b05f596d79496b75a0a58c8595d2c58065bf7de8a97a1093c62d1eff0ed",
+        "src/popup/components/__tests__/UpgradeModal.component.test.ts": "sha256:f95b1516be05942e53064eb8623413d14e3ca976d87309f90b72eb377de2f527",
+        "src/popup/__tests__/App.component.test.ts": "sha256:3d2ee4be944f8f325fdf03bd96190f81e1b06a44f4cfa3cb6211a488f626f49d"
+      },
+      "revised_at": "2026-07-13T10:34:47.610358+00:00",
+      "reason": "Refresh shared popup behavioral-test hash after the GitHub App-only setup contract added migration assertions",
+      "agent": null,
+      "contract_delta": {
+        "artifacts_added": [],
+        "artifacts_removed": [],
+        "files_added": [
+          "edit:src/lib/utils/__tests__/upgradeModal.test.ts",
+          "edit:src/lib/utils/analytics.ts",
+          "edit:src/lib/utils/upgradeModal.ts",
+          "edit:src/popup/App.svelte",
+          "edit:src/popup/__tests__/App.component.test.ts",
+          "edit:src/popup/components/UpgradeModal.svelte",
+          "edit:src/popup/components/__tests__/UpgradeModal.component.test.ts",
+          "read:src/background/BackgroundService.ts",
+          "read:src/content/UIManager.ts",
+          "read:src/content/handlers/FileChangeHandler.ts",
+          "read:src/content/managers/NotificationManager.ts",
+          "read:src/lib/constants/premiumFeatures.ts"
+        ],
+        "files_removed": [],
+        "validate_commands_added": [],
+        "validate_commands_removed": []
+      }
     }
   ],
   "red_evidence": {
@@ -73,6 +114,7 @@
       }
     ]
   },
+  "agent": null,
   "_manifest_contract": {
     "artifacts": [
       "src/lib/utils/__tests__/upgradeModal.test.ts:setUpgradeModalState records a modal_shown event and still applies the config",
@@ -114,7 +156,27 @@
       "src/popup/components/__tests__/UpgradeModal.component.test.ts:upgrade CTA still opens the upgrade page when analytics fails",
       "src/popup/components/__tests__/UpgradeModal.component.test.ts:upgrade CTA still opens the upgrade page when analytics fails:kind=test_function"
     ],
+    "files": {
+      "create": [],
+      "edit": [
+        "src/lib/utils/__tests__/upgradeModal.test.ts",
+        "src/lib/utils/analytics.ts",
+        "src/lib/utils/upgradeModal.ts",
+        "src/popup/App.svelte",
+        "src/popup/__tests__/App.component.test.ts",
+        "src/popup/components/UpgradeModal.svelte",
+        "src/popup/components/__tests__/UpgradeModal.component.test.ts"
+      ],
+      "read": [
+        "src/background/BackgroundService.ts",
+        "src/content/UIManager.ts",
+        "src/content/handlers/FileChangeHandler.ts",
+        "src/content/managers/NotificationManager.ts",
+        "src/lib/constants/premiumFeatures.ts"
+      ]
+    },
     "test_files": [
+      "src/lib/utils/__tests__/analytics.test.ts",
       "src/lib/utils/__tests__/upgradeModal.test.ts",
       "src/popup/__tests__/App.component.test.ts",
       "src/popup/components/__tests__/UpgradeModal.component.test.ts"

@@ -9,11 +9,11 @@
   export let projectSettings: ProjectSettingsState;
   export let uiState: UIState;
   export let isUserAuthenticated = true;
+  export let migrationRequired = false;
 
   const dispatch = createEventDispatcher<{
     save: void;
     error: string;
-    authMethodChange: string;
   }>();
 
   // Simple 2-step flow
@@ -36,10 +36,6 @@
 
   function handleError(error: string) {
     dispatch('error', error);
-  }
-
-  function handleAuthMethodChange(event: CustomEvent<string>) {
-    dispatch('authMethodChange', event.detail);
   }
 
   function goToSetup() {
@@ -72,17 +68,15 @@
   <!-- Step 2: Unified Setup -->
   <OnboardingSetup
     githubSettings={{
-      authenticationMethod: githubSettings.authenticationMethod,
       githubAppInstallationId: githubSettings.githubAppInstallationId ?? undefined,
       githubAppUsername: githubSettings.githubAppUsername ?? undefined,
       githubAppAvatarUrl: githubSettings.githubAppAvatarUrl ?? undefined,
-      githubToken: githubSettings.githubToken,
       repoOwner: githubSettings.repoOwner,
     }}
     uiState={uiStateWrapper}
     {isUserAuthenticated}
+    {migrationRequired}
     on:save={handleSave}
     on:error={(e) => handleError(e.detail)}
-    on:authMethodChange={handleAuthMethodChange}
   />
 {/if}

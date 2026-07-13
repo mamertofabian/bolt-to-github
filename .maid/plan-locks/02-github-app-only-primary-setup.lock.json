@@ -1,0 +1,401 @@
+{
+  "manifest_path": "manifests/02-github-app-only-primary-setup.manifest.yaml",
+  "manifest_hash": "sha256:50bb1650c2c48e0f4c2e78d79e711fd0d3fa61156087017ce87dfe9fac7b6cdf",
+  "test_hashes": {
+    "src/popup/__tests__/App.svelte/App.settings.component.test.ts": "sha256:f4b3258e4fbb7ea3a46eaeb750f3d0f73ffd5f8f3efd28e854277e830c14e33b",
+    "src/popup/__tests__/App.svelte/App.user-interactions.component.test.ts": "sha256:0879f15d7ee348353f7845d1922c03816112c51de17c0bcd53ffcaaddda9343b",
+    "src/lib/components/__tests__/OnboardingSetup.component.test.ts": "sha256:687403de82d9451a9f80588899f5687b0f54d64c4227f82b09f6b52e7f1bd5fb",
+    "src/lib/components/__tests__/GitHubSettings.component.test.ts": "sha256:ab0363ed015ea980a0149bc0b4a14e669f66101eff5e9ad0137e75d0a662438e",
+    "src/popup/__tests__/App.component.test.ts": "sha256:aa55e7bc2b0b34733eb65bbed5b9cf4de249b848f732347d95730b05a120b601",
+    "src/popup/components/__tests__/OnboardingView.component.test.ts": "sha256:6c5ee68dd155c88b1fdea49443497d2fdc4a9804046438b954bae56b851fef95",
+    "src/popup/components/__tests__/SettingsTabContent.component.test.ts": "sha256:5f58789b1bc1007ac00e8d37787fe0326f671f3138d0b92cbc3edfc4787c62a9",
+    "src/lib/components/__tests__/Help.component.test.ts": "sha256:4925f9a09bd447ae8268788bb30a61a0b06c75ec71a40c01f78c8a409a3bde77"
+  },
+  "created_at": "2026-07-13T09:51:51.272820+00:00",
+  "revision": 10,
+  "revisions": [
+    {
+      "prior_manifest_hash": "sha256:d21fea1fff00dce22242a2f7de811f93db6aa739ac86a8244792ef5c9cbe594d",
+      "prior_test_hashes": {
+        "src/lib/components/__tests__/OnboardingSetup.component.test.ts": "sha256:687403de82d9451a9f80588899f5687b0f54d64c4227f82b09f6b52e7f1bd5fb",
+        "src/lib/components/__tests__/GitHubSettings.component.test.ts": "sha256:d0e0eefbfe6d2d89a7c47ee13a9794537a238b554ff135073cb1861ee6f186fd",
+        "src/popup/__tests__/App.component.test.ts": "sha256:c2f10d3c075e882aea6c7441e63dc20077e4b848592e6d6edbf41f41d58c3296",
+        "src/popup/components/__tests__/OnboardingView.component.test.ts": "sha256:6c5ee68dd155c88b1fdea49443497d2fdc4a9804046438b954bae56b851fef95",
+        "src/popup/components/__tests__/SettingsTabContent.component.test.ts": "sha256:5f58789b1bc1007ac00e8d37787fe0326f671f3138d0b92cbc3edfc4787c62a9",
+        "src/lib/components/__tests__/Help.component.test.ts": "sha256:a0d232aec35cec6f74079991eaca014dbb763e11a495d2ac0420eca9c65d8f27"
+      },
+      "revised_at": "2026-07-13T10:00:17.683513+00:00",
+      "reason": "Replace stale PAT-positive popup expectations with GitHub App-only readiness and migration assertions discovered during the first implementation run; include the two narrow legacy wiring-test cleanup files in the revision stash",
+      "agent": null,
+      "contract_delta": {
+        "artifacts_added": [],
+        "artifacts_removed": [],
+        "files_added": [
+          "read:src/popup/__tests__/App.svelte/App.settings.component.test.ts",
+          "read:src/popup/__tests__/App.svelte/App.user-interactions.component.test.ts"
+        ],
+        "files_removed": [],
+        "validate_commands_added": [],
+        "validate_commands_removed": []
+      }
+    },
+    {
+      "prior_manifest_hash": "sha256:8be2530ce7c04eefaf8e45b12909ce9309e076781e6ae7897e04dbd2a69ff5c3",
+      "prior_test_hashes": {
+        "src/popup/__tests__/App.svelte/App.settings.component.test.ts": "sha256:f4b3258e4fbb7ea3a46eaeb750f3d0f73ffd5f8f3efd28e854277e830c14e33b",
+        "src/popup/__tests__/App.svelte/App.user-interactions.component.test.ts": "sha256:0879f15d7ee348353f7845d1922c03816112c51de17c0bcd53ffcaaddda9343b",
+        "src/lib/components/__tests__/OnboardingSetup.component.test.ts": "sha256:687403de82d9451a9f80588899f5687b0f54d64c4227f82b09f6b52e7f1bd5fb",
+        "src/lib/components/__tests__/GitHubSettings.component.test.ts": "sha256:d0e0eefbfe6d2d89a7c47ee13a9794537a238b554ff135073cb1861ee6f186fd",
+        "src/popup/__tests__/App.component.test.ts": "sha256:385a49413ec4774a14e1f3d6c33be06526a08351182f7ccc453797565b6e12b6",
+        "src/popup/components/__tests__/OnboardingView.component.test.ts": "sha256:6c5ee68dd155c88b1fdea49443497d2fdc4a9804046438b954bae56b851fef95",
+        "src/popup/components/__tests__/SettingsTabContent.component.test.ts": "sha256:5f58789b1bc1007ac00e8d37787fe0326f671f3138d0b92cbc3edfc4787c62a9",
+        "src/lib/components/__tests__/Help.component.test.ts": "sha256:a0d232aec35cec6f74079991eaca014dbb763e11a495d2ac0420eca9c65d8f27"
+      },
+      "revised_at": "2026-07-13T10:03:26.675161+00:00",
+      "reason": "Replace unsupported module-constant removed_artifacts entries with an executable negative export check, include all declared cleanup tests in validation, and remove stale draft metadata",
+      "agent": null,
+      "contract_delta": {
+        "artifacts_added": [],
+        "artifacts_removed": [],
+        "files_added": [],
+        "files_removed": [],
+        "validate_commands_added": [
+          "'!' rg -n 'export const (TUTORIAL_LINK|CREATE_TOKEN_URL|CREATE_FINE_GRAINED_TOKEN_URL)' src/lib/constants.ts",
+          "pnpm exec vitest run src/lib/components/__tests__/OnboardingSetup.component.test.ts src/lib/components/__tests__/GitHubSettings.component.test.ts src/lib/components/__tests__/Help.component.test.ts src/popup/components/__tests__/OnboardingView.component.test.ts src/popup/components/__tests__/SettingsTabContent.component.test.ts src/popup/__tests__/App.component.test.ts src/popup/__tests__/App.svelte/App.settings.component.test.ts src/popup/__tests__/App.svelte/App.user-interactions.component.test.ts"
+        ],
+        "validate_commands_removed": [
+          "pnpm exec vitest run src/lib/components/__tests__/OnboardingSetup.component.test.ts src/lib/components/__tests__/GitHubSettings.component.test.ts src/lib/components/__tests__/Help.component.test.ts src/popup/components/__tests__/OnboardingView.component.test.ts src/popup/components/__tests__/SettingsTabContent.component.test.ts src/popup/__tests__/App.component.test.ts"
+        ]
+      }
+    },
+    {
+      "prior_manifest_hash": "sha256:2e26a1f5df59108626fa02aa7717fdd2ad055d85b7772e602bbc7d026933f6ff",
+      "prior_test_hashes": {
+        "src/popup/__tests__/App.svelte/App.settings.component.test.ts": "sha256:f4b3258e4fbb7ea3a46eaeb750f3d0f73ffd5f8f3efd28e854277e830c14e33b",
+        "src/popup/__tests__/App.svelte/App.user-interactions.component.test.ts": "sha256:0879f15d7ee348353f7845d1922c03816112c51de17c0bcd53ffcaaddda9343b",
+        "src/lib/components/__tests__/OnboardingSetup.component.test.ts": "sha256:687403de82d9451a9f80588899f5687b0f54d64c4227f82b09f6b52e7f1bd5fb",
+        "src/lib/components/__tests__/GitHubSettings.component.test.ts": "sha256:d0e0eefbfe6d2d89a7c47ee13a9794537a238b554ff135073cb1861ee6f186fd",
+        "src/popup/__tests__/App.component.test.ts": "sha256:385a49413ec4774a14e1f3d6c33be06526a08351182f7ccc453797565b6e12b6",
+        "src/popup/components/__tests__/OnboardingView.component.test.ts": "sha256:6c5ee68dd155c88b1fdea49443497d2fdc4a9804046438b954bae56b851fef95",
+        "src/popup/components/__tests__/SettingsTabContent.component.test.ts": "sha256:5f58789b1bc1007ac00e8d37787fe0326f671f3138d0b92cbc3edfc4787c62a9",
+        "src/lib/components/__tests__/Help.component.test.ts": "sha256:a0d232aec35cec6f74079991eaca014dbb763e11a495d2ac0420eca9c65d8f27"
+      },
+      "revised_at": "2026-07-13T10:05:19.578687+00:00",
+      "reason": "Use ripgrep files-without-match because MAID executes validation argv directly and cannot interpret shell negation",
+      "agent": null,
+      "contract_delta": {
+        "artifacts_added": [],
+        "artifacts_removed": [],
+        "files_added": [],
+        "files_removed": [],
+        "validate_commands_added": [
+          "rg --files-without-match 'export const (TUTORIAL_LINK|CREATE_TOKEN_URL|CREATE_FINE_GRAINED_TOKEN_URL)' src/lib/constants.ts"
+        ],
+        "validate_commands_removed": [
+          "'!' rg -n 'export const (TUTORIAL_LINK|CREATE_TOKEN_URL|CREATE_FINE_GRAINED_TOKEN_URL)' src/lib/constants.ts"
+        ]
+      }
+    },
+    {
+      "prior_manifest_hash": "sha256:38c5a7d3652709b5b8bf64a207bc8d2b5c110cbf2bbb9edf0f4a5f6ac8d61159",
+      "prior_test_hashes": {
+        "src/popup/__tests__/App.svelte/App.settings.component.test.ts": "sha256:f4b3258e4fbb7ea3a46eaeb750f3d0f73ffd5f8f3efd28e854277e830c14e33b",
+        "src/popup/__tests__/App.svelte/App.user-interactions.component.test.ts": "sha256:0879f15d7ee348353f7845d1922c03816112c51de17c0bcd53ffcaaddda9343b",
+        "src/lib/components/__tests__/OnboardingSetup.component.test.ts": "sha256:687403de82d9451a9f80588899f5687b0f54d64c4227f82b09f6b52e7f1bd5fb",
+        "src/lib/components/__tests__/GitHubSettings.component.test.ts": "sha256:d0e0eefbfe6d2d89a7c47ee13a9794537a238b554ff135073cb1861ee6f186fd",
+        "src/popup/__tests__/App.component.test.ts": "sha256:385a49413ec4774a14e1f3d6c33be06526a08351182f7ccc453797565b6e12b6",
+        "src/popup/components/__tests__/OnboardingView.component.test.ts": "sha256:6c5ee68dd155c88b1fdea49443497d2fdc4a9804046438b954bae56b851fef95",
+        "src/popup/components/__tests__/SettingsTabContent.component.test.ts": "sha256:5f58789b1bc1007ac00e8d37787fe0326f671f3138d0b92cbc3edfc4787c62a9",
+        "src/lib/components/__tests__/Help.component.test.ts": "sha256:a0d232aec35cec6f74079991eaca014dbb763e11a495d2ac0420eca9c65d8f27"
+      },
+      "revised_at": "2026-07-13T10:07:51.470296+00:00",
+      "reason": "Recapture red evidence after replacing the unsupported removed-artifact declaration with the final executable negative-export validation command",
+      "agent": null,
+      "contract_delta": {
+        "artifacts_added": [],
+        "artifacts_removed": [],
+        "files_added": [],
+        "files_removed": [],
+        "validate_commands_added": [],
+        "validate_commands_removed": []
+      }
+    },
+    {
+      "prior_manifest_hash": "sha256:38c5a7d3652709b5b8bf64a207bc8d2b5c110cbf2bbb9edf0f4a5f6ac8d61159",
+      "prior_test_hashes": {
+        "src/popup/__tests__/App.svelte/App.settings.component.test.ts": "sha256:f4b3258e4fbb7ea3a46eaeb750f3d0f73ffd5f8f3efd28e854277e830c14e33b",
+        "src/popup/__tests__/App.svelte/App.user-interactions.component.test.ts": "sha256:0879f15d7ee348353f7845d1922c03816112c51de17c0bcd53ffcaaddda9343b",
+        "src/lib/components/__tests__/OnboardingSetup.component.test.ts": "sha256:687403de82d9451a9f80588899f5687b0f54d64c4227f82b09f6b52e7f1bd5fb",
+        "src/lib/components/__tests__/GitHubSettings.component.test.ts": "sha256:d0e0eefbfe6d2d89a7c47ee13a9794537a238b554ff135073cb1861ee6f186fd",
+        "src/popup/__tests__/App.component.test.ts": "sha256:385a49413ec4774a14e1f3d6c33be06526a08351182f7ccc453797565b6e12b6",
+        "src/popup/components/__tests__/OnboardingView.component.test.ts": "sha256:6c5ee68dd155c88b1fdea49443497d2fdc4a9804046438b954bae56b851fef95",
+        "src/popup/components/__tests__/SettingsTabContent.component.test.ts": "sha256:5f58789b1bc1007ac00e8d37787fe0326f671f3138d0b92cbc3edfc4787c62a9",
+        "src/lib/components/__tests__/Help.component.test.ts": "sha256:a0d232aec35cec6f74079991eaca014dbb763e11a495d2ac0420eca9c65d8f27"
+      },
+      "revised_at": "2026-07-13T10:17:41.858351+00:00",
+      "reason": "Independent review found that legacy selector cleanup left the popup store in PAT mode and that the settings rewrite removed GitHub App repository discovery; add regression and visible-degradation contracts before fixing both",
+      "agent": null,
+      "contract_delta": {
+        "artifacts_added": [
+          "src/lib/components/__tests__/GitHubSettings.component.test.ts:repository discovery failure stays visible while manual entry remains available",
+          "src/lib/components/__tests__/GitHubSettings.component.test.ts:repository discovery failure stays visible while manual entry remains available:kind=test_function",
+          "src/lib/components/__tests__/GitHubSettings.component.test.ts:settings preserve GitHub App repository discovery",
+          "src/lib/components/__tests__/GitHubSettings.component.test.ts:settings preserve GitHub App repository discovery:kind=test_function",
+          "src/popup/__tests__/App.component.test.ts:popup normalizes GitHub App state after legacy selector cleanup",
+          "src/popup/__tests__/App.component.test.ts:popup normalizes GitHub App state after legacy selector cleanup:kind=test_function"
+        ],
+        "artifacts_removed": [],
+        "files_added": [],
+        "files_removed": [],
+        "validate_commands_added": [],
+        "validate_commands_removed": []
+      }
+    },
+    {
+      "prior_manifest_hash": "sha256:bd61045892fa6cb89fc5de7255adc8950762ae753e11169e6f16a4ba65707fb5",
+      "prior_test_hashes": {
+        "src/popup/__tests__/App.svelte/App.settings.component.test.ts": "sha256:f4b3258e4fbb7ea3a46eaeb750f3d0f73ffd5f8f3efd28e854277e830c14e33b",
+        "src/popup/__tests__/App.svelte/App.user-interactions.component.test.ts": "sha256:0879f15d7ee348353f7845d1922c03816112c51de17c0bcd53ffcaaddda9343b",
+        "src/lib/components/__tests__/OnboardingSetup.component.test.ts": "sha256:687403de82d9451a9f80588899f5687b0f54d64c4227f82b09f6b52e7f1bd5fb",
+        "src/lib/components/__tests__/GitHubSettings.component.test.ts": "sha256:d7840bc95ee1ccbcb5ab857a6aa977cd9f71f9981f45b6b1989104cee916524b",
+        "src/popup/__tests__/App.component.test.ts": "sha256:c2f0d88cc9ff5b42f26ccc134557fd3fdf160e9577f492edceef2538c1855708",
+        "src/popup/components/__tests__/OnboardingView.component.test.ts": "sha256:6c5ee68dd155c88b1fdea49443497d2fdc4a9804046438b954bae56b851fef95",
+        "src/popup/components/__tests__/SettingsTabContent.component.test.ts": "sha256:5f58789b1bc1007ac00e8d37787fe0326f671f3138d0b92cbc3edfc4787c62a9",
+        "src/lib/components/__tests__/Help.component.test.ts": "sha256:a0d232aec35cec6f74079991eaca014dbb763e11a495d2ac0420eca9c65d8f27"
+      },
+      "revised_at": "2026-07-13T10:19:57.891595+00:00",
+      "reason": "Exercise repository discovery through the preserved focus-driven dropdown interaction rather than expanding it automatically on settings mount",
+      "agent": null,
+      "contract_delta": {
+        "artifacts_added": [],
+        "artifacts_removed": [],
+        "files_added": [],
+        "files_removed": [],
+        "validate_commands_added": [],
+        "validate_commands_removed": []
+      }
+    },
+    {
+      "prior_manifest_hash": "sha256:bd61045892fa6cb89fc5de7255adc8950762ae753e11169e6f16a4ba65707fb5",
+      "prior_test_hashes": {
+        "src/popup/__tests__/App.svelte/App.settings.component.test.ts": "sha256:f4b3258e4fbb7ea3a46eaeb750f3d0f73ffd5f8f3efd28e854277e830c14e33b",
+        "src/popup/__tests__/App.svelte/App.user-interactions.component.test.ts": "sha256:0879f15d7ee348353f7845d1922c03816112c51de17c0bcd53ffcaaddda9343b",
+        "src/lib/components/__tests__/OnboardingSetup.component.test.ts": "sha256:687403de82d9451a9f80588899f5687b0f54d64c4227f82b09f6b52e7f1bd5fb",
+        "src/lib/components/__tests__/GitHubSettings.component.test.ts": "sha256:c56e060fbaab3d5f5934a2d975a815b1a67b1a42a5a6bcabadc843d9275f514a",
+        "src/popup/__tests__/App.component.test.ts": "sha256:c2f0d88cc9ff5b42f26ccc134557fd3fdf160e9577f492edceef2538c1855708",
+        "src/popup/components/__tests__/OnboardingView.component.test.ts": "sha256:6c5ee68dd155c88b1fdea49443497d2fdc4a9804046438b954bae56b851fef95",
+        "src/popup/components/__tests__/SettingsTabContent.component.test.ts": "sha256:5f58789b1bc1007ac00e8d37787fe0326f671f3138d0b92cbc3edfc4787c62a9",
+        "src/lib/components/__tests__/Help.component.test.ts": "sha256:a0d232aec35cec6f74079991eaca014dbb763e11a495d2ac0420eca9c65d8f27"
+      },
+      "revised_at": "2026-07-13T10:31:16.203611+00:00",
+      "reason": "Capture reviewer-driven startup normalization and repository discovery regressions with deterministic component lifecycle coverage",
+      "agent": null,
+      "contract_delta": {
+        "artifacts_added": [],
+        "artifacts_removed": [],
+        "files_added": [],
+        "files_removed": [],
+        "validate_commands_added": [],
+        "validate_commands_removed": []
+      }
+    },
+    {
+      "prior_manifest_hash": "sha256:bd61045892fa6cb89fc5de7255adc8950762ae753e11169e6f16a4ba65707fb5",
+      "prior_test_hashes": {
+        "src/popup/__tests__/App.svelte/App.settings.component.test.ts": "sha256:f4b3258e4fbb7ea3a46eaeb750f3d0f73ffd5f8f3efd28e854277e830c14e33b",
+        "src/popup/__tests__/App.svelte/App.user-interactions.component.test.ts": "sha256:0879f15d7ee348353f7845d1922c03816112c51de17c0bcd53ffcaaddda9343b",
+        "src/lib/components/__tests__/OnboardingSetup.component.test.ts": "sha256:687403de82d9451a9f80588899f5687b0f54d64c4227f82b09f6b52e7f1bd5fb",
+        "src/lib/components/__tests__/GitHubSettings.component.test.ts": "sha256:ab0363ed015ea980a0149bc0b4a14e669f66101eff5e9ad0137e75d0a662438e",
+        "src/popup/__tests__/App.component.test.ts": "sha256:aa55e7bc2b0b34733eb65bbed5b9cf4de249b848f732347d95730b05a120b601",
+        "src/popup/components/__tests__/OnboardingView.component.test.ts": "sha256:6c5ee68dd155c88b1fdea49443497d2fdc4a9804046438b954bae56b851fef95",
+        "src/popup/components/__tests__/SettingsTabContent.component.test.ts": "sha256:5f58789b1bc1007ac00e8d37787fe0326f671f3138d0b92cbc3edfc4787c62a9",
+        "src/lib/components/__tests__/Help.component.test.ts": "sha256:a0d232aec35cec6f74079991eaca014dbb763e11a495d2ac0420eca9c65d8f27"
+      },
+      "revised_at": "2026-07-13T10:38:52.897999+00:00",
+      "reason": "Independent review found the Help rewrite broke the existing What's New content-script action; add focused regression coverage before restoring it",
+      "agent": null,
+      "contract_delta": {
+        "artifacts_added": [
+          "src/lib/components/__tests__/Help.component.test.ts:What's New preserves the content-script message behavior",
+          "src/lib/components/__tests__/Help.component.test.ts:What's New preserves the content-script message behavior:kind=test_function"
+        ],
+        "artifacts_removed": [],
+        "files_added": [],
+        "files_removed": [],
+        "validate_commands_added": [],
+        "validate_commands_removed": []
+      }
+    },
+    {
+      "prior_manifest_hash": "sha256:d02cf3a54f1d972f221821f73da1fd401bb17072f5829c492ca7516d8d87fc61",
+      "prior_test_hashes": {
+        "src/popup/__tests__/App.svelte/App.settings.component.test.ts": "sha256:f4b3258e4fbb7ea3a46eaeb750f3d0f73ffd5f8f3efd28e854277e830c14e33b",
+        "src/popup/__tests__/App.svelte/App.user-interactions.component.test.ts": "sha256:0879f15d7ee348353f7845d1922c03816112c51de17c0bcd53ffcaaddda9343b",
+        "src/lib/components/__tests__/OnboardingSetup.component.test.ts": "sha256:687403de82d9451a9f80588899f5687b0f54d64c4227f82b09f6b52e7f1bd5fb",
+        "src/lib/components/__tests__/GitHubSettings.component.test.ts": "sha256:ab0363ed015ea980a0149bc0b4a14e669f66101eff5e9ad0137e75d0a662438e",
+        "src/popup/__tests__/App.component.test.ts": "sha256:aa55e7bc2b0b34733eb65bbed5b9cf4de249b848f732347d95730b05a120b601",
+        "src/popup/components/__tests__/OnboardingView.component.test.ts": "sha256:6c5ee68dd155c88b1fdea49443497d2fdc4a9804046438b954bae56b851fef95",
+        "src/popup/components/__tests__/SettingsTabContent.component.test.ts": "sha256:5f58789b1bc1007ac00e8d37787fe0326f671f3138d0b92cbc3edfc4787c62a9",
+        "src/lib/components/__tests__/Help.component.test.ts": "sha256:4925f9a09bd447ae8268788bb30a61a0b06c75ec71a40c01f78c8a409a3bde77"
+      },
+      "revised_at": "2026-07-13T10:43:56.583654+00:00",
+      "reason": "Record completed Outcome with final validation and independent-review evidence",
+      "agent": null,
+      "contract_delta": {
+        "artifacts_added": [],
+        "artifacts_removed": [],
+        "files_added": [],
+        "files_removed": [],
+        "validate_commands_added": [],
+        "validate_commands_removed": []
+      }
+    }
+  ],
+  "red_evidence": {
+    "red": true,
+    "captured_at": "2026-07-13T10:39:30.666190+00:00",
+    "commands": [
+      {
+        "command": "pnpm exec vitest run src/lib/components/__tests__/OnboardingSetup.component.test.ts src/lib/components/__tests__/GitHubSettings.component.test.ts src/lib/components/__tests__/Help.component.test.ts src/popup/components/__tests__/OnboardingView.component.test.ts src/popup/components/__tests__/SettingsTabContent.component.test.ts src/popup/__tests__/App.component.test.ts src/popup/__tests__/App.svelte/App.settings.component.test.ts src/popup/__tests__/App.svelte/App.user-interactions.component.test.ts",
+        "exit_code": 1,
+        "output_tail": "                \u001b[33mclass\u001b[39m=\u001b[32m\"flex items-center gap-2\"\u001b[39m\n              \u001b[36m>\u001b[39m\n                \u001b[36m<svg\u001b[39m\n                  \u001b[33mclass\u001b[39m=\u001b[32m\"w-3 h-3 text-purple-400\"\u001b[39m\n                  \u001b[33mfill\u001b[39m=\u001b[32m\"none\"\u001b[39m\n                  \u001b[33mstrok...\n \u276f Object.getElementError node_modules/.pnpm/@testing-library+dom@9.3.4/node_modules/@testing-library/dom/dist/@testing-library/dom.esm.js:332:19\n    330|   },\n    331|   _disableExpensiveErrorDiagnostics: false,\n    332|   computedStyleSupportsPseudoElements: false\n       |                   ^\n    333| };\n    334| function runWithExpensiveErrorDiagnosticsDisabled(callback) {\n \u276f node_modules/.pnpm/@testing-library+dom@9.3.4/node_modules/@testing-library/dom/dist/@testing-library/dom.esm.js:1196:25\n \u276f node_modules/.pnpm/@testing-library+dom@9.3.4/node_modules/@testing-library/dom/dist/@testing-library/dom.esm.js:1175:17\n \u276f node_modules/.pnpm/@testing-library+dom@9.3.4/node_modules/@testing-library/dom/dist/@testing-library/dom.esm.js:1218:19\n \u276f src/popup/components/__tests__/SettingsTabContent.component.test.ts:64:19\n\n\u23af\u23af\u23af\u23af\u23af\u23af\u23af\u23af\u23af\u23af\u23af\u23af\u23af\u23af\u23af\u23af\u23af\u23af\u23af\u23af\u23af\u23af[18/18]\u23af\n",
+        "classification": "red"
+      },
+      {
+        "command": "rg --files-without-match 'export const (TUTORIAL_LINK|CREATE_TOKEN_URL|CREATE_FINE_GRAINED_TOKEN_URL)' src/lib/constants.ts",
+        "exit_code": 1,
+        "output_tail": "",
+        "classification": "red"
+      },
+      {
+        "command": "./scripts/maid validate manifests/02-github-app-only-primary-setup.manifest.yaml --mode behavioral",
+        "exit_code": 0,
+        "output_tail": "PASS 02-github-app-only-primary-setup\n  Mode: behavioral\n  Duration: 707ms",
+        "classification": "not_red"
+      },
+      {
+        "command": "pnpm lint",
+        "exit_code": 0,
+        "output_tail": "\n> bolt-to-github@1.3.21 lint /home/atomrem/projects/codefrost-dev/bolt-to-github\n> eslint \"src/**/*.{js,ts,svelte}\"\n",
+        "classification": "not_red"
+      },
+      {
+        "command": "pnpm check",
+        "exit_code": 1,
+        "output_tail": "\n\n\n/home/atomrem/projects/codefrost-dev/bolt-to-github/src/lib/components/__tests__/OnboardingSetup.component.test.ts:62:9\nError: Object literal may only specify known properties, and 'migrationRequired' does not exist in type '{ githubSettings: { authenticationMethod?: \"pat\" | \"github_app\" | undefined; githubAppInstallationId?: number | undefined; githubAppUsername?: string | undefined; githubAppAvatarUrl?: string | undefined; githubToken?: string | undefined; repoOwner?: string | undefined; }; uiState: { ...; }; isUserAuthenticated?: boo...'. \n        isUserAuthenticated: false,\n        migrationRequired: true,\n      },\n\n\n/home/atomrem/projects/codefrost-dev/bolt-to-github/src/lib/components/__tests__/OnboardingSetup.component.test.ts:77:9\nError: Object literal may only specify known properties, and 'migrationRequired' does not exist in type '{ githubSettings: { authenticationMethod?: \"pat\" | \"github_app\" | undefined; githubAppInstallationId?: number | undefined; githubAppUsername?: string | undefined; githubAppAvatarUrl?: string | undefined; githubToken?: string | undefined; repoOwner?: string | undefined; }; uiState: { ...; }; isUserAuthenticated?: boo...'. \n        isUserAuthenticated: false,\n        migrationRequired: true,\n      },\n\n\n====================================\nsvelte-check found 9 errors and 0 warnings in 2 files\n\u2009ELIFECYCLE\u2009 Command failed with exit code 1.",
+        "classification": "red"
+      },
+      {
+        "command": "pnpm build",
+        "exit_code": 0,
+        "output_tail": "dist/pages/logs.js                                           15.32 kB \u2502 gzip:   5.72 kB\ndist/assets/debounce-CycWI4oj.js                             22.12 kB \u2502 gzip:   6.78 kB\ndist/assets/input-hfojewKS.js                                72.30 kB \u2502 gzip:  25.10 kB\ndist/assets/GitHubComparisonService-C-CwFltt.js              90.43 kB \u2502 gzip:  25.31 kB\ndist/background/background.js                               111.24 kB \u2502 gzip:  29.69 kB\ndist/content/content.js                                     245.60 kB \u2502 gzip:  72.19 kB\ndist/assets/index.html-BmAK_Y_h.js                          512.68 kB \u2502 gzip: 131.99 kB\n\u2713 built in 8.94s\n\n[plugin:vite:reporter] [plugin vite:reporter] \n(!) /home/atomrem/projects/codefrost-dev/bolt-to-github/src/lib/constants/supabase.ts is dynamically imported by /home/atomrem/projects/codefrost-dev/bolt-to-github/src/services/UnifiedGitHubService.ts but also statically imported by /home/atomrem/projects/codefrost-dev/bolt-to-github/src/content/services/SupabaseAuthService.ts, /home/atomrem/projects/codefrost-dev/bolt-to-github/src/services/BoltProjectSyncService.ts, /home/atomrem/projects/codefrost-dev/bolt-to-github/src/services/GitHubAppService.ts, /home/atomrem/projects/codefrost-dev/bolt-to-github/src/services/SubscriptionService.ts, dynamic import will not move module into another chunk.\n\n[plugin:vite:reporter] [plugin vite:reporter] \n(!) /home/atomrem/projects/codefrost-dev/bolt-to-github/src/content/handlers/FileChangeHandler.ts is dynamically imported by /home/atomrem/projects/codefrost-dev/bolt-to-github/src/content/handlers/GitHubUploadHandler.ts, /home/atomrem/projects/codefrost-dev/bolt-to-github/src/content/services/PushReminderService.ts, /home/atomrem/projects/codefrost-dev/bolt-to-github/src/content/services/PushReminderService.ts but also statically imported by /home/atomrem/projects/codefrost-dev/bolt-to-github/src/content/UIManager.ts, dynamic import will not move module into another chunk.\n\n\n(!) Some chunks are larger than 500 kB after minification. Consider:\n- Using dynamic import() to code-split the application\n- Use build.rollupOptions.output.manualChunks to improve chunking: https://rollupjs.org/configuration-options/#output-manualchunks\n- Adjust chunk size limit for this warning via build.chunkSizeWarningLimit.",
+        "classification": "not_red"
+      }
+    ]
+  },
+  "agent": {
+    "model": "gpt-5",
+    "provider": "openai",
+    "client": "codex",
+    "skills": ["maid-implement-draft", "maid-evolver"],
+    "source": "flags"
+  },
+  "_manifest_contract": {
+    "artifacts": [
+      "src/lib/components/OnboardingSetup.svelte:function:OnboardingSetup",
+      "src/lib/components/OnboardingSetup.svelte:function:OnboardingSetup:arg=props:type=OnboardingSetup component props:default=None",
+      "src/lib/components/OnboardingSetup.svelte:function:OnboardingSetup:kind=function",
+      "src/lib/components/OnboardingSetup.svelte:function:OnboardingSetup:returns=Svelte component instance",
+      "src/lib/components/__tests__/GitHubSettings.component.test.ts:existing repository settings remain visible during GitHub App migration",
+      "src/lib/components/__tests__/GitHubSettings.component.test.ts:existing repository settings remain visible during GitHub App migration:kind=test_function",
+      "src/lib/components/__tests__/GitHubSettings.component.test.ts:repository discovery failure stays visible while manual entry remains available",
+      "src/lib/components/__tests__/GitHubSettings.component.test.ts:repository discovery failure stays visible while manual entry remains available:kind=test_function",
+      "src/lib/components/__tests__/GitHubSettings.component.test.ts:settings contain no PAT selector token field or token validation action",
+      "src/lib/components/__tests__/GitHubSettings.component.test.ts:settings contain no PAT selector token field or token validation action:kind=test_function",
+      "src/lib/components/__tests__/GitHubSettings.component.test.ts:settings preserve GitHub App repository discovery",
+      "src/lib/components/__tests__/GitHubSettings.component.test.ts:settings preserve GitHub App repository discovery:kind=test_function",
+      "src/lib/components/__tests__/Help.component.test.ts:What's New preserves the content-script message behavior",
+      "src/lib/components/__tests__/Help.component.test.ts:What's New preserves the content-script message behavior:kind=test_function",
+      "src/lib/components/__tests__/Help.component.test.ts:help contains no classic fine-grained or token creation instructions",
+      "src/lib/components/__tests__/Help.component.test.ts:help contains no classic fine-grained or token creation instructions:kind=test_function",
+      "src/lib/components/__tests__/Help.component.test.ts:help replaces PAT setup with Bolt2GitHub sign-in and GitHub App installation guidance",
+      "src/lib/components/__tests__/Help.component.test.ts:help replaces PAT setup with Bolt2GitHub sign-in and GitHub App installation guidance:kind=test_function",
+      "src/lib/components/__tests__/Help.component.test.ts:private repository and security help describe GitHub App permissions without PAT language",
+      "src/lib/components/__tests__/Help.component.test.ts:private repository and security help describe GitHub App permissions without PAT language:kind=test_function",
+      "src/lib/components/__tests__/OnboardingSetup.component.test.ts:fresh setup offers only the GitHub App connection path",
+      "src/lib/components/__tests__/OnboardingSetup.component.test.ts:fresh setup offers only the GitHub App connection path:kind=test_function",
+      "src/lib/components/__tests__/OnboardingSetup.component.test.ts:legacy PAT migration explains the required authentication change",
+      "src/lib/components/__tests__/OnboardingSetup.component.test.ts:legacy PAT migration explains the required authentication change:kind=test_function",
+      "src/lib/components/__tests__/OnboardingSetup.component.test.ts:rendering migration state never opens an external tab",
+      "src/lib/components/__tests__/OnboardingSetup.component.test.ts:rendering migration state never opens an external tab:kind=test_function",
+      "src/lib/components/__tests__/OnboardingSetup.component.test.ts:setup completion requires live session and GitHub App installation",
+      "src/lib/components/__tests__/OnboardingSetup.component.test.ts:setup completion requires live session and GitHub App installation:kind=test_function",
+      "src/lib/components/__tests__/OnboardingSetup.component.test.ts:setup contains no PAT creation link or obsolete tutorial CTA",
+      "src/lib/components/__tests__/OnboardingSetup.component.test.ts:setup contains no PAT creation link or obsolete tutorial CTA:kind=test_function",
+      "src/lib/components/__tests__/OnboardingSetup.component.test.ts:should keep a stale GitHub App installation visibly blocked while signed out",
+      "src/lib/components/__tests__/OnboardingSetup.component.test.ts:should keep a stale GitHub App installation visibly blocked while signed out:kind=test_function",
+      "src/lib/components/__tests__/OnboardingSetup.component.test.ts:should open Bolt2GitHub login without saving when the signed-out setup CTA is clicked",
+      "src/lib/components/__tests__/OnboardingSetup.component.test.ts:should open Bolt2GitHub login without saving when the signed-out setup CTA is clicked:kind=test_function",
+      "src/popup/__tests__/App.component.test.ts:popup does not accept PAT as valid GitHub readiness",
+      "src/popup/__tests__/App.component.test.ts:popup does not accept PAT as valid GitHub readiness:kind=test_function",
+      "src/popup/__tests__/App.component.test.ts:popup maps legacy PAT storage to the migration-required setup",
+      "src/popup/__tests__/App.component.test.ts:popup maps legacy PAT storage to the migration-required setup:kind=test_function",
+      "src/popup/__tests__/App.component.test.ts:popup normalizes GitHub App state after legacy selector cleanup",
+      "src/popup/__tests__/App.component.test.ts:popup normalizes GitHub App state after legacy selector cleanup:kind=test_function",
+      "src/popup/__tests__/App.component.test.ts:signed-out popup forwards the current session state into onboarding",
+      "src/popup/__tests__/App.component.test.ts:signed-out popup forwards the current session state into onboarding:kind=test_function",
+      "src/popup/components/OnboardingView.svelte:function:OnboardingView",
+      "src/popup/components/OnboardingView.svelte:function:OnboardingView:arg=props:type=OnboardingView component props:default=None",
+      "src/popup/components/OnboardingView.svelte:function:OnboardingView:kind=function",
+      "src/popup/components/OnboardingView.svelte:function:OnboardingView:returns=Svelte component instance",
+      "src/popup/components/__tests__/OnboardingView.component.test.ts:onboarding forwards the GitHub App migration-required state",
+      "src/popup/components/__tests__/OnboardingView.component.test.ts:onboarding forwards the GitHub App migration-required state:kind=test_function",
+      "src/popup/components/__tests__/OnboardingView.component.test.ts:should forward signed-out state to the GitHub App setup step",
+      "src/popup/components/__tests__/OnboardingView.component.test.ts:should forward signed-out state to the GitHub App setup step:kind=test_function",
+      "src/popup/components/__tests__/SettingsTabContent.component.test.ts:settings tab forwards GitHub App state without PAT bindings",
+      "src/popup/components/__tests__/SettingsTabContent.component.test.ts:settings tab forwards GitHub App state without PAT bindings:kind=test_function"
+    ],
+    "files": {
+      "create": [],
+      "edit": [
+        "src/lib/components/OnboardingSetup.svelte",
+        "src/lib/components/__tests__/GitHubSettings.component.test.ts",
+        "src/lib/components/__tests__/Help.component.test.ts",
+        "src/lib/components/__tests__/OnboardingSetup.component.test.ts",
+        "src/popup/__tests__/App.component.test.ts",
+        "src/popup/components/OnboardingView.svelte",
+        "src/popup/components/__tests__/OnboardingView.component.test.ts",
+        "src/popup/components/__tests__/SettingsTabContent.component.test.ts"
+      ],
+      "read": [
+        "manifests/01-github-app-only-migration-policy.manifest.yaml",
+        "manifests/align-onboarding-with-bolt2github-session.manifest.yaml",
+        "manifests/drafts/github-app-only-authentication.manifest.yaml",
+        "src/lib/services/BackgroundAuthClient.ts",
+        "src/lib/services/githubAuthMigration.ts",
+        "src/lib/stores/githubSettings.ts",
+        "src/popup/__tests__/App.svelte/App.settings.component.test.ts",
+        "src/popup/__tests__/App.svelte/App.user-interactions.component.test.ts",
+        "src/popup/components/HelpTabContent.svelte"
+      ]
+    },
+    "test_files": [
+      "src/lib/components/__tests__/GitHubSettings.component.test.ts",
+      "src/lib/components/__tests__/Help.component.test.ts",
+      "src/lib/components/__tests__/OnboardingSetup.component.test.ts",
+      "src/popup/__tests__/App.component.test.ts",
+      "src/popup/__tests__/App.svelte/App.settings.component.test.ts",
+      "src/popup/__tests__/App.svelte/App.user-interactions.component.test.ts",
+      "src/popup/components/__tests__/OnboardingView.component.test.ts",
+      "src/popup/components/__tests__/SettingsTabContent.component.test.ts"
+    ],
+    "validate_commands": [
+      "pnpm exec vitest run src/lib/components/__tests__/OnboardingSetup.component.test.ts src/lib/components/__tests__/GitHubSettings.component.test.ts src/lib/components/__tests__/Help.component.test.ts src/popup/components/__tests__/OnboardingView.component.test.ts src/popup/components/__tests__/SettingsTabContent.component.test.ts src/popup/__tests__/App.component.test.ts src/popup/__tests__/App.svelte/App.settings.component.test.ts src/popup/__tests__/App.svelte/App.user-interactions.component.test.ts",
+      "rg --files-without-match 'export const (TUTORIAL_LINK|CREATE_TOKEN_URL|CREATE_FINE_GRAINED_TOKEN_URL)' src/lib/constants.ts",
+      "./scripts/maid validate manifests/02-github-app-only-primary-setup.manifest.yaml --mode behavioral",
+      "pnpm lint",
+      "pnpm check",
+      "pnpm build"
+    ]
+  }
+}

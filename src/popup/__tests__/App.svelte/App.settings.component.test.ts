@@ -233,21 +233,20 @@ describe('App.svelte - Settings', () => {
       expect(mockChromeStorageService.saveProjectSettings).not.toHaveBeenCalled();
     });
 
-    it('should create settings with PAT authentication', async () => {
+    it('should not create settings from legacy PAT state', async () => {
       const projectId = 'test-project';
       const onBoltProject = true;
 
       chromeMocks._setSyncStorage('repoOwner', 'test-owner');
       chromeMocks._setLocalStorage('authenticationMethod', 'pat');
+      chromeMocks._setSyncStorage('githubToken', 'legacy-token');
 
       const [syncSettings, localSettings] = await Promise.all([
         chrome.storage.sync.get(['repoOwner']),
-        chrome.storage.local.get(['authenticationMethod', 'githubAppInstallationId']),
+        chrome.storage.local.get(['githubAppInstallationId']),
       ]);
 
-      const authMethod = localSettings.authenticationMethod || 'pat';
-      const githubToken = 'test-token';
-      const hasValidAuth = authMethod === 'pat' && Boolean(githubToken);
+      const hasValidAuth = Boolean(localSettings.githubAppInstallationId);
 
       expect(onBoltProject).toBe(true);
       expect(projectId).toBe('test-project');
@@ -256,12 +255,7 @@ describe('App.svelte - Settings', () => {
         await mockChromeStorageService.saveProjectSettings(projectId, projectId, 'main', projectId);
       }
 
-      expect(mockChromeStorageService.saveProjectSettings).toHaveBeenCalledWith(
-        projectId,
-        projectId,
-        'main',
-        projectId
-      );
+      expect(mockChromeStorageService.saveProjectSettings).not.toHaveBeenCalled();
     });
 
     it('should create settings with GitHub App authentication', async () => {
@@ -269,17 +263,14 @@ describe('App.svelte - Settings', () => {
       const onBoltProject = true;
 
       chromeMocks._setSyncStorage('repoOwner', 'test-owner');
-      chromeMocks._setLocalStorage('authenticationMethod', 'github_app');
       chromeMocks._setLocalStorage('githubAppInstallationId', 12345);
 
       const [syncSettings, localSettings] = await Promise.all([
         chrome.storage.sync.get(['repoOwner']),
-        chrome.storage.local.get(['authenticationMethod', 'githubAppInstallationId']),
+        chrome.storage.local.get(['githubAppInstallationId']),
       ]);
 
-      const authMethod = localSettings.authenticationMethod || 'pat';
-      const hasValidAuth =
-        authMethod === 'github_app' && Boolean(localSettings.githubAppInstallationId);
+      const hasValidAuth = Boolean(localSettings.githubAppInstallationId);
 
       expect(onBoltProject).toBe(true);
       expect(projectId).toBe('test-project');
@@ -301,15 +292,12 @@ describe('App.svelte - Settings', () => {
       const onBoltProject = true;
 
       chromeMocks._setSyncStorage('repoOwner', 'test-owner');
-      chromeMocks._setLocalStorage('authenticationMethod', 'pat');
-
       const [syncSettings, localSettings] = await Promise.all([
         chrome.storage.sync.get(['repoOwner']),
-        chrome.storage.local.get(['authenticationMethod', 'githubAppInstallationId']),
+        chrome.storage.local.get(['githubAppInstallationId']),
       ]);
 
-      const authMethod = localSettings.authenticationMethod || 'pat';
-      const hasValidAuth = authMethod === 'pat' && false;
+      const hasValidAuth = Boolean(localSettings.githubAppInstallationId);
 
       expect(onBoltProject).toBe(true);
       expect(projectId).toBe('test-project');
@@ -326,11 +314,11 @@ describe('App.svelte - Settings', () => {
       const projectId = 'test-project';
       const onBoltProject = true;
 
-      chromeMocks._setLocalStorage('authenticationMethod', 'pat');
+      chromeMocks._setLocalStorage('githubAppInstallationId', 12345);
 
       const [syncSettings] = await Promise.all([
         chrome.storage.sync.get(['repoOwner']),
-        chrome.storage.local.get(['authenticationMethod', 'githubAppInstallationId']),
+        chrome.storage.local.get(['githubAppInstallationId']),
       ]);
 
       expect(onBoltProject).toBe(true);
@@ -397,78 +385,31 @@ describe('App.svelte - Settings', () => {
     });
   });
 
-  describe('updateEffectiveToken', () => {
-    it('should use actual token for PAT authentication', async () => {
-      chromeMocks._setLocalStorage('authenticationMethod', 'pat');
-      const githubToken = 'ghp_test_token';
+  describe('GitHub App capability', () => {
+    it('should not expose a capability for a stored legacy token', () => {
+      const connectionReady = true;
+      const githubAppInstallationId = null;
+      const storedLegacyToken = 'ghp_legacy_token';
+      const effectiveToken = connectionReady && githubAppInstallationId ? 'github_app_token' : '';
 
-      const authSettings = await chrome.storage.local.get(['authenticationMethod']);
-      const authMethod = authSettings.authenticationMethod || 'pat';
-
-      let effectiveToken = '';
-      if (authMethod === 'github_app') {
-        effectiveToken = 'github_app_token';
-      } else {
-        effectiveToken = githubToken || '';
-      }
-
-      expect(effectiveToken).toBe('ghp_test_token');
-    });
-
-    it('should use placeholder token for GitHub App authentication', async () => {
-      chromeMocks._setLocalStorage('authenticationMethod', 'github_app');
-
-      const authSettings = await chrome.storage.local.get(['authenticationMethod']);
-      const authMethod = authSettings.authenticationMethod || 'pat';
-
-      let effectiveToken = '';
-      if (authMethod === 'github_app') {
-        effectiveToken = 'github_app_token';
-      } else {
-        effectiveToken = 'some-token';
-      }
-
-      expect(effectiveToken).toBe('github_app_token');
-    });
-
-    it('should default to PAT if no authentication method is set', async () => {
-      const authSettings = await chrome.storage.local.get(['authenticationMethod']);
-      const authMethod = authSettings.authenticationMethod || 'pat';
-
-      expect(authMethod).toBe('pat');
-    });
-
-    it('should handle empty token for PAT', async () => {
-      chromeMocks._setLocalStorage('authenticationMethod', 'pat');
-      const githubToken = '';
-
-      const authSettings = await chrome.storage.local.get(['authenticationMethod']);
-      const authMethod = authSettings.authenticationMethod || 'pat';
-
-      let effectiveToken = '';
-      if (authMethod === 'github_app') {
-        effectiveToken = 'github_app_token';
-      } else {
-        effectiveToken = githubToken || '';
-      }
-
+      expect(storedLegacyToken).toBeTruthy();
       expect(effectiveToken).toBe('');
     });
 
-    it('should update effective token when settings change', async () => {
-      chromeMocks._setLocalStorage('authenticationMethod', 'pat');
-      let authSettings = await chrome.storage.local.get(['authenticationMethod']);
-      let authMethod = authSettings.authenticationMethod || 'pat';
-      let effectiveToken = authMethod === 'github_app' ? 'github_app_token' : 'pat-token';
-
-      expect(effectiveToken).toBe('pat-token');
-
-      chromeMocks._setLocalStorage('authenticationMethod', 'github_app');
-      authSettings = await chrome.storage.local.get(['authenticationMethod']);
-      authMethod = authSettings.authenticationMethod || 'pat';
-      effectiveToken = authMethod === 'github_app' ? 'github_app_token' : 'pat-token';
+    it('should expose a capability for a verified GitHub App installation', () => {
+      const connectionReady = true;
+      const githubAppInstallationId = 12345;
+      const effectiveToken = connectionReady && githubAppInstallationId ? 'github_app_token' : '';
 
       expect(effectiveToken).toBe('github_app_token');
+    });
+
+    it('should withhold the capability while live connection verification is unavailable', () => {
+      const connectionReady = false;
+      const githubAppInstallationId = 12345;
+      const effectiveToken = connectionReady && githubAppInstallationId ? 'github_app_token' : '';
+
+      expect(effectiveToken).toBe('');
     });
   });
 
@@ -486,17 +427,11 @@ describe('App.svelte - Settings', () => {
     });
 
     it('should handle missing settings gracefully', async () => {
-      const settings = await chrome.storage.sync.get([
-        'repoOwner',
-        'repoName',
-        'branch',
-        'githubToken',
-      ]);
+      const settings = await chrome.storage.sync.get(['repoOwner', 'repoName', 'branch']);
 
       expect(settings.repoOwner).toBeUndefined();
       expect(settings.repoName).toBeUndefined();
       expect(settings.branch).toBeUndefined();
-      expect(settings.githubToken).toBeUndefined();
     });
 
     it('should load project-specific settings when on bolt project', async () => {
@@ -508,33 +443,15 @@ describe('App.svelte - Settings', () => {
     });
   });
 
-  describe('Authentication method handling', () => {
-    it('should handle authentication method change to PAT', () => {
-      const newAuthMethod = 'pat';
-
-      mockGithubSettingsActions.setAuthenticationMethod(newAuthMethod);
-
-      expect(mockGithubSettingsActions.setAuthenticationMethod).toHaveBeenCalledWith('pat');
+  describe('GitHub App-only settings state', () => {
+    it('should not invoke authentication method switching', () => {
+      expect(mockGithubSettingsActions.setAuthenticationMethod).not.toHaveBeenCalled();
     });
 
-    it('should handle authentication method change to GitHub App', () => {
-      const newAuthMethod = 'github_app';
+    it('should derive readiness from the GitHub App installation', () => {
+      const githubAppInstallationId = 12345;
 
-      mockGithubSettingsActions.setAuthenticationMethod(newAuthMethod);
-
-      expect(mockGithubSettingsActions.setAuthenticationMethod).toHaveBeenCalledWith('github_app');
-    });
-
-    it('should update effective token after auth method change', async () => {
-      mockGithubSettingsActions.setAuthenticationMethod('github_app');
-
-      chromeMocks._setLocalStorage('authenticationMethod', 'github_app');
-      const authSettings = await chrome.storage.local.get(['authenticationMethod']);
-      const authMethod = authSettings.authenticationMethod || 'pat';
-      const effectiveToken = authMethod === 'github_app' ? 'github_app_token' : 'some-token';
-
-      expect(mockGithubSettingsActions.setAuthenticationMethod).toHaveBeenCalledWith('github_app');
-      expect(effectiveToken).toBe('github_app_token');
+      expect(Boolean(githubAppInstallationId)).toBe(true);
     });
   });
 

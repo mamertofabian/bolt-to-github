@@ -22,7 +22,6 @@
   const dispatch = createEventDispatcher<{
     save: void;
     error: string;
-    authMethodChange: string;
     upgradeClick: UpgradeType;
     configurePushReminder: void;
   }>();
@@ -33,10 +32,6 @@
 
   function handleError(error: string) {
     dispatch('error', error);
-  }
-
-  function handleAuthMethodChange(method: string) {
-    dispatch('authMethodChange', method);
   }
 
   function handleUpgradeClick(type: UpgradeType) {
@@ -60,11 +55,9 @@
 
 <div class="space-y-4">
   <GitHubSettings
-    bind:githubToken={githubSettings.githubToken}
     bind:repoOwner={githubSettings.repoOwner}
     bind:repoName={githubSettings.repoName}
     bind:branch={githubSettings.branch}
-    bind:authenticationMethod={githubSettings.authenticationMethod}
     bind:githubAppInstallationId={githubSettings.githubAppInstallationId}
     bind:githubAppUsername={githubSettings.githubAppUsername}
     bind:githubAppAvatarUrl={githubSettings.githubAppAvatarUrl}
@@ -74,7 +67,6 @@
     onSave={handleSave}
     onError={handleError}
     onInput={() => {}}
-    onAuthMethodChange={handleAuthMethodChange}
   />
 
   <!-- Push Reminder Settings -->

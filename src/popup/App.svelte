@@ -91,6 +91,10 @@
     CardTitle,
   } from '$lib/components/ui/card';
   import { ChromeStorageService } from '$lib/services/chromeStorage';
+  import {
+    completeGitHubAppMigration,
+    migrateLegacyGitHubAuthentication,
+  } from '$lib/services/githubAuthMigration';
   import { createLogger } from '$lib/utils/logger';
   import { setUpgradeModalState, type UpgradeModalType } from '$lib/utils/upgradeModal';
   import { closePopupWindow, isWindowMode, openPopupWindow } from '$lib/utils/windowMode';
@@ -175,19 +179,70 @@
   let successToastMessage = '';
   let showSubscribePrompt = false;
 
-  // Effective GitHub token for different auth methods
+  // GitHub-backed components still accept a token-shaped capability. The
+  // background service resolves this sentinel to a short-lived App credential.
   let effectiveGithubToken = '';
   let githubConnectionChecking = true;
   let githubConnectionReady = false;
-  const githubConnectionInitialization = reconcilePopupGitHubConnection(
-    () => checkPopupGitHubConnection(),
-    () => githubSettingsActions.initialize(),
-    (message, duration) => uiStateActions.showStatus(message, duration)
-  ).then((connection) => {
-    githubConnectionReady = connection.connected;
-    githubConnectionChecking = false;
-    return connection;
-  });
+  let githubAppMigrationRequired = false;
+  let popupSettingsInitialized = false;
+
+  async function initializePopupGitHubSettings() {
+    await githubSettingsActions.initialize();
+    popupSettingsInitialized = true;
+  }
+
+  const githubConnectionInitialization = migrateLegacyGitHubAuthentication()
+    .then((decision) => {
+      githubAppMigrationRequired = decision.status === 'migration_required';
+      return reconcilePopupGitHubConnection(
+        () => checkPopupGitHubConnection(),
+        initializePopupGitHubSettings,
+        (message, duration) => uiStateActions.showStatus(message, duration)
+      );
+    })
+    .then(async (connection) => {
+      if (!popupSettingsInitialized) {
+        await initializePopupGitHubSettings();
+      }
+
+      if (githubSettings.githubAppInstallationId) {
+        // The migration intentionally removes the legacy selector key. Normalize
+        // the still-transitional store in memory until its PAT fields are deleted
+        // by the storage-and-types retirement child.
+        githubSettingsActions.setAuthenticationMethod('github_app');
+        if (!githubSettings.repoOwner && githubSettings.githubAppUsername) {
+          githubSettingsActions.setRepoOwner(githubSettings.githubAppUsername);
+        }
+      }
+
+      if (
+        await completeGitHubAppMigration(
+          connection.connected,
+          Boolean(githubSettings.githubAppInstallationId)
+        )
+      ) {
+        githubAppMigrationRequired = false;
+      }
+
+      githubConnectionReady = connection.connected;
+      githubConnectionChecking = false;
+      return connection;
+    })
+    .catch((error: unknown) => {
+      logger.error('Unable to initialize GitHub App migration:', error);
+      githubConnectionReady = false;
+      githubConnectionChecking = false;
+      uiStateActions.showStatus(
+        'Unable to prepare the GitHub App migration. Reload the extension and try again.',
+        10000
+      );
+      return {
+        connected: false,
+        reason: 'unavailable' as const,
+        message: 'Unable to prepare the GitHub App migration.',
+      };
+    });
 
   // Add pending popup context state
   let pendingPopupContext = '';
@@ -206,11 +261,8 @@
   // Reactive check for valid authentication for ProjectsList display
   $: hasValidAuthenticationForProjectsList = !!(
     githubConnectionReady &&
-    githubSettings.hasInitialSettings &&
     githubSettings.repoOwner &&
-    ((githubSettings.authenticationMethod === 'github_app' &&
-      githubSettings.githubAppInstallationId) ||
-      (githubSettings.authenticationMethod === 'pat' && githubSettings.githubToken))
+    githubSettings.githubAppInstallationId
   );
 
   // Handle pending popup context when stores are ready
@@ -226,7 +278,7 @@
       onBoltProject,
       settingsValid,
       projectId,
-      hasGitHubSettings: !!(githubSettings?.repoOwner && githubSettings?.githubToken),
+      hasGitHubSettings: !!(githubSettings?.repoOwner && githubSettings?.githubAppInstallationId),
     });
     handlePendingPopupContext();
   }
@@ -268,24 +320,8 @@
     showStoredFileChanges();
   }
 
-  async function updateEffectiveToken() {
-    // Get authentication method to determine correct token to use
-    const authSettings = await chrome.storage.local.get(['authenticationMethod']);
-    const authMethod = authSettings.authenticationMethod || 'pat';
-
-    if (authMethod === 'github_app') {
-      // For GitHub App, use a placeholder token that the store will recognize
-      effectiveGithubToken = 'github_app_token';
-    } else {
-      // For PAT, use the actual token
-      effectiveGithubToken = githubSettings.githubToken || '';
-    }
-  }
-
-  // Update effective token when settings change
-  $: if (githubSettings) {
-    updateEffectiveToken();
-  }
+  $: effectiveGithubToken =
+    githubConnectionReady && githubSettings.githubAppInstallationId ? 'github_app_token' : '';
 
   async function initializeApp() {
     // Add dark mode to the document
@@ -298,7 +334,6 @@
 
     // Initialize stores
     projectSettingsActions.initialize();
-    await githubSettingsActions.initialize();
     uploadStateActions.initializePort();
     premiumStatusActions.initialize();
 
@@ -407,14 +442,10 @@
       // Check if we have valid authentication
       const [syncSettings, localSettings] = await Promise.all([
         chrome.storage.sync.get(['repoOwner']),
-        chrome.storage.local.get(['authenticationMethod', 'githubAppInstallationId']),
+        chrome.storage.local.get(['githubAppInstallationId']),
       ]);
 
-      const authMethod = localSettings.authenticationMethod || 'pat';
-      const hasValidAuth =
-        authMethod === 'github_app'
-          ? Boolean(localSettings.githubAppInstallationId)
-          : Boolean(githubSettings.githubToken);
+      const hasValidAuth = Boolean(localSettings.githubAppInstallationId);
 
       if (!syncSettings.repoOwner || !hasValidAuth) {
         logger.warn('⚠️ No valid authentication or repoOwner found, skipping auto-creation');
@@ -499,7 +530,7 @@
       onBoltProject,
       settingsValid,
       projectId,
-      hasGitHubSettings: !!(githubSettings?.repoOwner && githubSettings?.githubToken),
+      hasGitHubSettings: !!(githubSettings?.repoOwner && githubSettings?.githubAppInstallationId),
       activeTab: uiState.activeTab,
     });
 
@@ -509,7 +540,7 @@
         if (
           canOpenPopupGitHubSurface(
             githubConnectionReady,
-            Boolean(settingsValid && projectId && githubSettings.githubToken)
+            Boolean(settingsValid && projectId && githubSettings.githubAppInstallationId)
           )
         ) {
           logger.info('🎯 Opening issues modal');
@@ -530,11 +561,7 @@
             uiStateActions.setActiveTab('projects');
             logger.info('🎯 Projects tab activated');
           }, 10);
-        } else if (
-          githubSettings?.hasInitialSettings &&
-          githubSettings?.repoOwner &&
-          githubSettings?.githubToken
-        ) {
+        } else if (githubSettings?.repoOwner && githubSettings?.githubAppInstallationId) {
           logger.info(
             '🎯 Not on bolt project but has settings - projects list should already be visible'
           );
@@ -777,13 +804,6 @@
     }
   }
 
-  // Handle authentication method change
-  function authMethodChangeHandler(event: CustomEvent<string>) {
-    const newAuthMethod = event.detail;
-    githubSettingsActions.setAuthenticationMethod(newAuthMethod as 'github_app' | 'pat');
-    updateEffectiveToken();
-  }
-
   onMount(initializeApp);
   onDestroy(cleanup);
 </script>
@@ -814,7 +834,7 @@
               </svg>
               PRO
             </span>
-          {:else if onBoltProject || (githubSettings.hasInitialSettings && isUserAuthenticated)}
+          {:else if onBoltProject || (githubSettings.githubAppInstallationId && isUserAuthenticated)}
             <div class="flex items-center gap-2">
               <Button
                 size="sm"
@@ -894,7 +914,6 @@
           on:newsletter={handleNewsletterClick}
           on:save={saveSettings}
           on:error={(e) => handleSettingsError(e.detail)}
-          on:authMethodChange={authMethodChangeHandler}
           on:configurePushReminder={handleConfigurePushReminder}
         />
       {:else}
@@ -903,9 +922,9 @@
           {projectSettings}
           {uiState}
           {isUserAuthenticated}
+          migrationRequired={githubAppMigrationRequired}
           on:save={saveSettings}
           on:error={(e) => handleSettingsError(e.detail)}
-          on:authMethodChange={authMethodChangeHandler}
         />
       {/if}
     </CardContent>

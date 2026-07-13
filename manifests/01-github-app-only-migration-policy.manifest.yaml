@@ -1,0 +1,254 @@
+schema: '2'
+goal: |
+  Define an idempotent policy that detects legacy PAT state, records a durable
+  GitHub App migration requirement, removes the stored PAT, and preserves all
+  repository and project configuration.
+description: |
+  First promoted child of github-app-only-authentication. Its behavioral tests
+  and red evidence define the migration policy before any integration caller
+  invokes it.
+
+  The policy separates pure classification from Chrome storage effects. A PAT
+  selected or stored without a live GitHub App connection becomes
+  migration_required. A stale PAT beside an already connected GitHub App is
+  removed without disrupting that connection. Fresh unconfigured users remain
+  unconfigured rather than being mislabeled as migrations.
+
+  The storage operation is one-way, ordered, and idempotent: it records the
+  local migration marker before removing githubToken from sync storage and
+  legacy method-choice keys from local storage, and never changes repoOwner,
+  projectSettings, repository names, or branches. Completion clears the marker
+  only after the caller has confirmed a live account session and installation.
+temptations:
+  - risk: Do not combine PAT detection with network verification or tab navigation.
+    instead: Keep classification pure, make storage mutation explicit, and let existing live-connection authorities verify the completed GitHub App state.
+  - risk: Do not make repeated extension startup erase or rewrite unrelated storage.
+    instead: Make migration idempotent and assert the second run produces no additional destructive writes.
+  - risk: Do not pretend local and sync Chrome storage mutations are atomic across namespaces.
+    instead: Write the explanatory local marker first, remove the sync PAT second, and verify retries repair either partially completed state.
+  - risk: Do not clear the migration marker from cached installation metadata alone.
+    instead: Require the integration caller to supply confirmed live session plus installation readiness before completion.
+type: refactor
+files:
+  create:
+    - path: src/lib/services/githubAuthMigration.ts
+      artifacts:
+        - kind: type
+          name: GitHubAppMigrationStatus
+          type: "'not_required' | 'migration_required' | 'completed'"
+        - kind: interface
+          name: LegacyGitHubAuthSnapshot
+          description: Legacy auth and connection fields needed for a pure migration decision.
+        - kind: attribute
+          name: authenticationMethod
+          of: LegacyGitHubAuthSnapshot
+          type: "'pat' | 'github_app' | undefined"
+        - kind: attribute
+          name: githubToken
+          of: LegacyGitHubAuthSnapshot
+          type: string | undefined
+        - kind: attribute
+          name: githubAppInstallationId
+          of: LegacyGitHubAuthSnapshot
+          type: number | undefined
+        - kind: attribute
+          name: migrationRequired
+          of: LegacyGitHubAuthSnapshot
+          type: boolean | undefined
+        - kind: attribute
+          name: preferredAuthMethod
+          of: LegacyGitHubAuthSnapshot
+          type: "'pat' | 'github_app' | undefined"
+        - kind: attribute
+          name: migrationPromptShown
+          of: LegacyGitHubAuthSnapshot
+          type: boolean | undefined
+        - kind: attribute
+          name: lastMigrationPrompt
+          of: LegacyGitHubAuthSnapshot
+          type: string | undefined
+        - kind: interface
+          name: GitHubAuthMigrationDecision
+          description: Exact one-way cleanup and user-state decision produced from legacy storage.
+        - kind: attribute
+          name: status
+          of: GitHubAuthMigrationDecision
+          type: GitHubAppMigrationStatus
+        - kind: attribute
+          name: removeStoredPat
+          of: GitHubAuthMigrationDecision
+          type: boolean
+        - kind: attribute
+          name: removeLegacyMethodKeys
+          of: GitHubAuthMigrationDecision
+          type: boolean
+        - kind: attribute
+          name: persistMigrationRequired
+          of: GitHubAuthMigrationDecision
+          type: boolean
+        - kind: function
+          name: resolveGitHubAuthMigration
+          args:
+            - name: snapshot
+              type: LegacyGitHubAuthSnapshot
+          returns: GitHubAuthMigrationDecision
+          description: Pure classification for legacy PAT, mixed, connected-app, and fresh-install states.
+        - kind: function
+          name: migrateLegacyGitHubAuthentication
+          args: []
+          returns: Promise<GitHubAuthMigrationDecision>
+          description: Applies the decision to Chrome storage without changing repository or project configuration.
+        - kind: function
+          name: completeGitHubAppMigration
+          args:
+            - name: liveSessionConnected
+              type: boolean
+            - name: installationConnected
+              type: boolean
+          returns: Promise<boolean>
+          description: Clears the migration marker only when both live prerequisites are confirmed.
+    - path: src/lib/services/__tests__/githubAuthMigration.test.ts
+      artifacts:
+        - kind: test_function
+          name: legacy PAT becomes migration required and the token is removed
+        - kind: test_function
+          name: stale PAT beside a connected GitHub App is removed without migration blocking
+        - kind: test_function
+          name: fresh unconfigured storage is not mislabeled as a PAT migration
+        - kind: test_function
+          name: migration preserves repository owner and every project mapping
+        - kind: test_function
+          name: repeated migration is idempotent
+        - kind: test_function
+          name: retry repairs a marker-written token-not-yet-removed partial migration
+        - kind: test_function
+          name: retry repairs a token-removed local-auth-not-yet-cleaned partial migration
+        - kind: test_function
+          name: completion requires both a live session and installation
+  read:
+    - manifests/drafts/github-app-only-authentication.manifest.yaml
+    - src/lib/services/chromeStorage.ts
+    - src/lib/types.ts
+    - src/lib/utils/githubConnection.ts
+    - src/content/services/SupabaseAuthService.ts
+validate:
+  - pnpm exec vitest run src/lib/services/__tests__/githubAuthMigration.test.ts
+  - ./scripts/maid validate manifests/01-github-app-only-migration-policy.manifest.yaml --mode behavioral
+  - pnpm lint
+  - pnpm check
+created: '2026-07-13T09:18:31Z'
+metadata:
+  tags:
+    - auth
+    - github-app
+    - pat-retirement
+    - storage-migration
+  priority: high
+  status: completed
+  parent_epic: github-app-only-authentication
+  depends_on: []
+  notes: Behavioral tests, red evidence, and promotion validation are complete.
+outcome:
+  status: completed
+  summary: |
+    Added a pure legacy-auth classifier and an ordered, idempotent Chrome
+    storage migration. Legacy PAT users receive a durable migration-required
+    marker before their PAT and legacy auth-choice state are removed, while
+    repository owners and project mappings remain untouched. Mixed users with
+    an existing GitHub App installation are migration-complete locally, and the
+    marker clears only after callers confirm both a live account session and a
+    live installation connection.
+  rationale: |
+    Chrome sync and local storage cannot be updated atomically, so the policy
+    records the explanatory marker first and makes every later cleanup step
+    retryable. Explicitly reading all legacy local auth keys repairs crashes on
+    either side of PAT deletion without turning cached installation metadata
+    into proof of live runtime readiness.
+  lessons:
+    - lesson_type: crash-safe-cross-namespace-migration
+      summary: |
+        Cross-namespace credential retirement must model every intermediate
+        state, including marker-written/token-present and
+        token-removed/local-choice-present, so retries finish cleanup safely.
+      tags: [auth, chrome-storage, migration, reliability]
+      paths:
+        - src/lib/services/githubAuthMigration.ts
+        - src/lib/services/__tests__/githubAuthMigration.test.ts
+    - lesson_type: auth-migration-state-classification
+      summary: |
+        Local migration classification and live connection verification are
+        separate authorities; stored installation metadata can prevent an
+        unnecessary migration prompt but cannot clear a durable marker.
+      tags: [auth, github-app, state-machine]
+      paths:
+        - src/lib/services/githubAuthMigration.ts
+        - src/lib/utils/githubConnection.ts
+  review_notes:
+    - source: independent reviewer /root/maid_implementation_reviewer_01
+      severity: findings-fixed
+      summary: |
+        Found missing preferredAuthMethod cleanup and a non-stateful idempotency
+        test. Both were fixed with explicit key cleanup and a two-run storage
+        harness.
+    - source: independent reviewer /root/maid_implementation_reviewer_01_round2
+      severity: finding-fixed
+      summary: |
+        Found the post-token-removal/pre-local-cleanup crash window. The snapshot
+        and regression suite now include every legacy local key and repair that
+        partial state.
+    - source: independent reviewer /root/maid_implementation_reviewer_01_round3
+      severity: ready
+      summary: |
+        Final read-only review found no remaining scope, safety, behavioral, or
+        contract-fidelity issues and returned Ready to merge.
+  validation:
+    - command:
+        - pnpm
+        - exec
+        - vitest
+        - run
+        - src/lib/services/__tests__/githubAuthMigration.test.ts
+      status: failed-red-phase
+      summary: The initial contract failed because githubAuthMigration.ts did not exist.
+    - command:
+        - ./scripts/maid
+        - test
+        - --manifest
+        - manifests/01-github-app-only-migration-policy.manifest.yaml
+      status: passed
+      summary: All four declared commands passed, including 8 focused tests, behavioral validation, lint, and type checking.
+    - command:
+        - ./scripts/maid
+        - validate
+        - manifests/01-github-app-only-migration-policy.manifest.yaml
+        - --mode
+        - implementation
+      status: passed
+      summary: Every declared production and behavioral artifact passed implementation validation.
+    - command:
+        - pnpm
+        - test:ci
+      status: passed
+      summary: Full Vitest CI passed 196 files and 4,375 tests.
+    - command:
+        - pnpm
+        - build
+      status: passed
+      summary: Production extension build passed with existing chunk warnings only.
+    - command:
+        - ./scripts/maid
+        - verify
+        - --manifest-dir
+        - manifests
+        - --require-plan-lock
+        - --require-red-evidence
+        - --plan-lock-scope
+        - task
+        - --file-tracking-scope
+        - task
+        - --since
+        - HEAD
+        - --keep-going
+        - --summary
+      status: passed
+      summary: Final task verification passed all nine gates with zero blocking findings or warnings.

@@ -56,15 +56,15 @@ export const DEFAULT_GITHUB_SETTINGS: GitHubSettingsState = {
 };
 
 /**
- * Valid GitHub settings with PAT authentication
+ * Legacy PAT state used only to exercise the one-way migration screen.
  */
-export const VALID_PAT_SETTINGS: GitHubSettingsState = {
+export const LEGACY_PAT_MIGRATION_SETTINGS: GitHubSettingsState = {
   ...DEFAULT_GITHUB_SETTINGS,
   githubToken: 'test-token',
   repoOwner: 'test-owner',
   repoName: 'test-repo',
   branch: 'main',
-  hasInitialSettings: true,
+  hasInitialSettings: false,
   authenticationMethod: 'pat',
   isTokenValid: true,
 };

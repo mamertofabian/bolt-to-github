@@ -1,1337 +1,310 @@
 <script lang="ts">
-  import { createLogger } from '$lib/utils/logger';
   import { Button } from '$lib/components/ui/button';
   import { Input } from '$lib/components/ui/input';
   import { Label } from '$lib/components/ui/label';
-  import {
-    Check,
-    X,
-    Search,
-    Loader2,
-    HelpCircle,
-    ChevronDown,
-    ChevronUp,
-    Settings,
-    RefreshCw,
-  } from 'lucide-svelte';
-  import { onMount, tick } from 'svelte';
-  import { UnifiedGitHubService } from '../../services/UnifiedGitHubService';
-  import { BackgroundAuthClient } from '$lib/services/BackgroundAuthClient';
+  import { Check, ExternalLink, Loader2, Search, Shield } from 'lucide-svelte';
   import { GITHUB_APP_AUTH_URL } from '$lib/constants';
   import {
-    hasRequiredSettings,
-    shouldBeExpanded,
+    checkRepositoryExists,
     filterRepositories,
-    repositoryExists,
-    setDefaultRepoNameFromProjectId,
-    generateStatusDisplayText,
-    clearValidationState,
-    isStorageQuotaError,
-    generateStorageQuotaErrorMessage,
-    shouldUpdateSettingsFromStorage,
-    needsPermissionCheck,
-    validateGitHubApp,
-    updateSettingsFromStorageChange,
-    updateSettingsFromSyncStorage,
-    type PermissionStatus,
-  } from '$lib/utils/github-settings';
-  import { validateRepositoryName } from '$lib/utils/repo-settings';
+    handleKeyboardNavigation,
+    validateRepositoryName,
+    type Repository,
+  } from '$lib/utils/repo-settings';
+  import { GitHubApiClient } from '../../services/GitHubApiClient';
+  import { GitHubAppAuthenticationStrategy } from '../../services/GitHubAppAuthenticationStrategy';
 
-  const logger = createLogger('GitHubSettings');
-
-  export let isOnboarding: boolean = false;
-  export let githubToken: string;
   export let repoOwner: string;
   export let repoName: string;
-  export let branch: string = 'main';
+  export let branch = 'main';
   export let status: string;
   export let onSave: () => void;
   export let onInput: () => void;
   export let onError: ((error: string) => void) | null = null;
   export let projectId: string | null = null;
-  export let projectSettings: Record<string, { repoName: string; branch: string }> = {};
-  export let buttonDisabled: boolean = false;
-
-  // New authentication method props
-  export let authenticationMethod: 'pat' | 'github_app' = 'pat';
+  export let buttonDisabled = false;
   export let githubAppInstallationId: number | null = null;
   export let githubAppUsername: string | null = null;
   export let githubAppAvatarUrl: string | null = null;
-  export let onAuthMethodChange: ((method: 'pat' | 'github_app') => void) | null = null;
+  export let migrationRequired = false;
 
-  // Add state for handling storage quota errors
-  let storageQuotaError: string | null = null;
-
-  let isValidatingToken = false;
-  let isTokenValid: boolean | null = null;
-  let tokenValidationTimeout: number;
-  let validationError: string | null = null;
-  let tokenType: 'classic' | 'fine-grained' | null = null;
-  let isRepoNameFromProjectId = false;
-  let repositories: Array<{
-    name: string;
-    description: string | null;
-    html_url: string;
-    private: boolean;
-    created_at: string;
-    updated_at: string;
-    language: string | null;
-  }> = [];
-  let isLoadingRepos = false;
-  let showRepoDropdown = false;
-  let repoSearchQuery = '';
-  let repoExists = false;
+  let storedMigrationRequired = false;
+  let loadedProjectId: string | null | undefined;
   let repoNameDraft = repoName;
   let branchDraft = branch;
-  let repoNameTouched = false;
-  let branchTouched = false;
-  let lastProjectId = projectId;
-  let selectedIndex = -1;
-  let isCheckingPermissions = false;
-  let lastPermissionCheck: number | null = null;
-  let currentCheck: 'repos' | 'admin' | 'code' | null = null;
-  let permissionStatus: PermissionStatus = {
-    allRepos: undefined,
-    admin: undefined,
-    contents: undefined,
-  };
+  let repositories: Repository[] = [];
+  let repoSearchQuery = '';
+  let showRepoDropdown = false;
+  let selectedRepoIndex = -1;
+  let isLoadingRepositories = false;
+  let repositoryLoadError: string | null = null;
 
-  // Individual permission status variables for better reactivity
-  let reposPermission: boolean | undefined = undefined;
-  let adminPermission: boolean | undefined = undefined;
-  let contentsPermission: boolean | undefined = undefined;
-  let permissionError: string | null = null;
-  let previousToken: string | null = null;
-
-  // GitHub App authentication state
-  let isConnectingGitHubApp = false;
-  let githubAppConnectionError: string | null = null;
-  let githubAppValidationResult: { isValid: boolean; error?: string; userInfo?: unknown } | null =
-    null;
-
-  // Collapsible state - add manual toggle state
-  let manuallyToggled = false;
-  let isExpanded = true; // Initially expanded
-
-  // Collapsible state - collapsed by default if settings are populated
-  $: hasRequiredSettingsValue = hasRequiredSettings({
-    authenticationMethod,
-    githubToken,
-    githubAppInstallationId,
-    repoOwner,
-    repoName,
-    branch,
-    isOnboarding,
-  });
-
-  $: {
-    // Only auto-collapse if not manually toggled by user
-    isExpanded = shouldBeExpanded(
-      isOnboarding,
-      hasRequiredSettingsValue,
-      manuallyToggled,
-      isExpanded
-    );
-  }
-
-  // Handle authentication method changes
-  async function handleAuthMethodChange(method: 'pat' | 'github_app') {
-    authenticationMethod = method;
-
-    // Save the authentication method preference to storage
-    try {
-      await chrome.storage.local.set({ preferredAuthMethod: method });
-      logger.info('💾 Saved authentication method preference:', method);
-    } catch (error) {
-      logger.error('Failed to save authentication method preference:', error);
-    }
-
-    // Clear all validation state when switching methods
-    const clearedState = clearValidationState();
-    isTokenValid = clearedState.isTokenValid;
-    validationError = clearedState.validationError;
-    githubAppValidationResult = clearedState.githubAppValidationResult;
-    githubAppConnectionError = clearedState.githubAppConnectionError;
-    tokenType = clearedState.tokenType;
-    permissionError = null;
-    permissionStatus = clearedState.permissionStatus;
-    reposPermission = undefined;
-    adminPermission = undefined;
-    contentsPermission = undefined;
-    lastPermissionCheck = null;
-    previousToken = null;
-    repositories = [];
-
-    // Clear any ongoing validations
-    if (tokenValidationTimeout) {
-      clearTimeout(tokenValidationTimeout);
-    }
-
-    if (onAuthMethodChange) {
-      onAuthMethodChange(method);
-    }
-
-    onInput();
-
-    // Re-validate if we have the necessary credentials for the selected method
-    if (method === 'pat' && githubToken && repoOwner) {
-      validateSettings();
-    } else if (method === 'github_app' && githubAppInstallationId) {
-      validateGitHubApp(githubAppInstallationId, githubAppUsername, githubAppAvatarUrl);
-    }
-  }
-
-  function toggleExpanded() {
-    isExpanded = !isExpanded;
-    manuallyToggled = true; // Mark as manually toggled
-  }
-
-  function applyRepositorySettings(repoNameValue: string, branchValue: string) {
-    repoName = repoNameValue;
-    branch = branchValue;
-    repoNameDraft = repoNameValue;
-    branchDraft = branchValue;
-    repoNameTouched = false;
-    branchTouched = false;
-  }
-
-  $: if (projectId !== lastProjectId) {
-    lastProjectId = projectId;
-    repoNameTouched = false;
-    branchTouched = false;
-  }
-
-  $: if (!repoNameTouched && repoNameDraft !== repoName) {
+  $: if (projectId !== loadedProjectId) {
+    loadedProjectId = projectId;
     repoNameDraft = repoName;
-  }
-
-  $: if (!branchTouched && branchDraft !== branch) {
     branchDraft = branch;
   }
 
-  $: filteredRepos = filterRepositories(repositories, repoSearchQuery, 10);
-
-  $: repoExists = repositoryExists(repositories, repoNameDraft);
+  $: showMigrationRequired = migrationRequired || storedMigrationRequired;
   $: repoNameValidation = validateRepositoryName(repoNameDraft);
-  $: showRepoNameValidationError = !isOnboarding && repoNameTouched && !repoNameValidation.isValid;
+  $: filteredRepositories = filterRepositories(repositories, repoSearchQuery);
+  $: selectedRepositoryExists = checkRepositoryExists(repositories, repoNameDraft);
+  $: canSave = Boolean(
+    githubAppInstallationId &&
+    repoOwner &&
+    repoNameValidation.isValid &&
+    branchDraft.trim() &&
+    !buttonDisabled
+  );
 
-  $: {
-    const updatedState = setDefaultRepoNameFromProjectId({
-      projectId,
-      repoName,
-      isRepoNameFromProjectId,
-      authenticationMethod,
-      githubToken,
-      githubAppInstallationId,
-      repoOwner,
-      branch,
-      isOnboarding,
-    });
-    if (
-      updatedState.repoName !== repoName ||
-      updatedState.isRepoNameFromProjectId !== isRepoNameFromProjectId
-    ) {
-      repoName = updatedState.repoName;
-      isRepoNameFromProjectId = updatedState.isRepoNameFromProjectId ?? false;
-    }
-  }
-
-  // Helper function to create GitHub service respecting user's authentication method choice
-  async function createGitHubService(): Promise<UnifiedGitHubService> {
-    try {
-      // Respect the user's explicit authentication method choice
-      if (authenticationMethod === 'pat') {
-        // User explicitly chose PAT - use it directly
-        if (!githubToken) {
-          throw new Error('GitHub token is required for PAT authentication');
-        }
-        logger.info('✅ Using PAT authentication as explicitly chosen by user');
-        return new UnifiedGitHubService(githubToken);
-      } else if (authenticationMethod === 'github_app') {
-        // User explicitly chose GitHub App - try it first
-        try {
-          const service = new UnifiedGitHubService({ type: 'github_app' });
-          logger.info('✅ Using GitHub App authentication as explicitly chosen by user');
-          return service;
-        } catch (githubAppError) {
-          logger.warn('⚠️ GitHub App initialization failed for user-selected method');
-          throw githubAppError;
-        }
-      } else {
-        // Fallback for legacy cases - try smart detection
-        logger.info('🔍 Using smart authentication detection for legacy compatibility');
-        try {
-          const service = new UnifiedGitHubService({ type: 'github_app' });
-          return service;
-        } catch (githubAppError) {
-          if (githubToken) {
-            logger.info('🔄 Fallback to PAT authentication');
-            return new UnifiedGitHubService(githubToken);
-          }
-          throw githubAppError;
-        }
-      }
-    } catch (error) {
-      logger.error('Failed to create GitHub service:', error);
-      throw error;
-    }
+  function connectGitHubApp() {
+    window.open(GITHUB_APP_AUTH_URL, '_blank');
   }
 
   async function loadRepositories() {
-    // Check if we have valid authentication for the selected method
-    const hasValidAuth =
-      (authenticationMethod === 'pat' && githubToken && repoOwner && isTokenValid) ||
-      (authenticationMethod === 'github_app' &&
-        githubAppInstallationId &&
-        githubAppValidationResult?.isValid);
+    if (!githubAppInstallationId) return;
 
-    if (!hasValidAuth) return;
-
+    isLoadingRepositories = true;
+    repositoryLoadError = null;
     try {
-      isLoadingRepos = true;
-      const githubService = await createGitHubService();
-      repositories = await githubService.listRepos();
-    } catch (error) {
-      logger.error('Error loading repositories:', error);
+      const strategy = new GitHubAppAuthenticationStrategy();
+      const token = await strategy.getToken();
+      const client = new GitHubApiClient(token);
+      repositories = await client.request<Repository[]>(
+        'GET',
+        '/user/repos?sort=updated&per_page=100'
+      );
+    } catch {
       repositories = [];
+      repositoryLoadError =
+        'Unable to load repositories from GitHub. You can still enter a repository name manually.';
     } finally {
-      isLoadingRepos = false;
+      isLoadingRepositories = false;
     }
   }
 
-  function handleRepoInput(event: Event) {
-    repoNameDraft = (event.currentTarget as HTMLInputElement).value;
+  function handleRepoInput() {
     repoSearchQuery = repoNameDraft;
-    repoNameTouched = true;
-    isRepoNameFromProjectId = false;
+    selectedRepoIndex = -1;
+    showRepoDropdown = true;
     onInput();
   }
 
-  function selectRepo(repo: (typeof repositories)[0]) {
-    repoNameDraft = repo.name;
+  function handleRepoFocus() {
+    // Show every App-accessible repository on focus. Filtering starts once the
+    // user types; the currently saved repository name should not hide the list.
+    repoSearchQuery = '';
+    showRepoDropdown = true;
+  }
+
+  function handleRepoBlur() {
+    setTimeout(() => {
+      showRepoDropdown = false;
+    }, 150);
+  }
+
+  function selectRepository(repository: Repository) {
+    repoNameDraft = repository.name;
+    repoSearchQuery = repository.name;
+    selectedRepoIndex = -1;
     showRepoDropdown = false;
-    repoSearchQuery = repo.name;
-    repoNameTouched = true;
     onInput();
   }
 
   function handleRepoKeydown(event: KeyboardEvent) {
     if (!showRepoDropdown) return;
 
-    switch (event.key) {
-      case 'ArrowDown':
-        event.preventDefault();
-        selectedIndex = Math.min(selectedIndex + 1, filteredRepos.length - 1);
-        break;
-      case 'ArrowUp':
-        event.preventDefault();
-        selectedIndex = Math.max(selectedIndex - 1, -1);
-        break;
-      case 'Enter':
-        event.preventDefault();
-        if (selectedIndex >= 0 && filteredRepos[selectedIndex]) {
-          selectRepo(filteredRepos[selectedIndex]);
-        }
-        break;
-      case 'Escape':
-        event.preventDefault();
-        showRepoDropdown = false;
-        break;
-    }
+    const navigation = handleKeyboardNavigation(event.key, selectedRepoIndex, filteredRepositories);
+    if (navigation.shouldPreventDefault) event.preventDefault();
+    selectedRepoIndex = navigation.newIndex;
+    if (navigation.selectedRepo) selectRepository(navigation.selectedRepo);
+    if (navigation.shouldCloseDropdown) showRepoDropdown = false;
   }
 
-  function handleRepoFocus() {
-    showRepoDropdown = true;
-    repoSearchQuery = repoNameDraft;
-  }
-
-  function handleRepoBlur() {
-    repoNameTouched = true;
-
-    // Delay hiding dropdown to allow click events to register
-    setTimeout(() => {
-      showRepoDropdown = false;
-    }, 200);
-  }
-
-  // Define the storage change listener outside of onMount
-  const storageChangeListener = (
-    changes: Record<string, chrome.storage.StorageChange>,
-    areaName: string
-  ) => {
-    // Filter out log-related changes to avoid logging massive amounts of data
-    const relevantChanges = Object.keys(changes).filter(
-      (key) => !key.startsWith('logs_') && key !== 'currentLogBatch' && key !== 'logMetadata'
-    );
-
-    if (relevantChanges.length > 0) {
-      logger.debug(
-        'Storage changes detected in GitHubSettings:',
-        relevantChanges,
-        'in area:',
-        areaName
-      );
-    }
-
-    // Check if lastSettingsUpdate changed in local storage
-    if (areaName === 'local' && changes.lastSettingsUpdate) {
-      const updateInfo = changes.lastSettingsUpdate.newValue as {
-        timestamp: number;
-        projectId: string;
-        repoName: string;
-        branch: string;
-      };
-      logger.info('Settings update detected:', updateInfo);
-
-      // If the update is for the current project, update the local state
-      if (shouldUpdateSettingsFromStorage(updateInfo, projectId)) {
-        const updatedState = updateSettingsFromStorageChange(
-          {
-            projectId,
-            repoName,
-            branch,
-            authenticationMethod,
-            githubToken,
-            githubAppInstallationId,
-            repoOwner,
-            isOnboarding,
-          },
-          updateInfo
-        );
-        applyRepositorySettings(updatedState.repoName, updatedState.branch);
-        logger.info('Updated local state with new project settings:', repoName, branch);
-      }
-    }
-
-    // Check if projectSettings changed in sync storage
-    if (areaName === 'sync' && changes.projectSettings && projectId) {
-      const newSettings = (changes.projectSettings.newValue || {}) as Record<
-        string,
-        { repoName: string; branch: string }
-      >;
-      const updatedState = updateSettingsFromSyncStorage(
-        {
-          projectId,
-          repoName,
-          branch,
-          authenticationMethod,
-          githubToken,
-          githubAppInstallationId,
-          repoOwner,
-          isOnboarding,
-        },
-        newSettings
-      );
-      if (updatedState.repoName !== repoName || updatedState.branch !== branch) {
-        applyRepositorySettings(updatedState.repoName, updatedState.branch);
-        logger.info('Updated from sync storage:', repoName, branch);
-      }
-    }
-  };
-
-  // Separate async initialization function
-  async function initializeSettings() {
-    // Load last permission check timestamp and authentication method preference from storage
-    const storage = await chrome.storage.local.get(['lastPermissionCheck', 'preferredAuthMethod']);
-    lastPermissionCheck = storage.lastPermissionCheck || null;
-
-    // Load saved authentication method preference
-    if (storage.preferredAuthMethod) {
-      authenticationMethod = storage.preferredAuthMethod;
-      logger.info('🔄 Loaded authentication method preference:', authenticationMethod);
-    } else {
-      // If no preference saved, smart detect based on available credentials
-      if (githubAppInstallationId) {
-        authenticationMethod = 'github_app';
-        logger.info('🤖 Auto-selected GitHub App based on available installation');
-      } else if (githubToken) {
-        authenticationMethod = 'pat';
-        logger.info('🔑 Auto-selected PAT based on available token');
-      }
-      // Save the initial choice
-      if (authenticationMethod !== 'pat') {
-        // Only save if different from default
-        await chrome.storage.local.set({ preferredAuthMethod: authenticationMethod });
-      }
-    }
-
-    previousToken = githubToken;
-
-    // If we have initial valid settings, validate and load repos
-    if (
-      (authenticationMethod === 'pat' && githubToken && repoOwner) ||
-      (authenticationMethod === 'github_app' && githubAppInstallationId)
-    ) {
-      await validateSettings();
-    }
-  }
-
-  onMount(() => {
-    // Start the async initialization without awaiting it
-    initializeSettings();
-
-    // Add the storage change listener
-    chrome.storage.onChanged.addListener(storageChangeListener);
-
-    // Return a cleanup function to remove the listener when the component is destroyed
-    return () => {
-      chrome.storage.onChanged.removeListener(storageChangeListener);
-    };
-  });
-
-  async function validateSettings() {
-    // Only validate PAT when PAT method is selected
-    if (authenticationMethod === 'pat') {
-      if (!githubToken) {
-        isTokenValid = null;
-        validationError = null;
-        return;
-      }
-
-      try {
-        isValidatingToken = true;
-        validationError = null;
-        const githubService = await createGitHubService();
-        const result = await githubService.validateTokenAndUser(repoOwner);
-        isTokenValid = result.isValid;
-        validationError = result.error || null;
-
-        if (result.isValid) {
-          // Check token type
-          const isClassic = await githubService.isClassicToken();
-          tokenType = isClassic ? 'classic' : 'fine-grained';
-        }
-
-        // Load repositories after successful validation
-        if (result.isValid) {
-          await loadRepositories();
-        }
-      } catch (error) {
-        logger.error('Error validating PAT settings:', error);
-        isTokenValid = false;
-        validationError = error instanceof Error ? error.message : 'Validation failed';
-      } finally {
-        isValidatingToken = false;
-      }
-    } else if (authenticationMethod === 'github_app') {
-      // For GitHub App, we don't validate tokens the same way
-      if (githubAppInstallationId) {
-        await validateGitHubAppAuth();
-        // Load repositories if GitHub App is valid
-        if (githubAppValidationResult?.isValid) {
-          await loadRepositories();
-        }
-      }
-    }
-  }
-
-  function handleTokenInput() {
-    onInput();
-    isTokenValid = null;
-    validationError = null;
-    tokenType = null;
-
-    // Clear existing timeout
-    if (tokenValidationTimeout) {
-      clearTimeout(tokenValidationTimeout);
-    }
-
-    // Debounce validation to avoid too many API calls
-    tokenValidationTimeout = setTimeout(() => {
-      validateSettings();
-    }, 500) as unknown as number;
-  }
-
-  function handleOwnerInput() {
-    onInput();
-    if (githubToken) {
-      handleTokenInput(); // This will trigger validation of both token and username
-    }
-  }
-
-  function handleBranchInput(event: Event) {
-    branchDraft = (event.currentTarget as HTMLInputElement).value;
-    branchTouched = true;
+  function handleBranchInput() {
     onInput();
   }
 
-  async function checkTokenPermissions() {
-    // Only check permissions for PAT authentication
-    if (authenticationMethod !== 'pat' || !githubToken || isCheckingPermissions) return;
-
-    logger.info('🔍 Starting token permissions check...');
-    isCheckingPermissions = true;
-    permissionError = null;
-    permissionStatus = {
-      allRepos: undefined,
-      admin: undefined,
-      contents: undefined,
-    };
-    reposPermission = undefined;
-    adminPermission = undefined;
-    contentsPermission = undefined;
+  function handleSubmit() {
+    if (!canSave) return;
 
     try {
-      const githubService = await createGitHubService();
-
-      const result = await githubService.verifyTokenPermissions(
-        repoOwner,
-        async ({ permission, isValid }) => {
-          logger.info(`✅ Permission check callback: ${permission} = ${isValid}`);
-          currentCheck = permission;
-
-          // Update the status as each permission is checked
-          switch (permission) {
-            case 'repos':
-              permissionStatus.allRepos = isValid;
-              reposPermission = isValid;
-              break;
-            case 'admin':
-              permissionStatus.admin = isValid;
-              adminPermission = isValid;
-              break;
-            case 'code':
-              permissionStatus.contents = isValid;
-              contentsPermission = isValid;
-              break;
-          }
-
-          // Force Svelte to update the UI by creating a new object reference
-          permissionStatus = { ...permissionStatus };
-          logger.info('📊 Updated permission status:', permissionStatus);
-
-          // Force Svelte to process the DOM update
-          await tick();
-        }
-      );
-
-      logger.info('🏁 Permission check completed:', result);
-
-      if (result.isValid) {
-        lastPermissionCheck = Date.now();
-        await chrome.storage.local.set({ lastPermissionCheck });
-        previousToken = githubToken;
-      } else {
-        // Parse the error message to determine which permission failed
-        permissionStatus = {
-          allRepos: !result.error?.includes('repository creation'),
-          admin: !result.error?.includes('administration'),
-          contents: !result.error?.includes('contents'),
-        };
-        permissionError = result.error || 'Permission verification failed';
-      }
+      repoName = repoNameDraft;
+      branch = branchDraft;
+      onSave();
     } catch (error) {
-      logger.error('Permission check failed:', error);
-      permissionError = 'Failed to verify permissions';
-    } finally {
-      isCheckingPermissions = false;
-      currentCheck = null;
-      logger.info('🔚 Permission check finished');
+      onError?.(error instanceof Error ? error.message : 'Unable to save GitHub settings');
     }
   }
 
-  const handleSave = async (event: Event) => {
-    event.preventDefault();
-    repoNameTouched = true;
-
-    if (!isOnboarding && !repoNameValidation.isValid) {
-      return;
-    }
-
-    repoName = repoNameDraft;
-    branch = branchDraft;
-
-    // Clear any previous storage errors
-    storageQuotaError = null;
-
-    // Only check token permissions for PAT authentication
-    if (authenticationMethod === 'pat') {
-      const THIRTY_DAYS = 30 * 24 * 60 * 60 * 1000;
-      const needsCheck = needsPermissionCheck(
-        previousToken,
-        githubToken,
-        lastPermissionCheck,
-        THIRTY_DAYS
-      );
-
-      if (needsCheck) {
-        await checkTokenPermissions();
-        if (permissionError) {
-          return; // Don't proceed if permissions check failed
-        }
-      }
-    }
-
-    // Set up a listener for chrome.runtime.lastError before calling onSave
-
-    try {
-      await onSave();
-
-      // Check for storage quota errors after save attempt
-      setTimeout(() => {
-        if (
-          chrome.runtime.lastError &&
-          chrome.runtime.lastError.message &&
-          isStorageQuotaError(chrome.runtime.lastError.message)
-        ) {
-          const errorMsg = chrome.runtime.lastError.message;
-          storageQuotaError = generateStorageQuotaErrorMessage();
-          if (onError) {
-            onError(errorMsg);
-          }
-        }
-      }, 100);
-    } catch (error) {
-      if (error instanceof Error && isStorageQuotaError(error)) {
-        storageQuotaError = generateStorageQuotaErrorMessage();
-        if (onError) {
-          onError(error.message);
-        }
-      }
-    }
-  };
-
-  // GitHub App connection function
-  async function connectGitHubApp() {
-    isConnectingGitHubApp = true;
-    githubAppConnectionError = null;
-
-    try {
-      // Redirect to bolt2github.com for OAuth flow
-      window.open(GITHUB_APP_AUTH_URL, '_blank');
-
-      // Enter aggressive detection mode for faster connection detection
-      try {
-        const authClient = new BackgroundAuthClient();
-        await authClient.enterPostConnectionMode();
-        logger.info('🚀 Entered post-connection detection mode for faster GitHub authentication');
-        githubAppConnectionError = null;
-      } catch (authError) {
-        logger.warn('Could not enter post-connection mode:', authError);
-        githubAppConnectionError =
-          authError instanceof Error
-            ? authError.message
-            : 'Could not start GitHub connection detection';
-      }
-    } catch (error) {
-      logger.error('Error connecting GitHub App:', error);
-      githubAppConnectionError =
-        error instanceof Error ? error.message : 'Failed to connect GitHub App';
-    } finally {
-      isConnectingGitHubApp = false;
-    }
-  }
-
-  // Manual refresh function for GitHub connection detection
-  async function refreshGitHubConnection() {
-    try {
-      const authClient = new BackgroundAuthClient();
-      await authClient.forceCheck();
-      githubAppConnectionError = null;
-      logger.info('🔄 Manually triggered GitHub connection check');
-    } catch (error) {
-      logger.error('Error refreshing GitHub connection:', error);
-      githubAppConnectionError =
-        error instanceof Error ? error.message : 'Failed to refresh GitHub connection';
-    }
-  }
-
-  // Validate GitHub App authentication
-  async function validateGitHubAppAuth() {
-    try {
-      // This would normally call the GitHubAppService to validate
-      // For now, we'll assume it's valid if we have an installation ID
-      githubAppValidationResult = validateGitHubApp(
-        githubAppInstallationId,
-        githubAppUsername,
-        githubAppAvatarUrl
-      );
-    } catch (error) {
-      githubAppValidationResult = {
-        isValid: false,
-        error: error instanceof Error ? error.message : 'GitHub App validation failed',
-      };
-    }
-  }
-
-  // Update the status display text
-  $: statusDisplayText = generateStatusDisplayText({
-    authenticationMethod,
-    githubToken,
-    githubAppInstallationId,
-    githubAppUsername,
-    repoOwner,
-    repoName,
-    branch,
-    isOnboarding,
-  });
-
-  $: {
-    if (!isOnboarding && !repoNameTouched && projectId && projectSettings[projectId]) {
-      const updatedState = updateSettingsFromSyncStorage(
-        {
-          projectId,
-          repoName,
-          branch,
-          authenticationMethod,
-          githubToken,
-          githubAppInstallationId,
-          repoOwner,
-          isOnboarding,
-        },
-        projectSettings
-      );
-      if (updatedState.repoName !== repoName || updatedState.branch !== branch) {
-        applyRepositorySettings(updatedState.repoName, updatedState.branch);
-      }
-    }
-  }
+  // This extension component is client-only. Start these independent reads when
+  // the component is constructed, matching RepoSettings' repository discovery.
+  // A storage failure must never prevent the repository list from loading.
+  void loadRepositories();
+  void chrome.storage.local
+    .get('githubAppMigrationRequired')
+    .then((storage) => {
+      storedMigrationRequired = storage.githubAppMigrationRequired === true;
+    })
+    .catch(() => {
+      storedMigrationRequired = false;
+    });
 </script>
 
-<div class="space-y-4">
-  <!-- Collapsible GitHub Settings -->
-  <div class="border border-slate-700 rounded-lg bg-slate-900/50 overflow-hidden">
-    <!-- Header with toggle -->
-    <div
-      class="flex items-center justify-between p-4 bg-slate-800/50 border-b border-slate-700 cursor-pointer hover:bg-slate-800/70 transition-colors"
-      on:click={toggleExpanded}
-      on:keydown={(e) => e.key === 'Enter' && toggleExpanded()}
-      role="button"
-      tabindex="0"
-    >
-      <div class="flex items-center gap-3">
-        <Settings class="w-5 h-5 text-slate-400" />
-        <div>
-          <h2 class="text-lg font-semibold text-slate-200">GitHub Settings</h2>
-          <p class="text-sm text-slate-400">
-            {statusDisplayText}
-          </p>
-        </div>
-      </div>
-      <div class="flex items-center gap-2">
-        {#if hasRequiredSettingsValue && !isOnboarding}
-          <div class="flex items-center gap-1">
-            {#if authenticationMethod === 'github_app'}
-              {#if githubAppValidationResult?.isValid === true}
-                <Check class="w-4 h-4 text-green-500" />
-              {:else if githubAppValidationResult?.isValid === false}
-                <X class="w-4 h-4 text-red-500" />
-              {:else if githubAppInstallationId}
-                <Check class="w-4 h-4 text-green-500" />
-              {:else}
-                <div class="w-4 h-4 rounded-full bg-slate-600"></div>
-              {/if}
-            {:else if isTokenValid === true}
-              <Check class="w-4 h-4 text-green-500" />
-            {:else if isTokenValid === false}
-              <X class="w-4 h-4 text-red-500" />
-            {:else}
-              <div class="w-4 h-4 rounded-full bg-slate-600"></div>
-            {/if}
-            <span class="text-xs text-slate-400">
-              {authenticationMethod === 'github_app'
-                ? githubAppInstallationId
-                  ? 'Connected'
-                  : 'Not Connected'
-                : isTokenValid === true
-                  ? 'Connected'
-                  : isTokenValid === false
-                    ? 'Error'
-                    : 'Unknown'}
-            </span>
-          </div>
-        {/if}
-        {#if isExpanded}
-          <ChevronUp class="w-5 h-5 text-slate-400" />
-        {:else}
-          <ChevronDown class="w-5 h-5 text-slate-400" />
-        {/if}
+<div class="space-y-4 rounded-lg border border-slate-700 bg-slate-900/50 p-4">
+  <div>
+    <h2 class="text-lg font-semibold text-slate-200">GitHub Settings</h2>
+    <p class="text-sm text-slate-400">GitHub App connection and repository settings</p>
+  </div>
+
+  {#if showMigrationRequired}
+    <div role="alert" class="rounded-md border border-amber-700 bg-amber-900/20 p-3">
+      <p class="font-medium text-amber-200">GitHub App is now required</p>
+      <p class="mt-1 text-sm text-amber-300">
+        Connect the GitHub App to continue. Existing repository settings remain available below.
+      </p>
+    </div>
+  {/if}
+
+  {#if githubAppInstallationId}
+    <div class="flex items-center gap-3 rounded-md border border-green-700 bg-green-900/20 p-3">
+      <Check class="h-5 w-5 text-green-500" />
+      {#if githubAppAvatarUrl}
+        <img src={githubAppAvatarUrl} alt="GitHub profile" class="h-6 w-6 rounded-full" />
+      {/if}
+      <div>
+        <p class="font-medium text-green-200">
+          Connected as {githubAppUsername || repoOwner || 'GitHub User'}
+        </p>
+        <p class="text-xs text-green-300">Repository access is managed by the GitHub App.</p>
       </div>
     </div>
+  {:else}
+    <div class="space-y-3 rounded-md border border-blue-700 bg-blue-900/20 p-3">
+      <div class="flex items-start gap-2">
+        <Shield class="mt-0.5 h-4 w-4 text-blue-300" />
+        <p class="text-sm text-blue-200">
+          Install the GitHub App and choose the repositories this extension may access.
+        </p>
+      </div>
+      <Button
+        type="button"
+        class="bg-blue-600 text-white hover:bg-blue-700"
+        on:click={connectGitHubApp}
+      >
+        Connect GitHub App
+        <ExternalLink class="ml-2 h-4 w-4" />
+      </Button>
+    </div>
+  {/if}
 
-    <!-- Collapsible Content -->
-    {#if isExpanded}
-      <div class="p-4 space-y-4" style="animation: slideDown 0.2s ease-out;">
-        <!-- Settings Form -->
-        <form on:submit|preventDefault={handleSave} class="space-y-4">
-          <!-- Authentication Method Selection -->
-          <div class="p-3 bg-slate-850 border border-slate-700 rounded-md">
-            <h3 class="text-slate-200 font-medium mb-3">Authentication Method</h3>
-            <div class="space-y-3 text-left">
-              <label class="flex items-center space-x-3 cursor-pointer">
-                <input
-                  type="radio"
-                  name="authMethod"
-                  value="github_app"
-                  checked={authenticationMethod === 'github_app'}
-                  on:change={() => handleAuthMethodChange('github_app')}
-                  class="w-4 h-4 text-blue-600 bg-slate-700 border-slate-600 focus:ring-blue-500 focus:ring-2"
-                />
-                <div class="flex-1">
-                  <div class="flex items-center gap-2">
-                    <span class="text-slate-200 font-medium">GitHub App</span>
-                    <span class="px-2 py-1 text-xs bg-green-900 text-green-200 rounded"
-                      >Recommended</span
-                    >
-                  </div>
-                  <p class="text-sm text-slate-400 mt-1">
-                    Secure authentication with automatic token refresh and fine-grained permissions
-                  </p>
-                </div>
-              </label>
+  <form class="space-y-4" on:submit|preventDefault={handleSubmit}>
+    <div class="space-y-2">
+      <Label for="repoOwner" class="text-slate-200">Repository Owner</Label>
+      <Input
+        id="repoOwner"
+        type="text"
+        value={repoOwner}
+        readonly
+        class="cursor-not-allowed border-slate-700 bg-slate-800 text-slate-300 opacity-75"
+      />
+      <p class="text-xs text-slate-400">Detected from the connected GitHub account.</p>
+    </div>
 
-              <label class="flex items-center space-x-3 cursor-pointer">
-                <input
-                  type="radio"
-                  name="authMethod"
-                  value="pat"
-                  checked={authenticationMethod === 'pat'}
-                  on:change={() => handleAuthMethodChange('pat')}
-                  class="w-4 h-4 text-blue-600 bg-slate-700 border-slate-600 focus:ring-blue-500 focus:ring-2"
-                />
-                <div class="flex-1">
-                  <div class="flex items-center gap-2">
-                    <span class="text-slate-200 font-medium">Personal Access Token</span>
-                    <span class="px-2 py-1 text-xs bg-slate-700 text-slate-400 rounded"
-                      >Advanced</span
-                    >
-                  </div>
-                  <p class="text-sm text-slate-400 mt-1">
-                    Manual token management for users who prefer direct GitHub API access
-                  </p>
-                </div>
-              </label>
-            </div>
-          </div>
-
-          <!-- General GitHub Settings Section -->
-          <div class="p-3 bg-slate-850 border border-slate-700 rounded-md text-left">
-            <h3 class="text-slate-200 font-medium mb-3 flex items-center">
-              <span>General GitHub Settings</span>
-              <span class="text-xs text-slate-400 ml-2">(Used across all projects)</span>
-            </h3>
-
-            <div class="space-y-4">
-              <!-- GitHub App Authentication -->
-              {#if authenticationMethod === 'github_app'}
-                <div class="space-y-3">
-                  {#if githubAppInstallationId}
-                    <!-- Connected State -->
-                    <div
-                      class="flex items-center gap-3 p-3 bg-green-900/20 border border-green-700 rounded-md"
-                    >
-                      <Check class="w-5 h-5 text-green-500" />
-                      <div class="flex-1">
-                        <div class="flex items-center gap-2">
-                          {#if githubAppAvatarUrl}
-                            <img
-                              src={githubAppAvatarUrl}
-                              alt="Profile"
-                              class="w-6 h-6 rounded-full"
-                            />
-                          {/if}
-                          <span class="text-green-200 font-medium">
-                            Connected as {githubAppUsername || 'GitHub User'}
-                          </span>
-                        </div>
-                        <p class="text-sm text-green-300 mt-1">
-                          GitHub App authentication is active
-                        </p>
-                      </div>
-                      <Button
-                        type="button"
-                        variant="outline"
-                        size="sm"
-                        class="text-xs"
-                        on:click={() =>
-                          validateGitHubApp(
-                            githubAppInstallationId,
-                            githubAppUsername,
-                            githubAppAvatarUrl
-                          )}
-                      >
-                        Refresh
-                      </Button>
-                    </div>
-                  {:else}
-                    <!-- Not Connected State -->
-                    <div class="space-y-3">
-                      <div class="p-3 bg-blue-900/20 border border-blue-700 rounded-md">
-                        <h4 class="text-blue-200 font-medium mb-2">Connect with GitHub App</h4>
-                        <p class="text-sm text-blue-300 mb-3">
-                          GitHub App provides secure authentication with automatic token refresh and
-                          fine-grained permissions.
-                        </p>
-                        <div class="flex gap-2">
-                          <Button
-                            type="button"
-                            class="bg-blue-600 hover:bg-blue-700 text-white flex-1"
-                            on:click={connectGitHubApp}
-                            disabled={isConnectingGitHubApp}
-                          >
-                            {#if isConnectingGitHubApp}
-                              <Loader2 class="w-4 h-4 mr-2 animate-spin" />
-                              Connecting...
-                            {:else}
-                              Connect with GitHub
-                            {/if}
-                          </Button>
-                          <Button
-                            type="button"
-                            variant="outline"
-                            size="sm"
-                            class="text-xs px-3"
-                            on:click={refreshGitHubConnection}
-                            title="Manually check for GitHub connection"
-                          >
-                            <RefreshCw class="w-3 h-3" />
-                          </Button>
-                        </div>
-                      </div>
-
-                      {#if githubAppConnectionError}
-                        <div class="p-3 bg-red-900/20 border border-red-700 rounded-md">
-                          <div class="flex items-start gap-2">
-                            <X class="w-4 h-4 text-red-400 mt-0.5 flex-shrink-0" />
-                            <div class="text-sm text-red-200">
-                              <p class="font-medium">Connection Failed</p>
-                              <p class="mt-1">{githubAppConnectionError}</p>
-                            </div>
-                          </div>
-                        </div>
-                      {/if}
-                    </div>
-                  {/if}
-                </div>
-
-                <!-- Personal Access Token Authentication -->
-              {:else}
-                <div class="space-y-2">
-                  <Label for="githubToken" class="text-slate-200">
-                    GitHub Token
-                    <span class="text-sm text-slate-400 ml-2">(Required for uploading)</span>
-                  </Label>
-                  <div class="relative">
-                    <Input
-                      type="password"
-                      id="githubToken"
-                      bind:value={githubToken}
-                      on:input={handleTokenInput}
-                      placeholder="ghp_***********************************"
-                      class="bg-slate-800 border-slate-700 text-slate-200 placeholder:text-slate-500 pr-10"
-                    />
-                    {#if githubToken}
-                      <div class="absolute right-3 top-1/2 -translate-y-1/2">
-                        {#if isValidatingToken}
-                          <div
-                            class="animate-spin h-4 w-4 border-2 border-slate-400 border-t-transparent rounded-full"
-                          />
-                        {:else if isTokenValid === true}
-                          <Check class="h-4 w-4 text-green-500" />
-                        {:else if isTokenValid === false}
-                          <X class="h-4 w-4 text-red-500" />
-                        {/if}
-                      </div>
-                    {/if}
-                  </div>
-                  {#if validationError}
-                    <p class="text-sm text-red-400 mt-1">{validationError}</p>
-                  {:else if tokenType}
-                    <div class="space-y-2">
-                      <p class="text-sm text-emerald-400">
-                        {tokenType === 'classic' ? '🔑 Classic' : '✨ Fine-grained'} token detected
-                      </p>
-                      {#if isTokenValid}
-                        <div class="flex items-center gap-2">
-                          <Button
-                            type="button"
-                            variant="outline"
-                            size="sm"
-                            class="text-xs"
-                            on:click={checkTokenPermissions}
-                            disabled={isCheckingPermissions}
-                          >
-                            {#if isCheckingPermissions}
-                              <Loader2 class="h-3 w-3 mr-1 animate-spin" />
-                              Checking...
-                            {:else}
-                              Verify
-                            {/if}
-                          </Button>
-                          <div class="flex items-center gap-2">
-                            {#if previousToken === githubToken && lastPermissionCheck}
-                              <div class="relative group">
-                                <HelpCircle class="h-3 w-3 text-slate-400" />
-                                <div
-                                  class="absolute bottom-full mb-2 left-1/2 -translate-x-1/2 hidden group-hover:block w-64 p-2 text-xs bg-slate-900 border border-slate-700 rounded-md shadow-lg"
-                                >
-                                  <p>
-                                    Last verified: {new Date(lastPermissionCheck).toLocaleString()}
-                                  </p>
-                                  <p class="mt-1 text-slate-400">
-                                    Permissions are automatically re-verified when the token changes
-                                    or after 30 days.
-                                  </p>
-                                </div>
-                              </div>
-                            {/if}
-                            <div class="flex items-center gap-1.5 text-xs">
-                              <span class="flex items-center gap-0.5">
-                                {#if currentCheck === 'repos'}
-                                  <Loader2 class="h-3 w-3 animate-spin text-slate-400" />
-                                {:else if reposPermission !== undefined}
-                                  {#if reposPermission}
-                                    <Check class="h-3 w-3 text-green-500" />
-                                  {:else}
-                                    <X class="h-3 w-3 text-red-500" />
-                                  {/if}
-                                {:else if previousToken === githubToken && lastPermissionCheck}
-                                  <Check class="h-3 w-3 text-green-500 opacity-50" />
-                                {/if}
-                                Repos
-                              </span>
-                              <span class="flex items-center gap-0.5">
-                                {#if currentCheck === 'admin'}
-                                  <Loader2 class="h-3 w-3 animate-spin text-slate-400" />
-                                {:else if adminPermission !== undefined}
-                                  {#if adminPermission}
-                                    <Check class="h-3 w-3 text-green-500" />
-                                  {:else}
-                                    <X class="h-3 w-3 text-red-500" />
-                                  {/if}
-                                {:else if previousToken === githubToken && lastPermissionCheck}
-                                  <Check class="h-3 w-3 text-green-500 opacity-50" />
-                                {/if}
-                                Admin
-                              </span>
-                              <span class="flex items-center gap-0.5">
-                                {#if currentCheck === 'code'}
-                                  <Loader2 class="h-3 w-3 animate-spin text-slate-400" />
-                                {:else if contentsPermission !== undefined}
-                                  {#if contentsPermission}
-                                    <Check class="h-3 w-3 text-green-500" />
-                                  {:else}
-                                    <X class="h-3 w-3 text-red-500" />
-                                  {/if}
-                                {:else if previousToken === githubToken && lastPermissionCheck}
-                                  <Check class="h-3 w-3 text-green-500 opacity-50" />
-                                {/if}
-                                Code
-                              </span>
-                            </div>
-                          </div>
-                        </div>
-                      {/if}
-                    </div>
-                    {#if permissionError}
-                      <p class="text-sm text-red-400 mt-1">{permissionError}</p>
-                    {/if}
-                  {/if}
-                </div>
-              {/if}
-
-              <div class="space-y-2">
-                <Label for="repoOwner" class="text-slate-200">
-                  Repository Owner
-                  <span class="text-sm text-slate-400 ml-2">
-                    {authenticationMethod === 'github_app'
-                      ? '(Auto-detected from GitHub App)'
-                      : '(Your GitHub username)'}
-                  </span>
-                </Label>
-                <Input
-                  type="text"
-                  id="repoOwner"
-                  bind:value={repoOwner}
-                  on:input={handleOwnerInput}
-                  placeholder="username or organization"
-                  class="bg-slate-800 border-slate-700 text-slate-200 placeholder:text-slate-500 {authenticationMethod ===
-                  'github_app'
-                    ? 'opacity-75 cursor-not-allowed'
-                    : ''}"
-                  readonly={authenticationMethod === 'github_app'}
-                  disabled={authenticationMethod === 'github_app'}
-                />
-                {#if authenticationMethod === 'github_app'}
-                  <p class="text-sm text-slate-400">
-                    ℹ️ The repository owner is automatically set from your GitHub App authentication
-                  </p>
-                {/if}
-              </div>
-            </div>
-          </div>
-
-          {#if !isOnboarding}
-            <!-- Project-specific Settings Section -->
-            <div class="p-3 bg-slate-850 border border-slate-700 rounded-md text-left">
-              <h3 class="text-slate-200 font-medium mb-3 flex items-center">
-                <span>Project Repository Settings</span>
-                <span class="text-xs text-slate-400 ml-2">
-                  {#if projectId}
-                    (For current project only)
-                  {:else}
-                    (Default settings)
-                  {/if}
-                </span>
-              </h3>
-
-              <div class="space-y-4">
-                <div class="space-y-2">
-                  <Label for="repoName" class="text-slate-200">Repository Name</Label>
-                  <div class="relative">
-                    <div class="relative">
-                      <Input
-                        type="text"
-                        id="repoName"
-                        bind:value={repoNameDraft}
-                        on:input={handleRepoInput}
-                        on:focus={handleRepoFocus}
-                        on:blur={handleRepoBlur}
-                        on:keydown={handleRepoKeydown}
-                        placeholder="Search or enter repository name"
-                        class="bg-slate-800 border-slate-700 text-slate-200 placeholder:text-slate-500 pr-10"
-                        autocomplete="off"
-                      />
-                      <div class="absolute right-3 top-1/2 -translate-y-1/2">
-                        {#if isLoadingRepos}
-                          <Loader2 class="h-4 w-4 text-slate-400 animate-spin" />
-                        {:else}
-                          <Search class="h-4 w-4 text-slate-400" />
-                        {/if}
-                      </div>
-                    </div>
-                    {#if showRepoDropdown && (filteredRepos.length > 0 || !repoExists)}
-                      <div
-                        class="absolute z-50 w-full mt-1 bg-slate-800 border border-slate-700 rounded-md shadow-lg"
-                      >
-                        <ul class="py-1 max-h-60 overflow-auto">
-                          {#each filteredRepos as repo, i}
-                            <li>
-                              <button
-                                class="w-full px-3 py-2 text-left hover:bg-slate-700 text-slate-200 {selectedIndex ===
-                                i
-                                  ? 'bg-slate-700'
-                                  : ''}"
-                                on:click={() => selectRepo(repo)}
-                              >
-                                <div class="flex items-center justify-between">
-                                  <span class="font-medium">{repo.name}</span>
-                                  {#if repo.private}
-                                    <span class="text-xs text-slate-400">Private</span>
-                                  {/if}
-                                </div>
-                                {#if repo.description}
-                                  <p class="text-sm text-slate-400 truncate">{repo.description}</p>
-                                {/if}
-                              </button>
-                            </li>
-                          {/each}
-                          {#if !repoExists}
-                            <li class="px-3 py-2 text-sm text-slate-400">
-                              {#if repoNameDraft.length > 0}
-                                <p class="text-orange-400">
-                                  💡If the repository "{repoNameDraft}" doesn't exist, it will be
-                                  created automatically.
-                                </p>
-                              {:else}
-                                <p>
-                                  Enter a repository name (new) or select from your repositories
-                                  carefully.
-                                </p>
-                              {/if}
-                            </li>
-                          {/if}
-                        </ul>
-                      </div>
-                    {/if}
-                  </div>
-                  {#if showRepoNameValidationError}
-                    <p class="text-sm text-red-400" role="alert">{repoNameValidation.error}</p>
-                  {:else if repoExists}
-                    <p class="text-sm text-blue-400">
-                      ℹ️ Using existing repository. Make sure it is correct.
-                    </p>
-                  {:else if repoNameDraft}
-                    <p class="text-sm text-emerald-400">
-                      ✨ A new repository will be created if it doesn't exist yet.
-                    </p>
-                  {/if}
-                </div>
-
-                <div class="space-y-2">
-                  <Label for="branch" class="text-slate-200">
-                    Branch
-                    <span class="text-sm text-slate-400 ml-2">(Usually "main")</span>
-                  </Label>
-                  <Input
-                    type="text"
-                    id="branch"
-                    bind:value={branchDraft}
-                    on:input={handleBranchInput}
-                    placeholder="main"
-                    class="bg-slate-800 border-slate-700 text-slate-200 placeholder:text-slate-500"
-                  />
-                </div>
-                <p class="text-sm text-slate-400">
-                  💡 If the branch doesn't exist, it will be created automatically from the default
-                  branch.
-                </p>
-              </div>
-            </div>
+    <div class="space-y-2">
+      <Label for="repoName" class="text-slate-200">Repository Name</Label>
+      <div class="relative">
+        <Input
+          id="repoName"
+          type="text"
+          bind:value={repoNameDraft}
+          on:input={handleRepoInput}
+          on:focus={handleRepoFocus}
+          on:blur={handleRepoBlur}
+          on:keydown={handleRepoKeydown}
+          placeholder="Search or enter repository name"
+          autocomplete="off"
+          class="border-slate-700 bg-slate-800 pr-10 text-slate-200 placeholder:text-slate-500"
+        />
+        <div class="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2">
+          {#if isLoadingRepositories}
+            <Loader2
+              class="h-4 w-4 animate-spin text-slate-400"
+              aria-label="Loading repositories"
+            />
+          {:else}
+            <Search class="h-4 w-4 text-slate-400" aria-hidden="true" />
           {/if}
+        </div>
 
-          <!-- Storage Quota Error Display -->
-          {#if storageQuotaError}
-            <div class="p-3 bg-red-900/20 border border-red-700 rounded-md">
-              <div class="flex items-start gap-2">
-                <X class="w-4 h-4 text-red-400 mt-0.5 flex-shrink-0" />
-                <div class="text-sm text-red-200">
-                  <p class="font-medium">Storage Limit Exceeded</p>
-                  <p class="mt-1">{storageQuotaError}</p>
-                </div>
-              </div>
-            </div>
-          {/if}
-
-          <Button
-            type="submit"
-            class="w-full bg-blue-600 hover:bg-blue-700 text-white"
-            disabled={buttonDisabled ||
-              isValidatingToken ||
-              isCheckingPermissions ||
-              isConnectingGitHubApp ||
-              (authenticationMethod === 'pat' && (!githubToken || isTokenValid === false)) ||
-              (authenticationMethod === 'github_app' && !githubAppInstallationId) ||
-              !repoOwner ||
-              (!isOnboarding && (!repoNameValidation.isValid || !branchDraft))}
+        {#if showRepoDropdown && filteredRepositories.length > 0}
+          <ul
+            class="absolute z-50 mt-1 max-h-60 w-full overflow-auto rounded-md border border-slate-700 bg-slate-800 py-1 shadow-lg"
           >
-            {#if isValidatingToken}
-              Validating...
-            {:else if isCheckingPermissions}
-              Checking permissions...
-            {:else if isConnectingGitHubApp}
-              Connecting to GitHub...
-            {:else if buttonDisabled && !status.includes('MAX_WRITE_OPERATIONS')}
-              {status}
-            {:else}
-              {isOnboarding ? 'Get Started' : 'Save Settings'}
-            {/if}
+            {#each filteredRepositories as repository, index}
+              <li>
+                <button
+                  type="button"
+                  class={`w-full px-3 py-2 text-left text-slate-200 hover:bg-slate-700 ${selectedRepoIndex === index ? 'bg-slate-700' : ''}`}
+                  on:mousedown|preventDefault
+                  on:click={() => selectRepository(repository)}
+                >
+                  <span class="flex items-center justify-between gap-2">
+                    <span class="font-medium">{repository.name}</span>
+                    {#if repository.private}
+                      <span class="text-xs text-slate-400">Private</span>
+                    {/if}
+                  </span>
+                  {#if repository.description}
+                    <span class="block truncate text-sm text-slate-400">
+                      {repository.description}
+                    </span>
+                  {/if}
+                </button>
+              </li>
+            {/each}
+          </ul>
+        {/if}
+      </div>
+      {#if !repoNameValidation.isValid}
+        <p role="alert" class="text-sm text-red-400">{repoNameValidation.error}</p>
+      {:else if selectedRepositoryExists}
+        <p class="text-sm text-blue-400">Using an existing GitHub repository.</p>
+      {/if}
+      {#if repositoryLoadError}
+        <div role="alert" class="rounded-md border border-amber-700 bg-amber-900/20 p-2">
+          <p class="text-sm text-amber-200">{repositoryLoadError}</p>
+          <Button type="button" variant="outline" class="mt-2" on:click={loadRepositories}>
+            Retry repository list
           </Button>
-        </form>
+        </div>
+      {/if}
+    </div>
+
+    <div class="space-y-2">
+      <Label for="branch" class="text-slate-200">Branch</Label>
+      <Input
+        id="branch"
+        type="text"
+        bind:value={branchDraft}
+        on:input={handleBranchInput}
+        placeholder="main"
+        class="border-slate-700 bg-slate-800 text-slate-200 placeholder:text-slate-500"
+      />
+    </div>
+
+    {#if status}
+      <div class="rounded-md border border-blue-700 bg-blue-900/20 p-3 text-sm text-blue-200">
+        {status}
       </div>
     {/if}
-  </div>
-</div>
 
-<style>
-  @keyframes slideDown {
-    from {
-      opacity: 0;
-      transform: translateY(-10px);
-    }
-    to {
-      opacity: 1;
-      transform: translateY(0);
-    }
-  }
-</style>
+    <Button
+      type="submit"
+      class="w-full bg-blue-600 text-white hover:bg-blue-700"
+      disabled={!canSave}
+    >
+      Save Settings
+    </Button>
+  </form>
+</div>

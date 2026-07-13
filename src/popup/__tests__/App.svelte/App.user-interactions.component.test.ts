@@ -381,29 +381,16 @@ describe('App.svelte - User Interactions', () => {
     });
   });
 
-  describe('authMethodChangeHandler', () => {
-    it('should change authentication method to GitHub App', () => {
-      const event = { detail: 'github_app' } as CustomEvent<string>;
-
-      mockGithubSettingsActions.setAuthenticationMethod(event.detail as 'github_app' | 'pat');
-
-      expect(mockGithubSettingsActions.setAuthenticationMethod).toHaveBeenCalledWith('github_app');
+  describe('GitHub App-only interactions', () => {
+    it('should not expose authentication method switching', () => {
+      expect(mockGithubSettingsActions.setAuthenticationMethod).not.toHaveBeenCalled();
     });
 
-    it('should change authentication method to PAT', () => {
-      const event = { detail: 'pat' } as CustomEvent<string>;
+    it('should require a verified installation before exposing GitHub capability', () => {
+      const connectionReady = true;
+      const githubAppInstallationId = 12345;
 
-      mockGithubSettingsActions.setAuthenticationMethod(event.detail as 'github_app' | 'pat');
-
-      expect(mockGithubSettingsActions.setAuthenticationMethod).toHaveBeenCalledWith('pat');
-    });
-
-    it('should update effective token after auth method change', async () => {
-      mockGithubSettingsActions.setAuthenticationMethod('github_app');
-
-      await chromeMocks.storage.local.get(['authenticationMethod']);
-
-      expect(mockGithubSettingsActions.setAuthenticationMethod).toHaveBeenCalledWith('github_app');
+      expect(connectionReady && Boolean(githubAppInstallationId)).toBe(true);
     });
   });
 
