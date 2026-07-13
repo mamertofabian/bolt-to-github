@@ -34,6 +34,7 @@
     hasStatus?: boolean;
     [key: string]: unknown;
   };
+  export let isUserAuthenticated = true;
 
   // Default to GitHub App authentication when component mounts
   onMount(() => {
@@ -50,6 +51,11 @@
   }
 
   async function handleFinishSetup() {
+    if (requiresBolt2GitHubSignIn) {
+      window.open('https://bolt2github.com/login', '_blank');
+      return;
+    }
+
     dispatch('save');
   }
 
@@ -57,10 +63,17 @@
     // Clear any previous status on input
   }
 
+  $: requiresBolt2GitHubSignIn = Boolean(
+    githubSettings.authenticationMethod === 'github_app' &&
+    githubSettings.githubAppInstallationId &&
+    !isUserAuthenticated
+  );
+
   // Determine if setup is complete
   $: isSetupComplete =
     (githubSettings.authenticationMethod === 'github_app' &&
-      githubSettings.githubAppInstallationId) ||
+      githubSettings.githubAppInstallationId &&
+      isUserAuthenticated) ||
     (githubSettings.authenticationMethod === 'pat' &&
       githubSettings.githubToken &&
       githubSettings.repoOwner);
@@ -110,7 +123,7 @@
 
           {#if githubSettings.authenticationMethod === 'github_app'}
             <div class="mt-3">
-              {#if githubSettings.githubAppInstallationId}
+              {#if githubSettings.githubAppInstallationId && isUserAuthenticated}
                 <!-- Connected State -->
                 <div
                   class="flex items-center gap-3 p-2 bg-green-900/20 border border-green-700 rounded-md"
@@ -130,6 +143,12 @@
                       </span>
                     </div>
                   </div>
+                </div>
+              {:else if githubSettings.githubAppInstallationId}
+                <div class="p-2 bg-blue-900/20 border border-blue-700 rounded-md">
+                  <p class="text-blue-200 text-sm font-medium">
+                    GitHub App is installed. Sign in to Bolt2GitHub to continue.
+                  </p>
                 </div>
               {:else}
                 <!-- Connect Button -->
@@ -287,9 +306,12 @@
     <Button
       on:click={handleFinishSetup}
       class="w-full bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 text-white py-3 text-base font-medium"
-      disabled={!isSetupComplete || uiState.hasStatus}
+      disabled={!requiresBolt2GitHubSignIn && (!isSetupComplete || uiState.hasStatus)}
     >
-      {#if uiState.hasStatus && uiState.status && !uiState.status.includes('MAX_WRITE_OPERATIONS')}
+      {#if requiresBolt2GitHubSignIn}
+        Sign in to Bolt2GitHub
+        <ExternalLink class="w-4 h-4 ml-2" />
+      {:else if uiState.hasStatus && uiState.status && !uiState.status.includes('MAX_WRITE_OPERATIONS')}
         {uiState.status}
       {:else}
         Complete Setup

@@ -902,6 +902,7 @@
           {githubSettings}
           {projectSettings}
           {uiState}
+          {isUserAuthenticated}
           on:save={saveSettings}
           on:error={(e) => handleSettingsError(e.detail)}
           on:authMethodChange={authMethodChangeHandler}

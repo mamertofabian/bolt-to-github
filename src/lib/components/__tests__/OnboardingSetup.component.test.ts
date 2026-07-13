@@ -461,6 +461,55 @@ describe('OnboardingSetup.svelte - Component Tests', () => {
   });
 
   describe('Form Completion and Submit', () => {
+    it('should keep a stale GitHub App installation visibly blocked while signed out', () => {
+      render(OnboardingSetup, {
+        props: {
+          githubSettings: {
+            ...defaultGithubSettings,
+            authenticationMethod: 'github_app',
+            githubAppInstallationId: 12345,
+            githubAppUsername: 'testuser',
+          },
+          uiState: {
+            status: 'Sign in to bolt2github.com before using GitHub features.',
+            hasStatus: true,
+          },
+          isUserAuthenticated: false,
+        },
+      });
+
+      expect(screen.queryByText('Connected as testuser')).not.toBeInTheDocument();
+      expect(
+        screen.getByText(/GitHub App is installed.*Sign in to Bolt2GitHub to continue/i)
+      ).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: /Sign in to Bolt2GitHub/i })).toBeEnabled();
+    });
+
+    it('should open Bolt2GitHub login without saving when the signed-out setup CTA is clicked', async () => {
+      const user = userEvent.setup();
+      const windowOpenSpy = vi.spyOn(window, 'open').mockImplementation(() => null);
+      const { component } = render(OnboardingSetup, {
+        props: {
+          githubSettings: {
+            ...defaultGithubSettings,
+            authenticationMethod: 'github_app',
+            githubAppInstallationId: 12345,
+            githubAppUsername: 'testuser',
+          },
+          uiState: defaultUiState,
+          isUserAuthenticated: false,
+        },
+      });
+      const saveHandler = vi.fn();
+      component.$on('save', saveHandler);
+
+      await user.click(screen.getByRole('button', { name: /Sign in to Bolt2GitHub/i }));
+
+      expect(windowOpenSpy).toHaveBeenCalledWith('https://bolt2github.com/login', '_blank');
+      expect(saveHandler).not.toHaveBeenCalled();
+      windowOpenSpy.mockRestore();
+    });
+
     it('should disable Complete Setup button when GitHub App is not connected', () => {
       render(OnboardingSetup, {
         props: {

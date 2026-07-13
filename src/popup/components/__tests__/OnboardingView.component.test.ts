@@ -161,6 +161,31 @@ describe('OnboardingView.svelte', () => {
   });
 
   describe('Step 2 - Setup Screen', () => {
+    it('should forward signed-out state to the GitHub App setup step', async () => {
+      const user = userEvent.setup();
+
+      render(OnboardingView, {
+        props: {
+          githubSettings: {
+            ...mockGithubSettings,
+            authenticationMethod: 'github_app',
+            githubAppInstallationId: 12345,
+            githubAppUsername: 'testuser',
+          },
+          projectSettings: mockProjectSettings,
+          uiState: mockUIState,
+          isUserAuthenticated: false,
+        },
+      });
+
+      await user.click(screen.getByRole('button', { name: /Connect GitHub Account/i }));
+
+      expect(
+        await screen.findByText(/GitHub App is installed.*Sign in to Bolt2GitHub to continue/i)
+      ).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: /Sign in to Bolt2GitHub/i })).toBeEnabled();
+    });
+
     it('should render OnboardingSetup component on step 2', async () => {
       const user = userEvent.setup();
 

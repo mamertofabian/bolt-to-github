@@ -419,6 +419,33 @@ describe('App.svelte - Component Tests', () => {
   });
 
   describe('Onboarding View', () => {
+    it('signed-out popup forwards the current session state into onboarding', async () => {
+      stores.githubSettingsStore.set({
+        hasInitialSettings: true,
+        repoOwner: 'stale-owner',
+        githubToken: '',
+        repoName: 'stale-repo',
+        branch: 'main',
+        authenticationMethod: 'github_app' as const,
+        githubAppInstallationId: 12345,
+      });
+      stores.isAuthenticated.set(false);
+      mockCheckPopupGitHubConnection.mockResolvedValue({
+        connected: false,
+        reason: 'not_authenticated',
+        message: 'Sign in to bolt2github.com before using GitHub features.',
+      });
+
+      render(App);
+
+      await waitFor(() => {
+        expect(screen.getByTestId('onboarding-view')).toHaveAttribute(
+          'data-is-user-authenticated',
+          'false'
+        );
+      });
+    });
+
     it('popup keeps GitHub-backed surfaces hidden while live connection verification is pending', async () => {
       stores.githubSettingsStore.set({
         hasInitialSettings: true,

@@ -1,0 +1,247 @@
+schema: '2'
+goal: Keep GitHub App onboarding aligned with the current Bolt2GitHub session when cached installation metadata survives sign-out.
+description: |
+  The popup's live connection gate correctly detects that a user is signed out of
+  Bolt2GitHub, but OnboardingSetup independently treats a cached
+  githubAppInstallationId as a complete GitHub App setup. The resulting screen
+  briefly shows the live "sign in" status, then reverts to a stale connected
+  card and an enabled Complete Setup button whose save action cannot restore the
+  missing session.
+
+  Add an explicit, backward-compatible isUserAuthenticated component prop and
+  pass the popup's existing authenticated state through OnboardingView. In
+  GitHub App mode, an installation is ready only when that session is present.
+  When an installation remains cached while signed out, keep a persistent
+  sign-in-required explanation, replace the bottom Complete Setup action with
+  "Sign in to Bolt2GitHub", and open the existing login URL without dispatching
+  save. Signed-in GitHub App behavior and PAT onboarding remain unchanged.
+
+  Rationale: the live session is the missing prerequisite, while the installation
+  ID is still useful reconnect metadata and should not be destructively cleared.
+  Passing the already-derived popup state keeps the dependency explicit and
+  avoids another background auth request or a second auth authority in a child
+  component.
+temptations:
+  - risk: Do not clear the cached GitHub App installation merely because the Bolt2GitHub session is absent.
+    instead: Treat installation and session as separate prerequisites and preserve the installation for recovery after sign-in.
+  - risk: Do not route the signed-out CTA through saveSettings or switch the user to PAT mode.
+    instead: Open https://bolt2github.com/login directly and leave the selected GitHub App method intact.
+  - risk: Do not require a Bolt2GitHub session for deliberately configured legacy PAT users.
+    instead: Apply the new session prerequisite only to GitHub App setup and retain the existing PAT token-plus-owner gate.
+  - risk: Do not add another auth service instance or background request inside onboarding components.
+    instead: Pass the popup's existing isUserAuthenticated state through OnboardingView as an explicit prop.
+files:
+  edit:
+    - path: src/lib/components/OnboardingSetup.svelte
+      artifacts:
+        - kind: function
+          name: OnboardingSetup
+          args:
+            - name: props
+              type: OnboardingSetup component props
+          returns: Svelte component instance
+          description: |
+            Renders GitHub App setup as connected only when both a cached
+            installation and the current Bolt2GitHub session are present. A
+            signed-out stale-installation state remains visibly actionable and
+            opens the login page instead of dispatching save. PAT behavior is
+            unchanged.
+    - path: src/popup/components/OnboardingView.svelte
+      artifacts:
+        - kind: function
+          name: OnboardingView
+          args:
+            - name: props
+              type: OnboardingView component props
+          returns: Svelte component instance
+          description: Forwards the popup's explicit authenticated state into OnboardingSetup without creating another auth dependency.
+    - path: src/lib/components/__tests__/OnboardingSetup.component.test.ts
+      artifacts:
+        - kind: test_function
+          name: should keep a stale GitHub App installation visibly blocked while signed out
+        - kind: test_function
+          name: should open Bolt2GitHub login without saving when the signed-out setup CTA is clicked
+    - path: src/popup/components/__tests__/OnboardingView.component.test.ts
+      artifacts:
+        - kind: test_function
+          name: should forward signed-out state to the GitHub App setup step
+    - path: src/popup/__tests__/App.component.test.ts
+      artifacts:
+        - kind: test_function
+          name: signed-out popup forwards the current session state into onboarding
+  scope:
+    - path: src/popup/App.svelte
+      reason: Pass the existing popup isUserAuthenticated state through the onboarding call site without changing App's public module contract.
+    - path: src/popup/__tests__/__mocks__/OnboardingView.svelte
+      reason: Expose the forwarded authentication prop in the existing App test fixture without contracting a test-only public surface.
+  read:
+    - src/popup/App.svelte
+    - src/popup/__tests__/__mocks__/OnboardingView.svelte
+    - src/lib/stores/premiumStore.ts
+    - src/lib/utils/githubConnection.ts
+    - manifests/gate-github-actions-on-live-connection.manifest.yaml
+    - manifests/cache-recent-popup-github-verification.manifest.yaml
+validate:
+  - pnpm exec vitest run src/lib/components/__tests__/OnboardingSetup.component.test.ts src/popup/components/__tests__/OnboardingView.component.test.ts src/popup/__tests__/App.component.test.ts
+  - pnpm lint
+  - pnpm check
+  - pnpm build
+created: '2026-07-13T02:44:55Z'
+metadata:
+  tags:
+    - auth
+    - popup
+    - onboarding
+    - github-app
+    - stale-state
+  priority: high
+  status: implementation
+  promotion_ready: true
+  notes: |
+    Behavioral validation passes. The focused pre-implementation run has four
+    intended failures: the stale installation still renders as connected, the
+    signed-out CTA is absent in OnboardingSetup and OnboardingView, and App does
+    not yet forward its authenticated store value into the onboarding prop.
+    Pre-implementation svelte-check also fails only because the two production
+    components do not yet declare the new prop. Existing signed-in GitHub App
+    and PAT tests remain green in the focused run.
+outcome:
+  status: completed
+  summary: |
+    GitHub App onboarding now combines cached installation metadata with the
+    current Bolt2GitHub session before presenting a connected or complete
+    state. When an installation survives sign-out, the popup keeps a persistent
+    sign-in explanation and immediately actionable Sign in to Bolt2GitHub CTA,
+    including while the existing transient sign-in status is active. The CTA
+    opens the login page and returns without dispatching save. Signed-in GitHub
+    App and PAT setup behavior remain unchanged.
+  rationale: |
+    The installation ID is durable recovery configuration, not proof that the
+    current user has an authenticated Bolt2GitHub session. Passing the popup's
+    existing isUserAuthenticated state through OnboardingView keeps that
+    prerequisite explicit without clearing useful installation metadata,
+    creating another auth authority, or weakening the existing live GitHub
+    action gate.
+  lessons:
+    - lesson_type: separate-durable-installation-from-live-session
+      summary: |
+        Cached GitHub App installation metadata may survive sign-out and should
+        be preserved for recovery, but UI completion and connected indicators
+        must also require the current account session.
+      tags:
+        - auth
+        - github-app
+        - stale-state
+        - onboarding
+      paths:
+        - src/lib/components/OnboardingSetup.svelte
+        - src/popup/components/OnboardingView.svelte
+        - src/popup/App.svelte
+    - lesson_type: actionable-auth-cta-precedes-transient-status
+      summary: |
+        When a transient status message describes the same missing-auth action
+        as a persistent CTA, the CTA must remain labeled and enabled instead of
+        inheriting generic save-button loading behavior.
+      tags:
+        - auth
+        - degraded-state
+        - popup
+        - testing
+      paths:
+        - src/lib/components/OnboardingSetup.svelte
+        - src/lib/components/__tests__/OnboardingSetup.component.test.ts
+  review_notes:
+    - source: independent subagent auth_onboarding_review
+      severity: finding-fixed
+      summary: |
+        Initial review found that uiState.hasStatus overrode and disabled the
+        new sign-in CTA for the same 10-second window reported by the user. The
+        behavioral test was strengthened with the real active sign-in status,
+        plan-lock revision 3 captured fresh red evidence, and CTA precedence was
+        fixed so sign-in is immediately actionable.
+    - source: independent subagent auth_onboarding_rereview
+      severity: ready
+      summary: |
+        Fresh rereview found no blocker, should-fix, security, privacy, scope,
+        or contract-fidelity issue. It confirmed the original finding is fixed,
+        save is bypassed, PAT behavior is unchanged, installation metadata is
+        preserved, authentication state crosses both component boundaries, and
+        revision 4 plan hashes match.
+  validation:
+    - command:
+        - pnpm
+        - exec
+        - vitest
+        - run
+        - src/lib/components/__tests__/OnboardingSetup.component.test.ts
+        - src/popup/components/__tests__/OnboardingView.component.test.ts
+        - src/popup/__tests__/App.component.test.ts
+      status: passed
+      summary: 101 focused onboarding and popup tests passed after the reviewer-driven status/CTA regression fix.
+    - command:
+        - ./scripts/maid
+        - test
+        - --manifest
+        - manifests/align-onboarding-with-bolt2github-session.manifest.yaml
+      status: passed
+      summary: 'All four declared commands passed: focused Vitest, lint, svelte-check, and production build.'
+    - command:
+        - pnpm
+        - test:ci
+      status: passed
+      summary: Full Vitest CI passed 4,368 tests across 195 files.
+    - command:
+        - ./scripts/maid
+        - validate
+        - --manifest-dir
+        - manifests
+        - --mode
+        - schema
+      status: passed
+      summary: Full schema validation passed all 35 active manifests.
+    - command:
+        - ./scripts/maid
+        - validate
+        - --manifest-dir
+        - manifests
+        - --mode
+        - behavioral
+      status: passed
+      summary: Full behavioral validation passed with three superseded manifests skipped.
+    - command:
+        - ./scripts/maid
+        - validate
+        - --manifest-dir
+        - manifests
+        - --mode
+        - implementation
+      status: passed
+      summary: Full implementation validation passed with three superseded manifests skipped.
+    - command:
+        - ./scripts/maid
+        - verify
+        - --require-plan-lock
+        - --require-red-evidence
+        - --summary
+      status: failed-known-brownfield
+      summary: |
+        Schema, behavioral, implementation, and coherence gates passed. The
+        repository-wide file_tracking gate remains blocked by 216 untouched
+        brownfield files without MAID declarations; every file touched by this
+        change is now tracked by the promoted manifest.
+    - command:
+        - pnpm
+        - exec
+        - prettier
+        - --check
+        - src/lib/components/OnboardingSetup.svelte
+        - src/lib/components/__tests__/OnboardingSetup.component.test.ts
+        - src/popup/App.svelte
+        - src/popup/__tests__/App.component.test.ts
+        - src/popup/__tests__/__mocks__/OnboardingView.svelte
+        - src/popup/components/OnboardingView.svelte
+        - src/popup/components/__tests__/OnboardingView.component.test.ts
+        - manifests/align-onboarding-with-bolt2github-session.manifest.yaml
+      status: passed
+      summary: All changed source, test, fixture, and manifest files match repository Prettier style.
+  completed_at: '2026-07-13T02:57:58+00:00'

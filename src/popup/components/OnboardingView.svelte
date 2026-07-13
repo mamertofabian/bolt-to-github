@@ -8,6 +8,7 @@
   export let githubSettings: GitHubSettingsState;
   export let projectSettings: ProjectSettingsState;
   export let uiState: UIState;
+  export let isUserAuthenticated = true;
 
   const dispatch = createEventDispatcher<{
     save: void;
@@ -79,6 +80,7 @@
       repoOwner: githubSettings.repoOwner,
     }}
     uiState={uiStateWrapper}
+    {isUserAuthenticated}
     on:save={handleSave}
     on:error={(e) => handleError(e.detail)}
     on:authMethodChange={handleAuthMethodChange}
