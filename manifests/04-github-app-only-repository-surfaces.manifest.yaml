@@ -1,0 +1,323 @@
+schema: '2'
+goal: |
+  Remove PAT tokens and auth-method branching from repository browsing,
+  project migration, branch selection, commit history, and project status
+  surfaces.
+description: |
+  Fourth implementation child of github-app-only-authentication.
+
+  These supporting surfaces currently create UnifiedGitHubService from either
+  a token string or a GitHub App config. They must use only the GitHub App
+  configuration and rely on the shared live connection gate for readiness.
+  Public component props and service methods should stop carrying githubToken
+  values when the value is no longer part of their behavior.
+
+  This is intentionally separate from deleting the PAT constructor: every
+  caller is migrated and behavior-tested first so the later removal produces a
+  genuine compile-time inventory of any missed paths.
+
+  ProjectStatus continues forwarding its existing token value only to issue
+  surfaces until child 05 changes those public contracts. This child removes
+  token use from ProjectStatus repository/status API work and from its
+  repository settings and commits children; it must not add a placeholder to
+  bridge the ordered children.
+temptations:
+  - risk: 'Do not pass a placeholder token merely to satisfy old component props.'
+    instead: 'Remove token props and parameters from the affected public boundaries, then update every call site and component test.'
+  - risk: 'Do not add local installation-only checks to each component.'
+    instead: 'Use the existing live connection result and create the GitHub App service only after readiness is established.'
+  - risk: 'Do not discard repository drafts or project mappings while rewiring authentication.'
+    instead: 'Keep repository/branch behavior unchanged and add characterization assertions around preserved project data.'
+type: refactor
+files:
+  create:
+    - path: src/lib/utils/connectedGitHubAppService.ts
+      artifacts:
+        - kind: function
+          name: createConnectedGitHubAppService
+          args: []
+          returns: Promise<UnifiedGitHubService>
+          description: Verifies the shared live connection contract before constructing the authoritative GitHub App service.
+    - path: src/lib/utils/__tests__/connectedGitHubAppService.test.ts
+      artifacts:
+        - kind: test_function
+          name: creates GitHub App service only after live connection verification
+        - kind: test_function
+          name: rejects disconnected repository work before service construction
+    - path: src/lib/components/__tests__/CommitsModal.component.test.ts
+      artifacts:
+        - kind: test_function
+          name: commits modal loads through GitHub App without a token prop
+        - kind: test_function
+          name: disconnected commits modal verifies once and preserves the connection guidance
+  edit:
+    - path: src/lib/components/CommitsModal.svelte
+      artifacts:
+        - kind: function
+          name: CommitsModal
+          args:
+            - name: props
+              type: CommitsModal component props without githubToken
+          returns: Svelte component instance
+    - path: src/lib/components/RepoSettings.svelte
+      artifacts:
+        - kind: function
+          name: RepoSettings
+          args:
+            - name: props
+              type: RepoSettings component props without githubToken
+          returns: Svelte component instance
+    - path: src/lib/components/ProjectStatus.svelte
+      artifacts:
+        - kind: function
+          name: ProjectStatus
+          args:
+            - name: props
+              type: ProjectStatus component props
+          returns: Svelte component instance
+          description: Uses the live-gated GitHub App service for repository status, settings, and commit history while deferring issue-token plumbing to child 05.
+    - path: src/lib/components/ProjectsList.svelte
+      artifacts:
+        - kind: function
+          name: ProjectsList
+          args:
+            - name: props
+              type: ProjectsList component props without githubToken
+          returns: Svelte component instance
+    - path: src/popup/components/BranchSelectionModal.svelte
+      artifacts:
+        - kind: function
+          name: BranchSelectionModal
+          args:
+            - name: props
+              type: BranchSelectionModal component props without token
+          returns: Svelte component instance
+    - path: src/lib/services/ProjectSettingsMigrationService.ts
+      artifacts:
+        - kind: class
+          name: ProjectSettingsMigrationService
+        - kind: method
+          name: migrateProjectSettings
+          of: ProjectSettingsMigrationService
+          args:
+            - name: progressCallback
+              type: |-
+                (progress: {
+                      completed: number;
+                      total: number;
+                      currentProject: string;
+                    }) => void
+          returns: |-
+            Promise<{
+                success: boolean;
+                migratedCount: number;
+                failedCount: number;
+                errors: string[];
+              }>
+        - kind: method
+          name: migrateSingleProject
+          of: ProjectSettingsMigrationService
+          args:
+            - name: projectId
+              type: string
+            - name: repoOwner
+              type: string
+          returns: Promise<boolean>
+    - path: src/popup/components/TabsView.svelte
+      artifacts:
+        - kind: function
+          name: TabsView
+          args:
+            - name: props
+              type: TabsView component props
+          returns: Svelte component instance
+    - path: src/lib/components/__tests__/RepoSettings.component.test.ts
+      artifacts:
+        - kind: test_function
+          name: hidden repository settings do not verify or display App errors before opening
+        - kind: test_function
+          name: repository settings use GitHub App service without a PAT token
+        - kind: test_function
+          name: repository and branch drafts survive authentication migration
+    - path: src/lib/components/__tests__/ProjectsList.component.test.ts
+      artifacts:
+        - kind: test_function
+          name: projects list performs GitHub work only through GitHub App readiness
+        - kind: test_function
+          name: disconnected projects list never instructs users to check a PAT or GitHub token permissions
+        - kind: test_function
+          name: refresh retries GitHub App readiness after a disconnected result
+        - kind: test_function
+          name: refresh remains disabled while GitHub App readiness is pending
+    - path: src/lib/components/__tests__/ProjectStatus.component.test.ts
+      artifacts:
+        - kind: test_function
+          name: project status repository work uses the live GitHub App service without PAT fallback
+        - kind: test_function
+          name: project status leaves issue credential selection unchanged until child 05
+    - path: src/lib/services/__tests__/ProjectSettingsMigrationService.test.ts
+      artifacts:
+        - kind: test_function
+          name: project metadata migration preserves mappings through GitHub App authentication
+    - path: src/popup/components/__tests__/BranchSelectionModal.component.test.ts
+      artifacts:
+        - kind: test_function
+          name: branch selection uses only the GitHub App service contract
+    - path: src/popup/components/__tests__/TabsView.component.test.ts
+      artifacts:
+        - kind: test_function
+          name: tabs view no longer forwards PAT credentials into repository surfaces
+  read:
+    - manifests/03-github-app-only-runtime-enforcement.manifest.yaml
+    - manifests/repair-e2e-error-flow-fast-gate.manifest.yaml
+    - src/lib/utils/githubConnection.ts
+    - src/services/UnifiedGitHubService.ts
+validate:
+  - pnpm exec vitest run src/lib/utils/__tests__/connectedGitHubAppService.test.ts src/lib/components/__tests__/CommitsModal.component.test.ts src/lib/components/__tests__/RepoSettings.component.test.ts src/lib/components/__tests__/ProjectsList.component.test.ts src/lib/components/__tests__/ProjectStatus.component.test.ts src/lib/services/__tests__/ProjectSettingsMigrationService.test.ts src/popup/components/__tests__/BranchSelectionModal.component.test.ts src/popup/components/__tests__/TabsView.component.test.ts
+  - ./scripts/maid validate manifests/04-github-app-only-repository-surfaces.manifest.yaml --mode behavioral
+  - pnpm lint
+  - pnpm check
+  - pnpm build
+created: '2026-07-13T03:57:51Z'
+metadata:
+  tags: [auth, github-app, pat-retirement, repositories, projects]
+  priority: high
+  status: completed
+  promotion_ready: true
+  parent_epic: github-app-only-authentication
+  depends_on: [03-github-app-only-runtime-enforcement]
+  evolves_active_contracts: [repair-e2e-error-flow-fast-gate]
+  notes: Issue-token parameters that still pass through ProjectStatus are removed by child 05; no placeholder compatibility value is introduced here.
+outcome:
+  status: completed
+  summary: |
+    Repository browsing, repository settings, project status API work, commit
+    history, branch selection, and project metadata migration now verify the
+    shared live Bolt2GitHub and GitHub App connection before constructing an
+    explicit GitHub App service. Token props and PAT construction branches were
+    removed from these repository-facing boundaries and every affected caller.
+
+    Disconnected repository work now shows actionable GitHub App guidance,
+    retries live verification after the user connects, prevents overlapping
+    readiness checks, and avoids hidden settings requests. Commit history also
+    performs one live check per initial open and preserves the connection
+    message when verification fails. Existing issue credential selection stays
+    unchanged for child 05, and project repository/branch mappings survive the
+    authentication migration.
+  rationale: |
+    Moving all supporting repository surfaces through one live-gated service
+    factory removes duplicated auth-method branching without allowing cached
+    installation state or a stored PAT to authorize work. Recovery and
+    visibility behavior must be part of that contract: a connection gate that
+    races, retries invisibly, or opens errors from hidden components would keep
+    the dual-auth experience confusing even after PAT fallback was removed.
+  lessons:
+    - lesson_type: shared-live-gated-service-factory
+      summary: |
+        Repository surfaces should obtain the GitHub service through one helper
+        that verifies the live account and installation state first; direct
+        constructors make fallback and readiness behavior drift between UI
+        entry points.
+      tags: [auth, github-app, consistency]
+      paths:
+        - src/lib/utils/connectedGitHubAppService.ts
+        - src/lib/utils/__tests__/connectedGitHubAppService.test.ts
+    - lesson_type: visible-recoverable-auth-failure
+      summary: |
+        A disconnected state needs both actionable copy and a retry path.
+        Single-flight initialization and a disabled refresh control prevent an
+        older readiness result from overwriting a newer user-driven retry.
+      tags: [auth, concurrency, recovery, ux]
+      paths:
+        - src/lib/components/ProjectsList.svelte
+        - src/lib/components/__tests__/ProjectsList.component.test.ts
+        - src/lib/components/CommitsModal.svelte
+        - src/lib/components/__tests__/CommitsModal.component.test.ts
+    - lesson_type: visibility-gated-auth-work
+      summary: |
+        Components that remain mounted while hidden must not verify auth, call
+        GitHub, or surface an error overlay until the user opens them.
+      tags: [auth, lifecycle, ux]
+      paths:
+        - src/lib/components/RepoSettings.svelte
+        - src/lib/components/__tests__/RepoSettings.component.test.ts
+    - lesson_type: ordered-public-contract-retirement
+      summary: |
+        Removing repository token props must not widen or replace the separate
+        issue-token compatibility behavior assigned to the next child. Preserve
+        that boundary explicitly until its own tests and callers are migrated.
+      tags: [auth, contracts, incremental-migration]
+      paths:
+        - src/lib/components/ProjectStatus.svelte
+        - src/lib/components/__tests__/ProjectStatus.component.test.ts
+  review_notes:
+    - source: independent reviewer /root/child04_repository_review
+      severity: findings-fixed
+      summary: |
+        Review found four concrete issues: repository refresh could not recover
+        after a failed readiness promise and could race an in-flight check;
+        hidden RepoSettings performed live work and could show an unexpected
+        overlay; ProjectStatus widened the existing issue placeholder behavior;
+        and CommitsModal retried a rejected gate immediately while replacing
+        its actionable message. All findings were fixed with focused behavioral
+        coverage.
+    - source: independent reviewer /root/child04_repository_review final
+      severity: ready
+      summary: |
+        Final read-only review found no remaining issues and confirmed the live
+        gate, removed repository token props, preserved child-05 issue boundary,
+        race-free retry behavior, hidden-component gating, actionable errors,
+        mapping preservation, and MAID scope fidelity.
+  validation:
+    - command:
+        - pnpm
+        - exec
+        - vitest
+        - run
+        - src/lib/utils/__tests__/connectedGitHubAppService.test.ts
+        - src/lib/components/__tests__/CommitsModal.component.test.ts
+        - src/lib/components/__tests__/RepoSettings.component.test.ts
+        - src/lib/components/__tests__/ProjectsList.component.test.ts
+        - src/lib/components/__tests__/ProjectStatus.component.test.ts
+        - src/lib/services/__tests__/ProjectSettingsMigrationService.test.ts
+        - src/popup/components/__tests__/BranchSelectionModal.component.test.ts
+        - src/popup/components/__tests__/TabsView.component.test.ts
+      status: failed-red-phase
+      summary: The initial focused contract failed 9 of 167 tests because the shared helper did not exist and repository surfaces still accepted tokens, selected PAT, forwarded credentials, or used token-era guidance.
+    - command:
+        - ./scripts/maid
+        - test
+        - --manifest
+        - manifests/04-github-app-only-repository-surfaces.manifest.yaml
+      status: passed
+      summary: All five declared commands passed, including 8 focused files with 174 tests, behavioral validation, lint, type checking, and a production build.
+    - command:
+        - ./scripts/maid
+        - validate
+        - manifests/04-github-app-only-repository-surfaces.manifest.yaml
+        - --mode
+        - implementation
+      status: passed
+      summary: Every declared production and behavioral artifact passed implementation validation.
+    - command:
+        - pnpm
+        - test:ci
+      status: passed
+      summary: Full Vitest CI passed 198 files and 4,279 tests.
+    - command:
+        - ./scripts/maid
+        - verify
+        - --manifest-dir
+        - manifests
+        - --strict
+        - --file-tracking-scope
+        - task
+        - --plan-lock-scope
+        - task
+        - --since
+        - HEAD
+        - --include-tests
+        - --require-plan-lock
+        - --require-red-evidence
+      status: passed
+      summary: Task-scoped strict verification passed all nine gates; only pre-existing non-blocking validator coverage warnings were reported.

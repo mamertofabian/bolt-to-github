@@ -48,6 +48,13 @@ vi.mock('../../../services/UnifiedGitHubService', () => ({
   UnifiedGitHubService: vi.fn(),
 }));
 
+vi.mock('$lib/utils/githubConnection', () => ({
+  checkGitHubConnection: vi.fn(async () => ({
+    connected: true,
+    message: 'GitHub is connected.',
+  })),
+}));
+
 describe('ProjectSettingsMigrationService', () => {
   beforeEach(() => {
     vi.clearAllMocks();
@@ -407,16 +414,35 @@ describe('ProjectSettingsMigrationService', () => {
       expect(GitHubCacheService.cacheRepoMetadata).toHaveBeenCalled();
     });
 
-    it('should use GitHub App authentication when configured', async () => {
-      mockChromeStorage.local.get.mockResolvedValue({ authenticationMethod: 'github_app' });
+    it('project metadata migration preserves mappings through GitHub App authentication', async () => {
+      mockChromeStorage.local.get.mockResolvedValue({ authenticationMethod: 'pat' });
 
       const { UnifiedGitHubService } = await import('../../../services/UnifiedGitHubService');
+      const { ChromeStorageService } = await import('../chromeStorage');
+      const preservedProjectSettings = {
+        'project-1': { repoName: 'repo1', branch: 'main' },
+      };
+      const preservedSettings = {
+        repoOwner: 'test-owner',
+        githubToken: 'legacy-token-that-must-not-be-used',
+        projectSettings: preservedProjectSettings,
+      } as GitHubSettingsInterface;
+      vi.mocked(ChromeStorageService.getGitHubSettings).mockResolvedValue(preservedSettings);
 
       const promise = ProjectSettingsMigrationService.migrateProjectSettings();
       await vi.runAllTimersAsync();
       await promise;
 
       expect(UnifiedGitHubService).toHaveBeenCalledWith({ type: 'github_app' });
+      expect(UnifiedGitHubService).not.toHaveBeenCalledWith(expect.any(String));
+      expect(preservedProjectSettings['project-1']).toEqual({
+        repoName: 'repo1',
+        branch: 'main',
+      });
+      expect(ChromeStorageService.updateProjectMetadata).toHaveBeenCalledWith(
+        'project-1',
+        expect.any(Object)
+      );
     });
 
     it('should handle non-existent repositories gracefully', async () => {
@@ -492,11 +518,9 @@ describe('ProjectSettingsMigrationService', () => {
 
       vi.mocked(ChromeStorageService.syncProjectWithGitHubCache).mockResolvedValue();
 
-      const mockGitHubService = {} as UnifiedGitHubService;
       const result = await ProjectSettingsMigrationService.migrateSingleProject(
         'project-1',
-        'test-owner',
-        mockGitHubService
+        'test-owner'
       );
 
       expect(result).toBe(true);
@@ -512,11 +536,9 @@ describe('ProjectSettingsMigrationService', () => {
 
       vi.mocked(ChromeStorageService.getProjectSettingsWithMetadata).mockResolvedValue(null);
 
-      const mockGitHubService = {} as UnifiedGitHubService;
       const result = await ProjectSettingsMigrationService.migrateSingleProject(
         'nonexistent',
-        'test-owner',
-        mockGitHubService
+        'test-owner'
       );
 
       expect(result).toBe(false);
@@ -531,11 +553,9 @@ describe('ProjectSettingsMigrationService', () => {
         metadata_last_updated: '2024-01-01T00:00:00Z',
       });
 
-      const mockGitHubService = {} as UnifiedGitHubService;
       const result = await ProjectSettingsMigrationService.migrateSingleProject(
         'project-1',
-        'test-owner',
-        mockGitHubService
+        'test-owner'
       );
 
       expect(result).toBe(true);

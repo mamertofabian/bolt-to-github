@@ -15,7 +15,8 @@
   } from 'lucide-svelte';
   import RepoSettings from '$lib/components/RepoSettings.svelte';
   import ConfirmationDialog from '$lib/components/ui/dialog/ConfirmationDialog.svelte';
-  import { UnifiedGitHubService } from '../../services/UnifiedGitHubService';
+  import type { UnifiedGitHubService } from '../../services/UnifiedGitHubService';
+  import { createConnectedGitHubAppService } from '$lib/utils/connectedGitHubAppService';
   import BranchSelectionModal from '../../popup/components/BranchSelectionModal.svelte';
   import { githubSettingsStore } from '$lib/stores';
   import ProjectsListGuide from '$lib/components/ProjectsListGuide.svelte';
@@ -27,7 +28,6 @@
   const logger = createLogger('ProjectsList');
 
   export let repoOwner: string;
-  export let githubToken: string;
   export let isBoltSite: boolean = true;
   export let currentlyLoadedProjectId: string | null = null;
 
@@ -76,59 +76,49 @@
   let repoToConfirmImport: { owner: string; repo: string; isPrivate: boolean } | null = null;
 
   // Create GitHub service with smart authentication detection
-  let githubService: UnifiedGitHubService;
+  let githubService: UnifiedGitHubService | undefined;
 
-  // Helper function to create GitHub service with smart authentication detection
+  let connectionError: string | null = null;
+  let serviceInitialization: Promise<void> | null = null;
+  let isInitializingService = false;
+
   async function createGitHubService(): Promise<UnifiedGitHubService> {
-    try {
-      // Create service that will trigger smart authentication detection
-      // The UnifiedGitHubService will check for GitHub App first, then fall back to PAT
+    return createConnectedGitHubAppService();
+  }
 
-      // First attempt: Try GitHub App authentication (this triggers smart detection)
-      try {
-        const service = new UnifiedGitHubService({ type: 'github_app' });
-
-        // The service will internally detect if GitHub App authentication is available
-        // If not, the getStrategy() method will handle fallback
-        logger.info('🔍 ProjectsList: Created service with smart authentication detection');
-        return service;
-      } catch (githubAppError) {
-        logger.info('⚠️ ProjectsList: GitHub App initialization failed, trying PAT fallback');
-
-        // Fallback to PAT if available
-        if (githubToken) {
-          logger.info('✅ ProjectsList: Using PAT authentication as fallback');
-          return new UnifiedGitHubService(githubToken);
-        }
-
-        throw githubAppError;
-      }
-    } catch (error) {
-      logger.error('Failed to create GitHub service:', error);
-
-      // Final fallback: try PAT if available
-      if (githubToken) {
-        logger.info('🔄 ProjectsList: Final fallback to PAT authentication');
-        return new UnifiedGitHubService(githubToken);
-      }
-
-      // If all else fails, create empty service that will rely on auto-detection
-      throw new Error('No authentication method available');
+  function initializeGitHubService(force = false): Promise<void> {
+    if (isInitializingService && serviceInitialization) {
+      return serviceInitialization;
     }
+
+    if (force) {
+      serviceInitialization = null;
+      githubService = undefined;
+    }
+
+    if (!serviceInitialization) {
+      isInitializingService = true;
+      serviceInitialization = (async () => {
+        connectionError = null;
+        try {
+          githubService = await createGitHubService();
+        } catch (error) {
+          logger.error('Failed to initialize GitHub service in ProjectsList:', error);
+          connectionError =
+            error instanceof Error ? error.message : 'Unable to verify the GitHub App connection';
+          initialLoadingRepos = false;
+          loadingRepos = false;
+        } finally {
+          isInitializingService = false;
+        }
+      })();
+    }
+
+    return serviceInitialization;
   }
 
-  // Initialize GitHub service reactively
-  $: {
-    (async () => {
-      try {
-        githubService = await createGitHubService();
-      } catch (error) {
-        logger.error('Failed to initialize GitHub service in ProjectsList:', error);
-        // Fallback to PAT
-        githubService = new UnifiedGitHubService(githubToken || '');
-      }
-    })();
-  }
+  $: void initializeGitHubService();
+
   let commitCounts: Record<string, number> = {};
   let loadingCommitCounts: Record<string, boolean> = {};
   let allRepos: Array<{
@@ -237,6 +227,7 @@
         loadingRepos = false;
         return;
       }
+      const service = githubService;
 
       // Import enhanced caching service
       const { GitHubCacheService } = await import('../services/GitHubCacheService');
@@ -266,7 +257,7 @@
       }
 
       // Fetch from API
-      const basicRepos = await githubService.listRepos();
+      const basicRepos = await service.listRepos();
 
       // Simulate a brief delay for better UX (only for non-cached loads)
       if (initialLoadingRepos) {
@@ -278,7 +269,7 @@
         basicRepos.map(async (repo) => {
           try {
             // Get commit count for repositories
-            const commitCount = await githubService.getCommitCount(
+            const commitCount = await service.getCommitCount(
               repoOwner,
               repo.name,
               repo.default_branch || 'main'
@@ -287,7 +278,7 @@
             // Get latest commit info
             let latestCommit = undefined;
             try {
-              const commits = await githubService.request<GitHubCommit[]>(
+              const commits = await service.request<GitHubCommit[]>(
                 'GET',
                 `/repos/${repoOwner}/${repo.name}/commits?per_page=1`
               );
@@ -525,30 +516,14 @@
       const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
       currentTabIsBolt = tab?.url?.includes('bolt.new') ?? false;
 
-      // Wait for GitHub service to be initialized
-      const waitForGitHubService = async () => {
-        const maxWaitTime = 5000; // 5 seconds
-        const startTime = Date.now();
+      await initializeGitHubService();
+      if (!githubService) return;
 
-        while (!githubService && Date.now() - startTime < maxWaitTime) {
-          await new Promise((resolve) => setTimeout(resolve, 100));
-        }
+      // Load all repos (will try cache first)
+      await loadAllRepos();
 
-        if (!githubService) {
-          logger.warn('GitHub service not initialized within timeout period');
-          return false;
-        }
-        return true;
-      };
-
-      const serviceReady = await waitForGitHubService();
-      if (serviceReady) {
-        // Load all repos (will try cache first)
-        await loadAllRepos();
-
-        // Initial load of commit counts
-        await refreshProjectData();
-      }
+      // Initial load of commit counts
+      await refreshProjectData();
     };
 
     // Start initialization
@@ -810,6 +785,11 @@
 
   // Handle refresh with force refresh
   async function handleRefreshRepos() {
+    if (!githubService || connectionError) {
+      await initializeGitHubService(true);
+      if (!githubService) return;
+    }
+
     await loadAllRepos(true);
     // Also refresh commit counts when refreshing repos
     await refreshProjectData(true);
@@ -852,7 +832,7 @@
         variant="ghost"
         class="border-slate-800 hover:bg-slate-800 text-slate-200 transition-colors"
         title="Refresh Repos"
-        disabled={loadingRepos}
+        disabled={loadingRepos || isInitializingService}
         on:click={handleRefreshRepos}
       >
         {#if loadingRepos}
@@ -864,7 +844,7 @@
     {/if}
   </div>
 
-  {#if totalBoltProjects === 0 && totalRepos === 0 && !initialLoadingRepos && !loadingRepos}
+  {#if totalBoltProjects === 0 && totalRepos === 0 && !initialLoadingRepos && !loadingRepos && !connectionError}
     <div
       class="flex flex-col items-center justify-center p-6 text-center space-y-6 bg-slate-900/30 rounded-lg border border-slate-800"
     >
@@ -1036,7 +1016,14 @@
           {/if}
         </div>
 
-        {#if initialLoadingRepos}
+        {#if connectionError}
+          <div
+            class="rounded-lg border border-amber-700 bg-amber-950/30 p-4 text-sm text-amber-100"
+            role="alert"
+          >
+            {connectionError}
+          </div>
+        {:else if initialLoadingRepos}
           <!-- Initial loading state with skeleton -->
           <div class="space-y-2">
             <div class="text-xs text-slate-400 mb-3 flex items-center gap-2">
@@ -1118,7 +1105,7 @@
             <Github class="h-8 w-8 text-slate-600" />
             <p class="text-sm text-slate-400">No GitHub repositories found</p>
             <p class="text-xs text-slate-500">
-              Try refreshing or check your GitHub token permissions
+              Connect the GitHub App at bolt2github.com, then refresh.
             </p>
           </div>
         {:else}
@@ -1303,7 +1290,6 @@
     <RepoSettings
       show={showSettingsModal}
       {repoOwner}
-      {githubToken}
       projectId={projectToEdit.projectId}
       repoName={projectToEdit.repoName}
       branch={projectToEdit.branch}
@@ -1320,7 +1306,6 @@
       show={showBranchSelectionModal}
       owner={repoToImport.owner}
       repo={repoToImport.repo}
-      token={githubToken}
       onBranchSelected={handleBranchSelected}
       onCancel={() => {
         showBranchSelectionModal = false;

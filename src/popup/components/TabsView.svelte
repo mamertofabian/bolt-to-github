@@ -90,7 +90,6 @@
   <TabsContent value="projects">
     <ProjectsList
       repoOwner={githubSettings.repoOwner}
-      githubToken={githubSettings.githubToken}
       currentlyLoadedProjectId={projectId}
       isBoltSite={projectSettings.isBoltSite}
     />

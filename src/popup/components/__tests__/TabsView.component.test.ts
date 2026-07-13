@@ -8,8 +8,13 @@ import type { UIState } from '$lib/stores/uiState';
 import type { GitHubSettingsState } from '$lib/stores/githubSettings';
 import type { ProjectSettingsState } from '$lib/stores/projectSettings';
 import type { ProjectStatusRef } from '../../types';
+import tabsViewSource from '../TabsView.svelte?raw';
 
 describe('TabsView', () => {
+  it('tabs view no longer forwards PAT credentials into repository surfaces', () => {
+    expect(tabsViewSource).not.toContain('githubToken={githubSettings.githubToken}');
+  });
+
   let mockUIState: UIState;
   let mockGitHubSettings: GitHubSettingsState;
   let mockProjectSettings: ProjectSettingsState;

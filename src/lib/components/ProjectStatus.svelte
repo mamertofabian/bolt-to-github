@@ -9,7 +9,7 @@
   import type { UpgradeModalType } from '$lib/utils/upgradeModal';
   import type { GitHubCommit } from 'src/services/types/repository';
   import { createEventDispatcher, onMount } from 'svelte';
-  import { UnifiedGitHubService } from '../../services/UnifiedGitHubService';
+  import { createConnectedGitHubAppService } from '$lib/utils/connectedGitHubAppService';
 
   const logger = createLogger('ProjectStatus');
   const dispatch = createEventDispatcher();
@@ -140,19 +140,7 @@
       // Step 5: Cache is stale or missing, fall back to API calls
       logger.info('Cache stale or missing, fetching from GitHub API');
 
-      // Get authentication method to determine how to create the service
-      const authSettings = await chrome.storage.local.get(['authenticationMethod']);
-      const authMethod = authSettings.authenticationMethod || 'pat';
-
-      let githubService: UnifiedGitHubService;
-
-      if (authMethod === 'github_app') {
-        // Use GitHub App authentication
-        githubService = new UnifiedGitHubService({ type: 'github_app' });
-      } else {
-        // Use PAT authentication (backward compatible)
-        githubService = new UnifiedGitHubService(token);
-      }
+      const githubService = await createConnectedGitHubAppService();
 
       // Get repo info
       const repoInfo = await githubService.getRepoInfo(gitHubUsername, repoName);
@@ -198,8 +186,10 @@
         }
         isLoading.latestCommit = false;
 
-        // Load issues into store - for GitHub App we pass a placeholder token
-        const tokenToUse = authMethod === 'github_app' ? 'github_app_token' : token;
+        // Issue credential selection remains unchanged until child 05 removes that contract.
+        const issueAuthSettings = await chrome.storage.local.get(['authenticationMethod']);
+        const issueAuthMethod = issueAuthSettings.authenticationMethod || 'pat';
+        const tokenToUse = issueAuthMethod === 'github_app' ? 'github_app_token' : token;
         try {
           await issuesStore.loadIssues(gitHubUsername, repoName, tokenToUse, 'all');
         } catch (err) {
@@ -768,7 +758,6 @@
   <RepoSettings
     show={showSettingsModal}
     repoOwner={gitHubUsername}
-    githubToken={token}
     {projectId}
     {repoName}
     {branch}
@@ -807,7 +796,6 @@
 {#if showCommitsModal}
   <CommitsModal
     show={showCommitsModal}
-    githubToken={effectiveToken}
     repoOwner={gitHubUsername}
     {repoName}
     {branch}

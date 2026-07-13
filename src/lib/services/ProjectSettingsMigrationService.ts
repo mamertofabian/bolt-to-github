@@ -1,6 +1,6 @@
 import { ChromeStorageService } from './chromeStorage';
 import { GitHubCacheService } from './GitHubCacheService';
-import { UnifiedGitHubService } from '../../services/UnifiedGitHubService';
+import { createConnectedGitHubAppService } from '../utils/connectedGitHubAppService';
 import { createLogger } from '../utils/logger';
 import type { GitHubCommit } from '../../services/types/repository';
 
@@ -82,10 +82,6 @@ export class ProjectSettingsMigrationService {
     let failedCount = 0;
 
     try {
-      // Get current authentication method and settings
-      const authSettings = await chrome.storage.local.get(['authenticationMethod']);
-      const authMethod = authSettings.authenticationMethod || 'pat';
-
       const githubSettings = await ChromeStorageService.getGitHubSettings();
       const projectSettings = githubSettings.projectSettings || {};
       const repoOwner = githubSettings.repoOwner;
@@ -94,13 +90,7 @@ export class ProjectSettingsMigrationService {
         throw new Error('No repository owner configured');
       }
 
-      // Create GitHub service
-      let githubService: UnifiedGitHubService;
-      if (authMethod === 'github_app') {
-        githubService = new UnifiedGitHubService({ type: 'github_app' });
-      } else {
-        githubService = new UnifiedGitHubService(githubSettings.githubToken);
-      }
+      const githubService = await createConnectedGitHubAppService();
 
       const projectEntries = Object.entries(projectSettings);
       const totalProjects = projectEntries.length;
@@ -272,11 +262,7 @@ export class ProjectSettingsMigrationService {
   /**
    * Migrate a single project
    */
-  static async migrateSingleProject(
-    projectId: string,
-    repoOwner: string,
-    _githubService: UnifiedGitHubService
-  ): Promise<boolean> {
+  static async migrateSingleProject(projectId: string, repoOwner: string): Promise<boolean> {
     try {
       const projectSettings = await ChromeStorageService.getProjectSettingsWithMetadata(projectId);
 

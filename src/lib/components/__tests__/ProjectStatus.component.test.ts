@@ -18,38 +18,10 @@ const mockGitHubCacheService = vi.hoisted(() => ({
   createEnhancedRepo: vi.fn(),
   cacheRepoMetadata: vi.fn(),
 }));
+const mockLoadIssues = vi.hoisted(() => vi.fn());
 
-vi.mock('$lib/stores/issuesStore', () => ({
-  issuesStore: {
-    getOpenIssuesCount: vi.fn(() => ({
-      subscribe: vi.fn((callback) => {
-        callback(5);
-        return () => {};
-      }),
-    })),
-    loadIssues: vi.fn(),
-  },
-}));
-
-vi.mock('$lib/stores/premiumStore', () => ({
-  isPremium: {
-    subscribe: vi.fn((callback) => {
-      callback(false);
-      return () => {};
-    }),
-  },
-}));
-
-vi.mock('$lib/utils/logger', () => ({
-  createLogger: vi.fn(() => ({
-    info: vi.fn(),
-    error: vi.fn(),
-    warn: vi.fn(),
-  })),
-}));
-
-vi.mock('../../services/UnifiedGitHubService', () => ({
-  UnifiedGitHubService: vi.fn().mockImplementation(() => ({
+const mockServiceConstructor = vi.hoisted(() =>
+  vi.fn().mockImplementation(() => ({
     getRepoInfo: vi.fn().mockResolvedValue({
       exists: true,
       private: false,
@@ -72,7 +44,46 @@ vi.mock('../../services/UnifiedGitHubService', () => ({
       },
     ]),
     getCommitCount: vi.fn().mockResolvedValue(10),
+  }))
+);
+
+vi.mock('$lib/stores/issuesStore', () => ({
+  issuesStore: {
+    getOpenIssuesCount: vi.fn(() => ({
+      subscribe: vi.fn((callback) => {
+        callback(5);
+        return () => {};
+      }),
+    })),
+    loadIssues: mockLoadIssues,
+  },
+}));
+
+vi.mock('$lib/stores/premiumStore', () => ({
+  isPremium: {
+    subscribe: vi.fn((callback) => {
+      callback(false);
+      return () => {};
+    }),
+  },
+}));
+
+vi.mock('$lib/utils/logger', () => ({
+  createLogger: vi.fn(() => ({
+    info: vi.fn(),
+    error: vi.fn(),
+    warn: vi.fn(),
   })),
+}));
+
+vi.mock('../../services/UnifiedGitHubService', () => ({
+  UnifiedGitHubService: mockServiceConstructor,
+}));
+
+vi.mock('$lib/utils/connectedGitHubAppService', () => ({
+  createConnectedGitHubAppService: vi.fn(async () =>
+    mockServiceConstructor({ type: 'github_app' })
+  ),
 }));
 
 vi.mock('../../services/chromeStorage', () => ({
@@ -364,6 +375,21 @@ describe('ProjectStatus.svelte - Component Tests', () => {
   });
 
   describe('Error Handling', () => {
+    it('project status repository work uses the live GitHub App service without PAT fallback', async () => {
+      const { component } = render(ProjectStatus, { props: defaultProps });
+      await loadReadyProjectStatus(component);
+
+      expect(mockServiceConstructor).toHaveBeenCalledWith({ type: 'github_app' });
+      expect(mockServiceConstructor).not.toHaveBeenCalledWith(expect.any(String));
+    });
+
+    it('project status leaves issue credential selection unchanged until child 05', async () => {
+      const { component } = render(ProjectStatus, { props: defaultProps });
+      await loadReadyProjectStatus(component);
+
+      expect(mockLoadIssues).toHaveBeenCalledWith('testuser', 'test-repo', 'test-token', 'all');
+    });
+
     it('should render without crashing when provided with valid props', () => {
       render(ProjectStatus, { props: defaultProps });
 

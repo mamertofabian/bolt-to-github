@@ -1,0 +1,380 @@
+{
+  "manifest_path": "manifests/04-github-app-only-repository-surfaces.manifest.yaml",
+  "manifest_hash": "sha256:0eb5389e18cc6d9604a295a8d5b0520239cb404b632dcef317185a4bf5033f67",
+  "test_hashes": {
+    "src/lib/utils/__tests__/connectedGitHubAppService.test.ts": "sha256:ef3c5d1780db487393f622ea2239c4ae3187c8266c3c4da2ff3ebd5ee63fe882",
+    "src/lib/components/__tests__/CommitsModal.component.test.ts": "sha256:e46eb8089c2d1099609d13628ef50caead803d40f552d8802bf840c1279803eb",
+    "src/lib/components/__tests__/RepoSettings.component.test.ts": "sha256:f4eb824914fff18ce5797ee22372aebd6f14696f689aaeaab670f9836b8d64bf",
+    "src/lib/components/__tests__/ProjectsList.component.test.ts": "sha256:fa86107110997774b90bb0c7bdfd6089b3b1c1381e844cb0657edfe33723e23d",
+    "src/lib/components/__tests__/ProjectStatus.component.test.ts": "sha256:d9fba48bf74ad1e6e84c2185866cb856109fd6c377c47acfc8d4fcfa289af79c",
+    "src/lib/services/__tests__/ProjectSettingsMigrationService.test.ts": "sha256:a930d7f8ce85291231ab3a07ce0e83e26308119dcd8451b69b43751ccabebe70",
+    "src/popup/components/__tests__/BranchSelectionModal.component.test.ts": "sha256:cdcfceda1c7444d0117a4151a73f476abf90f22c6124200a1c55db0da42a7694",
+    "src/popup/components/__tests__/TabsView.component.test.ts": "sha256:ec6aa229c6b81f080bc0822ee5f51415f288685eb5f43d3acb32f57ea0139fb8"
+  },
+  "created_at": "2026-07-13T12:03:26.460203+00:00",
+  "revision": 7,
+  "revisions": [
+    {
+      "prior_manifest_hash": "sha256:d014e6080137679e743fb062af9333a143b642de986a2f76dbf915b48d253c72",
+      "prior_test_hashes": {
+        "src/lib/utils/__tests__/connectedGitHubAppService.test.ts": "sha256:ef3c5d1780db487393f622ea2239c4ae3187c8266c3c4da2ff3ebd5ee63fe882",
+        "src/lib/components/__tests__/CommitsModal.component.test.ts": "sha256:024055c3fe0f159b052bef147d891f542023fc075a3c0a126fafcc2c9fd52975",
+        "src/lib/components/__tests__/RepoSettings.component.test.ts": "sha256:d2be94403052d4d84a15d8a8abfd845e425423005d6a3e65ae294baae69e52b2",
+        "src/lib/components/__tests__/ProjectsList.component.test.ts": "sha256:a6f36763cdf1f1f09ebdb70737bd41d0e850e34c2ef0b896d567183f6d4f0f3b",
+        "src/lib/components/__tests__/ProjectStatus.component.test.ts": "sha256:5b26f7b5173fbc550c08d3e84eddc44e7970147029254d7d5c9c5f03841ecd77",
+        "src/lib/services/__tests__/ProjectSettingsMigrationService.test.ts": "sha256:887a596706bff2485992643ba3cd8896403dd73fc0656d240603c5f6b0aaa1b3",
+        "src/popup/components/__tests__/BranchSelectionModal.component.test.ts": "sha256:974cdb7f165601e8a3cf885287820cbdda0b38e1de43491712e720f0a24a7909",
+        "src/popup/components/__tests__/TabsView.component.test.ts": "sha256:ec6aa229c6b81f080bc0822ee5f51415f288685eb5f43d3acb32f57ea0139fb8"
+      },
+      "revised_at": "2026-07-13T12:15:04.899561+00:00",
+      "reason": "Align token-free component harnesses, idempotent initialization, and visible disconnected-state coverage with the final repository-surface contract.",
+      "agent": {
+        "model": "gpt-5",
+        "provider": "openai",
+        "client": "codex",
+        "skills": ["maid-implement-draft", "maid-evolver"],
+        "source": "flags"
+      },
+      "contract_delta": {
+        "artifacts_added": [],
+        "artifacts_removed": [],
+        "files_added": [],
+        "files_removed": [],
+        "validate_commands_added": [],
+        "validate_commands_removed": []
+      }
+    },
+    {
+      "prior_manifest_hash": "sha256:d014e6080137679e743fb062af9333a143b642de986a2f76dbf915b48d253c72",
+      "prior_test_hashes": {
+        "src/lib/utils/__tests__/connectedGitHubAppService.test.ts": "sha256:ef3c5d1780db487393f622ea2239c4ae3187c8266c3c4da2ff3ebd5ee63fe882",
+        "src/lib/components/__tests__/CommitsModal.component.test.ts": "sha256:0f587d93b961f0d431fcd90912f9c620cc04f75fac71311682fe5947da19cfbf",
+        "src/lib/components/__tests__/RepoSettings.component.test.ts": "sha256:1fade9c8a2da457ef358ca4136ed54beb5ac734c38fe8ee93cc9a5b3b8910d3e",
+        "src/lib/components/__tests__/ProjectsList.component.test.ts": "sha256:de0f96d26bbd555cc0ca13b15008e3577350b8dcc87975d92200e079333a75e7",
+        "src/lib/components/__tests__/ProjectStatus.component.test.ts": "sha256:644e8b66435126fc96e8ef1efb97ce9394b154e9dabf97263f9681154000b34a",
+        "src/lib/services/__tests__/ProjectSettingsMigrationService.test.ts": "sha256:a930d7f8ce85291231ab3a07ce0e83e26308119dcd8451b69b43751ccabebe70",
+        "src/popup/components/__tests__/BranchSelectionModal.component.test.ts": "sha256:cdcfceda1c7444d0117a4151a73f476abf90f22c6124200a1c55db0da42a7694",
+        "src/popup/components/__tests__/TabsView.component.test.ts": "sha256:ec6aa229c6b81f080bc0822ee5f51415f288685eb5f43d3acb32f57ea0139fb8"
+      },
+      "revised_at": "2026-07-13T12:17:02.058173+00:00",
+      "reason": "Lock the finalized token-free behavioral harnesses after restoring the red-phase implementation stash.",
+      "agent": {
+        "model": "gpt-5",
+        "provider": "openai",
+        "client": "codex",
+        "skills": ["maid-implement-draft", "maid-evolver"],
+        "source": "flags"
+      },
+      "contract_delta": {
+        "artifacts_added": [],
+        "artifacts_removed": [],
+        "files_added": [],
+        "files_removed": [],
+        "validate_commands_added": [],
+        "validate_commands_removed": []
+      }
+    },
+    {
+      "prior_manifest_hash": "sha256:d014e6080137679e743fb062af9333a143b642de986a2f76dbf915b48d253c72",
+      "prior_test_hashes": {
+        "src/lib/utils/__tests__/connectedGitHubAppService.test.ts": "sha256:ef3c5d1780db487393f622ea2239c4ae3187c8266c3c4da2ff3ebd5ee63fe882",
+        "src/lib/components/__tests__/CommitsModal.component.test.ts": "sha256:0f587d93b961f0d431fcd90912f9c620cc04f75fac71311682fe5947da19cfbf",
+        "src/lib/components/__tests__/RepoSettings.component.test.ts": "sha256:1fade9c8a2da457ef358ca4136ed54beb5ac734c38fe8ee93cc9a5b3b8910d3e",
+        "src/lib/components/__tests__/ProjectsList.component.test.ts": "sha256:de0f96d26bbd555cc0ca13b15008e3577350b8dcc87975d92200e079333a75e7",
+        "src/lib/components/__tests__/ProjectStatus.component.test.ts": "sha256:644e8b66435126fc96e8ef1efb97ce9394b154e9dabf97263f9681154000b34a",
+        "src/lib/services/__tests__/ProjectSettingsMigrationService.test.ts": "sha256:a930d7f8ce85291231ab3a07ce0e83e26308119dcd8451b69b43751ccabebe70",
+        "src/popup/components/__tests__/BranchSelectionModal.component.test.ts": "sha256:cdcfceda1c7444d0117a4151a73f476abf90f22c6124200a1c55db0da42a7694",
+        "src/popup/components/__tests__/TabsView.component.test.ts": "sha256:ec6aa229c6b81f080bc0822ee5f51415f288685eb5f43d3acb32f57ea0139fb8"
+      },
+      "revised_at": "2026-07-13T12:18:18.391979+00:00",
+      "reason": "Match MAID analyzer signature normalization and remove obsolete PAT fixture props from repository settings tests.",
+      "agent": {
+        "model": "gpt-5",
+        "provider": "openai",
+        "client": "codex",
+        "skills": ["maid-implement-draft", "maid-evolver"],
+        "source": "flags"
+      },
+      "contract_delta": {
+        "artifacts_added": [
+          "src/lib/services/ProjectSettingsMigrationService.ts:method:ProjectSettingsMigrationService.migrateProjectSettings:arg=progressCallback:type=(progress: {\n      completed: number;\n      total: number;\n      currentProject: string;\n    }) => void:default=None",
+          "src/lib/services/ProjectSettingsMigrationService.ts:method:ProjectSettingsMigrationService.migrateProjectSettings:returns=Promise<{\n    success: boolean;\n    migratedCount: number;\n    failedCount: number;\n    errors: string[];\n  }>"
+        ],
+        "artifacts_removed": [
+          "src/lib/services/ProjectSettingsMigrationService.ts:method:ProjectSettingsMigrationService.migrateProjectSettings:arg=progressCallback:type=((progress: { completed: number; total: number; currentProject: string }) => void) | undefined:default=None",
+          "src/lib/services/ProjectSettingsMigrationService.ts:method:ProjectSettingsMigrationService.migrateProjectSettings:returns=Promise<{ success: boolean; migratedCount: number; failedCount: number; errors: string[] }>"
+        ],
+        "files_added": [],
+        "files_removed": [],
+        "validate_commands_added": [],
+        "validate_commands_removed": []
+      }
+    },
+    {
+      "prior_manifest_hash": "sha256:d13f651664f03a61e4bd4770642dd158ea85aa6b1f4fef0ecf43a3636175df94",
+      "prior_test_hashes": {
+        "src/lib/utils/__tests__/connectedGitHubAppService.test.ts": "sha256:ef3c5d1780db487393f622ea2239c4ae3187c8266c3c4da2ff3ebd5ee63fe882",
+        "src/lib/components/__tests__/CommitsModal.component.test.ts": "sha256:0f587d93b961f0d431fcd90912f9c620cc04f75fac71311682fe5947da19cfbf",
+        "src/lib/components/__tests__/RepoSettings.component.test.ts": "sha256:c8b5a634c422adbd0080676fc61fe3245fad8f4761f36b492cf34a206f7ea819",
+        "src/lib/components/__tests__/ProjectsList.component.test.ts": "sha256:de0f96d26bbd555cc0ca13b15008e3577350b8dcc87975d92200e079333a75e7",
+        "src/lib/components/__tests__/ProjectStatus.component.test.ts": "sha256:644e8b66435126fc96e8ef1efb97ce9394b154e9dabf97263f9681154000b34a",
+        "src/lib/services/__tests__/ProjectSettingsMigrationService.test.ts": "sha256:a930d7f8ce85291231ab3a07ce0e83e26308119dcd8451b69b43751ccabebe70",
+        "src/popup/components/__tests__/BranchSelectionModal.component.test.ts": "sha256:cdcfceda1c7444d0117a4151a73f476abf90f22c6124200a1c55db0da42a7694",
+        "src/popup/components/__tests__/TabsView.component.test.ts": "sha256:ec6aa229c6b81f080bc0822ee5f51415f288685eb5f43d3acb32f57ea0139fb8"
+      },
+      "revised_at": "2026-07-13T12:24:30.398292+00:00",
+      "reason": "Add a user-driven GitHub App readiness retry after a disconnected repository-list result.",
+      "agent": {
+        "model": "gpt-5",
+        "provider": "openai",
+        "client": "codex",
+        "skills": ["maid-implement-draft", "maid-evolver"],
+        "source": "flags"
+      },
+      "contract_delta": {
+        "artifacts_added": [
+          "src/lib/components/__tests__/ProjectsList.component.test.ts:refresh retries GitHub App readiness after a disconnected result",
+          "src/lib/components/__tests__/ProjectsList.component.test.ts:refresh retries GitHub App readiness after a disconnected result:kind=test_function"
+        ],
+        "artifacts_removed": [],
+        "files_added": [],
+        "files_removed": [],
+        "validate_commands_added": [],
+        "validate_commands_removed": []
+      }
+    },
+    {
+      "prior_manifest_hash": "sha256:2041b15d7da6a6f02dfefa578a5032d69a4a853e6620c5252dba6ee0b9d0f071",
+      "prior_test_hashes": {
+        "src/lib/utils/__tests__/connectedGitHubAppService.test.ts": "sha256:ef3c5d1780db487393f622ea2239c4ae3187c8266c3c4da2ff3ebd5ee63fe882",
+        "src/lib/components/__tests__/CommitsModal.component.test.ts": "sha256:0f587d93b961f0d431fcd90912f9c620cc04f75fac71311682fe5947da19cfbf",
+        "src/lib/components/__tests__/RepoSettings.component.test.ts": "sha256:c8b5a634c422adbd0080676fc61fe3245fad8f4761f36b492cf34a206f7ea819",
+        "src/lib/components/__tests__/ProjectsList.component.test.ts": "sha256:c4b2e7e774c05e7b003a41a914807188325d7c64168e726e561c52b0c586619b",
+        "src/lib/components/__tests__/ProjectStatus.component.test.ts": "sha256:644e8b66435126fc96e8ef1efb97ce9394b154e9dabf97263f9681154000b34a",
+        "src/lib/services/__tests__/ProjectSettingsMigrationService.test.ts": "sha256:a930d7f8ce85291231ab3a07ce0e83e26308119dcd8451b69b43751ccabebe70",
+        "src/popup/components/__tests__/BranchSelectionModal.component.test.ts": "sha256:cdcfceda1c7444d0117a4151a73f476abf90f22c6124200a1c55db0da42a7694",
+        "src/popup/components/__tests__/TabsView.component.test.ts": "sha256:ec6aa229c6b81f080bc0822ee5f51415f288685eb5f43d3acb32f57ea0139fb8"
+      },
+      "revised_at": "2026-07-13T12:28:47.584475+00:00",
+      "reason": "Address independent-review findings for hidden settings work, initialization races, issue-boundary fidelity, and single-shot disconnected commit loading.",
+      "agent": {
+        "model": "gpt-5",
+        "provider": "openai",
+        "client": "codex",
+        "skills": ["maid-implement-draft", "maid-evolver", "maid-implementation-review"],
+        "source": "flags"
+      },
+      "contract_delta": {
+        "artifacts_added": [
+          "src/lib/components/__tests__/CommitsModal.component.test.ts:disconnected commits modal verifies once and preserves the connection guidance",
+          "src/lib/components/__tests__/CommitsModal.component.test.ts:disconnected commits modal verifies once and preserves the connection guidance:kind=test_function",
+          "src/lib/components/__tests__/ProjectStatus.component.test.ts:project status leaves issue credential selection unchanged until child 05",
+          "src/lib/components/__tests__/ProjectStatus.component.test.ts:project status leaves issue credential selection unchanged until child 05:kind=test_function",
+          "src/lib/components/__tests__/ProjectsList.component.test.ts:refresh remains disabled while GitHub App readiness is pending",
+          "src/lib/components/__tests__/ProjectsList.component.test.ts:refresh remains disabled while GitHub App readiness is pending:kind=test_function",
+          "src/lib/components/__tests__/RepoSettings.component.test.ts:hidden repository settings do not verify or display App errors before opening",
+          "src/lib/components/__tests__/RepoSettings.component.test.ts:hidden repository settings do not verify or display App errors before opening:kind=test_function"
+        ],
+        "artifacts_removed": [],
+        "files_added": [],
+        "files_removed": [],
+        "validate_commands_added": [],
+        "validate_commands_removed": []
+      }
+    },
+    {
+      "prior_manifest_hash": "sha256:a3674bb2fcf1be0c218330d6bb99ca5ced2d4b5436c69d9773c9c5af4c9cdf38",
+      "prior_test_hashes": {
+        "src/lib/utils/__tests__/connectedGitHubAppService.test.ts": "sha256:ef3c5d1780db487393f622ea2239c4ae3187c8266c3c4da2ff3ebd5ee63fe882",
+        "src/lib/components/__tests__/CommitsModal.component.test.ts": "sha256:e46eb8089c2d1099609d13628ef50caead803d40f552d8802bf840c1279803eb",
+        "src/lib/components/__tests__/RepoSettings.component.test.ts": "sha256:f4eb824914fff18ce5797ee22372aebd6f14696f689aaeaab670f9836b8d64bf",
+        "src/lib/components/__tests__/ProjectsList.component.test.ts": "sha256:fa86107110997774b90bb0c7bdfd6089b3b1c1381e844cb0657edfe33723e23d",
+        "src/lib/components/__tests__/ProjectStatus.component.test.ts": "sha256:d9fba48bf74ad1e6e84c2185866cb856109fd6c377c47acfc8d4fcfa289af79c",
+        "src/lib/services/__tests__/ProjectSettingsMigrationService.test.ts": "sha256:a930d7f8ce85291231ab3a07ce0e83e26308119dcd8451b69b43751ccabebe70",
+        "src/popup/components/__tests__/BranchSelectionModal.component.test.ts": "sha256:cdcfceda1c7444d0117a4151a73f476abf90f22c6124200a1c55db0da42a7694",
+        "src/popup/components/__tests__/TabsView.component.test.ts": "sha256:ec6aa229c6b81f080bc0822ee5f51415f288685eb5f43d3acb32f57ea0139fb8"
+      },
+      "revised_at": "2026-07-13T12:33:41.609167+00:00",
+      "reason": "Capture the completed child outcome with final validation and independent-review evidence.",
+      "agent": {
+        "model": "gpt-5",
+        "provider": "openai",
+        "client": "codex",
+        "skills": ["maid-implement-draft", "maid-implementation-review"],
+        "source": "flags"
+      },
+      "contract_delta": {
+        "artifacts_added": [],
+        "artifacts_removed": [],
+        "files_added": [],
+        "files_removed": [],
+        "validate_commands_added": [],
+        "validate_commands_removed": []
+      }
+    }
+  ],
+  "red_evidence": {
+    "red": true,
+    "captured_at": "2026-07-13T12:15:44.816463+00:00",
+    "commands": [
+      {
+        "command": "pnpm exec vitest run src/lib/utils/__tests__/connectedGitHubAppService.test.ts src/lib/components/__tests__/CommitsModal.component.test.ts src/lib/components/__tests__/RepoSettings.component.test.ts src/lib/components/__tests__/ProjectsList.component.test.ts src/lib/components/__tests__/ProjectStatus.component.test.ts src/lib/services/__tests__/ProjectSettingsMigrationService.test.ts src/popup/components/__tests__/BranchSelectionModal.component.test.ts src/popup/components/__tests__/TabsView.component.test.ts",
+        "exit_code": 1,
+        "output_tail": "  Array [\n-   Object {\n-     \"type\": \"github_app\",\n-   },\n+   \"legacy-token-that-must-not-be-used\",\n  ]\n\n\nNumber of calls: 1\n\n \u276f src/lib/services/__tests__/ProjectSettingsMigrationService.test.ts:436:36\n    434|       await promise;\n    435| \n    436|       expect(UnifiedGitHubService).toHaveBeenCalledWith({ type: 'githu\u2026\n       |                                    ^\n    437|       expect(UnifiedGitHubService).not.toHaveBeenCalledWith(expect.any\u2026\n    438|       expect(preservedProjectSettings['project-1']).toEqual({\n\n\u23af\u23af\u23af\u23af\u23af\u23af\u23af\u23af\u23af\u23af\u23af\u23af\u23af\u23af\u23af\u23af\u23af\u23af\u23af\u23af\u23af\u23af\u23af\u23af[9/9]\u23af\n",
+        "classification": "red"
+      },
+      {
+        "command": "./scripts/maid validate manifests/04-github-app-only-repository-surfaces.manifest.yaml --mode behavioral",
+        "exit_code": 0,
+        "output_tail": "PASS 04-github-app-only-repository-surfaces\n  Mode: behavioral\n  Duration: 1264ms",
+        "classification": "not_red"
+      },
+      {
+        "command": "pnpm lint",
+        "exit_code": 0,
+        "output_tail": "\n> bolt-to-github@1.3.21 lint /home/atomrem/projects/codefrost-dev/bolt-to-github\n> eslint \"src/**/*.{js,ts,svelte}\"\n\n\n/home/atomrem/projects/codefrost-dev/bolt-to-github/src/lib/components/__tests__/RepoSettings.component.test.ts\n  1225:28  warning  '_legacyToken' is assigned a value but never used  @typescript-eslint/no-unused-vars\n  1234:28  warning  '_legacyToken' is assigned a value but never used  @typescript-eslint/no-unused-vars\n\n\u2716 2 problems (0 errors, 2 warnings)\n",
+        "classification": "not_red"
+      },
+      {
+        "command": "pnpm check",
+        "exit_code": 1,
+        "output_tail": "        'nonexistent',\n\n\n/home/atomrem/projects/codefrost-dev/bolt-to-github/src/lib/services/__tests__/ProjectSettingsMigrationService.test.ts:556:60\nError: Expected 3 arguments, but got 2. \n\n      const result = await ProjectSettingsMigrationService.migrateSingleProject(\n        'project-1',\n\n\n/home/atomrem/projects/codefrost-dev/bolt-to-github/src/lib/utils/__tests__/connectedGitHubAppService.test.ts:16:49\nError: Cannot find module '../connectedGitHubAppService' or its corresponding type declarations. \n\nimport { createConnectedGitHubAppService } from '../connectedGitHubAppService';\n\n\n\n====================================\nsvelte-check found 19 errors and 0 warnings in 4 files\n\u2009ELIFECYCLE\u2009 Command failed with exit code 1.",
+        "classification": "red"
+      },
+      {
+        "command": "pnpm build",
+        "exit_code": 0,
+        "output_tail": "dist/assets/index-BnArqU_7.js                                 2.56 kB \u2502 gzip:   1.25 kB\ndist/assets/WelcomePageContentScript.ts-D1t7FgTm.js           2.66 kB \u2502 gzip:   0.79 kB\ndist/assets/GitHubCacheService-Bcgnv6OU.js                    3.68 kB \u2502 gzip:   1.30 kB\ndist/assets/TempRepoManager-CmO-we52.js                       5.70 kB \u2502 gzip:   2.18 kB\ndist/assets/logger-CcH-GVeY.js                                8.19 kB \u2502 gzip:   2.69 kB\ndist/pages/logs.js                                           15.32 kB \u2502 gzip:   5.72 kB\ndist/assets/debounce-DAlF9tGa.js                             22.12 kB \u2502 gzip:   6.79 kB\ndist/assets/input-CjMOwtNQ.js                                72.26 kB \u2502 gzip:  25.08 kB\ndist/assets/GitHubComparisonService-HBKyl7EF.js              90.52 kB \u2502 gzip:  25.35 kB\ndist/background/background.js                               109.80 kB \u2502 gzip:  29.33 kB\ndist/content/content.js                                     245.40 kB \u2502 gzip:  72.12 kB\ndist/assets/index.html-Bb0THwfr.js                          468.59 kB \u2502 gzip: 120.98 kB\n\u2713 built in 8.42s\n\n[plugin:vite:reporter] [plugin vite:reporter] \n(!) /home/atomrem/projects/codefrost-dev/bolt-to-github/src/lib/constants/supabase.ts is dynamically imported by /home/atomrem/projects/codefrost-dev/bolt-to-github/src/services/UnifiedGitHubService.ts but also statically imported by /home/atomrem/projects/codefrost-dev/bolt-to-github/src/content/services/SupabaseAuthService.ts, /home/atomrem/projects/codefrost-dev/bolt-to-github/src/services/BoltProjectSyncService.ts, /home/atomrem/projects/codefrost-dev/bolt-to-github/src/services/GitHubAppService.ts, /home/atomrem/projects/codefrost-dev/bolt-to-github/src/services/SubscriptionService.ts, dynamic import will not move module into another chunk.\n\n[plugin:vite:reporter] [plugin vite:reporter] \n(!) /home/atomrem/projects/codefrost-dev/bolt-to-github/src/content/handlers/FileChangeHandler.ts is dynamically imported by /home/atomrem/projects/codefrost-dev/bolt-to-github/src/content/handlers/GitHubUploadHandler.ts, /home/atomrem/projects/codefrost-dev/bolt-to-github/src/content/services/PushReminderService.ts, /home/atomrem/projects/codefrost-dev/bolt-to-github/src/content/services/PushReminderService.ts but also statically imported by /home/atomrem/projects/codefrost-dev/bolt-to-github/src/content/UIManager.ts, dynamic import will not move module into another chunk.\n",
+        "classification": "not_red"
+      }
+    ]
+  },
+  "agent": {
+    "model": "gpt-5",
+    "provider": "openai",
+    "client": "codex",
+    "skills": ["maid-implement-draft", "maid-evolver"],
+    "source": "flags"
+  },
+  "_manifest_contract": {
+    "artifacts": [
+      "src/lib/components/CommitsModal.svelte:function:CommitsModal",
+      "src/lib/components/CommitsModal.svelte:function:CommitsModal:arg=props:type=CommitsModal component props without githubToken:default=None",
+      "src/lib/components/CommitsModal.svelte:function:CommitsModal:kind=function",
+      "src/lib/components/CommitsModal.svelte:function:CommitsModal:returns=Svelte component instance",
+      "src/lib/components/ProjectStatus.svelte:function:ProjectStatus",
+      "src/lib/components/ProjectStatus.svelte:function:ProjectStatus:arg=props:type=ProjectStatus component props:default=None",
+      "src/lib/components/ProjectStatus.svelte:function:ProjectStatus:kind=function",
+      "src/lib/components/ProjectStatus.svelte:function:ProjectStatus:returns=Svelte component instance",
+      "src/lib/components/ProjectsList.svelte:function:ProjectsList",
+      "src/lib/components/ProjectsList.svelte:function:ProjectsList:arg=props:type=ProjectsList component props without githubToken:default=None",
+      "src/lib/components/ProjectsList.svelte:function:ProjectsList:kind=function",
+      "src/lib/components/ProjectsList.svelte:function:ProjectsList:returns=Svelte component instance",
+      "src/lib/components/RepoSettings.svelte:function:RepoSettings",
+      "src/lib/components/RepoSettings.svelte:function:RepoSettings:arg=props:type=RepoSettings component props without githubToken:default=None",
+      "src/lib/components/RepoSettings.svelte:function:RepoSettings:kind=function",
+      "src/lib/components/RepoSettings.svelte:function:RepoSettings:returns=Svelte component instance",
+      "src/lib/components/__tests__/CommitsModal.component.test.ts:commits modal loads through GitHub App without a token prop",
+      "src/lib/components/__tests__/CommitsModal.component.test.ts:commits modal loads through GitHub App without a token prop:kind=test_function",
+      "src/lib/components/__tests__/CommitsModal.component.test.ts:disconnected commits modal verifies once and preserves the connection guidance",
+      "src/lib/components/__tests__/CommitsModal.component.test.ts:disconnected commits modal verifies once and preserves the connection guidance:kind=test_function",
+      "src/lib/components/__tests__/ProjectStatus.component.test.ts:project status leaves issue credential selection unchanged until child 05",
+      "src/lib/components/__tests__/ProjectStatus.component.test.ts:project status leaves issue credential selection unchanged until child 05:kind=test_function",
+      "src/lib/components/__tests__/ProjectStatus.component.test.ts:project status repository work uses the live GitHub App service without PAT fallback",
+      "src/lib/components/__tests__/ProjectStatus.component.test.ts:project status repository work uses the live GitHub App service without PAT fallback:kind=test_function",
+      "src/lib/components/__tests__/ProjectsList.component.test.ts:disconnected projects list never instructs users to check a PAT or GitHub token permissions",
+      "src/lib/components/__tests__/ProjectsList.component.test.ts:disconnected projects list never instructs users to check a PAT or GitHub token permissions:kind=test_function",
+      "src/lib/components/__tests__/ProjectsList.component.test.ts:projects list performs GitHub work only through GitHub App readiness",
+      "src/lib/components/__tests__/ProjectsList.component.test.ts:projects list performs GitHub work only through GitHub App readiness:kind=test_function",
+      "src/lib/components/__tests__/ProjectsList.component.test.ts:refresh remains disabled while GitHub App readiness is pending",
+      "src/lib/components/__tests__/ProjectsList.component.test.ts:refresh remains disabled while GitHub App readiness is pending:kind=test_function",
+      "src/lib/components/__tests__/ProjectsList.component.test.ts:refresh retries GitHub App readiness after a disconnected result",
+      "src/lib/components/__tests__/ProjectsList.component.test.ts:refresh retries GitHub App readiness after a disconnected result:kind=test_function",
+      "src/lib/components/__tests__/RepoSettings.component.test.ts:hidden repository settings do not verify or display App errors before opening",
+      "src/lib/components/__tests__/RepoSettings.component.test.ts:hidden repository settings do not verify or display App errors before opening:kind=test_function",
+      "src/lib/components/__tests__/RepoSettings.component.test.ts:repository and branch drafts survive authentication migration",
+      "src/lib/components/__tests__/RepoSettings.component.test.ts:repository and branch drafts survive authentication migration:kind=test_function",
+      "src/lib/components/__tests__/RepoSettings.component.test.ts:repository settings use GitHub App service without a PAT token",
+      "src/lib/components/__tests__/RepoSettings.component.test.ts:repository settings use GitHub App service without a PAT token:kind=test_function",
+      "src/lib/services/ProjectSettingsMigrationService.ts:class:ProjectSettingsMigrationService",
+      "src/lib/services/ProjectSettingsMigrationService.ts:class:ProjectSettingsMigrationService:kind=class",
+      "src/lib/services/ProjectSettingsMigrationService.ts:method:ProjectSettingsMigrationService.migrateProjectSettings",
+      "src/lib/services/ProjectSettingsMigrationService.ts:method:ProjectSettingsMigrationService.migrateProjectSettings:arg=progressCallback:type=(progress: {\n      completed: number;\n      total: number;\n      currentProject: string;\n    }) => void:default=None",
+      "src/lib/services/ProjectSettingsMigrationService.ts:method:ProjectSettingsMigrationService.migrateProjectSettings:kind=method",
+      "src/lib/services/ProjectSettingsMigrationService.ts:method:ProjectSettingsMigrationService.migrateProjectSettings:of=ProjectSettingsMigrationService",
+      "src/lib/services/ProjectSettingsMigrationService.ts:method:ProjectSettingsMigrationService.migrateProjectSettings:returns=Promise<{\n    success: boolean;\n    migratedCount: number;\n    failedCount: number;\n    errors: string[];\n  }>",
+      "src/lib/services/ProjectSettingsMigrationService.ts:method:ProjectSettingsMigrationService.migrateSingleProject",
+      "src/lib/services/ProjectSettingsMigrationService.ts:method:ProjectSettingsMigrationService.migrateSingleProject:arg=projectId:type=string:default=None",
+      "src/lib/services/ProjectSettingsMigrationService.ts:method:ProjectSettingsMigrationService.migrateSingleProject:arg=repoOwner:type=string:default=None",
+      "src/lib/services/ProjectSettingsMigrationService.ts:method:ProjectSettingsMigrationService.migrateSingleProject:kind=method",
+      "src/lib/services/ProjectSettingsMigrationService.ts:method:ProjectSettingsMigrationService.migrateSingleProject:of=ProjectSettingsMigrationService",
+      "src/lib/services/ProjectSettingsMigrationService.ts:method:ProjectSettingsMigrationService.migrateSingleProject:returns=Promise<boolean>",
+      "src/lib/services/__tests__/ProjectSettingsMigrationService.test.ts:project metadata migration preserves mappings through GitHub App authentication",
+      "src/lib/services/__tests__/ProjectSettingsMigrationService.test.ts:project metadata migration preserves mappings through GitHub App authentication:kind=test_function",
+      "src/lib/utils/__tests__/connectedGitHubAppService.test.ts:creates GitHub App service only after live connection verification",
+      "src/lib/utils/__tests__/connectedGitHubAppService.test.ts:creates GitHub App service only after live connection verification:kind=test_function",
+      "src/lib/utils/__tests__/connectedGitHubAppService.test.ts:rejects disconnected repository work before service construction",
+      "src/lib/utils/__tests__/connectedGitHubAppService.test.ts:rejects disconnected repository work before service construction:kind=test_function",
+      "src/lib/utils/connectedGitHubAppService.ts:function:createConnectedGitHubAppService",
+      "src/lib/utils/connectedGitHubAppService.ts:function:createConnectedGitHubAppService:kind=function",
+      "src/lib/utils/connectedGitHubAppService.ts:function:createConnectedGitHubAppService:returns=Promise<UnifiedGitHubService>",
+      "src/popup/components/BranchSelectionModal.svelte:function:BranchSelectionModal",
+      "src/popup/components/BranchSelectionModal.svelte:function:BranchSelectionModal:arg=props:type=BranchSelectionModal component props without token:default=None",
+      "src/popup/components/BranchSelectionModal.svelte:function:BranchSelectionModal:kind=function",
+      "src/popup/components/BranchSelectionModal.svelte:function:BranchSelectionModal:returns=Svelte component instance",
+      "src/popup/components/TabsView.svelte:function:TabsView",
+      "src/popup/components/TabsView.svelte:function:TabsView:arg=props:type=TabsView component props:default=None",
+      "src/popup/components/TabsView.svelte:function:TabsView:kind=function",
+      "src/popup/components/TabsView.svelte:function:TabsView:returns=Svelte component instance",
+      "src/popup/components/__tests__/BranchSelectionModal.component.test.ts:branch selection uses only the GitHub App service contract",
+      "src/popup/components/__tests__/BranchSelectionModal.component.test.ts:branch selection uses only the GitHub App service contract:kind=test_function",
+      "src/popup/components/__tests__/TabsView.component.test.ts:tabs view no longer forwards PAT credentials into repository surfaces",
+      "src/popup/components/__tests__/TabsView.component.test.ts:tabs view no longer forwards PAT credentials into repository surfaces:kind=test_function"
+    ],
+    "files": {
+      "create": [
+        "src/lib/components/__tests__/CommitsModal.component.test.ts",
+        "src/lib/utils/__tests__/connectedGitHubAppService.test.ts",
+        "src/lib/utils/connectedGitHubAppService.ts"
+      ],
+      "edit": [
+        "src/lib/components/CommitsModal.svelte",
+        "src/lib/components/ProjectStatus.svelte",
+        "src/lib/components/ProjectsList.svelte",
+        "src/lib/components/RepoSettings.svelte",
+        "src/lib/components/__tests__/ProjectStatus.component.test.ts",
+        "src/lib/components/__tests__/ProjectsList.component.test.ts",
+        "src/lib/components/__tests__/RepoSettings.component.test.ts",
+        "src/lib/services/ProjectSettingsMigrationService.ts",
+        "src/lib/services/__tests__/ProjectSettingsMigrationService.test.ts",
+        "src/popup/components/BranchSelectionModal.svelte",
+        "src/popup/components/TabsView.svelte",
+        "src/popup/components/__tests__/BranchSelectionModal.component.test.ts",
+        "src/popup/components/__tests__/TabsView.component.test.ts"
+      ],
+      "read": [
+        "manifests/03-github-app-only-runtime-enforcement.manifest.yaml",
+        "manifests/repair-e2e-error-flow-fast-gate.manifest.yaml",
+        "src/lib/utils/githubConnection.ts",
+        "src/services/UnifiedGitHubService.ts"
+      ]
+    },
+    "test_files": [
+      "src/lib/components/__tests__/CommitsModal.component.test.ts",
+      "src/lib/components/__tests__/ProjectStatus.component.test.ts",
+      "src/lib/components/__tests__/ProjectsList.component.test.ts",
+      "src/lib/components/__tests__/RepoSettings.component.test.ts",
+      "src/lib/services/__tests__/ProjectSettingsMigrationService.test.ts",
+      "src/lib/utils/__tests__/connectedGitHubAppService.test.ts",
+      "src/popup/components/__tests__/BranchSelectionModal.component.test.ts",
+      "src/popup/components/__tests__/TabsView.component.test.ts"
+    ],
+    "validate_commands": [
+      "pnpm exec vitest run src/lib/utils/__tests__/connectedGitHubAppService.test.ts src/lib/components/__tests__/CommitsModal.component.test.ts src/lib/components/__tests__/RepoSettings.component.test.ts src/lib/components/__tests__/ProjectsList.component.test.ts src/lib/components/__tests__/ProjectStatus.component.test.ts src/lib/services/__tests__/ProjectSettingsMigrationService.test.ts src/popup/components/__tests__/BranchSelectionModal.component.test.ts src/popup/components/__tests__/TabsView.component.test.ts",
+      "./scripts/maid validate manifests/04-github-app-only-repository-surfaces.manifest.yaml --mode behavioral",
+      "pnpm lint",
+      "pnpm check",
+      "pnpm build"
+    ]
+  }
+}

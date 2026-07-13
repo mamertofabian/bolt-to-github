@@ -21,6 +21,7 @@ vi.unmock('lucide-svelte');
 vi.unmock('bits-ui');
 
 const mockState = {
+  constructService: vi.fn(),
   listRepos: vi.fn(),
   listBranches: vi.fn(),
 };
@@ -28,7 +29,9 @@ const mockState = {
 vi.mock('../../../services/UnifiedGitHubService', () => {
   return {
     UnifiedGitHubService: class {
-      constructor(_config?: unknown) {}
+      constructor(config?: unknown) {
+        mockState.constructService(config);
+      }
       async listRepos() {
         return mockState.listRepos();
       }
@@ -38,6 +41,16 @@ vi.mock('../../../services/UnifiedGitHubService', () => {
     },
   };
 });
+
+vi.mock('$lib/utils/connectedGitHubAppService', () => ({
+  createConnectedGitHubAppService: vi.fn(async () => {
+    mockState.constructService({ type: 'github_app' });
+    return {
+      listRepos: mockState.listRepos,
+      listBranches: mockState.listBranches,
+    };
+  }),
+}));
 
 vi.mock('$lib/utils/logger', () => ({
   createLogger: vi.fn(() => ({
@@ -72,7 +85,6 @@ describe('RepoSettings.svelte - Component Tests', () => {
   const defaultProps = {
     show: true,
     repoOwner: 'testuser',
-    githubToken: 'ghp_test123',
     projectId: 'project-123',
     repoName: '',
     branch: 'main',
@@ -1204,6 +1216,38 @@ describe('RepoSettings.svelte - Component Tests', () => {
         expect(screen.queryByText(/invalid repository name/i)).not.toBeInTheDocument();
       });
       expect(screen.getByRole('button', { name: /save settings/i })).toBeEnabled();
+    });
+  });
+
+  describe('GitHub App authentication migration', () => {
+    it('hidden repository settings do not verify or display App errors before opening', async () => {
+      render(RepoSettings, { props: { ...defaultProps, show: false } });
+
+      await new Promise((resolve) => setTimeout(resolve, 0));
+
+      expect(mockState.constructService).not.toHaveBeenCalled();
+      expect(screen.queryByText('Error')).not.toBeInTheDocument();
+    });
+
+    it('repository settings use GitHub App service without a PAT token', async () => {
+      render(RepoSettings, { props: defaultProps });
+
+      await waitFor(() => expect(mockState.listRepos).toHaveBeenCalledOnce());
+      expect(mockState.constructService).toHaveBeenCalledWith({ type: 'github_app' });
+      expect(mockState.constructService).not.toHaveBeenCalledWith(expect.any(String));
+    });
+
+    it('repository and branch drafts survive authentication migration', async () => {
+      render(RepoSettings, {
+        props: {
+          ...defaultProps,
+          repoName: 'preserved-repository',
+          branch: 'preserved-branch',
+        },
+      });
+
+      expect(screen.getByLabelText('Repository Name')).toHaveValue('preserved-repository');
+      expect(screen.getByLabelText(/Branch/)).toHaveValue('preserved-branch');
     });
   });
 });

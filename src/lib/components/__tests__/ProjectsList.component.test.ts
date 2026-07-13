@@ -2,17 +2,26 @@
  * @vitest-environment jsdom
  */
 import { describe, it, expect, beforeEach, vi } from 'vitest';
-import { render, screen } from '@testing-library/svelte';
+import { render, screen, waitFor } from '@testing-library/svelte';
 import userEvent from '@testing-library/user-event';
 import ProjectsList from '../ProjectsList.svelte';
 
-vi.mock('../../services/UnifiedGitHubService', () => ({
-  UnifiedGitHubService: vi.fn().mockImplementation(() => ({
+const mockServiceConstructor = vi.hoisted(() =>
+  vi.fn().mockImplementation(() => ({
     listRepos: vi.fn().mockResolvedValue([]),
     getCommitCount: vi.fn().mockResolvedValue(0),
     getRepoInfo: vi.fn().mockResolvedValue({ exists: true, private: false }),
     request: vi.fn().mockResolvedValue([]),
-  })),
+  }))
+);
+const mockCreateConnectedGitHubAppService = vi.hoisted(() => vi.fn());
+
+vi.mock('../../services/UnifiedGitHubService', () => ({
+  UnifiedGitHubService: mockServiceConstructor,
+}));
+
+vi.mock('$lib/utils/connectedGitHubAppService', () => ({
+  createConnectedGitHubAppService: mockCreateConnectedGitHubAppService,
 }));
 
 vi.mock('../../services/GitHubCacheService', () => ({
@@ -45,6 +54,10 @@ vi.mock('$lib/stores', () => ({
 }));
 
 beforeEach(() => {
+  vi.clearAllMocks();
+  mockCreateConnectedGitHubAppService.mockImplementation(async () =>
+    mockServiceConstructor({ type: 'github_app' })
+  );
   Object.defineProperty(window, 'chrome', {
     value: {
       tabs: {
@@ -71,7 +84,6 @@ beforeEach(() => {
 describe('ProjectsList Component', () => {
   const defaultProps = {
     repoOwner: 'testuser',
-    githubToken: 'test-token',
     isBoltSite: true,
     currentlyLoadedProjectId: null,
   };
@@ -176,5 +188,48 @@ describe('ProjectsList Component', () => {
 
     const refreshButton = screen.getByRole('button', { name: /refresh repos/i });
     expect(refreshButton).toHaveAttribute('title', 'Refresh Repos');
+  });
+
+  it('projects list performs GitHub work only through GitHub App readiness', async () => {
+    render(ProjectsList, { props: defaultProps });
+
+    await waitFor(() =>
+      expect(mockServiceConstructor).toHaveBeenCalledWith({ type: 'github_app' })
+    );
+    expect(mockServiceConstructor).not.toHaveBeenCalledWith(expect.any(String));
+  });
+
+  it('disconnected projects list never instructs users to check a PAT or GitHub token permissions', async () => {
+    mockCreateConnectedGitHubAppService.mockRejectedValueOnce(
+      new Error('Sign in to bolt2github.com and connect the GitHub App.')
+    );
+    render(ProjectsList, { props: defaultProps });
+
+    const alert = await screen.findByRole('alert');
+    expect(alert).toHaveTextContent('Sign in to bolt2github.com and connect the GitHub App.');
+    expect(alert).not.toHaveTextContent(/PAT|token permissions/i);
+  });
+
+  it('refresh retries GitHub App readiness after a disconnected result', async () => {
+    const user = userEvent.setup();
+    mockCreateConnectedGitHubAppService.mockRejectedValueOnce(
+      new Error('Sign in to bolt2github.com and connect the GitHub App.')
+    );
+    render(ProjectsList, { props: defaultProps });
+
+    expect(await screen.findByRole('alert')).toBeInTheDocument();
+    await user.click(screen.getByRole('button', { name: /refresh repos/i }));
+
+    await waitFor(() => expect(mockCreateConnectedGitHubAppService).toHaveBeenCalledTimes(2));
+    await waitFor(() => expect(screen.queryByRole('alert')).not.toBeInTheDocument());
+  });
+
+  it('refresh remains disabled while GitHub App readiness is pending', async () => {
+    mockCreateConnectedGitHubAppService.mockImplementation(() => new Promise(() => {}));
+    render(ProjectsList, { props: defaultProps });
+
+    const refreshButton = screen.getByRole('button', { name: /refresh repos/i });
+    expect(refreshButton).toBeDisabled();
+    expect(mockCreateConnectedGitHubAppService).toHaveBeenCalledOnce();
   });
 });
