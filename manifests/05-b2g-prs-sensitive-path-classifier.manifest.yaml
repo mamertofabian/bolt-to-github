@@ -1,0 +1,319 @@
+schema: '2'
+goal: |
+  Classify changed files into PRS readiness categories using deterministic,
+  data-driven sensitive path rules and explicit file evidence.
+description: |
+  Fifth implementation child for the b2g-production-readiness-snapshot parent
+  epic. This slice owns pure path-based classification for normalized diff
+  entries across identity/access, data/persistence, secrets/config,
+  deployment/ops, external integrations, public surface, testing/recovery, and
+  maintainability.
+
+  Rules remain centralized data with stable identifiers, glob or regex
+  matchers, severity hints, and explanations. Classifications retain the file
+  status, exact matched path, current and previous rename paths, matched rule,
+  and redaction-neutral evidence. A rename is evaluated from both its old and
+  new path so moving a sensitive file cannot erase its classification.
+
+  This child does not scan content, infer environment variables or secrets,
+  diff dependencies, compose readiness state, render UI, or generate reports.
+temptations:
+  - risk: Do not scatter sensitive path checks across detector code.
+    instead: Keep every default matcher in the data-driven path-rules module and test through public classifier behavior.
+  - risk: Do not let ignore policy hide lockfiles, relevant config, workflow metadata, or other diff entries that reach the classifier.
+    instead: Classify the supplied normalized diff independently of source-analysis eligibility.
+  - risk: Do not lose evidence when a sensitive path is renamed to a neutral path.
+    instead: Evaluate both current and previous rename paths and expose the exact matched path.
+  - risk: Do not let a broad low- or medium-severity rule suppress a more specific high-severity match in the same category.
+    instead: Choose the highest-severity rule per file side and category with rule ID as a stable tie-break while preserving legitimate cross-category evidence.
+  - risk: Do not perform content analysis or readiness scoring in this slice.
+    instead: Return neutral path classifications for later detectors and the readiness composer.
+type: feature
+files:
+  create:
+    - path: src/production-readiness/rules/path-rules.ts
+      artifacts:
+        - kind: type
+          name: SensitivePathMatcher
+          type: "'glob' | 'regex'"
+        - kind: interface
+          name: SensitivePathRule
+          description: Data-driven readiness category rule with a stable identifier, matcher, severity hint, and explanation.
+        - kind: attribute
+          name: id
+          of: SensitivePathRule
+          type: string
+        - kind: attribute
+          name: category
+          of: SensitivePathRule
+          type: ReadinessCategory
+        - kind: attribute
+          name: matcher
+          of: SensitivePathRule
+          type: SensitivePathMatcher
+        - kind: attribute
+          name: pattern
+          of: SensitivePathRule
+          type: string
+        - kind: attribute
+          name: severityHint
+          of: SensitivePathRule
+          type: SignalSeverity
+        - kind: attribute
+          name: explanation
+          of: SensitivePathRule
+          type: string
+        - kind: function
+          name: getSensitivePathRules
+          args: []
+          returns: SensitivePathRule[]
+          description: Returns a fresh ordered copy of the initial PRS sensitive path rules from the reference document.
+    - path: src/production-readiness/detectors/sensitivePathClassifier.ts
+      artifacts:
+        - kind: interface
+          name: SensitivePathClassification
+          description: One deterministic category match with file status, exact matched path, matched rule, and file evidence.
+        - kind: attribute
+          name: category
+          of: SensitivePathClassification
+          type: ReadinessCategory
+        - kind: attribute
+          name: path
+          of: SensitivePathClassification
+          type: string
+        - kind: attribute
+          name: currentPath
+          of: SensitivePathClassification
+          type: string
+        - kind: attribute
+          name: previousPath
+          of: SensitivePathClassification
+          type: string | undefined
+        - kind: attribute
+          name: status
+          of: SensitivePathClassification
+          type: FileDiffStatus
+        - kind: attribute
+          name: severityHint
+          of: SensitivePathClassification
+          type: SignalSeverity
+        - kind: attribute
+          name: matchedRule
+          of: SensitivePathClassification
+          type: SensitivePathRule
+        - kind: attribute
+          name: evidence
+          of: SensitivePathClassification
+          type: EvidenceRef
+        - kind: function
+          name: classifySensitivePaths
+          args:
+            - name: diff
+              type: InventoryDiffResult
+            - name: rules
+              type: readonly SensitivePathRule[] | undefined
+          returns: SensitivePathClassification[]
+          description: Pure classifier that evaluates current and previous rename paths, selects the highest-severity rule per side/category with a stable rule-ID tie-break, and returns stable evidence order.
+    - path: src/production-readiness/__tests__/sensitive-path-classifier.test.ts
+      artifacts:
+        - kind: test_function
+          name: auth data config deployment integration route and test paths classify correctly
+          description: All eight path-based readiness categories classify from deterministic changed-file fixtures, including a renamed-away sensitive path.
+        - kind: test_function
+          name: ignore rules do not hide lockfiles or relevant config
+          description: Lockfiles, config, environment examples, and workflow metadata that reach the diff remain classifiable even when source content analysis is not needed.
+        - kind: test_function
+          name: classifier evidence includes category and path
+          description: Evidence includes exact matched/current/previous paths, status, category, matched rule, severity, and deterministic ordering without duplicate same-category matches.
+    - path: src/production-readiness/test-fixtures/prs/sensitive-paths.ts
+      artifacts:
+        - kind: interface
+          name: SensitivePathFixture
+          description: Fresh deterministic inventory diff for a named path-classification scenario.
+        - kind: attribute
+          name: diff
+          of: SensitivePathFixture
+          type: InventoryDiffResult
+        - kind: function
+          name: createSensitivePathFixture
+          args:
+            - name: name
+              type: string
+          returns: SensitivePathFixture
+          description: Returns fresh all-category, retained-metadata, or renamed-sensitive fixtures and rejects unknown or prototype names.
+  read:
+    - docs/b2g_production_readiness_snapshot_reference.md
+    - manifests/drafts/b2g-production-readiness-snapshot.manifest.yaml
+    - manifests/01-b2g-prs-domain-models-fixtures.manifest.yaml
+    - manifests/02-b2g-prs-zip-inventory-normalization.manifest.yaml
+    - manifests/04-b2g-prs-diff-engine.manifest.yaml
+    - src/production-readiness/domain.ts
+    - src/production-readiness/diff/diffEngine.ts
+    - src/production-readiness/rules/ignore-rules.ts
+validate:
+  - pnpm exec vitest run src/production-readiness/__tests__/sensitive-path-classifier.test.ts
+  - ./scripts/maid validate manifests/05-b2g-prs-sensitive-path-classifier.manifest.yaml --mode behavioral
+  - pnpm lint
+  - pnpm check
+created: '2026-07-13T18:40:00Z'
+metadata:
+  tags:
+    - production-readiness
+    - sensitive-paths
+    - classifier
+    - deterministic-analysis
+  priority: high
+  status: implementation
+  promotable: true
+  parent_epic: b2g-production-readiness-snapshot
+  depends_on:
+    - 01-b2g-prs-domain-models-fixtures
+    - 02-b2g-prs-zip-inventory-normalization
+    - 04-b2g-prs-diff-engine
+  source_document: docs/b2g_production_readiness_snapshot_reference.md
+outcome:
+  status: completed
+  summary: |
+    PRS can now classify normalized diff entries across all eight path-based
+    readiness categories using centralized, deterministic glob and regex rules.
+    Each result preserves file status, exact matched path, current and previous
+    rename paths, severity, matched rule, and redaction-neutral file evidence.
+    Sensitive paths renamed to neutral locations remain visible, while
+    lockfiles, framework config, environment examples, and workflow metadata
+    that reach the diff remain classifiable.
+  rationale: |
+    Keeping path policy as ordered data makes the classifier testable and
+    extensible without scattering detector conditionals. Selecting the highest
+    severity match per path/category prevents broad rules from downgrading more
+    specific evidence, and a lexicographic rule-ID tie-break makes the result
+    independent of caller or catalog ordering. Content analysis, readiness
+    scoring, UI, and report concerns remain isolated to later children.
+  lessons:
+    - lesson_type: rename-evidence-continuity
+      summary: |
+        Classifying only a renamed file's destination can erase evidence when a
+        sensitive auth, data, or deployment path moves to a neutral name. Both
+        current and previous paths must be evaluated while evidence identifies
+        the exact side that matched.
+      tags:
+        - rename
+        - evidence
+        - correctness
+      paths:
+        - src/production-readiness/detectors/sensitivePathClassifier.ts
+        - src/production-readiness/__tests__/sensitive-path-classifier.test.ts
+    - lesson_type: severity-before-catalog-order
+      summary: |
+        First-match de-duplication silently turns rule array order into policy.
+        Overlapping routes/api and login/admin patterns must select the highest
+        severity, with a stable rule-ID tie-break for equally severe matches.
+      tags:
+        - severity
+        - deterministic
+        - rules
+      paths:
+        - src/production-readiness/detectors/sensitivePathClassifier.ts
+        - src/production-readiness/rules/path-rules.ts
+    - lesson_type: metadata-stays-classifiable
+      summary: |
+        Source-analysis eligibility and path sensitivity are separate concerns.
+        Lockfiles, workflow files, environment examples, and relevant config
+        can provide useful file-level evidence without requiring content scans.
+      tags:
+        - metadata
+        - ignore-rules
+        - privacy
+      paths:
+        - src/production-readiness/rules/path-rules.ts
+        - src/production-readiness/rules/ignore-rules.ts
+    - lesson_type: detector-boundary
+      summary: |
+        The path classifier should expose neutral category evidence only. Env
+        and secret scanning, dependency analysis, public-surface semantics,
+        state composition, UI, and report generation remain separate slices.
+      tags:
+        - architecture
+        - scope
+        - detector
+      paths:
+        - src/production-readiness/detectors/sensitivePathClassifier.ts
+        - manifests/05-b2g-prs-sensitive-path-classifier.manifest.yaml
+  review_notes:
+    - source: independent reviewer subagent prs_child04_review
+      severity: changes-requested
+      summary: |
+        First review found that first-match de-duplication let broad medium
+        routes or login rules suppress later high-severity API, admin, or
+        protected matches in the same category. Focused regressions now lock
+        highest-severity selection and the stable equal-severity rule-ID tie.
+    - source: independent reviewer subagent prs_child04_review
+      severity: ready
+      summary: |
+        Final read-only review found no blocking issues and confirmed severity
+        priority, deterministic tie-breaking, rename evidence, section 13 rule
+        families, retained metadata, cross-category output, privacy boundaries,
+        tests, plan-lock alignment, and manifest scope.
+  validation:
+    - command:
+        - pnpm
+        - exec
+        - vitest
+        - run
+        - src/production-readiness/__tests__/sensitive-path-classifier.test.ts
+      status: passed
+      summary: Three focused tests passed across all eight categories, retained metadata, renamed-sensitive paths, severity priority, deterministic ties, evidence, and fixture safety.
+    - command:
+        - pnpm
+        - test:ci
+      status: passed
+      summary: Full Vitest CI passed 203 test files and 4028 tests after final review fixes.
+    - command:
+        - pnpm
+        - lint
+      status: passed
+      summary: ESLint passed for all JavaScript, TypeScript, and Svelte source files.
+    - command:
+        - pnpm
+        - check
+      status: passed
+      summary: Svelte and TypeScript checking completed with zero errors and zero warnings.
+    - command:
+        - pnpm
+        - build
+      status: passed
+      summary: The v1.3.22 production extension build completed successfully with only the existing Vite chunking notices.
+    - command:
+        - ./scripts/maid
+        - validate
+        - manifests/05-b2g-prs-sensitive-path-classifier.manifest.yaml
+        - --mode
+        - behavioral
+      status: passed
+      summary: Child 05 behavioral validation passed with every declared artifact exercised.
+    - command:
+        - ./scripts/maid
+        - validate
+        - manifests/05-b2g-prs-sensitive-path-classifier.manifest.yaml
+        - --mode
+        - implementation
+      status: passed
+      summary: Child 05 implementation validation passed against the promoted and reviewed contract.
+    - command:
+        - ./scripts/maid
+        - verify
+        - --manifest-dir
+        - manifests
+        - --strict
+        - --worktree-scope
+        - --file-tracking-scope
+        - task
+        - --plan-lock-scope
+        - task
+        - --require-plan-lock
+        - --require-red-evidence
+        - --include-tests
+        - --since
+        - HEAD
+        - --summary
+      status: passed
+      summary: Strict task-scoped verification passed all nine gates with no blockers or warnings.

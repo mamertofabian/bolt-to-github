@@ -1,0 +1,193 @@
+{
+  "manifest_path": "manifests/05-b2g-prs-sensitive-path-classifier.manifest.yaml",
+  "manifest_hash": "sha256:b0bb0f8b8f241c43809879cda78e7ee91ed3be28c539dde86b4bd508f07d6994",
+  "test_hashes": {
+    "src/production-readiness/__tests__/sensitive-path-classifier.test.ts": "sha256:3a951e856c432d78cbd0775224bbf64c718af84c4ced8c89b7aedcc6fc6f265d"
+  },
+  "created_at": "2026-07-13T18:39:38.021440+00:00",
+  "revision": 3,
+  "revisions": [
+    {
+      "prior_manifest_hash": "sha256:f0f8d3cfe68c0c08af00a27c58ec8397ad286e738946f08ccb79ffe23d95b22a",
+      "prior_test_hashes": {
+        "src/production-readiness/__tests__/sensitive-path-classifier.test.ts": "sha256:57673e784749f624bf490b0a4dd97b6fae002f6c42f77129e0a32826b59310dd"
+      },
+      "revised_at": "2026-07-13T18:46:10.185542+00:00",
+      "reason": "Select the highest-severity rule per path category with a stable rule-ID tie-break",
+      "agent": null,
+      "contract_delta": {
+        "artifacts_added": [],
+        "artifacts_removed": [],
+        "files_added": [],
+        "files_removed": [],
+        "validate_commands_added": [],
+        "validate_commands_removed": []
+      }
+    },
+    {
+      "prior_manifest_hash": "sha256:9153fa80d1702b5cbbba070f2db2a6a0c4d31c29b4cd84b67727e4af2c9fba35",
+      "prior_test_hashes": {
+        "src/production-readiness/__tests__/sensitive-path-classifier.test.ts": "sha256:3a951e856c432d78cbd0775224bbf64c718af84c4ced8c89b7aedcc6fc6f265d"
+      },
+      "revised_at": "2026-07-13T18:50:27.084929+00:00",
+      "reason": "Record reviewed implementation outcome and validation evidence",
+      "agent": null,
+      "contract_delta": {
+        "artifacts_added": [],
+        "artifacts_removed": [],
+        "files_added": [],
+        "files_removed": [],
+        "validate_commands_added": [],
+        "validate_commands_removed": []
+      }
+    }
+  ],
+  "red_evidence": {
+    "red": true,
+    "captured_at": "2026-07-13T18:39:51.997856+00:00",
+    "commands": [
+      {
+        "command": "pnpm exec vitest run src/production-readiness/__tests__/sensitive-path-classifier.test.ts",
+        "exit_code": 1,
+        "output_tail": " Test Files  1 failed (1)\n      Tests  no tests\n   Start at  02:39:38\n   Duration  550ms (transform 33ms, setup 51ms, collect 0ms, tests 0ms, environment 181ms, prepare 48ms)\n\n\n\u23af\u23af\u23af\u23af\u23af\u23af Failed Suites 1 \u23af\u23af\u23af\u23af\u23af\u23af\u23af\n\n FAIL  src/production-readiness/__tests__/sensitive-path-classifier.test.ts [ src/production-readiness/__tests__/sensitive-path-classifier.test.ts ]\nError: Failed to resolve import \"../detectors/sensitivePathClassifier\" from \"src/production-readiness/__tests__/sensitive-path-classifier.test.ts\". Does the file exist?\n \u276f TransformPluginContext._formatError node_modules/.pnpm/vite@5.4.21_@types+node@22.19.18/node_modules/vite/dist/node/chunks/dep-BK3b2jBa.js:49258:41\n \u276f TransformPluginContext.error node_modules/.pnpm/vite@5.4.21_@types+node@22.19.18/node_modules/vite/dist/node/chunks/dep-BK3b2jBa.js:49253:16\n \u276f normalizeUrl node_modules/.pnpm/vite@5.4.21_@types+node@22.19.18/node_modules/vite/dist/node/chunks/dep-BK3b2jBa.js:64307:23\n \u276f async file:/home/atomrem/projects/codefrost-dev/bolt-to-github/node_modules/.pnpm/vite@5.4.21_@types+node@22.19.18/node_modules/vite/dist/node/chunks/dep-BK3b2jBa.js:64439:39\n \u276f TransformPluginContext.transform node_modules/.pnpm/vite@5.4.21_@types+node@22.19.18/node_modules/vite/dist/node/chunks/dep-BK3b2jBa.js:64366:7\n \u276f PluginContainer.transform node_modules/.pnpm/vite@5.4.21_@types+node@22.19.18/node_modules/vite/dist/node/chunks/dep-BK3b2jBa.js:49099:18\n \u276f loadAndTransform node_modules/.pnpm/vite@5.4.21_@types+node@22.19.18/node_modules/vite/dist/node/chunks/dep-BK3b2jBa.js:51978:27\n\n\u23af\u23af\u23af\u23af\u23af\u23af\u23af\u23af\u23af\u23af\u23af\u23af\u23af\u23af\u23af\u23af\u23af\u23af\u23af\u23af\u23af\u23af\u23af\u23af[1/1]\u23af\n",
+        "classification": "red"
+      },
+      {
+        "command": "./scripts/maid validate manifests/05-b2g-prs-sensitive-path-classifier.manifest.yaml --mode behavioral",
+        "exit_code": 0,
+        "output_tail": "PASS 05-b2g-prs-sensitive-path-classifier\n  Mode: behavioral\n  Duration: 563ms",
+        "classification": "not_red"
+      },
+      {
+        "command": "pnpm lint",
+        "exit_code": 0,
+        "output_tail": "\n> bolt-to-github@1.3.22 lint /home/atomrem/projects/codefrost-dev/bolt-to-github\n> eslint \"src/**/*.{js,ts,svelte}\"\n",
+        "classification": "not_red"
+      },
+      {
+        "command": "pnpm check",
+        "exit_code": 1,
+        "output_tail": "import {\n\n\n/home/atomrem/projects/codefrost-dev/bolt-to-github/src/production-readiness/__tests__/sensitive-path-classifier.test.ts:35:51\nError: Binding element 'category' implicitly has an 'any' type. \n    );\n    expect(new Set(getSensitivePathRules().map(({ category }) => category))).toEqual(\n      new Set([\n\n\n/home/atomrem/projects/codefrost-dev/bolt-to-github/src/production-readiness/__tests__/sensitive-path-classifier.test.ts:144:38\nError: Binding element 'category' implicitly has an 'any' type. \n    );\n    expect(classifications.filter(({ category }) => category === 'identity_access')).toHaveLength(\n      1\n\n\n====================================\nsvelte-check found 4 errors and 0 warnings in 1 file\n\u2009ELIFECYCLE\u2009 Command failed with exit code 1.",
+        "classification": "red"
+      }
+    ]
+  },
+  "agent": null,
+  "_manifest_contract": {
+    "artifacts": [
+      "src/production-readiness/__tests__/sensitive-path-classifier.test.ts:auth data config deployment integration route and test paths classify correctly",
+      "src/production-readiness/__tests__/sensitive-path-classifier.test.ts:auth data config deployment integration route and test paths classify correctly:kind=test_function",
+      "src/production-readiness/__tests__/sensitive-path-classifier.test.ts:classifier evidence includes category and path",
+      "src/production-readiness/__tests__/sensitive-path-classifier.test.ts:classifier evidence includes category and path:kind=test_function",
+      "src/production-readiness/__tests__/sensitive-path-classifier.test.ts:ignore rules do not hide lockfiles or relevant config",
+      "src/production-readiness/__tests__/sensitive-path-classifier.test.ts:ignore rules do not hide lockfiles or relevant config:kind=test_function",
+      "src/production-readiness/detectors/sensitivePathClassifier.ts:attribute:SensitivePathClassification.category",
+      "src/production-readiness/detectors/sensitivePathClassifier.ts:attribute:SensitivePathClassification.category:kind=attribute",
+      "src/production-readiness/detectors/sensitivePathClassifier.ts:attribute:SensitivePathClassification.category:of=SensitivePathClassification",
+      "src/production-readiness/detectors/sensitivePathClassifier.ts:attribute:SensitivePathClassification.category:type=ReadinessCategory",
+      "src/production-readiness/detectors/sensitivePathClassifier.ts:attribute:SensitivePathClassification.currentPath",
+      "src/production-readiness/detectors/sensitivePathClassifier.ts:attribute:SensitivePathClassification.currentPath:kind=attribute",
+      "src/production-readiness/detectors/sensitivePathClassifier.ts:attribute:SensitivePathClassification.currentPath:of=SensitivePathClassification",
+      "src/production-readiness/detectors/sensitivePathClassifier.ts:attribute:SensitivePathClassification.currentPath:type=string",
+      "src/production-readiness/detectors/sensitivePathClassifier.ts:attribute:SensitivePathClassification.evidence",
+      "src/production-readiness/detectors/sensitivePathClassifier.ts:attribute:SensitivePathClassification.evidence:kind=attribute",
+      "src/production-readiness/detectors/sensitivePathClassifier.ts:attribute:SensitivePathClassification.evidence:of=SensitivePathClassification",
+      "src/production-readiness/detectors/sensitivePathClassifier.ts:attribute:SensitivePathClassification.evidence:type=EvidenceRef",
+      "src/production-readiness/detectors/sensitivePathClassifier.ts:attribute:SensitivePathClassification.matchedRule",
+      "src/production-readiness/detectors/sensitivePathClassifier.ts:attribute:SensitivePathClassification.matchedRule:kind=attribute",
+      "src/production-readiness/detectors/sensitivePathClassifier.ts:attribute:SensitivePathClassification.matchedRule:of=SensitivePathClassification",
+      "src/production-readiness/detectors/sensitivePathClassifier.ts:attribute:SensitivePathClassification.matchedRule:type=SensitivePathRule",
+      "src/production-readiness/detectors/sensitivePathClassifier.ts:attribute:SensitivePathClassification.path",
+      "src/production-readiness/detectors/sensitivePathClassifier.ts:attribute:SensitivePathClassification.path:kind=attribute",
+      "src/production-readiness/detectors/sensitivePathClassifier.ts:attribute:SensitivePathClassification.path:of=SensitivePathClassification",
+      "src/production-readiness/detectors/sensitivePathClassifier.ts:attribute:SensitivePathClassification.path:type=string",
+      "src/production-readiness/detectors/sensitivePathClassifier.ts:attribute:SensitivePathClassification.previousPath",
+      "src/production-readiness/detectors/sensitivePathClassifier.ts:attribute:SensitivePathClassification.previousPath:kind=attribute",
+      "src/production-readiness/detectors/sensitivePathClassifier.ts:attribute:SensitivePathClassification.previousPath:of=SensitivePathClassification",
+      "src/production-readiness/detectors/sensitivePathClassifier.ts:attribute:SensitivePathClassification.previousPath:type=string | undefined",
+      "src/production-readiness/detectors/sensitivePathClassifier.ts:attribute:SensitivePathClassification.severityHint",
+      "src/production-readiness/detectors/sensitivePathClassifier.ts:attribute:SensitivePathClassification.severityHint:kind=attribute",
+      "src/production-readiness/detectors/sensitivePathClassifier.ts:attribute:SensitivePathClassification.severityHint:of=SensitivePathClassification",
+      "src/production-readiness/detectors/sensitivePathClassifier.ts:attribute:SensitivePathClassification.severityHint:type=SignalSeverity",
+      "src/production-readiness/detectors/sensitivePathClassifier.ts:attribute:SensitivePathClassification.status",
+      "src/production-readiness/detectors/sensitivePathClassifier.ts:attribute:SensitivePathClassification.status:kind=attribute",
+      "src/production-readiness/detectors/sensitivePathClassifier.ts:attribute:SensitivePathClassification.status:of=SensitivePathClassification",
+      "src/production-readiness/detectors/sensitivePathClassifier.ts:attribute:SensitivePathClassification.status:type=FileDiffStatus",
+      "src/production-readiness/detectors/sensitivePathClassifier.ts:function:classifySensitivePaths",
+      "src/production-readiness/detectors/sensitivePathClassifier.ts:function:classifySensitivePaths:arg=diff:type=InventoryDiffResult:default=None",
+      "src/production-readiness/detectors/sensitivePathClassifier.ts:function:classifySensitivePaths:arg=rules:type=readonly SensitivePathRule[] | undefined:default=None",
+      "src/production-readiness/detectors/sensitivePathClassifier.ts:function:classifySensitivePaths:kind=function",
+      "src/production-readiness/detectors/sensitivePathClassifier.ts:function:classifySensitivePaths:returns=SensitivePathClassification[]",
+      "src/production-readiness/detectors/sensitivePathClassifier.ts:interface:SensitivePathClassification",
+      "src/production-readiness/detectors/sensitivePathClassifier.ts:interface:SensitivePathClassification:kind=interface",
+      "src/production-readiness/rules/path-rules.ts:attribute:SensitivePathRule.category",
+      "src/production-readiness/rules/path-rules.ts:attribute:SensitivePathRule.category:kind=attribute",
+      "src/production-readiness/rules/path-rules.ts:attribute:SensitivePathRule.category:of=SensitivePathRule",
+      "src/production-readiness/rules/path-rules.ts:attribute:SensitivePathRule.category:type=ReadinessCategory",
+      "src/production-readiness/rules/path-rules.ts:attribute:SensitivePathRule.explanation",
+      "src/production-readiness/rules/path-rules.ts:attribute:SensitivePathRule.explanation:kind=attribute",
+      "src/production-readiness/rules/path-rules.ts:attribute:SensitivePathRule.explanation:of=SensitivePathRule",
+      "src/production-readiness/rules/path-rules.ts:attribute:SensitivePathRule.explanation:type=string",
+      "src/production-readiness/rules/path-rules.ts:attribute:SensitivePathRule.id",
+      "src/production-readiness/rules/path-rules.ts:attribute:SensitivePathRule.id:kind=attribute",
+      "src/production-readiness/rules/path-rules.ts:attribute:SensitivePathRule.id:of=SensitivePathRule",
+      "src/production-readiness/rules/path-rules.ts:attribute:SensitivePathRule.id:type=string",
+      "src/production-readiness/rules/path-rules.ts:attribute:SensitivePathRule.matcher",
+      "src/production-readiness/rules/path-rules.ts:attribute:SensitivePathRule.matcher:kind=attribute",
+      "src/production-readiness/rules/path-rules.ts:attribute:SensitivePathRule.matcher:of=SensitivePathRule",
+      "src/production-readiness/rules/path-rules.ts:attribute:SensitivePathRule.matcher:type=SensitivePathMatcher",
+      "src/production-readiness/rules/path-rules.ts:attribute:SensitivePathRule.pattern",
+      "src/production-readiness/rules/path-rules.ts:attribute:SensitivePathRule.pattern:kind=attribute",
+      "src/production-readiness/rules/path-rules.ts:attribute:SensitivePathRule.pattern:of=SensitivePathRule",
+      "src/production-readiness/rules/path-rules.ts:attribute:SensitivePathRule.pattern:type=string",
+      "src/production-readiness/rules/path-rules.ts:attribute:SensitivePathRule.severityHint",
+      "src/production-readiness/rules/path-rules.ts:attribute:SensitivePathRule.severityHint:kind=attribute",
+      "src/production-readiness/rules/path-rules.ts:attribute:SensitivePathRule.severityHint:of=SensitivePathRule",
+      "src/production-readiness/rules/path-rules.ts:attribute:SensitivePathRule.severityHint:type=SignalSeverity",
+      "src/production-readiness/rules/path-rules.ts:function:getSensitivePathRules",
+      "src/production-readiness/rules/path-rules.ts:function:getSensitivePathRules:kind=function",
+      "src/production-readiness/rules/path-rules.ts:function:getSensitivePathRules:returns=SensitivePathRule[]",
+      "src/production-readiness/rules/path-rules.ts:interface:SensitivePathRule",
+      "src/production-readiness/rules/path-rules.ts:interface:SensitivePathRule:kind=interface",
+      "src/production-readiness/rules/path-rules.ts:type:SensitivePathMatcher",
+      "src/production-readiness/rules/path-rules.ts:type:SensitivePathMatcher:kind=type",
+      "src/production-readiness/rules/path-rules.ts:type:SensitivePathMatcher:type='glob' | 'regex'",
+      "src/production-readiness/test-fixtures/prs/sensitive-paths.ts:attribute:SensitivePathFixture.diff",
+      "src/production-readiness/test-fixtures/prs/sensitive-paths.ts:attribute:SensitivePathFixture.diff:kind=attribute",
+      "src/production-readiness/test-fixtures/prs/sensitive-paths.ts:attribute:SensitivePathFixture.diff:of=SensitivePathFixture",
+      "src/production-readiness/test-fixtures/prs/sensitive-paths.ts:attribute:SensitivePathFixture.diff:type=InventoryDiffResult",
+      "src/production-readiness/test-fixtures/prs/sensitive-paths.ts:function:createSensitivePathFixture",
+      "src/production-readiness/test-fixtures/prs/sensitive-paths.ts:function:createSensitivePathFixture:arg=name:type=string:default=None",
+      "src/production-readiness/test-fixtures/prs/sensitive-paths.ts:function:createSensitivePathFixture:kind=function",
+      "src/production-readiness/test-fixtures/prs/sensitive-paths.ts:function:createSensitivePathFixture:returns=SensitivePathFixture",
+      "src/production-readiness/test-fixtures/prs/sensitive-paths.ts:interface:SensitivePathFixture",
+      "src/production-readiness/test-fixtures/prs/sensitive-paths.ts:interface:SensitivePathFixture:kind=interface"
+    ],
+    "files": {
+      "create": [
+        "src/production-readiness/__tests__/sensitive-path-classifier.test.ts",
+        "src/production-readiness/detectors/sensitivePathClassifier.ts",
+        "src/production-readiness/rules/path-rules.ts",
+        "src/production-readiness/test-fixtures/prs/sensitive-paths.ts"
+      ],
+      "edit": [],
+      "read": [
+        "docs/b2g_production_readiness_snapshot_reference.md",
+        "manifests/01-b2g-prs-domain-models-fixtures.manifest.yaml",
+        "manifests/02-b2g-prs-zip-inventory-normalization.manifest.yaml",
+        "manifests/04-b2g-prs-diff-engine.manifest.yaml",
+        "manifests/drafts/b2g-production-readiness-snapshot.manifest.yaml",
+        "src/production-readiness/diff/diffEngine.ts",
+        "src/production-readiness/domain.ts",
+        "src/production-readiness/rules/ignore-rules.ts"
+      ]
+    },
+    "test_files": ["src/production-readiness/__tests__/sensitive-path-classifier.test.ts"],
+    "validate_commands": [
+      "pnpm exec vitest run src/production-readiness/__tests__/sensitive-path-classifier.test.ts",
+      "./scripts/maid validate manifests/05-b2g-prs-sensitive-path-classifier.manifest.yaml --mode behavioral",
+      "pnpm lint",
+      "pnpm check"
+    ]
+  }
+}
