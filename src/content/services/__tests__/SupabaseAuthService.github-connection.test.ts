@@ -35,7 +35,6 @@ global.chrome = {
 import { SupabaseAuthService } from '../SupabaseAuthService';
 
 const githubAppKeys = [
-  'authenticationMethod',
   'githubAppInstallationId',
   'githubAppUsername',
   'githubAppAccessToken',
@@ -52,7 +51,6 @@ function seedStaleConnection(): void {
     supabaseToken: 'supabase-token',
     supabaseTokenExpiry: Date.now() + 60 * 60 * 1000,
     extensionSessionMinted: true,
-    authenticationMethod: 'github_app',
     githubAppInstallationId: 12345,
     githubAppUsername: 'old-user',
     githubAppAccessToken: 'stale-token',
@@ -124,9 +122,34 @@ describe('SupabaseAuthService live GitHub connection reconciliation', () => {
     }) as any;
 
     await expect(service().syncGitHubApp()).resolves.toBe(true);
-    expect(localData.authenticationMethod).toBe('github_app');
     expect(localData.githubAppInstallationId).toBe(67890);
     expect(localData.githubAppUsername).toBe('current-user');
+    expect(localData).not.toHaveProperty('authenticationMethod');
+  });
+
+  it('GitHub App sync stores installation metadata without an authentication method selector', async () => {
+    global.fetch = vi.fn(async (input: RequestInfo | URL) => {
+      if (String(input) === 'https://api.github.com/user') {
+        return new Response(JSON.stringify({ id: 7, avatar_url: 'avatar' }), { status: 200 });
+      }
+      return new Response(
+        JSON.stringify({
+          type: 'github_app',
+          access_token: 'fresh-token',
+          installation_id: 67890,
+          github_username: 'current-user',
+          expires_at: '2099-01-01T00:00:00.000Z',
+          scopes: ['repo'],
+        }),
+        { status: 200 }
+      );
+    }) as any;
+
+    await expect(service().syncGitHubApp()).resolves.toBe(true);
+
+    expect(localData.githubAppInstallationId).toBe(67890);
+    expect(localData.githubAppUsername).toBe('current-user');
+    expect(localData).not.toHaveProperty('authenticationMethod');
   });
 
   it('transient GitHub verification failure rejects without clearing stored connection state', async () => {
@@ -135,7 +158,6 @@ describe('SupabaseAuthService live GitHub connection reconciliation', () => {
     ) as any;
 
     await expect(service().syncGitHubApp()).rejects.toThrow('Temporary outage');
-    expect(localData.authenticationMethod).toBe('github_app');
     expect(localData.githubAppInstallationId).toBe(12345);
     expect(localData.githubAppUsername).toBe('old-user');
   });
@@ -154,7 +176,6 @@ describe('SupabaseAuthService live GitHub connection reconciliation', () => {
     ) as any;
 
     await expect(service().syncGitHubApp()).rejects.toThrow('missing or invalid installation_id');
-    expect(localData.authenticationMethod).toBe('github_app');
     expect(localData.githubAppInstallationId).toBe(12345);
     expect(localData.githubAppUsername).toBe('old-user');
   });

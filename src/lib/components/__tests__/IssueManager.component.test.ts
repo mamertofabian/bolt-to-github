@@ -49,7 +49,7 @@ Object.defineProperty(globalThis, 'chrome', {
     tabs: mockChromeTabs,
     storage: {
       local: {
-        get: vi.fn().mockResolvedValue({ authenticationMethod: 'pat' }),
+        get: vi.fn().mockResolvedValue({}),
         set: vi.fn().mockResolvedValue(undefined),
       },
     },

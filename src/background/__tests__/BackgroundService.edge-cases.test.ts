@@ -2,8 +2,13 @@ import type { Mock } from 'vitest';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { BackgroundServiceTestSuite } from '../test-fixtures';
 import { MessageFixtures, TestData } from '../test-fixtures/BackgroundServiceTestFixtures';
+import backgroundServiceSource from '../BackgroundService.ts?raw';
 
 describe('BackgroundService Edge Cases and Boundary Testing', () => {
+  it('background settings recovery no longer watches githubToken changes', () => {
+    expect(backgroundServiceSource).not.toContain("['githubToken', 'repoOwner'");
+  });
+
   let testSuite: BackgroundServiceTestSuite;
 
   beforeEach(async () => {

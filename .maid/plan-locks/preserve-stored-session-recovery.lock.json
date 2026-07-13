@@ -2,12 +2,12 @@
   "manifest_path": "manifests/preserve-stored-session-recovery.manifest.yaml",
   "manifest_hash": "sha256:6afc8a9391308625134ed82bec0476226109c5b67849bcfb21e1fc0847bb4b50",
   "test_hashes": {
-    "src/content/services/__tests__/SupabaseAuthService.session-cleanup.test.ts": "sha256:8433144040598979ebb7c80b6b108842a0d93657d9f67eeb4b32fb29f7b3fb20",
+    "src/content/services/__tests__/SupabaseAuthService.session-cleanup.test.ts": "sha256:f3580dfaf9d1ea56001e7f0372e3ca42fdea44d47236790daacb1614c97669d0",
     "src/content/services/__tests__/SupabaseAuthService.reload.test.ts": "sha256:9d3add94bdb54e32cd9852396532020eb32b969df384c4e041c3955cabf95b02",
     "src/content/services/__tests__/SupabaseAuthService.fresh-install.test.ts": "sha256:c718ea793b4a0d1e3421354cc88f03cd52343a46cfdaad77702a39728cc35a83"
   },
   "created_at": "2026-07-13T01:52:32.979159+00:00",
-  "revision": 6,
+  "revision": 7,
   "revisions": [
     {
       "prior_manifest_hash": "sha256:9d61e9bc20b2f146f1eb36c1c1ffb67c91da01fc7acf9bd6724146b8fd7c40c5",
@@ -100,6 +100,31 @@
       "revised_at": "2026-07-13T02:19:34.382483+00:00",
       "reason": "Refresh behavioral test hash after pre-commit formatting",
       "agent": null,
+      "contract_delta": {
+        "artifacts_added": [],
+        "artifacts_removed": [],
+        "files_added": [],
+        "files_removed": [],
+        "validate_commands_added": [],
+        "validate_commands_removed": []
+      }
+    },
+    {
+      "prior_manifest_hash": "sha256:6afc8a9391308625134ed82bec0476226109c5b67849bcfb21e1fc0847bb4b50",
+      "prior_test_hashes": {
+        "src/content/services/__tests__/SupabaseAuthService.session-cleanup.test.ts": "sha256:8433144040598979ebb7c80b6b108842a0d93657d9f67eeb4b32fb29f7b3fb20",
+        "src/content/services/__tests__/SupabaseAuthService.reload.test.ts": "sha256:9d3add94bdb54e32cd9852396532020eb32b969df384c4e041c3955cabf95b02",
+        "src/content/services/__tests__/SupabaseAuthService.fresh-install.test.ts": "sha256:c718ea793b4a0d1e3421354cc88f03cd52343a46cfdaad77702a39728cc35a83"
+      },
+      "revised_at": "2026-07-13T15:02:09.969208+00:00",
+      "reason": "Reconcile behavioral test hashes after intentional GitHub App-only contract evolution",
+      "agent": {
+        "model": "gpt-5",
+        "provider": "openai",
+        "client": "codex",
+        "skills": ["maid-evolver"],
+        "source": "flags"
+      },
       "contract_delta": {
         "artifacts_added": [],
         "artifacts_removed": [],

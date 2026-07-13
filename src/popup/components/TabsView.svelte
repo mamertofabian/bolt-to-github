@@ -28,7 +28,6 @@
     newsletter: void;
     save: void;
     error: string;
-    authMethodChange: string;
     configurePushReminder: void;
   }>();
 
@@ -59,10 +58,6 @@
 
   function handleError(error: string) {
     dispatch('error', error);
-  }
-
-  function handleAuthMethodChange(method: string) {
-    dispatch('authMethodChange', method);
   }
 
   function handleConfigurePushReminder() {
@@ -103,7 +98,6 @@
       {isUserPremium}
       on:save={handleSave}
       on:error={(e) => handleError(e.detail)}
-      on:authMethodChange={(e) => handleAuthMethodChange(e.detail)}
       on:upgradeClick={handleUpgradeClick}
       on:configurePushReminder={handleConfigurePushReminder}
     />

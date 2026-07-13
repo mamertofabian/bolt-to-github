@@ -3,10 +3,10 @@
   "manifest_hash": "sha256:e0a38a392dc5fbd3927e53de22d02653d2128516f76b2ed893dcc4936a05941a",
   "test_hashes": {
     "src/lib/utils/__tests__/githubConnection.test.ts": "sha256:c5dccafc4aef04d911357cf04519ffd3909e0ebb10e592480597af3fcea9363b",
-    "src/popup/__tests__/App.component.test.ts": "sha256:aa55e7bc2b0b34733eb65bbed5b9cf4de249b848f732347d95730b05a120b601"
+    "src/popup/__tests__/App.component.test.ts": "sha256:08318955987b75e1bd79fe35ae092a2d578e47390bd1f27647a2282a7beeb317"
   },
   "created_at": "2026-07-12T22:56:02.863237+00:00",
-  "revision": 11,
+  "revision": 12,
   "revisions": [
     {
       "prior_manifest_hash": "sha256:982a54f26db7fc98d044987a772a492a67b989c7ac870dccfcf75ef3154f303d",
@@ -233,6 +233,30 @@
       },
       "revised_at": "2026-07-13T11:38:58.105953+00:00",
       "reason": "Refresh shared connection-test hash after proving migration state bypasses otherwise reusable popup verification",
+      "agent": {
+        "model": "gpt-5",
+        "provider": "openai",
+        "client": "codex",
+        "skills": ["maid-evolver"],
+        "source": "flags"
+      },
+      "contract_delta": {
+        "artifacts_added": [],
+        "artifacts_removed": [],
+        "files_added": [],
+        "files_removed": [],
+        "validate_commands_added": [],
+        "validate_commands_removed": []
+      }
+    },
+    {
+      "prior_manifest_hash": "sha256:e0a38a392dc5fbd3927e53de22d02653d2128516f76b2ed893dcc4936a05941a",
+      "prior_test_hashes": {
+        "src/lib/utils/__tests__/githubConnection.test.ts": "sha256:c5dccafc4aef04d911357cf04519ffd3909e0ebb10e592480597af3fcea9363b",
+        "src/popup/__tests__/App.component.test.ts": "sha256:aa55e7bc2b0b34733eb65bbed5b9cf4de249b848f732347d95730b05a120b601"
+      },
+      "revised_at": "2026-07-13T15:02:09.963971+00:00",
+      "reason": "Reconcile behavioral test hashes after intentional GitHub App-only contract evolution",
       "agent": {
         "model": "gpt-5",
         "provider": "openai",

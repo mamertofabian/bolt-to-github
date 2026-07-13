@@ -13,10 +13,6 @@ export interface Repository {
   language: string | null;
 }
 
-export interface AuthSettings {
-  authenticationMethod?: string;
-}
-
 export interface RepositoryNameValidationResult {
   isValid: boolean;
   error?: string;
@@ -150,31 +146,6 @@ export function validateRepositoryName(repoName: string): RepositoryNameValidati
  */
 export function canSaveForm(repoName: string, branch: string, isSaving: boolean = false): boolean {
   return validateRepositoryName(repoName).isValid && !!branch?.trim() && !isSaving;
-}
-
-/**
- * Gets the authentication method from settings
- * @param settings - Authentication settings
- * @returns Authentication method ('pat' or 'github_app')
- */
-export function getAuthenticationMethod(settings: AuthSettings): 'pat' | 'github_app' {
-  return settings.authenticationMethod === 'github_app' ? 'github_app' : 'pat';
-}
-
-/**
- * Creates GitHub service configuration based on authentication method
- * @param authMethod - Authentication method
- * @param githubToken - GitHub token (for PAT authentication)
- * @returns Configuration object for GitHub service
- */
-export function createGitHubServiceConfig(
-  authMethod: 'pat' | 'github_app',
-  githubToken: string
-): string | { type: 'github_app' } {
-  if (authMethod === 'github_app') {
-    return { type: 'github_app' };
-  }
-  return githubToken;
 }
 
 /**

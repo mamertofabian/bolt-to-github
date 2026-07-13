@@ -108,7 +108,6 @@ describe('ProjectSettingsMigrationService', () => {
       const { ChromeStorageService } = await import('../chromeStorage');
 
       vi.mocked(ChromeStorageService.getGitHubSettings).mockResolvedValue({
-        githubToken: 'test-token',
         repoOwner: 'test-owner',
         projectSettings: {
           'project-1': {
@@ -126,7 +125,7 @@ describe('ProjectSettingsMigrationService', () => {
             branch: 'main',
           },
         },
-      } as GitHubSettingsInterface);
+      } satisfies GitHubSettingsInterface);
 
       const stats = await ProjectSettingsMigrationService.getMigrationStats();
 
@@ -139,10 +138,9 @@ describe('ProjectSettingsMigrationService', () => {
       const { ChromeStorageService } = await import('../chromeStorage');
 
       vi.mocked(ChromeStorageService.getGitHubSettings).mockResolvedValue({
-        githubToken: 'test-token',
         repoOwner: 'test-owner',
         projectSettings: {},
-      } as GitHubSettingsInterface);
+      } satisfies GitHubSettingsInterface);
 
       const stats = await ProjectSettingsMigrationService.getMigrationStats();
 
@@ -169,16 +167,14 @@ describe('ProjectSettingsMigrationService', () => {
       const { ChromeStorageService } = await import('../chromeStorage');
       const { GitHubCacheService } = await import('../GitHubCacheService');
 
-      mockChromeStorage.local.get.mockResolvedValue({ authenticationMethod: 'pat' });
       mockChromeStorage.local.set.mockResolvedValue(undefined);
 
       vi.mocked(ChromeStorageService.getGitHubSettings).mockResolvedValue({
         repoOwner: 'test-owner',
-        githubToken: 'test-token',
         projectSettings: {
           'project-1': { repoName: 'repo1', branch: 'main' },
         },
-      } as GitHubSettingsInterface);
+      } satisfies GitHubSettingsInterface);
 
       vi.mocked(GitHubCacheService.getRepoMetadata).mockResolvedValue({
         name: 'repo1',
@@ -251,7 +247,6 @@ describe('ProjectSettingsMigrationService', () => {
 
       vi.mocked(ChromeStorageService.getGitHubSettings).mockResolvedValue({
         repoOwner: 'test-owner',
-        githubToken: 'test-token',
         projectSettings: {
           'project-1': {
             repoName: 'repo1',
@@ -259,7 +254,7 @@ describe('ProjectSettingsMigrationService', () => {
             metadata_last_updated: '2024-01-01T00:00:00Z',
           },
         },
-      } as GitHubSettingsInterface);
+      } satisfies GitHubSettingsInterface);
 
       const result = await ProjectSettingsMigrationService.migrateProjectSettings();
 
@@ -271,10 +266,9 @@ describe('ProjectSettingsMigrationService', () => {
       const { ChromeStorageService } = await import('../chromeStorage');
 
       vi.mocked(ChromeStorageService.getGitHubSettings).mockResolvedValue({
-        githubToken: 'test-token',
         repoOwner: '',
         projectSettings: {},
-      } as GitHubSettingsInterface);
+      } satisfies GitHubSettingsInterface);
 
       const result = await ProjectSettingsMigrationService.migrateProjectSettings();
 
@@ -287,12 +281,11 @@ describe('ProjectSettingsMigrationService', () => {
 
       vi.mocked(ChromeStorageService.getGitHubSettings).mockResolvedValue({
         repoOwner: 'test-owner',
-        githubToken: 'test-token',
         projectSettings: {
           'project-1': { repoName: 'repo1', branch: 'main' },
           'project-2': { repoName: 'repo2', branch: 'main' },
         },
-      } as GitHubSettingsInterface);
+      } satisfies GitHubSettingsInterface);
 
       vi.mocked(ChromeStorageService.updateProjectMetadata)
         .mockResolvedValueOnce()
@@ -313,12 +306,11 @@ describe('ProjectSettingsMigrationService', () => {
 
       vi.mocked(ChromeStorageService.getGitHubSettings).mockResolvedValue({
         repoOwner: 'test-owner',
-        githubToken: 'test-token',
         projectSettings: {
           'project-1': { repoName: 'repo1', branch: 'main' },
           'project-2': { repoName: 'repo2', branch: 'main' },
         },
-      } as GitHubSettingsInterface);
+      } satisfies GitHubSettingsInterface);
 
       const promise = ProjectSettingsMigrationService.migrateProjectSettings();
 
@@ -336,16 +328,14 @@ describe('ProjectSettingsMigrationService', () => {
       const { GitHubCacheService } = await import('../GitHubCacheService');
       const { UnifiedGitHubService } = await import('../../../services/UnifiedGitHubService');
 
-      mockChromeStorage.local.get.mockResolvedValue({ authenticationMethod: 'pat' });
       mockChromeStorage.local.set.mockResolvedValue(undefined);
 
       vi.mocked(ChromeStorageService.getGitHubSettings).mockResolvedValue({
         repoOwner: 'test-owner',
-        githubToken: 'test-token',
         projectSettings: {
           'project-1': { repoName: 'repo1', branch: 'main' },
         },
-      } as GitHubSettingsInterface);
+      } satisfies GitHubSettingsInterface);
 
       vi.mocked(GitHubCacheService.isRepoMetadataStale).mockResolvedValue(true);
       vi.mocked(ChromeStorageService.updateProjectMetadata).mockResolvedValue();
@@ -415,8 +405,6 @@ describe('ProjectSettingsMigrationService', () => {
     });
 
     it('project metadata migration preserves mappings through GitHub App authentication', async () => {
-      mockChromeStorage.local.get.mockResolvedValue({ authenticationMethod: 'pat' });
-
       const { UnifiedGitHubService } = await import('../../../services/UnifiedGitHubService');
       const { ChromeStorageService } = await import('../chromeStorage');
       const preservedProjectSettings = {
@@ -424,9 +412,8 @@ describe('ProjectSettingsMigrationService', () => {
       };
       const preservedSettings = {
         repoOwner: 'test-owner',
-        githubToken: 'legacy-token-that-must-not-be-used',
         projectSettings: preservedProjectSettings,
-      } as GitHubSettingsInterface;
+      } satisfies GitHubSettingsInterface;
       vi.mocked(ChromeStorageService.getGitHubSettings).mockResolvedValue(preservedSettings);
 
       const promise = ProjectSettingsMigrationService.migrateProjectSettings();

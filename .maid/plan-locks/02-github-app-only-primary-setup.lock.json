@@ -2,17 +2,17 @@
   "manifest_path": "manifests/02-github-app-only-primary-setup.manifest.yaml",
   "manifest_hash": "sha256:50bb1650c2c48e0f4c2e78d79e711fd0d3fa61156087017ce87dfe9fac7b6cdf",
   "test_hashes": {
-    "src/popup/__tests__/App.svelte/App.settings.component.test.ts": "sha256:f4b3258e4fbb7ea3a46eaeb750f3d0f73ffd5f8f3efd28e854277e830c14e33b",
-    "src/popup/__tests__/App.svelte/App.user-interactions.component.test.ts": "sha256:0879f15d7ee348353f7845d1922c03816112c51de17c0bcd53ffcaaddda9343b",
-    "src/lib/components/__tests__/OnboardingSetup.component.test.ts": "sha256:687403de82d9451a9f80588899f5687b0f54d64c4227f82b09f6b52e7f1bd5fb",
-    "src/lib/components/__tests__/GitHubSettings.component.test.ts": "sha256:ab0363ed015ea980a0149bc0b4a14e669f66101eff5e9ad0137e75d0a662438e",
-    "src/popup/__tests__/App.component.test.ts": "sha256:aa55e7bc2b0b34733eb65bbed5b9cf4de249b848f732347d95730b05a120b601",
-    "src/popup/components/__tests__/OnboardingView.component.test.ts": "sha256:6c5ee68dd155c88b1fdea49443497d2fdc4a9804046438b954bae56b851fef95",
-    "src/popup/components/__tests__/SettingsTabContent.component.test.ts": "sha256:5f58789b1bc1007ac00e8d37787fe0326f671f3138d0b92cbc3edfc4787c62a9",
+    "src/popup/__tests__/App.svelte/App.settings.component.test.ts": "sha256:67a3861d42b72c8491071c99e393243807144630941510c555b18385a71a85ac",
+    "src/popup/__tests__/App.svelte/App.user-interactions.component.test.ts": "sha256:dae5882526d2097263e5ebabaea1f160812d04ce817767b4dc881cf6e80cf621",
+    "src/lib/components/__tests__/OnboardingSetup.component.test.ts": "sha256:3a31644af70935005653f97d13aea308de5a9349b05de1d695068f27f7db681b",
+    "src/lib/components/__tests__/GitHubSettings.component.test.ts": "sha256:1f6f499ca993e143939e0e13491a8e127c83a9da9db38cd64ab04d45c18ceb8e",
+    "src/popup/__tests__/App.component.test.ts": "sha256:08318955987b75e1bd79fe35ae092a2d578e47390bd1f27647a2282a7beeb317",
+    "src/popup/components/__tests__/OnboardingView.component.test.ts": "sha256:fb931d56bf7c83f36a715373ab41402014524a9a1e3c0e4ad8816563dcb17639",
+    "src/popup/components/__tests__/SettingsTabContent.component.test.ts": "sha256:d146ef957df6092ffc93a487b2fb4d30c2c0819caf1d0da341355287569b2523",
     "src/lib/components/__tests__/Help.component.test.ts": "sha256:4925f9a09bd447ae8268788bb30a61a0b06c75ec71a40c01f78c8a409a3bde77"
   },
   "created_at": "2026-07-13T09:51:51.272820+00:00",
-  "revision": 10,
+  "revision": 11,
   "revisions": [
     {
       "prior_manifest_hash": "sha256:d21fea1fff00dce22242a2f7de811f93db6aa739ac86a8244792ef5c9cbe594d",
@@ -241,6 +241,36 @@
       "revised_at": "2026-07-13T10:43:56.583654+00:00",
       "reason": "Record completed Outcome with final validation and independent-review evidence",
       "agent": null,
+      "contract_delta": {
+        "artifacts_added": [],
+        "artifacts_removed": [],
+        "files_added": [],
+        "files_removed": [],
+        "validate_commands_added": [],
+        "validate_commands_removed": []
+      }
+    },
+    {
+      "prior_manifest_hash": "sha256:50bb1650c2c48e0f4c2e78d79e711fd0d3fa61156087017ce87dfe9fac7b6cdf",
+      "prior_test_hashes": {
+        "src/popup/__tests__/App.svelte/App.settings.component.test.ts": "sha256:f4b3258e4fbb7ea3a46eaeb750f3d0f73ffd5f8f3efd28e854277e830c14e33b",
+        "src/popup/__tests__/App.svelte/App.user-interactions.component.test.ts": "sha256:0879f15d7ee348353f7845d1922c03816112c51de17c0bcd53ffcaaddda9343b",
+        "src/lib/components/__tests__/OnboardingSetup.component.test.ts": "sha256:687403de82d9451a9f80588899f5687b0f54d64c4227f82b09f6b52e7f1bd5fb",
+        "src/lib/components/__tests__/GitHubSettings.component.test.ts": "sha256:ab0363ed015ea980a0149bc0b4a14e669f66101eff5e9ad0137e75d0a662438e",
+        "src/popup/__tests__/App.component.test.ts": "sha256:aa55e7bc2b0b34733eb65bbed5b9cf4de249b848f732347d95730b05a120b601",
+        "src/popup/components/__tests__/OnboardingView.component.test.ts": "sha256:6c5ee68dd155c88b1fdea49443497d2fdc4a9804046438b954bae56b851fef95",
+        "src/popup/components/__tests__/SettingsTabContent.component.test.ts": "sha256:5f58789b1bc1007ac00e8d37787fe0326f671f3138d0b92cbc3edfc4787c62a9",
+        "src/lib/components/__tests__/Help.component.test.ts": "sha256:4925f9a09bd447ae8268788bb30a61a0b06c75ec71a40c01f78c8a409a3bde77"
+      },
+      "revised_at": "2026-07-13T15:02:10.140824+00:00",
+      "reason": "Reconcile behavioral test hashes after intentional GitHub App-only contract evolution",
+      "agent": {
+        "model": "gpt-5",
+        "provider": "openai",
+        "client": "codex",
+        "skills": ["maid-evolver"],
+        "source": "flags"
+      },
       "contract_delta": {
         "artifacts_added": [],
         "artifacts_removed": [],

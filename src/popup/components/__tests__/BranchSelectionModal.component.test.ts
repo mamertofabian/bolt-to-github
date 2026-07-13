@@ -69,7 +69,7 @@ describe('BranchSelectionModal.svelte', () => {
       },
       storage: {
         local: {
-          get: vi.fn().mockResolvedValue({ authenticationMethod: 'pat' }),
+          get: vi.fn().mockResolvedValue({}),
         },
       },
     };
@@ -134,7 +134,7 @@ describe('BranchSelectionModal.svelte', () => {
   });
 
   describe('Branch Loading', () => {
-    it('should load and display branches with PAT authentication', async () => {
+    it('should load and display branches through the GitHub App service', async () => {
       render(BranchSelectionModal, {
         props: {
           show: true,
@@ -149,26 +149,6 @@ describe('BranchSelectionModal.svelte', () => {
         expect(screen.getByText('main')).toBeInTheDocument();
         expect(screen.getByText('develop')).toBeInTheDocument();
         expect(screen.getByText('feature-x')).toBeInTheDocument();
-      });
-
-      expect(mockState.listBranches).toHaveBeenCalledWith('test-owner', 'test-repo');
-    });
-
-    it('should load branches with GitHub App authentication', async () => {
-      chromeMocks.storage.local.get.mockResolvedValue({ authenticationMethod: 'github_app' });
-
-      render(BranchSelectionModal, {
-        props: {
-          show: true,
-          owner: 'test-owner',
-          repo: 'test-repo',
-          onBranchSelected: vi.fn(),
-          onCancel: vi.fn(),
-        },
-      });
-
-      await waitFor(() => {
-        expect(screen.getByText('main')).toBeInTheDocument();
       });
 
       expect(mockState.listBranches).toHaveBeenCalledWith('test-owner', 'test-repo');

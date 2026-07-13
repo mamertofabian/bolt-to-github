@@ -3,16 +3,16 @@
   "manifest_hash": "sha256:0eb5389e18cc6d9604a295a8d5b0520239cb404b632dcef317185a4bf5033f67",
   "test_hashes": {
     "src/lib/utils/__tests__/connectedGitHubAppService.test.ts": "sha256:ef3c5d1780db487393f622ea2239c4ae3187c8266c3c4da2ff3ebd5ee63fe882",
-    "src/lib/components/__tests__/CommitsModal.component.test.ts": "sha256:e46eb8089c2d1099609d13628ef50caead803d40f552d8802bf840c1279803eb",
-    "src/lib/components/__tests__/RepoSettings.component.test.ts": "sha256:f4eb824914fff18ce5797ee22372aebd6f14696f689aaeaab670f9836b8d64bf",
+    "src/lib/components/__tests__/CommitsModal.component.test.ts": "sha256:3d095e61e18ec496c73fb56564fb60a21065544bfb6a144a7ded2301e451f5a0",
+    "src/lib/components/__tests__/RepoSettings.component.test.ts": "sha256:e4e969bc43790c4de283356eb09438622ad303a1802581cb917657c38349d9a2",
     "src/lib/components/__tests__/ProjectsList.component.test.ts": "sha256:fa86107110997774b90bb0c7bdfd6089b3b1c1381e844cb0657edfe33723e23d",
-    "src/lib/components/__tests__/ProjectStatus.component.test.ts": "sha256:0e3a68d43065da10caef2185054f499d2c80aa15b2706b323552c4e6fb6f456a",
-    "src/lib/services/__tests__/ProjectSettingsMigrationService.test.ts": "sha256:a930d7f8ce85291231ab3a07ce0e83e26308119dcd8451b69b43751ccabebe70",
-    "src/popup/components/__tests__/BranchSelectionModal.component.test.ts": "sha256:cdcfceda1c7444d0117a4151a73f476abf90f22c6124200a1c55db0da42a7694",
-    "src/popup/components/__tests__/TabsView.component.test.ts": "sha256:ec6aa229c6b81f080bc0822ee5f51415f288685eb5f43d3acb32f57ea0139fb8"
+    "src/lib/components/__tests__/ProjectStatus.component.test.ts": "sha256:65fe6234432d002b839729d1702c89c2a4533a077f80ec171c3ac03bc0b8e413",
+    "src/lib/services/__tests__/ProjectSettingsMigrationService.test.ts": "sha256:1fe7fd5e60b2f3e65ecf087141e39eb530bf548749ffd703555bbbce470c4a8f",
+    "src/popup/components/__tests__/BranchSelectionModal.component.test.ts": "sha256:86afd6c15ce4f831d1b5b25dd35e86b09f34069c1ef20adfac05825aad28424f",
+    "src/popup/components/__tests__/TabsView.component.test.ts": "sha256:638f1443bd18d2ef9199002ddf2c762990b6928baed406b7c632696b3b04f54d"
   },
   "created_at": "2026-07-13T12:03:26.460203+00:00",
-  "revision": 8,
+  "revision": 13,
   "revisions": [
     {
       "prior_manifest_hash": "sha256:d014e6080137679e743fb062af9333a143b642de986a2f76dbf915b48d253c72",
@@ -233,6 +233,144 @@
         "skills": ["maid-evolver"],
         "source": "flags"
       },
+      "contract_delta": {
+        "artifacts_added": [],
+        "artifacts_removed": [],
+        "files_added": [],
+        "files_removed": [],
+        "validate_commands_added": [],
+        "validate_commands_removed": []
+      }
+    },
+    {
+      "prior_manifest_hash": "sha256:0eb5389e18cc6d9604a295a8d5b0520239cb404b632dcef317185a4bf5033f67",
+      "prior_test_hashes": {
+        "src/lib/utils/__tests__/connectedGitHubAppService.test.ts": "sha256:ef3c5d1780db487393f622ea2239c4ae3187c8266c3c4da2ff3ebd5ee63fe882",
+        "src/lib/components/__tests__/CommitsModal.component.test.ts": "sha256:e46eb8089c2d1099609d13628ef50caead803d40f552d8802bf840c1279803eb",
+        "src/lib/components/__tests__/RepoSettings.component.test.ts": "sha256:f4eb824914fff18ce5797ee22372aebd6f14696f689aaeaab670f9836b8d64bf",
+        "src/lib/components/__tests__/ProjectsList.component.test.ts": "sha256:fa86107110997774b90bb0c7bdfd6089b3b1c1381e844cb0657edfe33723e23d",
+        "src/lib/components/__tests__/ProjectStatus.component.test.ts": "sha256:0e3a68d43065da10caef2185054f499d2c80aa15b2706b323552c4e6fb6f456a",
+        "src/lib/services/__tests__/ProjectSettingsMigrationService.test.ts": "sha256:a930d7f8ce85291231ab3a07ce0e83e26308119dcd8451b69b43751ccabebe70",
+        "src/popup/components/__tests__/BranchSelectionModal.component.test.ts": "sha256:cdcfceda1c7444d0117a4151a73f476abf90f22c6124200a1c55db0da42a7694",
+        "src/popup/components/__tests__/TabsView.component.test.ts": "sha256:ec6aa229c6b81f080bc0822ee5f51415f288685eb5f43d3acb32f57ea0139fb8"
+      },
+      "revised_at": "2026-07-13T15:02:10.143733+00:00",
+      "reason": "Reconcile behavioral test hashes after intentional GitHub App-only contract evolution",
+      "agent": {
+        "model": "gpt-5",
+        "provider": "openai",
+        "client": "codex",
+        "skills": ["maid-evolver"],
+        "source": "flags"
+      },
+      "contract_delta": {
+        "artifacts_added": [],
+        "artifacts_removed": [],
+        "files_added": [],
+        "files_removed": [],
+        "validate_commands_added": [],
+        "validate_commands_removed": []
+      }
+    },
+    {
+      "prior_manifest_hash": "sha256:0eb5389e18cc6d9604a295a8d5b0520239cb404b632dcef317185a4bf5033f67",
+      "prior_test_hashes": {
+        "src/lib/utils/__tests__/connectedGitHubAppService.test.ts": "sha256:ef3c5d1780db487393f622ea2239c4ae3187c8266c3c4da2ff3ebd5ee63fe882",
+        "src/lib/components/__tests__/CommitsModal.component.test.ts": "sha256:e46eb8089c2d1099609d13628ef50caead803d40f552d8802bf840c1279803eb",
+        "src/lib/components/__tests__/RepoSettings.component.test.ts": "sha256:f4eb824914fff18ce5797ee22372aebd6f14696f689aaeaab670f9836b8d64bf",
+        "src/lib/components/__tests__/ProjectsList.component.test.ts": "sha256:fa86107110997774b90bb0c7bdfd6089b3b1c1381e844cb0657edfe33723e23d",
+        "src/lib/components/__tests__/ProjectStatus.component.test.ts": "sha256:0e3a68d43065da10caef2185054f499d2c80aa15b2706b323552c4e6fb6f456a",
+        "src/lib/services/__tests__/ProjectSettingsMigrationService.test.ts": "sha256:a930d7f8ce85291231ab3a07ce0e83e26308119dcd8451b69b43751ccabebe70",
+        "src/popup/components/__tests__/BranchSelectionModal.component.test.ts": "sha256:cdcfceda1c7444d0117a4151a73f476abf90f22c6124200a1c55db0da42a7694",
+        "src/popup/components/__tests__/TabsView.component.test.ts": "sha256:638f1443bd18d2ef9199002ddf2c762990b6928baed406b7c632696b3b04f54d"
+      },
+      "revised_at": "2026-07-13T15:13:42.136363+00:00",
+      "reason": "Reconcile reviewer-requested auth-storage regression coverage and App-only fixtures",
+      "agent": {
+        "model": "gpt-5",
+        "provider": "openai",
+        "client": "codex",
+        "skills": ["maid-evolver", "maid-implementation-review"],
+        "source": "flags"
+      },
+      "contract_delta": {
+        "artifacts_added": [],
+        "artifacts_removed": [],
+        "files_added": [],
+        "files_removed": [],
+        "validate_commands_added": [],
+        "validate_commands_removed": []
+      }
+    },
+    {
+      "prior_manifest_hash": "sha256:0eb5389e18cc6d9604a295a8d5b0520239cb404b632dcef317185a4bf5033f67",
+      "prior_test_hashes": {
+        "src/lib/utils/__tests__/connectedGitHubAppService.test.ts": "sha256:ef3c5d1780db487393f622ea2239c4ae3187c8266c3c4da2ff3ebd5ee63fe882",
+        "src/lib/components/__tests__/CommitsModal.component.test.ts": "sha256:e46eb8089c2d1099609d13628ef50caead803d40f552d8802bf840c1279803eb",
+        "src/lib/components/__tests__/RepoSettings.component.test.ts": "sha256:f4eb824914fff18ce5797ee22372aebd6f14696f689aaeaab670f9836b8d64bf",
+        "src/lib/components/__tests__/ProjectsList.component.test.ts": "sha256:fa86107110997774b90bb0c7bdfd6089b3b1c1381e844cb0657edfe33723e23d",
+        "src/lib/components/__tests__/ProjectStatus.component.test.ts": "sha256:0e3a68d43065da10caef2185054f499d2c80aa15b2706b323552c4e6fb6f456a",
+        "src/lib/services/__tests__/ProjectSettingsMigrationService.test.ts": "sha256:600fc16c08a30271ba8a67b10bbeb8d9673d0737d9e8a20e26cf6b25b7e8ac16",
+        "src/popup/components/__tests__/BranchSelectionModal.component.test.ts": "sha256:cdcfceda1c7444d0117a4151a73f476abf90f22c6124200a1c55db0da42a7694",
+        "src/popup/components/__tests__/TabsView.component.test.ts": "sha256:638f1443bd18d2ef9199002ddf2c762990b6928baed406b7c632696b3b04f54d"
+      },
+      "revised_at": "2026-07-13T15:21:38.853377+00:00",
+      "reason": "Replace migration fixture assertions with excess-property-checked satisfies contracts",
+      "agent": {
+        "model": "gpt-5",
+        "provider": "openai",
+        "client": "codex",
+        "skills": ["maid-evolver", "maid-implementation-review"],
+        "source": "flags"
+      },
+      "contract_delta": {
+        "artifacts_added": [],
+        "artifacts_removed": [],
+        "files_added": [],
+        "files_removed": [],
+        "validate_commands_added": [],
+        "validate_commands_removed": []
+      }
+    },
+    {
+      "prior_manifest_hash": "sha256:0eb5389e18cc6d9604a295a8d5b0520239cb404b632dcef317185a4bf5033f67",
+      "prior_test_hashes": {
+        "src/lib/utils/__tests__/connectedGitHubAppService.test.ts": "sha256:ef3c5d1780db487393f622ea2239c4ae3187c8266c3c4da2ff3ebd5ee63fe882",
+        "src/lib/components/__tests__/CommitsModal.component.test.ts": "sha256:e46eb8089c2d1099609d13628ef50caead803d40f552d8802bf840c1279803eb",
+        "src/lib/components/__tests__/RepoSettings.component.test.ts": "sha256:f4eb824914fff18ce5797ee22372aebd6f14696f689aaeaab670f9836b8d64bf",
+        "src/lib/components/__tests__/ProjectsList.component.test.ts": "sha256:fa86107110997774b90bb0c7bdfd6089b3b1c1381e844cb0657edfe33723e23d",
+        "src/lib/components/__tests__/ProjectStatus.component.test.ts": "sha256:0e3a68d43065da10caef2185054f499d2c80aa15b2706b323552c4e6fb6f456a",
+        "src/lib/services/__tests__/ProjectSettingsMigrationService.test.ts": "sha256:1fe7fd5e60b2f3e65ecf087141e39eb530bf548749ffd703555bbbce470c4a8f",
+        "src/popup/components/__tests__/BranchSelectionModal.component.test.ts": "sha256:cdcfceda1c7444d0117a4151a73f476abf90f22c6124200a1c55db0da42a7694",
+        "src/popup/components/__tests__/TabsView.component.test.ts": "sha256:638f1443bd18d2ef9199002ddf2c762990b6928baed406b7c632696b3b04f54d"
+      },
+      "revised_at": "2026-07-13T16:16:53.439394+00:00",
+      "reason": "Refresh behavioral fixture hashes after the final release guard removed steady-state PAT-shaped setup",
+      "agent": null,
+      "contract_delta": {
+        "artifacts_added": [],
+        "artifacts_removed": [],
+        "files_added": [],
+        "files_removed": [],
+        "validate_commands_added": [],
+        "validate_commands_removed": []
+      }
+    },
+    {
+      "prior_manifest_hash": "sha256:0eb5389e18cc6d9604a295a8d5b0520239cb404b632dcef317185a4bf5033f67",
+      "prior_test_hashes": {
+        "src/lib/utils/__tests__/connectedGitHubAppService.test.ts": "sha256:ef3c5d1780db487393f622ea2239c4ae3187c8266c3c4da2ff3ebd5ee63fe882",
+        "src/lib/components/__tests__/CommitsModal.component.test.ts": "sha256:3d095e61e18ec496c73fb56564fb60a21065544bfb6a144a7ded2301e451f5a0",
+        "src/lib/components/__tests__/RepoSettings.component.test.ts": "sha256:d4de02700f89461e4357348809ec63bd279fe2bafde35726f1f17174ba659fc7",
+        "src/lib/components/__tests__/ProjectsList.component.test.ts": "sha256:fa86107110997774b90bb0c7bdfd6089b3b1c1381e844cb0657edfe33723e23d",
+        "src/lib/components/__tests__/ProjectStatus.component.test.ts": "sha256:65fe6234432d002b839729d1702c89c2a4533a077f80ec171c3ac03bc0b8e413",
+        "src/lib/services/__tests__/ProjectSettingsMigrationService.test.ts": "sha256:1fe7fd5e60b2f3e65ecf087141e39eb530bf548749ffd703555bbbce470c4a8f",
+        "src/popup/components/__tests__/BranchSelectionModal.component.test.ts": "sha256:aec03eaf6bae9991738bce8352f31b12ed34ceec059c176258e7c07a7dd65c07",
+        "src/popup/components/__tests__/TabsView.component.test.ts": "sha256:638f1443bd18d2ef9199002ddf2c762990b6928baed406b7c632696b3b04f54d"
+      },
+      "revised_at": "2026-07-13T16:21:26.288413+00:00",
+      "reason": "Refresh repository-surface behavioral hashes after removing redundant selector-era test setup",
+      "agent": null,
       "contract_delta": {
         "artifacts_added": [],
         "artifacts_removed": [],

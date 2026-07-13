@@ -17,7 +17,6 @@ export const mockGithubSettingsActions = {
   saveSettings: vi.fn().mockResolvedValue({ success: true }),
   setRepoName: vi.fn(),
   setProjectSettings: vi.fn(),
-  setAuthenticationMethod: vi.fn(),
 };
 
 export const mockProjectSettingsActions = {

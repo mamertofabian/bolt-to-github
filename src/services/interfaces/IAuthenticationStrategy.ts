@@ -1,6 +1,6 @@
 /**
  * Authentication strategy interface for unified GitHub authentication
- * Implements strategy pattern for PAT and GitHub App authentication
+ * Defines the GitHub App authentication behavior used by the GitHub API facade.
  */
 
 import type {
@@ -28,7 +28,7 @@ export interface IAuthenticationStrategy {
 
   /**
    * Validate the current authentication and return user info
-   * @param username Optional username to validate against (for PAT authentication)
+   * @param username Optional repository-owner context retained by the facade API
    */
   validateAuth(username?: string): Promise<TokenValidationResult>;
 
@@ -71,24 +71,4 @@ export interface IAuthenticationStrategy {
     lastUsed?: string;
     [key: string]: unknown;
   }>;
-}
-
-/**
- * Factory interface for creating authentication strategies
- */
-export interface IAuthenticationStrategyFactory {
-  /**
-   * Create an authentication strategy for the given type
-   */
-  createStrategy(type: AuthenticationType): IAuthenticationStrategy;
-
-  /**
-   * Get the default authentication strategy for new users
-   */
-  getDefaultStrategy(): IAuthenticationStrategy;
-
-  /**
-   * Get the currently configured authentication strategy
-   */
-  getCurrentStrategy(): Promise<IAuthenticationStrategy>;
 }

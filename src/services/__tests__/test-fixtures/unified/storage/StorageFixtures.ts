@@ -4,39 +4,23 @@
  * Realistic storage data for testing persistence and state management
  */
 
-import { TokenFixtures } from '../tokens';
-
 export const StorageFixtures = {
   /**
    * Chrome Extension Storage fixtures
    */
   chromeStorage: {
     /**
-     * GitHub settings with PAT token
+     * GitHub App-backed repository settings
      */
     githubSettings: {
       gitHubSettings: {
-        githubToken: TokenFixtures.pat.classic,
         repoOwner: 'testuser',
         repoName: 'test-repo',
         branch: 'main',
         isPrivateRepo: false,
         commitMessage: 'Update from Bolt',
+        githubAppInstallationId: 12345,
       },
-    },
-
-    /**
-     * Authentication method - PAT
-     */
-    authenticationMethod: {
-      authenticationMethod: 'pat' as const,
-    },
-
-    /**
-     * Authentication method - GitHub App
-     */
-    githubAppAuth: {
-      authenticationMethod: 'github_app' as const,
     },
 
     /**

@@ -1,0 +1,792 @@
+{
+  "manifest_path": "manifests/07-remove-legacy-pat-storage-and-types.manifest.yaml",
+  "manifest_hash": "sha256:0c32c31c4622e62656247161f69d015bd580033168a63dcc11280b3295cd7e90",
+  "test_hashes": {
+    "src/services/__tests__/authentication.types.test.ts": "sha256:9a776e97355c21ecaeaaf7cc2974adfbea2412fe80bed0a94eddf2ce4e0f347c",
+    "src/services/__tests__/settings.test.ts": "sha256:0e2bd5fcba526c15735ff7f8bb053f0069c38a22e7fb45d244a8d4276cb3db3c",
+    "src/lib/stores/__tests__/githubSettings.test.ts": "sha256:c32decf4f6f02cef901805c700e928be610be6da0cacd3aff291987459d2eb78",
+    "src/lib/services/__tests__/chromeStorage.test.ts": "sha256:236c2f6eb5bc53e13ade0c7eb17765bfad1c3751b55742f8d133b4d22965da99",
+    "src/lib/utils/__tests__/githubAppSync.test.ts": "sha256:21956098216e39c9220de8673e4901f2d09fddd793f966f581672d9782633fe5",
+    "src/background/__tests__/UsageTracker.test.ts": "sha256:ae6a7c2b2ea8c089849c9067de5fa5c5800a0b2a1ec84789661e648dd4d7a7e8",
+    "src/lib/services/__tests__/chromeStorage.RaceConditions.test.ts": "sha256:7d61dd671322b463c476c2bcc4e3a1c9ad8c73fb8b644308f1bc84c1372796cd",
+    "src/lib/components/__tests__/RepoSettings.logic.test.ts": "sha256:074da50071698a1c6e64c4d6e6e5cb4229afdc9e92d7bcf64b1f4f07aaf3785c",
+    "src/lib/components/__tests__/GitHubSettings.logic.test.ts": "sha256:9cb14b51f2604805badc80c193b0a50480d4740d2b8d7aa4a6b50e9fe4665fff",
+    "src/content/services/__tests__/SupabaseAuthService.github-connection.test.ts": "sha256:14f3aa60b12fb5f799d58ca4b90454152ff9ac6c9381348ab8dd346944b9e5c3",
+    "src/content/services/__tests__/SupabaseAuthService.session-cleanup.test.ts": "sha256:f3580dfaf9d1ea56001e7f0372e3ca42fdea44d47236790daacb1614c97669d0",
+    "src/background/__tests__/BackgroundService.auth-lifecycle.test.ts": "sha256:dfebb71867770d2ff1a0b99573877fafe7b30776c2ae7c40dfbc19d418a44e07",
+    "src/background/__tests__/BackgroundService.storage-recovery.test.ts": "sha256:c81656fc3c7b137362306c97552010b547a314a16f96211855309b53bcb08b8e",
+    "src/background/__tests__/BackgroundService.edge-cases.test.ts": "sha256:297c93c3fe7ca98b34c4c3fbafd23a831e37e48029f98146e7e81b3e3df1359f",
+    "src/popup/__tests__/App.component.test.ts": "sha256:08318955987b75e1bd79fe35ae092a2d578e47390bd1f27647a2282a7beeb317",
+    "src/popup/components/__tests__/TabsView.component.test.ts": "sha256:638f1443bd18d2ef9199002ddf2c762990b6928baed406b7c632696b3b04f54d"
+  },
+  "created_at": "2026-07-13T14:26:32.228113+00:00",
+  "revision": 14,
+  "revisions": [
+    {
+      "prior_manifest_hash": "sha256:f5bfb7fc0c2b632af8bef784ccd3a7ada277035c706710bfe70cec936c8c386a",
+      "prior_test_hashes": {
+        "src/lib/stores/__tests__/githubSettings.test.ts": "sha256:3e7597aa91dd2b650bf7beb51f77721fc2b50c68270b98d63122d175d9d190d7",
+        "src/lib/services/__tests__/chromeStorage.test.ts": "sha256:f38da9c04eca1b7e88a73b0e7fdd2c1d21a49fe632a688d85b97c6ab885ac326",
+        "src/lib/utils/__tests__/githubAppSync.test.ts": "sha256:1e87e8e99b94331f750ee737c9519bc6b95dbd608f4c86031ac66fdeb3d361ae",
+        "src/background/__tests__/UsageTracker.test.ts": "sha256:a3a10e786807034a4844ff10fcbc2bef887225729275776b4d68ac487cd427e5",
+        "src/lib/services/__tests__/chromeStorage.RaceConditions.test.ts": "sha256:a2738affbe194f932b78d06e1ff4dc215d8a0bc3f65c45dd23f0f9de5e21383f",
+        "src/lib/components/__tests__/RepoSettings.logic.test.ts": "sha256:63cdcb4ac1aac4b369e58c731fe0f3c45843db308811065cac898c9bb4baf7e2",
+        "src/lib/components/__tests__/GitHubSettings.logic.test.ts": "sha256:e4878c13d18346ac0fb0bbf0556fddb63633352a6c65db15398c947553a1ae7f",
+        "src/content/services/__tests__/SupabaseAuthService.github-connection.test.ts": "sha256:dacc403eed01901e6539db1d7147dd8aa095301633ef61d8e368e063846ba93c",
+        "src/content/services/__tests__/SupabaseAuthService.session-cleanup.test.ts": "sha256:5b197dd3b62363759980bd6b78ecb50b1fd79fcaf1fbc09bd26d7ea94583c692",
+        "src/background/__tests__/BackgroundService.auth-lifecycle.test.ts": "sha256:dfebb71867770d2ff1a0b99573877fafe7b30776c2ae7c40dfbc19d418a44e07",
+        "src/background/__tests__/BackgroundService.edge-cases.test.ts": "sha256:297c93c3fe7ca98b34c4c3fbafd23a831e37e48029f98146e7e81b3e3df1359f",
+        "src/popup/__tests__/App.component.test.ts": "sha256:cd3575a98f868735dd0595d02da8ad49bc38e978d2f9e7924eefec919dec8bba",
+        "src/popup/components/__tests__/TabsView.component.test.ts": "sha256:ab606f095b427103aa752a75419dcaf293b799d38ecab8c486019a92a6773b78",
+        "src/services/__tests__/settings.test.ts": "sha256:905c8c5340c1d63e2f06c2ab95c27474401a38e53113a8419fd32c9a203b68b6"
+      },
+      "revised_at": "2026-07-13T14:42:56.989765+00:00",
+      "reason": "Expand popup test scope for obsolete selector-action assertions revealed by App-only store mocks",
+      "agent": {
+        "model": "gpt-5",
+        "provider": "openai",
+        "client": "codex",
+        "skills": ["maid-implement-draft", "maid-evolver"],
+        "source": "flags"
+      },
+      "contract_delta": {
+        "artifacts_added": [],
+        "artifacts_removed": [],
+        "files_added": [],
+        "files_removed": [],
+        "validate_commands_added": [],
+        "validate_commands_removed": []
+      }
+    },
+    {
+      "prior_manifest_hash": "sha256:9f932e162e3c580839e3993331a9a826550a4cfee38a0055cca913fd52162f05",
+      "prior_test_hashes": {
+        "src/lib/stores/__tests__/githubSettings.test.ts": "sha256:38d91e8eef8c4f8570b1f36c6cdc4efbdbb83fd39bf1ff78fc0c67e85fce24ea",
+        "src/lib/services/__tests__/chromeStorage.test.ts": "sha256:236c2f6eb5bc53e13ade0c7eb17765bfad1c3751b55742f8d133b4d22965da99",
+        "src/lib/utils/__tests__/githubAppSync.test.ts": "sha256:82c548272cfd826acf3fdbe8359a3ced8e0963a2d8735acb0a69b240c963f5d4",
+        "src/background/__tests__/UsageTracker.test.ts": "sha256:ae6a7c2b2ea8c089849c9067de5fa5c5800a0b2a1ec84789661e648dd4d7a7e8",
+        "src/lib/services/__tests__/chromeStorage.RaceConditions.test.ts": "sha256:d39e3de6c338d10b0ee046e080c97a732140d485b51807fc1dfd3ff879e85cfa",
+        "src/lib/components/__tests__/RepoSettings.logic.test.ts": "sha256:074da50071698a1c6e64c4d6e6e5cb4229afdc9e92d7bcf64b1f4f07aaf3785c",
+        "src/lib/components/__tests__/GitHubSettings.logic.test.ts": "sha256:9d916bc868e6f2a368d98fdfd3687e2c0b93afe73d3cb003bb81d44b5169beb9",
+        "src/content/services/__tests__/SupabaseAuthService.github-connection.test.ts": "sha256:dacc403eed01901e6539db1d7147dd8aa095301633ef61d8e368e063846ba93c",
+        "src/content/services/__tests__/SupabaseAuthService.session-cleanup.test.ts": "sha256:5b197dd3b62363759980bd6b78ecb50b1fd79fcaf1fbc09bd26d7ea94583c692",
+        "src/background/__tests__/BackgroundService.auth-lifecycle.test.ts": "sha256:dfebb71867770d2ff1a0b99573877fafe7b30776c2ae7c40dfbc19d418a44e07",
+        "src/background/__tests__/BackgroundService.edge-cases.test.ts": "sha256:297c93c3fe7ca98b34c4c3fbafd23a831e37e48029f98146e7e81b3e3df1359f",
+        "src/popup/__tests__/App.component.test.ts": "sha256:f025a569dbd2c218326407f3afc3109b1e1fe41849d0643bbc185d51d5c050bb",
+        "src/popup/components/__tests__/TabsView.component.test.ts": "sha256:638f1443bd18d2ef9199002ddf2c762990b6928baed406b7c632696b3b04f54d",
+        "src/services/__tests__/settings.test.ts": "sha256:0e2bd5fcba526c15735ff7f8bb053f0069c38a22e7fb45d244a8d4276cb3db3c"
+      },
+      "revised_at": "2026-07-13T14:46:20.881117+00:00",
+      "reason": "Finalize App-only fixtures and preserve red evidence after type-driven test cleanup",
+      "agent": {
+        "model": "gpt-5",
+        "provider": "openai",
+        "client": "codex",
+        "skills": ["maid-implement-draft", "maid-evolver"],
+        "source": "flags"
+      },
+      "contract_delta": {
+        "artifacts_added": [],
+        "artifacts_removed": [],
+        "files_added": [],
+        "files_removed": [],
+        "validate_commands_added": [],
+        "validate_commands_removed": []
+      }
+    },
+    {
+      "prior_manifest_hash": "sha256:5f49de5e11a0aba603e900f81ea4a795431434789da1680eb2a1ea7ca84dade2",
+      "prior_test_hashes": {
+        "src/lib/stores/__tests__/githubSettings.test.ts": "sha256:38d91e8eef8c4f8570b1f36c6cdc4efbdbb83fd39bf1ff78fc0c67e85fce24ea",
+        "src/lib/services/__tests__/chromeStorage.test.ts": "sha256:236c2f6eb5bc53e13ade0c7eb17765bfad1c3751b55742f8d133b4d22965da99",
+        "src/lib/utils/__tests__/githubAppSync.test.ts": "sha256:21956098216e39c9220de8673e4901f2d09fddd793f966f581672d9782633fe5",
+        "src/background/__tests__/UsageTracker.test.ts": "sha256:ae6a7c2b2ea8c089849c9067de5fa5c5800a0b2a1ec84789661e648dd4d7a7e8",
+        "src/lib/services/__tests__/chromeStorage.RaceConditions.test.ts": "sha256:7d61dd671322b463c476c2bcc4e3a1c9ad8c73fb8b644308f1bc84c1372796cd",
+        "src/lib/components/__tests__/RepoSettings.logic.test.ts": "sha256:074da50071698a1c6e64c4d6e6e5cb4229afdc9e92d7bcf64b1f4f07aaf3785c",
+        "src/lib/components/__tests__/GitHubSettings.logic.test.ts": "sha256:9cb14b51f2604805badc80c193b0a50480d4740d2b8d7aa4a6b50e9fe4665fff",
+        "src/content/services/__tests__/SupabaseAuthService.github-connection.test.ts": "sha256:14f3aa60b12fb5f799d58ca4b90454152ff9ac6c9381348ab8dd346944b9e5c3",
+        "src/content/services/__tests__/SupabaseAuthService.session-cleanup.test.ts": "sha256:f3580dfaf9d1ea56001e7f0372e3ca42fdea44d47236790daacb1614c97669d0",
+        "src/background/__tests__/BackgroundService.auth-lifecycle.test.ts": "sha256:dfebb71867770d2ff1a0b99573877fafe7b30776c2ae7c40dfbc19d418a44e07",
+        "src/background/__tests__/BackgroundService.edge-cases.test.ts": "sha256:297c93c3fe7ca98b34c4c3fbafd23a831e37e48029f98146e7e81b3e3df1359f",
+        "src/popup/__tests__/App.component.test.ts": "sha256:f025a569dbd2c218326407f3afc3109b1e1fe41849d0643bbc185d51d5c050bb",
+        "src/popup/components/__tests__/TabsView.component.test.ts": "sha256:638f1443bd18d2ef9199002ddf2c762990b6928baed406b7c632696b3b04f54d",
+        "src/services/__tests__/settings.test.ts": "sha256:0e2bd5fcba526c15735ff7f8bb053f0069c38a22e7fb45d244a8d4276cb3db3c"
+      },
+      "revised_at": "2026-07-13T14:48:16.562189+00:00",
+      "reason": "Restore inherited child contracts and add direct authentication type coverage",
+      "agent": {
+        "model": "gpt-5",
+        "provider": "openai",
+        "client": "codex",
+        "skills": ["maid-implement-draft", "maid-evolver"],
+        "source": "flags"
+      },
+      "contract_delta": {
+        "artifacts_added": [
+          "src/services/__tests__/authentication.types.test.ts:authentication types expose only GitHub App credential contracts",
+          "src/services/__tests__/authentication.types.test.ts:authentication types expose only GitHub App credential contracts:kind=test_function"
+        ],
+        "artifacts_removed": [],
+        "files_added": ["edit:src/services/__tests__/authentication.types.test.ts"],
+        "files_removed": [],
+        "validate_commands_added": [],
+        "validate_commands_removed": []
+      }
+    },
+    {
+      "prior_manifest_hash": "sha256:4c454cde4db6bbc3cf93ce28b0177799c15761289b33b237059d0af553aeeca1",
+      "prior_test_hashes": {
+        "src/services/__tests__/authentication.types.test.ts": "sha256:9a776e97355c21ecaeaaf7cc2974adfbea2412fe80bed0a94eddf2ce4e0f347c",
+        "src/lib/stores/__tests__/githubSettings.test.ts": "sha256:6d2ef1dd9b4349e112d6f5324d1c22c9507662fb99f06499a3f0f4f61b532b14",
+        "src/lib/services/__tests__/chromeStorage.test.ts": "sha256:236c2f6eb5bc53e13ade0c7eb17765bfad1c3751b55742f8d133b4d22965da99",
+        "src/lib/utils/__tests__/githubAppSync.test.ts": "sha256:21956098216e39c9220de8673e4901f2d09fddd793f966f581672d9782633fe5",
+        "src/background/__tests__/UsageTracker.test.ts": "sha256:ae6a7c2b2ea8c089849c9067de5fa5c5800a0b2a1ec84789661e648dd4d7a7e8",
+        "src/lib/services/__tests__/chromeStorage.RaceConditions.test.ts": "sha256:7d61dd671322b463c476c2bcc4e3a1c9ad8c73fb8b644308f1bc84c1372796cd",
+        "src/lib/components/__tests__/RepoSettings.logic.test.ts": "sha256:074da50071698a1c6e64c4d6e6e5cb4229afdc9e92d7bcf64b1f4f07aaf3785c",
+        "src/lib/components/__tests__/GitHubSettings.logic.test.ts": "sha256:9cb14b51f2604805badc80c193b0a50480d4740d2b8d7aa4a6b50e9fe4665fff",
+        "src/content/services/__tests__/SupabaseAuthService.github-connection.test.ts": "sha256:14f3aa60b12fb5f799d58ca4b90454152ff9ac6c9381348ab8dd346944b9e5c3",
+        "src/content/services/__tests__/SupabaseAuthService.session-cleanup.test.ts": "sha256:f3580dfaf9d1ea56001e7f0372e3ca42fdea44d47236790daacb1614c97669d0",
+        "src/background/__tests__/BackgroundService.auth-lifecycle.test.ts": "sha256:dfebb71867770d2ff1a0b99573877fafe7b30776c2ae7c40dfbc19d418a44e07",
+        "src/background/__tests__/BackgroundService.edge-cases.test.ts": "sha256:297c93c3fe7ca98b34c4c3fbafd23a831e37e48029f98146e7e81b3e3df1359f",
+        "src/popup/__tests__/App.component.test.ts": "sha256:08318955987b75e1bd79fe35ae092a2d578e47390bd1f27647a2282a7beeb317",
+        "src/popup/components/__tests__/TabsView.component.test.ts": "sha256:638f1443bd18d2ef9199002ddf2c762990b6928baed406b7c632696b3b04f54d",
+        "src/services/__tests__/settings.test.ts": "sha256:0e2bd5fcba526c15735ff7f8bb053f0069c38a22e7fb45d244a8d4276cb3db3c"
+      },
+      "revised_at": "2026-07-13T14:49:24.028845+00:00",
+      "reason": "Use named GitHub App result types so implementation signatures remain machine-checkable",
+      "agent": {
+        "model": "gpt-5",
+        "provider": "openai",
+        "client": "codex",
+        "skills": ["maid-implement-draft", "maid-evolver"],
+        "source": "flags"
+      },
+      "contract_delta": {
+        "artifacts_added": [
+          "src/lib/utils/githubAppSync.ts:function:checkGitHubAppStatus:returns=Promise<GitHubAppStatus>",
+          "src/lib/utils/githubAppSync.ts:function:getGitHubAppInfo:returns=Promise<GitHubAppInfo>"
+        ],
+        "artifacts_removed": [
+          "src/lib/utils/githubAppSync.ts:function:checkGitHubAppStatus:returns=Promise<{ isConfigured: boolean; username?: string; avatarUrl?: string; installationId?: number }>",
+          "src/lib/utils/githubAppSync.ts:function:getGitHubAppInfo:returns=Promise<{ isConfigured: boolean; username?: string; avatarUrl?: string; expiresAt?: string; scopes?: string[]; needsRefresh?: boolean }>"
+        ],
+        "files_added": [],
+        "files_removed": [],
+        "validate_commands_added": [],
+        "validate_commands_removed": []
+      }
+    },
+    {
+      "prior_manifest_hash": "sha256:a9a3cfadbbb9625fac1f05bcdb908566ec5584303c79774f1d8b281d629da686",
+      "prior_test_hashes": {
+        "src/services/__tests__/authentication.types.test.ts": "sha256:9a776e97355c21ecaeaaf7cc2974adfbea2412fe80bed0a94eddf2ce4e0f347c",
+        "src/lib/stores/__tests__/githubSettings.test.ts": "sha256:6d2ef1dd9b4349e112d6f5324d1c22c9507662fb99f06499a3f0f4f61b532b14",
+        "src/lib/services/__tests__/chromeStorage.test.ts": "sha256:236c2f6eb5bc53e13ade0c7eb17765bfad1c3751b55742f8d133b4d22965da99",
+        "src/lib/utils/__tests__/githubAppSync.test.ts": "sha256:21956098216e39c9220de8673e4901f2d09fddd793f966f581672d9782633fe5",
+        "src/background/__tests__/UsageTracker.test.ts": "sha256:ae6a7c2b2ea8c089849c9067de5fa5c5800a0b2a1ec84789661e648dd4d7a7e8",
+        "src/lib/services/__tests__/chromeStorage.RaceConditions.test.ts": "sha256:7d61dd671322b463c476c2bcc4e3a1c9ad8c73fb8b644308f1bc84c1372796cd",
+        "src/lib/components/__tests__/RepoSettings.logic.test.ts": "sha256:074da50071698a1c6e64c4d6e6e5cb4229afdc9e92d7bcf64b1f4f07aaf3785c",
+        "src/lib/components/__tests__/GitHubSettings.logic.test.ts": "sha256:9cb14b51f2604805badc80c193b0a50480d4740d2b8d7aa4a6b50e9fe4665fff",
+        "src/content/services/__tests__/SupabaseAuthService.github-connection.test.ts": "sha256:14f3aa60b12fb5f799d58ca4b90454152ff9ac6c9381348ab8dd346944b9e5c3",
+        "src/content/services/__tests__/SupabaseAuthService.session-cleanup.test.ts": "sha256:f3580dfaf9d1ea56001e7f0372e3ca42fdea44d47236790daacb1614c97669d0",
+        "src/background/__tests__/BackgroundService.auth-lifecycle.test.ts": "sha256:dfebb71867770d2ff1a0b99573877fafe7b30776c2ae7c40dfbc19d418a44e07",
+        "src/background/__tests__/BackgroundService.edge-cases.test.ts": "sha256:297c93c3fe7ca98b34c4c3fbafd23a831e37e48029f98146e7e81b3e3df1359f",
+        "src/popup/__tests__/App.component.test.ts": "sha256:08318955987b75e1bd79fe35ae092a2d578e47390bd1f27647a2282a7beeb317",
+        "src/popup/components/__tests__/TabsView.component.test.ts": "sha256:638f1443bd18d2ef9199002ddf2c762990b6928baed406b7c632696b3b04f54d",
+        "src/services/__tests__/settings.test.ts": "sha256:0e2bd5fcba526c15735ff7f8bb053f0069c38a22e7fb45d244a8d4276cb3db3c"
+      },
+      "revised_at": "2026-07-13T14:49:42.577073+00:00",
+      "reason": "Run the new authentication type contract in the declared validation command",
+      "agent": {
+        "model": "gpt-5",
+        "provider": "openai",
+        "client": "codex",
+        "skills": ["maid-implement-draft", "maid-evolver"],
+        "source": "flags"
+      },
+      "contract_delta": {
+        "artifacts_added": [],
+        "artifacts_removed": [],
+        "files_added": [],
+        "files_removed": [],
+        "validate_commands_added": [
+          "pnpm exec vitest run src/background/__tests__/UsageTracker.test.ts src/background/__tests__/BackgroundService.auth-lifecycle.test.ts src/background/__tests__/BackgroundService.edge-cases.test.ts src/lib/stores/__tests__/githubSettings.test.ts src/lib/services/__tests__/chromeStorage.test.ts src/lib/services/__tests__/chromeStorage.RaceConditions.test.ts src/lib/utils/__tests__/githubAppSync.test.ts src/services/__tests__/settings.test.ts src/services/__tests__/authentication.types.test.ts src/lib/components/__tests__/GitHubSettings.logic.test.ts src/lib/components/__tests__/RepoSettings.logic.test.ts src/content/services/__tests__/SupabaseAuthService.github-connection.test.ts src/content/services/__tests__/SupabaseAuthService.session-cleanup.test.ts src/popup/__tests__/App.component.test.ts src/popup/components/__tests__/TabsView.component.test.ts"
+        ],
+        "validate_commands_removed": [
+          "pnpm exec vitest run src/background/__tests__/UsageTracker.test.ts src/background/__tests__/BackgroundService.auth-lifecycle.test.ts src/background/__tests__/BackgroundService.edge-cases.test.ts src/lib/stores/__tests__/githubSettings.test.ts src/lib/services/__tests__/chromeStorage.test.ts src/lib/services/__tests__/chromeStorage.RaceConditions.test.ts src/lib/utils/__tests__/githubAppSync.test.ts src/services/__tests__/settings.test.ts src/lib/components/__tests__/GitHubSettings.logic.test.ts src/lib/components/__tests__/RepoSettings.logic.test.ts src/content/services/__tests__/SupabaseAuthService.github-connection.test.ts src/content/services/__tests__/SupabaseAuthService.session-cleanup.test.ts src/popup/__tests__/App.component.test.ts src/popup/components/__tests__/TabsView.component.test.ts"
+        ]
+      }
+    },
+    {
+      "prior_manifest_hash": "sha256:910e8886967a6ead47deed4fa9d83a749eaf7a932d1c5abd061f159272991913",
+      "prior_test_hashes": {
+        "src/services/__tests__/authentication.types.test.ts": "sha256:9a776e97355c21ecaeaaf7cc2974adfbea2412fe80bed0a94eddf2ce4e0f347c",
+        "src/lib/stores/__tests__/githubSettings.test.ts": "sha256:6d2ef1dd9b4349e112d6f5324d1c22c9507662fb99f06499a3f0f4f61b532b14",
+        "src/lib/services/__tests__/chromeStorage.test.ts": "sha256:236c2f6eb5bc53e13ade0c7eb17765bfad1c3751b55742f8d133b4d22965da99",
+        "src/lib/utils/__tests__/githubAppSync.test.ts": "sha256:21956098216e39c9220de8673e4901f2d09fddd793f966f581672d9782633fe5",
+        "src/background/__tests__/UsageTracker.test.ts": "sha256:ae6a7c2b2ea8c089849c9067de5fa5c5800a0b2a1ec84789661e648dd4d7a7e8",
+        "src/lib/services/__tests__/chromeStorage.RaceConditions.test.ts": "sha256:7d61dd671322b463c476c2bcc4e3a1c9ad8c73fb8b644308f1bc84c1372796cd",
+        "src/lib/components/__tests__/RepoSettings.logic.test.ts": "sha256:074da50071698a1c6e64c4d6e6e5cb4229afdc9e92d7bcf64b1f4f07aaf3785c",
+        "src/lib/components/__tests__/GitHubSettings.logic.test.ts": "sha256:9cb14b51f2604805badc80c193b0a50480d4740d2b8d7aa4a6b50e9fe4665fff",
+        "src/content/services/__tests__/SupabaseAuthService.github-connection.test.ts": "sha256:14f3aa60b12fb5f799d58ca4b90454152ff9ac6c9381348ab8dd346944b9e5c3",
+        "src/content/services/__tests__/SupabaseAuthService.session-cleanup.test.ts": "sha256:f3580dfaf9d1ea56001e7f0372e3ca42fdea44d47236790daacb1614c97669d0",
+        "src/background/__tests__/BackgroundService.auth-lifecycle.test.ts": "sha256:dfebb71867770d2ff1a0b99573877fafe7b30776c2ae7c40dfbc19d418a44e07",
+        "src/background/__tests__/BackgroundService.edge-cases.test.ts": "sha256:297c93c3fe7ca98b34c4c3fbafd23a831e37e48029f98146e7e81b3e3df1359f",
+        "src/popup/__tests__/App.component.test.ts": "sha256:08318955987b75e1bd79fe35ae092a2d578e47390bd1f27647a2282a7beeb317",
+        "src/popup/components/__tests__/TabsView.component.test.ts": "sha256:638f1443bd18d2ef9199002ddf2c762990b6928baed406b7c632696b3b04f54d",
+        "src/services/__tests__/settings.test.ts": "sha256:0e2bd5fcba526c15735ff7f8bb053f0069c38a22e7fb45d244a8d4276cb3db3c"
+      },
+      "revised_at": "2026-07-13T14:52:14.776531+00:00",
+      "reason": "Evolve background recovery contract so removed authenticationMethod writes are ignored",
+      "agent": {
+        "model": "gpt-5",
+        "provider": "openai",
+        "client": "codex",
+        "skills": ["maid-implement-draft", "maid-evolver"],
+        "source": "flags"
+      },
+      "contract_delta": {
+        "artifacts_added": [
+          "src/background/__tests__/BackgroundService.storage-recovery.test.ts:legacy authenticationMethod writes do not trigger dependency recovery",
+          "src/background/__tests__/BackgroundService.storage-recovery.test.ts:legacy authenticationMethod writes do not trigger dependency recovery:kind=test_function"
+        ],
+        "artifacts_removed": [],
+        "files_added": ["edit:src/background/__tests__/BackgroundService.storage-recovery.test.ts"],
+        "files_removed": [],
+        "validate_commands_added": [],
+        "validate_commands_removed": []
+      }
+    },
+    {
+      "prior_manifest_hash": "sha256:b5a907181d0034d707308b2786b3a7b6e12cc9d4e1ded5b72f61165cb6470ff7",
+      "prior_test_hashes": {
+        "src/services/__tests__/authentication.types.test.ts": "sha256:9a776e97355c21ecaeaaf7cc2974adfbea2412fe80bed0a94eddf2ce4e0f347c",
+        "src/lib/stores/__tests__/githubSettings.test.ts": "sha256:6d2ef1dd9b4349e112d6f5324d1c22c9507662fb99f06499a3f0f4f61b532b14",
+        "src/lib/services/__tests__/chromeStorage.test.ts": "sha256:236c2f6eb5bc53e13ade0c7eb17765bfad1c3751b55742f8d133b4d22965da99",
+        "src/lib/utils/__tests__/githubAppSync.test.ts": "sha256:21956098216e39c9220de8673e4901f2d09fddd793f966f581672d9782633fe5",
+        "src/background/__tests__/UsageTracker.test.ts": "sha256:ae6a7c2b2ea8c089849c9067de5fa5c5800a0b2a1ec84789661e648dd4d7a7e8",
+        "src/lib/services/__tests__/chromeStorage.RaceConditions.test.ts": "sha256:7d61dd671322b463c476c2bcc4e3a1c9ad8c73fb8b644308f1bc84c1372796cd",
+        "src/lib/components/__tests__/RepoSettings.logic.test.ts": "sha256:074da50071698a1c6e64c4d6e6e5cb4229afdc9e92d7bcf64b1f4f07aaf3785c",
+        "src/lib/components/__tests__/GitHubSettings.logic.test.ts": "sha256:9cb14b51f2604805badc80c193b0a50480d4740d2b8d7aa4a6b50e9fe4665fff",
+        "src/content/services/__tests__/SupabaseAuthService.github-connection.test.ts": "sha256:14f3aa60b12fb5f799d58ca4b90454152ff9ac6c9381348ab8dd346944b9e5c3",
+        "src/content/services/__tests__/SupabaseAuthService.session-cleanup.test.ts": "sha256:f3580dfaf9d1ea56001e7f0372e3ca42fdea44d47236790daacb1614c97669d0",
+        "src/background/__tests__/BackgroundService.auth-lifecycle.test.ts": "sha256:dfebb71867770d2ff1a0b99573877fafe7b30776c2ae7c40dfbc19d418a44e07",
+        "src/background/__tests__/BackgroundService.storage-recovery.test.ts": "sha256:38904ab0c8a9634f631d75c39c88c3067da130daf078d52d0bbbe3f870114120",
+        "src/background/__tests__/BackgroundService.edge-cases.test.ts": "sha256:297c93c3fe7ca98b34c4c3fbafd23a831e37e48029f98146e7e81b3e3df1359f",
+        "src/popup/__tests__/App.component.test.ts": "sha256:08318955987b75e1bd79fe35ae092a2d578e47390bd1f27647a2282a7beeb317",
+        "src/popup/components/__tests__/TabsView.component.test.ts": "sha256:638f1443bd18d2ef9199002ddf2c762990b6928baed406b7c632696b3b04f54d",
+        "src/services/__tests__/settings.test.ts": "sha256:0e2bd5fcba526c15735ff7f8bb053f0069c38a22e7fb45d244a8d4276cb3db3c"
+      },
+      "revised_at": "2026-07-13T14:54:06.999691+00:00",
+      "reason": "Supersede the background recovery contract to remove authenticationMethod as an authoritative signal",
+      "agent": {
+        "model": "gpt-5",
+        "provider": "openai",
+        "client": "codex",
+        "skills": ["maid-implement-draft", "maid-evolver"],
+        "source": "flags"
+      },
+      "contract_delta": {
+        "artifacts_added": [
+          "src/background/BackgroundService.ts:class:BackgroundService",
+          "src/background/BackgroundService.ts:class:BackgroundService:kind=class",
+          "src/background/__tests__/BackgroundService.storage-recovery.test.ts:debounces rapid successive auth storage changes into one recovery pass",
+          "src/background/__tests__/BackgroundService.storage-recovery.test.ts:debounces rapid successive auth storage changes into one recovery pass:kind=test_function",
+          "src/background/__tests__/BackgroundService.storage-recovery.test.ts:does not loop when its own auth check writes token state back to storage",
+          "src/background/__tests__/BackgroundService.storage-recovery.test.ts:does not loop when its own auth check writes token state back to storage:kind=test_function",
+          "src/background/__tests__/BackgroundService.storage-recovery.test.ts:ignores unrelated local storage keys such as keepAliveTimestamp",
+          "src/background/__tests__/BackgroundService.storage-recovery.test.ts:ignores unrelated local storage keys such as keepAliveTimestamp:kind=test_function",
+          "src/background/__tests__/BackgroundService.storage-recovery.test.ts:late GitHub authentication failure remains actionable instead of becoming a ZIP error",
+          "src/background/__tests__/BackgroundService.storage-recovery.test.ts:late GitHub authentication failure remains actionable instead of becoming a ZIP error:kind=test_function",
+          "src/background/__tests__/BackgroundService.storage-recovery.test.ts:newer disconnected recovery prevents an older connected recovery from restoring stale dependencies",
+          "src/background/__tests__/BackgroundService.storage-recovery.test.ts:newer disconnected recovery prevents an older connected recovery from restoring stale dependencies:kind=test_function",
+          "src/background/__tests__/BackgroundService.storage-recovery.test.ts:reinitializes GitHub service when auth tokens are restored in local storage",
+          "src/background/__tests__/BackgroundService.storage-recovery.test.ts:reinitializes GitHub service when auth tokens are restored in local storage:kind=test_function"
+        ],
+        "artifacts_removed": [],
+        "files_added": ["edit:src/background/BackgroundService.ts"],
+        "files_removed": [],
+        "validate_commands_added": [],
+        "validate_commands_removed": []
+      }
+    },
+    {
+      "prior_manifest_hash": "sha256:cdb3bb366b21602fe8028949aaf9cc32c8f353ddbe2731a9cd7888eecf8e5346",
+      "prior_test_hashes": {
+        "src/services/__tests__/authentication.types.test.ts": "sha256:9a776e97355c21ecaeaaf7cc2974adfbea2412fe80bed0a94eddf2ce4e0f347c",
+        "src/lib/stores/__tests__/githubSettings.test.ts": "sha256:6d2ef1dd9b4349e112d6f5324d1c22c9507662fb99f06499a3f0f4f61b532b14",
+        "src/lib/services/__tests__/chromeStorage.test.ts": "sha256:236c2f6eb5bc53e13ade0c7eb17765bfad1c3751b55742f8d133b4d22965da99",
+        "src/lib/utils/__tests__/githubAppSync.test.ts": "sha256:21956098216e39c9220de8673e4901f2d09fddd793f966f581672d9782633fe5",
+        "src/background/__tests__/UsageTracker.test.ts": "sha256:ae6a7c2b2ea8c089849c9067de5fa5c5800a0b2a1ec84789661e648dd4d7a7e8",
+        "src/lib/services/__tests__/chromeStorage.RaceConditions.test.ts": "sha256:7d61dd671322b463c476c2bcc4e3a1c9ad8c73fb8b644308f1bc84c1372796cd",
+        "src/lib/components/__tests__/RepoSettings.logic.test.ts": "sha256:074da50071698a1c6e64c4d6e6e5cb4229afdc9e92d7bcf64b1f4f07aaf3785c",
+        "src/lib/components/__tests__/GitHubSettings.logic.test.ts": "sha256:9cb14b51f2604805badc80c193b0a50480d4740d2b8d7aa4a6b50e9fe4665fff",
+        "src/content/services/__tests__/SupabaseAuthService.github-connection.test.ts": "sha256:14f3aa60b12fb5f799d58ca4b90454152ff9ac6c9381348ab8dd346944b9e5c3",
+        "src/content/services/__tests__/SupabaseAuthService.session-cleanup.test.ts": "sha256:f3580dfaf9d1ea56001e7f0372e3ca42fdea44d47236790daacb1614c97669d0",
+        "src/background/__tests__/BackgroundService.auth-lifecycle.test.ts": "sha256:dfebb71867770d2ff1a0b99573877fafe7b30776c2ae7c40dfbc19d418a44e07",
+        "src/background/__tests__/BackgroundService.storage-recovery.test.ts": "sha256:c300a2833358c289e7be06136202e38d0e3a2d5b6f93b393ce04d2e3b8323e10",
+        "src/background/__tests__/BackgroundService.edge-cases.test.ts": "sha256:297c93c3fe7ca98b34c4c3fbafd23a831e37e48029f98146e7e81b3e3df1359f",
+        "src/popup/__tests__/App.component.test.ts": "sha256:08318955987b75e1bd79fe35ae092a2d578e47390bd1f27647a2282a7beeb317",
+        "src/popup/components/__tests__/TabsView.component.test.ts": "sha256:638f1443bd18d2ef9199002ddf2c762990b6928baed406b7c632696b3b04f54d",
+        "src/services/__tests__/settings.test.ts": "sha256:0e2bd5fcba526c15735ff7f8bb053f0069c38a22e7fb45d244a8d4276cb3db3c"
+      },
+      "revised_at": "2026-07-13T14:54:29.007206+00:00",
+      "reason": "Include the superseding background recovery tests in the child validation gate",
+      "agent": {
+        "model": "gpt-5",
+        "provider": "openai",
+        "client": "codex",
+        "skills": ["maid-implement-draft", "maid-evolver"],
+        "source": "flags"
+      },
+      "contract_delta": {
+        "artifacts_added": [],
+        "artifacts_removed": [],
+        "files_added": [],
+        "files_removed": [],
+        "validate_commands_added": [
+          "pnpm exec vitest run src/background/__tests__/UsageTracker.test.ts src/background/__tests__/BackgroundService.auth-lifecycle.test.ts src/background/__tests__/BackgroundService.storage-recovery.test.ts src/background/__tests__/BackgroundService.edge-cases.test.ts src/lib/stores/__tests__/githubSettings.test.ts src/lib/services/__tests__/chromeStorage.test.ts src/lib/services/__tests__/chromeStorage.RaceConditions.test.ts src/lib/utils/__tests__/githubAppSync.test.ts src/services/__tests__/settings.test.ts src/services/__tests__/authentication.types.test.ts src/lib/components/__tests__/GitHubSettings.logic.test.ts src/lib/components/__tests__/RepoSettings.logic.test.ts src/content/services/__tests__/SupabaseAuthService.github-connection.test.ts src/content/services/__tests__/SupabaseAuthService.session-cleanup.test.ts src/popup/__tests__/App.component.test.ts src/popup/components/__tests__/TabsView.component.test.ts"
+        ],
+        "validate_commands_removed": [
+          "pnpm exec vitest run src/background/__tests__/UsageTracker.test.ts src/background/__tests__/BackgroundService.auth-lifecycle.test.ts src/background/__tests__/BackgroundService.edge-cases.test.ts src/lib/stores/__tests__/githubSettings.test.ts src/lib/services/__tests__/chromeStorage.test.ts src/lib/services/__tests__/chromeStorage.RaceConditions.test.ts src/lib/utils/__tests__/githubAppSync.test.ts src/services/__tests__/settings.test.ts src/services/__tests__/authentication.types.test.ts src/lib/components/__tests__/GitHubSettings.logic.test.ts src/lib/components/__tests__/RepoSettings.logic.test.ts src/content/services/__tests__/SupabaseAuthService.github-connection.test.ts src/content/services/__tests__/SupabaseAuthService.session-cleanup.test.ts src/popup/__tests__/App.component.test.ts src/popup/components/__tests__/TabsView.component.test.ts"
+        ]
+      }
+    },
+    {
+      "prior_manifest_hash": "sha256:da017c53587b11054924ac5fa67ddbd54cfb8853d19de0ea0b9f3d14f6d06364",
+      "prior_test_hashes": {
+        "src/services/__tests__/authentication.types.test.ts": "sha256:9a776e97355c21ecaeaaf7cc2974adfbea2412fe80bed0a94eddf2ce4e0f347c",
+        "src/lib/stores/__tests__/githubSettings.test.ts": "sha256:6d2ef1dd9b4349e112d6f5324d1c22c9507662fb99f06499a3f0f4f61b532b14",
+        "src/lib/services/__tests__/chromeStorage.test.ts": "sha256:236c2f6eb5bc53e13ade0c7eb17765bfad1c3751b55742f8d133b4d22965da99",
+        "src/lib/utils/__tests__/githubAppSync.test.ts": "sha256:21956098216e39c9220de8673e4901f2d09fddd793f966f581672d9782633fe5",
+        "src/background/__tests__/UsageTracker.test.ts": "sha256:ae6a7c2b2ea8c089849c9067de5fa5c5800a0b2a1ec84789661e648dd4d7a7e8",
+        "src/lib/services/__tests__/chromeStorage.RaceConditions.test.ts": "sha256:7d61dd671322b463c476c2bcc4e3a1c9ad8c73fb8b644308f1bc84c1372796cd",
+        "src/lib/components/__tests__/RepoSettings.logic.test.ts": "sha256:074da50071698a1c6e64c4d6e6e5cb4229afdc9e92d7bcf64b1f4f07aaf3785c",
+        "src/lib/components/__tests__/GitHubSettings.logic.test.ts": "sha256:9cb14b51f2604805badc80c193b0a50480d4740d2b8d7aa4a6b50e9fe4665fff",
+        "src/content/services/__tests__/SupabaseAuthService.github-connection.test.ts": "sha256:14f3aa60b12fb5f799d58ca4b90454152ff9ac6c9381348ab8dd346944b9e5c3",
+        "src/content/services/__tests__/SupabaseAuthService.session-cleanup.test.ts": "sha256:f3580dfaf9d1ea56001e7f0372e3ca42fdea44d47236790daacb1614c97669d0",
+        "src/background/__tests__/BackgroundService.auth-lifecycle.test.ts": "sha256:dfebb71867770d2ff1a0b99573877fafe7b30776c2ae7c40dfbc19d418a44e07",
+        "src/background/__tests__/BackgroundService.storage-recovery.test.ts": "sha256:c300a2833358c289e7be06136202e38d0e3a2d5b6f93b393ce04d2e3b8323e10",
+        "src/background/__tests__/BackgroundService.edge-cases.test.ts": "sha256:297c93c3fe7ca98b34c4c3fbafd23a831e37e48029f98146e7e81b3e3df1359f",
+        "src/popup/__tests__/App.component.test.ts": "sha256:08318955987b75e1bd79fe35ae092a2d578e47390bd1f27647a2282a7beeb317",
+        "src/popup/components/__tests__/TabsView.component.test.ts": "sha256:638f1443bd18d2ef9199002ddf2c762990b6928baed406b7c632696b3b04f54d",
+        "src/services/__tests__/settings.test.ts": "sha256:0e2bd5fcba526c15735ff7f8bb053f0069c38a22e7fb45d244a8d4276cb3db3c"
+      },
+      "revised_at": "2026-07-13T15:00:30.202944+00:00",
+      "reason": "Recapture red evidence for the finalized storage, type, and superseding recovery contracts",
+      "agent": {
+        "model": "gpt-5",
+        "provider": "openai",
+        "client": "codex",
+        "skills": ["maid-implement-draft", "maid-evolver"],
+        "source": "flags"
+      },
+      "contract_delta": {
+        "artifacts_added": [
+          "src/services/__tests__/settings.test.ts:requires installation metadata",
+          "src/services/__tests__/settings.test.ts:requires installation metadata:kind=test_function",
+          "src/services/__tests__/settings.test.ts:returns App metadata without PAT credential or selector fields",
+          "src/services/__tests__/settings.test.ts:returns App metadata without PAT credential or selector fields:kind=test_function"
+        ],
+        "artifacts_removed": [],
+        "files_added": [
+          "edit:src/services/__tests__/settings.test.ts",
+          "read:src/popup/__tests__/App.svelte/App.settings.component.test.ts",
+          "read:src/popup/__tests__/App.svelte/App.user-interactions.component.test.ts",
+          "read:src/popup/components/__tests__/HomeTabContent.component.test.ts",
+          "read:src/popup/components/__tests__/OnboardingView.component.test.ts",
+          "read:src/popup/components/__tests__/SettingsTabContent.component.test.ts",
+          "read:src/services/__tests__/BoltProjectSyncService.test.ts"
+        ],
+        "files_removed": [],
+        "validate_commands_added": [],
+        "validate_commands_removed": []
+      }
+    },
+    {
+      "prior_manifest_hash": "sha256:8b848f072d626b4ecbfe807188e1261c4b8639f1ce04c081db22b312cae97913",
+      "prior_test_hashes": {
+        "src/popup/__tests__/App.svelte/App.settings.component.test.ts": "sha256:67a3861d42b72c8491071c99e393243807144630941510c555b18385a71a85ac",
+        "src/popup/__tests__/App.svelte/App.user-interactions.component.test.ts": "sha256:dae5882526d2097263e5ebabaea1f160812d04ce817767b4dc881cf6e80cf621",
+        "src/popup/components/__tests__/HomeTabContent.component.test.ts": "sha256:160ab4285e726766cfce102765e4937dd65fc8b9e5eab95e48962dfcb2141ada",
+        "src/popup/components/__tests__/OnboardingView.component.test.ts": "sha256:fb931d56bf7c83f36a715373ab41402014524a9a1e3c0e4ad8816563dcb17639",
+        "src/popup/components/__tests__/SettingsTabContent.component.test.ts": "sha256:d146ef957df6092ffc93a487b2fb4d30c2c0819caf1d0da341355287569b2523",
+        "src/services/__tests__/BoltProjectSyncService.test.ts": "sha256:d3721f8c140abb9b28cca6790472005e500fa6e9774b19811c44b3bfd571d5ac",
+        "src/services/__tests__/authentication.types.test.ts": "sha256:9a776e97355c21ecaeaaf7cc2974adfbea2412fe80bed0a94eddf2ce4e0f347c",
+        "src/services/__tests__/settings.test.ts": "sha256:0e2bd5fcba526c15735ff7f8bb053f0069c38a22e7fb45d244a8d4276cb3db3c",
+        "src/lib/stores/__tests__/githubSettings.test.ts": "sha256:6d2ef1dd9b4349e112d6f5324d1c22c9507662fb99f06499a3f0f4f61b532b14",
+        "src/lib/services/__tests__/chromeStorage.test.ts": "sha256:236c2f6eb5bc53e13ade0c7eb17765bfad1c3751b55742f8d133b4d22965da99",
+        "src/lib/utils/__tests__/githubAppSync.test.ts": "sha256:21956098216e39c9220de8673e4901f2d09fddd793f966f581672d9782633fe5",
+        "src/background/__tests__/UsageTracker.test.ts": "sha256:ae6a7c2b2ea8c089849c9067de5fa5c5800a0b2a1ec84789661e648dd4d7a7e8",
+        "src/lib/services/__tests__/chromeStorage.RaceConditions.test.ts": "sha256:7d61dd671322b463c476c2bcc4e3a1c9ad8c73fb8b644308f1bc84c1372796cd",
+        "src/lib/components/__tests__/RepoSettings.logic.test.ts": "sha256:074da50071698a1c6e64c4d6e6e5cb4229afdc9e92d7bcf64b1f4f07aaf3785c",
+        "src/lib/components/__tests__/GitHubSettings.logic.test.ts": "sha256:9cb14b51f2604805badc80c193b0a50480d4740d2b8d7aa4a6b50e9fe4665fff",
+        "src/content/services/__tests__/SupabaseAuthService.github-connection.test.ts": "sha256:14f3aa60b12fb5f799d58ca4b90454152ff9ac6c9381348ab8dd346944b9e5c3",
+        "src/content/services/__tests__/SupabaseAuthService.session-cleanup.test.ts": "sha256:f3580dfaf9d1ea56001e7f0372e3ca42fdea44d47236790daacb1614c97669d0",
+        "src/background/__tests__/BackgroundService.auth-lifecycle.test.ts": "sha256:dfebb71867770d2ff1a0b99573877fafe7b30776c2ae7c40dfbc19d418a44e07",
+        "src/background/__tests__/BackgroundService.storage-recovery.test.ts": "sha256:c300a2833358c289e7be06136202e38d0e3a2d5b6f93b393ce04d2e3b8323e10",
+        "src/background/__tests__/BackgroundService.edge-cases.test.ts": "sha256:297c93c3fe7ca98b34c4c3fbafd23a831e37e48029f98146e7e81b3e3df1359f",
+        "src/popup/__tests__/App.component.test.ts": "sha256:08318955987b75e1bd79fe35ae092a2d578e47390bd1f27647a2282a7beeb317",
+        "src/popup/components/__tests__/TabsView.component.test.ts": "sha256:638f1443bd18d2ef9199002ddf2c762990b6928baed406b7c632696b3b04f54d"
+      },
+      "revised_at": "2026-07-13T15:03:05.635613+00:00",
+      "reason": "Remove temporary targeted-stash read declarations after red evidence capture",
+      "agent": {
+        "model": "gpt-5",
+        "provider": "openai",
+        "client": "codex",
+        "skills": ["maid-implement-draft", "maid-evolver"],
+        "source": "flags"
+      },
+      "contract_delta": {
+        "artifacts_added": [],
+        "artifacts_removed": [],
+        "files_added": [],
+        "files_removed": [
+          "read:src/popup/__tests__/App.svelte/App.settings.component.test.ts",
+          "read:src/popup/__tests__/App.svelte/App.user-interactions.component.test.ts",
+          "read:src/popup/components/__tests__/HomeTabContent.component.test.ts",
+          "read:src/popup/components/__tests__/OnboardingView.component.test.ts",
+          "read:src/popup/components/__tests__/SettingsTabContent.component.test.ts",
+          "read:src/services/__tests__/BoltProjectSyncService.test.ts"
+        ],
+        "validate_commands_added": [],
+        "validate_commands_removed": []
+      }
+    },
+    {
+      "prior_manifest_hash": "sha256:a13155ff8a245c2c45cae2619fb6b3a234ccf3acdcf4f1920d29767988a7af35",
+      "prior_test_hashes": {
+        "src/services/__tests__/authentication.types.test.ts": "sha256:9a776e97355c21ecaeaaf7cc2974adfbea2412fe80bed0a94eddf2ce4e0f347c",
+        "src/services/__tests__/settings.test.ts": "sha256:0e2bd5fcba526c15735ff7f8bb053f0069c38a22e7fb45d244a8d4276cb3db3c",
+        "src/lib/stores/__tests__/githubSettings.test.ts": "sha256:6d2ef1dd9b4349e112d6f5324d1c22c9507662fb99f06499a3f0f4f61b532b14",
+        "src/lib/services/__tests__/chromeStorage.test.ts": "sha256:236c2f6eb5bc53e13ade0c7eb17765bfad1c3751b55742f8d133b4d22965da99",
+        "src/lib/utils/__tests__/githubAppSync.test.ts": "sha256:21956098216e39c9220de8673e4901f2d09fddd793f966f581672d9782633fe5",
+        "src/background/__tests__/UsageTracker.test.ts": "sha256:ae6a7c2b2ea8c089849c9067de5fa5c5800a0b2a1ec84789661e648dd4d7a7e8",
+        "src/lib/services/__tests__/chromeStorage.RaceConditions.test.ts": "sha256:7d61dd671322b463c476c2bcc4e3a1c9ad8c73fb8b644308f1bc84c1372796cd",
+        "src/lib/components/__tests__/RepoSettings.logic.test.ts": "sha256:074da50071698a1c6e64c4d6e6e5cb4229afdc9e92d7bcf64b1f4f07aaf3785c",
+        "src/lib/components/__tests__/GitHubSettings.logic.test.ts": "sha256:9cb14b51f2604805badc80c193b0a50480d4740d2b8d7aa4a6b50e9fe4665fff",
+        "src/content/services/__tests__/SupabaseAuthService.github-connection.test.ts": "sha256:14f3aa60b12fb5f799d58ca4b90454152ff9ac6c9381348ab8dd346944b9e5c3",
+        "src/content/services/__tests__/SupabaseAuthService.session-cleanup.test.ts": "sha256:f3580dfaf9d1ea56001e7f0372e3ca42fdea44d47236790daacb1614c97669d0",
+        "src/background/__tests__/BackgroundService.auth-lifecycle.test.ts": "sha256:dfebb71867770d2ff1a0b99573877fafe7b30776c2ae7c40dfbc19d418a44e07",
+        "src/background/__tests__/BackgroundService.storage-recovery.test.ts": "sha256:c300a2833358c289e7be06136202e38d0e3a2d5b6f93b393ce04d2e3b8323e10",
+        "src/background/__tests__/BackgroundService.edge-cases.test.ts": "sha256:297c93c3fe7ca98b34c4c3fbafd23a831e37e48029f98146e7e81b3e3df1359f",
+        "src/popup/__tests__/App.component.test.ts": "sha256:08318955987b75e1bd79fe35ae092a2d578e47390bd1f27647a2282a7beeb317",
+        "src/popup/components/__tests__/TabsView.component.test.ts": "sha256:638f1443bd18d2ef9199002ddf2c762990b6928baed406b7c632696b3b04f54d"
+      },
+      "revised_at": "2026-07-13T15:12:52.567800+00:00",
+      "reason": "Add reviewer-requested stale username and complete authoritative recovery-key coverage",
+      "agent": {
+        "model": "gpt-5",
+        "provider": "openai",
+        "client": "codex",
+        "skills": ["maid-implement-draft", "maid-evolver", "maid-implementation-review"],
+        "source": "flags"
+      },
+      "contract_delta": {
+        "artifacts_added": [
+          "src/background/__tests__/BackgroundService.storage-recovery.test.ts:authoritative GitHub App recovery keys trigger dependency recovery: %s",
+          "src/background/__tests__/BackgroundService.storage-recovery.test.ts:authoritative GitHub App recovery keys trigger dependency recovery: %s:kind=test_function",
+          "src/lib/stores/__tests__/githubSettings.test.ts:stale App username without installation preserves repository settings",
+          "src/lib/stores/__tests__/githubSettings.test.ts:stale App username without installation preserves repository settings:kind=test_function"
+        ],
+        "artifacts_removed": [],
+        "files_added": [],
+        "files_removed": [],
+        "validate_commands_added": [],
+        "validate_commands_removed": []
+      }
+    },
+    {
+      "prior_manifest_hash": "sha256:584400ec29d81ee874e863309da4d362e10d80fbc5a06d42c9c2e78e60a3ae0f",
+      "prior_test_hashes": {
+        "src/services/__tests__/authentication.types.test.ts": "sha256:9a776e97355c21ecaeaaf7cc2974adfbea2412fe80bed0a94eddf2ce4e0f347c",
+        "src/services/__tests__/settings.test.ts": "sha256:0e2bd5fcba526c15735ff7f8bb053f0069c38a22e7fb45d244a8d4276cb3db3c",
+        "src/lib/stores/__tests__/githubSettings.test.ts": "sha256:dc61b9e0b6b5331b256f3bc24ff701f2179556d8a83fbd82696622355994f8c7",
+        "src/lib/services/__tests__/chromeStorage.test.ts": "sha256:236c2f6eb5bc53e13ade0c7eb17765bfad1c3751b55742f8d133b4d22965da99",
+        "src/lib/utils/__tests__/githubAppSync.test.ts": "sha256:21956098216e39c9220de8673e4901f2d09fddd793f966f581672d9782633fe5",
+        "src/background/__tests__/UsageTracker.test.ts": "sha256:ae6a7c2b2ea8c089849c9067de5fa5c5800a0b2a1ec84789661e648dd4d7a7e8",
+        "src/lib/services/__tests__/chromeStorage.RaceConditions.test.ts": "sha256:7d61dd671322b463c476c2bcc4e3a1c9ad8c73fb8b644308f1bc84c1372796cd",
+        "src/lib/components/__tests__/RepoSettings.logic.test.ts": "sha256:074da50071698a1c6e64c4d6e6e5cb4229afdc9e92d7bcf64b1f4f07aaf3785c",
+        "src/lib/components/__tests__/GitHubSettings.logic.test.ts": "sha256:9cb14b51f2604805badc80c193b0a50480d4740d2b8d7aa4a6b50e9fe4665fff",
+        "src/content/services/__tests__/SupabaseAuthService.github-connection.test.ts": "sha256:14f3aa60b12fb5f799d58ca4b90454152ff9ac6c9381348ab8dd346944b9e5c3",
+        "src/content/services/__tests__/SupabaseAuthService.session-cleanup.test.ts": "sha256:f3580dfaf9d1ea56001e7f0372e3ca42fdea44d47236790daacb1614c97669d0",
+        "src/background/__tests__/BackgroundService.auth-lifecycle.test.ts": "sha256:dfebb71867770d2ff1a0b99573877fafe7b30776c2ae7c40dfbc19d418a44e07",
+        "src/background/__tests__/BackgroundService.storage-recovery.test.ts": "sha256:c81656fc3c7b137362306c97552010b547a314a16f96211855309b53bcb08b8e",
+        "src/background/__tests__/BackgroundService.edge-cases.test.ts": "sha256:297c93c3fe7ca98b34c4c3fbafd23a831e37e48029f98146e7e81b3e3df1359f",
+        "src/popup/__tests__/App.component.test.ts": "sha256:08318955987b75e1bd79fe35ae092a2d578e47390bd1f27647a2282a7beeb317",
+        "src/popup/components/__tests__/TabsView.component.test.ts": "sha256:638f1443bd18d2ef9199002ddf2c762990b6928baed406b7c632696b3b04f54d"
+      },
+      "revised_at": "2026-07-13T15:13:42.173395+00:00",
+      "reason": "Reconcile reviewer-requested auth-storage regression coverage and App-only fixtures",
+      "agent": {
+        "model": "gpt-5",
+        "provider": "openai",
+        "client": "codex",
+        "skills": ["maid-evolver", "maid-implementation-review"],
+        "source": "flags"
+      },
+      "contract_delta": {
+        "artifacts_added": [],
+        "artifacts_removed": [],
+        "files_added": [],
+        "files_removed": [],
+        "validate_commands_added": [],
+        "validate_commands_removed": []
+      }
+    },
+    {
+      "prior_manifest_hash": "sha256:584400ec29d81ee874e863309da4d362e10d80fbc5a06d42c9c2e78e60a3ae0f",
+      "prior_test_hashes": {
+        "src/services/__tests__/authentication.types.test.ts": "sha256:9a776e97355c21ecaeaaf7cc2974adfbea2412fe80bed0a94eddf2ce4e0f347c",
+        "src/services/__tests__/settings.test.ts": "sha256:0e2bd5fcba526c15735ff7f8bb053f0069c38a22e7fb45d244a8d4276cb3db3c",
+        "src/lib/stores/__tests__/githubSettings.test.ts": "sha256:c32decf4f6f02cef901805c700e928be610be6da0cacd3aff291987459d2eb78",
+        "src/lib/services/__tests__/chromeStorage.test.ts": "sha256:236c2f6eb5bc53e13ade0c7eb17765bfad1c3751b55742f8d133b4d22965da99",
+        "src/lib/utils/__tests__/githubAppSync.test.ts": "sha256:21956098216e39c9220de8673e4901f2d09fddd793f966f581672d9782633fe5",
+        "src/background/__tests__/UsageTracker.test.ts": "sha256:ae6a7c2b2ea8c089849c9067de5fa5c5800a0b2a1ec84789661e648dd4d7a7e8",
+        "src/lib/services/__tests__/chromeStorage.RaceConditions.test.ts": "sha256:7d61dd671322b463c476c2bcc4e3a1c9ad8c73fb8b644308f1bc84c1372796cd",
+        "src/lib/components/__tests__/RepoSettings.logic.test.ts": "sha256:074da50071698a1c6e64c4d6e6e5cb4229afdc9e92d7bcf64b1f4f07aaf3785c",
+        "src/lib/components/__tests__/GitHubSettings.logic.test.ts": "sha256:9cb14b51f2604805badc80c193b0a50480d4740d2b8d7aa4a6b50e9fe4665fff",
+        "src/content/services/__tests__/SupabaseAuthService.github-connection.test.ts": "sha256:14f3aa60b12fb5f799d58ca4b90454152ff9ac6c9381348ab8dd346944b9e5c3",
+        "src/content/services/__tests__/SupabaseAuthService.session-cleanup.test.ts": "sha256:f3580dfaf9d1ea56001e7f0372e3ca42fdea44d47236790daacb1614c97669d0",
+        "src/background/__tests__/BackgroundService.auth-lifecycle.test.ts": "sha256:dfebb71867770d2ff1a0b99573877fafe7b30776c2ae7c40dfbc19d418a44e07",
+        "src/background/__tests__/BackgroundService.storage-recovery.test.ts": "sha256:c81656fc3c7b137362306c97552010b547a314a16f96211855309b53bcb08b8e",
+        "src/background/__tests__/BackgroundService.edge-cases.test.ts": "sha256:297c93c3fe7ca98b34c4c3fbafd23a831e37e48029f98146e7e81b3e3df1359f",
+        "src/popup/__tests__/App.component.test.ts": "sha256:08318955987b75e1bd79fe35ae092a2d578e47390bd1f27647a2282a7beeb317",
+        "src/popup/components/__tests__/TabsView.component.test.ts": "sha256:638f1443bd18d2ef9199002ddf2c762990b6928baed406b7c632696b3b04f54d"
+      },
+      "revised_at": "2026-07-13T15:27:39.082687+00:00",
+      "reason": "Capture completed Outcome with validation and three-round review evidence",
+      "agent": {
+        "model": "gpt-5",
+        "provider": "openai",
+        "client": "codex",
+        "skills": ["maid-implement-draft", "maid-evolver", "maid-implementation-review"],
+        "source": "flags"
+      },
+      "contract_delta": {
+        "artifacts_added": [],
+        "artifacts_removed": [],
+        "files_added": [],
+        "files_removed": [],
+        "validate_commands_added": [],
+        "validate_commands_removed": []
+      }
+    }
+  ],
+  "red_evidence": {
+    "red": true,
+    "captured_at": "2026-07-13T15:01:29.760544+00:00",
+    "commands": [
+      {
+        "command": "pnpm exec vitest run src/background/__tests__/UsageTracker.test.ts src/background/__tests__/BackgroundService.auth-lifecycle.test.ts src/background/__tests__/BackgroundService.storage-recovery.test.ts src/background/__tests__/BackgroundService.edge-cases.test.ts src/lib/stores/__tests__/githubSettings.test.ts src/lib/services/__tests__/chromeStorage.test.ts src/lib/services/__tests__/chromeStorage.RaceConditions.test.ts src/lib/utils/__tests__/githubAppSync.test.ts src/services/__tests__/settings.test.ts src/services/__tests__/authentication.types.test.ts src/lib/components/__tests__/GitHubSettings.logic.test.ts src/lib/components/__tests__/RepoSettings.logic.test.ts src/content/services/__tests__/SupabaseAuthService.github-connection.test.ts src/content/services/__tests__/SupabaseAuthService.session-cleanup.test.ts src/popup/__tests__/App.component.test.ts src/popup/components/__tests__/TabsView.component.test.ts",
+        "exit_code": 1,
+        "output_tail": "+       on:configurePushReminder={handleConfigurePushReminder}\n+     />\n+   </TabsContent>\n+\n+   <TabsContent value=\"help\">\n+     <HelpTabContent {projectSettings} on:newsletter={handleNewsletter} />\n+   </TabsContent>\n+ </Tabs>\n+\n\n \u276f src/popup/components/__tests__/TabsView.component.test.ts:19:32\n     17| \n     18|   it('tabs view exposes no authentication method selection event', () \u2026\n     19|     expect(tabsViewSource).not.toContain('authMethodChange');\n       |                                ^\n     20|   });\n     21| \n\n\u23af\u23af\u23af\u23af\u23af\u23af\u23af\u23af\u23af\u23af\u23af\u23af\u23af\u23af\u23af\u23af\u23af\u23af\u23af\u23af\u23af\u23af[52/54]\u23af\n",
+        "classification": "red"
+      },
+      {
+        "command": "./scripts/maid validate manifests/07-remove-legacy-pat-storage-and-types.manifest.yaml --mode behavioral",
+        "exit_code": 0,
+        "output_tail": "PASS 07-remove-legacy-pat-storage-and-types\n  Mode: behavioral\n  Duration: 2720ms",
+        "classification": "not_red"
+      },
+      {
+        "command": "pnpm lint",
+        "exit_code": 0,
+        "output_tail": "\n> bolt-to-github@1.3.21 lint /home/atomrem/projects/codefrost-dev/bolt-to-github\n> eslint \"src/**/*.{js,ts,svelte}\"\n",
+        "classification": "not_red"
+      },
+      {
+        "command": "pnpm check",
+        "exit_code": 1,
+        "output_tail": "    Type 'string | undefined' is not assignable to type 'string'.\n      Type 'undefined' is not assignable to type 'string'. \n  function setupGitHubSettings(settings: Partial<GitHubSettingsInterface> = {}) {\n    const defaultSettings: GitHubSettingsInterface = {\n      repoOwner: 'test-owner',\n\n\n/home/atomrem/projects/codefrost-dev/bolt-to-github/src/services/__tests__/settings.test.ts:18:3\nError: Type '{ githubToken?: string | undefined; repoOwner: string; projectSettings: ProjectSettings; authenticationMethod?: \"pat\" | \"github_app\" | undefined; githubAppInstallationId: number; githubAppUsername: string; githubAppAvatarUrl?: string | undefined; }' is not assignable to type 'GitHubSettingsInterface'.\n  Types of property 'githubToken' are incompatible.\n    Type 'string | undefined' is not assignable to type 'string'.\n      Type 'undefined' is not assignable to type 'string'. \n): GitHubSettingsInterface {\n  return {\n    repoOwner: 'octocat',\n\n\n====================================\nsvelte-check found 43 errors and 0 warnings in 10 files\n\u2009ELIFECYCLE\u2009 Command failed with exit code 1.",
+        "classification": "red"
+      },
+      {
+        "command": "pnpm build",
+        "exit_code": 0,
+        "output_tail": "dist/assets/index-BnArqU_7.js                                 2.56 kB \u2502 gzip:   1.25 kB\ndist/assets/WelcomePageContentScript.ts-D1t7FgTm.js           2.66 kB \u2502 gzip:   0.79 kB\ndist/assets/GitHubCacheService-Bcgnv6OU.js                    3.68 kB \u2502 gzip:   1.30 kB\ndist/assets/TempRepoManager-BsfiKZBv.js                       5.70 kB \u2502 gzip:   2.18 kB\ndist/assets/logger-CcH-GVeY.js                                8.19 kB \u2502 gzip:   2.69 kB\ndist/pages/logs.js                                           15.32 kB \u2502 gzip:   5.72 kB\ndist/assets/debounce-GC3s9gSD.js                             22.12 kB \u2502 gzip:   6.78 kB\ndist/assets/input-CjMOwtNQ.js                                72.26 kB \u2502 gzip:  25.08 kB\ndist/assets/GitHubComparisonService-RiEN6RPn.js              83.35 kB \u2502 gzip:  23.91 kB\ndist/background/background.js                               109.80 kB \u2502 gzip:  29.33 kB\ndist/content/content.js                                     245.40 kB \u2502 gzip:  72.12 kB\ndist/assets/index.html-BDgdI3Mv.js                          466.85 kB \u2502 gzip: 120.62 kB\n\u2713 built in 8.55s\n\n[plugin:vite:reporter] [plugin vite:reporter] \n(!) /home/atomrem/projects/codefrost-dev/bolt-to-github/src/lib/constants/supabase.ts is dynamically imported by /home/atomrem/projects/codefrost-dev/bolt-to-github/src/services/UnifiedGitHubService.ts but also statically imported by /home/atomrem/projects/codefrost-dev/bolt-to-github/src/content/services/SupabaseAuthService.ts, /home/atomrem/projects/codefrost-dev/bolt-to-github/src/services/BoltProjectSyncService.ts, /home/atomrem/projects/codefrost-dev/bolt-to-github/src/services/GitHubAppService.ts, /home/atomrem/projects/codefrost-dev/bolt-to-github/src/services/SubscriptionService.ts, dynamic import will not move module into another chunk.\n\n[plugin:vite:reporter] [plugin vite:reporter] \n(!) /home/atomrem/projects/codefrost-dev/bolt-to-github/src/content/handlers/FileChangeHandler.ts is dynamically imported by /home/atomrem/projects/codefrost-dev/bolt-to-github/src/content/handlers/GitHubUploadHandler.ts, /home/atomrem/projects/codefrost-dev/bolt-to-github/src/content/services/PushReminderService.ts, /home/atomrem/projects/codefrost-dev/bolt-to-github/src/content/services/PushReminderService.ts but also statically imported by /home/atomrem/projects/codefrost-dev/bolt-to-github/src/content/UIManager.ts, dynamic import will not move module into another chunk.\n",
+        "classification": "not_red"
+      }
+    ]
+  },
+  "agent": {
+    "model": "gpt-5",
+    "provider": "openai",
+    "client": "codex",
+    "skills": ["maid-implement-draft", "maid-evolver"],
+    "source": "flags"
+  },
+  "_manifest_contract": {
+    "artifacts": [
+      "src/background/BackgroundService.ts:class:BackgroundService",
+      "src/background/BackgroundService.ts:class:BackgroundService:kind=class",
+      "src/background/__tests__/BackgroundService.auth-lifecycle.test.ts:background auth recovery ignores the removed authentication method key",
+      "src/background/__tests__/BackgroundService.auth-lifecycle.test.ts:background auth recovery ignores the removed authentication method key:kind=test_function",
+      "src/background/__tests__/BackgroundService.edge-cases.test.ts:background settings recovery no longer watches githubToken changes",
+      "src/background/__tests__/BackgroundService.edge-cases.test.ts:background settings recovery no longer watches githubToken changes:kind=test_function",
+      "src/background/__tests__/BackgroundService.storage-recovery.test.ts:authoritative GitHub App recovery keys trigger dependency recovery: %s",
+      "src/background/__tests__/BackgroundService.storage-recovery.test.ts:authoritative GitHub App recovery keys trigger dependency recovery: %s:kind=test_function",
+      "src/background/__tests__/BackgroundService.storage-recovery.test.ts:debounces rapid successive auth storage changes into one recovery pass",
+      "src/background/__tests__/BackgroundService.storage-recovery.test.ts:debounces rapid successive auth storage changes into one recovery pass:kind=test_function",
+      "src/background/__tests__/BackgroundService.storage-recovery.test.ts:does not loop when its own auth check writes token state back to storage",
+      "src/background/__tests__/BackgroundService.storage-recovery.test.ts:does not loop when its own auth check writes token state back to storage:kind=test_function",
+      "src/background/__tests__/BackgroundService.storage-recovery.test.ts:ignores unrelated local storage keys such as keepAliveTimestamp",
+      "src/background/__tests__/BackgroundService.storage-recovery.test.ts:ignores unrelated local storage keys such as keepAliveTimestamp:kind=test_function",
+      "src/background/__tests__/BackgroundService.storage-recovery.test.ts:late GitHub authentication failure remains actionable instead of becoming a ZIP error",
+      "src/background/__tests__/BackgroundService.storage-recovery.test.ts:late GitHub authentication failure remains actionable instead of becoming a ZIP error:kind=test_function",
+      "src/background/__tests__/BackgroundService.storage-recovery.test.ts:legacy authenticationMethod writes do not trigger dependency recovery",
+      "src/background/__tests__/BackgroundService.storage-recovery.test.ts:legacy authenticationMethod writes do not trigger dependency recovery:kind=test_function",
+      "src/background/__tests__/BackgroundService.storage-recovery.test.ts:newer disconnected recovery prevents an older connected recovery from restoring stale dependencies",
+      "src/background/__tests__/BackgroundService.storage-recovery.test.ts:newer disconnected recovery prevents an older connected recovery from restoring stale dependencies:kind=test_function",
+      "src/background/__tests__/BackgroundService.storage-recovery.test.ts:reinitializes GitHub service when auth tokens are restored in local storage",
+      "src/background/__tests__/BackgroundService.storage-recovery.test.ts:reinitializes GitHub service when auth tokens are restored in local storage:kind=test_function",
+      "src/background/__tests__/UsageTracker.test.ts:legacy stored PAT analytics values are tolerated without being relabeled as GitHub App usage",
+      "src/background/__tests__/UsageTracker.test.ts:legacy stored PAT analytics values are tolerated without being relabeled as GitHub App usage:kind=test_function",
+      "src/background/__tests__/UsageTracker.test.ts:usage tracking emits only github-app or none for current authentication state",
+      "src/background/__tests__/UsageTracker.test.ts:usage tracking emits only github-app or none for current authentication state:kind=test_function",
+      "src/content/services/__tests__/SupabaseAuthService.github-connection.test.ts:GitHub App sync stores installation metadata without an authentication method selector",
+      "src/content/services/__tests__/SupabaseAuthService.github-connection.test.ts:GitHub App sync stores installation metadata without an authentication method selector:kind=test_function",
+      "src/content/services/__tests__/SupabaseAuthService.session-cleanup.test.ts:session cleanup manages GitHub App metadata without an authentication method selector",
+      "src/content/services/__tests__/SupabaseAuthService.session-cleanup.test.ts:session cleanup manages GitHub App metadata without an authentication method selector:kind=test_function",
+      "src/lib/components/__tests__/GitHubSettings.logic.test.ts:GitHub settings helpers export no PAT permission-check contract",
+      "src/lib/components/__tests__/GitHubSettings.logic.test.ts:GitHub settings helpers export no PAT permission-check contract:kind=test_function",
+      "src/lib/components/__tests__/GitHubSettings.logic.test.ts:GitHub settings helpers require installation metadata without PAT branches",
+      "src/lib/components/__tests__/GitHubSettings.logic.test.ts:GitHub settings helpers require installation metadata without PAT branches:kind=test_function",
+      "src/lib/components/__tests__/RepoSettings.logic.test.ts:repository settings helpers expose no PAT method or token service configuration",
+      "src/lib/components/__tests__/RepoSettings.logic.test.ts:repository settings helpers expose no PAT method or token service configuration:kind=test_function",
+      "src/lib/services/__tests__/chromeStorage.RaceConditions.test.ts:concurrent GitHub App settings writes never restore PAT method or credential fields",
+      "src/lib/services/__tests__/chromeStorage.RaceConditions.test.ts:concurrent GitHub App settings writes never restore PAT method or credential fields:kind=test_function",
+      "src/lib/services/__tests__/chromeStorage.test.ts:legacy cleanup preserves repoOwner and projectSettings",
+      "src/lib/services/__tests__/chromeStorage.test.ts:legacy cleanup preserves repoOwner and projectSettings:kind=test_function",
+      "src/lib/services/__tests__/chromeStorage.test.ts:steady-state GitHub settings never read or write githubToken",
+      "src/lib/services/__tests__/chromeStorage.test.ts:steady-state GitHub settings never read or write githubToken:kind=test_function",
+      "src/lib/stores/__tests__/githubSettings.test.ts:migration-required state preserves repository and project settings",
+      "src/lib/stores/__tests__/githubSettings.test.ts:migration-required state preserves repository and project settings:kind=test_function",
+      "src/lib/stores/__tests__/githubSettings.test.ts:settings initialize from GitHub App metadata without reading a PAT",
+      "src/lib/stores/__tests__/githubSettings.test.ts:settings initialize from GitHub App metadata without reading a PAT:kind=test_function",
+      "src/lib/stores/__tests__/githubSettings.test.ts:settings validity requires installation metadata and live connection state",
+      "src/lib/stores/__tests__/githubSettings.test.ts:settings validity requires installation metadata and live connection state:kind=test_function",
+      "src/lib/stores/__tests__/githubSettings.test.ts:stale App username without installation preserves repository settings",
+      "src/lib/stores/__tests__/githubSettings.test.ts:stale App username without installation preserves repository settings:kind=test_function",
+      "src/lib/types.ts:attribute:GitHubSettingsInterface.githubAppAvatarUrl",
+      "src/lib/types.ts:attribute:GitHubSettingsInterface.githubAppAvatarUrl:kind=attribute",
+      "src/lib/types.ts:attribute:GitHubSettingsInterface.githubAppAvatarUrl:of=GitHubSettingsInterface",
+      "src/lib/types.ts:attribute:GitHubSettingsInterface.githubAppAvatarUrl:type=string | undefined",
+      "src/lib/types.ts:attribute:GitHubSettingsInterface.githubAppInstallationId",
+      "src/lib/types.ts:attribute:GitHubSettingsInterface.githubAppInstallationId:kind=attribute",
+      "src/lib/types.ts:attribute:GitHubSettingsInterface.githubAppInstallationId:of=GitHubSettingsInterface",
+      "src/lib/types.ts:attribute:GitHubSettingsInterface.githubAppInstallationId:type=number | undefined",
+      "src/lib/types.ts:attribute:GitHubSettingsInterface.githubAppMigrationRequired",
+      "src/lib/types.ts:attribute:GitHubSettingsInterface.githubAppMigrationRequired:kind=attribute",
+      "src/lib/types.ts:attribute:GitHubSettingsInterface.githubAppMigrationRequired:of=GitHubSettingsInterface",
+      "src/lib/types.ts:attribute:GitHubSettingsInterface.githubAppMigrationRequired:type=boolean | undefined",
+      "src/lib/types.ts:attribute:GitHubSettingsInterface.githubAppUsername",
+      "src/lib/types.ts:attribute:GitHubSettingsInterface.githubAppUsername:kind=attribute",
+      "src/lib/types.ts:attribute:GitHubSettingsInterface.githubAppUsername:of=GitHubSettingsInterface",
+      "src/lib/types.ts:attribute:GitHubSettingsInterface.githubAppUsername:type=string | undefined",
+      "src/lib/types.ts:attribute:GitHubSettingsInterface.projectSettings",
+      "src/lib/types.ts:attribute:GitHubSettingsInterface.projectSettings:kind=attribute",
+      "src/lib/types.ts:attribute:GitHubSettingsInterface.projectSettings:of=GitHubSettingsInterface",
+      "src/lib/types.ts:attribute:GitHubSettingsInterface.projectSettings:type=ProjectSettings | undefined",
+      "src/lib/types.ts:attribute:GitHubSettingsInterface.repoOwner",
+      "src/lib/types.ts:attribute:GitHubSettingsInterface.repoOwner:kind=attribute",
+      "src/lib/types.ts:attribute:GitHubSettingsInterface.repoOwner:of=GitHubSettingsInterface",
+      "src/lib/types.ts:attribute:GitHubSettingsInterface.repoOwner:type=string",
+      "src/lib/types.ts:attribute:UsageData.authMethod",
+      "src/lib/types.ts:attribute:UsageData.authMethod:kind=attribute",
+      "src/lib/types.ts:attribute:UsageData.authMethod:of=UsageData",
+      "src/lib/types.ts:attribute:UsageData.authMethod:type='github-app' | 'none'",
+      "src/lib/types.ts:interface:GitHubSettingsInterface",
+      "src/lib/types.ts:interface:GitHubSettingsInterface:kind=interface",
+      "src/lib/types.ts:interface:UsageData",
+      "src/lib/types.ts:interface:UsageData:kind=interface",
+      "src/lib/utils/__tests__/githubAppSync.test.ts:GitHub App info never returns PAT on success or failure",
+      "src/lib/utils/__tests__/githubAppSync.test.ts:GitHub App info never returns PAT on success or failure:kind=test_function",
+      "src/lib/utils/__tests__/githubAppSync.test.ts:GitHub App status derives from installation metadata without reading authenticationMethod",
+      "src/lib/utils/__tests__/githubAppSync.test.ts:GitHub App status derives from installation metadata without reading authenticationMethod:kind=test_function",
+      "src/lib/utils/__tests__/githubAppSync.test.ts:sync and refresh failures remain visible after method switching is removed",
+      "src/lib/utils/__tests__/githubAppSync.test.ts:sync and refresh failures remain visible after method switching is removed:kind=test_function",
+      "src/lib/utils/githubAppSync.ts:function:checkGitHubAppStatus",
+      "src/lib/utils/githubAppSync.ts:function:checkGitHubAppStatus:kind=function",
+      "src/lib/utils/githubAppSync.ts:function:checkGitHubAppStatus:returns=Promise<GitHubAppStatus>",
+      "src/lib/utils/githubAppSync.ts:function:getGitHubAppInfo",
+      "src/lib/utils/githubAppSync.ts:function:getGitHubAppInfo:kind=function",
+      "src/lib/utils/githubAppSync.ts:function:getGitHubAppInfo:returns=Promise<GitHubAppInfo>",
+      "src/popup/__tests__/App.component.test.ts:popup startup no longer normalizes a removed authentication method selector",
+      "src/popup/__tests__/App.component.test.ts:popup startup no longer normalizes a removed authentication method selector:kind=test_function",
+      "src/popup/components/__tests__/TabsView.component.test.ts:tabs view exposes no authentication method selection event",
+      "src/popup/components/__tests__/TabsView.component.test.ts:tabs view exposes no authentication method selection event:kind=test_function",
+      "src/services/__tests__/authentication.types.test.ts:authentication types expose only GitHub App credential contracts",
+      "src/services/__tests__/authentication.types.test.ts:authentication types expose only GitHub App credential contracts:kind=test_function",
+      "src/services/__tests__/settings.test.ts:requires installation metadata",
+      "src/services/__tests__/settings.test.ts:requires installation metadata:kind=test_function",
+      "src/services/__tests__/settings.test.ts:returns App metadata without PAT credential or selector fields",
+      "src/services/__tests__/settings.test.ts:returns App metadata without PAT credential or selector fields:kind=test_function",
+      "src/services/types/authentication.ts:attribute:TokenValidationResult.type",
+      "src/services/types/authentication.ts:attribute:TokenValidationResult.type:kind=attribute",
+      "src/services/types/authentication.ts:attribute:TokenValidationResult.type:of=TokenValidationResult",
+      "src/services/types/authentication.ts:attribute:TokenValidationResult.type:type='github_app' | undefined",
+      "src/services/types/authentication.ts:interface:AuthenticationStorage",
+      "src/services/types/authentication.ts:interface:AuthenticationStorage:kind=interface",
+      "src/services/types/authentication.ts:interface:TokenValidationResult",
+      "src/services/types/authentication.ts:interface:TokenValidationResult:kind=interface"
+    ],
+    "files": {
+      "create": [],
+      "edit": [
+        "src/background/BackgroundService.ts",
+        "src/background/__tests__/BackgroundService.auth-lifecycle.test.ts",
+        "src/background/__tests__/BackgroundService.edge-cases.test.ts",
+        "src/background/__tests__/BackgroundService.storage-recovery.test.ts",
+        "src/background/__tests__/UsageTracker.test.ts",
+        "src/content/services/__tests__/SupabaseAuthService.github-connection.test.ts",
+        "src/content/services/__tests__/SupabaseAuthService.session-cleanup.test.ts",
+        "src/lib/components/__tests__/GitHubSettings.logic.test.ts",
+        "src/lib/components/__tests__/RepoSettings.logic.test.ts",
+        "src/lib/services/__tests__/chromeStorage.RaceConditions.test.ts",
+        "src/lib/services/__tests__/chromeStorage.test.ts",
+        "src/lib/stores/__tests__/githubSettings.test.ts",
+        "src/lib/types.ts",
+        "src/lib/utils/__tests__/githubAppSync.test.ts",
+        "src/lib/utils/githubAppSync.ts",
+        "src/popup/__tests__/App.component.test.ts",
+        "src/popup/components/__tests__/TabsView.component.test.ts",
+        "src/services/__tests__/authentication.types.test.ts",
+        "src/services/__tests__/settings.test.ts",
+        "src/services/types/authentication.ts"
+      ],
+      "read": [
+        "manifests/01-github-app-only-migration-policy.manifest.yaml",
+        "manifests/06-retire-pat-strategy-and-factory.manifest.yaml",
+        "manifests/preserve-github-app-config-on-reauth.manifest.yaml",
+        "src/lib/services/githubAuthMigration.ts"
+      ]
+    },
+    "test_files": [
+      "src/background/__tests__/BackgroundService.auth-lifecycle.test.ts",
+      "src/background/__tests__/BackgroundService.edge-cases.test.ts",
+      "src/background/__tests__/BackgroundService.storage-recovery.test.ts",
+      "src/background/__tests__/UsageTracker.test.ts",
+      "src/content/services/__tests__/SupabaseAuthService.github-connection.test.ts",
+      "src/content/services/__tests__/SupabaseAuthService.session-cleanup.test.ts",
+      "src/lib/components/__tests__/GitHubSettings.logic.test.ts",
+      "src/lib/components/__tests__/RepoSettings.logic.test.ts",
+      "src/lib/services/__tests__/chromeStorage.RaceConditions.test.ts",
+      "src/lib/services/__tests__/chromeStorage.test.ts",
+      "src/lib/stores/__tests__/githubSettings.test.ts",
+      "src/lib/utils/__tests__/githubAppSync.test.ts",
+      "src/popup/__tests__/App.component.test.ts",
+      "src/popup/components/__tests__/TabsView.component.test.ts",
+      "src/services/__tests__/authentication.types.test.ts",
+      "src/services/__tests__/settings.test.ts"
+    ],
+    "validate_commands": [
+      "pnpm exec vitest run src/background/__tests__/UsageTracker.test.ts src/background/__tests__/BackgroundService.auth-lifecycle.test.ts src/background/__tests__/BackgroundService.storage-recovery.test.ts src/background/__tests__/BackgroundService.edge-cases.test.ts src/lib/stores/__tests__/githubSettings.test.ts src/lib/services/__tests__/chromeStorage.test.ts src/lib/services/__tests__/chromeStorage.RaceConditions.test.ts src/lib/utils/__tests__/githubAppSync.test.ts src/services/__tests__/settings.test.ts src/services/__tests__/authentication.types.test.ts src/lib/components/__tests__/GitHubSettings.logic.test.ts src/lib/components/__tests__/RepoSettings.logic.test.ts src/content/services/__tests__/SupabaseAuthService.github-connection.test.ts src/content/services/__tests__/SupabaseAuthService.session-cleanup.test.ts src/popup/__tests__/App.component.test.ts src/popup/components/__tests__/TabsView.component.test.ts",
+      "./scripts/maid validate manifests/07-remove-legacy-pat-storage-and-types.manifest.yaml --mode behavioral",
+      "pnpm lint",
+      "pnpm check",
+      "pnpm build"
+    ]
+  }
+}

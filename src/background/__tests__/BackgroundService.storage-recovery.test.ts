@@ -302,7 +302,6 @@ describe('BackgroundService - Auth Storage Recovery', () => {
 
   it('reinitializes GitHub service when auth tokens are restored in local storage', async () => {
     triggerLocalChange(chromeMock, 'supabaseToken', undefined, 'restored-token');
-    chromeMock._localData.authenticationMethod = 'github_app';
 
     await vi.advanceTimersByTimeAsync(1100);
 
@@ -334,7 +333,6 @@ describe('BackgroundService - Auth Storage Recovery', () => {
 
   it('late GitHub authentication failure remains actionable instead of becoming a ZIP error', async () => {
     triggerLocalChange(chromeMock, 'supabaseToken', undefined, 'restored-token');
-    chromeMock._localData.authenticationMethod = 'github_app';
     await vi.advanceTimersByTimeAsync(1100);
 
     mocks.processZipFile.mockRejectedValueOnce(
@@ -364,14 +362,31 @@ describe('BackgroundService - Auth Storage Recovery', () => {
     );
   });
 
-  it('forces auth check when authenticationMethod is restored to github_app', async () => {
+  it('legacy authenticationMethod writes do not trigger dependency recovery', async () => {
     triggerLocalChange(chromeMock, 'authenticationMethod', undefined, 'github_app');
 
     await vi.advanceTimersByTimeAsync(1100);
 
-    expect(mocks.forceCheck).toHaveBeenCalledTimes(1);
-    expect(mocks.unifiedGitHubService).toHaveBeenCalledWith({ type: 'github_app' });
+    expect(mocks.forceCheck).not.toHaveBeenCalled();
+    expect(mocks.unifiedGitHubService).not.toHaveBeenCalled();
   });
+
+  it.each([
+    ['supabaseToken', 'restored-token'],
+    ['supabaseTokenExpiry', Date.now() + 60_000],
+    ['githubAppMigrationRequired', true],
+    ['githubAppInstallationId', 12345],
+    ['githubAppExpiresAt', '2099-01-01T00:00:00.000Z'],
+  ] as const)(
+    'authoritative GitHub App recovery keys trigger dependency recovery: %s',
+    async (key, newValue) => {
+      triggerLocalChange(chromeMock, key, undefined, newValue);
+      await vi.advanceTimersByTimeAsync(1100);
+
+      expect(mocks.forceCheck, key).toHaveBeenCalledTimes(1);
+      expect(mocks.unifiedGitHubService, key).toHaveBeenCalledWith({ type: 'github_app' });
+    }
+  );
 
   it('ignores unrelated local storage keys such as keepAliveTimestamp', async () => {
     triggerLocalChange(chromeMock, 'keepAliveTimestamp', 100, 200);
@@ -401,7 +416,6 @@ describe('BackgroundService - Auth Storage Recovery', () => {
       );
     });
 
-    chromeMock._localData.authenticationMethod = 'github_app';
     triggerLocalChange(chromeMock, 'supabaseToken', undefined, 'restored-token');
 
     await vi.advanceTimersByTimeAsync(1900);
@@ -413,7 +427,6 @@ describe('BackgroundService - Auth Storage Recovery', () => {
   it('debounces rapid successive auth storage changes into one recovery pass', async () => {
     triggerLocalChange(chromeMock, 'supabaseToken', undefined, 'restored-token');
     triggerLocalChange(chromeMock, 'supabaseTokenExpiry', undefined, Date.now() + 60_000);
-    triggerLocalChange(chromeMock, 'authenticationMethod', undefined, 'github_app');
     triggerLocalChange(chromeMock, 'githubAppInstallationId', undefined, '12345');
 
     await vi.advanceTimersByTimeAsync(1100);

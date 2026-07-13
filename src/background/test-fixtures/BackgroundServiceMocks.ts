@@ -526,7 +526,6 @@ export class MockServiceFactory {
   setupSuccessfulUploadScenario(): void {
     this.stateManager.setMockGitHubSettings({
       gitHubSettings: {
-        githubToken: 'ghp_test_token',
         repoOwner: 'testuser',
         repoName: 'test-repo',
         branch: 'main',

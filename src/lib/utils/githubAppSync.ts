@@ -9,6 +9,22 @@ import { createLogger } from './logger';
 
 const logger = createLogger('GitHubAppSync');
 
+type GitHubAppStatus = {
+  isConfigured: boolean;
+  username?: string;
+  avatarUrl?: string;
+  installationId?: number;
+};
+
+type GitHubAppInfo = {
+  isConfigured: boolean;
+  username?: string;
+  avatarUrl?: string;
+  expiresAt?: string;
+  scopes?: string[];
+  needsRefresh?: boolean;
+};
+
 /**
  * Manually trigger GitHub App sync from web app
  */
@@ -73,17 +89,10 @@ export async function syncGitHubAppFromWebApp(): Promise<{
 /**
  * Check if GitHub App is already configured in the extension
  */
-export async function checkGitHubAppStatus(): Promise<{
-  isConfigured: boolean;
-  username?: string;
-  avatarUrl?: string;
-  installationId?: number;
-}> {
+export async function checkGitHubAppStatus(): Promise<GitHubAppStatus> {
   try {
     const storage = await ChromeStorageService.getGitHubAppConfig();
-    const authMethod = await ChromeStorageService.getAuthenticationMethod();
-
-    const isConfigured = authMethod === 'github_app' && !!storage.installationId;
+    const isConfigured = !!storage.installationId;
 
     return {
       isConfigured,
@@ -94,44 +103,6 @@ export async function checkGitHubAppStatus(): Promise<{
   } catch (error) {
     logger.error('Error checking GitHub App status:', error);
     return { isConfigured: false };
-  }
-}
-
-/**
- * Switch authentication method to GitHub App (if available)
- */
-export async function switchToGitHubApp(): Promise<{
-  success: boolean;
-  message: string;
-}> {
-  try {
-    const status = await checkGitHubAppStatus();
-
-    if (!status.isConfigured) {
-      // Try to sync first
-      const syncResult = await syncGitHubAppFromWebApp();
-
-      if (!syncResult.hasGitHubApp) {
-        return {
-          success: false,
-          message: 'GitHub App not found. Please connect GitHub App on bolt2github.com first.',
-        };
-      }
-    }
-
-    // Set authentication method to GitHub App
-    await ChromeStorageService.setAuthenticationMethod('github_app');
-
-    return {
-      success: true,
-      message: 'Switched to GitHub App authentication successfully!',
-    };
-  } catch (error) {
-    logger.error('Error switching to GitHub App:', error);
-    return {
-      success: false,
-      message: error instanceof Error ? error.message : 'Failed to switch authentication method',
-    };
   }
 }
 
@@ -176,20 +147,10 @@ export async function refreshGitHubAppToken(): Promise<{
 /**
  * Get detailed GitHub App information for UI display
  */
-export async function getGitHubAppInfo(): Promise<{
-  isConfigured: boolean;
-  authMethod: 'pat' | 'github_app';
-  username?: string;
-  avatarUrl?: string;
-  expiresAt?: string;
-  scopes?: string[];
-  needsRefresh?: boolean;
-}> {
+export async function getGitHubAppInfo(): Promise<GitHubAppInfo> {
   try {
-    const authMethod = await ChromeStorageService.getAuthenticationMethod();
     const storage = await ChromeStorageService.getGitHubAppConfig();
-
-    const isConfigured = authMethod === 'github_app' && !!storage.installationId;
+    const isConfigured = !!storage.installationId;
 
     let needsRefresh = false;
     if (storage.expiresAt) {
@@ -201,7 +162,6 @@ export async function getGitHubAppInfo(): Promise<{
 
     return {
       isConfigured,
-      authMethod,
       username: storage.username,
       avatarUrl: storage.avatarUrl,
       expiresAt: storage.expiresAt,
@@ -212,7 +172,6 @@ export async function getGitHubAppInfo(): Promise<{
     logger.error('Error getting GitHub App info:', error);
     return {
       isConfigured: false,
-      authMethod: 'pat',
     };
   }
 }

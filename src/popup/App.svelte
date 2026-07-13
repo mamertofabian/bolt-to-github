@@ -204,10 +204,6 @@
       }
 
       if (githubSettings.githubAppInstallationId) {
-        // The migration intentionally removes the legacy selector key. Normalize
-        // the still-transitional store in memory until its PAT fields are deleted
-        // by the storage-and-types retirement child.
-        githubSettingsActions.setAuthenticationMethod('github_app');
         if (!githubSettings.repoOwner && githubSettings.githubAppUsername) {
           githubSettingsActions.setRepoOwner(githubSettings.githubAppUsername);
         }

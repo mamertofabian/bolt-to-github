@@ -1,14 +1,11 @@
 /**
  * Unified GitHub Service
- * Transparent wrapper that maintains backward compatibility while adding GitHub App support
- * Can be used as a drop-in replacement for the existing GitHubService
+ * GitHub API facade backed exclusively by GitHub App authentication.
  */
 
 import type { IAuthenticationStrategy } from './interfaces/IAuthenticationStrategy';
-import type { AuthenticationConfig, AuthenticationType } from './types/authentication';
-// Removed GitHubService import to eliminate circular dependency
-import { AuthenticationStrategyFactory } from './AuthenticationStrategyFactory';
-import { resolveStoredGitHubAuthenticationMethod } from './githubAppRequestPolicy';
+import type { AuthenticationConfig } from './types/authentication';
+import { GitHubAppAuthenticationStrategy } from './GitHubAppAuthenticationStrategy';
 import { createLogger } from '$lib/utils/logger';
 import type {
   GitHubBranch,
@@ -24,52 +21,62 @@ import type {
 const logger = createLogger('UnifiedGitHubService');
 
 export class UnifiedGitHubService {
-  private strategy: IAuthenticationStrategy | null = null;
-  private initializationPromise: Promise<void> | null = null;
-  // Removed fallbackGitHubService to eliminate circular dependency
-  private factory: AuthenticationStrategyFactory;
-  private readonly explicitGitHubApp: boolean;
+  private static sharedIdentity: string | null = null;
+  private static sharedStrategy: GitHubAppAuthenticationStrategy | null = null;
+  private strategy: GitHubAppAuthenticationStrategy | null = null;
+  private boundIdentity: string | null = null;
+  private readonly initializationPromise: Promise<void>;
 
   /**
-   * Constructor maintains backward compatibility with existing GitHubService
-   * @param authConfig - Can be a token string (backward compatible) or AuthenticationConfig object
+   * Create a GitHub App-backed service.
+   *
+   * The runtime guard keeps JavaScript callers from silently treating a legacy
+   * token string as valid configuration after the TypeScript surface narrows.
    */
-  constructor(authConfig: string | AuthenticationConfig) {
-    this.factory = AuthenticationStrategyFactory.getInstance();
-    this.explicitGitHubApp = typeof authConfig !== 'string' && authConfig.type === 'github_app';
-
-    if (typeof authConfig === 'string') {
-      // Backward compatibility: treat as PAT token
-      this.strategy = this.factory.createPATStrategy(authConfig);
-    } else {
-      // New configuration object - initialize asynchronously
-      this.initializationPromise = this.initializeStrategy(authConfig).catch((error) => {
-        logger.error('Failed to initialize authentication strategy:', error);
-        // Set strategy to null so getStrategy() will try to auto-detect
-        this.strategy = null;
-      });
+  constructor(authConfig: AuthenticationConfig = { type: 'github_app' }) {
+    if (!authConfig || typeof authConfig !== 'object' || authConfig.type !== 'github_app') {
+      throw new Error('GitHub App authentication is required');
     }
+
+    this.initializationPromise = this.initializeStrategy();
   }
 
   /**
-   * Initialize strategy based on configuration
+   * Share token acquisition only between facades bound to the same signed-in
+   * Bolt2GitHub identity. Keeping the identity and strategy in one slot avoids
+   * an unbounded token-keyed cache while retaining cross-facade single-flight.
    */
-  private async initializeStrategy(config: AuthenticationConfig): Promise<void> {
-    if (config.type === 'pat' && config.token) {
-      this.strategy = this.factory.createPATStrategy(config.token);
-    } else if (config.type === 'github_app') {
-      // Get user token from SupabaseAuthService for GitHub App authentication
-      const userToken = await this.getUserToken();
+  private static getSharedStrategy(userToken: string): GitHubAppAuthenticationStrategy {
+    if (!this.sharedStrategy || this.sharedIdentity !== userToken) {
+      const strategy = new GitHubAppAuthenticationStrategy();
+      strategy.setUserToken(userToken);
+      this.sharedIdentity = userToken;
+      this.sharedStrategy = strategy;
+    }
 
-      if (userToken) {
-        logger.info('✅ Found user token for GitHub App authentication');
-      } else {
-        logger.warn('⚠️ No user token found - GitHub App authentication may fail');
-      }
+    return this.sharedStrategy;
+  }
 
-      this.strategy = await this.factory.createGitHubAppStrategy(userToken);
+  private static clearSharedStrategy(): void {
+    this.sharedIdentity = null;
+    this.sharedStrategy = null;
+  }
+
+  /**
+   * Bind the strategy to the current Bolt2GitHub bearer identity when one is
+   * available. GitHubAppService performs the final live credential check.
+   */
+  private async initializeStrategy(): Promise<void> {
+    const userToken = await this.getUserToken();
+
+    if (userToken) {
+      logger.info('✅ Found user token for GitHub App authentication');
+      this.boundIdentity = userToken;
+      this.strategy = UnifiedGitHubService.getSharedStrategy(userToken);
     } else {
-      throw new Error('Invalid authentication configuration');
+      logger.warn('⚠️ No user token found - GitHub App authentication may fail');
+      UnifiedGitHubService.clearSharedStrategy();
+      this.strategy = new GitHubAppAuthenticationStrategy();
     }
   }
 
@@ -89,57 +96,24 @@ export class UnifiedGitHubService {
   /**
    * Get the current authentication strategy
    */
-  private async getStrategy(): Promise<IAuthenticationStrategy> {
-    if (!this.strategy && this.initializationPromise) {
-      await this.initializationPromise;
-      this.initializationPromise = null;
-    }
+  private async getStrategy(requireCurrentIdentity = true): Promise<IAuthenticationStrategy> {
+    await this.initializationPromise;
 
     if (!this.strategy) {
-      if (this.explicitGitHubApp) {
-        const userToken = await this.getUserToken();
-        this.strategy = this.factory.createGitHubAppStrategy(userToken);
-        return this.strategy;
-      }
-
-      // Auto-detect current strategy if not explicitly set
-      const authMethod = await this.getConfiguredAuthMethod();
-
-      if (authMethod === 'github_app') {
-        // Create GitHub App strategy with user token
-        const userToken = await this.getUserToken();
-        this.strategy = this.factory.createGitHubAppStrategy(userToken);
-      } else {
-        // Keep the resolved PAT decision authoritative. Delegating back to the
-        // factory's legacy default could select GitHub App again when neither
-        // strategy is configured and recreate the NO_GITHUB_APP request path.
-        this.strategy = this.factory.createStrategy('pat');
-      }
+      throw new Error('GitHub App authentication is required');
     }
-    return this.strategy;
-  }
 
-  /**
-   * Get configured authentication method from storage with smart detection
-   * Prioritizes GitHub App authentication when available
-   */
-  private async getConfiguredAuthMethod(): Promise<'pat' | 'github_app'> {
-    try {
-      const storage = await chrome.storage.local.get([
-        'authenticationMethod',
-        'githubAppInstallationId',
-      ]);
-      const storedMethod = resolveStoredGitHubAuthenticationMethod(
-        storage.authenticationMethod,
-        storage.githubAppInstallationId
+    if (
+      requireCurrentIdentity &&
+      this.boundIdentity &&
+      UnifiedGitHubService.sharedIdentity !== this.boundIdentity
+    ) {
+      throw new Error(
+        'Bolt2GitHub account changed. Please retry after signing in and connecting the GitHub App.'
       );
-
-      logger.info(`🔍 Using stored ${storedMethod} authentication configuration`);
-      return storedMethod;
-    } catch (error) {
-      logger.warn('Failed to get authentication method:', error);
-      return 'pat';
     }
+
+    return this.strategy;
   }
 
   /**
@@ -196,12 +170,11 @@ export class UnifiedGitHubService {
   }
 
   // ========================================
-  // Existing GitHubService API Methods
-  // These maintain exact compatibility with the original GitHubService
+  // GitHub API methods
   // ========================================
 
   /**
-   * Validate token and user (maintains exact API compatibility)
+   * Validate the GitHub App connection and return its user information.
    */
   async validateTokenAndUser(repoOwner: string): Promise<{
     isValid: boolean;
@@ -233,91 +206,6 @@ export class UnifiedGitHubService {
       return {
         isValid: false,
         error: error instanceof Error ? error.message : 'Validation failed',
-      };
-    }
-  }
-
-  /**
-   * Simple token validation (backward compatibility method)
-   */
-  async validateToken(): Promise<boolean> {
-    try {
-      const strategy = await this.getStrategy();
-      const result = await strategy.validateAuth();
-      return result.isValid;
-    } catch (error) {
-      logger.error('Token validation failed:', error);
-      return false;
-    }
-  }
-
-  /**
-   * Check if token is classic PAT
-   */
-  async isClassicToken(): Promise<boolean> {
-    try {
-      const strategy = await this.getStrategy();
-
-      if (strategy.type === 'github_app') {
-        return false; // GitHub App tokens are not classic PATs
-      }
-
-      // For PAT, check token format
-      const token = await strategy.getToken();
-      return token.startsWith('ghp_');
-    } catch {
-      return false;
-    }
-  }
-
-  /**
-   * Check if token is fine-grained PAT
-   */
-  async isFineGrainedToken(): Promise<boolean> {
-    try {
-      const strategy = await this.getStrategy();
-
-      if (strategy.type === 'github_app') {
-        return false; // GitHub App tokens are not fine-grained PATs
-      }
-
-      // For PAT, check token format
-      const token = await strategy.getToken();
-      return token.startsWith('github_pat_');
-    } catch {
-      return false;
-    }
-  }
-
-  /**
-   * Verify token permissions
-   */
-  async verifyTokenPermissions(
-    repoOwner: string,
-    onProgress?: (update: { permission: 'repos' | 'admin' | 'code'; isValid: boolean }) => void
-  ): Promise<{
-    isValid: boolean;
-    error?: string;
-  }> {
-    try {
-      const strategy = await this.getStrategy();
-      const result = await strategy.checkPermissions(repoOwner);
-
-      // Simulate progress updates for UI compatibility
-      if (onProgress) {
-        onProgress({ permission: 'repos', isValid: result.permissions.allRepos });
-        onProgress({ permission: 'admin', isValid: result.permissions.admin });
-        onProgress({ permission: 'code', isValid: result.permissions.contents });
-      }
-
-      return {
-        isValid: result.isValid,
-        error: result.error,
-      };
-    } catch (error) {
-      return {
-        isValid: false,
-        error: error instanceof Error ? error.message : 'Permission verification failed',
       };
     }
   }
@@ -1040,8 +928,8 @@ export class UnifiedGitHubService {
   /**
    * Get the current authentication type
    */
-  async getAuthenticationType(): Promise<AuthenticationType> {
-    const strategy = await this.getStrategy();
+  async getAuthenticationType(): Promise<'github_app'> {
+    const strategy = await this.getStrategy(false);
     return strategy.type;
   }
 

@@ -33,7 +33,6 @@ const AUTH_STORAGE_RECOVERY_DEBOUNCE_MS = 1000;
 const AUTH_STORAGE_RECOVERY_KEYS = new Set([
   'supabaseToken',
   'supabaseTokenExpiry',
-  'authenticationMethod',
   'githubAppMigrationRequired',
   'githubAppInstallationId',
   'githubAppExpiresAt',
@@ -516,9 +515,7 @@ export class BackgroundService {
           await this.usageTracker.setUninstallURL();
         }
 
-        const settingsChanged = ['githubToken', 'repoOwner', 'repoName', 'branch'].some(
-          (key) => key in changes
-        );
+        const settingsChanged = ['repoOwner', 'repoName', 'branch'].some((key) => key in changes);
 
         if (settingsChanged) {
           logger.info('🔄 GitHub settings changed, reinitializing GitHub service...');

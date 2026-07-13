@@ -1,70 +1,28 @@
-/**
- * Test Scenario Builders for UnifiedGitHubService
- *
- * This module provides pre-configured test scenarios that combine multiple
- * test doubles to create realistic testing environments. Each scenario
- * represents a complete setup for testing specific functionality or error cases.
- */
-
 import type { MockedFunction } from 'vitest';
 import {
-  MockAuthenticationStrategyFactory,
-  MockFetchResponseBuilder,
   MockChromeStorage,
+  MockFetchResponseBuilder,
+  MockGitHubAppAuthenticationStrategy,
 } from '../mocks';
 import { TokenFixtures } from '../tokens';
 
-/**
- * Builder for creating complete test scenarios
- *
- * Provides fluent API for setting up complex test scenarios that combine
- * authentication, storage, and network mocking. Scenarios include:
- * - Successful operations (PAT auth, GitHub App auth, repo ops, issues)
- * - Error scenarios (auth failures, network errors, rate limiting, permissions)
- * - Performance scenarios (slow network, slow authentication)
- *
- * @example
- * ```ts
- * const { mockFetch, mockStorage, mockAuthFactory } = new UnifiedGitHubServiceTestScenarios()
- *   .setupSuccessfulPATAuthentication()
- *   .setupRepositoryOperations('owner', 'repo')
- *   .build();
- * ```
- */
+/** Builder for App-authenticated UnifiedGitHubService test environments. */
 export class UnifiedGitHubServiceTestScenarios {
-  private mockFetch: MockFetchResponseBuilder;
-  private mockStorage: MockChromeStorage;
-  private mockAuthFactory: MockAuthenticationStrategyFactory;
-
-  constructor() {
-    this.mockFetch = new MockFetchResponseBuilder();
-    this.mockStorage = new MockChromeStorage();
-    this.mockAuthFactory = new MockAuthenticationStrategyFactory();
-  }
-
-  // Successful operation scenarios
-  setupSuccessfulPATAuthentication(): this {
-    this.mockStorage.loadGitHubSettings();
-    this.mockStorage.loadAuthenticationMethod('pat');
-
-    const patStrategy = this.mockAuthFactory.getPATStrategy();
-    patStrategy.setShouldFail(false);
-
-    return this;
-  }
+  private readonly mockFetch = new MockFetchResponseBuilder();
+  private readonly mockStorage = new MockChromeStorage();
+  private readonly mockStrategy = new MockGitHubAppAuthenticationStrategy(
+    TokenFixtures.oauth.accessToken
+  );
 
   setupSuccessfulGitHubAppAuthentication(): this {
-    this.mockStorage.loadAuthenticationMethod('github_app');
+    this.mockStorage.loadGitHubApp();
     this.mockStorage.loadSupabaseToken();
-
-    const appStrategy = this.mockAuthFactory.getGitHubAppStrategy();
-    appStrategy.setShouldFail(false);
-    appStrategy.setUserToken(TokenFixtures.oauth.accessToken);
-
+    this.mockStrategy.setShouldFail(false);
+    this.mockStrategy.setUserToken(TokenFixtures.oauth.accessToken);
     return this;
   }
 
-  setupRepositoryOperations(owner: string = 'testuser', repo: string = 'test-repo'): this {
+  setupRepositoryOperations(owner = 'testuser', repo = 'test-repo'): this {
     this.mockFetch
       .mockRepoExists(owner, repo, true)
       .mockGetRepoInfo(owner, repo)
@@ -72,24 +30,20 @@ export class UnifiedGitHubServiceTestScenarios {
       .mockListRepos()
       .mockListBranches(owner, repo)
       .mockPushFile(owner, repo, 'test-file.txt');
-
     return this;
   }
 
-  setupIssueOperations(owner: string = 'testuser', repo: string = 'test-repo'): this {
+  setupIssueOperations(owner = 'testuser', repo = 'test-repo'): this {
     this.mockFetch
       .mockGetIssues(owner, repo, 'open')
       .mockGetIssue(owner, repo, 1)
       .mockCreateIssue(owner, repo)
       .mockAddIssueComment(owner, repo, 1);
-
     return this;
   }
 
-  // Error scenarios
   setupAuthenticationFailure(): this {
-    this.mockStorage.loadAuthenticationMethod('pat');
-    this.mockAuthFactory.getPATStrategy().setShouldFail(true);
+    this.mockStrategy.setShouldFail(true);
     return this;
   }
 
@@ -98,51 +52,46 @@ export class UnifiedGitHubServiceTestScenarios {
     return this;
   }
 
-  setupRateLimiting(owner: string = 'testuser', repo: string = 'test-repo'): this {
+  setupRateLimiting(owner = 'testuser', repo = 'test-repo'): this {
     this.mockFetch.mockRateLimited(`GET:https://api.github.com/repos/${owner}/${repo}`);
     return this;
   }
 
-  setupRepositoryNotFound(owner: string = 'testuser', repo: string = 'nonexistent'): this {
+  setupRepositoryNotFound(owner = 'testuser', repo = 'nonexistent'): this {
     this.mockFetch.mockRepoExists(owner, repo, false);
     return this;
   }
 
   setupPermissionDenied(): this {
-    this.mockAuthFactory.getPATStrategy().setShouldFailPermissions(true);
+    this.mockStrategy.setShouldFailPermissions(true);
     return this;
   }
 
-  // Performance scenarios
-  setupSlowNetwork(delay: number = 5000): this {
+  setupSlowNetwork(delay = 5000): this {
     this.mockFetch.setDelay(delay);
     return this;
   }
 
-  setupSlowAuthentication(delay: number = 3000): this {
-    this.mockAuthFactory.getPATStrategy().setValidationDelay(delay);
-    this.mockAuthFactory.getGitHubAppStrategy().setValidationDelay(delay);
+  setupSlowAuthentication(delay = 3000): this {
+    this.mockStrategy.setValidationDelay(delay);
     return this;
   }
 
-  // Build and apply all mocks
   build(): {
     mockFetch: MockedFunction<typeof fetch>;
     mockStorage: MockChromeStorage;
-    mockAuthFactory: MockAuthenticationStrategyFactory;
+    mockStrategy: MockGitHubAppAuthenticationStrategy;
   } {
-    const mockFetch = this.mockFetch.build();
-
     return {
-      mockFetch,
+      mockFetch: this.mockFetch.build(),
       mockStorage: this.mockStorage,
-      mockAuthFactory: this.mockAuthFactory,
+      mockStrategy: this.mockStrategy,
     };
   }
 
   reset(): void {
     this.mockFetch.reset();
     this.mockStorage.reset();
-    this.mockAuthFactory.reset();
+    this.mockStrategy.reset();
   }
 }

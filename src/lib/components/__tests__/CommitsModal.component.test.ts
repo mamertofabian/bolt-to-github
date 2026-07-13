@@ -50,7 +50,7 @@ describe('CommitsModal', () => {
       value: {
         storage: {
           local: {
-            get: vi.fn().mockResolvedValue({ authenticationMethod: 'pat' }),
+            get: vi.fn().mockResolvedValue({}),
           },
         },
       },

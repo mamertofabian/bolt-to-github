@@ -9,6 +9,12 @@ import {
   waitForErrorNotification,
 } from '../../../e2e/helpers/popup';
 import { test as extensionTest } from '../../../e2e/fixtures/extension';
+import {
+  seedConnectedGitHubApp,
+  seedLegacyPatMigration,
+  type GitHubAppE2ESettings,
+  type LegacyPatE2ESettings,
+} from '../../../e2e/helpers/storage';
 
 vi.mock('@playwright/test', () => ({
   test: {
@@ -48,37 +54,79 @@ function createLocator(options: { visible?: boolean; text?: string } = {}): Loca
 }
 
 describe('popup E2E helper characterization', () => {
-  it('pins PAT onboarding validation to the current submit control', () => {
-    const authSpec = readFileSync(join(process.cwd(), 'e2e/auth.spec.ts'), 'utf8');
-
-    expect(authSpec).toContain("getByRole('button', { name: /get started|complete setup/i })");
-    expect(authSpec).not.toContain('button:has-text("Complete Setup")');
-  });
-
-  it('seeds product error flows through a live PAT connection', () => {
+  it('product auth helper seeds GitHub App session and installation without PAT', () => {
+    const connectedOverrides: GitHubAppE2ESettings = { username: 'testuser' };
+    const storageHelper = readFileSync(join(process.cwd(), 'e2e/helpers/storage.ts'), 'utf8');
     const errorFlowSpec = readFileSync(
       join(process.cwd(), 'e2e/error-flow-product.spec.ts'),
       'utf8'
     );
-    const seedProductAuth = errorFlowSpec.slice(
-      errorFlowSpec.indexOf('async function seedProductAuth'),
-      errorFlowSpec.indexOf('async function dismissWhatsNewForCurrentVersion')
-    );
 
-    expect(seedProductAuth).toContain("authenticationMethod: 'pat'");
-    expect(seedProductAuth).toContain("githubToken: 'ghp_e2e_product_token'");
-    expect(seedProductAuth).not.toContain("authenticationMethod: 'github_app'");
-    expect(seedProductAuth).not.toContain('githubAppInstallationId');
+    expect(seedConnectedGitHubApp).toBeTypeOf('function');
+    expect(connectedOverrides).not.toHaveProperty('githubToken');
+    expect(storageHelper).toContain('export async function seedConnectedGitHubApp');
+    expect(storageHelper).toContain('supabaseAuthState');
+    expect(storageHelper).toContain('githubAppInstallationId');
+    expect(storageHelper).toContain('githubConnectionPopupVerification');
+    expect(storageHelper).not.toContain('export async function setupPATAuth');
+    expect(errorFlowSpec).toContain('seedConnectedGitHubApp(context, extensionId');
+    expect(errorFlowSpec).not.toContain("authenticationMethod: 'pat'");
+    expect(errorFlowSpec).not.toContain('ghp_e2e_product_token');
     expect(errorFlowSpec).toContain("context.route('https://api.github.com/users/testuser'");
+    expect(errorFlowSpec).toContain('chrome.tabs.update(boltTab.id, { active: true })');
+  });
+
+  it('migration helper seeds legacy PAT only for the explicit upgrade scenario', () => {
+    const migrationOverrides: LegacyPatE2ESettings = { token: 'migration-only' };
+    const storageHelper = readFileSync(join(process.cwd(), 'e2e/helpers/storage.ts'), 'utf8');
+    const authSpec = readFileSync(join(process.cwd(), 'e2e/auth.spec.ts'), 'utf8');
+    const nonMigrationSpecs = [
+      'e2e/auto-push.spec.ts',
+      'e2e/error-flow-product.spec.ts',
+      'e2e/lifecycle.spec.ts',
+      'e2e/manual-repo.spec.ts',
+    ].map((path) => readFileSync(join(process.cwd(), path), 'utf8'));
+
+    expect(seedLegacyPatMigration).toBeTypeOf('function');
+    expect(migrationOverrides.token).toBe('migration-only');
+    expect(storageHelper).toContain('export async function seedLegacyPatMigration');
+    expect(storageHelper).toContain("authenticationMethod: 'pat'");
+    expect(storageHelper).toContain('githubToken');
+    expect(authSpec).toContain('seedLegacyPatMigration(context, extensionId');
+    expect(authSpec).toContain('Personal access token support has ended');
+    expect(authSpec).toContain('githubAppMigrationRequired');
+    expect(authSpec).toContain('projectSettings');
+    expect(authSpec).not.toContain('setupPATAuth');
+    expect(authSpec.match(/await seedLegacyPatMigration\(/g)).toHaveLength(1);
+    expect(nonMigrationSpecs.some((source) => source.includes('seedLegacyPatMigration'))).toBe(
+      false
+    );
+  });
+
+  it('pins GitHub App-only onboarding validation to the current submit control', () => {
+    const authSpec = readFileSync(join(process.cwd(), 'e2e/auth.spec.ts'), 'utf8');
+
+    expect(authSpec).toContain("getByRole('button', { name: /sign in to bolt2github/i })");
+    expect(authSpec).toContain('locator(\'input[type="password"]\')');
+    expect(authSpec).toContain('toHaveCount(0)');
+    expect(authSpec).not.toContain('fillOnboardingPAT');
+  });
+
+  it('seeds product error flows through a live GitHub App connection', () => {
+    const productSpec = readFileSync(join(process.cwd(), 'e2e/error-flow-product.spec.ts'), 'utf8');
+
+    expect(productSpec).toContain('seedConnectedGitHubApp(context, extensionId');
+    expect(productSpec).not.toContain("authenticationMethod: 'pat'");
+    expect(productSpec).not.toContain('githubToken');
   });
 
   it('pins lifecycle E2E to current storage keys and popup URL', () => {
     const lifecycleSpec = readFileSync(join(process.cwd(), 'e2e/lifecycle.spec.ts'), 'utf8');
 
-    expect(lifecycleSpec).toContain('settingsBefore.authenticationMethod');
-    expect(lifecycleSpec).toContain('settingsAfter.githubAppInstallationId');
-    expect(lifecycleSpec).toContain('/src/popup/index.html');
-    expect(lifecycleSpec).not.toMatch(/\.authType\b|\.installationId\b|\/popup\.html/);
+    expect(lifecycleSpec).toContain('settings.githubAppInstallationId');
+    expect(lifecycleSpec).toContain('githubAppMigrationRequired');
+    expect(lifecycleSpec).not.toContain('settings.authenticationMethod');
+    expect(lifecycleSpec).not.toContain('setupPATAuth');
   });
 
   it('keeps only the deterministic product-visible error-flow suite', () => {

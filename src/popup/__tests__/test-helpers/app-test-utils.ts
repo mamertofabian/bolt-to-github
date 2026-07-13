@@ -40,7 +40,6 @@ export function createMockStore<T>(initialValue: T) {
  * Default GitHub settings for tests
  */
 export const DEFAULT_GITHUB_SETTINGS: GitHubSettingsState = {
-  githubToken: '',
   repoOwner: '',
   repoName: '',
   branch: 'main',
@@ -49,24 +48,9 @@ export const DEFAULT_GITHUB_SETTINGS: GitHubSettingsState = {
   isTokenValid: null,
   validationError: null,
   hasInitialSettings: false,
-  authenticationMethod: 'github_app',
   githubAppInstallationId: null,
   githubAppUsername: null,
   githubAppAvatarUrl: null,
-};
-
-/**
- * Legacy PAT state used only to exercise the one-way migration screen.
- */
-export const LEGACY_PAT_MIGRATION_SETTINGS: GitHubSettingsState = {
-  ...DEFAULT_GITHUB_SETTINGS,
-  githubToken: 'test-token',
-  repoOwner: 'test-owner',
-  repoName: 'test-repo',
-  branch: 'main',
-  hasInitialSettings: false,
-  authenticationMethod: 'pat',
-  isTokenValid: true,
 };
 
 /**
@@ -78,7 +62,6 @@ export const VALID_GITHUB_APP_SETTINGS: GitHubSettingsState = {
   repoName: 'test-repo',
   branch: 'main',
   hasInitialSettings: true,
-  authenticationMethod: 'github_app',
   githubAppInstallationId: 12345,
   githubAppUsername: 'test-owner',
   githubAppAvatarUrl: 'https://example.com/avatar.png',

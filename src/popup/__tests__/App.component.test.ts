@@ -11,6 +11,11 @@ import App, {
   reconcilePopupGitHubConnection,
   runPopupGitHubAction,
 } from '../App.svelte';
+import appSource from '../App.svelte?raw';
+
+it('popup startup no longer normalizes a removed authentication method selector', () => {
+  expect(appSource).not.toContain('setAuthenticationMethod');
+});
 
 const mockCheckGitHubConnection = vi.hoisted(() => vi.fn());
 const mockCheckPopupGitHubConnection = vi.hoisted(() => vi.fn());
@@ -111,10 +116,8 @@ vi.mock('$lib/stores', () => {
   const githubSettingsStore = createStore({
     hasInitialSettings: false,
     repoOwner: '',
-    githubToken: '',
     repoName: '',
     branch: 'main',
-    authenticationMethod: 'github_app' as 'pat' | 'github_app',
     githubAppInstallationId: null as number | null,
   });
 
@@ -162,9 +165,6 @@ vi.mock('$lib/stores', () => {
       setRepoName: vi.fn(),
       setRepoOwner: vi.fn((owner: string) => {
         githubSettingsStore.update((state) => ({ ...state, repoOwner: owner }));
-      }),
-      setAuthenticationMethod: vi.fn((method: 'github_app' | 'pat') => {
-        githubSettingsStore.update((state) => ({ ...state, authenticationMethod: method }));
       }),
     },
     projectSettingsActions: {
@@ -304,10 +304,8 @@ describe('App.svelte - Component Tests', () => {
     stores.githubSettingsStore.set({
       hasInitialSettings: false,
       repoOwner: '',
-      githubToken: '',
       repoName: '',
       branch: 'main',
-      authenticationMethod: 'github_app' as 'pat' | 'github_app',
       githubAppInstallationId: null as number | null,
     });
     stores.projectSettingsStore.set({ version: '1.3.13' });
@@ -445,10 +443,8 @@ describe('App.svelte - Component Tests', () => {
       stores.githubSettingsStore.set({
         hasInitialSettings: true,
         repoOwner: 'stale-owner',
-        githubToken: '',
         repoName: 'stale-repo',
         branch: 'main',
-        authenticationMethod: 'github_app' as const,
         githubAppInstallationId: 12345,
       });
       stores.isAuthenticated.set(false);
@@ -492,13 +488,17 @@ describe('App.svelte - Component Tests', () => {
     });
 
     it('popup does not accept PAT as valid GitHub readiness', async () => {
+      mockMigrateLegacyGitHubAuthentication.mockResolvedValue({
+        status: 'migration_required',
+        removeStoredPat: true,
+        removeLegacyMethodKeys: true,
+        persistMigrationRequired: true,
+      });
       stores.githubSettingsStore.set({
         hasInitialSettings: true,
         repoOwner: 'legacy-owner',
-        githubToken: 'legacy-token',
         repoName: 'legacy-repo',
         branch: 'main',
-        authenticationMethod: 'pat' as const,
         githubAppInstallationId: null,
       });
       stores.isAuthenticationValid.set(true);
@@ -509,29 +509,25 @@ describe('App.svelte - Component Tests', () => {
         expect(screen.queryByText('Checking GitHub connection')).not.toBeInTheDocument();
       });
       expect(screen.queryByRole('tablist')).not.toBeInTheDocument();
-      expect(screen.getByTestId('onboarding-view')).toBeInTheDocument();
+      expect(screen.getByTestId('onboarding-view')).toHaveAttribute(
+        'data-migration-required',
+        'true'
+      );
     });
 
     it('popup normalizes GitHub App state after legacy selector cleanup', async () => {
       stores.githubSettingsStore.set({
         hasInitialSettings: false,
         repoOwner: 'preserved-owner',
-        githubToken: '',
         repoName: 'preserved-repo',
         branch: 'main',
-        authenticationMethod: 'pat' as const,
         githubAppInstallationId: 12345,
-        githubAppUsername: 'octocat',
-        githubAppAvatarUrl: null,
       });
       stores.isAuthenticated.set(true);
 
       render(App);
 
       await waitFor(() => {
-        expect(stores.githubSettingsActions.setAuthenticationMethod).toHaveBeenCalledWith(
-          'github_app'
-        );
         expect(mockCompleteGitHubAppMigration).toHaveBeenCalledWith(true, true);
         expect(screen.getByRole('tablist')).toBeInTheDocument();
       });
@@ -541,10 +537,8 @@ describe('App.svelte - Component Tests', () => {
       stores.githubSettingsStore.set({
         hasInitialSettings: true,
         repoOwner: 'stale-owner',
-        githubToken: '',
         repoName: 'stale-repo',
         branch: 'main',
-        authenticationMethod: 'github_app' as const,
         githubAppInstallationId: 12345,
       });
       stores.isAuthenticationValid.set(true);
@@ -574,10 +568,8 @@ describe('App.svelte - Component Tests', () => {
       stores.githubSettingsStore.set({
         hasInitialSettings: true,
         repoOwner: 'stale-owner',
-        githubToken: '',
         repoName: 'stale-repo',
         branch: 'main',
-        authenticationMethod: 'github_app' as const,
         githubAppInstallationId: 12345,
       });
       stores.isAuthenticationValid.set(true);
@@ -590,10 +582,8 @@ describe('App.svelte - Component Tests', () => {
         stores.githubSettingsStore.set({
           hasInitialSettings: false,
           repoOwner: 'stale-owner',
-          githubToken: '',
           repoName: 'stale-repo',
           branch: 'main',
-          authenticationMethod: 'github_app' as const,
           githubAppInstallationId: null,
         });
         stores.isAuthenticationValid.set(false);
@@ -617,10 +607,8 @@ describe('App.svelte - Component Tests', () => {
       stores.githubSettingsStore.set({
         hasInitialSettings: true,
         repoOwner: 'stale-owner',
-        githubToken: '',
         repoName: 'stale-repo',
         branch: 'main',
-        authenticationMethod: 'github_app' as const,
         githubAppInstallationId: 12345,
       });
       stores.isAuthenticationValid.set(true);
@@ -671,10 +659,8 @@ describe('App.svelte - Component Tests', () => {
       stores.githubSettingsStore.set({
         hasInitialSettings: false,
         repoOwner: '',
-        githubToken: '',
         repoName: '',
         branch: 'main',
-        authenticationMethod: 'github_app' as const,
         githubAppInstallationId: null,
       });
 
@@ -687,10 +673,8 @@ describe('App.svelte - Component Tests', () => {
       stores.githubSettingsStore.set({
         hasInitialSettings: false,
         repoOwner: '',
-        githubToken: '',
         repoName: '',
         branch: 'main',
-        authenticationMethod: 'github_app' as const,
         githubAppInstallationId: null,
       });
 
@@ -705,10 +689,8 @@ describe('App.svelte - Component Tests', () => {
       stores.githubSettingsStore.set({
         hasInitialSettings: true,
         repoOwner: 'test-owner',
-        githubToken: '',
         repoName: 'test-repo',
         branch: 'main',
-        authenticationMethod: 'github_app' as const,
         githubAppInstallationId: 12345,
       });
       stores.isAuthenticationValid.set(true);
@@ -745,10 +727,8 @@ describe('App.svelte - Component Tests', () => {
       stores.githubSettingsStore.set({
         hasInitialSettings: true,
         repoOwner: 'test-owner',
-        githubToken: '',
         repoName: 'test-repo',
         branch: 'main',
-        authenticationMethod: 'github_app' as 'pat' | 'github_app',
         githubAppInstallationId: 12345 as number | null,
       });
 
@@ -763,10 +743,8 @@ describe('App.svelte - Component Tests', () => {
       stores.githubSettingsStore.set({
         hasInitialSettings: true,
         repoOwner: 'test-owner',
-        githubToken: '',
         repoName: 'test-repo',
         branch: 'main',
-        authenticationMethod: 'github_app' as const,
         githubAppInstallationId: 12345,
       });
       stores.isOnBoltProject.set(true);
@@ -781,10 +759,8 @@ describe('App.svelte - Component Tests', () => {
       stores.githubSettingsStore.set({
         hasInitialSettings: true,
         repoOwner: 'test-owner',
-        githubToken: '',
         repoName: 'test-repo',
         branch: 'main',
-        authenticationMethod: 'github_app' as const,
         githubAppInstallationId: 12345,
       });
       stores.isPremium.set(true);
@@ -799,10 +775,8 @@ describe('App.svelte - Component Tests', () => {
       stores.githubSettingsStore.set({
         hasInitialSettings: true,
         repoOwner: 'test-owner',
-        githubToken: '',
         repoName: 'test-repo',
         branch: 'main',
-        authenticationMethod: 'github_app' as const,
         githubAppInstallationId: 12345,
       });
       stores.isOnBoltProject.set(true);
@@ -819,10 +793,8 @@ describe('App.svelte - Component Tests', () => {
       stores.githubSettingsStore.set({
         hasInitialSettings: true,
         repoOwner: 'test-owner',
-        githubToken: '',
         repoName: 'test-repo',
         branch: 'main',
-        authenticationMethod: 'github_app' as const,
         githubAppInstallationId: 12345,
       });
       stores.isOnBoltProject.set(true);
@@ -842,10 +814,8 @@ describe('App.svelte - Component Tests', () => {
       stores.githubSettingsStore.set({
         hasInitialSettings: true,
         repoOwner: 'test-owner',
-        githubToken: '',
         repoName: 'test-repo',
         branch: 'main',
-        authenticationMethod: 'github_app' as const,
         githubAppInstallationId: 12345,
       });
       stores.isOnBoltProject.set(true);
@@ -867,10 +837,8 @@ describe('App.svelte - Component Tests', () => {
       stores.githubSettingsStore.set({
         hasInitialSettings: true,
         repoOwner: 'test-owner',
-        githubToken: '',
         repoName: 'test-repo',
         branch: 'main',
-        authenticationMethod: 'github_app' as const,
         githubAppInstallationId: 12345,
       });
       stores.isOnBoltProject.set(true);
@@ -1056,10 +1024,8 @@ describe('App.svelte - Component Tests', () => {
       stores.githubSettingsStore.set({
         hasInitialSettings: true,
         repoOwner: 'test-owner',
-        githubToken: '',
         repoName: 'test-repo',
         branch: 'main',
-        authenticationMethod: 'github_app' as const,
         githubAppInstallationId: 12345,
       });
       stores.isAuthenticationValid.set(true);

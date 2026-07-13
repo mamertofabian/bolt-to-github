@@ -1,357 +1,171 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { SettingsService } from '../settings';
 import { ChromeStorageService } from '../../lib/services/chromeStorage';
 import type { GitHubSettingsInterface, ProjectSettings } from '../../lib/types';
+import { SettingsService } from '../settings';
 
 vi.mock('../../lib/services/chromeStorage');
 vi.mock('../../lib/utils/logger', () => ({
-  createLogger: () => ({
-    debug: vi.fn(),
-    info: vi.fn(),
-    warn: vi.fn(),
-    error: vi.fn(),
-  }),
+  createLogger: () => ({ debug: vi.fn(), info: vi.fn(), warn: vi.fn(), error: vi.fn() }),
 }));
+
+const projectSettings: ProjectSettings = {
+  'test-project': { repoName: 'test-repo', branch: 'main' },
+};
+
+function connectedSettings(
+  overrides: Partial<GitHubSettingsInterface> = {}
+): GitHubSettingsInterface {
+  return {
+    repoOwner: 'octocat',
+    projectSettings,
+    githubAppInstallationId: 12345,
+    githubAppUsername: 'octocat',
+    ...overrides,
+  };
+}
 
 describe('SettingsService', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    vi.mocked(ChromeStorageService.getCurrentProjectId).mockResolvedValue('test-project');
+    vi.mocked(ChromeStorageService.getGitHubSettings).mockResolvedValue(connectedSettings());
+    vi.mocked(ChromeStorageService.saveProjectSettings).mockResolvedValue(undefined);
   });
 
   describe('getGitHubSettings', () => {
-    describe('PAT authentication', () => {
-      it('should return valid settings when PAT auth is configured with existing project settings', async () => {
-        const mockProjectSettings: ProjectSettings = {
-          'test-project': { repoName: 'test-repo', branch: 'main' },
-        };
-
-        vi.mocked(ChromeStorageService.getGitHubSettings).mockResolvedValue({
-          githubToken: 'test-token',
-          repoOwner: 'test-owner',
-          projectSettings: mockProjectSettings,
-          authenticationMethod: 'pat',
-        });
-        vi.mocked(ChromeStorageService.getCurrentProjectId).mockResolvedValue('test-project');
-
-        const result = await SettingsService.getGitHubSettings();
-
-        expect(result.isSettingsValid).toBe(true);
-        expect(result.gitHubSettings).toEqual({
-          githubToken: 'test-token',
-          repoOwner: 'test-owner',
-          projectSettings: mockProjectSettings,
-        });
-      });
-
-      it('should return invalid settings when PAT token is missing', async () => {
-        vi.mocked(ChromeStorageService.getGitHubSettings).mockResolvedValue({
-          githubToken: '',
-          repoOwner: 'test-owner',
-          projectSettings: { 'test-project': { repoName: 'test-repo', branch: 'main' } },
-          authenticationMethod: 'pat',
-        });
-        vi.mocked(ChromeStorageService.getCurrentProjectId).mockResolvedValue('test-project');
-
-        const result = await SettingsService.getGitHubSettings();
-
-        expect(result.isSettingsValid).toBe(false);
-      });
-
-      it('should return invalid settings when repoOwner is missing', async () => {
-        vi.mocked(ChromeStorageService.getGitHubSettings).mockResolvedValue({
-          githubToken: 'test-token',
-          repoOwner: '',
-          projectSettings: { 'test-project': { repoName: 'test-repo', branch: 'main' } },
-          authenticationMethod: 'pat',
-        });
-        vi.mocked(ChromeStorageService.getCurrentProjectId).mockResolvedValue('test-project');
-
-        const result = await SettingsService.getGitHubSettings();
-
-        expect(result.isSettingsValid).toBe(false);
-      });
-
-      it('should return invalid settings when projectSettings is undefined', async () => {
-        vi.mocked(ChromeStorageService.getGitHubSettings).mockResolvedValue({
-          githubToken: 'test-token',
-          repoOwner: 'test-owner',
-          authenticationMethod: 'pat',
-        });
-        vi.mocked(ChromeStorageService.getCurrentProjectId).mockResolvedValue('test-project');
-        vi.mocked(ChromeStorageService.saveProjectSettings).mockResolvedValue();
-
-        const result = await SettingsService.getGitHubSettings();
-
-        expect(result.isSettingsValid).toBe(true);
-        expect(result.gitHubSettings?.projectSettings?.['test-project']).toEqual({
-          repoName: 'test-project',
-          branch: 'main',
-        });
-      });
-
-      it('should auto-create project settings when missing but has required PAT auth', async () => {
-        const mockProjectSettings: ProjectSettings = {};
-
-        vi.mocked(ChromeStorageService.getGitHubSettings).mockResolvedValue({
-          githubToken: 'test-token',
-          repoOwner: 'test-owner',
-          projectSettings: mockProjectSettings,
-          authenticationMethod: 'pat',
-        });
-        vi.mocked(ChromeStorageService.getCurrentProjectId).mockResolvedValue('new-project');
-        vi.mocked(ChromeStorageService.saveProjectSettings).mockResolvedValue();
-
-        const result = await SettingsService.getGitHubSettings();
-
-        expect(ChromeStorageService.saveProjectSettings).toHaveBeenCalledWith(
-          'new-project',
-          'new-project',
-          'main'
-        );
-        expect(result.isSettingsValid).toBe(true);
-        expect(result.gitHubSettings?.projectSettings?.['new-project']).toEqual({
-          repoName: 'new-project',
-          branch: 'main',
-        });
+    it('returns valid GitHub App settings for the active project', async () => {
+      await expect(SettingsService.getGitHubSettings()).resolves.toEqual({
+        isSettingsValid: true,
+        gitHubSettings: connectedSettings(),
       });
     });
 
-    describe('GitHub App authentication', () => {
-      it('should return valid settings when GitHub App auth is configured', async () => {
-        const mockProjectSettings: ProjectSettings = {
-          'test-project': { repoName: 'test-repo', branch: 'main' },
-        };
+    it('returns App metadata without PAT credential or selector fields', async () => {
+      const result = await SettingsService.getGitHubSettings();
 
-        vi.mocked(ChromeStorageService.getGitHubSettings).mockResolvedValue({
-          githubToken: '',
-          repoOwner: 'test-owner',
-          projectSettings: mockProjectSettings,
-          authenticationMethod: 'github_app',
-          githubAppInstallationId: 12345,
-        });
-        vi.mocked(ChromeStorageService.getCurrentProjectId).mockResolvedValue('test-project');
+      expect(result.gitHubSettings).toEqual(
+        expect.objectContaining({ githubAppInstallationId: 12345, repoOwner: 'octocat' })
+      );
+      expect(result.gitHubSettings).not.toHaveProperty('githubToken');
+      expect(result.gitHubSettings).not.toHaveProperty('authenticationMethod');
+    });
 
-        const result = await SettingsService.getGitHubSettings();
+    it('requires installation metadata', async () => {
+      vi.mocked(ChromeStorageService.getGitHubSettings).mockResolvedValue(
+        connectedSettings({ githubAppInstallationId: undefined })
+      );
 
-        expect(result.isSettingsValid).toBe(true);
-        expect(result.gitHubSettings).toEqual({
-          githubToken: '',
-          repoOwner: 'test-owner',
-          projectSettings: mockProjectSettings,
-        });
-      });
+      await expect(SettingsService.getGitHubSettings()).resolves.toEqual(
+        expect.objectContaining({ isSettingsValid: false })
+      );
+    });
 
-      it('should return invalid settings when GitHub App installation ID is missing', async () => {
-        vi.mocked(ChromeStorageService.getGitHubSettings).mockResolvedValue({
-          githubToken: '',
-          repoOwner: 'test-owner',
-          projectSettings: { 'test-project': { repoName: 'test-repo', branch: 'main' } },
-          authenticationMethod: 'github_app',
-        });
-        vi.mocked(ChromeStorageService.getCurrentProjectId).mockResolvedValue('test-project');
+    it('requires a repository owner', async () => {
+      vi.mocked(ChromeStorageService.getGitHubSettings).mockResolvedValue(
+        connectedSettings({ repoOwner: '' })
+      );
 
-        const result = await SettingsService.getGitHubSettings();
+      await expect(SettingsService.getGitHubSettings()).resolves.toEqual(
+        expect.objectContaining({ isSettingsValid: false })
+      );
+    });
 
-        expect(result.isSettingsValid).toBe(false);
-      });
+    it('auto-creates project settings when App connection and owner exist', async () => {
+      vi.mocked(ChromeStorageService.getGitHubSettings).mockResolvedValue(
+        connectedSettings({ projectSettings: {} })
+      );
+      vi.mocked(ChromeStorageService.getCurrentProjectId).mockResolvedValue('new-project');
 
-      it('should auto-create project settings when missing but has GitHub App auth', async () => {
-        vi.mocked(ChromeStorageService.getGitHubSettings).mockResolvedValue({
-          githubToken: '',
-          repoOwner: 'test-owner',
-          projectSettings: {},
-          authenticationMethod: 'github_app',
-          githubAppInstallationId: 12345,
-        });
-        vi.mocked(ChromeStorageService.getCurrentProjectId).mockResolvedValue('app-project');
-        vi.mocked(ChromeStorageService.saveProjectSettings).mockResolvedValue();
+      const result = await SettingsService.getGitHubSettings();
 
-        const result = await SettingsService.getGitHubSettings();
-
-        expect(ChromeStorageService.saveProjectSettings).toHaveBeenCalledWith(
-          'app-project',
-          'app-project',
-          'main'
-        );
-        expect(result.isSettingsValid).toBe(true);
-      });
-
-      it('should not auto-create project settings when repoOwner is missing', async () => {
-        vi.mocked(ChromeStorageService.getGitHubSettings).mockResolvedValue({
-          githubToken: '',
-          repoOwner: '',
-          projectSettings: {},
-          authenticationMethod: 'github_app',
-          githubAppInstallationId: 12345,
-        });
-        vi.mocked(ChromeStorageService.getCurrentProjectId).mockResolvedValue('app-project');
-
-        const result = await SettingsService.getGitHubSettings();
-
-        expect(ChromeStorageService.saveProjectSettings).not.toHaveBeenCalled();
-        expect(result.isSettingsValid).toBe(false);
+      expect(ChromeStorageService.saveProjectSettings).toHaveBeenCalledWith(
+        'new-project',
+        'new-project',
+        'main'
+      );
+      expect(result.isSettingsValid).toBe(true);
+      expect(result.gitHubSettings?.projectSettings?.['new-project']).toEqual({
+        repoName: 'new-project',
+        branch: 'main',
       });
     });
 
-    describe('project ID handling', () => {
-      it('should use provided currentProjectId over stored project ID', async () => {
-        const mockProjectSettings: ProjectSettings = {
-          'custom-project': { repoName: 'custom-repo', branch: 'main' },
-        };
+    it('does not auto-create project settings without installation metadata', async () => {
+      vi.mocked(ChromeStorageService.getGitHubSettings).mockResolvedValue(
+        connectedSettings({ projectSettings: {}, githubAppInstallationId: undefined })
+      );
 
-        vi.mocked(ChromeStorageService.getGitHubSettings).mockResolvedValue({
-          githubToken: 'test-token',
-          repoOwner: 'test-owner',
-          projectSettings: mockProjectSettings,
-          authenticationMethod: 'pat',
-        });
-        vi.mocked(ChromeStorageService.getCurrentProjectId).mockResolvedValue('stored-project');
+      const result = await SettingsService.getGitHubSettings('new-project');
 
-        const result = await SettingsService.getGitHubSettings('custom-project');
-
-        expect(result.isSettingsValid).toBe(true);
-        expect(result.gitHubSettings?.projectSettings).toEqual(mockProjectSettings);
-      });
-
-      it('should handle missing project ID gracefully', async () => {
-        vi.mocked(ChromeStorageService.getGitHubSettings).mockResolvedValue({
-          githubToken: 'test-token',
-          repoOwner: 'test-owner',
-          projectSettings: {},
-          authenticationMethod: 'pat',
-        });
-        vi.mocked(ChromeStorageService.getCurrentProjectId).mockResolvedValue(null);
-
-        const result = await SettingsService.getGitHubSettings();
-
-        expect(result.isSettingsValid).toBe(false);
-      });
-
-      it('should not auto-create when project ID is missing', async () => {
-        vi.mocked(ChromeStorageService.getGitHubSettings).mockResolvedValue({
-          githubToken: 'test-token',
-          repoOwner: 'test-owner',
-          projectSettings: {},
-          authenticationMethod: 'pat',
-        });
-        vi.mocked(ChromeStorageService.getCurrentProjectId).mockResolvedValue(null);
-
-        const result = await SettingsService.getGitHubSettings();
-
-        expect(ChromeStorageService.saveProjectSettings).not.toHaveBeenCalled();
-        expect(result.isSettingsValid).toBe(false);
-      });
+      expect(ChromeStorageService.saveProjectSettings).not.toHaveBeenCalled();
+      expect(result.isSettingsValid).toBe(false);
     });
 
-    describe('authentication method defaults', () => {
-      it('should default to PAT when authenticationMethod is undefined', async () => {
-        const mockSettings: GitHubSettingsInterface = {
-          githubToken: 'test-token',
-          repoOwner: 'test-owner',
-          projectSettings: { 'test-project': { repoName: 'test-repo', branch: 'main' } },
-        };
+    it('prefers the provided project ID', async () => {
+      vi.mocked(ChromeStorageService.getGitHubSettings).mockResolvedValue(
+        connectedSettings({
+          projectSettings: {
+            'stored-project': { repoName: 'stored', branch: 'main' },
+            'provided-project': { repoName: 'provided', branch: 'dev' },
+          },
+        })
+      );
+      vi.mocked(ChromeStorageService.getCurrentProjectId).mockResolvedValue('stored-project');
 
-        vi.mocked(ChromeStorageService.getGitHubSettings).mockResolvedValue(mockSettings);
-        vi.mocked(ChromeStorageService.getCurrentProjectId).mockResolvedValue('test-project');
-
-        const result = await SettingsService.getGitHubSettings();
-
-        expect(result.isSettingsValid).toBe(true);
-      });
+      await expect(SettingsService.getGitHubSettings('provided-project')).resolves.toEqual(
+        expect.objectContaining({ isSettingsValid: true })
+      );
     });
 
-    describe('error handling', () => {
-      it('should return invalid settings when ChromeStorageService.getGitHubSettings throws', async () => {
-        vi.mocked(ChromeStorageService.getGitHubSettings).mockRejectedValue(
-          new Error('Storage error')
-        );
-
-        const result = await SettingsService.getGitHubSettings();
-
-        expect(result.isSettingsValid).toBe(false);
-        expect(result.gitHubSettings).toBeUndefined();
-      });
-
-      it('should return invalid settings when ChromeStorageService.getCurrentProjectId throws', async () => {
-        vi.mocked(ChromeStorageService.getGitHubSettings).mockResolvedValue({
-          githubToken: 'test-token',
-          repoOwner: 'test-owner',
-          projectSettings: {},
-          authenticationMethod: 'pat',
-        });
-        vi.mocked(ChromeStorageService.getCurrentProjectId).mockRejectedValue(
-          new Error('Storage error')
-        );
-
-        const result = await SettingsService.getGitHubSettings();
-
-        expect(result.isSettingsValid).toBe(false);
-      });
-
-      it('should continue when saveProjectSettings fails during auto-creation', async () => {
-        vi.mocked(ChromeStorageService.getGitHubSettings).mockResolvedValue({
-          githubToken: 'test-token',
-          repoOwner: 'test-owner',
-          projectSettings: {},
-          authenticationMethod: 'pat',
-        });
-        vi.mocked(ChromeStorageService.getCurrentProjectId).mockResolvedValue('new-project');
-        vi.mocked(ChromeStorageService.saveProjectSettings).mockRejectedValue(
-          new Error('Save error')
-        );
-
-        const result = await SettingsService.getGitHubSettings();
-
-        expect(result.isSettingsValid).toBe(false);
-      });
-    });
-  });
-
-  describe('getProjectId', () => {
-    it('should return project ID from ChromeStorageService', async () => {
-      vi.mocked(ChromeStorageService.getCurrentProjectId).mockResolvedValue('test-project');
-
-      const result = await SettingsService.getProjectId();
-
-      expect(result).toBe('test-project');
-      expect(ChromeStorageService.getCurrentProjectId).toHaveBeenCalledOnce();
-    });
-
-    it('should return null when no project ID is stored', async () => {
+    it('is invalid when no project is active', async () => {
       vi.mocked(ChromeStorageService.getCurrentProjectId).mockResolvedValue(null);
-
-      const result = await SettingsService.getProjectId();
-
-      expect(result).toBeNull();
+      await expect(SettingsService.getGitHubSettings()).resolves.toEqual(
+        expect.objectContaining({ isSettingsValid: false })
+      );
     });
 
-    it('should return null when ChromeStorageService throws an error', async () => {
-      vi.mocked(ChromeStorageService.getCurrentProjectId).mockRejectedValue(
-        new Error('Storage error')
+    it('fails visibly as invalid on storage errors', async () => {
+      vi.mocked(ChromeStorageService.getGitHubSettings).mockRejectedValue(
+        new Error('storage unavailable')
+      );
+      await expect(SettingsService.getGitHubSettings()).resolves.toEqual({
+        isSettingsValid: false,
+      });
+    });
+
+    it('does not claim validity when project creation storage fails', async () => {
+      vi.mocked(ChromeStorageService.getGitHubSettings).mockResolvedValue(
+        connectedSettings({ projectSettings: {} })
+      );
+      vi.mocked(ChromeStorageService.saveProjectSettings).mockRejectedValue(
+        new Error('write unavailable')
       );
 
-      const result = await SettingsService.getProjectId();
-
-      expect(result).toBeNull();
+      await expect(SettingsService.getGitHubSettings('new-project')).resolves.toEqual({
+        isSettingsValid: false,
+      });
     });
   });
 
-  describe('setProjectId', () => {
-    it('should save project ID through ChromeStorageService', async () => {
-      vi.mocked(ChromeStorageService.saveCurrentProjectId).mockResolvedValue();
-
-      await SettingsService.setProjectId('new-project');
-
-      expect(ChromeStorageService.saveCurrentProjectId).toHaveBeenCalledWith('new-project');
+  describe('project ID storage', () => {
+    it('gets the current project ID', async () => {
+      await expect(SettingsService.getProjectId()).resolves.toBe('test-project');
     });
 
-    it('should handle errors silently when ChromeStorageService throws', async () => {
-      vi.mocked(ChromeStorageService.saveCurrentProjectId).mockRejectedValue(
-        new Error('Storage error')
-      );
+    it('returns null when project ID storage fails', async () => {
+      vi.mocked(ChromeStorageService.getCurrentProjectId).mockRejectedValue(new Error('storage'));
+      await expect(SettingsService.getProjectId()).resolves.toBeNull();
+    });
 
-      await expect(SettingsService.setProjectId('test-project')).resolves.toBeUndefined();
-      expect(ChromeStorageService.saveCurrentProjectId).toHaveBeenCalledWith('test-project');
+    it('saves the current project ID', async () => {
+      vi.mocked(ChromeStorageService.saveCurrentProjectId).mockResolvedValue(undefined);
+      await SettingsService.setProjectId('next-project');
+      expect(ChromeStorageService.saveCurrentProjectId).toHaveBeenCalledWith('next-project');
+    });
+
+    it('does not reject when project ID storage fails', async () => {
+      vi.mocked(ChromeStorageService.saveCurrentProjectId).mockRejectedValue(new Error('storage'));
+      await expect(SettingsService.setProjectId('next-project')).resolves.toBeUndefined();
     });
   });
 });

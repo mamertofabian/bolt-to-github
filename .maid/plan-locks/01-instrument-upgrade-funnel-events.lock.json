@@ -4,11 +4,11 @@
   "test_hashes": {
     "src/lib/utils/__tests__/upgradeModal.test.ts": "sha256:c6a93b05f596d79496b75a0a58c8595d2c58065bf7de8a97a1093c62d1eff0ed",
     "src/popup/components/__tests__/UpgradeModal.component.test.ts": "sha256:f95b1516be05942e53064eb8623413d14e3ca976d87309f90b72eb377de2f527",
-    "src/popup/__tests__/App.component.test.ts": "sha256:aa55e7bc2b0b34733eb65bbed5b9cf4de249b848f732347d95730b05a120b601",
+    "src/popup/__tests__/App.component.test.ts": "sha256:08318955987b75e1bd79fe35ae092a2d578e47390bd1f27647a2282a7beeb317",
     "src/lib/utils/__tests__/analytics.test.ts": "sha256:fb78988a9299593e04ab48be674f78050fe49a34cf48111f89e19f319c4c4002"
   },
   "created_at": "2026-07-07T05:54:23.513352+00:00",
-  "revision": 6,
+  "revision": 7,
   "revisions": [
     {
       "prior_manifest_hash": "sha256:8e1a51338f237971792141bf5f30d4d13cc987e77c016b49ec224285b2e15480",
@@ -84,6 +84,32 @@
           "read:src/content/managers/NotificationManager.ts",
           "read:src/lib/constants/premiumFeatures.ts"
         ],
+        "files_removed": [],
+        "validate_commands_added": [],
+        "validate_commands_removed": []
+      }
+    },
+    {
+      "prior_manifest_hash": "sha256:26e00cf467a4729a911369e60d37a3c6d7321d564de1fd3b4882f4b683d91f0f",
+      "prior_test_hashes": {
+        "src/lib/utils/__tests__/upgradeModal.test.ts": "sha256:c6a93b05f596d79496b75a0a58c8595d2c58065bf7de8a97a1093c62d1eff0ed",
+        "src/popup/components/__tests__/UpgradeModal.component.test.ts": "sha256:f95b1516be05942e53064eb8623413d14e3ca976d87309f90b72eb377de2f527",
+        "src/popup/__tests__/App.component.test.ts": "sha256:aa55e7bc2b0b34733eb65bbed5b9cf4de249b848f732347d95730b05a120b601",
+        "src/lib/utils/__tests__/analytics.test.ts": "sha256:fb78988a9299593e04ab48be674f78050fe49a34cf48111f89e19f319c4c4002"
+      },
+      "revised_at": "2026-07-13T15:02:09.985614+00:00",
+      "reason": "Reconcile behavioral test hashes after intentional GitHub App-only contract evolution",
+      "agent": {
+        "model": "gpt-5",
+        "provider": "openai",
+        "client": "codex",
+        "skills": ["maid-evolver"],
+        "source": "flags"
+      },
+      "contract_delta": {
+        "artifacts_added": [],
+        "artifacts_removed": [],
+        "files_added": [],
         "files_removed": [],
         "validate_commands_added": [],
         "validate_commands_removed": []

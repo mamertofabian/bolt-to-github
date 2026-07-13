@@ -121,14 +121,12 @@ export interface ProjectSetting {
 export type ProjectSettings = Record<string, ProjectSetting>;
 
 export interface GitHubSettingsInterface {
-  githubToken: string;
   repoOwner: string;
   projectSettings?: ProjectSettings;
-  // New authentication method fields
-  authenticationMethod?: 'pat' | 'github_app';
   githubAppInstallationId?: number;
   githubAppUsername?: string;
   githubAppAvatarUrl?: string;
+  githubAppMigrationRequired?: boolean;
 }
 
 export type ProcessingStatus =
@@ -212,7 +210,7 @@ export interface UsageData {
   installDate: string;
   lastActiveDate: string;
   totalPushes: number;
-  authMethod: 'github-app' | 'pat' | 'none';
+  authMethod: 'github-app' | 'none';
   extensionVersion: string;
   errorCount: number;
   lastError?: string;

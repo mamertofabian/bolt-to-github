@@ -1,17 +1,3 @@
-export function resolveStoredGitHubAuthenticationMethod(
-  storedAuthenticationMethod: unknown,
-  githubAppInstallationId: unknown
-): 'pat' | 'github_app' {
-  const hasStableInstallationId =
-    typeof githubAppInstallationId === 'number' &&
-    Number.isSafeInteger(githubAppInstallationId) &&
-    githubAppInstallationId > 0;
-
-  return storedAuthenticationMethod === 'github_app' && hasStableInstallationId
-    ? 'github_app'
-    : 'pat';
-}
-
 export class SingleFlight<T> {
   private inFlight: Promise<T> | null = null;
 

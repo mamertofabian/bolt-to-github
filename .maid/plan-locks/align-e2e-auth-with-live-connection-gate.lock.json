@@ -1,11 +1,11 @@
 {
   "manifest_path": "manifests/align-e2e-auth-with-live-connection-gate.manifest.yaml",
-  "manifest_hash": "sha256:4514d965eb0a4da2b9463729f95f7c47e5a74dcdf21df99f50434b8c5d272a9d",
+  "manifest_hash": "sha256:3f622827750b439d77d1bc0c26cdfea52ba4d0e666e4bb318e243652227a4f1f",
   "test_hashes": {
-    "src/test/e2e-helpers/popup-helpers.test.ts": "sha256:407c18bebfea921a7877825349ed2ca751ea1b662576b1074ac2f6b6b732f409"
+    "src/test/e2e-helpers/popup-helpers.test.ts": "sha256:7ee8d3a97d7c4bb41a4c499108369c0401253d203ea11d8ea04abacc9a1552af"
   },
   "created_at": "2026-07-13T01:12:43.885322+00:00",
-  "revision": 4,
+  "revision": 8,
   "revisions": [
     {
       "prior_manifest_hash": "sha256:c290fdf6542351cffb70fafaf335e7f0163df6ad70bb881702ca7f7f4c860045",
@@ -57,6 +57,90 @@
         "validate_commands_added": [],
         "validate_commands_removed": []
       }
+    },
+    {
+      "prior_manifest_hash": "sha256:4514d965eb0a4da2b9463729f95f7c47e5a74dcdf21df99f50434b8c5d272a9d",
+      "prior_test_hashes": {
+        "src/test/e2e-helpers/popup-helpers.test.ts": "sha256:407c18bebfea921a7877825349ed2ca751ea1b662576b1074ac2f6b6b732f409"
+      },
+      "revised_at": "2026-07-13T15:59:19.373159+00:00",
+      "reason": "Refresh the shared behavioral-test hash after the GitHub App-only release contract superseded PAT-era assertions.",
+      "agent": {
+        "model": "gpt-5",
+        "provider": "openai",
+        "client": "codex",
+        "skills": ["maid-evolver"],
+        "source": "flags"
+      },
+      "contract_delta": {
+        "artifacts_added": [],
+        "artifacts_removed": [],
+        "files_added": [],
+        "files_removed": [],
+        "validate_commands_added": [],
+        "validate_commands_removed": []
+      }
+    },
+    {
+      "prior_manifest_hash": "sha256:4514d965eb0a4da2b9463729f95f7c47e5a74dcdf21df99f50434b8c5d272a9d",
+      "prior_test_hashes": {
+        "src/test/e2e-helpers/popup-helpers.test.ts": "sha256:83d55047ac7d8ea99f11ea641cfe4ac7be7293416580b671d3f0bbfddb8f826a"
+      },
+      "revised_at": "2026-07-13T16:11:54.706880+00:00",
+      "reason": "Refresh shared browser-helper contract after enforcing a single legacy credential-origin scenario",
+      "agent": null,
+      "contract_delta": {
+        "artifacts_added": [],
+        "artifacts_removed": [],
+        "files_added": [],
+        "files_removed": [],
+        "validate_commands_added": [],
+        "validate_commands_removed": []
+      }
+    },
+    {
+      "prior_manifest_hash": "sha256:4514d965eb0a4da2b9463729f95f7c47e5a74dcdf21df99f50434b8c5d272a9d",
+      "prior_test_hashes": {
+        "src/test/e2e-helpers/popup-helpers.test.ts": "sha256:7f0550af96d84ad9e50862be62ebfa10949cceb4c62f5d389b7f8db098c322dd"
+      },
+      "revised_at": "2026-07-13T16:13:32.851526+00:00",
+      "reason": "Refresh shared browser-helper hash after deterministic Bolt-tab activation",
+      "agent": null,
+      "contract_delta": {
+        "artifacts_added": [],
+        "artifacts_removed": [],
+        "files_added": [],
+        "files_removed": [],
+        "validate_commands_added": [],
+        "validate_commands_removed": []
+      }
+    },
+    {
+      "prior_manifest_hash": "sha256:4514d965eb0a4da2b9463729f95f7c47e5a74dcdf21df99f50434b8c5d272a9d",
+      "prior_test_hashes": {
+        "src/test/e2e-helpers/popup-helpers.test.ts": "sha256:7ee8d3a97d7c4bb41a4c499108369c0401253d203ea11d8ea04abacc9a1552af"
+      },
+      "revised_at": "2026-07-13T16:15:45.986641+00:00",
+      "reason": "Rename inherited helper contracts from retired PAT wording to the GitHub App-only product behavior",
+      "agent": null,
+      "contract_delta": {
+        "artifacts_added": [
+          "src/test/e2e-helpers/popup-helpers.test.ts:pins GitHub App-only onboarding validation to the current submit control",
+          "src/test/e2e-helpers/popup-helpers.test.ts:pins GitHub App-only onboarding validation to the current submit control:kind=test_function",
+          "src/test/e2e-helpers/popup-helpers.test.ts:seeds product error flows through a live GitHub App connection",
+          "src/test/e2e-helpers/popup-helpers.test.ts:seeds product error flows through a live GitHub App connection:kind=test_function"
+        ],
+        "artifacts_removed": [
+          "src/test/e2e-helpers/popup-helpers.test.ts:pins PAT onboarding validation to the current submit control",
+          "src/test/e2e-helpers/popup-helpers.test.ts:pins PAT onboarding validation to the current submit control:kind=test_function",
+          "src/test/e2e-helpers/popup-helpers.test.ts:seeds product error flows through a live PAT connection",
+          "src/test/e2e-helpers/popup-helpers.test.ts:seeds product error flows through a live PAT connection:kind=test_function"
+        ],
+        "files_added": [],
+        "files_removed": [],
+        "validate_commands_added": [],
+        "validate_commands_removed": []
+      }
     }
   ],
   "red_evidence": {
@@ -86,10 +170,10 @@
   "agent": null,
   "_manifest_contract": {
     "artifacts": [
-      "src/test/e2e-helpers/popup-helpers.test.ts:pins PAT onboarding validation to the current submit control",
-      "src/test/e2e-helpers/popup-helpers.test.ts:pins PAT onboarding validation to the current submit control:kind=test_function",
-      "src/test/e2e-helpers/popup-helpers.test.ts:seeds product error flows through a live PAT connection",
-      "src/test/e2e-helpers/popup-helpers.test.ts:seeds product error flows through a live PAT connection:kind=test_function"
+      "src/test/e2e-helpers/popup-helpers.test.ts:pins GitHub App-only onboarding validation to the current submit control",
+      "src/test/e2e-helpers/popup-helpers.test.ts:pins GitHub App-only onboarding validation to the current submit control:kind=test_function",
+      "src/test/e2e-helpers/popup-helpers.test.ts:seeds product error flows through a live GitHub App connection",
+      "src/test/e2e-helpers/popup-helpers.test.ts:seeds product error flows through a live GitHub App connection:kind=test_function"
     ],
     "files": {
       "create": [],

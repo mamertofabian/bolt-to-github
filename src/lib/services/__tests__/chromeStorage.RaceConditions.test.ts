@@ -144,6 +144,38 @@ describe('ChromeStorageService Race Condition Tests', () => {
   });
 
   describe('Concurrent saveGitHubSettings calls', () => {
+    it('concurrent GitHub App settings writes never restore PAT method or credential fields', async () => {
+      const syncWrites: Record<string, unknown>[] = [];
+      const localWrites: Record<string, unknown>[] = [];
+      mockChromeStorage.sync.set.mockImplementation(async (data) => syncWrites.push(data));
+      mockChromeStorage.local.set.mockImplementation(async (data) => localWrites.push(data));
+
+      const legacyShapedSettings = [
+        {
+          repoOwner: 'owner-a',
+          projectSettings: {},
+          githubAppInstallationId: 1,
+          githubToken: 'legacy-a',
+          authenticationMethod: 'pat',
+        },
+        {
+          repoOwner: 'owner-b',
+          projectSettings: {},
+          githubAppInstallationId: 2,
+          githubToken: 'legacy-b',
+          authenticationMethod: 'github_app',
+        },
+      ] as unknown as GitHubSettingsInterface[];
+
+      await Promise.all(
+        legacyShapedSettings.map((settings) => ChromeStorageService.saveGitHubSettings(settings))
+      );
+
+      expect(syncWrites).toHaveLength(2);
+      expect(syncWrites.every((write) => !('githubToken' in write))).toBe(true);
+      expect(localWrites.every((write) => !('authenticationMethod' in write))).toBe(true);
+    });
+
     it('should handle concurrent GitHub settings updates', async () => {
       const savedData: GitHubSettingsInterface[] = [];
 
@@ -152,17 +184,15 @@ describe('ChromeStorageService Race Condition Tests', () => {
       });
 
       const settings1: GitHubSettingsInterface = {
-        githubToken: 'token1',
         repoOwner: 'owner1',
         projectSettings: {},
-        authenticationMethod: 'pat',
+        githubAppInstallationId: 1,
       };
 
       const settings2: GitHubSettingsInterface = {
-        githubToken: 'token2',
         repoOwner: 'owner2',
         projectSettings: {},
-        authenticationMethod: 'pat',
+        githubAppInstallationId: 2,
       };
 
       await Promise.all([
@@ -178,10 +208,8 @@ describe('ChromeStorageService Race Condition Tests', () => {
 
     it('should handle mixed sync and local storage operations', async () => {
       const settingsWithApp: GitHubSettingsInterface = {
-        githubToken: '',
         repoOwner: 'owner1',
         projectSettings: {},
-        authenticationMethod: 'github_app',
         githubAppInstallationId: 123,
         githubAppUsername: 'testuser',
       };
@@ -189,13 +217,11 @@ describe('ChromeStorageService Race Condition Tests', () => {
       await ChromeStorageService.saveGitHubSettings(settingsWithApp);
 
       expect(mockChromeStorage.sync.set).toHaveBeenCalledWith({
-        githubToken: '',
         repoOwner: 'owner1',
         projectSettings: {},
       });
 
       expect(mockChromeStorage.local.set).toHaveBeenCalledWith({
-        authenticationMethod: 'github_app',
         githubAppInstallationId: 123,
         githubAppUsername: 'testuser',
       });
@@ -239,17 +265,15 @@ describe('ChromeStorageService Race Condition Tests', () => {
 
       const promises = [
         ChromeStorageService.saveGitHubSettings({
-          githubToken: 'token1',
           repoOwner: 'first',
           projectSettings: {},
-          authenticationMethod: 'pat',
+          githubAppInstallationId: 1,
         }),
         ChromeStorageService.saveProjectSettings('testProject', 'second', 'main'),
         ChromeStorageService.saveGitHubSettings({
-          githubToken: 'token2',
           repoOwner: 'third',
           projectSettings: {},
-          authenticationMethod: 'pat',
+          githubAppInstallationId: 3,
         }),
       ];
 
@@ -294,22 +318,19 @@ describe('ChromeStorageService Race Condition Tests', () => {
 
       const promises = [
         ChromeStorageService.saveGitHubSettings({
-          githubToken: 'token1',
           repoOwner: 'first',
           projectSettings: {},
-          authenticationMethod: 'pat',
+          githubAppInstallationId: 1,
         }),
         ChromeStorageService.saveGitHubSettings({
-          githubToken: 'token2',
           repoOwner: 'second',
           projectSettings: {},
-          authenticationMethod: 'pat',
+          githubAppInstallationId: 2,
         }).catch(() => {}),
         ChromeStorageService.saveGitHubSettings({
-          githubToken: 'token3',
           repoOwner: 'third',
           projectSettings: {},
-          authenticationMethod: 'pat',
+          githubAppInstallationId: 3,
         }),
       ];
 
@@ -336,12 +357,11 @@ describe('ChromeStorageService Race Condition Tests', () => {
       await Promise.all([
         ChromeStorageService.saveProjectSettings('project1', 'user-repo', 'main', 'User Title'),
         ChromeStorageService.saveGitHubSettings({
-          githubToken: 'token',
           repoOwner: 'owner',
           projectSettings: {
             project1: { repoName: 'sync-repo', branch: 'dev' },
           },
-          authenticationMethod: 'pat',
+          githubAppInstallationId: 1,
         }),
       ]);
 

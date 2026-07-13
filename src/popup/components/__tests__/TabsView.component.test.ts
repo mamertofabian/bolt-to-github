@@ -15,6 +15,10 @@ describe('TabsView', () => {
     expect(tabsViewSource).not.toContain('githubToken={githubSettings.githubToken}');
   });
 
+  it('tabs view exposes no authentication method selection event', () => {
+    expect(tabsViewSource).not.toContain('authMethodChange');
+  });
+
   let mockUIState: UIState;
   let mockGitHubSettings: GitHubSettingsState;
   let mockProjectSettings: ProjectSettingsState;
@@ -34,7 +38,6 @@ describe('TabsView', () => {
     };
 
     mockGitHubSettings = {
-      githubToken: 'test-token',
       repoOwner: 'test-owner',
       repoName: 'test-repo',
       branch: 'main',
@@ -49,9 +52,8 @@ describe('TabsView', () => {
       isTokenValid: true,
       validationError: null,
       hasInitialSettings: true,
-      authenticationMethod: 'pat',
-      githubAppInstallationId: null,
-      githubAppUsername: null,
+      githubAppInstallationId: 12345,
+      githubAppUsername: 'test-owner',
       githubAppAvatarUrl: null,
     };
 
@@ -188,7 +190,6 @@ describe('TabsView', () => {
     it('should handle empty GitHub settings', () => {
       const emptyGitHubSettings = {
         ...mockGitHubSettings,
-        githubToken: '',
         repoOwner: '',
         repoName: '',
         branch: '',

@@ -6,6 +6,17 @@ export interface WhatsNewVersion {
 }
 
 export const whatsNewContent: Record<string, WhatsNewVersion> = {
+  '1.3.22': {
+    date: '2026-07-13',
+    highlights: [
+      '🔐 GitHub App Required - A Bolt2GitHub account and GitHub App connection now protect every GitHub action',
+      '🧭 Clear Migration Guidance - Personal access token support has ended and the extension explains how to reconnect',
+      '💾 Project Mappings Preserved - Existing repository and project mappings are preserved during migration',
+      '🧹 Simpler Setup - One supported GitHub connection removes the confusing dual-integration path',
+    ],
+    details: `Bolt to GitHub now requires a Bolt2GitHub account and the GitHub App for GitHub features. Personal access token support has ended. If the extension finds retired credentials, it removes them, preserves your repository and project mappings, and shows the sign-in and GitHub App connection steps required to continue. This intentional simplification follows more than a year of recommending the GitHub App; historical standalone usage could not be measured reliably, so this release makes no zero-usage claim.`,
+    type: 'patch',
+  },
   '1.3.21': {
     date: '2026-07-13',
     highlights: [
@@ -215,11 +226,11 @@ export const whatsNewContent: Record<string, WhatsNewVersion> = {
   '1.3.2': {
     date: '2025-06-10',
     highlights: [
-      '🔐 GitHub App Authentication support',
-      '🚀 Dual auth - PAT or GitHub App',
-      '♻️ Zero breaking changes',
+      '🔐 GitHub App Authentication Introduced',
+      '🚀 Scoped Repository Access',
+      '⚙️ Automatic Repository Owner Configuration',
     ],
-    details: `Modern authentication with GitHub Apps. More secure with auto-configuration.
+    details: `This version introduced GitHub App authentication with scoped repository access and automatic configuration.
 
 See [README.md](https://github.com/mamertofabian/bolt-to-github#readme) for full changelog.`,
     type: 'minor',

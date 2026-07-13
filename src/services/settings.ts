@@ -23,61 +23,38 @@ export class SettingsService {
 
       let projectSettings = projectId ? gitHubSettings.projectSettings?.[projectId] : undefined;
 
-      // Get authentication method
-      const authMethod = gitHubSettings.authenticationMethod || 'pat';
-
       // Auto-create project settings if needed
-      if (!projectSettings && projectId && gitHubSettings.repoOwner) {
-        // For GitHub App, we don't need githubToken
-        const hasRequiredAuth =
-          authMethod === 'github_app'
-            ? gitHubSettings.githubAppInstallationId
-            : gitHubSettings.githubToken;
+      if (
+        !projectSettings &&
+        projectId &&
+        gitHubSettings.repoOwner &&
+        gitHubSettings.githubAppInstallationId
+      ) {
+        projectSettings = { repoName: projectId, branch: 'main' };
+        // Use ChromeStorageService for thread-safe writes to bundled format
+        await ChromeStorageService.saveProjectSettings(
+          projectId,
+          projectSettings.repoName,
+          projectSettings.branch
+        );
 
-        if (hasRequiredAuth) {
-          projectSettings = { repoName: projectId, branch: 'main' };
-          // Use ChromeStorageService for thread-safe writes to bundled format
-          await ChromeStorageService.saveProjectSettings(
-            projectId,
-            projectSettings.repoName,
-            projectSettings.branch
-          );
-
-          // Update the local gitHubSettings object to reflect the new project settings
-          if (!gitHubSettings.projectSettings) {
-            gitHubSettings.projectSettings = {};
-          }
-          gitHubSettings.projectSettings[projectId] = projectSettings;
+        // Update the local gitHubSettings object to reflect the new project settings
+        if (!gitHubSettings.projectSettings) {
+          gitHubSettings.projectSettings = {};
         }
+        gitHubSettings.projectSettings[projectId] = projectSettings;
       }
 
-      // Check settings validity based on authentication method
-      let isSettingsValid = false;
-      if (authMethod === 'github_app') {
-        // For GitHub App: need installation ID, repoOwner, and project settings
-        isSettingsValid = Boolean(
-          gitHubSettings.githubAppInstallationId &&
-            gitHubSettings.repoOwner &&
-            gitHubSettings.projectSettings &&
-            projectSettings
-        );
-      } else {
-        // For PAT: need token, repoOwner, and project settings (original logic)
-        isSettingsValid = Boolean(
-          gitHubSettings.githubToken &&
-            gitHubSettings.repoOwner &&
-            gitHubSettings.projectSettings &&
-            projectSettings
-        );
-      }
+      const isSettingsValid = Boolean(
+        gitHubSettings.githubAppInstallationId &&
+        gitHubSettings.repoOwner &&
+        gitHubSettings.projectSettings &&
+        projectSettings
+      );
 
       return {
         isSettingsValid,
-        gitHubSettings: {
-          githubToken: gitHubSettings.githubToken,
-          repoOwner: gitHubSettings.repoOwner,
-          projectSettings: gitHubSettings.projectSettings,
-        },
+        gitHubSettings,
       };
     } catch (error) {
       logger.error('Error checking GitHub settings:', error);

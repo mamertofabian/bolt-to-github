@@ -5,23 +5,23 @@
     "src/lib/utils/__tests__/githubConnection.test.ts": "sha256:c5dccafc4aef04d911357cf04519ffd3909e0ebb10e592480597af3fcea9363b",
     "src/background/__tests__/BackgroundService.critical-scenarios.test.ts": "sha256:42bc160808956090d852e453620322955f657367f9a94fab1993fad099c29e5f",
     "src/background/__tests__/BackgroundService.user-journeys.test.ts": "sha256:0bfe6adca3d54b433cd524534d5c6f04fc150f04da80dbcd33b67d75650508df",
-    "src/background/__tests__/BackgroundService.edge-cases.test.ts": "sha256:bb2264ddf535e067100832129398ca0f5d188d6b54c987290744b952ab11b85e",
-    "src/background/__tests__/BackgroundService.storage-recovery.test.ts": "sha256:38904ab0c8a9634f631d75c39c88c3067da130daf078d52d0bbbe3f870114120",
+    "src/background/__tests__/BackgroundService.edge-cases.test.ts": "sha256:297c93c3fe7ca98b34c4c3fbafd23a831e37e48029f98146e7e81b3e3df1359f",
+    "src/background/__tests__/BackgroundService.storage-recovery.test.ts": "sha256:c81656fc3c7b137362306c97552010b547a314a16f96211855309b53bcb08b8e",
     "src/background/__tests__/BackgroundService.reload.test.ts": "sha256:816e0cdd4e560653b4335c92741e4bab4f14d5d6acf46dc4fc738836944cb124",
     "src/content/handlers/__tests__/GitHubUploadHandler.test.ts": "sha256:3376cbd22c7a8a5ac41f8cb088f209bcabc445d86b6732471695e9bbff599190",
-    "src/content/handlers/__tests__/FileChangeHandler.test.ts": "sha256:35d224dc743bab57be757db555d028d560968046b7b74449a93ca61f9e1a1bf4",
+    "src/content/handlers/__tests__/FileChangeHandler.test.ts": "sha256:54edb919bbb4c7b75dab76733ef61dcec93dc6b570e1ba9ae8fde82cd118961f",
     "src/services/__tests__/ZipHandler.test.ts": "sha256:bf87fe0f04a04ffe4ee0c809700dd03a7a7f76253c8f50cba88c991565dda12a",
-    "src/services/__tests__/UnifiedGitHubService.auth-selection.test.ts": "sha256:0efa4d3ce1bee73d994b863c33ba2dfa223215d3472c1c05776539d9025180fa",
-    "src/background/__tests__/TempRepoManager.test.ts": "sha256:e787041daa72779dcdc8955c680f63b94e0ed8a8a5189a91bf2ae9be1cfe0d07",
-    "src/content/services/__tests__/SupabaseAuthService.github-connection.test.ts": "sha256:a81cd5e738e225fce122e25f51aa6c5eff8e9767899a987768c5202c6f671fec",
-    "src/content/services/__tests__/SupabaseAuthService.session-cleanup.test.ts": "sha256:8433144040598979ebb7c80b6b108842a0d93657d9f67eeb4b32fb29f7b3fb20",
+    "src/services/__tests__/UnifiedGitHubService.auth-selection.test.ts": "sha256:b04dd1d07a4fdb011dedcb535722f6e1536aa5a701bc943109b31bc7388ebe2c",
+    "src/background/__tests__/TempRepoManager.test.ts": "sha256:df7861f33820c0966a192f8115aa8c51c77dff19b04a200f9973ca19123e7a77",
+    "src/content/services/__tests__/SupabaseAuthService.github-connection.test.ts": "sha256:14f3aa60b12fb5f799d58ca4b90454152ff9ac6c9381348ab8dd346944b9e5c3",
+    "src/content/services/__tests__/SupabaseAuthService.session-cleanup.test.ts": "sha256:f3580dfaf9d1ea56001e7f0372e3ca42fdea44d47236790daacb1614c97669d0",
     "src/content/services/__tests__/SupabaseAuthService.independent-session.test.ts": "sha256:219019b95f7ef315322b4bc704c597c74aed069b89656529aeaedff99c1ee773",
     "src/content/services/__tests__/SupabaseAuthService.edge-function-loop.test.ts": "sha256:35d3a2b2a6117dc024c55d5e48e8c6589a424eaa090dfaadf3c1e16bba5535fb",
-    "src/popup/__tests__/App.component.test.ts": "sha256:aa55e7bc2b0b34733eb65bbed5b9cf4de249b848f732347d95730b05a120b601",
-    "src/lib/utils/__tests__/githubAppSync.test.ts": "sha256:68eca049de568a6ea85d1a46050fa621e29efbb42dc00b41f634064c7a222065"
+    "src/popup/__tests__/App.component.test.ts": "sha256:08318955987b75e1bd79fe35ae092a2d578e47390bd1f27647a2282a7beeb317",
+    "src/lib/utils/__tests__/githubAppSync.test.ts": "sha256:21956098216e39c9220de8673e4901f2d09fddd793f966f581672d9782633fe5"
   },
   "created_at": "2026-07-13T10:56:47.458932+00:00",
-  "revision": 8,
+  "revision": 12,
   "revisions": [
     {
       "prior_manifest_hash": "sha256:21e675e597216b2b6ea525d3b426fc6fe00fede376a8f94a85df28d6a903e7c6",
@@ -353,6 +353,156 @@
         "skills": ["maid-implement-draft", "maid-evolver"],
         "source": "flags"
       },
+      "contract_delta": {
+        "artifacts_added": [],
+        "artifacts_removed": [],
+        "files_added": [],
+        "files_removed": [],
+        "validate_commands_added": [],
+        "validate_commands_removed": []
+      }
+    },
+    {
+      "prior_manifest_hash": "sha256:9bb7303d60938bdc484bf63d33e3f8002f0a26c869acf9ff0d0b7a498bc89b17",
+      "prior_test_hashes": {
+        "src/lib/utils/__tests__/githubConnection.test.ts": "sha256:c5dccafc4aef04d911357cf04519ffd3909e0ebb10e592480597af3fcea9363b",
+        "src/background/__tests__/BackgroundService.critical-scenarios.test.ts": "sha256:42bc160808956090d852e453620322955f657367f9a94fab1993fad099c29e5f",
+        "src/background/__tests__/BackgroundService.user-journeys.test.ts": "sha256:0bfe6adca3d54b433cd524534d5c6f04fc150f04da80dbcd33b67d75650508df",
+        "src/background/__tests__/BackgroundService.edge-cases.test.ts": "sha256:bb2264ddf535e067100832129398ca0f5d188d6b54c987290744b952ab11b85e",
+        "src/background/__tests__/BackgroundService.storage-recovery.test.ts": "sha256:38904ab0c8a9634f631d75c39c88c3067da130daf078d52d0bbbe3f870114120",
+        "src/background/__tests__/BackgroundService.reload.test.ts": "sha256:816e0cdd4e560653b4335c92741e4bab4f14d5d6acf46dc4fc738836944cb124",
+        "src/content/handlers/__tests__/GitHubUploadHandler.test.ts": "sha256:3376cbd22c7a8a5ac41f8cb088f209bcabc445d86b6732471695e9bbff599190",
+        "src/content/handlers/__tests__/FileChangeHandler.test.ts": "sha256:35d224dc743bab57be757db555d028d560968046b7b74449a93ca61f9e1a1bf4",
+        "src/services/__tests__/ZipHandler.test.ts": "sha256:bf87fe0f04a04ffe4ee0c809700dd03a7a7f76253c8f50cba88c991565dda12a",
+        "src/services/__tests__/UnifiedGitHubService.auth-selection.test.ts": "sha256:0efa4d3ce1bee73d994b863c33ba2dfa223215d3472c1c05776539d9025180fa",
+        "src/background/__tests__/TempRepoManager.test.ts": "sha256:e787041daa72779dcdc8955c680f63b94e0ed8a8a5189a91bf2ae9be1cfe0d07",
+        "src/content/services/__tests__/SupabaseAuthService.github-connection.test.ts": "sha256:a81cd5e738e225fce122e25f51aa6c5eff8e9767899a987768c5202c6f671fec",
+        "src/content/services/__tests__/SupabaseAuthService.session-cleanup.test.ts": "sha256:8433144040598979ebb7c80b6b108842a0d93657d9f67eeb4b32fb29f7b3fb20",
+        "src/content/services/__tests__/SupabaseAuthService.independent-session.test.ts": "sha256:219019b95f7ef315322b4bc704c597c74aed069b89656529aeaedff99c1ee773",
+        "src/content/services/__tests__/SupabaseAuthService.edge-function-loop.test.ts": "sha256:35d3a2b2a6117dc024c55d5e48e8c6589a424eaa090dfaadf3c1e16bba5535fb",
+        "src/popup/__tests__/App.component.test.ts": "sha256:aa55e7bc2b0b34733eb65bbed5b9cf4de249b848f732347d95730b05a120b601",
+        "src/lib/utils/__tests__/githubAppSync.test.ts": "sha256:68eca049de568a6ea85d1a46050fa621e29efbb42dc00b41f634064c7a222065"
+      },
+      "revised_at": "2026-07-13T14:12:02.367138+00:00",
+      "reason": "Reconcile the evolved shared authentication behavioral suite after child-06 strategy retirement",
+      "agent": {
+        "model": "gpt-5",
+        "provider": "openai",
+        "client": "codex",
+        "skills": ["maid-implement-draft", "maid-evolver"],
+        "source": "flags"
+      },
+      "contract_delta": {
+        "artifacts_added": [],
+        "artifacts_removed": [],
+        "files_added": [],
+        "files_removed": [],
+        "validate_commands_added": [],
+        "validate_commands_removed": []
+      }
+    },
+    {
+      "prior_manifest_hash": "sha256:9bb7303d60938bdc484bf63d33e3f8002f0a26c869acf9ff0d0b7a498bc89b17",
+      "prior_test_hashes": {
+        "src/lib/utils/__tests__/githubConnection.test.ts": "sha256:c5dccafc4aef04d911357cf04519ffd3909e0ebb10e592480597af3fcea9363b",
+        "src/background/__tests__/BackgroundService.critical-scenarios.test.ts": "sha256:42bc160808956090d852e453620322955f657367f9a94fab1993fad099c29e5f",
+        "src/background/__tests__/BackgroundService.user-journeys.test.ts": "sha256:0bfe6adca3d54b433cd524534d5c6f04fc150f04da80dbcd33b67d75650508df",
+        "src/background/__tests__/BackgroundService.edge-cases.test.ts": "sha256:bb2264ddf535e067100832129398ca0f5d188d6b54c987290744b952ab11b85e",
+        "src/background/__tests__/BackgroundService.storage-recovery.test.ts": "sha256:38904ab0c8a9634f631d75c39c88c3067da130daf078d52d0bbbe3f870114120",
+        "src/background/__tests__/BackgroundService.reload.test.ts": "sha256:816e0cdd4e560653b4335c92741e4bab4f14d5d6acf46dc4fc738836944cb124",
+        "src/content/handlers/__tests__/GitHubUploadHandler.test.ts": "sha256:3376cbd22c7a8a5ac41f8cb088f209bcabc445d86b6732471695e9bbff599190",
+        "src/content/handlers/__tests__/FileChangeHandler.test.ts": "sha256:35d224dc743bab57be757db555d028d560968046b7b74449a93ca61f9e1a1bf4",
+        "src/services/__tests__/ZipHandler.test.ts": "sha256:bf87fe0f04a04ffe4ee0c809700dd03a7a7f76253c8f50cba88c991565dda12a",
+        "src/services/__tests__/UnifiedGitHubService.auth-selection.test.ts": "sha256:b04dd1d07a4fdb011dedcb535722f6e1536aa5a701bc943109b31bc7388ebe2c",
+        "src/background/__tests__/TempRepoManager.test.ts": "sha256:df7861f33820c0966a192f8115aa8c51c77dff19b04a200f9973ca19123e7a77",
+        "src/content/services/__tests__/SupabaseAuthService.github-connection.test.ts": "sha256:a81cd5e738e225fce122e25f51aa6c5eff8e9767899a987768c5202c6f671fec",
+        "src/content/services/__tests__/SupabaseAuthService.session-cleanup.test.ts": "sha256:8433144040598979ebb7c80b6b108842a0d93657d9f67eeb4b32fb29f7b3fb20",
+        "src/content/services/__tests__/SupabaseAuthService.independent-session.test.ts": "sha256:219019b95f7ef315322b4bc704c597c74aed069b89656529aeaedff99c1ee773",
+        "src/content/services/__tests__/SupabaseAuthService.edge-function-loop.test.ts": "sha256:35d3a2b2a6117dc024c55d5e48e8c6589a424eaa090dfaadf3c1e16bba5535fb",
+        "src/popup/__tests__/App.component.test.ts": "sha256:aa55e7bc2b0b34733eb65bbed5b9cf4de249b848f732347d95730b05a120b601",
+        "src/lib/utils/__tests__/githubAppSync.test.ts": "sha256:68eca049de568a6ea85d1a46050fa621e29efbb42dc00b41f634064c7a222065"
+      },
+      "revised_at": "2026-07-13T15:02:10.015682+00:00",
+      "reason": "Reconcile behavioral test hashes after intentional GitHub App-only contract evolution",
+      "agent": {
+        "model": "gpt-5",
+        "provider": "openai",
+        "client": "codex",
+        "skills": ["maid-evolver"],
+        "source": "flags"
+      },
+      "contract_delta": {
+        "artifacts_added": [],
+        "artifacts_removed": [],
+        "files_added": [],
+        "files_removed": [],
+        "validate_commands_added": [],
+        "validate_commands_removed": []
+      }
+    },
+    {
+      "prior_manifest_hash": "sha256:9bb7303d60938bdc484bf63d33e3f8002f0a26c869acf9ff0d0b7a498bc89b17",
+      "prior_test_hashes": {
+        "src/lib/utils/__tests__/githubConnection.test.ts": "sha256:c5dccafc4aef04d911357cf04519ffd3909e0ebb10e592480597af3fcea9363b",
+        "src/background/__tests__/BackgroundService.critical-scenarios.test.ts": "sha256:42bc160808956090d852e453620322955f657367f9a94fab1993fad099c29e5f",
+        "src/background/__tests__/BackgroundService.user-journeys.test.ts": "sha256:0bfe6adca3d54b433cd524534d5c6f04fc150f04da80dbcd33b67d75650508df",
+        "src/background/__tests__/BackgroundService.edge-cases.test.ts": "sha256:297c93c3fe7ca98b34c4c3fbafd23a831e37e48029f98146e7e81b3e3df1359f",
+        "src/background/__tests__/BackgroundService.storage-recovery.test.ts": "sha256:c300a2833358c289e7be06136202e38d0e3a2d5b6f93b393ce04d2e3b8323e10",
+        "src/background/__tests__/BackgroundService.reload.test.ts": "sha256:816e0cdd4e560653b4335c92741e4bab4f14d5d6acf46dc4fc738836944cb124",
+        "src/content/handlers/__tests__/GitHubUploadHandler.test.ts": "sha256:3376cbd22c7a8a5ac41f8cb088f209bcabc445d86b6732471695e9bbff599190",
+        "src/content/handlers/__tests__/FileChangeHandler.test.ts": "sha256:35d224dc743bab57be757db555d028d560968046b7b74449a93ca61f9e1a1bf4",
+        "src/services/__tests__/ZipHandler.test.ts": "sha256:bf87fe0f04a04ffe4ee0c809700dd03a7a7f76253c8f50cba88c991565dda12a",
+        "src/services/__tests__/UnifiedGitHubService.auth-selection.test.ts": "sha256:b04dd1d07a4fdb011dedcb535722f6e1536aa5a701bc943109b31bc7388ebe2c",
+        "src/background/__tests__/TempRepoManager.test.ts": "sha256:df7861f33820c0966a192f8115aa8c51c77dff19b04a200f9973ca19123e7a77",
+        "src/content/services/__tests__/SupabaseAuthService.github-connection.test.ts": "sha256:14f3aa60b12fb5f799d58ca4b90454152ff9ac6c9381348ab8dd346944b9e5c3",
+        "src/content/services/__tests__/SupabaseAuthService.session-cleanup.test.ts": "sha256:f3580dfaf9d1ea56001e7f0372e3ca42fdea44d47236790daacb1614c97669d0",
+        "src/content/services/__tests__/SupabaseAuthService.independent-session.test.ts": "sha256:219019b95f7ef315322b4bc704c597c74aed069b89656529aeaedff99c1ee773",
+        "src/content/services/__tests__/SupabaseAuthService.edge-function-loop.test.ts": "sha256:35d3a2b2a6117dc024c55d5e48e8c6589a424eaa090dfaadf3c1e16bba5535fb",
+        "src/popup/__tests__/App.component.test.ts": "sha256:08318955987b75e1bd79fe35ae092a2d578e47390bd1f27647a2282a7beeb317",
+        "src/lib/utils/__tests__/githubAppSync.test.ts": "sha256:21956098216e39c9220de8673e4901f2d09fddd793f966f581672d9782633fe5"
+      },
+      "revised_at": "2026-07-13T15:13:42.173909+00:00",
+      "reason": "Reconcile reviewer-requested auth-storage regression coverage and App-only fixtures",
+      "agent": {
+        "model": "gpt-5",
+        "provider": "openai",
+        "client": "codex",
+        "skills": ["maid-evolver", "maid-implementation-review"],
+        "source": "flags"
+      },
+      "contract_delta": {
+        "artifacts_added": [],
+        "artifacts_removed": [],
+        "files_added": [],
+        "files_removed": [],
+        "validate_commands_added": [],
+        "validate_commands_removed": []
+      }
+    },
+    {
+      "prior_manifest_hash": "sha256:9bb7303d60938bdc484bf63d33e3f8002f0a26c869acf9ff0d0b7a498bc89b17",
+      "prior_test_hashes": {
+        "src/lib/utils/__tests__/githubConnection.test.ts": "sha256:c5dccafc4aef04d911357cf04519ffd3909e0ebb10e592480597af3fcea9363b",
+        "src/background/__tests__/BackgroundService.critical-scenarios.test.ts": "sha256:42bc160808956090d852e453620322955f657367f9a94fab1993fad099c29e5f",
+        "src/background/__tests__/BackgroundService.user-journeys.test.ts": "sha256:0bfe6adca3d54b433cd524534d5c6f04fc150f04da80dbcd33b67d75650508df",
+        "src/background/__tests__/BackgroundService.edge-cases.test.ts": "sha256:297c93c3fe7ca98b34c4c3fbafd23a831e37e48029f98146e7e81b3e3df1359f",
+        "src/background/__tests__/BackgroundService.storage-recovery.test.ts": "sha256:c81656fc3c7b137362306c97552010b547a314a16f96211855309b53bcb08b8e",
+        "src/background/__tests__/BackgroundService.reload.test.ts": "sha256:816e0cdd4e560653b4335c92741e4bab4f14d5d6acf46dc4fc738836944cb124",
+        "src/content/handlers/__tests__/GitHubUploadHandler.test.ts": "sha256:3376cbd22c7a8a5ac41f8cb088f209bcabc445d86b6732471695e9bbff599190",
+        "src/content/handlers/__tests__/FileChangeHandler.test.ts": "sha256:35d224dc743bab57be757db555d028d560968046b7b74449a93ca61f9e1a1bf4",
+        "src/services/__tests__/ZipHandler.test.ts": "sha256:bf87fe0f04a04ffe4ee0c809700dd03a7a7f76253c8f50cba88c991565dda12a",
+        "src/services/__tests__/UnifiedGitHubService.auth-selection.test.ts": "sha256:b04dd1d07a4fdb011dedcb535722f6e1536aa5a701bc943109b31bc7388ebe2c",
+        "src/background/__tests__/TempRepoManager.test.ts": "sha256:df7861f33820c0966a192f8115aa8c51c77dff19b04a200f9973ca19123e7a77",
+        "src/content/services/__tests__/SupabaseAuthService.github-connection.test.ts": "sha256:14f3aa60b12fb5f799d58ca4b90454152ff9ac6c9381348ab8dd346944b9e5c3",
+        "src/content/services/__tests__/SupabaseAuthService.session-cleanup.test.ts": "sha256:f3580dfaf9d1ea56001e7f0372e3ca42fdea44d47236790daacb1614c97669d0",
+        "src/content/services/__tests__/SupabaseAuthService.independent-session.test.ts": "sha256:219019b95f7ef315322b4bc704c597c74aed069b89656529aeaedff99c1ee773",
+        "src/content/services/__tests__/SupabaseAuthService.edge-function-loop.test.ts": "sha256:35d3a2b2a6117dc024c55d5e48e8c6589a424eaa090dfaadf3c1e16bba5535fb",
+        "src/popup/__tests__/App.component.test.ts": "sha256:08318955987b75e1bd79fe35ae092a2d578e47390bd1f27647a2282a7beeb317",
+        "src/lib/utils/__tests__/githubAppSync.test.ts": "sha256:21956098216e39c9220de8673e4901f2d09fddd793f966f581672d9782633fe5"
+      },
+      "revised_at": "2026-07-13T16:16:53.465834+00:00",
+      "reason": "Refresh behavioral fixture hashes after the final release guard removed steady-state PAT-shaped setup",
+      "agent": null,
       "contract_delta": {
         "artifacts_added": [],
         "artifacts_removed": [],

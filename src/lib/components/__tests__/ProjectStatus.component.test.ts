@@ -122,7 +122,6 @@ const mockChrome = {
   storage: {
     local: {
       get: vi.fn().mockResolvedValue({
-        authenticationMethod: 'pat',
         storedFileChanges: null,
         pendingFileChanges: null,
       }),
@@ -171,7 +170,6 @@ describe('ProjectStatus.svelte - Component Tests', () => {
     mockGitHubCacheService.createEnhancedRepo.mockReturnValue({});
     mockGitHubCacheService.cacheRepoMetadata.mockResolvedValue(undefined);
     mockChrome.storage.local.get.mockResolvedValue({
-      authenticationMethod: 'pat',
       storedFileChanges: null,
       pendingFileChanges: null,
     });

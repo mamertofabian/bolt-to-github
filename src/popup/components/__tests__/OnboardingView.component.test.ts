@@ -18,7 +18,6 @@ vi.unmock('bits-ui');
 
 const githubSettings: GitHubSettingsState = {
   hasInitialSettings: false,
-  githubToken: '',
   repoOwner: 'preserved-owner',
   repoName: 'preserved-repo',
   branch: 'main',
@@ -26,7 +25,6 @@ const githubSettings: GitHubSettingsState = {
   isValidatingToken: false,
   isTokenValid: null,
   validationError: null,
-  authenticationMethod: 'github_app',
   githubAppInstallationId: null,
   githubAppUsername: null,
   githubAppAvatarUrl: null,

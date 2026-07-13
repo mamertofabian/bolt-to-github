@@ -95,7 +95,7 @@ describe('FileChangeHandler', () => {
     } as any;
 
     mockChromeStorage.sync.get.mockResolvedValue({});
-    mockChromeStorage.local.get.mockResolvedValue({ authenticationMethod: 'pat' });
+    mockChromeStorage.local.get.mockResolvedValue({});
     mockChromeStorage.local.set.mockResolvedValue(undefined);
   });
 
@@ -234,7 +234,6 @@ describe('FileChangeHandler', () => {
             branch: 'main',
           },
         },
-        githubToken: 'test-token',
       });
 
       const mockGitHubChanges = new Map<string, FileChange>([
@@ -262,7 +261,6 @@ describe('FileChangeHandler', () => {
             branch: 'main',
           },
         },
-        githubToken: 'test-token',
       });
 
       mockFilePreviewService.compareWithGitHub.mockRejectedValue(
@@ -289,7 +287,6 @@ describe('FileChangeHandler', () => {
             branch: 'main',
           },
         },
-        githubToken: 'test-token',
       });
 
       mockFilePreviewService.compareWithGitHub.mockRejectedValue(new Error('Network error'));
@@ -457,7 +454,6 @@ describe('FileChangeHandler', () => {
             branch: 'main',
           },
         },
-        githubToken: 'test-token',
       });
 
       const mockChanges = new Map<string, FileChange>([

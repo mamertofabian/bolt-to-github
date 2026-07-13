@@ -4,7 +4,7 @@
 
 Bolt to GitHub is a Chrome Extension (Manifest v3) that automatically captures ZIP file downloads from bolt.new, extracts them, and pushes contents to GitHub repositories. Built with Svelte v4.2.x, TypeScript v5.9.x, and TailwindCSS.
 
-**Current Version**: v1.3.21
+**Current Version**: v1.3.22
 **Repository**: mamertofabian/bolt-to-github  
 **Package Manager**: pnpm (required)
 
@@ -333,7 +333,7 @@ src/
 
 - Node.js with pnpm package manager
 - Chrome/Chromium browser for testing
-- GitHub account and personal access token for functionality
+- GitHub account, Bolt2GitHub account, and connected GitHub App for functionality
 - Windows environment with PowerShell (per project rules)
 
 ## Dependencies

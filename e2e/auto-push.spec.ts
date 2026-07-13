@@ -1,5 +1,5 @@
 import { test, expect } from './fixtures/extension';
-import { clearStorage, setupGitHubAppAuth } from './helpers/storage';
+import { clearStorage, seedConnectedGitHubApp } from './helpers/storage';
 import { TEST_PROJECTS, createProjectZipBlobUrl } from './helpers/testData';
 
 /**
@@ -22,7 +22,7 @@ test.describe('Auto-Push Workflow', () => {
     await clearStorage(context, extensionId);
 
     // Set up GitHub App authentication (required for auto-push)
-    await setupGitHubAppAuth(context, extensionId, 12345, 'testuser');
+    await seedConnectedGitHubApp(context, extensionId);
   });
 
   test.describe('Download Detection', () => {
@@ -101,12 +101,7 @@ test.describe('Auto-Push Workflow', () => {
       await page.waitForLoadState('domcontentloaded');
       await page.waitForTimeout(1000);
 
-      // Check if GitHub App connection is visible OR we're in the main view
-      const connectedText = page.locator('text=/Connected as|testuser|GitHub App/i');
-      const hasConnection = await connectedText.isVisible({ timeout: 3000 }).catch(() => false);
-
-      // Either connection is visible or we're past onboarding
-      expect(hasConnection || true).toBe(true);
+      await expect(page.getByRole('tablist')).toBeVisible();
 
       await page.close();
     });

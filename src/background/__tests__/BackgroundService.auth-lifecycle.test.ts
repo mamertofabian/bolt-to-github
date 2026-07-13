@@ -1,6 +1,7 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { BackgroundService } from '../BackgroundService';
+import backgroundServiceSource from '../BackgroundService.ts?raw';
 
 vi.mock('../../services/UnifiedGitHubService');
 vi.mock('../../services/zipHandler');
@@ -144,6 +145,10 @@ describe('BackgroundService - Auth Lifecycle Recovery', () => {
   afterEach(() => {
     service.destroy();
     vi.useRealTimers();
+  });
+
+  it('background auth recovery ignores the removed authentication method key', () => {
+    expect(backgroundServiceSource).not.toContain("'authenticationMethod'");
   });
 
   describe('syncInProgress timeout auto-reset', () => {

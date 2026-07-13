@@ -19,7 +19,6 @@ type FileChangesData = Record<string, FileChange> | StoredFileChanges;
 
 // Local data types for GitHub app config
 interface LocalGitHubAppData {
-  authenticationMethod?: 'pat' | 'github_app';
   githubAppInstallationId?: number;
   githubAppUsername?: string;
   githubAppAvatarUrl?: string;
@@ -29,8 +28,7 @@ interface LocalGitHubAppData {
   githubAppRefreshTokenExpiresAt?: string;
   githubAppUserId?: number;
   githubAppScopes?: string[];
-  migrationPromptShown?: boolean;
-  lastMigrationPrompt?: string;
+  githubAppMigrationRequired?: boolean;
 }
 
 /**
@@ -82,15 +80,12 @@ class StorageWriteQueue {
 
 // Storage Keys
 export const STORAGE_KEYS = {
-  GITHUB_TOKEN: 'githubToken',
   REPO_OWNER: 'repoOwner',
   PROJECT_SETTINGS: 'projectSettings',
   PROJECT_ID: 'projectId',
   PENDING_FILE_CHANGES: 'pendingFileChanges',
   STORED_FILE_CHANGES: 'storedFileChanges',
   PUSH_STATISTICS: 'pushStatistics',
-  // New authentication method keys
-  AUTHENTICATION_METHOD: 'authenticationMethod',
   GITHUB_APP_INSTALLATION_ID: 'githubAppInstallationId',
   GITHUB_APP_ACCESS_TOKEN: 'githubAppAccessToken',
   GITHUB_APP_REFRESH_TOKEN: 'githubAppRefreshToken',
@@ -100,8 +95,7 @@ export const STORAGE_KEYS = {
   GITHUB_APP_USER_ID: 'githubAppUserId',
   GITHUB_APP_AVATAR_URL: 'githubAppAvatarUrl',
   GITHUB_APP_SCOPES: 'githubAppScopes',
-  MIGRATION_PROMPT_SHOWN: 'migrationPromptShown',
-  LAST_MIGRATION_PROMPT: 'lastMigrationPrompt',
+  GITHUB_APP_MIGRATION_REQUIRED: 'githubAppMigrationRequired',
 } as const;
 
 // Chrome Storage Service
@@ -122,47 +116,39 @@ export class ChromeStorageService {
     return this.writeQueue.getStats();
   }
 
-  /**
-   * Get GitHub settings from sync storage (enhanced with authentication method)
-   */
+  /** Get steady-state repository and GitHub App settings. */
   static async getGitHubSettings(): Promise<GitHubSettingsInterface> {
     try {
       const syncResult = await chrome.storage.sync.get([
-        STORAGE_KEYS.GITHUB_TOKEN,
         STORAGE_KEYS.REPO_OWNER,
         STORAGE_KEYS.PROJECT_SETTINGS,
       ]);
 
       const localResult = await chrome.storage.local.get([
-        STORAGE_KEYS.AUTHENTICATION_METHOD,
         STORAGE_KEYS.GITHUB_APP_INSTALLATION_ID,
         STORAGE_KEYS.GITHUB_APP_USERNAME,
         STORAGE_KEYS.GITHUB_APP_AVATAR_URL,
+        STORAGE_KEYS.GITHUB_APP_MIGRATION_REQUIRED,
       ]);
 
       return {
-        githubToken: syncResult[STORAGE_KEYS.GITHUB_TOKEN] || '',
         repoOwner: syncResult[STORAGE_KEYS.REPO_OWNER] || '',
         projectSettings: syncResult[STORAGE_KEYS.PROJECT_SETTINGS] || {},
-        authenticationMethod: localResult[STORAGE_KEYS.AUTHENTICATION_METHOD] || 'pat',
         githubAppInstallationId: localResult[STORAGE_KEYS.GITHUB_APP_INSTALLATION_ID],
         githubAppUsername: localResult[STORAGE_KEYS.GITHUB_APP_USERNAME],
         githubAppAvatarUrl: localResult[STORAGE_KEYS.GITHUB_APP_AVATAR_URL],
+        githubAppMigrationRequired: localResult[STORAGE_KEYS.GITHUB_APP_MIGRATION_REQUIRED],
       };
     } catch (error) {
       logger.error('Error getting GitHub settings from storage:', error);
       return {
-        githubToken: '',
         repoOwner: '',
         projectSettings: {},
-        authenticationMethod: 'pat',
       };
     }
   }
 
-  /**
-   * Save GitHub settings to sync storage (enhanced with authentication method, thread-safe)
-   */
+  /** Save repository and GitHub App settings without legacy authentication fields. */
   static async saveGitHubSettings(settings: GitHubSettingsInterface): Promise<void> {
     return this.writeQueue.enqueue(async () => {
       try {
@@ -170,17 +156,12 @@ export class ChromeStorageService {
 
         // Save sync data (shared across devices)
         const syncDataToSave = {
-          [STORAGE_KEYS.GITHUB_TOKEN]: settings.githubToken,
           [STORAGE_KEYS.REPO_OWNER]: settings.repoOwner,
           [STORAGE_KEYS.PROJECT_SETTINGS]: settings.projectSettings || {},
         };
 
         // Save local data (device-specific)
         const localDataToSave: Partial<LocalGitHubAppData> = {};
-
-        if (settings.authenticationMethod !== undefined) {
-          localDataToSave[STORAGE_KEYS.AUTHENTICATION_METHOD] = settings.authenticationMethod;
-        }
 
         if (settings.githubAppInstallationId !== undefined) {
           localDataToSave[STORAGE_KEYS.GITHUB_APP_INSTALLATION_ID] =
@@ -193,6 +174,11 @@ export class ChromeStorageService {
 
         if (settings.githubAppAvatarUrl !== undefined) {
           localDataToSave[STORAGE_KEYS.GITHUB_APP_AVATAR_URL] = settings.githubAppAvatarUrl;
+        }
+
+        if (settings.githubAppMigrationRequired !== undefined) {
+          localDataToSave[STORAGE_KEYS.GITHUB_APP_MIGRATION_REQUIRED] =
+            settings.githubAppMigrationRequired;
         }
 
         // Save to both storages atomically
@@ -610,67 +596,6 @@ export class ChromeStorageService {
   }
 
   // ========================================
-  // Authentication Method Management
-  // ========================================
-
-  /**
-   * Get the current authentication method
-   */
-  static async getAuthenticationMethod(): Promise<'pat' | 'github_app'> {
-    try {
-      const result = await chrome.storage.local.get(STORAGE_KEYS.AUTHENTICATION_METHOD);
-      return result[STORAGE_KEYS.AUTHENTICATION_METHOD] || 'pat';
-    } catch (error) {
-      logger.error('Error getting authentication method from storage:', error);
-      return 'pat';
-    }
-  }
-
-  /**
-   * Set the authentication method
-   */
-  static async setAuthenticationMethod(method: 'pat' | 'github_app'): Promise<void> {
-    try {
-      await chrome.storage.local.set({
-        [STORAGE_KEYS.AUTHENTICATION_METHOD]: method,
-      });
-    } catch (error) {
-      logger.error('Error setting authentication method in storage:', error);
-      throw error;
-    }
-  }
-
-  /**
-   * Check if user has both authentication methods configured
-   */
-  static async hasMultipleAuthMethods(): Promise<{
-    hasPAT: boolean;
-    hasGitHubApp: boolean;
-    hasMultiple: boolean;
-  }> {
-    try {
-      const syncResult = await chrome.storage.sync.get(STORAGE_KEYS.GITHUB_TOKEN);
-      const localResult = await chrome.storage.local.get(STORAGE_KEYS.GITHUB_APP_INSTALLATION_ID);
-
-      const hasPAT = !!syncResult[STORAGE_KEYS.GITHUB_TOKEN];
-      const hasGitHubApp = !!localResult[STORAGE_KEYS.GITHUB_APP_INSTALLATION_ID];
-
-      return {
-        hasPAT,
-        hasGitHubApp,
-        hasMultiple: hasPAT && hasGitHubApp,
-      };
-    } catch (error) {
-      logger.error('Error checking multiple auth methods:', error);
-      return {
-        hasPAT: false,
-        hasGitHubApp: false,
-        hasMultiple: false,
-      };
-    }
-  }
-
-  // ========================================
   // GitHub App Specific Storage
   // ========================================
 
@@ -790,63 +715,6 @@ export class ChromeStorageService {
       ]);
     } catch (error) {
       logger.error('Error clearing GitHub App config from storage:', error);
-      throw error;
-    }
-  }
-
-  // ========================================
-  // Migration Status Management
-  // ========================================
-
-  /**
-   * Check if migration prompt has been shown
-   */
-  static async getMigrationPromptStatus(): Promise<{
-    shown: boolean;
-    lastPrompt?: string;
-  }> {
-    try {
-      const result = await chrome.storage.local.get([
-        STORAGE_KEYS.MIGRATION_PROMPT_SHOWN,
-        STORAGE_KEYS.LAST_MIGRATION_PROMPT,
-      ]);
-
-      return {
-        shown: result[STORAGE_KEYS.MIGRATION_PROMPT_SHOWN] || false,
-        lastPrompt: result[STORAGE_KEYS.LAST_MIGRATION_PROMPT],
-      };
-    } catch (error) {
-      logger.error('Error getting migration prompt status:', error);
-      return { shown: false };
-    }
-  }
-
-  /**
-   * Mark migration prompt as shown
-   */
-  static async markMigrationPromptShown(): Promise<void> {
-    try {
-      await chrome.storage.local.set({
-        [STORAGE_KEYS.MIGRATION_PROMPT_SHOWN]: true,
-        [STORAGE_KEYS.LAST_MIGRATION_PROMPT]: new Date().toISOString(),
-      });
-    } catch (error) {
-      logger.error('Error marking migration prompt as shown:', error);
-      throw error;
-    }
-  }
-
-  /**
-   * Reset migration prompt status (for testing or re-showing)
-   */
-  static async resetMigrationPromptStatus(): Promise<void> {
-    try {
-      await chrome.storage.local.remove([
-        STORAGE_KEYS.MIGRATION_PROMPT_SHOWN,
-        STORAGE_KEYS.LAST_MIGRATION_PROMPT,
-      ]);
-    } catch (error) {
-      logger.error('Error resetting migration prompt status:', error);
       throw error;
     }
   }

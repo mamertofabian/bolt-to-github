@@ -132,7 +132,6 @@ describe('BoltProjectSyncService - Recent Changes & Merge Behavior', () => {
       };
 
       mockGetGitHubSettings.mockResolvedValue({
-        githubToken: 'token',
         repoOwner: 'owner',
         projectSettings: existingSettings,
       });
@@ -219,7 +218,6 @@ describe('BoltProjectSyncService - Recent Changes & Merge Behavior', () => {
       };
 
       mockGetGitHubSettings.mockResolvedValue({
-        githubToken: 'token',
         repoOwner: 'owner',
         projectSettings: existingSettings,
       });
@@ -261,7 +259,6 @@ describe('BoltProjectSyncService - Recent Changes & Merge Behavior', () => {
     it('should handle empty bolt projects without syncing', async () => {
       mockStorageGet.mockResolvedValue({ boltProjects: [] });
       mockGetGitHubSettings.mockResolvedValue({
-        githubToken: 'token',
         repoOwner: 'owner',
         projectSettings: {},
       });
@@ -314,7 +311,6 @@ describe('BoltProjectSyncService - Recent Changes & Merge Behavior', () => {
       });
 
       mockGetGitHubSettings.mockResolvedValue({
-        githubToken: 'token',
         repoOwner: 'owner',
         projectSettings: {
           'project-1': { repoName: 'old-change', branch: 'old-branch' },
@@ -360,7 +356,6 @@ describe('BoltProjectSyncService - Recent Changes & Merge Behavior', () => {
     it('should allow inward sync when user has 0-1 projects total', async () => {
       mockStorageGet.mockResolvedValue({ boltProjects: [] });
       mockGetGitHubSettings.mockResolvedValue({
-        githubToken: 'token',
         repoOwner: 'owner',
         projectSettings: {},
       });
@@ -442,7 +437,6 @@ describe('BoltProjectSyncService - Recent Changes & Merge Behavior', () => {
 
       mockStorageGet.mockResolvedValue({ boltProjects: multipleProjects });
       mockGetGitHubSettings.mockResolvedValue({
-        githubToken: 'token',
         repoOwner: 'owner',
         projectSettings: {},
       });
@@ -513,7 +507,6 @@ describe('BoltProjectSyncService - Recent Changes & Merge Behavior', () => {
       });
 
       mockGetGitHubSettings.mockResolvedValue({
-        githubToken: 'token',
         repoOwner: 'owner',
         projectSettings: {},
       });
@@ -538,7 +531,6 @@ describe('BoltProjectSyncService - Recent Changes & Merge Behavior', () => {
     it('should handle network errors during sync', async () => {
       mockStorageGet.mockResolvedValue({ boltProjects: [] });
       mockGetGitHubSettings.mockResolvedValue({
-        githubToken: 'token',
         repoOwner: 'owner',
         projectSettings: {},
       });
@@ -572,7 +564,6 @@ describe('BoltProjectSyncService - Recent Changes & Merge Behavior', () => {
     it('should handle API errors during sync', async () => {
       mockStorageGet.mockResolvedValue({ boltProjects: [] });
       mockGetGitHubSettings.mockResolvedValue({
-        githubToken: 'token',
         repoOwner: 'owner',
         projectSettings: {},
       });

@@ -445,7 +445,7 @@ describe('App.svelte - Settings', () => {
 
   describe('GitHub App-only settings state', () => {
     it('should not invoke authentication method switching', () => {
-      expect(mockGithubSettingsActions.setAuthenticationMethod).not.toHaveBeenCalled();
+      expect(mockGithubSettingsActions).not.toHaveProperty('setAuthenticationMethod');
     });
 
     it('should derive readiness from the GitHub App installation', () => {

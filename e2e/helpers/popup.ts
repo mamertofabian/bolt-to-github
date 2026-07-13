@@ -18,39 +18,27 @@ export async function openPopup(context: BrowserContext, extensionId: string): P
   return page;
 }
 
-/**
- * Fill in the onboarding form with PAT authentication
- */
-export async function fillOnboardingPAT(
-  page: Page,
-  token: string,
-  username: string
-): Promise<void> {
-  // Click "Connect GitHub Account" button if on welcome screen
-  const connectButton = page.locator('button:has-text("Connect GitHub Account")');
-  if (await connectButton.isVisible({ timeout: 3000 }).catch(() => false)) {
-    await connectButton.click();
-    await page.waitForTimeout(1000);
-  }
+export async function openGitHubAppSetup(page: Page): Promise<void> {
+  const setupHeading = page.getByRole('heading', { name: /connect your github account/i });
+  if (await setupHeading.isVisible().catch(() => false)) return;
 
-  // Select PAT radio button - the fields only appear when this is selected
-  // Wait for the authentication method selection screen to load
-  const patRadio = page.locator('input[type="radio"][value="pat"]');
-  await patRadio.waitFor({ state: 'visible', timeout: 10000 });
-  await patRadio.click();
+  const connectButton = page.getByRole('button', { name: /connect github account/i });
+  await connectButton.waitFor({ state: 'visible', timeout: 10_000 });
+  await connectButton.click();
 
-  // Wait for PAT fields to appear
-  await page.waitForTimeout(500);
+  await setupHeading.waitFor({
+    state: 'visible',
+    timeout: 10_000,
+  });
+}
 
-  // Fill in the token field (ID is 'githubToken')
-  const tokenInput = page.locator('#githubToken');
-  await tokenInput.waitFor({ state: 'visible', timeout: 5000 });
-  await tokenInput.fill(token);
-
-  // Fill in the username field (ID is 'repoOwner')
-  const usernameInput = page.locator('#repoOwner');
-  await usernameInput.waitFor({ state: 'visible', timeout: 5000 });
-  await usernameInput.fill(username);
+export async function waitForMigrationGuidance(page: Page): Promise<string> {
+  await openGitHubAppSetup(page);
+  const migrationAlert = page.getByRole('alert').filter({
+    hasText: /personal access token support has ended/i,
+  });
+  await migrationAlert.waitFor({ state: 'visible', timeout: 10_000 });
+  return (await migrationAlert.textContent()) ?? '';
 }
 
 /**

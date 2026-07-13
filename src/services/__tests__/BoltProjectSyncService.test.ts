@@ -22,7 +22,6 @@ describe('BoltProjectSyncService', () => {
     vi.mocked(ChromeStorageService.prototype.get).mockResolvedValue({});
     vi.mocked(ChromeStorageService.prototype.set).mockResolvedValue(undefined);
     vi.mocked(ChromeStorageService.getGitHubSettings).mockResolvedValue({
-      githubToken: '',
       repoOwner: '',
       projectSettings: {},
     });
@@ -77,9 +76,10 @@ describe('BoltProjectSyncService', () => {
 
   function setupGitHubSettings(settings: Partial<GitHubSettingsInterface> = {}) {
     const defaultSettings: GitHubSettingsInterface = {
-      githubToken: 'ghp_test',
       repoOwner: 'test-owner',
       projectSettings: {},
+      githubAppInstallationId: 12345,
+      githubAppUsername: 'test-owner',
       ...settings,
     };
     vi.mocked(ChromeStorageService.getGitHubSettings).mockResolvedValue(defaultSettings);

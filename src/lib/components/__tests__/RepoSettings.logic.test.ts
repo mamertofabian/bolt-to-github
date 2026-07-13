@@ -10,8 +10,6 @@ import {
   shouldShowDropdown,
   canSaveForm,
   validateRepositoryName,
-  getAuthenticationMethod,
-  createGitHubServiceConfig,
   handleKeyboardNavigation,
   getRepositoryStatusMessage,
   filterBranches,
@@ -20,10 +18,15 @@ import {
   shouldShowBranchDropdown,
   getBranchStatusMessage,
   type Repository,
-  type AuthSettings,
 } from '$lib/utils/repo-settings';
+import * as repoSettings from '$lib/utils/repo-settings';
 
 describe('RepoSettings Business Logic', () => {
+  it('repository settings helpers expose no PAT method or token service configuration', () => {
+    expect(repoSettings).not.toHaveProperty('getAuthenticationMethod');
+    expect(repoSettings).not.toHaveProperty('createGitHubServiceConfig');
+  });
+
   const mockRepositories: Repository[] = [
     {
       name: 'awesome-project',
@@ -313,56 +316,6 @@ describe('RepoSettings Business Logic', () => {
         expect(validateRepositoryName(repoName).isValid).toBe(false);
         expect(canSaveForm(repoName, 'main')).toBe(false);
       }
-    });
-  });
-
-  describe('getAuthenticationMethod', () => {
-    it('should return github_app when authenticationMethod is github_app', () => {
-      const settings: AuthSettings = { authenticationMethod: 'github_app' };
-      const result = getAuthenticationMethod(settings);
-
-      expect(result).toBe('github_app');
-    });
-
-    it('should return pat when authenticationMethod is pat', () => {
-      const settings: AuthSettings = { authenticationMethod: 'pat' };
-      const result = getAuthenticationMethod(settings);
-
-      expect(result).toBe('pat');
-    });
-
-    it('should default to pat when authenticationMethod is not set', () => {
-      const settings: AuthSettings = {};
-      const result = getAuthenticationMethod(settings);
-
-      expect(result).toBe('pat');
-    });
-
-    it('should default to pat when authenticationMethod is invalid', () => {
-      const settings: AuthSettings = { authenticationMethod: 'invalid' as 'pat' | 'github_app' };
-      const result = getAuthenticationMethod(settings);
-
-      expect(result).toBe('pat');
-    });
-  });
-
-  describe('createGitHubServiceConfig', () => {
-    it('should create config with github_app type', () => {
-      const result = createGitHubServiceConfig('github_app', 'token');
-
-      expect(result).toEqual({ type: 'github_app' });
-    });
-
-    it('should create config with token for PAT', () => {
-      const result = createGitHubServiceConfig('pat', 'ghp_test');
-
-      expect(result).toBe('ghp_test');
-    });
-
-    it('should handle empty token for PAT', () => {
-      const result = createGitHubServiceConfig('pat', '');
-
-      expect(result).toBe('');
     });
   });
 

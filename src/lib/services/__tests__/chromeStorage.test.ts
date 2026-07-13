@@ -71,16 +71,66 @@ describe('ChromeStorageService - Comprehensive Coverage', () => {
     mockChromeStorage.local.clear.mockResolvedValue(undefined);
   });
 
+  describe('GitHub App-only settings storage contract', () => {
+    it('steady-state GitHub settings never read or write githubToken', async () => {
+      mockChromeStorage.sync.get.mockResolvedValue({
+        githubToken: 'legacy-token-must-be-ignored',
+        repoOwner: 'octocat',
+        projectSettings: {},
+      });
+      mockChromeStorage.local.get.mockResolvedValue({
+        authenticationMethod: 'pat',
+        githubAppInstallationId: 12345,
+        githubAppUsername: 'octocat',
+      });
+
+      const settings = await ChromeStorageService.getGitHubSettings();
+      await ChromeStorageService.saveGitHubSettings(settings);
+
+      expect(mockChromeStorage.sync.get).toHaveBeenCalledWith([
+        STORAGE_KEYS.REPO_OWNER,
+        STORAGE_KEYS.PROJECT_SETTINGS,
+      ]);
+      expect(settings).not.toHaveProperty('githubToken');
+      expect(settings).not.toHaveProperty('authenticationMethod');
+      expect(mockChromeStorage.sync.set).toHaveBeenCalledWith({
+        repoOwner: 'octocat',
+        projectSettings: {},
+      });
+      expect(mockChromeStorage.local.set).toHaveBeenCalledWith(
+        expect.not.objectContaining({ authenticationMethod: expect.anything() })
+      );
+    });
+
+    it('legacy cleanup preserves repoOwner and projectSettings', async () => {
+      const projectSettings = { bolt: { repoName: 'preserved-repo', branch: 'dev' } };
+      mockChromeStorage.sync.get.mockResolvedValue({
+        githubToken: 'legacy-token-must-be-ignored',
+        repoOwner: 'preserved-owner',
+        projectSettings,
+      });
+      mockChromeStorage.local.get.mockResolvedValue({
+        authenticationMethod: 'pat',
+        githubAppMigrationRequired: true,
+      });
+
+      const settings = await ChromeStorageService.getGitHubSettings();
+
+      expect(settings.repoOwner).toBe('preserved-owner');
+      expect(settings.projectSettings).toEqual(projectSettings);
+      expect(settings).not.toHaveProperty('githubToken');
+      expect(settings).not.toHaveProperty('authenticationMethod');
+    });
+  });
+
   describe('STORAGE_KEYS constant', () => {
     it('should export all required storage keys', () => {
-      expect(STORAGE_KEYS.GITHUB_TOKEN).toBe('githubToken');
       expect(STORAGE_KEYS.REPO_OWNER).toBe('repoOwner');
       expect(STORAGE_KEYS.PROJECT_SETTINGS).toBe('projectSettings');
       expect(STORAGE_KEYS.PROJECT_ID).toBe('projectId');
       expect(STORAGE_KEYS.PENDING_FILE_CHANGES).toBe('pendingFileChanges');
       expect(STORAGE_KEYS.STORED_FILE_CHANGES).toBe('storedFileChanges');
       expect(STORAGE_KEYS.PUSH_STATISTICS).toBe('pushStatistics');
-      expect(STORAGE_KEYS.AUTHENTICATION_METHOD).toBe('authenticationMethod');
       expect(STORAGE_KEYS.GITHUB_APP_INSTALLATION_ID).toBe('githubAppInstallationId');
       expect(STORAGE_KEYS.GITHUB_APP_ACCESS_TOKEN).toBe('githubAppAccessToken');
       expect(STORAGE_KEYS.GITHUB_APP_REFRESH_TOKEN).toBe('githubAppRefreshToken');
@@ -92,49 +142,45 @@ describe('ChromeStorageService - Comprehensive Coverage', () => {
       expect(STORAGE_KEYS.GITHUB_APP_USER_ID).toBe('githubAppUserId');
       expect(STORAGE_KEYS.GITHUB_APP_AVATAR_URL).toBe('githubAppAvatarUrl');
       expect(STORAGE_KEYS.GITHUB_APP_SCOPES).toBe('githubAppScopes');
-      expect(STORAGE_KEYS.MIGRATION_PROMPT_SHOWN).toBe('migrationPromptShown');
-      expect(STORAGE_KEYS.LAST_MIGRATION_PROMPT).toBe('lastMigrationPrompt');
+      expect(STORAGE_KEYS.GITHUB_APP_MIGRATION_REQUIRED).toBe('githubAppMigrationRequired');
     });
   });
 
   describe('getGitHubSettings', () => {
     it('should retrieve GitHub settings from both sync and local storage', async () => {
       mockChromeStorage.sync.get.mockResolvedValue({
-        githubToken: 'test-token',
         repoOwner: 'test-owner',
         projectSettings: { project1: { repoName: 'repo1', branch: 'main' } },
       });
 
       mockChromeStorage.local.get.mockResolvedValue({
-        authenticationMethod: 'github_app',
         githubAppInstallationId: 12345,
         githubAppUsername: 'test-user',
         githubAppAvatarUrl: 'https://avatar.url',
+        githubAppMigrationRequired: true,
       });
 
       const result = await ChromeStorageService.getGitHubSettings();
 
       expect(result).toEqual({
-        githubToken: 'test-token',
         repoOwner: 'test-owner',
         projectSettings: { project1: { repoName: 'repo1', branch: 'main' } },
-        authenticationMethod: 'github_app',
         githubAppInstallationId: 12345,
         githubAppUsername: 'test-user',
         githubAppAvatarUrl: 'https://avatar.url',
+        githubAppMigrationRequired: true,
       });
 
       expect(mockChromeStorage.sync.get).toHaveBeenCalledWith([
-        STORAGE_KEYS.GITHUB_TOKEN,
         STORAGE_KEYS.REPO_OWNER,
         STORAGE_KEYS.PROJECT_SETTINGS,
       ]);
 
       expect(mockChromeStorage.local.get).toHaveBeenCalledWith([
-        STORAGE_KEYS.AUTHENTICATION_METHOD,
         STORAGE_KEYS.GITHUB_APP_INSTALLATION_ID,
         STORAGE_KEYS.GITHUB_APP_USERNAME,
         STORAGE_KEYS.GITHUB_APP_AVATAR_URL,
+        STORAGE_KEYS.GITHUB_APP_MIGRATION_REQUIRED,
       ]);
     });
 
@@ -142,10 +188,8 @@ describe('ChromeStorageService - Comprehensive Coverage', () => {
       const result = await ChromeStorageService.getGitHubSettings();
 
       expect(result).toEqual({
-        githubToken: '',
         repoOwner: '',
         projectSettings: {},
-        authenticationMethod: 'pat',
       });
     });
 
@@ -155,40 +199,33 @@ describe('ChromeStorageService - Comprehensive Coverage', () => {
       const result = await ChromeStorageService.getGitHubSettings();
 
       expect(result).toEqual({
-        githubToken: '',
         repoOwner: '',
         projectSettings: {},
-        authenticationMethod: 'pat',
       });
     });
 
     it('should handle partial data from storage', async () => {
       mockChromeStorage.sync.get.mockResolvedValue({
-        githubToken: 'token-only',
+        repoOwner: 'owner-only',
       });
 
       const result = await ChromeStorageService.getGitHubSettings();
 
-      expect(result.githubToken).toBe('token-only');
-      expect(result.repoOwner).toBe('');
+      expect(result.repoOwner).toBe('owner-only');
       expect(result.projectSettings).toEqual({});
-      expect(result.authenticationMethod).toBe('pat');
     });
   });
 
   describe('saveGitHubSettings', () => {
-    it('should save PAT authentication settings to sync storage', async () => {
+    it('should save repository settings to sync storage', async () => {
       const settings: GitHubSettingsInterface = {
-        githubToken: 'test-token',
         repoOwner: 'test-owner',
         projectSettings: { project1: { repoName: 'repo1', branch: 'main' } },
-        authenticationMethod: 'pat',
       };
 
       await ChromeStorageService.saveGitHubSettings(settings);
 
       expect(mockChromeStorage.sync.set).toHaveBeenCalledWith({
-        githubToken: 'test-token',
         repoOwner: 'test-owner',
         projectSettings: { project1: { repoName: 'repo1', branch: 'main' } },
       });
@@ -196,53 +233,33 @@ describe('ChromeStorageService - Comprehensive Coverage', () => {
 
     it('should save GitHub App settings to both sync and local storage', async () => {
       const settings: GitHubSettingsInterface = {
-        githubToken: '',
         repoOwner: 'app-owner',
         projectSettings: {},
-        authenticationMethod: 'github_app',
         githubAppInstallationId: 54321,
         githubAppUsername: 'app-user',
         githubAppAvatarUrl: 'https://app.avatar',
+        githubAppMigrationRequired: true,
       };
 
       await ChromeStorageService.saveGitHubSettings(settings);
 
       expect(mockChromeStorage.sync.set).toHaveBeenCalledWith({
-        githubToken: '',
         repoOwner: 'app-owner',
         projectSettings: {},
       });
 
       expect(mockChromeStorage.local.set).toHaveBeenCalledWith({
-        authenticationMethod: 'github_app',
         githubAppInstallationId: 54321,
         githubAppUsername: 'app-user',
         githubAppAvatarUrl: 'https://app.avatar',
-      });
-    });
-
-    it('should save authentication method even when using PAT', async () => {
-      const settings: GitHubSettingsInterface = {
-        githubToken: 'token',
-        repoOwner: 'owner',
-        projectSettings: {},
-        authenticationMethod: 'pat',
-      };
-
-      await ChromeStorageService.saveGitHubSettings(settings);
-
-      expect(mockChromeStorage.sync.set).toHaveBeenCalled();
-      expect(mockChromeStorage.local.set).toHaveBeenCalledWith({
-        authenticationMethod: 'pat',
+        githubAppMigrationRequired: true,
       });
     });
 
     it('should throw error on storage failure', async () => {
       const settings: GitHubSettingsInterface = {
-        githubToken: 'token',
         repoOwner: 'owner',
         projectSettings: {},
-        authenticationMethod: 'pat',
       };
 
       mockChromeStorage.sync.set.mockRejectedValue(new Error('Write failed'));
@@ -628,129 +645,6 @@ describe('ChromeStorageService - Comprehensive Coverage', () => {
     });
   });
 
-  describe('getAuthenticationMethod', () => {
-    it('should retrieve authentication method from local storage', async () => {
-      mockChromeStorage.local.get.mockResolvedValue({
-        authenticationMethod: 'github_app',
-      });
-
-      const result = await ChromeStorageService.getAuthenticationMethod();
-
-      expect(result).toBe('github_app');
-      expect(mockChromeStorage.local.get).toHaveBeenCalledWith(STORAGE_KEYS.AUTHENTICATION_METHOD);
-    });
-
-    it('should return "pat" as default when not set', async () => {
-      const result = await ChromeStorageService.getAuthenticationMethod();
-
-      expect(result).toBe('pat');
-    });
-
-    it('should return "pat" on storage error', async () => {
-      mockChromeStorage.local.get.mockRejectedValue(new Error('Storage error'));
-
-      const result = await ChromeStorageService.getAuthenticationMethod();
-
-      expect(result).toBe('pat');
-    });
-  });
-
-  describe('setAuthenticationMethod', () => {
-    it('should save authentication method to local storage', async () => {
-      await ChromeStorageService.setAuthenticationMethod('github_app');
-
-      expect(mockChromeStorage.local.set).toHaveBeenCalledWith({
-        authenticationMethod: 'github_app',
-      });
-    });
-
-    it('should save PAT authentication method', async () => {
-      await ChromeStorageService.setAuthenticationMethod('pat');
-
-      expect(mockChromeStorage.local.set).toHaveBeenCalledWith({
-        authenticationMethod: 'pat',
-      });
-    });
-
-    it('should throw error on storage failure', async () => {
-      mockChromeStorage.local.set.mockRejectedValue(new Error('Write failed'));
-
-      await expect(ChromeStorageService.setAuthenticationMethod('pat')).rejects.toThrow(
-        'Write failed'
-      );
-    });
-  });
-
-  describe('hasMultipleAuthMethods', () => {
-    it('should return true for both methods when both PAT and GitHub App are configured', async () => {
-      mockChromeStorage.sync.get.mockResolvedValue({
-        githubToken: 'test-token',
-      });
-
-      mockChromeStorage.local.get.mockResolvedValue({
-        githubAppInstallationId: 12345,
-      });
-
-      const result = await ChromeStorageService.hasMultipleAuthMethods();
-
-      expect(result).toEqual({
-        hasPAT: true,
-        hasGitHubApp: true,
-        hasMultiple: true,
-      });
-    });
-
-    it('should return false for hasMultiple when only PAT is configured', async () => {
-      mockChromeStorage.sync.get.mockResolvedValue({
-        githubToken: 'test-token',
-      });
-
-      const result = await ChromeStorageService.hasMultipleAuthMethods();
-
-      expect(result).toEqual({
-        hasPAT: true,
-        hasGitHubApp: false,
-        hasMultiple: false,
-      });
-    });
-
-    it('should return false for hasMultiple when only GitHub App is configured', async () => {
-      mockChromeStorage.local.get.mockResolvedValue({
-        githubAppInstallationId: 12345,
-      });
-
-      const result = await ChromeStorageService.hasMultipleAuthMethods();
-
-      expect(result).toEqual({
-        hasPAT: false,
-        hasGitHubApp: true,
-        hasMultiple: false,
-      });
-    });
-
-    it('should return false for all when no auth methods configured', async () => {
-      const result = await ChromeStorageService.hasMultipleAuthMethods();
-
-      expect(result).toEqual({
-        hasPAT: false,
-        hasGitHubApp: false,
-        hasMultiple: false,
-      });
-    });
-
-    it('should return all false on storage error', async () => {
-      mockChromeStorage.sync.get.mockRejectedValue(new Error('Storage error'));
-
-      const result = await ChromeStorageService.hasMultipleAuthMethods();
-
-      expect(result).toEqual({
-        hasPAT: false,
-        hasGitHubApp: false,
-        hasMultiple: false,
-      });
-    });
-  });
-
   describe('getGitHubAppConfig', () => {
     it('should retrieve complete GitHub App configuration', async () => {
       mockChromeStorage.local.get.mockResolvedValue({
@@ -888,98 +782,6 @@ describe('ChromeStorageService - Comprehensive Coverage', () => {
       mockChromeStorage.local.remove.mockRejectedValue(new Error('Remove failed'));
 
       await expect(ChromeStorageService.clearGitHubAppConfig()).rejects.toThrow('Remove failed');
-    });
-  });
-
-  describe('getMigrationPromptStatus', () => {
-    it('should retrieve migration prompt status with timestamp', async () => {
-      mockChromeStorage.local.get.mockResolvedValue({
-        migrationPromptShown: true,
-        lastMigrationPrompt: '2024-01-01T00:00:00Z',
-      });
-
-      const result = await ChromeStorageService.getMigrationPromptStatus();
-
-      expect(result).toEqual({
-        shown: true,
-        lastPrompt: '2024-01-01T00:00:00Z',
-      });
-    });
-
-    it('should return default status when not set', async () => {
-      const result = await ChromeStorageService.getMigrationPromptStatus();
-
-      expect(result).toEqual({
-        shown: false,
-      });
-    });
-
-    it('should handle shown flag without timestamp', async () => {
-      mockChromeStorage.local.get.mockResolvedValue({
-        migrationPromptShown: true,
-      });
-
-      const result = await ChromeStorageService.getMigrationPromptStatus();
-
-      expect(result).toEqual({
-        shown: true,
-        lastPrompt: undefined,
-      });
-    });
-
-    it('should return default status on storage error', async () => {
-      mockChromeStorage.local.get.mockRejectedValue(new Error('Storage error'));
-
-      const result = await ChromeStorageService.getMigrationPromptStatus();
-
-      expect(result).toEqual({
-        shown: false,
-      });
-    });
-  });
-
-  describe('markMigrationPromptShown', () => {
-    it('should mark migration prompt as shown with timestamp', async () => {
-      const beforeCall = Date.now();
-
-      await ChromeStorageService.markMigrationPromptShown();
-
-      const afterCall = Date.now();
-
-      expect(mockChromeStorage.local.set).toHaveBeenCalled();
-
-      const callArgs = mockChromeStorage.local.set.mock.calls[0]?.[0];
-      expect(callArgs).toHaveProperty('migrationPromptShown', true);
-      expect(callArgs).toHaveProperty('lastMigrationPrompt');
-
-      const timestamp = new Date(callArgs.lastMigrationPrompt as string).getTime();
-      expect(timestamp).toBeGreaterThanOrEqual(beforeCall);
-      expect(timestamp).toBeLessThanOrEqual(afterCall);
-    });
-
-    it('should throw error on storage failure', async () => {
-      mockChromeStorage.local.set.mockRejectedValue(new Error('Write failed'));
-
-      await expect(ChromeStorageService.markMigrationPromptShown()).rejects.toThrow('Write failed');
-    });
-  });
-
-  describe('resetMigrationPromptStatus', () => {
-    it('should remove migration prompt status keys', async () => {
-      await ChromeStorageService.resetMigrationPromptStatus();
-
-      expect(mockChromeStorage.local.remove).toHaveBeenCalledWith([
-        STORAGE_KEYS.MIGRATION_PROMPT_SHOWN,
-        STORAGE_KEYS.LAST_MIGRATION_PROMPT,
-      ]);
-    });
-
-    it('should throw error on removal failure', async () => {
-      mockChromeStorage.local.remove.mockRejectedValue(new Error('Remove failed'));
-
-      await expect(ChromeStorageService.resetMigrationPromptStatus()).rejects.toThrow(
-        'Remove failed'
-      );
     });
   });
 

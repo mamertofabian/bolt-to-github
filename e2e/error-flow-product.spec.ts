@@ -1,6 +1,6 @@
 import { test, expect } from './fixtures/extension';
 import type { BrowserContext } from '@playwright/test';
-import { clearStorage, setGitHubSettings } from './helpers/storage';
+import { clearStorage, seedConnectedGitHubApp } from './helpers/storage';
 import {
   openPopup,
   navigateToTab,
@@ -11,16 +11,16 @@ import {
 } from './helpers/popup';
 
 const ERROR_FLOW_PROJECT_ID = 'error-flow-project';
+const PUSH_BUTTON_SELECTOR =
+  'button[aria-label="Push to GitHub"]:visible, button:visible:has-text("Push to GitHub"), button:visible:has-text("Upload")';
 
 async function seedProductAuth(
   context: BrowserContext,
   extensionId: string,
   repoName = 'test-repo'
 ) {
-  await setGitHubSettings(context, extensionId, {
+  await seedConnectedGitHubApp(context, extensionId, {
     repoOwner: 'testuser',
-    githubToken: 'ghp_e2e_product_token',
-    authenticationMethod: 'pat',
     projectSettings: {
       [ERROR_FLOW_PROJECT_ID]: {
         repoName,
@@ -29,23 +29,6 @@ async function seedProductAuth(
       },
     },
   });
-  await dismissWhatsNewForCurrentVersion(context, extensionId);
-}
-
-async function dismissWhatsNewForCurrentVersion(context: BrowserContext, extensionId: string) {
-  const page = await context.newPage();
-  await page.goto(`chrome-extension://${extensionId}/src/popup/index.html`);
-  await page.evaluate(async () => {
-    const version = chrome.runtime.getManifest().version;
-    await chrome.storage.local.set({
-      whatsNew: {
-        lastShownVersion: version,
-        dismissedVersions: [version],
-        lastCheckTime: Date.now(),
-      },
-    });
-  });
-  await page.close();
 }
 
 async function openSettingsForRepositoryValidation(context: BrowserContext, extensionId: string) {
@@ -85,8 +68,40 @@ async function openPopupForBoltProject(
   await boltPage.bringToFront();
 
   const page = await openPopup(context, extensionId);
-  await boltPage.bringToFront();
-  await page.reload({ waitUntil: 'domcontentloaded' });
+
+  for (let attempt = 0; attempt < 3; attempt++) {
+    await boltPage.bringToFront();
+    await page.evaluate(async (projectUrl) => {
+      const tabs = await chrome.tabs.query({ currentWindow: true });
+      const boltTab = tabs.find((tab) => tab.url?.includes(projectUrl));
+
+      if (boltTab?.id === undefined) {
+        throw new Error(`Unable to find the Bolt project tab for ${projectUrl}`);
+      }
+
+      await chrome.tabs.update(boltTab.id, { active: true });
+    }, `bolt.new/~/${ERROR_FLOW_PROJECT_ID}`);
+    await expect
+      .poll(
+        () =>
+          page.evaluate(async () => {
+            const [activeTab] = await chrome.tabs.query({ active: true, currentWindow: true });
+            return activeTab?.url ?? '';
+          }),
+        { timeout: 5_000 }
+      )
+      .toContain(`bolt.new/~/${ERROR_FLOW_PROJECT_ID}`);
+    await page.reload({ waitUntil: 'domcontentloaded' });
+
+    const pushVisible = await page
+      .locator(PUSH_BUTTON_SELECTOR)
+      .first()
+      .waitFor({ state: 'visible', timeout: 3_000 })
+      .then(() => true)
+      .catch(() => false);
+    if (pushVisible) break;
+  }
+
   return { page, boltPage };
 }
 

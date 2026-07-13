@@ -22,7 +22,7 @@ import { StorageFixtures } from '../storage';
  * ```ts
  * const storage = new MockChromeStorage();
  * storage.loadGitHubSettings();
- * storage.loadAuthenticationMethod('pat');
+ * storage.loadGitHubApp();
  * ```
  */
 export class MockChromeStorage {
@@ -160,13 +160,8 @@ export class MockChromeStorage {
     );
   }
 
-  loadAuthenticationMethod(method: 'pat' | 'github_app' = 'pat'): void {
-    this.localStorage.set('authenticationMethod', method);
-    if (method === 'github_app') {
-      this.localStorage.set('githubAppInstallationId', 12345678);
-    } else {
-      this.localStorage.delete('githubAppInstallationId');
-    }
+  loadGitHubApp(installationId: number = 12345678): void {
+    this.localStorage.set('githubAppInstallationId', installationId);
   }
 
   loadSupabaseToken(token?: string): void {

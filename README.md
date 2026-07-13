@@ -31,7 +31,29 @@ A Chrome extension that automatically captures ZIP file downloads from bolt.new,
   <img src="https://img.shields.io/badge/Install%20from-Chrome%20Web%20Store-blue?style=for-the-badge&logo=google-chrome&logoColor=white" alt="Install from Chrome Web Store" height="40">
 </a>
 
-### Latest Version: v1.3.21
+### Latest Version: v1.3.22
+
+#### Version 1.3.22 - GitHub App-Only Authentication (July 2026)
+
+**What's new:**
+
+- Personal access token support has ended
+- A Bolt2GitHub account and GitHub App connection are now required for GitHub features
+- Existing repository and project mappings are preserved during the required migration
+- Legacy credentials are removed locally and the extension shows the exact reconnection steps
+
+**How to migrate:**
+
+1. Open the extension and select **Connect GitHub Account**
+2. Sign in to your Bolt2GitHub account
+3. Install or reconnect the GitHub App and choose the repositories it may access
+4. Return to the extension; your preserved repository mappings will be ready to use
+
+This is an intentional product simplification after the GitHub App has been the recommended setup
+for more than a year. Historical standalone usage cannot be measured reliably, so this release does
+not make claims about how many people used the retired path.
+
+### Previous Version: v1.3.21
 
 #### Version 1.3.21 - Cleaner First-Install Onboarding (July 2026)
 
@@ -295,19 +317,17 @@ A Chrome extension that automatically captures ZIP file downloads from bolt.new,
 - **Enhanced bug reporting** - Added option to include application logs when submitting bug reports
 - **Added What's New** - Added a What's New modal to show the latest highlights of the new version
 
-#### 🎉 Version 1.3.2 - GitHub App Authentication Support
+#### 🎉 Version 1.3.2 - GitHub App Introduction
 
 **Major Authentication Enhancement:**
 
-- **GitHub App Authentication** - Modern, secure authentication method as an alternative to Personal Access Tokens
-- **Dual Authentication Support** - Seamlessly supports both PAT and GitHub App authentication
+- **GitHub App Authentication** - Introduced scoped repository access through GitHub App installations
 - **Automatic Configuration** - GitHub App users get automatic repository owner detection
 - **Enhanced Security** - Short-lived tokens with fine-grained permissions through GitHub Apps
-- **Zero Breaking Changes** - Existing PAT users continue to work without any modifications
 
 **Technical Implementation:**
 
-- **UnifiedGitHubService** - New service architecture supporting multiple authentication methods
+- **UnifiedGitHubService** - Introduced the service architecture that powered the GitHub App rollout
 - **95% Migration Complete** - Core functionality fully migrated with minor cleanup remaining
 - **Clean Architecture** - Removed circular dependencies and improved modularity
 - **Comprehensive Testing** - All tests updated to support new authentication architecture
@@ -451,11 +471,10 @@ Get started in just 3 simple steps:
 2. **Configure the Extension**
    - Make sure you have a Bolt.new project loaded
    - Click the extension icon in your Chrome toolbar
-   - Choose your authentication method:
-     - **GitHub App** (Recommended): Sign in through bolt2github.com for enhanced security
-     - **Personal Access Token**: Enter your GitHub token (needs repo permissions)
+   - Sign in to your **Bolt2GitHub account**
+   - Connect the **GitHub App** and choose the repositories Bolt to GitHub may access
    - Enter the following details:
-     - Repository Owner (auto-filled for GitHub App users)
+     - Repository Owner (auto-filled from the GitHub App)
      - Repository Name
      - Branch Name (defaults to 'main')
    - Save your settings and you're ready to go!
@@ -470,9 +489,8 @@ Get started in just 3 simple steps:
 Follow these steps to get started:
 
 1. [Create a GitHub account](https://github.com/join)
-2. [Generate a personal access token](https://github.com/settings/tokens/new?scopes=repo&description=Bolt%20to%20GitHub) (needs repo permissions)
-
-Need help? Watch our [Quick Start Video Tutorial](https://youtu.be/7C03DNw9ZHI)
+2. [Create or sign in to your Bolt2GitHub account](https://bolt2github.com)
+3. Open the extension and connect the GitHub App to the repositories you want to use
 
 ### 🛠️ For Developers (Contributing)
 
@@ -660,10 +678,10 @@ See our [Contributing Guide](#contributing) for more details.
 
 ## Security
 
-- **Multiple authentication methods**: Full support for both Personal Access Tokens and GitHub Apps (v1.3.2+)
-- **GitHub Apps integration**: More secure authentication with short-lived tokens and fine-grained permissions
+- **Required GitHub App integration**: Scoped repository access with short-lived credentials and fine-grained permissions
+- **Bolt2GitHub account boundary**: GitHub actions require a signed-in Bolt2GitHub session
 - **Automatic token management**: GitHub App tokens are automatically refreshed when needed
-- **Secure token storage**: All credentials are stored securely using Chrome's storage API
+- **Short-lived credential storage**: GitHub App credentials are renewed automatically and stored in Chrome's extension storage
 - **HTTPS communication**: All communication with GitHub uses HTTPS
 - **Browser-only processing**: ZIP file processing happens entirely in the browser
 - **Premium authentication**: Enhanced security with Supabase integration (v1.3.0+)
@@ -676,7 +694,7 @@ See our [Contributing Guide](#contributing) for more details.
 - 🌐 [Official Website](https://bolt2github.com)
 - 📺 [Watch our video tutorials](https://youtube.com/@aidrivencoder)
 - 📖 [Read the documentation](https://github.com/mamertofabian/bolt-to-github)
-- 🔧 [GitHub Apps Migration Guide](GITHUB_APPS_MIGRATION_GUIDE.md) - Modern authentication alternative to PATs
+- 🔧 [Bolt2GitHub account and GitHub App setup](https://bolt2github.com) - Required connection and repository access
 - 📋 [Technical Documentation](TECHNICAL_DEBT.md) - Architecture and implementation details
 - 🧪 [Testing Reference](TESTING_REFERENCE.md) - Testing guidelines and best practices
 - 💡 [Get development tips](https://aidrivencoder.com)
@@ -758,11 +776,13 @@ This extension requires the following permissions:
 
 ## FAQ
 
-**Q: Why does the extension need a GitHub token?**  
-A: The token is required to authenticate with GitHub's API for pushing files to your repository.
+**Q: Why do I need a Bolt2GitHub account and the GitHub App?**
 
-**Q: Is my GitHub token secure?**  
-A: Yes, your token is stored securely in Chrome's storage system and is only used for GitHub API calls.
+A: The account establishes your extension session, while the GitHub App grants scoped access to the repositories you choose.
+
+**Q: What happens when GitHub App access expires?**
+
+A: The extension renews its short-lived GitHub App credentials automatically. If the account or installation is disconnected, the extension shows reconnection guidance instead of attempting a push.
 
 **Q: Can I specify which files to push to GitHub?**  
 A: Currently, the extension processes all files in the ZIP. File filtering may be added in future versions.
@@ -777,11 +797,16 @@ A: Currently, the extension processes all files in the ZIP. File filtering may b
    - Verify permissions are enabled
 
 2. **GitHub push fails**
-   - Verify your token has repo permissions
+   - Confirm you are signed in to your Bolt2GitHub account
+   - Confirm the GitHub App is installed for the target repository
    - Check repository name and owner
    - Ensure branch exists
 
-3. **ZIP processing errors**
+3. **The extension says GitHub authentication has changed**
+   - Follow the sign-in and GitHub App connection steps shown in the extension
+   - Your existing repository and project mappings are preserved during migration
+
+4. **ZIP processing errors**
    - Check if the ZIP file is corrupted
    - Ensure file contents are text-based
 

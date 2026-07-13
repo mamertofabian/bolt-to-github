@@ -4,8 +4,6 @@
  */
 
 export interface GitHubSettingsState {
-  authenticationMethod: 'pat' | 'github_app';
-  githubToken?: string;
   githubAppInstallationId?: number | null;
   githubAppUsername?: string | null;
   repoOwner: string;
@@ -26,12 +24,6 @@ export interface Repository {
   language: string | null;
 }
 
-export interface PermissionStatus {
-  allRepos?: boolean;
-  admin?: boolean;
-  contents?: boolean;
-}
-
 export interface ValidationResult {
   isValid: boolean;
   error?: string;
@@ -45,11 +37,7 @@ export interface ValidationResult {
  * Determines if the user has all required settings for the selected authentication method
  */
 export function hasRequiredSettings(state: GitHubSettingsState): boolean {
-  const hasAuthCredentials =
-    (state.authenticationMethod === 'pat' && !!state.githubToken && !!state.repoOwner) ||
-    (state.authenticationMethod === 'github_app' &&
-      !!state.githubAppInstallationId &&
-      !!state.repoOwner);
+  const hasAuthCredentials = !!state.githubAppInstallationId && !!state.repoOwner;
 
   const hasProjectSettings = state.isOnboarding || (!!state.repoName && !!state.branch);
 
@@ -120,17 +108,10 @@ export function setDefaultRepoNameFromProjectId(state: GitHubSettingsState): Git
  * Generates status display text based on authentication method and state
  */
 export function generateStatusDisplayText(state: GitHubSettingsState): string {
-  if (state.authenticationMethod === 'github_app') {
-    if (state.githubAppInstallationId && state.githubAppUsername) {
-      return `Connected via GitHub App as ${state.githubAppUsername}`;
-    }
-    return 'Connect with GitHub App to get started';
-  } else {
-    if (state.githubToken && state.repoOwner) {
-      return `Configured for ${state.repoOwner}${state.repoName ? `/${state.repoName}` : ''}`;
-    }
-    return 'Configure your GitHub repository settings';
+  if (state.githubAppInstallationId) {
+    return `Connected via GitHub App as ${state.githubAppUsername || 'GitHub User'}`;
   }
+  return 'Connect with GitHub App to get started';
 }
 
 /**
@@ -139,20 +120,12 @@ export function generateStatusDisplayText(state: GitHubSettingsState): string {
 export function clearValidationState(): {
   isTokenValid: null;
   validationError: null;
-  tokenType: null;
-  permissionStatus: PermissionStatus;
   githubAppValidationResult: null;
   githubAppConnectionError: null;
 } {
   return {
     isTokenValid: null,
     validationError: null,
-    tokenType: null,
-    permissionStatus: {
-      allRepos: undefined,
-      admin: undefined,
-      contents: undefined,
-    },
     githubAppValidationResult: null,
     githubAppConnectionError: null,
   };
@@ -181,23 +154,6 @@ export function shouldUpdateSettingsFromStorage(
   currentProjectId: string | null
 ): boolean {
   return currentProjectId !== null && updateInfo.projectId === currentProjectId;
-}
-
-/**
- * Checks if permission check is needed based on token change and time
- */
-export function needsPermissionCheck(
-  previousToken: string | null,
-  currentToken: string,
-  lastPermissionCheck: number | null,
-  thirtyDaysInMs: number = 30 * 24 * 60 * 60 * 1000
-): boolean {
-  const tokenChanged = previousToken !== currentToken;
-  const neverChecked = lastPermissionCheck === null;
-  const checkExpired =
-    lastPermissionCheck !== null && Date.now() - lastPermissionCheck > thirtyDaysInMs;
-
-  return tokenChanged || neverChecked || checkExpired;
 }
 
 /**

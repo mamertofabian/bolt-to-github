@@ -128,7 +128,7 @@ describe('RepoSettings.svelte - Component Tests', () => {
     chromeMocks = {
       storage: {
         local: {
-          get: vi.fn().mockResolvedValue({ authenticationMethod: 'pat' }),
+          get: vi.fn().mockResolvedValue({}),
         },
       },
     };
@@ -685,8 +685,6 @@ describe('RepoSettings.svelte - Component Tests', () => {
 
   describe('GitHub App Authentication', () => {
     it('should load repositories with GitHub App authentication', async () => {
-      chromeMocks.storage.local.get.mockResolvedValue({ authenticationMethod: 'github_app' });
-
       render(RepoSettings, { props: defaultProps });
 
       await waitFor(() => {

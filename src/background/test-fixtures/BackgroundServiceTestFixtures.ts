@@ -18,9 +18,7 @@ export const TestData = {
   auth: {
     validGitHubAppSettings: {
       gitHubSettings: {
-        githubToken: '',
         repoOwner: 'testuser',
-        authenticationMethod: 'github_app' as const,
         githubAppInstallationId: 12345678,
         githubAppUsername: 'testuser',
         githubAppAvatarUrl: 'https://github.com/testuser.png',
@@ -37,9 +35,7 @@ export const TestData = {
     },
     invalidSettings: {
       gitHubSettings: {
-        githubToken: '',
         repoOwner: '',
-        authenticationMethod: 'github_app' as const,
       },
     },
     corruptedSettings: null,
@@ -556,7 +552,6 @@ export class BackgroundServiceTestEnvironment {
   setupValidGitHubAppAuth(): void {
     this.mockChrome.storage.setSyncData(TestData.auth.validGitHubAppSettings);
     this.mockChrome.storage.setLocalData({
-      authenticationMethod: 'github_app',
       githubAppInstallationId: 12345678,
       githubAppExpiresAt: new Date(Date.now() + 60 * 60_000).toISOString(),
     });

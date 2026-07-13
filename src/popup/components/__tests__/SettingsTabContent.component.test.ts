@@ -10,7 +10,6 @@ import SettingsTabContent from '../SettingsTabContent.svelte';
 
 describe('SettingsTabContent GitHub App-only boundary', () => {
   const githubSettings: GitHubSettingsState = {
-    githubToken: 'legacy-value-must-not-be-forwarded',
     repoOwner: 'octocat',
     repoName: 'bolt-project',
     branch: 'main',
@@ -19,7 +18,6 @@ describe('SettingsTabContent GitHub App-only boundary', () => {
     isTokenValid: true,
     validationError: null,
     hasInitialSettings: true,
-    authenticationMethod: 'pat',
     githubAppInstallationId: 123,
     githubAppUsername: 'octocat',
     githubAppAvatarUrl: null,

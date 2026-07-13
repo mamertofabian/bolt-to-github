@@ -1,6 +1,16 @@
 import { beforeEach, describe, expect, it, type MockedFunction, vi } from 'vitest';
 import { UnifiedGitHubService } from '../UnifiedGitHubService';
 
+const strategy = vi.hoisted(() => ({
+  type: 'github_app' as const,
+  getToken: vi.fn(async () => 'github-app-token'),
+  setUserToken: vi.fn(),
+}));
+
+vi.mock('../GitHubAppAuthenticationStrategy', () => ({
+  GitHubAppAuthenticationStrategy: vi.fn(() => strategy),
+}));
+
 describe('UnifiedGitHubService Feedback', () => {
   let githubService: UnifiedGitHubService;
   let mockFetch: MockedFunction<typeof fetch>;
@@ -11,7 +21,15 @@ describe('UnifiedGitHubService Feedback', () => {
     mockFetch = vi.fn() as MockedFunction<typeof fetch>;
     global.fetch = mockFetch;
 
-    githubService = new UnifiedGitHubService('test-token');
+    global.chrome = {
+      storage: {
+        local: {
+          get: vi.fn(async () => ({ supabaseToken: 'bolt2github-session' })),
+        },
+      },
+    } as unknown as typeof chrome;
+
+    githubService = new UnifiedGitHubService({ type: 'github_app' });
   });
 
   describe('createIssue', () => {
@@ -49,7 +67,7 @@ describe('UnifiedGitHubService Feedback', () => {
       const [[, options]] = mockFetch.mock.calls;
       const headers = options?.headers as Record<string, string>;
 
-      expect(headers.Authorization).toBe('Bearer test-token');
+      expect(headers.Authorization).toBe('Bearer github-app-token');
     });
 
     it('should use correct API endpoint', async () => {

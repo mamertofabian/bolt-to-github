@@ -2,10 +2,10 @@
   "manifest_path": "manifests/release-notes-v1-3-20.manifest.yaml",
   "manifest_hash": "sha256:1c5bd792ab5809bb8a868a451aa47fe4dc46387a2280c1a6ba0f878218f7e4fc",
   "test_hashes": {
-    "src/lib/constants/__tests__/whatsNewContent.test.ts": "sha256:959f63368810d58937bc2f06484fb1d27b57eb244a7fab9d4b9b3b597320b8c3"
+    "src/lib/constants/__tests__/whatsNewContent.test.ts": "sha256:f5d4b42fa7ab87ea5887baa8a310f907518fc913fab698b7322f33042edd58cb"
   },
   "created_at": "2026-07-12T03:49:28.448519+00:00",
-  "revision": 5,
+  "revision": 6,
   "revisions": [
     {
       "prior_manifest_hash": "sha256:7fd8ccee8f06b6b8af9931535d426ba44a765452d4593a2976dd76318c0f3c43",
@@ -66,6 +66,29 @@
       "revised_at": "2026-07-13T02:19:33.122160+00:00",
       "reason": "Refresh shared release test hash after pre-commit formatting",
       "agent": null,
+      "contract_delta": {
+        "artifacts_added": [],
+        "artifacts_removed": [],
+        "files_added": [],
+        "files_removed": [],
+        "validate_commands_added": [],
+        "validate_commands_removed": []
+      }
+    },
+    {
+      "prior_manifest_hash": "sha256:1c5bd792ab5809bb8a868a451aa47fe4dc46387a2280c1a6ba0f878218f7e4fc",
+      "prior_test_hashes": {
+        "src/lib/constants/__tests__/whatsNewContent.test.ts": "sha256:959f63368810d58937bc2f06484fb1d27b57eb244a7fab9d4b9b3b597320b8c3"
+      },
+      "revised_at": "2026-07-13T15:59:18.687478+00:00",
+      "reason": "Refresh the shared behavioral-test hash after the GitHub App-only release contract superseded PAT-era assertions.",
+      "agent": {
+        "model": "gpt-5",
+        "provider": "openai",
+        "client": "codex",
+        "skills": ["maid-evolver"],
+        "source": "flags"
+      },
       "contract_delta": {
         "artifacts_added": [],
         "artifacts_removed": [],

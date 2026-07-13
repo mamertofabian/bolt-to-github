@@ -7,7 +7,7 @@
  */
 
 import type { MockedFunction } from 'vitest';
-import type { AuthenticationConfig, AuthenticationType } from '../../../../types/authentication';
+import type { AuthenticationConfig } from '../../../../types/authentication';
 import { TokenFixtures } from '../tokens';
 import { GitHubAPIResponses } from '../api-responses';
 import { IssueFixtures } from '../issues';
@@ -26,15 +26,10 @@ import { IssueFixtures } from '../issues';
 export class UnifiedGitHubServiceTestHelpers {
   /**
    * Create authentication configuration for testing
-   * @param type Authentication type ('pat' or 'github_app')
-   * @param token Optional token override
    * @returns Authentication configuration object
    */
-  static createAuthConfig(type: AuthenticationType, token?: string): AuthenticationConfig {
-    return {
-      type,
-      token: token || (type === 'pat' ? TokenFixtures.pat.classic : undefined),
-    };
+  static createAuthConfig(): AuthenticationConfig {
+    return { type: 'github_app' };
   }
 
   /**
@@ -122,16 +117,14 @@ export class UnifiedGitHubServiceTestHelpers {
    * @param type Token type to generate
    * @returns Test token string
    */
-  static generateTestToken(type: 'pat' | 'github_app' | 'invalid' = 'pat'): string {
+  static generateTestToken(type: 'github_app' | 'invalid' = 'github_app'): string {
     switch (type) {
-      case 'pat':
-        return TokenFixtures.pat.classic;
       case 'github_app':
         return TokenFixtures.githubApp.valid;
       case 'invalid':
-        return TokenFixtures.pat.invalid;
+        return TokenFixtures.githubApp.invalid;
       default:
-        return TokenFixtures.pat.classic;
+        return TokenFixtures.githubApp.valid;
     }
   }
 
