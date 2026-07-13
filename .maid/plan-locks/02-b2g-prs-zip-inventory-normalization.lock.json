@@ -1,0 +1,362 @@
+{
+  "manifest_path": "manifests/02-b2g-prs-zip-inventory-normalization.manifest.yaml",
+  "manifest_hash": "sha256:aa7fcc76388fd2d2b9032ac835de12a214fa7c4d9e91a720471034841ff87148",
+  "test_hashes": {
+    "src/production-readiness/__tests__/zip-inventory-normalization.test.ts": "sha256:e8a5df96cad3c2c157bc2afd29a0d65b735487213186e36a39b9323a3692d83a"
+  },
+  "created_at": "2026-07-13T17:02:34.504324+00:00",
+  "revision": 10,
+  "revisions": [
+    {
+      "prior_manifest_hash": "sha256:ec3a2772ca63434f8d3b06b6e250f4bc75783ac185bb117fc7594ef8391489fd",
+      "prior_test_hashes": {
+        "src/production-readiness/__tests__/zip-inventory-normalization.test.ts": "sha256:2f1457d9354081d5a24d90d17dbc30508f6b1e2dce0abb2308bc8f3efa38203c"
+      },
+      "revised_at": "2026-07-13T17:03:24.937643+00:00",
+      "reason": "Exercise every declared inventory type and the raw fixture catalog in the behavioral contract",
+      "agent": null,
+      "contract_delta": {
+        "artifacts_added": [],
+        "artifacts_removed": [],
+        "files_added": [],
+        "files_removed": [],
+        "validate_commands_added": [],
+        "validate_commands_removed": []
+      }
+    },
+    {
+      "prior_manifest_hash": "sha256:ec3a2772ca63434f8d3b06b6e250f4bc75783ac185bb117fc7594ef8391489fd",
+      "prior_test_hashes": {
+        "src/production-readiness/__tests__/zip-inventory-normalization.test.ts": "sha256:77eb1cfe225d4483e3137eabede57c6bb30224b0f149645ee1fcf14548244a50"
+      },
+      "revised_at": "2026-07-13T17:03:54.925064+00:00",
+      "reason": "Bind the documentation fixture catalog into the focused behavioral test",
+      "agent": null,
+      "contract_delta": {
+        "artifacts_added": [],
+        "artifacts_removed": [],
+        "files_added": [],
+        "files_removed": [],
+        "validate_commands_added": [],
+        "validate_commands_removed": []
+      }
+    },
+    {
+      "prior_manifest_hash": "sha256:ec3a2772ca63434f8d3b06b6e250f4bc75783ac185bb117fc7594ef8391489fd",
+      "prior_test_hashes": {
+        "src/production-readiness/__tests__/zip-inventory-normalization.test.ts": "sha256:4292c9a761b71245623d9f9775fa4a32f608f64df4b20c7705b225d81ab058ad"
+      },
+      "revised_at": "2026-07-13T17:04:13.597101+00:00",
+      "reason": "Track the non-code fixture catalog as scoped documentation instead of an executable artifact",
+      "agent": null,
+      "contract_delta": {
+        "artifacts_added": [],
+        "artifacts_removed": [
+          "src/production-readiness/test-fixtures/prs/zips/README.md:type:ZipInventoryFixtureCatalog",
+          "src/production-readiness/test-fixtures/prs/zips/README.md:type:ZipInventoryFixtureCatalog:kind=type",
+          "src/production-readiness/test-fixtures/prs/zips/README.md:type:ZipInventoryFixtureCatalog:type=documentation fixture catalog"
+        ],
+        "files_added": [],
+        "files_removed": ["create:src/production-readiness/test-fixtures/prs/zips/README.md"],
+        "validate_commands_added": [],
+        "validate_commands_removed": []
+      }
+    },
+    {
+      "prior_manifest_hash": "sha256:fc5a5f5950a2365d290b3a49dfb8a0ce809323e0eb2c5bebf7d782992842e2c1",
+      "prior_test_hashes": {
+        "src/production-readiness/__tests__/zip-inventory-normalization.test.ts": "sha256:efa42c304ab5b54907a088ffed282b72a4f17fdda75748812447a57131dbfe66"
+      },
+      "revised_at": "2026-07-13T17:08:53.017327+00:00",
+      "reason": "Define and exercise the shared rule matcher and deterministic code-point path ordering",
+      "agent": null,
+      "contract_delta": {
+        "artifacts_added": [
+          "src/production-readiness/rules/ignore-rules.ts:function:findPrsIgnoreRule",
+          "src/production-readiness/rules/ignore-rules.ts:function:findPrsIgnoreRule:arg=additionalRules:type=readonly PrsIgnoreRule[] | undefined:default=None",
+          "src/production-readiness/rules/ignore-rules.ts:function:findPrsIgnoreRule:arg=path:type=string:default=None",
+          "src/production-readiness/rules/ignore-rules.ts:function:findPrsIgnoreRule:kind=function",
+          "src/production-readiness/rules/ignore-rules.ts:function:findPrsIgnoreRule:returns=PrsIgnoreRule | undefined"
+        ],
+        "artifacts_removed": [],
+        "files_added": [],
+        "files_removed": [],
+        "validate_commands_added": [],
+        "validate_commands_removed": []
+      }
+    },
+    {
+      "prior_manifest_hash": "sha256:db25d40fc702352cf57f0f02b837b35c45fa500d017ece926bf9f793654a5b56",
+      "prior_test_hashes": {
+        "src/production-readiness/__tests__/zip-inventory-normalization.test.ts": "sha256:49dc663c29f28c01cf73c39e65ec52865837aba34d4689c16ae4ec53828f65fa"
+      },
+      "revised_at": "2026-07-13T17:10:16.035349+00:00",
+      "reason": "Reject absolute and drive-qualified zip paths and cover large text metadata-only behavior",
+      "agent": null,
+      "contract_delta": {
+        "artifacts_added": [],
+        "artifacts_removed": [],
+        "files_added": [],
+        "files_removed": [],
+        "validate_commands_added": [],
+        "validate_commands_removed": []
+      }
+    },
+    {
+      "prior_manifest_hash": "sha256:db25d40fc702352cf57f0f02b837b35c45fa500d017ece926bf9f793654a5b56",
+      "prior_test_hashes": {
+        "src/production-readiness/__tests__/zip-inventory-normalization.test.ts": "sha256:81b9f4d7c8f081ab98766126c6e112ff202f4752cb926ca122cddee5f4be0b8c"
+      },
+      "revised_at": "2026-07-13T17:19:51.433105+00:00",
+      "reason": "Add streamed entry parsing, compressed and uncompressed resource budgets, exact duplicate detection, final drive-path checks, and UTF-8 boundary coverage after independent review",
+      "agent": null,
+      "contract_delta": {
+        "artifacts_added": [
+          "src/production-readiness/inventory/zipInventory.ts:attribute:ZipInventoryOptions.maxArchiveBytes",
+          "src/production-readiness/inventory/zipInventory.ts:attribute:ZipInventoryOptions.maxArchiveBytes:kind=attribute",
+          "src/production-readiness/inventory/zipInventory.ts:attribute:ZipInventoryOptions.maxArchiveBytes:of=ZipInventoryOptions",
+          "src/production-readiness/inventory/zipInventory.ts:attribute:ZipInventoryOptions.maxArchiveBytes:type=number | undefined",
+          "src/production-readiness/inventory/zipInventory.ts:attribute:ZipInventoryOptions.maxEntries",
+          "src/production-readiness/inventory/zipInventory.ts:attribute:ZipInventoryOptions.maxEntries:kind=attribute",
+          "src/production-readiness/inventory/zipInventory.ts:attribute:ZipInventoryOptions.maxEntries:of=ZipInventoryOptions",
+          "src/production-readiness/inventory/zipInventory.ts:attribute:ZipInventoryOptions.maxEntries:type=number | undefined",
+          "src/production-readiness/inventory/zipInventory.ts:attribute:ZipInventoryOptions.maxFileUncompressedBytes",
+          "src/production-readiness/inventory/zipInventory.ts:attribute:ZipInventoryOptions.maxFileUncompressedBytes:kind=attribute",
+          "src/production-readiness/inventory/zipInventory.ts:attribute:ZipInventoryOptions.maxFileUncompressedBytes:of=ZipInventoryOptions",
+          "src/production-readiness/inventory/zipInventory.ts:attribute:ZipInventoryOptions.maxFileUncompressedBytes:type=number | undefined",
+          "src/production-readiness/inventory/zipInventory.ts:attribute:ZipInventoryOptions.maxTotalUncompressedBytes",
+          "src/production-readiness/inventory/zipInventory.ts:attribute:ZipInventoryOptions.maxTotalUncompressedBytes:kind=attribute",
+          "src/production-readiness/inventory/zipInventory.ts:attribute:ZipInventoryOptions.maxTotalUncompressedBytes:of=ZipInventoryOptions",
+          "src/production-readiness/inventory/zipInventory.ts:attribute:ZipInventoryOptions.maxTotalUncompressedBytes:type=number | undefined"
+        ],
+        "artifacts_removed": [],
+        "files_added": [],
+        "files_removed": [],
+        "validate_commands_added": [],
+        "validate_commands_removed": []
+      }
+    },
+    {
+      "prior_manifest_hash": "sha256:ffc8a51285d972607dd17b18a0001d6220908571e0aaab1a5bfb09635541a817",
+      "prior_test_hashes": {
+        "src/production-readiness/__tests__/zip-inventory-normalization.test.ts": "sha256:0acbc6de42af6c79a74d739a12697345ed9935a6ffd7491c294f38214f93e051"
+      },
+      "revised_at": "2026-07-13T17:25:13.202584+00:00",
+      "reason": "Use terminable stored and deflate decoders and cover streaming data-descriptor budget rejection after final review",
+      "agent": null,
+      "contract_delta": {
+        "artifacts_added": [],
+        "artifacts_removed": [],
+        "files_added": [],
+        "files_removed": [],
+        "validate_commands_added": [],
+        "validate_commands_removed": []
+      }
+    },
+    {
+      "prior_manifest_hash": "sha256:ffc8a51285d972607dd17b18a0001d6220908571e0aaab1a5bfb09635541a817",
+      "prior_test_hashes": {
+        "src/production-readiness/__tests__/zip-inventory-normalization.test.ts": "sha256:7c94e8ce23643a2a2fa345219b9e56ffb96ed550acbc6c51a689dd1f1a91c0a6"
+      },
+      "revised_at": "2026-07-13T17:30:21.654118+00:00",
+      "reason": "Capture completed Outcome with resource-hardening validation and three-stage review evidence",
+      "agent": null,
+      "contract_delta": {
+        "artifacts_added": [],
+        "artifacts_removed": [],
+        "files_added": [],
+        "files_removed": [],
+        "validate_commands_added": [],
+        "validate_commands_removed": []
+      }
+    },
+    {
+      "prior_manifest_hash": "sha256:aa7fcc76388fd2d2b9032ac835de12a214fa7c4d9e91a720471034841ff87148",
+      "prior_test_hashes": {
+        "src/production-readiness/__tests__/zip-inventory-normalization.test.ts": "sha256:7c94e8ce23643a2a2fa345219b9e56ffb96ed550acbc6c51a689dd1f1a91c0a6"
+      },
+      "revised_at": "2026-07-13T17:31:40.118298+00:00",
+      "reason": "Remove the raw Markdown test import that breaks Vitest changed-file dependency parsing while keeping the catalog manifest-tracked",
+      "agent": null,
+      "contract_delta": {
+        "artifacts_added": [],
+        "artifacts_removed": [],
+        "files_added": [],
+        "files_removed": [],
+        "validate_commands_added": [],
+        "validate_commands_removed": []
+      }
+    }
+  ],
+  "red_evidence": {
+    "red": true,
+    "captured_at": "2026-07-13T17:02:47.939041+00:00",
+    "commands": [
+      {
+        "command": "pnpm exec vitest run src/production-readiness/__tests__/zip-inventory-normalization.test.ts",
+        "exit_code": 1,
+        "output_tail": " Test Files  1 failed (1)\n      Tests  no tests\n   Start at  01:02:35\n   Duration  477ms (transform 32ms, setup 50ms, collect 0ms, tests 0ms, environment 181ms, prepare 44ms)\n\n\n\u23af\u23af\u23af\u23af\u23af\u23af Failed Suites 1 \u23af\u23af\u23af\u23af\u23af\u23af\u23af\n\n FAIL  src/production-readiness/__tests__/zip-inventory-normalization.test.ts [ src/production-readiness/__tests__/zip-inventory-normalization.test.ts ]\nError: Failed to resolve import \"../inventory/zipInventory\" from \"src/production-readiness/__tests__/zip-inventory-normalization.test.ts\". Does the file exist?\n \u276f TransformPluginContext._formatError node_modules/.pnpm/vite@5.4.21_@types+node@22.19.18/node_modules/vite/dist/node/chunks/dep-BK3b2jBa.js:49258:41\n \u276f TransformPluginContext.error node_modules/.pnpm/vite@5.4.21_@types+node@22.19.18/node_modules/vite/dist/node/chunks/dep-BK3b2jBa.js:49253:16\n \u276f normalizeUrl node_modules/.pnpm/vite@5.4.21_@types+node@22.19.18/node_modules/vite/dist/node/chunks/dep-BK3b2jBa.js:64307:23\n \u276f async file:/home/atomrem/projects/codefrost-dev/bolt-to-github/node_modules/.pnpm/vite@5.4.21_@types+node@22.19.18/node_modules/vite/dist/node/chunks/dep-BK3b2jBa.js:64439:39\n \u276f TransformPluginContext.transform node_modules/.pnpm/vite@5.4.21_@types+node@22.19.18/node_modules/vite/dist/node/chunks/dep-BK3b2jBa.js:64366:7\n \u276f PluginContainer.transform node_modules/.pnpm/vite@5.4.21_@types+node@22.19.18/node_modules/vite/dist/node/chunks/dep-BK3b2jBa.js:49099:18\n \u276f loadAndTransform node_modules/.pnpm/vite@5.4.21_@types+node@22.19.18/node_modules/vite/dist/node/chunks/dep-BK3b2jBa.js:51978:27\n\n\u23af\u23af\u23af\u23af\u23af\u23af\u23af\u23af\u23af\u23af\u23af\u23af\u23af\u23af\u23af\u23af\u23af\u23af\u23af\u23af\u23af\u23af\u23af\u23af[1/1]\u23af\n",
+        "classification": "red"
+      },
+      {
+        "command": "./scripts/maid validate manifests/02-b2g-prs-zip-inventory-normalization.manifest.yaml --mode behavioral",
+        "exit_code": 1,
+        "output_tail": "FAIL 02-b2g-prs-zip-inventory-normalization\n  Mode: behavioral\n  Duration: 524ms\n  Errors (4):\n    E200 Artifact 'ZipInventoryOptions' not used in any test file\n      Location: src/production-readiness/inventory/zipInventory.ts\n    E200 Artifact 'FileInventoryEntry' not used in any test file\n      Location: src/production-readiness/inventory/zipInventory.ts\n    E200 Artifact 'FileInventory' not used in any test file\n      Location: src/production-readiness/inventory/zipInventory.ts\n    E200 Artifact 'ZipInventoryFixtureCatalog' not used in any test file\n      Location: src/production-readiness/test-fixtures/prs/zips/README.md",
+        "classification": "red"
+      },
+      {
+        "command": "pnpm lint",
+        "exit_code": 0,
+        "output_tail": "\n> bolt-to-github@1.3.22 lint /home/atomrem/projects/codefrost-dev/bolt-to-github\n> eslint \"src/**/*.{js,ts,svelte}\"\n",
+        "classification": "not_red"
+      },
+      {
+        "command": "pnpm check",
+        "exit_code": 1,
+        "output_tail": "\n\n\n/home/atomrem/projects/codefrost-dev/bolt-to-github/src/production-readiness/__tests__/zip-inventory-normalization.test.ts:98:37\nError: Binding element 'path' implicitly has an 'any' type. \n    expect(shouldAnalyzePath('project/src/App.ts')).toBe(true);\n    expect(inventory.entries.map(({ path }) => path)).toEqual(['generated/schema.json']);\n    expect(inventory.entries[0]).toMatchObject({\n\n\n/home/atomrem/projects/codefrost-dev/bolt-to-github/src/production-readiness/__tests__/zip-inventory-normalization.test.ts:117:37\nError: Binding element 'path' implicitly has an 'any' type. \n\n    expect(inventory.entries.map(({ path }) => path)).toEqual([\n      'package-lock.json',\n\n\n====================================\nsvelte-check found 4 errors and 0 warnings in 1 file\n\u2009ELIFECYCLE\u2009 Command failed with exit code 1.",
+        "classification": "red"
+      }
+    ]
+  },
+  "agent": {
+    "model": "gpt-5",
+    "provider": "openai",
+    "client": "codex",
+    "skills": ["maid-implement-draft"],
+    "source": "flags"
+  },
+  "_manifest_contract": {
+    "artifacts": [
+      "src/production-readiness/__tests__/zip-inventory-normalization.test.ts:binary files are counted but not line diffed",
+      "src/production-readiness/__tests__/zip-inventory-normalization.test.ts:binary files are counted but not line diffed:kind=test_function",
+      "src/production-readiness/__tests__/zip-inventory-normalization.test.ts:ignored paths are excluded from source analysis",
+      "src/production-readiness/__tests__/zip-inventory-normalization.test.ts:ignored paths are excluded from source analysis:kind=test_function",
+      "src/production-readiness/__tests__/zip-inventory-normalization.test.ts:lockfiles remain available for dependency analysis",
+      "src/production-readiness/__tests__/zip-inventory-normalization.test.ts:lockfiles remain available for dependency analysis:kind=test_function",
+      "src/production-readiness/__tests__/zip-inventory-normalization.test.ts:zip fixture produces expected normalized inventory",
+      "src/production-readiness/__tests__/zip-inventory-normalization.test.ts:zip fixture produces expected normalized inventory:kind=test_function",
+      "src/production-readiness/inventory/zipInventory.ts:attribute:FileInventory.entries",
+      "src/production-readiness/inventory/zipInventory.ts:attribute:FileInventory.entries:kind=attribute",
+      "src/production-readiness/inventory/zipInventory.ts:attribute:FileInventory.entries:of=FileInventory",
+      "src/production-readiness/inventory/zipInventory.ts:attribute:FileInventory.entries:type=FileInventoryEntry[]",
+      "src/production-readiness/inventory/zipInventory.ts:attribute:FileInventory.limitations",
+      "src/production-readiness/inventory/zipInventory.ts:attribute:FileInventory.limitations:kind=attribute",
+      "src/production-readiness/inventory/zipInventory.ts:attribute:FileInventory.limitations:of=FileInventory",
+      "src/production-readiness/inventory/zipInventory.ts:attribute:FileInventory.limitations:type=string[]",
+      "src/production-readiness/inventory/zipInventory.ts:attribute:FileInventoryEntry.analysisEligible",
+      "src/production-readiness/inventory/zipInventory.ts:attribute:FileInventoryEntry.analysisEligible:kind=attribute",
+      "src/production-readiness/inventory/zipInventory.ts:attribute:FileInventoryEntry.analysisEligible:of=FileInventoryEntry",
+      "src/production-readiness/inventory/zipInventory.ts:attribute:FileInventoryEntry.analysisEligible:type=boolean",
+      "src/production-readiness/inventory/zipInventory.ts:attribute:FileInventoryEntry.isBinary",
+      "src/production-readiness/inventory/zipInventory.ts:attribute:FileInventoryEntry.isBinary:kind=attribute",
+      "src/production-readiness/inventory/zipInventory.ts:attribute:FileInventoryEntry.isBinary:of=FileInventoryEntry",
+      "src/production-readiness/inventory/zipInventory.ts:attribute:FileInventoryEntry.isBinary:type=boolean",
+      "src/production-readiness/inventory/zipInventory.ts:attribute:FileInventoryEntry.isText",
+      "src/production-readiness/inventory/zipInventory.ts:attribute:FileInventoryEntry.isText:kind=attribute",
+      "src/production-readiness/inventory/zipInventory.ts:attribute:FileInventoryEntry.isText:of=FileInventoryEntry",
+      "src/production-readiness/inventory/zipInventory.ts:attribute:FileInventoryEntry.isText:type=boolean",
+      "src/production-readiness/inventory/zipInventory.ts:attribute:FileInventoryEntry.largeFile",
+      "src/production-readiness/inventory/zipInventory.ts:attribute:FileInventoryEntry.largeFile:kind=attribute",
+      "src/production-readiness/inventory/zipInventory.ts:attribute:FileInventoryEntry.largeFile:of=FileInventoryEntry",
+      "src/production-readiness/inventory/zipInventory.ts:attribute:FileInventoryEntry.largeFile:type=boolean",
+      "src/production-readiness/inventory/zipInventory.ts:attribute:FileInventoryEntry.lineCount",
+      "src/production-readiness/inventory/zipInventory.ts:attribute:FileInventoryEntry.lineCount:kind=attribute",
+      "src/production-readiness/inventory/zipInventory.ts:attribute:FileInventoryEntry.lineCount:of=FileInventoryEntry",
+      "src/production-readiness/inventory/zipInventory.ts:attribute:FileInventoryEntry.lineCount:type=number | undefined",
+      "src/production-readiness/inventory/zipInventory.ts:attribute:FileInventoryEntry.path",
+      "src/production-readiness/inventory/zipInventory.ts:attribute:FileInventoryEntry.path:kind=attribute",
+      "src/production-readiness/inventory/zipInventory.ts:attribute:FileInventoryEntry.path:of=FileInventoryEntry",
+      "src/production-readiness/inventory/zipInventory.ts:attribute:FileInventoryEntry.path:type=string",
+      "src/production-readiness/inventory/zipInventory.ts:attribute:FileInventoryEntry.retainedAsMetadata",
+      "src/production-readiness/inventory/zipInventory.ts:attribute:FileInventoryEntry.retainedAsMetadata:kind=attribute",
+      "src/production-readiness/inventory/zipInventory.ts:attribute:FileInventoryEntry.retainedAsMetadata:of=FileInventoryEntry",
+      "src/production-readiness/inventory/zipInventory.ts:attribute:FileInventoryEntry.retainedAsMetadata:type=boolean",
+      "src/production-readiness/inventory/zipInventory.ts:attribute:FileInventoryEntry.sha256",
+      "src/production-readiness/inventory/zipInventory.ts:attribute:FileInventoryEntry.sha256:kind=attribute",
+      "src/production-readiness/inventory/zipInventory.ts:attribute:FileInventoryEntry.sha256:of=FileInventoryEntry",
+      "src/production-readiness/inventory/zipInventory.ts:attribute:FileInventoryEntry.sha256:type=string",
+      "src/production-readiness/inventory/zipInventory.ts:attribute:FileInventoryEntry.sizeBytes",
+      "src/production-readiness/inventory/zipInventory.ts:attribute:FileInventoryEntry.sizeBytes:kind=attribute",
+      "src/production-readiness/inventory/zipInventory.ts:attribute:FileInventoryEntry.sizeBytes:of=FileInventoryEntry",
+      "src/production-readiness/inventory/zipInventory.ts:attribute:FileInventoryEntry.sizeBytes:type=number",
+      "src/production-readiness/inventory/zipInventory.ts:attribute:FileInventoryEntry.textContent",
+      "src/production-readiness/inventory/zipInventory.ts:attribute:FileInventoryEntry.textContent:kind=attribute",
+      "src/production-readiness/inventory/zipInventory.ts:attribute:FileInventoryEntry.textContent:of=FileInventoryEntry",
+      "src/production-readiness/inventory/zipInventory.ts:attribute:FileInventoryEntry.textContent:type=string | undefined",
+      "src/production-readiness/inventory/zipInventory.ts:attribute:ZipInventoryOptions.binarySampleBytes",
+      "src/production-readiness/inventory/zipInventory.ts:attribute:ZipInventoryOptions.binarySampleBytes:kind=attribute",
+      "src/production-readiness/inventory/zipInventory.ts:attribute:ZipInventoryOptions.binarySampleBytes:of=ZipInventoryOptions",
+      "src/production-readiness/inventory/zipInventory.ts:attribute:ZipInventoryOptions.binarySampleBytes:type=number | undefined",
+      "src/production-readiness/inventory/zipInventory.ts:attribute:ZipInventoryOptions.ignoreRules",
+      "src/production-readiness/inventory/zipInventory.ts:attribute:ZipInventoryOptions.ignoreRules:kind=attribute",
+      "src/production-readiness/inventory/zipInventory.ts:attribute:ZipInventoryOptions.ignoreRules:of=ZipInventoryOptions",
+      "src/production-readiness/inventory/zipInventory.ts:attribute:ZipInventoryOptions.ignoreRules:type=readonly PrsIgnoreRule[] | undefined",
+      "src/production-readiness/inventory/zipInventory.ts:attribute:ZipInventoryOptions.largeFileThresholdBytes",
+      "src/production-readiness/inventory/zipInventory.ts:attribute:ZipInventoryOptions.largeFileThresholdBytes:kind=attribute",
+      "src/production-readiness/inventory/zipInventory.ts:attribute:ZipInventoryOptions.largeFileThresholdBytes:of=ZipInventoryOptions",
+      "src/production-readiness/inventory/zipInventory.ts:attribute:ZipInventoryOptions.largeFileThresholdBytes:type=number | undefined",
+      "src/production-readiness/inventory/zipInventory.ts:attribute:ZipInventoryOptions.maxArchiveBytes",
+      "src/production-readiness/inventory/zipInventory.ts:attribute:ZipInventoryOptions.maxArchiveBytes:kind=attribute",
+      "src/production-readiness/inventory/zipInventory.ts:attribute:ZipInventoryOptions.maxArchiveBytes:of=ZipInventoryOptions",
+      "src/production-readiness/inventory/zipInventory.ts:attribute:ZipInventoryOptions.maxArchiveBytes:type=number | undefined",
+      "src/production-readiness/inventory/zipInventory.ts:attribute:ZipInventoryOptions.maxEntries",
+      "src/production-readiness/inventory/zipInventory.ts:attribute:ZipInventoryOptions.maxEntries:kind=attribute",
+      "src/production-readiness/inventory/zipInventory.ts:attribute:ZipInventoryOptions.maxEntries:of=ZipInventoryOptions",
+      "src/production-readiness/inventory/zipInventory.ts:attribute:ZipInventoryOptions.maxEntries:type=number | undefined",
+      "src/production-readiness/inventory/zipInventory.ts:attribute:ZipInventoryOptions.maxFileUncompressedBytes",
+      "src/production-readiness/inventory/zipInventory.ts:attribute:ZipInventoryOptions.maxFileUncompressedBytes:kind=attribute",
+      "src/production-readiness/inventory/zipInventory.ts:attribute:ZipInventoryOptions.maxFileUncompressedBytes:of=ZipInventoryOptions",
+      "src/production-readiness/inventory/zipInventory.ts:attribute:ZipInventoryOptions.maxFileUncompressedBytes:type=number | undefined",
+      "src/production-readiness/inventory/zipInventory.ts:attribute:ZipInventoryOptions.maxTotalUncompressedBytes",
+      "src/production-readiness/inventory/zipInventory.ts:attribute:ZipInventoryOptions.maxTotalUncompressedBytes:kind=attribute",
+      "src/production-readiness/inventory/zipInventory.ts:attribute:ZipInventoryOptions.maxTotalUncompressedBytes:of=ZipInventoryOptions",
+      "src/production-readiness/inventory/zipInventory.ts:attribute:ZipInventoryOptions.maxTotalUncompressedBytes:type=number | undefined",
+      "src/production-readiness/inventory/zipInventory.ts:function:buildZipInventory",
+      "src/production-readiness/inventory/zipInventory.ts:function:buildZipInventory:arg=options:type=ZipInventoryOptions | undefined:default=None",
+      "src/production-readiness/inventory/zipInventory.ts:function:buildZipInventory:arg=zipData:type=ArrayBuffer:default=None",
+      "src/production-readiness/inventory/zipInventory.ts:function:buildZipInventory:kind=function",
+      "src/production-readiness/inventory/zipInventory.ts:function:buildZipInventory:returns=Promise<FileInventory>",
+      "src/production-readiness/inventory/zipInventory.ts:interface:FileInventory",
+      "src/production-readiness/inventory/zipInventory.ts:interface:FileInventory:kind=interface",
+      "src/production-readiness/inventory/zipInventory.ts:interface:FileInventoryEntry",
+      "src/production-readiness/inventory/zipInventory.ts:interface:FileInventoryEntry:kind=interface",
+      "src/production-readiness/inventory/zipInventory.ts:interface:ZipInventoryOptions",
+      "src/production-readiness/inventory/zipInventory.ts:interface:ZipInventoryOptions:kind=interface",
+      "src/production-readiness/rules/ignore-rules.ts:function:findPrsIgnoreRule",
+      "src/production-readiness/rules/ignore-rules.ts:function:findPrsIgnoreRule:arg=additionalRules:type=readonly PrsIgnoreRule[] | undefined:default=None",
+      "src/production-readiness/rules/ignore-rules.ts:function:findPrsIgnoreRule:arg=path:type=string:default=None",
+      "src/production-readiness/rules/ignore-rules.ts:function:findPrsIgnoreRule:kind=function",
+      "src/production-readiness/rules/ignore-rules.ts:function:findPrsIgnoreRule:returns=PrsIgnoreRule | undefined",
+      "src/production-readiness/rules/ignore-rules.ts:function:shouldAnalyzePath",
+      "src/production-readiness/rules/ignore-rules.ts:function:shouldAnalyzePath:arg=path:type=string:default=None",
+      "src/production-readiness/rules/ignore-rules.ts:function:shouldAnalyzePath:kind=function",
+      "src/production-readiness/rules/ignore-rules.ts:function:shouldAnalyzePath:returns=boolean",
+      "src/production-readiness/rules/ignore-rules.ts:type:PrsIgnoreRule",
+      "src/production-readiness/rules/ignore-rules.ts:type:PrsIgnoreRule:kind=type",
+      "src/production-readiness/rules/ignore-rules.ts:type:PrsIgnoreRule:type={ pattern: string; reason: string; retainAsMetadata?: boolean }"
+    ],
+    "files": {
+      "create": [
+        "src/production-readiness/__tests__/zip-inventory-normalization.test.ts",
+        "src/production-readiness/inventory/zipInventory.ts",
+        "src/production-readiness/rules/ignore-rules.ts"
+      ],
+      "edit": [],
+      "read": [
+        "docs/b2g_production_readiness_snapshot_reference.md",
+        "manifests/01-b2g-prs-domain-models-fixtures.manifest.yaml",
+        "manifests/drafts/b2g-production-readiness-snapshot.manifest.yaml",
+        "src/lib/zip.ts",
+        "src/production-readiness/domain.ts",
+        "src/production-readiness/test-fixtures/prsFixtures.ts"
+      ]
+    },
+    "test_files": ["src/production-readiness/__tests__/zip-inventory-normalization.test.ts"],
+    "validate_commands": [
+      "pnpm exec vitest run src/production-readiness/__tests__/zip-inventory-normalization.test.ts",
+      "./scripts/maid validate manifests/02-b2g-prs-zip-inventory-normalization.manifest.yaml --mode behavioral",
+      "pnpm lint",
+      "pnpm check"
+    ]
+  }
+}

@@ -1,0 +1,324 @@
+schema: '2'
+goal: |
+  Parse exported Bolt project zips into normalized PRS file inventory with path
+  normalization, ignore rules, text/binary detection, size, hash, and line
+  counts.
+description: |
+  Second implementation child for the b2g-production-readiness-snapshot parent
+  epic. Behavioral tests construct small synthetic zip archives in memory so
+  the candidate inventory contract is deterministic and portable.
+
+  This slice owns candidate export inventory only. It should produce normalized
+  file metadata for later GitHub comparison, diffing, dependency detection, and
+  path classification. It must not fetch GitHub data, compose readiness state,
+  render UI, or generate reports.
+temptations:
+  - risk: Do not analyze generated or vendor directories before applying ignore rules.
+    instead: Normalize paths first, apply PRS ignore rules, and only then compute expensive text metadata.
+  - risk: Do not drop lockfiles with generic generated-file ignores.
+    instead: Retain package lockfiles as metadata for dependency analysis even when other generated paths are ignored.
+  - risk: Do not line-diff binary or very large files as if they were source text.
+    instead: Record binary and large-file metadata and expose limitations for downstream diffing.
+type: feature
+files:
+  create:
+    - path: src/production-readiness/inventory/zipInventory.ts
+      artifacts:
+        - kind: interface
+          name: ZipInventoryOptions
+          description: Options for data-driven ignore rules, binary sampling, large-file analysis, and compressed/uncompressed resource budgets.
+        - kind: attribute
+          name: ignoreRules
+          of: ZipInventoryOptions
+          type: readonly PrsIgnoreRule[] | undefined
+        - kind: attribute
+          name: binarySampleBytes
+          of: ZipInventoryOptions
+          type: number | undefined
+        - kind: attribute
+          name: largeFileThresholdBytes
+          of: ZipInventoryOptions
+          type: number | undefined
+        - kind: attribute
+          name: maxArchiveBytes
+          of: ZipInventoryOptions
+          type: number | undefined
+        - kind: attribute
+          name: maxEntries
+          of: ZipInventoryOptions
+          type: number | undefined
+        - kind: attribute
+          name: maxFileUncompressedBytes
+          of: ZipInventoryOptions
+          type: number | undefined
+        - kind: attribute
+          name: maxTotalUncompressedBytes
+          of: ZipInventoryOptions
+          type: number | undefined
+        - kind: interface
+          name: FileInventoryEntry
+          description: Normalized candidate metadata with text content only when line analysis is eligible.
+        - kind: attribute
+          name: path
+          of: FileInventoryEntry
+          type: string
+        - kind: attribute
+          name: sizeBytes
+          of: FileInventoryEntry
+          type: number
+        - kind: attribute
+          name: sha256
+          of: FileInventoryEntry
+          type: string
+        - kind: attribute
+          name: lineCount
+          of: FileInventoryEntry
+          type: number | undefined
+        - kind: attribute
+          name: isText
+          of: FileInventoryEntry
+          type: boolean
+        - kind: attribute
+          name: isBinary
+          of: FileInventoryEntry
+          type: boolean
+        - kind: attribute
+          name: analysisEligible
+          of: FileInventoryEntry
+          type: boolean
+        - kind: attribute
+          name: retainedAsMetadata
+          of: FileInventoryEntry
+          type: boolean
+        - kind: attribute
+          name: largeFile
+          of: FileInventoryEntry
+          type: boolean
+        - kind: attribute
+          name: textContent
+          of: FileInventoryEntry
+          type: string | undefined
+        - kind: interface
+          name: FileInventory
+          description: Deterministically path-sorted candidate entries plus visible scan limitations.
+        - kind: attribute
+          name: entries
+          of: FileInventory
+          type: FileInventoryEntry[]
+        - kind: attribute
+          name: limitations
+          of: FileInventory
+          type: string[]
+        - kind: function
+          name: buildZipInventory
+          args:
+            - name: zipData
+              type: ArrayBuffer
+            - name: options
+              type: ZipInventoryOptions | undefined
+          returns: Promise<FileInventory>
+          description: Streams an exported Bolt zip within entry and byte budgets, rejects unsafe or duplicate paths, and returns deterministic path-sorted PRS metadata with SHA-256 byte hashes and visible partial-scan limitations.
+    - path: src/production-readiness/rules/ignore-rules.ts
+      artifacts:
+        - kind: type
+          name: PrsIgnoreRule
+          type: '{ pattern: string; reason: string; retainAsMetadata?: boolean }'
+          description: Data-driven exact or directory-glob ignore rule used before text decoding and hashing.
+        - kind: function
+          name: findPrsIgnoreRule
+          args:
+            - name: path
+              type: string
+            - name: additionalRules
+              type: readonly PrsIgnoreRule[] | undefined
+          returns: PrsIgnoreRule | undefined
+          description: Returns the matching default or additional rule while exempting package-manager lockfiles.
+        - kind: function
+          name: shouldAnalyzePath
+          args:
+            - name: path
+              type: string
+          returns: boolean
+          description: Normalizes a path and reports whether the default PRS rules allow source analysis; package-manager lockfiles remain allowed.
+    - path: src/production-readiness/__tests__/zip-inventory-normalization.test.ts
+      artifacts:
+        - kind: test_function
+          name: zip fixture produces expected normalized inventory
+          description: Required planned behavioral test before promotion.
+        - kind: test_function
+          name: ignored paths are excluded from source analysis
+          description: Required planned behavioral test before promotion.
+        - kind: test_function
+          name: lockfiles remain available for dependency analysis
+          description: Required planned behavioral test before promotion.
+        - kind: test_function
+          name: binary files are counted but not line diffed
+          description: Required planned behavioral test before promotion.
+  scope:
+    - path: src/production-readiness/test-fixtures/prs/zips/README.md
+      reason: Document the synthetic in-memory zip catalog exercised by the focused behavioral test.
+  read:
+    - docs/b2g_production_readiness_snapshot_reference.md
+    - manifests/drafts/b2g-production-readiness-snapshot.manifest.yaml
+    - manifests/01-b2g-prs-domain-models-fixtures.manifest.yaml
+    - src/production-readiness/domain.ts
+    - src/production-readiness/test-fixtures/prsFixtures.ts
+    - src/lib/zip.ts
+validate:
+  - pnpm exec vitest run src/production-readiness/__tests__/zip-inventory-normalization.test.ts
+  - ./scripts/maid validate manifests/02-b2g-prs-zip-inventory-normalization.manifest.yaml --mode behavioral
+  - pnpm lint
+  - pnpm check
+created: '2026-07-13T17:00:47Z'
+metadata:
+  tags:
+    - production-readiness
+    - zip-inventory
+    - normalization
+    - bolt-export
+  priority: high
+  status: implementation
+  promotable: true
+  parent_epic: b2g-production-readiness-snapshot
+  depends_on:
+    - 01-b2g-prs-domain-models-fixtures
+  source_document: docs/b2g_production_readiness_snapshot_reference.md
+outcome:
+  status: completed
+  summary: |
+    Exported Bolt zips now produce deterministic, path-sorted PRS candidate
+    inventories with normalized safe paths, SHA-256 byte hashes, line counts,
+    text/binary state, large-file metadata, retained lockfiles, and visible
+    partial-scan limitations. Entry-wise parsing applies ignore rules before
+    extraction and enforces compressed archive, entry count, per-file, and
+    aggregate uncompressed-byte budgets.
+  rationale: |
+    Downstream diff and detector children need one trustworthy inventory shape
+    without exposing the MV3 extension to whole-archive inflation, zip-slip
+    paths, duplicate ambiguity, or accidental binary decoding. Terminable stored
+    and deflate decoders process compressed input in bounded chunks, while
+    relevant text remains available only for analysis-eligible entries.
+  lessons:
+    - lesson_type: bounded-archive-processing
+      summary: |
+        Checking sizes after unzip is too late for browser-extension safety.
+        Inspect each entry before extraction, skip ignored or header-known
+        oversize entries, enforce runtime byte budgets for unknown-size streams,
+        and ensure the registered decoder actually honors termination.
+      tags:
+        - performance
+        - reliability
+        - mv3
+        - zip
+      paths:
+        - src/production-readiness/inventory/zipInventory.ts
+        - src/production-readiness/__tests__/zip-inventory-normalization.test.ts
+    - lesson_type: archive-path-normalization
+      summary: |
+        Unsafe-drive checks must run again after stripping relative and Bolt
+        project prefixes, and a streaming parser is required to observe exact
+        duplicate names before filename-keyed maps overwrite them.
+      tags:
+        - security
+        - normalization
+        - zip-slip
+      paths:
+        - src/production-readiness/inventory/zipInventory.ts
+    - lesson_type: sampled-text-detection
+      summary: |
+        A fatal UTF-8 decoder must treat a truncated sample as a stream so a
+        multibyte codepoint split at the sample boundary is not mistaken for
+        invalid binary content.
+      tags:
+        - encoding
+        - binary-detection
+        - testing
+      paths:
+        - src/production-readiness/inventory/zipInventory.ts
+        - src/production-readiness/__tests__/zip-inventory-normalization.test.ts
+  review_notes:
+    - source: independent reviewer subagent prs_child02_review
+      severity: changes-requested
+      summary: |
+        Found whole-archive inflation without resource budgets, incomplete final
+        drive-path validation, exact duplicates hidden by map materialization,
+        and false binary classification at UTF-8 sample boundaries. All four
+        findings were accepted and fixed with focused regressions.
+    - source: independent reviewer subagent prs_child02_review_round2
+      severity: changes-requested
+      summary: |
+        Found that synchronous UnzipInflate did not implement termination for
+        unknown-size data-descriptor entries. The decoder boundary was replaced
+        with terminable stored and deflate wrappers and a streaming oversize
+        regression fixture.
+    - source: independent reviewer subagent prs_child02_review_round2
+      severity: ready
+      summary: |
+        Final read-only review found no blocking issues and confirmed bounded
+        compressed feeding, effective future-chunk termination, visible budget
+        limitations, parser continuation, deterministic output, and revision-8
+        plan-lock alignment.
+  validation:
+    - command:
+        - pnpm
+        - exec
+        - vitest
+        - run
+        - src/production-readiness/__tests__/zip-inventory-normalization.test.ts
+      status: passed
+      summary: All four focused inventory tests passed, including budget, duplicate, unsafe-path, UTF-8, binary, large-file, and lockfile cases.
+    - command:
+        - pnpm
+        - test:ci
+      status: passed
+      summary: Full Vitest CI passed 200 test files and 4016 tests after the final decoder fix.
+    - command:
+        - pnpm
+        - lint
+      status: passed
+      summary: ESLint passed for all JavaScript, TypeScript, and Svelte source files.
+    - command:
+        - pnpm
+        - check
+      status: passed
+      summary: Svelte and TypeScript checking completed with zero errors and zero warnings.
+    - command:
+        - pnpm
+        - build
+      status: passed
+      summary: The v1.3.22 production extension build completed successfully after the final decoder fix.
+    - command:
+        - ./scripts/maid
+        - validate
+        - manifests/02-b2g-prs-zip-inventory-normalization.manifest.yaml
+        - --mode
+        - behavioral
+      status: passed
+      summary: Child 02 behavioral validation passed with every declared artifact exercised.
+    - command:
+        - ./scripts/maid
+        - validate
+        - manifests/02-b2g-prs-zip-inventory-normalization.manifest.yaml
+        - --mode
+        - implementation
+      status: passed
+      summary: Child 02 implementation validation passed against the promoted contract.
+    - command:
+        - ./scripts/maid
+        - verify
+        - --manifest-dir
+        - manifests
+        - --strict
+        - --worktree-scope
+        - --file-tracking-scope
+        - task
+        - --plan-lock-scope
+        - task
+        - --require-plan-lock
+        - --require-red-evidence
+        - --include-tests
+        - --since
+        - HEAD
+        - --summary
+      status: passed
+      summary: Strict task-scoped verification passed all nine gates with no blockers or warnings.
