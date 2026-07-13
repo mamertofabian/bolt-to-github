@@ -1,0 +1,141 @@
+# draft-kind: child-planning-inventory
+schema: '2'
+goal: |
+  Replace dual-auth onboarding and settings with a GitHub App-only setup flow
+  that gives legacy PAT users explicit migration guidance.
+description: |
+  Second child of github-app-only-authentication. Planning inventory only.
+
+  The popup must no longer offer an authentication choice or PAT input. Fresh
+  and disconnected users see the normal GitHub App setup. A stored migration
+  marker changes the explanation to a required upgrade message while using the
+  same explicit sign-in/connect action. The CTA behavior depends on live state:
+  sign in when the session is missing, connect/install when the installation is
+  missing, and finish only when both are confirmed. No mount, startup, timer, or
+  storage event may automatically open an external tab.
+
+  Existing repoOwner and project mappings remain available after connection so
+  users do not need to reconstruct repository setup.
+
+  The Help tab is part of this primary setup contract because it currently
+  contains complete classic and fine-grained PAT instructions, token creation
+  links, token-security guidance, and token-type language for private imports.
+  It must instead explain Bolt2GitHub sign-in, GitHub App installation and
+  repository access, migration recovery, and GitHub App security boundaries.
+
+  The current TUTORIAL_LINK is not verified as GitHub App-only. Remove its CTA
+  and the PAT token-creation constants in this child. A verified replacement
+  tutorial may be introduced later, but the extension must not link users to
+  potentially obsolete PAT instructions during this migration.
+temptations:
+  - risk: 'Do not merely hide the PAT radio while retaining PAT completion or save branches.'
+    instead: 'Remove PAT as a valid UI state and assert setup completion requires live session plus GitHub App installation.'
+  - risk: 'Do not render a generic Sign in message for known legacy PAT users.'
+    instead: 'Use the migration marker to explain that GitHub authentication changed and that the GitHub App is now required.'
+  - risk: 'Do not open auth pages from onMount or reactive statements.'
+    instead: 'Keep window.open calls exclusively behind labeled user-click handlers and test that rendering causes no navigation.'
+  - risk: 'Do not retain the current setup tutorial or token-link constants without checking their post-PAT content.'
+    instead: 'Remove the unverified tutorial CTA and PAT creation URLs now; restore a tutorial only when a GitHub App-specific destination is available and tested.'
+type: refactor
+files:
+  scope:
+    - path: src/lib/components/OnboardingSetup.svelte
+      reason: Remove PAT selection/input/completion behavior and render migration-aware GitHub App steps.
+    - path: src/lib/components/GitHubSettings.svelte
+      reason: Remove auth method switching, PAT validation, permission UI, and token input from settings.
+    - path: src/popup/components/OnboardingView.svelte
+      reason: Forward migration-required and live-session state through the setup boundary.
+    - path: src/popup/components/SettingsTabContent.svelte
+      reason: Stop binding PAT fields and expose GitHub App-only settings.
+    - path: src/popup/App.svelte
+      reason: Initialize migration policy, select the correct setup state, and stop treating a PAT as valid popup authentication.
+    - path: src/popup/__tests__/test-helpers/app-test-utils.ts
+      reason: Replace default and connected PAT popup fixtures with GitHub App and explicit migration fixtures.
+    - path: src/lib/components/Help.svelte
+      reason: Replace classic/fine-grained PAT setup and token-security guidance with GitHub App sign-in, installation, permissions, migration, and security guidance.
+    - path: src/lib/constants.ts
+      reason: Remove PAT token-creation URLs and the unverified PAT-era setup tutorial link after all UI imports are removed.
+    - path: src/popup/__tests__/App.svelte/App.settings.component.test.ts
+      reason: Replace PAT-valid, PAT-default, token-selection, and auth-method switching scenarios with GitHub App-only settings and migration behavior.
+    - path: src/popup/__tests__/App.svelte/App.user-interactions.component.test.ts
+      reason: Remove PAT auth-method events and assert the remaining GitHub App actions.
+  edit:
+    - path: src/lib/components/__tests__/OnboardingSetup.component.test.ts
+      artifacts:
+        - kind: test_function
+          name: fresh setup offers only the GitHub App connection path
+        - kind: test_function
+          name: legacy PAT migration explains the required authentication change
+        - kind: test_function
+          name: rendering migration state never opens an external tab
+        - kind: test_function
+          name: setup completion requires live session and GitHub App installation
+        - kind: test_function
+          name: setup contains no PAT creation link or obsolete tutorial CTA
+    - path: src/lib/components/__tests__/GitHubSettings.component.test.ts
+      artifacts:
+        - kind: test_function
+          name: settings contain no PAT selector token field or token validation action
+        - kind: test_function
+          name: existing repository settings remain visible during GitHub App migration
+    - path: src/popup/__tests__/App.component.test.ts
+      artifacts:
+        - kind: test_function
+          name: popup maps legacy PAT storage to the migration-required setup
+        - kind: test_function
+          name: popup does not accept PAT as valid GitHub readiness
+    - path: src/popup/components/__tests__/OnboardingView.component.test.ts
+      artifacts:
+        - kind: test_function
+          name: onboarding forwards the GitHub App migration-required state
+    - path: src/popup/components/__tests__/SettingsTabContent.component.test.ts
+      artifacts:
+        - kind: test_function
+          name: settings tab forwards GitHub App state without PAT bindings
+    - path: src/lib/components/__tests__/Help.component.test.ts
+      artifacts:
+        - kind: test_function
+          name: help replaces PAT setup with Bolt2GitHub sign-in and GitHub App installation guidance
+        - kind: test_function
+          name: help contains no classic fine-grained or token creation instructions
+        - kind: test_function
+          name: private repository and security help describe GitHub App permissions without PAT language
+  read:
+    - manifests/drafts/github-app-only-authentication.manifest.yaml
+    - manifests/drafts/01-github-app-only-migration-policy.manifest.yaml
+    - manifests/align-onboarding-with-bolt2github-session.manifest.yaml
+    - src/lib/services/githubAuthMigration.ts
+    - src/lib/stores/githubSettings.ts
+    - src/lib/services/BackgroundAuthClient.ts
+    - src/popup/components/HelpTabContent.svelte
+removed_artifacts:
+  - kind: attribute
+    name: CREATE_TOKEN_URL
+    file: src/lib/constants.ts
+    reason: The extension no longer directs users to create a PAT.
+  - kind: attribute
+    name: CREATE_FINE_GRAINED_TOKEN_URL
+    file: src/lib/constants.ts
+    reason: Fine-grained PAT setup is no longer supported.
+  - kind: attribute
+    name: TUTORIAL_LINK
+    file: src/lib/constants.ts
+    reason: The existing tutorial is not verified for the GitHub App-only flow and must not remain as potentially stale setup guidance.
+validate:
+  - pnpm exec vitest run src/lib/components/__tests__/OnboardingSetup.component.test.ts src/lib/components/__tests__/GitHubSettings.component.test.ts src/lib/components/__tests__/Help.component.test.ts src/popup/components/__tests__/OnboardingView.component.test.ts src/popup/components/__tests__/SettingsTabContent.component.test.ts src/popup/__tests__/App.component.test.ts
+  - ./scripts/maid validate manifests/02-github-app-only-primary-setup.manifest.yaml --mode behavioral
+  - pnpm lint
+  - pnpm check
+  - pnpm build
+created: '2026-07-13T11:57:50+08:00'
+metadata:
+  tags: [auth, github-app, pat-retirement, onboarding, popup]
+  priority: high
+  status: planning
+  promotable: false
+  parent_epic: github-app-only-authentication
+  depends_on: [01-github-app-only-migration-policy]
+  evolves_active_contracts:
+    - align-onboarding-with-bolt2github-session
+    - gate-github-actions-on-live-connection
+  notes: Behavioral tests and red evidence must be added before promotion.

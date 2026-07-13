@@ -1,0 +1,150 @@
+# draft-kind: parent-epic
+schema: '2'
+goal: |
+  Retire Personal Access Token authentication and make the Bolt2GitHub account
+  plus GitHub App connection the only supported path for every GitHub-backed
+  extension capability.
+description: |
+  Parent planning epic for removing the extension's dual GitHub integration.
+  This draft is planning inventory only, must never be promoted directly, and
+  must be implemented through the ordered child drafts below.
+
+  Product decision and rationale:
+  - PAT support has been deprecated in the UI in favor of the recommended
+    GitHub App for more than one year.
+  - Standalone PAT users cannot be counted through github_integrations because
+    they do not need a Bolt2GitHub account. The migration therefore assumes
+    unknown legacy PAT usage rather than claiming there are zero PAT users.
+  - Maintaining two authentication authorities increases setup ambiguity,
+    stale-state combinations, support burden, and user-visible failure modes.
+  - The supported contract after this epic is one-way: a Bolt2GitHub session
+    and connected GitHub App are required for GitHub operations.
+
+  Migration boundary:
+  - Existing PAT credentials must never silently continue authorizing GitHub
+    operations after runtime enforcement lands.
+  - A legacy PAT must be detected before it is removed, represented by a durable
+    local migration-required marker, and explained in the popup with an
+    explicit user-initiated sign-in/connect action.
+  - Removing the credential must preserve repository owner, per-project
+    repository mappings, branches, and other non-secret project settings.
+  - Migration must not automatically open login or installation tabs. Existing
+    users act through visible extension UI.
+  - The migration marker clears only after a live Bolt2GitHub session and
+    GitHub App connection are confirmed.
+  - A stale PAT stored beside an already working GitHub App is deleted without
+    forcing an unnecessary migration screen.
+
+  Epic completion criteria:
+  - PAT is absent from onboarding, settings, help, and release-facing copy.
+  - PAT-era token creation links and the existing unverified setup tutorial are
+    absent from the extension until GitHub App-specific replacements exist.
+  - PAT credentials cannot authorize popup, content-script, background, issue,
+    repository, comparison, import, or push operations.
+  - Legacy PAT users see a specific migration-required state instead of a
+    generic disconnected or unavailable error.
+  - GitHub App operations still require the single background-auth authority's
+    live session and installation verification.
+  - PAT strategy, factory branches, string-token constructors, PAT storage
+    fields, orphaned PAT validation services, and PAT-only tests/fixtures are
+    removed.
+  - Stored githubToken values and legacy auth-choice keys are removed without
+    deleting repository/project configuration.
+  - Fresh installs, connected GitHub App users, signed-out users, incomplete
+    installations, legacy PAT users, and stale mixed states have deterministic
+    behavioral coverage.
+  - User-facing documentation states that a Bolt2GitHub account and GitHub App
+    connection are required.
+  - User-visible disconnected errors ask users to sign in or connect the GitHub
+    App, never to create, paste, rotate, or check permissions for a PAT.
+  - Internal references to short-lived GitHub App installation tokens remain
+    allowed where technically accurate; the ban targets PAT setup and fallback
+    behavior rather than the generic word token.
+
+  Implementation sequence:
+  1. Define the idempotent legacy PAT detection and storage-migration policy.
+  2. Replace dual-auth onboarding/settings with the required GitHub App flow.
+  3. Enforce GitHub App-only readiness at background/content action boundaries.
+  4. Rewire repository/project surfaces away from token constructors.
+  5. Rewire issue and feedback surfaces away from token parameters.
+  6. Delete the PAT strategy and dual-strategy factory behavior.
+  7. Remove PAT fields and auth-choice state from shared storage/types/settings.
+  8. Convert E2E fixtures and release documentation to the final contract.
+temptations:
+  - risk: 'Do not infer zero PAT usage from github_integrations; standalone PAT users never created those rows.'
+    instead: 'Treat legacy usage as unknown and keep a visible, tested migration-required state even though PAT authorization is removed.'
+  - risk: 'Do not delete githubToken before recording why an affected user is now blocked.'
+    instead: 'Use a crash-safe sequence: persist the local migration-required marker first, then remove the sync PAT; make retries idempotent and clear the marker only after live GitHub App readiness.'
+  - risk: 'Do not retain hidden PAT fallbacks or string-token constructors to make old tests pass.'
+    instead: 'Migrate each caller to the GitHub App service contract, update behavior tests, and then remove the legacy production surface.'
+  - risk: 'Do not erase repoOwner, projectSettings, repo names, or branches while removing authentication secrets.'
+    instead: 'Remove only declared credential/auth-choice keys and assert preserved project configuration through storage migration tests.'
+  - risk: 'Do not automatically open Bolt2GitHub or GitHub tabs during upgrade, startup, alarms, or content-script initialization.'
+    instead: 'Render an actionable migration state and open external auth pages only from an explicit user click.'
+type: refactor
+files:
+  create:
+    - path: manifests/drafts/github-app-only-authentication.manifest.yaml
+      artifacts:
+        - kind: type
+          name: GitHubAppOnlyAuthenticationParentEpic
+          type: MAID parent epic planning inventory
+          description: |
+            Non-promotable epic containing the product decision, migration
+            safety contract, completion criteria, ordered child manifests, and
+            task-specific implementation constraints.
+  read:
+    - AGENTS.md
+    - CLAUDE.md
+    - docs/draft-manifest-workflow.md
+    - manifests/README.md
+    - manifests/drafts/README.md
+    - manifests/gate-github-actions-on-live-connection.manifest.yaml
+    - manifests/align-onboarding-with-bolt2github-session.manifest.yaml
+    - manifests/prevent-github-token-request-stampede.manifest.yaml
+    - manifests/prevent-login-tabs-on-fresh-install.manifest.yaml
+validate:
+  - ./scripts/maid validate manifests/drafts/github-app-only-authentication.manifest.yaml --mode schema
+created: '2026-07-13T11:57:50+08:00'
+metadata:
+  tags:
+    - auth
+    - github-app
+    - pat-retirement
+    - migration
+    - parent-epic
+  priority: high
+  status: planning
+  promotable: false
+  epic:
+    acceptance_criteria:
+      - A Bolt2GitHub session and connected GitHub App are the only supported GitHub authentication path.
+      - PAT credentials never authorize GitHub operations after runtime enforcement.
+      - Legacy PAT users receive visible migration guidance before and after credential cleanup.
+      - Migration preserves all non-secret repository and project settings.
+      - No auth tab opens without a user gesture.
+      - PAT production code, types, storage fields, fixtures, and documentation are removed.
+      - Help, onboarding, settings, tutorial links, historical release copy, and disconnected error messages contain no actionable PAT guidance.
+      - GitHub App connection and recovery behavior remain covered and fail visibly.
+    child_manifests:
+      - slug: 01-github-app-only-migration-policy
+        goal: Define idempotent PAT detection, one-way credential cleanup, and migration completion policy.
+      - slug: 02-github-app-only-primary-setup
+        goal: Replace dual-auth onboarding and settings with a required, explicit GitHub App migration experience.
+      - slug: 03-github-app-only-runtime-enforcement
+        goal: Enforce live GitHub App readiness at background and content action boundaries.
+      - slug: 04-github-app-only-repository-surfaces
+        goal: Remove PAT constructors and token requirements from repository and project management surfaces.
+      - slug: 05-github-app-only-issue-feedback-surfaces
+        goal: Remove PAT parameters from issue and feedback workflows.
+      - slug: 06-retire-pat-strategy-and-factory
+        goal: Delete PAT strategies, the dual-auth factory, and orphaned PAT validation services while collapsing UnifiedGitHubService to GitHub App authentication.
+      - slug: 07-remove-legacy-pat-storage-and-types
+        goal: Remove PAT and auth-choice fields from shared storage, state, settings, and analytics contracts.
+      - slug: 08-github-app-only-release-regression
+        goal: Convert E2E fixtures and user-facing documentation to the final GitHub App-only contract.
+    open_decisions:
+      - Exact release version and Chrome Web Store publication date are intentionally deferred to release planning.
+      - Chrome Web Store listing edits occur outside this repository and must be included in the release checklist, not silently claimed by code changes.
+      - The existing TUTORIAL_LINK is removed because its GitHub App-only accuracy is not verified; a future verified tutorial can restore a tutorial CTA through a separate plan.
+      - The local migration-required marker may remain for at least one migration release; removing that marker later requires a separate MAID cleanup contract.

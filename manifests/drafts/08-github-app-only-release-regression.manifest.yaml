@@ -1,0 +1,160 @@
+# draft-kind: child-planning-inventory
+schema: '2'
+goal: |
+  Convert end-to-end fixtures, release notes, and repository documentation to
+  the final GitHub App-only authentication and migration contract.
+description: |
+  Eighth and final child of github-app-only-authentication. Planning inventory
+  only.
+
+  Browser fixtures must stop seeding PAT as a shortcut to protected surfaces.
+  Product E2E state instead includes a Bolt2GitHub session, GitHub App
+  installation metadata, and mocked live connection behavior. A dedicated
+  migration fixture starts with a legacy PAT and verifies the visible upgrade
+  message, absence of automatic tab navigation, preserved project settings,
+  and blocked GitHub actions until live GitHub App connection succeeds.
+
+  README setup, security, troubleshooting, and newcomer guidance must state
+  that a Bolt2GitHub account and GitHub App are required. The release note must
+  explain the intentional removal, migration steps, and preserved repository
+  mappings without claiming telemetry proved zero PAT users. Chrome Web Store
+  listing edits are an external release task and cannot be claimed as a repo
+  artifact.
+
+  The accessible What's New history must not continue advertising “Dual auth -
+  PAT or GitHub App” after the current product removes that choice. Preserve the
+  historical fact that GitHub App support arrived in v1.3.2, but reword the
+  entry so it cannot be read as current PAT setup guidance.
+
+  The final source guard must use a precise allowlist. It bans PAT strategies,
+  token constructors, auth selectors, token-creation constants, and actionable
+  PAT UI copy. It allows the legacy identifiers required by
+  githubAuthMigration.ts and its explicit migration fixtures, and it must not
+  reject accurate internal references to short-lived GitHub App installation
+  tokens, Supabase session tokens, or privacy promises about credential
+  collection.
+
+  Per the repository's learned fast-gate constraint, Playwright commands remain
+  release evidence rather than active manifest validate commands. Fast helper
+  tests, Vitest, lint, check, and build remain in validate.
+temptations:
+  - risk: 'Do not keep PAT-seeded E2E fixtures just because they are faster to arrange.'
+    instead: 'Build a reusable GitHub App connected fixture that satisfies the same live connection contract as production.'
+  - risk: 'Do not delete migration coverage after converting happy-path tests.'
+    instead: 'Keep one explicit legacy PAT browser scenario that verifies guidance, preserved settings, no auto-navigation, and blocked actions.'
+  - risk: 'Do not state that no users used PAT or that the database count measured standalone users.'
+    instead: 'Describe PAT usage as unknown and the removal as an intentional product simplification after a long recommendation period.'
+  - risk: 'Do not put Playwright commands in the promoted manifest validate list.'
+    instead: 'Run browser suites as release validation and cite their results in Outcome after implementation review.'
+  - risk: 'Do not implement the final guard as a blanket ban on the word token.'
+    instead: 'Ban exact PAT execution identifiers and setup phrases, allow only migration-specific PAT paths, and retain technically accurate GitHub App/Supabase token language.'
+type: refactor
+files:
+  edit:
+    - path: e2e/helpers/storage.ts
+      artifacts:
+        - kind: function
+          name: seedConnectedGitHubApp
+          args:
+            - name: page
+              type: Page
+            - name: settings
+              type: GitHubAppE2ESettings | undefined
+          returns: Promise<void>
+          description: Seeds live session, installation, repository, and project state without PAT credentials.
+        - kind: function
+          name: seedLegacyPatMigration
+          args:
+            - name: page
+              type: Page
+            - name: settings
+              type: LegacyPatE2ESettings | undefined
+          returns: Promise<void>
+          description: Seeds a legacy PAT plus preserved repository data for migration-only browser coverage.
+    - path: src/test/e2e-helpers/popup-helpers.test.ts
+      artifacts:
+        - kind: test_function
+          name: product auth helper seeds GitHub App session and installation without PAT
+        - kind: test_function
+          name: migration helper seeds legacy PAT only for the explicit upgrade scenario
+    - path: src/lib/constants/whatsNewContent.ts
+      artifacts:
+        - kind: attribute
+          name: whatsNewContent
+          type: Record<string, WhatsNewVersion>
+          description: Adds the selected release entry and removes accessible dual-auth wording that could be mistaken for current PAT support.
+    - path: src/lib/constants/__tests__/whatsNewContent.test.ts
+      artifacts:
+        - kind: test_function
+          name: GitHub App-only release notes explain the required account migration without zero-usage claims
+        - kind: test_function
+          name: accessible release history no longer advertises PAT or dual authentication as a current option
+  create:
+    - path: src/test/auth/githubAppOnlySourceGuard.test.ts
+      artifacts:
+        - kind: test_function
+          name: production source exposes no PAT strategy selector token constructor creation link or setup guidance
+          description: Fails on exact PAT execution identifiers and actionable UI phrases outside the temporary migration allowlist without banning valid GitHub App token language.
+        - kind: test_function
+          name: legacy PAT identifiers are confined to migration handling third-party error compatibility and negative assertions
+          description: Fails when steady-state unit or E2E fixtures use PAT as connected authentication while allowing explicit migration state, third-party GitHub error text, and assertions that prohibited copy is absent.
+  scope:
+    - path: e2e/auth.spec.ts
+      reason: Replace PAT onboarding/persistence cases with GitHub App-only setup and explicit legacy migration coverage.
+    - path: e2e/lifecycle.spec.ts
+      reason: Replace PAT lifecycle fixtures with connected, signed-out, incomplete-installation, and migration-required GitHub App states.
+    - path: e2e/error-flow-product.spec.ts
+      reason: Stop bypassing production readiness with PAT-seeded product auth.
+    - path: e2e/manual-repo.spec.ts
+      reason: Replace manual repository PAT setup with connected GitHub App coverage and migration-blocked behavior.
+    - path: e2e/helpers/popup.ts
+      reason: Delete PAT radio/token input helpers and add migration-state assertions.
+    - path: README.md
+      reason: Remove PAT instructions, dual-auth security claims, and the unverified PAT-era Quick Start Video link; document account plus GitHub App requirements and migration troubleshooting.
+  read:
+    - manifests/drafts/github-app-only-authentication.manifest.yaml
+    - manifests/drafts/01-github-app-only-migration-policy.manifest.yaml
+    - manifests/drafts/02-github-app-only-primary-setup.manifest.yaml
+    - manifests/drafts/03-github-app-only-runtime-enforcement.manifest.yaml
+    - manifests/repair-e2e-error-flow-fast-gate.manifest.yaml
+    - package.json
+validate:
+  - pnpm exec vitest run src/test/auth/githubAppOnlySourceGuard.test.ts src/test/e2e-helpers/popup-helpers.test.ts src/lib/constants/__tests__/whatsNewContent.test.ts
+  - ./scripts/maid validate manifests/08-github-app-only-release-regression.manifest.yaml --mode behavioral
+  - pnpm lint
+  - pnpm check
+  - pnpm build
+created: '2026-07-13T11:57:50+08:00'
+metadata:
+  tags: [auth, github-app, pat-retirement, e2e, release, documentation]
+  priority: high
+  status: planning
+  promotable: false
+  parent_epic: github-app-only-authentication
+  depends_on:
+    - 02-github-app-only-primary-setup
+    - 03-github-app-only-runtime-enforcement
+    - 04-github-app-only-repository-surfaces
+    - 05-github-app-only-issue-feedback-surfaces
+    - 06-retire-pat-strategy-and-factory
+    - 07-remove-legacy-pat-storage-and-types
+  release_validation:
+    - pnpm exec playwright test e2e/auth.spec.ts e2e/lifecycle.spec.ts e2e/error-flow-product.spec.ts e2e/manual-repo.spec.ts --reporter=line
+    - pnpm test:ci
+  source_guard_allowlist:
+    migration_runtime:
+      - src/lib/services/githubAuthMigration.ts
+      - src/lib/services/__tests__/githubAuthMigration.test.ts
+      - e2e/helpers/storage.ts
+      - e2e/auth.spec.ts
+    negative_copy_assertions:
+      - src/lib/components/__tests__/Help.component.test.ts
+      - src/lib/components/__tests__/OnboardingSetup.component.test.ts
+      - src/lib/components/__tests__/GitHubSettings.component.test.ts
+      - src/test/auth/githubAppOnlySourceGuard.test.ts
+    third_party_error_compatibility:
+      - src/services/__tests__/test-fixtures/unified/errors/ErrorFixtures.ts
+  external_release_tasks:
+    - Update the Chrome Web Store listing to state that Bolt2GitHub account sign-in and GitHub App connection are required.
+    - Update support macros and linked tutorial media that still demonstrate PAT setup.
+  notes: Release version and date are selected when this child is promoted; browser evidence belongs in Outcome, not validate.

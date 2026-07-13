@@ -1,0 +1,127 @@
+# draft-kind: child-planning-inventory
+schema: '2'
+goal: |
+  Enforce live Bolt2GitHub session and GitHub App readiness at every background
+  and content-script boundary that can start GitHub-backed work.
+description: |
+  Third child of github-app-only-authentication. Planning inventory only.
+
+  The live connection result gains a migration_required reason. Stored PAT
+  state must never produce connected=true. Background initialization always
+  builds the GitHub App service and leaves it unavailable when the live account
+  or installation contract is not satisfied. Push, ZIP upload, file comparison,
+  cached file-change startup, imports, and programmatic entry points must stop
+  before loading data or consuming premium usage when migration or connection
+  is incomplete.
+
+  This child preserves the existing single background-auth authority and its
+  force-fresh checks. It changes authorization policy, not session ownership.
+  User-visible background/ZIP errors must use the same account/GitHub App
+  recovery vocabulary and must never tell users to set or inspect a GitHub
+  token.
+temptations:
+  - risk: 'Do not enforce GitHub App-only behavior only in the popup.'
+    instead: 'Gate background, content, cached startup, and programmatic entry points before GitHub work begins.'
+  - risk: 'Do not collapse migration_required into unavailable or silently return false.'
+    instead: 'Return a stable reason and actionable message so every surface can explain the required migration.'
+  - risk: 'Do not weaken live verification by trusting installation metadata alone.'
+    instead: 'Continue reconciling the account session and installation through BackgroundAuthClient before authorizing work.'
+  - risk: 'Do not leave token-setup errors in lower-level ZIP or message paths after the top-level gate changes.'
+    instead: 'Route missing-service failures to explicit Bolt2GitHub sign-in or GitHub App connection guidance and test the observable status text.'
+type: refactor
+files:
+  edit:
+    - path: src/lib/utils/githubConnection.ts
+      artifacts:
+        - kind: type
+          name: GitHubConnectionFailureReason
+          type: "'migration_required' | 'not_authenticated' | 'not_connected' | 'unavailable'"
+        - kind: function
+          name: checkGitHubConnection
+          args:
+            - name: options
+              type: GitHubConnectionCheckOptions | undefined
+          returns: Promise<GitHubConnectionResult>
+          description: Never treats PAT state as connected and reports migration_required when the durable marker is set.
+        - kind: function
+          name: checkGitHubConnectionForPopup
+          args:
+            - name: options
+              type: GitHubConnectionCheckOptions | undefined
+          returns: Promise<GitHubConnectionResult>
+          description: Keeps popup caching advisory while preserving migration and live-account semantics.
+    - path: src/lib/utils/__tests__/githubConnection.test.ts
+      artifacts:
+        - kind: test_function
+          name: legacy PAT state returns migration required and never connected
+        - kind: test_function
+          name: valid PAT cannot bypass the live GitHub App authority
+        - kind: test_function
+          name: connected GitHub App remains connected after PAT retirement
+        - kind: test_function
+          name: migration-required results are not cached as popup success
+    - path: src/background/__tests__/BackgroundService.critical-scenarios.test.ts
+      artifacts:
+        - kind: test_function
+          name: background never initializes a GitHub service from a stored PAT
+        - kind: test_function
+          name: background initializes GitHub App service for connected configuration
+    - path: src/content/handlers/__tests__/GitHubUploadHandler.test.ts
+      artifacts:
+        - kind: test_function
+          name: PAT migration blocks upload before project files or premium usage
+    - path: src/content/handlers/__tests__/FileChangeHandler.test.ts
+      artifacts:
+        - kind: test_function
+          name: PAT migration blocks file comparison before GitHub service creation
+    - path: src/services/__tests__/ZipHandler.test.ts
+      artifacts:
+        - kind: test_function
+          name: missing GitHub service reports GitHub App connection guidance instead of token setup
+  scope:
+    - path: src/background/BackgroundService.ts
+      reason: Remove PAT initialization, auth-method switching, token diagnostics, and PAT message handling while retaining GitHub App recovery.
+    - path: src/content/handlers/GitHubUploadHandler.ts
+      reason: Surface migration-required results at all upload/push entry points.
+    - path: src/content/handlers/FileChangeHandler.ts
+      reason: Remove PAT service construction and enforce the shared live gate for comparison paths.
+    - path: src/background/test-fixtures/BackgroundServiceTestFixtures.ts
+      reason: Replace PAT-ready fixtures with connected GitHub App and explicit migration-required fixtures.
+    - path: src/background/test-fixtures/BackgroundServiceTestHelpers.ts
+      reason: Remove PAT as a background scenario-builder authentication option.
+    - path: src/background/test-fixtures/BackgroundServiceTestSpecification.ts
+      reason: Replace PAT scenarios with GitHub App and migration enforcement scenarios.
+    - path: src/background/test-fixtures/index.ts
+      reason: Remove PAT builder branches and exports from shared background test fixtures.
+    - path: src/content/test-fixtures/MessageHandlerTestFixtures.ts
+      reason: Replace PAT-valid and invalid-token settings messages with GitHub App connected, migration-required, and disconnected fixtures.
+    - path: src/services/zipHandler.ts
+      reason: Replace user-visible set-your-GitHub-token failures with actionable Bolt2GitHub sign-in or GitHub App connection guidance.
+    - path: src/background/__tests__/README.md
+      reason: Remove documented PAT switching scenarios and describe the GitHub App-only background test model.
+    - path: src/services/__tests__/test-fixtures/ZipHandlerTestSpecification.ts
+      reason: Replace PAT/token prerequisite and invalid-token setup language with GitHub App connection and live-readiness scenarios.
+  read:
+    - manifests/drafts/01-github-app-only-migration-policy.manifest.yaml
+    - manifests/gate-github-actions-on-live-connection.manifest.yaml
+    - manifests/background-auth-storage-recovery.manifest.yaml
+    - src/lib/services/BackgroundAuthClient.ts
+    - src/services/UnifiedGitHubService.ts
+validate:
+  - pnpm exec vitest run src/lib/utils/__tests__/githubConnection.test.ts src/background/__tests__/BackgroundService.critical-scenarios.test.ts src/background/__tests__/BackgroundService.edge-cases.test.ts src/background/__tests__/BackgroundService.user-journeys.test.ts src/content/handlers/__tests__/GitHubUploadHandler.test.ts src/content/handlers/__tests__/FileChangeHandler.test.ts src/services/__tests__/ZipHandler.test.ts
+  - ./scripts/maid validate manifests/03-github-app-only-runtime-enforcement.manifest.yaml --mode behavioral
+  - pnpm lint
+  - pnpm check
+  - pnpm build
+created: '2026-07-13T11:57:50+08:00'
+metadata:
+  tags: [auth, github-app, pat-retirement, background, content-script]
+  priority: high
+  status: planning
+  promotable: false
+  parent_epic: github-app-only-authentication
+  depends_on: [01-github-app-only-migration-policy, 02-github-app-only-primary-setup]
+  evolves_active_contracts:
+    - gate-github-actions-on-live-connection
+    - background-auth-storage-recovery
+  notes: Behavioral tests and red evidence must be added before promotion.

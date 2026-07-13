@@ -1,0 +1,101 @@
+# draft-kind: child-planning-inventory
+schema: '2'
+goal: |
+  Remove PAT tokens and auth-method branching from repository browsing,
+  project migration, branch selection, commit history, and project status
+  surfaces.
+description: |
+  Fourth child of github-app-only-authentication. Planning inventory only.
+
+  These supporting surfaces currently create UnifiedGitHubService from either
+  a token string or a GitHub App config. They must use only the GitHub App
+  configuration and rely on the shared live connection gate for readiness.
+  Public component props and service methods should stop carrying githubToken
+  values when the value is no longer part of their behavior.
+
+  This is intentionally separate from deleting the PAT constructor: every
+  caller is migrated and behavior-tested first so the later removal produces a
+  genuine compile-time inventory of any missed paths.
+temptations:
+  - risk: 'Do not pass a placeholder token merely to satisfy old component props.'
+    instead: 'Remove token props and parameters from the affected public boundaries, then update every call site and component test.'
+  - risk: 'Do not add local installation-only checks to each component.'
+    instead: 'Use the existing live connection result and create the GitHub App service only after readiness is established.'
+  - risk: 'Do not discard repository drafts or project mappings while rewiring authentication.'
+    instead: 'Keep repository/branch behavior unchanged and add characterization assertions around preserved project data.'
+type: refactor
+files:
+  create:
+    - path: src/lib/components/__tests__/CommitsModal.component.test.ts
+      artifacts:
+        - kind: test_function
+          name: commits modal loads through GitHub App without a token prop
+  scope:
+    - path: src/lib/components/CommitsModal.svelte
+      reason: Remove githubToken prop and PAT construction from commit loading.
+    - path: src/lib/components/RepoSettings.svelte
+      reason: Remove auth-method and PAT config branches from repository validation.
+    - path: src/lib/components/ProjectStatus.svelte
+      reason: Remove effective token placeholders and PAT service construction.
+    - path: src/lib/components/ProjectsList.svelte
+      reason: Remove token fallbacks from repository listing and project actions.
+    - path: src/popup/components/BranchSelectionModal.svelte
+      reason: Always use GitHub App service after live readiness.
+    - path: src/lib/services/ProjectSettingsMigrationService.ts
+      reason: Migrate project metadata through GitHub App service without PAT fallback.
+    - path: src/popup/components/HomeTabContent.svelte
+      reason: Stop forwarding stored PAT tokens into project status.
+    - path: src/popup/components/TabsView.svelte
+      reason: Remove PAT prop plumbing across repository-facing tabs.
+  edit:
+    - path: src/lib/components/__tests__/RepoSettings.component.test.ts
+      artifacts:
+        - kind: test_function
+          name: repository settings use GitHub App service without a PAT token
+        - kind: test_function
+          name: repository and branch drafts survive authentication migration
+    - path: src/lib/components/__tests__/ProjectsList.component.test.ts
+      artifacts:
+        - kind: test_function
+          name: projects list performs GitHub work only through GitHub App readiness
+        - kind: test_function
+          name: disconnected projects list never instructs users to check a PAT or GitHub token permissions
+    - path: src/lib/components/__tests__/ProjectStatus.component.test.ts
+      artifacts:
+        - kind: test_function
+          name: project status has no token placeholder or PAT fallback
+    - path: src/lib/services/__tests__/ProjectSettingsMigrationService.test.ts
+      artifacts:
+        - kind: test_function
+          name: project metadata migration preserves mappings through GitHub App authentication
+    - path: src/popup/components/__tests__/BranchSelectionModal.component.test.ts
+      artifacts:
+        - kind: test_function
+          name: branch selection uses only the GitHub App service contract
+    - path: src/popup/components/__tests__/HomeTabContent.component.test.ts
+      artifacts:
+        - kind: test_function
+          name: home tab no longer forwards PAT state or token placeholders into project status
+    - path: src/popup/components/__tests__/TabsView.component.test.ts
+      artifacts:
+        - kind: test_function
+          name: tabs view no longer forwards PAT credentials into repository surfaces
+  read:
+    - manifests/drafts/03-github-app-only-runtime-enforcement.manifest.yaml
+    - src/lib/utils/githubConnection.ts
+    - src/services/UnifiedGitHubService.ts
+validate:
+  - pnpm exec vitest run src/lib/components/__tests__/CommitsModal.component.test.ts src/lib/components/__tests__/RepoSettings.component.test.ts src/lib/components/__tests__/ProjectsList.component.test.ts src/lib/components/__tests__/ProjectStatus.component.test.ts src/lib/services/__tests__/ProjectSettingsMigrationService.test.ts src/popup/components/__tests__/BranchSelectionModal.component.test.ts src/popup/components/__tests__/HomeTabContent.component.test.ts src/popup/components/__tests__/TabsView.component.test.ts
+  - ./scripts/maid validate manifests/04-github-app-only-repository-surfaces.manifest.yaml --mode behavioral
+  - pnpm lint
+  - pnpm check
+  - pnpm build
+created: '2026-07-13T11:57:50+08:00'
+metadata:
+  tags: [auth, github-app, pat-retirement, repositories, projects]
+  priority: high
+  status: planning
+  promotable: false
+  parent_epic: github-app-only-authentication
+  depends_on: [03-github-app-only-runtime-enforcement]
+  notes: Split further before promotion if exact component contract changes exceed one reviewable implementation slice.
