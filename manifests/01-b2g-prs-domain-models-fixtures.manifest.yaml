@@ -1,14 +1,12 @@
-# draft-kind: child-planning-inventory
 schema: '2'
 goal: |
   Add the Production Readiness Snapshot domain model foundation, fixture
   structure, golden output harness, and shared redaction helpers needed by
   later PRS child manifests.
 description: |
-  Child draft for the b2g-production-readiness-snapshot parent epic. This is
-  planning inventory only and is not promotion-ready until the planned
-  behavioral tests and golden fixtures exist, red phase is confirmed, and
-  behavioral MAID validation passes after promotion.
+  First implementation child for the b2g-production-readiness-snapshot parent
+  epic. Behavioral tests and static golden fixture data define the contract
+  before the domain and redaction implementation is added.
 
   This slice establishes the stable TypeScript vocabulary for PRS without
   implementing zip parsing, GitHub adapters, diffing, detectors, UI, reports, or
@@ -16,12 +14,12 @@ description: |
   and deterministic fixture utilities so downstream contracts do not each invent
   their own snapshot shape.
 temptations:
-  - risk: 'Do not let downstream detector drafts define their own incompatible snapshot, signal, or evidence shapes.'
-    instead: 'Centralize PRS domain contracts in the domain foundation and have later drafts import those types.'
-  - risk: 'Do not store or assert raw secret-looking fixture values in golden snapshots.'
-    instead: 'Run fixture outputs through the shared redaction helper and assert redacted markers plus evidence labels.'
-  - risk: 'Do not make the fixture loader depend on wall-clock time, random IDs, network calls, or extension runtime globals.'
-    instead: 'Use deterministic fixture files and injected timestamps or static golden data.'
+  - risk: Do not let downstream detector drafts define their own incompatible snapshot, signal, or evidence shapes.
+    instead: Centralize PRS domain contracts in the domain foundation and have later drafts import those types.
+  - risk: Do not store or assert raw secret-looking fixture values in golden snapshots.
+    instead: Run fixture outputs through the shared redaction helper and assert redacted markers plus evidence labels.
+  - risk: Do not make the fixture loader depend on wall-clock time, random IDs, network calls, or extension runtime globals.
+    instead: Use deterministic fixture files and injected timestamps or static golden data.
 type: feature
 files:
   create:
@@ -359,23 +357,38 @@ files:
             - name: value
               type: string
           returns: string
-          description: Planned helper that masks secret-looking values while preserving useful evidence context.
+          description: Irreversibly replaces a value already classified as sensitive with the canonical redaction marker.
         - kind: function
           name: redactEvidenceRef
           args:
             - name: evidence
               type: EvidenceRef
           returns: EvidenceRef
-          description: Planned helper that redacts before and after evidence values without dropping path or label context.
+          description: Redacts defined before and after values, sets the redacted flag, and preserves evidence kind, label, and path context.
     - path: src/production-readiness/test-fixtures/prsFixtures.ts
       artifacts:
+        - kind: interface
+          name: FixtureFile
+          description: Deterministic synthetic file input shared by later PRS fixture tests.
+        - kind: attribute
+          name: path
+          of: FixtureFile
+          type: string
+        - kind: attribute
+          name: content
+          of: FixtureFile
+          type: string
+        - kind: attribute
+          name: binary
+          of: FixtureFile
+          type: boolean | undefined
         - kind: function
           name: loadPrsFixture
           args:
             - name: name
               type: string
           returns: PrsFixture
-          description: Planned deterministic fixture loader for PRS unit tests.
+          description: Returns a defensive clone of static fixture data and throws for an unknown fixture name without using time, randomness, I/O, or extension globals.
         - kind: type
           name: PrsFixture
           type: '{ name: string; files: FixtureFile[]; goldenSnapshot?: ReadinessSnapshot }'
@@ -401,7 +414,7 @@ validate:
   - ./scripts/maid validate manifests/01-b2g-prs-domain-models-fixtures.manifest.yaml --mode behavioral
   - pnpm lint
   - pnpm check
-created: '2026-07-07T12:56:53+08:00'
+created: '2026-07-13T16:33:31Z'
 metadata:
   tags:
     - production-readiness
@@ -409,7 +422,127 @@ metadata:
     - fixtures
     - redaction
   priority: high
-  status: planning
-  promotable: false
+  status: implementation
+  promotable: true
   parent_epic: b2g-production-readiness-snapshot
   source_document: docs/b2g_production_readiness_snapshot_reference.md
+outcome:
+  status: completed
+  summary: |
+    Production Readiness Snapshot now has a shared, schema-versioned TypeScript
+    domain model, deterministic static fixture loader, golden snapshot, and
+    lowest-layer evidence redaction helpers. Focused behavior covers the full
+    declared model, clone-safe fixture loading, unknown-name rejection, useful
+    redacted context, and protection against accessor-backed secret leakage.
+  rationale: |
+    Establishing one deterministic vocabulary before later inventory, diff,
+    detector, composer, report, and UI children prevents incompatible snapshot
+    shapes. Redaction is enforced at the shared evidence boundary, while the
+    fixture registry performs explicit own-key validation so synthetic test
+    inputs remain predictable even for prototype-shaped names.
+  lessons:
+    - lesson_type: privacy-boundary
+      summary: |
+        Sensitive accessor properties must be read exactly once and excluded
+        from object-spread context before a redacted copy is assembled; reading
+        them again can preserve a raw one-shot value.
+      tags:
+        - privacy
+        - redaction
+        - testing
+      paths:
+        - src/production-readiness/redaction.ts
+        - src/production-readiness/__tests__/domain-models-fixtures.test.ts
+    - lesson_type: deterministic-fixture-registry
+      summary: |
+        Object-backed fixture registries must validate own properties before
+        lookup so names such as __proto__, constructor, and toString cannot
+        resolve inherited values instead of producing the documented error.
+      tags:
+        - fixtures
+        - determinism
+        - hardening
+      paths:
+        - src/production-readiness/test-fixtures/prsFixtures.ts
+        - src/production-readiness/__tests__/domain-models-fixtures.test.ts
+  review_notes:
+    - source: independent reviewer subagent prs_child01_review_fast
+      severity: changes-requested
+      summary: |
+        Found an accessor-backed raw-value leak in evidence redaction and
+        prototype-shaped names bypassing the fixture registry's unknown-name
+        guard. Both findings were accepted and covered with failing regression
+        cases before the implementation was hardened.
+    - source: independent reviewer subagent prs_child01_review_round2
+      severity: ready
+      summary: |
+        Final read-only review found no blocking findings and confirmed the
+        sensitive fields are read once outside spread context, prototype-shaped
+        names are rejected, declared scope is respected, and plan-lock red
+        evidence remains valid.
+  validation:
+    - command:
+        - pnpm
+        - exec
+        - vitest
+        - run
+        - src/production-readiness/__tests__/domain-models-fixtures.test.ts
+      status: passed
+      summary: All three focused domain, fixture, and redaction tests passed.
+    - command:
+        - pnpm
+        - test:ci
+      status: passed
+      summary: Full Vitest CI passed 199 test files and 4012 tests.
+    - command:
+        - pnpm
+        - lint
+      status: passed
+      summary: ESLint passed for all JavaScript, TypeScript, and Svelte source files.
+    - command:
+        - pnpm
+        - check
+      status: passed
+      summary: Svelte and TypeScript checking completed with zero errors and zero warnings.
+    - command:
+        - pnpm
+        - build
+      status: passed
+      summary: The v1.3.22 production extension build completed successfully.
+    - command:
+        - ./scripts/maid
+        - validate
+        - --manifest-dir
+        - manifests
+        - --mode
+        - behavioral
+      status: passed
+      summary: Behavioral validation passed all 37 active manifests; seven superseded manifests were skipped.
+    - command:
+        - ./scripts/maid
+        - validate
+        - --manifest-dir
+        - manifests
+        - --mode
+        - implementation
+      status: passed
+      summary: Implementation validation passed all 37 active manifests; seven superseded manifests were skipped.
+    - command:
+        - ./scripts/maid
+        - verify
+        - --manifest-dir
+        - manifests
+        - --strict
+        - --worktree-scope
+        - --file-tracking-scope
+        - task
+        - --plan-lock-scope
+        - task
+        - --require-plan-lock
+        - --require-red-evidence
+        - --include-tests
+        - --since
+        - HEAD
+        - --summary
+      status: passed
+      summary: Strict task-scoped verification passed all nine gates with no blockers or warnings.
