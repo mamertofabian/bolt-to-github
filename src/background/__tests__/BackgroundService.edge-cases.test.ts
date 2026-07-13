@@ -335,32 +335,20 @@ describe('BackgroundService Edge Cases and Boundary Testing', () => {
       }
     });
 
-    it('should handle authentication token edge cases', async () => {
+    it('should keep malformed legacy authentication state behind the GitHub App gate', async () => {
       const env = testSuite.getEnvironment();
 
-      const malformedAuthConfigs = [
-        { gitHubSettings: null },
-        { gitHubSettings: { githubToken: null } },
-        { gitHubSettings: { githubToken: '' } },
-        { gitHubSettings: { githubToken: 'invalid-token-format' } },
-        { gitHubSettings: { githubToken: 'a'.repeat(1000) } },
-        { gitHubSettings: { authenticationMethod: 'invalid_method' } },
-        {
-          gitHubSettings: {
-            authenticationMethod: 'github_app',
-            githubAppInstallationId: 'not-a-number',
-          },
-        },
-        {
-          gitHubSettings: {
-            authenticationMethod: 'github_app',
-            githubAppInstallationId: -1,
-          },
-        },
+      const malformedLegacyStates = [
+        { githubToken: null },
+        { githubToken: '' },
+        { githubToken: 'invalid-token-format' },
+        { githubToken: 'a'.repeat(1000) },
       ];
 
-      for (const config of malformedAuthConfigs) {
-        env.chromeEnv.mockChrome.storage.setSyncData(config);
+      env.serviceFactory.supabaseAuthService.setGitHubAppConnected(false);
+      env.chromeEnv.setupLegacyPATMigration();
+      for (const legacyState of malformedLegacyStates) {
+        env.chromeEnv.mockChrome.storage.setSyncData(legacyState);
 
         const port = env.chromeEnv.simulatePortConnection('bolt-content', 123);
 
@@ -371,7 +359,10 @@ describe('BackgroundService Edge Cases and Boundary Testing', () => {
         port.disconnect();
       }
 
-      env.chromeEnv.setupValidPATAuth();
+      expect(env.serviceFactory.operationStateManager.getAllOperations()).toHaveLength(0);
+
+      env.serviceFactory.supabaseAuthService.setGitHubAppConnected(true);
+      env.chromeEnv.mockChrome.storage.setSyncData(TestData.auth.validGitHubAppSettings);
       env.serviceFactory.setupSuccessfulUploadScenario();
 
       const validPort = env.chromeEnv.simulatePortConnection('bolt-content', 999);

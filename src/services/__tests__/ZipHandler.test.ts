@@ -75,7 +75,7 @@ describe('ZipHandler', () => {
       TestAssertions.expectUploadError(env, 'Failed to process ZIP file');
     });
 
-    it('should require GitHub service to be initialized', async () => {
+    it('missing GitHub service reports GitHub App connection guidance instead of token setup', async () => {
       const testHandler = env.zipHandler as unknown as {
         githubService: typeof env.githubService | null;
         processZipFile: (
@@ -90,11 +90,14 @@ describe('ZipHandler', () => {
       const blob = createTestBlob(ZIP_FILE_FIXTURES.simpleProject);
 
       await expect(testHandler.processZipFile(blob, 'project-123', 'Test commit')).rejects.toThrow(
-        'GitHub service not initialized'
+        'GitHub service not initialized. Sign in to bolt2github.com and connect the GitHub App.'
       );
 
       const errorStatus = env.statusCallback.findStatus((s) => s.status === 'error');
-      expect(errorStatus?.message).toContain('GitHub service not initialized');
+      expect(errorStatus?.message).toBe(
+        'GitHub service not initialized. Sign in to bolt2github.com and connect the GitHub App.'
+      );
+      expect(errorStatus?.message).not.toMatch(/token|PAT|personal access/i);
 
       testHandler.githubService = originalService;
     });

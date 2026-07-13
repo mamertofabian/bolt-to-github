@@ -237,7 +237,7 @@ export class BackgroundServiceTestSuite {
   /**
    * Fluent interface for building custom test scenarios
    */
-  withAuthentication(method: 'pat' | 'github_app'): BackgroundServiceTestScenarioBuilder {
+  withAuthentication(method: 'github_app'): BackgroundServiceTestScenarioBuilder {
     return new BackgroundServiceTestScenarioBuilder(this.environment).withAuthentication(method);
   }
 
@@ -283,7 +283,7 @@ export class BackgroundServiceTestSuite {
 export class BackgroundServiceTestScenarioBuilder {
   private environment: BackgroundServiceIntegrationEnvironment;
   private config: {
-    authentication?: 'pat' | 'github_app';
+    authentication?: 'github_app';
     networkConditions?: 'normal' | 'slow' | 'failing' | 'intermittent';
     concurrentOperations?: number;
     errorInjection?: Array<string>;
@@ -294,7 +294,7 @@ export class BackgroundServiceTestScenarioBuilder {
     this.environment = environment;
   }
 
-  withAuthentication(method: 'pat' | 'github_app'): this {
+  withAuthentication(method: 'github_app'): this {
     this.config.authentication = method;
     return this;
   }
@@ -331,9 +331,7 @@ export class BackgroundServiceTestScenarioBuilder {
 
   private applyConfiguration(): void {
     // Setup authentication
-    if (this.config.authentication === 'pat') {
-      this.environment.chromeEnv.setupValidPATAuth();
-    } else if (this.config.authentication === 'github_app') {
+    if (this.config.authentication === 'github_app') {
       this.environment.chromeEnv.setupValidGitHubAppAuth();
     }
 
@@ -396,7 +394,7 @@ export const PresetScenarios = {
 
       // Fresh install
       const result = await testSuite
-        .withAuthentication('pat')
+        .withAuthentication('github_app')
         .withNetworkConditions('normal')
         .execute(async () => {
           const env = testSuite.getEnvironment();
@@ -405,7 +403,7 @@ export const PresetScenarios = {
           ScenarioBuilder.freshInstall(env.chromeEnv);
 
           // Setup authentication
-          env.chromeEnv.setupValidPATAuth();
+          env.chromeEnv.setupValidGitHubAppAuth();
 
           // Simulate ZIP upload
           await env.simulateSuccessfulZipUpload();
@@ -473,7 +471,7 @@ export const PresetScenarios = {
       for (const errorType of errorTypes) {
         try {
           await testSuite
-            .withAuthentication('pat')
+            .withAuthentication('github_app')
             .withErrorInjection(errorType)
             .execute(async () => {
               const env = testSuite.getEnvironment();
@@ -617,7 +615,7 @@ export const QuickStart = {
       
       it('should successfully upload ZIP file', async () => {
         const success = await testSuite
-          .withAuthentication('pat')
+          .withAuthentication('github_app')
           .withNetworkConditions('normal')
           .execute(async () => {
             const env = testSuite.getEnvironment();
@@ -642,7 +640,7 @@ export const QuickStart = {
       
       try {
         await testSuite
-          .withAuthentication('pat')
+          .withAuthentication('github_app')
           .withErrorInjection('github_auth')
           .execute(async () => {
             const env = testSuite.getEnvironment();

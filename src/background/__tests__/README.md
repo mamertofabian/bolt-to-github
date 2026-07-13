@@ -27,37 +27,33 @@ This directory contains comprehensive, realistic test scenarios for BackgroundSe
 #### 2. **BackgroundService.critical-scenarios.test.ts** ✅
 
 - **Priority Score**: 100 (from CRITICAL_TESTING_ANALYSIS.md)
-- **Status**: 16/16 tests passing
+- **Status**: covered by the focused runtime suite
 - **Focus**: Critical business logic with high complexity risk
 
 **Critical Scenarios Covered:**
 
 - 🔥 **Port Connection Lifecycle & Recovery**
-
   - Rapid connect/disconnect cycles without memory leaks
   - Recovery from port disconnection during ZIP upload
   - Chrome extension context invalidation handling
 
-- 🔥 **Authentication Strategy Switching**
-
-  - Seamless switching between PAT ↔ GitHub App authentication
+- 🔥 **GitHub App Readiness and Migration**
+  - Legacy authentication never constructs a GitHub service
+  - Live Bolt2GitHub session and GitHub App recovery
   - Authentication failure during active operations
   - Missing authentication configuration handling
 
 - 🔥 **Message Routing Under Failure Conditions**
-
   - Malformed message handling without crashes
   - High-frequency message bursts
   - Concurrent port connections message routing
 
 - 🔥 **ZIP Processing Pipeline Resilience**
-
   - Corrupted ZIP data handling
   - Large ZIP files with timeout protection
   - GitHub API rate limiting during uploads
 
 - 🔥 **Analytics and Error Propagation**
-
   - Analytics tracking during service failures
   - Error propagation through analytics chain
 
@@ -88,7 +84,7 @@ This directory contains comprehensive, realistic test scenarios for BackgroundSe
 - **42.73% BackgroundService.ts coverage** - testing the most critical paths
 - Focus on complex async message handling (500+ lines of switch-case logic)
 - ZIP processing pipeline with multiple failure points
-- Authentication strategy switching with dual auth support
+- GitHub App-only runtime enforcement and migration blocking
 
 ### ✅ **Behavior-Focused Testing**
 
@@ -119,7 +115,7 @@ Runtime: ~70 seconds (includes performance/timeout tests)
 
 Critical Scenarios Breakdown:
 - Port lifecycle & recovery: 3/3 ✅
-- Authentication switching: 3/3 ✅
+- GitHub App readiness and migration: covered ✅
 - Message routing failures: 3/3 ✅
 - ZIP processing resilience: 3/3 ✅
 - Analytics & error propagation: 2/2 ✅
@@ -134,7 +130,7 @@ The tests successfully identify and validate handling of:
 
 1. **Extension Context Invalidation** - Critical Chrome extension failure mode
 2. **Port Disconnection During Operations** - Real user behavior during navigation
-3. **Authentication Strategy Switching** - Core business logic with dual auth
+3. **GitHub App Runtime Readiness** - Single live authority for background work
 4. **Malformed Message Handling** - Security and stability validation
 5. **Memory Leak Prevention** - Resource management under stress
 6. **Concurrent Operation Management** - Multi-tab user scenarios
@@ -145,7 +141,7 @@ The tests successfully identify and validate handling of:
 - GitHub API rate limiting handling
 - Storage quota exceeded scenarios
 - Browser API unavailability
-- Authentication token edge cases
+- Session, installation, and migration-state edge cases
 - XSS payload resistance
 
 ### ⚡ **Performance Validation**
@@ -183,7 +179,7 @@ await testSuite.setup();
 
 // Use fluent interface for custom scenarios
 await testSuite
-  .withAuthentication('pat')
+  .withAuthentication('github_app')
   .withNetworkConditions('slow')
   .withErrorInjection('github_auth')
   .execute(async () => {

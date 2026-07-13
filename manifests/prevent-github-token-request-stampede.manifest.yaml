@@ -13,10 +13,10 @@ description: |
   operation at GitHubAppService, the lowest boundary used by direct token
   retrieval, validation, and strategy refresh paths. Choose GitHub App
   authentication only from durable GitHub App configuration, never from the
-  mere presence of a Supabase session token. Apply the same policy to explicit
-  AuthenticationConfig construction and storage auto-detection.
-  Explicit PAT selection remains authoritative. A stored github_app method is
-  accepted only with a finite positive installation ID.
+  mere presence of a Supabase session token. Apply that policy to storage
+  auto-detection. Explicit AuthenticationConfig selections remain
+  authoritative, so an App-only caller can never fall back to PAT. A stored
+  github_app method is accepted only with a finite positive installation ID.
 
   This hotfix intentionally does not add persistent negative caching for 404.
   Negative caching needs a complete invalidation contract across OAuth,
@@ -100,7 +100,7 @@ files:
         - kind: test_function
           name: selects GitHub App only when method and installation configuration agree
         - kind: test_function
-          name: rejects explicit GitHub App initialization without a stable installation
+          name: explicit GitHub App configuration never falls back to PAT
   read:
     - src/services/GitHubAppAuthenticationStrategy.ts
     - src/services/GitHubAppService.ts
@@ -143,6 +143,10 @@ metadata:
     Revision 4 scopes coalescing and cache writes to the Supabase bearer
     identity after independent review identified a cross-account token-sharing
     risk in the cached strategy singleton.
+    The GitHub App-only retirement plan later evolved explicit configuration:
+    an explicit github_app request is authoritative even before storage carries
+    an installation ID, while storage auto-detection still requires durable
+    installation state.
 outcome:
   status: completed
   summary: |
@@ -150,9 +154,10 @@ outcome:
     GitHubAppService Edge Function boundary. One hundred concurrent direct
     callers produce one get-github-token request, and validation callers share
     that same flight. Authentication selection no longer treats a Supabase
-    session as GitHub App configuration: both explicit initialization and
-    auto-detection require the stored github_app method plus a finite positive
-    safe-integer installation ID, while explicit PAT remains authoritative.
+    session as GitHub App configuration. Storage auto-detection requires the
+    stored github_app method plus a finite positive safe-integer installation
+    ID. Explicit GitHub App and explicit PAT configurations each remain
+    authoritative.
 
     Coalescing and token caching are scoped to the Supabase bearer identity.
     Account changes start a separate service flight, invalidate the strategy

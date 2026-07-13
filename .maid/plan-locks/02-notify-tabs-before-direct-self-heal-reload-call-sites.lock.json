@@ -4,10 +4,11 @@
   "test_hashes": {
     "src/lib/utils/__tests__/reloadNotification.test.ts": "sha256:9661c07b6d7aa38df4e3f3df1742c56b32cddf6dc1ac67e9b9b3bba53d6eb388",
     "src/content/services/__tests__/SupabaseAuthService.self-heal-execution.test.ts": "sha256:c349efc50fb2e861623a34584a3ecfdad9fa301d610ef3e7d8f7898395d82c0d",
-    "src/background/__tests__/BackgroundService.reload.test.ts": "sha256:96c18ece3258a0b6e79e60d59c5edfbf6b1c70ef20524d247ff3f6786b3a591a"
+    "src/background/__tests__/BackgroundService.reload.test.ts": "sha256:816e0cdd4e560653b4335c92741e4bab4f14d5d6acf46dc4fc738836944cb124",
+    "src/content/services/__tests__/SupabaseAuthService.reload.test.ts": "sha256:9d3add94bdb54e32cd9852396532020eb32b969df384c4e041c3955cabf95b02"
   },
   "created_at": "2026-07-07T11:51:40.943313+00:00",
-  "revision": 2,
+  "revision": 3,
   "revisions": [
     {
       "prior_manifest_hash": "sha256:1b1e1103601463a886fa829a9555acc20b7ab17a7920540575ad8f7f25db4e27",
@@ -17,10 +18,46 @@
         "src/background/__tests__/BackgroundService.reload.test.ts": "sha256:96c18ece3258a0b6e79e60d59c5edfbf6b1c70ef20524d247ff3f6786b3a591a"
       },
       "revised_at": "2026-07-07T23:23:48.489594+00:00",
-      "reason": "Refresh reloadNotification test hash after final helper coverage review"
+      "reason": "Refresh reloadNotification test hash after final helper coverage review",
+      "agent": null,
+      "contract_delta": null
+    },
+    {
+      "prior_manifest_hash": "sha256:1b1e1103601463a886fa829a9555acc20b7ab17a7920540575ad8f7f25db4e27",
+      "prior_test_hashes": {
+        "src/lib/utils/__tests__/reloadNotification.test.ts": "sha256:9661c07b6d7aa38df4e3f3df1742c56b32cddf6dc1ac67e9b9b3bba53d6eb388",
+        "src/content/services/__tests__/SupabaseAuthService.self-heal-execution.test.ts": "sha256:c349efc50fb2e861623a34584a3ecfdad9fa301d610ef3e7d8f7898395d82c0d",
+        "src/background/__tests__/BackgroundService.reload.test.ts": "sha256:96c18ece3258a0b6e79e60d59c5edfbf6b1c70ef20524d247ff3f6786b3a591a"
+      },
+      "revised_at": "2026-07-13T11:11:48.929444+00:00",
+      "reason": "Background startup now performs live GitHub App readiness before the existing reload-router assertion",
+      "agent": {
+        "model": "gpt-5",
+        "provider": "openai",
+        "client": "codex",
+        "skills": ["maid-evolver"],
+        "source": "flags"
+      },
+      "contract_delta": {
+        "artifacts_added": [],
+        "artifacts_removed": [],
+        "files_added": [
+          "edit:src/background/BackgroundService.ts",
+          "edit:src/background/__tests__/BackgroundService.reload.test.ts",
+          "edit:src/content/services/SupabaseAuthService.ts",
+          "read:manifests/02-notify-tabs-before-direct-self-heal-reload.manifest.yaml",
+          "read:src/content/services/__tests__/SupabaseAuthService.self-heal-execution.test.ts",
+          "read:src/lib/utils/__tests__/reloadNotification.test.ts",
+          "read:src/lib/utils/reloadNotification.ts"
+        ],
+        "files_removed": [],
+        "validate_commands_added": [],
+        "validate_commands_removed": []
+      }
     }
   ],
   "red_evidence": null,
+  "agent": null,
   "_manifest_contract": {
     "artifacts": [
       "src/background/BackgroundService.ts:class:BackgroundService",
@@ -30,8 +67,23 @@
       "src/content/services/SupabaseAuthService.ts:class:SupabaseAuthService",
       "src/content/services/SupabaseAuthService.ts:class:SupabaseAuthService:kind=class"
     ],
+    "files": {
+      "create": [],
+      "edit": [
+        "src/background/BackgroundService.ts",
+        "src/background/__tests__/BackgroundService.reload.test.ts",
+        "src/content/services/SupabaseAuthService.ts"
+      ],
+      "read": [
+        "manifests/02-notify-tabs-before-direct-self-heal-reload.manifest.yaml",
+        "src/content/services/__tests__/SupabaseAuthService.self-heal-execution.test.ts",
+        "src/lib/utils/__tests__/reloadNotification.test.ts",
+        "src/lib/utils/reloadNotification.ts"
+      ]
+    },
     "test_files": [
       "src/background/__tests__/BackgroundService.reload.test.ts",
+      "src/content/services/__tests__/SupabaseAuthService.reload.test.ts",
       "src/content/services/__tests__/SupabaseAuthService.self-heal-execution.test.ts",
       "src/lib/utils/__tests__/reloadNotification.test.ts"
     ],

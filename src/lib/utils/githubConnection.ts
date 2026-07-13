@@ -1,7 +1,11 @@
 import type { AuthState } from '../../content/services/SupabaseAuthService';
 import { BackgroundAuthClient } from '../services/BackgroundAuthClient';
 
-export type GitHubConnectionFailureReason = 'not_authenticated' | 'not_connected' | 'unavailable';
+export type GitHubConnectionFailureReason =
+  | 'migration_required'
+  | 'not_authenticated'
+  | 'not_connected'
+  | 'unavailable';
 
 export interface GitHubConnectionResult {
   connected: boolean;
@@ -15,6 +19,9 @@ export interface GitHubConnectionAuthClient {
 }
 
 const CONNECTED_MESSAGE = 'GitHub is connected.';
+const MIGRATION_REQUIRED_MESSAGE =
+  'GitHub authentication has changed. Sign in to bolt2github.com and connect the GitHub App to continue.';
+const MIGRATION_REQUIRED_KEY = 'githubAppMigrationRequired';
 const SIGN_IN_MESSAGE = 'Sign in to bolt2github.com before using GitHub features.';
 const CONNECT_MESSAGE = 'Connect GitHub at bolt2github.com before using GitHub features.';
 const POPUP_VERIFICATION_CACHE_KEY = 'githubConnectionPopupVerification';
@@ -44,31 +51,20 @@ async function resolveGitHubConnection(
   allowPopupCache: boolean
 ): Promise<GitHubConnectionResult> {
   try {
-    const connectionAuthClient = authClient ?? new BackgroundAuthClient();
-    const [localSettings, syncSettings] = await Promise.all([
-      chrome.storage.local.get([
-        'authenticationMethod',
-        'githubAppInstallationId',
-        'githubAppExpiresAt',
-        POPUP_VERIFICATION_CACHE_KEY,
-      ]),
-      chrome.storage.sync.get(['githubToken']),
+    const localSettings = await chrome.storage.local.get([
+      MIGRATION_REQUIRED_KEY,
+      'githubAppInstallationId',
+      'githubAppExpiresAt',
+      POPUP_VERIFICATION_CACHE_KEY,
     ]);
 
-    const authenticationMethod = localSettings.authenticationMethod || 'pat';
-    const githubToken = syncSettings.githubToken;
-    if (
-      authenticationMethod === 'pat' &&
-      typeof githubToken === 'string' &&
-      githubToken.trim().length > 0
-    ) {
-      await clearPopupVerificationCache();
-      return { connected: true, message: CONNECTED_MESSAGE };
-    }
+    const migrationRequired = localSettings[MIGRATION_REQUIRED_KEY] === true;
 
+    const connectionAuthClient = authClient ?? new BackgroundAuthClient();
     const authState = await connectionAuthClient.getAuthState();
     if (!authState.isAuthenticated) {
       await clearPopupVerificationCache();
+      if (migrationRequired) return migrationRequiredResult();
       return {
         connected: false,
         reason: 'not_authenticated',
@@ -79,6 +75,7 @@ async function resolveGitHubConnection(
     const userId = authState.user?.id;
     if (
       allowPopupCache &&
+      !migrationRequired &&
       userId &&
       isReusablePopupVerification(
         localSettings[POPUP_VERIFICATION_CACHE_KEY],
@@ -94,6 +91,7 @@ async function resolveGitHubConnection(
     const hasGitHubApp = await connectionAuthClient.syncGitHubApp();
     if (!hasGitHubApp) {
       await clearPopupVerificationCache();
+      if (migrationRequired) return migrationRequiredResult();
       return {
         connected: false,
         reason: 'not_connected',
@@ -101,6 +99,9 @@ async function resolveGitHubConnection(
       };
     }
 
+    if (migrationRequired) {
+      await chrome.storage.local.remove(MIGRATION_REQUIRED_KEY);
+    }
     await recordPopupVerification(userId);
     return { connected: true, message: CONNECTED_MESSAGE };
   } catch (error) {
@@ -113,6 +114,14 @@ async function resolveGitHubConnection(
       }`,
     };
   }
+}
+
+function migrationRequiredResult(): GitHubConnectionResult {
+  return {
+    connected: false,
+    reason: 'migration_required',
+    message: MIGRATION_REQUIRED_MESSAGE,
+  };
 }
 
 function isReusablePopupVerification(

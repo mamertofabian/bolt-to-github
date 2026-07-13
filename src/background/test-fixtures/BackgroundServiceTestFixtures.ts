@@ -16,15 +16,6 @@ import type { Message, MessageType, Port } from '../../lib/types';
 export const TestData = {
   // Authentication configurations
   auth: {
-    validPATSettings: {
-      gitHubSettings: {
-        githubToken: 'ghp_1234567890abcdef1234567890abcdef12345678',
-        repoOwner: 'testuser',
-        repoName: 'test-repo',
-        branch: 'main',
-        authenticationMethod: 'pat' as const,
-      },
-    },
     validGitHubAppSettings: {
       gitHubSettings: {
         githubToken: '',
@@ -35,11 +26,20 @@ export const TestData = {
         githubAppAvatarUrl: 'https://github.com/testuser.png',
       },
     },
+    legacyPATMigrationSettings: {
+      gitHubSettings: {
+        githubToken: 'ghp_1234567890abcdef1234567890abcdef12345678',
+        repoOwner: 'testuser',
+        repoName: 'test-repo',
+        branch: 'main',
+        authenticationMethod: 'pat' as const,
+      },
+    },
     invalidSettings: {
       gitHubSettings: {
         githubToken: '',
         repoOwner: '',
-        authenticationMethod: 'pat' as const,
+        authenticationMethod: 'github_app' as const,
       },
     },
     corruptedSettings: null,
@@ -355,6 +355,17 @@ export class MockChromeStorage {
       });
       this.triggerChange(changes, 'local');
     }),
+    remove: vi.fn(async (keys: string | string[]) => {
+      const keysToRemove = Array.isArray(keys) ? keys : [keys];
+      const changes: Record<string, chrome.storage.StorageChange> = {};
+      keysToRemove.forEach((key) => {
+        if (key in this.localData) {
+          changes[key] = { oldValue: this.localData[key], newValue: undefined };
+          delete this.localData[key];
+        }
+      });
+      if (Object.keys(changes).length > 0) this.triggerChange(changes, 'local');
+    }),
   };
 
   sync = {
@@ -542,14 +553,21 @@ export class BackgroundServiceTestEnvironment {
   }
 
   // Helper methods for test scenarios
-  setupValidPATAuth(): void {
-    this.mockChrome.storage.setSyncData(TestData.auth.validPATSettings);
-    this.mockChrome.storage.setLocalData({ authenticationMethod: 'pat' });
-  }
-
   setupValidGitHubAppAuth(): void {
     this.mockChrome.storage.setSyncData(TestData.auth.validGitHubAppSettings);
-    this.mockChrome.storage.setLocalData({ authenticationMethod: 'github_app' });
+    this.mockChrome.storage.setLocalData({
+      authenticationMethod: 'github_app',
+      githubAppInstallationId: 12345678,
+      githubAppExpiresAt: new Date(Date.now() + 60 * 60_000).toISOString(),
+    });
+  }
+
+  setupLegacyPATMigration(): void {
+    this.mockChrome.storage.setSyncData(TestData.auth.legacyPATMigrationSettings);
+    this.mockChrome.storage.setLocalData({
+      authenticationMethod: 'pat',
+      githubAppMigrationRequired: true,
+    });
   }
 
   setupInvalidAuth(): void {

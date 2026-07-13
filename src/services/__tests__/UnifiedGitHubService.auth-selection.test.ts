@@ -88,12 +88,13 @@ describe('UnifiedGitHubService authentication selection', () => {
     await expect(autoDetectedAuthenticationType()).resolves.toBe('github_app');
   });
 
-  it('rejects explicit GitHub App initialization without a stable installation', async () => {
+  it('explicit GitHub App configuration never falls back to PAT', async () => {
     installStorage({
       supabaseToken: 'supabase-session-token',
       authenticationMethod: 'github_app',
     });
 
-    await expect(explicitGitHubAppAuthenticationType()).resolves.toBe('pat');
+    await expect(explicitGitHubAppAuthenticationType()).resolves.toBe('github_app');
+    expect(factoryMocks.createStrategy).not.toHaveBeenCalledWith('pat');
   });
 });

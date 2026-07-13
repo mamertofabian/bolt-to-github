@@ -44,16 +44,40 @@ describe('checkGitHubConnection', () => {
     syncGet.mockResolvedValue({});
   });
 
-  it('configured legacy PAT remains connected without a GitHub App check', async () => {
-    localGet.mockResolvedValue({ authenticationMethod: 'pat' });
+  it('legacy PAT state returns migration required and never connected', async () => {
+    localGet.mockResolvedValue({
+      authenticationMethod: 'pat',
+      githubAppMigrationRequired: true,
+    });
     syncGet.mockResolvedValue({ githubToken: 'ghp_legacy' });
-    const authClient = createAuthClient();
+    const authClient = createAuthClient({
+      getAuthState: vi.fn().mockResolvedValue({ isAuthenticated: false }),
+    });
 
     await expect(checkGitHubConnection(authClient)).resolves.toEqual({
-      connected: true,
-      message: 'GitHub is connected.',
+      connected: false,
+      reason: 'migration_required',
+      message:
+        'GitHub authentication has changed. Sign in to bolt2github.com and connect the GitHub App to continue.',
     });
-    expect(authClient.getAuthState).not.toHaveBeenCalled();
+    expect(authClient.getAuthState).toHaveBeenCalledOnce();
+    expect(authClient.syncGitHubApp).not.toHaveBeenCalled();
+    expect(localRemove).toHaveBeenCalledWith('githubConnectionPopupVerification');
+  });
+
+  it('valid PAT cannot bypass the live GitHub App authority', async () => {
+    localGet.mockResolvedValue({ authenticationMethod: 'pat' });
+    syncGet.mockResolvedValue({ githubToken: 'ghp_legacy' });
+    const authClient = createAuthClient({
+      getAuthState: vi.fn().mockResolvedValue({ isAuthenticated: false }),
+    });
+
+    await expect(checkGitHubConnection(authClient)).resolves.toEqual({
+      connected: false,
+      reason: 'not_authenticated',
+      message: 'Sign in to bolt2github.com before using GitHub features.',
+    });
+    expect(authClient.getAuthState).toHaveBeenCalledOnce();
     expect(authClient.syncGitHubApp).not.toHaveBeenCalled();
   });
 
@@ -86,11 +110,14 @@ describe('checkGitHubConnection', () => {
     expectFailureReason(result, 'not_connected');
   });
 
-  it('authenticated users with a live GitHub App are connected', async () => {
+  it('connected GitHub App remains connected after PAT retirement', async () => {
+    localGet.mockResolvedValue({ githubAppMigrationRequired: true });
+
     await expect(checkGitHubConnection(createAuthClient())).resolves.toEqual({
       connected: true,
       message: 'GitHub is connected.',
     });
+    expect(localRemove).toHaveBeenCalledWith('githubAppMigrationRequired');
   });
 
   it('verification failures are visible and do not masquerade as disconnection', async () => {
@@ -270,5 +297,41 @@ describe('checkGitHubConnection', () => {
 
     expect(authClient.syncGitHubApp).toHaveBeenCalledTimes(2);
     expect(localSet).not.toHaveBeenCalled();
+  });
+
+  it('migration-required results are not cached as popup success', async () => {
+    const authClient = createAuthClient({
+      getAuthState: vi.fn().mockResolvedValue({
+        isAuthenticated: true,
+        user: { id: 'user-123' },
+      }),
+      syncGitHubApp: vi.fn().mockResolvedValue(false),
+    });
+    localGet.mockResolvedValue({
+      authenticationMethod: 'pat',
+      githubAppMigrationRequired: true,
+      githubAppInstallationId: 12345,
+      githubAppExpiresAt: new Date(Date.now() + 10 * 60_000).toISOString(),
+      githubConnectionPopupVerification: {
+        userId: 'user-123',
+        installationId: 12345,
+        tokenExpiresAt: new Date(Date.now() + 10 * 60_000).toISOString(),
+        verifiedAt: Date.now(),
+      },
+    });
+
+    await expect(checkPopupGitHubConnection(authClient)).resolves.toMatchObject({
+      connected: false,
+      reason: 'migration_required',
+    });
+    await expect(checkPopupGitHubConnection(authClient)).resolves.toMatchObject({
+      connected: false,
+      reason: 'migration_required',
+    });
+
+    expect(authClient.getAuthState).toHaveBeenCalledTimes(2);
+    expect(authClient.syncGitHubApp).toHaveBeenCalledTimes(2);
+    expect(localSet).not.toHaveBeenCalled();
+    expect(localRemove).toHaveBeenCalledTimes(2);
   });
 });

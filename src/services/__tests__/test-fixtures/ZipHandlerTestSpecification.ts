@@ -28,7 +28,7 @@ export const ZIPHANDLER_TEST_SPECIFICATIONS: TestSpecification[] = [
         name: 'Simple Project Upload',
         description: 'Upload a basic project with a few files to GitHub',
         setup: [
-          'Valid GitHub token and repository settings',
+          'Live Bolt2GitHub session, GitHub App connection, and repository settings',
           'Simple project with HTML, CSS, JS files',
           'Repository exists and is accessible',
         ],
@@ -171,11 +171,11 @@ export const ZIPHANDLER_TEST_SPECIFICATIONS: TestSpecification[] = [
       },
       {
         name: 'Authentication Failure',
-        description: 'Handle invalid or expired tokens',
-        setup: ['Invalid GitHub token', 'Token lacks required permissions'],
+        description: 'Handle a missing or expired GitHub App connection',
+        setup: ['Bolt2GitHub session is unavailable', 'GitHub App lacks repository access'],
         expectedBehavior: [
           'Authentication error is caught',
-          'Clear error message about credentials',
+          'Clear sign-in or GitHub App connection guidance',
           'No repository modifications attempted',
         ],
       },

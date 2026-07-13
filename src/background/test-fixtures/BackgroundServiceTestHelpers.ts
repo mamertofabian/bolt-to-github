@@ -29,7 +29,9 @@ export class BackgroundServiceIntegrationEnvironment {
     this.serviceFactory = new MockServiceFactory();
   }
 
-  async setup(): Promise<void> {
+  async setup(
+    options: { authenticated?: boolean; githubAppConnected?: boolean } = {}
+  ): Promise<void> {
     // Setup Chrome environment
     this.chromeEnv.setup();
 
@@ -38,10 +40,15 @@ export class BackgroundServiceIntegrationEnvironment {
 
     // Set up default authentication if not already configured
     // This ensures the BackgroundService will have auth when it initializes
-    const storage = await this.chromeEnv.mockChrome.storage.sync.get();
+    const storage = await this.chromeEnv.mockChrome.storage.local.get();
     if (!storage.authenticationMethod) {
-      this.chromeEnv.setupValidPATAuth();
+      this.chromeEnv.setupValidGitHubAppAuth();
     }
+
+    this.serviceFactory.supabaseAuthService.setIsAuthenticated(options.authenticated ?? true);
+    this.serviceFactory.supabaseAuthService.setGitHubAppConnected(
+      options.githubAppConnected ?? true
+    );
 
     // Import and create BackgroundService after mocks are in place
     const { BackgroundService } = await import('../BackgroundService');
@@ -169,6 +176,7 @@ export class ErrorInjectionHelper {
   injectGitHubAuthFailure(): void {
     this.serviceFactory.supabaseAuthService.setShouldFailAuth(true);
     this.serviceFactory.unifiedGitHubService.setShouldFail(true);
+    this.serviceFactory.zipHandler.setShouldFail(true);
   }
 
   // Chrome API failures

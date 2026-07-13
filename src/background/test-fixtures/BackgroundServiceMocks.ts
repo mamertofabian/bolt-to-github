@@ -86,7 +86,7 @@ export class MockUnifiedGitHubService {
   async validateToken(): Promise<boolean> {
     await this.simulateDelay();
     if (this.shouldFail) {
-      throw new Error('Invalid token');
+      throw new Error('GitHub App connection is invalid');
     }
     return true;
   }
@@ -237,6 +237,8 @@ export class MockBackgroundTempRepoManager {
     this.repositories = [];
   });
 
+  destroy = vi.fn((): void => undefined);
+
   // Test configuration methods
   setShouldFail(shouldFail: boolean): void {
     this.shouldFail = shouldFail;
@@ -260,6 +262,7 @@ export class MockBackgroundTempRepoManager {
 export class MockSupabaseAuthService {
   private isPremiumUser = false;
   private isAuthenticated = false;
+  private hasGitHubApp = false;
   private shouldFailAuth = false;
 
   static getInstance = vi.fn(() => new MockSupabaseAuthService());
@@ -291,6 +294,13 @@ export class MockSupabaseAuthService {
     await new Promise((resolve) => setTimeout(resolve, 50));
   });
 
+  syncGitHubApp = vi.fn(async (): Promise<boolean> => {
+    if (this.shouldFailAuth) {
+      throw new Error('GitHub App synchronization failed');
+    }
+    return this.isAuthenticated && this.hasGitHubApp;
+  });
+
   logout = vi.fn(async (): Promise<void> => {
     this.isAuthenticated = false;
     this.isPremiumUser = false;
@@ -320,6 +330,10 @@ export class MockSupabaseAuthService {
     this.isAuthenticated = isAuthenticated;
   }
 
+  setGitHubAppConnected(hasGitHubApp: boolean): void {
+    this.hasGitHubApp = hasGitHubApp;
+  }
+
   setShouldFailAuth(shouldFail: boolean): void {
     this.shouldFailAuth = shouldFail;
   }
@@ -327,6 +341,7 @@ export class MockSupabaseAuthService {
   reset(): void {
     this.isPremiumUser = false;
     this.isAuthenticated = false;
+    this.hasGitHubApp = false;
     this.shouldFailAuth = false;
     vi.clearAllMocks();
   }
@@ -441,6 +456,7 @@ export class MockServiceFactory {
   public supabaseAuthService: MockSupabaseAuthService;
   public operationStateManager: MockOperationStateManager;
   public usageTracker: MockUsageTracker;
+  public unifiedGitHubServiceConstructor = vi.fn();
 
   constructor() {
     this.stateManager = new MockStateManager();
@@ -454,6 +470,9 @@ export class MockServiceFactory {
     this.supabaseAuthService = new MockSupabaseAuthService();
     this.operationStateManager = new MockOperationStateManager();
     this.usageTracker = new MockUsageTracker();
+    this.unifiedGitHubServiceConstructor.mockImplementation(
+      (_configuration?: unknown) => this.unifiedGitHubService
+    );
   }
 
   setupMocks(): void {
@@ -465,7 +484,7 @@ export class MockServiceFactory {
     }));
 
     vi.doMock('../../services/UnifiedGitHubService', () => ({
-      UnifiedGitHubService: vi.fn(() => this.unifiedGitHubService),
+      UnifiedGitHubService: this.unifiedGitHubServiceConstructor,
     }));
 
     vi.doMock('../../services/zipHandler', () => ({

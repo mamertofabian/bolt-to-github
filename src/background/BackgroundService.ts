@@ -34,7 +34,9 @@ const AUTH_STORAGE_RECOVERY_KEYS = new Set([
   'supabaseToken',
   'supabaseTokenExpiry',
   'authenticationMethod',
+  'githubAppMigrationRequired',
   'githubAppInstallationId',
+  'githubAppExpiresAt',
 ]);
 
 export class BackgroundService {
@@ -65,6 +67,7 @@ export class BackgroundService {
     null;
   // Track initial auth check completion
   private initialAuthCheckCompleted: boolean = false;
+  private githubDependenciesGeneration = 0;
   // Track delayed sync timeout for cancellation
   private delayedSyncTimeout: NodeJS.Timeout | null = null;
   // Track immediate auth check timeout for cleanup
@@ -187,18 +190,7 @@ export class BackgroundService {
         logger.debug('Usage tracker initialization attempt completed');
       });
 
-    const githubService = await this.initializeGitHubService();
-    this.setupZipHandler(githubService!);
-    if (githubService) {
-      const settings = await this.stateManager.getGitHubSettings();
-      if (settings?.gitHubSettings?.repoOwner) {
-        this.tempRepoManager = new BackgroundTempRepoManager(
-          githubService,
-          settings.gitHubSettings.repoOwner,
-          (status) => this.broadcastStatus(status)
-        );
-      }
-    }
+    await this.reinitializeGitHubDependencies();
     this.setupConnectionHandlers();
     this.setupStorageListener();
     this.startKeepAlive();
@@ -207,39 +199,18 @@ export class BackgroundService {
 
   private async initializeGitHubService(): Promise<UnifiedGitHubService | null> {
     try {
-      const settings = await this.stateManager.getGitHubSettings();
-      const localSettings = await chrome.storage.local.get(['authenticationMethod']);
-
-      const authMethod = localSettings.authenticationMethod || 'pat';
-
-      // Track authentication method
+      const connection = await this.checkLiveGitHubConnection();
       await this.usageTracker.updateUsageStats('auth_method_changed', {
-        authMethod:
-          authMethod === 'github_app'
-            ? 'github-app'
-            : settings?.gitHubSettings?.githubToken
-              ? 'pat'
-              : 'none',
+        authMethod: connection.connected ? 'github-app' : 'none',
       });
 
-      if (authMethod === 'github_app') {
-        // Initialize with GitHub App authentication
-        logger.info('✅ GitHub App authentication detected, initializing GitHub App service');
-        this.githubService = new UnifiedGitHubService({
-          type: 'github_app',
-        });
-      } else if (
-        settings &&
-        settings.gitHubSettings &&
-        settings.gitHubSettings.githubToken &&
-        settings.gitHubSettings.repoOwner
-      ) {
-        logger.info('✅ PAT authentication detected, initializing PAT service', settings);
-        this.githubService = new UnifiedGitHubService(settings.gitHubSettings.githubToken);
-      } else {
-        logger.warn('❌ No valid authentication configuration found');
-        this.githubService = null;
+      if (!connection.connected) {
+        logger.warn('GitHub App service remains unavailable:', connection.message);
+        return null;
       }
+
+      logger.info('✅ Live GitHub App connection verified, initializing GitHub service');
+      return new UnifiedGitHubService({ type: 'github_app' });
     } catch (error) {
       logger.error('Failed to initialize GitHub service:', error);
 
@@ -248,10 +219,15 @@ export class BackgroundService {
         error instanceof Error ? error : new Error('Failed to initialize GitHub service'),
         'github_service_init'
       );
-
-      this.githubService = null;
     }
-    return this.githubService;
+    return null;
+  }
+
+  private async checkLiveGitHubConnection() {
+    return checkGitHubConnection({
+      getAuthState: async () => this.supabaseAuthService.getAuthState(),
+      syncGitHubApp: () => this.supabaseAuthService.syncGitHubApp(),
+    });
   }
 
   private setupZipHandler(githubService: UnifiedGitHubService) {
@@ -259,12 +235,21 @@ export class BackgroundService {
   }
 
   private async reinitializeGitHubDependencies(): Promise<void> {
+    const generation = ++this.githubDependenciesGeneration;
+    this.clearGitHubDependencies(false);
     const githubService = await this.initializeGitHubService();
+    const settings = githubService ? await this.stateManager.getGitHubSettings() : null;
+
+    if (generation !== this.githubDependenciesGeneration) {
+      logger.info('Ignoring stale GitHub dependency initialization');
+      return;
+    }
+
+    this.githubService = githubService;
     if (githubService) {
       logger.info('🔄 GitHub service reinitialized, reinitializing ZipHandler...');
       this.setupZipHandler(githubService);
 
-      const settings = await this.stateManager.getGitHubSettings();
       if (settings?.gitHubSettings?.repoOwner) {
         logger.info('🔄 Reinitializing TempRepoManager with updated settings...');
         this.tempRepoManager = new BackgroundTempRepoManager(
@@ -277,6 +262,16 @@ export class BackgroundService {
         this.tempRepoManager = null;
       }
     }
+  }
+
+  private clearGitHubDependencies(invalidatePendingInitialization = true): void {
+    if (invalidatePendingInitialization) {
+      this.githubDependenciesGeneration += 1;
+    }
+    this.tempRepoManager?.destroy();
+    this.tempRepoManager = null;
+    this.zipHandler = null;
+    this.githubService = null;
   }
 
   private broadcastStatus(status: UploadStatusState) {
@@ -722,6 +717,11 @@ export class BackgroundService {
 
         case 'IMPORT_PRIVATE_REPO': {
           const importMessage = message as ImportPrivateRepoMessage;
+          const connection = await this.checkLiveGitHubConnection();
+          if (!connection.connected) {
+            throw new Error(connection.message);
+          }
+
           logger.info('🔄 Processing private repo import:', importMessage.data.repoName);
           await analytics.trackEvent({
             category: 'user_action',
@@ -732,24 +732,10 @@ export class BackgroundService {
           // Ensure TempRepoManager is initialized before proceeding
           if (!this.tempRepoManager) {
             logger.warn('⚠️ TempRepoManager not initialized, attempting to initialize...');
-            const githubService = await this.initializeGitHubService();
-            if (githubService) {
-              const settings = await this.stateManager.getGitHubSettings();
-              if (settings?.gitHubSettings?.repoOwner) {
-                logger.info('🔄 Initializing TempRepoManager for private repo import...');
-                this.tempRepoManager = new BackgroundTempRepoManager(
-                  githubService,
-                  settings.gitHubSettings.repoOwner,
-                  (status) => this.broadcastStatus(status)
-                );
-              } else {
-                throw new Error(
-                  'GitHub repository owner not configured. Please set up your GitHub settings first.'
-                );
-              }
-            } else {
+            await this.reinitializeGitHubDependencies();
+            if (!this.tempRepoManager) {
               throw new Error(
-                'GitHub service not available. Please check your GitHub authentication.'
+                'GitHub service or repository owner is unavailable. Sign in to bolt2github.com, connect the GitHub App, and finish repository setup.'
               );
             }
           }
@@ -767,7 +753,12 @@ export class BackgroundService {
           );
           break;
         }
-        case 'DELETE_TEMP_REPO':
+        case 'DELETE_TEMP_REPO': {
+          const connection = await this.checkLiveGitHubConnection();
+          if (!connection.connected) {
+            throw new Error(connection.message);
+          }
+
           await analytics.trackEvent({
             category: 'user_action',
             action: 'temp_repo_cleanup',
@@ -785,6 +776,7 @@ export class BackgroundService {
             logger.error('❌ Failed to cleanup github.com projects:', error);
           }
           break;
+        }
 
         case 'DEBUG':
           logger.debug(`[Content Debug] ${message.message}`);
@@ -844,6 +836,18 @@ export class BackgroundService {
     const port = this.ports.get(tabId);
     if (!port) return;
 
+    const connection = await this.checkLiveGitHubConnection();
+    if (!connection.connected) {
+      this.sendResponse(port, {
+        type: 'UPLOAD_STATUS',
+        status: {
+          status: 'error',
+          message: connection.message,
+        },
+      });
+      return;
+    }
+
     // Generate unique operation ID for this push
     const operationId = `push-${Date.now()}-${Math.random().toString(36).substring(2, 8)}`;
 
@@ -873,27 +877,12 @@ export class BackgroundService {
       // Proactively try to initialize GitHub service if not already initialized
       if (!this.githubService) {
         logger.warn('⚠️ GitHub service not initialized, attempting to initialize now...');
-        const githubService = await this.initializeGitHubService();
-        if (githubService) {
+        await this.reinitializeGitHubDependencies();
+        if (this.githubService) {
           logger.info('✅ GitHub service initialized successfully during ZIP processing');
-          this.setupZipHandler(githubService);
         } else {
-          // Provide detailed diagnostics for why initialization failed
-          const settings = await this.stateManager.getGitHubSettings();
-          const localSettings = await chrome.storage.local.get(['authenticationMethod']);
-          const authMethod = localSettings.authenticationMethod || 'pat';
-
-          logger.error('❌ GitHub service initialization failed. Diagnostics:', {
-            authMethod,
-            hasSettings: !!settings,
-            hasGitHubSettings: !!settings?.gitHubSettings,
-            hasToken: !!settings?.gitHubSettings?.githubToken,
-            hasRepoOwner: !!settings?.gitHubSettings?.repoOwner,
-          });
-
           throw new Error(
-            'GitHub service is not initialized. Please ensure you have configured your GitHub authentication in the extension settings. ' +
-              `Current auth method: ${authMethod}${authMethod === 'pat' ? ' (requires GitHub token and repo owner)' : ' (requires GitHub App connection)'}`
+            'GitHub service is not initialized. Sign in to bolt2github.com and connect the GitHub App.'
           );
         }
       }
@@ -1271,10 +1260,7 @@ export class BackgroundService {
     logger.info('🔄 Handling Push to GitHub action');
 
     try {
-      const connection = await checkGitHubConnection({
-        getAuthState: async () => this.supabaseAuthService.getAuthState(),
-        syncGitHubApp: () => this.supabaseAuthService.syncGitHubApp(),
-      });
+      const connection = await this.checkLiveGitHubConnection();
       if (!connection.connected) {
         return { success: false, error: connection.message };
       }
@@ -1562,6 +1548,12 @@ export class BackgroundService {
     }
 
     try {
+      const connection = await this.checkLiveGitHubConnection();
+      if (!connection.connected) {
+        logger.warn('Skipping temporary repository cleanup:', connection.message);
+        return;
+      }
+
       logger.info('🧹 Triggering immediate temp repo cleanup due to URL change');
       await this.tempRepoManager.cleanupTempRepos(true); // Force cleanup regardless of age
 
@@ -1592,9 +1584,7 @@ export class BackgroundService {
     }) => void
   ): Promise<void> {
     try {
-      // Validate authentication method
-      const validMethods = ['github_app', 'pat'];
-      if (!validMethods.includes(method)) {
+      if (method !== 'github_app') {
         sendResponse({
           success: false,
           error: `Invalid authentication method: ${method}`,
@@ -1602,22 +1592,12 @@ export class BackgroundService {
         return;
       }
 
-      if (method === 'github_app') {
-        // Use the existing GitHub App auth flow
-        const authUrl = 'https://github.com/apps/bolt-to-github/installations/new';
-        sendResponse({
-          success: true,
-          authUrl,
-          method: 'github_app',
-        });
-      } else if (method === 'pat') {
-        // PAT authentication is handled in the popup
-        sendResponse({
-          success: true,
-          message: 'Please configure PAT in extension popup',
-          method: 'pat',
-        });
-      }
+      const authUrl = 'https://github.com/apps/bolt-to-github/installations/new';
+      sendResponse({
+        success: true,
+        authUrl,
+        method: 'github_app',
+      });
     } catch (error) {
       logger.error('Error initiating GitHub auth:', error);
       sendResponse({
@@ -1902,6 +1882,8 @@ export class BackgroundService {
   }
 
   public destroy(): void {
+    this.clearGitHubDependencies();
+
     // Clean up keep-alive interval
     if (this.keepAliveInterval) {
       clearInterval(this.keepAliveInterval);
@@ -2041,6 +2023,10 @@ export class BackgroundService {
       if (authState.isAuthenticated && !previousState.isAuthenticated) {
         logger.info('🎉 User authenticated - triggering immediate inward sync');
 
+        this.reinitializeGitHubDependencies().catch((error) => {
+          logger.error('Failed to initialize GitHub App dependencies after sign-in:', error);
+        });
+
         // Cancel any pending delayed sync since we're doing immediate sync
         if (this.delayedSyncTimeout) {
           logger.debug('⏹️ Cancelling delayed sync due to authentication');
@@ -2052,6 +2038,9 @@ export class BackgroundService {
         this.safePerformInwardSync('auth-triggered').catch((error) => {
           logger.error('Safe auth-triggered sync wrapper failed:', error);
         });
+      } else if (!authState.isAuthenticated && previousState.isAuthenticated) {
+        logger.info('🔒 User signed out - clearing GitHub dependencies');
+        this.clearGitHubDependencies();
       }
     };
 

@@ -28,6 +28,7 @@ export class UnifiedGitHubService {
   private initializationPromise: Promise<void> | null = null;
   // Removed fallbackGitHubService to eliminate circular dependency
   private factory: AuthenticationStrategyFactory;
+  private readonly explicitGitHubApp: boolean;
 
   /**
    * Constructor maintains backward compatibility with existing GitHubService
@@ -35,6 +36,7 @@ export class UnifiedGitHubService {
    */
   constructor(authConfig: string | AuthenticationConfig) {
     this.factory = AuthenticationStrategyFactory.getInstance();
+    this.explicitGitHubApp = typeof authConfig !== 'string' && authConfig.type === 'github_app';
 
     if (typeof authConfig === 'string') {
       // Backward compatibility: treat as PAT token
@@ -56,15 +58,6 @@ export class UnifiedGitHubService {
     if (config.type === 'pat' && config.token) {
       this.strategy = this.factory.createPATStrategy(config.token);
     } else if (config.type === 'github_app') {
-      const storedMethod = await this.getConfiguredAuthMethod();
-      if (storedMethod !== 'github_app') {
-        logger.warn(
-          '⚠️ Explicit GitHub App configuration is missing a stable installation; using PAT'
-        );
-        this.strategy = this.factory.createStrategy('pat');
-        return;
-      }
-
       // Get user token from SupabaseAuthService for GitHub App authentication
       const userToken = await this.getUserToken();
 
@@ -103,6 +96,12 @@ export class UnifiedGitHubService {
     }
 
     if (!this.strategy) {
+      if (this.explicitGitHubApp) {
+        const userToken = await this.getUserToken();
+        this.strategy = this.factory.createGitHubAppStrategy(userToken);
+        return this.strategy;
+      }
+
       // Auto-detect current strategy if not explicitly set
       const authMethod = await this.getConfiguredAuthMethod();
 

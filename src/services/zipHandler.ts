@@ -132,12 +132,10 @@ export class ZipHandler {
     }
 
     if (!this.githubService) {
-      await this.updateStatus(
-        'error',
-        0,
-        'GitHub service not initialized. Please set your GitHub token.'
-      );
-      throw new Error('GitHub service not initialized. Please set your GitHub token.');
+      const message =
+        'GitHub service not initialized. Sign in to bolt2github.com and connect the GitHub App.';
+      await this.updateStatus('error', 0, message);
+      throw new Error(message);
     }
 
     if (!currentProjectId) {

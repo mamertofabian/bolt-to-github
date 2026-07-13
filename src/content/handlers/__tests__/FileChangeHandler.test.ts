@@ -8,6 +8,7 @@ import type { MessageHandler } from '../../MessageHandler';
 import type { PremiumService } from '../../services/PremiumService';
 
 const mockCheckGitHubConnection = vi.hoisted(() => vi.fn());
+const mockUnifiedGitHubService = vi.hoisted(() => vi.fn().mockImplementation(() => ({})));
 
 vi.mock('../../../lib/utils/githubConnection', () => ({
   checkGitHubConnection: mockCheckGitHubConnection,
@@ -46,7 +47,7 @@ vi.mock('../../../services/FilePreviewService', () => ({
 }));
 
 vi.mock('../../../services/UnifiedGitHubService', () => ({
-  UnifiedGitHubService: vi.fn().mockImplementation(() => ({})),
+  UnifiedGitHubService: mockUnifiedGitHubService,
 }));
 
 describe('FileChangeHandler', () => {
@@ -495,6 +496,25 @@ describe('FileChangeHandler', () => {
       await expect(fileChangeHandler.getChangedFiles(true)).rejects.toThrow(
         'Connect GitHub at bolt2github.com before using GitHub features.'
       );
+      expect(mockFilePreviewService.loadProjectFiles).not.toHaveBeenCalled();
+      expect(mockFilePreviewService.compareWithGitHub).not.toHaveBeenCalled();
+      expect(mockFilePreviewService.getProcessedFiles).not.toHaveBeenCalled();
+    });
+
+    it('PAT migration blocks file comparison before GitHub service creation', async () => {
+      fileChangeHandler = new FileChangeHandler(messageHandler, notificationManager);
+      mockCheckGitHubConnection.mockResolvedValue({
+        connected: false,
+        reason: 'migration_required',
+        message:
+          'GitHub authentication has changed. Sign in to bolt2github.com and connect the GitHub App to continue.',
+      });
+
+      await expect(fileChangeHandler.getChangedFiles(true)).rejects.toThrow(
+        'GitHub authentication has changed. Sign in to bolt2github.com and connect the GitHub App to continue.'
+      );
+
+      expect(mockUnifiedGitHubService).not.toHaveBeenCalled();
       expect(mockFilePreviewService.loadProjectFiles).not.toHaveBeenCalled();
       expect(mockFilePreviewService.compareWithGitHub).not.toHaveBeenCalled();
       expect(mockFilePreviewService.getProcessedFiles).not.toHaveBeenCalled();

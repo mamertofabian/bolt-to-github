@@ -4,6 +4,7 @@ import { BackgroundService } from '../BackgroundService';
 
 const mocks = vi.hoisted(() => {
   const forceCheck = vi.fn(async () => undefined);
+  const syncGitHubApp = vi.fn(async () => true);
   const addAuthStateListener = vi.fn();
   const removeAuthStateListener = vi.fn();
   const processZipFile = vi.fn(async () => undefined);
@@ -18,10 +19,12 @@ const mocks = vi.hoisted(() => {
   const backgroundTempRepoManager = vi.fn(() => ({
     cleanupTempRepos: vi.fn(async () => undefined),
     handlePrivateRepoImport: vi.fn(async () => undefined),
+    destroy: vi.fn(),
   }));
 
   return {
     forceCheck,
+    syncGitHubApp,
     addAuthStateListener,
     removeAuthStateListener,
     processZipFile,
@@ -67,6 +70,7 @@ vi.mock('../../content/services/SupabaseAuthService', () => ({
   SupabaseAuthService: {
     getInstance: vi.fn(() => ({
       forceCheck: mocks.forceCheck,
+      syncGitHubApp: mocks.syncGitHubApp,
       getAuthState: vi.fn(() => ({ isAuthenticated: true })),
       addAuthStateListener: mocks.addAuthStateListener,
       removeAuthStateListener: mocks.removeAuthStateListener,
@@ -181,6 +185,9 @@ const createChromeAPIMock = () => {
         set: vi.fn(async (items: Record<string, unknown>) => {
           Object.assign(localData, items);
         }),
+        remove: vi.fn(async (keys: string | string[]) => {
+          for (const key of Array.isArray(keys) ? keys : [keys]) delete localData[key];
+        }),
       },
       sync: {
         get: vi.fn((keys?: string | string[] | null) => readFrom(syncData, keys)),
@@ -281,6 +288,7 @@ describe('BackgroundService - Auth Storage Recovery', () => {
     await settleInitialization();
 
     mocks.forceCheck.mockClear();
+    mocks.syncGitHubApp.mockClear();
     mocks.unifiedGitHubService.mockClear();
     mocks.zipHandler.mockClear();
     mocks.backgroundTempRepoManager.mockClear();
@@ -413,5 +421,30 @@ describe('BackgroundService - Auth Storage Recovery', () => {
     expect(mocks.forceCheck).toHaveBeenCalledTimes(1);
     expect(mocks.unifiedGitHubService).toHaveBeenCalledTimes(1);
     expect(mocks.zipHandler).toHaveBeenCalledTimes(1);
+  });
+
+  it('newer disconnected recovery prevents an older connected recovery from restoring stale dependencies', async () => {
+    let resolveOlderConnection!: (connected: boolean) => void;
+    mocks.syncGitHubApp
+      .mockImplementationOnce(
+        () =>
+          new Promise<boolean>((resolve) => {
+            resolveOlderConnection = resolve;
+          })
+      )
+      .mockResolvedValue(false);
+
+    triggerLocalChange(chromeMock, 'supabaseToken', undefined, 'older-token');
+    await vi.advanceTimersByTimeAsync(1100);
+
+    triggerLocalChange(chromeMock, 'supabaseToken', 'older-token', 'newer-token');
+    await vi.advanceTimersByTimeAsync(1100);
+
+    resolveOlderConnection(true);
+    await vi.advanceTimersByTimeAsync(0);
+
+    expect(mocks.unifiedGitHubService).toHaveBeenCalledTimes(1);
+    expect(mocks.zipHandler).not.toHaveBeenCalled();
+    expect(mocks.backgroundTempRepoManager).not.toHaveBeenCalled();
   });
 });
