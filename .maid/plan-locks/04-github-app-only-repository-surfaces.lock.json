@@ -6,13 +6,13 @@
     "src/lib/components/__tests__/CommitsModal.component.test.ts": "sha256:e46eb8089c2d1099609d13628ef50caead803d40f552d8802bf840c1279803eb",
     "src/lib/components/__tests__/RepoSettings.component.test.ts": "sha256:f4eb824914fff18ce5797ee22372aebd6f14696f689aaeaab670f9836b8d64bf",
     "src/lib/components/__tests__/ProjectsList.component.test.ts": "sha256:fa86107110997774b90bb0c7bdfd6089b3b1c1381e844cb0657edfe33723e23d",
-    "src/lib/components/__tests__/ProjectStatus.component.test.ts": "sha256:d9fba48bf74ad1e6e84c2185866cb856109fd6c377c47acfc8d4fcfa289af79c",
+    "src/lib/components/__tests__/ProjectStatus.component.test.ts": "sha256:0e3a68d43065da10caef2185054f499d2c80aa15b2706b323552c4e6fb6f456a",
     "src/lib/services/__tests__/ProjectSettingsMigrationService.test.ts": "sha256:a930d7f8ce85291231ab3a07ce0e83e26308119dcd8451b69b43751ccabebe70",
     "src/popup/components/__tests__/BranchSelectionModal.component.test.ts": "sha256:cdcfceda1c7444d0117a4151a73f476abf90f22c6124200a1c55db0da42a7694",
     "src/popup/components/__tests__/TabsView.component.test.ts": "sha256:ec6aa229c6b81f080bc0822ee5f51415f288685eb5f43d3acb32f57ea0139fb8"
   },
   "created_at": "2026-07-13T12:03:26.460203+00:00",
-  "revision": 7,
+  "revision": 8,
   "revisions": [
     {
       "prior_manifest_hash": "sha256:d014e6080137679e743fb062af9333a143b642de986a2f76dbf915b48d253c72",
@@ -201,6 +201,36 @@
         "provider": "openai",
         "client": "codex",
         "skills": ["maid-implement-draft", "maid-implementation-review"],
+        "source": "flags"
+      },
+      "contract_delta": {
+        "artifacts_added": [],
+        "artifacts_removed": [],
+        "files_added": [],
+        "files_removed": [],
+        "validate_commands_added": [],
+        "validate_commands_removed": []
+      }
+    },
+    {
+      "prior_manifest_hash": "sha256:0eb5389e18cc6d9604a295a8d5b0520239cb404b632dcef317185a4bf5033f67",
+      "prior_test_hashes": {
+        "src/lib/utils/__tests__/connectedGitHubAppService.test.ts": "sha256:ef3c5d1780db487393f622ea2239c4ae3187c8266c3c4da2ff3ebd5ee63fe882",
+        "src/lib/components/__tests__/CommitsModal.component.test.ts": "sha256:e46eb8089c2d1099609d13628ef50caead803d40f552d8802bf840c1279803eb",
+        "src/lib/components/__tests__/RepoSettings.component.test.ts": "sha256:f4eb824914fff18ce5797ee22372aebd6f14696f689aaeaab670f9836b8d64bf",
+        "src/lib/components/__tests__/ProjectsList.component.test.ts": "sha256:fa86107110997774b90bb0c7bdfd6089b3b1c1381e844cb0657edfe33723e23d",
+        "src/lib/components/__tests__/ProjectStatus.component.test.ts": "sha256:d9fba48bf74ad1e6e84c2185866cb856109fd6c377c47acfc8d4fcfa289af79c",
+        "src/lib/services/__tests__/ProjectSettingsMigrationService.test.ts": "sha256:a930d7f8ce85291231ab3a07ce0e83e26308119dcd8451b69b43751ccabebe70",
+        "src/popup/components/__tests__/BranchSelectionModal.component.test.ts": "sha256:cdcfceda1c7444d0117a4151a73f476abf90f22c6124200a1c55db0da42a7694",
+        "src/popup/components/__tests__/TabsView.component.test.ts": "sha256:ec6aa229c6b81f080bc0822ee5f51415f288685eb5f43d3acb32f57ea0139fb8"
+      },
+      "revised_at": "2026-07-13T13:12:20.347757+00:00",
+      "reason": "Child 05 intentionally evolved the shared ProjectStatus issue test from token-placeholder preservation to the token-free GitHub App issue contract.",
+      "agent": {
+        "model": "gpt-5",
+        "provider": "openai",
+        "client": "codex",
+        "skills": ["maid-evolver"],
         "source": "flags"
       },
       "contract_delta": {

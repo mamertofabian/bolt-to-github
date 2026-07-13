@@ -7,6 +7,8 @@ import userEvent from '@testing-library/user-event';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import FeedbackModal from '../FeedbackModal.svelte';
 
+const mockCreateConnectedGitHubAppService = vi.hoisted(() => vi.fn());
+
 vi.unmock('$lib/components/ui/modal/Modal.svelte');
 vi.unmock('$lib/components/ui/button');
 vi.unmock('$lib/components/ui/button/index.ts');
@@ -19,17 +21,9 @@ const mockState = {
   getAllLogs: vi.fn(),
 };
 
-vi.mock('../../../services/UnifiedGitHubService', () => {
-  return {
-    UnifiedGitHubService: class {
-      // eslint-disable-next-line @typescript-eslint/no-unused-vars
-      constructor(_config?: unknown) {}
-      async submitFeedback(params: unknown) {
-        return mockState.submitFeedback(params);
-      }
-    },
-  };
-});
+vi.mock('$lib/utils/connectedGitHubAppService', () => ({
+  createConnectedGitHubAppService: mockCreateConnectedGitHubAppService,
+}));
 
 vi.mock('$lib/utils/logStorage', () => {
   return {
@@ -75,6 +69,9 @@ describe('FeedbackModal.svelte', () => {
     vi.clearAllMocks();
     mockState.getAllLogs.mockResolvedValue([]);
     mockState.submitFeedback.mockResolvedValue(undefined);
+    mockCreateConnectedGitHubAppService.mockResolvedValue({
+      submitFeedback: mockState.submitFeedback,
+    });
 
     Element.prototype.scrollIntoView = vi.fn();
 
@@ -85,7 +82,7 @@ describe('FeedbackModal.svelte', () => {
       },
       storage: {
         local: {
-          get: vi.fn().mockResolvedValue({ authenticationMethod: 'pat' }),
+          get: vi.fn().mockResolvedValue({}),
         },
       },
       tabs: {
@@ -113,7 +110,7 @@ describe('FeedbackModal.svelte', () => {
   describe('Modal Visibility', () => {
     it('should render when show is true', () => {
       render(FeedbackModal, {
-        props: { show: true, githubToken: 'test-token' },
+        props: { show: true },
       });
 
       expect(screen.getByText('Send Feedback')).toBeInTheDocument();
@@ -121,7 +118,7 @@ describe('FeedbackModal.svelte', () => {
 
     it('should not render when show is false', () => {
       render(FeedbackModal, {
-        props: { show: false, githubToken: 'test-token' },
+        props: { show: false },
       });
 
       expect(screen.queryByText('Send Feedback')).not.toBeInTheDocument();
@@ -131,7 +128,7 @@ describe('FeedbackModal.svelte', () => {
   describe('Category Selection', () => {
     it('should display all feedback categories', () => {
       render(FeedbackModal, {
-        props: { show: true, githubToken: 'test-token' },
+        props: { show: true },
       });
 
       expect(screen.getByText(/💝 Appreciation/)).toBeInTheDocument();
@@ -144,7 +141,7 @@ describe('FeedbackModal.svelte', () => {
     it('should allow selecting a category', async () => {
       const user = userEvent.setup();
       render(FeedbackModal, {
-        props: { show: true, githubToken: 'test-token' },
+        props: { show: true },
       });
 
       const bugButton = screen.getByText(/🐛 Bug Report/);
@@ -158,7 +155,7 @@ describe('FeedbackModal.svelte', () => {
     it('should show log inclusion option only for bug reports', async () => {
       const user = userEvent.setup();
       render(FeedbackModal, {
-        props: { show: true, githubToken: 'test-token' },
+        props: { show: true },
       });
 
       expect(screen.queryByLabelText(/Include recent logs/i)).not.toBeInTheDocument();
@@ -182,7 +179,7 @@ describe('FeedbackModal.svelte', () => {
   describe('Form Validation', () => {
     it('should not show submit button when no category is selected', () => {
       render(FeedbackModal, {
-        props: { show: true, githubToken: 'test-token' },
+        props: { show: true },
       });
 
       expect(screen.queryByRole('button', { name: /Send Feedback/i })).not.toBeInTheDocument();
@@ -191,7 +188,7 @@ describe('FeedbackModal.svelte', () => {
     it('should disable submit button when message is empty', async () => {
       const user = userEvent.setup();
       render(FeedbackModal, {
-        props: { show: true, githubToken: 'test-token' },
+        props: { show: true },
       });
 
       const bugButton = screen.getByText(/🐛 Bug Report/);
@@ -206,7 +203,7 @@ describe('FeedbackModal.svelte', () => {
     it('should enable submit button when category and message are provided', async () => {
       const user = userEvent.setup();
       render(FeedbackModal, {
-        props: { show: true, githubToken: 'test-token' },
+        props: { show: true },
       });
 
       const bugButton = screen.getByText(/🐛 Bug Report/);
@@ -223,12 +220,11 @@ describe('FeedbackModal.svelte', () => {
   });
 
   describe('Feedback Submission', () => {
-    it('should submit feedback with PAT authentication', async () => {
+    it('feedback submission uses GitHub App authentication without a PAT prop', async () => {
       const user = userEvent.setup();
-      chromeMocks.storage.local.get.mockResolvedValue({ authenticationMethod: 'pat' });
 
       render(FeedbackModal, {
-        props: { show: true, githubToken: 'test-token' },
+        props: { show: true },
       });
 
       const bugButton = screen.getByText(/🐛 Bug Report/);
@@ -241,6 +237,7 @@ describe('FeedbackModal.svelte', () => {
       await user.click(submitButton);
 
       await waitFor(() => {
+        expect(mockCreateConnectedGitHubAppService).toHaveBeenCalledTimes(1);
         expect(mockState.submitFeedback).toHaveBeenCalledWith({
           category: 'bug',
           message: 'Found a bug',
@@ -249,15 +246,33 @@ describe('FeedbackModal.svelte', () => {
             extensionVersion: '1.3.13',
           },
         });
+        expect(chromeMocks.storage.local.get).not.toHaveBeenCalled();
       });
     });
 
-    it('should submit feedback with GitHub App authentication', async () => {
+    it('disconnected feedback preserves actionable GitHub App guidance', async () => {
       const user = userEvent.setup();
-      chromeMocks.storage.local.get.mockResolvedValue({ authenticationMethod: 'github_app' });
+      const connectionMessage =
+        'Sign in to bolt2github.com and connect the GitHub App before submitting feedback.';
+      mockCreateConnectedGitHubAppService.mockRejectedValue(new Error(connectionMessage));
+
+      render(FeedbackModal, { props: { show: true } });
+
+      await user.click(screen.getByText(/🐛 Bug Report/));
+      await user.type(await screen.findByLabelText(/Your Message/i), 'Cannot submit');
+      await user.click(await screen.findByRole('button', { name: /Send Feedback/i }));
+
+      await waitFor(() => {
+        expect(screen.getByText(connectionMessage)).toBeInTheDocument();
+        expect(mockState.submitFeedback).not.toHaveBeenCalled();
+      });
+    });
+
+    it('should submit feature feedback through the GitHub App service', async () => {
+      const user = userEvent.setup();
 
       render(FeedbackModal, {
-        props: { show: true, githubToken: 'test-token' },
+        props: { show: true },
       });
 
       const featureButton = screen.getByText(/✨ Feature Request/);
@@ -277,7 +292,7 @@ describe('FeedbackModal.svelte', () => {
     it('should show success message after successful submission', async () => {
       const user = userEvent.setup();
       render(FeedbackModal, {
-        props: { show: true, githubToken: 'test-token' },
+        props: { show: true },
       });
 
       const bugButton = screen.getByText(/🐛 Bug Report/);
@@ -315,7 +330,7 @@ describe('FeedbackModal.svelte', () => {
       mockState.getAllLogs.mockResolvedValue(mockLogs);
 
       render(FeedbackModal, {
-        props: { show: true, githubToken: 'test-token' },
+        props: { show: true },
       });
 
       const bugButton = screen.getByText(/🐛 Bug Report/);
@@ -345,7 +360,7 @@ describe('FeedbackModal.svelte', () => {
       mockState.getAllLogs.mockResolvedValue([]);
 
       render(FeedbackModal, {
-        props: { show: true, githubToken: 'test-token' },
+        props: { show: true },
       });
 
       const bugButton = screen.getByText(/🐛 Bug Report/);
@@ -376,7 +391,7 @@ describe('FeedbackModal.svelte', () => {
       mockState.submitFeedback.mockRejectedValue(new Error('Network error'));
 
       render(FeedbackModal, {
-        props: { show: true, githubToken: 'test-token' },
+        props: { show: true },
       });
 
       const bugButton = screen.getByText(/🐛 Bug Report/);
@@ -398,7 +413,7 @@ describe('FeedbackModal.svelte', () => {
       mockState.submitFeedback.mockRejectedValue(new Error('401 Unauthorized'));
 
       render(FeedbackModal, {
-        props: { show: true, githubToken: 'test-token' },
+        props: { show: true },
       });
 
       const bugButton = screen.getByText(/🐛 Bug Report/);
@@ -423,7 +438,7 @@ describe('FeedbackModal.svelte', () => {
     it('should open GitHub issues page in new tab', async () => {
       const user = userEvent.setup();
       render(FeedbackModal, {
-        props: { show: true, githubToken: 'test-token' },
+        props: { show: true },
       });
 
       const bugButton = screen.getByText(/🐛 Bug Report/);
@@ -446,7 +461,7 @@ describe('FeedbackModal.svelte', () => {
     it('should trigger close event when cancel is clicked', async () => {
       const user = userEvent.setup();
       const { component } = render(FeedbackModal, {
-        props: { show: true, githubToken: 'test-token' },
+        props: { show: true },
       });
 
       const closeHandler = vi.fn();
@@ -464,7 +479,7 @@ describe('FeedbackModal.svelte', () => {
     it('should close modal on Escape key', async () => {
       const user = userEvent.setup();
       const { component } = render(FeedbackModal, {
-        props: { show: true, githubToken: 'test-token' },
+        props: { show: true },
       });
 
       const closeHandler = vi.fn();
@@ -481,7 +496,7 @@ describe('FeedbackModal.svelte', () => {
       const user = userEvent.setup();
 
       const { component } = render(FeedbackModal, {
-        props: { show: true, githubToken: 'test-token' },
+        props: { show: true },
       });
 
       const closeHandler = vi.fn();

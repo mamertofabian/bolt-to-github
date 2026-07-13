@@ -1,6 +1,6 @@
 import { writable, derived, get } from 'svelte/store';
-import { UnifiedGitHubService } from '../../services/UnifiedGitHubService';
 import { createLogger } from '../utils/logger';
+import { createConnectedGitHubAppService } from '../utils/connectedGitHubAppService';
 import type { GitHubIssue } from '../../services/types/repository';
 
 const logger = createLogger('IssuesStore');
@@ -41,18 +41,6 @@ interface LoadingState {
 
 const CACHE_DURATION = 30000; // 30 seconds
 const FORCE_REFRESH_AFTER_ACTION = 2000; // 2 seconds after create/update/close
-
-// Helper function to create UnifiedGitHubService with proper authentication
-async function createGitHubService(token: string): Promise<UnifiedGitHubService> {
-  const authSettings = await chrome.storage.local.get(['authenticationMethod']);
-  const authMethod = authSettings.authenticationMethod || 'pat';
-
-  if (authMethod === 'github_app') {
-    return new UnifiedGitHubService({ type: 'github_app' });
-  } else {
-    return new UnifiedGitHubService(token);
-  }
-}
 
 // Helper function to convert GitHubIssue to Issue format
 function convertGitHubIssueToIssue(githubIssue: GitHubIssue): Issue {
@@ -121,7 +109,6 @@ function createIssuesStore() {
   async function loadIssues(
     owner: string,
     repo: string,
-    githubToken: string,
     state: 'open' | 'closed' | 'all' = 'open',
     forceRefresh: boolean = false
   ): Promise<Issue[]> {
@@ -144,7 +131,7 @@ function createIssuesStore() {
     setLoadingForRepo(repoKey, state, true);
 
     try {
-      const githubService = await createGitHubService(githubToken);
+      const githubService = await createConnectedGitHubAppService();
       // Always fetch ALL issues to avoid cache inconsistencies
       const githubIssues = await githubService.getIssues(owner, repo, 'all', forceRefresh);
 
@@ -191,13 +178,12 @@ function createIssuesStore() {
   async function createIssue(
     owner: string,
     repo: string,
-    githubToken: string,
     issueData: { title: string; body?: string }
   ): Promise<Issue> {
     const repoKey = getRepoKey(owner, repo);
 
     try {
-      const githubService = await createGitHubService(githubToken);
+      const githubService = await createConnectedGitHubAppService();
       const githubIssue = await githubService.createIssue(owner, repo, issueData);
 
       // Convert GitHubIssue to Issue
@@ -231,7 +217,9 @@ function createIssuesStore() {
 
       // Force refresh after a short delay to ensure server state is synced
       setTimeout(() => {
-        loadIssues(owner, repo, githubToken, 'all', true);
+        void loadIssues(owner, repo, 'all', true).catch((error) => {
+          logger.warn('Unable to refresh issues after creation:', error);
+        });
       }, FORCE_REFRESH_AFTER_ACTION);
 
       return newIssue;
@@ -241,7 +229,9 @@ function createIssuesStore() {
       update((current) => ({
         ...current,
         [repoKey]: {
-          ...current[repoKey],
+          issues: current[repoKey]?.issues ?? [],
+          lastFetched: current[repoKey]?.lastFetched ?? 0,
+          isLoading: current[repoKey]?.isLoading ?? false,
           error: errorMessage,
         },
       }));
@@ -253,7 +243,6 @@ function createIssuesStore() {
   async function updateIssue(
     owner: string,
     repo: string,
-    githubToken: string,
     issueNumber: number,
     updateData: { state?: 'open' | 'closed'; title?: string; body?: string }
   ): Promise<Issue> {
@@ -262,7 +251,7 @@ function createIssuesStore() {
     const { title, body, state } = updateData;
 
     try {
-      const githubService = await createGitHubService(githubToken);
+      const githubService = await createConnectedGitHubAppService();
       const githubUpdatedIssue = await githubService.updateIssue(
         owner,
         repo,
@@ -296,7 +285,9 @@ function createIssuesStore() {
 
       // Force refresh after a short delay to ensure server state is synced
       setTimeout(() => {
-        loadIssues(owner, repo, githubToken, 'all', true);
+        void loadIssues(owner, repo, 'all', true).catch((error) => {
+          logger.warn('Unable to refresh issues after update:', error);
+        });
       }, FORCE_REFRESH_AFTER_ACTION);
 
       return updatedIssue;
@@ -306,7 +297,9 @@ function createIssuesStore() {
       update((current) => ({
         ...current,
         [repoKey]: {
-          ...current[repoKey],
+          issues: current[repoKey]?.issues ?? [],
+          lastFetched: current[repoKey]?.lastFetched ?? 0,
+          isLoading: current[repoKey]?.isLoading ?? false,
           error: errorMessage,
         },
       }));
@@ -390,4 +383,37 @@ function createIssuesStore() {
   };
 }
 
-export const issuesStore = createIssuesStore();
+const issuesStoreInternal = createIssuesStore();
+
+export async function loadIssues(
+  owner: string,
+  repo: string,
+  state: 'open' | 'closed' | 'all' = 'open',
+  forceRefresh: boolean = false
+): Promise<Issue[]> {
+  return issuesStoreInternal.loadIssues(owner, repo, state, forceRefresh);
+}
+
+export async function createIssue(
+  owner: string,
+  repo: string,
+  issueData: { title: string; body?: string }
+): Promise<Issue> {
+  return issuesStoreInternal.createIssue(owner, repo, issueData);
+}
+
+export async function updateIssue(
+  owner: string,
+  repo: string,
+  issueNumber: number,
+  updateData: { state?: 'open' | 'closed'; title?: string; body?: string }
+): Promise<Issue> {
+  return issuesStoreInternal.updateIssue(owner, repo, issueNumber, updateData);
+}
+
+export const issuesStore = {
+  ...issuesStoreInternal,
+  loadIssues,
+  createIssue,
+  updateIssue,
+};

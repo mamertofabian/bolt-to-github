@@ -11,7 +11,6 @@
   } from '$lib/utils/issue-form';
 
   export let show: boolean;
-  export let githubToken: string;
   export let repoOwner: string;
   export let repoName: string;
 
@@ -35,7 +34,7 @@
       const sanitizedData = sanitizeIssueFormData({ title, body });
       const payload = createIssuePayload(sanitizedData);
 
-      await issuesStore.createIssue(repoOwner, repoName, githubToken, payload);
+      await issuesStore.createIssue(repoOwner, repoName, payload);
 
       // Reset form
       title = '';

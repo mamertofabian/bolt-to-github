@@ -18,7 +18,6 @@
   export let gitHubUsername: string;
   export let repoName: string;
   export let branch: string;
-  export let token: string;
   export let projectTitle: string = 'My Project';
   export let handleUpgradeClick: (upgradeModalType: UpgradeModalType) => void;
 
@@ -27,7 +26,6 @@
   let showIssueManager = false;
   let showQuickIssueForm = false;
   let showCommitsModal = false;
-  let effectiveToken = '';
   let pushError: string | null = null;
   let isPushing = false;
 
@@ -37,26 +35,6 @@
   // Issues count from store
   $: openIssuesCountStore = issuesStore.getOpenIssuesCount(gitHubUsername, repoName);
   $: openIssuesCount = $openIssuesCountStore;
-
-  // Update effective token when component initializes or token changes
-  async function updateEffectiveToken() {
-    // Get authentication method to determine correct token to use
-    const authSettings = await chrome.storage.local.get(['authenticationMethod']);
-    const authMethod = authSettings.authenticationMethod || 'pat';
-
-    if (authMethod === 'github_app') {
-      // For GitHub App, use a placeholder token that the store will recognize
-      effectiveToken = 'github_app_token';
-    } else {
-      // For PAT, use the actual token
-      effectiveToken = token || '';
-    }
-  }
-
-  // Update effective token when token prop changes
-  $: if (token !== undefined) {
-    updateEffectiveToken();
-  }
 
   let isLoading = {
     repoStatus: true,
@@ -186,12 +164,8 @@
         }
         isLoading.latestCommit = false;
 
-        // Issue credential selection remains unchanged until child 05 removes that contract.
-        const issueAuthSettings = await chrome.storage.local.get(['authenticationMethod']);
-        const issueAuthMethod = issueAuthSettings.authenticationMethod || 'pat';
-        const tokenToUse = issueAuthMethod === 'github_app' ? 'github_app_token' : token;
         try {
-          await issuesStore.loadIssues(gitHubUsername, repoName, tokenToUse, 'all');
+          await issuesStore.loadIssues(gitHubUsername, repoName, 'all');
         } catch (err) {
           logger.error('Error fetching issues:', err);
         }
@@ -775,7 +749,6 @@
 {#if showIssueManager}
   <IssueManager
     show={showIssueManager}
-    githubToken={effectiveToken}
     repoOwner={gitHubUsername}
     {repoName}
     on:close={handleIssueManagerClose}
@@ -785,7 +758,6 @@
 {#if showQuickIssueForm}
   <QuickIssueForm
     show={showQuickIssueForm}
-    githubToken={effectiveToken}
     repoOwner={gitHubUsername}
     {repoName}
     on:success={handleIssueSuccess}

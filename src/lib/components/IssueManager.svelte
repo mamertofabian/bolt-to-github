@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { onMount, createEventDispatcher } from 'svelte';
+  import { createEventDispatcher } from 'svelte';
   import { Button } from '$lib/components/ui/button';
   import { Label } from '$lib/components/ui/label';
   import IssueCard from './IssueCard.svelte';
@@ -9,7 +9,6 @@
 
   const logger = createLogger('IssueManager');
 
-  export let githubToken: string;
   export let repoOwner: string;
   export let repoName: string;
   export let show: boolean;
@@ -23,6 +22,7 @@
   let issueToClose: number | null = null;
   let isCreatingIssue = false;
   let isClosingIssue = false;
+  let lastAutoLoadKey = '';
 
   // Use issues store for reactive data
   $: issuesData = issuesStore.getIssuesForRepo(repoOwner, repoName, selectedState);
@@ -30,14 +30,15 @@
   $: isRefreshingStore = issuesStore.getLoadingState(repoOwner, repoName, selectedState);
   $: isRefreshing = $isRefreshingStore;
 
-  onMount(async () => {
-    if (show && repoOwner && repoName && githubToken) {
-      await loadIssues();
+  $: {
+    const autoLoadKey =
+      show && repoOwner && repoName ? `${repoOwner}/${repoName}/${selectedState}` : '';
+    if (autoLoadKey && autoLoadKey !== lastAutoLoadKey) {
+      lastAutoLoadKey = autoLoadKey;
+      void loadIssues();
+    } else if (!autoLoadKey) {
+      lastAutoLoadKey = '';
     }
-  });
-
-  $: if (show && repoOwner && repoName && githubToken) {
-    loadIssues();
   }
 
   // Focus management for accessibility
@@ -49,12 +50,12 @@
   }
 
   async function loadIssues(forceRefresh: boolean = false) {
-    if (!githubToken || !repoOwner || !repoName) return;
+    if (!repoOwner || !repoName) return;
 
     logger.info('🔄 loadIssues called:', { forceRefresh, selectedState, repoOwner, repoName });
 
     try {
-      await issuesStore.loadIssues(repoOwner, repoName, githubToken, selectedState, forceRefresh);
+      await issuesStore.loadIssues(repoOwner, repoName, selectedState, forceRefresh);
       logger.info('✅ loadIssues completed successfully');
     } catch (err) {
       logger.error('Error loading issues:', err);
@@ -63,10 +64,10 @@
 
   async function handleCreateIssue(event: CustomEvent) {
     const { title, body } = event.detail;
-    if (!githubToken || !repoOwner || !repoName) return;
+    if (!repoOwner || !repoName) return;
 
     try {
-      await issuesStore.createIssue(repoOwner, repoName, githubToken, { title, body });
+      await issuesStore.createIssue(repoOwner, repoName, { title, body });
 
       // Reset form state
       isCreatingIssue = false;
@@ -77,6 +78,7 @@
     } catch (err) {
       console.error('Error creating issue:', err);
       isCreatingIssue = false;
+      showNewIssueForm = false;
     }
   }
 
@@ -86,12 +88,12 @@
   }
 
   async function confirmCloseIssue() {
-    if (!githubToken || !repoOwner || !repoName || issueToClose === null) return;
+    if (!repoOwner || !repoName || issueToClose === null) return;
 
     try {
       logger.info('Closing issue:', issueToClose);
       isClosingIssue = true;
-      await issuesStore.updateIssue(repoOwner, repoName, githubToken, issueToClose, {
+      await issuesStore.updateIssue(repoOwner, repoName, issueToClose, {
         state: 'closed',
       });
       showCloseConfirmation = false;

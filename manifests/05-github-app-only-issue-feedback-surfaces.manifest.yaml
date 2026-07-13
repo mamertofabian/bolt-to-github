@@ -1,0 +1,303 @@
+schema: '2'
+goal: |
+  Remove PAT token parameters from GitHub issue management and feedback
+  workflows while preserving visible, actionable connection failures.
+description: |
+  Fifth implementation child of github-app-only-authentication.
+
+  Issue and feedback flows currently accept githubToken props or store
+  parameters, carry token-shaped GitHub App sentinels, and choose an auth
+  strategy internally. They must instead obtain the explicit GitHub App service
+  through the shared live gate at each GitHub action boundary. Issue-store
+  public methods accept repository identity and issue data only; authentication
+  remains an infrastructure concern rather than a UI capability parameter.
+
+  This child removes token plumbing only from issue and feedback surfaces. It
+  does not delete the PAT strategy, constructor, or shared storage fields owned
+  by children 06 and 07.
+temptations:
+  - risk: 'Do not keep unused githubToken parameters or github_app_token sentinels for compatibility.'
+    instead: 'Change the public store/component contracts, update every caller, and let TypeScript expose missed token plumbing.'
+  - risk: 'Do not make issue or feedback failures disappear when the account is disconnected.'
+    instead: 'Preserve the shared sign-in or GitHub App connection message in visible store and form error states.'
+  - risk: 'Do not bypass the live gate because an issue modal was opened from an already-rendered popup.'
+    instead: 'Verify readiness at the public issue or feedback action boundary immediately before GitHub API work.'
+  - risk: 'Do not require a token-shaped sentinel to decide whether issue UI can mount.'
+    instead: 'Use live popup readiness plus repository identity as the capability boundary.'
+type: refactor
+files:
+  create:
+    - path: src/popup/__tests__/App.issue-feedback-auth-boundary.test.ts
+      artifacts:
+        - kind: test_function
+          name: popup app no longer forwards PAT capabilities to issue and feedback modals
+  edit:
+    - path: src/lib/stores/issuesStore.ts
+      artifacts:
+        - kind: function
+          name: loadIssues
+          args:
+            - name: owner
+              type: string
+            - name: repo
+              type: string
+            - name: state
+              type: "'open' | 'closed' | 'all'"
+            - name: forceRefresh
+              type: boolean
+          returns: Promise<Issue[]>
+        - kind: function
+          name: createIssue
+          args:
+            - name: owner
+              type: string
+            - name: repo
+              type: string
+            - name: issueData
+              type: '{ title: string; body?: string }'
+          returns: Promise<Issue>
+        - kind: function
+          name: updateIssue
+          args:
+            - name: owner
+              type: string
+            - name: repo
+              type: string
+            - name: issueNumber
+              type: number
+            - name: updateData
+              type: "{ state?: 'open' | 'closed'; title?: string; body?: string }"
+          returns: Promise<Issue>
+    - path: src/lib/components/IssueManager.svelte
+      artifacts:
+        - kind: function
+          name: IssueManager
+          args:
+            - name: props
+              type: IssueManager component props without githubToken
+          returns: Svelte component instance
+    - path: src/lib/components/QuickIssueForm.svelte
+      artifacts:
+        - kind: function
+          name: QuickIssueForm
+          args:
+            - name: props
+              type: QuickIssueForm component props without githubToken
+          returns: Svelte component instance
+    - path: src/lib/components/ProjectStatus.svelte
+      artifacts:
+        - kind: function
+          name: ProjectStatus
+          args:
+            - name: props
+              type: ProjectStatus component props without token
+          returns: Svelte component instance
+    - path: src/popup/components/FeedbackModal.svelte
+      artifacts:
+        - kind: function
+          name: FeedbackModal
+          args:
+            - name: props
+              type: FeedbackModal component props without githubToken
+          returns: Svelte component instance
+    - path: src/popup/components/HomeTabContent.svelte
+      artifacts:
+        - kind: function
+          name: HomeTabContent
+          args:
+            - name: props
+              type: HomeTabContent component props
+          returns: Svelte component instance
+    - path: src/popup/App.svelte
+      artifacts:
+        - kind: function
+          name: App
+          args:
+            - name: props
+              type: popup App component props
+          returns: Svelte component instance
+    - path: src/lib/stores/__tests__/issuesStore.test.ts
+      artifacts:
+        - kind: test_function
+          name: issue store uses GitHub App authentication without token arguments
+        - kind: test_function
+          name: issue operations fail visibly when live connection is unavailable
+    - path: src/lib/components/__tests__/IssueManager.component.test.ts
+      artifacts:
+        - kind: test_function
+          name: issue manager loads creates and updates issues without a PAT prop
+        - kind: test_function
+          name: issue manager reveals GitHub App guidance when issue creation is disconnected
+    - path: src/lib/components/__tests__/QuickIssueForm.component.test.ts
+      artifacts:
+        - kind: test_function
+          name: quick issue form submits without a PAT prop
+    - path: src/lib/components/__tests__/ProjectStatus.component.test.ts
+      artifacts:
+        - kind: test_function
+          name: project status issue surfaces no longer accept or forward token placeholders
+    - path: src/popup/components/__tests__/FeedbackModal.component.test.ts
+      artifacts:
+        - kind: test_function
+          name: feedback submission uses GitHub App authentication without a PAT prop
+        - kind: test_function
+          name: disconnected feedback preserves actionable GitHub App guidance
+    - path: src/popup/components/__tests__/HomeTabContent.component.test.ts
+      artifacts:
+        - kind: test_function
+          name: home tab no longer forwards stored PAT state into project status
+  read:
+    - manifests/drafts/github-app-only-authentication.manifest.yaml
+    - manifests/03-github-app-only-runtime-enforcement.manifest.yaml
+    - manifests/04-github-app-only-repository-surfaces.manifest.yaml
+    - src/lib/utils/connectedGitHubAppService.ts
+    - src/lib/utils/githubConnection.ts
+    - src/services/UnifiedGitHubService.ts
+validate:
+  - pnpm exec vitest run src/lib/stores/__tests__/issuesStore.test.ts src/lib/components/__tests__/IssueManager.component.test.ts src/lib/components/__tests__/QuickIssueForm.component.test.ts src/lib/components/__tests__/ProjectStatus.component.test.ts src/popup/components/__tests__/FeedbackModal.component.test.ts src/popup/components/__tests__/HomeTabContent.component.test.ts src/popup/__tests__/App.issue-feedback-auth-boundary.test.ts
+  - ./scripts/maid validate manifests/05-github-app-only-issue-feedback-surfaces.manifest.yaml --mode behavioral
+  - pnpm lint
+  - pnpm check
+  - pnpm build
+created: '2026-07-13T12:40:05Z'
+metadata:
+  tags: [auth, github-app, pat-retirement, issues, feedback]
+  priority: high
+  status: approved
+  promotion_ready: true
+  parent_epic: github-app-only-authentication
+  depends_on:
+    - 02-github-app-only-primary-setup
+    - 03-github-app-only-runtime-enforcement
+    - 04-github-app-only-repository-surfaces
+  evolves_active_contracts:
+    - 01-instrument-upgrade-funnel-events
+    - cache-recent-popup-github-verification
+    - 02-github-app-only-primary-setup
+    - 03-github-app-only-runtime-enforcement
+    - repair-e2e-error-flow-fast-gate
+    - 04-github-app-only-repository-surfaces
+  notes: Children 06 and 07 own removal of PAT strategy/constructors and shared githubToken storage/types after these callers are token-free.
+outcome:
+  status: completed
+  summary: |
+    GitHub issue loading, creation, updates, and feedback submission now obtain
+    an explicit GitHub App service through the shared live connection gate.
+    Issue-store APIs and the IssueManager, QuickIssueForm, ProjectStatus,
+    HomeTabContent, FeedbackModal, and popup App surfaces no longer accept,
+    manufacture, or forward PAT/token-shaped capabilities.
+
+    Disconnected actions preserve actionable Bolt2GitHub sign-in and GitHub App
+    guidance. Failed create/update operations keep a complete issue-store state
+    for active subscribers, and IssueManager closes its creation form so the
+    store error is visible instead of being hidden behind the form.
+  rationale: |
+    Authentication is an infrastructure concern at the GitHub action boundary,
+    not a token prop that UI components should carry. Using one live-gated App
+    service eliminates the remaining issue/feedback auth-method branches while
+    retaining visible recovery behavior when an account or installation is no
+    longer connected.
+  lessons:
+    - lesson_type: token-free-ui-capability-boundary
+      summary: |
+        GitHub-backed UI surfaces should receive repository identity and action
+        data only; the service boundary should verify the live GitHub App
+        connection immediately before API work.
+      tags: [auth, github-app, architecture]
+      paths:
+        - src/lib/stores/issuesStore.ts
+        - src/lib/components/IssueManager.svelte
+        - src/popup/components/FeedbackModal.svelte
+    - lesson_type: complete-error-state-shape
+      summary: |
+        A failed action on a previously unseen repository must initialize every
+        field read by derived stores. An error-only partial object can turn an
+        actionable auth failure into a secondary subscriber exception.
+      tags: [state, errors, reliability]
+      paths:
+        - src/lib/stores/issuesStore.ts
+        - src/lib/stores/__tests__/issuesStore.test.ts
+    - lesson_type: error-visibility-follows-render-priority
+      summary: |
+        Setting an error is insufficient when an earlier template branch keeps
+        rendering an action form. Failure handling must transition the UI to a
+        state where the actionable recovery message is actually visible.
+      tags: [ux, errors, svelte]
+      paths:
+        - src/lib/components/IssueManager.svelte
+        - src/lib/components/__tests__/IssueManager.component.test.ts
+  review_notes:
+    - source: independent reviewer /root/child05_issue_feedback_review
+      severity: findings-fixed
+      summary: |
+        Review found two disconnected-create blockers: create/update catches
+        could leave an error-only repository state that broke derived readers,
+        and IssueManager kept the creation form open above the store error. Both
+        findings were fixed with focused behavioral regressions.
+    - source: independent reviewer /root/child05_issue_feedback_review final
+      severity: ready
+      summary: |
+        Final read-only review confirmed complete store state on failed issue
+        actions, visible GitHub App guidance after create rejection, no remaining
+        production PAT/token forwarding in scope, and 107 focused tests green.
+  validation:
+    - command:
+        - pnpm
+        - exec
+        - vitest
+        - run
+        - src/lib/stores/__tests__/issuesStore.test.ts
+        - src/lib/components/__tests__/IssueManager.component.test.ts
+        - src/lib/components/__tests__/QuickIssueForm.component.test.ts
+        - src/lib/components/__tests__/ProjectStatus.component.test.ts
+        - src/popup/components/__tests__/FeedbackModal.component.test.ts
+        - src/popup/components/__tests__/HomeTabContent.component.test.ts
+        - src/popup/__tests__/App.issue-feedback-auth-boundary.test.ts
+      status: failed-red-phase
+      summary: The initial contract failed 20 of 197 tests because issue and feedback paths still accepted token arguments, selected PAT authentication, forwarded token props, and used token-shaped App sentinels.
+    - command:
+        - pnpm
+        - exec
+        - vitest
+        - run
+        - src/lib/stores/__tests__/issuesStore.test.ts
+        - src/lib/components/__tests__/IssueManager.component.test.ts
+      status: failed-red-phase
+      summary: Reviewer-driven regressions failed on the partial disconnected repository state and the creation form hiding the actionable connection error.
+    - command:
+        - ./scripts/maid
+        - test
+        - --manifest
+        - manifests/05-github-app-only-issue-feedback-surfaces.manifest.yaml
+      status: passed
+      summary: All five declared commands passed, including 7 focused files with 194 tests, behavioral validation, lint, type checking, and a production build.
+    - command:
+        - ./scripts/maid
+        - validate
+        - manifests/05-github-app-only-issue-feedback-surfaces.manifest.yaml
+        - --mode
+        - implementation
+      status: passed
+      summary: Every declared production and behavioral artifact passed implementation validation.
+    - command:
+        - pnpm
+        - test:ci
+      status: passed
+      summary: Full Vitest CI passed 199 files and 4,283 tests after the review fixes.
+    - command:
+        - ./scripts/maid
+        - verify
+        - --manifest-dir
+        - manifests
+        - --strict
+        - --file-tracking-scope
+        - task
+        - --plan-lock-scope
+        - task
+        - --since
+        - HEAD
+        - --include-tests
+        - --require-plan-lock
+        - --require-red-evidence
+      status: passed
+      summary: Task-scoped strict verification passed all nine gates after reconciling the intentionally evolved child-04 ProjectStatus test lock; only pre-existing non-blocking validator coverage warnings remained.

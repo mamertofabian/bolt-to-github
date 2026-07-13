@@ -5,8 +5,13 @@ import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { render, screen } from '@testing-library/svelte';
 
 import HomeTabContent from '../HomeTabContent.svelte';
+import homeTabContentSource from '../HomeTabContent.svelte?raw';
 
 describe('HomeTabContent', () => {
+  it('home tab no longer forwards stored PAT state into project status', () => {
+    expect(homeTabContentSource).not.toContain('token={githubSettings.githubToken}');
+  });
+
   const defaultProps = {
     projectStatusRef: null,
     projectId: null,

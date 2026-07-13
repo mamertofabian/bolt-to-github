@@ -68,7 +68,6 @@
     gitHubUsername={githubSettings.repoOwner}
     repoName={githubSettings.repoName}
     branch={githubSettings.branch}
-    token={githubSettings.githubToken}
     on:switchTab={handleSwitchTab}
     on:showFileChanges={handleShowFileChanges}
     {handleUpgradeClick}

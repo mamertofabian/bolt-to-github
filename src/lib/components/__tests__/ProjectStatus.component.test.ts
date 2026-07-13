@@ -6,6 +6,7 @@ import { describe, it, expect, beforeEach, vi, afterEach } from 'vitest';
 import { render, screen, waitFor } from '@testing-library/svelte';
 import userEvent from '@testing-library/user-event';
 import ProjectStatus from '../ProjectStatus.svelte';
+import projectStatusSource from '../ProjectStatus.svelte?raw';
 
 const mockChromeStorageService = vi.hoisted(() => ({
   getProjectSettingsWithMetadata: vi.fn(),
@@ -98,6 +99,13 @@ vi.mock('$lib/services/chromeStorage', () => ({
   ChromeStorageService: mockChromeStorageService,
 }));
 
+it('project status issue surfaces no longer accept or forward token placeholders', () => {
+  expect(projectStatusSource).not.toContain('export let token');
+  expect(projectStatusSource).not.toContain('github_app_token');
+  expect(projectStatusSource).not.toContain('authenticationMethod');
+  expect(projectStatusSource).not.toContain('githubToken=');
+});
+
 vi.mock('../../services/GitHubCacheService', () => ({
   GitHubCacheService: mockGitHubCacheService,
 }));
@@ -150,7 +158,6 @@ describe('ProjectStatus.svelte - Component Tests', () => {
     gitHubUsername: 'testuser',
     repoName: 'test-repo',
     branch: 'main',
-    token: 'test-token',
     projectTitle: 'Test Project',
     handleUpgradeClick: vi.fn(),
   };
@@ -383,11 +390,12 @@ describe('ProjectStatus.svelte - Component Tests', () => {
       expect(mockServiceConstructor).not.toHaveBeenCalledWith(expect.any(String));
     });
 
+    // Historical artifact name retained for the evolved child-04 contract.
     it('project status leaves issue credential selection unchanged until child 05', async () => {
       const { component } = render(ProjectStatus, { props: defaultProps });
       await loadReadyProjectStatus(component);
 
-      expect(mockLoadIssues).toHaveBeenCalledWith('testuser', 'test-repo', 'test-token', 'all');
+      expect(mockLoadIssues).toHaveBeenCalledWith('testuser', 'test-repo', 'all');
     });
 
     it('should render without crashing when provided with valid props', () => {

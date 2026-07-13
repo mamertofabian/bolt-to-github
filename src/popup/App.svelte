@@ -179,9 +179,6 @@
   let successToastMessage = '';
   let showSubscribePrompt = false;
 
-  // GitHub-backed components still accept a token-shaped capability. The
-  // background service resolves this sentinel to a short-lived App credential.
-  let effectiveGithubToken = '';
   let githubConnectionChecking = true;
   let githubConnectionReady = false;
   let githubAppMigrationRequired = false;
@@ -319,9 +316,6 @@
   function handleOpenFileChangesMessage() {
     showStoredFileChanges();
   }
-
-  $: effectiveGithubToken =
-    githubConnectionReady && githubSettings.githubAppInstallationId ? 'github_app_token' : '';
 
   async function initializeApp() {
     // Add dark mode to the document
@@ -956,7 +950,7 @@
     features={upgradeModalConfig.features}
   />
 
-  <FeedbackModal bind:show={modalStates.feedback} githubToken={githubSettings.githubToken} />
+  <FeedbackModal bind:show={modalStates.feedback} />
 
   <!-- Newsletter subscription modal -->
   <NewsletterModal bind:show={modalStates.newsletter} on:close={handleNewsletterModalClose} />
@@ -975,10 +969,9 @@
   />
 
   <!-- Issues modal -->
-  {#if canOpenPopupGitHubSurface(githubConnectionReady, Boolean(settingsValid && effectiveGithubToken && githubSettings.repoOwner && githubSettings.repoName))}
+  {#if canOpenPopupGitHubSurface(githubConnectionReady, Boolean(settingsValid && githubSettings.repoOwner && githubSettings.repoName))}
     <IssueManager
       bind:show={modalStates.issues}
-      githubToken={effectiveGithubToken}
       repoOwner={githubSettings.repoOwner}
       repoName={githubSettings.repoName}
       on:close={() => (modalStates.issues = false)}

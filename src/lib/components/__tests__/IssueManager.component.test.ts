@@ -6,6 +6,7 @@ import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { render, screen, waitFor } from '@testing-library/svelte';
 import userEvent from '@testing-library/user-event';
 import IssueManager from '../IssueManager.svelte';
+import issueManagerSource from '../IssueManager.svelte?raw';
 import { issuesStore } from '$lib/stores/issuesStore';
 import { writable, derived } from 'svelte/store';
 
@@ -59,7 +60,6 @@ Object.defineProperty(globalThis, 'chrome', {
 
 describe('IssueManager.svelte - Component Tests', () => {
   const defaultProps = {
-    githubToken: 'test-token',
     repoOwner: 'testowner',
     repoName: 'testrepo',
     show: true,
@@ -119,6 +119,82 @@ describe('IssueManager.svelte - Component Tests', () => {
     vi.clearAllMocks();
     vi.useRealTimers();
     issuesStore.reset();
+  });
+
+  it('issue manager loads creates and updates issues without a PAT prop', async () => {
+    const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime });
+    expect(issueManagerSource).not.toContain('export let githubToken');
+    expect(issueManagerSource).not.toContain('githubToken,');
+
+    mockIssuesState.set({
+      'testowner/testrepo': {
+        issues: mockIssues,
+        isLoading: false,
+        error: null,
+        lastFetched: Date.now(),
+      },
+    });
+    vi.mocked(issuesStore.createIssue).mockResolvedValue({ ...mockIssues[0], number: 3 });
+    vi.mocked(issuesStore.updateIssue).mockResolvedValue({
+      ...mockIssues[0],
+      state: 'closed',
+    });
+
+    render(IssueManager, {
+      props: { repoOwner: 'testowner', repoName: 'testrepo', show: true },
+    });
+
+    await waitFor(() => {
+      expect(issuesStore.loadIssues).toHaveBeenCalledWith('testowner', 'testrepo', 'open', false);
+    });
+
+    await user.click(screen.getByRole('button', { name: /new issue/i }));
+    await user.type(screen.getByRole('textbox', { name: /title/i }), 'App-only issue');
+    await user.click(screen.getByRole('button', { name: /create issue/i }));
+
+    await waitFor(() => {
+      expect(issuesStore.createIssue).toHaveBeenCalledWith('testowner', 'testrepo', {
+        title: 'App-only issue',
+        body: '',
+      });
+    });
+
+    await user.click(screen.getAllByTitle('Close issue')[0]);
+    await user.click(screen.getByRole('button', { name: 'Close Issue' }));
+
+    await waitFor(() => {
+      expect(issuesStore.updateIssue).toHaveBeenCalledWith('testowner', 'testrepo', 1, {
+        state: 'closed',
+      });
+    });
+  });
+
+  it('issue manager reveals GitHub App guidance when issue creation is disconnected', async () => {
+    const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime });
+    const connectionMessage =
+      'Sign in to bolt2github.com and connect the GitHub App before using GitHub features.';
+    vi.mocked(issuesStore.createIssue).mockImplementation(async () => {
+      mockIssuesState.set({
+        'testowner/testrepo': {
+          issues: [],
+          isLoading: false,
+          error: connectionMessage,
+          lastFetched: 0,
+        },
+      });
+      throw new Error(connectionMessage);
+    });
+
+    render(IssueManager, { props: defaultProps });
+
+    await user.click(screen.getByRole('button', { name: /new issue/i }));
+    await user.type(screen.getByRole('textbox', { name: /title/i }), 'Disconnected issue');
+    await user.click(screen.getByRole('button', { name: /create issue/i }));
+
+    await waitFor(() => {
+      expect(screen.getByText(connectionMessage)).toBeInTheDocument();
+    });
+    expect(screen.queryByRole('textbox', { name: /title/i })).not.toBeInTheDocument();
   });
 
   describe('Modal Visibility', () => {
@@ -344,13 +420,7 @@ describe('IssueManager.svelte - Component Tests', () => {
 
       await waitFor(() => {
         expect(issuesStore.invalidateCache).toHaveBeenCalledWith('testowner', 'testrepo');
-        expect(issuesStore.loadIssues).toHaveBeenCalledWith(
-          'testowner',
-          'testrepo',
-          'test-token',
-          'open',
-          true
-        );
+        expect(issuesStore.loadIssues).toHaveBeenCalledWith('testowner', 'testrepo', 'open', true);
       });
     });
 
@@ -467,12 +537,10 @@ describe('IssueManager.svelte - Component Tests', () => {
       await user.click(createButton);
 
       await waitFor(() => {
-        expect(issuesStore.createIssue).toHaveBeenCalledWith(
-          'testowner',
-          'testrepo',
-          'test-token',
-          { title: 'New Issue', body: 'New Description' }
-        );
+        expect(issuesStore.createIssue).toHaveBeenCalledWith('testowner', 'testrepo', {
+          title: 'New Issue',
+          body: 'New Description',
+        });
       });
     });
   });
@@ -507,24 +575,12 @@ describe('IssueManager.svelte - Component Tests', () => {
       render(IssueManager, { props: defaultProps });
 
       await waitFor(() => {
-        expect(issuesStore.loadIssues).toHaveBeenCalledWith(
-          'testowner',
-          'testrepo',
-          'test-token',
-          'open',
-          false
-        );
+        expect(issuesStore.loadIssues).toHaveBeenCalledWith('testowner', 'testrepo', 'open', false);
       });
     });
 
     it('should not load issues when show is false', () => {
       render(IssueManager, { props: { ...defaultProps, show: false } });
-
-      expect(issuesStore.loadIssues).not.toHaveBeenCalled();
-    });
-
-    it('should not load issues when githubToken is missing', () => {
-      render(IssueManager, { props: { ...defaultProps, githubToken: '' } });
 
       expect(issuesStore.loadIssues).not.toHaveBeenCalled();
     });
@@ -707,13 +763,7 @@ describe('IssueManager.svelte - Component Tests', () => {
       await rerender({ repoOwner: 'newowner' });
 
       await waitFor(() => {
-        expect(issuesStore.loadIssues).toHaveBeenCalledWith(
-          'newowner',
-          'testrepo',
-          'test-token',
-          'open',
-          false
-        );
+        expect(issuesStore.loadIssues).toHaveBeenCalledWith('newowner', 'testrepo', 'open', false);
       });
     });
 
@@ -725,31 +775,7 @@ describe('IssueManager.svelte - Component Tests', () => {
       await rerender({ repoName: 'newrepo' });
 
       await waitFor(() => {
-        expect(issuesStore.loadIssues).toHaveBeenCalledWith(
-          'testowner',
-          'newrepo',
-          'test-token',
-          'open',
-          false
-        );
-      });
-    });
-
-    it('should reload issues when githubToken changes', async () => {
-      const { rerender } = render(IssueManager, { props: defaultProps });
-
-      vi.clearAllMocks();
-
-      await rerender({ githubToken: 'new-token' });
-
-      await waitFor(() => {
-        expect(issuesStore.loadIssues).toHaveBeenCalledWith(
-          'testowner',
-          'testrepo',
-          'new-token',
-          'open',
-          false
-        );
+        expect(issuesStore.loadIssues).toHaveBeenCalledWith('testowner', 'newrepo', 'open', false);
       });
     });
   });

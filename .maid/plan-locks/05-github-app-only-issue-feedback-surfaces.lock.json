@@ -1,0 +1,260 @@
+{
+  "manifest_path": "manifests/05-github-app-only-issue-feedback-surfaces.manifest.yaml",
+  "manifest_hash": "sha256:a6ba512129deb09047c8a4827b8abe857941582c38abcd3009d72b18ba1436fd",
+  "test_hashes": {
+    "src/popup/__tests__/App.issue-feedback-auth-boundary.test.ts": "sha256:72cbd2bc4eaefafed7600eb272d4e8a255d6cde74b37c130f33d4a1a94b19dab",
+    "src/lib/stores/__tests__/issuesStore.test.ts": "sha256:ac8c3799710725da2d3dda00efbabaaaed1037d35a44321a72fcc1428edd049b",
+    "src/lib/components/__tests__/IssueManager.component.test.ts": "sha256:b41b290d7c489ea3cee500fc46974ca68b20ed8c1b42247abb0c56eb9b7983b1",
+    "src/lib/components/__tests__/QuickIssueForm.component.test.ts": "sha256:645ac3842a15c0e228e430e8a57c3678361510e00799157dd664498b9f5ec9ca",
+    "src/lib/components/__tests__/ProjectStatus.component.test.ts": "sha256:0e3a68d43065da10caef2185054f499d2c80aa15b2706b323552c4e6fb6f456a",
+    "src/popup/components/__tests__/FeedbackModal.component.test.ts": "sha256:2d26da05635480a42b227355fa360a536ed5954f1a56204e69d4c58fd5004fea",
+    "src/popup/components/__tests__/HomeTabContent.component.test.ts": "sha256:442cbe5fa483a4adbd93133353ca0782c880473f34445e105d518d76fc854188"
+  },
+  "created_at": "2026-07-13T12:49:09.015330+00:00",
+  "revision": 4,
+  "revisions": [
+    {
+      "prior_manifest_hash": "sha256:650bdb3529d25e578a3a1b3671921ee5c90b3a2ba6c6f08d752a71cf8d8ab358",
+      "prior_test_hashes": {
+        "src/popup/__tests__/App.issue-feedback-auth-boundary.test.ts": "sha256:72cbd2bc4eaefafed7600eb272d4e8a255d6cde74b37c130f33d4a1a94b19dab",
+        "src/lib/stores/__tests__/issuesStore.test.ts": "sha256:123884f2cef62144c1d925e004d74cb88829eee3aa6d6c291f38f17b0c45b750",
+        "src/lib/components/__tests__/IssueManager.component.test.ts": "sha256:82dc9cfb0c34a6a39b8b6660f2f1b28153aaff9df112d3074017f5b13209f4e4",
+        "src/lib/components/__tests__/QuickIssueForm.component.test.ts": "sha256:1a24dc6583d9e9154936f7484db021318d94a3f4d21744d784ebefea99c62c20",
+        "src/lib/components/__tests__/ProjectStatus.component.test.ts": "sha256:fba5d8b938a1044c5c61df7c15edefc5ab30a5b15c9ca3d4ce69998ca9d251d2",
+        "src/popup/components/__tests__/FeedbackModal.component.test.ts": "sha256:77c662af55c1742a3925ce73bd413e3f4bde89251c21d52882b805698ebb8943",
+        "src/popup/components/__tests__/HomeTabContent.component.test.ts": "sha256:442cbe5fa483a4adbd93133353ca0782c880473f34445e105d518d76fc854188"
+      },
+      "revised_at": "2026-07-13T12:56:29.812145+00:00",
+      "reason": "Normalize all existing issue and feedback tests to the token-free public contract and strengthen the issue-manager create/update scenario discovered during implementation.",
+      "agent": {
+        "model": "gpt-5",
+        "provider": "openai",
+        "client": "codex",
+        "skills": ["maid-implement-draft", "maid-evolver"],
+        "source": "flags"
+      },
+      "contract_delta": {
+        "artifacts_added": [],
+        "artifacts_removed": [],
+        "files_added": [],
+        "files_removed": [],
+        "validate_commands_added": [],
+        "validate_commands_removed": []
+      }
+    },
+    {
+      "prior_manifest_hash": "sha256:650bdb3529d25e578a3a1b3671921ee5c90b3a2ba6c6f08d752a71cf8d8ab358",
+      "prior_test_hashes": {
+        "src/popup/__tests__/App.issue-feedback-auth-boundary.test.ts": "sha256:72cbd2bc4eaefafed7600eb272d4e8a255d6cde74b37c130f33d4a1a94b19dab",
+        "src/lib/stores/__tests__/issuesStore.test.ts": "sha256:632e68d120009e24c80633a7405fabdc2d26ceabc9928b11fb8c058b39d9eee3",
+        "src/lib/components/__tests__/IssueManager.component.test.ts": "sha256:3e641c06873302371f13751212e284f01f55c5f6e7d0e1d9dddf82ffb9a8e18d",
+        "src/lib/components/__tests__/QuickIssueForm.component.test.ts": "sha256:645ac3842a15c0e228e430e8a57c3678361510e00799157dd664498b9f5ec9ca",
+        "src/lib/components/__tests__/ProjectStatus.component.test.ts": "sha256:0e3a68d43065da10caef2185054f499d2c80aa15b2706b323552c4e6fb6f456a",
+        "src/popup/components/__tests__/FeedbackModal.component.test.ts": "sha256:2d26da05635480a42b227355fa360a536ed5954f1a56204e69d4c58fd5004fea",
+        "src/popup/components/__tests__/HomeTabContent.component.test.ts": "sha256:442cbe5fa483a4adbd93133353ca0782c880473f34445e105d518d76fc854188"
+      },
+      "revised_at": "2026-07-13T13:06:44.157798+00:00",
+      "reason": "Add reviewer-required disconnected create/update state-safety and visible IssueManager recovery contracts.",
+      "agent": {
+        "model": "gpt-5",
+        "provider": "openai",
+        "client": "codex",
+        "skills": ["maid-implement-draft", "maid-evolver"],
+        "source": "flags"
+      },
+      "contract_delta": {
+        "artifacts_added": [
+          "src/lib/components/__tests__/IssueManager.component.test.ts:issue manager reveals GitHub App guidance when issue creation is disconnected",
+          "src/lib/components/__tests__/IssueManager.component.test.ts:issue manager reveals GitHub App guidance when issue creation is disconnected:kind=test_function"
+        ],
+        "artifacts_removed": [],
+        "files_added": [],
+        "files_removed": [],
+        "validate_commands_added": [],
+        "validate_commands_removed": []
+      }
+    },
+    {
+      "prior_manifest_hash": "sha256:f200353ecba30be8e091e38c30ad4971a3382f4603ecb9c000bd5ddbc7ffa376",
+      "prior_test_hashes": {
+        "src/popup/__tests__/App.issue-feedback-auth-boundary.test.ts": "sha256:72cbd2bc4eaefafed7600eb272d4e8a255d6cde74b37c130f33d4a1a94b19dab",
+        "src/lib/stores/__tests__/issuesStore.test.ts": "sha256:ac8c3799710725da2d3dda00efbabaaaed1037d35a44321a72fcc1428edd049b",
+        "src/lib/components/__tests__/IssueManager.component.test.ts": "sha256:b41b290d7c489ea3cee500fc46974ca68b20ed8c1b42247abb0c56eb9b7983b1",
+        "src/lib/components/__tests__/QuickIssueForm.component.test.ts": "sha256:645ac3842a15c0e228e430e8a57c3678361510e00799157dd664498b9f5ec9ca",
+        "src/lib/components/__tests__/ProjectStatus.component.test.ts": "sha256:0e3a68d43065da10caef2185054f499d2c80aa15b2706b323552c4e6fb6f456a",
+        "src/popup/components/__tests__/FeedbackModal.component.test.ts": "sha256:2d26da05635480a42b227355fa360a536ed5954f1a56204e69d4c58fd5004fea",
+        "src/popup/components/__tests__/HomeTabContent.component.test.ts": "sha256:442cbe5fa483a4adbd93133353ca0782c880473f34445e105d518d76fc854188"
+      },
+      "revised_at": "2026-07-13T13:17:08.053755+00:00",
+      "reason": "Capture the completed child-05 Outcome with final validation and independent-review evidence.",
+      "agent": {
+        "model": "gpt-5",
+        "provider": "openai",
+        "client": "codex",
+        "skills": ["maid-implement-draft", "maid-implementation-review"],
+        "source": "flags"
+      },
+      "contract_delta": {
+        "artifacts_added": [],
+        "artifacts_removed": [],
+        "files_added": [],
+        "files_removed": [],
+        "validate_commands_added": [],
+        "validate_commands_removed": []
+      }
+    }
+  ],
+  "red_evidence": {
+    "red": true,
+    "captured_at": "2026-07-13T13:11:14.292379+00:00",
+    "commands": [
+      {
+        "command": "pnpm exec vitest run src/lib/stores/__tests__/issuesStore.test.ts src/lib/components/__tests__/IssueManager.component.test.ts src/lib/components/__tests__/QuickIssueForm.component.test.ts src/lib/components/__tests__/ProjectStatus.component.test.ts src/popup/components/__tests__/FeedbackModal.component.test.ts src/popup/components/__tests__/HomeTabContent.component.test.ts src/popup/__tests__/App.issue-feedback-auth-boundary.test.ts",
+        "exit_code": 1,
+        "output_tail": "     50|   if (authMethod === 'github_app') {\n \u276f Object.loadIssues src/lib/stores/issuesStore.ts:147:29\n \u276f src/lib/stores/__tests__/issuesStore.test.ts:1131:7\n\n\u23af\u23af\u23af\u23af\u23af\u23af\u23af\u23af\u23af\u23af\u23af\u23af\u23af\u23af\u23af\u23af\u23af\u23af\u23af\u23af\u23af\u23af[76/84]\u23af\n\n FAIL  src/lib/stores/__tests__/issuesStore.test.ts > issuesStore > integration scenarios > should handle cache expiration during issue operations\nTypeError: Cannot read properties of undefined (reading 'authenticationMethod')\n \u276f createGitHubService src/lib/stores/issuesStore.ts:48:35\n     46| async function createGitHubService(token: string): Promise<UnifiedGitH\u2026\n     47|   const authSettings = await chrome.storage.local.get(['authentication\u2026\n     48|   const authMethod = authSettings.authenticationMethod || 'pat';\n       |                                   ^\n     49| \n     50|   if (authMethod === 'github_app') {\n \u276f Object.loadIssues src/lib/stores/issuesStore.ts:147:29\n \u276f src/lib/stores/__tests__/issuesStore.test.ts:1153:7\n\n\u23af\u23af\u23af\u23af\u23af\u23af\u23af\u23af\u23af\u23af\u23af\u23af\u23af\u23af\u23af\u23af\u23af\u23af\u23af\u23af\u23af\u23af[77/84]\u23af\n",
+        "classification": "red"
+      },
+      {
+        "command": "./scripts/maid validate manifests/05-github-app-only-issue-feedback-surfaces.manifest.yaml --mode behavioral",
+        "exit_code": 0,
+        "output_tail": "PASS 05-github-app-only-issue-feedback-surfaces\n  Mode: behavioral\n  Duration: 1104ms",
+        "classification": "not_red"
+      },
+      {
+        "command": "pnpm lint",
+        "exit_code": 0,
+        "output_tail": "\n> bolt-to-github@1.3.21 lint /home/atomrem/projects/codefrost-dev/bolt-to-github\n> eslint \"src/**/*.{js,ts,svelte}\"\n",
+        "classification": "not_red"
+      },
+      {
+        "command": "pnpm check",
+        "exit_code": 1,
+        "output_tail": "\n\n\n/home/atomrem/projects/codefrost-dev/bolt-to-github/src/lib/stores/__tests__/issuesStore.test.ts:1142:57\nError: Argument of type 'true' is not assignable to parameter of type '\"all\" | \"open\" | \"closed\" | undefined'. \n      await expect(\n        issuesStore.loadIssues('owner', 'repo1', 'all', true)\n      ).rejects.toThrow();\n\n\n/home/atomrem/projects/codefrost-dev/bolt-to-github/src/lib/stores/__tests__/issuesStore.test.ts:1166:25\nError: Expected 4 arguments, but got 3. \n\n      await issuesStore.createIssue('owner', 'repo', { title: 'New Issue' });\n\n\n\n====================================\nsvelte-check found 130 errors and 0 warnings in 4 files\n\u2009ELIFECYCLE\u2009 Command failed with exit code 1.",
+        "classification": "red"
+      },
+      {
+        "command": "pnpm build",
+        "exit_code": 0,
+        "output_tail": "dist/assets/index-BnArqU_7.js                                 2.56 kB \u2502 gzip:   1.25 kB\ndist/assets/WelcomePageContentScript.ts-D1t7FgTm.js           2.66 kB \u2502 gzip:   0.79 kB\ndist/assets/GitHubCacheService-Bcgnv6OU.js                    3.68 kB \u2502 gzip:   1.30 kB\ndist/assets/TempRepoManager-CmO-we52.js                       5.70 kB \u2502 gzip:   2.18 kB\ndist/assets/logger-CcH-GVeY.js                                8.19 kB \u2502 gzip:   2.69 kB\ndist/pages/logs.js                                           15.32 kB \u2502 gzip:   5.72 kB\ndist/assets/debounce-DAlF9tGa.js                             22.12 kB \u2502 gzip:   6.79 kB\ndist/assets/input-CjMOwtNQ.js                                72.26 kB \u2502 gzip:  25.08 kB\ndist/assets/GitHubComparisonService-HBKyl7EF.js              90.52 kB \u2502 gzip:  25.35 kB\ndist/background/background.js                               109.80 kB \u2502 gzip:  29.33 kB\ndist/content/content.js                                     245.40 kB \u2502 gzip:  72.12 kB\ndist/assets/index.html-C5qYBHi3.js                          467.45 kB \u2502 gzip: 120.72 kB\n\u2713 built in 11.32s\n\n[plugin:vite:reporter] [plugin vite:reporter] \n(!) /home/atomrem/projects/codefrost-dev/bolt-to-github/src/lib/constants/supabase.ts is dynamically imported by /home/atomrem/projects/codefrost-dev/bolt-to-github/src/services/UnifiedGitHubService.ts but also statically imported by /home/atomrem/projects/codefrost-dev/bolt-to-github/src/content/services/SupabaseAuthService.ts, /home/atomrem/projects/codefrost-dev/bolt-to-github/src/services/BoltProjectSyncService.ts, /home/atomrem/projects/codefrost-dev/bolt-to-github/src/services/GitHubAppService.ts, /home/atomrem/projects/codefrost-dev/bolt-to-github/src/services/SubscriptionService.ts, dynamic import will not move module into another chunk.\n\n[plugin:vite:reporter] [plugin vite:reporter] \n(!) /home/atomrem/projects/codefrost-dev/bolt-to-github/src/content/handlers/FileChangeHandler.ts is dynamically imported by /home/atomrem/projects/codefrost-dev/bolt-to-github/src/content/handlers/GitHubUploadHandler.ts, /home/atomrem/projects/codefrost-dev/bolt-to-github/src/content/services/PushReminderService.ts, /home/atomrem/projects/codefrost-dev/bolt-to-github/src/content/services/PushReminderService.ts but also statically imported by /home/atomrem/projects/codefrost-dev/bolt-to-github/src/content/UIManager.ts, dynamic import will not move module into another chunk.\n",
+        "classification": "not_red"
+      }
+    ]
+  },
+  "agent": {
+    "model": "gpt-5",
+    "provider": "openai",
+    "client": "codex",
+    "skills": ["maid-implement-draft", "maid-evolver"],
+    "source": "flags"
+  },
+  "_manifest_contract": {
+    "artifacts": [
+      "src/lib/components/IssueManager.svelte:function:IssueManager",
+      "src/lib/components/IssueManager.svelte:function:IssueManager:arg=props:type=IssueManager component props without githubToken:default=None",
+      "src/lib/components/IssueManager.svelte:function:IssueManager:kind=function",
+      "src/lib/components/IssueManager.svelte:function:IssueManager:returns=Svelte component instance",
+      "src/lib/components/ProjectStatus.svelte:function:ProjectStatus",
+      "src/lib/components/ProjectStatus.svelte:function:ProjectStatus:arg=props:type=ProjectStatus component props without token:default=None",
+      "src/lib/components/ProjectStatus.svelte:function:ProjectStatus:kind=function",
+      "src/lib/components/ProjectStatus.svelte:function:ProjectStatus:returns=Svelte component instance",
+      "src/lib/components/QuickIssueForm.svelte:function:QuickIssueForm",
+      "src/lib/components/QuickIssueForm.svelte:function:QuickIssueForm:arg=props:type=QuickIssueForm component props without githubToken:default=None",
+      "src/lib/components/QuickIssueForm.svelte:function:QuickIssueForm:kind=function",
+      "src/lib/components/QuickIssueForm.svelte:function:QuickIssueForm:returns=Svelte component instance",
+      "src/lib/components/__tests__/IssueManager.component.test.ts:issue manager loads creates and updates issues without a PAT prop",
+      "src/lib/components/__tests__/IssueManager.component.test.ts:issue manager loads creates and updates issues without a PAT prop:kind=test_function",
+      "src/lib/components/__tests__/IssueManager.component.test.ts:issue manager reveals GitHub App guidance when issue creation is disconnected",
+      "src/lib/components/__tests__/IssueManager.component.test.ts:issue manager reveals GitHub App guidance when issue creation is disconnected:kind=test_function",
+      "src/lib/components/__tests__/ProjectStatus.component.test.ts:project status issue surfaces no longer accept or forward token placeholders",
+      "src/lib/components/__tests__/ProjectStatus.component.test.ts:project status issue surfaces no longer accept or forward token placeholders:kind=test_function",
+      "src/lib/components/__tests__/QuickIssueForm.component.test.ts:quick issue form submits without a PAT prop",
+      "src/lib/components/__tests__/QuickIssueForm.component.test.ts:quick issue form submits without a PAT prop:kind=test_function",
+      "src/lib/stores/__tests__/issuesStore.test.ts:issue operations fail visibly when live connection is unavailable",
+      "src/lib/stores/__tests__/issuesStore.test.ts:issue operations fail visibly when live connection is unavailable:kind=test_function",
+      "src/lib/stores/__tests__/issuesStore.test.ts:issue store uses GitHub App authentication without token arguments",
+      "src/lib/stores/__tests__/issuesStore.test.ts:issue store uses GitHub App authentication without token arguments:kind=test_function",
+      "src/lib/stores/issuesStore.ts:function:createIssue",
+      "src/lib/stores/issuesStore.ts:function:createIssue:arg=issueData:type={ title: string; body?: string }:default=None",
+      "src/lib/stores/issuesStore.ts:function:createIssue:arg=owner:type=string:default=None",
+      "src/lib/stores/issuesStore.ts:function:createIssue:arg=repo:type=string:default=None",
+      "src/lib/stores/issuesStore.ts:function:createIssue:kind=function",
+      "src/lib/stores/issuesStore.ts:function:createIssue:returns=Promise<Issue>",
+      "src/lib/stores/issuesStore.ts:function:loadIssues",
+      "src/lib/stores/issuesStore.ts:function:loadIssues:arg=forceRefresh:type=boolean:default=None",
+      "src/lib/stores/issuesStore.ts:function:loadIssues:arg=owner:type=string:default=None",
+      "src/lib/stores/issuesStore.ts:function:loadIssues:arg=repo:type=string:default=None",
+      "src/lib/stores/issuesStore.ts:function:loadIssues:arg=state:type='open' | 'closed' | 'all':default=None",
+      "src/lib/stores/issuesStore.ts:function:loadIssues:kind=function",
+      "src/lib/stores/issuesStore.ts:function:loadIssues:returns=Promise<Issue[]>",
+      "src/lib/stores/issuesStore.ts:function:updateIssue",
+      "src/lib/stores/issuesStore.ts:function:updateIssue:arg=issueNumber:type=number:default=None",
+      "src/lib/stores/issuesStore.ts:function:updateIssue:arg=owner:type=string:default=None",
+      "src/lib/stores/issuesStore.ts:function:updateIssue:arg=repo:type=string:default=None",
+      "src/lib/stores/issuesStore.ts:function:updateIssue:arg=updateData:type={ state?: 'open' | 'closed'; title?: string; body?: string }:default=None",
+      "src/lib/stores/issuesStore.ts:function:updateIssue:kind=function",
+      "src/lib/stores/issuesStore.ts:function:updateIssue:returns=Promise<Issue>",
+      "src/popup/App.svelte:function:App",
+      "src/popup/App.svelte:function:App:arg=props:type=popup App component props:default=None",
+      "src/popup/App.svelte:function:App:kind=function",
+      "src/popup/App.svelte:function:App:returns=Svelte component instance",
+      "src/popup/__tests__/App.issue-feedback-auth-boundary.test.ts:popup app no longer forwards PAT capabilities to issue and feedback modals",
+      "src/popup/__tests__/App.issue-feedback-auth-boundary.test.ts:popup app no longer forwards PAT capabilities to issue and feedback modals:kind=test_function",
+      "src/popup/components/FeedbackModal.svelte:function:FeedbackModal",
+      "src/popup/components/FeedbackModal.svelte:function:FeedbackModal:arg=props:type=FeedbackModal component props without githubToken:default=None",
+      "src/popup/components/FeedbackModal.svelte:function:FeedbackModal:kind=function",
+      "src/popup/components/FeedbackModal.svelte:function:FeedbackModal:returns=Svelte component instance",
+      "src/popup/components/HomeTabContent.svelte:function:HomeTabContent",
+      "src/popup/components/HomeTabContent.svelte:function:HomeTabContent:arg=props:type=HomeTabContent component props:default=None",
+      "src/popup/components/HomeTabContent.svelte:function:HomeTabContent:kind=function",
+      "src/popup/components/HomeTabContent.svelte:function:HomeTabContent:returns=Svelte component instance",
+      "src/popup/components/__tests__/FeedbackModal.component.test.ts:disconnected feedback preserves actionable GitHub App guidance",
+      "src/popup/components/__tests__/FeedbackModal.component.test.ts:disconnected feedback preserves actionable GitHub App guidance:kind=test_function",
+      "src/popup/components/__tests__/FeedbackModal.component.test.ts:feedback submission uses GitHub App authentication without a PAT prop",
+      "src/popup/components/__tests__/FeedbackModal.component.test.ts:feedback submission uses GitHub App authentication without a PAT prop:kind=test_function",
+      "src/popup/components/__tests__/HomeTabContent.component.test.ts:home tab no longer forwards stored PAT state into project status",
+      "src/popup/components/__tests__/HomeTabContent.component.test.ts:home tab no longer forwards stored PAT state into project status:kind=test_function"
+    ],
+    "files": {
+      "create": ["src/popup/__tests__/App.issue-feedback-auth-boundary.test.ts"],
+      "edit": [
+        "src/lib/components/IssueManager.svelte",
+        "src/lib/components/ProjectStatus.svelte",
+        "src/lib/components/QuickIssueForm.svelte",
+        "src/lib/components/__tests__/IssueManager.component.test.ts",
+        "src/lib/components/__tests__/ProjectStatus.component.test.ts",
+        "src/lib/components/__tests__/QuickIssueForm.component.test.ts",
+        "src/lib/stores/__tests__/issuesStore.test.ts",
+        "src/lib/stores/issuesStore.ts",
+        "src/popup/App.svelte",
+        "src/popup/components/FeedbackModal.svelte",
+        "src/popup/components/HomeTabContent.svelte",
+        "src/popup/components/__tests__/FeedbackModal.component.test.ts",
+        "src/popup/components/__tests__/HomeTabContent.component.test.ts"
+      ],
+      "read": [
+        "manifests/03-github-app-only-runtime-enforcement.manifest.yaml",
+        "manifests/04-github-app-only-repository-surfaces.manifest.yaml",
+        "manifests/drafts/github-app-only-authentication.manifest.yaml",
+        "src/lib/utils/connectedGitHubAppService.ts",
+        "src/lib/utils/githubConnection.ts",
+        "src/services/UnifiedGitHubService.ts"
+      ]
+    },
+    "test_files": [
+      "src/lib/components/__tests__/IssueManager.component.test.ts",
+      "src/lib/components/__tests__/ProjectStatus.component.test.ts",
+      "src/lib/components/__tests__/QuickIssueForm.component.test.ts",
+      "src/lib/stores/__tests__/issuesStore.test.ts",
+      "src/popup/__tests__/App.issue-feedback-auth-boundary.test.ts",
+      "src/popup/components/__tests__/FeedbackModal.component.test.ts",
+      "src/popup/components/__tests__/HomeTabContent.component.test.ts"
+    ],
+    "validate_commands": [
+      "pnpm exec vitest run src/lib/stores/__tests__/issuesStore.test.ts src/lib/components/__tests__/IssueManager.component.test.ts src/lib/components/__tests__/QuickIssueForm.component.test.ts src/lib/components/__tests__/ProjectStatus.component.test.ts src/popup/components/__tests__/FeedbackModal.component.test.ts src/popup/components/__tests__/HomeTabContent.component.test.ts src/popup/__tests__/App.issue-feedback-auth-boundary.test.ts",
+      "./scripts/maid validate manifests/05-github-app-only-issue-feedback-surfaces.manifest.yaml --mode behavioral",
+      "pnpm lint",
+      "pnpm check",
+      "pnpm build"
+    ]
+  }
+}
