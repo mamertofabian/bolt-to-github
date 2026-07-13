@@ -2,10 +2,10 @@
   "manifest_path": "manifests/02-b2g-prs-zip-inventory-normalization.manifest.yaml",
   "manifest_hash": "sha256:aa7fcc76388fd2d2b9032ac835de12a214fa7c4d9e91a720471034841ff87148",
   "test_hashes": {
-    "src/production-readiness/__tests__/zip-inventory-normalization.test.ts": "sha256:e8a5df96cad3c2c157bc2afd29a0d65b735487213186e36a39b9323a3692d83a"
+    "src/production-readiness/__tests__/zip-inventory-normalization.test.ts": "sha256:c82c747cf1449d35dacff1f2572fdd58516cfac2fb837b1054fcd21bd1154cc8"
   },
   "created_at": "2026-07-13T17:02:34.504324+00:00",
-  "revision": 10,
+  "revision": 11,
   "revisions": [
     {
       "prior_manifest_hash": "sha256:ec3a2772ca63434f8d3b06b6e250f4bc75783ac185bb117fc7594ef8391489fd",
@@ -177,6 +177,23 @@
       },
       "revised_at": "2026-07-13T17:31:40.118298+00:00",
       "reason": "Remove the raw Markdown test import that breaks Vitest changed-file dependency parsing while keeping the catalog manifest-tracked",
+      "agent": null,
+      "contract_delta": {
+        "artifacts_added": [],
+        "artifacts_removed": [],
+        "files_added": [],
+        "files_removed": [],
+        "validate_commands_added": [],
+        "validate_commands_removed": []
+      }
+    },
+    {
+      "prior_manifest_hash": "sha256:aa7fcc76388fd2d2b9032ac835de12a214fa7c4d9e91a720471034841ff87148",
+      "prior_test_hashes": {
+        "src/production-readiness/__tests__/zip-inventory-normalization.test.ts": "sha256:e8a5df96cad3c2c157bc2afd29a0d65b735487213186e36a39b9323a3692d83a"
+      },
+      "revised_at": "2026-07-13T17:56:00.603382+00:00",
+      "reason": "Accept child 03 additive chain evolution that adds deterministic Git blob SHA expectations to candidate inventory entries",
       "agent": null,
       "contract_delta": {
         "artifacts_added": [],

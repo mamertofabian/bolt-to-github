@@ -1,0 +1,449 @@
+schema: '2'
+goal: |
+  Fetch and normalize GitHub repository base tree and file metadata for PRS
+  comparison against the candidate Bolt zip inventory.
+description: |
+  Third implementation child for the b2g-production-readiness-snapshot parent
+  epic. Mocked request fixtures define the read-only GitHub contract without
+  network access or extension globals.
+
+  This slice owns read-only base inventory collection from GitHub. It should
+  preserve repository and base-ref metadata, normalize tree entries into the PRS
+  inventory shape where practical, and return visible limitations for missing,
+  forbidden, rate-limited, or partial GitHub data. It must not push commits,
+  create branches, mutate repository state, or hide comparison failures behind
+  fake base data.
+
+  This child also performs a backward-compatible chain evolution of the zip
+  inventory contract by adding a Git-compatible blob SHA to candidate entries.
+  That shared hash lets the downstream pure diff engine identify unchanged
+  files without fetching repository contents. A separate abort-aware reader is
+  available for selectively loading changed base text when line or dependency
+  analysis needs it; base inventory collection itself remains metadata-only.
+temptations:
+  - risk: Do not silently treat failed GitHub reads as an empty base repository.
+    instead: Return partial inventory limitations that downstream snapshot composition can display.
+  - risk: Do not fetch full blob contents for every repository file by default.
+    instead: Use tree metadata first and request file content only when planned downstream behavior requires it.
+  - risk: Do not broaden GitHub token permissions for PRS base reads.
+    instead: Reuse the existing GitHub service boundaries and keep this adapter read-only.
+type: feature
+files:
+  create:
+    - path: src/production-readiness/inventory/githubBaseInventory.ts
+      artifacts:
+        - kind: type
+          name: GitHubReadRequest
+          type: "(method: 'GET', endpoint: string, options?: GitHubReadOptions) => Promise<unknown>"
+          description: Injected read-only GitHub request boundary with cancellation support and typed HTTP failures.
+        - kind: interface
+          name: GitHubReadOptions
+          description: Abort-aware options passed through to the GitHub API client.
+        - kind: attribute
+          name: signal
+          of: GitHubReadOptions
+          type: AbortSignal | undefined
+        - kind: interface
+          name: GitHubReadClient
+          description: Minimal typed client shape implemented by GitHubApiClient and used to preserve HTTP status and AbortSignal behavior.
+        - kind: method
+          name: request
+          of: GitHubReadClient
+          args:
+            - name: method
+              type: string
+            - name: endpoint
+              type: string
+            - name: body
+              type: unknown
+            - name: options
+              type: RequestInit
+          returns: Promise<T>
+        - kind: function
+          name: createGitHubReadRequest
+          args:
+            - name: client
+              type: GitHubReadClient
+          returns: GitHubReadRequest
+          description: Adapts the typed GitHub API client to GET-only PRS reads while forwarding AbortSignal and status-bearing errors.
+        - kind: interface
+          name: GitHubBaseInventoryRequest
+          description: Owner, repository, base ref, injected GET request, and optional cancellation signal.
+        - kind: attribute
+          name: owner
+          of: GitHubBaseInventoryRequest
+          type: string
+        - kind: attribute
+          name: repo
+          of: GitHubBaseInventoryRequest
+          type: string
+        - kind: attribute
+          name: ref
+          of: GitHubBaseInventoryRequest
+          type: string
+        - kind: attribute
+          name: request
+          of: GitHubBaseInventoryRequest
+          type: GitHubReadRequest
+        - kind: attribute
+          name: signal
+          of: GitHubBaseInventoryRequest
+          type: AbortSignal | undefined
+        - kind: interface
+          name: GitHubBaseInventoryEntry
+          description: Normalized Git blob metadata that deliberately omits content and candidate SHA-256 fields.
+        - kind: attribute
+          name: path
+          of: GitHubBaseInventoryEntry
+          type: string
+        - kind: attribute
+          name: gitBlobSha
+          of: GitHubBaseInventoryEntry
+          type: string
+        - kind: attribute
+          name: sizeBytes
+          of: GitHubBaseInventoryEntry
+          type: number | undefined
+        - kind: attribute
+          name: mode
+          of: GitHubBaseInventoryEntry
+          type: string
+        - kind: attribute
+          name: analysisEligible
+          of: GitHubBaseInventoryEntry
+          type: boolean
+        - kind: attribute
+          name: retainedAsMetadata
+          of: GitHubBaseInventoryEntry
+          type: boolean
+        - kind: interface
+          name: GitHubBaseInventoryResult
+          description: Repository identity, optional resolved base metadata, deterministic blob entries, and typed partial-data notices.
+        - kind: attribute
+          name: repository
+          of: GitHubBaseInventoryResult
+          type: RepositoryRef
+        - kind: attribute
+          name: base
+          of: GitHubBaseInventoryResult
+          type: GitRefSummary | undefined
+        - kind: attribute
+          name: entries
+          of: GitHubBaseInventoryResult
+          type: GitHubBaseInventoryEntry[]
+        - kind: attribute
+          name: limitations
+          of: GitHubBaseInventoryResult
+          type: PartialDataNotice[]
+        - kind: function
+          name: buildGitHubBaseInventory
+          args:
+            - name: request
+              type: GitHubBaseInventoryRequest
+          returns: Promise<GitHubBaseInventoryResult>
+          description: Resolves a ref and recursive tree using GET requests only, filters ignored paths before content access, and returns visible partial-data notices instead of fake base data.
+        - kind: interface
+          name: GitHubBaseContentRequest
+          description: Selective base-blob text request for one already-normalized inventory entry.
+        - kind: attribute
+          name: owner
+          of: GitHubBaseContentRequest
+          type: string
+        - kind: attribute
+          name: repo
+          of: GitHubBaseContentRequest
+          type: string
+        - kind: attribute
+          name: entry
+          of: GitHubBaseContentRequest
+          type: GitHubBaseInventoryEntry
+        - kind: attribute
+          name: request
+          of: GitHubBaseContentRequest
+          type: GitHubReadRequest
+        - kind: attribute
+          name: signal
+          of: GitHubBaseContentRequest
+          type: AbortSignal | undefined
+        - kind: attribute
+          name: maxBytes
+          of: GitHubBaseContentRequest
+          type: number | undefined
+        - kind: interface
+          name: GitHubBaseContentResult
+          description: Redaction-neutral in-memory text or a visible binary, size, cancellation, or GitHub limitation for one base path.
+        - kind: attribute
+          name: path
+          of: GitHubBaseContentResult
+          type: string
+        - kind: attribute
+          name: textContent
+          of: GitHubBaseContentResult
+          type: string | undefined
+        - kind: attribute
+          name: isBinary
+          of: GitHubBaseContentResult
+          type: boolean | undefined
+        - kind: attribute
+          name: limitation
+          of: GitHubBaseContentResult
+          type: PartialDataNotice | undefined
+        - kind: function
+          name: readGitHubBaseTextContent
+          args:
+            - name: request
+              type: GitHubBaseContentRequest
+          returns: Promise<GitHubBaseContentResult>
+          description: Loads one Git blob by SHA only when downstream line or dependency analysis explicitly requests it, with byte limits and cancellation.
+    - path: src/production-readiness/__tests__/github-base-inventory.test.ts
+      artifacts:
+        - kind: test_function
+          name: mock GitHub tree data normalizes into base inventory
+          description: Required planned behavioral test before promotion.
+        - kind: test_function
+          name: missing GitHub data produces a partial snapshot limitation
+          description: Required planned behavioral test before promotion.
+        - kind: test_function
+          name: rate limited GitHub data produces a partial snapshot limitation
+          description: Required planned behavioral test before promotion.
+        - kind: test_function
+          name: base ref metadata is preserved
+          description: Required planned behavioral test before promotion.
+    - path: src/production-readiness/test-fixtures/prs/github-base.ts
+      artifacts:
+        - kind: interface
+          name: GitHubTreeFixture
+          description: Deterministic owner, repository, ref, request fake, and captured GET calls for base inventory scenarios.
+        - kind: attribute
+          name: owner
+          of: GitHubTreeFixture
+          type: string
+        - kind: attribute
+          name: repo
+          of: GitHubTreeFixture
+          type: string
+        - kind: attribute
+          name: ref
+          of: GitHubTreeFixture
+          type: string
+        - kind: attribute
+          name: request
+          of: GitHubTreeFixture
+          type: GitHubReadRequest
+        - kind: attribute
+          name: calls
+          of: GitHubTreeFixture
+          type: "Array<{ method: 'GET'; endpoint: string }>"
+        - kind: function
+          name: createGitHubTreeFixture
+          args:
+            - name: name
+              type: string
+          returns: GitHubTreeFixture
+          description: Returns fresh complete, missing, forbidden, rate-limited, or truncated GitHub tree request fixtures and rejects unknown names.
+  edit:
+    - path: src/production-readiness/inventory/zipInventory.ts
+      artifacts:
+        - kind: attribute
+          name: gitBlobSha
+          of: FileInventoryEntry
+          type: string
+          description: Git-compatible SHA-1 blob identifier computed from the exact candidate bytes for metadata-only equality checks.
+    - path: src/production-readiness/__tests__/zip-inventory-normalization.test.ts
+      artifacts:
+        - kind: test_function
+          name: zip fixture produces expected normalized inventory
+          description: Existing behavioral contract extended to prove deterministic Git blob SHA generation, including UTF-8 byte length.
+  read:
+    - .maid/plan-locks/02-b2g-prs-zip-inventory-normalization.lock.json
+    - docs/b2g_production_readiness_snapshot_reference.md
+    - manifests/drafts/b2g-production-readiness-snapshot.manifest.yaml
+    - manifests/01-b2g-prs-domain-models-fixtures.manifest.yaml
+    - manifests/02-b2g-prs-zip-inventory-normalization.manifest.yaml
+    - src/production-readiness/inventory/zipInventory.ts
+    - src/production-readiness/rules/ignore-rules.ts
+    - src/services/GitHubApiClient.ts
+    - src/services/interfaces/IGitHubApiClient.ts
+    - src/services/GitHubComparisonService.ts
+    - src/services/types/repository.ts
+validate:
+  - pnpm exec vitest run src/production-readiness/__tests__/github-base-inventory.test.ts src/production-readiness/__tests__/zip-inventory-normalization.test.ts
+  - ./scripts/maid validate manifests/03-b2g-prs-github-base-inventory.manifest.yaml --mode behavioral
+  - pnpm lint
+  - pnpm check
+created: '2026-07-13T17:33:32Z'
+metadata:
+  tags:
+    - production-readiness
+    - github
+    - base-inventory
+    - partial-data
+  priority: high
+  status: implementation
+  promotable: true
+  parent_epic: b2g-production-readiness-snapshot
+  depends_on:
+    - 01-b2g-prs-domain-models-fixtures
+    - 02-b2g-prs-zip-inventory-normalization
+  integration_candidates:
+    - src/services/GitHubComparisonService.ts
+    - src/services/FileService.ts
+    - src/lib/services
+  source_document: docs/b2g_production_readiness_snapshot_reference.md
+outcome:
+  status: completed
+  summary: |
+    PRS can now resolve a GitHub base ref and recursive tree through injected,
+    GET-only requests, normalize deterministic blob metadata, and preserve
+    repository/base identity with visible limitations for missing, forbidden,
+    rate-limited, truncated, malformed, duplicate, unsafe, or cancelled data.
+    Candidate zip entries also carry exact-byte Git blob SHAs for metadata-only
+    equality checks, while changed base text is available through a separate,
+    explicit, abort-aware, byte-bounded blob reader.
+  rationale: |
+    A shared Git blob hash lets the downstream pure diff engine identify
+    unchanged files without downloading every repository blob or comparing
+    incompatible hash algorithms. Selective content reads are limited to files
+    that downstream line or dependency analysis actually needs, preserve typed
+    GitHub errors, and classify binary, oversized, unavailable, and rate-limited
+    content honestly without mutating repository state.
+  lessons:
+    - lesson_type: inventory-hash-compatibility
+      summary: |
+        GitHub tree SHA-1 values cannot be compared with raw candidate SHA-256
+        values. Compute the Git framed blob SHA from exact candidate bytes so
+        unchanged files stay metadata-only and selective content reads remain
+        reserved for confirmed changes.
+      tags:
+        - github
+        - diff
+        - hashing
+      paths:
+        - src/production-readiness/inventory/zipInventory.ts
+        - src/production-readiness/inventory/githubBaseInventory.ts
+    - lesson_type: typed-read-boundary
+      summary: |
+        A production GitHub read adapter must preserve HTTP status and forward
+        AbortSignal. Checks only between awaited requests cannot cancel a
+        stalled client, so the caller-facing boundary also needs an abort race
+        while the underlying client receives the same signal.
+      tags:
+        - github
+        - cancellation
+        - rate-limit
+      paths:
+        - src/production-readiness/inventory/githubBaseInventory.ts
+        - src/production-readiness/__tests__/github-base-inventory.test.ts
+    - lesson_type: bounded-selective-content
+      summary: |
+        Base64 content must be bounded by raw, encoded, and decoded size before
+        normalization or atob allocation. Binary heuristics must match the
+        candidate inventory so NUL, control-byte, and invalid UTF-8 blobs are
+        never treated as line-diffable text.
+      tags:
+        - memory
+        - encoding
+        - mv3
+      paths:
+        - src/production-readiness/inventory/githubBaseInventory.ts
+        - src/production-readiness/__tests__/github-base-inventory.test.ts
+    - lesson_type: partial-data-integrity
+      summary: |
+        Malformed primitives, unknown entry types, invalid paths, duplicates,
+        and truncation should be isolated into deterministic limitations while
+        retaining valid entries and resolved base metadata. A fake empty base
+        would make every candidate file look added and undermine readiness
+        confidence.
+      tags:
+        - degraded-state
+        - data-integrity
+        - deterministic
+      paths:
+        - src/production-readiness/inventory/githubBaseInventory.ts
+        - src/production-readiness/test-fixtures/prs/github-base.ts
+  review_notes:
+    - source: independent reviewer subagent prs_child03_review
+      severity: changes-requested
+      summary: |
+        First review found incompatible candidate/base hashes, no selective
+        base-content contract, lost facade status, delayed cancellation, and a
+        primitive-entry failure that discarded valid inventory. All findings
+        were accepted and covered by failing regressions before implementation.
+    - source: independent reviewer subagent prs_child03_review
+      severity: changes-requested
+      summary: |
+        Second review found silent unknown object types, inconsistent binary
+        heuristics, post-allocation base64 limits, and generic limitation
+        sources. All findings were fixed with focused malformed-data, binary,
+        oversize, rate-limit, malformed-base64, and cancellation cases.
+    - source: independent reviewer subagent prs_child03_review
+      severity: ready
+      summary: |
+        Third read-only review found no blocking issues and confirmed all prior
+        findings resolved, exact-byte Git hashes, bounded selective decoding,
+        typed degraded states, aligned child 02/03 locks, and manifest scope.
+  validation:
+    - command:
+        - pnpm
+        - exec
+        - vitest
+        - run
+        - src/production-readiness/__tests__/github-base-inventory.test.ts
+        - src/production-readiness/__tests__/zip-inventory-normalization.test.ts
+      status: passed
+      summary: Eight focused tests passed across GitHub inventory, typed failures, cancellation, selective content, binary/size limits, and candidate Git blob hashes.
+    - command:
+        - pnpm
+        - test:ci
+      status: passed
+      summary: Full Vitest CI passed 201 test files and 4020 tests after final review fixes.
+    - command:
+        - pnpm
+        - lint
+      status: passed
+      summary: ESLint passed for all JavaScript, TypeScript, and Svelte source files.
+    - command:
+        - pnpm
+        - check
+      status: passed
+      summary: Svelte and TypeScript checking completed with zero errors and zero warnings.
+    - command:
+        - pnpm
+        - build
+      status: passed
+      summary: The v1.3.22 production extension build completed successfully with only the existing Vite chunking notices.
+    - command:
+        - ./scripts/maid
+        - validate
+        - manifests/03-b2g-prs-github-base-inventory.manifest.yaml
+        - --mode
+        - behavioral
+      status: passed
+      summary: Child 03 behavioral validation passed with every declared artifact exercised.
+    - command:
+        - ./scripts/maid
+        - validate
+        - manifests/03-b2g-prs-github-base-inventory.manifest.yaml
+        - --mode
+        - implementation
+      status: passed
+      summary: Child 03 implementation validation passed against the promoted and evolved contract.
+    - command:
+        - ./scripts/maid
+        - verify
+        - --manifest-dir
+        - manifests
+        - --strict
+        - --worktree-scope
+        - --file-tracking-scope
+        - task
+        - --plan-lock-scope
+        - task
+        - --require-plan-lock
+        - --require-red-evidence
+        - --include-tests
+        - --since
+        - HEAD
+        - --summary
+      status: passed
+      summary: Strict task-scoped verification passed all nine gates with no blockers or warnings.

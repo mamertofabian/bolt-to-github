@@ -23,6 +23,7 @@ export interface FileInventoryEntry {
   path: string;
   sizeBytes: number;
   sha256: string;
+  gitBlobSha: string;
   lineCount?: number;
   isText: boolean;
   isBinary: boolean;
@@ -334,6 +335,15 @@ async function sha256(bytes: Uint8Array): Promise<string> {
   return Array.from(new Uint8Array(digest), (byte) => byte.toString(16).padStart(2, '0')).join('');
 }
 
+async function gitBlobSha(bytes: Uint8Array): Promise<string> {
+  const prefix = new TextEncoder().encode(`blob ${bytes.byteLength}\0`);
+  const framed = new Uint8Array(prefix.byteLength + bytes.byteLength);
+  framed.set(prefix);
+  framed.set(bytes, prefix.byteLength);
+  const digest = await crypto.subtle.digest('SHA-1', framed.buffer);
+  return Array.from(new Uint8Array(digest), (byte) => byte.toString(16).padStart(2, '0')).join('');
+}
+
 export async function buildZipInventory(
   zipData: ArrayBuffer,
   options: ZipInventoryOptions | undefined = undefined
@@ -369,6 +379,7 @@ export async function buildZipInventory(
       path,
       sizeBytes: bytes.byteLength,
       sha256: await sha256(bytes),
+      gitBlobSha: await gitBlobSha(bytes),
       isText: !isBinary,
       isBinary,
       analysisEligible,
