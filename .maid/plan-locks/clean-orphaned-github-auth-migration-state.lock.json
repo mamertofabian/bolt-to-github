@@ -1,0 +1,163 @@
+{
+  "manifest_path": "manifests/clean-orphaned-github-auth-migration-state.manifest.yaml",
+  "manifest_hash": "sha256:278a981960a6fcef98d069c094524f48ed3e239a1d18ba966fbdd80464463228",
+  "test_hashes": {
+    "src/lib/services/__tests__/githubAuthMigration.test.ts": "sha256:f71e8963a85dc879a0c2dad03a62de874c71bce6426ffbae03fdd51f5adfbc10"
+  },
+  "created_at": "2026-07-13T23:04:22.472513+00:00",
+  "revision": 1,
+  "revisions": [],
+  "red_evidence": {
+    "red": true,
+    "captured_at": "2026-07-13T23:04:45.650720+00:00",
+    "commands": [
+      {
+        "command": "pnpm exec vitest run src/lib/services/__tests__/githubAuthMigration.test.ts",
+        "exit_code": 1,
+        "output_tail": "+ Received\n\n  Object {\n    \"persistMigrationRequired\": false,\n-   \"removeLegacyMethodKeys\": true,\n+   \"removeLegacyMethodKeys\": false,\n    \"removeStoredPat\": false,\n    \"status\": \"not_required\",\n  }\n\n \u276f src/lib/services/__tests__/githubAuthMigration.test.ts:107:22\n    105|     const decision = await migrateLegacyGitHubAuthentication();\n    106| \n    107|     expect(decision).toMatchObject({\n       |                      ^\n    108|       status: 'not_required',\n    109|       removeStoredPat: false,\n\n\u23af\u23af\u23af\u23af\u23af\u23af\u23af\u23af\u23af\u23af\u23af\u23af\u23af\u23af\u23af\u23af\u23af\u23af\u23af\u23af\u23af\u23af\u23af\u23af[2/2]\u23af\n",
+        "classification": "red"
+      },
+      {
+        "command": "./scripts/maid validate manifests/clean-orphaned-github-auth-migration-state.manifest.yaml --mode behavioral",
+        "exit_code": 0,
+        "output_tail": "PASS clean-orphaned-github-auth-migration-state\n  Mode: behavioral\n  Duration: 365ms\n  Warnings (3):\n    E110 Manifest 'prepare-v2-0-0-github-app-release' supersedes 'release-v1-3-21' but drops artifact 'PackageVersion_1_3_21' (namespace) at package.json\n      Location: /home/atomrem/projects/codefrost-dev/bolt-to-github/manifests/prepare-v2-0-0-github-app-release.manifest.yaml\n      Suggestion: Re-declare the artifact in the replacement manifest, list its file under files.delete, or list the symbol under removed_artifacts.\n    E110 Manifest 'prepare-v2-0-0-github-app-release' supersedes 'release-v1-3-21' but drops artifact 'ChromeManifestVersion_1_3_21' (namespace) at manifest.json\n      Location: /home/atomrem/projects/codefrost-dev/bolt-to-github/manifests/prepare-v2-0-0-github-app-release.manifest.yaml\n      Suggestion: Re-declare the artifact in the replacement manifest, list its file under files.delete, or list the symbol under removed_artifacts.\n    E110 Manifest 'prepare-v2-0-0-github-app-release' supersedes 'release-v1-3-21' but drops artifact 'DevelopmentGuideVersion_1_3_21' (namespace) at CLAUDE.md\n      Location: /home/atomrem/projects/codefrost-dev/bolt-to-github/manifests/prepare-v2-0-0-github-app-release.manifest.yaml\n      Suggestion: Re-declare the artifact in the replacement manifest, list its file under files.delete, or list the symbol under removed_artifacts.",
+        "classification": "not_red"
+      },
+      {
+        "command": "pnpm lint",
+        "exit_code": 0,
+        "output_tail": "\n> bolt-to-github@2.0.0 lint /home/atomrem/projects/codefrost-dev/bolt-to-github\n> eslint \"src/**/*.{js,ts,svelte}\"\n",
+        "classification": "not_red"
+      },
+      {
+        "command": "pnpm check",
+        "exit_code": 0,
+        "output_tail": "\n> bolt-to-github@2.0.0 check /home/atomrem/projects/codefrost-dev/bolt-to-github\n> svelte-check --tsconfig ./tsconfig.json\n\n\n====================================\nLoading svelte-check in workspace: /home/atomrem/projects/codefrost-dev/bolt-to-github\nGetting Svelte diagnostics...\n\n====================================\nsvelte-check found 0 errors and 0 warnings",
+        "classification": "not_red"
+      },
+      {
+        "command": "pnpm build",
+        "exit_code": 0,
+        "output_tail": "dist/assets/index-BnArqU_7.js                                 2.56 kB \u2502 gzip:   1.25 kB\ndist/assets/WelcomePageContentScript.ts-D1t7FgTm.js           2.66 kB \u2502 gzip:   0.79 kB\ndist/assets/GitHubCacheService-Bcgnv6OU.js                    3.68 kB \u2502 gzip:   1.30 kB\ndist/assets/TempRepoManager-DMDow60D.js                       5.70 kB \u2502 gzip:   2.18 kB\ndist/assets/logger-CcH-GVeY.js                                8.19 kB \u2502 gzip:   2.69 kB\ndist/pages/logs.js                                           15.32 kB \u2502 gzip:   5.72 kB\ndist/assets/debounce-CtuLBKyC.js                             22.12 kB \u2502 gzip:   6.78 kB\ndist/assets/input-CjMOwtNQ.js                                72.26 kB \u2502 gzip:  25.08 kB\ndist/assets/GitHubComparisonService-BtJO1k0S.js              80.42 kB \u2502 gzip:  23.34 kB\ndist/background/background.js                               109.91 kB \u2502 gzip:  29.33 kB\ndist/content/content.js                                     246.68 kB \u2502 gzip:  72.54 kB\ndist/assets/index.html-BjdfYsrg.js                          466.64 kB \u2502 gzip: 120.49 kB\n\u2713 built in 8.55s\n\n[plugin:vite:reporter] [plugin vite:reporter] \n(!) /home/atomrem/projects/codefrost-dev/bolt-to-github/src/lib/constants/supabase.ts is dynamically imported by /home/atomrem/projects/codefrost-dev/bolt-to-github/src/services/UnifiedGitHubService.ts but also statically imported by /home/atomrem/projects/codefrost-dev/bolt-to-github/src/content/services/SupabaseAuthService.ts, /home/atomrem/projects/codefrost-dev/bolt-to-github/src/services/BoltProjectSyncService.ts, /home/atomrem/projects/codefrost-dev/bolt-to-github/src/services/GitHubAppService.ts, /home/atomrem/projects/codefrost-dev/bolt-to-github/src/services/SubscriptionService.ts, dynamic import will not move module into another chunk.\n\n[plugin:vite:reporter] [plugin vite:reporter] \n(!) /home/atomrem/projects/codefrost-dev/bolt-to-github/src/content/handlers/FileChangeHandler.ts is dynamically imported by /home/atomrem/projects/codefrost-dev/bolt-to-github/src/content/handlers/GitHubUploadHandler.ts, /home/atomrem/projects/codefrost-dev/bolt-to-github/src/content/services/PushReminderService.ts, /home/atomrem/projects/codefrost-dev/bolt-to-github/src/content/services/PushReminderService.ts but also statically imported by /home/atomrem/projects/codefrost-dev/bolt-to-github/src/content/UIManager.ts, dynamic import will not move module into another chunk.\n",
+        "classification": "not_red"
+      }
+    ]
+  },
+  "agent": {
+    "model": "gpt-5",
+    "provider": "openai",
+    "client": "codex",
+    "skills": ["maid-evolver", "maid-implementer", "maid-implementation-review"],
+    "source": "flags"
+  },
+  "_manifest_contract": {
+    "artifacts": [
+      "src/lib/services/__tests__/githubAuthMigration.test.ts:completion requires both a live session and installation",
+      "src/lib/services/__tests__/githubAuthMigration.test.ts:completion requires both a live session and installation:kind=test_function",
+      "src/lib/services/__tests__/githubAuthMigration.test.ts:fresh unconfigured storage is not mislabeled as a PAT migration",
+      "src/lib/services/__tests__/githubAuthMigration.test.ts:fresh unconfigured storage is not mislabeled as a PAT migration:kind=test_function",
+      "src/lib/services/__tests__/githubAuthMigration.test.ts:legacy PAT becomes migration required and the token is removed",
+      "src/lib/services/__tests__/githubAuthMigration.test.ts:legacy PAT becomes migration required and the token is removed:kind=test_function",
+      "src/lib/services/__tests__/githubAuthMigration.test.ts:migration preserves repository owner and every project mapping",
+      "src/lib/services/__tests__/githubAuthMigration.test.ts:migration preserves repository owner and every project mapping:kind=test_function",
+      "src/lib/services/__tests__/githubAuthMigration.test.ts:orphaned prompt metadata is cleaned without creating migration guidance",
+      "src/lib/services/__tests__/githubAuthMigration.test.ts:orphaned prompt metadata is cleaned without creating migration guidance:kind=test_function",
+      "src/lib/services/__tests__/githubAuthMigration.test.ts:preferred PAT without a stored credential still requires migration and cleans legacy keys",
+      "src/lib/services/__tests__/githubAuthMigration.test.ts:preferred PAT without a stored credential still requires migration and cleans legacy keys:kind=test_function",
+      "src/lib/services/__tests__/githubAuthMigration.test.ts:repeated migration is idempotent",
+      "src/lib/services/__tests__/githubAuthMigration.test.ts:repeated migration is idempotent:kind=test_function",
+      "src/lib/services/__tests__/githubAuthMigration.test.ts:retry repairs a marker-written token-not-yet-removed partial migration",
+      "src/lib/services/__tests__/githubAuthMigration.test.ts:retry repairs a marker-written token-not-yet-removed partial migration:kind=test_function",
+      "src/lib/services/__tests__/githubAuthMigration.test.ts:retry repairs a token-removed local-auth-not-yet-cleaned partial migration",
+      "src/lib/services/__tests__/githubAuthMigration.test.ts:retry repairs a token-removed local-auth-not-yet-cleaned partial migration:kind=test_function",
+      "src/lib/services/__tests__/githubAuthMigration.test.ts:stale PAT beside a connected GitHub App is removed without migration blocking",
+      "src/lib/services/__tests__/githubAuthMigration.test.ts:stale PAT beside a connected GitHub App is removed without migration blocking:kind=test_function",
+      "src/lib/services/githubAuthMigration.ts:attribute:GitHubAuthMigrationDecision.persistMigrationRequired",
+      "src/lib/services/githubAuthMigration.ts:attribute:GitHubAuthMigrationDecision.persistMigrationRequired:kind=attribute",
+      "src/lib/services/githubAuthMigration.ts:attribute:GitHubAuthMigrationDecision.persistMigrationRequired:of=GitHubAuthMigrationDecision",
+      "src/lib/services/githubAuthMigration.ts:attribute:GitHubAuthMigrationDecision.persistMigrationRequired:type=boolean",
+      "src/lib/services/githubAuthMigration.ts:attribute:GitHubAuthMigrationDecision.removeLegacyMethodKeys",
+      "src/lib/services/githubAuthMigration.ts:attribute:GitHubAuthMigrationDecision.removeLegacyMethodKeys:kind=attribute",
+      "src/lib/services/githubAuthMigration.ts:attribute:GitHubAuthMigrationDecision.removeLegacyMethodKeys:of=GitHubAuthMigrationDecision",
+      "src/lib/services/githubAuthMigration.ts:attribute:GitHubAuthMigrationDecision.removeLegacyMethodKeys:type=boolean",
+      "src/lib/services/githubAuthMigration.ts:attribute:GitHubAuthMigrationDecision.removeStoredPat",
+      "src/lib/services/githubAuthMigration.ts:attribute:GitHubAuthMigrationDecision.removeStoredPat:kind=attribute",
+      "src/lib/services/githubAuthMigration.ts:attribute:GitHubAuthMigrationDecision.removeStoredPat:of=GitHubAuthMigrationDecision",
+      "src/lib/services/githubAuthMigration.ts:attribute:GitHubAuthMigrationDecision.removeStoredPat:type=boolean",
+      "src/lib/services/githubAuthMigration.ts:attribute:GitHubAuthMigrationDecision.status",
+      "src/lib/services/githubAuthMigration.ts:attribute:GitHubAuthMigrationDecision.status:kind=attribute",
+      "src/lib/services/githubAuthMigration.ts:attribute:GitHubAuthMigrationDecision.status:of=GitHubAuthMigrationDecision",
+      "src/lib/services/githubAuthMigration.ts:attribute:GitHubAuthMigrationDecision.status:type=GitHubAppMigrationStatus",
+      "src/lib/services/githubAuthMigration.ts:attribute:LegacyGitHubAuthSnapshot.authenticationMethod",
+      "src/lib/services/githubAuthMigration.ts:attribute:LegacyGitHubAuthSnapshot.authenticationMethod:kind=attribute",
+      "src/lib/services/githubAuthMigration.ts:attribute:LegacyGitHubAuthSnapshot.authenticationMethod:of=LegacyGitHubAuthSnapshot",
+      "src/lib/services/githubAuthMigration.ts:attribute:LegacyGitHubAuthSnapshot.authenticationMethod:type='pat' | 'github_app' | undefined",
+      "src/lib/services/githubAuthMigration.ts:attribute:LegacyGitHubAuthSnapshot.githubAppInstallationId",
+      "src/lib/services/githubAuthMigration.ts:attribute:LegacyGitHubAuthSnapshot.githubAppInstallationId:kind=attribute",
+      "src/lib/services/githubAuthMigration.ts:attribute:LegacyGitHubAuthSnapshot.githubAppInstallationId:of=LegacyGitHubAuthSnapshot",
+      "src/lib/services/githubAuthMigration.ts:attribute:LegacyGitHubAuthSnapshot.githubAppInstallationId:type=number | undefined",
+      "src/lib/services/githubAuthMigration.ts:attribute:LegacyGitHubAuthSnapshot.githubToken",
+      "src/lib/services/githubAuthMigration.ts:attribute:LegacyGitHubAuthSnapshot.githubToken:kind=attribute",
+      "src/lib/services/githubAuthMigration.ts:attribute:LegacyGitHubAuthSnapshot.githubToken:of=LegacyGitHubAuthSnapshot",
+      "src/lib/services/githubAuthMigration.ts:attribute:LegacyGitHubAuthSnapshot.githubToken:type=string | undefined",
+      "src/lib/services/githubAuthMigration.ts:attribute:LegacyGitHubAuthSnapshot.lastMigrationPrompt",
+      "src/lib/services/githubAuthMigration.ts:attribute:LegacyGitHubAuthSnapshot.lastMigrationPrompt:kind=attribute",
+      "src/lib/services/githubAuthMigration.ts:attribute:LegacyGitHubAuthSnapshot.lastMigrationPrompt:of=LegacyGitHubAuthSnapshot",
+      "src/lib/services/githubAuthMigration.ts:attribute:LegacyGitHubAuthSnapshot.lastMigrationPrompt:type=string | undefined",
+      "src/lib/services/githubAuthMigration.ts:attribute:LegacyGitHubAuthSnapshot.migrationPromptShown",
+      "src/lib/services/githubAuthMigration.ts:attribute:LegacyGitHubAuthSnapshot.migrationPromptShown:kind=attribute",
+      "src/lib/services/githubAuthMigration.ts:attribute:LegacyGitHubAuthSnapshot.migrationPromptShown:of=LegacyGitHubAuthSnapshot",
+      "src/lib/services/githubAuthMigration.ts:attribute:LegacyGitHubAuthSnapshot.migrationPromptShown:type=boolean | undefined",
+      "src/lib/services/githubAuthMigration.ts:attribute:LegacyGitHubAuthSnapshot.migrationRequired",
+      "src/lib/services/githubAuthMigration.ts:attribute:LegacyGitHubAuthSnapshot.migrationRequired:kind=attribute",
+      "src/lib/services/githubAuthMigration.ts:attribute:LegacyGitHubAuthSnapshot.migrationRequired:of=LegacyGitHubAuthSnapshot",
+      "src/lib/services/githubAuthMigration.ts:attribute:LegacyGitHubAuthSnapshot.migrationRequired:type=boolean | undefined",
+      "src/lib/services/githubAuthMigration.ts:attribute:LegacyGitHubAuthSnapshot.preferredAuthMethod",
+      "src/lib/services/githubAuthMigration.ts:attribute:LegacyGitHubAuthSnapshot.preferredAuthMethod:kind=attribute",
+      "src/lib/services/githubAuthMigration.ts:attribute:LegacyGitHubAuthSnapshot.preferredAuthMethod:of=LegacyGitHubAuthSnapshot",
+      "src/lib/services/githubAuthMigration.ts:attribute:LegacyGitHubAuthSnapshot.preferredAuthMethod:type='pat' | 'github_app' | undefined",
+      "src/lib/services/githubAuthMigration.ts:function:completeGitHubAppMigration",
+      "src/lib/services/githubAuthMigration.ts:function:completeGitHubAppMigration:arg=installationConnected:type=boolean:default=None",
+      "src/lib/services/githubAuthMigration.ts:function:completeGitHubAppMigration:arg=liveSessionConnected:type=boolean:default=None",
+      "src/lib/services/githubAuthMigration.ts:function:completeGitHubAppMigration:kind=function",
+      "src/lib/services/githubAuthMigration.ts:function:completeGitHubAppMigration:returns=Promise<boolean>",
+      "src/lib/services/githubAuthMigration.ts:function:migrateLegacyGitHubAuthentication",
+      "src/lib/services/githubAuthMigration.ts:function:migrateLegacyGitHubAuthentication:kind=function",
+      "src/lib/services/githubAuthMigration.ts:function:migrateLegacyGitHubAuthentication:returns=Promise<GitHubAuthMigrationDecision>",
+      "src/lib/services/githubAuthMigration.ts:function:resolveGitHubAuthMigration",
+      "src/lib/services/githubAuthMigration.ts:function:resolveGitHubAuthMigration:arg=snapshot:type=LegacyGitHubAuthSnapshot:default=None",
+      "src/lib/services/githubAuthMigration.ts:function:resolveGitHubAuthMigration:kind=function",
+      "src/lib/services/githubAuthMigration.ts:function:resolveGitHubAuthMigration:returns=GitHubAuthMigrationDecision",
+      "src/lib/services/githubAuthMigration.ts:interface:GitHubAuthMigrationDecision",
+      "src/lib/services/githubAuthMigration.ts:interface:GitHubAuthMigrationDecision:kind=interface",
+      "src/lib/services/githubAuthMigration.ts:interface:LegacyGitHubAuthSnapshot",
+      "src/lib/services/githubAuthMigration.ts:interface:LegacyGitHubAuthSnapshot:kind=interface",
+      "src/lib/services/githubAuthMigration.ts:type:GitHubAppMigrationStatus",
+      "src/lib/services/githubAuthMigration.ts:type:GitHubAppMigrationStatus:kind=type",
+      "src/lib/services/githubAuthMigration.ts:type:GitHubAppMigrationStatus:type='not_required' | 'migration_required' | 'completed'"
+    ],
+    "files": {
+      "create": [],
+      "edit": [
+        "src/lib/services/__tests__/githubAuthMigration.test.ts",
+        "src/lib/services/githubAuthMigration.ts"
+      ],
+      "read": [
+        "manifests/01-github-app-only-migration-policy.manifest.yaml",
+        "src/content/services/SupabaseAuthService.ts",
+        "src/lib/services/chromeStorage.ts",
+        "src/lib/types.ts",
+        "src/lib/utils/githubConnection.ts",
+        "src/popup/App.svelte"
+      ]
+    },
+    "test_files": ["src/lib/services/__tests__/githubAuthMigration.test.ts"],
+    "validate_commands": [
+      "pnpm exec vitest run src/lib/services/__tests__/githubAuthMigration.test.ts",
+      "./scripts/maid validate manifests/clean-orphaned-github-auth-migration-state.manifest.yaml --mode behavioral",
+      "pnpm lint",
+      "pnpm check",
+      "pnpm build"
+    ]
+  }
+}

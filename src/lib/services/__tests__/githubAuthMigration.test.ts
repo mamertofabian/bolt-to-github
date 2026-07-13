@@ -72,6 +72,54 @@ describe('GitHub App authentication migration', () => {
     expect(operations).toEqual(['marker', 'token', 'legacy-method']);
   });
 
+  it('preferred PAT without a stored credential still requires migration and cleans legacy keys', async () => {
+    localStorage.get.mockResolvedValue({
+      preferredAuthMethod: 'pat',
+      migrationPromptShown: false,
+    });
+
+    const decision = await migrateLegacyGitHubAuthentication();
+
+    expect(decision).toMatchObject({
+      status: 'migration_required',
+      removeStoredPat: false,
+      removeLegacyMethodKeys: true,
+      persistMigrationRequired: true,
+    });
+    expect(localStorage.set).toHaveBeenCalledWith({ githubAppMigrationRequired: true });
+    expect(syncStorage.remove).not.toHaveBeenCalled();
+    expect(localStorage.remove).toHaveBeenCalledWith([
+      'authenticationMethod',
+      'preferredAuthMethod',
+      'migrationPromptShown',
+      'lastMigrationPrompt',
+    ]);
+  });
+
+  it('orphaned prompt metadata is cleaned without creating migration guidance', async () => {
+    localStorage.get.mockResolvedValue({
+      migrationPromptShown: true,
+      lastMigrationPrompt: '2025-01-01T00:00:00.000Z',
+    });
+
+    const decision = await migrateLegacyGitHubAuthentication();
+
+    expect(decision).toMatchObject({
+      status: 'not_required',
+      removeStoredPat: false,
+      removeLegacyMethodKeys: true,
+      persistMigrationRequired: false,
+    });
+    expect(localStorage.set).not.toHaveBeenCalled();
+    expect(syncStorage.remove).not.toHaveBeenCalled();
+    expect(localStorage.remove).toHaveBeenCalledWith([
+      'authenticationMethod',
+      'preferredAuthMethod',
+      'migrationPromptShown',
+      'lastMigrationPrompt',
+    ]);
+  });
+
   it('stale PAT beside a connected GitHub App is removed without migration blocking', async () => {
     syncStorage.get.mockResolvedValue({ githubToken: 'stale-classic-token' });
     localStorage.get.mockResolvedValue({

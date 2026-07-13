@@ -59,7 +59,11 @@ export function resolveGitHubAuthMigration(
     };
   }
 
-  if (snapshot.authenticationMethod === 'pat' || hasStoredPat) {
+  if (
+    snapshot.authenticationMethod === 'pat' ||
+    snapshot.preferredAuthMethod === 'pat' ||
+    hasStoredPat
+  ) {
     return {
       status: 'migration_required',
       removeStoredPat: hasStoredPat,
@@ -71,7 +75,7 @@ export function resolveGitHubAuthMigration(
   return {
     status: 'not_required',
     removeStoredPat: false,
-    removeLegacyMethodKeys: snapshot.authenticationMethod !== undefined,
+    removeLegacyMethodKeys: hasLegacyMethodState,
     persistMigrationRequired: false,
   };
 }
