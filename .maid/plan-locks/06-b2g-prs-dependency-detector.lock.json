@@ -1,0 +1,273 @@
+{
+  "manifest_path": "manifests/06-b2g-prs-dependency-detector.manifest.yaml",
+  "manifest_hash": "sha256:63dd1525aaa93542be381f741e31db67adeb217e14794c074052607ef30660c9",
+  "test_hashes": {
+    "src/production-readiness/detectors/__tests__/dependencyDetector.test.ts": "sha256:e96af36757097d68ffa8feceffd336898f3cd0fb52f270a22d19b031035145f6"
+  },
+  "created_at": "2026-07-13T18:58:06.647078+00:00",
+  "revision": 7,
+  "revisions": [
+    {
+      "prior_manifest_hash": "sha256:47ae494e6f2acb287a149f18b1dd7f07796bd302e949b1681378a538ab7b465b",
+      "prior_test_hashes": {
+        "src/production-readiness/detectors/__tests__/dependencyDetector.test.ts": "sha256:ad230ffd2196e964ff84cd53b098b53f65caad38caff014ca446fca25058bb89"
+      },
+      "revised_at": "2026-07-13T19:03:25.113108+00:00",
+      "reason": "Keep deterministic-order regression type-safe for readonly lockfile inputs",
+      "agent": null,
+      "contract_delta": {
+        "artifacts_added": [],
+        "artifacts_removed": [],
+        "files_added": [],
+        "files_removed": [],
+        "validate_commands_added": [],
+        "validate_commands_removed": []
+      }
+    },
+    {
+      "prior_manifest_hash": "sha256:47ae494e6f2acb287a149f18b1dd7f07796bd302e949b1681378a538ab7b465b",
+      "prior_test_hashes": {
+        "src/production-readiness/detectors/__tests__/dependencyDetector.test.ts": "sha256:fe25145e50dbeaeb30388f98207fa99a1e85f0bea1ef2722e928dd3c2338f364"
+      },
+      "revised_at": "2026-07-13T19:07:17.320519+00:00",
+      "reason": "Redact unsafe dependency specifiers and compare compound semver major sets",
+      "agent": null,
+      "contract_delta": {
+        "artifacts_added": [],
+        "artifacts_removed": [],
+        "files_added": [],
+        "files_removed": [],
+        "validate_commands_added": [],
+        "validate_commands_removed": []
+      }
+    },
+    {
+      "prior_manifest_hash": "sha256:9f6490db38dd942fdcd4cf1db6f75014b5e121d4d31a6a7d105a3a30936a3e06",
+      "prior_test_hashes": {
+        "src/production-readiness/detectors/__tests__/dependencyDetector.test.ts": "sha256:e38e5aa651c20e98f2fb77ab16cccec753aa7e0e0394273f9bc2c4f613f6d3a3"
+      },
+      "revised_at": "2026-07-13T19:15:33.348704+00:00",
+      "reason": "Restrict display-safe specifiers and compare normalized admitted-major intervals",
+      "agent": null,
+      "contract_delta": {
+        "artifacts_added": [],
+        "artifacts_removed": [],
+        "files_added": [],
+        "files_removed": [],
+        "validate_commands_added": [],
+        "validate_commands_removed": []
+      }
+    },
+    {
+      "prior_manifest_hash": "sha256:6716c4f59507abf918c33d465e3972d240d772f9e63de4bcb1a8a6116dc06820",
+      "prior_test_hashes": {
+        "src/production-readiness/detectors/__tests__/dependencyDetector.test.ts": "sha256:149fb8b7e814cee7752b1c21d71c4a2d69f274ed1a5df03e577c2694a48b46e9"
+      },
+      "revised_at": "2026-07-13T19:22:42.570963+00:00",
+      "reason": "Cover strict lower-bound partial comparator admitted-major intervals",
+      "agent": null,
+      "contract_delta": {
+        "artifacts_added": [],
+        "artifacts_removed": [],
+        "files_added": [],
+        "files_removed": [],
+        "validate_commands_added": [],
+        "validate_commands_removed": []
+      }
+    },
+    {
+      "prior_manifest_hash": "sha256:6716c4f59507abf918c33d465e3972d240d772f9e63de4bcb1a8a6116dc06820",
+      "prior_test_hashes": {
+        "src/production-readiness/detectors/__tests__/dependencyDetector.test.ts": "sha256:bb0a5a4488bf5188e8fec2176338748bf0b1f8552527bf9c6f077decb03ccc20"
+      },
+      "revised_at": "2026-07-13T19:26:04.336647+00:00",
+      "reason": "Propagate unknown and overflowed semver major intervals",
+      "agent": null,
+      "contract_delta": {
+        "artifacts_added": [],
+        "artifacts_removed": [],
+        "files_added": [],
+        "files_removed": [],
+        "validate_commands_added": [],
+        "validate_commands_removed": []
+      }
+    },
+    {
+      "prior_manifest_hash": "sha256:6716c4f59507abf918c33d465e3972d240d772f9e63de4bcb1a8a6116dc06820",
+      "prior_test_hashes": {
+        "src/production-readiness/detectors/__tests__/dependencyDetector.test.ts": "sha256:e96af36757097d68ffa8feceffd336898f3cd0fb52f270a22d19b031035145f6"
+      },
+      "revised_at": "2026-07-13T19:31:32.925516+00:00",
+      "reason": "Record reviewed implementation outcome and validation evidence",
+      "agent": null,
+      "contract_delta": {
+        "artifacts_added": [],
+        "artifacts_removed": [],
+        "files_added": [],
+        "files_removed": [],
+        "validate_commands_added": [],
+        "validate_commands_removed": []
+      }
+    }
+  ],
+  "red_evidence": {
+    "red": true,
+    "captured_at": "2026-07-13T18:58:20.491430+00:00",
+    "commands": [
+      {
+        "command": "pnpm exec vitest run src/production-readiness/detectors/__tests__/dependencyDetector.test.ts",
+        "exit_code": 1,
+        "output_tail": " Test Files  1 failed (1)\n      Tests  no tests\n   Start at  02:58:07\n   Duration  460ms (transform 33ms, setup 50ms, collect 0ms, tests 0ms, environment 182ms, prepare 40ms)\n\n\n\u23af\u23af\u23af\u23af\u23af\u23af Failed Suites 1 \u23af\u23af\u23af\u23af\u23af\u23af\u23af\n\n FAIL  src/production-readiness/detectors/__tests__/dependencyDetector.test.ts [ src/production-readiness/detectors/__tests__/dependencyDetector.test.ts ]\nError: Failed to resolve import \"../dependencyDetector\" from \"src/production-readiness/detectors/__tests__/dependencyDetector.test.ts\". Does the file exist?\n \u276f TransformPluginContext._formatError node_modules/.pnpm/vite@5.4.21_@types+node@22.19.18/node_modules/vite/dist/node/chunks/dep-BK3b2jBa.js:49258:41\n \u276f TransformPluginContext.error node_modules/.pnpm/vite@5.4.21_@types+node@22.19.18/node_modules/vite/dist/node/chunks/dep-BK3b2jBa.js:49253:16\n \u276f normalizeUrl node_modules/.pnpm/vite@5.4.21_@types+node@22.19.18/node_modules/vite/dist/node/chunks/dep-BK3b2jBa.js:64307:23\n \u276f async file:/home/atomrem/projects/codefrost-dev/bolt-to-github/node_modules/.pnpm/vite@5.4.21_@types+node@22.19.18/node_modules/vite/dist/node/chunks/dep-BK3b2jBa.js:64439:39\n \u276f TransformPluginContext.transform node_modules/.pnpm/vite@5.4.21_@types+node@22.19.18/node_modules/vite/dist/node/chunks/dep-BK3b2jBa.js:64366:7\n \u276f PluginContainer.transform node_modules/.pnpm/vite@5.4.21_@types+node@22.19.18/node_modules/vite/dist/node/chunks/dep-BK3b2jBa.js:49099:18\n \u276f loadAndTransform node_modules/.pnpm/vite@5.4.21_@types+node@22.19.18/node_modules/vite/dist/node/chunks/dep-BK3b2jBa.js:51978:27\n\n\u23af\u23af\u23af\u23af\u23af\u23af\u23af\u23af\u23af\u23af\u23af\u23af\u23af\u23af\u23af\u23af\u23af\u23af\u23af\u23af\u23af\u23af\u23af\u23af[1/1]\u23af\n",
+        "classification": "red"
+      },
+      {
+        "command": "./scripts/maid validate manifests/06-b2g-prs-dependency-detector.manifest.yaml --mode behavioral",
+        "exit_code": 0,
+        "output_tail": "PASS 06-b2g-prs-dependency-detector\n  Mode: behavioral\n  Duration: 575ms",
+        "classification": "not_red"
+      },
+      {
+        "command": "pnpm lint",
+        "exit_code": 0,
+        "output_tail": "\n> bolt-to-github@1.3.22 lint /home/atomrem/projects/codefrost-dev/bolt-to-github\n> eslint \"src/**/*.{js,ts,svelte}\"\n",
+        "classification": "not_red"
+      },
+      {
+        "command": "pnpm check",
+        "exit_code": 1,
+        "output_tail": "    ).toEqual([\n\n\n/home/atomrem/projects/codefrost-dev/bolt-to-github/src/production-readiness/detectors/__tests__/dependencyDetector.test.ts:126:87\nError: Binding element 'id' implicitly has an 'any' type. \n    expect(\n      result.signals.filter(({ id }) => id.startsWith('dependency:category:')).map(({ id }) => id)\n    ).toEqual([\n\n\n/home/atomrem/projects/codefrost-dev/bolt-to-github/src/production-readiness/detectors/__tests__/dependencyDetector.test.ts:206:39\nError: Binding element 'id' implicitly has an 'any' type. \n    );\n    expect(unavailable.signals.map(({ id }) => id)).not.toEqual(\n      expect.arrayContaining(['dependency:additions', 'dependency:category:payments'])\n\n\n====================================\nsvelte-check found 9 errors and 0 warnings in 2 files\n\u2009ELIFECYCLE\u2009 Command failed with exit code 1.",
+        "classification": "red"
+      }
+    ]
+  },
+  "agent": null,
+  "_manifest_contract": {
+    "artifacts": [
+      "src/production-readiness/detectors/__tests__/dependencyDetector.test.ts:categorizes production sensitive dependency introductions",
+      "src/production-readiness/detectors/__tests__/dependencyDetector.test.ts:categorizes production sensitive dependency introductions:kind=test_function",
+      "src/production-readiness/detectors/__tests__/dependencyDetector.test.ts:detects dependency additions removals and version changes from package json diffs",
+      "src/production-readiness/detectors/__tests__/dependencyDetector.test.ts:detects dependency additions removals and version changes from package json diffs:kind=test_function",
+      "src/production-readiness/detectors/__tests__/dependencyDetector.test.ts:reports manifest and lockfile mismatch signals",
+      "src/production-readiness/detectors/__tests__/dependencyDetector.test.ts:reports manifest and lockfile mismatch signals:kind=test_function",
+      "src/production-readiness/detectors/dependencyDetector.ts:attribute:DependencyDetectionResult.limitations",
+      "src/production-readiness/detectors/dependencyDetector.ts:attribute:DependencyDetectionResult.limitations:kind=attribute",
+      "src/production-readiness/detectors/dependencyDetector.ts:attribute:DependencyDetectionResult.limitations:of=DependencyDetectionResult",
+      "src/production-readiness/detectors/dependencyDetector.ts:attribute:DependencyDetectionResult.limitations:type=PartialDataNotice[]",
+      "src/production-readiness/detectors/dependencyDetector.ts:attribute:DependencyDetectionResult.signals",
+      "src/production-readiness/detectors/dependencyDetector.ts:attribute:DependencyDetectionResult.signals:kind=attribute",
+      "src/production-readiness/detectors/dependencyDetector.ts:attribute:DependencyDetectionResult.signals:of=DependencyDetectionResult",
+      "src/production-readiness/detectors/dependencyDetector.ts:attribute:DependencyDetectionResult.signals:type=ReadinessSignal[]",
+      "src/production-readiness/detectors/dependencyDetector.ts:attribute:DependencyDetectorInput.baseLockfiles",
+      "src/production-readiness/detectors/dependencyDetector.ts:attribute:DependencyDetectorInput.baseLockfiles:kind=attribute",
+      "src/production-readiness/detectors/dependencyDetector.ts:attribute:DependencyDetectorInput.baseLockfiles:of=DependencyDetectorInput",
+      "src/production-readiness/detectors/dependencyDetector.ts:attribute:DependencyDetectorInput.baseLockfiles:type=readonly string[]",
+      "src/production-readiness/detectors/dependencyDetector.ts:attribute:DependencyDetectorInput.basePackageJson",
+      "src/production-readiness/detectors/dependencyDetector.ts:attribute:DependencyDetectorInput.basePackageJson:kind=attribute",
+      "src/production-readiness/detectors/dependencyDetector.ts:attribute:DependencyDetectorInput.basePackageJson:of=DependencyDetectorInput",
+      "src/production-readiness/detectors/dependencyDetector.ts:attribute:DependencyDetectorInput.basePackageJson:type=PackageManifestSnapshot",
+      "src/production-readiness/detectors/dependencyDetector.ts:attribute:DependencyDetectorInput.candidateLockfiles",
+      "src/production-readiness/detectors/dependencyDetector.ts:attribute:DependencyDetectorInput.candidateLockfiles:kind=attribute",
+      "src/production-readiness/detectors/dependencyDetector.ts:attribute:DependencyDetectorInput.candidateLockfiles:of=DependencyDetectorInput",
+      "src/production-readiness/detectors/dependencyDetector.ts:attribute:DependencyDetectorInput.candidateLockfiles:type=readonly string[]",
+      "src/production-readiness/detectors/dependencyDetector.ts:attribute:DependencyDetectorInput.candidatePackageJson",
+      "src/production-readiness/detectors/dependencyDetector.ts:attribute:DependencyDetectorInput.candidatePackageJson:kind=attribute",
+      "src/production-readiness/detectors/dependencyDetector.ts:attribute:DependencyDetectorInput.candidatePackageJson:of=DependencyDetectorInput",
+      "src/production-readiness/detectors/dependencyDetector.ts:attribute:DependencyDetectorInput.candidatePackageJson:type=PackageManifestSnapshot",
+      "src/production-readiness/detectors/dependencyDetector.ts:attribute:DependencyDetectorInput.diff",
+      "src/production-readiness/detectors/dependencyDetector.ts:attribute:DependencyDetectorInput.diff:kind=attribute",
+      "src/production-readiness/detectors/dependencyDetector.ts:attribute:DependencyDetectorInput.diff:of=DependencyDetectorInput",
+      "src/production-readiness/detectors/dependencyDetector.ts:attribute:DependencyDetectorInput.diff:type=InventoryDiffResult",
+      "src/production-readiness/detectors/dependencyDetector.ts:attribute:PackageManifest.dependencies",
+      "src/production-readiness/detectors/dependencyDetector.ts:attribute:PackageManifest.dependencies:kind=attribute",
+      "src/production-readiness/detectors/dependencyDetector.ts:attribute:PackageManifest.dependencies:of=PackageManifest",
+      "src/production-readiness/detectors/dependencyDetector.ts:attribute:PackageManifest.dependencies:type=Readonly<Record<string, string>> | undefined",
+      "src/production-readiness/detectors/dependencyDetector.ts:attribute:PackageManifest.devDependencies",
+      "src/production-readiness/detectors/dependencyDetector.ts:attribute:PackageManifest.devDependencies:kind=attribute",
+      "src/production-readiness/detectors/dependencyDetector.ts:attribute:PackageManifest.devDependencies:of=PackageManifest",
+      "src/production-readiness/detectors/dependencyDetector.ts:attribute:PackageManifest.devDependencies:type=Readonly<Record<string, string>> | undefined",
+      "src/production-readiness/detectors/dependencyDetector.ts:attribute:PackageManifest.optionalDependencies",
+      "src/production-readiness/detectors/dependencyDetector.ts:attribute:PackageManifest.optionalDependencies:kind=attribute",
+      "src/production-readiness/detectors/dependencyDetector.ts:attribute:PackageManifest.optionalDependencies:of=PackageManifest",
+      "src/production-readiness/detectors/dependencyDetector.ts:attribute:PackageManifest.optionalDependencies:type=Readonly<Record<string, string>> | undefined",
+      "src/production-readiness/detectors/dependencyDetector.ts:attribute:PackageManifest.peerDependencies",
+      "src/production-readiness/detectors/dependencyDetector.ts:attribute:PackageManifest.peerDependencies:kind=attribute",
+      "src/production-readiness/detectors/dependencyDetector.ts:attribute:PackageManifest.peerDependencies:of=PackageManifest",
+      "src/production-readiness/detectors/dependencyDetector.ts:attribute:PackageManifest.peerDependencies:type=Readonly<Record<string, string>> | undefined",
+      "src/production-readiness/detectors/dependencyDetector.ts:function:detectDependencySignals",
+      "src/production-readiness/detectors/dependencyDetector.ts:function:detectDependencySignals:arg=input:type=DependencyDetectorInput:default=None",
+      "src/production-readiness/detectors/dependencyDetector.ts:function:detectDependencySignals:kind=function",
+      "src/production-readiness/detectors/dependencyDetector.ts:function:detectDependencySignals:returns=DependencyDetectionResult",
+      "src/production-readiness/detectors/dependencyDetector.ts:interface:DependencyDetectionResult",
+      "src/production-readiness/detectors/dependencyDetector.ts:interface:DependencyDetectionResult:kind=interface",
+      "src/production-readiness/detectors/dependencyDetector.ts:interface:DependencyDetectorInput",
+      "src/production-readiness/detectors/dependencyDetector.ts:interface:DependencyDetectorInput:kind=interface",
+      "src/production-readiness/detectors/dependencyDetector.ts:interface:PackageManifest",
+      "src/production-readiness/detectors/dependencyDetector.ts:interface:PackageManifest:kind=interface",
+      "src/production-readiness/detectors/dependencyDetector.ts:type:PackageDependencySection",
+      "src/production-readiness/detectors/dependencyDetector.ts:type:PackageDependencySection:kind=type",
+      "src/production-readiness/detectors/dependencyDetector.ts:type:PackageDependencySection:type='dependencies' | 'devDependencies' | 'peerDependencies' | 'optionalDependencies'",
+      "src/production-readiness/detectors/dependencyDetector.ts:type:PackageManifestSnapshot",
+      "src/production-readiness/detectors/dependencyDetector.ts:type:PackageManifestSnapshot:kind=type",
+      "src/production-readiness/detectors/dependencyDetector.ts:type:PackageManifestSnapshot:type={ status: 'present'; path: string; manifest: PackageManifest } | { status: 'absent'; path: string } | { status: 'unavailable'; path: string; limitation: PartialDataNotice }",
+      "src/production-readiness/rules/dependency-categories.ts:attribute:DependencyCategoryRule.category",
+      "src/production-readiness/rules/dependency-categories.ts:attribute:DependencyCategoryRule.category:kind=attribute",
+      "src/production-readiness/rules/dependency-categories.ts:attribute:DependencyCategoryRule.category:of=DependencyCategoryRule",
+      "src/production-readiness/rules/dependency-categories.ts:attribute:DependencyCategoryRule.category:type=DependencyCategory",
+      "src/production-readiness/rules/dependency-categories.ts:attribute:DependencyCategoryRule.packages",
+      "src/production-readiness/rules/dependency-categories.ts:attribute:DependencyCategoryRule.packages:kind=attribute",
+      "src/production-readiness/rules/dependency-categories.ts:attribute:DependencyCategoryRule.packages:of=DependencyCategoryRule",
+      "src/production-readiness/rules/dependency-categories.ts:attribute:DependencyCategoryRule.packages:type=readonly string[]",
+      "src/production-readiness/rules/dependency-categories.ts:function:categorizeDependency",
+      "src/production-readiness/rules/dependency-categories.ts:function:categorizeDependency:arg=packageName:type=string:default=None",
+      "src/production-readiness/rules/dependency-categories.ts:function:categorizeDependency:kind=function",
+      "src/production-readiness/rules/dependency-categories.ts:function:categorizeDependency:returns=DependencyCategory[]",
+      "src/production-readiness/rules/dependency-categories.ts:function:getDependencyCategoryRules",
+      "src/production-readiness/rules/dependency-categories.ts:function:getDependencyCategoryRules:kind=function",
+      "src/production-readiness/rules/dependency-categories.ts:function:getDependencyCategoryRules:returns=DependencyCategoryRule[]",
+      "src/production-readiness/rules/dependency-categories.ts:interface:DependencyCategoryRule",
+      "src/production-readiness/rules/dependency-categories.ts:interface:DependencyCategoryRule:kind=interface",
+      "src/production-readiness/rules/dependency-categories.ts:type:DependencyCategory",
+      "src/production-readiness/rules/dependency-categories.ts:type:DependencyCategory:kind=type",
+      "src/production-readiness/rules/dependency-categories.ts:type:DependencyCategory:type='auth' | 'database' | 'payments' | 'email_sms' | 'ai_api' | 'validation' | 'monitoring' | 'platform_storage'",
+      "src/production-readiness/test-fixtures/prs/dependencies.ts:attribute:DependencyDetectorFixture.input",
+      "src/production-readiness/test-fixtures/prs/dependencies.ts:attribute:DependencyDetectorFixture.input:kind=attribute",
+      "src/production-readiness/test-fixtures/prs/dependencies.ts:attribute:DependencyDetectorFixture.input:of=DependencyDetectorFixture",
+      "src/production-readiness/test-fixtures/prs/dependencies.ts:attribute:DependencyDetectorFixture.input:type=DependencyDetectorInput",
+      "src/production-readiness/test-fixtures/prs/dependencies.ts:function:createDependencyDetectorFixture",
+      "src/production-readiness/test-fixtures/prs/dependencies.ts:function:createDependencyDetectorFixture:arg=name:type=string:default=None",
+      "src/production-readiness/test-fixtures/prs/dependencies.ts:function:createDependencyDetectorFixture:kind=function",
+      "src/production-readiness/test-fixtures/prs/dependencies.ts:function:createDependencyDetectorFixture:returns=DependencyDetectorFixture",
+      "src/production-readiness/test-fixtures/prs/dependencies.ts:interface:DependencyDetectorFixture",
+      "src/production-readiness/test-fixtures/prs/dependencies.ts:interface:DependencyDetectorFixture:kind=interface"
+    ],
+    "files": {
+      "create": [
+        "src/production-readiness/detectors/__tests__/dependencyDetector.test.ts",
+        "src/production-readiness/detectors/dependencyDetector.ts",
+        "src/production-readiness/rules/dependency-categories.ts",
+        "src/production-readiness/test-fixtures/prs/dependencies.ts"
+      ],
+      "edit": [],
+      "read": [
+        "docs/b2g_production_readiness_snapshot_reference.md",
+        "docs/unit-testing-rules.md",
+        "manifests/01-b2g-prs-domain-models-fixtures.manifest.yaml",
+        "manifests/02-b2g-prs-zip-inventory-normalization.manifest.yaml",
+        "manifests/03-b2g-prs-github-base-inventory.manifest.yaml",
+        "manifests/04-b2g-prs-diff-engine.manifest.yaml",
+        "manifests/05-b2g-prs-sensitive-path-classifier.manifest.yaml",
+        "manifests/drafts/b2g-production-readiness-snapshot.manifest.yaml",
+        "src/production-readiness/diff/diffEngine.ts",
+        "src/production-readiness/domain.ts",
+        "src/production-readiness/inventory/zipInventory.ts"
+      ]
+    },
+    "test_files": ["src/production-readiness/detectors/__tests__/dependencyDetector.test.ts"],
+    "validate_commands": [
+      "pnpm exec vitest run src/production-readiness/detectors/__tests__/dependencyDetector.test.ts",
+      "./scripts/maid validate manifests/06-b2g-prs-dependency-detector.manifest.yaml --mode behavioral",
+      "pnpm lint",
+      "pnpm check"
+    ]
+  }
+}

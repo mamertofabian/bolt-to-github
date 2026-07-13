@@ -1,0 +1,373 @@
+schema: '2'
+goal: |
+  Detect dependency additions, removals, version changes, package manager
+  conflicts, manifest/lockfile mismatches, and production-sensitive dependency
+  category introductions for the Production Readiness Snapshot module.
+description: |
+  Sixth implementation child for the b2g-production-readiness-snapshot parent
+  epic. Fixture-backed behavioral tests define a pure detector over parsed
+  candidate/base package manifests, normalized lockfile paths, and the existing
+  file diff contract.
+
+  Package manifest availability is explicit: present and known-absent states
+  may be compared, while unavailable content becomes a typed detector
+  limitation and never a false all-added or all-removed result. Manifest and
+  lockfile mismatch signals use actual diff entries because identical path
+  lists cannot prove whether a file changed.
+
+  Dependency family rules are centralized data and may map one package to more
+  than one production-sensitive category, such as Supabase affecting both auth
+  and platform/storage concerns. Signals are deterministic, evidence-backed,
+  and phrased as review prompts rather than vulnerability or broken-install
+  claims. Credential-bearing Git, HTTP, file, alias, or otherwise unsafe
+  dependency specifiers are redacted before entering structured evidence.
+type: feature
+files:
+  create:
+    - path: src/production-readiness/rules/dependency-categories.ts
+      artifacts:
+        - kind: type
+          name: DependencyCategory
+          type: "'auth' | 'database' | 'payments' | 'email_sms' | 'ai_api' | 'validation' | 'monitoring' | 'platform_storage'"
+          description: Production-sensitive dependency families from the PRS reference document.
+        - kind: interface
+          name: DependencyCategoryRule
+          description: Data-driven dependency category and exact or scoped-wildcard package patterns.
+        - kind: attribute
+          name: category
+          of: DependencyCategoryRule
+          type: DependencyCategory
+        - kind: attribute
+          name: packages
+          of: DependencyCategoryRule
+          type: readonly string[]
+        - kind: function
+          name: getDependencyCategoryRules
+          args: []
+          returns: DependencyCategoryRule[]
+          description: Returns a fresh ordered copy of the dependency category rule catalog.
+        - kind: function
+          name: categorizeDependency
+          args:
+            - name: packageName
+              type: string
+          returns: DependencyCategory[]
+          description: Maps one exact or scoped package name to every matching category in deterministic order.
+    - path: src/production-readiness/detectors/dependencyDetector.ts
+      artifacts:
+        - kind: type
+          name: PackageDependencySection
+          type: "'dependencies' | 'devDependencies' | 'peerDependencies' | 'optionalDependencies'"
+        - kind: interface
+          name: PackageManifest
+          description: Parsed package dependency sections used by the detector; unrelated package.json fields stay outside this slice.
+        - kind: attribute
+          name: dependencies
+          of: PackageManifest
+          type: Readonly<Record<string, string>> | undefined
+        - kind: attribute
+          name: devDependencies
+          of: PackageManifest
+          type: Readonly<Record<string, string>> | undefined
+        - kind: attribute
+          name: peerDependencies
+          of: PackageManifest
+          type: Readonly<Record<string, string>> | undefined
+        - kind: attribute
+          name: optionalDependencies
+          of: PackageManifest
+          type: Readonly<Record<string, string>> | undefined
+        - kind: type
+          name: PackageManifestSnapshot
+          type: "{ status: 'present'; path: string; manifest: PackageManifest } | { status: 'absent'; path: string } | { status: 'unavailable'; path: string; limitation: PartialDataNotice }"
+          description: Explicit present, known-absent, or unavailable package manifest state.
+        - kind: interface
+          name: DependencyDetectorInput
+          description: Candidate/base manifests, normalized lockfile paths, and file diff required for dependency analysis.
+        - kind: attribute
+          name: candidatePackageJson
+          of: DependencyDetectorInput
+          type: PackageManifestSnapshot
+        - kind: attribute
+          name: basePackageJson
+          of: DependencyDetectorInput
+          type: PackageManifestSnapshot
+        - kind: attribute
+          name: candidateLockfiles
+          of: DependencyDetectorInput
+          type: readonly string[]
+        - kind: attribute
+          name: baseLockfiles
+          of: DependencyDetectorInput
+          type: readonly string[]
+        - kind: attribute
+          name: diff
+          of: DependencyDetectorInput
+          type: InventoryDiffResult
+        - kind: interface
+          name: DependencyDetectionResult
+          description: Deterministically ordered dependency signals and honest typed limitations.
+        - kind: attribute
+          name: signals
+          of: DependencyDetectionResult
+          type: ReadinessSignal[]
+        - kind: attribute
+          name: limitations
+          of: DependencyDetectionResult
+          type: PartialDataNotice[]
+        - kind: function
+          name: detectDependencySignals
+          args:
+            - name: input
+              type: DependencyDetectorInput
+          returns: DependencyDetectionResult
+          description: Compares all dependency sections, detects categorized introductions and lockfile consistency signals, and suppresses unsafe inference from unavailable manifests.
+    - path: src/production-readiness/test-fixtures/prs/dependencies.ts
+      artifacts:
+        - kind: interface
+          name: DependencyDetectorFixture
+          description: Fresh deterministic dependency detector input for a named comparison scenario.
+        - kind: attribute
+          name: input
+          of: DependencyDetectorFixture
+          type: DependencyDetectorInput
+        - kind: function
+          name: createDependencyDetectorFixture
+          args:
+            - name: name
+              type: string
+          returns: DependencyDetectorFixture
+          description: Returns fresh dependency-change, unsafe-specifier, categorized-introduction, manifest-only, lockfile-only, conflict, removal, or unavailable-base fixtures and rejects unknown names.
+    - path: src/production-readiness/detectors/__tests__/dependencyDetector.test.ts
+      artifacts:
+        - kind: test_function
+          name: detects dependency additions removals and version changes from package json diffs
+          description: All four package dependency sections produce deterministic added, removed, exact version-change, compound major-looking, and credential-redacted evidence without input mutation.
+        - kind: test_function
+          name: categorizes production sensitive dependency introductions
+          description: Exact and scoped package families, including overlapping Supabase roles, produce neutral category review signals rather than vulnerability claims.
+        - kind: test_function
+          name: reports manifest and lockfile mismatch signals
+          description: Actual diff entries drive manifest-only and lockfile-only mismatches, multiple lockfile families are visible, removed manifests are explicit, and unavailable base data yields limitations without false additions.
+  read:
+    - docs/b2g_production_readiness_snapshot_reference.md
+    - docs/unit-testing-rules.md
+    - manifests/drafts/b2g-production-readiness-snapshot.manifest.yaml
+    - manifests/01-b2g-prs-domain-models-fixtures.manifest.yaml
+    - manifests/02-b2g-prs-zip-inventory-normalization.manifest.yaml
+    - manifests/03-b2g-prs-github-base-inventory.manifest.yaml
+    - manifests/04-b2g-prs-diff-engine.manifest.yaml
+    - manifests/05-b2g-prs-sensitive-path-classifier.manifest.yaml
+    - src/production-readiness/domain.ts
+    - src/production-readiness/diff/diffEngine.ts
+    - src/production-readiness/inventory/zipInventory.ts
+validate:
+  - pnpm exec vitest run src/production-readiness/detectors/__tests__/dependencyDetector.test.ts
+  - ./scripts/maid validate manifests/06-b2g-prs-dependency-detector.manifest.yaml --mode behavioral
+  - pnpm lint
+  - pnpm check
+created: '2026-07-13T18:57:57Z'
+metadata:
+  parent_epic: b2g-production-readiness-snapshot
+  child_slug: 06-b2g-prs-dependency-detector
+  tags:
+    - production-readiness
+    - dependencies
+    - deterministic-analysis
+  priority: high
+  promotable: true
+  source_document: docs/b2g_production_readiness_snapshot_reference.md
+  depends_on:
+    - 01-b2g-prs-domain-models-fixtures
+    - 02-b2g-prs-zip-inventory-normalization
+    - 03-b2g-prs-github-base-inventory
+    - 04-b2g-prs-diff-engine
+temptations:
+  - risk: Do not hardcode package family names inside detector control flow.
+    instead: Keep exact and scoped-wildcard package matching in dependency-categories rules and test it through public category and detector behavior.
+  - risk: Do not treat a new dependency as a vulnerability, prove an installation is broken, or copy unsafe raw specifiers into evidence.
+    instead: Emit neutral review signals and redact credential-bearing Git, HTTP, file, alias, or otherwise unsafe dependency specifiers before structured output.
+  - risk: Do not infer all additions or removals when either package manifest is unavailable.
+    instead: Preserve the typed source limitation and suppress manifest comparison while retaining independent lockfile checks.
+  - risk: Do not infer manifest or lockfile changes from path-list differences alone.
+    instead: Use normalized file diff entries for actual change detection and use candidate lockfiles only for current package-manager conflict state.
+  - risk: Do not let dependency section, object key, rule, or lockfile input order alter output.
+    instead: Apply total ordering to packages, categories, signals, evidence, and limitations without mutating inputs.
+outcome:
+  status: completed
+  summary: |
+    PRS can now compare all four package.json dependency sections and emit
+    deterministic signals for additions, removals, version changes, package
+    manager conflicts, and diff-proven manifest/lockfile mismatches. New
+    production-sensitive packages are categorized through centralized rules,
+    including packages such as Supabase that legitimately map to more than one
+    review category.
+
+    Present, known-absent, and unavailable package manifests remain distinct,
+    so partial base data produces typed limitations instead of false bulk
+    changes. Structured evidence admits only normalized safe semver ranges and
+    known distribution tags; URLs, aliases, file paths, credential-like text,
+    control characters, and other unsafe specifiers are redacted. Major-looking
+    range comparisons use conservative admitted-major intervals and decline to
+    classify unknown or overflowed ranges.
+  rationale: |
+    Keeping dependency families as ordered data separates policy from detector
+    mechanics and makes overlapping category membership explicit. Comparing
+    actual diff entries prevents unchanged path inventories from masquerading
+    as package-manifest or lockfile changes. Strict evidence sanitization and
+    conservative range analysis preserve useful review prompts without leaking
+    credentials or overstating compatibility risk.
+  lessons:
+    - lesson_type: dependency-evidence-allowlist
+      summary: |
+        Dependency specifiers are attacker-controlled evidence. Redacting only
+        URL-shaped values is insufficient because bare credentials, JWTs,
+        aliases, local paths, and control characters can also leak through
+        structured output. A narrow allowlist of semver syntax and known
+        distribution tags is safer than an expanding denylist.
+      tags:
+        - privacy
+        - evidence
+        - dependencies
+      paths:
+        - src/production-readiness/detectors/dependencyDetector.ts
+        - src/production-readiness/detectors/__tests__/dependencyDetector.test.ts
+    - lesson_type: conservative-semver-intervals
+      summary: |
+        First-number comparison is not enough for compound or partial semver
+        ranges. Strict and inclusive comparator boundaries change admitted
+        major sets differently, while unsafe integers and unknown union branches
+        must invalidate the whole signature to avoid false major-change claims.
+      tags:
+        - semver
+        - correctness
+        - deterministic-analysis
+      paths:
+        - src/production-readiness/detectors/dependencyDetector.ts
+        - src/production-readiness/detectors/__tests__/dependencyDetector.test.ts
+    - lesson_type: diff-proves-change
+      summary: |
+        Candidate and base path lists describe current inventories but cannot
+        prove that a shared package manifest or lockfile changed. Consistency
+        signals must use normalized diff entries, while current lockfile paths
+        remain appropriate for detecting simultaneous package-manager families.
+      tags:
+        - diff
+        - lockfiles
+        - evidence
+      paths:
+        - src/production-readiness/detectors/dependencyDetector.ts
+        - src/production-readiness/diff/diffEngine.ts
+    - lesson_type: unavailable-is-not-absent
+      summary: |
+        A package manifest that could not be read cannot safely participate in
+        additions or removals. Explicit snapshot states keep unavailable source
+        data visible as a typed limitation while preserving independent
+        lockfile checks.
+      tags:
+        - partial-data
+        - limitations
+        - correctness
+      paths:
+        - src/production-readiness/detectors/dependencyDetector.ts
+        - src/production-readiness/test-fixtures/prs/dependencies.ts
+  review_notes:
+    - source: independent reviewer subagent prs_child04_review
+      severity: changes-requested
+      summary: |
+        Initial review found plan-lock drift, raw credential-bearing dependency
+        URLs in evidence, and insufficient first-number range comparison. Plan
+        revisions and focused regressions established strict redaction and
+        compound admitted-major behavior.
+    - source: independent reviewer subagent prs_child04_review
+      severity: changes-requested
+      summary: |
+        Follow-up review found that bare credentials, JWT-like values, control
+        characters, and partial comparator boundaries remained unsafe or
+        ambiguous. A strict display-safe allowlist and interval-based boundary
+        regressions resolved those gaps.
+    - source: independent reviewer subagent prs_child04_review
+      severity: changes-requested
+      summary: |
+        Lower-bound review identified the semantic difference between >2 and
+        >=2 and equivalence between >2 and >=3 at the admitted-major level.
+        Isolated red-to-green regressions now lock both cases.
+    - source: independent reviewer subagent prs_child04_review
+      severity: changes-requested
+      summary: |
+        Overflow review found that unsafe numeric majors and strict-greater
+        increments could become false intervals or disappear from unions.
+        Unknown and overflowed branches now invalidate the complete signature.
+    - source: independent reviewer subagent prs_child04_review
+      severity: ready
+      summary: |
+        Final read-only review found no remaining issues and confirmed privacy,
+        normalization, conservative semver behavior, deterministic ordering,
+        diff-driven mismatches, typed limitations, artifact scope, revision-6
+        plan alignment, and preserved red evidence.
+  validation:
+    - command:
+        - pnpm
+        - exec
+        - vitest
+        - run
+        - src/production-readiness/detectors/__tests__/dependencyDetector.test.ts
+      status: passed
+      summary: Three focused tests passed across dependency changes, all four sections, category rules, mismatch states, deterministic ordering, redaction, partial comparator boundaries, and overflowed or unknown ranges.
+    - command:
+        - pnpm
+        - test:ci
+      status: passed
+      summary: Full Vitest CI passed 204 test files and 4031 tests after the final review fixes.
+    - command:
+        - pnpm
+        - lint
+      status: passed
+      summary: ESLint passed for all JavaScript, TypeScript, and Svelte source files.
+    - command:
+        - pnpm
+        - check
+      status: passed
+      summary: Svelte and TypeScript checking completed with zero errors and zero warnings.
+    - command:
+        - pnpm
+        - build
+      status: passed
+      summary: The v1.3.22 production extension build completed successfully with only the existing Vite chunking notices.
+    - command:
+        - ./scripts/maid
+        - validate
+        - --manifest-dir
+        - manifests
+        - --mode
+        - behavioral
+      status: passed
+      summary: Repository behavioral validation passed 42 active manifests with seven superseded manifests skipped.
+    - command:
+        - ./scripts/maid
+        - validate
+        - --manifest-dir
+        - manifests
+        - --mode
+        - implementation
+      status: passed
+      summary: Repository implementation validation passed 42 active manifests with seven superseded manifests skipped.
+    - command:
+        - ./scripts/maid
+        - verify
+        - --manifest-dir
+        - manifests
+        - --strict
+        - --worktree-scope
+        - --file-tracking-scope
+        - task
+        - --plan-lock-scope
+        - task
+        - --require-plan-lock
+        - --require-red-evidence
+        - --include-tests
+        - --since
+        - HEAD
+        - --summary
+      status: passed
+      summary: Strict task-scoped verification passed all nine gates with no blockers or warnings.
