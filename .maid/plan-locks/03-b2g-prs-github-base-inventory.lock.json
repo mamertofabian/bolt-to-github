@@ -2,11 +2,11 @@
   "manifest_path": "manifests/03-b2g-prs-github-base-inventory.manifest.yaml",
   "manifest_hash": "sha256:910964872a04e1aee321f7232e6f53cadc1b7c156b9641b41908f8d7aa492d42",
   "test_hashes": {
-    "src/production-readiness/__tests__/github-base-inventory.test.ts": "sha256:eab278155e763ca54f64b1b092d48c73285d2fce1620761cf2040470ccef42fe",
+    "src/production-readiness/__tests__/github-base-inventory.test.ts": "sha256:b76e2c35b0c70a4885f9bb5ee622478e713e54de7ddab3df7e1c13df6bc09c67",
     "src/production-readiness/__tests__/zip-inventory-normalization.test.ts": "sha256:c82c747cf1449d35dacff1f2572fdd58516cfac2fb837b1054fcd21bd1154cc8"
   },
   "created_at": "2026-07-13T17:35:36.393478+00:00",
-  "revision": 13,
+  "revision": 14,
   "revisions": [
     {
       "prior_manifest_hash": "sha256:b9657c677df09f3158d4a9e16f752e062396766ec7af9d800d43842e16f2890b",
@@ -357,6 +357,24 @@
       },
       "revised_at": "2026-07-13T18:06:52.156799+00:00",
       "reason": "Capture completed Outcome with full validation and three-round independent review evidence",
+      "agent": null,
+      "contract_delta": {
+        "artifacts_added": [],
+        "artifacts_removed": [],
+        "files_added": [],
+        "files_removed": [],
+        "validate_commands_added": [],
+        "validate_commands_removed": []
+      }
+    },
+    {
+      "prior_manifest_hash": "sha256:910964872a04e1aee321f7232e6f53cadc1b7c156b9641b41908f8d7aa492d42",
+      "prior_test_hashes": {
+        "src/production-readiness/__tests__/github-base-inventory.test.ts": "sha256:eab278155e763ca54f64b1b092d48c73285d2fce1620761cf2040470ccef42fe",
+        "src/production-readiness/__tests__/zip-inventory-normalization.test.ts": "sha256:c82c747cf1449d35dacff1f2572fdd58516cfac2fb837b1054fcd21bd1154cc8"
+      },
+      "revised_at": "2026-07-13T18:16:46.713213+00:00",
+      "reason": "Accept child 04 additive completeness contract and its focused GitHub inventory regression",
       "agent": null,
       "contract_delta": {
         "artifacts_added": [],

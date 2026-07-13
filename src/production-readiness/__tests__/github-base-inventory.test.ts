@@ -57,6 +57,7 @@ describe('Production Readiness Snapshot GitHub base inventory', () => {
         appEntry,
       ],
       limitations: [],
+      complete: true,
     });
     expect(fixture.calls).toEqual([
       {
@@ -91,6 +92,7 @@ describe('Production Readiness Snapshot GitHub base inventory', () => {
           confidenceImpact: 'low',
         },
       ],
+      complete: false,
     });
     expect(fixture.calls).toHaveLength(1);
 
@@ -107,6 +109,7 @@ describe('Production Readiness Snapshot GitHub base inventory', () => {
           confidenceImpact: 'low',
         },
       ],
+      complete: false,
     });
 
     const forwardedSignals: Array<GitHubReadOptions['signal'] | null> = [];
@@ -152,6 +155,7 @@ describe('Production Readiness Snapshot GitHub base inventory', () => {
       sha: 'base-commit-sha',
     });
     expect(rateLimitedResult.entries).toEqual([]);
+    expect(rateLimitedResult.complete).toBe(false);
     expect(rateLimitedResult.limitations).toEqual([
       {
         source: 'rate_limit',
@@ -163,6 +167,7 @@ describe('Production Readiness Snapshot GitHub base inventory', () => {
 
     const truncated = createGitHubTreeFixture('truncated');
     const truncatedResult = await buildGitHubBaseInventory(requestFromFixture(truncated));
+    expect(truncatedResult.complete).toBe(false);
     expect(truncatedResult.entries.map(({ path }) => path)).toEqual([
       'pnpm-lock.yaml',
       'src/App.ts',
@@ -368,6 +373,7 @@ describe('Production Readiness Snapshot GitHub base inventory', () => {
           confidenceImpact: 'low',
         },
       ],
+      complete: false,
     });
     expect(abortedFixture.calls).toEqual([]);
 
@@ -398,6 +404,27 @@ describe('Production Readiness Snapshot GitHub base inventory', () => {
           confidenceImpact: 'low',
         },
       ],
+      complete: false,
     });
+  });
+
+  it('complete distinguishes trustworthy and partial base trees', async () => {
+    const complete = await buildGitHubBaseInventory(
+      requestFromFixture(createGitHubTreeFixture('complete'))
+    );
+    const truncated = await buildGitHubBaseInventory(
+      requestFromFixture(createGitHubTreeFixture('truncated'))
+    );
+    const missing = await buildGitHubBaseInventory(
+      requestFromFixture(createGitHubTreeFixture('missing'))
+    );
+    const rateLimited = await buildGitHubBaseInventory(
+      requestFromFixture(createGitHubTreeFixture('rate-limited'))
+    );
+
+    expect(complete.complete).toBe(true);
+    expect(truncated.complete).toBe(false);
+    expect(missing.complete).toBe(false);
+    expect(rateLimited.complete).toBe(false);
   });
 });

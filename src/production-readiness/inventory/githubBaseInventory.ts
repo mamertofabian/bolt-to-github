@@ -49,6 +49,7 @@ export interface GitHubBaseInventoryResult {
   base?: GitRefSummary;
   entries: GitHubBaseInventoryEntry[];
   limitations: PartialDataNotice[];
+  complete: boolean;
 }
 
 export interface GitHubBaseContentRequest {
@@ -181,6 +182,7 @@ function cancelledResult(repository: RepositoryRef): GitHubBaseInventoryResult {
         confidenceImpact: 'low',
       },
     ],
+    complete: false,
   };
 }
 
@@ -380,7 +382,7 @@ export async function buildGitHubBaseInventory(
 
     entries.sort((left, right) => compareStrings(left.path, right.path));
     limitations.sort((left, right) => compareStrings(left.message, right.message));
-    return { repository, base, entries, limitations };
+    return { repository, base, entries, limitations, complete: limitations.length === 0 };
   } catch (error) {
     if (request.signal?.aborted || (error instanceof DOMException && error.name === 'AbortError')) {
       return cancelledResult(repository);
@@ -391,6 +393,7 @@ export async function buildGitHubBaseInventory(
       base,
       entries: [],
       limitations: [unavailableNotice(error, owner, repo, ref)],
+      complete: false,
     };
   }
 }

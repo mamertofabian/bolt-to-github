@@ -1,0 +1,409 @@
+schema: '2'
+goal: |
+  Compare candidate zip inventory against GitHub base inventory and produce
+  deterministic PRS file diff metrics for added, changed, deleted, uniquely
+  detectable renamed, line-change, and binary-change cases.
+description: |
+  Fourth implementation child for the b2g-production-readiness-snapshot parent
+  epic. Deterministic in-memory fixtures define the pure diff contract without
+  GitHub, browser, filesystem, or extension globals.
+
+  Candidate and base entries share exact Git blob SHAs, so unchanged files and
+  unambiguous exact-content renames can be identified without content reads.
+  Content results from changed or deleted base files are supplied selectively
+  by normalized path, including text, binary state, and typed limitations; the
+  diff engine never performs network access. GitHub base results also
+  gain an explicit completeness bit so partial trees cannot make omitted base
+  paths look like newly added candidate files.
+
+  Line diffs use bounded LCS work. Binary, large, metadata-only, unhydrated, or
+  computationally expensive text stays visible as a file-level change with a
+  typed limitation rather than being marked unchanged or exhausting an MV3
+  extension context.
+temptations:
+  - risk: Do not compare raw candidate SHA-256 values with GitHub blob SHA-1 values.
+    instead: Use the exact-byte Git blob SHA carried by both normalized inventory contracts.
+  - risk: Do not infer additions or renames from an incomplete GitHub tree.
+    instead: Return known shared/deleted changes as partial results, suppress uncertain additions and renames, and preserve base limitations.
+  - risk: Do not fetch GitHub content or call extension globals from the diff engine.
+    instead: Consume only selectively supplied base text keyed by normalized path.
+  - risk: Do not run unbounded quadratic line comparisons.
+    instead: Enforce byte and line-cell budgets and emit large_file_diff limitations when line metrics are unavailable.
+  - risk: Do not infer production sensitivity in the diff engine.
+    instead: Emit neutral file and line metrics for later detector and composer slices.
+type: feature
+files:
+  create:
+    - path: src/production-readiness/diff/diffEngine.ts
+      artifacts:
+        - kind: type
+          name: FileDiffStatus
+          type: "'added' | 'changed' | 'deleted' | 'renamed'"
+        - kind: interface
+          name: InventoryDiffInput
+          description: Candidate inventory, typed GitHub base inventory, and optional selectively loaded base text by normalized path.
+        - kind: attribute
+          name: candidate
+          of: InventoryDiffInput
+          type: FileInventory
+        - kind: attribute
+          name: base
+          of: InventoryDiffInput
+          type: GitHubBaseInventoryResult
+        - kind: attribute
+          name: baseContentByPath
+          of: InventoryDiffInput
+          type: ReadonlyMap<string, GitHubBaseContentResult> | undefined
+        - kind: interface
+          name: DiffEngineOptions
+          description: Optional exact-rename, per-file byte, and quadratic line-cell budgets.
+        - kind: attribute
+          name: detectRenames
+          of: DiffEngineOptions
+          type: boolean | undefined
+        - kind: attribute
+          name: maxLineDiffBytes
+          of: DiffEngineOptions
+          type: number | undefined
+        - kind: attribute
+          name: maxLineDiffCells
+          of: DiffEngineOptions
+          type: number | undefined
+        - kind: interface
+          name: FileDiffEntry
+          description: One normalized file-level added, changed, deleted, or exact-content renamed result with optional bounded line metrics.
+        - kind: attribute
+          name: path
+          of: FileDiffEntry
+          type: string
+        - kind: attribute
+          name: status
+          of: FileDiffEntry
+          type: FileDiffStatus
+        - kind: attribute
+          name: previousPath
+          of: FileDiffEntry
+          type: string | undefined
+        - kind: attribute
+          name: beforeGitBlobSha
+          of: FileDiffEntry
+          type: string | undefined
+        - kind: attribute
+          name: afterGitBlobSha
+          of: FileDiffEntry
+          type: string | undefined
+        - kind: attribute
+          name: sizeBeforeBytes
+          of: FileDiffEntry
+          type: number | undefined
+        - kind: attribute
+          name: sizeAfterBytes
+          of: FileDiffEntry
+          type: number | undefined
+        - kind: attribute
+          name: isBinary
+          of: FileDiffEntry
+          type: boolean | undefined
+        - kind: attribute
+          name: lineDiffSkipped
+          of: FileDiffEntry
+          type: boolean
+        - kind: attribute
+          name: addedLines
+          of: FileDiffEntry
+          type: number | undefined
+        - kind: attribute
+          name: deletedLines
+          of: FileDiffEntry
+          type: number | undefined
+        - kind: interface
+          name: FileDiffSummary
+          description: Neutral file, line, rename, and binary metrics before detector classification.
+        - kind: attribute
+          name: changedFiles
+          of: FileDiffSummary
+          type: number
+        - kind: attribute
+          name: addedFiles
+          of: FileDiffSummary
+          type: number
+        - kind: attribute
+          name: deletedFiles
+          of: FileDiffSummary
+          type: number
+        - kind: attribute
+          name: renamedFiles
+          of: FileDiffSummary
+          type: number
+        - kind: attribute
+          name: addedLines
+          of: FileDiffSummary
+          type: number | undefined
+        - kind: attribute
+          name: deletedLines
+          of: FileDiffSummary
+          type: number | undefined
+        - kind: attribute
+          name: binaryFilesChanged
+          of: FileDiffSummary
+          type: number
+        - kind: interface
+          name: InventoryDiffResult
+          description: Deterministic file results, neutral summary, inherited/new limitations, and comparison completeness.
+        - kind: attribute
+          name: files
+          of: InventoryDiffResult
+          type: FileDiffEntry[]
+        - kind: attribute
+          name: summary
+          of: InventoryDiffResult
+          type: FileDiffSummary
+        - kind: attribute
+          name: limitations
+          of: InventoryDiffResult
+          type: PartialDataNotice[]
+        - kind: attribute
+          name: complete
+          of: InventoryDiffResult
+          type: boolean
+        - kind: function
+          name: compareInventories
+          args:
+            - name: input
+              type: InventoryDiffInput
+            - name: options
+              type: DiffEngineOptions | undefined
+          returns: InventoryDiffResult
+          description: Pure deterministic comparison using shared Git blob SHAs, uniquely paired exact renames, selective text, and bounded line-diff work.
+    - path: src/production-readiness/__tests__/diff-engine.test.ts
+      artifacts:
+        - kind: test_function
+          name: changed added and deleted counts match fixtures
+          description: Mixed inventory produces stable modified, added, deleted, unique rename, and completeness metrics without counting unchanged paths.
+        - kind: test_function
+          name: text line deltas are correct
+          description: Bounded line comparison and whole-file added/deleted line metrics match deterministic fixture text.
+        - kind: test_function
+          name: large files can be skipped with limitations
+          description: Large, unhydrated, over-budget, and partial-base cases stay visible without false additions or misleading line totals.
+        - kind: test_function
+          name: binary file changes are counted separately
+          description: Binary changes count at file level, never receive line metrics, and ambiguous hashes do not become false renames.
+    - path: src/production-readiness/test-fixtures/prs/diff-cases.ts
+      artifacts:
+        - kind: interface
+          name: InventoryDiffFixture
+          description: Fresh deterministic diff input and optional engine options for a named comparison scenario.
+        - kind: attribute
+          name: input
+          of: InventoryDiffFixture
+          type: InventoryDiffInput
+        - kind: attribute
+          name: options
+          of: InventoryDiffFixture
+          type: DiffEngineOptions | undefined
+        - kind: function
+          name: createInventoryDiffFixture
+          args:
+            - name: name
+              type: string
+          returns: InventoryDiffFixture
+          description: Returns fresh mixed, line-ending, large, partial, binary, or ambiguous-rename fixtures and rejects unknown or prototype names.
+  edit:
+    - path: src/production-readiness/inventory/githubBaseInventory.ts
+      artifacts:
+        - kind: attribute
+          name: complete
+          of: GitHubBaseInventoryResult
+          type: boolean
+          description: True only when the resolved recursive tree is complete enough for absence-based added-file and rename inference.
+    - path: src/production-readiness/__tests__/github-base-inventory.test.ts
+      artifacts:
+        - kind: test_function
+          name: complete distinguishes trustworthy and partial base trees
+          description: Complete, truncated, missing, rate-limited, and cancelled inventories expose an explicit comparison-completeness bit.
+  read:
+    - .maid/plan-locks/03-b2g-prs-github-base-inventory.lock.json
+    - docs/b2g_production_readiness_snapshot_reference.md
+    - manifests/drafts/b2g-production-readiness-snapshot.manifest.yaml
+    - manifests/01-b2g-prs-domain-models-fixtures.manifest.yaml
+    - manifests/02-b2g-prs-zip-inventory-normalization.manifest.yaml
+    - manifests/03-b2g-prs-github-base-inventory.manifest.yaml
+    - src/production-readiness/domain.ts
+    - src/production-readiness/inventory/zipInventory.ts
+    - src/production-readiness/inventory/githubBaseInventory.ts
+validate:
+  - pnpm exec vitest run src/production-readiness/__tests__/diff-engine.test.ts src/production-readiness/__tests__/github-base-inventory.test.ts
+  - ./scripts/maid validate manifests/04-b2g-prs-diff-engine.manifest.yaml --mode behavioral
+  - pnpm lint
+  - pnpm check
+created: '2026-07-13T18:10:00Z'
+metadata:
+  tags:
+    - production-readiness
+    - diff-engine
+    - inventory-comparison
+    - bounded-analysis
+  priority: high
+  status: implementation
+  promotable: true
+  parent_epic: b2g-production-readiness-snapshot
+  depends_on:
+    - 01-b2g-prs-domain-models-fixtures
+    - 02-b2g-prs-zip-inventory-normalization
+    - 03-b2g-prs-github-base-inventory
+  source_document: docs/b2g_production_readiness_snapshot_reference.md
+outcome:
+  status: completed
+  summary: |
+    PRS can now compare candidate and GitHub base inventories without I/O,
+    produce deterministic added, changed, deleted, unique exact-rename,
+    binary-change, and newline-sensitive line metrics, and retain typed
+    limitations when exact line totals are unavailable. Exact Git blob hashes
+    avoid unnecessary content reads, while an explicit base completeness bit
+    suppresses unsafe addition and rename inference for partial trees.
+  rationale: |
+    The diff layer stays a neutral, pure boundary between inventory collection
+    and later readiness classification. Bounded byte and LCS-cell budgets keep
+    line analysis safe for an MV3 extension, selective base text avoids bulk
+    GitHub content reads, and visible deterministic limitations prevent partial,
+    binary, large, metadata-only, or unhydrated data from looking complete.
+  lessons:
+    - lesson_type: completeness-before-absence
+      summary: |
+        A missing path proves an addition only when the entire base tree is
+        trustworthy. Partial GitHub trees may still support known shared and
+        deleted comparisons, but addition and rename inference must be
+        suppressed and explained with a typed limitation.
+      tags:
+        - partial-data
+        - github
+        - correctness
+      paths:
+        - src/production-readiness/inventory/githubBaseInventory.ts
+        - src/production-readiness/diff/diffEngine.ts
+    - lesson_type: exact-rename-evidence
+      summary: |
+        Exact-content renames are safe only when one candidate-only path and
+        one base-only path share a unique Git blob SHA. Duplicate hashes remain
+        separate added and deleted entries rather than becoming arbitrary
+        rename pairs.
+      tags:
+        - rename
+        - hashing
+        - deterministic
+      paths:
+        - src/production-readiness/diff/diffEngine.ts
+        - src/production-readiness/__tests__/diff-engine.test.ts
+    - lesson_type: newline-sensitive-bounded-diff
+      summary: |
+        Preserving line terminators lets CRLF/LF and final-newline-only changes
+        remain observable. Line metrics must still yield to explicit byte and
+        quadratic cell budgets, leaving file-level changes and limitations
+        visible when work is skipped.
+      tags:
+        - line-diff
+        - memory
+        - mv3
+      paths:
+        - src/production-readiness/diff/diffEngine.ts
+        - src/production-readiness/test-fixtures/prs/diff-cases.ts
+    - lesson_type: deterministic-degraded-output
+      summary: |
+        Limitation order needs a total comparator across message, source, and
+        confidence even on early returns. Stable degraded output cannot depend
+        on caller insertion order or which comparison path produced it.
+      tags:
+        - deterministic
+        - degraded-state
+        - limitations
+      paths:
+        - src/production-readiness/diff/diffEngine.ts
+        - src/production-readiness/__tests__/diff-engine.test.ts
+  review_notes:
+    - source: independent reviewer subagent prs_child04_review
+      severity: changes-requested
+      summary: |
+        First review found that informational binary and large-file inventory
+        notices incorrectly made otherwise trustworthy comparisons partial,
+        line terminators were not reflected in line metrics, content and rename
+        option cases lacked coverage, and limitation tie ordering was
+        incomplete. Each finding received a focused regression and fix.
+    - source: independent reviewer subagent prs_child04_review
+      severity: changes-requested
+      summary: |
+        Second review found one remaining early-return path that sorted equal
+        limitation messages by message alone. A deliberately reversed fixture
+        now proves shared message, source, and confidence ordering.
+    - source: independent reviewer subagent prs_child04_review
+      severity: ready
+      summary: |
+        Final read-only review found no blocking issues and confirmed the shared
+        comparator, completeness safeguards, bounded newline-sensitive line
+        work, typed limitations, exact unique renames, test coverage, plan-lock
+        alignment, security/privacy boundaries, and manifest scope.
+  validation:
+    - command:
+        - pnpm
+        - exec
+        - vitest
+        - run
+        - src/production-readiness/__tests__/diff-engine.test.ts
+        - src/production-readiness/__tests__/github-base-inventory.test.ts
+      status: passed
+      summary: Nine focused tests passed across deterministic inventory comparison, completeness, line endings, bounds, binary handling, typed limitations, and rename policy.
+    - command:
+        - pnpm
+        - test:ci
+      status: passed
+      summary: Full Vitest CI passed 202 test files and 4025 tests after final review fixes.
+    - command:
+        - pnpm
+        - lint
+      status: passed
+      summary: ESLint passed for all JavaScript, TypeScript, and Svelte source files.
+    - command:
+        - pnpm
+        - check
+      status: passed
+      summary: Svelte and TypeScript checking completed with zero errors and zero warnings.
+    - command:
+        - pnpm
+        - build
+      status: passed
+      summary: The v1.3.22 production extension build completed successfully with only the existing Vite chunking notices.
+    - command:
+        - ./scripts/maid
+        - validate
+        - manifests/04-b2g-prs-diff-engine.manifest.yaml
+        - --mode
+        - behavioral
+      status: passed
+      summary: Child 04 behavioral validation passed with every declared artifact exercised.
+    - command:
+        - ./scripts/maid
+        - validate
+        - manifests/04-b2g-prs-diff-engine.manifest.yaml
+        - --mode
+        - implementation
+      status: passed
+      summary: Child 04 implementation validation passed against the promoted and evolved contract.
+    - command:
+        - ./scripts/maid
+        - verify
+        - --manifest-dir
+        - manifests
+        - --strict
+        - --worktree-scope
+        - --file-tracking-scope
+        - task
+        - --plan-lock-scope
+        - task
+        - --require-plan-lock
+        - --require-red-evidence
+        - --include-tests
+        - --since
+        - HEAD
+        - --summary
+      status: passed
+      summary: Strict task-scoped verification passed all nine gates with no blockers or warnings.
