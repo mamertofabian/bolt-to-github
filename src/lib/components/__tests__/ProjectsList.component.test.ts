@@ -15,6 +15,12 @@ const mockServiceConstructor = vi.hoisted(() =>
   }))
 );
 const mockCreateConnectedGitHubAppService = vi.hoisted(() => vi.fn());
+const mockGitHubSettingsState = vi.hoisted(() => ({
+  projectSettings: {} as Record<
+    string,
+    { repoName: string; branch: string; projectTitle?: string }
+  >,
+}));
 
 vi.mock('../../services/UnifiedGitHubService', () => ({
   UnifiedGitHubService: mockServiceConstructor,
@@ -46,7 +52,7 @@ vi.mock('../../services/chromeStorage', () => ({
 vi.mock('$lib/stores', () => ({
   githubSettingsStore: {
     subscribe: vi.fn((callback) => {
-      callback({ projectSettings: {} });
+      callback(mockGitHubSettingsState);
       return () => {};
     }),
     update: vi.fn(),
@@ -55,6 +61,7 @@ vi.mock('$lib/stores', () => ({
 
 beforeEach(() => {
   vi.clearAllMocks();
+  mockGitHubSettingsState.projectSettings = {};
   mockCreateConnectedGitHubAppService.mockImplementation(async () =>
     mockServiceConstructor({ type: 'github_app' })
   );
@@ -188,6 +195,24 @@ describe('ProjectsList Component', () => {
 
     const refreshButton = screen.getByRole('button', { name: /refresh repos/i });
     expect(refreshButton).toHaveAttribute('title', 'Refresh Repos');
+  });
+
+  it('repository settings action opens the authoritative project modal', async () => {
+    const user = userEvent.setup();
+    mockGitHubSettingsState.projectSettings = {
+      'mapped-project': {
+        repoName: 'mapped-repository',
+        branch: 'dev',
+        projectTitle: 'Mapped Project',
+      },
+    };
+    render(ProjectsList, { props: defaultProps });
+
+    await user.click(screen.getByRole('button', { name: /repository settings/i }));
+
+    expect(screen.getByRole('heading', { name: /repository settings/i })).toBeInTheDocument();
+    expect(screen.getByLabelText(/repository name/i)).toHaveValue('mapped-repository');
+    expect(screen.getByLabelText(/^branch/i)).toHaveValue('dev');
   });
 
   it('projects list performs GitHub work only through GitHub App readiness', async () => {

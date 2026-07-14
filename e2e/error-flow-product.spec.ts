@@ -3,11 +3,11 @@ import type { BrowserContext } from '@playwright/test';
 import { clearStorage, seedConnectedGitHubApp } from './helpers/storage';
 import {
   openPopup,
-  navigateToTab,
   fillRepositorySettings,
   clickPushButton,
   waitForErrorNotification,
   getValidationError,
+  openProjectRepositorySettings,
 } from './helpers/popup';
 
 const ERROR_FLOW_PROJECT_ID = 'error-flow-project';
@@ -34,7 +34,7 @@ async function seedProductAuth(
 async function openSettingsForRepositoryValidation(context: BrowserContext, extensionId: string) {
   await seedProductAuth(context, extensionId);
   const page = await openPopup(context, extensionId);
-  await navigateToTab(page, 'Settings');
+  await openProjectRepositorySettings(page, 'test-repo');
   return page;
 }
 

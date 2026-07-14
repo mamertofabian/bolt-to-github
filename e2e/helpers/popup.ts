@@ -89,6 +89,37 @@ export async function navigateToTab(
 }
 
 /**
+ * Open the authoritative repository settings modal for a mapped Bolt project.
+ */
+export async function openProjectRepositorySettings(
+  page: Page,
+  repositoryName: string
+): Promise<void> {
+  const projectsTab = page
+    .locator('[role="tab"]:has-text("Projects"), button:has-text("Projects")')
+    .first();
+  await projectsTab.waitFor({ state: 'visible', timeout: 5000 });
+  await projectsTab.click();
+  await page.waitForTimeout(300);
+
+  const projectCard = page
+    .getByRole('button', { name: `Bolt project ${repositoryName}`, exact: true })
+    .first();
+  await projectCard.waitFor({ state: 'visible', timeout: 10_000 });
+  await projectCard.hover();
+
+  const settingsAction = projectCard.getByRole('button', {
+    name: /repository settings/i,
+  });
+  await settingsAction.waitFor({ state: 'visible', timeout: 5000 });
+  await settingsAction.click();
+
+  await page
+    .getByRole('heading', { name: /repository settings/i })
+    .waitFor({ state: 'visible', timeout: 5000 });
+}
+
+/**
  * Fill repository settings in the Home tab
  */
 type RepositorySettingsInput = {
@@ -192,7 +223,7 @@ export async function waitForErrorNotification(page: Page): Promise<string> {
 export async function getValidationError(page: Page): Promise<string | null> {
   const errorMessage = page
     .locator(
-      '[role="alert"]:visible, [aria-live="assertive"]:visible, [aria-live="polite"]:visible'
+      'div:has(> h2:text-is("Repository Settings")) [role="alert"]:visible, [aria-live="assertive"]:visible, [aria-live="polite"]:visible'
     )
     .first();
   if (await errorMessage.isVisible({ timeout: 2000 }).catch(() => false)) {

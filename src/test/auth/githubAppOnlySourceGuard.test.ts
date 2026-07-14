@@ -61,7 +61,7 @@ const legacyCompatibilityAllowlist = new Set([
   'src/content/services/__tests__/SupabaseAuthService.edge-function-loop.test.ts',
   'src/content/services/__tests__/SupabaseAuthService.github-connection.test.ts',
   'src/content/services/__tests__/SupabaseAuthService.session-cleanup.test.ts',
-  'src/lib/components/__tests__/GitHubSettings.component.test.ts',
+  'src/lib/components/__tests__/GitHubSettings.connection.component.test.ts',
   'src/lib/components/__tests__/GitHubSettings.logic.test.ts',
   'src/lib/components/__tests__/Help.component.test.ts',
   'src/lib/components/__tests__/IssueManager.component.test.ts',

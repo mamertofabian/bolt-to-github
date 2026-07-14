@@ -2,10 +2,10 @@
   "manifest_path": "manifests/align-e2e-auth-with-live-connection-gate.manifest.yaml",
   "manifest_hash": "sha256:3f622827750b439d77d1bc0c26cdfea52ba4d0e666e4bb318e243652227a4f1f",
   "test_hashes": {
-    "src/test/e2e-helpers/popup-helpers.test.ts": "sha256:7ee8d3a97d7c4bb41a4c499108369c0401253d203ea11d8ea04abacc9a1552af"
+    "src/test/e2e-helpers/popup-helpers.test.ts": "sha256:eeb0742efbc57aeab96856e5e9d6ad1eee0ff136125a062ecec3fcfb2f5d4e75"
   },
   "created_at": "2026-07-13T01:12:43.885322+00:00",
-  "revision": 8,
+  "revision": 9,
   "revisions": [
     {
       "prior_manifest_hash": "sha256:c290fdf6542351cffb70fafaf335e7f0163df6ad70bb881702ca7f7f4c860045",
@@ -136,6 +136,23 @@
           "src/test/e2e-helpers/popup-helpers.test.ts:seeds product error flows through a live PAT connection",
           "src/test/e2e-helpers/popup-helpers.test.ts:seeds product error flows through a live PAT connection:kind=test_function"
         ],
+        "files_added": [],
+        "files_removed": [],
+        "validate_commands_added": [],
+        "validate_commands_removed": []
+      }
+    },
+    {
+      "prior_manifest_hash": "sha256:3f622827750b439d77d1bc0c26cdfea52ba4d0e666e4bb318e243652227a4f1f",
+      "prior_test_hashes": {
+        "src/test/e2e-helpers/popup-helpers.test.ts": "sha256:7ee8d3a97d7c4bb41a4c499108369c0401253d203ea11d8ea04abacc9a1552af"
+      },
+      "revised_at": "2026-07-14T00:16:11.111954+00:00",
+      "reason": "Reconcile shared behavioral coverage from close-repository-settings-route-gaps",
+      "agent": null,
+      "contract_delta": {
+        "artifacts_added": [],
+        "artifacts_removed": [],
         "files_added": [],
         "files_removed": [],
         "validate_commands_added": [],

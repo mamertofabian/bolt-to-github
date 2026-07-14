@@ -2,13 +2,13 @@
   "manifest_path": "manifests/prepare-v2-0-0-github-app-release.manifest.yaml",
   "manifest_hash": "sha256:af06b3c0f25bb0ec43d208229ebbccfaeb679d9e5192e96e644c2aaa84ff651d",
   "test_hashes": {
-    "src/test/e2e-helpers/popup-helpers.test.ts": "sha256:b7f03879c3a954d4283be20d7c733fc9cd7b2d7addfe9306fe7d1de89fb4e0a9",
+    "src/test/e2e-helpers/popup-helpers.test.ts": "sha256:eeb0742efbc57aeab96856e5e9d6ad1eee0ff136125a062ecec3fcfb2f5d4e75",
     "src/lib/constants/__tests__/whatsNewContent.test.ts": "sha256:1bf261d07283e09b866484955729c208ac6ede42cb11ed38b3bf6cf6fd47c2d3",
     "src/lib/components/__tests__/WelcomeHero.component.test.ts": "sha256:21d15970e5c137bb754ca3bb0617f41fc8f1f9f6537e2300902bfd0ed5a2c04e",
-    "src/test/auth/githubAppOnlySourceGuard.test.ts": "sha256:604ea8e95bbd680d847afaf2cfe6cc3ce95ec0611b85ebdab5935d1283084c7f"
+    "src/test/auth/githubAppOnlySourceGuard.test.ts": "sha256:2ea7ab452ec9b52cac51cd90315dae8aa51cb66a98493892709df212079756f7"
   },
   "created_at": "2026-07-13T22:38:26.375532+00:00",
-  "revision": 6,
+  "revision": 8,
   "revisions": [
     {
       "prior_manifest_hash": "sha256:0cf3ba53a406b9fc62f9d7d11a0bcafd40ff2b68b9c50c2cf5b1b4cf5e2140fe",
@@ -130,6 +130,46 @@
         "skills": ["maid-implement-draft", "maid-implementation-review"],
         "source": "flags"
       },
+      "contract_delta": {
+        "artifacts_added": [],
+        "artifacts_removed": [],
+        "files_added": [],
+        "files_removed": [],
+        "validate_commands_added": [],
+        "validate_commands_removed": []
+      }
+    },
+    {
+      "prior_manifest_hash": "sha256:af06b3c0f25bb0ec43d208229ebbccfaeb679d9e5192e96e644c2aaa84ff651d",
+      "prior_test_hashes": {
+        "src/test/e2e-helpers/popup-helpers.test.ts": "sha256:b7f03879c3a954d4283be20d7c733fc9cd7b2d7addfe9306fe7d1de89fb4e0a9",
+        "src/lib/constants/__tests__/whatsNewContent.test.ts": "sha256:1bf261d07283e09b866484955729c208ac6ede42cb11ed38b3bf6cf6fd47c2d3",
+        "src/lib/components/__tests__/WelcomeHero.component.test.ts": "sha256:21d15970e5c137bb754ca3bb0617f41fc8f1f9f6537e2300902bfd0ed5a2c04e",
+        "src/test/auth/githubAppOnlySourceGuard.test.ts": "sha256:604ea8e95bbd680d847afaf2cfe6cc3ce95ec0611b85ebdab5935d1283084c7f"
+      },
+      "revised_at": "2026-07-13T23:53:13.453076+00:00",
+      "reason": "Reconcile shared behavioral test evolution from make-github-settings-connection-only",
+      "agent": null,
+      "contract_delta": {
+        "artifacts_added": [],
+        "artifacts_removed": [],
+        "files_added": [],
+        "files_removed": [],
+        "validate_commands_added": [],
+        "validate_commands_removed": []
+      }
+    },
+    {
+      "prior_manifest_hash": "sha256:af06b3c0f25bb0ec43d208229ebbccfaeb679d9e5192e96e644c2aaa84ff651d",
+      "prior_test_hashes": {
+        "src/test/e2e-helpers/popup-helpers.test.ts": "sha256:b7f03879c3a954d4283be20d7c733fc9cd7b2d7addfe9306fe7d1de89fb4e0a9",
+        "src/lib/constants/__tests__/whatsNewContent.test.ts": "sha256:1bf261d07283e09b866484955729c208ac6ede42cb11ed38b3bf6cf6fd47c2d3",
+        "src/lib/components/__tests__/WelcomeHero.component.test.ts": "sha256:21d15970e5c137bb754ca3bb0617f41fc8f1f9f6537e2300902bfd0ed5a2c04e",
+        "src/test/auth/githubAppOnlySourceGuard.test.ts": "sha256:2ea7ab452ec9b52cac51cd90315dae8aa51cb66a98493892709df212079756f7"
+      },
+      "revised_at": "2026-07-14T00:16:11.800357+00:00",
+      "reason": "Reconcile shared behavioral coverage from close-repository-settings-route-gaps",
+      "agent": null,
       "contract_delta": {
         "artifacts_added": [],
         "artifacts_removed": [],

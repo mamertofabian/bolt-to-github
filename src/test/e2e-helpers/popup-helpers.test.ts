@@ -6,6 +6,7 @@ import {
   clickPushButton,
   fillRepositorySettings,
   getValidationError,
+  openProjectRepositorySettings,
   waitForErrorNotification,
 } from '../../../e2e/helpers/popup';
 import { test as extensionTest } from '../../../e2e/fixtures/extension';
@@ -34,6 +35,8 @@ type LocatorFake = {
   fill: ReturnType<typeof vi.fn>;
   isVisible: ReturnType<typeof vi.fn>;
   click: ReturnType<typeof vi.fn>;
+  hover: ReturnType<typeof vi.fn>;
+  getByRole: ReturnType<typeof vi.fn>;
   filter: ReturnType<typeof vi.fn>;
   textContent: ReturnType<typeof vi.fn>;
 };
@@ -47,6 +50,8 @@ function createLocator(options: { visible?: boolean; text?: string } = {}): Loca
   locator.fill = vi.fn().mockResolvedValue(undefined);
   locator.isVisible = vi.fn().mockResolvedValue(options.visible ?? true);
   locator.click = vi.fn().mockResolvedValue(undefined);
+  locator.hover = vi.fn().mockResolvedValue(undefined);
+  locator.getByRole = vi.fn().mockReturnValue(locator);
   locator.filter = vi.fn().mockReturnValue(locator);
   locator.textContent = vi.fn().mockResolvedValue(options.text ?? null);
 
@@ -151,6 +156,16 @@ describe('popup E2E helper characterization', () => {
     expect(productSpec).not.toContain('githubToken');
   });
 
+  it('repository browser specs target project-scoped settings instead of global Settings', () => {
+    const manualRepoSpec = readFileSync(join(process.cwd(), 'e2e/manual-repo.spec.ts'), 'utf8');
+    const productSpec = readFileSync(join(process.cwd(), 'e2e/error-flow-product.spec.ts'), 'utf8');
+
+    expect(manualRepoSpec).toContain('openProjectRepositorySettings(page');
+    expect(productSpec).toContain('openProjectRepositorySettings(page');
+    expect(manualRepoSpec).not.toContain("navigateToTab(page, 'Settings')");
+    expect(productSpec).not.toContain("navigateToTab(page, 'Settings')");
+  });
+
   it('pins lifecycle E2E to current storage keys and popup URL', () => {
     const lifecycleSpec = readFileSync(join(process.cwd(), 'e2e/lifecycle.spec.ts'), 'utf8');
 
@@ -209,6 +224,33 @@ describe('popup E2E helper characterization', () => {
     expect(keyboardPress).toHaveBeenCalledWith('Tab');
     expect(branchInput.fill).toHaveBeenCalledWith('dev');
     expect(visibilityInput.click).toHaveBeenCalledTimes(1);
+  });
+
+  it('opens project repository settings through the Projects route', async () => {
+    const projectsTab = createLocator();
+    const projectCard = createLocator();
+    const settingsAction = createLocator();
+    const modalHeading = createLocator();
+    projectCard.getByRole.mockReturnValue(settingsAction);
+
+    const page = {
+      locator: vi.fn(() => projectsTab),
+      getByRole: vi.fn((role: string) => {
+        if (role === 'heading') return modalHeading;
+        return projectCard;
+      }),
+      waitForTimeout: vi.fn().mockResolvedValue(undefined),
+    } as unknown as Page;
+
+    await openProjectRepositorySettings(page, 'mapped-repository');
+
+    expect(projectsTab.click).toHaveBeenCalledOnce();
+    expect(projectCard.hover).toHaveBeenCalledOnce();
+    expect(projectCard.getByRole).toHaveBeenCalledWith('button', {
+      name: /repository settings/i,
+    });
+    expect(settingsAction.click).toHaveBeenCalledOnce();
+    expect(modalHeading.waitFor).toHaveBeenCalledWith({ state: 'visible', timeout: 5000 });
   });
 
   it('clicks the visible push button and confirmation after the hook', async () => {

@@ -4,7 +4,6 @@
   import { Button } from '$lib/components/ui/button';
 
   import type { GitHubSettingsState } from '$lib/stores/githubSettings';
-  import type { UIState } from '$lib/stores/uiState';
   import { createLogger } from '$lib/utils/logger';
   import { FileText } from 'lucide-svelte';
   import { createEventDispatcher } from 'svelte';
@@ -15,24 +14,12 @@
   const logger = createLogger('SettingsTabContent');
 
   export let githubSettings: GitHubSettingsState;
-  export let projectId: string | null;
-  export let uiState: UIState;
   export let isUserPremium: boolean;
 
   const dispatch = createEventDispatcher<{
-    save: void;
-    error: string;
     upgradeClick: UpgradeType;
     configurePushReminder: void;
   }>();
-
-  function handleSave() {
-    dispatch('save');
-  }
-
-  function handleError(error: string) {
-    dispatch('error', error);
-  }
 
   function handleUpgradeClick(type: UpgradeType) {
     dispatch('upgradeClick', type);
@@ -55,18 +42,10 @@
 
 <div class="space-y-4">
   <GitHubSettings
-    bind:repoOwner={githubSettings.repoOwner}
-    bind:repoName={githubSettings.repoName}
-    bind:branch={githubSettings.branch}
-    bind:githubAppInstallationId={githubSettings.githubAppInstallationId}
-    bind:githubAppUsername={githubSettings.githubAppUsername}
-    bind:githubAppAvatarUrl={githubSettings.githubAppAvatarUrl}
-    {projectId}
-    status={uiState.status}
-    buttonDisabled={uiState.hasStatus}
-    onSave={handleSave}
-    onError={handleError}
-    onInput={() => {}}
+    repoOwner={githubSettings.repoOwner}
+    githubAppInstallationId={githubSettings.githubAppInstallationId}
+    githubAppUsername={githubSettings.githubAppUsername}
+    githubAppAvatarUrl={githubSettings.githubAppAvatarUrl}
   />
 
   <!-- Push Reminder Settings -->

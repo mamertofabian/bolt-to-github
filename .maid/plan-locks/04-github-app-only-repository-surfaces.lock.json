@@ -5,14 +5,14 @@
     "src/lib/utils/__tests__/connectedGitHubAppService.test.ts": "sha256:ef3c5d1780db487393f622ea2239c4ae3187c8266c3c4da2ff3ebd5ee63fe882",
     "src/lib/components/__tests__/CommitsModal.component.test.ts": "sha256:3d095e61e18ec496c73fb56564fb60a21065544bfb6a144a7ded2301e451f5a0",
     "src/lib/components/__tests__/RepoSettings.component.test.ts": "sha256:e4e969bc43790c4de283356eb09438622ad303a1802581cb917657c38349d9a2",
-    "src/lib/components/__tests__/ProjectsList.component.test.ts": "sha256:fa86107110997774b90bb0c7bdfd6089b3b1c1381e844cb0657edfe33723e23d",
-    "src/lib/components/__tests__/ProjectStatus.component.test.ts": "sha256:65fe6234432d002b839729d1702c89c2a4533a077f80ec171c3ac03bc0b8e413",
+    "src/lib/components/__tests__/ProjectsList.component.test.ts": "sha256:ca4975c35ee055f12a9ed5cd1ec4e53a3cb0108ef4717aa3e239238069b7b825",
+    "src/lib/components/__tests__/ProjectStatus.component.test.ts": "sha256:ab00fc4fab119b6aa5b469349ec5a9573da181437bd96e47923b75600e22dd8f",
     "src/lib/services/__tests__/ProjectSettingsMigrationService.test.ts": "sha256:1fe7fd5e60b2f3e65ecf087141e39eb530bf548749ffd703555bbbce470c4a8f",
     "src/popup/components/__tests__/BranchSelectionModal.component.test.ts": "sha256:86afd6c15ce4f831d1b5b25dd35e86b09f34069c1ef20adfac05825aad28424f",
-    "src/popup/components/__tests__/TabsView.component.test.ts": "sha256:638f1443bd18d2ef9199002ddf2c762990b6928baed406b7c632696b3b04f54d"
+    "src/popup/components/__tests__/TabsView.component.test.ts": "sha256:c8759bcb33931e8e5245679f8931584635bda2f8559827b24c0fd6cd6965aabb"
   },
   "created_at": "2026-07-13T12:03:26.460203+00:00",
-  "revision": 13,
+  "revision": 15,
   "revisions": [
     {
       "prior_manifest_hash": "sha256:d014e6080137679e743fb062af9333a143b642de986a2f76dbf915b48d253c72",
@@ -370,6 +370,54 @@
       },
       "revised_at": "2026-07-13T16:21:26.288413+00:00",
       "reason": "Refresh repository-surface behavioral hashes after removing redundant selector-era test setup",
+      "agent": null,
+      "contract_delta": {
+        "artifacts_added": [],
+        "artifacts_removed": [],
+        "files_added": [],
+        "files_removed": [],
+        "validate_commands_added": [],
+        "validate_commands_removed": []
+      }
+    },
+    {
+      "prior_manifest_hash": "sha256:0eb5389e18cc6d9604a295a8d5b0520239cb404b632dcef317185a4bf5033f67",
+      "prior_test_hashes": {
+        "src/lib/utils/__tests__/connectedGitHubAppService.test.ts": "sha256:ef3c5d1780db487393f622ea2239c4ae3187c8266c3c4da2ff3ebd5ee63fe882",
+        "src/lib/components/__tests__/CommitsModal.component.test.ts": "sha256:3d095e61e18ec496c73fb56564fb60a21065544bfb6a144a7ded2301e451f5a0",
+        "src/lib/components/__tests__/RepoSettings.component.test.ts": "sha256:e4e969bc43790c4de283356eb09438622ad303a1802581cb917657c38349d9a2",
+        "src/lib/components/__tests__/ProjectsList.component.test.ts": "sha256:fa86107110997774b90bb0c7bdfd6089b3b1c1381e844cb0657edfe33723e23d",
+        "src/lib/components/__tests__/ProjectStatus.component.test.ts": "sha256:65fe6234432d002b839729d1702c89c2a4533a077f80ec171c3ac03bc0b8e413",
+        "src/lib/services/__tests__/ProjectSettingsMigrationService.test.ts": "sha256:1fe7fd5e60b2f3e65ecf087141e39eb530bf548749ffd703555bbbce470c4a8f",
+        "src/popup/components/__tests__/BranchSelectionModal.component.test.ts": "sha256:86afd6c15ce4f831d1b5b25dd35e86b09f34069c1ef20adfac05825aad28424f",
+        "src/popup/components/__tests__/TabsView.component.test.ts": "sha256:638f1443bd18d2ef9199002ddf2c762990b6928baed406b7c632696b3b04f54d"
+      },
+      "revised_at": "2026-07-13T23:53:12.177151+00:00",
+      "reason": "Reconcile shared behavioral test evolution from make-github-settings-connection-only",
+      "agent": null,
+      "contract_delta": {
+        "artifacts_added": [],
+        "artifacts_removed": [],
+        "files_added": [],
+        "files_removed": [],
+        "validate_commands_added": [],
+        "validate_commands_removed": []
+      }
+    },
+    {
+      "prior_manifest_hash": "sha256:0eb5389e18cc6d9604a295a8d5b0520239cb404b632dcef317185a4bf5033f67",
+      "prior_test_hashes": {
+        "src/lib/utils/__tests__/connectedGitHubAppService.test.ts": "sha256:ef3c5d1780db487393f622ea2239c4ae3187c8266c3c4da2ff3ebd5ee63fe882",
+        "src/lib/components/__tests__/CommitsModal.component.test.ts": "sha256:3d095e61e18ec496c73fb56564fb60a21065544bfb6a144a7ded2301e451f5a0",
+        "src/lib/components/__tests__/RepoSettings.component.test.ts": "sha256:e4e969bc43790c4de283356eb09438622ad303a1802581cb917657c38349d9a2",
+        "src/lib/components/__tests__/ProjectsList.component.test.ts": "sha256:fa86107110997774b90bb0c7bdfd6089b3b1c1381e844cb0657edfe33723e23d",
+        "src/lib/components/__tests__/ProjectStatus.component.test.ts": "sha256:ab00fc4fab119b6aa5b469349ec5a9573da181437bd96e47923b75600e22dd8f",
+        "src/lib/services/__tests__/ProjectSettingsMigrationService.test.ts": "sha256:1fe7fd5e60b2f3e65ecf087141e39eb530bf548749ffd703555bbbce470c4a8f",
+        "src/popup/components/__tests__/BranchSelectionModal.component.test.ts": "sha256:86afd6c15ce4f831d1b5b25dd35e86b09f34069c1ef20adfac05825aad28424f",
+        "src/popup/components/__tests__/TabsView.component.test.ts": "sha256:c8759bcb33931e8e5245679f8931584635bda2f8559827b24c0fd6cd6965aabb"
+      },
+      "revised_at": "2026-07-14T00:16:11.453637+00:00",
+      "reason": "Reconcile shared behavioral coverage from close-repository-settings-route-gaps",
       "agent": null,
       "contract_delta": {
         "artifacts_added": [],

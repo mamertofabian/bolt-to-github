@@ -228,6 +228,17 @@ describe('ProjectStatus.svelte - Component Tests', () => {
       expect(projectDetailsButton).toBeInTheDocument();
       expect(projectDetailsButton).toHaveAttribute('tabindex', '0');
     });
+
+    it('project details open the authoritative repository settings modal', async () => {
+      const user = userEvent.setup();
+      render(ProjectStatus, { props: defaultProps });
+
+      await user.click(screen.getByRole('button', { name: /project:/i }));
+
+      expect(screen.getByRole('heading', { name: /repository settings/i })).toBeInTheDocument();
+      expect(screen.getByLabelText(/repository name/i)).toHaveValue('test-repo');
+      expect(screen.getByLabelText(/^branch/i)).toHaveValue('main');
+    });
   });
 
   describe('Status Information Display', () => {

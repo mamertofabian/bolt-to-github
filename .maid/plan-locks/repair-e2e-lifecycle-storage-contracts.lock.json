@@ -2,10 +2,10 @@
   "manifest_path": "manifests/repair-e2e-lifecycle-storage-contracts.manifest.yaml",
   "manifest_hash": "sha256:0363b59eef22f8cb4a0a3a53324b7bcc67db0ab884f8cf38a4c6d2914feee5c9",
   "test_hashes": {
-    "src/test/e2e-helpers/popup-helpers.test.ts": "sha256:7ee8d3a97d7c4bb41a4c499108369c0401253d203ea11d8ea04abacc9a1552af"
+    "src/test/e2e-helpers/popup-helpers.test.ts": "sha256:eeb0742efbc57aeab96856e5e9d6ad1eee0ff136125a062ecec3fcfb2f5d4e75"
   },
   "created_at": "2026-07-12T03:35:05.162053+00:00",
-  "revision": 11,
+  "revision": 12,
   "revisions": [
     {
       "prior_manifest_hash": "sha256:7970bfa995372c75274cf82cf4e1595eef661d8f07e1c842b38d91af6d7b2047",
@@ -210,6 +210,23 @@
       },
       "revised_at": "2026-07-13T16:13:32.843343+00:00",
       "reason": "Refresh shared browser-helper hash after deterministic Bolt-tab activation",
+      "agent": null,
+      "contract_delta": {
+        "artifacts_added": [],
+        "artifacts_removed": [],
+        "files_added": [],
+        "files_removed": [],
+        "validate_commands_added": [],
+        "validate_commands_removed": []
+      }
+    },
+    {
+      "prior_manifest_hash": "sha256:0363b59eef22f8cb4a0a3a53324b7bcc67db0ab884f8cf38a4c6d2914feee5c9",
+      "prior_test_hashes": {
+        "src/test/e2e-helpers/popup-helpers.test.ts": "sha256:7ee8d3a97d7c4bb41a4c499108369c0401253d203ea11d8ea04abacc9a1552af"
+      },
+      "revised_at": "2026-07-14T00:16:10.480621+00:00",
+      "reason": "Reconcile shared behavioral coverage from close-repository-settings-route-gaps",
       "agent": null,
       "contract_delta": {
         "artifacts_added": [],

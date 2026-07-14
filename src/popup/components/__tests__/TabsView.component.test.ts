@@ -19,6 +19,13 @@ describe('TabsView', () => {
     expect(tabsViewSource).not.toContain('authMethodChange');
   });
 
+  it('settings tab does not forward removed repository save or error events', () => {
+    expect(tabsViewSource).not.toContain('save: void');
+    expect(tabsViewSource).not.toContain('error: string');
+    expect(tabsViewSource).not.toContain('on:save={handleSave}');
+    expect(tabsViewSource).not.toContain('on:error=');
+  });
+
   let mockUIState: UIState;
   let mockGitHubSettings: GitHubSettingsState;
   let mockProjectSettings: ProjectSettingsState;

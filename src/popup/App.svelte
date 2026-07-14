@@ -902,8 +902,6 @@
           on:feedback={() => (modalStates.feedback = true)}
           on:upgradeClick={(e) => handleUpgradeClick(e.detail)}
           on:newsletter={handleNewsletterClick}
-          on:save={saveSettings}
-          on:error={(e) => handleSettingsError(e.detail)}
           on:configurePushReminder={handleConfigurePushReminder}
         />
       {:else}

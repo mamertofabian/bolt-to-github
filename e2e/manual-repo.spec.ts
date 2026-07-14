@@ -3,10 +3,32 @@ import { clearStorage, seedConnectedGitHubApp } from './helpers/storage';
 import {
   fillRepositorySettings,
   getValidationError,
-  navigateToTab,
   openPopup,
+  openProjectRepositorySettings,
   waitForMigrationGuidance,
 } from './helpers/popup';
+
+const MANUAL_PROJECT_ID = 'manual-repository-project';
+const MANUAL_REPOSITORY_NAME = 'app-connected-repository';
+
+async function openManualProjectSettings(
+  context: Parameters<typeof seedConnectedGitHubApp>[0],
+  extensionId: string
+) {
+  await seedConnectedGitHubApp(context, extensionId, {
+    projectSettings: {
+      [MANUAL_PROJECT_ID]: {
+        repoName: MANUAL_REPOSITORY_NAME,
+        branch: 'main',
+        projectTitle: 'Manual Repository Project',
+      },
+    },
+  });
+  const page = await openPopup(context, extensionId);
+  await expect(page.getByRole('tablist')).toBeVisible();
+  await openProjectRepositorySettings(page, MANUAL_REPOSITORY_NAME);
+  return page;
+}
 
 test.describe('GitHub App-only manual repository management', () => {
   test.beforeEach(async ({ context, extensionId }) => {
@@ -14,11 +36,9 @@ test.describe('GitHub App-only manual repository management', () => {
   });
 
   test('connected users can open repository settings', async ({ context, extensionId }) => {
-    await seedConnectedGitHubApp(context, extensionId);
-    const page = await openPopup(context, extensionId);
+    const page = await openManualProjectSettings(context, extensionId);
 
-    await expect(page.getByRole('tablist')).toBeVisible();
-    await navigateToTab(page, 'Settings');
+    await expect(page.getByRole('heading', { name: /repository settings/i })).toBeVisible();
     await expect(page.getByRole('button', { name: /save settings/i })).toBeVisible();
 
     await page.close();
@@ -28,9 +48,7 @@ test.describe('GitHub App-only manual repository management', () => {
     context,
     extensionId,
   }) => {
-    await seedConnectedGitHubApp(context, extensionId);
-    const page = await openPopup(context, extensionId);
-    await navigateToTab(page, 'Settings');
+    const page = await openManualProjectSettings(context, extensionId);
 
     await fillRepositorySettings(page, {
       repoName: 'invalid repository name!',
@@ -46,9 +64,7 @@ test.describe('GitHub App-only manual repository management', () => {
   });
 
   test('connected users can configure a custom branch', async ({ context, extensionId }) => {
-    await seedConnectedGitHubApp(context, extensionId);
-    const page = await openPopup(context, extensionId);
-    await navigateToTab(page, 'Settings');
+    const page = await openManualProjectSettings(context, extensionId);
 
     await fillRepositorySettings(page, {
       repoName: 'app-connected-repository',

@@ -26,8 +26,6 @@
     feedback: void;
     upgradeClick: UpgradeModalType;
     newsletter: void;
-    save: void;
-    error: string;
     configurePushReminder: void;
   }>();
 
@@ -50,14 +48,6 @@
 
   function handleNewsletter() {
     dispatch('newsletter');
-  }
-
-  function handleSave() {
-    dispatch('save');
-  }
-
-  function handleError(error: string) {
-    dispatch('error', error);
   }
 
   function handleConfigurePushReminder() {
@@ -93,11 +83,7 @@
   <TabsContent value="settings">
     <SettingsTabContent
       {githubSettings}
-      {projectId}
-      {uiState}
       {isUserPremium}
-      on:save={handleSave}
-      on:error={(e) => handleError(e.detail)}
       on:upgradeClick={handleUpgradeClick}
       on:configurePushReminder={handleConfigurePushReminder}
     />

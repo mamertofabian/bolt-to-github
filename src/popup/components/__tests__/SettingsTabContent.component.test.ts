@@ -5,7 +5,6 @@
 import { cleanup, render, screen } from '@testing-library/svelte';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { GitHubSettingsState } from '$lib/stores/githubSettings';
-import type { UIState } from '$lib/stores/uiState';
 import SettingsTabContent from '../SettingsTabContent.svelte';
 
 describe('SettingsTabContent GitHub App-only boundary', () => {
@@ -21,16 +20,6 @@ describe('SettingsTabContent GitHub App-only boundary', () => {
     githubAppInstallationId: 123,
     githubAppUsername: 'octocat',
     githubAppAvatarUrl: null,
-  };
-
-  const uiState: UIState = {
-    activeTab: 'settings',
-    status: '',
-    hasStatus: false,
-    showTempRepoModal: false,
-    tempRepoData: null,
-    hasDeletedTempRepo: false,
-    hasUsedTempRepoName: false,
   };
 
   beforeEach(() => {
@@ -49,18 +38,32 @@ describe('SettingsTabContent GitHub App-only boundary', () => {
 
   afterEach(() => cleanup());
 
-  it('settings tab forwards GitHub App state without PAT bindings', () => {
+  it('settings tab keeps account and global preferences without project repository controls', () => {
     const { container } = render(SettingsTabContent, {
       props: {
         githubSettings,
-        projectId: 'project-1',
-        uiState,
         isUserPremium: false,
       },
     });
 
     expect(screen.getByText(/connected as octocat/i)).toBeInTheDocument();
-    expect(screen.getByLabelText(/repository owner/i)).toHaveValue('octocat');
+    expect(screen.getByRole('heading', { name: /push reminders/i })).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: /premium status/i })).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: /privacy & analytics/i })).toBeInTheDocument();
+    expect(screen.queryByLabelText(/repository owner/i)).not.toBeInTheDocument();
+    expect(screen.queryByLabelText(/repository name/i)).not.toBeInTheDocument();
+    expect(screen.queryByLabelText(/^branch/i)).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /save settings/i })).not.toBeInTheDocument();
+    expect(container.querySelector('input[type="password"]')).not.toBeInTheDocument();
+    expect(screen.queryByText(/personal access token/i)).not.toBeInTheDocument();
+  });
+
+  it('settings tab forwards GitHub App state without PAT bindings', () => {
+    const { container } = render(SettingsTabContent, {
+      props: { githubSettings, isUserPremium: false },
+    });
+
+    expect(screen.getByText(/connected as octocat/i)).toBeInTheDocument();
     expect(container.querySelector('input[type="password"]')).not.toBeInTheDocument();
     expect(screen.queryByText(/personal access token/i)).not.toBeInTheDocument();
   });

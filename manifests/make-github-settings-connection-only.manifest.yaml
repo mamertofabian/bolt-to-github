@@ -1,0 +1,382 @@
+schema: '2'
+goal: Make the Settings tab GitHub App connection-only and keep repository configuration project-scoped
+description: |
+  Remove the duplicate repository owner, repository name, branch, repository
+  discovery, validation, and Save Settings controls from the popup Settings tab.
+  Keep GitHubSettings responsible for visible GitHub App connection state,
+  migration guidance, and the explicit user-initiated connection action.
+
+  GitHubSettings predates RepoSettings and was the original repository editor.
+  RepoSettings was added later so Home and Projects could edit each project's
+  mapping in context, but the original editor was never retired. During the
+  GitHub App-only migration, repository discovery was restored to GitHubSettings
+  as a regression safeguard after review found that the migration had removed
+  adjacent behavior. That preservation decision did not establish a product
+  requirement for two editors. The current duplicate surfaces can disagree
+  because GitHubSettings maintains local drafts while RepoSettings and the
+  project store hold the authoritative mapping.
+
+  Repository owner remains required application state and remains available to
+  GitHub operations, but it is derived from the connected App identity and does
+  not need a read-only form control. Repository name and branch remain required
+  per-project data. RepoSettings, reached from Home project details and project
+  entries, remains their authoritative editor. Connected projects also receive
+  a default mapping from the Bolt project ID, so removing the Settings-tab form
+  does not remove the initial configuration or recovery path.
+
+  This intentionally alters behavior preserved by the completed primary setup
+  and E2E error-flow contracts. Promotion must supersede those contracts while
+  carrying forward every unaffected GitHub App setup, migration, repository
+  validation, push-error, and fast-gate artifact and validation command.
+temptations:
+  - risk: Do not fix the screenshot mismatch by synchronizing the duplicate GitHubSettings repository drafts.
+    instead: Remove the duplicate project editor and keep RepoSettings as the only repository-name and branch editing surface.
+  - risk: Do not remove repoOwner, repoName, branch, or projectSettings from stores, storage, or GitHub runtime operations.
+    instead: Remove only the redundant Settings-tab controls and event wiring; preserve the existing per-project data contract and automatic default mapping.
+  - risk: Do not add another Settings-tab button that launches a second copy or orchestration path for RepoSettings.
+    instead: Use concise copy directing users to the existing Home or Projects repository settings entry points.
+  - risk: Do not leave repository discovery calls, draft state, save callbacks, or save/error forwarding behind after their controls are removed.
+    instead: Delete the unreachable component logic and remove the corresponding SettingsTabContent, TabsView, and App event plumbing in the same change.
+  - risk: Do not weaken repository validation because GitHubSettings no longer uses it.
+    instead: Keep validateRepositoryName and all RepoSettings validation behavior covered by the existing project-scoped tests and superseding contract.
+type: fix
+supersedes:
+  - 02-github-app-only-primary-setup
+  - repair-e2e-error-flow-fast-gate
+files:
+  scope:
+    - path: src/popup/components/TabsView.svelte
+      reason: Stop passing project-only props and forwarding repository save/error events through the Settings tab.
+    - path: src/popup/App.svelte
+      reason: Remove only the TabsView listeners made unreachable by the connection-only Settings tab while retaining onboarding save/error handling.
+    - path: src/test/auth/githubAppOnlySourceGuard.test.ts
+      reason: Replace the retired duplicate-editor test path in the explicit legacy-language test allowlist.
+  delete:
+    - path: src/lib/components/__tests__/GitHubSettings.component.test.ts
+      reason: Retire the superseded duplicate-editor behavioral contract as a whole because MAID removed_artifacts cannot represent test_function artifacts.
+  create:
+    - path: src/lib/components/__tests__/GitHubSettings.connection.component.test.ts
+      artifacts:
+        - kind: test_function
+          name: settings contain no PAT selector token field or token validation action
+          description: Carries forward the GitHub App-only primary setup guard.
+        - kind: test_function
+          name: connected settings show GitHub App identity without project repository controls
+          description: Planned failing behavioral test required before promotion.
+        - kind: test_function
+          name: disconnected settings offer an explicit GitHub App connection without project repository controls
+          description: Planned failing behavioral test required before promotion.
+        - kind: test_function
+          name: migration guidance directs repository changes to project surfaces without restoring the duplicate editor
+          description: Planned failing behavioral test required before promotion.
+        - kind: test_function
+          name: rendering connection settings performs no repository discovery request
+          description: Planned failing behavioral test required before promotion.
+  edit:
+    - path: src/lib/components/GitHubSettings.svelte
+      artifacts:
+        - kind: function
+          name: GitHubSettings
+          args:
+            - name: props
+              type: '{ repoOwner: string; githubAppInstallationId?: number | null; githubAppUsername?: string | null; githubAppAvatarUrl?: string | null; migrationRequired?: boolean }'
+          returns: Svelte component instance
+          description: |
+            Renders GitHub App connection identity, disconnected and migration
+            guidance, and an explicit user-click connection action. It performs
+            no repository discovery and renders no project repository controls,
+            validation errors, or save action. Repository owner may be used as
+            an identity fallback but is not rendered as an editable or read-only
+            form field.
+    - path: src/popup/components/SettingsTabContent.svelte
+      artifacts:
+        - kind: function
+          name: SettingsTabContent
+          args:
+            - name: props
+              type: '{ githubSettings: GitHubSettingsState; isUserPremium: boolean }'
+          returns: Svelte component instance
+          description: |
+            Renders account-level GitHub App connection state and global popup
+            preferences without accepting a project ID, rendering project
+            repository controls, or emitting repository save/error events.
+    - path: src/lib/components/OnboardingSetup.svelte
+      artifacts:
+        - kind: function
+          name: OnboardingSetup
+          args:
+            - name: props
+              type: OnboardingSetup component props
+          returns: Svelte component instance
+          description: Carries forward the complete GitHub App-only setup, signed-out recovery, and legacy PAT migration contract without automatic navigation.
+    - path: src/popup/components/OnboardingView.svelte
+      artifacts:
+        - kind: function
+          name: OnboardingView
+          args:
+            - name: props
+              type: OnboardingView component props
+          returns: Svelte component instance
+          description: Carries forward live-session and durable migration-required state forwarding to the GitHub App-only setup component.
+    - path: src/lib/utils/repo-settings.ts
+      artifacts:
+        - kind: function
+          name: validateRepositoryName
+          args:
+            - name: repoName
+              type: string
+          returns: RepositoryNameValidationResult
+          description: Carries forward the product repository-name policy used by the authoritative RepoSettings surface.
+        - kind: function
+          name: canSaveForm
+          args:
+            - name: repoName
+              type: string
+            - name: branch
+              type: string
+            - name: isSaving
+              type: boolean
+          returns: boolean
+          description: Carries forward the RepoSettings save gate, including repository-name validation.
+    - path: src/lib/components/RepoSettings.svelte
+      artifacts:
+        - kind: function
+          name: RepoSettings
+          args:
+            - name: props
+              type: RepoSettings component props
+          returns: Svelte component instance
+          description: Carries forward repository validation, project-scoped saving, and visible recovery behavior in the authoritative editor.
+    - path: src/background/BackgroundService.ts
+      artifacts:
+        - kind: class
+          name: BackgroundService
+          description: Carries forward push dispatch success only after an active Bolt tab and content-script port are available, with visible failure responses otherwise.
+    - path: src/lib/components/ProjectStatus.svelte
+      artifacts:
+        - kind: function
+          name: ProjectStatus
+          args:
+            - name: props
+              type: ProjectStatus component props
+          returns: Svelte component instance
+          description: Carries forward visible, retry-safe push failures and the project-scoped RepoSettings entry point.
+    - path: src/popup/components/FileChangesModal.svelte
+      artifacts:
+        - kind: function
+          name: FileChangesModal
+          args:
+            - name: props
+              type: FileChangesModal component props
+          returns: Svelte component instance
+          description: Carries forward visible modal push failures while preserving retry and confirmation flows.
+    - path: e2e/helpers/popup.ts
+      artifacts:
+        - kind: function
+          name: fillRepositorySettings
+          args:
+            - name: page
+              type: Page
+            - name: settings
+              type: RepositorySettingsInput
+          returns: Promise<void>
+          description: Carries forward structured repository settings input targeting only visible controls.
+        - kind: function
+          name: clickPushButton
+          args:
+            - name: page
+              type: Page
+            - name: beforeClick
+              type: (() => Promise<void>) | undefined
+          returns: Promise<void>
+          description: Carries forward visible push control interaction and retry support.
+        - kind: function
+          name: getValidationError
+          args:
+            - name: page
+              type: Page
+          returns: Promise<string | null>
+          description: Carries forward visible validation and alert text reads.
+        - kind: function
+          name: waitForErrorNotification
+          args:
+            - name: page
+              type: Page
+          returns: Promise<string>
+          description: Carries forward waiting for and reading active popup error alerts.
+    - path: e2e/fixtures/extension.ts
+      artifacts:
+        - kind: attribute
+          name: test
+          type: Playwright test fixture
+          description: Carries forward the extension-loaded Playwright fixture and its MV3 service-worker extension ID discovery.
+    - path: src/popup/components/__tests__/SettingsTabContent.component.test.ts
+      artifacts:
+        - kind: test_function
+          name: settings tab forwards GitHub App state without PAT bindings
+          description: Carries forward the GitHub App-only settings boundary guard.
+        - kind: test_function
+          name: settings tab keeps account and global preferences without project repository controls
+          description: Planned failing behavioral test required before promotion.
+    - path: src/popup/components/__tests__/TabsView.component.test.ts
+      artifacts:
+        - kind: test_function
+          name: settings tab does not forward removed repository save or error events
+          description: Planned failing behavioral test required before promotion.
+    - path: src/lib/components/__tests__/ProjectStatus.component.test.ts
+      artifacts:
+        - kind: test_function
+          name: project details open the authoritative repository settings modal
+          description: Planned characterization coverage for the retained project-scoped editor.
+  read:
+    - manifests/02-github-app-only-primary-setup.manifest.yaml
+    - manifests/repair-e2e-error-flow-fast-gate.manifest.yaml
+    - manifests/04-github-app-only-repository-surfaces.manifest.yaml
+    - src/lib/components/__tests__/RepoSettings.component.test.ts
+    - src/lib/stores/githubSettings.ts
+    - src/lib/services/chromeStorage.ts
+    - src/popup/components/HomeTabContent.svelte
+    - src/popup/__tests__/App.svelte/App.settings.component.test.ts
+validate:
+  - pnpm exec vitest run src/lib/components/__tests__/OnboardingSetup.component.test.ts src/lib/components/__tests__/GitHubSettings.connection.component.test.ts src/lib/components/__tests__/Help.component.test.ts src/popup/components/__tests__/OnboardingView.component.test.ts src/popup/components/__tests__/SettingsTabContent.component.test.ts src/popup/components/__tests__/TabsView.component.test.ts src/popup/__tests__/App.component.test.ts src/popup/__tests__/App.svelte/App.settings.component.test.ts src/popup/__tests__/App.svelte/App.user-interactions.component.test.ts src/test/auth/githubAppOnlySourceGuard.test.ts src/test/e2e-helpers/popup-helpers.test.ts src/lib/components/__tests__/RepoSettings.logic.test.ts src/lib/components/__tests__/RepoSettings.component.test.ts src/lib/components/__tests__/ProjectStatus.component.test.ts src/popup/components/__tests__/FileChangesModal.component.test.ts src/background/__tests__/BackgroundService.reload.test.ts
+  - rg --files-without-match "export const (TUTORIAL_LINK|CREATE_TOKEN_URL|CREATE_FINE_GRAINED_TOKEN_URL)" src/lib/constants.ts
+  - ./scripts/maid validate manifests/make-github-settings-connection-only.manifest.yaml --mode behavioral
+  - pnpm lint
+  - pnpm check
+  - pnpm build
+created: '2026-07-13T23:40:04Z'
+metadata:
+  tags:
+    - github-app
+    - popup
+    - settings
+    - repository
+    - ux
+  priority: high
+  evolves_active_contracts:
+    - 02-github-app-only-primary-setup
+    - repair-e2e-error-flow-fast-gate
+    - 04-github-app-only-repository-surfaces
+outcome:
+  status: completed
+  completed_at: '2026-07-13T23:50:57Z'
+  summary: |
+    GitHub Settings is now an account-level, GitHub App connection-only surface.
+    It no longer renders, validates, discovers, or saves repository owner, name,
+    or branch values. ProjectStatus and ProjectsList continue to open RepoSettings
+    as the authoritative project-scoped repository editor, while onboarding keeps
+    its separate first-run repository setup flow.
+  rationale: |
+    The repository form in GitHub Settings predated the project-scoped RepoSettings
+    modal and survived as a duplicate after that modal was introduced. GitHub App
+    migration needs connection identity and preserved project mappings, not a
+    second editor for project data. Removing the duplicate avoids stale or
+    conflicting settings while retaining every reachable project editing path.
+  lessons:
+    - lesson_type: ui-ownership
+      summary: |
+        Account connection state and project repository configuration should have
+        separate owners. Migration guidance can preserve and point to project
+        mappings without keeping a duplicate repository form in global settings.
+      tags: [github-app, settings, repository, ux]
+      paths:
+        - src/lib/components/GitHubSettings.svelte
+        - src/lib/components/RepoSettings.svelte
+        - src/lib/components/ProjectStatus.svelte
+    - lesson_type: regression-contract
+      summary: |
+        Protect both sides of a duplicate-surface removal: assert that the global
+        surface cannot edit or discover repositories and characterize the retained
+        project-scoped editor with its current repository and branch values.
+      tags: [testing, characterization, regression]
+      paths:
+        - src/lib/components/__tests__/GitHubSettings.connection.component.test.ts
+        - src/lib/components/__tests__/ProjectStatus.component.test.ts
+        - src/lib/components/__tests__/RepoSettings.component.test.ts
+  review_notes:
+    - source: independent reviewer /root/maid_implementation_reviewer
+      severity: ready
+      summary: |
+        No findings. The reviewer confirmed the connection-only boundary, retained
+        RepoSettings entry points, preserved onboarding handlers, declared scope,
+        carried-forward superseded artifacts, and passing focused validation.
+  validation:
+    - command:
+        - pnpm
+        - exec
+        - vitest
+        - run
+        - src/lib/components/__tests__/GitHubSettings.connection.component.test.ts
+        - src/popup/components/__tests__/SettingsTabContent.component.test.ts
+        - src/popup/components/__tests__/TabsView.component.test.ts
+        - src/lib/components/__tests__/ProjectStatus.component.test.ts
+        - src/lib/components/__tests__/RepoSettings.component.test.ts
+      status: failed-red-phase
+      summary: Seven intended contract failures exposed the duplicate project controls, repository discovery, legacy migration guidance, and Settings-tab save wiring.
+    - command:
+        - pnpm
+        - exec
+        - vitest
+        - run
+        - src/lib/components/__tests__/GitHubSettings.connection.component.test.ts
+        - src/popup/components/__tests__/SettingsTabContent.component.test.ts
+        - src/popup/components/__tests__/TabsView.component.test.ts
+        - src/lib/components/__tests__/ProjectStatus.component.test.ts
+        - src/lib/components/__tests__/RepoSettings.component.test.ts
+      status: passed
+      summary: Five focused files passed all 119 tests after implementation.
+    - command:
+        - ./scripts/maid
+        - test
+        - --manifest
+        - manifests/make-github-settings-connection-only.manifest.yaml
+      status: passed
+      summary: The declared focused tests, source guard, behavioral validation, lint, type checking, and production build all passed.
+    - command:
+        - ./scripts/maid
+        - validate
+        - manifests/make-github-settings-connection-only.manifest.yaml
+        - --mode
+        - implementation
+      status: passed
+      summary: All declared production and behavioral artifacts passed implementation validation; only three documented unrelated release-manifest E110 warnings remained.
+    - command: [pnpm, test:ci]
+      status: passed
+      summary: The full Vitest CI suite passed after implementation.
+    - command:
+        - ./scripts/maid
+        - verify
+        - --manifest-dir
+        - manifests
+        - --since
+        - HEAD
+        - --file-tracking-scope
+        - task
+        - --plan-lock-scope
+        - task
+        - --include-tests
+        - --worktree-scope
+        - --require-plan-lock
+        - --require-red-evidence
+        - --summary
+      status: blocked-unrelated
+      summary: Strict verification was blocked only because three pre-existing E110 warnings in the v2.0.0 release manifest are promoted to failures.
+    - command:
+        - ./scripts/maid
+        - verify
+        - --manifest-dir
+        - manifests
+        - --since
+        - HEAD
+        - --file-tracking-scope
+        - task
+        - --plan-lock-scope
+        - task
+        - --include-tests
+        - --worktree-scope
+        - --require-plan-lock
+        - --require-red-evidence
+        - --summary
+        - --advisory
+      status: passed
+      summary: Advisory task-scoped verification passed with the known unrelated release warnings disclosed.
