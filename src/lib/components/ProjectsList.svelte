@@ -886,8 +886,7 @@
             currentlyLoadedProjectId
               ? 'bg-slate-800/30 border-slate-700 shadow-lg shadow-emerald-500/10'
               : ''}"
-            role="button"
-            tabindex="-1"
+            role="group"
             aria-label="Bolt project {project.repoName}"
           >
             <div class="flex flex-col">
@@ -932,7 +931,7 @@
                 </div>
 
                 <div
-                  class="absolute top-0 right-0 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity duration-200 bg-gradient-to-l from-slate-800/95 via-slate-800/80 to-transparent pl-8 pr-1 py-1 rounded-l-full"
+                  class="absolute top-0 right-0 flex gap-1 bg-gradient-to-l from-slate-800/95 via-slate-800/80 to-transparent pl-8 pr-1 py-1 rounded-l-full"
                 >
                   {#each renderProjectActions(project) as action}
                     <Button
@@ -1052,8 +1051,7 @@
             {#each paginatedRepos as project}
               <div
                 class="border border-slate-800 rounded-lg p-3 hover:bg-slate-800/50 transition-all duration-200 group mb-2 opacity-60"
-                role="button"
-                tabindex="-1"
+                role="group"
                 aria-label="GitHub repository {project.repoName}"
               >
                 <div class="relative">
@@ -1113,8 +1111,7 @@
           {#each paginatedRepos as project}
             <div
               class="border border-slate-800 rounded-lg p-3 hover:bg-slate-800/50 transition-all duration-200 group mb-2"
-              role="button"
-              tabindex="-1"
+              role="group"
               aria-label="GitHub repository {project.repoName}"
             >
               <div class="relative">
@@ -1154,7 +1151,7 @@
                 </div>
 
                 <div
-                  class="absolute top-0 right-0 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity duration-200 bg-gradient-to-l from-slate-800/95 via-slate-800/80 to-transparent pl-8 pr-1 py-1 rounded-l-full"
+                  class="absolute top-0 right-0 flex gap-1 bg-gradient-to-l from-slate-800/95 via-slate-800/80 to-transparent pl-8 pr-1 py-1 rounded-l-full"
                 >
                   {#each renderProjectActions(project) as action}
                     <Button

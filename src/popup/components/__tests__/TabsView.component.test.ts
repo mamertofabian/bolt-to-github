@@ -138,9 +138,6 @@ describe('TabsView', () => {
       const feedbackHandler = vi.fn();
       const upgradeClickHandler = vi.fn();
       const newsletterHandler = vi.fn();
-      const saveHandler = vi.fn();
-      const errorHandler = vi.fn();
-      const authMethodChangeHandler = vi.fn();
       const configurePushReminderHandler = vi.fn();
 
       component.$on('switchTab', switchTabHandler);
@@ -148,9 +145,6 @@ describe('TabsView', () => {
       component.$on('feedback', feedbackHandler);
       component.$on('upgradeClick', upgradeClickHandler);
       component.$on('newsletter', newsletterHandler);
-      component.$on('save', saveHandler);
-      component.$on('error', errorHandler);
-      component.$on('authMethodChange', authMethodChangeHandler);
       component.$on('configurePushReminder', configurePushReminderHandler);
 
       expect(document.body).toBeInTheDocument();

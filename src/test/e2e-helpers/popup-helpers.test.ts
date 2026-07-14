@@ -245,7 +245,7 @@ describe('popup E2E helper characterization', () => {
     await openProjectRepositorySettings(page, 'mapped-repository');
 
     expect(projectsTab.click).toHaveBeenCalledOnce();
-    expect(projectCard.hover).toHaveBeenCalledOnce();
+    expect(projectCard.hover).not.toHaveBeenCalled();
     expect(projectCard.getByRole).toHaveBeenCalledWith('button', {
       name: /repository settings/i,
     });

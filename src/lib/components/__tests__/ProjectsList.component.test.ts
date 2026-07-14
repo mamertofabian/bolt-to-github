@@ -5,6 +5,7 @@ import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { render, screen, waitFor } from '@testing-library/svelte';
 import userEvent from '@testing-library/user-event';
 import ProjectsList from '../ProjectsList.svelte';
+import projectsListSource from '../ProjectsList.svelte?raw';
 
 const mockServiceConstructor = vi.hoisted(() =>
   vi.fn().mockImplementation(() => ({
@@ -213,6 +214,10 @@ describe('ProjectsList Component', () => {
     expect(screen.getByRole('heading', { name: /repository settings/i })).toBeInTheDocument();
     expect(screen.getByLabelText(/repository name/i)).toHaveValue('mapped-repository');
     expect(screen.getByLabelText(/^branch/i)).toHaveValue('dev');
+  });
+
+  it('project actions remain discoverable without pointer hover', () => {
+    expect(projectsListSource).not.toContain('opacity-0 group-hover:opacity-100');
   });
 
   it('projects list performs GitHub work only through GitHub App readiness', async () => {

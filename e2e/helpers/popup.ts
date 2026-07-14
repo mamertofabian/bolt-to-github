@@ -103,10 +103,9 @@ export async function openProjectRepositorySettings(
   await page.waitForTimeout(300);
 
   const projectCard = page
-    .getByRole('button', { name: `Bolt project ${repositoryName}`, exact: true })
+    .getByRole('group', { name: `Bolt project ${repositoryName}`, exact: true })
     .first();
   await projectCard.waitFor({ state: 'visible', timeout: 10_000 });
-  await projectCard.hover();
 
   const settingsAction = projectCard.getByRole('button', {
     name: /repository settings/i,

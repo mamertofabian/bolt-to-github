@@ -441,12 +441,11 @@
   <div class="text-slate-300">
     <div class="space-y-3 px-4 py-4">
       <!-- Project details section -->
-      <div
-        class="grid grid-cols-[4.5rem_1fr] gap-x-2 bg-slate-900/50 p-3 rounded-sm cursor-pointer hover:bg-slate-900/70 transition-colors group"
+      <button
+        type="button"
+        tabindex="0"
+        class="grid w-full grid-cols-[4.5rem_1fr] gap-x-2 bg-slate-900/50 p-3 rounded-sm cursor-pointer text-left hover:bg-slate-900/70 transition-colors group"
         on:click={() => (showSettingsModal = true)}
-        on:keydown={(e) => e.key === 'Enter' && (showSettingsModal = true)}
-        role="button"
-        tabindex={0}
       >
         <span class="text-slate-400">Project:</span>
         <span class="font-mono">{projectTitle}</span>
@@ -489,15 +488,15 @@
           {#if isLoading.latestCommit}
             <span class="text-slate-500">Loading...</span>
           {:else if latestCommit}
-            <div class="text-xs text-slate-400 mt-1">
+            <span class="block text-xs text-slate-400 mt-1">
               {new Date(latestCommit.date).toLocaleString()}
-            </div>
-            <div class="text-xs text-slate-400 mt-1">{latestCommit.message}</div>
+            </span>
+            <span class="block text-xs text-slate-400 mt-1">{latestCommit.message}</span>
           {:else}
             N/A
           {/if}
         </span>
-      </div>
+      </button>
 
       <!-- Icon-only buttons with tooltips -->
       <div class="flex justify-center gap-2">
