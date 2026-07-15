@@ -428,7 +428,9 @@ export class BoltProjectSyncService {
   /**
    * Update projects that are missing the project_name field
    */
-  private async updateIncompleteProjects(existingBoltProjects: BoltProject[]): Promise<boolean> {
+  private async updateIncompleteProjects(
+    existingBoltProjects: BoltProject[]
+  ): Promise<BoltProject[]> {
     const incompleteProjects = existingBoltProjects.filter((project) => !project.project_name);
     if (incompleteProjects.length > 0) {
       logger.info('🔄 Updating existing bolt projects with missing project_name field', {
@@ -449,9 +451,9 @@ export class BoltProjectSyncService {
 
       await this.saveLocalProjects(updatedProjects);
       logger.info('✅ Successfully updated bolt projects with project_name field');
-      return true;
+      return updatedProjects;
     }
-    return false;
+    return existingBoltProjects;
   }
 
   /**
@@ -644,13 +646,10 @@ export class BoltProjectSyncService {
   ): Promise<void> {
     try {
       // Check if we already have projects in the new format
-      const existingBoltProjects = await this.getLocalProjects();
+      const storedBoltProjects = await this.getLocalProjects();
 
       // Check if existing bolt projects need project_name field update
-      const wasUpdated = await this.updateIncompleteProjects(existingBoltProjects);
-      if (wasUpdated) {
-        return;
-      }
+      const existingBoltProjects = await this.updateIncompleteProjects(storedBoltProjects);
 
       // ALWAYS read fresh projectSettings to ensure we have the latest user changes
       const gitHubSettings = await ChromeStorageService.getGitHubSettings();
