@@ -13,6 +13,11 @@
   export let isAuthenticationValid: boolean;
   export let isLoading: boolean = false;
 
+  $: activeProjectSettings = projectId ? githubSettings.projectSettings[projectId] : undefined;
+  $: activeRepoName = activeProjectSettings?.repoName || githubSettings.repoName;
+  $: activeBranch = activeProjectSettings?.branch || githubSettings.branch;
+  $: activeProjectTitle = activeProjectSettings?.projectTitle || 'My Project';
+
   const dispatch = createEventDispatcher<{
     switchTab: string;
     showFileChanges: void;
@@ -66,8 +71,9 @@
     bind:this={projectStatusRef}
     {projectId}
     gitHubUsername={githubSettings.repoOwner}
-    repoName={githubSettings.repoName}
-    branch={githubSettings.branch}
+    repoName={activeRepoName}
+    branch={activeBranch}
+    projectTitle={activeProjectTitle}
     on:switchTab={handleSwitchTab}
     on:showFileChanges={handleShowFileChanges}
     {handleUpgradeClick}

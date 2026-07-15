@@ -98,6 +98,49 @@ describe('HomeTabContent', () => {
   });
 
   describe('Props Reactivity', () => {
+    it('renders the current project mapping immediately when top-level repository fields are stale', async () => {
+      const initialProps = {
+        ...defaultProps,
+        projectId: 'test-project',
+        isAuthenticationValid: true,
+        githubSettings: {
+          ...defaultProps.githubSettings,
+          repoName: 'test-project',
+          branch: 'main',
+          projectSettings: {
+            'test-project': {
+              repoName: 'test-project',
+              branch: 'main',
+              projectTitle: 'test-project',
+            },
+          },
+        },
+      };
+      const { rerender } = render(HomeTabContent, {
+        props: initialProps,
+      });
+
+      expect(screen.getAllByText('test-project')).not.toHaveLength(0);
+
+      await rerender({
+        ...initialProps,
+        githubSettings: {
+          ...initialProps.githubSettings,
+          projectSettings: {
+            'test-project': {
+              repoName: 'custom-repository',
+              branch: 'develop',
+              projectTitle: 'Custom Project',
+            },
+          },
+        },
+      });
+
+      expect(screen.getByText('custom-repository')).toBeInTheDocument();
+      expect(screen.getByText('develop')).toBeInTheDocument();
+      expect(screen.getByText('Custom Project')).toBeInTheDocument();
+    });
+
     it('should update when isLoading prop changes', async () => {
       const { rerender } = render(HomeTabContent, {
         props: { ...defaultProps, isLoading: false, projectId: null, isAuthenticationValid: false },
