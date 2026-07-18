@@ -1,0 +1,362 @@
+# draft-kind: parent-epic
+schema: '2'
+goal: |
+  Safely migrate an existing Bolt project from its established Bolt to GitHub
+  repository to the duplicate repository created by bolt.new native GitHub
+  setup without losing repository content, hiding divergence, or deleting the
+  original repository.
+description: |
+  Sibling planning epic for the existing-project case identified after the
+  new-project native sync handoff was drafted. The starting state is materially
+  different:
+  - a Bolt project already exists;
+  - Bolt to GitHub already maps that project to repository A; and
+  - enabling bolt.new native GitHub integration creates repository B instead of
+    attaching repository A.
+
+  Repository B is therefore a duplicate with an unrelated Git history, not a
+  proven continuation of repository A. Changing the extension mapping from A
+  to B without comparison could strand Cursor commits, overwrite Bolt changes,
+  or make users believe history was migrated when it was not.
+
+  The safe workflow is a canonical-repository migration:
+  1. Preflight the current Bolt project export against repository A. If the
+     contents differ, stop. The user must first make Bolt and A agree through a
+     normal Bolt to GitHub push, manual reconciliation, or the separate
+     repository-import/new-project workflow. The migration must not choose a
+     winner silently.
+     The preflight uses a dedicated raw-ZIP inventory that includes empty and
+     binary files and never suppresses tracked paths through .gitignore. If the
+     Bolt export cannot represent a tracked mode or entry type, the result is
+     indeterminate and migration remains blocked.
+  2. Persist the project ID, authenticated personal owner, repository A, branch,
+     verified A HEAD, and preflight result before the user enables native GitHub
+     in Bolt.
+  3. The user enables bolt.new native GitHub setup, attests that Bolt created
+     repository B, and explicitly selects B under the already configured owner.
+  4. Compare the complete tracked Git trees of A and B at captured branch HEADs.
+     Matching entry paths, modes, types, and object IDs establish tracked-content
+     equivalence even though commit histories differ. Any added, removed, or
+     changed entry blocks automatic adoption and produces a visible
+     reconciliation report.
+     Git LFS repositories are unsupported in the MVP: detected LFS attributes,
+     pointer blobs, missing payload evidence, or uncertain LFS classification
+     return an indeterminate blocked result rather than equivalence.
+  5. Immediately before switching the mapping, re-read both branch HEADs. If
+     either changed, invalidate the comparison and require a fresh one.
+  6. When content is equivalent, persist an explicit switch intent, revalidate
+     both HEADs, map only the current Bolt project to B, record A as the preserved
+     legacy repository, and complete the migration through deterministic phases.
+
+  This workflow manages duplication; it does not pretend duplication did not
+  occur. Repository A retains its original Git history and remains untouched.
+  Repository B becomes the user-confirmed canonical repository for future Bolt
+  native sync and Bolt to GitHub operations. History transplantation, force
+  pushes, automatic repository deletion, and automatic conflict resolution are
+  outside the MVP.
+
+  The existing RepoCloneService is not a migration engine for this workflow. It
+  copies files with separate per-file commits, does not preserve source history,
+  and is not an atomic two-repository reconciliation mechanism. Implementation
+  must use it neither to hide divergence nor to make B appear equivalent to A.
+
+  This draft is non-promotable parent planning inventory. Each child below must
+  become an implementation-sized manifest with exact public artifacts,
+  behavioral tests, confirmed red phase, behavioral MAID validation, and user
+  approval before promotion.
+
+  Product and safety boundaries:
+  - Repository A remains the active mapping until every required preflight,
+    attestation, repository comparison, and HEAD recheck passes.
+  - Repository A is never made public, renamed, archived, or deleted by the MVP.
+  - Repository B is never assumed to be Bolt-linked merely because it is recent
+    or accessible. Native setup is explicitly user-attested.
+  - Repository ownership is limited to the authenticated personal username
+    currently stored as global repoOwner. Organization and cross-owner migration
+    require a separate owner-architecture feature.
+  - Content equivalence does not mean history equivalence. The UI must preserve
+    a link to A and state that its history was not copied to B.
+  - Any uncertainty, inaccessible branch, truncated Git tree, concurrent HEAD
+    change, or content mismatch blocks automatic canonical switching.
+  - Before the mapping commit point, abandoning or failing migration leaves
+    repository A mapped and usable. After B is already mapped, cancellation is
+    unavailable and recovery completes forward to B without deleting A.
+  - A shared journey-routing record permits only one native-sync journey per
+    project. This lane requires explicit repository-settings initiation and no
+    private-import provenance, independent of any auto-created default mapping.
+type: feature
+files:
+  create:
+    - path: manifests/drafts/existing-bolt-project-native-repository-migration.manifest.yaml
+      artifacts:
+        - kind: type
+          name: ExistingBoltProjectNativeRepositoryMigrationParentEpic
+          type: MAID parent epic planning inventory
+          description: |
+            Non-promotable parent draft defining the existing-project
+            repository-duplication workflow, equivalence gate, canonical
+            mapping transition, recovery contract, and child manifest split.
+  read:
+    - docs/draft-manifest-workflow.md
+    - manifests/README.md
+    - manifests/drafts/README.md
+    - manifests/drafts/native-github-sync-handoff.manifest.yaml
+    - src/lib/components/RepoSettings.svelte
+    - src/lib/types.ts
+    - src/lib/stores/githubSettings.ts
+    - src/services/GitHubComparisonService.ts
+    - src/services/RepoCloneService.ts
+    - src/services/RepositoryService.ts
+    - src/services/zipHandler.ts
+validate:
+  - ./scripts/maid validate manifests/drafts/existing-bolt-project-native-repository-migration.manifest.yaml --mode schema
+created: '2026-07-15T15:12:13+08:00'
+metadata:
+  tags:
+    - native-github-sync
+    - existing-bolt-project
+    - repository-migration
+    - duplicate-repository
+    - content-equivalence
+    - parent-epic
+  priority: high
+  status: planning
+  promotable: false
+  related_epics:
+    - manifests/drafts/native-github-sync-handoff.manifest.yaml
+  evidence:
+    maintainer_observation:
+      - As observed on 2026-07-15, enabling bolt.new native GitHub integration
+        for an existing unconnected project creates a new GitHub repository
+        rather than attaching its established Bolt to GitHub repository.
+    repository_findings:
+      - ProjectSetting stores repository name and branch per project while
+        repoOwner remains global, so the MVP cannot safely change owner for only
+        one project.
+      - GitHubComparisonService compares a Bolt export with one GitHub branch,
+        which can support the repository-A preflight but does not compare two
+        GitHub repositories directly.
+      - Git tree entry paths, modes, types, and object IDs can establish exact
+        tracked-content equality across repositories without requiring shared
+        commit ancestry.
+      - zipHandler bases a commit on fresh remote HEAD and updates refs with
+        force disabled, which must remain true after canonical switching.
+      - RepoCloneService copies files through per-file commits and neither
+        preserves history nor provides atomic repository reconciliation.
+    outcome_lessons:
+      - Keep project-scoped mappings authoritative and preserve unrelated
+        mappings during staged storage changes.
+      - Reuse the live GitHub App connection gate before repository reads or
+        writes, and keep auth failure states actionable.
+      - Model MV3 restarts and partial storage writes as normal recovery cases,
+        not impossible edge conditions.
+  epic:
+    acceptance_criteria:
+      - Shared journey routing rejects projects with private-import provenance or
+        another active native-sync journey; mapping presence alone never selects
+        this lane.
+      - The workflow can start only for a known Bolt project with a complete,
+        accessible repository-A mapping under the authenticated personal owner.
+      - A fresh Bolt export is compared with repository A before native setup;
+        any content difference blocks migration and leaves A active.
+      - Preflight inventory includes empty and binary files without .gitignore
+        suppression; unsupported modes or entry types return indeterminate.
+      - The preflight record pins repository A branch HEAD and survives popup
+        closure and service-worker restart.
+      - The user explicitly attests that Bolt native setup created repository B
+        and confirms B plus its target branch under the configured repoOwner.
+      - Repository A and B are compared by complete, non-truncated Git trees,
+        including every tracked entry path, mode, type, and object ID so
+        executable files, symlinks, and gitlinks cannot be silently ignored.
+      - Detected or potentially unresolved Git LFS usage blocks the MVP unless
+        payload availability in both repositories can be proven explicitly.
+      - Identical content with unrelated commit histories is reported as
+        content-equivalent, not history-migrated.
+      - Added, removed, or changed tracked entries produce a reconciliation report and
+        block automatic mapping changes.
+      - If either pinned branch HEAD changes before adoption, comparison expires
+        and must be repeated.
+      - Successful adoption changes only the current project's repository and
+        branch, preserves A as legacy provenance, and leaves unrelated project
+        mappings unchanged.
+      - Persisted phases are preflight_verified, candidate_selected,
+        equivalence_verified, switch_intent, mapping_switched, and completed.
+      - Before switch_intent, cancel or recovery keeps A active. At switch_intent
+        with A still mapped, recovery revalidates both HEADs before switching.
+        Once B is mapped, recovery completes forward and never silently rolls
+        back to A. Any third mapping produces a visible conflict state.
+      - Before B is mapped, cancel, failure, ambiguity, and abandonment keep A
+        active and never mutate either repository. After B is mapped, cancellation
+        is unavailable; deterministic recovery completes B forward without GitHub
+        mutation and never silently restores A.
+      - The completed UI links both repositories and states that A retains the
+        old history while B is the new user-confirmed canonical repository.
+      - Completion warns that Cursor clones of A do not automatically become B;
+        users must preserve unpushed work and re-clone B or deliberately migrate
+        their Git remote/worktree before continuing external development.
+      - Future Bolt to GitHub pushes to B still use fresh remote state and
+        non-force branch updates.
+    child_manifests:
+      - slug: 01-existing-native-migration-state
+        goal: |
+          Define versioned existing-project migration records, eligibility, and
+          recovery before repository comparison or UI work begins.
+        likely_scope:
+          - a new migration domain and persistence service with focused tests
+          - src/lib/services/chromeStorage.ts or a dedicated versioned local store
+          - repository-settings initiation and shared journey-routing seams
+          - MV3 lifecycle tests for resume, cancel, conflicts, and phase recovery
+        behavioral_focus:
+          - Depends on 00-native-sync-journey-routing from the sibling epic.
+          - Private-import provenance and another active journey block initiation.
+          - Missing project, mapping, owner, branch, or GitHub access blocks start.
+          - Repeating start is idempotent; switching projects cannot reuse state.
+          - Persisted phases and mapping observations select one deterministic
+            recovery action; recovery never arbitrarily chooses A or B.
+      - slug: 02-existing-native-bolt-export-preflight
+        goal: |
+          Build an exact raw-ZIP inventory and compare the current Bolt export
+          with repository A without inheriting preview-oriented omissions from
+          GitHubComparisonService.
+        likely_scope:
+          - a new raw Bolt ZIP inventory and preflight service with unit tests
+          - exact Git blob hashing for regular empty, text, and binary files
+          - deterministic fixtures for modes, symlinks, gitlinks, ignored paths,
+            binary files, empty files, unsupported entries, and stale A HEAD
+        behavioral_focus:
+          - Empty, text, and binary ZIP entries participate in comparison.
+          - The established export exclusion policy may filter export-only paths,
+            but every path already tracked in A is compared even when current
+            .gitignore rules match it; absence from the export is divergence.
+          - Preview normalization cannot turn byte differences into equivalence.
+          - An unrepresentable A mode/type or incomplete export returns indeterminate.
+          - An exact match pins A HEAD and advances to preflight_verified; any
+            mismatch reports paths and leaves A mapped.
+      - slug: 03-existing-native-repository-equivalence
+        goal: |
+          Compare repository A and user-selected repository B by complete Git
+          tree inventories and return exact equivalence or blocking divergence.
+        likely_scope:
+          - a new repository-to-repository comparison service and unit tests
+          - existing authenticated GitHub request adapters
+          - deterministic tree fixtures for text, binary, deletion, truncation,
+            renamed paths, missing branches, and concurrent HEAD changes
+        behavioral_focus:
+          - Same paths, modes, types, and object IDs at pinned heads return
+            tracked-content-equivalent.
+          - Different histories with identical trees remain content-equivalent.
+          - Added, removed, renamed, mode-changed, type-changed, or content-changed
+            entries return explicit divergence.
+          - Truncated trees, inaccessible refs, rate limits, and unknown data
+            return blocked/indeterminate rather than equivalent.
+          - LFS attributes, pointer blobs, missing payload proof, or uncertain LFS
+            classification return unsupported/indeterminate for the MVP.
+          - Original and candidate repository identities cannot be the same.
+      - slug: 04-existing-native-canonical-switch
+        goal: |
+          Implement the deterministic persisted phase machine and one-way
+          canonical mapping commit point independently of popup rendering.
+        likely_scope:
+          - a new canonical-switch application service and focused recovery tests
+          - src/lib/stores/githubSettings.ts current-project mapping seam
+          - versioned migration persistence and fresh GitHub HEAD reads
+        behavioral_focus:
+          - Only equivalence_verified may advance to switch_intent.
+          - switch_intent with A mapped revalidates both HEADs before changing mapping.
+          - switch_intent with B already mapped completes forward idempotently.
+          - A third or missing mapping blocks as conflict and is never overwritten.
+          - mapping_switched records A provenance and advances only forward to completed.
+          - Unrelated project mappings remain byte-for-byte unchanged.
+      - slug: 05-existing-native-canonical-switch-ui
+        goal: |
+          Guide native setup, display the A-versus-B reconciliation result, and
+          invoke the canonical-switch service after equivalence.
+        likely_scope:
+          - a focused migration wizard component and component tests
+          - the narrowest popup/RepoSettings composition entry points
+          - provenance display and UI resume/conflict tests
+        behavioral_focus:
+          - The wizard names A as current and B as candidate until completion.
+          - Native linkage is user-attested, never inferred from repository age.
+          - Divergence blocks adoption and offers refresh, Cursor reconciliation,
+            abandon, and new-project-import guidance without mutating repositories.
+          - The UI delegates all persisted transition decisions to child 04.
+          - Resume renders the phase-machine result without guessing A or B.
+          - Completion explains the duplicate repositories and separate histories.
+          - Completion tells Cursor users to preserve unpushed A work and re-clone
+            B or deliberately migrate their remote/worktree.
+      - slug: 06-existing-native-migration-regression
+        goal: |
+          Prove migration isolation, non-mutation guarantees, concurrency safety,
+          and post-adoption non-force push behavior across the full journey.
+        likely_scope:
+          - cross-module integration fixtures and tests
+          - existing-project popup and multi-tab e2e journeys
+          - GitHub tree/ref race fixtures
+          - zipHandler regression coverage where needed
+        behavioral_focus:
+          - Two project tabs cannot exchange migration candidates or mappings.
+          - A or B changing during comparison invalidates adoption.
+          - Failed and abandoned migrations perform no GitHub writes or deletions.
+          - A remains preserved and linked after successful adoption.
+          - A remote B commit before an extension push is preserved or causes a
+            visible non-fast-forward failure, never a force push.
+          - New-project handoff and normal B2G-only projects remain unchanged.
+    mvp_definition:
+      included:
+        - Shared provenance-based journey eligibility and mutual exclusion.
+        - Existing-project migration initiation from repository settings.
+        - Exact raw-ZIP Bolt-export-versus-A preflight.
+        - Versioned resumable migration state.
+        - Explicit user attestation and B selection under current repoOwner.
+        - Exact Git-tree tracked-content-equivalence comparison between A and B.
+        - Git LFS detection with unsupported/indeterminate blocking behavior.
+        - Visible divergence report and manual-reconciliation guidance.
+        - HEAD revalidation and deterministic phased current-project mapping switch.
+        - Preserved link and provenance for repository A.
+      excluded:
+        - Automatically copying A into B or B into A.
+        - Preserving or transplanting A's commit history into B.
+        - Merging unrelated Git histories.
+        - Force pushing, deleting, renaming, transferring, or changing visibility
+          of either non-temporary repository.
+        - Automatically choosing which divergent repository is authoritative.
+        - Cross-owner migration or project-scoped owner storage.
+        - Git LFS repository migration without verified payload availability.
+        - Claiming native Bolt linkage is technically verified.
+    implementation_research_gates:
+      - Re-test Bolt's current repository-creation behavior for an existing
+        project immediately before promoting the first child.
+      - Confirm the Bolt export can be obtained without initiating a GitHub push
+        and raw ZIP bytes remain available for exact empty/text/binary hashing.
+      - Define which Git tree modes and types the Bolt export can represent;
+        unsupported or ambiguous entries must remain indeterminate.
+      - Confirm GitHub recursive tree truncation behavior and define a complete
+        fallback traversal before equivalence can return true.
+      - Define bounded LFS detection and payload-proof behavior; the current MVP
+        recommendation is to block any detected or uncertain LFS repository.
+      - Resolve the versioned storage namespace in child 01 before UI or adoption.
+      - Verify candidate discovery under the authenticated personal username;
+        organization and cross-owner support remain excluded.
+    open_decisions:
+      - Whether the divergence report should be copyable Markdown, JSON, or only
+        an in-extension file list for the MVP.
+      - Whether a user may explicitly waive content equivalence; current
+        recommendation is no because that would make data-loss prevention hollow.
+      - Whether repository A should receive an optional read-only archive label
+        in extension metadata; GitHub archive mutation remains excluded.
+      - Whether a later advanced workflow should provide documented local Git
+        commands for history transplantation outside the extension.
+      - Whether a later owner-architecture feature should support organization
+        repositories without overwriting unrelated project ownership.
+temptations:
+  - risk: Do not switch the project mapping merely because repository B is recent, accessible, or user-selected.
+    instead: Require the Bolt-versus-A preflight, explicit native-setup attestation, complete A-versus-B tree equivalence, and unchanged pinned HEADs before staged adoption.
+  - risk: Do not use RepoCloneService to conceal A-versus-B divergence or claim history migration.
+    instead: Keep comparison read-only, block on every tracked-content difference, and direct the user to explicit Cursor reconciliation or the new-project import lane.
+  - risk: Do not delete, archive, rename, publish, or force-push repository A after B is adopted.
+    instead: Preserve A and its history as recorded legacy provenance; make any future cleanup a separately approved destructive workflow.
+  - risk: Do not treat matching tree entries as matching history, technically verified Bolt linkage, or proof of Git LFS payload availability.
+    instead: Label the result content-equivalent and user-confirmed, retain links to both histories, and block detected or uncertain LFS repositories unless payloads are proven.
+  - risk: Do not reuse a stale comparison after either repository branch advances.
+    instead: Pin both HEAD SHAs, re-read them immediately before mapping changes, and invalidate the migration whenever either value differs.

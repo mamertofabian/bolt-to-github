@@ -1,0 +1,348 @@
+# draft-kind: parent-epic
+schema: '2'
+goal: |
+  For a repository-import-created Bolt project, add a safe guided handoff to a
+  bolt.new native GitHub repository so externally committed changes can return
+  through bolt.new's supported native integration.
+description: |
+  Parent planning epic captured from the maintainer's July 2026 workflow test.
+  This is the new-Bolt-project lane: the Bolt project is created by importing a
+  private repository through the extension. Lane selection is based on durable
+  private-import provenance, not on whether project settings currently contain a
+  repository mapping, because popup initialization may create a default mapping
+  for a newly detected project.
+
+  The current extension already automates private-repository import by cloning
+  the selected branch into a short-lived public repository, opening the
+  bolt.new GitHub import URL, and deleting the temporary repository after Bolt
+  assigns a final project ID. That solves initial import, but the extension does
+  not preserve a durable handoff into bolt.new's native GitHub relationship.
+
+  The tested product path is a one-time handoff:
+  1. Import the existing GitHub repository into a new Bolt project with the
+     current temporary-public-repository workflow.
+  2. Enable bolt.new's native GitHub integration for the imported project.
+     Based on the observed July 2026 behavior, Bolt creates a new repository
+     instead of attaching the existing source repository.
+  3. Refresh repositories in Bolt to GitHub, explicitly attest that native
+     setup completed, choose the new Bolt-created repository under the already
+     configured repository owner, and adopt it as the current project's
+     canonical mapping.
+  4. Let bolt.new's supported native integration consume future commits made by
+     Cursor or other GitHub clients. Bolt to GitHub remains available for
+     user-initiated comparisons and controlled commits to the same mapping.
+
+  This epic does not make Bolt to GitHub a direct GitHub-to-Bolt file writer.
+  No stable public bolt.new API for mutating an existing project has been
+  identified, so implementation must not reverse-engineer private endpoints,
+  automate brittle DOM clicks, or claim that the extension itself pulls files
+  into a Bolt workspace. The incoming-sync capability belongs to bolt.new's
+  native integration; the extension makes the transition understandable,
+  recoverable, and much less manual.
+
+  This draft is planning inventory only. It must not be promoted or implemented
+  as one contract. Each child in metadata.epic.child_manifests must be refined
+  into an implementation-sized draft with exact public artifacts, focused
+  behavioral tests, a confirmed red phase, behavioral MAID validation, and
+  explicit approval before promotion.
+
+  Product and safety boundaries:
+  - The original private repository is never made public and is never deleted.
+    Only the existing temporary clone may become public and be auto-deleted.
+  - A recently created repository may be suggested, but the extension never
+    silently guesses or adopts it. The user attests that Bolt native setup
+    completed and confirms the configured owner, repository, and branch before
+    project settings change. Creation time and GitHub access are not proof that
+    Bolt actually linked the repository.
+  - The handoff UI distinguishes the original source repository, temporary
+    import repository, and Bolt-created native repository.
+  - Missing permissions, no candidate repository, multiple candidates, popup
+    closure, MV3 service-worker restart, and delayed native setup remain visible
+    recoverable states rather than being treated as success.
+  - Existing repository mappings and normal Bolt to GitHub-only projects remain
+    unchanged unless the user starts and completes this handoff.
+  - The MVP starts only after the existing private-repository import workflow.
+    Public imports, already-imported projects, and a manual handoff entry point
+    remain follow-up work because they do not produce temporary-import metadata.
+  - Existing Bolt projects already mapped to a GitHub repository are handled by
+    manifests/drafts/existing-bolt-project-native-repository-migration.manifest.yaml.
+    That lane must compare the established repository with Bolt's newly created
+    duplicate before changing the canonical mapping.
+  - A shared journey-routing record permits only one active native-sync journey
+    per project. Private-import provenance routes to this lane even if default
+    project settings already exist; the existing-project lane requires no import
+    provenance plus explicit user initiation from repository settings.
+  - Repository ownership remains the authenticated personal username currently
+    stored as global repoOwner. Organization and cross-owner repositories are
+    excluded until owner architecture is intentionally redesigned.
+  - Enabling native GitHub integration can allow Bolt itself to create commits.
+    Bolt to GitHub controls only commits initiated through the extension and
+    must explain that boundary instead of promising exclusive commit control.
+  - Before implementation, re-verify bolt.new's current existing-repository and
+    private-import behavior because it is external product behavior and may
+    change independently of this extension.
+type: feature
+files:
+  create:
+    - path: manifests/drafts/native-github-sync-handoff.manifest.yaml
+      artifacts:
+        - kind: type
+          name: NativeGitHubSyncHandoffParentEpic
+          type: MAID parent epic planning inventory
+          description: |
+            Non-promotable parent draft recording the supported-product
+            boundary, user journey, acceptance criteria, implementation-sized
+            child split, research assumptions, and safety constraints for a
+            bolt.new native GitHub sync handoff.
+  read:
+    - docs/draft-manifest-workflow.md
+    - manifests/README.md
+    - manifests/drafts/README.md
+    - src/background/BackgroundService.ts
+    - src/background/TempRepoManager.ts
+    - src/lib/components/RepoSettings.svelte
+    - src/lib/types.ts
+    - src/popup/components/TempRepoModal.svelte
+    - src/services/RepositoryService.ts
+    - src/services/RepoCloneService.ts
+    - src/services/zipHandler.ts
+validate:
+  - ./scripts/maid validate manifests/drafts/native-github-sync-handoff.manifest.yaml --mode schema
+created: '2026-07-15T14:59:12+08:00'
+metadata:
+  tags:
+    - native-github-sync
+    - repository-handoff
+    - private-repository-import
+    - new-bolt-project
+    - bolt-new
+    - parent-epic
+  priority: high
+  status: planning
+  promotable: false
+  related_epics:
+    - manifests/drafts/existing-bolt-project-native-repository-migration.manifest.yaml
+  evidence:
+    repository_findings:
+      - BackgroundTempRepoManager already creates, populates, publishes, opens,
+        and schedules deletion of temporary import repositories.
+      - BackgroundService already observes the temporary import URL becoming a
+        final Bolt project URL and triggers cleanup.
+      - RepoSettings already lists accessible repositories and saves a
+        project-scoped repository and branch mapping.
+      - zipHandler creates commits from the current remote branch head and
+        updates the branch ref with force disabled, which is the safety baseline
+        for repositories that can also receive native Bolt commits.
+    maintainer_observations:
+      - As observed on 2026-07-15, bolt.new native GitHub setup creates a new
+        repository for a project that is not already connected rather than
+        attaching an existing repository.
+      - A project imported from GitHub can subsequently use bolt.new native
+        GitHub sync, and external Cursor commits can then return to Bolt.
+      - Mapping Bolt to GitHub to the Bolt-created repository removes the need
+        to keep manually targeting duplicate repositories.
+    outcome_lessons:
+      - Reuse the existing live GitHub connection gate for repository surfaces;
+        do not construct a separate authentication path.
+      - Keep project-scoped mappings authoritative when compatibility-level
+        repository fields are stale.
+      - Treat MV3 asynchronous initialization and cleanup as lifecycle-sensitive
+        so a destroyed owner cannot restart timers or publish stale state.
+  epic:
+    acceptance_criteria:
+      - A versioned journey-routing record makes private-import handoff and
+        existing-project migration mutually exclusive for the same project.
+      - Private-import provenance, rather than mapping existence, deterministically
+        selects this lane before default project settings can cause ambiguity.
+      - A completed private import can become a durable, project-scoped handoff
+        record before temporary-repository metadata is removed.
+      - The handoff survives popup closure and MV3 service-worker restart.
+      - The user sees concise steps for enabling native GitHub integration in
+        Bolt and an honest explanation that Bolt, not the extension, performs
+        incoming synchronization.
+      - Repository candidates are refreshed only after a live GitHub App check
+        and may be ranked by creation time without being auto-selected.
+      - The user explicitly attests that native setup completed and confirms a
+        repository and branch under the already-configured repoOwner before the
+        current project mapping is replaced.
+      - Completion is labeled as a user-confirmed native mapping, not as
+        technically verified incoming synchronization, unless bolt.new later
+        exposes a supported linkage signal that is covered by a new contract.
+      - Completing adoption preserves the original private repository and
+        records enough provenance to show where the project came from.
+      - No-candidate, multiple-candidate, permission, network, and save failures
+        are visible and retryable without repeating the private import.
+      - Dismissal pauses guidance without erasing an incomplete handoff; the
+        user can resume it from the current project's repository settings.
+      - Existing projects that never start a handoff keep their current UI,
+        repository mapping, import, comparison, and push behavior.
+      - Public imports and already-imported projects do not receive misleading
+        automatic handoff state in the MVP.
+      - A controlled Bolt to GitHub push to the adopted native repository still
+        uses fresh remote state and a non-force branch update.
+      - Focused unit, component, background lifecycle, storage migration, and
+        end-to-end tests cover the complete handoff and recovery paths.
+    child_manifests:
+      - slug: 00-native-sync-journey-routing
+        goal: |
+          Define the shared, versioned project provenance and active-journey
+          routing contract used by both native-sync parent epics.
+        likely_scope:
+          - a new pure journey domain and versioned persistence service
+          - private-import completion and repository-settings initiation seams
+          - focused routing, mutual-exclusion, migration, and MV3 recovery tests
+        behavioral_focus:
+          - Private-import completion records import provenance before popup
+            initialization can create or repair default project settings.
+          - Existing-project migration requires explicit repository-settings
+            initiation and refuses projects with private-import provenance.
+          - Only one active journey kind exists for a project at a time.
+          - Mapping presence, repository name, and repository age never infer a lane.
+          - Malformed, legacy, and conflicting records block visibly and repair
+            deterministically without erasing project mappings.
+      - slug: 01-native-sync-handoff-state
+        goal: |
+          Define versioned, project-scoped native-sync handoff records and move
+          successful temporary imports into durable pending state before cleanup.
+        likely_scope:
+          - src/lib/types.ts
+          - src/lib/services/chromeStorage.ts
+          - src/background/TempRepoManager.ts
+          - src/background/BackgroundService.ts
+          - focused type, storage, manager, and background lifecycle tests
+        behavioral_focus:
+          - Final Bolt project IDs claim exactly one matching import record.
+          - Temporary cleanup never deletes the original private repository.
+          - Duplicate URL events and service-worker restarts are idempotent.
+          - Malformed or legacy records fail visibly or migrate deterministically.
+          - This child defines the storage namespace and version before later
+            children write selection, mapping, or completion state.
+        dependency_notes:
+          - Depends on 00-native-sync-journey-routing and may not define a second
+            project-lane discriminator.
+          - Evolve the existing MAID contract covering TempRepoManager rather
+            than introducing a competing contract for its public surface.
+      - slug: 02-native-sync-repository-adoption
+        goal: |
+          Discover plausible Bolt-created repositories after a handoff and
+          idempotently adopt an explicitly selected repository and branch under
+          the configured repoOwner as the current project's canonical mapping.
+        likely_scope:
+          - a new pure candidate-ranking and adoption service with focused tests
+          - src/services/types/repository.ts
+          - src/services/RepositoryService.ts or its existing public adapter
+          - src/lib/stores/githubSettings.ts
+          - project mapping and storage regression tests
+        behavioral_focus:
+          - Candidates exclude the original and temporary repositories.
+          - Candidates are limited to the existing global repoOwner; this child
+            never migrates or rewrites owner identity for one project.
+          - Candidates created before the handoff are not presented as likely
+            matches unless the user searches for them explicitly.
+          - Zero, one, and multiple candidate results remain distinct states.
+          - Selection never changes settings until the user attests that Bolt
+            native setup completed and repository, branch, and live access are
+            confirmed. This is user confirmation, not proof of Bolt linkage.
+          - Adoption first persists pending selection, then updates only the
+            current project mapping, and finally marks handoff completion.
+          - Repeating or repairing any partially completed stage converges on
+            the same mapping while preserving provenance and unrelated projects.
+      - slug: 03-native-sync-handoff-ui-and-recovery
+        goal: |
+          Add the resumable guided handoff surface, repository confirmation,
+          success explanation, and degraded states to the popup.
+        likely_scope:
+          - a new focused handoff component and component tests
+          - src/popup/App.svelte or the narrowest existing popup composition seam
+          - src/popup/components/TempRepoModal.svelte only if its cleanup role
+            remains clear and separate from native repository adoption
+          - src/lib/components/RepoSettings.svelte for a resumable entry point
+          - popup interaction and end-to-end user-journey coverage
+        behavioral_focus:
+          - Copy names Bolt, GitHub, and Bolt to GitHub distinctly.
+          - The UI never reports technically verified two-way sync. It reports
+            a user-confirmed native mapping only after attestation and adoption.
+          - The original private repository is labeled as preserved, while the
+            short-lived public clone is labeled as temporary and deleted.
+          - Candidate ambiguity requires a user choice; no candidate provides
+            refresh and manual search paths.
+          - Dismiss, resume, retry, and completed states are keyboard-operable
+            and survive reopening the popup.
+          - Completion explains that external changes return through Bolt's
+            native integration when Bolt has linked the selected repository,
+            and that Bolt may also create its own commits.
+      - slug: 04-native-sync-handoff-regression
+        goal: |
+          Prove the end-to-end handoff does not weaken private import cleanup,
+          project isolation, or non-force GitHub push behavior.
+        likely_scope:
+          - cross-module integration fixtures and tests
+          - e2e/private repository import and popup repository mapping journeys
+          - existing zipHandler and GitHub comparison regressions where needed
+        behavioral_focus:
+          - Source private repository, temporary public repository, and adopted
+            native repository remain three separate identities.
+          - Two concurrent Bolt tabs cannot adopt repositories for each other.
+          - A remote commit arriving before an extension push is based on fresh
+            HEAD or produces a visible non-fast-forward failure, never a force push.
+          - Normal B2G-only import and push journeys remain unchanged.
+    mvp_definition:
+      included:
+        - Durable project provenance and mutually exclusive journey routing.
+        - Durable handoff state after the existing private import flow.
+        - Guided native GitHub setup instructions.
+        - Explicit user attestation that Bolt native setup completed.
+        - Refreshable candidate discovery and explicit repository selection.
+        - Project-scoped adoption of a repository and branch under the existing
+          global repoOwner.
+        - Visible recovery states and resumable setup.
+        - Preservation of the original private repository.
+        - Clear ownership language for incoming sync and commit creation.
+      excluded:
+        - Directly writing GitHub files into an existing Bolt project.
+        - Reverse-engineering private bolt.new APIs or automating internal DOM.
+        - Automatically selecting or deleting a non-temporary repository.
+        - Proving native Bolt linkage from GitHub repository metadata alone.
+        - Changing the global repository owner or adding project-scoped owners.
+        - Starting handoff for public imports or already-imported projects.
+        - Merging Git histories between the original and Bolt-created repositories.
+        - Promising that every commit is controlled by Bolt to GitHub after
+          native Bolt GitHub integration is enabled.
+        - Background polling or GitHub webhooks solely to detect Bolt sync.
+    implementation_research_gates:
+      - Re-test whether bolt.new still requires a new repository for native
+        integration and whether private repository imports remain unsupported.
+      - Capture the supported native-setup UI states without binding production
+        logic to unstable Bolt DOM selectors.
+      - Confirm the GitHub App installation can list and access Bolt-created
+        repositories under the authenticated personal username stored as the
+        global repoOwner.
+      - Decide whether handoff records belong in chrome.storage.local or sync
+        based on sensitivity, cross-device usefulness, quota, and lifecycle;
+        child 01 must resolve this before adoption work begins.
+      - Verify how native Bolt commits interact with the extension's fresh
+        comparison and non-force ref update under realistic concurrent changes.
+    open_decisions:
+      - Whether the resumable entry point belongs beside RepoSettings, in the
+        Projects view, or in both through one shared component.
+      - Whether completed handoff provenance should be shown permanently or only
+        in repository details.
+      - Whether manually searching an older repository should be permitted as an
+        advanced escape hatch after candidate discovery finds nothing.
+      - Whether a future owner-architecture migration should support organization
+        or cross-owner native repositories without rewriting unrelated projects.
+      - Whether a later manual handoff entry point should support public imports
+        that do not have an existing Bolt to GitHub project mapping.
+      - Whether optional deletion of an obsolete non-temporary duplicate should
+        be a separate future feature; the MVP recommendation is no.
+temptations:
+  - risk: Do not market the handoff as Bolt to GitHub directly pulling GitHub changes into an existing Bolt workspace.
+    instead: State that bolt.new's supported native integration performs incoming synchronization and that the extension guides repository adoption.
+  - risk: Do not infer native Bolt linkage or the canonical repository from the newest accessible repository alone.
+    instead: Rank same-owner candidates as suggestions, require explicit native-setup attestation and repository/branch confirmation, then use a repairable staged update for only the active project mapping.
+  - risk: Do not make the original private repository public or delete it to remove duplicates.
+    instead: Preserve the original repository, publish only the short-lived clone already used for import, and limit automatic deletion to recorded temporary repositories.
+  - risk: Do not automate bolt.new's native integration through private APIs or fragile DOM selectors.
+    instead: Provide a resumable user-guided step and integrate only through stable extension storage, GitHub APIs, and existing project mapping seams.
+  - risk: Do not assume native integration preserves exclusive extension-controlled commit history.
+    instead: Explain that Bolt may create commits, keep extension pushes based on fresh remote state with force disabled, and surface conflicts or degraded checks visibly.
