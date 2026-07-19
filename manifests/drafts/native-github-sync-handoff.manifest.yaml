@@ -47,8 +47,11 @@ description: |
   explicit approval before promotion.
 
   Product and safety boundaries:
-  - The original private repository is never made public and is never deleted.
-    Only the existing temporary clone may become public and be auto-deleted.
+  - The original private repository is never made public and is never deleted
+    or archived automatically. Only the existing temporary clone may become
+    public and be auto-deleted. After handoff completion, the user may retire
+    the superseded repository only through the explicit duplicate-cleanup step
+    defined by child 05.
   - A recently created repository may be suggested, but the extension never
     silently guesses or adopts it. The user attests that Bolt native setup
     completed and confirms the configured owner, repository, and branch before
@@ -68,6 +71,11 @@ description: |
     manifests/drafts/existing-bolt-project-native-repository-migration.manifest.yaml.
     That lane must compare the established repository with Bolt's newly created
     duplicate before changing the canonical mapping.
+  - Re-importing an established repository into a new Bolt project through this
+    lane is the supported reconciliation route for an existing project whose
+    GitHub repository holds newer external commits than Bolt. The old Bolt
+    project keeps its mapping until the user explicitly retires it; nothing is
+    unlinked or deleted implicitly.
   - A shared journey-routing record permits only one active native-sync journey
     per project. Private-import provenance routes to this lane even if default
     project settings already exist; the existing-project lane requires no import
@@ -180,6 +188,13 @@ metadata:
         automatic handoff state in the MVP.
       - A controlled Bolt to GitHub push to the adopted native repository still
         uses fresh remote state and a non-force branch update.
+      - After completion, an explicit user-initiated cleanup step can archive
+        or delete the recorded superseded repository; it requires typing the
+        repository name, refuses any repository still mapped to a project, and
+        never runs automatically or as part of completion.
+      - Deleting a superseded repository additionally requires acknowledging
+        that its unique commit history is lost unless preserved elsewhere;
+        archiving is presented as the recommended default.
       - Focused unit, component, background lifecycle, storage migration, and
         end-to-end tests cover the complete handoff and recovery paths.
     child_manifests:
@@ -285,7 +300,39 @@ metadata:
           - Two concurrent Bolt tabs cannot adopt repositories for each other.
           - A remote commit arriving before an extension push is based on fresh
             HEAD or produces a visible non-fast-forward failure, never a force push.
+          - Duplicate cleanup never runs during a handoff, never touches
+            temporary-repository automation, and never affects a repository
+            that any project still maps to.
           - Normal B2G-only import and push journeys remain unchanged.
+      - slug: 05-native-sync-duplicate-cleanup
+        goal: |
+          Provide the shared, explicit post-completion cleanup step that lets a
+          user archive or delete a recorded superseded duplicate repository for
+          either native-sync lane.
+        likely_scope:
+          - a new cleanup application service reusing existing authenticated
+            GitHub repository adapters, with focused tests
+          - the handoff-lane completion-surface entry point only
+          - a shared typed-confirmation component and component tests
+        behavioral_focus:
+          - Serves both this epic and the existing-project migration epic; only
+            repositories recorded as superseded by a completed journey are
+            eligible.
+          - This child owns the cleanup service, the typed-confirmation
+            component, and the handoff-lane entry point; the migration epic's
+            UI child composes them for its own completion surface and owns
+            that seam.
+          - Cleanup never starts automatically; it requires explicit user
+            initiation plus typed repository-name confirmation.
+          - Archive is the recommended action; delete additionally requires an
+            explicit history-loss acknowledgment.
+          - A repository still mapped to any project is refused; the UI names
+            the blocking project and lets the user retire that stale mapping
+            explicitly first.
+          - The currently mapped canonical repository and recorded temporary
+            repositories are never eligible.
+          - Failures, permission errors, and partial states remain visible and
+            retryable; nothing is retried or completed silently.
     mvp_definition:
       included:
         - Durable project provenance and mutually exclusive journey routing.
@@ -296,7 +343,9 @@ metadata:
         - Project-scoped adoption of a repository and branch under the existing
           global repoOwner.
         - Visible recovery states and resumable setup.
-        - Preservation of the original private repository.
+        - Preservation of the original private repository through the handoff.
+        - Explicit post-completion duplicate cleanup (archive recommended,
+          delete with typed confirmation and history-loss acknowledgment).
         - Clear ownership language for incoming sync and commit creation.
       excluded:
         - Directly writing GitHub files into an existing Bolt project.
@@ -333,15 +382,13 @@ metadata:
         or cross-owner native repositories without rewriting unrelated projects.
       - Whether a later manual handoff entry point should support public imports
         that do not have an existing Bolt to GitHub project mapping.
-      - Whether optional deletion of an obsolete non-temporary duplicate should
-        be a separate future feature; the MVP recommendation is no.
 temptations:
   - risk: Do not market the handoff as Bolt to GitHub directly pulling GitHub changes into an existing Bolt workspace.
     instead: State that bolt.new's supported native integration performs incoming synchronization and that the extension guides repository adoption.
   - risk: Do not infer native Bolt linkage or the canonical repository from the newest accessible repository alone.
     instead: Rank same-owner candidates as suggestions, require explicit native-setup attestation and repository/branch confirmation, then use a repairable staged update for only the active project mapping.
-  - risk: Do not make the original private repository public or delete it to remove duplicates.
-    instead: Preserve the original repository, publish only the short-lived clone already used for import, and limit automatic deletion to recorded temporary repositories.
+  - risk: Do not make the original private repository public or silently delete it to remove duplicates.
+    instead: Preserve the original repository through the handoff, publish only the short-lived clone already used for import, limit automatic deletion to recorded temporary repositories, and allow retirement of superseded duplicates only through the explicit typed-confirmation cleanup step after completion.
   - risk: Do not automate bolt.new's native integration through private APIs or fragile DOM selectors.
     instead: Provide a resumable user-guided step and integrate only through stable extension storage, GitHub APIs, and existing project mapping seams.
   - risk: Do not assume native integration preserves exclusive extension-controlled commit history.

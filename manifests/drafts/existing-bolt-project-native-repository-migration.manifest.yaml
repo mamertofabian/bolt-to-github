@@ -21,14 +21,24 @@ description: |
 
   The safe workflow is a canonical-repository migration:
   1. Preflight the current Bolt project export against repository A. If the
-     contents differ, stop. The user must first make Bolt and A agree through a
-     normal Bolt to GitHub push, manual reconciliation, or the separate
-     repository-import/new-project workflow. The migration must not choose a
-     winner silently.
+     contents differ, stop and route instead of dead-ending. The common
+     motivating case is repository A carrying newer external commits (for
+     example from Cursor) that Bolt never received; for that case the supported
+     reconciliation route is re-importing A into a new Bolt project through the
+     sibling private-import handoff lane when A is private. A normal Bolt to
+     GitHub push is offered only with an explicit warning that it would
+     overwrite newer repository content with Bolt's older workspace. The
+     migration must not choose a winner silently.
      The preflight uses a dedicated raw-ZIP inventory that includes empty and
      binary files and never suppresses tracked paths through .gitignore. If the
      Bolt export cannot represent a tracked mode or entry type, the result is
-     indeterminate and migration remains blocked.
+     indeterminate and migration remains blocked. Because repository A was
+     written by the extension's own push path — which filters through
+     .gitignore, skips whitespace-only files, and reports "up to date" through
+     normalized comparison — byte-level export-versus-A differences can exist
+     on healthy projects. Differences attributable to that documented
+     export-writer policy are classified and explicitly acknowledgeable rather
+     than silently equated or treated as unexplained drift.
   2. Persist the project ID, authenticated personal owner, repository A, branch,
      verified A HEAD, and preflight result before the user enables native GitHub
      in Bolt.
@@ -36,9 +46,15 @@ description: |
      repository B, and explicitly selects B under the already configured owner.
   4. Compare the complete tracked Git trees of A and B at captured branch HEADs.
      Matching entry paths, modes, types, and object IDs establish tracked-content
-     equivalence even though commit histories differ. Any added, removed, or
-     changed entry blocks automatic adoption and produces a visible
-     reconciliation report.
+     equivalence even though commit histories differ. A and B are written by two
+     different writers — the extension's gitignore-filtered push path wrote A,
+     while Bolt's native integration writes B — so systematic writer differences
+     are expected, not exceptional. Differences matching a versioned,
+     evidence-derived classification of benign Bolt-writer differences
+     (established by the mandatory A-versus-B writer research gate) are listed
+     entry-by-entry and may be explicitly acknowledged by the user; every
+     unclassified added, removed, or changed entry blocks automatic adoption and
+     produces a visible reconciliation report.
      Git LFS repositories are unsupported in the MVP: detected LFS attributes,
      pointer blobs, missing payload evidence, or uncertain LFS classification
      return an indeterminate blocked result rather than equivalence.
@@ -48,12 +64,27 @@ description: |
      both HEADs, map only the current Bolt project to B, record A as the preserved
      legacy repository, and complete the migration through deterministic phases.
 
+  This lane serves projects whose Bolt workspace and repository A already
+  agree, modulo classified writer differences. Projects that drifted because
+  external commits landed in A are expected to exit through the re-import route
+  above; that exit is a supported preflight outcome, not a failure.
+
   This workflow manages duplication; it does not pretend duplication did not
-  occur. Repository A retains its original Git history and remains untouched.
-  Repository B becomes the user-confirmed canonical repository for future Bolt
-  native sync and Bolt to GitHub operations. History transplantation, force
-  pushes, automatic repository deletion, and automatic conflict resolution are
-  outside the MVP.
+  occur. Repository A retains its original Git history and remains untouched
+  during migration. Repository B becomes the user-confirmed canonical
+  repository for future Bolt native sync and Bolt to GitHub operations.
+  Extension-performed history transplantation, extension force pushes,
+  automatic repository deletion, and automatic conflict resolution remain
+  outside the MVP. If the history-transplant research gate proves bolt.new
+  native sync survives replacing B's fresh history with A's history, the
+  completion UI may present a documented, user-executed local Git recipe for
+  preserving A's history in B; the extension itself still never force-pushes.
+  The recipe must first verify that B's current HEAD still equals the compared
+  pinned HEAD and must abort when Bolt has created newer commits, so the
+  rewrite can never destroy Bolt-created history.
+  After completion, the user may retire repository A only through the shared
+  explicit duplicate-cleanup step defined by the sibling epic's child
+  05-native-sync-duplicate-cleanup.
 
   The existing RepoCloneService is not a migration engine for this workflow. It
   copies files with separate per-file commits, does not preserve source history,
@@ -68,7 +99,11 @@ description: |
   Product and safety boundaries:
   - Repository A remains the active mapping until every required preflight,
     attestation, repository comparison, and HEAD recheck passes.
-  - Repository A is never made public, renamed, archived, or deleted by the MVP.
+  - Repository A is never made public, renamed, archived, or deleted
+    automatically. After migration completes, the user may archive or delete A
+    only through the shared explicit duplicate-cleanup step (typed
+    repository-name confirmation; archive recommended; delete requires
+    history-loss acknowledgment).
   - Repository B is never assumed to be Bolt-linked merely because it is recent
     or accessible. Native setup is explicitly user-attested.
   - Repository ownership is limited to the authenticated personal username
@@ -84,6 +119,11 @@ description: |
   - A shared journey-routing record permits only one native-sync journey per
     project. This lane requires explicit repository-settings initiation and no
     private-import provenance, independent of any auto-created default mapping.
+  - The re-import route assumes repository A is private. A public repository A
+    re-imports through the direct bolt.new URL without temporary-import
+    metadata, exits both native-sync lanes without a journey or
+    superseded-repository record, and its duplicate cleanup stays manual until
+    a public-import handoff exists as follow-up work.
 type: feature
 files:
   create:
@@ -102,6 +142,7 @@ files:
     - manifests/drafts/README.md
     - manifests/drafts/native-github-sync-handoff.manifest.yaml
     - src/lib/components/RepoSettings.svelte
+    - src/lib/fileUtils.ts
     - src/lib/types.ts
     - src/lib/stores/githubSettings.ts
     - src/services/GitHubComparisonService.ts
@@ -158,7 +199,15 @@ metadata:
       - The workflow can start only for a known Bolt project with a complete,
         accessible repository-A mapping under the authenticated personal owner.
       - A fresh Bolt export is compared with repository A before native setup;
-        any content difference blocks migration and leaves A active.
+        any unclassified content difference blocks migration and leaves A
+        active, and differences attributable to the versioned export-writer
+        classification are listed entry-by-entry for explicit acknowledgment.
+      - Preflight divergence explains both reconciliation routes and recommends
+        re-import through the sibling private-import handoff lane when private
+        repository A may hold newer external commits; a Bolt to GitHub push is
+        offered only with an explicit overwrite warning, and a public
+        repository A receives direct bolt.new URL re-import guidance that
+        creates no handoff journey or cleanup eligibility.
       - Preflight inventory includes empty and binary files without .gitignore
         suppression; unsupported modes or entry types return indeterminate.
       - The preflight record pins repository A branch HEAD and survives popup
@@ -172,8 +221,12 @@ metadata:
         payload availability in both repositories can be proven explicitly.
       - Identical content with unrelated commit histories is reported as
         content-equivalent, not history-migrated.
-      - Added, removed, or changed tracked entries produce a reconciliation report and
-        block automatic mapping changes.
+      - Unclassified added, removed, or changed tracked entries produce a
+        reconciliation report and block automatic mapping changes.
+      - Differences matching the versioned benign Bolt-writer classification
+        are listed entry-by-entry and require explicit user acknowledgment
+        before adoption may proceed; classification never hides an entry or
+        silently treats it as equivalent.
       - If either pinned branch HEAD changes before adoption, comparison expires
         and must be repeated.
       - Successful adoption changes only the current project's repository and
@@ -181,6 +234,11 @@ metadata:
         mappings unchanged.
       - Persisted phases are preflight_verified, candidate_selected,
         equivalence_verified, switch_intent, mapping_switched, and completed.
+      - equivalence_verified is reachable only through exact equivalence or a
+        persisted acknowledgment record naming the classified entries, the
+        classification version, and both pinned HEADs; the acknowledgment
+        survives popup closure and MV3 restart and expires whenever the
+        comparison expires.
       - Before switch_intent, cancel or recovery keeps A active. At switch_intent
         with A still mapped, recovery revalidates both HEADs before switching.
         Once B is mapped, recovery completes forward and never silently rolls
@@ -194,6 +252,15 @@ metadata:
       - Completion warns that Cursor clones of A do not automatically become B;
         users must preserve unpushed work and re-clone B or deliberately migrate
         their Git remote/worktree before continuing external development.
+      - When the history-transplant research gate is proven safe, completion
+        offers documented user-executed local Git steps to preserve A's history
+        in B; the extension never performs the force push itself, and the
+        documented steps require verifying B's HEAD still matches the compared
+        pinned HEAD and abort when newer Bolt commits exist.
+      - After completion, repository A is eligible for the shared explicit
+        duplicate-cleanup step; cleanup is never automatic, requires typed
+        repository-name confirmation, and refuses repositories still mapped to
+        any project.
       - Future Bolt to GitHub pushes to B still use fresh remote state and
         non-force branch updates.
     child_manifests:
@@ -227,11 +294,25 @@ metadata:
           - Empty, text, and binary ZIP entries participate in comparison.
           - The established export exclusion policy may filter export-only paths,
             but every path already tracked in A is compared even when current
-            .gitignore rules match it; absence from the export is divergence.
-          - Preview normalization cannot turn byte differences into equivalence.
+            .gitignore rules match it; absence from the export is classified
+            export-writer divergence at most, never silent equivalence.
+          - The documented export-writer policy explicitly includes the
+            gitignore filtering and whitespace-only-file skip in
+            processFilesWithGitignore, so a tracked .gitkeep or whitespace-only
+            file in A is classified rather than unexplained divergence.
+          - Normalization never silently converts byte differences into
+            equivalence; differences attributable to the documented
+            export-writer policy (line-ending and trailing-whitespace
+            normalization, whitespace-only-file skip) form a distinct
+            classified category requiring explicit acknowledgment.
           - An unrepresentable A mode/type or incomplete export returns indeterminate.
-          - An exact match pins A HEAD and advances to preflight_verified; any
-            mismatch reports paths and leaves A mapped.
+          - An exact or explicitly acknowledged classified match pins A HEAD and
+            advances to preflight_verified; any unclassified mismatch reports
+            paths and leaves A mapped.
+          - A preflight acknowledgment is persisted in the versioned migration
+            state with the classification version and pinned A HEAD, survives
+            popup closure and MV3 restart, and expires whenever the pinned A
+            HEAD changes.
       - slug: 03-existing-native-repository-equivalence
         goal: |
           Compare repository A and user-selected repository B by complete Git
@@ -246,7 +327,12 @@ metadata:
             tracked-content-equivalent.
           - Different histories with identical trees remain content-equivalent.
           - Added, removed, renamed, mode-changed, type-changed, or content-changed
-            entries return explicit divergence.
+            entries return explicit divergence; entries matching the versioned
+            benign-writer classification are returned as a distinct
+            acknowledgeable category, never silently treated as equivalent.
+          - The benign-difference classification is versioned, derived only
+            from the recorded A-versus-B writer research evidence, and every
+            classified entry remains visible in the report.
           - Truncated trees, inaccessible refs, rate limits, and unknown data
             return blocked/indeterminate rather than equivalent.
           - LFS attributes, pointer blobs, missing payload proof, or uncertain LFS
@@ -262,6 +348,11 @@ metadata:
           - versioned migration persistence and fresh GitHub HEAD reads
         behavioral_focus:
           - Only equivalence_verified may advance to switch_intent.
+          - equivalence_verified is reachable only through exact equivalence or
+            a persisted classified-difference acknowledgment record bound to
+            the classification version and both pinned HEADs; the UI captures
+            acknowledgment, but this child owns, persists, and revalidates the
+            transition, and expires the acknowledgment with the comparison.
           - switch_intent with A mapped revalidates both HEADs before changing mapping.
           - switch_intent with B already mapped completes forward idempotently.
           - A third or missing mapping blocks as conflict and is never overwritten.
@@ -278,13 +369,25 @@ metadata:
         behavioral_focus:
           - The wizard names A as current and B as candidate until completion.
           - Native linkage is user-attested, never inferred from repository age.
-          - Divergence blocks adoption and offers refresh, Cursor reconciliation,
-            abandon, and new-project-import guidance without mutating repositories.
+          - Preflight divergence recommends the re-import route through the
+            sibling handoff lane and warns before any Bolt to GitHub push that
+            would overwrite newer repository content; for a public repository A
+            it renders the direct bolt.new URL guidance and explains that no
+            handoff journey or cleanup eligibility is created.
+          - Unclassified divergence blocks adoption and offers refresh, Cursor
+            reconciliation, abandon, and new-project-import guidance without
+            mutating repositories.
+          - Classified benign writer differences are listed entry-by-entry and
+            require explicit acknowledgment before the wizard continues.
           - The UI delegates all persisted transition decisions to child 04.
           - Resume renders the phase-machine result without guessing A or B.
           - Completion explains the duplicate repositories and separate histories.
           - Completion tells Cursor users to preserve unpushed A work and re-clone
             B or deliberately migrate their remote/worktree.
+          - Completion offers the documented history-preservation recipe when
+            the research gate proved it safe, and a migration-side entry point
+            for repository A that composes the sibling epic's shared cleanup
+            service and typed-confirmation component.
       - slug: 06-existing-native-migration-regression
         goal: |
           Prove migration isolation, non-mutation guarantees, concurrency safety,
@@ -298,7 +401,9 @@ metadata:
           - Two project tabs cannot exchange migration candidates or mappings.
           - A or B changing during comparison invalidates adoption.
           - Failed and abandoned migrations perform no GitHub writes or deletions.
-          - A remains preserved and linked after successful adoption.
+          - A remains preserved and linked after successful adoption; cleanup of
+            A is reachable only through the shared explicit cleanup step and
+            never before the completed phase.
           - A remote B commit before an extension push is preserved or causes a
             visible non-fast-forward failure, never a force push.
           - New-project handoff and normal B2G-only projects remain unchanged.
@@ -307,24 +412,59 @@ metadata:
         - Shared provenance-based journey eligibility and mutual exclusion.
         - Existing-project migration initiation from repository settings.
         - Exact raw-ZIP Bolt-export-versus-A preflight.
+        - Preflight routing guidance to the re-import lane for drifted projects,
+          with an explicit overwrite warning on the push alternative.
         - Versioned resumable migration state.
         - Explicit user attestation and B selection under current repoOwner.
         - Exact Git-tree tracked-content-equivalence comparison between A and B.
+        - A versioned benign Bolt-writer difference classification backed by
+          recorded research evidence, with explicit user acknowledgment.
+        - A versioned preflight export-writer classification derived from the
+          export-versus-A research evidence, under the same visibility and
+          acknowledgment guardrails.
         - Git LFS detection with unsupported/indeterminate blocking behavior.
         - Visible divergence report and manual-reconciliation guidance.
         - HEAD revalidation and deterministic phased current-project mapping switch.
         - Preserved link and provenance for repository A.
+        - A completion entry point to the shared post-completion duplicate
+          cleanup step for repository A.
+        - Documented user-executed history-preservation guidance, shipped only
+          if the history-transplant research gate proves it safe.
       excluded:
         - Automatically copying A into B or B into A.
-        - Preserving or transplanting A's commit history into B.
+        - Extension-automated transplanting of A's commit history into B.
         - Merging unrelated Git histories.
-        - Force pushing, deleting, renaming, transferring, or changing visibility
-          of either non-temporary repository.
+        - Extension-performed force pushes, and any deleting, renaming,
+          transferring, or visibility change outside the shared explicit
+          typed-confirmation cleanup step.
         - Automatically choosing which divergent repository is authoritative.
         - Cross-owner migration or project-scoped owner storage.
         - Git LFS repository migration without verified payload availability.
         - Claiming native Bolt linkage is technically verified.
     implementation_research_gates:
+      - Before promoting any child, enable bolt.new native GitHub setup on a
+        real existing project and record a complete tree diff between the
+        extension-written repository A and the Bolt-written repository B
+        (entry paths, modes, types, object IDs). The two writers apply
+        different filtering and normalization, so systematic differences are
+        expected; if any exist, child 03's benign-difference classification
+        must be derived from this recorded evidence before the equivalence
+        gate can be considered viable. If the diff cannot be made clean or
+        classifiable, this lane's design must be revisited before
+        implementation.
+      - Empirically raw-diff a representative Bolt export against its
+        extension-written repository A. The push path filters through
+        .gitignore, skips whitespace-only files, and reports up-to-date through
+        normalized comparison, so byte-level export-versus-A differences can
+        exist on healthy projects; derive the preflight export-writer
+        classification from this recorded evidence. The evidence must also
+        record the direction-ambiguous case where a whitespace-only or empty
+        file tracked in A by an external commit is absent from the export, so
+        external drift is not misclassified as writer policy.
+      - Test whether force-pushing repository A's history into a freshly
+        created repository B, before Bolt diverges it, preserves bolt.new
+        native sync; record the evidence. The documented history-preservation
+        recipe ships only if this proves safe.
       - Re-test Bolt's current repository-creation behavior for an existing
         project immediately before promoting the first child.
       - Confirm the Bolt export can be obtained without initiating a GitHub push
@@ -341,21 +481,18 @@ metadata:
     open_decisions:
       - Whether the divergence report should be copyable Markdown, JSON, or only
         an in-extension file list for the MVP.
-      - Whether a user may explicitly waive content equivalence; current
-        recommendation is no because that would make data-loss prevention hollow.
-      - Whether repository A should receive an optional read-only archive label
-        in extension metadata; GitHub archive mutation remains excluded.
-      - Whether a later advanced workflow should provide documented local Git
-        commands for history transplantation outside the extension.
+      - Whether a user may explicitly waive content equivalence beyond the
+        evidence-backed benign classification; current recommendation is no
+        because that would make data-loss prevention hollow.
       - Whether a later owner-architecture feature should support organization
         repositories without overwriting unrelated project ownership.
 temptations:
   - risk: Do not switch the project mapping merely because repository B is recent, accessible, or user-selected.
     instead: Require the Bolt-versus-A preflight, explicit native-setup attestation, complete A-versus-B tree equivalence, and unchanged pinned HEADs before staged adoption.
-  - risk: Do not use RepoCloneService to conceal A-versus-B divergence or claim history migration.
-    instead: Keep comparison read-only, block on every tracked-content difference, and direct the user to explicit Cursor reconciliation or the new-project import lane.
-  - risk: Do not delete, archive, rename, publish, or force-push repository A after B is adopted.
-    instead: Preserve A and its history as recorded legacy provenance; make any future cleanup a separately approved destructive workflow.
+  - risk: Do not conceal A-versus-B divergence through RepoCloneService, claimed history migration, or a benign-difference classification that grows into a silent allowlist.
+    instead: Keep comparison read-only, block every unclassified tracked-content difference, derive classified writer differences only from recorded research evidence with every entry visible and explicitly acknowledged, and direct divergent users to Cursor reconciliation or the new-project import lane.
+  - risk: Do not delete, archive, rename, publish, or force-push repository A automatically or as a side effect of completing migration.
+    instead: Preserve A and its history as recorded legacy provenance; retirement happens only through the shared explicit cleanup step with typed confirmation, and the extension never force-pushes.
   - risk: Do not treat matching tree entries as matching history, technically verified Bolt linkage, or proof of Git LFS payload availability.
     instead: Label the result content-equivalent and user-confirmed, retain links to both histories, and block detected or uncertain LFS repositories unless payloads are proven.
   - risk: Do not reuse a stale comparison after either repository branch advances.
