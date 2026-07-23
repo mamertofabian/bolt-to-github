@@ -22,8 +22,15 @@ export type NativeSyncHandoffMatchStatus = 'matched' | 'none' | 'ambiguous';
 /** Outcome of parsing a stored raw handoff value. */
 export type NativeSyncHandoffParseStatus = 'valid' | 'migrated' | 'malformed';
 
-/** Current on-disk schema version for a native-sync handoff record. */
-const NATIVE_SYNC_HANDOFF_SCHEMA_VERSION = 1;
+/** Lifecycle of the repository-adoption sub-state added by child 02. */
+export type NativeSyncAdoptionStatus = 'selected' | 'completed';
+
+/**
+ * Current on-disk schema version for a native-sync handoff record. Bumped to 2
+ * by child 02 (repository adoption): version 1 records carry no `adoption`
+ * sub-state and migrate deterministically by initializing it to null.
+ */
+const NATIVE_SYNC_HANDOFF_SCHEMA_VERSION = 2;
 
 /**
  * Minimal identity of a pending temporary import, derived from TempRepoManager
@@ -34,6 +41,20 @@ export interface TempImportSummary {
   tempRepo: string;
   owner: string;
   branch: string;
+}
+
+/**
+ * Repository-adoption sub-state (child 02). Present once the user selects a
+ * Bolt-created repository to adopt; `completed` once that repository has been
+ * mapped as the project's canonical repository. Distinct from the base record
+ * `status`, which stays 'pending' — this nesting keeps the child-01 contract
+ * unchanged (additive chain merge, not a supersede).
+ */
+export interface NativeSyncAdoptionState {
+  status: NativeSyncAdoptionStatus;
+  selectedRepo: string;
+  selectedBranch: string;
+  completedAt: number | null;
 }
 
 /** Versioned, project-scoped durable handoff record for a completed private import. */
@@ -47,6 +68,11 @@ export interface NativeSyncHandoffRecord {
   status: NativeSyncHandoffStatus;
   createdAt: number;
   updatedAt: number;
+  /**
+   * Adoption sub-state. Null when the handoff is pending adoption. Optional only
+   * so pre-child-02 record literals still type-check; the domain always sets it.
+   */
+  adoption?: NativeSyncAdoptionState | null;
 }
 
 /** Result of matching pending temporary imports to a completed import event. */
@@ -99,6 +125,49 @@ export function buildPendingHandoffRecord(
     status: 'pending',
     createdAt: now,
     updatedAt: now,
+    adoption: null,
+  };
+}
+
+/**
+ * Pure monotonic transition recording a 'selected' adoption sub-state with the
+ * user-chosen repository and branch. Returns the record unchanged once it is
+ * already completed, so an adopted mapping is locked and re-selection cannot
+ * silently repoint it.
+ */
+export function applySelection(
+  record: NativeSyncHandoffRecord,
+  selectedRepo: string,
+  selectedBranch: string,
+  now: number
+): NativeSyncHandoffRecord {
+  if (record.adoption?.status === 'completed') {
+    return record;
+  }
+  return {
+    ...record,
+    adoption: { status: 'selected', selectedRepo, selectedBranch, completedAt: null },
+    updatedAt: now,
+  };
+}
+
+/**
+ * Pure monotonic transition marking a 'selected' adoption sub-state 'completed'
+ * with completedAt set. A no-op when there is no selection to complete or the
+ * record is already completed, so retries converge instead of diverging.
+ */
+export function applyCompletion(
+  record: NativeSyncHandoffRecord,
+  now: number
+): NativeSyncHandoffRecord {
+  const adoption = record.adoption;
+  if (!adoption || adoption.status === 'completed') {
+    return record;
+  }
+  return {
+    ...record,
+    adoption: { ...adoption, status: 'completed', completedAt: now },
+    updatedAt: now,
   };
 }
 
@@ -106,6 +175,42 @@ export function buildPendingHandoffRecord(
 function readRequiredString(obj: Record<string, unknown>, key: string): string | null {
   const value = obj[key];
   return typeof value === 'string' && value.length > 0 ? value : null;
+}
+
+type AdoptionParse =
+  | { ok: true; value: NativeSyncAdoptionState | null }
+  | { ok: false; reason: string };
+
+/**
+ * Validate the optional adoption sub-state. Absent or null yields a null
+ * sub-state; a present-but-invalid sub-state fails loud so callers can surface a
+ * malformed record instead of silently dropping an adopted mapping.
+ */
+function parseAdoptionState(raw: unknown): AdoptionParse {
+  if (raw === undefined || raw === null) {
+    return { ok: true, value: null };
+  }
+  if (typeof raw !== 'object' || Array.isArray(raw)) {
+    return { ok: false, reason: 'adoption is not an object' };
+  }
+
+  const obj = raw as Record<string, unknown>;
+  if (obj.status !== 'selected' && obj.status !== 'completed') {
+    return { ok: false, reason: `invalid adoption status: ${String(obj.status)}` };
+  }
+
+  const selectedRepo = readRequiredString(obj, 'selectedRepo');
+  const selectedBranch = readRequiredString(obj, 'selectedBranch');
+  if (selectedRepo === null || selectedBranch === null) {
+    return { ok: false, reason: 'adoption missing selectedRepo or selectedBranch' };
+  }
+
+  const completedAt = typeof obj.completedAt === 'number' ? obj.completedAt : null;
+
+  return {
+    ok: true,
+    value: { status: obj.status, selectedRepo, selectedBranch, completedAt },
+  };
 }
 
 /**
@@ -149,6 +254,11 @@ export function parseStoredHandoff(projectId: string, raw: unknown): NativeSyncH
     return { status: 'malformed', record: null, reason: `invalid status: ${String(obj.status)}` };
   }
 
+  const adoptionResult = parseAdoptionState(obj.adoption);
+  if (!adoptionResult.ok) {
+    return { status: 'malformed', record: null, reason: adoptionResult.reason };
+  }
+
   const createdAt = typeof obj.createdAt === 'number' ? obj.createdAt : 0;
   const updatedAt = typeof obj.updatedAt === 'number' ? obj.updatedAt : 0;
 
@@ -162,6 +272,7 @@ export function parseStoredHandoff(projectId: string, raw: unknown): NativeSyncH
     status: 'pending',
     createdAt,
     updatedAt,
+    adoption: adoptionResult.value,
   };
 
   const status: NativeSyncHandoffParseStatus =

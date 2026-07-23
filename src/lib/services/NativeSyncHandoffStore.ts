@@ -1,4 +1,9 @@
-import { buildPendingHandoffRecord, parseStoredHandoff } from '../native-sync/nativeSyncHandoff';
+import {
+  applyCompletion,
+  applySelection,
+  buildPendingHandoffRecord,
+  parseStoredHandoff,
+} from '../native-sync/nativeSyncHandoff';
 import type { NativeSyncHandoffRecord, TempImportSummary } from '../native-sync/nativeSyncHandoff';
 import type { JourneyClock } from './NativeSyncJourneyStore';
 import { createLogger } from '../utils/logger';
@@ -60,6 +65,45 @@ export class NativeSyncHandoffStore {
   async getHandoff(projectId: string): Promise<NativeSyncHandoffRecord | null> {
     const records = await this.storage.read();
     return this.parseExisting(records, projectId);
+  }
+
+  /**
+   * Persist a 'selected' adoption sub-state on an existing handoff record and
+   * return the updated record. Re-affirming the same selection is idempotent,
+   * a completed record is left locked (its adopted mapping cannot be repointed),
+   * and a missing record throws because selection presupposes a pending handoff.
+   */
+  async recordSelection(
+    projectId: string,
+    selectedRepo: string,
+    selectedBranch: string
+  ): Promise<NativeSyncHandoffRecord> {
+    const records = await this.storage.read();
+    const existing = this.parseExisting(records, projectId);
+    if (!existing) {
+      throw new Error(`Cannot record selection: no handoff record for ${projectId}`);
+    }
+    const updated = applySelection(existing, selectedRepo, selectedBranch, this.now());
+    records[projectId] = updated;
+    await this.persist(records);
+    return updated;
+  }
+
+  /**
+   * Mark a selected handoff record's adoption sub-state 'completed' and return
+   * the updated record. Idempotent on an already completed record; throws when no
+   * handoff record exists.
+   */
+  async recordCompletion(projectId: string): Promise<NativeSyncHandoffRecord> {
+    const records = await this.storage.read();
+    const existing = this.parseExisting(records, projectId);
+    if (!existing) {
+      throw new Error(`Cannot record completion: no handoff record for ${projectId}`);
+    }
+    const updated = applyCompletion(existing, this.now());
+    records[projectId] = updated;
+    await this.persist(records);
+    return updated;
   }
 
   /**
