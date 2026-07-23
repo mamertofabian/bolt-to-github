@@ -1,0 +1,396 @@
+schema: '2'
+goal: |
+  Provide the shared, versioned project provenance and active-journey routing
+  contract that both native-sync epics depend on, deciding native-sync lane
+  eligibility solely from stored provenance and the single active journey.
+description: |
+  Promoted from child 00-native-sync-journey-routing of the parent epic
+  manifests/drafts/native-github-sync-handoff.manifest.yaml. The sibling epic
+  manifests/drafts/existing-bolt-project-native-repository-migration.manifest.yaml
+  also consumes this contract, so it is a foundation library, not a UI or
+  background feature.
+
+  This slice delivers only the reusable foundation: a pure journey domain with
+  no I/O and a versioned persistence store behind an injectable storage gateway.
+  It deliberately does NOT edit the two large consumer files. The private-import
+  completion seam in src/background/BackgroundService.ts (where a temporary-repo
+  URL becomes a final Bolt project id, around lines 462-471) and the
+  repository-settings migration-initiation seam in RepoSettings are wired by the
+  consuming children (01-native-sync-handoff-state and the migration epic's UI
+  child) using the exact store API this slice provides. Keeping wiring in the
+  consumers keeps this slice implementation-sized and lets each consumer own its
+  seam and lifecycle tests.
+
+  Design rationale:
+  - Routing depends only on stored provenance (private_import vs none) and the
+    single active journey kind. Repository mapping presence, repository name,
+    and repository age never select a lane, matching both epics' safety notes.
+  - Native-sync journey records live in chrome.storage.local under a new
+    dedicated key (research gate #4 decision: local, matching the existing
+    bolt_temp_repos key, on-device sensitive mapping data, per-device lifecycle,
+    no sync-quota pressure, MV3-restart-safe). Records are stored separately
+    from projectSettings, so journey handling can never erase a project mapping.
+  - The record carries an explicit schemaVersion. Legacy records migrate
+    deterministically to the current version; irreparably malformed records are
+    surfaced as a visible parse failure and block journey start rather than
+    being silently dropped or overwritten.
+  - The domain is pure (time is passed in as `now`); the store depends on a
+    narrow JourneyRecordStorage gateway and an injected clock, so behavior is
+    testable with an in-memory fake and fixed timestamps, with real
+    chrome.storage.local access confined to the thin adapter factory.
+temptations:
+  - risk: Do not infer a native-sync lane from repository mapping presence, repository name, or repository age.
+    instead: Route only from the stored NativeSyncProvenance and the single activeJourney kind; the journey record intentionally does not carry repository identity.
+  - risk: Do not write journey state into the projectSettings key or otherwise couple it to project mappings.
+    instead: Persist journey records under the dedicated nativeSyncJourneys chrome.storage.local key so mappings can never be erased by journey handling.
+  - risk: Do not silently drop or blindly overwrite malformed or legacy journey records.
+    instead: Run parseStoredJourney to migrate legacy versions deterministically and return a malformed parse result that blocks journey start visibly.
+  - risk: Do not call chrome.storage directly from the domain or the store decision logic.
+    instead: Depend on the injected JourneyRecordStorage gateway; keep chrome.storage.local access inside createChromeLocalJourneyStorage only.
+  - risk: Do not call Date.now() or randomness inside routing decisions.
+    instead: Pass `now` into the pure functions and inject the clock into NativeSyncJourneyStore so tests stay deterministic.
+type: feature
+files:
+  create:
+    - path: src/lib/native-sync/nativeSyncJourney.ts
+      artifacts:
+        - kind: type
+          name: NativeSyncJourneyKind
+          type: "'private_import_handoff' | 'existing_project_migration'"
+        - kind: type
+          name: NativeSyncProvenance
+          type: "'private_import' | 'none'"
+        - kind: type
+          name: NativeSyncJourneyParseStatus
+          type: "'valid' | 'migrated' | 'malformed'"
+        - kind: type
+          name: NativeSyncJourneyDenyReason
+          type: "'private_import_provenance' | 'requires_private_import_provenance' | 'another_active_journey' | 'malformed_record'"
+        - kind: interface
+          name: NativeSyncJourneyRecord
+          description: Versioned, per-project native-sync provenance and active-journey record.
+        - kind: attribute
+          name: schemaVersion
+          of: NativeSyncJourneyRecord
+          type: number
+        - kind: attribute
+          name: projectId
+          of: NativeSyncJourneyRecord
+          type: string
+        - kind: attribute
+          name: provenance
+          of: NativeSyncJourneyRecord
+          type: NativeSyncProvenance
+        - kind: attribute
+          name: activeJourney
+          of: NativeSyncJourneyRecord
+          type: NativeSyncJourneyKind | null
+        - kind: attribute
+          name: createdAt
+          of: NativeSyncJourneyRecord
+          type: number
+        - kind: attribute
+          name: updatedAt
+          of: NativeSyncJourneyRecord
+          type: number
+        - kind: interface
+          name: NativeSyncJourneyDecision
+          description: Result of evaluating whether a journey may start, plus the resulting record when allowed.
+        - kind: attribute
+          name: allowed
+          of: NativeSyncJourneyDecision
+          type: boolean
+        - kind: attribute
+          name: reason
+          of: NativeSyncJourneyDecision
+          type: NativeSyncJourneyDenyReason | null
+        - kind: attribute
+          name: record
+          of: NativeSyncJourneyDecision
+          type: NativeSyncJourneyRecord | null
+        - kind: interface
+          name: NativeSyncJourneyParseResult
+          description: Outcome of parsing a stored raw journey value, distinguishing valid, migrated, and malformed records.
+        - kind: attribute
+          name: status
+          of: NativeSyncJourneyParseResult
+          type: NativeSyncJourneyParseStatus
+        - kind: attribute
+          name: record
+          of: NativeSyncJourneyParseResult
+          type: NativeSyncJourneyRecord | null
+        - kind: attribute
+          name: reason
+          of: NativeSyncJourneyParseResult
+          type: string | null
+        - kind: function
+          name: applyImportProvenance
+          args:
+            - name: existing
+              type: NativeSyncJourneyRecord | null
+            - name: projectId
+              type: string
+            - name: now
+              type: number
+          returns: NativeSyncJourneyRecord
+          description: |
+            Idempotently mark a project's record with private_import provenance,
+            creating a fresh current-version record when none exists and
+            preserving any existing activeJourney and createdAt.
+        - kind: function
+          name: evaluateJourneyStart
+          args:
+            - name: record
+              type: NativeSyncJourneyRecord | null
+            - name: projectId
+              type: string
+            - name: kind
+              type: NativeSyncJourneyKind
+            - name: now
+              type: number
+          returns: NativeSyncJourneyDecision
+          description: |
+            Decide whether a native-sync journey of the given kind may start
+            using only provenance and the current activeJourney. Refuses
+            existing_project_migration for private_import provenance, refuses
+            private_import_handoff without it, refuses a different already-active
+            journey, and returns the resulting record with activeJourney set
+            when allowed. Starting the same active kind again is idempotent.
+        - kind: function
+          name: parseStoredJourney
+          args:
+            - name: projectId
+              type: string
+            - name: raw
+              type: unknown
+          returns: NativeSyncJourneyParseResult
+          description: |
+            Validate and version-migrate a raw stored value into a current
+            NativeSyncJourneyRecord. Deterministically migrates legacy records,
+            and returns a malformed result (record null, reason set) for
+            irreparable input without throwing.
+    - path: src/lib/services/NativeSyncJourneyStore.ts
+      artifacts:
+        - kind: type
+          name: JourneyClock
+          type: "() => number"
+          description: Injected time source so store timestamps stay deterministic under test.
+        - kind: interface
+          name: JourneyRecordStorage
+          description: Narrow persistence gateway for the native-sync journeys map, decoupling the store from chrome.storage.
+        - kind: attribute
+          name: read
+          of: JourneyRecordStorage
+          type: "() => Promise<Record<string, unknown>>"
+        - kind: attribute
+          name: write
+          of: JourneyRecordStorage
+          type: "(records: Record<string, NativeSyncJourneyRecord>) => Promise<void>"
+        - kind: class
+          name: NativeSyncJourneyStore
+          description: |
+            Versioned persistence for native-sync journey records over an
+            injected JourneyRecordStorage gateway and clock. Never reads or
+            writes projectSettings.
+        - kind: method
+          name: recordImportProvenance
+          of: NativeSyncJourneyStore
+          args:
+            - name: projectId
+              type: string
+          returns: Promise<NativeSyncJourneyRecord>
+          description: |
+            Persist private_import provenance for a project idempotently and
+            return the stored record; safe to call again on a duplicate
+            completion event or after a service-worker restart.
+        - kind: method
+          name: getJourney
+          of: NativeSyncJourneyStore
+          args:
+            - name: projectId
+              type: string
+          returns: Promise<NativeSyncJourneyRecord | null>
+          description: Return the current-version record for a project, migrating legacy records and returning null for absent or malformed entries.
+        - kind: method
+          name: beginJourney
+          of: NativeSyncJourneyStore
+          args:
+            - name: projectId
+              type: string
+            - name: kind
+              type: NativeSyncJourneyKind
+          returns: Promise<NativeSyncJourneyDecision>
+          description: |
+            Evaluate and, when allowed, persist the start of a native-sync
+            journey of the given kind, enforcing provenance rules,
+            single-active-journey mutual exclusion, and a visible malformed-record
+            block.
+        - kind: function
+          name: createChromeLocalJourneyStorage
+          args: []
+          returns: JourneyRecordStorage
+          description: Build the production JourneyRecordStorage backed by chrome.storage.local under the dedicated nativeSyncJourneys key.
+    - path: src/lib/native-sync/__tests__/nativeSyncJourney.test.ts
+      artifacts:
+        - kind: test_function
+          name: applyImportProvenance creates a current-version private_import record when none exists
+        - kind: test_function
+          name: applyImportProvenance is idempotent and preserves an existing active journey
+        - kind: test_function
+          name: evaluateJourneyStart refuses existing_project_migration for private_import provenance
+        - kind: test_function
+          name: evaluateJourneyStart refuses private_import_handoff without private_import provenance
+        - kind: test_function
+          name: evaluateJourneyStart allows existing_project_migration for a clean project
+        - kind: test_function
+          name: evaluateJourneyStart refuses a second, different active journey
+        - kind: test_function
+          name: evaluateJourneyStart is idempotent for the same active journey kind
+        - kind: test_function
+          name: parseStoredJourney migrates a legacy record deterministically
+        - kind: test_function
+          name: parseStoredJourney re-parses a migrated record as valid
+        - kind: test_function
+          name: parseStoredJourney reports malformed input without throwing
+    - path: src/lib/services/__tests__/NativeSyncJourneyStore.test.ts
+      artifacts:
+        - kind: test_function
+          name: recordImportProvenance persists private_import provenance idempotently across duplicate calls
+        - kind: test_function
+          name: recordImportProvenance recovers from a malformed stored record because import completion is authoritative
+        - kind: test_function
+          name: getJourney returns a migrated record for a legacy stored entry
+        - kind: test_function
+          name: beginJourney persists an allowed journey and refuses a conflicting lane
+        - kind: test_function
+          name: beginJourney allows existing_project_migration for a project without private_import provenance
+        - kind: test_function
+          name: beginJourney blocks visibly on a malformed stored record without erasing it
+        - kind: test_function
+          name: getJourney returns null for a malformed stored record and does not write
+        - kind: test_function
+          name: createChromeLocalJourneyStorage round-trips journeys under the nativeSyncJourneys local key
+  read:
+    - docs/draft-manifest-workflow.md
+    - manifests/drafts/native-github-sync-handoff.manifest.yaml
+    - manifests/drafts/existing-bolt-project-native-repository-migration.manifest.yaml
+    - manifests/render-current-project-mapping-without-refresh.manifest.yaml
+    - src/lib/services/chromeStorage.ts
+    - src/lib/types.ts
+    - src/background/TempRepoManager.ts
+    - src/background/BackgroundService.ts
+validate:
+  - pnpm exec vitest run src/lib/native-sync/__tests__/nativeSyncJourney.test.ts src/lib/services/__tests__/NativeSyncJourneyStore.test.ts
+  - ./scripts/maid validate manifests/00-native-sync-journey-routing.manifest.yaml --mode behavioral
+  - pnpm lint
+  - pnpm check
+  - pnpm build
+created: '2026-07-23T05:30:00Z'
+metadata:
+  tags:
+    - native-github-sync
+    - journey-routing
+    - provenance
+    - state-management
+    - chrome-storage-local
+  priority: high
+  parent_epic: manifests/drafts/native-github-sync-handoff.manifest.yaml
+  shared_with:
+    - manifests/drafts/existing-bolt-project-native-repository-migration.manifest.yaml
+  dependency_notes:
+    - >-
+      This slice ships the foundation library only. The private-import
+      completion seam (BackgroundService.ts around lines 462-471) is wired by
+      child 01-native-sync-handoff-state; the repository-settings
+      migration-initiation seam is wired by the existing-project migration
+      epic's UI child. Both call recordImportProvenance and beginJourney from
+      this contract.
+    - >-
+      Research gate 4 (record storage location) is resolved here to
+      chrome.storage.local via a dedicated nativeSyncJourneys key, kept
+      separate from projectSettings.
+outcome:
+  status: completed
+  completed_at: '2026-07-23T06:05:00Z'
+  summary: |
+    Delivered the shared native-sync journey-routing foundation as two new
+    modules: a pure domain (src/lib/native-sync/nativeSyncJourney.ts) and a
+    versioned store over an injectable gateway and clock
+    (src/lib/services/NativeSyncJourneyStore.ts). Lane eligibility is decided
+    solely from stored provenance and the single active journey; records live in
+    chrome.storage.local under a dedicated nativeSyncJourneys key, separate from
+    projectSettings. The two consumer seams (BackgroundService private-import
+    completion, RepoSettings migration initiation) are intentionally left to the
+    consuming children (01-native-sync-handoff-state and the migration epic).
+  rationale: |
+    Scoped as a foundation library so both native-sync epics share one
+    provenance/routing contract without editing the large consumer files, keeping
+    the slice implementation-sized. Purity (time passed in as now) plus an
+    injected JourneyRecordStorage gateway and JourneyClock make every rule
+    testable with an in-memory fake and fixed timestamps, with chrome.storage
+    confined to a single adapter factory. Mutual exclusion takes precedence over
+    provenance gating so "one active journey per project" produces a clear
+    another_active_journey signal, and malformed records block visibly without
+    erasing a separate-keyed record that can never remove a project mapping.
+  lessons:
+    - lesson_type: foundation-library-before-seam-wiring
+      summary: |
+        Promoting the shared provenance/routing contract as a pure domain plus a
+        gateway-backed store — before wiring the BackgroundService/RepoSettings
+        seams — kept the slice small, fully unit-testable, and reusable by both
+        native-sync epics. Consumer children own their own seams and lifecycle
+        tests.
+      tags: [maid, clean-architecture, state-management, native-github-sync]
+      paths:
+        - src/lib/native-sync/nativeSyncJourney.ts
+        - src/lib/services/NativeSyncJourneyStore.ts
+  review_notes:
+    - source: maid-plan-reviewer (pre-implementation)
+      severity: finding-fixed
+      summary: |
+        Initial verdict Needs revision — the existing_project_migration allow
+        path was never asserted (a hollow always-deny impl would have passed) and
+        the injected clock was not in the contract. Added allow-direction tests
+        at both domain and store levels, declared the JourneyClock type, and
+        tightened two low-severity test assertions. Re-review verdict: Approved.
+    - source: maid-implementation-reviewer
+      severity: ready
+      summary: |
+        Verdict Ready to merge, no blockers. Confirmed scope fidelity (only the 5
+        declared paths changed, no consumer edits), exact artifact match, both
+        lanes' allow and deny directions pinned, clean ports-and-adapters
+        structure, and fail-loud malformed handling. Two should-fix coverage
+        refinements were addressed in-slice: a test pinning recordImportProvenance
+        recovery from a malformed record, and store-level legacy-migration-on-read
+        coverage; plus nitpicks (array guard in the adapter, documented write-back
+        cast).
+  validation:
+    - command:
+        - pnpm
+        - exec
+        - vitest
+        - run
+        - src/lib/native-sync/__tests__/nativeSyncJourney.test.ts
+        - src/lib/services/__tests__/NativeSyncJourneyStore.test.ts
+      status: passed
+      summary: 18 behavioral tests passed (10 domain + 8 store) covering both lanes' allow/deny, idempotency, mutual exclusion, malformed-block, legacy migration, and adapter round-trip.
+    - command:
+        - ./scripts/maid
+        - validate
+        - manifests/00-native-sync-journey-routing.manifest.yaml
+        - --mode
+        - implementation
+      status: passed
+      summary: Implementation-mode validation passed; declared public surface matches the source with no E300/E301.
+    - command: [pnpm, lint]
+      status: passed
+      summary: ESLint clean on both new modules and both test files (no console.*, no any).
+    - command: [pnpm, check]
+      status: passed
+      summary: svelte-check reported 0 errors and 0 warnings.
+    - command: [pnpm, build]
+      status: passed
+      summary: Production extension build completed successfully.
+    - command: [pnpm, 'test:ci']
+      status: passed
+      summary: Full Vitest CI suite passed (199 files, 4017 tests) before the post-review refinements; no regressions and the two new files are not yet imported elsewhere.
