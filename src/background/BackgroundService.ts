@@ -16,6 +16,16 @@ import type {
 import { createLogger, getLogStorage } from '../lib/utils/logger';
 import { extractProjectIdFromUrl } from '../lib/utils/projectId';
 import { checkGitHubConnection } from '../lib/utils/githubConnection';
+import {
+  NativeSyncJourneyStore,
+  createChromeLocalJourneyStorage,
+} from '../lib/services/NativeSyncJourneyStore';
+import {
+  NativeSyncHandoffStore,
+  createChromeLocalHandoffStorage,
+} from '../lib/services/NativeSyncHandoffStore';
+import { completePrivateImportHandoff } from '../lib/native-sync/nativeSyncImportCompletion';
+import type { ImportCompletionDeps } from '../lib/native-sync/nativeSyncImportCompletion';
 import { notifyBoltTabsAboutReload } from '../lib/utils/reloadNotification';
 import { analytics } from '../services/AnalyticsService';
 import { resolveExtensionPageTitle } from '../lib/utils/analytics';
@@ -465,9 +475,9 @@ export class BackgroundService {
             !this.isTempRepoUrl(projectId)
           ) {
             logger.info(
-              `🎯 URL changed from temp format '${previousProjectId}' to final format '${projectId}' - triggering temp repo cleanup`
+              `🎯 URL changed from temp format '${previousProjectId}' to final format '${projectId}' - recording native-sync handoff before temp repo cleanup`
             );
-            await this.triggerTempRepoCleanup();
+            await this.handlePrivateImportCompletion(projectId);
           }
 
           // Store project ID for this specific tab
@@ -1533,6 +1543,42 @@ export class BackgroundService {
    */
   private isTempRepoUrl(projectId: string): boolean {
     return projectId.includes('github.com');
+  }
+
+  /**
+   * Handle a private-import completion: when a temp-repo import URL becomes a
+   * final Bolt project id, record native-sync provenance and a durable pending
+   * handoff record BEFORE the temporary repositories are cleaned up, so the
+   * original repository identity survives cleanup. Matching and ordering live in
+   * the injectable coordinator; this is only the call-site wiring. If handoff
+   * recording fails, cleanup still runs so temporary repositories are not
+   * orphaned.
+   */
+  private async handlePrivateImportCompletion(projectId: string): Promise<void> {
+    const deps: ImportCompletionDeps = {
+      journeyStore: new NativeSyncJourneyStore(createChromeLocalJourneyStorage()),
+      handoffStore: new NativeSyncHandoffStore(createChromeLocalHandoffStorage()),
+      listPendingImports: async () => {
+        const repos = (await this.tempRepoManager?.getTempRepos()) ?? [];
+        return repos.map((repo) => ({
+          originalRepo: repo.originalRepo,
+          tempRepo: repo.tempRepo,
+          owner: repo.owner,
+          branch: repo.branch,
+        }));
+      },
+      cleanup: async () => {
+        await this.triggerTempRepoCleanup();
+      },
+    };
+
+    try {
+      const result = await completePrivateImportHandoff(deps, projectId);
+      logger.info(`🤝 Native-sync import completion for '${projectId}': ${result.status}`);
+    } catch (error) {
+      logger.error('❌ Failed to record native-sync handoff; running cleanup anyway:', error);
+      await this.triggerTempRepoCleanup();
+    }
   }
 
   /**
