@@ -1,0 +1,461 @@
+schema: '2'
+goal: |
+  Move a successfully completed private-repository import into a durable,
+  project-scoped native-sync handoff record before temporary-repository cleanup,
+  claiming exactly one pending import for the final Bolt project id and recording
+  its provenance through the child 00 routing contract.
+description: |
+  Promoted from child 01-native-sync-handoff-state of the parent epic
+  manifests/drafts/native-github-sync-handoff.manifest.yaml. Builds directly on
+  the shipped child 00 (manifests/00-native-sync-journey-routing.manifest.yaml):
+  it reuses NativeSyncJourneyStore.recordImportProvenance for provenance and does
+  not define a second lane discriminator.
+
+  Seam: when a bolt.new tab URL transitions from the temporary-import form to a
+  final Bolt project id (src/background/BackgroundService.ts around lines
+  456-485), the extension currently force-cleans temporary repositories. The
+  extracted temporary projectId is only the literal "github.com" (see
+  src/lib/utils/projectId.ts), so it carries no temporary-repository identity;
+  matching the final project to its import must come from the persisted
+  bolt_temp_repos metadata, and must be MV3-restart-safe (no in-memory per-tab
+  identity).
+
+  Design decisions (this session):
+  - Matching: claim exactly one pending import. If exactly one temporary import
+    is pending, it is the match; if none, no handoff is recorded; if more than
+    one (rare concurrent imports), the result is 'ambiguous' and NO handoff or
+    provenance is recorded — the extension never guesses which original repo
+    belongs to which project.
+  - A NEW, separate handoff store holds import details (original repo, temporary
+    repo, owner, branch, status) under its own chrome.storage.local key
+    (nativeSyncHandoffs), leaving child 00's routing record untouched. Later
+    children evolve this record's selection/mapping/completion fields.
+  - Provenance and the handoff record are persisted BEFORE cleanup runs, so the
+    original repo identity is captured durably and provenance exists before any
+    later default-settings repair. Beginning the active journey is deferred to
+    child 02/03; child 01 only records the pending state.
+  - The import-completion logic is a sprouted, dependency-injected coordinator so
+    the ordering and matching are testable with real stores over in-memory
+    gateways; BackgroundService only rewires the call site and is not contracted.
+  - TempRepoManager is used read-only via its already-contracted getTempRepos;
+    its public surface does not change, so manifests/03-github-app-only-runtime-enforcement
+    is not evolved.
+temptations:
+  - risk: Do not guess which pending import belongs to the final project when more than one temporary import exists.
+    instead: Return an 'ambiguous' match, record no handoff or provenance, and surface it; only a single pending import is claimed.
+  - risk: Do not reconstruct the temporary-repository identity from the extracted projectId (it is only the literal "github.com").
+    instead: Match against the persisted bolt_temp_repos list read through the injected listPendingImports seam, keeping matching MV3-restart-safe.
+  - risk: Do not run temporary-repository cleanup before the handoff record and provenance are persisted.
+    instead: In completePrivateImportHandoff, await recordImportProvenance and recordPendingHandoff first, then await cleanup last.
+  - risk: Do not create a second lane discriminator or duplicate child 00's routing record.
+    instead: Reuse NativeSyncJourneyStore.recordImportProvenance and keep the handoff record in its own store keyed only by projectId.
+  - risk: Do not write handoff state into projectSettings or delete the original private repository during cleanup.
+    instead: Persist the handoff record (including originalRepo) under the dedicated nativeSyncHandoffs key so cleanup only removes temporary repos and the original identity survives.
+type: feature
+files:
+  create:
+    - path: src/lib/native-sync/nativeSyncHandoff.ts
+      artifacts:
+        - kind: type
+          name: NativeSyncHandoffStatus
+          type: "'pending'"
+        - kind: type
+          name: NativeSyncHandoffMatchStatus
+          type: "'matched' | 'none' | 'ambiguous'"
+        - kind: type
+          name: NativeSyncHandoffParseStatus
+          type: "'valid' | 'migrated' | 'malformed'"
+        - kind: interface
+          name: TempImportSummary
+          description: Minimal identity of a pending temporary import, derived from TempRepoManager metadata.
+        - kind: attribute
+          name: originalRepo
+          of: TempImportSummary
+          type: string
+        - kind: attribute
+          name: tempRepo
+          of: TempImportSummary
+          type: string
+        - kind: attribute
+          name: owner
+          of: TempImportSummary
+          type: string
+        - kind: attribute
+          name: branch
+          of: TempImportSummary
+          type: string
+        - kind: interface
+          name: NativeSyncHandoffRecord
+          description: Versioned, project-scoped durable handoff record for a completed private import.
+        - kind: attribute
+          name: schemaVersion
+          of: NativeSyncHandoffRecord
+          type: number
+        - kind: attribute
+          name: projectId
+          of: NativeSyncHandoffRecord
+          type: string
+        - kind: attribute
+          name: originalRepo
+          of: NativeSyncHandoffRecord
+          type: string
+        - kind: attribute
+          name: tempRepo
+          of: NativeSyncHandoffRecord
+          type: string
+        - kind: attribute
+          name: owner
+          of: NativeSyncHandoffRecord
+          type: string
+        - kind: attribute
+          name: branch
+          of: NativeSyncHandoffRecord
+          type: string
+        - kind: attribute
+          name: status
+          of: NativeSyncHandoffRecord
+          type: NativeSyncHandoffStatus
+        - kind: attribute
+          name: createdAt
+          of: NativeSyncHandoffRecord
+          type: number
+        - kind: attribute
+          name: updatedAt
+          of: NativeSyncHandoffRecord
+          type: number
+        - kind: interface
+          name: NativeSyncHandoffMatch
+          description: Result of matching pending temporary imports to a completed import event.
+        - kind: attribute
+          name: status
+          of: NativeSyncHandoffMatch
+          type: NativeSyncHandoffMatchStatus
+        - kind: attribute
+          name: matchedImport
+          of: NativeSyncHandoffMatch
+          type: TempImportSummary | null
+        - kind: interface
+          name: NativeSyncHandoffParseResult
+          description: Outcome of parsing a stored raw handoff value into a current record.
+        - kind: attribute
+          name: status
+          of: NativeSyncHandoffParseResult
+          type: NativeSyncHandoffParseStatus
+        - kind: attribute
+          name: record
+          of: NativeSyncHandoffParseResult
+          type: NativeSyncHandoffRecord | null
+        - kind: attribute
+          name: reason
+          of: NativeSyncHandoffParseResult
+          type: string | null
+        - kind: function
+          name: matchPendingImport
+          args:
+            - name: tempImports
+              type: TempImportSummary[]
+          returns: NativeSyncHandoffMatch
+          description: |
+            Claim exactly one pending import: one -> matched, zero -> none,
+            more than one -> ambiguous (no import selected).
+        - kind: function
+          name: buildPendingHandoffRecord
+          args:
+            - name: matchedImport
+              type: TempImportSummary
+            - name: projectId
+              type: string
+            - name: now
+              type: number
+          returns: NativeSyncHandoffRecord
+          description: Build a current-version pending handoff record from a matched import and the final project id.
+        - kind: function
+          name: parseStoredHandoff
+          args:
+            - name: projectId
+              type: string
+            - name: raw
+              type: unknown
+          returns: NativeSyncHandoffParseResult
+          description: |
+            Validate and version-migrate a raw stored value into a current
+            handoff record, returning a malformed result (record null, reason set)
+            for irreparable input without throwing.
+    - path: src/lib/services/NativeSyncHandoffStore.ts
+      artifacts:
+        - kind: interface
+          name: HandoffRecordStorage
+          description: Narrow persistence gateway for the native-sync handoffs map.
+        - kind: attribute
+          name: read
+          of: HandoffRecordStorage
+          type: "() => Promise<Record<string, unknown>>"
+        - kind: attribute
+          name: write
+          of: HandoffRecordStorage
+          type: "(records: Record<string, NativeSyncHandoffRecord>) => Promise<void>"
+        - kind: class
+          name: NativeSyncHandoffStore
+          description: Versioned persistence for handoff records over an injected HandoffRecordStorage gateway and JourneyClock.
+        - kind: method
+          name: recordPendingHandoff
+          of: NativeSyncHandoffStore
+          args:
+            - name: matchedImport
+              type: TempImportSummary
+            - name: projectId
+              type: string
+          returns: Promise<NativeSyncHandoffRecord>
+          description: |
+            Persist a pending handoff record for a final project id idempotently.
+            A project id claims exactly one record: a duplicate completion event
+            or service-worker restart returns the existing record unchanged.
+        - kind: method
+          name: getHandoff
+          of: NativeSyncHandoffStore
+          args:
+            - name: projectId
+              type: string
+          returns: Promise<NativeSyncHandoffRecord | null>
+          description: Return the current-version handoff record for a project, migrating legacy records and returning null for absent or malformed entries.
+        - kind: function
+          name: createChromeLocalHandoffStorage
+          args: []
+          returns: HandoffRecordStorage
+          description: Build the production HandoffRecordStorage backed by chrome.storage.local under the dedicated nativeSyncHandoffs key.
+    - path: src/lib/native-sync/nativeSyncImportCompletion.ts
+      artifacts:
+        - kind: interface
+          name: ImportCompletionDeps
+          description: Injected collaborators for private-import completion, so ordering and matching are testable with real stores.
+        - kind: attribute
+          name: journeyStore
+          of: ImportCompletionDeps
+          type: NativeSyncJourneyStore
+        - kind: attribute
+          name: handoffStore
+          of: ImportCompletionDeps
+          type: NativeSyncHandoffStore
+        - kind: attribute
+          name: listPendingImports
+          of: ImportCompletionDeps
+          type: "() => Promise<TempImportSummary[]>"
+        - kind: attribute
+          name: cleanup
+          of: ImportCompletionDeps
+          type: "() => Promise<void>"
+        - kind: interface
+          name: ImportCompletionResult
+          description: Outcome of handling a private-import completion event.
+        - kind: attribute
+          name: status
+          of: ImportCompletionResult
+          type: NativeSyncHandoffMatchStatus
+        - kind: attribute
+          name: record
+          of: ImportCompletionResult
+          type: NativeSyncHandoffRecord | null
+        - kind: function
+          name: completePrivateImportHandoff
+          args:
+            - name: deps
+              type: ImportCompletionDeps
+            - name: projectId
+              type: string
+          returns: Promise<ImportCompletionResult>
+          description: |
+            Match the pending import, and on a single match persist provenance and
+            the pending handoff record BEFORE running cleanup. On none or ambiguous
+            it records nothing but still runs cleanup last. Never records provenance
+            or a handoff for an ambiguous or absent match.
+    - path: src/lib/native-sync/__tests__/nativeSyncHandoff.test.ts
+      artifacts:
+        - kind: test_function
+          name: matchPendingImport returns matched for exactly one pending import
+        - kind: test_function
+          name: matchPendingImport returns none for zero pending imports
+        - kind: test_function
+          name: matchPendingImport returns ambiguous for more than one pending import
+        - kind: test_function
+          name: buildPendingHandoffRecord captures original repo and marks status pending
+        - kind: test_function
+          name: parseStoredHandoff migrates a legacy record deterministically
+        - kind: test_function
+          name: parseStoredHandoff re-parses a migrated record as valid
+        - kind: test_function
+          name: parseStoredHandoff reports malformed when a required field is missing
+        - kind: test_function
+          name: parseStoredHandoff reports malformed input without throwing
+    - path: src/lib/services/__tests__/NativeSyncHandoffStore.test.ts
+      artifacts:
+        - kind: test_function
+          name: recordPendingHandoff persists a pending record and claims exactly one per project across duplicate calls
+        - kind: test_function
+          name: getHandoff returns a migrated record for a legacy stored entry
+        - kind: test_function
+          name: getHandoff returns null for a malformed stored record and does not write
+        - kind: test_function
+          name: createChromeLocalHandoffStorage round-trips handoffs under the nativeSyncHandoffs local key
+    - path: src/lib/native-sync/__tests__/nativeSyncImportCompletion.test.ts
+      artifacts:
+        - kind: test_function
+          name: completePrivateImportHandoff records provenance and pending handoff before cleanup on a single match
+        - kind: test_function
+          name: completePrivateImportHandoff preserves the original repository identity through cleanup
+        - kind: test_function
+          name: completePrivateImportHandoff records nothing but still cleans up when no import is pending
+        - kind: test_function
+          name: completePrivateImportHandoff does not guess on ambiguous multiple imports and still cleans up
+        - kind: test_function
+          name: completePrivateImportHandoff is idempotent across duplicate completion events
+  read:
+    - docs/draft-manifest-workflow.md
+    - manifests/00-native-sync-journey-routing.manifest.yaml
+    - manifests/03-github-app-only-runtime-enforcement.manifest.yaml
+    - manifests/drafts/native-github-sync-handoff.manifest.yaml
+    - src/lib/native-sync/nativeSyncJourney.ts
+    - src/lib/services/NativeSyncJourneyStore.ts
+    - src/background/TempRepoManager.ts
+    - src/background/BackgroundService.ts
+    - src/lib/utils/projectId.ts
+validate:
+  - pnpm exec vitest run src/lib/native-sync/__tests__/nativeSyncHandoff.test.ts src/lib/services/__tests__/NativeSyncHandoffStore.test.ts src/lib/native-sync/__tests__/nativeSyncImportCompletion.test.ts
+  - ./scripts/maid validate manifests/01-native-sync-handoff-state.manifest.yaml --mode behavioral
+  - pnpm lint
+  - pnpm check
+  - pnpm build
+created: '2026-07-23T06:30:00Z'
+metadata:
+  tags:
+    - native-github-sync
+    - handoff-state
+    - private-repository-import
+    - chrome-storage-local
+    - mv3-restart-safe
+  priority: high
+  parent_epic: manifests/drafts/native-github-sync-handoff.manifest.yaml
+  depends_on:
+    - manifests/00-native-sync-journey-routing.manifest.yaml
+  dependency_notes:
+    - >-
+      Reuses child 00's NativeSyncJourneyStore.recordImportProvenance for
+      provenance; defines no second lane discriminator. Beginning the active
+      journey (beginJourney) is deferred to child 02/03.
+    - >-
+      TempRepoManager is used read-only through getTempRepos, so its public
+      surface and the manifests/03-github-app-only-runtime-enforcement contract
+      are unchanged. BackgroundService is a call-site rewire only (files.read),
+      not contracted here.
+    - >-
+      Ambiguous concurrent imports intentionally record no handoff (never guess).
+      Refining that degraded state into a user-visible surface is later-child work.
+    - >-
+      Known bounded edge (plan review): a single stale, undeleted temporary repo
+      (kept after a failed delete-retry) could make a later unrelated completion
+      count as one and match the wrong original. Blast radius is limited because
+      child 01 only records 'pending' state and child 02/03 require explicit user
+      attestation before any adoption; hardening the match against stale temps is
+      later-child work.
+    - >-
+      The BackgroundService completion seam (private handlePrivateImportCompletion:
+      the TempRepoMetadata -> TempImportSummary mapping and the error-path cleanup
+      fallback) is an uncontracted call-site rewire and is intentionally NOT
+      unit-pinned. All matching/ordering/idempotency behavior lives in the
+      contracted, fully tested coordinator; the seam only builds deps and
+      delegates. Cleanup runs in every path (matched and none/ambiguous through the
+      coordinator, and on a pre-cleanup failure through the catch), because
+      triggerTempRepoCleanup swallows its own errors and never throws, so the
+      fallback cannot double-clean. Verified at implementation review.
+outcome:
+  status: completed
+  completed_at: '2026-07-23T13:45:00Z'
+  summary: |
+    Moved a completed private-repository import into a durable, project-scoped
+    native-sync handoff record before temporary-repository cleanup, as three new
+    modules: a pure domain (src/lib/native-sync/nativeSyncHandoff.ts), a versioned
+    store over an injectable gateway + JourneyClock
+    (src/lib/services/NativeSyncHandoffStore.ts) keyed at
+    chrome.storage.local/nativeSyncHandoffs, and an injectable completion
+    coordinator (src/lib/native-sync/nativeSyncImportCompletion.ts). The
+    coordinator matches exactly one pending import (one -> matched, zero -> none,
+    more than one -> ambiguous, never guessing), and on a single match persists
+    child 00 provenance and the pending handoff BEFORE cleanup. BackgroundService
+    was rewired at the temp->final URL transition to delegate to the coordinator
+    (call-site only, uncontracted, files.read).
+  rationale: |
+    Kept the slice implementation-sized by adding only new modules plus a thin
+    call-site rewire, reusing shipped child 00's NativeSyncJourneyStore for
+    provenance rather than defining a second lane discriminator. Purity (now passed
+    in) plus injected HandoffRecordStorage and JourneyClock make matching, the
+    persist-before-cleanup ordering, and idempotency testable with real stores over
+    in-memory gateways. Handoff records live under a dedicated nativeSyncHandoffs
+    key separate from projectSettings, and cleanup only removes temporary repos, so
+    the original private repository identity survives durably and a mapping can
+    never be erased. Because the extracted temporary projectId is only the literal
+    "github.com", matching reads the persisted bolt_temp_repos list (MV3-restart-safe)
+    instead of any in-memory per-tab identity, and refuses to guess on concurrent
+    imports.
+  lessons:
+    - lesson_type: consuming-child-owns-its-seam
+      summary: |
+        Child 01 wired the BackgroundService private-import-completion seam that
+        child 00 deliberately deferred, keeping the ordering/matching logic in a
+        contracted, fully tested coordinator and reducing BackgroundService to a
+        thin, uncontracted call-site rewire. The persist-before-cleanup guarantee
+        is verified by observing real storage state inside the injected cleanup
+        callback, not by mock call-order, so the contract survives refactoring.
+      tags: [maid, clean-architecture, state-management, native-github-sync, mv3-restart-safe]
+      paths:
+        - src/lib/native-sync/nativeSyncHandoff.ts
+        - src/lib/services/NativeSyncHandoffStore.ts
+        - src/lib/native-sync/nativeSyncImportCompletion.ts
+        - src/background/BackgroundService.ts
+  review_notes:
+    - source: maid-implementation-reviewer
+      severity: ready
+      summary: |
+        Verdict Ready to merge, no blockers. Confirmed scope fidelity (only the 3
+        created source files, 3 created test files, and the files.read
+        BackgroundService call-site changed), exact artifact match with no
+        undeclared public symbols, genuine state-based tests (persist-before-cleanup
+        checked via real storage inside the cleanup callback; idempotency simulates
+        the temp-already-cleaned duplicate event), and fail-loud malformed handling.
+        Should-fix and nitpicks were all confined to the deliberately-thin,
+        uncontracted BackgroundService seam.
+    - source: implementer (disposition of review items)
+      severity: documented-tradeoff
+      summary: |
+        Should-fix "uncontracted seam untested": accepted and documented as a
+        dependency note rather than adding a heavy BackgroundService-level test,
+        matching child 00's deferral pattern and the pre-approved plan (coordinator
+        fully tested; wiring is a call-site). Nitpick "possible double-cleanup /
+        misleading log on cleanup failure": verified not reachable — triggerTempRepoCleanup
+        swallows its own errors and never throws, so the catch fires only on
+        pre-cleanup failures where the fallback cleanup and the "failed to record
+        handoff" log are both accurate; left as-is. Nitpick "recordPendingHandoff
+        overwrites a malformed entry": intentional and visible (logger.warn),
+        consistent with child 00's recordImportProvenance.
+  validation:
+    - command:
+        - pnpm
+        - exec
+        - vitest
+        - run
+        - src/lib/native-sync/__tests__/nativeSyncHandoff.test.ts
+        - src/lib/services/__tests__/NativeSyncHandoffStore.test.ts
+        - src/lib/native-sync/__tests__/nativeSyncImportCompletion.test.ts
+      status: passed
+      summary: 17 behavioral tests passed (8 domain + 4 store + 5 coordinator) covering match one/none/ambiguous, persist-before-cleanup ordering, original-repo preservation through cleanup, claim-exactly-one idempotency, malformed-block-without-write, and legacy migration.
+    - command:
+        - ./scripts/maid
+        - validate
+        - manifests/01-native-sync-handoff-state.manifest.yaml
+        - --mode
+        - implementation
+      status: passed
+      summary: Implementation-mode validation passed; declared public surface matches the source and the BackgroundService call-site edit is accepted as a files.read contextual edit (no E300/E301). Only pre-existing E110 warnings on the unrelated prepare-v2-0-0 manifest remain.
+    - command:
+        - pnpm
+        - test:ci
+      status: passed
+      summary: Full suite 4036 tests across 202 files passed with no regressions; lint clean, svelte-check 0 errors, production build succeeded.
