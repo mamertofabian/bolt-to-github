@@ -1,0 +1,595 @@
+schema: '2'
+goal: |
+  Discover the plausible Bolt-created repositories after a private-import handoff
+  and idempotently adopt an explicitly user-selected repository and branch — under
+  the already-configured global repoOwner — as the current project's canonical
+  mapping, only after the user attests native setup completed and the selection
+  passes a live-access check.
+description: |
+  Promoted from child 02-native-sync-repository-adoption of the parent epic
+  manifests/drafts/native-github-sync-handoff.manifest.yaml. Builds on the shipped
+  child 00 (manifests/00-native-sync-journey-routing.manifest.yaml: reuses
+  NativeSyncJourneyStore.beginJourney, deferred by child 01) and child 01
+  (manifests/01-native-sync-handoff-state.manifest.yaml: the pending
+  NativeSyncHandoffRecord under chrome.storage.local/nativeSyncHandoffs).
+
+  Evolution strategy (ADDITIVE chain merge, NOT supersede):
+  - Child 01's public artifacts are NOT redefined. NativeSyncHandoffStatus stays
+    'pending', and every existing attribute, function, and method of
+    nativeSyncHandoff.ts / NativeSyncHandoffStore.ts keeps its exact declared
+    contract. Child 01 remains an active manifest.
+  - The adoption lifecycle is added as a NEW nested sub-state on the existing
+    record: a new optional `adoption` field typed as a new NativeSyncAdoptionState
+    interface (status 'selected' | 'completed', the user-selected repo/branch, and
+    completedAt). This is purely additive, so child 01's contract and its
+    defensively-written behavioral tests continue to hold unchanged. The field is
+    optional only so pre-existing record literals still type-check; the domain
+    always sets it (null when unadopted).
+  - The record schema version is bumped so a child-01 (v1) record migrates
+    deterministically by initializing `adoption` to null; malformed adoption
+    sub-states are surfaced as a visible parse failure, never silently dropped.
+
+  Design decisions (this session, per approved planning answers):
+  - Candidate discovery is a pure ranking domain (nativeSyncAdoption.ts). It
+    excludes the original private repo and the temporary import repo, restricts
+    candidates to the handoff owner (the global repoOwner captured at import), and
+    keeps zero / one / many as three distinct result states. In 'suggested' mode
+    it omits repositories created before the handoff (they are not plausible
+    Bolt-created matches); an explicit 'search' still surfaces older repositories,
+    flagged createdBeforeHandoff. It never auto-selects.
+  - Owner-scoped candidates are sourced through a NEW narrow injectable
+    RepositoryCandidateSource gateway returning { owner, name, createdAt } inputs,
+    so RepositoryService and RepoSummary are left untouched and discovery is fully
+    fakeable. The production adapter (GitHub-backed) and the GitHub-backed
+    live-access verifier and the project-mapping writer are wired by the consuming
+    UI child (03), matching child 00's foundation-library pattern; this slice
+    ships the tested domain, store evolution, and coordinator plus their gateway
+    interfaces.
+  - Adoption is an injectable, staged, idempotent coordinator
+    (nativeSyncRepositoryAdoption.ts). It enforces the safety gate in the tested
+    domain and fails loud: it refuses to change any setting unless the user
+    attests native setup completed AND confirms the exact repo/branch AND a live
+    access check passes AND child 00's beginJourney allows the handoff journey
+    (mutual exclusion). Only then does it persist the pending selection FIRST,
+    update ONLY the current project mapping, and finally mark completion. This is
+    user confirmation, not proof of Bolt linkage.
+  - Repeating or repairing any partial stage converges on the same mapping: a
+    completed handoff short-circuits idempotently; a selected-but-uncompleted
+    record repairs forward. Provenance (originalRepo/tempRepo) and unrelated
+    project mappings are preserved throughout.
+temptations:
+  - risk: Do not redefine or widen child 01's NativeSyncHandoffStatus or any existing handoff artifact to add adoption state.
+    instead: Keep NativeSyncHandoffStatus 'pending' and add a NEW nested `adoption` sub-state (NativeSyncAdoptionState) plus new functions/methods, so the change is an additive chain merge and child 01 is never superseded.
+  - risk: Do not change project settings the moment the user selects a repository, or infer Bolt linkage from repository recency or accessibility.
+    instead: In adoptRepository require attested === true, confirmedRepo/confirmedBranch matching the selection, a passing live-access check, and an allowed beginJourney before any mapping write; treat completion as a user-confirmed native mapping, not verified sync.
+  - risk: Do not update the whole project mapping in a way that clobbers unrelated projects or other fields, or migrate/rewrite the owner for one project.
+    instead: Persist the pending selection first, then call the ProjectMappingWriter for ONLY the current projectId's repo and branch under the existing handoff owner, then mark completion; leave repoOwner and every other project untouched.
+  - risk: Do not present repositories created before the handoff as likely Bolt-created matches, or auto-select a single candidate.
+    instead: In 'suggested' mode omit pre-handoff repositories and return zero/one/many as distinct states; only an explicit 'search' surfaces older repositories, flagged createdBeforeHandoff, and selection always stays with the user.
+  - risk: Do not make partial adoption non-idempotent so a duplicate event or MV3 restart creates a second or divergent mapping.
+    instead: Short-circuit a completed handoff, repair a selected-but-uncompleted record forward, and drive the mapping only from the record's persisted selection so retries converge on the same mapping.
+type: feature
+files:
+  create:
+    - path: src/lib/native-sync/nativeSyncAdoption.ts
+      artifacts:
+        - kind: type
+          name: NativeSyncCandidateStatus
+          type: "'none' | 'single' | 'multiple'"
+        - kind: type
+          name: NativeSyncCandidateMode
+          type: "'suggested' | 'search'"
+        - kind: interface
+          name: RepositoryCandidateInput
+          description: Minimal owner-scoped repository shape the pure ranking domain consumes, decoupled from RepoSummary and the GitHub API.
+        - kind: attribute
+          name: owner
+          of: RepositoryCandidateInput
+          type: string
+        - kind: attribute
+          name: name
+          of: RepositoryCandidateInput
+          type: string
+        - kind: attribute
+          name: createdAt
+          of: RepositoryCandidateInput
+          type: number
+        - kind: interface
+          name: NativeSyncRepositoryCandidate
+          description: A ranked adoption candidate with a flag marking repositories created before the handoff.
+        - kind: attribute
+          name: owner
+          of: NativeSyncRepositoryCandidate
+          type: string
+        - kind: attribute
+          name: name
+          of: NativeSyncRepositoryCandidate
+          type: string
+        - kind: attribute
+          name: createdAt
+          of: NativeSyncRepositoryCandidate
+          type: number
+        - kind: attribute
+          name: createdBeforeHandoff
+          of: NativeSyncRepositoryCandidate
+          type: boolean
+        - kind: interface
+          name: NativeSyncCandidateResult
+          description: Ranked candidates plus the distinct zero/one/many discovery state.
+        - kind: attribute
+          name: status
+          of: NativeSyncCandidateResult
+          type: NativeSyncCandidateStatus
+        - kind: attribute
+          name: candidates
+          of: NativeSyncCandidateResult
+          type: NativeSyncRepositoryCandidate[]
+        - kind: function
+          name: rankAdoptionCandidates
+          args:
+            - name: repos
+              type: RepositoryCandidateInput[]
+            - name: handoff
+              type: NativeSyncHandoffRecord
+            - name: mode
+              type: NativeSyncCandidateMode
+            - name: query
+              type: string | null
+          returns: NativeSyncCandidateResult
+          description: |
+            Pure candidate ranking. Excludes the original and temporary
+            repositories and any repository not under handoff.owner. In
+            'suggested' mode omits repositories created before handoff.createdAt;
+            in 'search' mode includes name-matching repositories flagged
+            createdBeforeHandoff. Sorts newest first and reports none/single/
+            multiple. Never auto-selects.
+    - path: src/lib/native-sync/nativeSyncRepositoryAdoption.ts
+      artifacts:
+        - kind: type
+          name: NativeSyncAdoptionOutcome
+          type: "'adopted' | 'not_attested' | 'inaccessible' | 'journey_blocked' | 'no_handoff'"
+        - kind: interface
+          name: RepositoryCandidateSource
+          description: Narrow injectable gateway returning owner-scoped repository candidates, so discovery does not depend on RepositoryService or the GitHub API directly.
+        - kind: attribute
+          name: listOwnerRepositories
+          of: RepositoryCandidateSource
+          type: '(owner: string) => Promise<RepositoryCandidateInput[]>'
+        - kind: interface
+          name: ProjectMappingWriter
+          description: |
+            Narrow injectable gateway that updates ONLY the given project's
+            repository and branch mapping, preserving other project fields and
+            unrelated projects. The production adapter is wired by the UI child.
+        - kind: attribute
+          name: setProjectMapping
+          of: ProjectMappingWriter
+          type: '(projectId: string, repoName: string, branch: string) => Promise<void>'
+        - kind: interface
+          name: AdoptionSelection
+          description: The repository and branch the user explicitly chose to adopt.
+        - kind: attribute
+          name: repo
+          of: AdoptionSelection
+          type: string
+        - kind: attribute
+          name: branch
+          of: AdoptionSelection
+          type: string
+        - kind: interface
+          name: AdoptionAttestation
+          description: The user's explicit attestation that Bolt native setup completed, plus the repo/branch they confirmed. This is user confirmation, not proof of Bolt linkage.
+        - kind: attribute
+          name: attested
+          of: AdoptionAttestation
+          type: boolean
+        - kind: attribute
+          name: confirmedRepo
+          of: AdoptionAttestation
+          type: string
+        - kind: attribute
+          name: confirmedBranch
+          of: AdoptionAttestation
+          type: string
+        - kind: interface
+          name: AdoptionDeps
+          description: Injected collaborators so the staged adoption ordering, gates, and idempotency are testable with real stores over in-memory gateways.
+        - kind: attribute
+          name: journeyStore
+          of: AdoptionDeps
+          type: NativeSyncJourneyStore
+        - kind: attribute
+          name: handoffStore
+          of: AdoptionDeps
+          type: NativeSyncHandoffStore
+        - kind: attribute
+          name: candidateSource
+          of: AdoptionDeps
+          type: RepositoryCandidateSource
+        - kind: attribute
+          name: verifyRepositoryAccess
+          of: AdoptionDeps
+          type: '(owner: string, repo: string, branch: string) => Promise<boolean>'
+        - kind: attribute
+          name: mappingWriter
+          of: AdoptionDeps
+          type: ProjectMappingWriter
+        - kind: interface
+          name: AdoptionResult
+          description: Outcome of an adoption attempt, including a blocking reason when no mapping change was made.
+        - kind: attribute
+          name: status
+          of: AdoptionResult
+          type: NativeSyncAdoptionOutcome
+        - kind: attribute
+          name: record
+          of: AdoptionResult
+          type: NativeSyncHandoffRecord | null
+        - kind: attribute
+          name: reason
+          of: AdoptionResult
+          type: string | null
+        - kind: function
+          name: discoverAdoptionCandidates
+          args:
+            - name: deps
+              type: AdoptionDeps
+            - name: handoff
+              type: NativeSyncHandoffRecord
+            - name: mode
+              type: NativeSyncCandidateMode
+            - name: query
+              type: string | null
+          returns: Promise<NativeSyncCandidateResult>
+          description: List the handoff owner's repositories through the candidate source and rank them with rankAdoptionCandidates.
+        - kind: function
+          name: adoptRepository
+          args:
+            - name: deps
+              type: AdoptionDeps
+            - name: projectId
+              type: string
+            - name: selection
+              type: AdoptionSelection
+            - name: attestation
+              type: AdoptionAttestation
+          returns: Promise<AdoptionResult>
+          description: |
+            Staged, idempotent adoption. Returns no_handoff when no pending
+            handoff exists; short-circuits a completed handoff idempotently.
+            Otherwise refuses (no mapping write) unless attested === true with a
+            matching confirmed repo/branch, beginJourney allows the handoff
+            journey, and verifyRepositoryAccess passes. On success persists the
+            pending selection first, then updates ONLY the current project mapping
+            from the record's selection, then marks completion. Repairs a
+            selected-but-uncompleted record forward so retries converge on the
+            same mapping while preserving provenance and unrelated projects.
+    - path: src/lib/native-sync/__tests__/nativeSyncAdoption.test.ts
+      artifacts:
+        - kind: test_function
+          name: rankAdoptionCandidates excludes the original and temporary repositories
+        - kind: test_function
+          name: rankAdoptionCandidates excludes repositories owned by a different owner
+        - kind: test_function
+          name: rankAdoptionCandidates omits pre-handoff repositories in suggested mode
+        - kind: test_function
+          name: rankAdoptionCandidates includes a pre-handoff repository flagged in search mode
+        - kind: test_function
+          name: rankAdoptionCandidates reports none for zero eligible repositories
+        - kind: test_function
+          name: rankAdoptionCandidates reports single for exactly one eligible repository
+        - kind: test_function
+          name: rankAdoptionCandidates reports multiple and sorts newest first
+    - path: src/lib/native-sync/__tests__/nativeSyncHandoffAdoptionState.test.ts
+      artifacts:
+        - kind: test_function
+          name: buildPendingHandoffRecord leaves adoption unset for a fresh pending record
+        - kind: test_function
+          name: applySelection records a selected adoption state with the chosen repo and branch
+        - kind: test_function
+          name: applySelection is locked once the record is completed
+        - kind: test_function
+          name: applyCompletion transitions a selected record to completed with completedAt set
+        - kind: test_function
+          name: applyCompletion is a no-op when there is no selection
+        - kind: test_function
+          name: parseStoredHandoff round-trips an adoption sub-state as valid
+        - kind: test_function
+          name: parseStoredHandoff migrates a legacy record by initializing adoption to null
+        - kind: test_function
+          name: parseStoredHandoff reports malformed for an invalid adoption sub-state
+    - path: src/lib/services/__tests__/NativeSyncHandoffStoreAdoption.test.ts
+      artifacts:
+        - kind: test_function
+          name: recordSelection persists a selected adoption state on a pending record
+        - kind: test_function
+          name: recordSelection re-affirms the same selection idempotently
+        - kind: test_function
+          name: recordSelection is locked after completion
+        - kind: test_function
+          name: recordCompletion transitions a selected record to completed idempotently
+        - kind: test_function
+          name: recordSelection throws when no handoff record exists
+    - path: src/lib/native-sync/__tests__/nativeSyncRepositoryAdoption.test.ts
+      artifacts:
+        - kind: test_function
+          name: discoverAdoptionCandidates ranks the handoff owner repositories from the source
+        - kind: test_function
+          name: adoptRepository blocks with no_handoff and writes nothing when no pending handoff exists
+        - kind: test_function
+          name: adoptRepository blocks with not_attested and does not change the mapping
+        - kind: test_function
+          name: adoptRepository blocks with journey_blocked when beginJourney is denied
+        - kind: test_function
+          name: adoptRepository blocks with inaccessible when the live-access check fails
+        - kind: test_function
+          name: adoptRepository persists selection before mapping and marks completion after mapping
+        - kind: test_function
+          name: adoptRepository updates only the current project mapping and preserves provenance
+        - kind: test_function
+          name: adoptRepository is idempotent and converges on the same mapping across repeated calls
+        - kind: test_function
+          name: adoptRepository repairs a selected-but-uncompleted record forward to completion
+  edit:
+    - path: src/lib/native-sync/nativeSyncHandoff.ts
+      artifacts:
+        - kind: type
+          name: NativeSyncAdoptionStatus
+          type: "'selected' | 'completed'"
+        - kind: interface
+          name: NativeSyncAdoptionState
+          description: Nested adoption sub-state added to the handoff record for the repository-adoption lifecycle.
+        - kind: attribute
+          name: status
+          of: NativeSyncAdoptionState
+          type: NativeSyncAdoptionStatus
+        - kind: attribute
+          name: selectedRepo
+          of: NativeSyncAdoptionState
+          type: string
+        - kind: attribute
+          name: selectedBranch
+          of: NativeSyncAdoptionState
+          type: string
+        - kind: attribute
+          name: completedAt
+          of: NativeSyncAdoptionState
+          type: number | null
+        - kind: attribute
+          name: adoption
+          of: NativeSyncHandoffRecord
+          type: NativeSyncAdoptionState | null
+        - kind: function
+          name: applySelection
+          args:
+            - name: record
+              type: NativeSyncHandoffRecord
+            - name: selectedRepo
+              type: string
+            - name: selectedBranch
+              type: string
+            - name: now
+              type: number
+          returns: NativeSyncHandoffRecord
+          description: |
+            Pure monotonic transition setting a 'selected' adoption sub-state with
+            the chosen repo/branch and null completedAt. Returns the record
+            unchanged when it is already completed (locked).
+        - kind: function
+          name: applyCompletion
+          args:
+            - name: record
+              type: NativeSyncHandoffRecord
+            - name: now
+              type: number
+          returns: NativeSyncHandoffRecord
+          description: |
+            Pure monotonic transition marking a 'selected' adoption sub-state
+            'completed' with completedAt set. A no-op when there is no selection or
+            the record is already completed.
+    - path: src/lib/services/NativeSyncHandoffStore.ts
+      artifacts:
+        - kind: method
+          name: recordSelection
+          of: NativeSyncHandoffStore
+          args:
+            - name: projectId
+              type: string
+            - name: selectedRepo
+              type: string
+            - name: selectedBranch
+              type: string
+          returns: Promise<NativeSyncHandoffRecord>
+          description: |
+            Persist a 'selected' adoption sub-state for an existing handoff record
+            and return it. Idempotent on the same selection, locked once completed,
+            and throws when no handoff record exists.
+        - kind: method
+          name: recordCompletion
+          of: NativeSyncHandoffStore
+          args:
+            - name: projectId
+              type: string
+          returns: Promise<NativeSyncHandoffRecord>
+          description: |
+            Mark a selected handoff record's adoption sub-state 'completed' and
+            return it. Idempotent on an already completed record and throws when no
+            handoff record exists.
+  read:
+    - docs/draft-manifest-workflow.md
+    - manifests/00-native-sync-journey-routing.manifest.yaml
+    - manifests/01-native-sync-handoff-state.manifest.yaml
+    - manifests/drafts/native-github-sync-handoff.manifest.yaml
+    - src/lib/native-sync/nativeSyncJourney.ts
+    - src/lib/services/NativeSyncJourneyStore.ts
+    - src/lib/native-sync/nativeSyncImportCompletion.ts
+    - src/lib/services/chromeStorage.ts
+    - src/services/RepositoryService.ts
+    - src/services/types/repository.ts
+    - src/lib/types.ts
+validate:
+  - pnpm exec vitest run src/lib/native-sync/__tests__/nativeSyncAdoption.test.ts src/lib/native-sync/__tests__/nativeSyncHandoffAdoptionState.test.ts src/lib/services/__tests__/NativeSyncHandoffStoreAdoption.test.ts src/lib/native-sync/__tests__/nativeSyncRepositoryAdoption.test.ts
+  - ./scripts/maid validate manifests/02-native-sync-repository-adoption.manifest.yaml --mode behavioral
+  - pnpm lint
+  - pnpm check
+  - pnpm build
+created: '2026-07-24T06:30:00Z'
+metadata:
+  tags:
+    - native-github-sync
+    - repository-adoption
+    - candidate-discovery
+    - project-mapping
+    - chrome-storage-local
+    - mv3-restart-safe
+  priority: high
+  parent_epic: manifests/drafts/native-github-sync-handoff.manifest.yaml
+  depends_on:
+    - manifests/00-native-sync-journey-routing.manifest.yaml
+    - manifests/01-native-sync-handoff-state.manifest.yaml
+  evolves_active_contracts:
+    - 01-native-sync-handoff-state
+  dependency_notes:
+    - >-
+      Additive chain merge onto child 01: adds a nested `adoption` sub-state,
+      NativeSyncAdoptionState, NativeSyncAdoptionStatus, applySelection,
+      applyCompletion, and the store methods recordSelection/recordCompletion
+      WITHOUT redefining any child-01 artifact. child 01 is NOT superseded and its
+      behavioral tests continue to pass unchanged.
+    - >-
+      Reuses child 00's NativeSyncJourneyStore.beginJourney (deferred by child 01)
+      inside adoptRepository so the single-active-journey mutual exclusion is
+      enforced and unit-tested in the coordinator, not left to the UI.
+    - >-
+      RepositoryService and RepoSummary are intentionally not modified. Owner-scoped
+      candidates come through the new RepositoryCandidateSource gateway. The
+      GitHub-backed candidate source, the live-access verifier, and the
+      ProjectMappingWriter production adapters (including preserving other project
+      fields and unrelated projects) are wired by the UI child 03, matching child
+      00's foundation-library seam-deferral pattern.
+    - >-
+      The record schema version is bumped so child-01 (v1) records migrate by
+      initializing adoption to null. adoption is declared optional only so
+      pre-existing NativeSyncHandoffRecord literals still type-check; domain
+      functions always set it.
+outcome:
+  status: completed
+  completed_at: '2026-07-24T07:10:00Z'
+  summary: |
+    Delivered native-sync repository adoption as an additive chain merge onto
+    child 01 (no supersede). nativeSyncHandoff.ts gained a nested adoption
+    sub-state (NativeSyncAdoptionState / NativeSyncAdoptionStatus, a nullable
+    optional `adoption` field, and the pure transitions applySelection /
+    applyCompletion), with the handoff schema bumped to 2 and parseStoredHandoff
+    validating the sub-state and migrating v1 records by initializing adoption to
+    null. NativeSyncHandoffStore gained recordSelection / recordCompletion
+    (idempotent, lock-after-complete, throw on missing record). Two new modules
+    ship: a pure candidate-ranking domain (nativeSyncAdoption.ts:
+    rankAdoptionCandidates) and an injectable staged coordinator
+    (nativeSyncRepositoryAdoption.ts: discoverAdoptionCandidates, adoptRepository)
+    with its gateway interfaces (RepositoryCandidateSource, ProjectMappingWriter)
+    plus verifyRepositoryAccess. adoptRepository enforces attestation +
+    beginJourney mutual exclusion + live-access before persisting selection,
+    writing ONLY the current project mapping, and marking completion.
+  rationale: |
+    Chosen as one combined slice per the approved plan. The decisive design move
+    was making the handoff-record evolution ADDITIVE: keeping NativeSyncHandoffStatus
+    'pending' and nesting the adoption lifecycle in a new optional `adoption` field
+    let child 02 chain-merge onto child 01 instead of superseding it, so child 01
+    stays active and all its behavioral tests pass unchanged. Owner-scoped
+    candidates come through a new injectable RepositoryCandidateSource so
+    RepositoryService/RepoSummary are untouched; the GitHub-backed candidate
+    source, live-access verifier, and project-mapping writer are deferred to the
+    UI child 03 (foundation-library seam-deferral, matching child 00). beginJourney
+    lives in the coordinator so single-active-journey mutual exclusion is enforced
+    and unit-tested here. The coordinator is fail-loud and staged (selection ->
+    mapping -> completion, each idempotent) so a duplicate event or MV3 restart
+    converges on the same mapping, and the mapping is driven from the persisted
+    selection rather than the raw input so a completed adoption is locked.
+  lessons:
+    - lesson_type: additive-chain-merge-over-supersede
+      summary: |
+        Evolving a completed sibling contract (child 01's handoff record) by
+        NESTING new lifecycle state in a new optional field — instead of widening
+        an existing type/adding required fields — kept the change an additive MAID
+        chain merge rather than a supersede. This avoided re-declaring and
+        re-testing child 01's whole surface, kept child 01 active, and let its
+        defensively-written tests (>= 1 version assertions, partial shape checks)
+        pass unchanged. When evolving a contract, prefer a shape that does not
+        redefine any existing artifact.
+      tags: [maid, chain-merge, clean-architecture, state-management, native-github-sync]
+      paths:
+        - src/lib/native-sync/nativeSyncHandoff.ts
+        - src/lib/services/NativeSyncHandoffStore.ts
+        - src/lib/native-sync/nativeSyncAdoption.ts
+        - src/lib/native-sync/nativeSyncRepositoryAdoption.ts
+  review_notes:
+    - source: implementer (inline adversarial self-review; heavy-change review-gate fallback)
+      severity: ready
+      summary: |
+        Read-only self-review with a code-review stance found no blockers. Confirmed
+        scope fidelity (only the 2 additively-edited files, 2 new modules, 4 new
+        test files, and the manifest changed; no child-01 artifact redefined),
+        exact artifact match (MAID implementation validation PASS), genuine
+        state-based tests (ordering pinned via a real getHandoff probe inside the
+        mapping writer; idempotency via short-circuit; only-current-project via a
+        recording fake), and fail-loud gates (attestation, journey mutual
+        exclusion, live-access all block with no mapping write). Two acceptable,
+        documented trade-offs: (1) a live-access failure leaves the handoff journey
+        active because beginJourney runs before the access check — harmless because
+        beginJourney is idempotent on retry and the migration lane is already
+        mutually excluded by private-import provenance; (2) parseAdoptionState
+        accepts a 'completed' sub-state with a null completedAt, which the domain
+        never produces (applyCompletion always sets it) and which carries no safety
+        impact.
+    - source: maid-implementation-reviewer (independent read-only subagent)
+      severity: ready
+      summary: |
+        Verdict Ready to merge, no blockers, no should-fix. Reviewed under a
+        clean-architecture + unit-testing-principles lens. Confirmed scope fidelity
+        (only manifest-declared files changed; no files.read edited), exact artifact
+        match with no undeclared public exports, the additive chain merge keeps
+        child 00/01 active and green, and the staged coordinator ordering / fail-loud
+        gates / idempotency-repair convergence / provenance preservation / ranking
+        rules are all correct and state-verified. Praised the persist-before-mapping
+        ordering probe as a genuine behavioral (not mock-call-order) assertion. Three
+        nitpicks and one design observation. Disposition: nitpick 1 (injected-gateway
+        arguments not asserted) was FIXED in-slice — the coordinator tests now assert
+        listOwnerRepositories receives handoff.owner and verifyRepositoryAccess
+        receives (owner, selectedRepo, selectedBranch). Nitpicks 2 (lenient
+        completedAt) and 3 (malformed handoff surfaces as no_handoff) and the
+        beginJourney-before-live-access ordering observation are accepted as
+        documented, fail-safe trade-offs; clearing activeJourney after completion is
+        correctly deferred to a later child.
+  validation:
+    - command:
+        - pnpm
+        - exec
+        - vitest
+        - run
+        - src/lib/native-sync/__tests__/nativeSyncAdoption.test.ts
+        - src/lib/native-sync/__tests__/nativeSyncHandoffAdoptionState.test.ts
+        - src/lib/services/__tests__/NativeSyncHandoffStoreAdoption.test.ts
+        - src/lib/native-sync/__tests__/nativeSyncRepositoryAdoption.test.ts
+      status: passed
+      summary: 29 new behavioral tests passed (7 ranking + 8 domain sub-state + 5 store + 9 coordinator) covering exclusion/owner/pre-handoff filtering, none/single/multiple states, selection/completion transitions with lock-after-complete, staged persist-before-mapping ordering, only-current-project mapping, provenance preservation, journey mutual exclusion, live-access gating, idempotency, and partial-state repair.
+    - command:
+        - ./scripts/maid
+        - validate
+        - manifests/02-native-sync-repository-adoption.manifest.yaml
+        - --mode
+        - implementation
+      status: passed
+      summary: Implementation-mode validation passed; declared public surface matches the source (additive chain merge onto child 01 resolves NativeSyncHandoffRecord across manifests) with no E200/E300/E301. Only pre-existing E110 warnings on the unrelated prepare-v2-0-0 manifest remain.
+    - command: [pnpm, lint]
+      status: passed
+      summary: ESLint clean (no console.*, no any, no unused vars) across both new modules and all four new test files.
+    - command: [pnpm, check]
+      status: passed
+      summary: svelte-check reported 0 errors and 0 warnings.
+    - command: [pnpm, build]
+      status: passed
+      summary: Production extension build completed successfully.
+    - command: [pnpm, 'test:ci']
+      status: passed
+      summary: Full Vitest CI suite passed (206 files, 4065 tests) with no regressions, including child 00 and child 01 suites unchanged, confirming the additive evolution did not break the existing handoff contract.
