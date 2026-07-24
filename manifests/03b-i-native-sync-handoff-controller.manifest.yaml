@@ -1,0 +1,431 @@
+schema: '2'
+goal: |
+  Provide the headless orchestration core of the guided native-sync handoff
+  surface: a controller that drives the discover -> select -> attest -> adopt
+  journey over child 02's coordinator and exposes 03a's view via deriveHandoffView,
+  plus a deps assembler that builds child 02's AdoptionDeps from an injected
+  environment (with a defensive created_at guard). No Svelte, no chrome/GitHub
+  edge — fully unit-testable with fakes.
+description: |
+  Promoted from child 03-native-sync-handoff-ui-and-recovery of the parent epic
+  manifests/drafts/native-github-sync-handoff.manifest.yaml. Child 03 was split
+  into 03a (shipped: pure presenter + gateway adapters) and 03b (the UI). 03b was
+  then split again (approved 2026-07-24) because it spans a headless state
+  machine, a composition root, a Svelte surface, and App/home wiring:
+
+    03b-i (this slice) — the headless controller + the deps assembler. Unit-tested
+      with fakes, no Svelte, no chrome/GitHub edge.
+    03b-ii (next slice) — the Svelte modal handoff component, the popup
+      home/project-view resumable entry point, the auto-prompt-once wiring in
+      src/popup/App.svelte, the real-service composition root that builds a
+      NativeSyncAdoptionEnvironment from createConnectedGitHubAppService +
+      ChromeStorageService + the chrome-local stores, and component/e2e coverage.
+
+  Two new modules:
+
+  - src/lib/native-sync/NativeSyncHandoffController.ts — a class that holds the
+    transient UI journey state (loaded handoff record, discovery result, current
+    selection, last adoption outcome, discovery connection-error flag, dismissed
+    flag) and orchestrates child 02's discoverAdoptionCandidates / adoptRepository.
+    getView() maps that state into 03a's HandoffViewInput and returns
+    deriveHandoffView(...), so every phase/action decision stays in the reviewed
+    03a presenter. The controller never re-implements adoption ordering or gating
+    (child 02 owns those) and never re-derives the view (03a owns that); it only
+    sequences user actions and records their results.
+
+  - src/lib/native-sync/nativeSyncAdoptionDeps.ts — buildAdoptionDeps(env) wires
+    03a's createRepositoryCandidateSource / createRepositoryAccessVerifier /
+    createProjectMappingWriter over an injected NativeSyncAdoptionEnvironment
+    (a narrow GitHub service, a ProjectSettingsGateway, and the two stores) and
+    returns child 02's AdoptionDeps. sanitizeRepoListEntries applies the defensive
+    guard the 03a implementation review flagged: repository entries whose
+    created_at does not parse are dropped into a reported `dropped` list (never
+    silently ranked as NaN), so a malformed timestamp is visible, not hidden.
+
+  Design rationale:
+  - The controller is a thin orchestration layer over already-tested policy: child
+    02 enforces the attestation/journey/live-access gates and the staged,
+    idempotent mapping write; 03a decides the view. Keeping the controller free of
+    those concerns means its tests pin sequencing and state transitions (a blocked
+    outcome shows the blocked view with no mapping write; a completed record is
+    terminal) without duplicating gate logic.
+  - Adoption completion is loaded from adoptRepository's returned record, so the
+    controller shows 'completed' only when the persisted record says so, matching
+    03a's completion-from-record-only rule.
+  - The deps assembler takes an injected environment rather than constructing
+    UnifiedGitHubService / chrome.storage itself, so it is testable with fakes.
+    The real-service environment (the createConnectedGitHubAppService +
+    ChromeStorageService + chrome-local-store edge) is 03b-ii's composition root.
+temptations:
+  - risk: Do not re-implement the attestation, single-active-journey, or live-access gates in the controller.
+    instead: Call child 02's adoptRepository, which enforces all three gates and performs the staged mapping write; record only its returned status and record.
+  - risk: Do not compute the phase or available actions inside the controller with ad hoc conditionals.
+    instead: Build a HandoffViewInput from the controller state and return deriveHandoffView(input) from 03a, so the reviewed presenter remains the single source of view policy.
+  - risk: Do not show 'completed' from a transient adopted return without reloading the persisted record.
+    instead: On an 'adopted' result set the handoff to adoptRepository's returned completed record; on any blocking status set only lastOutcome and write no mapping.
+  - risk: Do not let sanitizeRepoListEntries pass an unparseable created_at through as NaN, which would silently drop the repo from suggested ranking.
+    instead: Parse created_at, keep only entries that parse, and return the dropped names so the caller can surface them; never emit NaN into RepositoryCandidateInput.
+  - risk: Do not construct UnifiedGitHubService, ChromeStorageService, or chrome.storage inside this slice.
+    instead: Take a NativeSyncAdoptionEnvironment and the two stores as injected collaborators; the real-service composition root is 03b-ii.
+type: feature
+files:
+  create:
+    - path: src/lib/native-sync/nativeSyncAdoptionDeps.ts
+      artifacts:
+        - kind: interface
+          name: NativeSyncGitHubService
+          description: Narrow GitHub surface the deps assembler needs; structurally satisfied by UnifiedGitHubService in 03b-ii.
+        - kind: attribute
+          name: listRepos
+          of: NativeSyncGitHubService
+          type: "() => Promise<GitHubRepoListEntry[]>"
+        - kind: attribute
+          name: repoExists
+          of: NativeSyncGitHubService
+          type: "(owner: string, repo: string) => Promise<boolean>"
+        - kind: attribute
+          name: listBranches
+          of: NativeSyncGitHubService
+          type: "(owner: string, repo: string) => Promise<GitHubBranchName[]>"
+        - kind: interface
+          name: NativeSyncAdoptionEnvironment
+          description: Injected collaborators buildAdoptionDeps assembles into child-02 AdoptionDeps.
+        - kind: attribute
+          name: gitHubService
+          of: NativeSyncAdoptionEnvironment
+          type: NativeSyncGitHubService
+        - kind: attribute
+          name: projectSettings
+          of: NativeSyncAdoptionEnvironment
+          type: ProjectSettingsGateway
+        - kind: attribute
+          name: journeyStore
+          of: NativeSyncAdoptionEnvironment
+          type: NativeSyncJourneyStore
+        - kind: attribute
+          name: handoffStore
+          of: NativeSyncAdoptionEnvironment
+          type: NativeSyncHandoffStore
+        - kind: interface
+          name: RepoListSanitizeResult
+          description: The valid repository entries plus the names dropped for an unparseable created_at.
+        - kind: attribute
+          name: valid
+          of: RepoListSanitizeResult
+          type: GitHubRepoListEntry[]
+        - kind: attribute
+          name: dropped
+          of: RepoListSanitizeResult
+          type: string[]
+        - kind: function
+          name: sanitizeRepoListEntries
+          args:
+            - name: entries
+              type: GitHubRepoListEntry[]
+          returns: RepoListSanitizeResult
+          description: |
+            Partition repository entries into those with a parseable ISO
+            created_at (valid) and the names of those without (dropped). Never
+            emits an entry whose created_at would become NaN downstream.
+        - kind: function
+          name: buildAdoptionDeps
+          args:
+            - name: env
+              type: NativeSyncAdoptionEnvironment
+          returns: AdoptionDeps
+          description: |
+            Assemble child-02 AdoptionDeps from the injected environment: a
+            candidate source over a sanitized repository lister, a live-access
+            verifier, a project-mapping writer, and the two provided stores. When
+            sanitizeRepoListEntries drops any repository for an unparseable
+            created_at, the dropped names are logged via the module logger so a
+            malformed timestamp is visible in this layer, not silently hidden.
+    - path: src/lib/native-sync/NativeSyncHandoffController.ts
+      artifacts:
+        - kind: class
+          name: NativeSyncHandoffController
+          description: |
+            Headless controller for the guided native-sync handoff. Holds the
+            transient journey UI state and orchestrates child-02 discovery and
+            adoption, exposing the current view via 03a's deriveHandoffView. Cheap
+            to construct (assigns collaborators only; all I/O is in async methods).
+        - kind: method
+          name: getView
+          of: NativeSyncHandoffController
+          args: []
+          returns: NativeSyncHandoffView
+          description: Return the current view by mapping controller state into a HandoffViewInput and calling deriveHandoffView.
+        - kind: method
+          name: load
+          of: NativeSyncHandoffController
+          args: []
+          returns: Promise<void>
+          description: Load the project's handoff record from the handoff store into controller state.
+        - kind: method
+          name: discover
+          of: NativeSyncHandoffController
+          args: []
+          returns: Promise<void>
+          description: |
+            Ensure the handoff is loaded, then discover suggested candidates via
+            child-02 discoverAdoptionCandidates; on success set the discovery
+            result and clear the connection-error flag, on failure set the flag.
+        - kind: method
+          name: search
+          of: NativeSyncHandoffController
+          args:
+            - name: query
+              type: string
+          returns: Promise<void>
+          description: Discover candidates in explicit search mode for the given query, the manual escape hatch when suggestions find nothing.
+        - kind: method
+          name: select
+          of: NativeSyncHandoffController
+          args:
+            - name: repo
+              type: string
+            - name: branch
+              type: string
+          returns: void
+          description: Record the user's explicit repository/branch selection, moving the view to confirm.
+        - kind: method
+          name: back
+          of: NativeSyncHandoffController
+          args: []
+          returns: void
+          description: Clear the current selection and any transient error signals, returning to discovery or guidance.
+        - kind: method
+          name: attestAndAdopt
+          of: NativeSyncHandoffController
+          args:
+            - name: attested
+              type: boolean
+          returns: Promise<void>
+          description: |
+            Adopt the current selection via child-02 adoptRepository using an
+            attestation built from the selection. On 'adopted' load the returned
+            completed record; on any blocking status record only the outcome and
+            write no mapping.
+        - kind: method
+          name: retry
+          of: NativeSyncHandoffController
+          args: []
+          returns: Promise<void>
+          description: Clear transient error signals and re-run discovery after a degraded state.
+        - kind: method
+          name: dismiss
+          of: NativeSyncHandoffController
+          args: []
+          returns: void
+          description: Mark the surface dismissed so the view becomes the resumable dismissed state.
+        - kind: method
+          name: resume
+          of: NativeSyncHandoffController
+          args: []
+          returns: void
+          description: Clear the dismissed flag so the view returns to its active phase.
+    - path: src/lib/native-sync/__tests__/nativeSyncAdoptionDeps.test.ts
+      artifacts:
+        - kind: test_function
+          name: sanitizeRepoListEntries keeps entries with a parseable created_at and drops the rest by name
+        - kind: test_function
+          name: sanitizeRepoListEntries keeps every entry and drops none when all created_at values parse
+        - kind: test_function
+          name: buildAdoptionDeps produces a candidate source that excludes entries with an unparseable created_at
+        - kind: test_function
+          name: buildAdoptionDeps wires a live-access verifier that reflects the injected GitHub service
+        - kind: test_function
+          name: buildAdoptionDeps wires a mapping writer that persists through the injected project settings gateway
+        - kind: test_function
+          name: buildAdoptionDeps passes the injected journey and handoff stores through to the coordinator deps
+    - path: src/lib/native-sync/__tests__/NativeSyncHandoffController.test.ts
+      artifacts:
+        - kind: test_function
+          name: load surfaces the guidance phase for a pending handoff record
+        - kind: test_function
+          name: discover populates candidates and moves the view to discovery
+        - kind: test_function
+          name: discover blocks with discovery_failed when candidate discovery throws
+        - kind: test_function
+          name: select moves the view to confirm and echoes the chosen repository and branch
+        - kind: test_function
+          name: attestAndAdopt without attestation blocks as not_attested and writes no project mapping
+        - kind: test_function
+          name: attestAndAdopt with attestation and live access completes and writes the project mapping once
+        - kind: test_function
+          name: attestAndAdopt blocks as inaccessible when the selected repository fails the live-access check
+        - kind: test_function
+          name: back clears a blocked adoption outcome and returns to discovery
+        - kind: test_function
+          name: dismiss then resume toggles the resumable dismissed state
+        - kind: test_function
+          name: search surfaces a pre-handoff repository that suggested discovery omits
+        - kind: test_function
+          name: retry recovers to discovery after a transient discovery failure
+        - kind: test_function
+          name: a completed adoption is terminal so further discovery keeps the completed view
+  read:
+    - docs/draft-manifest-workflow.md
+    - docs/unit-testing-rules.md
+    - manifests/drafts/native-github-sync-handoff.manifest.yaml
+    - manifests/03a-native-sync-handoff-presenter-and-gateways.manifest.yaml
+    - manifests/02-native-sync-repository-adoption.manifest.yaml
+    - manifests/01-native-sync-handoff-state.manifest.yaml
+    - manifests/00-native-sync-journey-routing.manifest.yaml
+    - src/lib/native-sync/nativeSyncHandoffView.ts
+    - src/lib/native-sync/nativeSyncGateways.ts
+    - src/lib/native-sync/nativeSyncAdoption.ts
+    - src/lib/native-sync/nativeSyncRepositoryAdoption.ts
+    - src/lib/native-sync/nativeSyncHandoff.ts
+    - src/lib/services/NativeSyncHandoffStore.ts
+    - src/lib/services/NativeSyncJourneyStore.ts
+    - src/services/UnifiedGitHubService.ts
+    - src/lib/services/chromeStorage.ts
+    - src/lib/utils/connectedGitHubAppService.ts
+validate:
+  - pnpm exec vitest run src/lib/native-sync/__tests__/NativeSyncHandoffController.test.ts src/lib/native-sync/__tests__/nativeSyncAdoptionDeps.test.ts
+  - ./scripts/maid validate manifests/03b-i-native-sync-handoff-controller.manifest.yaml --mode behavioral
+  - pnpm lint
+  - pnpm check
+  - pnpm build
+created: '2026-07-24T14:40:00Z'
+metadata:
+  tags:
+    - native-github-sync
+    - handoff-ui
+    - controller
+    - composition-root
+    - repository-adoption
+  priority: high
+  parent_epic: manifests/drafts/native-github-sync-handoff.manifest.yaml
+  split_from: 03-native-sync-handoff-ui-and-recovery
+  sibling_slices:
+    - manifests/03a-native-sync-handoff-presenter-and-gateways.manifest.yaml
+    - 03b-ii-native-sync-handoff-component-and-entrypoint
+  dependency_notes:
+    - >-
+      Depends on shipped 03a (deriveHandoffView, NativeSyncHandoffView,
+      HandoffViewInput, createRepositoryCandidateSource,
+      createRepositoryAccessVerifier, createProjectMappingWriter,
+      GitHubRepoListEntry, GitHubBranchName, ProjectSettingsGateway) and children
+      00/01/02 (NativeSyncJourneyStore, NativeSyncHandoffStore,
+      discoverAdoptionCandidates, adoptRepository, AdoptionDeps, AdoptionSelection,
+      NativeSyncAdoptionOutcome, NativeSyncCandidateResult).
+    - >-
+      This slice is the headless logic only. The Svelte modal handoff component,
+      the popup home/project-view resumable entry point, the auto-prompt-once
+      wiring in src/popup/App.svelte, the real-service composition root that builds
+      a NativeSyncAdoptionEnvironment (createConnectedGitHubAppService +
+      ChromeStorageService + createChromeLocal* stores; note the project title must
+      come from the projectSettings store because ChromeStorageService.getProjectSettings
+      drops projectTitle from its return type), and component/e2e coverage are 03b-ii.
+  approved_decisions:
+    - 03b is split; promote the headless controller + deps assembler (03b-i)
+      first, then the Svelte modal component + entry point + App wiring (03b-ii).
+    - The guided handoff surface is a modal dialog (auto-opens once on pending
+      detection, re-openable from the home/project view) — 03b-ii.
+outcome:
+  status: completed
+  completed_at: '2026-07-24T15:25:00Z'
+  summary: |
+    Delivered the headless core of the guided native-sync handoff surface as two
+    new modules: NativeSyncHandoffController (src/lib/native-sync/NativeSyncHandoffController.ts),
+    a class that holds the transient journey UI state and orchestrates child-02
+    discoverAdoptionCandidates / adoptRepository while exposing the view via 03a's
+    deriveHandoffView, and the deps assembler (src/lib/native-sync/nativeSyncAdoptionDeps.ts)
+    with buildAdoptionDeps + the sanitizeRepoListEntries created_at guard. All 18
+    behavioral tests (12 controller + 6 deps) pass. The Svelte modal component, the
+    popup home/project-view entry point, the auto-prompt-once App.svelte wiring, the
+    real-service composition root, and component/e2e coverage are deferred to 03b-ii.
+  rationale: |
+    Scoped as the headless logic core (approved second split of child 03) so the
+    adoption journey state machine is unit-testable with fakes, no DOM. The
+    controller deliberately re-implements no policy: child 02's adoptRepository owns
+    the attestation / single-active-journey / live-access gates and the staged,
+    idempotent mapping write, and 03a's deriveHandoffView owns all phase/action
+    decisions. The controller only sequences user actions and records their results,
+    and shows 'completed' solely from the persisted record adoptRepository returns
+    (never a transient outcome), so completion stays terminal and honest. The deps
+    assembler takes an injected NativeSyncAdoptionEnvironment rather than
+    constructing UnifiedGitHubService / chrome.storage, keeping it testable; the
+    sanitizeRepoListEntries guard drops entries with an unparseable created_at and
+    buildAdoptionDeps logs the dropped names, so a malformed timestamp is visible
+    rather than silently ranked as NaN.
+  lessons:
+    - lesson_type: thin-controller-over-tested-policy
+      summary: |
+        A headless controller that sequences user actions over already-tested
+        policy (child-02 gates, 03a view derivation) stays small and fully
+        unit-testable with real stores + the real coordinator over fakes, without
+        duplicating gate or view logic. Pinning completion to the persisted record
+        (not a transient outcome) makes terminal completion compose correctly with
+        the presenter's phase precedence.
+      tags: [maid, clean-architecture, state-machine, native-github-sync]
+      paths:
+        - src/lib/native-sync/NativeSyncHandoffController.ts
+        - src/lib/native-sync/nativeSyncAdoptionDeps.ts
+  review_notes:
+    - source: maid-plan-reviewer (pre-implementation)
+      severity: finding-fixed
+      summary: |
+        Verdict Approved with no blockers. Closed two of three advisories before
+        implementation: added an all-valid hardening test for sanitizeRepoListEntries
+        (guards against a hardcoded impl), and documented that buildAdoptionDeps logs
+        dropped names for fail-loud visibility (implemented as a logger.warn). The
+        third advisory (controller anti-gaming resting on the concrete paired
+        temptations rather than forced-delegation tests) is the correct
+        behavior-over-implementation stance and needed no change.
+    - source: maid-implementation-reviewer
+      severity: ready
+      summary: |
+        Verdict Ready to merge, no blockers and no should-fix. Confirmed scope
+        fidelity (only the declared modules/tests changed; no Svelte/App.svelte/real
+        composition root), exact artifact match (maid implementation PASS, no
+        E300/E301), and the safety behaviors in code: no re-implemented gates
+        (delegates to adoptRepository), no re-derived view (delegates to
+        deriveHandoffView), completion-from-persisted-record-only, no mapping write on
+        blocked paths, back() clears transient signals, terminal completion, the NaN
+        guard + fail-loud logger.warn, and no this-binding hazard in the verifier
+        wiring. Three optional nitpicks (post-completion discover() does a discarded
+        I/O call; the if(result.record) guard on an unreachable null; created_at
+        parsed twice) were left as-is to avoid gold-plating; nitpick 1 is carried
+        forward as a note for 03b-ii (the UI should not call discover() after
+        completion).
+  validation:
+    - command:
+        - pnpm
+        - exec
+        - vitest
+        - run
+        - src/lib/native-sync/__tests__/NativeSyncHandoffController.test.ts
+        - src/lib/native-sync/__tests__/nativeSyncAdoptionDeps.test.ts
+      status: passed
+      summary: 18 behavioral tests passed (12 controller + 6 deps) covering the full journey, blocked paths with no mapping write, search-vs-suggested, retry/back/dismiss/resume, terminal completion, and the created_at sanitize guard.
+    - command:
+        - ./scripts/maid
+        - validate
+        - manifests/03b-i-native-sync-handoff-controller.manifest.yaml
+        - --mode
+        - implementation
+      status: passed
+      summary: Implementation-mode validation passed; declared public surface matches the source with no E300/E301.
+    - command:
+        - ./scripts/maid
+        - validate
+        - manifests/03b-i-native-sync-handoff-controller.manifest.yaml
+        - --mode
+        - behavioral
+      status: passed
+      summary: Behavioral validation passed with no E200/E600; only pre-existing unrelated E110 warnings from prepare-v2-0-0-github-app-release remain.
+    - command: [pnpm, lint]
+      status: passed
+      summary: ESLint clean on both new modules and both test files (no console.*, uses createLogger, no any).
+    - command: [pnpm, check]
+      status: passed
+      summary: svelte-check reported 0 errors and 0 warnings.
+    - command: [pnpm, build]
+      status: passed
+      summary: Production extension build completed successfully.
+    - command: [pnpm, 'test:ci']
+      status: passed
+      summary: Full Vitest CI suite passed (210 files, 4106 tests) with no regressions.
