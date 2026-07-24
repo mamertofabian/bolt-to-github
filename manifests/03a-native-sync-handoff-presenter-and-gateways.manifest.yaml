@@ -1,0 +1,505 @@
+schema: '2'
+goal: |
+  Provide the pure, fully testable core of the native-sync handoff surface: a
+  view-state presenter that derives the guided-handoff phase, actions, and honest
+  completion semantics from the persisted handoff record plus discovery/adoption
+  signals, and the production gateway adapters that wire child 02's adoption
+  coordinator to real GitHub listing/access and project-mapping persistence.
+description: |
+  Promoted from child 03-native-sync-handoff-ui-and-recovery of the parent epic
+  manifests/drafts/native-github-sync-handoff.manifest.yaml. Child 03 was split
+  (approved 2026-07-24) into two implementation-sized slices:
+
+    03a (this slice) — the pure logic core: a handoff view-state presenter and
+      the production gateway adapters. No Svelte, no chrome.storage/GitHub edge.
+    03b (next slice) — the Svelte guided-handoff component, the resumable entry
+      point in the popup home/project view, the auto-prompt-once wiring in
+      src/popup/App.svelte, the thin composition root that builds AdoptionDeps
+      from createConnectedGitHubAppService + ChromeStorageService, and the
+      component + end-to-end journey coverage.
+
+  This split keeps UI policy (which state to show, which recovery actions exist,
+  and the honest completion language) separable from render mechanism, so the
+  safety-critical rules are unit-tested here with fakes and fixed data, before
+  any DOM or chrome mocks are involved. It mirrors how children 00 and 02
+  shipped their pure domains/coordinators and deferred the GitHub-backed edge.
+
+  Two new modules:
+
+  - src/lib/native-sync/nativeSyncHandoffView.ts — a pure presenter. Given the
+    current NativeSyncHandoffRecord (or null), an optional candidate discovery
+    result, the user's current selection, the last adoption outcome, a discovery
+    connection-error flag, and a dismissed flag, it returns a single flat
+    NativeSyncHandoffView describing the phase, the three distinct repository
+    identities, the discovery/selection payloads, any blocking reason, the
+    completion summary, and the available recovery actions. It has no I/O.
+
+  - src/lib/native-sync/nativeSyncGateways.ts — production adapters that satisfy
+    child 02's injectable gateway interfaces (RepositoryCandidateSource,
+    ProjectMappingWriter, and the verifyRepositoryAccess callback) over narrow,
+    fakeable sub-gateways (RepositoryLister, RepositoryAccessChecker,
+    ProjectSettingsGateway). The adapters own the real transformation logic
+    (ISO created_at -> epoch ms and owner stamping; repo-exists AND
+    branch-membership; project-title preservation) so it is testable without
+    chrome or the GitHub API. The composition root that narrows
+    UnifiedGitHubService / ChromeStorageService into these sub-gateways and
+    reuses the existing live GitHub connection gate belongs to 03b.
+
+  Design rationale:
+  - Completion is derived ONLY from the persisted record's adoption sub-state,
+    never from a transient adoptRepository return value. A stale or optimistic
+    'adopted' outcome must not render the completed surface. This preserves the
+    epic rule that completion is a user-confirmed native mapping.
+  - The completed view carries a single honest basis literal
+    ('user_attested_adoption') and describes incoming sync as Bolt's native
+    integration ('bolt_native'), plus that Bolt may also create its own commits.
+    There is deliberately no 'verified'/'synced' phase or boolean, so the UI can
+    never claim a technically verified two-way sync.
+  - Discovery never auto-selects. Even a single candidate leaves the view
+    selection null and requires an explicit 'select' action; a no-candidate
+    result still offers both 'refresh' and 'search' (the manual escape hatch),
+    matching the epic's behavioral focus.
+  - The three repository identities are always kept distinct: originalRepo is
+    surfaced as preserved, tempRepo as the deleted short-lived clone, and the
+    adopted repository only appears in the completion summary.
+  - The mapping-writer adapter changes only repo and branch and preserves the
+    existing project title, so adopting a native repository can never blank a
+    user's project title or touch unrelated projects.
+temptations:
+  - risk: Do not add a 'verified', 'synced', or 'twoWaySync' phase, or a boolean like syncVerified, to make completion look stronger than it is.
+    instead: Keep NativeSyncCompletionSummary.basis a single 'user_attested_adoption' literal and describe incoming sync as Bolt's ('bolt_native'); completion is user confirmation, never proof of Bolt linkage.
+  - risk: Do not derive the completed phase from a transient lastOutcome of 'adopted'.
+    instead: Derive 'completed' only when handoff.adoption?.status === 'completed'; an 'adopted' outcome without a persisted completed record must stay in guidance/discovery.
+  - risk: Do not auto-select the single or newest candidate to skip a click in the discovery view.
+    instead: Keep view.selection null in the 'discovery' phase and require an explicit 'select' action, even for a single candidate; only the 'confirm' phase carries a selection.
+  - risk: Do not let createProjectMappingWriter blank the project title or invent a new one when it updates the mapping.
+    instead: Read the current title via ProjectSettingsGateway.getProjectTitle and pass that exact value (including undefined) back to saveProjectSettings, changing only repoName and branch.
+  - risk: Do not build the adapters directly on UnifiedGitHubService or ChromeStorageService in this slice, which would drag in untestable chrome/network edges.
+    instead: Keep the adapters over the narrow injected RepositoryLister / RepositoryAccessChecker / ProjectSettingsGateway; wiring them to the real services via createConnectedGitHubAppService is 03b's composition root.
+type: feature
+files:
+  create:
+    - path: src/lib/native-sync/nativeSyncHandoffView.ts
+      artifacts:
+        - kind: type
+          name: NativeSyncHandoffPhase
+          type: "'inactive' | 'guidance' | 'discovery' | 'confirm' | 'blocked' | 'dismissed' | 'completed'"
+          description: The distinct phases of the guided handoff surface, used as the view discriminant.
+        - kind: type
+          name: NativeSyncHandoffAction
+          type: "'enable_bolt_native' | 'discover' | 'refresh' | 'search' | 'select' | 'attest_and_adopt' | 'back' | 'retry' | 'resume' | 'dismiss'"
+          description: A user-invokable action the current phase makes available.
+        - kind: type
+          name: NativeSyncBlockedReason
+          type: "'not_attested' | 'inaccessible' | 'journey_blocked' | 'no_handoff' | 'discovery_failed'"
+          description: Why the surface is in a visible, recoverable blocked state.
+        - kind: interface
+          name: NativeSyncRepoIdentities
+          description: The three repository identities the UI must keep distinct through the handoff.
+        - kind: attribute
+          name: owner
+          of: NativeSyncRepoIdentities
+          type: string
+        - kind: attribute
+          name: originalRepo
+          of: NativeSyncRepoIdentities
+          type: string
+        - kind: attribute
+          name: tempRepo
+          of: NativeSyncRepoIdentities
+          type: string
+        - kind: interface
+          name: NativeSyncCompletionSummary
+          description: |
+            Honest completion payload. Present only when adoption is completed;
+            it names the adopted repository/branch and encodes that incoming sync
+            is Bolt's native integration, not a verified two-way sync.
+        - kind: attribute
+          name: adoptedRepo
+          of: NativeSyncCompletionSummary
+          type: string
+        - kind: attribute
+          name: adoptedBranch
+          of: NativeSyncCompletionSummary
+          type: string
+        - kind: attribute
+          name: basis
+          of: NativeSyncCompletionSummary
+          type: "'user_attested_adoption'"
+        - kind: attribute
+          name: incomingSyncProvider
+          of: NativeSyncCompletionSummary
+          type: "'bolt_native'"
+        - kind: attribute
+          name: boltMayAlsoCommit
+          of: NativeSyncCompletionSummary
+          type: "true"
+        - kind: interface
+          name: HandoffViewInput
+          description: All inputs the presenter needs to derive the current handoff view; no I/O is performed.
+        - kind: attribute
+          name: handoff
+          of: HandoffViewInput
+          type: NativeSyncHandoffRecord | null
+        - kind: attribute
+          name: discovery
+          of: HandoffViewInput
+          type: NativeSyncCandidateResult | null
+        - kind: attribute
+          name: selection
+          of: HandoffViewInput
+          type: AdoptionSelection | null
+        - kind: attribute
+          name: lastOutcome
+          of: HandoffViewInput
+          type: NativeSyncAdoptionOutcome | null
+        - kind: attribute
+          name: connectionError
+          of: HandoffViewInput
+          type: boolean
+        - kind: attribute
+          name: dismissed
+          of: HandoffViewInput
+          type: boolean
+        - kind: interface
+          name: NativeSyncHandoffView
+          description: Flat, render-ready description of the handoff surface for the current inputs.
+        - kind: attribute
+          name: phase
+          of: NativeSyncHandoffView
+          type: NativeSyncHandoffPhase
+        - kind: attribute
+          name: identities
+          of: NativeSyncHandoffView
+          type: NativeSyncRepoIdentities | null
+        - kind: attribute
+          name: discovery
+          of: NativeSyncHandoffView
+          type: NativeSyncCandidateResult | null
+        - kind: attribute
+          name: selection
+          of: NativeSyncHandoffView
+          type: AdoptionSelection | null
+        - kind: attribute
+          name: blocked
+          of: NativeSyncHandoffView
+          type: NativeSyncBlockedReason | null
+        - kind: attribute
+          name: completion
+          of: NativeSyncHandoffView
+          type: NativeSyncCompletionSummary | null
+        - kind: attribute
+          name: actions
+          of: NativeSyncHandoffView
+          type: NativeSyncHandoffAction[]
+        - kind: function
+          name: deriveHandoffView
+          args:
+            - name: input
+              type: HandoffViewInput
+          returns: NativeSyncHandoffView
+          description: |
+            Derive the single current NativeSyncHandoffView from the inputs.
+            Precedence: no record -> inactive; a completed adoption sub-state ->
+            completed (terminal, wins over dismissed/blocked/connectionError);
+            dismissed -> dismissed; a discovery connection error ->
+            blocked('discovery_failed'); a blocking lastOutcome -> blocked with
+            that reason; a selection -> confirm; a discovery result -> discovery;
+            otherwise guidance. Never auto-selects a candidate and never reports a
+            verified two-way sync. All four blocking adoption outcomes map to a
+            visible blocked reason: not_attested, inaccessible, journey_blocked,
+            and no_handoff. no_handoff is reachable when the view still holds a
+            stale non-null handoff but the adopt attempt found none (the record
+            vanished between reads); it surfaces as blocked, never a silent
+            success.
+    - path: src/lib/native-sync/nativeSyncGateways.ts
+      artifacts:
+        - kind: interface
+          name: GitHubRepoListEntry
+          description: Minimal repository listing shape the candidate adapter consumes, structurally satisfied by RepoSummary.
+        - kind: attribute
+          name: name
+          of: GitHubRepoListEntry
+          type: string
+        - kind: attribute
+          name: created_at
+          of: GitHubRepoListEntry
+          type: string
+        - kind: interface
+          name: GitHubBranchName
+          description: Minimal branch shape the access checker consumes.
+        - kind: attribute
+          name: name
+          of: GitHubBranchName
+          type: string
+        - kind: interface
+          name: RepositoryLister
+          description: Narrow gateway that lists the authenticated user's repositories for candidate discovery.
+        - kind: attribute
+          name: listRepos
+          of: RepositoryLister
+          type: "() => Promise<GitHubRepoListEntry[]>"
+        - kind: interface
+          name: RepositoryAccessChecker
+          description: Narrow gateway used to confirm a repository exists and contains the selected branch.
+        - kind: attribute
+          name: repoExists
+          of: RepositoryAccessChecker
+          type: "(owner: string, repo: string) => Promise<boolean>"
+        - kind: attribute
+          name: listBranches
+          of: RepositoryAccessChecker
+          type: "(owner: string, repo: string) => Promise<GitHubBranchName[]>"
+        - kind: interface
+          name: ProjectSettingsGateway
+          description: Narrow gateway to read the current project title and persist a project-scoped repo/branch mapping.
+        - kind: attribute
+          name: getProjectTitle
+          of: ProjectSettingsGateway
+          type: "(projectId: string) => Promise<string | undefined>"
+        - kind: attribute
+          name: saveProjectSettings
+          of: ProjectSettingsGateway
+          type: "(projectId: string, repoName: string, branch: string, projectTitle?: string) => Promise<void>"
+        - kind: function
+          name: createRepositoryCandidateSource
+          args:
+            - name: lister
+              type: RepositoryLister
+          returns: RepositoryCandidateSource
+          description: |
+            Adapt a RepositoryLister into a child-02 RepositoryCandidateSource,
+            stamping the requested owner on each entry and converting the ISO
+            created_at to epoch ms so child-02 ranking stays owner-scoped and
+            newest-first.
+        - kind: function
+          name: createRepositoryAccessVerifier
+          args:
+            - name: checker
+              type: RepositoryAccessChecker
+          returns: "(owner: string, repo: string, branch: string) => Promise<boolean>"
+          description: |
+            Build the verifyRepositoryAccess callback child 02 injects: resolves
+            true only when the repository exists AND the selected branch is
+            present, and short-circuits to false when the repository is missing.
+        - kind: function
+          name: createProjectMappingWriter
+          args:
+            - name: gateway
+              type: ProjectSettingsGateway
+          returns: ProjectMappingWriter
+          description: |
+            Adapt a ProjectSettingsGateway into a child-02 ProjectMappingWriter
+            that changes only repoName and branch for the given project while
+            preserving the existing project title (including undefined).
+    - path: src/lib/native-sync/__tests__/nativeSyncHandoffView.test.ts
+      artifacts:
+        - kind: test_function
+          name: deriveHandoffView returns the inactive phase with no identities when there is no handoff record
+        - kind: test_function
+          name: deriveHandoffView surfaces guidance with the distinct original and temporary repositories for a fresh pending handoff
+        - kind: test_function
+          name: deriveHandoffView guidance offers the enable-native and discover actions
+        - kind: test_function
+          name: deriveHandoffView presents a no-candidate discovery result with both refresh and search actions
+        - kind: test_function
+          name: deriveHandoffView keeps a single candidate in discovery without auto-selecting it
+        - kind: test_function
+          name: deriveHandoffView keeps multiple candidates in discovery and requires an explicit selection
+        - kind: test_function
+          name: deriveHandoffView moves to confirm and echoes the user selection when one is chosen
+        - kind: test_function
+          name: deriveHandoffView blocks on an inaccessible adoption outcome with a retry action
+        - kind: test_function
+          name: deriveHandoffView blocks on a journey-blocked adoption outcome
+        - kind: test_function
+          name: deriveHandoffView blocks on a not-attested adoption outcome with an attest action
+        - kind: test_function
+          name: deriveHandoffView blocks with no_handoff when the adoption outcome reports a missing record
+        - kind: test_function
+          name: deriveHandoffView blocks with discovery_failed when discovery hit a connection error
+        - kind: test_function
+          name: deriveHandoffView shows a resumable dismissed state for a pending handoff
+        - kind: test_function
+          name: deriveHandoffView reports completion as a user-attested native mapping without claiming verified sync
+        - kind: test_function
+          name: deriveHandoffView treats a completed record as terminal over dismissed and blocking signals
+        - kind: test_function
+          name: deriveHandoffView does not report completion from a transient adopted outcome without a completed record
+    - path: src/lib/native-sync/__tests__/nativeSyncGateways.test.ts
+      artifacts:
+        - kind: test_function
+          name: createRepositoryCandidateSource stamps the requested owner and converts ISO created_at to epoch ms
+        - kind: test_function
+          name: createRepositoryCandidateSource output feeds child-02 ranking so the original and temporary repositories are excluded
+        - kind: test_function
+          name: createRepositoryAccessVerifier resolves false when the repository does not exist
+        - kind: test_function
+          name: createRepositoryAccessVerifier resolves false when the branch is absent from an existing repository
+        - kind: test_function
+          name: createRepositoryAccessVerifier resolves true when the repository exists and contains the branch
+        - kind: test_function
+          name: createProjectMappingWriter updates only repo and branch and preserves the existing project title
+        - kind: test_function
+          name: createProjectMappingWriter passes through an undefined title without inventing one
+  read:
+    - docs/draft-manifest-workflow.md
+    - docs/component-testing-rules.md
+    - manifests/drafts/native-github-sync-handoff.manifest.yaml
+    - manifests/00-native-sync-journey-routing.manifest.yaml
+    - manifests/01-native-sync-handoff-state.manifest.yaml
+    - manifests/02-native-sync-repository-adoption.manifest.yaml
+    - src/lib/native-sync/nativeSyncHandoff.ts
+    - src/lib/native-sync/nativeSyncAdoption.ts
+    - src/lib/native-sync/nativeSyncRepositoryAdoption.ts
+    - src/lib/services/NativeSyncHandoffStore.ts
+    - src/lib/services/NativeSyncJourneyStore.ts
+    - src/services/RepositoryService.ts
+    - src/services/types/repository.ts
+    - src/lib/services/chromeStorage.ts
+    - src/lib/utils/connectedGitHubAppService.ts
+validate:
+  - pnpm exec vitest run src/lib/native-sync/__tests__/nativeSyncHandoffView.test.ts src/lib/native-sync/__tests__/nativeSyncGateways.test.ts
+  - ./scripts/maid validate manifests/03a-native-sync-handoff-presenter-and-gateways.manifest.yaml --mode behavioral
+  - pnpm lint
+  - pnpm check
+  - pnpm build
+created: '2026-07-24T14:00:00Z'
+metadata:
+  tags:
+    - native-github-sync
+    - handoff-ui
+    - presenter
+    - gateway-adapters
+    - repository-adoption
+  priority: high
+  parent_epic: manifests/drafts/native-github-sync-handoff.manifest.yaml
+  split_from: 03-native-sync-handoff-ui-and-recovery
+  sibling_slice: 03b-native-sync-handoff-component-and-entrypoint
+  dependency_notes:
+    - >-
+      Depends on shipped children 00 (NativeSyncJourneyStore), 01
+      (NativeSyncHandoffStore, NativeSyncHandoffRecord) and 02
+      (rankAdoptionCandidates, discoverAdoptionCandidates, adoptRepository, and
+      the injectable gateways RepositoryCandidateSource, ProjectMappingWriter,
+      AdoptionSelection, NativeSyncAdoptionOutcome, NativeSyncCandidateResult,
+      RepositoryCandidateInput).
+    - >-
+      This slice is the pure logic core only. The Svelte guided-handoff
+      component, the popup home/project-view resumable entry point, the
+      auto-prompt-once wiring in src/popup/App.svelte, the composition root that
+      builds AdoptionDeps from createConnectedGitHubAppService +
+      ChromeStorageService, and the component/e2e journey coverage are 03b.
+  approved_decisions:
+    - Child 03 is split; promote the presenter + gateway adapters (03a) first,
+      then the Svelte component + entry point (03b).
+    - The resumable entry point lives in the popup home/project view (03b).
+    - The popup auto-prompts once when a pending handoff record is detected, then
+      stays resumable from the entry point (03b).
+outcome:
+  status: completed
+  completed_at: '2026-07-24T14:15:00Z'
+  summary: |
+    Delivered the pure logic core of the native-sync handoff surface as two new
+    modules: a pure view-state presenter (src/lib/native-sync/nativeSyncHandoffView.ts)
+    that derives the single render-ready NativeSyncHandoffView from the persisted
+    handoff record plus discovery/adoption signals, and production gateway
+    adapters (src/lib/native-sync/nativeSyncGateways.ts) that satisfy child 02's
+    injectable RepositoryCandidateSource, verifyRepositoryAccess, and
+    ProjectMappingWriter over narrow, fakeable sub-gateways. All 23 behavioral
+    tests (16 presenter + 7 gateway) pass. The Svelte component, popup
+    home/project-view entry point, auto-prompt-once wiring, and the
+    createConnectedGitHubAppService/ChromeStorageService composition root are
+    intentionally deferred to child 03b.
+  rationale: |
+    Scoped as the pure logic core (approved split of child 03) so UI policy is
+    separable from render mechanism: which phase to show, which recovery actions
+    exist, and the honest completion language are all decided by one deterministic
+    function of HandoffViewInput, unit-tested with fakes and fixed data before any
+    DOM or chrome mocks. Completion is derived only from the persisted record's
+    adoption sub-state and is terminal, so a transient 'adopted' return can never
+    fake a completed surface. Honest-completion fields use single-value literal
+    types ('user_attested_adoption', 'bolt_native', true) so the type system
+    forbids ever widening completion into a verified two-way-sync claim. The
+    adapters own the real transformation logic (owner stamping + ISO->epoch
+    conversion; repo-exists AND branch-present with a genuine short-circuit;
+    project-title preservation) over narrow injected sub-gateways, keeping
+    chrome/GitHub entirely out of the testable core and deferring the composition
+    root to 03b.
+  lessons:
+    - lesson_type: pure-presenter-before-ui-mechanism
+      summary: |
+        Splitting the UI child into a pure view-state presenter plus gateway
+        adapters — before any Svelte, chrome, or GitHub edge — let every
+        safety-critical UI policy (completion-from-record-only, no verified sync,
+        no auto-select, refresh+search escape hatch, distinct repo identities) be
+        pinned by fast, deterministic unit tests. Encoding honest completion as
+        single-value literal-union types made the wrong state (a verified-sync
+        claim) unrepresentable rather than merely untested.
+      tags: [maid, clean-architecture, view-model, native-github-sync]
+      paths:
+        - src/lib/native-sync/nativeSyncHandoffView.ts
+        - src/lib/native-sync/nativeSyncGateways.ts
+  review_notes:
+    - source: maid-plan-reviewer (pre-implementation)
+      severity: finding-fixed
+      summary: |
+        Verdict Approved with no blockers. Raised three non-blocking advisories;
+        two were closed before implementation to tighten the contract: added
+        blocked-phase tests for the previously-untested declared reasons
+        not_attested and no_handoff (and documented no_handoff reachability in the
+        deriveHandoffView contract), and added a test asserting the guidance phase
+        exposes its forward actions (enable_bolt_native, discover). The third (a
+        loose toEqual trailing-undefined array match for the optional projectTitle)
+        was left as behaviorally identical and acceptable.
+    - source: maid-implementation-reviewer
+      severity: ready
+      summary: |
+        Verdict Ready to merge, no blockers and no should-fix items. Confirmed
+        scope fidelity (only the declared modules/tests changed; no chrome/GitHub
+        imports; the sole ChromeStorageService reference is a deferral docstring),
+        exact artifact match (maid implementation PASS, no E300/E301), all safety
+        temptations genuinely enforced (completion-from-record-only, terminal
+        completion, no auto-select, short-circuiting access verifier, title
+        preservation), textbook dependency inversion, and honest-completion literal
+        typing. One nitpick: Date.parse yields NaN on a non-ISO created_at, guarded
+        in practice by the upstream RepoSummary.created_at ISO contract — carried
+        forward as a defensive note for 03b's composition root, not a risk here.
+  validation:
+    - command:
+        - pnpm
+        - exec
+        - vitest
+        - run
+        - src/lib/native-sync/__tests__/nativeSyncHandoffView.test.ts
+        - src/lib/native-sync/__tests__/nativeSyncGateways.test.ts
+      status: passed
+      summary: 23 behavioral tests passed (16 presenter + 7 gateway) covering all phases, precedence, no-auto-select, honest/terminal completion, transient-adopted rejection, short-circuiting access verification, and title-preserving mapping writes.
+    - command:
+        - ./scripts/maid
+        - validate
+        - manifests/03a-native-sync-handoff-presenter-and-gateways.manifest.yaml
+        - --mode
+        - implementation
+      status: passed
+      summary: Implementation-mode validation passed; declared public surface matches the source with no E300/E301.
+    - command:
+        - ./scripts/maid
+        - validate
+        - manifests/03a-native-sync-handoff-presenter-and-gateways.manifest.yaml
+        - --mode
+        - behavioral
+      status: passed
+      summary: Behavioral validation passed with no E200/E600; only pre-existing unrelated E110 warnings from prepare-v2-0-0-github-app-release remain.
+    - command: [pnpm, lint]
+      status: passed
+      summary: ESLint clean on both new modules and both test files (no console.*, no any).
+    - command: [pnpm, check]
+      status: passed
+      summary: svelte-check reported 0 errors and 0 warnings.
+    - command: [pnpm, build]
+      status: passed
+      summary: Production extension build completed successfully.
+    - command: [pnpm, 'test:ci']
+      status: passed
+      summary: Full Vitest CI suite passed (208 files, 4088 tests) with no regressions.
