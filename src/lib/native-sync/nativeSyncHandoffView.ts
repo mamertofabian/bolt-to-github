@@ -56,6 +56,7 @@ export interface NativeSyncRepoIdentities {
   owner: string;
   originalRepo: string;
   tempRepo: string;
+  branch: string;
 }
 
 /**
@@ -98,6 +99,7 @@ function toIdentities(record: NativeSyncHandoffRecord): NativeSyncRepoIdentities
     owner: record.owner,
     originalRepo: record.originalRepo,
     tempRepo: record.tempRepo,
+    branch: record.branch,
   };
 }
 
