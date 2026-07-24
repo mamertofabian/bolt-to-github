@@ -83,6 +83,17 @@ describe('deriveHandoffView', () => {
     expect(identities.originalRepo).not.toBe(identities.tempRepo);
   });
 
+  it('deriveHandoffView surfaces the handoff branch in the repository identities', () => {
+    // The adoption surface must map the user's actual imported branch, so the
+    // branch has to travel through the view rather than be defaulted in the UI.
+    const view = deriveHandoffView(
+      makeInput({ handoff: makePendingRecord({ branch: 'develop' }) })
+    );
+
+    const identities = view.identities as NativeSyncRepoIdentities;
+    expect(identities.branch).toBe('develop');
+  });
+
   it('deriveHandoffView guidance offers the enable-native and discover actions', () => {
     const view = deriveHandoffView(makeInput({ handoff: makePendingRecord() }));
 

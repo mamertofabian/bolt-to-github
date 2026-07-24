@@ -1,0 +1,324 @@
+schema: '2'
+goal: |
+  Add the popup-facing guided native-sync handoff surface: a focused Svelte modal
+  that renders the current NativeSyncHandoffView from the 03b-i controller and
+  drives the controller's actions, so a user can walk the discover -> select ->
+  attest -> adopt journey and see honest, degraded, and completed states.
+description: |
+  Promoted from child 03-native-sync-handoff-ui-and-recovery of the parent epic
+  manifests/drafts/native-github-sync-handoff.manifest.yaml. Child 03 was split
+  into 03a (presenter + gateways), 03b-i (headless controller + deps assembler),
+  and the UI half 03b. 03b was split again (approved 2026-07-24) into:
+
+    03b-ii (this slice) — the Svelte modal component and its component/journey
+      tests. Controller-prop, self-driving: no chrome/GitHub edge in this slice.
+    03b-iii (next slice) — the real-service composition root that builds a
+      NativeSyncAdoptionEnvironment + controller, the resumable entry point in the
+      home/project view (HomeTabContent / ProjectStatus), and the auto-prompt-once
+      wiring in src/popup/App.svelte, with App/integration tests.
+
+  This split keeps the risky large-file edits (App.svelte at ~980 lines with 10
+  mock-heavy test files; ProjectStatus at ~819 lines) out of the component slice,
+  and keeps the modal fully testable in isolation.
+
+  New component:
+
+  - src/popup/components/NativeSyncHandoffModal.svelte — takes a
+    NativeSyncHandoffController (03b-i) and a `show` flag, loads the handoff on
+    open, and renders purely from controller.getView(): guidance (enable Bolt's
+    native GitHub integration, with the original repository labelled preserved and
+    the temporary public clone labelled deleted), discovery (candidate list with
+    refresh and a manual search escape hatch), confirm (explicit attestation
+    before adopt), blocked (visible reason with retry/back), and completed (a
+    user-confirmed native mapping, never a verified two-way sync). Every user
+    action calls a controller method and re-reads getView(); the component never
+    reads stores or re-derives the phase.
+
+  Design rationale:
+  - Controller-prop, self-driving (approved decision): the component owns its
+    NativeSyncHandoffController collaborator and renders from getView(), matching
+    the repository's self-driving modal convention (e.g. BranchSelectionModal).
+    Component tests build a real controller over fake gateways + in-memory stores
+    and drive the whole journey through the DOM, so external services are faked
+    while the UI renders naturally.
+  - The completed state uses honest copy only: it names Bolt, GitHub, and Bolt to
+    GitHub distinctly, states the mapping is user-confirmed, explains that
+    incoming changes return through Bolt's native integration when Bolt has linked
+    the repository, and that Bolt may also create its own commits — and never
+    claims a technically verified two-way sync.
+  - Adoption is never automatic: even a single candidate requires an explicit
+    click, then an explicit attestation checkbox, then an explicit Adopt; the
+    Adopt action is disabled until the user attests.
+temptations:
+  - risk: Do not render 'verified', 'synced', or 'two-way sync confirmed' language in the completed state.
+    instead: Render user-confirmed native mapping copy and state that Bolt's native integration performs incoming synchronization; read completion only from view.completion.
+  - risk: Do not auto-select or auto-adopt a candidate (even a single one) when discovery returns.
+    instead: Require an explicit candidate click, then an attestation checkbox, then an explicit Adopt; keep the Adopt control disabled until the checkbox is checked.
+  - risk: Do not read handoff/adoption state from chrome storage or re-derive the phase inside the component.
+    instead: Render solely from controller.getView() and change state only by calling controller methods (discover/search/select/back/attestAndAdopt/retry/dismiss/resume/load).
+  - risk: Do not call controller.discover() on every render or after completion.
+    instead: Load once when the surface opens, call discover only from an explicit user action, and treat the completed view as terminal.
+  - risk: Do not mislabel the repository identities or hard-code the adopted branch to a fixed default like 'main'.
+    instead: Label view.identities.originalRepo as preserved and view.identities.tempRepo as the temporary public clone that was deleted, and read the adopted branch from view.identities.branch when calling controller.select(repo, branch) so adoption maps the user's actual imported branch.
+type: feature
+files:
+  create:
+    - path: src/popup/components/NativeSyncHandoffModal.svelte
+      artifacts:
+        - kind: function
+          name: NativeSyncHandoffModal
+          args:
+            - name: props
+              type: '{ show: boolean; controller: NativeSyncHandoffController; onClose: () => void }'
+          returns: Svelte component instance
+          description: |
+            Modal guided native-sync handoff surface. Loads the handoff on open and
+            renders the current NativeSyncHandoffView from controller.getView():
+            guidance / discovery (with refresh and manual search) / confirm (with an
+            explicit attestation checkbox gating a disabled-until-attested Adopt) /
+            blocked (visible reason with retry/back) / completed (a user-confirmed
+            native mapping, never a verified two-way sync). Names Bolt, GitHub, and
+            Bolt to GitHub distinctly; labels the original repository preserved and
+            the temporary clone deleted. Reads the handoff branch from
+            view.identities.branch and passes it to controller.select(repo, branch)
+            so adoption maps the user's actual imported branch, not a fixed default.
+            Drives all state through controller methods and invokes onClose when
+            dismissed or closed.
+        # Svelte prop surface (export let). MAID's Svelte analyzer extracts each
+        # prop as a top-level attribute artifact, so they are declared explicitly.
+        - kind: attribute
+          name: show
+        - kind: attribute
+          name: controller
+        - kind: attribute
+          name: onClose
+    - path: src/popup/components/__tests__/NativeSyncHandoffModal.component.test.ts
+      artifacts:
+        - kind: test_function
+          name: does not render the handoff surface when show is false
+        - kind: test_function
+          name: guidance names Bolt and GitHub distinctly and labels the original repository as preserved
+        - kind: test_function
+          name: guidance labels the temporary public repository as deleted
+        - kind: test_function
+          name: discovering repositories lists the Bolt-created candidates
+        - kind: test_function
+          name: a no-candidate result offers both refresh and a manual search
+        - kind: test_function
+          name: multiple candidates are listed without auto-selecting one
+        - kind: test_function
+          name: selecting a candidate reveals the attestation confirmation before adoption
+        - kind: test_function
+          name: the adopt action is disabled until the user attests native setup completed
+        - kind: test_function
+          name: completing the guided journey shows a user-confirmed native mapping without claiming verified two-way sync
+        - kind: test_function
+          name: completion explains incoming changes return through Bolt and that Bolt may also commit
+        - kind: test_function
+          name: a failed discovery shows a retry affordance
+        - kind: test_function
+          name: a candidate can be selected with the keyboard
+        - kind: test_function
+          name: dismissing the surface invokes the close handler
+  read:
+    - docs/draft-manifest-workflow.md
+    - docs/component-testing-rules.md
+    - manifests/drafts/native-github-sync-handoff.manifest.yaml
+    - manifests/03a-native-sync-handoff-presenter-and-gateways.manifest.yaml
+    - manifests/03b-i-native-sync-handoff-controller.manifest.yaml
+    - src/lib/native-sync/NativeSyncHandoffController.ts
+    - src/lib/native-sync/nativeSyncRepositoryAdoption.ts
+    - src/lib/native-sync/nativeSyncAdoption.ts
+    - src/lib/services/NativeSyncHandoffStore.ts
+    - src/lib/services/NativeSyncJourneyStore.ts
+    - src/lib/components/ui/modal/Modal.svelte
+    - src/popup/components/TempRepoModal.svelte
+    - src/popup/components/BranchSelectionModal.svelte
+    - src/popup/components/__tests__/BranchSelectionModal.component.test.ts
+  edit:
+    # Additive chain-merge onto shipped 03a: NativeSyncRepoIdentities gains the
+    # handoff branch so the modal can source the adopted branch from getView()
+    # instead of hard-coding a default. The existing owner/originalRepo/tempRepo
+    # attributes and the interface itself remain declared by 03a.
+    - path: src/lib/native-sync/nativeSyncHandoffView.ts
+      artifacts:
+        - kind: attribute
+          name: branch
+          of: NativeSyncRepoIdentities
+          type: string
+    - path: src/lib/native-sync/__tests__/nativeSyncHandoffView.test.ts
+      artifacts:
+        - kind: test_function
+          name: deriveHandoffView surfaces the handoff branch in the repository identities
+validate:
+  - pnpm exec vitest run src/popup/components/__tests__/NativeSyncHandoffModal.component.test.ts src/lib/native-sync/__tests__/nativeSyncHandoffView.test.ts
+  - ./scripts/maid validate manifests/03b-ii-native-sync-handoff-component.manifest.yaml --mode behavioral
+  - pnpm lint
+  - pnpm check
+  - pnpm build
+created: '2026-07-24T15:45:00Z'
+metadata:
+  tags:
+    - native-github-sync
+    - handoff-ui
+    - svelte-component
+    - popup
+    - repository-adoption
+  priority: high
+  parent_epic: manifests/drafts/native-github-sync-handoff.manifest.yaml
+  split_from: 03-native-sync-handoff-ui-and-recovery
+  sibling_slices:
+    - manifests/03a-native-sync-handoff-presenter-and-gateways.manifest.yaml
+    - manifests/03b-i-native-sync-handoff-controller.manifest.yaml
+    - 03b-iii-native-sync-handoff-entrypoint-and-app-wiring
+  dependency_notes:
+    - >-
+      Depends on shipped 03b-i (NativeSyncHandoffController) and 03a
+      (NativeSyncHandoffView via controller.getView()). Component tests build a
+      real controller over fake gateways + in-memory NativeSyncJourneyStore /
+      NativeSyncHandoffStore, seeded with private-import provenance and a pending
+      handoff, so the DOM journey runs end to end without chrome or the GitHub API.
+    - >-
+      This slice is the modal component only. The real-service composition root
+      (createConnectedGitHubAppService + ChromeStorageService + createChromeLocal*
+      stores; project title sourced from the projectSettings store because
+      ChromeStorageService.getProjectSettings drops projectTitle), the home/project
+      -view resumable entry point, and the src/popup/App.svelte auto-prompt-once
+      wiring are 03b-iii. Cross-module regression (import cleanup, project
+      isolation, non-force push, concurrency) stays with child 04.
+  approved_decisions:
+    - The modal is controller-prop and self-driving; component tests drive a real
+      controller over fakes through the DOM.
+    - The App.svelte auto-prompt-once and the home/project-view entry point are
+      split into a final 03b-iii slice.
+    - This slice covers modal component tests plus one component-level journey;
+      cross-module regression stays with child 04.
+    - The adopted branch is exposed through 03a's NativeSyncRepoIdentities (an
+      additive chain-merge) so the modal sources it from getView() instead of
+      hard-coding a default (plan-review revision, user-approved 2026-07-24).
+outcome:
+  status: completed
+  completed_at: '2026-07-24T20:24:00Z'
+  summary: |
+    Delivered the popup-facing guided native-sync handoff surface as a new
+    controller-prop, self-driving Svelte modal
+    (src/popup/components/NativeSyncHandoffModal.svelte) that renders purely from
+    NativeSyncHandoffController.getView() and drives every transition through
+    controller methods (load/discover/search/select/back/attestAndAdopt/retry/
+    dismiss/resume). It walks the discover -> select -> attest -> adopt journey and
+    renders guidance, discovery (with refresh + manual search escape hatch),
+    confirm (attestation checkbox gating a disabled-until-attested Adopt), blocked
+    (visible reason with retry/back), and honest completion (user-confirmed native
+    mapping; never a verified two-way sync). A small additive chain-merge on shipped
+    03a exposes the handoff branch via NativeSyncRepoIdentities.branch so the modal
+    sources the adopted branch from the view rather than defaulting it. All 30
+    behavioral tests pass (13 component/journey + 17 presenter, incl. the new branch
+    test); the blast-radius suite (src/lib/native-sync + src/popup/components, 376
+    tests) is green with no 03a regression.
+  rationale: |
+    Scoped as the modal component only (approved split of child 03b) so the risky
+    large-file edits (App.svelte, ProjectStatus) and the real-service composition
+    root stay in 03b-iii, and the UI renders naturally over a real controller +
+    fake gateways + in-memory stores. The completion contract is honest by
+    construction: copy names Bolt, GitHub, and Bolt to GitHub distinctly, labels the
+    original repository preserved and the temporary clone deleted, and the tests pin
+    the banned terms (verified/synced/two-way sync) as absent. Adoption is never
+    automatic: an explicit candidate click, then an attestation checkbox, then an
+    explicit Adopt. The plan review flagged that the adopted branch had no honest
+    getView()-derived source (the test both seeded and asserted 'main'); the
+    user-approved fix exposes the handoff branch in 03a's view and the test now
+    seeds 'develop' and proves it flows through to setProjectMapping.
+  lessons:
+    - lesson_type: self-driving-modal-over-real-controller
+      summary: |
+        Building the modal as controller-prop and self-driving (render from
+        getView(), mutate only via controller methods) let the component tests
+        drive the full DOM journey over a real controller + fakes, so UI safety
+        rules (no auto-select, attestation-gated adopt, honest completion copy,
+        branch sourced from the view) are pinned behaviorally without mocking the
+        component's own collaborators. When a required value (the adopted branch)
+        has no view-derived source, seed a distinct fixture value so the test
+        proves real flow instead of masking a hard-coded default.
+      tags: [maid, svelte, self-driving-ui, native-github-sync, behavioral-testing]
+      paths:
+        - src/popup/components/NativeSyncHandoffModal.svelte
+        - src/lib/native-sync/nativeSyncHandoffView.ts
+    - lesson_type: svelte-props-are-maid-attributes
+      summary: |
+        MAID's Svelte validator delegates the script block to the TypeScript
+        validator, which extracts each Svelte-4 `export let` prop as a top-level
+        attribute artifact (merge_key attribute:<name>, no `of`). A newly created
+        component must therefore declare each prop as a bare `kind: attribute`
+        alongside the component function, or implementation validation raises E301.
+      tags: [maid, svelte, implementation-validation]
+      paths:
+        - src/popup/components/NativeSyncHandoffModal.svelte
+  review_notes:
+    - source: maid-plan-reviewer (pre-implementation)
+      severity: finding-fixed
+      summary: |
+        First pass Needs revision with two items, both closed before implementation
+        and re-reviewed to Approved: (1) the adopted branch had no honest
+        getView()-derived source so the completion test could not distinguish a
+        correct branch from a hard-coded 'main' — fixed by an additive chain-merge
+        exposing NativeSyncRepoIdentities.branch, a presenter test pinning the
+        source, and a component test that seeds 'develop' and asserts it reaches
+        setProjectMapping; (2) the honest-copy prohibition pinned only /verified/i —
+        added /synced/i and /two-way sync/i negative assertions.
+    - source: maid-implementation-reviewer
+      severity: ready
+      summary: |
+        Verdict Ready to merge, no blockers and no should-fix items. Confirmed scope
+        fidelity (only declared files/artifacts changed; additive 03a merge with no
+        regression; no undeclared public surface), all self-driving temptations
+        genuinely enforced (render-from-getView, load-once, no auto-select,
+        attestation-gated Adopt, branch from view.identities.branch, honest
+        completion copy), and genuinely behavioral tests (real controller + fakes,
+        DOM/keyboard journeys, real failure/edge coverage). Four non-blocking
+        nitpicks; the loading-spinner accessible-name nitpick was applied
+        (role="status" + aria-label), the rest are deliberate decisions deferred to
+        03b-iii (load-once-per-open, close/dismiss asymmetry) or cosmetic.
+  validation:
+    - command:
+        - pnpm
+        - exec
+        - vitest
+        - run
+        - src/popup/components/__tests__/NativeSyncHandoffModal.component.test.ts
+        - src/lib/native-sync/__tests__/nativeSyncHandoffView.test.ts
+      status: passed
+      summary: 30 behavioral tests passed (13 component/journey + 17 presenter) covering guidance identities, discovery/none/multiple, attestation-gated adopt, honest+branch-proving completion, failed-discovery retry, keyboard selection, and dismiss.
+    - command:
+        - ./scripts/maid
+        - validate
+        - manifests/03b-ii-native-sync-handoff-component.manifest.yaml
+        - --mode
+        - implementation
+      status: passed
+      summary: Implementation-mode validation passed; the component function, its three prop attributes, and the additive branch attribute match the source with no E300/E301.
+    - command:
+        - ./scripts/maid
+        - validate
+        - manifests/03b-ii-native-sync-handoff-component.manifest.yaml
+        - --mode
+        - behavioral
+      status: passed
+      summary: Behavioral validation passed with no E200; only the pre-existing unrelated E110 warnings from prepare-v2-0-0-github-app-release remain.
+    - command:
+        - pnpm
+        - exec
+        - vitest
+        - run
+        - src/lib/native-sync
+        - src/popup/components
+      status: passed
+      summary: Blast-radius regression run green — 376 tests across 26 files, confirming the additive branch field did not regress native-sync or popup component behavior.
+    - command: [pnpm, lint]
+      status: passed
+      summary: ESLint clean on the new component and both test files (no console.*, no any).
+    - command: [pnpm, check]
+      status: passed
+      summary: svelte-check reported 0 errors and 0 warnings.
+    - command: [pnpm, build]
+      status: passed
+      summary: Production extension build completed successfully.
