@@ -1,0 +1,1031 @@
+{
+  "manifest_path": "manifests/01-b2g-prs-domain-models-fixtures.manifest.yaml",
+  "manifest_hash": "sha256-contract:50adcfb79f90a1a5316636554fd8338ee374f1f8d84a1d6269608674b5b9a2dc",
+  "test_hashes": {
+    "src/production-readiness/__tests__/domain-models-fixtures.test.ts": "sha256:0a43eed6e9330f488b57b7a4f35a67421facf7a276d5b95f862bb134867ba58b"
+  },
+  "created_at": "2026-07-31T02:36:56.460172+00:00",
+  "revision": 4,
+  "revisions": [
+    {
+      "prior_manifest_hash": "sha256-contract:29886a3472c93409377674360ea1ba6c147a534c070a970d886ee212a9d7951e",
+      "prior_test_hashes": {
+        "src/production-readiness/__tests__/domain-models-fixtures.test.ts": "sha256:8b7854ba1dbe6be6d714d5f18aee4c2a5ac3b517958d392c0cbe5105ab5ac8b3"
+      },
+      "revised_at": "2026-07-31T02:39:09.087284+00:00",
+      "reason": "Expand the schema behavior test to reference every declared domain type and optional field required by MAID behavioral validation.",
+      "agent": null,
+      "contract_delta": {
+        "artifacts_added": [],
+        "artifacts_removed": [],
+        "files_added": [],
+        "files_removed": [],
+        "validate_commands_added": [],
+        "validate_commands_removed": []
+      }
+    },
+    {
+      "prior_manifest_hash": "sha256-contract:29886a3472c93409377674360ea1ba6c147a534c070a970d886ee212a9d7951e",
+      "prior_test_hashes": {
+        "src/production-readiness/__tests__/domain-models-fixtures.test.ts": "sha256:cd3acdf61ae270f1ce1fb0af809159167e0c3129948d3ebb19b937051ebb632e"
+      },
+      "revised_at": "2026-07-31T02:47:38.028878+00:00",
+      "reason": "Address implementation review: reconcile promoted metadata, remove undeclared FixtureFile export, and add golden fixture semantic-coherence coverage.",
+      "agent": null,
+      "contract_delta": {
+        "artifacts_added": [],
+        "artifacts_removed": [],
+        "files_added": [],
+        "files_removed": [],
+        "validate_commands_added": [],
+        "validate_commands_removed": []
+      }
+    },
+    {
+      "prior_manifest_hash": "sha256-contract:50adcfb79f90a1a5316636554fd8338ee374f1f8d84a1d6269608674b5b9a2dc",
+      "prior_test_hashes": {
+        "src/production-readiness/__tests__/domain-models-fixtures.test.ts": "sha256:7f42454cb1623e39f305114735126aa6fc44fd8cd3a284be96adf8298d885230"
+      },
+      "revised_at": "2026-07-31T02:51:17.267333+00:00",
+      "reason": "Address rereview finding by aligning envExampleChanged with the golden fixture and asserting comparison-flag coherence.",
+      "agent": null,
+      "contract_delta": {
+        "artifacts_added": [],
+        "artifacts_removed": [],
+        "files_added": [],
+        "files_removed": [],
+        "validate_commands_added": [],
+        "validate_commands_removed": []
+      }
+    }
+  ],
+  "red_evidence": {
+    "red": true,
+    "captured_at": "2026-07-31T02:51:32.392267+00:00",
+    "commands": [
+      {
+        "command": "pnpm exec vitest run src/production-readiness/__tests__/domain-models-fixtures.test.ts",
+        "exit_code": 1,
+        "output_tail": " Test Files  1 failed (1)\n      Tests  no tests\n   Start at  10:51:17\n   Duration  491ms (transform 36ms, setup 57ms, collect 0ms, tests 0ms, environment 188ms, prepare 38ms)\n\n\n\u23af\u23af\u23af\u23af\u23af\u23af Failed Suites 1 \u23af\u23af\u23af\u23af\u23af\u23af\u23af\n\n FAIL  src/production-readiness/__tests__/domain-models-fixtures.test.ts [ src/production-readiness/__tests__/domain-models-fixtures.test.ts ]\nError: Failed to resolve import \"../redaction\" from \"src/production-readiness/__tests__/domain-models-fixtures.test.ts\". Does the file exist?\n \u276f TransformPluginContext._formatError node_modules/.pnpm/vite@5.4.21_@types+node@22.19.18/node_modules/vite/dist/node/chunks/dep-BK3b2jBa.js:49258:41\n \u276f TransformPluginContext.error node_modules/.pnpm/vite@5.4.21_@types+node@22.19.18/node_modules/vite/dist/node/chunks/dep-BK3b2jBa.js:49253:16\n \u276f normalizeUrl node_modules/.pnpm/vite@5.4.21_@types+node@22.19.18/node_modules/vite/dist/node/chunks/dep-BK3b2jBa.js:64307:23\n \u276f async file:/home/atomrem/projects/codefrost-dev/bolt-to-github/node_modules/.pnpm/vite@5.4.21_@types+node@22.19.18/node_modules/vite/dist/node/chunks/dep-BK3b2jBa.js:64439:39\n \u276f TransformPluginContext.transform node_modules/.pnpm/vite@5.4.21_@types+node@22.19.18/node_modules/vite/dist/node/chunks/dep-BK3b2jBa.js:64366:7\n \u276f PluginContainer.transform node_modules/.pnpm/vite@5.4.21_@types+node@22.19.18/node_modules/vite/dist/node/chunks/dep-BK3b2jBa.js:49099:18\n \u276f loadAndTransform node_modules/.pnpm/vite@5.4.21_@types+node@22.19.18/node_modules/vite/dist/node/chunks/dep-BK3b2jBa.js:51978:27\n\n\u23af\u23af\u23af\u23af\u23af\u23af\u23af\u23af\u23af\u23af\u23af\u23af\u23af\u23af\u23af\u23af\u23af\u23af\u23af\u23af\u23af\u23af\u23af\u23af[1/1]\u23af\n",
+        "classification": "red"
+      },
+      {
+        "command": "./scripts/maid validate manifests/01-b2g-prs-domain-models-fixtures.manifest.yaml --mode behavioral",
+        "exit_code": 0,
+        "output_tail": "PASS 01-b2g-prs-domain-models-fixtures\n  Mode: behavioral\n  Duration: 366ms\n  Warnings (3):\n    E110 Manifest 'prepare-v2-0-0-github-app-release' supersedes 'release-v1-3-21' but drops artifact 'PackageVersion_1_3_21' (namespace) at package.json\n      Location: /home/atomrem/projects/codefrost-dev/bolt-to-github/manifests/prepare-v2-0-0-github-app-release.manifest.yaml\n      Suggestion: Re-declare the artifact in the replacement manifest, list its file under files.delete, or list the symbol under removed_artifacts.\n    E110 Manifest 'prepare-v2-0-0-github-app-release' supersedes 'release-v1-3-21' but drops artifact 'ChromeManifestVersion_1_3_21' (namespace) at manifest.json\n      Location: /home/atomrem/projects/codefrost-dev/bolt-to-github/manifests/prepare-v2-0-0-github-app-release.manifest.yaml\n      Suggestion: Re-declare the artifact in the replacement manifest, list its file under files.delete, or list the symbol under removed_artifacts.\n    E110 Manifest 'prepare-v2-0-0-github-app-release' supersedes 'release-v1-3-21' but drops artifact 'DevelopmentGuideVersion_1_3_21' (namespace) at CLAUDE.md\n      Location: /home/atomrem/projects/codefrost-dev/bolt-to-github/manifests/prepare-v2-0-0-github-app-release.manifest.yaml\n      Suggestion: Re-declare the artifact in the replacement manifest, list its file under files.delete, or list the symbol under removed_artifacts.",
+        "classification": "not_red"
+      },
+      {
+        "command": "pnpm lint",
+        "exit_code": 0,
+        "output_tail": "\n> bolt-to-github@2.0.0 lint /home/atomrem/projects/codefrost-dev/bolt-to-github\n> eslint \"src/**/*.{js,ts,svelte}\"\n",
+        "classification": "not_red"
+      },
+      {
+        "command": "pnpm check",
+        "exit_code": 1,
+        "output_tail": "\n\n\n/home/atomrem/projects/codefrost-dev/bolt-to-github/src/production-readiness/__tests__/domain-models-fixtures.test.ts:156:55\nError: Parameter 'file' implicitly has an 'any' type. \n\n    const fixturePaths = new Set(firstLoad.files.map((file) => file.path));\n    for (const category of goldenSnapshot?.categories ?? []) {\n\n\n/home/atomrem/projects/codefrost-dev/bolt-to-github/src/production-readiness/__tests__/domain-models-fixtures.test.ts:159:10\nError: Parameter 'signal' implicitly has an 'any' type. \n      const categorySignals = goldenSnapshot?.signals.filter(\n        (signal) => signal.category === category.category,\n      );\n\n\n====================================\nsvelte-check found 5 errors and 0 warnings in 1 file\n\u2009ELIFECYCLE\u2009 Command failed with exit code 1.",
+        "classification": "red"
+      }
+    ]
+  },
+  "legacy_baseline": null,
+  "agent": null,
+  "_manifest_contract": {
+    "artifacts": [
+      "src/production-readiness/__tests__/domain-models-fixtures.test.ts:domain objects satisfy the expected snapshot schema",
+      "src/production-readiness/__tests__/domain-models-fixtures.test.ts:domain objects satisfy the expected snapshot schema:kind=test_function",
+      "src/production-readiness/__tests__/domain-models-fixtures.test.ts:golden snapshot fixture loading is deterministic",
+      "src/production-readiness/__tests__/domain-models-fixtures.test.ts:golden snapshot fixture loading is deterministic:kind=test_function",
+      "src/production-readiness/__tests__/domain-models-fixtures.test.ts:redaction helpers hide secret values while preserving evidence names and paths",
+      "src/production-readiness/__tests__/domain-models-fixtures.test.ts:redaction helpers hide secret values while preserving evidence names and paths:kind=test_function",
+      "src/production-readiness/domain.ts:attribute:CandidateExportSummary.generatedFrom",
+      "src/production-readiness/domain.ts:attribute:CandidateExportSummary.generatedFrom:kind=attribute",
+      "src/production-readiness/domain.ts:attribute:CandidateExportSummary.generatedFrom:of=CandidateExportSummary",
+      "src/production-readiness/domain.ts:attribute:CandidateExportSummary.generatedFrom:type='bolt-export-zip'",
+      "src/production-readiness/domain.ts:attribute:CandidateExportSummary.id",
+      "src/production-readiness/domain.ts:attribute:CandidateExportSummary.id:kind=attribute",
+      "src/production-readiness/domain.ts:attribute:CandidateExportSummary.id:of=CandidateExportSummary",
+      "src/production-readiness/domain.ts:attribute:CandidateExportSummary.id:type=string",
+      "src/production-readiness/domain.ts:attribute:CandidateExportSummary.label",
+      "src/production-readiness/domain.ts:attribute:CandidateExportSummary.label:kind=attribute",
+      "src/production-readiness/domain.ts:attribute:CandidateExportSummary.label:of=CandidateExportSummary",
+      "src/production-readiness/domain.ts:attribute:CandidateExportSummary.label:type=string",
+      "src/production-readiness/domain.ts:attribute:CandidateExportSummary.zipSizeBytes",
+      "src/production-readiness/domain.ts:attribute:CandidateExportSummary.zipSizeBytes:kind=attribute",
+      "src/production-readiness/domain.ts:attribute:CandidateExportSummary.zipSizeBytes:of=CandidateExportSummary",
+      "src/production-readiness/domain.ts:attribute:CandidateExportSummary.zipSizeBytes:type=number",
+      "src/production-readiness/domain.ts:attribute:CategorySummary.category",
+      "src/production-readiness/domain.ts:attribute:CategorySummary.category:kind=attribute",
+      "src/production-readiness/domain.ts:attribute:CategorySummary.category:of=CategorySummary",
+      "src/production-readiness/domain.ts:attribute:CategorySummary.category:type=ReadinessCategory",
+      "src/production-readiness/domain.ts:attribute:CategorySummary.evidence",
+      "src/production-readiness/domain.ts:attribute:CategorySummary.evidence:kind=attribute",
+      "src/production-readiness/domain.ts:attribute:CategorySummary.evidence:of=CategorySummary",
+      "src/production-readiness/domain.ts:attribute:CategorySummary.evidence:type=EvidenceRef[]",
+      "src/production-readiness/domain.ts:attribute:CategorySummary.highestSeverity",
+      "src/production-readiness/domain.ts:attribute:CategorySummary.highestSeverity:kind=attribute",
+      "src/production-readiness/domain.ts:attribute:CategorySummary.highestSeverity:of=CategorySummary",
+      "src/production-readiness/domain.ts:attribute:CategorySummary.highestSeverity:type=SignalSeverity",
+      "src/production-readiness/domain.ts:attribute:CategorySummary.signalCount",
+      "src/production-readiness/domain.ts:attribute:CategorySummary.signalCount:kind=attribute",
+      "src/production-readiness/domain.ts:attribute:CategorySummary.signalCount:of=CategorySummary",
+      "src/production-readiness/domain.ts:attribute:CategorySummary.signalCount:type=number",
+      "src/production-readiness/domain.ts:attribute:ComparisonSummary.addedFiles",
+      "src/production-readiness/domain.ts:attribute:ComparisonSummary.addedFiles:kind=attribute",
+      "src/production-readiness/domain.ts:attribute:ComparisonSummary.addedFiles:of=ComparisonSummary",
+      "src/production-readiness/domain.ts:attribute:ComparisonSummary.addedFiles:type=number",
+      "src/production-readiness/domain.ts:attribute:ComparisonSummary.addedLines",
+      "src/production-readiness/domain.ts:attribute:ComparisonSummary.addedLines:kind=attribute",
+      "src/production-readiness/domain.ts:attribute:ComparisonSummary.addedLines:of=ComparisonSummary",
+      "src/production-readiness/domain.ts:attribute:ComparisonSummary.addedLines:type=number | undefined",
+      "src/production-readiness/domain.ts:attribute:ComparisonSummary.binaryFilesChanged",
+      "src/production-readiness/domain.ts:attribute:ComparisonSummary.binaryFilesChanged:kind=attribute",
+      "src/production-readiness/domain.ts:attribute:ComparisonSummary.binaryFilesChanged:of=ComparisonSummary",
+      "src/production-readiness/domain.ts:attribute:ComparisonSummary.binaryFilesChanged:type=number",
+      "src/production-readiness/domain.ts:attribute:ComparisonSummary.changedFiles",
+      "src/production-readiness/domain.ts:attribute:ComparisonSummary.changedFiles:kind=attribute",
+      "src/production-readiness/domain.ts:attribute:ComparisonSummary.changedFiles:of=ComparisonSummary",
+      "src/production-readiness/domain.ts:attribute:ComparisonSummary.changedFiles:type=number",
+      "src/production-readiness/domain.ts:attribute:ComparisonSummary.deletedFiles",
+      "src/production-readiness/domain.ts:attribute:ComparisonSummary.deletedFiles:kind=attribute",
+      "src/production-readiness/domain.ts:attribute:ComparisonSummary.deletedFiles:of=ComparisonSummary",
+      "src/production-readiness/domain.ts:attribute:ComparisonSummary.deletedFiles:type=number",
+      "src/production-readiness/domain.ts:attribute:ComparisonSummary.deletedLines",
+      "src/production-readiness/domain.ts:attribute:ComparisonSummary.deletedLines:kind=attribute",
+      "src/production-readiness/domain.ts:attribute:ComparisonSummary.deletedLines:of=ComparisonSummary",
+      "src/production-readiness/domain.ts:attribute:ComparisonSummary.deletedLines:type=number | undefined",
+      "src/production-readiness/domain.ts:attribute:ComparisonSummary.envExampleChanged",
+      "src/production-readiness/domain.ts:attribute:ComparisonSummary.envExampleChanged:kind=attribute",
+      "src/production-readiness/domain.ts:attribute:ComparisonSummary.envExampleChanged:of=ComparisonSummary",
+      "src/production-readiness/domain.ts:attribute:ComparisonSummary.envExampleChanged:type=boolean",
+      "src/production-readiness/domain.ts:attribute:ComparisonSummary.lockfileChanged",
+      "src/production-readiness/domain.ts:attribute:ComparisonSummary.lockfileChanged:kind=attribute",
+      "src/production-readiness/domain.ts:attribute:ComparisonSummary.lockfileChanged:of=ComparisonSummary",
+      "src/production-readiness/domain.ts:attribute:ComparisonSummary.lockfileChanged:type=boolean",
+      "src/production-readiness/domain.ts:attribute:ComparisonSummary.packageManifestChanged",
+      "src/production-readiness/domain.ts:attribute:ComparisonSummary.packageManifestChanged:kind=attribute",
+      "src/production-readiness/domain.ts:attribute:ComparisonSummary.packageManifestChanged:of=ComparisonSummary",
+      "src/production-readiness/domain.ts:attribute:ComparisonSummary.packageManifestChanged:type=boolean",
+      "src/production-readiness/domain.ts:attribute:ComparisonSummary.renamedFiles",
+      "src/production-readiness/domain.ts:attribute:ComparisonSummary.renamedFiles:kind=attribute",
+      "src/production-readiness/domain.ts:attribute:ComparisonSummary.renamedFiles:of=ComparisonSummary",
+      "src/production-readiness/domain.ts:attribute:ComparisonSummary.renamedFiles:type=number | undefined",
+      "src/production-readiness/domain.ts:attribute:ComparisonSummary.routeSurfaceChanged",
+      "src/production-readiness/domain.ts:attribute:ComparisonSummary.routeSurfaceChanged:kind=attribute",
+      "src/production-readiness/domain.ts:attribute:ComparisonSummary.routeSurfaceChanged:of=ComparisonSummary",
+      "src/production-readiness/domain.ts:attribute:ComparisonSummary.routeSurfaceChanged:type=boolean",
+      "src/production-readiness/domain.ts:attribute:ComparisonSummary.sensitiveFilesChanged",
+      "src/production-readiness/domain.ts:attribute:ComparisonSummary.sensitiveFilesChanged:kind=attribute",
+      "src/production-readiness/domain.ts:attribute:ComparisonSummary.sensitiveFilesChanged:of=ComparisonSummary",
+      "src/production-readiness/domain.ts:attribute:ComparisonSummary.sensitiveFilesChanged:type=number",
+      "src/production-readiness/domain.ts:attribute:EvidenceRef.after",
+      "src/production-readiness/domain.ts:attribute:EvidenceRef.after:kind=attribute",
+      "src/production-readiness/domain.ts:attribute:EvidenceRef.after:of=EvidenceRef",
+      "src/production-readiness/domain.ts:attribute:EvidenceRef.after:type=string | number | boolean | undefined",
+      "src/production-readiness/domain.ts:attribute:EvidenceRef.before",
+      "src/production-readiness/domain.ts:attribute:EvidenceRef.before:kind=attribute",
+      "src/production-readiness/domain.ts:attribute:EvidenceRef.before:of=EvidenceRef",
+      "src/production-readiness/domain.ts:attribute:EvidenceRef.before:type=string | number | boolean | undefined",
+      "src/production-readiness/domain.ts:attribute:EvidenceRef.kind",
+      "src/production-readiness/domain.ts:attribute:EvidenceRef.kind:kind=attribute",
+      "src/production-readiness/domain.ts:attribute:EvidenceRef.kind:of=EvidenceRef",
+      "src/production-readiness/domain.ts:attribute:EvidenceRef.kind:type='file' | 'dependency' | 'env_var' | 'route' | 'metric' | 'commit' | 'pattern'",
+      "src/production-readiness/domain.ts:attribute:EvidenceRef.label",
+      "src/production-readiness/domain.ts:attribute:EvidenceRef.label:kind=attribute",
+      "src/production-readiness/domain.ts:attribute:EvidenceRef.label:of=EvidenceRef",
+      "src/production-readiness/domain.ts:attribute:EvidenceRef.label:type=string",
+      "src/production-readiness/domain.ts:attribute:EvidenceRef.path",
+      "src/production-readiness/domain.ts:attribute:EvidenceRef.path:kind=attribute",
+      "src/production-readiness/domain.ts:attribute:EvidenceRef.path:of=EvidenceRef",
+      "src/production-readiness/domain.ts:attribute:EvidenceRef.path:type=string | undefined",
+      "src/production-readiness/domain.ts:attribute:EvidenceRef.redacted",
+      "src/production-readiness/domain.ts:attribute:EvidenceRef.redacted:kind=attribute",
+      "src/production-readiness/domain.ts:attribute:EvidenceRef.redacted:of=EvidenceRef",
+      "src/production-readiness/domain.ts:attribute:EvidenceRef.redacted:type=boolean | undefined",
+      "src/production-readiness/domain.ts:attribute:GitRefSummary.compareUrl",
+      "src/production-readiness/domain.ts:attribute:GitRefSummary.compareUrl:kind=attribute",
+      "src/production-readiness/domain.ts:attribute:GitRefSummary.compareUrl:of=GitRefSummary",
+      "src/production-readiness/domain.ts:attribute:GitRefSummary.compareUrl:type=string | undefined",
+      "src/production-readiness/domain.ts:attribute:GitRefSummary.ref",
+      "src/production-readiness/domain.ts:attribute:GitRefSummary.ref:kind=attribute",
+      "src/production-readiness/domain.ts:attribute:GitRefSummary.ref:of=GitRefSummary",
+      "src/production-readiness/domain.ts:attribute:GitRefSummary.ref:type=string",
+      "src/production-readiness/domain.ts:attribute:GitRefSummary.sha",
+      "src/production-readiness/domain.ts:attribute:GitRefSummary.sha:kind=attribute",
+      "src/production-readiness/domain.ts:attribute:GitRefSummary.sha:of=GitRefSummary",
+      "src/production-readiness/domain.ts:attribute:GitRefSummary.sha:type=string",
+      "src/production-readiness/domain.ts:attribute:PartialDataNotice.confidenceImpact",
+      "src/production-readiness/domain.ts:attribute:PartialDataNotice.confidenceImpact:kind=attribute",
+      "src/production-readiness/domain.ts:attribute:PartialDataNotice.confidenceImpact:of=PartialDataNotice",
+      "src/production-readiness/domain.ts:attribute:PartialDataNotice.confidenceImpact:type=SnapshotConfidence",
+      "src/production-readiness/domain.ts:attribute:PartialDataNotice.message",
+      "src/production-readiness/domain.ts:attribute:PartialDataNotice.message:kind=attribute",
+      "src/production-readiness/domain.ts:attribute:PartialDataNotice.message:of=PartialDataNotice",
+      "src/production-readiness/domain.ts:attribute:PartialDataNotice.message:type=string",
+      "src/production-readiness/domain.ts:attribute:PartialDataNotice.source",
+      "src/production-readiness/domain.ts:attribute:PartialDataNotice.source:kind=attribute",
+      "src/production-readiness/domain.ts:attribute:PartialDataNotice.source:of=PartialDataNotice",
+      "src/production-readiness/domain.ts:attribute:PartialDataNotice.source:type='github_base' | 'history' | 'zip_scan' | 'large_file_diff' | 'rate_limit' | 'detector'",
+      "src/production-readiness/domain.ts:attribute:ReadinessSignal.category",
+      "src/production-readiness/domain.ts:attribute:ReadinessSignal.category:kind=attribute",
+      "src/production-readiness/domain.ts:attribute:ReadinessSignal.category:of=ReadinessSignal",
+      "src/production-readiness/domain.ts:attribute:ReadinessSignal.category:type=ReadinessCategory",
+      "src/production-readiness/domain.ts:attribute:ReadinessSignal.deterministic",
+      "src/production-readiness/domain.ts:attribute:ReadinessSignal.deterministic:kind=attribute",
+      "src/production-readiness/domain.ts:attribute:ReadinessSignal.deterministic:of=ReadinessSignal",
+      "src/production-readiness/domain.ts:attribute:ReadinessSignal.deterministic:type=true",
+      "src/production-readiness/domain.ts:attribute:ReadinessSignal.evidence",
+      "src/production-readiness/domain.ts:attribute:ReadinessSignal.evidence:kind=attribute",
+      "src/production-readiness/domain.ts:attribute:ReadinessSignal.evidence:of=ReadinessSignal",
+      "src/production-readiness/domain.ts:attribute:ReadinessSignal.evidence:type=EvidenceRef[]",
+      "src/production-readiness/domain.ts:attribute:ReadinessSignal.id",
+      "src/production-readiness/domain.ts:attribute:ReadinessSignal.id:kind=attribute",
+      "src/production-readiness/domain.ts:attribute:ReadinessSignal.id:of=ReadinessSignal",
+      "src/production-readiness/domain.ts:attribute:ReadinessSignal.id:type=string",
+      "src/production-readiness/domain.ts:attribute:ReadinessSignal.message",
+      "src/production-readiness/domain.ts:attribute:ReadinessSignal.message:kind=attribute",
+      "src/production-readiness/domain.ts:attribute:ReadinessSignal.message:of=ReadinessSignal",
+      "src/production-readiness/domain.ts:attribute:ReadinessSignal.message:type=string",
+      "src/production-readiness/domain.ts:attribute:ReadinessSignal.severity",
+      "src/production-readiness/domain.ts:attribute:ReadinessSignal.severity:kind=attribute",
+      "src/production-readiness/domain.ts:attribute:ReadinessSignal.severity:of=ReadinessSignal",
+      "src/production-readiness/domain.ts:attribute:ReadinessSignal.severity:type=SignalSeverity",
+      "src/production-readiness/domain.ts:attribute:ReadinessSignal.suggestedReview",
+      "src/production-readiness/domain.ts:attribute:ReadinessSignal.suggestedReview:kind=attribute",
+      "src/production-readiness/domain.ts:attribute:ReadinessSignal.suggestedReview:of=ReadinessSignal",
+      "src/production-readiness/domain.ts:attribute:ReadinessSignal.suggestedReview:type=string | undefined",
+      "src/production-readiness/domain.ts:attribute:ReadinessSignal.title",
+      "src/production-readiness/domain.ts:attribute:ReadinessSignal.title:kind=attribute",
+      "src/production-readiness/domain.ts:attribute:ReadinessSignal.title:of=ReadinessSignal",
+      "src/production-readiness/domain.ts:attribute:ReadinessSignal.title:type=string",
+      "src/production-readiness/domain.ts:attribute:ReadinessSnapshot.base",
+      "src/production-readiness/domain.ts:attribute:ReadinessSnapshot.base:kind=attribute",
+      "src/production-readiness/domain.ts:attribute:ReadinessSnapshot.base:of=ReadinessSnapshot",
+      "src/production-readiness/domain.ts:attribute:ReadinessSnapshot.base:type=GitRefSummary",
+      "src/production-readiness/domain.ts:attribute:ReadinessSnapshot.candidate",
+      "src/production-readiness/domain.ts:attribute:ReadinessSnapshot.candidate:kind=attribute",
+      "src/production-readiness/domain.ts:attribute:ReadinessSnapshot.candidate:of=ReadinessSnapshot",
+      "src/production-readiness/domain.ts:attribute:ReadinessSnapshot.candidate:type=CandidateExportSummary",
+      "src/production-readiness/domain.ts:attribute:ReadinessSnapshot.categories",
+      "src/production-readiness/domain.ts:attribute:ReadinessSnapshot.categories:kind=attribute",
+      "src/production-readiness/domain.ts:attribute:ReadinessSnapshot.categories:of=ReadinessSnapshot",
+      "src/production-readiness/domain.ts:attribute:ReadinessSnapshot.categories:type=CategorySummary[]",
+      "src/production-readiness/domain.ts:attribute:ReadinessSnapshot.comparison",
+      "src/production-readiness/domain.ts:attribute:ReadinessSnapshot.comparison:kind=attribute",
+      "src/production-readiness/domain.ts:attribute:ReadinessSnapshot.comparison:of=ReadinessSnapshot",
+      "src/production-readiness/domain.ts:attribute:ReadinessSnapshot.comparison:type=ComparisonSummary",
+      "src/production-readiness/domain.ts:attribute:ReadinessSnapshot.generatedAt",
+      "src/production-readiness/domain.ts:attribute:ReadinessSnapshot.generatedAt:kind=attribute",
+      "src/production-readiness/domain.ts:attribute:ReadinessSnapshot.generatedAt:of=ReadinessSnapshot",
+      "src/production-readiness/domain.ts:attribute:ReadinessSnapshot.generatedAt:type=string",
+      "src/production-readiness/domain.ts:attribute:ReadinessSnapshot.limitations",
+      "src/production-readiness/domain.ts:attribute:ReadinessSnapshot.limitations:kind=attribute",
+      "src/production-readiness/domain.ts:attribute:ReadinessSnapshot.limitations:of=ReadinessSnapshot",
+      "src/production-readiness/domain.ts:attribute:ReadinessSnapshot.limitations:type=string[]",
+      "src/production-readiness/domain.ts:attribute:ReadinessSnapshot.outputs",
+      "src/production-readiness/domain.ts:attribute:ReadinessSnapshot.outputs:kind=attribute",
+      "src/production-readiness/domain.ts:attribute:ReadinessSnapshot.outputs:of=ReadinessSnapshot",
+      "src/production-readiness/domain.ts:attribute:ReadinessSnapshot.outputs:type=SnapshotOutputRefs",
+      "src/production-readiness/domain.ts:attribute:ReadinessSnapshot.repository",
+      "src/production-readiness/domain.ts:attribute:ReadinessSnapshot.repository:kind=attribute",
+      "src/production-readiness/domain.ts:attribute:ReadinessSnapshot.repository:of=ReadinessSnapshot",
+      "src/production-readiness/domain.ts:attribute:ReadinessSnapshot.repository:type=RepositoryRef",
+      "src/production-readiness/domain.ts:attribute:ReadinessSnapshot.schemaVersion",
+      "src/production-readiness/domain.ts:attribute:ReadinessSnapshot.schemaVersion:kind=attribute",
+      "src/production-readiness/domain.ts:attribute:ReadinessSnapshot.schemaVersion:of=ReadinessSnapshot",
+      "src/production-readiness/domain.ts:attribute:ReadinessSnapshot.schemaVersion:type='b2g.prs.snapshot.v1'",
+      "src/production-readiness/domain.ts:attribute:ReadinessSnapshot.signals",
+      "src/production-readiness/domain.ts:attribute:ReadinessSnapshot.signals:kind=attribute",
+      "src/production-readiness/domain.ts:attribute:ReadinessSnapshot.signals:of=ReadinessSnapshot",
+      "src/production-readiness/domain.ts:attribute:ReadinessSnapshot.signals:type=ReadinessSignal[]",
+      "src/production-readiness/domain.ts:attribute:ReadinessSnapshot.state",
+      "src/production-readiness/domain.ts:attribute:ReadinessSnapshot.state:kind=attribute",
+      "src/production-readiness/domain.ts:attribute:ReadinessSnapshot.state:of=ReadinessSnapshot",
+      "src/production-readiness/domain.ts:attribute:ReadinessSnapshot.state:type=ReadinessStateSummary",
+      "src/production-readiness/domain.ts:attribute:ReadinessSnapshot.trends",
+      "src/production-readiness/domain.ts:attribute:ReadinessSnapshot.trends:kind=attribute",
+      "src/production-readiness/domain.ts:attribute:ReadinessSnapshot.trends:of=ReadinessSnapshot",
+      "src/production-readiness/domain.ts:attribute:ReadinessSnapshot.trends:type=TrendSummary[] | undefined",
+      "src/production-readiness/domain.ts:attribute:ReadinessStateSummary.confidence",
+      "src/production-readiness/domain.ts:attribute:ReadinessStateSummary.confidence:kind=attribute",
+      "src/production-readiness/domain.ts:attribute:ReadinessStateSummary.confidence:of=ReadinessStateSummary",
+      "src/production-readiness/domain.ts:attribute:ReadinessStateSummary.confidence:type=SnapshotConfidence",
+      "src/production-readiness/domain.ts:attribute:ReadinessStateSummary.headline",
+      "src/production-readiness/domain.ts:attribute:ReadinessStateSummary.headline:kind=attribute",
+      "src/production-readiness/domain.ts:attribute:ReadinessStateSummary.headline:of=ReadinessStateSummary",
+      "src/production-readiness/domain.ts:attribute:ReadinessStateSummary.headline:type=string",
+      "src/production-readiness/domain.ts:attribute:ReadinessStateSummary.internalScore",
+      "src/production-readiness/domain.ts:attribute:ReadinessStateSummary.internalScore:kind=attribute",
+      "src/production-readiness/domain.ts:attribute:ReadinessStateSummary.internalScore:of=ReadinessStateSummary",
+      "src/production-readiness/domain.ts:attribute:ReadinessStateSummary.internalScore:type=number",
+      "src/production-readiness/domain.ts:attribute:ReadinessStateSummary.recommendedAction",
+      "src/production-readiness/domain.ts:attribute:ReadinessStateSummary.recommendedAction:kind=attribute",
+      "src/production-readiness/domain.ts:attribute:ReadinessStateSummary.recommendedAction:of=ReadinessStateSummary",
+      "src/production-readiness/domain.ts:attribute:ReadinessStateSummary.recommendedAction:type=string",
+      "src/production-readiness/domain.ts:attribute:ReadinessStateSummary.safeLookingAreas",
+      "src/production-readiness/domain.ts:attribute:ReadinessStateSummary.safeLookingAreas:kind=attribute",
+      "src/production-readiness/domain.ts:attribute:ReadinessStateSummary.safeLookingAreas:of=ReadinessStateSummary",
+      "src/production-readiness/domain.ts:attribute:ReadinessStateSummary.safeLookingAreas:type=string[]",
+      "src/production-readiness/domain.ts:attribute:ReadinessStateSummary.state",
+      "src/production-readiness/domain.ts:attribute:ReadinessStateSummary.state:kind=attribute",
+      "src/production-readiness/domain.ts:attribute:ReadinessStateSummary.state:of=ReadinessStateSummary",
+      "src/production-readiness/domain.ts:attribute:ReadinessStateSummary.state:type=ReadinessState",
+      "src/production-readiness/domain.ts:attribute:ReadinessStateSummary.topConcerns",
+      "src/production-readiness/domain.ts:attribute:ReadinessStateSummary.topConcerns:kind=attribute",
+      "src/production-readiness/domain.ts:attribute:ReadinessStateSummary.topConcerns:of=ReadinessStateSummary",
+      "src/production-readiness/domain.ts:attribute:ReadinessStateSummary.topConcerns:type=string[]",
+      "src/production-readiness/domain.ts:attribute:RepositoryRef.name",
+      "src/production-readiness/domain.ts:attribute:RepositoryRef.name:kind=attribute",
+      "src/production-readiness/domain.ts:attribute:RepositoryRef.name:of=RepositoryRef",
+      "src/production-readiness/domain.ts:attribute:RepositoryRef.name:type=string",
+      "src/production-readiness/domain.ts:attribute:RepositoryRef.owner",
+      "src/production-readiness/domain.ts:attribute:RepositoryRef.owner:kind=attribute",
+      "src/production-readiness/domain.ts:attribute:RepositoryRef.owner:of=RepositoryRef",
+      "src/production-readiness/domain.ts:attribute:RepositoryRef.owner:type=string",
+      "src/production-readiness/domain.ts:attribute:SnapshotOutputRefs.adcFixHandoffMarkdown",
+      "src/production-readiness/domain.ts:attribute:SnapshotOutputRefs.adcFixHandoffMarkdown:kind=attribute",
+      "src/production-readiness/domain.ts:attribute:SnapshotOutputRefs.adcFixHandoffMarkdown:of=SnapshotOutputRefs",
+      "src/production-readiness/domain.ts:attribute:SnapshotOutputRefs.adcFixHandoffMarkdown:type=string | undefined",
+      "src/production-readiness/domain.ts:attribute:SnapshotOutputRefs.commitMarker",
+      "src/production-readiness/domain.ts:attribute:SnapshotOutputRefs.commitMarker:kind=attribute",
+      "src/production-readiness/domain.ts:attribute:SnapshotOutputRefs.commitMarker:of=SnapshotOutputRefs",
+      "src/production-readiness/domain.ts:attribute:SnapshotOutputRefs.commitMarker:type=string | undefined",
+      "src/production-readiness/domain.ts:attribute:SnapshotOutputRefs.debugJson",
+      "src/production-readiness/domain.ts:attribute:SnapshotOutputRefs.debugJson:kind=attribute",
+      "src/production-readiness/domain.ts:attribute:SnapshotOutputRefs.debugJson:of=SnapshotOutputRefs",
+      "src/production-readiness/domain.ts:attribute:SnapshotOutputRefs.debugJson:type=string | undefined",
+      "src/production-readiness/domain.ts:attribute:SnapshotOutputRefs.receiptMarkdown",
+      "src/production-readiness/domain.ts:attribute:SnapshotOutputRefs.receiptMarkdown:kind=attribute",
+      "src/production-readiness/domain.ts:attribute:SnapshotOutputRefs.receiptMarkdown:of=SnapshotOutputRefs",
+      "src/production-readiness/domain.ts:attribute:SnapshotOutputRefs.receiptMarkdown:type=string | undefined",
+      "src/production-readiness/domain.ts:attribute:TrendSummary.evidence",
+      "src/production-readiness/domain.ts:attribute:TrendSummary.evidence:kind=attribute",
+      "src/production-readiness/domain.ts:attribute:TrendSummary.evidence:of=TrendSummary",
+      "src/production-readiness/domain.ts:attribute:TrendSummary.evidence:type=EvidenceRef[]",
+      "src/production-readiness/domain.ts:attribute:TrendSummary.id",
+      "src/production-readiness/domain.ts:attribute:TrendSummary.id:kind=attribute",
+      "src/production-readiness/domain.ts:attribute:TrendSummary.id:of=TrendSummary",
+      "src/production-readiness/domain.ts:attribute:TrendSummary.id:type=string",
+      "src/production-readiness/domain.ts:attribute:TrendSummary.label",
+      "src/production-readiness/domain.ts:attribute:TrendSummary.label:kind=attribute",
+      "src/production-readiness/domain.ts:attribute:TrendSummary.label:of=TrendSummary",
+      "src/production-readiness/domain.ts:attribute:TrendSummary.label:type=string",
+      "src/production-readiness/domain.ts:interface:CandidateExportSummary",
+      "src/production-readiness/domain.ts:interface:CandidateExportSummary:kind=interface",
+      "src/production-readiness/domain.ts:interface:CategorySummary",
+      "src/production-readiness/domain.ts:interface:CategorySummary:kind=interface",
+      "src/production-readiness/domain.ts:interface:ComparisonSummary",
+      "src/production-readiness/domain.ts:interface:ComparisonSummary:kind=interface",
+      "src/production-readiness/domain.ts:interface:EvidenceRef",
+      "src/production-readiness/domain.ts:interface:EvidenceRef:kind=interface",
+      "src/production-readiness/domain.ts:interface:GitRefSummary",
+      "src/production-readiness/domain.ts:interface:GitRefSummary:kind=interface",
+      "src/production-readiness/domain.ts:interface:PartialDataNotice",
+      "src/production-readiness/domain.ts:interface:PartialDataNotice:kind=interface",
+      "src/production-readiness/domain.ts:interface:ReadinessSignal",
+      "src/production-readiness/domain.ts:interface:ReadinessSignal:kind=interface",
+      "src/production-readiness/domain.ts:interface:ReadinessSnapshot",
+      "src/production-readiness/domain.ts:interface:ReadinessSnapshot:kind=interface",
+      "src/production-readiness/domain.ts:interface:ReadinessStateSummary",
+      "src/production-readiness/domain.ts:interface:ReadinessStateSummary:kind=interface",
+      "src/production-readiness/domain.ts:interface:RepositoryRef",
+      "src/production-readiness/domain.ts:interface:RepositoryRef:kind=interface",
+      "src/production-readiness/domain.ts:interface:SnapshotOutputRefs",
+      "src/production-readiness/domain.ts:interface:SnapshotOutputRefs:kind=interface",
+      "src/production-readiness/domain.ts:interface:TrendSummary",
+      "src/production-readiness/domain.ts:interface:TrendSummary:kind=interface",
+      "src/production-readiness/domain.ts:type:ReadinessCategory",
+      "src/production-readiness/domain.ts:type:ReadinessCategory:kind=type",
+      "src/production-readiness/domain.ts:type:ReadinessCategory:type='identity_access' | 'data_persistence' | 'secrets_config' | 'deployment_ops' | 'external_integrations' | 'public_surface' | 'testing_recovery' | 'maintainability' | 'change_history'",
+      "src/production-readiness/domain.ts:type:ReadinessState",
+      "src/production-readiness/domain.ts:type:ReadinessState:kind=type",
+      "src/production-readiness/domain.ts:type:ReadinessState:type='green' | 'yellow' | 'red'",
+      "src/production-readiness/domain.ts:type:SignalSeverity",
+      "src/production-readiness/domain.ts:type:SignalSeverity:kind=type",
+      "src/production-readiness/domain.ts:type:SignalSeverity:type='info' | 'low' | 'medium' | 'high' | 'critical'",
+      "src/production-readiness/domain.ts:type:SnapshotConfidence",
+      "src/production-readiness/domain.ts:type:SnapshotConfidence:kind=type",
+      "src/production-readiness/domain.ts:type:SnapshotConfidence:type='low' | 'medium' | 'high'",
+      "src/production-readiness/redaction.ts:function:redactEvidenceRef",
+      "src/production-readiness/redaction.ts:function:redactEvidenceRef:arg=evidence:type=EvidenceRef:default=None",
+      "src/production-readiness/redaction.ts:function:redactEvidenceRef:kind=function",
+      "src/production-readiness/redaction.ts:function:redactEvidenceRef:returns=EvidenceRef",
+      "src/production-readiness/redaction.ts:function:redactSensitiveValue",
+      "src/production-readiness/redaction.ts:function:redactSensitiveValue:arg=value:type=string:default=None",
+      "src/production-readiness/redaction.ts:function:redactSensitiveValue:kind=function",
+      "src/production-readiness/redaction.ts:function:redactSensitiveValue:returns=string",
+      "src/production-readiness/test-fixtures/prsFixtures.ts:function:loadPrsFixture",
+      "src/production-readiness/test-fixtures/prsFixtures.ts:function:loadPrsFixture:arg=name:type=string:default=None",
+      "src/production-readiness/test-fixtures/prsFixtures.ts:function:loadPrsFixture:kind=function",
+      "src/production-readiness/test-fixtures/prsFixtures.ts:function:loadPrsFixture:returns=PrsFixture",
+      "src/production-readiness/test-fixtures/prsFixtures.ts:type:PrsFixture",
+      "src/production-readiness/test-fixtures/prsFixtures.ts:type:PrsFixture:kind=type",
+      "src/production-readiness/test-fixtures/prsFixtures.ts:type:PrsFixture:type={ name: string; files: FixtureFile[]; goldenSnapshot?: ReadinessSnapshot }"
+    ],
+    "files": {
+      "create": [
+        "src/production-readiness/__tests__/domain-models-fixtures.test.ts",
+        "src/production-readiness/domain.ts",
+        "src/production-readiness/redaction.ts",
+        "src/production-readiness/test-fixtures/prsFixtures.ts"
+      ],
+      "edit": [],
+      "read": [
+        "docs/b2g_production_readiness_snapshot_reference.md",
+        "docs/draft-manifest-workflow.md",
+        "manifests/drafts/b2g-production-readiness-snapshot.manifest.yaml",
+        "src/lib/types"
+      ],
+      "scope": [],
+      "delete": [],
+      "snapshot": []
+    },
+    "file_contract": {
+      "create": [
+        {
+          "path": "src/production-readiness/domain.ts",
+          "artifacts": [
+            {
+              "kind": "type",
+              "name": "ReadinessState",
+              "description": "Planned user-facing PRS state union.",
+              "type": "'green' | 'yellow' | 'red'"
+            },
+            {
+              "kind": "type",
+              "name": "SignalSeverity",
+              "description": "Planned deterministic signal severity union.",
+              "type": "'info' | 'low' | 'medium' | 'high' | 'critical'"
+            },
+            {
+              "kind": "type",
+              "name": "SnapshotConfidence",
+              "description": "Planned confidence union for complete and partial data states.",
+              "type": "'low' | 'medium' | 'high'"
+            },
+            {
+              "kind": "type",
+              "name": "ReadinessCategory",
+              "description": "Planned category union from the PRS reference document.",
+              "type": "'identity_access' | 'data_persistence' | 'secrets_config' | 'deployment_ops' | 'external_integrations' | 'public_surface' | 'testing_recovery' | 'maintainability' | 'change_history'"
+            },
+            {
+              "kind": "interface",
+              "name": "RepositoryRef",
+              "description": "Planned repository owner/name identity for snapshot context."
+            },
+            {
+              "kind": "attribute",
+              "name": "owner",
+              "of": "RepositoryRef",
+              "type": "string"
+            },
+            {
+              "kind": "attribute",
+              "name": "name",
+              "of": "RepositoryRef",
+              "type": "string"
+            },
+            {
+              "kind": "interface",
+              "name": "GitRefSummary",
+              "description": "Planned Git base ref summary used for compare context and receipt output."
+            },
+            {
+              "kind": "attribute",
+              "name": "ref",
+              "of": "GitRefSummary",
+              "type": "string"
+            },
+            {
+              "kind": "attribute",
+              "name": "sha",
+              "of": "GitRefSummary",
+              "type": "string"
+            },
+            {
+              "kind": "attribute",
+              "name": "compareUrl",
+              "of": "GitRefSummary",
+              "type": "string | undefined"
+            },
+            {
+              "kind": "interface",
+              "name": "CandidateExportSummary",
+              "description": "Planned candidate Bolt export summary used by snapshots, receipts, and handoff reports."
+            },
+            {
+              "kind": "attribute",
+              "name": "id",
+              "of": "CandidateExportSummary",
+              "type": "string"
+            },
+            {
+              "kind": "attribute",
+              "name": "label",
+              "of": "CandidateExportSummary",
+              "type": "string"
+            },
+            {
+              "kind": "attribute",
+              "name": "zipSizeBytes",
+              "of": "CandidateExportSummary",
+              "type": "number"
+            },
+            {
+              "kind": "attribute",
+              "name": "generatedFrom",
+              "of": "CandidateExportSummary",
+              "type": "'bolt-export-zip'"
+            },
+            {
+              "kind": "interface",
+              "name": "CategorySummary",
+              "description": "Planned per-category summary of signal count, highest severity, and evidence paths."
+            },
+            {
+              "kind": "attribute",
+              "name": "category",
+              "of": "CategorySummary",
+              "type": "ReadinessCategory"
+            },
+            {
+              "kind": "attribute",
+              "name": "signalCount",
+              "of": "CategorySummary",
+              "type": "number"
+            },
+            {
+              "kind": "attribute",
+              "name": "highestSeverity",
+              "of": "CategorySummary",
+              "type": "SignalSeverity"
+            },
+            {
+              "kind": "attribute",
+              "name": "evidence",
+              "of": "CategorySummary",
+              "type": "EvidenceRef[]"
+            },
+            {
+              "kind": "interface",
+              "name": "TrendSummary",
+              "description": "Planned history trend summary for unusual size, hotspots, dependency drift, and churn evidence."
+            },
+            {
+              "kind": "attribute",
+              "name": "id",
+              "of": "TrendSummary",
+              "type": "string"
+            },
+            {
+              "kind": "attribute",
+              "name": "label",
+              "of": "TrendSummary",
+              "type": "string"
+            },
+            {
+              "kind": "attribute",
+              "name": "evidence",
+              "of": "TrendSummary",
+              "type": "EvidenceRef[]"
+            },
+            {
+              "kind": "interface",
+              "name": "SnapshotOutputRefs",
+              "description": "Planned references to generated receipt, handoff, debug, or commit-marker outputs."
+            },
+            {
+              "kind": "attribute",
+              "name": "receiptMarkdown",
+              "of": "SnapshotOutputRefs",
+              "type": "string | undefined"
+            },
+            {
+              "kind": "attribute",
+              "name": "adcFixHandoffMarkdown",
+              "of": "SnapshotOutputRefs",
+              "type": "string | undefined"
+            },
+            {
+              "kind": "attribute",
+              "name": "debugJson",
+              "of": "SnapshotOutputRefs",
+              "type": "string | undefined"
+            },
+            {
+              "kind": "attribute",
+              "name": "commitMarker",
+              "of": "SnapshotOutputRefs",
+              "type": "string | undefined"
+            },
+            {
+              "kind": "interface",
+              "name": "PartialDataNotice",
+              "description": "Planned limitation record for unavailable GitHub comparison, history, large-file scans, or rate-limited data."
+            },
+            {
+              "kind": "attribute",
+              "name": "source",
+              "of": "PartialDataNotice",
+              "type": "'github_base' | 'history' | 'zip_scan' | 'large_file_diff' | 'rate_limit' | 'detector'"
+            },
+            {
+              "kind": "attribute",
+              "name": "message",
+              "of": "PartialDataNotice",
+              "type": "string"
+            },
+            {
+              "kind": "attribute",
+              "name": "confidenceImpact",
+              "of": "PartialDataNotice",
+              "type": "SnapshotConfidence"
+            },
+            {
+              "kind": "interface",
+              "name": "EvidenceRef",
+              "description": "Planned evidence reference object for file, dependency, env var, route, metric, commit, and pattern evidence."
+            },
+            {
+              "kind": "attribute",
+              "name": "kind",
+              "of": "EvidenceRef",
+              "type": "'file' | 'dependency' | 'env_var' | 'route' | 'metric' | 'commit' | 'pattern'"
+            },
+            {
+              "kind": "attribute",
+              "name": "label",
+              "of": "EvidenceRef",
+              "type": "string"
+            },
+            {
+              "kind": "attribute",
+              "name": "path",
+              "of": "EvidenceRef",
+              "type": "string | undefined"
+            },
+            {
+              "kind": "attribute",
+              "name": "before",
+              "of": "EvidenceRef",
+              "type": "string | number | boolean | undefined"
+            },
+            {
+              "kind": "attribute",
+              "name": "after",
+              "of": "EvidenceRef",
+              "type": "string | number | boolean | undefined"
+            },
+            {
+              "kind": "attribute",
+              "name": "redacted",
+              "of": "EvidenceRef",
+              "type": "boolean | undefined"
+            },
+            {
+              "kind": "interface",
+              "name": "ReadinessSignal",
+              "description": "Planned deterministic signal object with category, severity, title, message, evidence, and optional suggested review."
+            },
+            {
+              "kind": "attribute",
+              "name": "id",
+              "of": "ReadinessSignal",
+              "type": "string"
+            },
+            {
+              "kind": "attribute",
+              "name": "category",
+              "of": "ReadinessSignal",
+              "type": "ReadinessCategory"
+            },
+            {
+              "kind": "attribute",
+              "name": "severity",
+              "of": "ReadinessSignal",
+              "type": "SignalSeverity"
+            },
+            {
+              "kind": "attribute",
+              "name": "title",
+              "of": "ReadinessSignal",
+              "type": "string"
+            },
+            {
+              "kind": "attribute",
+              "name": "message",
+              "of": "ReadinessSignal",
+              "type": "string"
+            },
+            {
+              "kind": "attribute",
+              "name": "evidence",
+              "of": "ReadinessSignal",
+              "type": "EvidenceRef[]"
+            },
+            {
+              "kind": "attribute",
+              "name": "suggestedReview",
+              "of": "ReadinessSignal",
+              "type": "string | undefined"
+            },
+            {
+              "kind": "attribute",
+              "name": "deterministic",
+              "of": "ReadinessSignal",
+              "type": "true"
+            },
+            {
+              "kind": "interface",
+              "name": "ComparisonSummary",
+              "description": "Planned changed, added, deleted, renamed, line, binary, and sensitive-change summary."
+            },
+            {
+              "kind": "attribute",
+              "name": "changedFiles",
+              "of": "ComparisonSummary",
+              "type": "number"
+            },
+            {
+              "kind": "attribute",
+              "name": "addedFiles",
+              "of": "ComparisonSummary",
+              "type": "number"
+            },
+            {
+              "kind": "attribute",
+              "name": "deletedFiles",
+              "of": "ComparisonSummary",
+              "type": "number"
+            },
+            {
+              "kind": "attribute",
+              "name": "renamedFiles",
+              "of": "ComparisonSummary",
+              "type": "number | undefined"
+            },
+            {
+              "kind": "attribute",
+              "name": "addedLines",
+              "of": "ComparisonSummary",
+              "type": "number | undefined"
+            },
+            {
+              "kind": "attribute",
+              "name": "deletedLines",
+              "of": "ComparisonSummary",
+              "type": "number | undefined"
+            },
+            {
+              "kind": "attribute",
+              "name": "binaryFilesChanged",
+              "of": "ComparisonSummary",
+              "type": "number"
+            },
+            {
+              "kind": "attribute",
+              "name": "sensitiveFilesChanged",
+              "of": "ComparisonSummary",
+              "type": "number"
+            },
+            {
+              "kind": "attribute",
+              "name": "packageManifestChanged",
+              "of": "ComparisonSummary",
+              "type": "boolean"
+            },
+            {
+              "kind": "attribute",
+              "name": "lockfileChanged",
+              "of": "ComparisonSummary",
+              "type": "boolean"
+            },
+            {
+              "kind": "attribute",
+              "name": "envExampleChanged",
+              "of": "ComparisonSummary",
+              "type": "boolean"
+            },
+            {
+              "kind": "attribute",
+              "name": "routeSurfaceChanged",
+              "of": "ComparisonSummary",
+              "type": "boolean"
+            },
+            {
+              "kind": "interface",
+              "name": "ReadinessStateSummary",
+              "description": "Planned state summary with user-facing copy, confidence, top concerns, and safe-looking areas."
+            },
+            {
+              "kind": "attribute",
+              "name": "state",
+              "of": "ReadinessStateSummary",
+              "type": "ReadinessState"
+            },
+            {
+              "kind": "attribute",
+              "name": "confidence",
+              "of": "ReadinessStateSummary",
+              "type": "SnapshotConfidence"
+            },
+            {
+              "kind": "attribute",
+              "name": "internalScore",
+              "of": "ReadinessStateSummary",
+              "type": "number"
+            },
+            {
+              "kind": "attribute",
+              "name": "headline",
+              "of": "ReadinessStateSummary",
+              "type": "string"
+            },
+            {
+              "kind": "attribute",
+              "name": "recommendedAction",
+              "of": "ReadinessStateSummary",
+              "type": "string"
+            },
+            {
+              "kind": "attribute",
+              "name": "topConcerns",
+              "of": "ReadinessStateSummary",
+              "type": "string[]"
+            },
+            {
+              "kind": "attribute",
+              "name": "safeLookingAreas",
+              "of": "ReadinessStateSummary",
+              "type": "string[]"
+            },
+            {
+              "kind": "interface",
+              "name": "ReadinessSnapshot",
+              "description": "Planned schema-versioned PRS result object consumed by composers, UI, receipts, and ADC Fix handoff reports."
+            },
+            {
+              "kind": "attribute",
+              "name": "schemaVersion",
+              "of": "ReadinessSnapshot",
+              "type": "'b2g.prs.snapshot.v1'"
+            },
+            {
+              "kind": "attribute",
+              "name": "generatedAt",
+              "of": "ReadinessSnapshot",
+              "type": "string"
+            },
+            {
+              "kind": "attribute",
+              "name": "repository",
+              "of": "ReadinessSnapshot",
+              "type": "RepositoryRef"
+            },
+            {
+              "kind": "attribute",
+              "name": "base",
+              "of": "ReadinessSnapshot",
+              "type": "GitRefSummary"
+            },
+            {
+              "kind": "attribute",
+              "name": "candidate",
+              "of": "ReadinessSnapshot",
+              "type": "CandidateExportSummary"
+            },
+            {
+              "kind": "attribute",
+              "name": "comparison",
+              "of": "ReadinessSnapshot",
+              "type": "ComparisonSummary"
+            },
+            {
+              "kind": "attribute",
+              "name": "state",
+              "of": "ReadinessSnapshot",
+              "type": "ReadinessStateSummary"
+            },
+            {
+              "kind": "attribute",
+              "name": "categories",
+              "of": "ReadinessSnapshot",
+              "type": "CategorySummary[]"
+            },
+            {
+              "kind": "attribute",
+              "name": "signals",
+              "of": "ReadinessSnapshot",
+              "type": "ReadinessSignal[]"
+            },
+            {
+              "kind": "attribute",
+              "name": "trends",
+              "of": "ReadinessSnapshot",
+              "type": "TrendSummary[] | undefined"
+            },
+            {
+              "kind": "attribute",
+              "name": "outputs",
+              "of": "ReadinessSnapshot",
+              "type": "SnapshotOutputRefs"
+            },
+            {
+              "kind": "attribute",
+              "name": "limitations",
+              "of": "ReadinessSnapshot",
+              "type": "string[]"
+            }
+          ]
+        },
+        {
+          "path": "src/production-readiness/redaction.ts",
+          "artifacts": [
+            {
+              "kind": "function",
+              "name": "redactSensitiveValue",
+              "description": "Planned helper that masks secret-looking values while preserving useful evidence context.",
+              "args": [
+                {
+                  "name": "value",
+                  "type": "string"
+                }
+              ],
+              "returns": "string"
+            },
+            {
+              "kind": "function",
+              "name": "redactEvidenceRef",
+              "description": "Planned helper that redacts before and after evidence values without dropping path or label context.",
+              "args": [
+                {
+                  "name": "evidence",
+                  "type": "EvidenceRef"
+                }
+              ],
+              "returns": "EvidenceRef"
+            }
+          ]
+        },
+        {
+          "path": "src/production-readiness/test-fixtures/prsFixtures.ts",
+          "artifacts": [
+            {
+              "kind": "function",
+              "name": "loadPrsFixture",
+              "description": "Planned deterministic fixture loader for PRS unit tests.",
+              "args": [
+                {
+                  "name": "name",
+                  "type": "string"
+                }
+              ],
+              "returns": "PrsFixture"
+            },
+            {
+              "kind": "type",
+              "name": "PrsFixture",
+              "description": "Planned fixture shape shared by PRS child tests.",
+              "type": "{ name: string; files: FixtureFile[]; goldenSnapshot?: ReadinessSnapshot }"
+            }
+          ]
+        },
+        {
+          "path": "src/production-readiness/__tests__/domain-models-fixtures.test.ts",
+          "artifacts": [
+            {
+              "kind": "test_function",
+              "name": "domain objects satisfy the expected snapshot schema",
+              "description": "Required planned behavioral test before promotion."
+            },
+            {
+              "kind": "test_function",
+              "name": "golden snapshot fixture loading is deterministic",
+              "description": "Required planned behavioral test before promotion."
+            },
+            {
+              "kind": "test_function",
+              "name": "redaction helpers hide secret values while preserving evidence names and paths",
+              "description": "Required planned behavioral test before promotion."
+            }
+          ]
+        }
+      ],
+      "read": [
+        "docs/b2g_production_readiness_snapshot_reference.md",
+        "manifests/drafts/b2g-production-readiness-snapshot.manifest.yaml",
+        "docs/draft-manifest-workflow.md",
+        "src/lib/types"
+      ]
+    },
+    "test_files": ["src/production-readiness/__tests__/domain-models-fixtures.test.ts"],
+    "validate_commands": [
+      "pnpm exec vitest run src/production-readiness/__tests__/domain-models-fixtures.test.ts",
+      "./scripts/maid validate manifests/01-b2g-prs-domain-models-fixtures.manifest.yaml --mode behavioral",
+      "pnpm lint",
+      "pnpm check"
+    ]
+  }
+}

@@ -1,14 +1,17 @@
-# draft-kind: child-planning-inventory
+# manifest-kind: active-contract
+# MAID manifest - a machine-checked contract for one change.
+# Declares the intent, the files it may touch, and the commands that verify it.
+# Nothing here is needed to build or run this project; safe to ignore.
+# What it is: https://github.com/mamertofabian/maid-runner
 schema: '2'
 goal: |
   Add the Production Readiness Snapshot domain model foundation, fixture
   structure, golden output harness, and shared redaction helpers needed by
   later PRS child manifests.
 description: |
-  Child draft for the b2g-production-readiness-snapshot parent epic. This is
-  planning inventory only and is not promotion-ready until the planned
-  behavioral tests and golden fixtures exist, red phase is confirmed, and
-  behavioral MAID validation passes after promotion.
+  Promoted child contract for the b2g-production-readiness-snapshot parent
+  epic. Its behavioral tests and deterministic golden fixture establish the
+  shared foundation for later PRS child manifests.
 
   This slice establishes the stable TypeScript vocabulary for PRS without
   implementing zip parsing, GitHub adapters, diffing, detectors, UI, reports, or
@@ -16,12 +19,17 @@ description: |
   and deterministic fixture utilities so downstream contracts do not each invent
   their own snapshot shape.
 temptations:
-  - risk: 'Do not let downstream detector drafts define their own incompatible snapshot, signal, or evidence shapes.'
-    instead: 'Centralize PRS domain contracts in the domain foundation and have later drafts import those types.'
+  - risk: 'Do not let downstream detector drafts define their own incompatible snapshot,
+      signal, or evidence shapes.'
+    instead: 'Centralize PRS domain contracts in the domain foundation and have later
+      drafts import those types.'
   - risk: 'Do not store or assert raw secret-looking fixture values in golden snapshots.'
-    instead: 'Run fixture outputs through the shared redaction helper and assert redacted markers plus evidence labels.'
-  - risk: 'Do not make the fixture loader depend on wall-clock time, random IDs, network calls, or extension runtime globals.'
-    instead: 'Use deterministic fixture files and injected timestamps or static golden data.'
+    instead: 'Run fixture outputs through the shared redaction helper and assert redacted
+      markers plus evidence labels.'
+  - risk: 'Do not make the fixture loader depend on wall-clock time, random IDs, network
+      calls, or extension runtime globals.'
+    instead: 'Use deterministic fixture files and injected timestamps or static golden
+      data.'
 type: feature
 files:
   create:
@@ -38,14 +46,18 @@ files:
         - kind: type
           name: SnapshotConfidence
           type: "'low' | 'medium' | 'high'"
-          description: Planned confidence union for complete and partial data states.
+          description: Planned confidence union for complete and partial data
+            states.
         - kind: type
           name: ReadinessCategory
-          type: "'identity_access' | 'data_persistence' | 'secrets_config' | 'deployment_ops' | 'external_integrations' | 'public_surface' | 'testing_recovery' | 'maintainability' | 'change_history'"
+          type: "'identity_access' | 'data_persistence' | 'secrets_config' | 'deployment_ops'
+            | 'external_integrations' | 'public_surface' | 'testing_recovery' | 'maintainability'
+            | 'change_history'"
           description: Planned category union from the PRS reference document.
         - kind: interface
           name: RepositoryRef
-          description: Planned repository owner/name identity for snapshot context.
+          description: Planned repository owner/name identity for snapshot
+            context.
         - kind: attribute
           name: owner
           of: RepositoryRef
@@ -56,7 +68,8 @@ files:
           type: string
         - kind: interface
           name: GitRefSummary
-          description: Planned Git base ref summary used for compare context and receipt output.
+          description: Planned Git base ref summary used for compare context and
+            receipt output.
         - kind: attribute
           name: ref
           of: GitRefSummary
@@ -71,7 +84,8 @@ files:
           type: string | undefined
         - kind: interface
           name: CandidateExportSummary
-          description: Planned candidate Bolt export summary used by snapshots, receipts, and handoff reports.
+          description: Planned candidate Bolt export summary used by snapshots,
+            receipts, and handoff reports.
         - kind: attribute
           name: id
           of: CandidateExportSummary
@@ -90,7 +104,8 @@ files:
           type: "'bolt-export-zip'"
         - kind: interface
           name: CategorySummary
-          description: Planned per-category summary of signal count, highest severity, and evidence paths.
+          description: Planned per-category summary of signal count, highest
+            severity, and evidence paths.
         - kind: attribute
           name: category
           of: CategorySummary
@@ -109,7 +124,8 @@ files:
           type: EvidenceRef[]
         - kind: interface
           name: TrendSummary
-          description: Planned history trend summary for unusual size, hotspots, dependency drift, and churn evidence.
+          description: Planned history trend summary for unusual size, hotspots,
+            dependency drift, and churn evidence.
         - kind: attribute
           name: id
           of: TrendSummary
@@ -124,7 +140,8 @@ files:
           type: EvidenceRef[]
         - kind: interface
           name: SnapshotOutputRefs
-          description: Planned references to generated receipt, handoff, debug, or commit-marker outputs.
+          description: Planned references to generated receipt, handoff, debug,
+            or commit-marker outputs.
         - kind: attribute
           name: receiptMarkdown
           of: SnapshotOutputRefs
@@ -143,11 +160,13 @@ files:
           type: string | undefined
         - kind: interface
           name: PartialDataNotice
-          description: Planned limitation record for unavailable GitHub comparison, history, large-file scans, or rate-limited data.
+          description: Planned limitation record for unavailable GitHub
+            comparison, history, large-file scans, or rate-limited data.
         - kind: attribute
           name: source
           of: PartialDataNotice
-          type: "'github_base' | 'history' | 'zip_scan' | 'large_file_diff' | 'rate_limit' | 'detector'"
+          type: "'github_base' | 'history' | 'zip_scan' | 'large_file_diff' | 'rate_limit'
+            | 'detector'"
         - kind: attribute
           name: message
           of: PartialDataNotice
@@ -158,11 +177,13 @@ files:
           type: SnapshotConfidence
         - kind: interface
           name: EvidenceRef
-          description: Planned evidence reference object for file, dependency, env var, route, metric, commit, and pattern evidence.
+          description: Planned evidence reference object for file, dependency,
+            env var, route, metric, commit, and pattern evidence.
         - kind: attribute
           name: kind
           of: EvidenceRef
-          type: "'file' | 'dependency' | 'env_var' | 'route' | 'metric' | 'commit' | 'pattern'"
+          type: "'file' | 'dependency' | 'env_var' | 'route' | 'metric' | 'commit'
+            | 'pattern'"
         - kind: attribute
           name: label
           of: EvidenceRef
@@ -185,7 +206,8 @@ files:
           type: boolean | undefined
         - kind: interface
           name: ReadinessSignal
-          description: Planned deterministic signal object with category, severity, title, message, evidence, and optional suggested review.
+          description: Planned deterministic signal object with category,
+            severity, title, message, evidence, and optional suggested review.
         - kind: attribute
           name: id
           of: ReadinessSignal
@@ -220,7 +242,8 @@ files:
           type: 'true'
         - kind: interface
           name: ComparisonSummary
-          description: Planned changed, added, deleted, renamed, line, binary, and sensitive-change summary.
+          description: Planned changed, added, deleted, renamed, line, binary,
+            and sensitive-change summary.
         - kind: attribute
           name: changedFiles
           of: ComparisonSummary
@@ -271,7 +294,8 @@ files:
           type: boolean
         - kind: interface
           name: ReadinessStateSummary
-          description: Planned state summary with user-facing copy, confidence, top concerns, and safe-looking areas.
+          description: Planned state summary with user-facing copy, confidence,
+            top concerns, and safe-looking areas.
         - kind: attribute
           name: state
           of: ReadinessStateSummary
@@ -302,7 +326,8 @@ files:
           type: string[]
         - kind: interface
           name: ReadinessSnapshot
-          description: Planned schema-versioned PRS result object consumed by composers, UI, receipts, and ADC Fix handoff reports.
+          description: Planned schema-versioned PRS result object consumed by
+            composers, UI, receipts, and ADC Fix handoff reports.
         - kind: attribute
           name: schemaVersion
           of: ReadinessSnapshot
@@ -359,14 +384,16 @@ files:
             - name: value
               type: string
           returns: string
-          description: Planned helper that masks secret-looking values while preserving useful evidence context.
+          description: Planned helper that masks secret-looking values while
+            preserving useful evidence context.
         - kind: function
           name: redactEvidenceRef
           args:
             - name: evidence
               type: EvidenceRef
           returns: EvidenceRef
-          description: Planned helper that redacts before and after evidence values without dropping path or label context.
+          description: Planned helper that redacts before and after evidence
+            values without dropping path or label context.
     - path: src/production-readiness/test-fixtures/prsFixtures.ts
       artifacts:
         - kind: function
@@ -378,7 +405,8 @@ files:
           description: Planned deterministic fixture loader for PRS unit tests.
         - kind: type
           name: PrsFixture
-          type: '{ name: string; files: FixtureFile[]; goldenSnapshot?: ReadinessSnapshot }'
+          type: '{ name: string; files: FixtureFile[]; goldenSnapshot?: ReadinessSnapshot
+            }'
           description: Planned fixture shape shared by PRS child tests.
     - path: src/production-readiness/__tests__/domain-models-fixtures.test.ts
       artifacts:
@@ -389,7 +417,8 @@ files:
           name: golden snapshot fixture loading is deterministic
           description: Required planned behavioral test before promotion.
         - kind: test_function
-          name: redaction helpers hide secret values while preserving evidence names and paths
+          name: redaction helpers hide secret values while preserving evidence
+            names and paths
           description: Required planned behavioral test before promotion.
   read:
     - docs/b2g_production_readiness_snapshot_reference.md
@@ -397,11 +426,13 @@ files:
     - docs/draft-manifest-workflow.md
     - src/lib/types
 validate:
-  - pnpm exec vitest run src/production-readiness/__tests__/domain-models-fixtures.test.ts
-  - ./scripts/maid validate manifests/01-b2g-prs-domain-models-fixtures.manifest.yaml --mode behavioral
+  - pnpm exec vitest run
+    src/production-readiness/__tests__/domain-models-fixtures.test.ts
+  - ./scripts/maid validate
+    manifests/01-b2g-prs-domain-models-fixtures.manifest.yaml --mode behavioral
   - pnpm lint
   - pnpm check
-created: '2026-07-07T12:56:53+08:00'
+created: '2026-07-31T02:35:39Z'
 metadata:
   tags:
     - production-readiness
@@ -409,7 +440,128 @@ metadata:
     - fixtures
     - redaction
   priority: high
-  status: planning
-  promotable: false
+  status: implementation
+  promotable: true
   parent_epic: b2g-production-readiness-snapshot
   source_document: docs/b2g_production_readiness_snapshot_reference.md
+outcome:
+  status: completed
+  summary: |
+    Added the canonical Production Readiness Snapshot TypeScript domain
+    contracts, deterministic fixture loader and golden snapshot foundation,
+    plus shared redaction helpers that replace sensitive string evidence with a
+    fixed marker while preserving labels, paths, and non-string metrics.
+  rationale: |
+    Later PRS inventory, diff, detector, composer, report, and UI children need
+    one stable schema and privacy boundary. Establishing those contracts first
+    prevents incompatible downstream shapes, and the fixture coherence checks
+    keep golden data deterministic without normalizing impossible evidence.
+  lessons:
+    - lesson_type: redact-at-shared-boundary
+      summary: |
+        Sensitive evidence strings should pass through one shared redaction
+        helper that emits a constant marker. Golden fixtures should contain
+        only that marker, evidence names, and paths, never realistic secret
+        values.
+      tags:
+        - production-readiness
+        - privacy
+        - redaction
+      paths:
+        - src/production-readiness/redaction.ts
+        - src/production-readiness/test-fixtures/prsFixtures.ts
+    - lesson_type: assert-golden-semantic-coherence
+      summary: |
+        Determinism alone does not make a golden fixture trustworthy. Tests
+        should also reconcile category counts with signals, evidence paths with
+        fixture files, and comparison flags with the represented change.
+      tags:
+        - production-readiness
+        - fixtures
+        - testing
+      paths:
+        - src/production-readiness/__tests__/domain-models-fixtures.test.ts
+  review_notes:
+    - source: maid_implementation_reviewer subagent
+      severity: needs-changes
+      summary: |
+        Found an undeclared FixtureFile export, incoherent fixture evidence and
+        category signals, and stale planning metadata. The findings were fixed
+        by making the helper type private, aligning the golden fixture, adding
+        semantic assertions, and marking the promoted manifest active.
+    - source: maid_implementation_rereviewer subagent
+      severity: needs-changes
+      summary: |
+        Found that envExampleChanged contradicted the .env.example fixture and
+        its signal. The comparison flag and behavioral assertion were updated.
+    - source: maid_implementation_final_reviewer subagent
+      severity: ready
+      summary: |
+        Confirmed all prior findings were resolved, scope and public exports
+        matched the contract, privacy behavior was intact, and revision-4
+        validation passed. Reported no blockers or should-fix findings.
+  validation:
+    - command:
+        - pnpm
+        - exec
+        - vitest
+        - run
+        - src/production-readiness/__tests__/domain-models-fixtures.test.ts
+      status: passed
+      summary: Three focused behavioral tests passed.
+    - command:
+        - ./scripts/maid
+        - validate
+        - manifests/01-b2g-prs-domain-models-fixtures.manifest.yaml
+        - --mode
+        - behavioral
+      status: passed
+      summary: Behavioral validation passed for every declared artifact.
+    - command:
+        - ./scripts/maid
+        - validate
+        - manifests/01-b2g-prs-domain-models-fixtures.manifest.yaml
+        - --mode
+        - implementation
+      status: passed
+      summary: Implementation validation passed for the promoted contract.
+    - command:
+        - pnpm
+        - lint
+      status: passed
+      summary: ESLint passed.
+    - command:
+        - pnpm
+        - check
+      status: passed
+      summary: svelte-check passed with zero errors and zero warnings.
+    - command:
+        - pnpm
+        - test:ci
+      status: passed
+      summary: All 198 test files and 4004 tests passed.
+    - command:
+        - pnpm
+        - build
+      status: passed
+      summary: Production build passed with two pre-existing chunking warnings.
+    - command:
+        - ./scripts/maid
+        - verify
+        - --manifest-dir
+        - manifests
+        - --require-plan-lock
+        - --require-red-evidence
+        - --plan-lock-scope
+        - task
+        - --file-tracking-scope
+        - task
+        - --include-tests
+        - --base-ref
+        - dev-v2.0.0
+        - --advisory
+        - --summary
+      status: passed
+      summary: |
+        All nine verification gates passed. Three unrelated pre-existing E110
+        supersession warnings remain in prepare-v2-0-0-github-app-release.
