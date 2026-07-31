@@ -1,0 +1,304 @@
+# manifest-kind: active-contract
+# MAID manifest - a machine-checked contract for one change.
+# Declares the intent, the files it may touch, and the commands that verify it.
+# Nothing here is needed to build or run this project; safe to ignore.
+# What it is: https://github.com/mamertofabian/maid-runner
+schema: '2'
+goal: |
+  Parse exported Bolt project zips into normalized PRS file inventory with path
+  normalization, ignore rules, text/binary detection, size, hash, and line
+  counts.
+description: |
+  Promoted child contract for the b2g-production-readiness-snapshot parent
+  epic. Its fixture-backed behavioral tests establish normalized candidate ZIP
+  inventory for downstream PRS children.
+
+  This slice owns candidate export inventory only. It should produce normalized
+  file metadata for later GitHub comparison, diffing, dependency detection, and
+  path classification. It must not fetch GitHub data, compose readiness state,
+  render UI, or generate reports.
+temptations:
+  - risk: 'Do not analyze generated or vendor directories before applying ignore rules.'
+    instead: 'Normalize paths first, apply PRS ignore rules, and only then compute
+      expensive text metadata.'
+  - risk: 'Do not drop lockfiles with generic generated-file ignores.'
+    instead: 'Retain package lockfiles as metadata for dependency analysis even when
+      other generated paths are ignored.'
+  - risk: 'Do not line-diff binary or very large files as if they were source text.'
+    instead: 'Record binary and large-file metadata and expose limitations for downstream
+      diffing.'
+type: feature
+files:
+  create:
+    - path: src/production-readiness/inventory/zipInventory.ts
+      artifacts:
+        - kind: interface
+          name: ZipInventoryOptions
+          description: Planned options for ignore rules, binary detection, hash
+            computation, and large-file thresholds.
+        - kind: attribute
+          name: largeFileThresholdBytes
+          of: ZipInventoryOptions
+          type: number | undefined
+        - kind: attribute
+          name: maxEntries
+          of: ZipInventoryOptions
+          type: number | undefined
+        - kind: attribute
+          name: maxEntryUncompressedBytes
+          of: ZipInventoryOptions
+          type: number | undefined
+        - kind: attribute
+          name: maxTotalUncompressedBytes
+          of: ZipInventoryOptions
+          type: number | undefined
+        - kind: attribute
+          name: computeHashes
+          of: ZipInventoryOptions
+          type: boolean | undefined
+        - kind: attribute
+          name: hashBytes
+          of: ZipInventoryOptions
+          type: '((bytes: Uint8Array) => Promise<string>) | undefined'
+        - kind: attribute
+          name: shouldAnalyzePath
+          of: ZipInventoryOptions
+          type: '((path: string) => boolean) | undefined'
+        - kind: attribute
+          name: yieldToEventLoop
+          of: ZipInventoryOptions
+          type: '(() => Promise<void>) | undefined'
+        - kind: interface
+          name: FileInventoryEntry
+          description: Planned normalized file metadata for path, size, hash,
+            line count, text/binary state, and analysis eligibility.
+        - kind: attribute
+          name: path
+          of: FileInventoryEntry
+          type: string
+        - kind: attribute
+          name: sizeBytes
+          of: FileInventoryEntry
+          type: number
+        - kind: attribute
+          name: hash
+          of: FileInventoryEntry
+          type: string | undefined
+        - kind: attribute
+          name: lineCount
+          of: FileInventoryEntry
+          type: number | undefined
+        - kind: attribute
+          name: contentKind
+          of: FileInventoryEntry
+          type: "'text' | 'binary' | 'uninspected'"
+        - kind: attribute
+          name: analysisEligible
+          of: FileInventoryEntry
+          type: boolean
+        - kind: attribute
+          name: lineDiffEligible
+          of: FileInventoryEntry
+          type: boolean
+        - kind: attribute
+          name: largeFile
+          of: FileInventoryEntry
+          type: boolean
+        - kind: attribute
+          name: skipReason
+          of: FileInventoryEntry
+          type: "'ignored_path' | 'binary' | 'large_file' | 'archive_limit' | undefined"
+        - kind: interface
+          name: FileInventory
+          description: Planned collection of normalized entries plus inventory
+            limitations.
+        - kind: attribute
+          name: entries
+          of: FileInventory
+          type: FileInventoryEntry[]
+        - kind: attribute
+          name: limitations
+          of: FileInventory
+          type: string[]
+        - kind: function
+          name: buildZipInventory
+          args:
+            - name: zipData
+              type: ArrayBuffer
+            - name: options
+              type: ZipInventoryOptions | undefined
+          returns: Promise<FileInventory>
+          description: Planned adapter that reads an exported Bolt zip and
+            returns deterministic PRS inventory metadata.
+    - path: src/production-readiness/rules/ignore-rules.ts
+      artifacts:
+        - kind: type
+          name: PrsIgnoreRule
+          type: '{ pattern: string; reason: string; retainAsMetadata?: boolean }'
+          description: Planned data-driven ignore rule shape for inventory
+            normalization.
+        - kind: function
+          name: shouldAnalyzePath
+          args:
+            - name: path
+              type: string
+          returns: boolean
+          description: Planned rule helper that excludes generated/vendor paths
+            while preserving relevant metadata files.
+    - path: src/production-readiness/__tests__/zip-inventory-normalization.test.ts
+      artifacts:
+        - kind: test_function
+          name: zip fixture produces expected normalized inventory
+          description: Required planned behavioral test before promotion.
+        - kind: test_function
+          name: ignored paths are excluded from source analysis
+          description: Required planned behavioral test before promotion.
+        - kind: test_function
+          name: lockfiles remain available for dependency analysis
+          description: Required planned behavioral test before promotion.
+        - kind: test_function
+          name: binary files are counted but not line diffed
+          description: Required planned behavioral test before promotion.
+    - path: src/production-readiness/test-fixtures/prs/zips/catalog.ts
+      artifacts:
+        - kind: type
+          name: ZipInventoryFixtureCatalog
+          type: '{ name: string; purpose: string; syntheticOnly: true }'
+          description: Typed catalog describing small synthetic ZIP fixtures
+            for PRS inventory tests without storing opaque project archives.
+  read:
+    - docs/b2g_production_readiness_snapshot_reference.md
+    - manifests/drafts/b2g-production-readiness-snapshot.manifest.yaml
+    - manifests/01-b2g-prs-domain-models-fixtures.manifest.yaml
+    - src/production-readiness/domain.ts
+    - src/production-readiness/test-fixtures/prsFixtures.ts
+validate:
+  - pnpm exec vitest run
+    src/production-readiness/__tests__/zip-inventory-normalization.test.ts
+  - ./scripts/maid validate
+    manifests/02-b2g-prs-zip-inventory-normalization.manifest.yaml --mode
+    behavioral
+  - pnpm lint
+  - pnpm check
+created: '2026-07-31T03:04:41Z'
+metadata:
+  tags:
+    - production-readiness
+    - zip-inventory
+    - normalization
+    - bolt-export
+  priority: high
+  status: implementation
+  promotable: true
+  parent_epic: b2g-production-readiness-snapshot
+  depends_on:
+    - 01-b2g-prs-domain-models-fixtures
+  source_document: docs/b2g_production_readiness_snapshot_reference.md
+outcome:
+  status: completed
+  completed_at: '2026-07-31T03:59:46Z'
+  summary: |
+    Bolt project ZIP exports now produce deterministic PRS file inventories
+    with normalized safe paths, data-driven ignore decisions, SHA-256 hashes,
+    text/binary classification, line counts, and explicit metadata for files
+    that cannot be line analyzed. Archive processing validates the central
+    directory, retains lockfiles, rejects unsafe and duplicate paths, and
+    reports visible limitations when configured entry or byte ceilings apply.
+  rationale: |
+    PRS needs a stable, browser-safe inventory before it can compare a Bolt
+    export with GitHub. Central-directory metadata preserves accurate sizes
+    without inflating ignored files, while a single scheduled decoder,
+    discarded-stream draining, compressed-input slicing, and actual-byte
+    ceilings bound decompression work without relying on Blob workers that may
+    conflict with Chrome MV3 policy.
+  lessons:
+    - lesson_type: adversarial-archive-bounds
+      summary: |
+        ZIP header sizes are untrusted. Enforce limits against observed output,
+        subdivide compressed input so expansion is interruptible, and bound
+        retained candidates separately from extraction bytes.
+      tags: [zip, security, memory, mv3]
+      paths:
+        - src/production-readiness/inventory/zipInventory.ts
+        - src/production-readiness/__tests__/zip-inventory-normalization.test.ts
+    - lesson_type: streaming-parser-lifecycle
+      summary: |
+        With fflate, terminating an unstarted entry does not release buffered
+        compressed chunks. Skipped entries must start through the bounded
+        decoder queue before termination.
+      tags: [fflate, streaming, lifecycle, performance]
+      paths:
+        - src/production-readiness/inventory/zipInventory.ts
+    - lesson_type: directory-backed-metadata
+      summary: |
+        Local ZIP headers can omit sizes when data descriptors are used, so
+        validated central-directory records are the reliable metadata source
+        for ignored entries.
+      tags: [zip, metadata, validation]
+      paths:
+        - src/production-readiness/inventory/zipInventory.ts
+  review_notes:
+    - source: independent reviewer /root/slice02_final_reviewer
+      severity: ready
+      summary: |
+        Revision 10 resolved all findings. The reviewer confirmed bounded
+        high-ratio DEFLATE expansion, single-decoder concurrency, correct
+        discarded-stream handling, MV3-compatible scheduling, structural ZIP
+        validation, descriptor-backed sizes, manifest scope, and behavioral
+        coverage, with no blocking findings.
+  validation:
+    - command:
+        [
+          pnpm,
+          exec,
+          vitest,
+          run,
+          src/production-readiness/__tests__/zip-inventory-normalization.test.ts,
+        ]
+      status: passed
+      summary: Four focused behavioral scenarios passed, including unsafe paths,
+        malformed directories, data descriptors, forged stored and DEFLATE
+        sizes, archive ceilings, Unicode boundaries, hashing, ignore rules, and
+        lockfiles.
+    - command: [pnpm, test:ci]
+      status: passed
+      summary: The complete Vitest suite passed 199 files and 4,008 tests.
+    - command: [pnpm, check]
+      status: passed
+      summary: Svelte and TypeScript validation completed with zero errors or
+        warnings.
+    - command: [pnpm, lint]
+      status: passed
+      summary: ESLint passed for all JavaScript, TypeScript, and Svelte sources.
+    - command: [pnpm, build]
+      status: passed
+      summary: The production extension build completed successfully; only two
+        pre-existing Vite dynamic/static import chunk warnings remained.
+    - command: [./scripts/maid, validate, --manifest-dir, manifests, --mode, behavioral]
+      status: passed
+      summary: Repository-wide behavioral validation passed 39 active manifests
+        with 13 superseded and no failures.
+    - command: [./scripts/maid, validate, --manifest-dir, manifests, --mode, implementation]
+      status: passed
+      summary: Repository-wide implementation validation passed with only three
+        unrelated pre-existing release-chain E110 warnings.
+    - command:
+        [
+          ./scripts/maid,
+          verify,
+          --manifest-dir,
+          manifests,
+          --require-plan-lock,
+          --require-red-evidence,
+          --plan-lock-scope,
+          task,
+          --file-tracking-scope,
+          task,
+          --include-tests,
+          --since,
+          6d4a6b4,
+          --advisory,
+          --summary,
+        ]
+      status: passed
+      summary: All nine task verification gates passed with zero blockers.
