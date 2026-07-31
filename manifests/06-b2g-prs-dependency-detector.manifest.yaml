@@ -1,0 +1,302 @@
+# manifest-kind: active-contract
+# MAID manifest - a machine-checked contract for one change.
+# Declares the intent, the files it may touch, and the commands that verify it.
+# Nothing here is needed to build or run this project; safe to ignore.
+# What it is: https://github.com/mamertofabian/maid-runner
+schema: '2'
+goal: |
+  Detect dependency additions, removals, version changes, package manager
+  conflicts, and production-sensitive dependency category introductions for the
+  Production Readiness Snapshot module.
+description: |
+  Child draft for the b2g-production-readiness-snapshot parent epic, derived
+  from docs/b2g_production_readiness_snapshot_reference.md sections 8.3, 12,
+  13, and 19.3 Child 6.
+
+  Promoted child contract with fixture-backed behavioral coverage for package
+  section diffs, production-sensitive categories, and manifest/lockfile
+  consistency signals.
+
+  Rationale:
+  - Keep dependency category rules data-driven so Stripe, Resend, Supabase,
+    auth, database, AI, monitoring, validation, and related package families
+    can be extended without scattering detector logic.
+  - Compare candidate and base package manifests rather than inferring changes
+    from lockfiles alone.
+  - Treat manifest/lockfile mismatches and multiple lockfiles as readiness
+    signals, not proof of a broken install.
+type: feature
+files:
+  create:
+    - path: src/production-readiness/detectors/dependencyDetector.ts
+      artifacts:
+        - kind: interface
+          name: PackageManifest
+          description: Dependency sections parsed from one package.json file.
+        - kind: attribute
+          of: PackageManifest
+          name: dependencies
+          type: Readonly<Record<string, string>> | undefined
+        - kind: attribute
+          of: PackageManifest
+          name: devDependencies
+          type: Readonly<Record<string, string>> | undefined
+        - kind: attribute
+          of: PackageManifest
+          name: peerDependencies
+          type: Readonly<Record<string, string>> | undefined
+        - kind: attribute
+          of: PackageManifest
+          name: optionalDependencies
+          type: Readonly<Record<string, string>> | undefined
+        - kind: function
+          name: detectDependencySignals
+          args:
+            - name: input
+              type: DependencyDetectorInput
+          returns: ReadinessSignal[]
+          description: |
+            Compares candidate and base package metadata, reports added,
+            removed, version-changed, categorized, package-manager-conflict,
+            and manifest/lockfile mismatch signals with deterministic evidence.
+        - kind: interface
+          name: DependencyDetectorInput
+          description: Candidate/base package manifests, inventory metadata, and PRS
+            comparison summary required by the dependency detector.
+        - kind: attribute
+          of: DependencyDetectorInput
+          name: candidatePackageJson
+          type: PackageManifest | null
+        - kind: attribute
+          of: DependencyDetectorInput
+          name: basePackageJson
+          type: PackageManifest | null
+        - kind: attribute
+          of: DependencyDetectorInput
+          name: candidatePackageJsonAvailable
+          type: boolean
+        - kind: attribute
+          of: DependencyDetectorInput
+          name: basePackageJsonAvailable
+          type: boolean
+        - kind: attribute
+          of: DependencyDetectorInput
+          name: candidateLockfiles
+          type: string[]
+        - kind: attribute
+          of: DependencyDetectorInput
+          name: baseLockfiles
+          type: string[]
+        - kind: attribute
+          of: DependencyDetectorInput
+          name: packageManifestChanged
+          type: boolean
+        - kind: attribute
+          of: DependencyDetectorInput
+          name: lockfileChanged
+          type: boolean
+    - path: src/production-readiness/rules/dependency-categories.ts
+      artifacts:
+        - kind: type
+          name: DependencyCategory
+          type: "'auth' | 'database' | 'payments' | 'email_sms' | 'ai_api' | 'validation'
+            | 'monitoring' | 'platform_storage'"
+          description: Production-sensitive dependency categories called out by the
+            PRS reference document.
+        - kind: function
+          name: categorizeDependency
+          args:
+            - name: packageName
+              type: string
+          returns: DependencyCategory | null
+          description: Maps exact package names and scoped package patterns to
+            production-sensitive dependency categories.
+    - path: src/production-readiness/detectors/__tests__/dependencyDetector.test.ts
+      artifacts:
+        - kind: test_function
+          name: detects dependency additions removals and version changes from
+            package json diffs
+          description: Planned fixture test for dependencies, devDependencies,
+            peerDependencies, and optionalDependencies.
+        - kind: test_function
+          name: categorizes production sensitive dependency introductions
+          description: Planned fixture test for Stripe, Resend, Supabase, auth,
+            database, AI, monitoring, and validation package signals.
+        - kind: test_function
+          name: reports manifest and lockfile mismatch signals
+          description: Planned fixture test for package.json changes without
+            lockfile changes, lockfile changes without manifest changes, and
+            multiple package-manager lockfiles.
+  read:
+    - manifests/drafts/b2g-production-readiness-snapshot.manifest.yaml
+    - manifests/01-b2g-prs-domain-models-fixtures.manifest.yaml
+    - manifests/02-b2g-prs-zip-inventory-normalization.manifest.yaml
+    - manifests/04-b2g-prs-diff-engine.manifest.yaml
+    - docs/b2g_production_readiness_snapshot_reference.md
+    - src/production-readiness/domain.ts
+    - src/production-readiness/diff/diffEngine.ts
+    - src/production-readiness/inventory/zipInventory.ts
+    - src/production-readiness/test-fixtures/prsFixtures.ts
+validate:
+  - pnpm exec vitest run
+    src/production-readiness/detectors/__tests__/dependencyDetector.test.ts
+  - ./scripts/maid validate manifests/06-b2g-prs-dependency-detector.manifest.yaml
+    --mode behavioral
+  - pnpm lint
+  - pnpm check
+created: '2026-07-31T05:17:46Z'
+metadata:
+  parent_epic: b2g-production-readiness-snapshot
+  child_slug: 06-b2g-prs-dependency-detector
+  tags:
+    - production-readiness
+    - dependencies
+    - deterministic-analysis
+    - planning-inventory
+  priority: high
+  status: implementation
+  promotable: true
+  depends_on:
+    - 01-b2g-prs-domain-models-fixtures
+    - 02-b2g-prs-zip-inventory-normalization
+    - 04-b2g-prs-diff-engine
+  source_document: docs/b2g_production_readiness_snapshot_reference.md
+  planned_validation:
+    - pnpm exec vitest run
+      src/production-readiness/detectors/__tests__/dependencyDetector.test.ts
+    - ./scripts/maid validate
+      manifests/06-b2g-prs-dependency-detector.manifest.yaml --mode behavioral
+temptations:
+  - risk: Do not hardcode every dependency name inside detector control flow.
+    instead: Keep package family matching in dependency-categories rules and test
+      category mapping independently from signal composition.
+  - risk: Do not treat a new dependency as a vulnerability finding.
+    instead: Emit an evidence-backed readiness signal that asks the user to review
+      the introduced production-sensitive category.
+  - risk: Do not infer dependency drift from lockfiles when package manifests are
+      unavailable.
+    instead: Report the missing or mismatched data as a limitation or
+      manifest/lockfile consistency signal.
+  - risk: Do not ignore lockfiles through broad source-ignore rules.
+    instead: Preserve lockfile metadata for dependency analysis even when the
+      files are skipped for expensive source scanning.
+outcome:
+  status: completed
+  completed_at: '2026-07-31T05:39:02Z'
+  summary: |
+    PRS now compares all four package.json dependency sections and emits
+    deterministic readiness signals for additions, removals, version changes,
+    section moves, production-sensitive introductions, and sensitive
+    development-to-runtime promotions.
+
+    The detector also reports package-manifest and lockfile inconsistencies,
+    multiple package-manager lockfiles, and unavailable comparison data without
+    inventing dependency drift. Every emitted signal carries concrete package,
+    section, version, lockfile, or availability evidence.
+  rationale: |
+    Dependency changes can alter authentication, persistence, payments,
+    communications, AI, validation, monitoring, and platform behavior even
+    when the application diff looks small. A pure detector with a separate
+    data-driven category policy keeps those decisions deterministic,
+    auditable, and independently testable while avoiding unsupported
+    vulnerability claims.
+  lessons:
+    - lesson_type: distinguish-absence-from-unavailability
+      summary: |
+        A confirmed missing package manifest and an unavailable manifest are
+        different states. Explicit availability flags prevent one-sided input
+        failures from being misreported as wholesale dependency additions or
+        removals.
+      tags: [dependencies, incomplete-data, evidence]
+      paths:
+        - src/production-readiness/detectors/dependencyDetector.ts
+        - src/production-readiness/detectors/__tests__/dependencyDetector.test.ts
+    - lesson_type: model-section-moves-explicitly
+      summary: |
+        Moving a package between dependency sections is a first-class change,
+        not an unrelated removal and addition. If its version also changes,
+        both the move and version change remain observable, and sensitive
+        development-to-runtime promotions receive their own review signal.
+      tags: [dependencies, section-moves, runtime-risk]
+      paths:
+        - src/production-readiness/detectors/dependencyDetector.ts
+        - src/production-readiness/detectors/__tests__/dependencyDetector.test.ts
+    - lesson_type: require-consistency-evidence
+      summary: |
+        Manifest and lockfile consistency signals still need concrete evidence
+        when no lockfile path is available. Boolean change metrics make the
+        reported mismatch auditable instead of producing an empty claim.
+      tags: [lockfiles, consistency, evidence]
+      paths:
+        - src/production-readiness/detectors/dependencyDetector.ts
+  review_notes:
+    - source: independent reviewer /root/slice06_implementation_reviewer
+      severity: needs-changes
+      summary: |
+        The first review found one-sided unavailable manifests could invent
+        dependency drift, pathless lockfile changes lacked evidence, and
+        section moves were double-counted while hiding sensitive runtime
+        promotions.
+    - source: independent reviewer /root/slice06_implementation_reviewer
+      severity: needs-changes
+      summary: |
+        The second review found that a dependency changing both section and
+        version emitted the move but suppressed the required version-change
+        signal.
+    - source: independent reviewer /root/slice06_implementation_reviewer
+      severity: ready
+      summary: |
+        Revision 3 resolved every finding. The final review reported no
+        findings, coherent locked tests, clean scope, and a ready verdict.
+  validation:
+    - command:
+        [
+          pnpm,
+          exec,
+          vitest,
+          run,
+          src/production-readiness/detectors/__tests__/dependencyDetector.test.ts,
+        ]
+      status: passed
+      summary: Three focused scenario groups passed for all dependency sections,
+        eight sensitive categories, section moves, version changes, incomplete
+        data, and manifest/lockfile consistency behavior.
+    - command:
+        [./scripts/maid, test, --manifest, manifests/06-b2g-prs-dependency-detector.manifest.yaml]
+      status: passed
+      summary: All four declared manifest commands passed.
+    - command: [pnpm, test:ci]
+      status: passed
+      summary: The complete Vitest suite passed 203 files and 4,022 tests.
+    - command: [pnpm, check]
+      status: passed
+      summary: Svelte and TypeScript validation completed with zero errors or
+        warnings.
+    - command: [pnpm, lint]
+      status: passed
+      summary: ESLint passed for all JavaScript, TypeScript, and Svelte sources.
+    - command: [pnpm, build]
+      status: passed
+      summary: The production extension build completed successfully; only two
+        pre-existing Vite dynamic/static import warnings remained.
+    - command:
+        [
+          ./scripts/maid,
+          verify,
+          --manifest-dir,
+          manifests,
+          --require-plan-lock,
+          --require-red-evidence,
+          --plan-lock-scope,
+          task,
+          --file-tracking-scope,
+          task,
+          --include-tests,
+          --since,
+          '19bd711',
+          --advisory,
+          --summary,
+        ]
+      status: passed
+      summary: All nine task-scoped verification gates passed with only three
+        unrelated pre-existing release-chain E110 warnings.

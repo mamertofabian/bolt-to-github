@@ -1,0 +1,345 @@
+{
+  "manifest_path": "manifests/06-b2g-prs-dependency-detector.manifest.yaml",
+  "manifest_hash": "sha256-contract:b9c7c7c4ff35c84d8ef2341ec2c88fd72a7439ec477641837c61250e69640bdc",
+  "test_hashes": {
+    "src/production-readiness/detectors/__tests__/dependencyDetector.test.ts": "sha256:516575dd21644854bb88c4f90fa82803f6951ec139a4638de10f488e80ba458b"
+  },
+  "created_at": "2026-07-31T05:19:53.485515+00:00",
+  "revision": 3,
+  "revisions": [
+    {
+      "prior_manifest_hash": "sha256-contract:15b22079b44b1c93db2076918f88bed84c3037584bee6dddaaef2779a1077f81",
+      "prior_test_hashes": {
+        "src/production-readiness/detectors/__tests__/dependencyDetector.test.ts": "sha256:38781263bd2300198859961981cdc99cac59a785b8e2f47dd0680179decbe898"
+      },
+      "revised_at": "2026-07-31T05:31:34.352453+00:00",
+      "reason": "Address implementation review by separating manifest availability from absence, guaranteeing lockfile evidence, and modeling section moves plus sensitive runtime promotion",
+      "agent": null,
+      "contract_delta": {
+        "artifacts_added": [
+          "src/production-readiness/detectors/dependencyDetector.ts:attribute:DependencyDetectorInput.basePackageJsonAvailable",
+          "src/production-readiness/detectors/dependencyDetector.ts:attribute:DependencyDetectorInput.basePackageJsonAvailable:kind=attribute",
+          "src/production-readiness/detectors/dependencyDetector.ts:attribute:DependencyDetectorInput.basePackageJsonAvailable:of=DependencyDetectorInput",
+          "src/production-readiness/detectors/dependencyDetector.ts:attribute:DependencyDetectorInput.basePackageJsonAvailable:type=boolean",
+          "src/production-readiness/detectors/dependencyDetector.ts:attribute:DependencyDetectorInput.candidatePackageJsonAvailable",
+          "src/production-readiness/detectors/dependencyDetector.ts:attribute:DependencyDetectorInput.candidatePackageJsonAvailable:kind=attribute",
+          "src/production-readiness/detectors/dependencyDetector.ts:attribute:DependencyDetectorInput.candidatePackageJsonAvailable:of=DependencyDetectorInput",
+          "src/production-readiness/detectors/dependencyDetector.ts:attribute:DependencyDetectorInput.candidatePackageJsonAvailable:type=boolean"
+        ],
+        "artifacts_removed": [],
+        "files_added": [],
+        "files_removed": [],
+        "validate_commands_added": [],
+        "validate_commands_removed": []
+      }
+    },
+    {
+      "prior_manifest_hash": "sha256-contract:b9c7c7c4ff35c84d8ef2341ec2c88fd72a7439ec477641837c61250e69640bdc",
+      "prior_test_hashes": {
+        "src/production-readiness/detectors/__tests__/dependencyDetector.test.ts": "sha256:5bf184e95dfc356fce5541a9c69e06dbd70e785e22ada22a5d2f3312b05b795d"
+      },
+      "revised_at": "2026-07-31T05:36:49.882400+00:00",
+      "reason": "Preserve explicit version-change signals when a dependency changes version while moving package manifest sections",
+      "agent": null,
+      "contract_delta": {
+        "artifacts_added": [],
+        "artifacts_removed": [],
+        "files_added": [],
+        "files_removed": [],
+        "validate_commands_added": [],
+        "validate_commands_removed": []
+      }
+    }
+  ],
+  "red_evidence": {
+    "red": true,
+    "captured_at": "2026-07-31T05:37:04.111097+00:00",
+    "commands": [
+      {
+        "command": "pnpm exec vitest run src/production-readiness/detectors/__tests__/dependencyDetector.test.ts",
+        "exit_code": 1,
+        "output_tail": " Test Files  1 failed (1)\n      Tests  no tests\n   Start at  13:36:50\n   Duration  581ms (transform 34ms, setup 52ms, collect 0ms, tests 0ms, environment 188ms, prepare 54ms)\n\n\n\u23af\u23af\u23af\u23af\u23af\u23af Failed Suites 1 \u23af\u23af\u23af\u23af\u23af\u23af\u23af\n\n FAIL  src/production-readiness/detectors/__tests__/dependencyDetector.test.ts [ src/production-readiness/detectors/__tests__/dependencyDetector.test.ts ]\nError: Failed to resolve import \"../dependencyDetector\" from \"src/production-readiness/detectors/__tests__/dependencyDetector.test.ts\". Does the file exist?\n \u276f TransformPluginContext._formatError node_modules/.pnpm/vite@5.4.21_@types+node@22.19.18/node_modules/vite/dist/node/chunks/dep-BK3b2jBa.js:49258:41\n \u276f TransformPluginContext.error node_modules/.pnpm/vite@5.4.21_@types+node@22.19.18/node_modules/vite/dist/node/chunks/dep-BK3b2jBa.js:49253:16\n \u276f normalizeUrl node_modules/.pnpm/vite@5.4.21_@types+node@22.19.18/node_modules/vite/dist/node/chunks/dep-BK3b2jBa.js:64307:23\n \u276f async file:/home/atomrem/projects/codefrost-dev/bolt-to-github/node_modules/.pnpm/vite@5.4.21_@types+node@22.19.18/node_modules/vite/dist/node/chunks/dep-BK3b2jBa.js:64439:39\n \u276f TransformPluginContext.transform node_modules/.pnpm/vite@5.4.21_@types+node@22.19.18/node_modules/vite/dist/node/chunks/dep-BK3b2jBa.js:64366:7\n \u276f PluginContainer.transform node_modules/.pnpm/vite@5.4.21_@types+node@22.19.18/node_modules/vite/dist/node/chunks/dep-BK3b2jBa.js:49099:18\n \u276f loadAndTransform node_modules/.pnpm/vite@5.4.21_@types+node@22.19.18/node_modules/vite/dist/node/chunks/dep-BK3b2jBa.js:51978:27\n\n\u23af\u23af\u23af\u23af\u23af\u23af\u23af\u23af\u23af\u23af\u23af\u23af\u23af\u23af\u23af\u23af\u23af\u23af\u23af\u23af\u23af\u23af\u23af\u23af[1/1]\u23af\n",
+        "classification": "red"
+      },
+      {
+        "command": "./scripts/maid validate manifests/06-b2g-prs-dependency-detector.manifest.yaml --mode behavioral",
+        "exit_code": 0,
+        "output_tail": "PASS 06-b2g-prs-dependency-detector\n  Mode: behavioral\n  Duration: 348ms\n  Warnings (3):\n    E110 Manifest 'prepare-v2-0-0-github-app-release' supersedes 'release-v1-3-21' but drops artifact 'PackageVersion_1_3_21' (namespace) at package.json\n      Location: /home/atomrem/projects/codefrost-dev/bolt-to-github/manifests/prepare-v2-0-0-github-app-release.manifest.yaml\n      Suggestion: Re-declare the artifact in the replacement manifest, list its file under files.delete, or list the symbol under removed_artifacts.\n    E110 Manifest 'prepare-v2-0-0-github-app-release' supersedes 'release-v1-3-21' but drops artifact 'ChromeManifestVersion_1_3_21' (namespace) at manifest.json\n      Location: /home/atomrem/projects/codefrost-dev/bolt-to-github/manifests/prepare-v2-0-0-github-app-release.manifest.yaml\n      Suggestion: Re-declare the artifact in the replacement manifest, list its file under files.delete, or list the symbol under removed_artifacts.\n    E110 Manifest 'prepare-v2-0-0-github-app-release' supersedes 'release-v1-3-21' but drops artifact 'DevelopmentGuideVersion_1_3_21' (namespace) at CLAUDE.md\n      Location: /home/atomrem/projects/codefrost-dev/bolt-to-github/manifests/prepare-v2-0-0-github-app-release.manifest.yaml\n      Suggestion: Re-declare the artifact in the replacement manifest, list its file under files.delete, or list the symbol under removed_artifacts.",
+        "classification": "not_red"
+      },
+      {
+        "command": "pnpm lint",
+        "exit_code": 0,
+        "output_tail": "\n> bolt-to-github@2.0.0 lint /home/atomrem/projects/codefrost-dev/bolt-to-github\n> eslint \"src/**/*.{js,ts,svelte}\"\n",
+        "classification": "not_red"
+      },
+      {
+        "command": "pnpm check",
+        "exit_code": 1,
+        "output_tail": "      'dependency-comparison-unavailable',\n\n\n/home/atomrem/projects/codefrost-dev/bolt-to-github/src/production-readiness/detectors/__tests__/dependencyDetector.test.ts:261:38\nError: Parameter 'signal' implicitly has an 'any' type. \n    );\n    expect(candidateUnavailable.map((signal) => signal.id)).toEqual([\n      'dependency-comparison-unavailable',\n\n\n/home/atomrem/projects/codefrost-dev/bolt-to-github/src/production-readiness/detectors/__tests__/dependencyDetector.test.ts:278:49\nError: Parameter 'evidence' implicitly has an 'any' type. \n    });\n    expect(conflictingManagers[0].evidence.map((evidence) => evidence.path)).toEqual([\n      'packages/web/pnpm-lock.yaml',\n\n\n====================================\nsvelte-check found 18 errors and 0 warnings in 1 file\n\u2009ELIFECYCLE\u2009 Command failed with exit code 1.",
+        "classification": "red"
+      }
+    ]
+  },
+  "legacy_baseline": null,
+  "agent": null,
+  "_manifest_contract": {
+    "artifacts": [
+      "src/production-readiness/detectors/__tests__/dependencyDetector.test.ts:categorizes production sensitive dependency introductions",
+      "src/production-readiness/detectors/__tests__/dependencyDetector.test.ts:categorizes production sensitive dependency introductions:kind=test_function",
+      "src/production-readiness/detectors/__tests__/dependencyDetector.test.ts:detects dependency additions removals and version changes from package json diffs",
+      "src/production-readiness/detectors/__tests__/dependencyDetector.test.ts:detects dependency additions removals and version changes from package json diffs:kind=test_function",
+      "src/production-readiness/detectors/__tests__/dependencyDetector.test.ts:reports manifest and lockfile mismatch signals",
+      "src/production-readiness/detectors/__tests__/dependencyDetector.test.ts:reports manifest and lockfile mismatch signals:kind=test_function",
+      "src/production-readiness/detectors/dependencyDetector.ts:attribute:DependencyDetectorInput.baseLockfiles",
+      "src/production-readiness/detectors/dependencyDetector.ts:attribute:DependencyDetectorInput.baseLockfiles:kind=attribute",
+      "src/production-readiness/detectors/dependencyDetector.ts:attribute:DependencyDetectorInput.baseLockfiles:of=DependencyDetectorInput",
+      "src/production-readiness/detectors/dependencyDetector.ts:attribute:DependencyDetectorInput.baseLockfiles:type=string[]",
+      "src/production-readiness/detectors/dependencyDetector.ts:attribute:DependencyDetectorInput.basePackageJson",
+      "src/production-readiness/detectors/dependencyDetector.ts:attribute:DependencyDetectorInput.basePackageJson:kind=attribute",
+      "src/production-readiness/detectors/dependencyDetector.ts:attribute:DependencyDetectorInput.basePackageJson:of=DependencyDetectorInput",
+      "src/production-readiness/detectors/dependencyDetector.ts:attribute:DependencyDetectorInput.basePackageJson:type=PackageManifest | null",
+      "src/production-readiness/detectors/dependencyDetector.ts:attribute:DependencyDetectorInput.basePackageJsonAvailable",
+      "src/production-readiness/detectors/dependencyDetector.ts:attribute:DependencyDetectorInput.basePackageJsonAvailable:kind=attribute",
+      "src/production-readiness/detectors/dependencyDetector.ts:attribute:DependencyDetectorInput.basePackageJsonAvailable:of=DependencyDetectorInput",
+      "src/production-readiness/detectors/dependencyDetector.ts:attribute:DependencyDetectorInput.basePackageJsonAvailable:type=boolean",
+      "src/production-readiness/detectors/dependencyDetector.ts:attribute:DependencyDetectorInput.candidateLockfiles",
+      "src/production-readiness/detectors/dependencyDetector.ts:attribute:DependencyDetectorInput.candidateLockfiles:kind=attribute",
+      "src/production-readiness/detectors/dependencyDetector.ts:attribute:DependencyDetectorInput.candidateLockfiles:of=DependencyDetectorInput",
+      "src/production-readiness/detectors/dependencyDetector.ts:attribute:DependencyDetectorInput.candidateLockfiles:type=string[]",
+      "src/production-readiness/detectors/dependencyDetector.ts:attribute:DependencyDetectorInput.candidatePackageJson",
+      "src/production-readiness/detectors/dependencyDetector.ts:attribute:DependencyDetectorInput.candidatePackageJson:kind=attribute",
+      "src/production-readiness/detectors/dependencyDetector.ts:attribute:DependencyDetectorInput.candidatePackageJson:of=DependencyDetectorInput",
+      "src/production-readiness/detectors/dependencyDetector.ts:attribute:DependencyDetectorInput.candidatePackageJson:type=PackageManifest | null",
+      "src/production-readiness/detectors/dependencyDetector.ts:attribute:DependencyDetectorInput.candidatePackageJsonAvailable",
+      "src/production-readiness/detectors/dependencyDetector.ts:attribute:DependencyDetectorInput.candidatePackageJsonAvailable:kind=attribute",
+      "src/production-readiness/detectors/dependencyDetector.ts:attribute:DependencyDetectorInput.candidatePackageJsonAvailable:of=DependencyDetectorInput",
+      "src/production-readiness/detectors/dependencyDetector.ts:attribute:DependencyDetectorInput.candidatePackageJsonAvailable:type=boolean",
+      "src/production-readiness/detectors/dependencyDetector.ts:attribute:DependencyDetectorInput.lockfileChanged",
+      "src/production-readiness/detectors/dependencyDetector.ts:attribute:DependencyDetectorInput.lockfileChanged:kind=attribute",
+      "src/production-readiness/detectors/dependencyDetector.ts:attribute:DependencyDetectorInput.lockfileChanged:of=DependencyDetectorInput",
+      "src/production-readiness/detectors/dependencyDetector.ts:attribute:DependencyDetectorInput.lockfileChanged:type=boolean",
+      "src/production-readiness/detectors/dependencyDetector.ts:attribute:DependencyDetectorInput.packageManifestChanged",
+      "src/production-readiness/detectors/dependencyDetector.ts:attribute:DependencyDetectorInput.packageManifestChanged:kind=attribute",
+      "src/production-readiness/detectors/dependencyDetector.ts:attribute:DependencyDetectorInput.packageManifestChanged:of=DependencyDetectorInput",
+      "src/production-readiness/detectors/dependencyDetector.ts:attribute:DependencyDetectorInput.packageManifestChanged:type=boolean",
+      "src/production-readiness/detectors/dependencyDetector.ts:attribute:PackageManifest.dependencies",
+      "src/production-readiness/detectors/dependencyDetector.ts:attribute:PackageManifest.dependencies:kind=attribute",
+      "src/production-readiness/detectors/dependencyDetector.ts:attribute:PackageManifest.dependencies:of=PackageManifest",
+      "src/production-readiness/detectors/dependencyDetector.ts:attribute:PackageManifest.dependencies:type=Readonly<Record<string, string>> | undefined",
+      "src/production-readiness/detectors/dependencyDetector.ts:attribute:PackageManifest.devDependencies",
+      "src/production-readiness/detectors/dependencyDetector.ts:attribute:PackageManifest.devDependencies:kind=attribute",
+      "src/production-readiness/detectors/dependencyDetector.ts:attribute:PackageManifest.devDependencies:of=PackageManifest",
+      "src/production-readiness/detectors/dependencyDetector.ts:attribute:PackageManifest.devDependencies:type=Readonly<Record<string, string>> | undefined",
+      "src/production-readiness/detectors/dependencyDetector.ts:attribute:PackageManifest.optionalDependencies",
+      "src/production-readiness/detectors/dependencyDetector.ts:attribute:PackageManifest.optionalDependencies:kind=attribute",
+      "src/production-readiness/detectors/dependencyDetector.ts:attribute:PackageManifest.optionalDependencies:of=PackageManifest",
+      "src/production-readiness/detectors/dependencyDetector.ts:attribute:PackageManifest.optionalDependencies:type=Readonly<Record<string, string>> | undefined",
+      "src/production-readiness/detectors/dependencyDetector.ts:attribute:PackageManifest.peerDependencies",
+      "src/production-readiness/detectors/dependencyDetector.ts:attribute:PackageManifest.peerDependencies:kind=attribute",
+      "src/production-readiness/detectors/dependencyDetector.ts:attribute:PackageManifest.peerDependencies:of=PackageManifest",
+      "src/production-readiness/detectors/dependencyDetector.ts:attribute:PackageManifest.peerDependencies:type=Readonly<Record<string, string>> | undefined",
+      "src/production-readiness/detectors/dependencyDetector.ts:function:detectDependencySignals",
+      "src/production-readiness/detectors/dependencyDetector.ts:function:detectDependencySignals:arg=input:type=DependencyDetectorInput:default=None",
+      "src/production-readiness/detectors/dependencyDetector.ts:function:detectDependencySignals:kind=function",
+      "src/production-readiness/detectors/dependencyDetector.ts:function:detectDependencySignals:returns=ReadinessSignal[]",
+      "src/production-readiness/detectors/dependencyDetector.ts:interface:DependencyDetectorInput",
+      "src/production-readiness/detectors/dependencyDetector.ts:interface:DependencyDetectorInput:kind=interface",
+      "src/production-readiness/detectors/dependencyDetector.ts:interface:PackageManifest",
+      "src/production-readiness/detectors/dependencyDetector.ts:interface:PackageManifest:kind=interface",
+      "src/production-readiness/rules/dependency-categories.ts:function:categorizeDependency",
+      "src/production-readiness/rules/dependency-categories.ts:function:categorizeDependency:arg=packageName:type=string:default=None",
+      "src/production-readiness/rules/dependency-categories.ts:function:categorizeDependency:kind=function",
+      "src/production-readiness/rules/dependency-categories.ts:function:categorizeDependency:returns=DependencyCategory | null",
+      "src/production-readiness/rules/dependency-categories.ts:type:DependencyCategory",
+      "src/production-readiness/rules/dependency-categories.ts:type:DependencyCategory:kind=type",
+      "src/production-readiness/rules/dependency-categories.ts:type:DependencyCategory:type='auth' | 'database' | 'payments' | 'email_sms' | 'ai_api' | 'validation' | 'monitoring' | 'platform_storage'"
+    ],
+    "files": {
+      "create": [
+        "src/production-readiness/detectors/__tests__/dependencyDetector.test.ts",
+        "src/production-readiness/detectors/dependencyDetector.ts",
+        "src/production-readiness/rules/dependency-categories.ts"
+      ],
+      "edit": [],
+      "read": [
+        "docs/b2g_production_readiness_snapshot_reference.md",
+        "manifests/01-b2g-prs-domain-models-fixtures.manifest.yaml",
+        "manifests/02-b2g-prs-zip-inventory-normalization.manifest.yaml",
+        "manifests/04-b2g-prs-diff-engine.manifest.yaml",
+        "manifests/drafts/b2g-production-readiness-snapshot.manifest.yaml",
+        "src/production-readiness/diff/diffEngine.ts",
+        "src/production-readiness/domain.ts",
+        "src/production-readiness/inventory/zipInventory.ts",
+        "src/production-readiness/test-fixtures/prsFixtures.ts"
+      ],
+      "scope": [],
+      "delete": [],
+      "snapshot": []
+    },
+    "file_contract": {
+      "create": [
+        {
+          "path": "src/production-readiness/detectors/dependencyDetector.ts",
+          "artifacts": [
+            {
+              "kind": "interface",
+              "name": "PackageManifest",
+              "description": "Dependency sections parsed from one package.json file."
+            },
+            {
+              "kind": "attribute",
+              "name": "dependencies",
+              "of": "PackageManifest",
+              "type": "Readonly<Record<string, string>> | undefined"
+            },
+            {
+              "kind": "attribute",
+              "name": "devDependencies",
+              "of": "PackageManifest",
+              "type": "Readonly<Record<string, string>> | undefined"
+            },
+            {
+              "kind": "attribute",
+              "name": "peerDependencies",
+              "of": "PackageManifest",
+              "type": "Readonly<Record<string, string>> | undefined"
+            },
+            {
+              "kind": "attribute",
+              "name": "optionalDependencies",
+              "of": "PackageManifest",
+              "type": "Readonly<Record<string, string>> | undefined"
+            },
+            {
+              "kind": "function",
+              "name": "detectDependencySignals",
+              "description": "Compares candidate and base package metadata, reports added,\nremoved, version-changed, categorized, package-manager-conflict,\nand manifest/lockfile mismatch signals with deterministic evidence.\n",
+              "args": [
+                {
+                  "name": "input",
+                  "type": "DependencyDetectorInput"
+                }
+              ],
+              "returns": "ReadinessSignal[]"
+            },
+            {
+              "kind": "interface",
+              "name": "DependencyDetectorInput",
+              "description": "Candidate/base package manifests, inventory metadata, and PRS comparison summary required by the dependency detector."
+            },
+            {
+              "kind": "attribute",
+              "name": "candidatePackageJson",
+              "of": "DependencyDetectorInput",
+              "type": "PackageManifest | null"
+            },
+            {
+              "kind": "attribute",
+              "name": "basePackageJson",
+              "of": "DependencyDetectorInput",
+              "type": "PackageManifest | null"
+            },
+            {
+              "kind": "attribute",
+              "name": "candidatePackageJsonAvailable",
+              "of": "DependencyDetectorInput",
+              "type": "boolean"
+            },
+            {
+              "kind": "attribute",
+              "name": "basePackageJsonAvailable",
+              "of": "DependencyDetectorInput",
+              "type": "boolean"
+            },
+            {
+              "kind": "attribute",
+              "name": "candidateLockfiles",
+              "of": "DependencyDetectorInput",
+              "type": "string[]"
+            },
+            {
+              "kind": "attribute",
+              "name": "baseLockfiles",
+              "of": "DependencyDetectorInput",
+              "type": "string[]"
+            },
+            {
+              "kind": "attribute",
+              "name": "packageManifestChanged",
+              "of": "DependencyDetectorInput",
+              "type": "boolean"
+            },
+            {
+              "kind": "attribute",
+              "name": "lockfileChanged",
+              "of": "DependencyDetectorInput",
+              "type": "boolean"
+            }
+          ]
+        },
+        {
+          "path": "src/production-readiness/rules/dependency-categories.ts",
+          "artifacts": [
+            {
+              "kind": "type",
+              "name": "DependencyCategory",
+              "description": "Production-sensitive dependency categories called out by the PRS reference document.",
+              "type": "'auth' | 'database' | 'payments' | 'email_sms' | 'ai_api' | 'validation' | 'monitoring' | 'platform_storage'"
+            },
+            {
+              "kind": "function",
+              "name": "categorizeDependency",
+              "description": "Maps exact package names and scoped package patterns to production-sensitive dependency categories.",
+              "args": [
+                {
+                  "name": "packageName",
+                  "type": "string"
+                }
+              ],
+              "returns": "DependencyCategory | null"
+            }
+          ]
+        },
+        {
+          "path": "src/production-readiness/detectors/__tests__/dependencyDetector.test.ts",
+          "artifacts": [
+            {
+              "kind": "test_function",
+              "name": "detects dependency additions removals and version changes from package json diffs",
+              "description": "Planned fixture test for dependencies, devDependencies, peerDependencies, and optionalDependencies."
+            },
+            {
+              "kind": "test_function",
+              "name": "categorizes production sensitive dependency introductions",
+              "description": "Planned fixture test for Stripe, Resend, Supabase, auth, database, AI, monitoring, and validation package signals."
+            },
+            {
+              "kind": "test_function",
+              "name": "reports manifest and lockfile mismatch signals",
+              "description": "Planned fixture test for package.json changes without lockfile changes, lockfile changes without manifest changes, and multiple package-manager lockfiles."
+            }
+          ]
+        }
+      ],
+      "read": [
+        "manifests/drafts/b2g-production-readiness-snapshot.manifest.yaml",
+        "manifests/01-b2g-prs-domain-models-fixtures.manifest.yaml",
+        "manifests/02-b2g-prs-zip-inventory-normalization.manifest.yaml",
+        "manifests/04-b2g-prs-diff-engine.manifest.yaml",
+        "docs/b2g_production_readiness_snapshot_reference.md",
+        "src/production-readiness/domain.ts",
+        "src/production-readiness/diff/diffEngine.ts",
+        "src/production-readiness/inventory/zipInventory.ts",
+        "src/production-readiness/test-fixtures/prsFixtures.ts"
+      ]
+    },
+    "test_files": ["src/production-readiness/detectors/__tests__/dependencyDetector.test.ts"],
+    "validate_commands": [
+      "pnpm exec vitest run src/production-readiness/detectors/__tests__/dependencyDetector.test.ts",
+      "./scripts/maid validate manifests/06-b2g-prs-dependency-detector.manifest.yaml --mode behavioral",
+      "pnpm lint",
+      "pnpm check"
+    ]
+  }
+}
