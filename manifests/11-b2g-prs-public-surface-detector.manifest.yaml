@@ -1,0 +1,312 @@
+# draft-kind: child-planning-inventory
+# MAID manifest - a machine-checked contract for one change.
+# Declares the intent, the files it may touch, and the commands that verify it.
+# Nothing here is needed to build or run this project; safe to ignore.
+# What it is: https://github.com/mamertofabian/maid-runner
+schema: '2'
+goal: |
+  Detect route, API, admin, upload, billing, webhook, login, signup, and
+  dashboard surface changes using deterministic path and lightweight content
+  heuristics for the Production Readiness Snapshot module.
+description: |
+  Child draft for the b2g-production-readiness-snapshot parent epic, derived
+  from docs/b2g_production_readiness_snapshot_reference.md sections 8.6, 11,
+  12, 13, 18, and 19.3 Child 8.
+
+  The upstream PRS domain, diff, path-classification, and normalized text-file
+  contracts now exist. This slice adds only the deterministic detector and its
+  data-driven route rules; wiring detector output into the composer remains a
+  later orchestration concern.
+
+  Rationale:
+  - Normalize route evidence to route paths where framework conventions allow
+    it, so users see public surface changes rather than raw filenames only.
+  - Keep framework-specific route rules data-driven enough to add future
+    frameworks without rewriting the detector.
+  - Use content heuristics only as supporting evidence; path and diff evidence
+    remain the primary deterministic inputs.
+type: feature
+files:
+  create:
+    - path: src/production-readiness/detectors/publicSurfaceDetector.ts
+      artifacts:
+        - kind: function
+          name: detectPublicSurfaceSignals
+          args:
+            - name: input
+              type: PublicSurfaceDetectorInput
+          returns: PublicSurfaceDetectionResult
+          description: |
+            Detects added or changed route/API surface, admin/upload/billing/
+            webhook/auth/dashboard route names, public assets, CORS config, and
+            request/response middleware hints from candidate/base diffs.
+        - kind: interface
+          name: PublicSurfaceDetectorInput
+          description: Candidate/base path and text context needed for public
+            surface route and API detection.
+        - kind: attribute
+          of: PublicSurfaceDetectorInput
+          name: changedFiles
+          type: FileDiffEntry[]
+        - kind: attribute
+          of: PublicSurfaceDetectorInput
+          name: candidateFiles
+          type: PrsTextFile[]
+        - kind: interface
+          name: PublicSurfaceDetectionResult
+          description: Public-surface detector signals and normalized route
+            evidence.
+        - kind: attribute
+          of: PublicSurfaceDetectionResult
+          name: signals
+          type: ReadinessSignal[]
+        - kind: attribute
+          of: PublicSurfaceDetectionResult
+          name: routes
+          type: PublicRouteEvidence[]
+    - path: src/production-readiness/rules/public-surface-rules.ts
+      artifacts:
+        - kind: function
+          name: normalizePublicRoutePath
+          args:
+            - name: filePath
+              type: string
+          returns: string | null
+          description: Normalizes supported Next.js app/pages route files and API
+            route files into user-facing route paths.
+        - kind: function
+          name: classifyPublicSurfaceHints
+          args:
+            - name: filePath
+              type: string
+            - name: content
+              type: string | undefined
+          returns: PublicSurfaceHint[]
+          description: |
+            Applies deterministic path and lightweight content rules for API,
+            privileged, upload, integration, public-asset, CORS, middleware,
+            and route-declaration hints.
+        - kind: type
+          name: PublicSurfaceHint
+          type: "'api' | 'admin' | 'upload' | 'billing' | 'webhook' | 'auth' | 'login'
+            | 'signup' | 'dashboard' | 'settings' | 'callback' | 'form' | 'cors' |
+            'middleware' | 'public_asset'"
+          description: Public-surface hint classes used by route detector evidence
+            and signal composition.
+        - kind: interface
+          name: PublicRouteEvidence
+          description: Normalized route evidence for route, API, and public-surface
+            changes.
+        - kind: attribute
+          of: PublicRouteEvidence
+          name: routePath
+          type: string
+        - kind: attribute
+          of: PublicRouteEvidence
+          name: sourcePath
+          type: string
+        - kind: attribute
+          of: PublicRouteEvidence
+          name: hints
+          type: PublicSurfaceHint[]
+        - kind: attribute
+          of: PublicRouteEvidence
+          name: status
+          type: "'added' | 'changed' | 'deleted' | 'renamed'"
+    - path: src/production-readiness/detectors/__tests__/publicSurfaceDetector.test.ts
+      artifacts:
+        - kind: test_function
+          name: normalizes next app and pages routes to public paths
+          description: Planned fixture test for app/page, app/route, src/app, pages,
+            and src/pages route conventions.
+        - kind: test_function
+          name: detects newly added api routes
+          description: Planned fixture test for API route files and functions paths
+            with route evidence.
+        - kind: test_function
+          name: emits surface hints for admin upload webhook billing auth and
+            dashboard paths
+          description: Planned fixture test for high-review public surface naming
+            patterns.
+        - kind: test_function
+          name: detects route declarations public assets cors and middleware hints
+          description: |
+            Planned fixture test for lightweight Vite/React route declarations,
+            public assets, CORS configuration, request/response middleware, and
+            upload form content without claiming runtime reachability.
+  read:
+    - manifests/drafts/b2g-production-readiness-snapshot.manifest.yaml
+    - manifests/01-b2g-prs-domain-models-fixtures.manifest.yaml
+    - manifests/04-b2g-prs-diff-engine.manifest.yaml
+    - manifests/05-b2g-prs-sensitive-path-classifier.manifest.yaml
+    - manifests/07-b2g-prs-env-secret-detector.manifest.yaml
+    - docs/b2g_production_readiness_snapshot_reference.md
+    - src/production-readiness/domain.ts
+    - src/production-readiness/detectors/sensitivePathClassifier.ts
+    - src/production-readiness/detectors/envSecretDetector.ts
+    - src/production-readiness/diff/diffEngine.ts
+    - src/production-readiness/test-fixtures/prsFixtures.ts
+validate:
+  - pnpm exec vitest run
+    src/production-readiness/detectors/__tests__/publicSurfaceDetector.test.ts
+  - ./scripts/maid validate
+    manifests/11-b2g-prs-public-surface-detector.manifest.yaml --mode behavioral
+  - pnpm lint
+  - pnpm check
+created: '2026-07-31T09:05:46Z'
+metadata:
+  parent_epic: b2g-production-readiness-snapshot
+  child_slug: 11-b2g-prs-public-surface-detector
+  tags:
+    - production-readiness
+    - public-surface
+    - routes
+    - api-routes
+    - planning-inventory
+  priority: high
+  promotable: true
+  source_document: docs/b2g_production_readiness_snapshot_reference.md
+  depends_on:
+    - 01-b2g-prs-domain-models-fixtures
+    - 04-b2g-prs-diff-engine
+    - 05-b2g-prs-sensitive-path-classifier
+    - 07-b2g-prs-env-secret-detector
+temptations:
+  - risk: Do not present route heuristics as proof that a route is reachable in
+      production.
+    instead: Report deterministic public-surface evidence from paths and
+      lightweight content hints only.
+  - risk: Do not collapse API, admin, upload, webhook, billing, auth, and
+      dashboard changes into one generic route message.
+    instead: Preserve hint classes in evidence so the composer can prioritize
+      review-worthy surfaces.
+  - risk: Do not parse full application routing semantics in the MVP.
+    instead: Start with documented framework path conventions and targeted content
+      hints that are fixture-backed.
+  - risk: Do not treat special Next.js pages such as _app, _document, and _error
+      as user-facing routes.
+    instead: Exclude framework special files during route normalization.
+  - risk: Do not include request bodies, response bodies, or matched source
+      snippets in detector evidence.
+    instead: Return normalized route names, hint classes, and source paths only.
+outcome:
+  status: completed
+  completed_at: '2026-07-31T09:33:23Z'
+  summary: |
+    PRS now detects deterministic public-surface changes across supported
+    Next.js App and Pages Router conventions, root and server API paths, and
+    common function layouts. It returns normalized route evidence plus distinct
+    API, admin, upload, billing, webhook, auth, login, signup, dashboard,
+    settings, callback, form, CORS, middleware, and public-asset hints.
+
+    Lightweight React Router declarations are detected only with explicit JSX
+    or credible router context. Evidence contains normalized routes, hint
+    classes, statuses, and source paths without source snippets or request and
+    response content.
+  rationale: |
+    Data-driven path rules provide useful static evidence without parsing full
+    framework routing semantics or claiming runtime reachability. Separating
+    normalization from signal composition keeps the detector deterministic and
+    lets later orchestration integrate its output with the readiness composer.
+  lessons:
+    - lesson_type: route-conventions-need-exact-file-boundaries
+      summary: |
+        Next.js page and route-handler conventions need separate extension and
+        basename rules; permissive suffix matching creates high-severity false
+        positives for files such as homepage.tsx and route.tsx.
+      tags: [routes, nextjs, false-positives]
+      paths:
+        - src/production-readiness/rules/public-surface-rules.ts
+        - src/production-readiness/detectors/__tests__/publicSurfaceDetector.test.ts
+    - lesson_type: gate-object-routes-on-router-context
+      summary: |
+        A generic object path property is not route evidence. Object-form route
+        extraction requires credible router context, while explicit JSX Route
+        declarations can remain filename-independent.
+      tags: [react-router, heuristics, precision]
+      paths:
+        - src/production-readiness/detectors/publicSurfaceDetector.ts
+        - src/production-readiness/detectors/__tests__/publicSurfaceDetector.test.ts
+    - lesson_type: reclassify-normalized-content-routes
+      summary: |
+        Routes extracted from source content must be classified again by their
+        normalized route names so admin, login, billing, and other high-value
+        hints are not lost behind one generic route signal.
+      tags: [routes, signals, evidence]
+      paths:
+        - src/production-readiness/detectors/publicSurfaceDetector.ts
+    - lesson_type: exclude-non-runtime-sources-at-every-detector-layer
+      summary: |
+        Test, spec, and declaration files must be excluded from normalization,
+        hint classification, and content extraction; excluding them at only one
+        layer still permits misleading runtime/API signals.
+      tags: [tests, declarations, false-positives]
+      paths:
+        - src/production-readiness/rules/public-surface-rules.ts
+        - src/production-readiness/detectors/publicSurfaceDetector.ts
+  review_notes:
+    - source: independent reviewer /root/slice11_implementation_reviewer
+      severity: needs-changes
+      summary: |
+        Revision 2 missed nested server/API and function conventions and allowed
+        App Router filenames that merely ended in page or route.
+    - source: independent reviewer /root/slice11_revision3_reviewer
+      severity: needs-changes
+      summary: |
+        Revision 3 fixed the first findings but over-broadened server API
+        fallback, accepted JSX route handlers, and missed App.tsx declarations.
+    - source: independent reviewer /root/slice11_revision4_reviewer
+      severity: needs-changes
+      summary: |
+        Revision 4 fixed those boundaries but treated arbitrary path properties
+        as routes, lost hints from declared route names, and allowed test or
+        declaration files to produce runtime signals.
+    - source: independent reviewer /root/slice11_revision5_reviewer
+      severity: ready
+      summary: |
+        Revision 5 had no blocking findings. The reviewer confirmed all prior
+        issues were fixed, the plan lock was intact, evidence remained private
+        and deterministic, and the remaining heuristic risk matched the
+        manifest's no-full-routing-parser boundary.
+  validation:
+    - command:
+        - pnpm
+        - exec
+        - vitest
+        - run
+        - src/production-readiness/detectors/__tests__/publicSurfaceDetector.test.ts
+      status: passed
+      summary: Four route normalization, API, hint, privacy, and heuristic behaviors passed.
+    - command:
+        - ./scripts/maid
+        - test
+        - --manifest
+        - manifests/11-b2g-prs-public-surface-detector.manifest.yaml
+      status: passed
+      summary: All four manifest-declared commands passed.
+    - command: [pnpm, test:ci]
+      status: passed
+      summary: The complete Vitest suite passed 208 files and 4,045 tests.
+    - command: [pnpm, build]
+      status: passed
+      summary: The production extension build completed with only two known Vite
+        dynamic/static import warnings.
+    - command:
+        - ./scripts/maid
+        - verify
+        - --manifest-dir
+        - manifests
+        - --require-plan-lock
+        - --require-red-evidence
+        - --plan-lock-scope
+        - task
+        - --file-tracking-scope
+        - task
+        - --include-tests
+        - --since
+        - 6ae8a3d
+        - --advisory
+        - --summary
+      status: passed
+      summary: All nine task-scoped verification gates passed with only three
+        unrelated pre-existing release-chain E110 warnings.

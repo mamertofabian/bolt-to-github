@@ -1,0 +1,369 @@
+{
+  "manifest_path": "manifests/11-b2g-prs-public-surface-detector.manifest.yaml",
+  "manifest_hash": "sha256-contract:bacbeb819632a5cb9673f9fea0a48fa81be402bb82bea9d92b3b3ef824def98f",
+  "test_hashes": {
+    "src/production-readiness/detectors/__tests__/publicSurfaceDetector.test.ts": "sha256:a5f42aeeb866f9dc9138c8f5538cee3257ff923331d5fd78c5f9d1cc4e994122"
+  },
+  "created_at": "2026-07-31T09:07:52.756074+00:00",
+  "revision": 5,
+  "revisions": [
+    {
+      "prior_manifest_hash": "sha256-contract:bacbeb819632a5cb9673f9fea0a48fa81be402bb82bea9d92b3b3ef824def98f",
+      "prior_test_hashes": {
+        "src/production-readiness/detectors/__tests__/publicSurfaceDetector.test.ts": "sha256:e9d7ca8c81adeaae5553164e96b1c4d58795baf8316ac4244eca1b96b00ee8e9"
+      },
+      "revised_at": "2026-07-31T09:11:03.392386+00:00",
+      "reason": "Refresh the plan lock after formatting the completed behavioral contract without changing assertions",
+      "agent": null,
+      "contract_delta": {
+        "artifacts_added": [],
+        "artifacts_removed": [],
+        "files_added": [],
+        "files_removed": [],
+        "validate_commands_added": [],
+        "validate_commands_removed": []
+      }
+    },
+    {
+      "prior_manifest_hash": "sha256-contract:bacbeb819632a5cb9673f9fea0a48fa81be402bb82bea9d92b3b3ef824def98f",
+      "prior_test_hashes": {
+        "src/production-readiness/detectors/__tests__/publicSurfaceDetector.test.ts": "sha256:bb138af38e24dbe0ef7cebc6ba841daea0de7fb9eabfb7fd1f2cc4e2596491de"
+      },
+      "revised_at": "2026-07-31T09:16:06.680241+00:00",
+      "reason": "Add independent-review regressions for nested server/function API conventions and exact Next App Router filename boundaries",
+      "agent": null,
+      "contract_delta": {
+        "artifacts_added": [],
+        "artifacts_removed": [],
+        "files_added": [],
+        "files_removed": [],
+        "validate_commands_added": [],
+        "validate_commands_removed": []
+      }
+    },
+    {
+      "prior_manifest_hash": "sha256-contract:bacbeb819632a5cb9673f9fea0a48fa81be402bb82bea9d92b3b3ef824def98f",
+      "prior_test_hashes": {
+        "src/production-readiness/detectors/__tests__/publicSurfaceDetector.test.ts": "sha256:37e85432e1608ff7d21d1e3f22480a65fe374410561cb8ae76be8521288f047a"
+      },
+      "revised_at": "2026-07-31T09:22:02.319722+00:00",
+      "reason": "Add independent-review regressions for server false positives, exact Next route-handler extensions, and React Router declarations in App.tsx",
+      "agent": null,
+      "contract_delta": {
+        "artifacts_added": [],
+        "artifacts_removed": [],
+        "files_added": [],
+        "files_removed": [],
+        "validate_commands_added": [],
+        "validate_commands_removed": []
+      }
+    },
+    {
+      "prior_manifest_hash": "sha256-contract:bacbeb819632a5cb9673f9fea0a48fa81be402bb82bea9d92b3b3ef824def98f",
+      "prior_test_hashes": {
+        "src/production-readiness/detectors/__tests__/publicSurfaceDetector.test.ts": "sha256:562741277e95ff319b37922c67861c42c4387e60766b915322bc947c4adf0193"
+      },
+      "revised_at": "2026-07-31T09:28:37.251940+00:00",
+      "reason": "Add independent-review regressions for router-context gating, content-route hint preservation, and exclusion of test/declaration files",
+      "agent": null,
+      "contract_delta": {
+        "artifacts_added": [],
+        "artifacts_removed": [],
+        "files_added": [],
+        "files_removed": [],
+        "validate_commands_added": [],
+        "validate_commands_removed": []
+      }
+    }
+  ],
+  "red_evidence": {
+    "red": true,
+    "captured_at": "2026-07-31T09:28:51.487348+00:00",
+    "commands": [
+      {
+        "command": "pnpm exec vitest run src/production-readiness/detectors/__tests__/publicSurfaceDetector.test.ts",
+        "exit_code": 1,
+        "output_tail": " Test Files  1 failed (1)\n      Tests  no tests\n   Start at  17:28:37\n   Duration  616ms (transform 36ms, setup 54ms, collect 0ms, tests 0ms, environment 189ms, prepare 51ms)\n\n\n\u23af\u23af\u23af\u23af\u23af\u23af Failed Suites 1 \u23af\u23af\u23af\u23af\u23af\u23af\u23af\n\n FAIL  src/production-readiness/detectors/__tests__/publicSurfaceDetector.test.ts [ src/production-readiness/detectors/__tests__/publicSurfaceDetector.test.ts ]\nError: Failed to resolve import \"../publicSurfaceDetector\" from \"src/production-readiness/detectors/__tests__/publicSurfaceDetector.test.ts\". Does the file exist?\n \u276f TransformPluginContext._formatError node_modules/.pnpm/vite@5.4.21_@types+node@22.19.18/node_modules/vite/dist/node/chunks/dep-BK3b2jBa.js:49258:41\n \u276f TransformPluginContext.error node_modules/.pnpm/vite@5.4.21_@types+node@22.19.18/node_modules/vite/dist/node/chunks/dep-BK3b2jBa.js:49253:16\n \u276f normalizeUrl node_modules/.pnpm/vite@5.4.21_@types+node@22.19.18/node_modules/vite/dist/node/chunks/dep-BK3b2jBa.js:64307:23\n \u276f async file:/home/atomrem/projects/codefrost-dev/bolt-to-github/node_modules/.pnpm/vite@5.4.21_@types+node@22.19.18/node_modules/vite/dist/node/chunks/dep-BK3b2jBa.js:64439:39\n \u276f TransformPluginContext.transform node_modules/.pnpm/vite@5.4.21_@types+node@22.19.18/node_modules/vite/dist/node/chunks/dep-BK3b2jBa.js:64366:7\n \u276f PluginContainer.transform node_modules/.pnpm/vite@5.4.21_@types+node@22.19.18/node_modules/vite/dist/node/chunks/dep-BK3b2jBa.js:49099:18\n \u276f loadAndTransform node_modules/.pnpm/vite@5.4.21_@types+node@22.19.18/node_modules/vite/dist/node/chunks/dep-BK3b2jBa.js:51978:27\n\n\u23af\u23af\u23af\u23af\u23af\u23af\u23af\u23af\u23af\u23af\u23af\u23af\u23af\u23af\u23af\u23af\u23af\u23af\u23af\u23af\u23af\u23af\u23af\u23af[1/1]\u23af\n",
+        "classification": "red"
+      },
+      {
+        "command": "./scripts/maid validate manifests/11-b2g-prs-public-surface-detector.manifest.yaml --mode behavioral",
+        "exit_code": 0,
+        "output_tail": "PASS 11-b2g-prs-public-surface-detector\n  Mode: behavioral\n  Duration: 339ms\n  Warnings (3):\n    E110 Manifest 'prepare-v2-0-0-github-app-release' supersedes 'release-v1-3-21' but drops artifact 'PackageVersion_1_3_21' (namespace) at package.json\n      Location: /home/atomrem/projects/codefrost-dev/bolt-to-github/manifests/prepare-v2-0-0-github-app-release.manifest.yaml\n      Suggestion: Re-declare the artifact in the replacement manifest, list its file under files.delete, or list the symbol under removed_artifacts.\n    E110 Manifest 'prepare-v2-0-0-github-app-release' supersedes 'release-v1-3-21' but drops artifact 'ChromeManifestVersion_1_3_21' (namespace) at manifest.json\n      Location: /home/atomrem/projects/codefrost-dev/bolt-to-github/manifests/prepare-v2-0-0-github-app-release.manifest.yaml\n      Suggestion: Re-declare the artifact in the replacement manifest, list its file under files.delete, or list the symbol under removed_artifacts.\n    E110 Manifest 'prepare-v2-0-0-github-app-release' supersedes 'release-v1-3-21' but drops artifact 'DevelopmentGuideVersion_1_3_21' (namespace) at CLAUDE.md\n      Location: /home/atomrem/projects/codefrost-dev/bolt-to-github/manifests/prepare-v2-0-0-github-app-release.manifest.yaml\n      Suggestion: Re-declare the artifact in the replacement manifest, list its file under files.delete, or list the symbol under removed_artifacts.",
+        "classification": "not_red"
+      },
+      {
+        "command": "pnpm lint",
+        "exit_code": 0,
+        "output_tail": "\n> bolt-to-github@2.0.0 lint /home/atomrem/projects/codefrost-dev/bolt-to-github\n> eslint \"src/**/*.{js,ts,svelte}\"\n",
+        "classification": "not_red"
+      },
+      {
+        "command": "pnpm check",
+        "exit_code": 1,
+        "output_tail": "    }\n\n\n/home/atomrem/projects/codefrost-dev/bolt-to-github/src/production-readiness/detectors/__tests__/publicSurfaceDetector.test.ts:213:8\nError: Parameter 'route' implicitly has an 'any' type. \n    const authRoute: PublicRouteEvidence | undefined = result.routes.find(\n      (route) => route.routePath === '/auth/callback'\n    );\n\n\n/home/atomrem/projects/codefrost-dev/bolt-to-github/src/production-readiness/detectors/__tests__/publicSurfaceDetector.test.ts:272:32\nError: Parameter 'signal' implicitly has an 'any' type. \n    ]);\n    expect(result.signals.map((signal) => signal.id)).toEqual(\n      expect.arrayContaining([\n\n\n====================================\nsvelte-check found 10 errors and 0 warnings in 1 file\n\u2009ELIFECYCLE\u2009 Command failed with exit code 1.",
+        "classification": "red"
+      }
+    ]
+  },
+  "legacy_baseline": null,
+  "agent": null,
+  "_manifest_contract": {
+    "artifacts": [
+      "src/production-readiness/detectors/__tests__/publicSurfaceDetector.test.ts:detects newly added api routes",
+      "src/production-readiness/detectors/__tests__/publicSurfaceDetector.test.ts:detects newly added api routes:kind=test_function",
+      "src/production-readiness/detectors/__tests__/publicSurfaceDetector.test.ts:detects route declarations public assets cors and middleware hints",
+      "src/production-readiness/detectors/__tests__/publicSurfaceDetector.test.ts:detects route declarations public assets cors and middleware hints:kind=test_function",
+      "src/production-readiness/detectors/__tests__/publicSurfaceDetector.test.ts:emits surface hints for admin upload webhook billing auth and dashboard paths",
+      "src/production-readiness/detectors/__tests__/publicSurfaceDetector.test.ts:emits surface hints for admin upload webhook billing auth and dashboard paths:kind=test_function",
+      "src/production-readiness/detectors/__tests__/publicSurfaceDetector.test.ts:normalizes next app and pages routes to public paths",
+      "src/production-readiness/detectors/__tests__/publicSurfaceDetector.test.ts:normalizes next app and pages routes to public paths:kind=test_function",
+      "src/production-readiness/detectors/publicSurfaceDetector.ts:attribute:PublicSurfaceDetectionResult.routes",
+      "src/production-readiness/detectors/publicSurfaceDetector.ts:attribute:PublicSurfaceDetectionResult.routes:kind=attribute",
+      "src/production-readiness/detectors/publicSurfaceDetector.ts:attribute:PublicSurfaceDetectionResult.routes:of=PublicSurfaceDetectionResult",
+      "src/production-readiness/detectors/publicSurfaceDetector.ts:attribute:PublicSurfaceDetectionResult.routes:type=PublicRouteEvidence[]",
+      "src/production-readiness/detectors/publicSurfaceDetector.ts:attribute:PublicSurfaceDetectionResult.signals",
+      "src/production-readiness/detectors/publicSurfaceDetector.ts:attribute:PublicSurfaceDetectionResult.signals:kind=attribute",
+      "src/production-readiness/detectors/publicSurfaceDetector.ts:attribute:PublicSurfaceDetectionResult.signals:of=PublicSurfaceDetectionResult",
+      "src/production-readiness/detectors/publicSurfaceDetector.ts:attribute:PublicSurfaceDetectionResult.signals:type=ReadinessSignal[]",
+      "src/production-readiness/detectors/publicSurfaceDetector.ts:attribute:PublicSurfaceDetectorInput.candidateFiles",
+      "src/production-readiness/detectors/publicSurfaceDetector.ts:attribute:PublicSurfaceDetectorInput.candidateFiles:kind=attribute",
+      "src/production-readiness/detectors/publicSurfaceDetector.ts:attribute:PublicSurfaceDetectorInput.candidateFiles:of=PublicSurfaceDetectorInput",
+      "src/production-readiness/detectors/publicSurfaceDetector.ts:attribute:PublicSurfaceDetectorInput.candidateFiles:type=PrsTextFile[]",
+      "src/production-readiness/detectors/publicSurfaceDetector.ts:attribute:PublicSurfaceDetectorInput.changedFiles",
+      "src/production-readiness/detectors/publicSurfaceDetector.ts:attribute:PublicSurfaceDetectorInput.changedFiles:kind=attribute",
+      "src/production-readiness/detectors/publicSurfaceDetector.ts:attribute:PublicSurfaceDetectorInput.changedFiles:of=PublicSurfaceDetectorInput",
+      "src/production-readiness/detectors/publicSurfaceDetector.ts:attribute:PublicSurfaceDetectorInput.changedFiles:type=FileDiffEntry[]",
+      "src/production-readiness/detectors/publicSurfaceDetector.ts:function:detectPublicSurfaceSignals",
+      "src/production-readiness/detectors/publicSurfaceDetector.ts:function:detectPublicSurfaceSignals:arg=input:type=PublicSurfaceDetectorInput:default=None",
+      "src/production-readiness/detectors/publicSurfaceDetector.ts:function:detectPublicSurfaceSignals:kind=function",
+      "src/production-readiness/detectors/publicSurfaceDetector.ts:function:detectPublicSurfaceSignals:returns=PublicSurfaceDetectionResult",
+      "src/production-readiness/detectors/publicSurfaceDetector.ts:interface:PublicSurfaceDetectionResult",
+      "src/production-readiness/detectors/publicSurfaceDetector.ts:interface:PublicSurfaceDetectionResult:kind=interface",
+      "src/production-readiness/detectors/publicSurfaceDetector.ts:interface:PublicSurfaceDetectorInput",
+      "src/production-readiness/detectors/publicSurfaceDetector.ts:interface:PublicSurfaceDetectorInput:kind=interface",
+      "src/production-readiness/rules/public-surface-rules.ts:attribute:PublicRouteEvidence.hints",
+      "src/production-readiness/rules/public-surface-rules.ts:attribute:PublicRouteEvidence.hints:kind=attribute",
+      "src/production-readiness/rules/public-surface-rules.ts:attribute:PublicRouteEvidence.hints:of=PublicRouteEvidence",
+      "src/production-readiness/rules/public-surface-rules.ts:attribute:PublicRouteEvidence.hints:type=PublicSurfaceHint[]",
+      "src/production-readiness/rules/public-surface-rules.ts:attribute:PublicRouteEvidence.routePath",
+      "src/production-readiness/rules/public-surface-rules.ts:attribute:PublicRouteEvidence.routePath:kind=attribute",
+      "src/production-readiness/rules/public-surface-rules.ts:attribute:PublicRouteEvidence.routePath:of=PublicRouteEvidence",
+      "src/production-readiness/rules/public-surface-rules.ts:attribute:PublicRouteEvidence.routePath:type=string",
+      "src/production-readiness/rules/public-surface-rules.ts:attribute:PublicRouteEvidence.sourcePath",
+      "src/production-readiness/rules/public-surface-rules.ts:attribute:PublicRouteEvidence.sourcePath:kind=attribute",
+      "src/production-readiness/rules/public-surface-rules.ts:attribute:PublicRouteEvidence.sourcePath:of=PublicRouteEvidence",
+      "src/production-readiness/rules/public-surface-rules.ts:attribute:PublicRouteEvidence.sourcePath:type=string",
+      "src/production-readiness/rules/public-surface-rules.ts:attribute:PublicRouteEvidence.status",
+      "src/production-readiness/rules/public-surface-rules.ts:attribute:PublicRouteEvidence.status:kind=attribute",
+      "src/production-readiness/rules/public-surface-rules.ts:attribute:PublicRouteEvidence.status:of=PublicRouteEvidence",
+      "src/production-readiness/rules/public-surface-rules.ts:attribute:PublicRouteEvidence.status:type='added' | 'changed' | 'deleted' | 'renamed'",
+      "src/production-readiness/rules/public-surface-rules.ts:function:classifyPublicSurfaceHints",
+      "src/production-readiness/rules/public-surface-rules.ts:function:classifyPublicSurfaceHints:arg=content:type=string | undefined:default=None",
+      "src/production-readiness/rules/public-surface-rules.ts:function:classifyPublicSurfaceHints:arg=filePath:type=string:default=None",
+      "src/production-readiness/rules/public-surface-rules.ts:function:classifyPublicSurfaceHints:kind=function",
+      "src/production-readiness/rules/public-surface-rules.ts:function:classifyPublicSurfaceHints:returns=PublicSurfaceHint[]",
+      "src/production-readiness/rules/public-surface-rules.ts:function:normalizePublicRoutePath",
+      "src/production-readiness/rules/public-surface-rules.ts:function:normalizePublicRoutePath:arg=filePath:type=string:default=None",
+      "src/production-readiness/rules/public-surface-rules.ts:function:normalizePublicRoutePath:kind=function",
+      "src/production-readiness/rules/public-surface-rules.ts:function:normalizePublicRoutePath:returns=string | null",
+      "src/production-readiness/rules/public-surface-rules.ts:interface:PublicRouteEvidence",
+      "src/production-readiness/rules/public-surface-rules.ts:interface:PublicRouteEvidence:kind=interface",
+      "src/production-readiness/rules/public-surface-rules.ts:type:PublicSurfaceHint",
+      "src/production-readiness/rules/public-surface-rules.ts:type:PublicSurfaceHint:kind=type",
+      "src/production-readiness/rules/public-surface-rules.ts:type:PublicSurfaceHint:type='api' | 'admin' | 'upload' | 'billing' | 'webhook' | 'auth' | 'login' | 'signup' | 'dashboard' | 'settings' | 'callback' | 'form' | 'cors' | 'middleware' | 'public_asset'"
+    ],
+    "files": {
+      "create": [
+        "src/production-readiness/detectors/__tests__/publicSurfaceDetector.test.ts",
+        "src/production-readiness/detectors/publicSurfaceDetector.ts",
+        "src/production-readiness/rules/public-surface-rules.ts"
+      ],
+      "edit": [],
+      "read": [
+        "docs/b2g_production_readiness_snapshot_reference.md",
+        "manifests/01-b2g-prs-domain-models-fixtures.manifest.yaml",
+        "manifests/04-b2g-prs-diff-engine.manifest.yaml",
+        "manifests/05-b2g-prs-sensitive-path-classifier.manifest.yaml",
+        "manifests/07-b2g-prs-env-secret-detector.manifest.yaml",
+        "manifests/drafts/b2g-production-readiness-snapshot.manifest.yaml",
+        "src/production-readiness/detectors/envSecretDetector.ts",
+        "src/production-readiness/detectors/sensitivePathClassifier.ts",
+        "src/production-readiness/diff/diffEngine.ts",
+        "src/production-readiness/domain.ts",
+        "src/production-readiness/test-fixtures/prsFixtures.ts"
+      ],
+      "scope": [],
+      "delete": [],
+      "snapshot": []
+    },
+    "file_contract": {
+      "create": [
+        {
+          "path": "src/production-readiness/detectors/publicSurfaceDetector.ts",
+          "artifacts": [
+            {
+              "kind": "function",
+              "name": "detectPublicSurfaceSignals",
+              "description": "Detects added or changed route/API surface, admin/upload/billing/\nwebhook/auth/dashboard route names, public assets, CORS config, and\nrequest/response middleware hints from candidate/base diffs.\n",
+              "args": [
+                {
+                  "name": "input",
+                  "type": "PublicSurfaceDetectorInput"
+                }
+              ],
+              "returns": "PublicSurfaceDetectionResult"
+            },
+            {
+              "kind": "interface",
+              "name": "PublicSurfaceDetectorInput",
+              "description": "Candidate/base path and text context needed for public surface route and API detection."
+            },
+            {
+              "kind": "attribute",
+              "name": "changedFiles",
+              "of": "PublicSurfaceDetectorInput",
+              "type": "FileDiffEntry[]"
+            },
+            {
+              "kind": "attribute",
+              "name": "candidateFiles",
+              "of": "PublicSurfaceDetectorInput",
+              "type": "PrsTextFile[]"
+            },
+            {
+              "kind": "interface",
+              "name": "PublicSurfaceDetectionResult",
+              "description": "Public-surface detector signals and normalized route evidence."
+            },
+            {
+              "kind": "attribute",
+              "name": "signals",
+              "of": "PublicSurfaceDetectionResult",
+              "type": "ReadinessSignal[]"
+            },
+            {
+              "kind": "attribute",
+              "name": "routes",
+              "of": "PublicSurfaceDetectionResult",
+              "type": "PublicRouteEvidence[]"
+            }
+          ]
+        },
+        {
+          "path": "src/production-readiness/rules/public-surface-rules.ts",
+          "artifacts": [
+            {
+              "kind": "function",
+              "name": "normalizePublicRoutePath",
+              "description": "Normalizes supported Next.js app/pages route files and API route files into user-facing route paths.",
+              "args": [
+                {
+                  "name": "filePath",
+                  "type": "string"
+                }
+              ],
+              "returns": "string | null"
+            },
+            {
+              "kind": "function",
+              "name": "classifyPublicSurfaceHints",
+              "description": "Applies deterministic path and lightweight content rules for API,\nprivileged, upload, integration, public-asset, CORS, middleware,\nand route-declaration hints.\n",
+              "args": [
+                {
+                  "name": "filePath",
+                  "type": "string"
+                },
+                {
+                  "name": "content",
+                  "type": "string | undefined"
+                }
+              ],
+              "returns": "PublicSurfaceHint[]"
+            },
+            {
+              "kind": "type",
+              "name": "PublicSurfaceHint",
+              "description": "Public-surface hint classes used by route detector evidence and signal composition.",
+              "type": "'api' | 'admin' | 'upload' | 'billing' | 'webhook' | 'auth' | 'login' | 'signup' | 'dashboard' | 'settings' | 'callback' | 'form' | 'cors' | 'middleware' | 'public_asset'"
+            },
+            {
+              "kind": "interface",
+              "name": "PublicRouteEvidence",
+              "description": "Normalized route evidence for route, API, and public-surface changes."
+            },
+            {
+              "kind": "attribute",
+              "name": "routePath",
+              "of": "PublicRouteEvidence",
+              "type": "string"
+            },
+            {
+              "kind": "attribute",
+              "name": "sourcePath",
+              "of": "PublicRouteEvidence",
+              "type": "string"
+            },
+            {
+              "kind": "attribute",
+              "name": "hints",
+              "of": "PublicRouteEvidence",
+              "type": "PublicSurfaceHint[]"
+            },
+            {
+              "kind": "attribute",
+              "name": "status",
+              "of": "PublicRouteEvidence",
+              "type": "'added' | 'changed' | 'deleted' | 'renamed'"
+            }
+          ]
+        },
+        {
+          "path": "src/production-readiness/detectors/__tests__/publicSurfaceDetector.test.ts",
+          "artifacts": [
+            {
+              "kind": "test_function",
+              "name": "normalizes next app and pages routes to public paths",
+              "description": "Planned fixture test for app/page, app/route, src/app, pages, and src/pages route conventions."
+            },
+            {
+              "kind": "test_function",
+              "name": "detects newly added api routes",
+              "description": "Planned fixture test for API route files and functions paths with route evidence."
+            },
+            {
+              "kind": "test_function",
+              "name": "emits surface hints for admin upload webhook billing auth and dashboard paths",
+              "description": "Planned fixture test for high-review public surface naming patterns."
+            },
+            {
+              "kind": "test_function",
+              "name": "detects route declarations public assets cors and middleware hints",
+              "description": "Planned fixture test for lightweight Vite/React route declarations,\npublic assets, CORS configuration, request/response middleware, and\nupload form content without claiming runtime reachability.\n"
+            }
+          ]
+        }
+      ],
+      "read": [
+        "manifests/drafts/b2g-production-readiness-snapshot.manifest.yaml",
+        "manifests/01-b2g-prs-domain-models-fixtures.manifest.yaml",
+        "manifests/04-b2g-prs-diff-engine.manifest.yaml",
+        "manifests/05-b2g-prs-sensitive-path-classifier.manifest.yaml",
+        "manifests/07-b2g-prs-env-secret-detector.manifest.yaml",
+        "docs/b2g_production_readiness_snapshot_reference.md",
+        "src/production-readiness/domain.ts",
+        "src/production-readiness/detectors/sensitivePathClassifier.ts",
+        "src/production-readiness/detectors/envSecretDetector.ts",
+        "src/production-readiness/diff/diffEngine.ts",
+        "src/production-readiness/test-fixtures/prsFixtures.ts"
+      ]
+    },
+    "test_files": ["src/production-readiness/detectors/__tests__/publicSurfaceDetector.test.ts"],
+    "validate_commands": [
+      "pnpm exec vitest run src/production-readiness/detectors/__tests__/publicSurfaceDetector.test.ts",
+      "./scripts/maid validate manifests/11-b2g-prs-public-surface-detector.manifest.yaml --mode behavioral",
+      "pnpm lint",
+      "pnpm check"
+    ]
+  }
+}
