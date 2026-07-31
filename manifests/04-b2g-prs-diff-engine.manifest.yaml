@@ -1,0 +1,346 @@
+# manifest-kind: active-contract
+# MAID manifest - a machine-checked contract for one change.
+# Declares the intent, the files it may touch, and the commands that verify it.
+# Nothing here is needed to build or run this project; safe to ignore.
+# What it is: https://github.com/mamertofabian/maid-runner
+schema: '2'
+goal: |
+  Compare candidate zip inventory against GitHub base inventory and produce
+  deterministic PRS file diff metrics for added, changed, deleted, renamed,
+  line-change, and binary-change cases.
+description: |
+  Promoted child contract for the b2g-production-readiness-snapshot parent
+  epic. Fixture-backed tests define a pure, deterministic comparison boundary
+  for normalized inventories.
+
+  This slice owns inventory-to-inventory comparison. It should consume normalized
+  candidate and base inventories, compute deterministic comparison summaries,
+  and report limitations for large or binary files that cannot be line-diffed.
+  It must not classify paths into readiness categories, compose state, render
+  UI, or call GitHub directly.
+temptations:
+  - risk: 'Do not use raw zip entry names or GitHub tree paths without shared path
+      normalization.'
+    instead: 'Compare only normalized inventory entries produced by the inventory
+      slices.'
+  - risk: 'Do not count skipped large files as unchanged.'
+    instead: 'Represent large-file skips as limitations while still counting file-level
+      changes.'
+  - risk: 'Do not infer production sensitivity in the diff engine.'
+    instead: 'Emit neutral file and line metrics and let detector slices classify
+      readiness meaning.'
+type: feature
+files:
+  create:
+    - path: src/production-readiness/diff/diffEngine.ts
+      artifacts:
+        - kind: interface
+          name: DiffEngineOptions
+          description: Planned thresholds for line diffing, rename detection,
+            and large-file limitations.
+        - kind: attribute
+          name: detectRenames
+          of: DiffEngineOptions
+          type: boolean | undefined
+        - kind: attribute
+          name: maxLineDiffFileBytes
+          of: DiffEngineOptions
+          type: number | undefined
+        - kind: attribute
+          name: lineDeltasByPath
+          of: DiffEngineOptions
+          type: Readonly<Record<string, LineDelta>> | undefined
+        - kind: attribute
+          name: candidateBlobShasByPath
+          of: DiffEngineOptions
+          type: Readonly<Record<string, string>> | undefined
+        - kind: attribute
+          name: baseBinaryPaths
+          of: DiffEngineOptions
+          type: ReadonlySet<string> | undefined
+          description: Exhaustive base paths known to be binary. Omitting the
+            set preserves unknown classification for base-only files.
+        - kind: interface
+          name: LineDelta
+          description: Exact content-aware line additions and deletions supplied
+            when upstream content is available.
+        - kind: attribute
+          name: addedLines
+          of: LineDelta
+          type: number
+        - kind: attribute
+          name: deletedLines
+          of: LineDelta
+          type: number
+        - kind: interface
+          name: FileDiffEntry
+          description: Planned per-file added, changed, deleted, renamed,
+            binary, and skipped-line-diff metadata.
+        - kind: attribute
+          name: path
+          of: FileDiffEntry
+          type: string
+        - kind: attribute
+          name: previousPath
+          of: FileDiffEntry
+          type: string | undefined
+        - kind: attribute
+          name: status
+          of: FileDiffEntry
+          type: "'added' | 'changed' | 'deleted' | 'renamed' | 'indeterminate'"
+        - kind: attribute
+          name: binary
+          of: FileDiffEntry
+          type: boolean | undefined
+        - kind: attribute
+          name: lineDiffEligible
+          of: FileDiffEntry
+          type: boolean
+        - kind: attribute
+          name: addedLines
+          of: FileDiffEntry
+          type: number | undefined
+        - kind: attribute
+          name: deletedLines
+          of: FileDiffEntry
+          type: number | undefined
+        - kind: interface
+          name: InventoryComparisonSummary
+          description: Neutral file and line metrics before readiness
+            classification.
+        - kind: attribute
+          name: changedFiles
+          of: InventoryComparisonSummary
+          type: number
+        - kind: attribute
+          name: addedFiles
+          of: InventoryComparisonSummary
+          type: number
+        - kind: attribute
+          name: deletedFiles
+          of: InventoryComparisonSummary
+          type: number
+        - kind: attribute
+          name: renamedFiles
+          of: InventoryComparisonSummary
+          type: number
+        - kind: attribute
+          name: indeterminateFiles
+          of: InventoryComparisonSummary
+          type: number
+        - kind: attribute
+          name: addedLines
+          of: InventoryComparisonSummary
+          type: number
+        - kind: attribute
+          name: deletedLines
+          of: InventoryComparisonSummary
+          type: number
+        - kind: attribute
+          name: binaryFilesChanged
+          of: InventoryComparisonSummary
+          type: number
+        - kind: interface
+          name: InventoryDiffResult
+          description: Planned file diff collection, comparison summary, and
+            limitations for downstream detectors.
+        - kind: attribute
+          name: entries
+          of: InventoryDiffResult
+          type: FileDiffEntry[]
+        - kind: attribute
+          name: summary
+          of: InventoryDiffResult
+          type: InventoryComparisonSummary
+        - kind: attribute
+          name: limitations
+          of: InventoryDiffResult
+          type: string[]
+        - kind: function
+          name: compareInventories
+          args:
+            - name: candidate
+              type: FileInventory
+            - name: base
+              type: GitHubBaseInventoryResult
+            - name: options
+              type: DiffEngineOptions | undefined
+          returns: InventoryDiffResult
+          description: Planned pure comparison function for normalized candidate
+            and base inventories.
+    - path: src/production-readiness/__tests__/diff-engine.test.ts
+      artifacts:
+        - kind: test_function
+          name: changed added and deleted counts match fixtures
+          description: Required planned behavioral test before promotion.
+        - kind: test_function
+          name: text line deltas are correct
+          description: Required planned behavioral test before promotion.
+        - kind: test_function
+          name: large files can be skipped with limitations
+          description: Required planned behavioral test before promotion.
+        - kind: test_function
+          name: binary file changes are counted separately
+          description: Required planned behavioral test before promotion.
+    - path: src/production-readiness/test-fixtures/prs/diff-cases.ts
+      artifacts:
+        - kind: type
+          name: InventoryDiffFixtureName
+          type: "'core' | 'line-deltas' | 'large-files' | 'binary-files'"
+        - kind: interface
+          name: InventoryDiffFixture
+          description: Deterministic candidate/base inventories and options for
+            one diff behavior.
+        - kind: attribute
+          name: name
+          of: InventoryDiffFixture
+          type: InventoryDiffFixtureName
+        - kind: attribute
+          name: candidate
+          of: InventoryDiffFixture
+          type: FileInventory
+        - kind: attribute
+          name: base
+          of: InventoryDiffFixture
+          type: GitHubBaseInventoryResult
+        - kind: attribute
+          name: options
+          of: InventoryDiffFixture
+          type: DiffEngineOptions
+        - kind: function
+          name: createInventoryDiffFixture
+          args:
+            - name: name
+              type: string
+          returns: InventoryDiffFixture
+          description: Planned deterministic candidate/base inventory fixture
+            factory for diff tests.
+  read:
+    - docs/b2g_production_readiness_snapshot_reference.md
+    - manifests/drafts/b2g-production-readiness-snapshot.manifest.yaml
+    - manifests/01-b2g-prs-domain-models-fixtures.manifest.yaml
+    - manifests/02-b2g-prs-zip-inventory-normalization.manifest.yaml
+    - manifests/03-b2g-prs-github-base-inventory.manifest.yaml
+    - src/production-readiness/domain.ts
+    - src/production-readiness/inventory/zipInventory.ts
+    - src/production-readiness/inventory/githubBaseInventory.ts
+validate:
+  - pnpm exec vitest run src/production-readiness/__tests__/diff-engine.test.ts
+  - ./scripts/maid validate manifests/04-b2g-prs-diff-engine.manifest.yaml
+    --mode behavioral
+  - pnpm lint
+  - pnpm check
+created: '2026-07-31T04:22:32Z'
+metadata:
+  tags:
+    - production-readiness
+    - diff-engine
+    - inventory-comparison
+  priority: high
+  status: implementation
+  promotable: true
+  parent_epic: b2g-production-readiness-snapshot
+  depends_on:
+    - 01-b2g-prs-domain-models-fixtures
+    - 02-b2g-prs-zip-inventory-normalization
+    - 03-b2g-prs-github-base-inventory
+  source_document: docs/b2g_production_readiness_snapshot_reference.md
+outcome:
+  status: completed
+  completed_at: '2026-07-31T04:44:56Z'
+  summary: |
+    PRS can now compare a normalized candidate ZIP inventory directly with a
+    GitHub base inventory and produce deterministic added, changed, deleted,
+    renamed, indeterminate, line-change, and binary-change metrics.
+
+    The engine uses explicit candidate Git blob SHAs instead of comparing
+    incompatible ZIP SHA-256 values with Git blob identifiers. Partial GitHub
+    inventories, missing comparable hashes, ambiguous rename groups, unknown
+    binary classification, large files, and unavailable exact line deltas are
+    preserved as visible limitations rather than invented certainty.
+  rationale: |
+    Keeping the comparison boundary pure and accepting normalized upstream
+    results makes the diff deterministic and independently testable. Binary
+    evidence is resolved per candidate and base side, while caller-provided
+    line deltas are constrained by file status so invalid metrics cannot
+    silently corrupt aggregate counts.
+  lessons:
+    - lesson_type: compare-compatible-identifiers
+      summary: |
+        A ZIP content SHA-256 and a Git blob SHA describe content with different
+        algorithms. Rename and equality decisions require an explicitly
+        supplied candidate Git blob SHA rather than comparing those fields.
+      tags: [diff, git, hashing, correctness]
+      paths:
+        - src/production-readiness/diff/diffEngine.ts
+    - lesson_type: model-unknown-evidence
+      summary: |
+        Candidate and base binary evidence must be resolved independently.
+        Missing classification is an explicit unknown state that disables line
+        metrics and emits a visible limitation.
+      tags: [binary, partial-data, confidence]
+      paths:
+        - src/production-readiness/diff/diffEngine.ts
+        - src/production-readiness/__tests__/diff-engine.test.ts
+    - lesson_type: reject-ambiguous-renames
+      summary: |
+        Duplicate blob identities cannot support a deterministic one-to-one
+        rename claim. Ambiguous groups remain additions and deletions with an
+        explicit limitation.
+      tags: [renames, deterministic-analysis]
+      paths:
+        - src/production-readiness/diff/diffEngine.ts
+  review_notes:
+    - source: independent reviewer /root/slice04_implementation_reviewer
+      severity: needs-changes
+      summary: |
+        Initial reviews found incompatible upstream types, false changes from
+        content-kind differences, ambiguous rename claims, unknown binary
+        evidence presented as text, and status-inconsistent line deltas.
+    - source: independent reviewer /root/slice04_implementation_reviewer
+      severity: ready
+      summary: |
+        Revision 6 resolved binary evidence per side and retained all earlier
+        fixes. The final review found no blocking or should-fix findings and
+        confirmed MAID scope and contract fidelity.
+  validation:
+    - command: [pnpm, exec, vitest, run, src/production-readiness/__tests__/diff-engine.test.ts]
+      status: passed
+      summary: Four focused scenario groups passed, including direct inventory
+        integration, partial and ambiguous evidence, line-delta constraints,
+        large files, binary files, and unknown binary classification.
+    - command: [pnpm, test:ci]
+      status: passed
+      summary: The complete Vitest suite passed 201 files and 4,016 tests.
+    - command: [pnpm, check]
+      status: passed
+      summary: Svelte and TypeScript validation completed with zero errors or
+        warnings.
+    - command: [pnpm, lint]
+      status: passed
+      summary: ESLint passed for all JavaScript, TypeScript, and Svelte sources.
+    - command: [pnpm, build]
+      status: passed
+      summary: The production extension build completed successfully; only two
+        pre-existing Vite dynamic/static import warnings remained.
+    - command:
+        [
+          ./scripts/maid,
+          verify,
+          --manifest-dir,
+          manifests,
+          --require-plan-lock,
+          --require-red-evidence,
+          --plan-lock-scope,
+          task,
+          --file-tracking-scope,
+          task,
+          --include-tests,
+          --since,
+          '8403472',
+          --advisory,
+          --summary,
+        ]
+      status: passed
+      summary: All nine task-scoped verification gates passed with only three
+        unrelated pre-existing release-chain E110 warnings.

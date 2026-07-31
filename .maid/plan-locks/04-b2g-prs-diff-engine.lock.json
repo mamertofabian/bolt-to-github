@@ -1,0 +1,622 @@
+{
+  "manifest_path": "manifests/04-b2g-prs-diff-engine.manifest.yaml",
+  "manifest_hash": "sha256-contract:7880df5940d1dfa595beb02a572b5c471dd346e49a24f67fcfb52d07347c8a33",
+  "test_hashes": {
+    "src/production-readiness/__tests__/diff-engine.test.ts": "sha256:1b5e74d2ab220f22c1a8e4544d68f763f551862e63d55d93c3f2877035272e8d"
+  },
+  "created_at": "2026-07-31T04:24:40.093327+00:00",
+  "revision": 6,
+  "revisions": [
+    {
+      "prior_manifest_hash": "sha256-contract:85f661afb2246fe0d8a3357e9c5645acae65678682ec714faf6ed7d27c13cdc2",
+      "prior_test_hashes": {
+        "src/production-readiness/__tests__/diff-engine.test.ts": "sha256:339df2ebb9e1c0f55678c26ccac5c82a24ecd4cc9e215685127f2cd6d88fd382"
+      },
+      "revised_at": "2026-07-31T04:26:30.818094+00:00",
+      "reason": "Correct aggregate line totals to include added and deleted text files alongside changed-file deltas",
+      "agent": null,
+      "contract_delta": {
+        "artifacts_added": [],
+        "artifacts_removed": [],
+        "files_added": [],
+        "files_removed": [],
+        "validate_commands_added": [],
+        "validate_commands_removed": []
+      }
+    },
+    {
+      "prior_manifest_hash": "sha256-contract:85f661afb2246fe0d8a3357e9c5645acae65678682ec714faf6ed7d27c13cdc2",
+      "prior_test_hashes": {
+        "src/production-readiness/__tests__/diff-engine.test.ts": "sha256:d35aa0b38a93d9df6e59e8a9b5b22a7a0935b7baeadf27507b94e7a7ced6913b"
+      },
+      "revised_at": "2026-07-31T04:27:37.975055+00:00",
+      "reason": "Exercise every public diff option and rename field explicitly in the behavioral contract",
+      "agent": null,
+      "contract_delta": {
+        "artifacts_added": [],
+        "artifacts_removed": [],
+        "files_added": [],
+        "files_removed": [],
+        "validate_commands_added": [],
+        "validate_commands_removed": []
+      }
+    },
+    {
+      "prior_manifest_hash": "sha256-contract:85f661afb2246fe0d8a3357e9c5645acae65678682ec714faf6ed7d27c13cdc2",
+      "prior_test_hashes": {
+        "src/production-readiness/__tests__/diff-engine.test.ts": "sha256:e3d4b68c587ae8c7b928435a59902218689552de9e21cae542b556c6c2feec9d"
+      },
+      "revised_at": "2026-07-31T04:35:29.032266+00:00",
+      "reason": "Address implementation review by consuming GitHubBaseInventoryResult directly, using explicit candidate Git blob SHAs, preserving partial-base uncertainty, rejecting ambiguous renames, and retaining base binary classification across renames",
+      "agent": null,
+      "contract_delta": {
+        "artifacts_added": [
+          "src/production-readiness/diff/diffEngine.ts:attribute:DiffEngineOptions.baseBinaryPaths",
+          "src/production-readiness/diff/diffEngine.ts:attribute:DiffEngineOptions.baseBinaryPaths:kind=attribute",
+          "src/production-readiness/diff/diffEngine.ts:attribute:DiffEngineOptions.baseBinaryPaths:of=DiffEngineOptions",
+          "src/production-readiness/diff/diffEngine.ts:attribute:DiffEngineOptions.baseBinaryPaths:type=ReadonlySet<string> | undefined",
+          "src/production-readiness/diff/diffEngine.ts:attribute:DiffEngineOptions.candidateBlobShasByPath",
+          "src/production-readiness/diff/diffEngine.ts:attribute:DiffEngineOptions.candidateBlobShasByPath:kind=attribute",
+          "src/production-readiness/diff/diffEngine.ts:attribute:DiffEngineOptions.candidateBlobShasByPath:of=DiffEngineOptions",
+          "src/production-readiness/diff/diffEngine.ts:attribute:DiffEngineOptions.candidateBlobShasByPath:type=Readonly<Record<string, string>> | undefined",
+          "src/production-readiness/diff/diffEngine.ts:function:compareInventories:arg=base:type=GitHubBaseInventoryResult:default=None",
+          "src/production-readiness/test-fixtures/prs/diff-cases.ts:attribute:InventoryDiffFixture.base:type=GitHubBaseInventoryResult"
+        ],
+        "artifacts_removed": [
+          "src/production-readiness/diff/diffEngine.ts:attribute:DiffEngineOptions.hashesComparable",
+          "src/production-readiness/diff/diffEngine.ts:attribute:DiffEngineOptions.hashesComparable:kind=attribute",
+          "src/production-readiness/diff/diffEngine.ts:attribute:DiffEngineOptions.hashesComparable:of=DiffEngineOptions",
+          "src/production-readiness/diff/diffEngine.ts:attribute:DiffEngineOptions.hashesComparable:type=boolean | undefined",
+          "src/production-readiness/diff/diffEngine.ts:function:compareInventories:arg=base:type=FileInventory:default=None",
+          "src/production-readiness/test-fixtures/prs/diff-cases.ts:attribute:InventoryDiffFixture.base:type=FileInventory"
+        ],
+        "files_added": [],
+        "files_removed": [],
+        "validate_commands_added": [],
+        "validate_commands_removed": []
+      }
+    },
+    {
+      "prior_manifest_hash": "sha256-contract:7ecbfc6d82210e250b10bc32298b14872e97d97b0c4863a32174b66eb8f15636",
+      "prior_test_hashes": {
+        "src/production-readiness/__tests__/diff-engine.test.ts": "sha256:39c5129909512830e1a23538f664cdd0124b2d31697136d0abe45b930a06631c"
+      },
+      "revised_at": "2026-07-31T04:40:01.831168+00:00",
+      "reason": "Address second implementation review by representing unknown binary classification explicitly and enforcing status-consistent added and deleted line deltas",
+      "agent": null,
+      "contract_delta": {
+        "artifacts_added": [
+          "src/production-readiness/diff/diffEngine.ts:attribute:FileDiffEntry.binary:type=boolean | undefined"
+        ],
+        "artifacts_removed": [
+          "src/production-readiness/diff/diffEngine.ts:attribute:FileDiffEntry.binary:type=boolean"
+        ],
+        "files_added": [],
+        "files_removed": [],
+        "validate_commands_added": [],
+        "validate_commands_removed": []
+      }
+    },
+    {
+      "prior_manifest_hash": "sha256-contract:7880df5940d1dfa595beb02a572b5c471dd346e49a24f67fcfb52d07347c8a33",
+      "prior_test_hashes": {
+        "src/production-readiness/__tests__/diff-engine.test.ts": "sha256:88267ce714fdd65b98bb71dc22b5b31da19bf4c1bc3da2005461a4a746b50713"
+      },
+      "revised_at": "2026-07-31T04:42:49.714142+00:00",
+      "reason": "Resolve binary evidence independently for candidate-only, base-only, same-path, and exact-hash rename comparisons",
+      "agent": null,
+      "contract_delta": {
+        "artifacts_added": [],
+        "artifacts_removed": [],
+        "files_added": [],
+        "files_removed": [],
+        "validate_commands_added": [],
+        "validate_commands_removed": []
+      }
+    }
+  ],
+  "red_evidence": {
+    "red": true,
+    "captured_at": "2026-07-31T04:43:03.855345+00:00",
+    "commands": [
+      {
+        "command": "pnpm exec vitest run src/production-readiness/__tests__/diff-engine.test.ts",
+        "exit_code": 1,
+        "output_tail": " Test Files  1 failed (1)\n      Tests  no tests\n   Start at  12:42:50\n   Duration  574ms (transform 33ms, setup 52ms, collect 0ms, tests 0ms, environment 189ms, prepare 43ms)\n\n\n\u23af\u23af\u23af\u23af\u23af\u23af Failed Suites 1 \u23af\u23af\u23af\u23af\u23af\u23af\u23af\n\n FAIL  src/production-readiness/__tests__/diff-engine.test.ts [ src/production-readiness/__tests__/diff-engine.test.ts ]\nError: Failed to resolve import \"../diff/diffEngine\" from \"src/production-readiness/__tests__/diff-engine.test.ts\". Does the file exist?\n \u276f TransformPluginContext._formatError node_modules/.pnpm/vite@5.4.21_@types+node@22.19.18/node_modules/vite/dist/node/chunks/dep-BK3b2jBa.js:49258:41\n \u276f TransformPluginContext.error node_modules/.pnpm/vite@5.4.21_@types+node@22.19.18/node_modules/vite/dist/node/chunks/dep-BK3b2jBa.js:49253:16\n \u276f normalizeUrl node_modules/.pnpm/vite@5.4.21_@types+node@22.19.18/node_modules/vite/dist/node/chunks/dep-BK3b2jBa.js:64307:23\n \u276f async file:/home/atomrem/projects/codefrost-dev/bolt-to-github/node_modules/.pnpm/vite@5.4.21_@types+node@22.19.18/node_modules/vite/dist/node/chunks/dep-BK3b2jBa.js:64439:39\n \u276f TransformPluginContext.transform node_modules/.pnpm/vite@5.4.21_@types+node@22.19.18/node_modules/vite/dist/node/chunks/dep-BK3b2jBa.js:64366:7\n \u276f PluginContainer.transform node_modules/.pnpm/vite@5.4.21_@types+node@22.19.18/node_modules/vite/dist/node/chunks/dep-BK3b2jBa.js:49099:18\n \u276f loadAndTransform node_modules/.pnpm/vite@5.4.21_@types+node@22.19.18/node_modules/vite/dist/node/chunks/dep-BK3b2jBa.js:51978:27\n\n\u23af\u23af\u23af\u23af\u23af\u23af\u23af\u23af\u23af\u23af\u23af\u23af\u23af\u23af\u23af\u23af\u23af\u23af\u23af\u23af\u23af\u23af\u23af\u23af[1/1]\u23af\n",
+        "classification": "red"
+      },
+      {
+        "command": "./scripts/maid validate manifests/04-b2g-prs-diff-engine.manifest.yaml --mode behavioral",
+        "exit_code": 0,
+        "output_tail": "PASS 04-b2g-prs-diff-engine\n  Mode: behavioral\n  Duration: 316ms\n  Warnings (3):\n    E110 Manifest 'prepare-v2-0-0-github-app-release' supersedes 'release-v1-3-21' but drops artifact 'PackageVersion_1_3_21' (namespace) at package.json\n      Location: /home/atomrem/projects/codefrost-dev/bolt-to-github/manifests/prepare-v2-0-0-github-app-release.manifest.yaml\n      Suggestion: Re-declare the artifact in the replacement manifest, list its file under files.delete, or list the symbol under removed_artifacts.\n    E110 Manifest 'prepare-v2-0-0-github-app-release' supersedes 'release-v1-3-21' but drops artifact 'ChromeManifestVersion_1_3_21' (namespace) at manifest.json\n      Location: /home/atomrem/projects/codefrost-dev/bolt-to-github/manifests/prepare-v2-0-0-github-app-release.manifest.yaml\n      Suggestion: Re-declare the artifact in the replacement manifest, list its file under files.delete, or list the symbol under removed_artifacts.\n    E110 Manifest 'prepare-v2-0-0-github-app-release' supersedes 'release-v1-3-21' but drops artifact 'DevelopmentGuideVersion_1_3_21' (namespace) at CLAUDE.md\n      Location: /home/atomrem/projects/codefrost-dev/bolt-to-github/manifests/prepare-v2-0-0-github-app-release.manifest.yaml\n      Suggestion: Re-declare the artifact in the replacement manifest, list its file under files.delete, or list the symbol under removed_artifacts.",
+        "classification": "not_red"
+      },
+      {
+        "command": "pnpm lint",
+        "exit_code": 0,
+        "output_tail": "\n> bolt-to-github@2.0.0 lint /home/atomrem/projects/codefrost-dev/bolt-to-github\n> eslint \"src/**/*.{js,ts,svelte}\"\n",
+        "classification": "not_red"
+      },
+      {
+        "command": "pnpm check",
+        "exit_code": 1,
+        "output_tail": "  expect(entry, `Expected diff entry for ${path}`).toBeDefined();\n\n\n/home/atomrem/projects/codefrost-dev/bolt-to-github/src/production-readiness/__tests__/diff-engine.test.ts:52:32\nError: Parameter 'entry' implicitly has an 'any' type. \n    expect(result.summary).toEqual(expectedSummary);\n    expect(result.entries.map((entry) => `${entry.status}:${entry.path}`)).toEqual([\n      'added:added.txt',\n\n\n/home/atomrem/projects/codefrost-dev/bolt-to-github/src/production-readiness/__tests__/diff-engine.test.ts:67:33\nError: Parameter 'entry' implicitly has an 'any' type. \n    });\n    expect(result.entries.some((entry) => entry.path === 'same.txt')).toBe(false);\n\n\n\n====================================\nsvelte-check found 5 errors and 0 warnings in 1 file\n\u2009ELIFECYCLE\u2009 Command failed with exit code 1.",
+        "classification": "red"
+      }
+    ]
+  },
+  "legacy_baseline": null,
+  "agent": null,
+  "_manifest_contract": {
+    "artifacts": [
+      "src/production-readiness/__tests__/diff-engine.test.ts:binary file changes are counted separately",
+      "src/production-readiness/__tests__/diff-engine.test.ts:binary file changes are counted separately:kind=test_function",
+      "src/production-readiness/__tests__/diff-engine.test.ts:changed added and deleted counts match fixtures",
+      "src/production-readiness/__tests__/diff-engine.test.ts:changed added and deleted counts match fixtures:kind=test_function",
+      "src/production-readiness/__tests__/diff-engine.test.ts:large files can be skipped with limitations",
+      "src/production-readiness/__tests__/diff-engine.test.ts:large files can be skipped with limitations:kind=test_function",
+      "src/production-readiness/__tests__/diff-engine.test.ts:text line deltas are correct",
+      "src/production-readiness/__tests__/diff-engine.test.ts:text line deltas are correct:kind=test_function",
+      "src/production-readiness/diff/diffEngine.ts:attribute:DiffEngineOptions.baseBinaryPaths",
+      "src/production-readiness/diff/diffEngine.ts:attribute:DiffEngineOptions.baseBinaryPaths:kind=attribute",
+      "src/production-readiness/diff/diffEngine.ts:attribute:DiffEngineOptions.baseBinaryPaths:of=DiffEngineOptions",
+      "src/production-readiness/diff/diffEngine.ts:attribute:DiffEngineOptions.baseBinaryPaths:type=ReadonlySet<string> | undefined",
+      "src/production-readiness/diff/diffEngine.ts:attribute:DiffEngineOptions.candidateBlobShasByPath",
+      "src/production-readiness/diff/diffEngine.ts:attribute:DiffEngineOptions.candidateBlobShasByPath:kind=attribute",
+      "src/production-readiness/diff/diffEngine.ts:attribute:DiffEngineOptions.candidateBlobShasByPath:of=DiffEngineOptions",
+      "src/production-readiness/diff/diffEngine.ts:attribute:DiffEngineOptions.candidateBlobShasByPath:type=Readonly<Record<string, string>> | undefined",
+      "src/production-readiness/diff/diffEngine.ts:attribute:DiffEngineOptions.detectRenames",
+      "src/production-readiness/diff/diffEngine.ts:attribute:DiffEngineOptions.detectRenames:kind=attribute",
+      "src/production-readiness/diff/diffEngine.ts:attribute:DiffEngineOptions.detectRenames:of=DiffEngineOptions",
+      "src/production-readiness/diff/diffEngine.ts:attribute:DiffEngineOptions.detectRenames:type=boolean | undefined",
+      "src/production-readiness/diff/diffEngine.ts:attribute:DiffEngineOptions.lineDeltasByPath",
+      "src/production-readiness/diff/diffEngine.ts:attribute:DiffEngineOptions.lineDeltasByPath:kind=attribute",
+      "src/production-readiness/diff/diffEngine.ts:attribute:DiffEngineOptions.lineDeltasByPath:of=DiffEngineOptions",
+      "src/production-readiness/diff/diffEngine.ts:attribute:DiffEngineOptions.lineDeltasByPath:type=Readonly<Record<string, LineDelta>> | undefined",
+      "src/production-readiness/diff/diffEngine.ts:attribute:DiffEngineOptions.maxLineDiffFileBytes",
+      "src/production-readiness/diff/diffEngine.ts:attribute:DiffEngineOptions.maxLineDiffFileBytes:kind=attribute",
+      "src/production-readiness/diff/diffEngine.ts:attribute:DiffEngineOptions.maxLineDiffFileBytes:of=DiffEngineOptions",
+      "src/production-readiness/diff/diffEngine.ts:attribute:DiffEngineOptions.maxLineDiffFileBytes:type=number | undefined",
+      "src/production-readiness/diff/diffEngine.ts:attribute:FileDiffEntry.addedLines",
+      "src/production-readiness/diff/diffEngine.ts:attribute:FileDiffEntry.addedLines:kind=attribute",
+      "src/production-readiness/diff/diffEngine.ts:attribute:FileDiffEntry.addedLines:of=FileDiffEntry",
+      "src/production-readiness/diff/diffEngine.ts:attribute:FileDiffEntry.addedLines:type=number | undefined",
+      "src/production-readiness/diff/diffEngine.ts:attribute:FileDiffEntry.binary",
+      "src/production-readiness/diff/diffEngine.ts:attribute:FileDiffEntry.binary:kind=attribute",
+      "src/production-readiness/diff/diffEngine.ts:attribute:FileDiffEntry.binary:of=FileDiffEntry",
+      "src/production-readiness/diff/diffEngine.ts:attribute:FileDiffEntry.binary:type=boolean | undefined",
+      "src/production-readiness/diff/diffEngine.ts:attribute:FileDiffEntry.deletedLines",
+      "src/production-readiness/diff/diffEngine.ts:attribute:FileDiffEntry.deletedLines:kind=attribute",
+      "src/production-readiness/diff/diffEngine.ts:attribute:FileDiffEntry.deletedLines:of=FileDiffEntry",
+      "src/production-readiness/diff/diffEngine.ts:attribute:FileDiffEntry.deletedLines:type=number | undefined",
+      "src/production-readiness/diff/diffEngine.ts:attribute:FileDiffEntry.lineDiffEligible",
+      "src/production-readiness/diff/diffEngine.ts:attribute:FileDiffEntry.lineDiffEligible:kind=attribute",
+      "src/production-readiness/diff/diffEngine.ts:attribute:FileDiffEntry.lineDiffEligible:of=FileDiffEntry",
+      "src/production-readiness/diff/diffEngine.ts:attribute:FileDiffEntry.lineDiffEligible:type=boolean",
+      "src/production-readiness/diff/diffEngine.ts:attribute:FileDiffEntry.path",
+      "src/production-readiness/diff/diffEngine.ts:attribute:FileDiffEntry.path:kind=attribute",
+      "src/production-readiness/diff/diffEngine.ts:attribute:FileDiffEntry.path:of=FileDiffEntry",
+      "src/production-readiness/diff/diffEngine.ts:attribute:FileDiffEntry.path:type=string",
+      "src/production-readiness/diff/diffEngine.ts:attribute:FileDiffEntry.previousPath",
+      "src/production-readiness/diff/diffEngine.ts:attribute:FileDiffEntry.previousPath:kind=attribute",
+      "src/production-readiness/diff/diffEngine.ts:attribute:FileDiffEntry.previousPath:of=FileDiffEntry",
+      "src/production-readiness/diff/diffEngine.ts:attribute:FileDiffEntry.previousPath:type=string | undefined",
+      "src/production-readiness/diff/diffEngine.ts:attribute:FileDiffEntry.status",
+      "src/production-readiness/diff/diffEngine.ts:attribute:FileDiffEntry.status:kind=attribute",
+      "src/production-readiness/diff/diffEngine.ts:attribute:FileDiffEntry.status:of=FileDiffEntry",
+      "src/production-readiness/diff/diffEngine.ts:attribute:FileDiffEntry.status:type='added' | 'changed' | 'deleted' | 'renamed' | 'indeterminate'",
+      "src/production-readiness/diff/diffEngine.ts:attribute:InventoryComparisonSummary.addedFiles",
+      "src/production-readiness/diff/diffEngine.ts:attribute:InventoryComparisonSummary.addedFiles:kind=attribute",
+      "src/production-readiness/diff/diffEngine.ts:attribute:InventoryComparisonSummary.addedFiles:of=InventoryComparisonSummary",
+      "src/production-readiness/diff/diffEngine.ts:attribute:InventoryComparisonSummary.addedFiles:type=number",
+      "src/production-readiness/diff/diffEngine.ts:attribute:InventoryComparisonSummary.addedLines",
+      "src/production-readiness/diff/diffEngine.ts:attribute:InventoryComparisonSummary.addedLines:kind=attribute",
+      "src/production-readiness/diff/diffEngine.ts:attribute:InventoryComparisonSummary.addedLines:of=InventoryComparisonSummary",
+      "src/production-readiness/diff/diffEngine.ts:attribute:InventoryComparisonSummary.addedLines:type=number",
+      "src/production-readiness/diff/diffEngine.ts:attribute:InventoryComparisonSummary.binaryFilesChanged",
+      "src/production-readiness/diff/diffEngine.ts:attribute:InventoryComparisonSummary.binaryFilesChanged:kind=attribute",
+      "src/production-readiness/diff/diffEngine.ts:attribute:InventoryComparisonSummary.binaryFilesChanged:of=InventoryComparisonSummary",
+      "src/production-readiness/diff/diffEngine.ts:attribute:InventoryComparisonSummary.binaryFilesChanged:type=number",
+      "src/production-readiness/diff/diffEngine.ts:attribute:InventoryComparisonSummary.changedFiles",
+      "src/production-readiness/diff/diffEngine.ts:attribute:InventoryComparisonSummary.changedFiles:kind=attribute",
+      "src/production-readiness/diff/diffEngine.ts:attribute:InventoryComparisonSummary.changedFiles:of=InventoryComparisonSummary",
+      "src/production-readiness/diff/diffEngine.ts:attribute:InventoryComparisonSummary.changedFiles:type=number",
+      "src/production-readiness/diff/diffEngine.ts:attribute:InventoryComparisonSummary.deletedFiles",
+      "src/production-readiness/diff/diffEngine.ts:attribute:InventoryComparisonSummary.deletedFiles:kind=attribute",
+      "src/production-readiness/diff/diffEngine.ts:attribute:InventoryComparisonSummary.deletedFiles:of=InventoryComparisonSummary",
+      "src/production-readiness/diff/diffEngine.ts:attribute:InventoryComparisonSummary.deletedFiles:type=number",
+      "src/production-readiness/diff/diffEngine.ts:attribute:InventoryComparisonSummary.deletedLines",
+      "src/production-readiness/diff/diffEngine.ts:attribute:InventoryComparisonSummary.deletedLines:kind=attribute",
+      "src/production-readiness/diff/diffEngine.ts:attribute:InventoryComparisonSummary.deletedLines:of=InventoryComparisonSummary",
+      "src/production-readiness/diff/diffEngine.ts:attribute:InventoryComparisonSummary.deletedLines:type=number",
+      "src/production-readiness/diff/diffEngine.ts:attribute:InventoryComparisonSummary.indeterminateFiles",
+      "src/production-readiness/diff/diffEngine.ts:attribute:InventoryComparisonSummary.indeterminateFiles:kind=attribute",
+      "src/production-readiness/diff/diffEngine.ts:attribute:InventoryComparisonSummary.indeterminateFiles:of=InventoryComparisonSummary",
+      "src/production-readiness/diff/diffEngine.ts:attribute:InventoryComparisonSummary.indeterminateFiles:type=number",
+      "src/production-readiness/diff/diffEngine.ts:attribute:InventoryComparisonSummary.renamedFiles",
+      "src/production-readiness/diff/diffEngine.ts:attribute:InventoryComparisonSummary.renamedFiles:kind=attribute",
+      "src/production-readiness/diff/diffEngine.ts:attribute:InventoryComparisonSummary.renamedFiles:of=InventoryComparisonSummary",
+      "src/production-readiness/diff/diffEngine.ts:attribute:InventoryComparisonSummary.renamedFiles:type=number",
+      "src/production-readiness/diff/diffEngine.ts:attribute:InventoryDiffResult.entries",
+      "src/production-readiness/diff/diffEngine.ts:attribute:InventoryDiffResult.entries:kind=attribute",
+      "src/production-readiness/diff/diffEngine.ts:attribute:InventoryDiffResult.entries:of=InventoryDiffResult",
+      "src/production-readiness/diff/diffEngine.ts:attribute:InventoryDiffResult.entries:type=FileDiffEntry[]",
+      "src/production-readiness/diff/diffEngine.ts:attribute:InventoryDiffResult.limitations",
+      "src/production-readiness/diff/diffEngine.ts:attribute:InventoryDiffResult.limitations:kind=attribute",
+      "src/production-readiness/diff/diffEngine.ts:attribute:InventoryDiffResult.limitations:of=InventoryDiffResult",
+      "src/production-readiness/diff/diffEngine.ts:attribute:InventoryDiffResult.limitations:type=string[]",
+      "src/production-readiness/diff/diffEngine.ts:attribute:InventoryDiffResult.summary",
+      "src/production-readiness/diff/diffEngine.ts:attribute:InventoryDiffResult.summary:kind=attribute",
+      "src/production-readiness/diff/diffEngine.ts:attribute:InventoryDiffResult.summary:of=InventoryDiffResult",
+      "src/production-readiness/diff/diffEngine.ts:attribute:InventoryDiffResult.summary:type=InventoryComparisonSummary",
+      "src/production-readiness/diff/diffEngine.ts:attribute:LineDelta.addedLines",
+      "src/production-readiness/diff/diffEngine.ts:attribute:LineDelta.addedLines:kind=attribute",
+      "src/production-readiness/diff/diffEngine.ts:attribute:LineDelta.addedLines:of=LineDelta",
+      "src/production-readiness/diff/diffEngine.ts:attribute:LineDelta.addedLines:type=number",
+      "src/production-readiness/diff/diffEngine.ts:attribute:LineDelta.deletedLines",
+      "src/production-readiness/diff/diffEngine.ts:attribute:LineDelta.deletedLines:kind=attribute",
+      "src/production-readiness/diff/diffEngine.ts:attribute:LineDelta.deletedLines:of=LineDelta",
+      "src/production-readiness/diff/diffEngine.ts:attribute:LineDelta.deletedLines:type=number",
+      "src/production-readiness/diff/diffEngine.ts:function:compareInventories",
+      "src/production-readiness/diff/diffEngine.ts:function:compareInventories:arg=base:type=GitHubBaseInventoryResult:default=None",
+      "src/production-readiness/diff/diffEngine.ts:function:compareInventories:arg=candidate:type=FileInventory:default=None",
+      "src/production-readiness/diff/diffEngine.ts:function:compareInventories:arg=options:type=DiffEngineOptions | undefined:default=None",
+      "src/production-readiness/diff/diffEngine.ts:function:compareInventories:kind=function",
+      "src/production-readiness/diff/diffEngine.ts:function:compareInventories:returns=InventoryDiffResult",
+      "src/production-readiness/diff/diffEngine.ts:interface:DiffEngineOptions",
+      "src/production-readiness/diff/diffEngine.ts:interface:DiffEngineOptions:kind=interface",
+      "src/production-readiness/diff/diffEngine.ts:interface:FileDiffEntry",
+      "src/production-readiness/diff/diffEngine.ts:interface:FileDiffEntry:kind=interface",
+      "src/production-readiness/diff/diffEngine.ts:interface:InventoryComparisonSummary",
+      "src/production-readiness/diff/diffEngine.ts:interface:InventoryComparisonSummary:kind=interface",
+      "src/production-readiness/diff/diffEngine.ts:interface:InventoryDiffResult",
+      "src/production-readiness/diff/diffEngine.ts:interface:InventoryDiffResult:kind=interface",
+      "src/production-readiness/diff/diffEngine.ts:interface:LineDelta",
+      "src/production-readiness/diff/diffEngine.ts:interface:LineDelta:kind=interface",
+      "src/production-readiness/test-fixtures/prs/diff-cases.ts:attribute:InventoryDiffFixture.base",
+      "src/production-readiness/test-fixtures/prs/diff-cases.ts:attribute:InventoryDiffFixture.base:kind=attribute",
+      "src/production-readiness/test-fixtures/prs/diff-cases.ts:attribute:InventoryDiffFixture.base:of=InventoryDiffFixture",
+      "src/production-readiness/test-fixtures/prs/diff-cases.ts:attribute:InventoryDiffFixture.base:type=GitHubBaseInventoryResult",
+      "src/production-readiness/test-fixtures/prs/diff-cases.ts:attribute:InventoryDiffFixture.candidate",
+      "src/production-readiness/test-fixtures/prs/diff-cases.ts:attribute:InventoryDiffFixture.candidate:kind=attribute",
+      "src/production-readiness/test-fixtures/prs/diff-cases.ts:attribute:InventoryDiffFixture.candidate:of=InventoryDiffFixture",
+      "src/production-readiness/test-fixtures/prs/diff-cases.ts:attribute:InventoryDiffFixture.candidate:type=FileInventory",
+      "src/production-readiness/test-fixtures/prs/diff-cases.ts:attribute:InventoryDiffFixture.name",
+      "src/production-readiness/test-fixtures/prs/diff-cases.ts:attribute:InventoryDiffFixture.name:kind=attribute",
+      "src/production-readiness/test-fixtures/prs/diff-cases.ts:attribute:InventoryDiffFixture.name:of=InventoryDiffFixture",
+      "src/production-readiness/test-fixtures/prs/diff-cases.ts:attribute:InventoryDiffFixture.name:type=InventoryDiffFixtureName",
+      "src/production-readiness/test-fixtures/prs/diff-cases.ts:attribute:InventoryDiffFixture.options",
+      "src/production-readiness/test-fixtures/prs/diff-cases.ts:attribute:InventoryDiffFixture.options:kind=attribute",
+      "src/production-readiness/test-fixtures/prs/diff-cases.ts:attribute:InventoryDiffFixture.options:of=InventoryDiffFixture",
+      "src/production-readiness/test-fixtures/prs/diff-cases.ts:attribute:InventoryDiffFixture.options:type=DiffEngineOptions",
+      "src/production-readiness/test-fixtures/prs/diff-cases.ts:function:createInventoryDiffFixture",
+      "src/production-readiness/test-fixtures/prs/diff-cases.ts:function:createInventoryDiffFixture:arg=name:type=string:default=None",
+      "src/production-readiness/test-fixtures/prs/diff-cases.ts:function:createInventoryDiffFixture:kind=function",
+      "src/production-readiness/test-fixtures/prs/diff-cases.ts:function:createInventoryDiffFixture:returns=InventoryDiffFixture",
+      "src/production-readiness/test-fixtures/prs/diff-cases.ts:interface:InventoryDiffFixture",
+      "src/production-readiness/test-fixtures/prs/diff-cases.ts:interface:InventoryDiffFixture:kind=interface",
+      "src/production-readiness/test-fixtures/prs/diff-cases.ts:type:InventoryDiffFixtureName",
+      "src/production-readiness/test-fixtures/prs/diff-cases.ts:type:InventoryDiffFixtureName:kind=type",
+      "src/production-readiness/test-fixtures/prs/diff-cases.ts:type:InventoryDiffFixtureName:type='core' | 'line-deltas' | 'large-files' | 'binary-files'"
+    ],
+    "files": {
+      "create": [
+        "src/production-readiness/__tests__/diff-engine.test.ts",
+        "src/production-readiness/diff/diffEngine.ts",
+        "src/production-readiness/test-fixtures/prs/diff-cases.ts"
+      ],
+      "edit": [],
+      "read": [
+        "docs/b2g_production_readiness_snapshot_reference.md",
+        "manifests/01-b2g-prs-domain-models-fixtures.manifest.yaml",
+        "manifests/02-b2g-prs-zip-inventory-normalization.manifest.yaml",
+        "manifests/03-b2g-prs-github-base-inventory.manifest.yaml",
+        "manifests/drafts/b2g-production-readiness-snapshot.manifest.yaml",
+        "src/production-readiness/domain.ts",
+        "src/production-readiness/inventory/githubBaseInventory.ts",
+        "src/production-readiness/inventory/zipInventory.ts"
+      ],
+      "scope": [],
+      "delete": [],
+      "snapshot": []
+    },
+    "file_contract": {
+      "create": [
+        {
+          "path": "src/production-readiness/diff/diffEngine.ts",
+          "artifacts": [
+            {
+              "kind": "interface",
+              "name": "DiffEngineOptions",
+              "description": "Planned thresholds for line diffing, rename detection, and large-file limitations."
+            },
+            {
+              "kind": "attribute",
+              "name": "detectRenames",
+              "of": "DiffEngineOptions",
+              "type": "boolean | undefined"
+            },
+            {
+              "kind": "attribute",
+              "name": "maxLineDiffFileBytes",
+              "of": "DiffEngineOptions",
+              "type": "number | undefined"
+            },
+            {
+              "kind": "attribute",
+              "name": "lineDeltasByPath",
+              "of": "DiffEngineOptions",
+              "type": "Readonly<Record<string, LineDelta>> | undefined"
+            },
+            {
+              "kind": "attribute",
+              "name": "candidateBlobShasByPath",
+              "of": "DiffEngineOptions",
+              "type": "Readonly<Record<string, string>> | undefined"
+            },
+            {
+              "kind": "attribute",
+              "name": "baseBinaryPaths",
+              "description": "Exhaustive base paths known to be binary. Omitting the set preserves unknown classification for base-only files.",
+              "of": "DiffEngineOptions",
+              "type": "ReadonlySet<string> | undefined"
+            },
+            {
+              "kind": "interface",
+              "name": "LineDelta",
+              "description": "Exact content-aware line additions and deletions supplied when upstream content is available."
+            },
+            {
+              "kind": "attribute",
+              "name": "addedLines",
+              "of": "LineDelta",
+              "type": "number"
+            },
+            {
+              "kind": "attribute",
+              "name": "deletedLines",
+              "of": "LineDelta",
+              "type": "number"
+            },
+            {
+              "kind": "interface",
+              "name": "FileDiffEntry",
+              "description": "Planned per-file added, changed, deleted, renamed, binary, and skipped-line-diff metadata."
+            },
+            {
+              "kind": "attribute",
+              "name": "path",
+              "of": "FileDiffEntry",
+              "type": "string"
+            },
+            {
+              "kind": "attribute",
+              "name": "previousPath",
+              "of": "FileDiffEntry",
+              "type": "string | undefined"
+            },
+            {
+              "kind": "attribute",
+              "name": "status",
+              "of": "FileDiffEntry",
+              "type": "'added' | 'changed' | 'deleted' | 'renamed' | 'indeterminate'"
+            },
+            {
+              "kind": "attribute",
+              "name": "binary",
+              "of": "FileDiffEntry",
+              "type": "boolean | undefined"
+            },
+            {
+              "kind": "attribute",
+              "name": "lineDiffEligible",
+              "of": "FileDiffEntry",
+              "type": "boolean"
+            },
+            {
+              "kind": "attribute",
+              "name": "addedLines",
+              "of": "FileDiffEntry",
+              "type": "number | undefined"
+            },
+            {
+              "kind": "attribute",
+              "name": "deletedLines",
+              "of": "FileDiffEntry",
+              "type": "number | undefined"
+            },
+            {
+              "kind": "interface",
+              "name": "InventoryComparisonSummary",
+              "description": "Neutral file and line metrics before readiness classification."
+            },
+            {
+              "kind": "attribute",
+              "name": "changedFiles",
+              "of": "InventoryComparisonSummary",
+              "type": "number"
+            },
+            {
+              "kind": "attribute",
+              "name": "addedFiles",
+              "of": "InventoryComparisonSummary",
+              "type": "number"
+            },
+            {
+              "kind": "attribute",
+              "name": "deletedFiles",
+              "of": "InventoryComparisonSummary",
+              "type": "number"
+            },
+            {
+              "kind": "attribute",
+              "name": "renamedFiles",
+              "of": "InventoryComparisonSummary",
+              "type": "number"
+            },
+            {
+              "kind": "attribute",
+              "name": "indeterminateFiles",
+              "of": "InventoryComparisonSummary",
+              "type": "number"
+            },
+            {
+              "kind": "attribute",
+              "name": "addedLines",
+              "of": "InventoryComparisonSummary",
+              "type": "number"
+            },
+            {
+              "kind": "attribute",
+              "name": "deletedLines",
+              "of": "InventoryComparisonSummary",
+              "type": "number"
+            },
+            {
+              "kind": "attribute",
+              "name": "binaryFilesChanged",
+              "of": "InventoryComparisonSummary",
+              "type": "number"
+            },
+            {
+              "kind": "interface",
+              "name": "InventoryDiffResult",
+              "description": "Planned file diff collection, comparison summary, and limitations for downstream detectors."
+            },
+            {
+              "kind": "attribute",
+              "name": "entries",
+              "of": "InventoryDiffResult",
+              "type": "FileDiffEntry[]"
+            },
+            {
+              "kind": "attribute",
+              "name": "summary",
+              "of": "InventoryDiffResult",
+              "type": "InventoryComparisonSummary"
+            },
+            {
+              "kind": "attribute",
+              "name": "limitations",
+              "of": "InventoryDiffResult",
+              "type": "string[]"
+            },
+            {
+              "kind": "function",
+              "name": "compareInventories",
+              "description": "Planned pure comparison function for normalized candidate and base inventories.",
+              "args": [
+                {
+                  "name": "candidate",
+                  "type": "FileInventory"
+                },
+                {
+                  "name": "base",
+                  "type": "GitHubBaseInventoryResult"
+                },
+                {
+                  "name": "options",
+                  "type": "DiffEngineOptions | undefined"
+                }
+              ],
+              "returns": "InventoryDiffResult"
+            }
+          ]
+        },
+        {
+          "path": "src/production-readiness/__tests__/diff-engine.test.ts",
+          "artifacts": [
+            {
+              "kind": "test_function",
+              "name": "changed added and deleted counts match fixtures",
+              "description": "Required planned behavioral test before promotion."
+            },
+            {
+              "kind": "test_function",
+              "name": "text line deltas are correct",
+              "description": "Required planned behavioral test before promotion."
+            },
+            {
+              "kind": "test_function",
+              "name": "large files can be skipped with limitations",
+              "description": "Required planned behavioral test before promotion."
+            },
+            {
+              "kind": "test_function",
+              "name": "binary file changes are counted separately",
+              "description": "Required planned behavioral test before promotion."
+            }
+          ]
+        },
+        {
+          "path": "src/production-readiness/test-fixtures/prs/diff-cases.ts",
+          "artifacts": [
+            {
+              "kind": "type",
+              "name": "InventoryDiffFixtureName",
+              "type": "'core' | 'line-deltas' | 'large-files' | 'binary-files'"
+            },
+            {
+              "kind": "interface",
+              "name": "InventoryDiffFixture",
+              "description": "Deterministic candidate/base inventories and options for one diff behavior."
+            },
+            {
+              "kind": "attribute",
+              "name": "name",
+              "of": "InventoryDiffFixture",
+              "type": "InventoryDiffFixtureName"
+            },
+            {
+              "kind": "attribute",
+              "name": "candidate",
+              "of": "InventoryDiffFixture",
+              "type": "FileInventory"
+            },
+            {
+              "kind": "attribute",
+              "name": "base",
+              "of": "InventoryDiffFixture",
+              "type": "GitHubBaseInventoryResult"
+            },
+            {
+              "kind": "attribute",
+              "name": "options",
+              "of": "InventoryDiffFixture",
+              "type": "DiffEngineOptions"
+            },
+            {
+              "kind": "function",
+              "name": "createInventoryDiffFixture",
+              "description": "Planned deterministic candidate/base inventory fixture factory for diff tests.",
+              "args": [
+                {
+                  "name": "name",
+                  "type": "string"
+                }
+              ],
+              "returns": "InventoryDiffFixture"
+            }
+          ]
+        }
+      ],
+      "read": [
+        "docs/b2g_production_readiness_snapshot_reference.md",
+        "manifests/drafts/b2g-production-readiness-snapshot.manifest.yaml",
+        "manifests/01-b2g-prs-domain-models-fixtures.manifest.yaml",
+        "manifests/02-b2g-prs-zip-inventory-normalization.manifest.yaml",
+        "manifests/03-b2g-prs-github-base-inventory.manifest.yaml",
+        "src/production-readiness/domain.ts",
+        "src/production-readiness/inventory/zipInventory.ts",
+        "src/production-readiness/inventory/githubBaseInventory.ts"
+      ]
+    },
+    "test_files": ["src/production-readiness/__tests__/diff-engine.test.ts"],
+    "validate_commands": [
+      "pnpm exec vitest run src/production-readiness/__tests__/diff-engine.test.ts",
+      "./scripts/maid validate manifests/04-b2g-prs-diff-engine.manifest.yaml --mode behavioral",
+      "pnpm lint",
+      "pnpm check"
+    ]
+  }
+}
