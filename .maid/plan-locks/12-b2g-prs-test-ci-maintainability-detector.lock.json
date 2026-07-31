@@ -1,0 +1,440 @@
+{
+  "manifest_path": "manifests/12-b2g-prs-test-ci-maintainability-detector.manifest.yaml",
+  "manifest_hash": "sha256-contract:92af3a16e9927954dd6f0889b89a3b15a2686083a03f5e00887408beeb3bfef0",
+  "test_hashes": {
+    "src/production-readiness/detectors/__tests__/testCiMaintainabilityDetector.test.ts": "sha256:b4e2c857e96f9904a39a3fb5b2adbcf23a22cb3353184db2529dce5e4fb41dd4"
+  },
+  "created_at": "2026-07-31T10:09:01.077557+00:00",
+  "revision": 7,
+  "revisions": [
+    {
+      "prior_manifest_hash": "sha256-contract:92af3a16e9927954dd6f0889b89a3b15a2686083a03f5e00887408beeb3bfef0",
+      "prior_test_hashes": {
+        "src/production-readiness/detectors/__tests__/testCiMaintainabilityDetector.test.ts": "sha256:8298d162b35a0073664fbf5b9c8750f70989c3060d5b35866bdf29758f2ccc61"
+      },
+      "revised_at": "2026-07-31T10:12:53.739204+00:00",
+      "reason": "Refresh the plan lock after formatting and completing the test-readiness expectation without weakening behavioral coverage",
+      "agent": null,
+      "contract_delta": {
+        "artifacts_added": [],
+        "artifacts_removed": [],
+        "files_added": [],
+        "files_removed": [],
+        "validate_commands_added": [],
+        "validate_commands_removed": []
+      }
+    },
+    {
+      "prior_manifest_hash": "sha256-contract:92af3a16e9927954dd6f0889b89a3b15a2686083a03f5e00887408beeb3bfef0",
+      "prior_test_hashes": {
+        "src/production-readiness/detectors/__tests__/testCiMaintainabilityDetector.test.ts": "sha256:ec8429e35bf3d38f54e53a904b1c952c03b38a28fa75decd32f3a123ce7e224b"
+      },
+      "revised_at": "2026-07-31T10:18:07.266096+00:00",
+      "reason": "Add independent-review regressions for CI/test renames, missing base text, and backup-test path precedence",
+      "agent": null,
+      "contract_delta": {
+        "artifacts_added": [],
+        "artifacts_removed": [],
+        "files_added": [],
+        "files_removed": [],
+        "validate_commands_added": [],
+        "validate_commands_removed": []
+      }
+    },
+    {
+      "prior_manifest_hash": "sha256-contract:92af3a16e9927954dd6f0889b89a3b15a2686083a03f5e00887408beeb3bfef0",
+      "prior_test_hashes": {
+        "src/production-readiness/detectors/__tests__/testCiMaintainabilityDetector.test.ts": "sha256:f64314e7ec03d28507ff1aed50825132884c0b28ebe49f03ccd6db2b02b7fda8"
+      },
+      "revised_at": "2026-07-31T10:23:29.979500+00:00",
+      "reason": "Add independent-review regressions for generic check script precision and pure test rename messaging",
+      "agent": null,
+      "contract_delta": {
+        "artifacts_added": [],
+        "artifacts_removed": [],
+        "files_added": [],
+        "files_removed": [],
+        "validate_commands_added": [],
+        "validate_commands_removed": []
+      }
+    },
+    {
+      "prior_manifest_hash": "sha256-contract:92af3a16e9927954dd6f0889b89a3b15a2686083a03f5e00887408beeb3bfef0",
+      "prior_test_hashes": {
+        "src/production-readiness/detectors/__tests__/testCiMaintainabilityDetector.test.ts": "sha256:2ec4e8c054ec4fc4e27bdaf210362bc1de1d4dc1e1d2b8e47b7aa57069885611"
+      },
+      "revised_at": "2026-07-31T10:27:52.806602+00:00",
+      "reason": "Add positive behavioral controls for exact check and check:types typecheck aliases",
+      "agent": null,
+      "contract_delta": {
+        "artifacts_added": [],
+        "artifacts_removed": [],
+        "files_added": [],
+        "files_removed": [],
+        "validate_commands_added": [],
+        "validate_commands_removed": []
+      }
+    },
+    {
+      "prior_manifest_hash": "sha256-contract:92af3a16e9927954dd6f0889b89a3b15a2686083a03f5e00887408beeb3bfef0",
+      "prior_test_hashes": {
+        "src/production-readiness/detectors/__tests__/testCiMaintainabilityDetector.test.ts": "sha256:0dfa8ffb8b74a59698aa82b37d6541a49437594234eb366355c207883493c5a6"
+      },
+      "revised_at": "2026-07-31T10:31:16.804442+00:00",
+      "reason": "Add review-driven regressions for truthful missing-test evidence and common explicit-any type forms",
+      "agent": null,
+      "contract_delta": {
+        "artifacts_added": [],
+        "artifacts_removed": [],
+        "files_added": [],
+        "files_removed": [],
+        "validate_commands_added": [],
+        "validate_commands_removed": []
+      }
+    },
+    {
+      "prior_manifest_hash": "sha256-contract:92af3a16e9927954dd6f0889b89a3b15a2686083a03f5e00887408beeb3bfef0",
+      "prior_test_hashes": {
+        "src/production-readiness/detectors/__tests__/testCiMaintainabilityDetector.test.ts": "sha256:935143ccff75ce36c766fff41704988e2a085beb69a69bf442388c03e87c363f"
+      },
+      "revised_at": "2026-07-31T10:36:32.610098+00:00",
+      "reason": "Distinguish exact check commands by typecheck capability and omit unknown base-script evidence",
+      "agent": null,
+      "contract_delta": {
+        "artifacts_added": [],
+        "artifacts_removed": [],
+        "files_added": [],
+        "files_removed": [],
+        "validate_commands_added": [],
+        "validate_commands_removed": []
+      }
+    }
+  ],
+  "red_evidence": {
+    "red": true,
+    "captured_at": "2026-07-31T10:36:47.738226+00:00",
+    "commands": [
+      {
+        "command": "pnpm exec vitest run src/production-readiness/detectors/__tests__/testCiMaintainabilityDetector.test.ts",
+        "exit_code": 1,
+        "output_tail": " Test Files  1 failed (1)\n      Tests  no tests\n   Start at  18:36:33\n   Duration  609ms (transform 35ms, setup 53ms, collect 0ms, tests 0ms, environment 194ms, prepare 70ms)\n\n\n\u23af\u23af\u23af\u23af\u23af\u23af Failed Suites 1 \u23af\u23af\u23af\u23af\u23af\u23af\u23af\n\n FAIL  src/production-readiness/detectors/__tests__/testCiMaintainabilityDetector.test.ts [ src/production-readiness/detectors/__tests__/testCiMaintainabilityDetector.test.ts ]\nError: Failed to resolve import \"../testCiMaintainabilityDetector\" from \"src/production-readiness/detectors/__tests__/testCiMaintainabilityDetector.test.ts\". Does the file exist?\n \u276f TransformPluginContext._formatError node_modules/.pnpm/vite@5.4.21_@types+node@22.19.18/node_modules/vite/dist/node/chunks/dep-BK3b2jBa.js:49258:41\n \u276f TransformPluginContext.error node_modules/.pnpm/vite@5.4.21_@types+node@22.19.18/node_modules/vite/dist/node/chunks/dep-BK3b2jBa.js:49253:16\n \u276f normalizeUrl node_modules/.pnpm/vite@5.4.21_@types+node@22.19.18/node_modules/vite/dist/node/chunks/dep-BK3b2jBa.js:64307:23\n \u276f async file:/home/atomrem/projects/codefrost-dev/bolt-to-github/node_modules/.pnpm/vite@5.4.21_@types+node@22.19.18/node_modules/vite/dist/node/chunks/dep-BK3b2jBa.js:64439:39\n \u276f TransformPluginContext.transform node_modules/.pnpm/vite@5.4.21_@types+node@22.19.18/node_modules/vite/dist/node/chunks/dep-BK3b2jBa.js:64366:7\n \u276f PluginContainer.transform node_modules/.pnpm/vite@5.4.21_@types+node@22.19.18/node_modules/vite/dist/node/chunks/dep-BK3b2jBa.js:49099:18\n \u276f loadAndTransform node_modules/.pnpm/vite@5.4.21_@types+node@22.19.18/node_modules/vite/dist/node/chunks/dep-BK3b2jBa.js:51978:27\n\n\u23af\u23af\u23af\u23af\u23af\u23af\u23af\u23af\u23af\u23af\u23af\u23af\u23af\u23af\u23af\u23af\u23af\u23af\u23af\u23af\u23af\u23af\u23af\u23af[1/1]\u23af\n",
+        "classification": "red"
+      },
+      {
+        "command": "./scripts/maid validate manifests/12-b2g-prs-test-ci-maintainability-detector.manifest.yaml --mode behavioral",
+        "exit_code": 0,
+        "output_tail": "PASS 12-b2g-prs-test-ci-maintainability-detector\n  Mode: behavioral\n  Duration: 367ms\n  Warnings (3):\n    E110 Manifest 'prepare-v2-0-0-github-app-release' supersedes 'release-v1-3-21' but drops artifact 'PackageVersion_1_3_21' (namespace) at package.json\n      Location: /home/atomrem/projects/codefrost-dev/bolt-to-github/manifests/prepare-v2-0-0-github-app-release.manifest.yaml\n      Suggestion: Re-declare the artifact in the replacement manifest, list its file under files.delete, or list the symbol under removed_artifacts.\n    E110 Manifest 'prepare-v2-0-0-github-app-release' supersedes 'release-v1-3-21' but drops artifact 'ChromeManifestVersion_1_3_21' (namespace) at manifest.json\n      Location: /home/atomrem/projects/codefrost-dev/bolt-to-github/manifests/prepare-v2-0-0-github-app-release.manifest.yaml\n      Suggestion: Re-declare the artifact in the replacement manifest, list its file under files.delete, or list the symbol under removed_artifacts.\n    E110 Manifest 'prepare-v2-0-0-github-app-release' supersedes 'release-v1-3-21' but drops artifact 'DevelopmentGuideVersion_1_3_21' (namespace) at CLAUDE.md\n      Location: /home/atomrem/projects/codefrost-dev/bolt-to-github/manifests/prepare-v2-0-0-github-app-release.manifest.yaml\n      Suggestion: Re-declare the artifact in the replacement manifest, list its file under files.delete, or list the symbol under removed_artifacts.",
+        "classification": "not_red"
+      },
+      {
+        "command": "pnpm lint",
+        "exit_code": 0,
+        "output_tail": "\n> bolt-to-github@2.0.0 lint /home/atomrem/projects/codefrost-dev/bolt-to-github\n> eslint \"src/**/*.{js,ts,svelte}\"\n",
+        "classification": "not_red"
+      },
+      {
+        "command": "pnpm check",
+        "exit_code": 1,
+        "output_tail": "      'src/App.copy.tsx',\n\n\n/home/atomrem/projects/codefrost-dev/bolt-to-github/src/production-readiness/detectors/__tests__/testCiMaintainabilityDetector.test.ts:386:36\nError: Parameter 'evidence' implicitly has an 'any' type. \n    ]);\n    expect(result[1].evidence.map((evidence) => evidence.path)).toEqual([\n      'src/__generated__/schema.ts',\n\n\n/home/atomrem/projects/codefrost-dev/bolt-to-github/src/production-readiness/detectors/__tests__/testCiMaintainabilityDetector.test.ts:427:24\nError: Parameter 'signal' implicitly has an 'any' type. \n\n    expect(result.map((signal) => signal.id)).toEqual(['typescript-suppression-growth']);\n    expect(result[0].evidence).toEqual([\n\n\n====================================\nsvelte-check found 24 errors and 0 warnings in 1 file\n\u2009ELIFECYCLE\u2009 Command failed with exit code 1.",
+        "classification": "red"
+      }
+    ]
+  },
+  "legacy_baseline": null,
+  "agent": null,
+  "_manifest_contract": {
+    "artifacts": [
+      "src/production-readiness/detectors/__tests__/testCiMaintainabilityDetector.test.ts:detects backup temp copy and generated looking source files",
+      "src/production-readiness/detectors/__tests__/testCiMaintainabilityDetector.test.ts:detects backup temp copy and generated looking source files:kind=test_function",
+      "src/production-readiness/detectors/__tests__/testCiMaintainabilityDetector.test.ts:detects test scripts test files and ci workflow changes",
+      "src/production-readiness/detectors/__tests__/testCiMaintainabilityDetector.test.ts:detects test scripts test files and ci workflow changes:kind=test_function",
+      "src/production-readiness/detectors/__tests__/testCiMaintainabilityDetector.test.ts:reports deleted tests and missing nearby tests for broad source changes",
+      "src/production-readiness/detectors/__tests__/testCiMaintainabilityDetector.test.ts:reports deleted tests and missing nearby tests for broad source changes:kind=test_function",
+      "src/production-readiness/detectors/__tests__/testCiMaintainabilityDetector.test.ts:reports files crossing maintainability thresholds",
+      "src/production-readiness/detectors/__tests__/testCiMaintainabilityDetector.test.ts:reports files crossing maintainability thresholds:kind=test_function",
+      "src/production-readiness/detectors/__tests__/testCiMaintainabilityDetector.test.ts:reports growth in TypeScript suppression and any markers",
+      "src/production-readiness/detectors/__tests__/testCiMaintainabilityDetector.test.ts:reports growth in TypeScript suppression and any markers:kind=test_function",
+      "src/production-readiness/detectors/testCiMaintainabilityDetector.ts:attribute:MaintainabilityFile.content",
+      "src/production-readiness/detectors/testCiMaintainabilityDetector.ts:attribute:MaintainabilityFile.content:kind=attribute",
+      "src/production-readiness/detectors/testCiMaintainabilityDetector.ts:attribute:MaintainabilityFile.content:of=MaintainabilityFile",
+      "src/production-readiness/detectors/testCiMaintainabilityDetector.ts:attribute:MaintainabilityFile.content:type=string | undefined",
+      "src/production-readiness/detectors/testCiMaintainabilityDetector.ts:attribute:MaintainabilityFile.lineCount",
+      "src/production-readiness/detectors/testCiMaintainabilityDetector.ts:attribute:MaintainabilityFile.lineCount:kind=attribute",
+      "src/production-readiness/detectors/testCiMaintainabilityDetector.ts:attribute:MaintainabilityFile.lineCount:of=MaintainabilityFile",
+      "src/production-readiness/detectors/testCiMaintainabilityDetector.ts:attribute:MaintainabilityFile.lineCount:type=number | undefined",
+      "src/production-readiness/detectors/testCiMaintainabilityDetector.ts:attribute:MaintainabilityFile.path",
+      "src/production-readiness/detectors/testCiMaintainabilityDetector.ts:attribute:MaintainabilityFile.path:kind=attribute",
+      "src/production-readiness/detectors/testCiMaintainabilityDetector.ts:attribute:MaintainabilityFile.path:of=MaintainabilityFile",
+      "src/production-readiness/detectors/testCiMaintainabilityDetector.ts:attribute:MaintainabilityFile.path:type=string",
+      "src/production-readiness/detectors/testCiMaintainabilityDetector.ts:attribute:TestCiMaintainabilityDetectorInput.baseFiles",
+      "src/production-readiness/detectors/testCiMaintainabilityDetector.ts:attribute:TestCiMaintainabilityDetectorInput.baseFiles:kind=attribute",
+      "src/production-readiness/detectors/testCiMaintainabilityDetector.ts:attribute:TestCiMaintainabilityDetectorInput.baseFiles:of=TestCiMaintainabilityDetectorInput",
+      "src/production-readiness/detectors/testCiMaintainabilityDetector.ts:attribute:TestCiMaintainabilityDetectorInput.baseFiles:type=MaintainabilityFile[]",
+      "src/production-readiness/detectors/testCiMaintainabilityDetector.ts:attribute:TestCiMaintainabilityDetectorInput.basePackageJson",
+      "src/production-readiness/detectors/testCiMaintainabilityDetector.ts:attribute:TestCiMaintainabilityDetectorInput.basePackageJson:kind=attribute",
+      "src/production-readiness/detectors/testCiMaintainabilityDetector.ts:attribute:TestCiMaintainabilityDetectorInput.basePackageJson:of=TestCiMaintainabilityDetectorInput",
+      "src/production-readiness/detectors/testCiMaintainabilityDetector.ts:attribute:TestCiMaintainabilityDetectorInput.basePackageJson:type=TestCiPackageMetadata | null",
+      "src/production-readiness/detectors/testCiMaintainabilityDetector.ts:attribute:TestCiMaintainabilityDetectorInput.candidateFiles",
+      "src/production-readiness/detectors/testCiMaintainabilityDetector.ts:attribute:TestCiMaintainabilityDetectorInput.candidateFiles:kind=attribute",
+      "src/production-readiness/detectors/testCiMaintainabilityDetector.ts:attribute:TestCiMaintainabilityDetectorInput.candidateFiles:of=TestCiMaintainabilityDetectorInput",
+      "src/production-readiness/detectors/testCiMaintainabilityDetector.ts:attribute:TestCiMaintainabilityDetectorInput.candidateFiles:type=MaintainabilityFile[]",
+      "src/production-readiness/detectors/testCiMaintainabilityDetector.ts:attribute:TestCiMaintainabilityDetectorInput.candidatePackageJson",
+      "src/production-readiness/detectors/testCiMaintainabilityDetector.ts:attribute:TestCiMaintainabilityDetectorInput.candidatePackageJson:kind=attribute",
+      "src/production-readiness/detectors/testCiMaintainabilityDetector.ts:attribute:TestCiMaintainabilityDetectorInput.candidatePackageJson:of=TestCiMaintainabilityDetectorInput",
+      "src/production-readiness/detectors/testCiMaintainabilityDetector.ts:attribute:TestCiMaintainabilityDetectorInput.candidatePackageJson:type=TestCiPackageMetadata | null",
+      "src/production-readiness/detectors/testCiMaintainabilityDetector.ts:attribute:TestCiMaintainabilityDetectorInput.changedFiles",
+      "src/production-readiness/detectors/testCiMaintainabilityDetector.ts:attribute:TestCiMaintainabilityDetectorInput.changedFiles:kind=attribute",
+      "src/production-readiness/detectors/testCiMaintainabilityDetector.ts:attribute:TestCiMaintainabilityDetectorInput.changedFiles:of=TestCiMaintainabilityDetectorInput",
+      "src/production-readiness/detectors/testCiMaintainabilityDetector.ts:attribute:TestCiMaintainabilityDetectorInput.changedFiles:type=FileDiffEntry[]",
+      "src/production-readiness/detectors/testCiMaintainabilityDetector.ts:attribute:TestCiPackageMetadata.dependencies",
+      "src/production-readiness/detectors/testCiMaintainabilityDetector.ts:attribute:TestCiPackageMetadata.dependencies:kind=attribute",
+      "src/production-readiness/detectors/testCiMaintainabilityDetector.ts:attribute:TestCiPackageMetadata.dependencies:of=TestCiPackageMetadata",
+      "src/production-readiness/detectors/testCiMaintainabilityDetector.ts:attribute:TestCiPackageMetadata.dependencies:type=Readonly<Record<string, string>> | undefined",
+      "src/production-readiness/detectors/testCiMaintainabilityDetector.ts:attribute:TestCiPackageMetadata.devDependencies",
+      "src/production-readiness/detectors/testCiMaintainabilityDetector.ts:attribute:TestCiPackageMetadata.devDependencies:kind=attribute",
+      "src/production-readiness/detectors/testCiMaintainabilityDetector.ts:attribute:TestCiPackageMetadata.devDependencies:of=TestCiPackageMetadata",
+      "src/production-readiness/detectors/testCiMaintainabilityDetector.ts:attribute:TestCiPackageMetadata.devDependencies:type=Readonly<Record<string, string>> | undefined",
+      "src/production-readiness/detectors/testCiMaintainabilityDetector.ts:attribute:TestCiPackageMetadata.scripts",
+      "src/production-readiness/detectors/testCiMaintainabilityDetector.ts:attribute:TestCiPackageMetadata.scripts:kind=attribute",
+      "src/production-readiness/detectors/testCiMaintainabilityDetector.ts:attribute:TestCiPackageMetadata.scripts:of=TestCiPackageMetadata",
+      "src/production-readiness/detectors/testCiMaintainabilityDetector.ts:attribute:TestCiPackageMetadata.scripts:type=Readonly<Record<string, string>> | undefined",
+      "src/production-readiness/detectors/testCiMaintainabilityDetector.ts:function:detectTestCiMaintainabilitySignals",
+      "src/production-readiness/detectors/testCiMaintainabilityDetector.ts:function:detectTestCiMaintainabilitySignals:arg=input:type=TestCiMaintainabilityDetectorInput:default=None",
+      "src/production-readiness/detectors/testCiMaintainabilityDetector.ts:function:detectTestCiMaintainabilitySignals:kind=function",
+      "src/production-readiness/detectors/testCiMaintainabilityDetector.ts:function:detectTestCiMaintainabilitySignals:returns=ReadinessSignal[]",
+      "src/production-readiness/detectors/testCiMaintainabilityDetector.ts:interface:MaintainabilityFile",
+      "src/production-readiness/detectors/testCiMaintainabilityDetector.ts:interface:MaintainabilityFile:kind=interface",
+      "src/production-readiness/detectors/testCiMaintainabilityDetector.ts:interface:TestCiMaintainabilityDetectorInput",
+      "src/production-readiness/detectors/testCiMaintainabilityDetector.ts:interface:TestCiMaintainabilityDetectorInput:kind=interface",
+      "src/production-readiness/detectors/testCiMaintainabilityDetector.ts:interface:TestCiPackageMetadata",
+      "src/production-readiness/detectors/testCiMaintainabilityDetector.ts:interface:TestCiPackageMetadata:kind=interface",
+      "src/production-readiness/rules/maintainability-rules.ts:function:classifyMaintainabilityPath",
+      "src/production-readiness/rules/maintainability-rules.ts:function:classifyMaintainabilityPath:arg=filePath:type=string:default=None",
+      "src/production-readiness/rules/maintainability-rules.ts:function:classifyMaintainabilityPath:kind=function",
+      "src/production-readiness/rules/maintainability-rules.ts:function:classifyMaintainabilityPath:returns=MaintainabilityPathKind",
+      "src/production-readiness/rules/maintainability-rules.ts:function:getMaintainabilityThresholds",
+      "src/production-readiness/rules/maintainability-rules.ts:function:getMaintainabilityThresholds:kind=function",
+      "src/production-readiness/rules/maintainability-rules.ts:function:getMaintainabilityThresholds:returns=MaintainabilityThresholds",
+      "src/production-readiness/rules/maintainability-rules.ts:type:MaintainabilityPathKind",
+      "src/production-readiness/rules/maintainability-rules.ts:type:MaintainabilityPathKind:kind=type",
+      "src/production-readiness/rules/maintainability-rules.ts:type:MaintainabilityPathKind:type='test' | 'ci' | 'source' | 'backup_temp_copy' | 'generated_like' | 'other'",
+      "src/production-readiness/rules/maintainability-rules.ts:type:MaintainabilityThresholds",
+      "src/production-readiness/rules/maintainability-rules.ts:type:MaintainabilityThresholds:kind=type",
+      "src/production-readiness/rules/maintainability-rules.ts:type:MaintainabilityThresholds:type={ componentInfoLines: number; componentYellowLines: number; heavyGrowthLines: number; redLinesWhenHeavilyChanged: number; broadSourceChangeFiles: number }"
+    ],
+    "files": {
+      "create": [
+        "src/production-readiness/detectors/__tests__/testCiMaintainabilityDetector.test.ts",
+        "src/production-readiness/detectors/testCiMaintainabilityDetector.ts",
+        "src/production-readiness/rules/maintainability-rules.ts"
+      ],
+      "edit": [],
+      "read": [
+        "docs/b2g_production_readiness_snapshot_reference.md",
+        "manifests/01-b2g-prs-domain-models-fixtures.manifest.yaml",
+        "manifests/02-b2g-prs-zip-inventory-normalization.manifest.yaml",
+        "manifests/04-b2g-prs-diff-engine.manifest.yaml",
+        "manifests/05-b2g-prs-sensitive-path-classifier.manifest.yaml",
+        "manifests/06-b2g-prs-dependency-detector.manifest.yaml",
+        "manifests/drafts/b2g-production-readiness-snapshot.manifest.yaml",
+        "src/production-readiness/detectors/sensitivePathClassifier.ts",
+        "src/production-readiness/diff/diffEngine.ts",
+        "src/production-readiness/domain.ts",
+        "src/production-readiness/inventory/zipInventory.ts",
+        "src/production-readiness/test-fixtures/prsFixtures.ts"
+      ],
+      "scope": [],
+      "delete": [],
+      "snapshot": []
+    },
+    "file_contract": {
+      "create": [
+        {
+          "path": "src/production-readiness/detectors/testCiMaintainabilityDetector.ts",
+          "artifacts": [
+            {
+              "kind": "function",
+              "name": "detectTestCiMaintainabilitySignals",
+              "description": "Detects test scripts, test files added/deleted, CI workflow\nchanges, lint/typecheck scripts, ts-ignore/any growth, file length\nthresholds, large file growth, backup/temp/copy filenames, and\ngenerated-looking source additions.\n",
+              "args": [
+                {
+                  "name": "input",
+                  "type": "TestCiMaintainabilityDetectorInput"
+                }
+              ],
+              "returns": "ReadinessSignal[]"
+            },
+            {
+              "kind": "interface",
+              "name": "TestCiMaintainabilityDetectorInput",
+              "description": "Package metadata, candidate/base inventories, diff metrics, text excerpts, and optional history context needed for test/CI and maintainability analysis."
+            },
+            {
+              "kind": "attribute",
+              "name": "candidatePackageJson",
+              "of": "TestCiMaintainabilityDetectorInput",
+              "type": "TestCiPackageMetadata | null"
+            },
+            {
+              "kind": "attribute",
+              "name": "basePackageJson",
+              "of": "TestCiMaintainabilityDetectorInput",
+              "type": "TestCiPackageMetadata | null"
+            },
+            {
+              "kind": "attribute",
+              "name": "changedFiles",
+              "of": "TestCiMaintainabilityDetectorInput",
+              "type": "FileDiffEntry[]"
+            },
+            {
+              "kind": "attribute",
+              "name": "candidateFiles",
+              "of": "TestCiMaintainabilityDetectorInput",
+              "type": "MaintainabilityFile[]"
+            },
+            {
+              "kind": "attribute",
+              "name": "baseFiles",
+              "of": "TestCiMaintainabilityDetectorInput",
+              "type": "MaintainabilityFile[]"
+            },
+            {
+              "kind": "interface",
+              "name": "TestCiPackageMetadata",
+              "description": "Package scripts and dependency sections used for static test, lint, typecheck, and test-framework readiness evidence."
+            },
+            {
+              "kind": "attribute",
+              "name": "scripts",
+              "of": "TestCiPackageMetadata",
+              "type": "Readonly<Record<string, string>> | undefined"
+            },
+            {
+              "kind": "attribute",
+              "name": "dependencies",
+              "of": "TestCiPackageMetadata",
+              "type": "Readonly<Record<string, string>> | undefined"
+            },
+            {
+              "kind": "attribute",
+              "name": "devDependencies",
+              "of": "TestCiPackageMetadata",
+              "type": "Readonly<Record<string, string>> | undefined"
+            },
+            {
+              "kind": "interface",
+              "name": "MaintainabilityFile",
+              "description": "Normalized source path with optional decoded content and deterministic line count supplied to this detector."
+            },
+            {
+              "kind": "attribute",
+              "name": "path",
+              "of": "MaintainabilityFile",
+              "type": "string"
+            },
+            {
+              "kind": "attribute",
+              "name": "lineCount",
+              "of": "MaintainabilityFile",
+              "type": "number | undefined"
+            },
+            {
+              "kind": "attribute",
+              "name": "content",
+              "of": "MaintainabilityFile",
+              "type": "string | undefined"
+            }
+          ]
+        },
+        {
+          "path": "src/production-readiness/rules/maintainability-rules.ts",
+          "artifacts": [
+            {
+              "kind": "type",
+              "name": "MaintainabilityThresholds",
+              "description": "Explicit file-size and growth thresholds from the PRS reference document.",
+              "type": "{ componentInfoLines: number; componentYellowLines: number; heavyGrowthLines: number; redLinesWhenHeavilyChanged: number; broadSourceChangeFiles: number }"
+            },
+            {
+              "kind": "function",
+              "name": "getMaintainabilityThresholds",
+              "description": "Returns a fresh copy of the documented deterministic maintainability and broad-change thresholds.",
+              "returns": "MaintainabilityThresholds"
+            },
+            {
+              "kind": "function",
+              "name": "classifyMaintainabilityPath",
+              "description": "Classifies test, CI, source, backup/temp/copy, and generated-looking file paths for maintainability signals.",
+              "args": [
+                {
+                  "name": "filePath",
+                  "type": "string"
+                }
+              ],
+              "returns": "MaintainabilityPathKind"
+            },
+            {
+              "kind": "type",
+              "name": "MaintainabilityPathKind",
+              "type": "'test' | 'ci' | 'source' | 'backup_temp_copy' | 'generated_like' | 'other'"
+            }
+          ]
+        },
+        {
+          "path": "src/production-readiness/detectors/__tests__/testCiMaintainabilityDetector.test.ts",
+          "artifacts": [
+            {
+              "kind": "test_function",
+              "name": "detects test scripts test files and ci workflow changes",
+              "description": "Planned fixture test for package scripts, test files, framework dependencies, and .github/workflows changes."
+            },
+            {
+              "kind": "test_function",
+              "name": "reports deleted tests and missing nearby tests for broad source changes",
+              "description": "Planned fixture test for deleted tests and large source changes with no test file additions."
+            },
+            {
+              "kind": "test_function",
+              "name": "reports files crossing maintainability thresholds",
+              "description": "Planned fixture test for 300, 500, 1000 line thresholds and 300+ line growth."
+            },
+            {
+              "kind": "test_function",
+              "name": "detects backup temp copy and generated looking source files",
+              "description": "Planned fixture test for maintainability filename and generated-code signals."
+            },
+            {
+              "kind": "test_function",
+              "name": "reports growth in TypeScript suppression and any markers",
+              "description": "Planned fixture test comparing candidate/base text and reporting only increased eslint-disable, ts-ignore, or explicit any markers without returning source snippets."
+            }
+          ]
+        }
+      ],
+      "read": [
+        "manifests/drafts/b2g-production-readiness-snapshot.manifest.yaml",
+        "manifests/01-b2g-prs-domain-models-fixtures.manifest.yaml",
+        "manifests/02-b2g-prs-zip-inventory-normalization.manifest.yaml",
+        "manifests/04-b2g-prs-diff-engine.manifest.yaml",
+        "manifests/05-b2g-prs-sensitive-path-classifier.manifest.yaml",
+        "manifests/06-b2g-prs-dependency-detector.manifest.yaml",
+        "docs/b2g_production_readiness_snapshot_reference.md",
+        "src/production-readiness/domain.ts",
+        "src/production-readiness/diff/diffEngine.ts",
+        "src/production-readiness/detectors/sensitivePathClassifier.ts",
+        "src/production-readiness/inventory/zipInventory.ts",
+        "src/production-readiness/test-fixtures/prsFixtures.ts"
+      ]
+    },
+    "test_files": [
+      "src/production-readiness/detectors/__tests__/testCiMaintainabilityDetector.test.ts"
+    ],
+    "validate_commands": [
+      "pnpm exec vitest run src/production-readiness/detectors/__tests__/testCiMaintainabilityDetector.test.ts",
+      "./scripts/maid validate manifests/12-b2g-prs-test-ci-maintainability-detector.manifest.yaml --mode behavioral",
+      "pnpm lint",
+      "pnpm check"
+    ]
+  }
+}
