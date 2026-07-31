@@ -1,0 +1,627 @@
+{
+  "manifest_path": "manifests/03-b2g-prs-github-base-inventory.manifest.yaml",
+  "manifest_hash": "sha256-contract:2fc9672c690e3b5bc1ca75dd74d203742a515756bba3cdef32e02feec6cc190b",
+  "test_hashes": {
+    "src/production-readiness/__tests__/github-base-inventory.test.ts": "sha256:147cbf93fd8fbfc42408200d8823254afefedf23a686871ec2bfb3b9fc58ae05"
+  },
+  "created_at": "2026-07-31T04:04:53.866086+00:00",
+  "revision": 5,
+  "revisions": [
+    {
+      "prior_manifest_hash": "sha256-contract:447855c110b7feabb62db02f2fc203ce8e622cf767bd139b2a5e68a4f415aea5",
+      "prior_test_hashes": {
+        "src/services/__tests__/AnalyticsService.enhanced.test.ts": "sha256:8300f87d74afd2ba43614f77f3082f2baff9d249d1ec74fc80f9c8640c4624fe",
+        "src/services/__tests__/AnalyticsService.versioning.test.ts": "sha256:223f4fb0e74e315b284caa352a9b87a9eed00f92687296064528c15078f342a1",
+        "src/services/__tests__/BoltProjectSyncService.directMethod.test.ts": "sha256:688e80141dcb2773287025354c4edd5747b1af5fb7494695238f7e0caa0ce288",
+        "src/services/__tests__/BoltProjectSyncService.test.ts": "sha256:d3721f8c140abb9b28cca6790472005e500fa6e9774b19811c44b3bfd571d5ac",
+        "src/services/__tests__/CacheService.test.ts": "sha256:1f2aa972bd73ca0862d54adc8b0981e6ec89f98e6facf053393e139578f425cf",
+        "src/services/__tests__/DownloadService.test.ts": "sha256:6ee7c1094276093786817213d275a290a09826111e0e40cba00240396bc61715",
+        "src/services/__tests__/FilePreviewService.test.ts": "sha256:5764ee3be881574866e3b66c16c92dabd456b3d4bc2555dc7ce2c374440b8d03",
+        "src/services/__tests__/FileService.test.ts": "sha256:7047e014d4d1fc90ec8915358a8a765b1693cf680c3705150d581de9635485bf",
+        "src/services/__tests__/GitHubApiClient.test.ts": "sha256:a84fe5352d75ed7e8d786c71b739dffab100b6f9318d79e379f44b8fa2fe1dac",
+        "src/services/__tests__/GitHubAppAuthenticationStrategy.stampede.test.ts": "sha256:cd8b27a9cda224ef454bb99a3505e5be5584e93bec8f21b2cbebd4ed8b831cd6",
+        "src/services/__tests__/GitHubAppAuthenticationStrategy.test.ts": "sha256:79c13f7ce6ba858d225ae13c69cd193cf4c2eaa05ac93c77b74d972becf1baca",
+        "src/services/__tests__/GitHubAppService.critical-business-logic.test.ts": "sha256:5e98cb781e178906603405bef89dbc3425fb8e98576f6c6aa4ece662f3ead0ec",
+        "src/services/__tests__/GitHubAppService.stampede.test.ts": "sha256:afc2a4559cf10b7b7a9bf8ad5efbf27f584a6f534c02204d8f26e780491ee82a",
+        "src/services/__tests__/GitHubAppService.token-validation.test.ts": "sha256:a1ee02d6c5a39e253c524beac83017f26bbe855469e57990cf0d5e033dcd09a6",
+        "src/services/__tests__/GitHubComparisonService.test.ts": "sha256:1e37630a3ecfac355deea066d53082c574c72eb81707ff55827656268c8a0a81",
+        "src/services/__tests__/GitHubService.feedback.test.ts": "sha256:537f54848f6fbb630fd1ed5bedf434cc70a3be89456358eaf6c44c1f9d5429a4",
+        "src/services/__tests__/IdleMonitorService.test.ts": "sha256:6fa8b154af948827af672b04b782c487965dff6cd077f15265ed6138a7cff5b0",
+        "src/services/__tests__/RateLimitHandler.test.ts": "sha256:2b95433fac6a197c789eec03292c3bd0d3efa57efddd104dda1f79d5591631d0",
+        "src/services/__tests__/ReadmeGeneratorService.test.ts": "sha256:2748da7baf6ab6b15847e7f810bbda5d492d478983782eb4f3262bbc6577b90f",
+        "src/services/__tests__/RepoCloneService.test.ts": "sha256:aa34031d6bc8b253c4cbb8bc2bc400e61f742eb3466523bc4ac5edddb6582ba0",
+        "src/services/__tests__/RepositoryService.test.ts": "sha256:7fdcc4f68a1ae6bb9b895cff609066a263c1fcaf2914d8a2d793d268b55f512f",
+        "src/services/__tests__/SubscriptionService.test.ts": "sha256:dbf1a375844f0c5bb168894251fc74478661fbeaa0e9476986b3172b4b491d9e",
+        "src/services/__tests__/UnifiedGitHubService.auth-selection.test.ts": "sha256:b04dd1d07a4fdb011dedcb535722f6e1536aa5a701bc943109b31bc7388ebe2c",
+        "src/services/__tests__/UnifiedGitHubService.comprehensive.test.ts": "sha256:0b696511bf72aa52937b2ab5191e7a05787af462b66881da08f72e892b7d3390",
+        "src/services/__tests__/UnifiedGitHubService.focused.test.ts": "sha256:fedf5a03519f28a27633d8356a2f7a1a2a729897f390bd95d4cd5e6e0b34e0d8",
+        "src/services/__tests__/UnifiedGitHubService.working.test.ts": "sha256:7d887399e83fc797215460dbcab574db364ed5a6f085b5f542392f57074272cc",
+        "src/services/__tests__/ZipHandler.critical-scenarios.test.ts": "sha256:89705fbf63227e7b1cd42d922ea11350188bdce1a88f8ad6662e5fad5456d000",
+        "src/services/__tests__/ZipHandler.edge-cases.test.ts": "sha256:3588f357b2c78d1c352521028d9810c0690478bb3fc72e92f72b74f54f6c176f",
+        "src/services/__tests__/ZipHandler.test.ts": "sha256:bf87fe0f04a04ffe4ee0c809700dd03a7a7f76253c8f50cba88c991565dda12a",
+        "src/services/__tests__/authentication.types.test.ts": "sha256:9a776e97355c21ecaeaaf7cc2974adfbea2412fe80bed0a94eddf2ce4e0f347c",
+        "src/services/__tests__/githubAppRequestPolicy.test.ts": "sha256:39c8c24190a10bba0208d9bfb164d8eadbcb06fae1d157b5aaa0c358fd57f1db",
+        "src/services/__tests__/settings.test.ts": "sha256:0e2bd5fcba526c15735ff7f8bb053f0069c38a22e7fb45d244a8d4276cb3db3c",
+        "src/services/__tests__/zipHandler.readme-integration.test.ts": "sha256:9306208238fe3bb532eff59294d4c8529132cf5c9c015b8e4e28c55785419fed",
+        "src/lib/services/__tests__/BackgroundAuthClient.test.ts": "sha256:b7b8e1a12e0e611ac386131229cea88920ef9bd38727be76caa203518567731d",
+        "src/lib/services/__tests__/CommitsService.test.ts": "sha256:87a2fbcb14559cdec012377d8947cf9e6ff1ace3c3d57e1cba85b4fd912d729a",
+        "src/lib/services/__tests__/GitHubCacheService.test.ts": "sha256:d753fd0c8e5d9dc9fe847fa301d3b47096c4ed6a11800816302d0c18463e6212",
+        "src/lib/services/__tests__/ProjectSettingsMigrationService.test.ts": "sha256:1fe7fd5e60b2f3e65ecf087141e39eb530bf548749ffd703555bbbce470c4a8f",
+        "src/lib/services/__tests__/chromeMessaging.test.ts": "sha256:8e2254a9a4f21b19db20d8ae1949787d8ae1e8c6cd7fed650c5dfae07e0296eb",
+        "src/lib/services/__tests__/chromeStorage.BoltProjects.test.ts": "sha256:736503f43657003d9b81e32d335a12950d3d1410f4c8b3cafde23db772944b2c",
+        "src/lib/services/__tests__/chromeStorage.GitHubComCleanup.test.ts": "sha256:d1075fcbaa25131f5911f848fe8124f6cc356e4b4b4fe2461f5a5f18d7579fb3",
+        "src/lib/services/__tests__/chromeStorage.RaceConditions.test.ts": "sha256:7d61dd671322b463c476c2bcc4e3a1c9ad8c73fb8b644308f1bc84c1372796cd",
+        "src/lib/services/__tests__/chromeStorage.test.ts": "sha256:236c2f6eb5bc53e13ade0c7eb17765bfad1c3751b55742f8d133b4d22965da99",
+        "src/lib/services/__tests__/githubAuthMigration.test.ts": "sha256:f71e8963a85dc879a0c2dad03a62de874c71bce6426ffbae03fdd51f5adfbc10",
+        "src/production-readiness/__tests__/github-base-inventory.test.ts": "sha256:e02066c8e7c6d632175c1266fcb6a40693295ec69dcb8f1a71ef005e0976584c"
+      },
+      "revised_at": "2026-07-31T04:06:30.968227+00:00",
+      "reason": "Cover the complete public base-inventory and fixture type contract in behavioral tests",
+      "agent": null,
+      "contract_delta": {
+        "artifacts_added": [],
+        "artifacts_removed": [],
+        "files_added": [],
+        "files_removed": [],
+        "validate_commands_added": [],
+        "validate_commands_removed": []
+      }
+    },
+    {
+      "prior_manifest_hash": "sha256-contract:447855c110b7feabb62db02f2fc203ce8e622cf767bd139b2a5e68a4f415aea5",
+      "prior_test_hashes": {
+        "src/services/__tests__/AnalyticsService.enhanced.test.ts": "sha256:8300f87d74afd2ba43614f77f3082f2baff9d249d1ec74fc80f9c8640c4624fe",
+        "src/services/__tests__/AnalyticsService.versioning.test.ts": "sha256:223f4fb0e74e315b284caa352a9b87a9eed00f92687296064528c15078f342a1",
+        "src/services/__tests__/BoltProjectSyncService.directMethod.test.ts": "sha256:688e80141dcb2773287025354c4edd5747b1af5fb7494695238f7e0caa0ce288",
+        "src/services/__tests__/BoltProjectSyncService.test.ts": "sha256:d3721f8c140abb9b28cca6790472005e500fa6e9774b19811c44b3bfd571d5ac",
+        "src/services/__tests__/CacheService.test.ts": "sha256:1f2aa972bd73ca0862d54adc8b0981e6ec89f98e6facf053393e139578f425cf",
+        "src/services/__tests__/DownloadService.test.ts": "sha256:6ee7c1094276093786817213d275a290a09826111e0e40cba00240396bc61715",
+        "src/services/__tests__/FilePreviewService.test.ts": "sha256:5764ee3be881574866e3b66c16c92dabd456b3d4bc2555dc7ce2c374440b8d03",
+        "src/services/__tests__/FileService.test.ts": "sha256:7047e014d4d1fc90ec8915358a8a765b1693cf680c3705150d581de9635485bf",
+        "src/services/__tests__/GitHubApiClient.test.ts": "sha256:a84fe5352d75ed7e8d786c71b739dffab100b6f9318d79e379f44b8fa2fe1dac",
+        "src/services/__tests__/GitHubAppAuthenticationStrategy.stampede.test.ts": "sha256:cd8b27a9cda224ef454bb99a3505e5be5584e93bec8f21b2cbebd4ed8b831cd6",
+        "src/services/__tests__/GitHubAppAuthenticationStrategy.test.ts": "sha256:79c13f7ce6ba858d225ae13c69cd193cf4c2eaa05ac93c77b74d972becf1baca",
+        "src/services/__tests__/GitHubAppService.critical-business-logic.test.ts": "sha256:5e98cb781e178906603405bef89dbc3425fb8e98576f6c6aa4ece662f3ead0ec",
+        "src/services/__tests__/GitHubAppService.stampede.test.ts": "sha256:afc2a4559cf10b7b7a9bf8ad5efbf27f584a6f534c02204d8f26e780491ee82a",
+        "src/services/__tests__/GitHubAppService.token-validation.test.ts": "sha256:a1ee02d6c5a39e253c524beac83017f26bbe855469e57990cf0d5e033dcd09a6",
+        "src/services/__tests__/GitHubComparisonService.test.ts": "sha256:1e37630a3ecfac355deea066d53082c574c72eb81707ff55827656268c8a0a81",
+        "src/services/__tests__/GitHubService.feedback.test.ts": "sha256:537f54848f6fbb630fd1ed5bedf434cc70a3be89456358eaf6c44c1f9d5429a4",
+        "src/services/__tests__/IdleMonitorService.test.ts": "sha256:6fa8b154af948827af672b04b782c487965dff6cd077f15265ed6138a7cff5b0",
+        "src/services/__tests__/RateLimitHandler.test.ts": "sha256:2b95433fac6a197c789eec03292c3bd0d3efa57efddd104dda1f79d5591631d0",
+        "src/services/__tests__/ReadmeGeneratorService.test.ts": "sha256:2748da7baf6ab6b15847e7f810bbda5d492d478983782eb4f3262bbc6577b90f",
+        "src/services/__tests__/RepoCloneService.test.ts": "sha256:aa34031d6bc8b253c4cbb8bc2bc400e61f742eb3466523bc4ac5edddb6582ba0",
+        "src/services/__tests__/RepositoryService.test.ts": "sha256:7fdcc4f68a1ae6bb9b895cff609066a263c1fcaf2914d8a2d793d268b55f512f",
+        "src/services/__tests__/SubscriptionService.test.ts": "sha256:dbf1a375844f0c5bb168894251fc74478661fbeaa0e9476986b3172b4b491d9e",
+        "src/services/__tests__/UnifiedGitHubService.auth-selection.test.ts": "sha256:b04dd1d07a4fdb011dedcb535722f6e1536aa5a701bc943109b31bc7388ebe2c",
+        "src/services/__tests__/UnifiedGitHubService.comprehensive.test.ts": "sha256:0b696511bf72aa52937b2ab5191e7a05787af462b66881da08f72e892b7d3390",
+        "src/services/__tests__/UnifiedGitHubService.focused.test.ts": "sha256:fedf5a03519f28a27633d8356a2f7a1a2a729897f390bd95d4cd5e6e0b34e0d8",
+        "src/services/__tests__/UnifiedGitHubService.working.test.ts": "sha256:7d887399e83fc797215460dbcab574db364ed5a6f085b5f542392f57074272cc",
+        "src/services/__tests__/ZipHandler.critical-scenarios.test.ts": "sha256:89705fbf63227e7b1cd42d922ea11350188bdce1a88f8ad6662e5fad5456d000",
+        "src/services/__tests__/ZipHandler.edge-cases.test.ts": "sha256:3588f357b2c78d1c352521028d9810c0690478bb3fc72e92f72b74f54f6c176f",
+        "src/services/__tests__/ZipHandler.test.ts": "sha256:bf87fe0f04a04ffe4ee0c809700dd03a7a7f76253c8f50cba88c991565dda12a",
+        "src/services/__tests__/authentication.types.test.ts": "sha256:9a776e97355c21ecaeaaf7cc2974adfbea2412fe80bed0a94eddf2ce4e0f347c",
+        "src/services/__tests__/githubAppRequestPolicy.test.ts": "sha256:39c8c24190a10bba0208d9bfb164d8eadbcb06fae1d157b5aaa0c358fd57f1db",
+        "src/services/__tests__/settings.test.ts": "sha256:0e2bd5fcba526c15735ff7f8bb053f0069c38a22e7fb45d244a8d4276cb3db3c",
+        "src/services/__tests__/zipHandler.readme-integration.test.ts": "sha256:9306208238fe3bb532eff59294d4c8529132cf5c9c015b8e4e28c55785419fed",
+        "src/lib/services/__tests__/BackgroundAuthClient.test.ts": "sha256:b7b8e1a12e0e611ac386131229cea88920ef9bd38727be76caa203518567731d",
+        "src/lib/services/__tests__/CommitsService.test.ts": "sha256:87a2fbcb14559cdec012377d8947cf9e6ff1ace3c3d57e1cba85b4fd912d729a",
+        "src/lib/services/__tests__/GitHubCacheService.test.ts": "sha256:d753fd0c8e5d9dc9fe847fa301d3b47096c4ed6a11800816302d0c18463e6212",
+        "src/lib/services/__tests__/ProjectSettingsMigrationService.test.ts": "sha256:1fe7fd5e60b2f3e65ecf087141e39eb530bf548749ffd703555bbbce470c4a8f",
+        "src/lib/services/__tests__/chromeMessaging.test.ts": "sha256:8e2254a9a4f21b19db20d8ae1949787d8ae1e8c6cd7fed650c5dfae07e0296eb",
+        "src/lib/services/__tests__/chromeStorage.BoltProjects.test.ts": "sha256:736503f43657003d9b81e32d335a12950d3d1410f4c8b3cafde23db772944b2c",
+        "src/lib/services/__tests__/chromeStorage.GitHubComCleanup.test.ts": "sha256:d1075fcbaa25131f5911f848fe8124f6cc356e4b4b4fe2461f5a5f18d7579fb3",
+        "src/lib/services/__tests__/chromeStorage.RaceConditions.test.ts": "sha256:7d61dd671322b463c476c2bcc4e3a1c9ad8c73fb8b644308f1bc84c1372796cd",
+        "src/lib/services/__tests__/chromeStorage.test.ts": "sha256:236c2f6eb5bc53e13ade0c7eb17765bfad1c3751b55742f8d133b4d22965da99",
+        "src/lib/services/__tests__/githubAuthMigration.test.ts": "sha256:f71e8963a85dc879a0c2dad03a62de874c71bce6426ffbae03fdd51f5adfbc10",
+        "src/production-readiness/__tests__/github-base-inventory.test.ts": "sha256:a86173b27eabed24892be87b5909f201d6af2a1ce8fbc625cffa86c35be12145"
+      },
+      "revised_at": "2026-07-31T04:08:56.336699+00:00",
+      "reason": "Represent unavailable blob sizes honestly and finalize the typed read-only GitHub metadata boundary",
+      "agent": null,
+      "contract_delta": {
+        "artifacts_added": [
+          "src/production-readiness/inventory/githubBaseInventory.ts:attribute:GitHubBaseInventoryEntry.sizeBytes:type=number | undefined"
+        ],
+        "artifacts_removed": [
+          "src/production-readiness/inventory/githubBaseInventory.ts:attribute:GitHubBaseInventoryEntry.sizeBytes:type=number"
+        ],
+        "files_added": [],
+        "files_removed": [],
+        "validate_commands_added": [],
+        "validate_commands_removed": []
+      }
+    },
+    {
+      "prior_manifest_hash": "sha256-contract:86566ec9273c8cb92b9fd95c60db34bbda7b3c0c8efeaf34019896b88f33cfd8",
+      "prior_test_hashes": {
+        "src/services/__tests__/AnalyticsService.enhanced.test.ts": "sha256:8300f87d74afd2ba43614f77f3082f2baff9d249d1ec74fc80f9c8640c4624fe",
+        "src/services/__tests__/AnalyticsService.versioning.test.ts": "sha256:223f4fb0e74e315b284caa352a9b87a9eed00f92687296064528c15078f342a1",
+        "src/services/__tests__/BoltProjectSyncService.directMethod.test.ts": "sha256:688e80141dcb2773287025354c4edd5747b1af5fb7494695238f7e0caa0ce288",
+        "src/services/__tests__/BoltProjectSyncService.test.ts": "sha256:d3721f8c140abb9b28cca6790472005e500fa6e9774b19811c44b3bfd571d5ac",
+        "src/services/__tests__/CacheService.test.ts": "sha256:1f2aa972bd73ca0862d54adc8b0981e6ec89f98e6facf053393e139578f425cf",
+        "src/services/__tests__/DownloadService.test.ts": "sha256:6ee7c1094276093786817213d275a290a09826111e0e40cba00240396bc61715",
+        "src/services/__tests__/FilePreviewService.test.ts": "sha256:5764ee3be881574866e3b66c16c92dabd456b3d4bc2555dc7ce2c374440b8d03",
+        "src/services/__tests__/FileService.test.ts": "sha256:7047e014d4d1fc90ec8915358a8a765b1693cf680c3705150d581de9635485bf",
+        "src/services/__tests__/GitHubApiClient.test.ts": "sha256:a84fe5352d75ed7e8d786c71b739dffab100b6f9318d79e379f44b8fa2fe1dac",
+        "src/services/__tests__/GitHubAppAuthenticationStrategy.stampede.test.ts": "sha256:cd8b27a9cda224ef454bb99a3505e5be5584e93bec8f21b2cbebd4ed8b831cd6",
+        "src/services/__tests__/GitHubAppAuthenticationStrategy.test.ts": "sha256:79c13f7ce6ba858d225ae13c69cd193cf4c2eaa05ac93c77b74d972becf1baca",
+        "src/services/__tests__/GitHubAppService.critical-business-logic.test.ts": "sha256:5e98cb781e178906603405bef89dbc3425fb8e98576f6c6aa4ece662f3ead0ec",
+        "src/services/__tests__/GitHubAppService.stampede.test.ts": "sha256:afc2a4559cf10b7b7a9bf8ad5efbf27f584a6f534c02204d8f26e780491ee82a",
+        "src/services/__tests__/GitHubAppService.token-validation.test.ts": "sha256:a1ee02d6c5a39e253c524beac83017f26bbe855469e57990cf0d5e033dcd09a6",
+        "src/services/__tests__/GitHubComparisonService.test.ts": "sha256:1e37630a3ecfac355deea066d53082c574c72eb81707ff55827656268c8a0a81",
+        "src/services/__tests__/GitHubService.feedback.test.ts": "sha256:537f54848f6fbb630fd1ed5bedf434cc70a3be89456358eaf6c44c1f9d5429a4",
+        "src/services/__tests__/IdleMonitorService.test.ts": "sha256:6fa8b154af948827af672b04b782c487965dff6cd077f15265ed6138a7cff5b0",
+        "src/services/__tests__/RateLimitHandler.test.ts": "sha256:2b95433fac6a197c789eec03292c3bd0d3efa57efddd104dda1f79d5591631d0",
+        "src/services/__tests__/ReadmeGeneratorService.test.ts": "sha256:2748da7baf6ab6b15847e7f810bbda5d492d478983782eb4f3262bbc6577b90f",
+        "src/services/__tests__/RepoCloneService.test.ts": "sha256:aa34031d6bc8b253c4cbb8bc2bc400e61f742eb3466523bc4ac5edddb6582ba0",
+        "src/services/__tests__/RepositoryService.test.ts": "sha256:7fdcc4f68a1ae6bb9b895cff609066a263c1fcaf2914d8a2d793d268b55f512f",
+        "src/services/__tests__/SubscriptionService.test.ts": "sha256:dbf1a375844f0c5bb168894251fc74478661fbeaa0e9476986b3172b4b491d9e",
+        "src/services/__tests__/UnifiedGitHubService.auth-selection.test.ts": "sha256:b04dd1d07a4fdb011dedcb535722f6e1536aa5a701bc943109b31bc7388ebe2c",
+        "src/services/__tests__/UnifiedGitHubService.comprehensive.test.ts": "sha256:0b696511bf72aa52937b2ab5191e7a05787af462b66881da08f72e892b7d3390",
+        "src/services/__tests__/UnifiedGitHubService.focused.test.ts": "sha256:fedf5a03519f28a27633d8356a2f7a1a2a729897f390bd95d4cd5e6e0b34e0d8",
+        "src/services/__tests__/UnifiedGitHubService.working.test.ts": "sha256:7d887399e83fc797215460dbcab574db364ed5a6f085b5f542392f57074272cc",
+        "src/services/__tests__/ZipHandler.critical-scenarios.test.ts": "sha256:89705fbf63227e7b1cd42d922ea11350188bdce1a88f8ad6662e5fad5456d000",
+        "src/services/__tests__/ZipHandler.edge-cases.test.ts": "sha256:3588f357b2c78d1c352521028d9810c0690478bb3fc72e92f72b74f54f6c176f",
+        "src/services/__tests__/ZipHandler.test.ts": "sha256:bf87fe0f04a04ffe4ee0c809700dd03a7a7f76253c8f50cba88c991565dda12a",
+        "src/services/__tests__/authentication.types.test.ts": "sha256:9a776e97355c21ecaeaaf7cc2974adfbea2412fe80bed0a94eddf2ce4e0f347c",
+        "src/services/__tests__/githubAppRequestPolicy.test.ts": "sha256:39c8c24190a10bba0208d9bfb164d8eadbcb06fae1d157b5aaa0c358fd57f1db",
+        "src/services/__tests__/settings.test.ts": "sha256:0e2bd5fcba526c15735ff7f8bb053f0069c38a22e7fb45d244a8d4276cb3db3c",
+        "src/services/__tests__/zipHandler.readme-integration.test.ts": "sha256:9306208238fe3bb532eff59294d4c8529132cf5c9c015b8e4e28c55785419fed",
+        "src/lib/services/__tests__/BackgroundAuthClient.test.ts": "sha256:b7b8e1a12e0e611ac386131229cea88920ef9bd38727be76caa203518567731d",
+        "src/lib/services/__tests__/CommitsService.test.ts": "sha256:87a2fbcb14559cdec012377d8947cf9e6ff1ace3c3d57e1cba85b4fd912d729a",
+        "src/lib/services/__tests__/GitHubCacheService.test.ts": "sha256:d753fd0c8e5d9dc9fe847fa301d3b47096c4ed6a11800816302d0c18463e6212",
+        "src/lib/services/__tests__/ProjectSettingsMigrationService.test.ts": "sha256:1fe7fd5e60b2f3e65ecf087141e39eb530bf548749ffd703555bbbce470c4a8f",
+        "src/lib/services/__tests__/chromeMessaging.test.ts": "sha256:8e2254a9a4f21b19db20d8ae1949787d8ae1e8c6cd7fed650c5dfae07e0296eb",
+        "src/lib/services/__tests__/chromeStorage.BoltProjects.test.ts": "sha256:736503f43657003d9b81e32d335a12950d3d1410f4c8b3cafde23db772944b2c",
+        "src/lib/services/__tests__/chromeStorage.GitHubComCleanup.test.ts": "sha256:d1075fcbaa25131f5911f848fe8124f6cc356e4b4b4fe2461f5a5f18d7579fb3",
+        "src/lib/services/__tests__/chromeStorage.RaceConditions.test.ts": "sha256:7d61dd671322b463c476c2bcc4e3a1c9ad8c73fb8b644308f1bc84c1372796cd",
+        "src/lib/services/__tests__/chromeStorage.test.ts": "sha256:236c2f6eb5bc53e13ade0c7eb17765bfad1c3751b55742f8d133b4d22965da99",
+        "src/lib/services/__tests__/githubAuthMigration.test.ts": "sha256:f71e8963a85dc879a0c2dad03a62de874c71bce6426ffbae03fdd51f5adfbc10",
+        "src/production-readiness/__tests__/github-base-inventory.test.ts": "sha256:75ca5d517c52e2f5467a4cfda22508267beb1da97468e2a19bf875a7a914f456"
+      },
+      "revised_at": "2026-07-31T04:15:08.714874+00:00",
+      "reason": "Narrow broad service-directory context to the exact GitHub boundary files so unrelated legacy tests are not claimed by this slice",
+      "agent": null,
+      "contract_delta": {
+        "artifacts_added": [],
+        "artifacts_removed": [],
+        "files_added": [
+          "read:src/services/GitHubApiClient.ts",
+          "read:src/services/GitHubComparisonService.ts",
+          "read:src/services/UnifiedGitHubService.ts",
+          "read:src/services/interfaces/IGitHubApiClient.ts"
+        ],
+        "files_removed": ["read:src/lib/services", "read:src/services"],
+        "validate_commands_added": [],
+        "validate_commands_removed": []
+      }
+    },
+    {
+      "prior_manifest_hash": "sha256-contract:2fc9672c690e3b5bc1ca75dd74d203742a515756bba3cdef32e02feec6cc190b",
+      "prior_test_hashes": {
+        "src/production-readiness/__tests__/github-base-inventory.test.ts": "sha256:75ca5d517c52e2f5467a4cfda22508267beb1da97468e2a19bf875a7a914f456"
+      },
+      "revised_at": "2026-07-31T04:16:36.309420+00:00",
+      "reason": "Address implementation review by preserving resolved provenance across staged failures and treating inconsistent tree SHA, truncation, paths, duplicates, and entry types as partial data",
+      "agent": null,
+      "contract_delta": {
+        "artifacts_added": [],
+        "artifacts_removed": [],
+        "files_added": [],
+        "files_removed": [],
+        "validate_commands_added": [],
+        "validate_commands_removed": []
+      }
+    }
+  ],
+  "red_evidence": {
+    "red": true,
+    "captured_at": "2026-07-31T04:16:50.706535+00:00",
+    "commands": [
+      {
+        "command": "pnpm exec vitest run src/production-readiness/__tests__/github-base-inventory.test.ts",
+        "exit_code": 1,
+        "output_tail": " Test Files  1 failed (1)\n      Tests  no tests\n   Start at  12:16:36\n   Duration  641ms (transform 37ms, setup 57ms, collect 0ms, tests 0ms, environment 196ms, prepare 58ms)\n\n\n\u23af\u23af\u23af\u23af\u23af\u23af Failed Suites 1 \u23af\u23af\u23af\u23af\u23af\u23af\u23af\n\n FAIL  src/production-readiness/__tests__/github-base-inventory.test.ts [ src/production-readiness/__tests__/github-base-inventory.test.ts ]\nError: Failed to resolve import \"../inventory/githubBaseInventory\" from \"src/production-readiness/__tests__/github-base-inventory.test.ts\". Does the file exist?\n \u276f TransformPluginContext._formatError node_modules/.pnpm/vite@5.4.21_@types+node@22.19.18/node_modules/vite/dist/node/chunks/dep-BK3b2jBa.js:49258:41\n \u276f TransformPluginContext.error node_modules/.pnpm/vite@5.4.21_@types+node@22.19.18/node_modules/vite/dist/node/chunks/dep-BK3b2jBa.js:49253:16\n \u276f normalizeUrl node_modules/.pnpm/vite@5.4.21_@types+node@22.19.18/node_modules/vite/dist/node/chunks/dep-BK3b2jBa.js:64307:23\n \u276f async file:/home/atomrem/projects/codefrost-dev/bolt-to-github/node_modules/.pnpm/vite@5.4.21_@types+node@22.19.18/node_modules/vite/dist/node/chunks/dep-BK3b2jBa.js:64439:39\n \u276f TransformPluginContext.transform node_modules/.pnpm/vite@5.4.21_@types+node@22.19.18/node_modules/vite/dist/node/chunks/dep-BK3b2jBa.js:64366:7\n \u276f PluginContainer.transform node_modules/.pnpm/vite@5.4.21_@types+node@22.19.18/node_modules/vite/dist/node/chunks/dep-BK3b2jBa.js:49099:18\n \u276f loadAndTransform node_modules/.pnpm/vite@5.4.21_@types+node@22.19.18/node_modules/vite/dist/node/chunks/dep-BK3b2jBa.js:51978:27\n\n\u23af\u23af\u23af\u23af\u23af\u23af\u23af\u23af\u23af\u23af\u23af\u23af\u23af\u23af\u23af\u23af\u23af\u23af\u23af\u23af\u23af\u23af\u23af\u23af[1/1]\u23af\n",
+        "classification": "red"
+      },
+      {
+        "command": "./scripts/maid validate manifests/03-b2g-prs-github-base-inventory.manifest.yaml --mode behavioral",
+        "exit_code": 0,
+        "output_tail": "PASS 03-b2g-prs-github-base-inventory\n  Mode: behavioral\n  Duration: 322ms\n  Warnings (3):\n    E110 Manifest 'prepare-v2-0-0-github-app-release' supersedes 'release-v1-3-21' but drops artifact 'PackageVersion_1_3_21' (namespace) at package.json\n      Location: /home/atomrem/projects/codefrost-dev/bolt-to-github/manifests/prepare-v2-0-0-github-app-release.manifest.yaml\n      Suggestion: Re-declare the artifact in the replacement manifest, list its file under files.delete, or list the symbol under removed_artifacts.\n    E110 Manifest 'prepare-v2-0-0-github-app-release' supersedes 'release-v1-3-21' but drops artifact 'ChromeManifestVersion_1_3_21' (namespace) at manifest.json\n      Location: /home/atomrem/projects/codefrost-dev/bolt-to-github/manifests/prepare-v2-0-0-github-app-release.manifest.yaml\n      Suggestion: Re-declare the artifact in the replacement manifest, list its file under files.delete, or list the symbol under removed_artifacts.\n    E110 Manifest 'prepare-v2-0-0-github-app-release' supersedes 'release-v1-3-21' but drops artifact 'DevelopmentGuideVersion_1_3_21' (namespace) at CLAUDE.md\n      Location: /home/atomrem/projects/codefrost-dev/bolt-to-github/manifests/prepare-v2-0-0-github-app-release.manifest.yaml\n      Suggestion: Re-declare the artifact in the replacement manifest, list its file under files.delete, or list the symbol under removed_artifacts.",
+        "classification": "not_red"
+      },
+      {
+        "command": "pnpm lint",
+        "exit_code": 0,
+        "output_tail": "\n> bolt-to-github@2.0.0 lint /home/atomrem/projects/codefrost-dev/bolt-to-github\n> eslint \"src/**/*.{js,ts,svelte}\"\n",
+        "classification": "not_red"
+      },
+      {
+        "command": "pnpm check",
+        "exit_code": 1,
+        "output_tail": "import {\n\n\n/home/atomrem/projects/codefrost-dev/bolt-to-github/src/production-readiness/__tests__/github-base-inventory.test.ts:14:8\nError: Cannot find module '../test-fixtures/prs/github-base' or its corresponding type declarations. \n  type GitHubTreeFixtureName,\n} from '../test-fixtures/prs/github-base';\n\n\n\n/home/atomrem/projects/codefrost-dev/bolt-to-github/src/production-readiness/__tests__/github-base-inventory.test.ts:161:42\nError: Parameter 'entry' implicitly has an 'any' type. \n    expect(malformedResult.treeSha).toBe('tree-release-v2');\n    expect(malformedResult.entries.some((entry) => entry.path === '../unsafe.txt')).toBe(false);\n    expect(malformedResult.limitations).toContainEqual({\n\n\n====================================\nsvelte-check found 3 errors and 0 warnings in 1 file\n\u2009ELIFECYCLE\u2009 Command failed with exit code 1.",
+        "classification": "red"
+      }
+    ]
+  },
+  "legacy_baseline": null,
+  "agent": null,
+  "_manifest_contract": {
+    "artifacts": [
+      "src/production-readiness/__tests__/github-base-inventory.test.ts:base ref metadata is preserved",
+      "src/production-readiness/__tests__/github-base-inventory.test.ts:base ref metadata is preserved:kind=test_function",
+      "src/production-readiness/__tests__/github-base-inventory.test.ts:missing GitHub data produces a partial snapshot limitation",
+      "src/production-readiness/__tests__/github-base-inventory.test.ts:missing GitHub data produces a partial snapshot limitation:kind=test_function",
+      "src/production-readiness/__tests__/github-base-inventory.test.ts:mock GitHub tree data normalizes into base inventory",
+      "src/production-readiness/__tests__/github-base-inventory.test.ts:mock GitHub tree data normalizes into base inventory:kind=test_function",
+      "src/production-readiness/__tests__/github-base-inventory.test.ts:rate limited GitHub data produces a partial snapshot limitation",
+      "src/production-readiness/__tests__/github-base-inventory.test.ts:rate limited GitHub data produces a partial snapshot limitation:kind=test_function",
+      "src/production-readiness/inventory/githubBaseInventory.ts:attribute:GitHubBaseInventoryEntry.blobSha",
+      "src/production-readiness/inventory/githubBaseInventory.ts:attribute:GitHubBaseInventoryEntry.blobSha:kind=attribute",
+      "src/production-readiness/inventory/githubBaseInventory.ts:attribute:GitHubBaseInventoryEntry.blobSha:of=GitHubBaseInventoryEntry",
+      "src/production-readiness/inventory/githubBaseInventory.ts:attribute:GitHubBaseInventoryEntry.blobSha:type=string",
+      "src/production-readiness/inventory/githubBaseInventory.ts:attribute:GitHubBaseInventoryEntry.mode",
+      "src/production-readiness/inventory/githubBaseInventory.ts:attribute:GitHubBaseInventoryEntry.mode:kind=attribute",
+      "src/production-readiness/inventory/githubBaseInventory.ts:attribute:GitHubBaseInventoryEntry.mode:of=GitHubBaseInventoryEntry",
+      "src/production-readiness/inventory/githubBaseInventory.ts:attribute:GitHubBaseInventoryEntry.mode:type=string",
+      "src/production-readiness/inventory/githubBaseInventory.ts:attribute:GitHubBaseInventoryEntry.path",
+      "src/production-readiness/inventory/githubBaseInventory.ts:attribute:GitHubBaseInventoryEntry.path:kind=attribute",
+      "src/production-readiness/inventory/githubBaseInventory.ts:attribute:GitHubBaseInventoryEntry.path:of=GitHubBaseInventoryEntry",
+      "src/production-readiness/inventory/githubBaseInventory.ts:attribute:GitHubBaseInventoryEntry.path:type=string",
+      "src/production-readiness/inventory/githubBaseInventory.ts:attribute:GitHubBaseInventoryEntry.sizeBytes",
+      "src/production-readiness/inventory/githubBaseInventory.ts:attribute:GitHubBaseInventoryEntry.sizeBytes:kind=attribute",
+      "src/production-readiness/inventory/githubBaseInventory.ts:attribute:GitHubBaseInventoryEntry.sizeBytes:of=GitHubBaseInventoryEntry",
+      "src/production-readiness/inventory/githubBaseInventory.ts:attribute:GitHubBaseInventoryEntry.sizeBytes:type=number | undefined",
+      "src/production-readiness/inventory/githubBaseInventory.ts:attribute:GitHubBaseInventoryRequest.baseRef",
+      "src/production-readiness/inventory/githubBaseInventory.ts:attribute:GitHubBaseInventoryRequest.baseRef:kind=attribute",
+      "src/production-readiness/inventory/githubBaseInventory.ts:attribute:GitHubBaseInventoryRequest.baseRef:of=GitHubBaseInventoryRequest",
+      "src/production-readiness/inventory/githubBaseInventory.ts:attribute:GitHubBaseInventoryRequest.baseRef:type=string",
+      "src/production-readiness/inventory/githubBaseInventory.ts:attribute:GitHubBaseInventoryRequest.owner",
+      "src/production-readiness/inventory/githubBaseInventory.ts:attribute:GitHubBaseInventoryRequest.owner:kind=attribute",
+      "src/production-readiness/inventory/githubBaseInventory.ts:attribute:GitHubBaseInventoryRequest.owner:of=GitHubBaseInventoryRequest",
+      "src/production-readiness/inventory/githubBaseInventory.ts:attribute:GitHubBaseInventoryRequest.owner:type=string",
+      "src/production-readiness/inventory/githubBaseInventory.ts:attribute:GitHubBaseInventoryRequest.readGitHub",
+      "src/production-readiness/inventory/githubBaseInventory.ts:attribute:GitHubBaseInventoryRequest.readGitHub:kind=attribute",
+      "src/production-readiness/inventory/githubBaseInventory.ts:attribute:GitHubBaseInventoryRequest.readGitHub:of=GitHubBaseInventoryRequest",
+      "src/production-readiness/inventory/githubBaseInventory.ts:attribute:GitHubBaseInventoryRequest.readGitHub:type=GitHubMetadataReader",
+      "src/production-readiness/inventory/githubBaseInventory.ts:attribute:GitHubBaseInventoryRequest.repository",
+      "src/production-readiness/inventory/githubBaseInventory.ts:attribute:GitHubBaseInventoryRequest.repository:kind=attribute",
+      "src/production-readiness/inventory/githubBaseInventory.ts:attribute:GitHubBaseInventoryRequest.repository:of=GitHubBaseInventoryRequest",
+      "src/production-readiness/inventory/githubBaseInventory.ts:attribute:GitHubBaseInventoryRequest.repository:type=string",
+      "src/production-readiness/inventory/githubBaseInventory.ts:attribute:GitHubBaseInventoryRequest.signal",
+      "src/production-readiness/inventory/githubBaseInventory.ts:attribute:GitHubBaseInventoryRequest.signal:kind=attribute",
+      "src/production-readiness/inventory/githubBaseInventory.ts:attribute:GitHubBaseInventoryRequest.signal:of=GitHubBaseInventoryRequest",
+      "src/production-readiness/inventory/githubBaseInventory.ts:attribute:GitHubBaseInventoryRequest.signal:type=AbortSignal | undefined",
+      "src/production-readiness/inventory/githubBaseInventory.ts:attribute:GitHubBaseInventoryResult.base",
+      "src/production-readiness/inventory/githubBaseInventory.ts:attribute:GitHubBaseInventoryResult.base:kind=attribute",
+      "src/production-readiness/inventory/githubBaseInventory.ts:attribute:GitHubBaseInventoryResult.base:of=GitHubBaseInventoryResult",
+      "src/production-readiness/inventory/githubBaseInventory.ts:attribute:GitHubBaseInventoryResult.base:type=GitRefSummary | undefined",
+      "src/production-readiness/inventory/githubBaseInventory.ts:attribute:GitHubBaseInventoryResult.entries",
+      "src/production-readiness/inventory/githubBaseInventory.ts:attribute:GitHubBaseInventoryResult.entries:kind=attribute",
+      "src/production-readiness/inventory/githubBaseInventory.ts:attribute:GitHubBaseInventoryResult.entries:of=GitHubBaseInventoryResult",
+      "src/production-readiness/inventory/githubBaseInventory.ts:attribute:GitHubBaseInventoryResult.entries:type=GitHubBaseInventoryEntry[]",
+      "src/production-readiness/inventory/githubBaseInventory.ts:attribute:GitHubBaseInventoryResult.limitations",
+      "src/production-readiness/inventory/githubBaseInventory.ts:attribute:GitHubBaseInventoryResult.limitations:kind=attribute",
+      "src/production-readiness/inventory/githubBaseInventory.ts:attribute:GitHubBaseInventoryResult.limitations:of=GitHubBaseInventoryResult",
+      "src/production-readiness/inventory/githubBaseInventory.ts:attribute:GitHubBaseInventoryResult.limitations:type=PartialDataNotice[]",
+      "src/production-readiness/inventory/githubBaseInventory.ts:attribute:GitHubBaseInventoryResult.partial",
+      "src/production-readiness/inventory/githubBaseInventory.ts:attribute:GitHubBaseInventoryResult.partial:kind=attribute",
+      "src/production-readiness/inventory/githubBaseInventory.ts:attribute:GitHubBaseInventoryResult.partial:of=GitHubBaseInventoryResult",
+      "src/production-readiness/inventory/githubBaseInventory.ts:attribute:GitHubBaseInventoryResult.partial:type=boolean",
+      "src/production-readiness/inventory/githubBaseInventory.ts:attribute:GitHubBaseInventoryResult.repository",
+      "src/production-readiness/inventory/githubBaseInventory.ts:attribute:GitHubBaseInventoryResult.repository:kind=attribute",
+      "src/production-readiness/inventory/githubBaseInventory.ts:attribute:GitHubBaseInventoryResult.repository:of=GitHubBaseInventoryResult",
+      "src/production-readiness/inventory/githubBaseInventory.ts:attribute:GitHubBaseInventoryResult.repository:type=RepositoryRef",
+      "src/production-readiness/inventory/githubBaseInventory.ts:attribute:GitHubBaseInventoryResult.treeSha",
+      "src/production-readiness/inventory/githubBaseInventory.ts:attribute:GitHubBaseInventoryResult.treeSha:kind=attribute",
+      "src/production-readiness/inventory/githubBaseInventory.ts:attribute:GitHubBaseInventoryResult.treeSha:of=GitHubBaseInventoryResult",
+      "src/production-readiness/inventory/githubBaseInventory.ts:attribute:GitHubBaseInventoryResult.treeSha:type=string | undefined",
+      "src/production-readiness/inventory/githubBaseInventory.ts:function:buildGitHubBaseInventory",
+      "src/production-readiness/inventory/githubBaseInventory.ts:function:buildGitHubBaseInventory:arg=request:type=GitHubBaseInventoryRequest:default=None",
+      "src/production-readiness/inventory/githubBaseInventory.ts:function:buildGitHubBaseInventory:kind=function",
+      "src/production-readiness/inventory/githubBaseInventory.ts:function:buildGitHubBaseInventory:returns=Promise<GitHubBaseInventoryResult>",
+      "src/production-readiness/inventory/githubBaseInventory.ts:interface:GitHubBaseInventoryEntry",
+      "src/production-readiness/inventory/githubBaseInventory.ts:interface:GitHubBaseInventoryEntry:kind=interface",
+      "src/production-readiness/inventory/githubBaseInventory.ts:interface:GitHubBaseInventoryRequest",
+      "src/production-readiness/inventory/githubBaseInventory.ts:interface:GitHubBaseInventoryRequest:kind=interface",
+      "src/production-readiness/inventory/githubBaseInventory.ts:interface:GitHubBaseInventoryResult",
+      "src/production-readiness/inventory/githubBaseInventory.ts:interface:GitHubBaseInventoryResult:kind=interface",
+      "src/production-readiness/inventory/githubBaseInventory.ts:type:GitHubMetadataReader",
+      "src/production-readiness/inventory/githubBaseInventory.ts:type:GitHubMetadataReader:kind=type",
+      "src/production-readiness/inventory/githubBaseInventory.ts:type:GitHubMetadataReader:type=<T>(endpoint: string, signal?: AbortSignal) => Promise<T>",
+      "src/production-readiness/test-fixtures/prs/github-base.ts:attribute:GitHubTreeFixture.baseRef",
+      "src/production-readiness/test-fixtures/prs/github-base.ts:attribute:GitHubTreeFixture.baseRef:kind=attribute",
+      "src/production-readiness/test-fixtures/prs/github-base.ts:attribute:GitHubTreeFixture.baseRef:of=GitHubTreeFixture",
+      "src/production-readiness/test-fixtures/prs/github-base.ts:attribute:GitHubTreeFixture.baseRef:type=string",
+      "src/production-readiness/test-fixtures/prs/github-base.ts:attribute:GitHubTreeFixture.error",
+      "src/production-readiness/test-fixtures/prs/github-base.ts:attribute:GitHubTreeFixture.error:kind=attribute",
+      "src/production-readiness/test-fixtures/prs/github-base.ts:attribute:GitHubTreeFixture.error:of=GitHubTreeFixture",
+      "src/production-readiness/test-fixtures/prs/github-base.ts:attribute:GitHubTreeFixture.error:type={ status: number; message: string } | undefined",
+      "src/production-readiness/test-fixtures/prs/github-base.ts:attribute:GitHubTreeFixture.name",
+      "src/production-readiness/test-fixtures/prs/github-base.ts:attribute:GitHubTreeFixture.name:kind=attribute",
+      "src/production-readiness/test-fixtures/prs/github-base.ts:attribute:GitHubTreeFixture.name:of=GitHubTreeFixture",
+      "src/production-readiness/test-fixtures/prs/github-base.ts:attribute:GitHubTreeFixture.name:type=GitHubTreeFixtureName",
+      "src/production-readiness/test-fixtures/prs/github-base.ts:attribute:GitHubTreeFixture.owner",
+      "src/production-readiness/test-fixtures/prs/github-base.ts:attribute:GitHubTreeFixture.owner:kind=attribute",
+      "src/production-readiness/test-fixtures/prs/github-base.ts:attribute:GitHubTreeFixture.owner:of=GitHubTreeFixture",
+      "src/production-readiness/test-fixtures/prs/github-base.ts:attribute:GitHubTreeFixture.owner:type=string",
+      "src/production-readiness/test-fixtures/prs/github-base.ts:attribute:GitHubTreeFixture.repository",
+      "src/production-readiness/test-fixtures/prs/github-base.ts:attribute:GitHubTreeFixture.repository:kind=attribute",
+      "src/production-readiness/test-fixtures/prs/github-base.ts:attribute:GitHubTreeFixture.repository:of=GitHubTreeFixture",
+      "src/production-readiness/test-fixtures/prs/github-base.ts:attribute:GitHubTreeFixture.repository:type=string",
+      "src/production-readiness/test-fixtures/prs/github-base.ts:attribute:GitHubTreeFixture.responses",
+      "src/production-readiness/test-fixtures/prs/github-base.ts:attribute:GitHubTreeFixture.responses:kind=attribute",
+      "src/production-readiness/test-fixtures/prs/github-base.ts:attribute:GitHubTreeFixture.responses:of=GitHubTreeFixture",
+      "src/production-readiness/test-fixtures/prs/github-base.ts:attribute:GitHubTreeFixture.responses:type=Readonly<Record<string, unknown>>",
+      "src/production-readiness/test-fixtures/prs/github-base.ts:function:createGitHubTreeFixture",
+      "src/production-readiness/test-fixtures/prs/github-base.ts:function:createGitHubTreeFixture:arg=name:type=string:default=None",
+      "src/production-readiness/test-fixtures/prs/github-base.ts:function:createGitHubTreeFixture:kind=function",
+      "src/production-readiness/test-fixtures/prs/github-base.ts:function:createGitHubTreeFixture:returns=GitHubTreeFixture",
+      "src/production-readiness/test-fixtures/prs/github-base.ts:interface:GitHubTreeFixture",
+      "src/production-readiness/test-fixtures/prs/github-base.ts:interface:GitHubTreeFixture:kind=interface",
+      "src/production-readiness/test-fixtures/prs/github-base.ts:type:GitHubTreeFixtureName",
+      "src/production-readiness/test-fixtures/prs/github-base.ts:type:GitHubTreeFixtureName:kind=type",
+      "src/production-readiness/test-fixtures/prs/github-base.ts:type:GitHubTreeFixtureName:type='complete' | 'missing' | 'rate-limited' | 'truncated'"
+    ],
+    "files": {
+      "create": [
+        "src/production-readiness/__tests__/github-base-inventory.test.ts",
+        "src/production-readiness/inventory/githubBaseInventory.ts",
+        "src/production-readiness/test-fixtures/prs/github-base.ts"
+      ],
+      "edit": [],
+      "read": [
+        "docs/b2g_production_readiness_snapshot_reference.md",
+        "manifests/01-b2g-prs-domain-models-fixtures.manifest.yaml",
+        "manifests/02-b2g-prs-zip-inventory-normalization.manifest.yaml",
+        "manifests/drafts/b2g-production-readiness-snapshot.manifest.yaml",
+        "src/production-readiness/inventory/zipInventory.ts",
+        "src/services/GitHubApiClient.ts",
+        "src/services/GitHubComparisonService.ts",
+        "src/services/UnifiedGitHubService.ts",
+        "src/services/interfaces/IGitHubApiClient.ts"
+      ],
+      "scope": [],
+      "delete": [],
+      "snapshot": []
+    },
+    "file_contract": {
+      "create": [
+        {
+          "path": "src/production-readiness/inventory/githubBaseInventory.ts",
+          "artifacts": [
+            {
+              "kind": "type",
+              "name": "GitHubMetadataReader",
+              "description": "Read-only GitHub metadata boundary supplied by the existing authenticated GitHub service.",
+              "type": "<T>(endpoint: string, signal?: AbortSignal) => Promise<T>"
+            },
+            {
+              "kind": "interface",
+              "name": "GitHubBaseInventoryRequest",
+              "description": "Planned owner, repo, base ref, and cancellation/options request for collecting base inventory."
+            },
+            {
+              "kind": "attribute",
+              "name": "owner",
+              "of": "GitHubBaseInventoryRequest",
+              "type": "string"
+            },
+            {
+              "kind": "attribute",
+              "name": "repository",
+              "of": "GitHubBaseInventoryRequest",
+              "type": "string"
+            },
+            {
+              "kind": "attribute",
+              "name": "baseRef",
+              "of": "GitHubBaseInventoryRequest",
+              "type": "string"
+            },
+            {
+              "kind": "attribute",
+              "name": "readGitHub",
+              "of": "GitHubBaseInventoryRequest",
+              "type": "GitHubMetadataReader"
+            },
+            {
+              "kind": "attribute",
+              "name": "signal",
+              "of": "GitHubBaseInventoryRequest",
+              "type": "AbortSignal | undefined"
+            },
+            {
+              "kind": "interface",
+              "name": "GitHubBaseInventoryEntry",
+              "description": "GitHub tree metadata retained without fetching blob contents."
+            },
+            {
+              "kind": "attribute",
+              "name": "path",
+              "of": "GitHubBaseInventoryEntry",
+              "type": "string"
+            },
+            {
+              "kind": "attribute",
+              "name": "sizeBytes",
+              "of": "GitHubBaseInventoryEntry",
+              "type": "number | undefined"
+            },
+            {
+              "kind": "attribute",
+              "name": "blobSha",
+              "of": "GitHubBaseInventoryEntry",
+              "type": "string"
+            },
+            {
+              "kind": "attribute",
+              "name": "mode",
+              "of": "GitHubBaseInventoryEntry",
+              "type": "string"
+            },
+            {
+              "kind": "interface",
+              "name": "GitHubBaseInventoryResult",
+              "description": "Planned normalized base inventory with base ref summary, repository ref, and limitations."
+            },
+            {
+              "kind": "attribute",
+              "name": "repository",
+              "of": "GitHubBaseInventoryResult",
+              "type": "RepositoryRef"
+            },
+            {
+              "kind": "attribute",
+              "name": "base",
+              "of": "GitHubBaseInventoryResult",
+              "type": "GitRefSummary | undefined"
+            },
+            {
+              "kind": "attribute",
+              "name": "treeSha",
+              "of": "GitHubBaseInventoryResult",
+              "type": "string | undefined"
+            },
+            {
+              "kind": "attribute",
+              "name": "entries",
+              "of": "GitHubBaseInventoryResult",
+              "type": "GitHubBaseInventoryEntry[]"
+            },
+            {
+              "kind": "attribute",
+              "name": "partial",
+              "of": "GitHubBaseInventoryResult",
+              "type": "boolean"
+            },
+            {
+              "kind": "attribute",
+              "name": "limitations",
+              "of": "GitHubBaseInventoryResult",
+              "type": "PartialDataNotice[]"
+            },
+            {
+              "kind": "function",
+              "name": "buildGitHubBaseInventory",
+              "description": "Planned read-only adapter that converts GitHub tree data into PRS base inventory metadata.",
+              "args": [
+                {
+                  "name": "request",
+                  "type": "GitHubBaseInventoryRequest"
+                }
+              ],
+              "returns": "Promise<GitHubBaseInventoryResult>"
+            }
+          ]
+        },
+        {
+          "path": "src/production-readiness/__tests__/github-base-inventory.test.ts",
+          "artifacts": [
+            {
+              "kind": "test_function",
+              "name": "mock GitHub tree data normalizes into base inventory",
+              "description": "Required planned behavioral test before promotion."
+            },
+            {
+              "kind": "test_function",
+              "name": "missing GitHub data produces a partial snapshot limitation",
+              "description": "Required planned behavioral test before promotion."
+            },
+            {
+              "kind": "test_function",
+              "name": "rate limited GitHub data produces a partial snapshot limitation",
+              "description": "Required planned behavioral test before promotion."
+            },
+            {
+              "kind": "test_function",
+              "name": "base ref metadata is preserved",
+              "description": "Required planned behavioral test before promotion."
+            }
+          ]
+        },
+        {
+          "path": "src/production-readiness/test-fixtures/prs/github-base.ts",
+          "artifacts": [
+            {
+              "kind": "type",
+              "name": "GitHubTreeFixtureName",
+              "type": "'complete' | 'missing' | 'rate-limited' | 'truncated'"
+            },
+            {
+              "kind": "interface",
+              "name": "GitHubTreeFixture",
+              "description": "Deterministic mocked GitHub metadata responses or error for base inventory behavior."
+            },
+            {
+              "kind": "attribute",
+              "name": "name",
+              "of": "GitHubTreeFixture",
+              "type": "GitHubTreeFixtureName"
+            },
+            {
+              "kind": "attribute",
+              "name": "owner",
+              "of": "GitHubTreeFixture",
+              "type": "string"
+            },
+            {
+              "kind": "attribute",
+              "name": "repository",
+              "of": "GitHubTreeFixture",
+              "type": "string"
+            },
+            {
+              "kind": "attribute",
+              "name": "baseRef",
+              "of": "GitHubTreeFixture",
+              "type": "string"
+            },
+            {
+              "kind": "attribute",
+              "name": "responses",
+              "of": "GitHubTreeFixture",
+              "type": "Readonly<Record<string, unknown>>"
+            },
+            {
+              "kind": "attribute",
+              "name": "error",
+              "of": "GitHubTreeFixture",
+              "type": "{ status: number; message: string } | undefined"
+            },
+            {
+              "kind": "function",
+              "name": "createGitHubTreeFixture",
+              "description": "Planned deterministic factory for mocked GitHub tree and error fixtures.",
+              "args": [
+                {
+                  "name": "name",
+                  "type": "string"
+                }
+              ],
+              "returns": "GitHubTreeFixture"
+            }
+          ]
+        }
+      ],
+      "read": [
+        "docs/b2g_production_readiness_snapshot_reference.md",
+        "manifests/drafts/b2g-production-readiness-snapshot.manifest.yaml",
+        "manifests/01-b2g-prs-domain-models-fixtures.manifest.yaml",
+        "manifests/02-b2g-prs-zip-inventory-normalization.manifest.yaml",
+        "src/production-readiness/inventory/zipInventory.ts",
+        "src/services/GitHubApiClient.ts",
+        "src/services/GitHubComparisonService.ts",
+        "src/services/UnifiedGitHubService.ts",
+        "src/services/interfaces/IGitHubApiClient.ts"
+      ]
+    },
+    "test_files": ["src/production-readiness/__tests__/github-base-inventory.test.ts"],
+    "validate_commands": [
+      "pnpm exec vitest run src/production-readiness/__tests__/github-base-inventory.test.ts",
+      "./scripts/maid validate manifests/03-b2g-prs-github-base-inventory.manifest.yaml --mode behavioral",
+      "pnpm lint",
+      "pnpm check"
+    ]
+  }
+}
