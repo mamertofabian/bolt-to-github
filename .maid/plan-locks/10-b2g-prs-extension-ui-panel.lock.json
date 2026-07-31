@@ -1,0 +1,382 @@
+{
+  "manifest_path": "manifests/10-b2g-prs-extension-ui-panel.manifest.yaml",
+  "manifest_hash": "sha256-contract:a0ad168077a46781f4b18361e377ad1d726676869da6ce2cf0d85f26288d11a6",
+  "test_hashes": {
+    "src/popup/components/__tests__/ProductionReadinessPanel.component.test.ts": "sha256:9f4beb4a4e1bfd079692153975d93f51be5d19dffcbf77afb314a279401e600a"
+  },
+  "created_at": "2026-07-31T08:05:57.886629+00:00",
+  "revision": 5,
+  "revisions": [
+    {
+      "prior_manifest_hash": "sha256-contract:3677747383886fb84af4e5f5b5e0c9302836c8588ef0e89e54a27cc14b655ea8",
+      "prior_test_hashes": {
+        "src/popup/components/__tests__/ProductionReadinessPanel.component.test.ts": "sha256:d7120e10cf7aa1b065b2ebfa0598bc7da7428621c04936f68e72d822a28594c7"
+      },
+      "revised_at": "2026-07-31T08:09:10.133601+00:00",
+      "reason": "Declare Svelte exported props alongside the named props interface, exercise that interface explicitly, and normalize component and contract formatting",
+      "agent": null,
+      "contract_delta": {
+        "artifacts_added": [
+          "src/popup/components/ProductionReadinessPanel.svelte:attribute:ProductionReadinessPanel.error",
+          "src/popup/components/ProductionReadinessPanel.svelte:attribute:ProductionReadinessPanel.error:kind=attribute",
+          "src/popup/components/ProductionReadinessPanel.svelte:attribute:ProductionReadinessPanel.error:of=ProductionReadinessPanel",
+          "src/popup/components/ProductionReadinessPanel.svelte:attribute:ProductionReadinessPanel.error:type=string | null",
+          "src/popup/components/ProductionReadinessPanel.svelte:attribute:ProductionReadinessPanel.isLoading",
+          "src/popup/components/ProductionReadinessPanel.svelte:attribute:ProductionReadinessPanel.isLoading:kind=attribute",
+          "src/popup/components/ProductionReadinessPanel.svelte:attribute:ProductionReadinessPanel.isLoading:of=ProductionReadinessPanel",
+          "src/popup/components/ProductionReadinessPanel.svelte:attribute:ProductionReadinessPanel.isLoading:type=boolean",
+          "src/popup/components/ProductionReadinessPanel.svelte:attribute:ProductionReadinessPanel.onCopyReceipt",
+          "src/popup/components/ProductionReadinessPanel.svelte:attribute:ProductionReadinessPanel.onCopyReceipt:kind=attribute",
+          "src/popup/components/ProductionReadinessPanel.svelte:attribute:ProductionReadinessPanel.onCopyReceipt:of=ProductionReadinessPanel",
+          "src/popup/components/ProductionReadinessPanel.svelte:attribute:ProductionReadinessPanel.onCopyReceipt:type=((snapshot: ReadinessSnapshot) => Promise<void> | void)",
+          "src/popup/components/ProductionReadinessPanel.svelte:attribute:ProductionReadinessPanel.onGenerateHandoff",
+          "src/popup/components/ProductionReadinessPanel.svelte:attribute:ProductionReadinessPanel.onGenerateHandoff:kind=attribute",
+          "src/popup/components/ProductionReadinessPanel.svelte:attribute:ProductionReadinessPanel.onGenerateHandoff:of=ProductionReadinessPanel",
+          "src/popup/components/ProductionReadinessPanel.svelte:attribute:ProductionReadinessPanel.onGenerateHandoff:type=((snapshot: ReadinessSnapshot) => Promise<void> | void)",
+          "src/popup/components/ProductionReadinessPanel.svelte:attribute:ProductionReadinessPanel.snapshot",
+          "src/popup/components/ProductionReadinessPanel.svelte:attribute:ProductionReadinessPanel.snapshot:kind=attribute",
+          "src/popup/components/ProductionReadinessPanel.svelte:attribute:ProductionReadinessPanel.snapshot:of=ProductionReadinessPanel",
+          "src/popup/components/ProductionReadinessPanel.svelte:attribute:ProductionReadinessPanel.snapshot:type=ReadinessSnapshot | null"
+        ],
+        "artifacts_removed": [],
+        "files_added": [],
+        "files_removed": [],
+        "validate_commands_added": [],
+        "validate_commands_removed": []
+      }
+    },
+    {
+      "prior_manifest_hash": "sha256-contract:e5d45bdf407a35579778b11ba0d7220991b75b5db29e222a39217eeb43fac393",
+      "prior_test_hashes": {
+        "src/popup/components/__tests__/ProductionReadinessPanel.component.test.ts": "sha256:17cb6ce921dd23b414b91da9e8ff852a17568c5e96e0b386bf6219c02c240f52"
+      },
+      "revised_at": "2026-07-31T08:10:31.808025+00:00",
+      "reason": "Represent Svelte export-let props as file-level public attributes in the MAID contract",
+      "agent": null,
+      "contract_delta": {
+        "artifacts_added": [
+          "src/popup/components/ProductionReadinessPanel.svelte:attribute:error",
+          "src/popup/components/ProductionReadinessPanel.svelte:attribute:error:kind=attribute",
+          "src/popup/components/ProductionReadinessPanel.svelte:attribute:error:type=string | null",
+          "src/popup/components/ProductionReadinessPanel.svelte:attribute:isLoading",
+          "src/popup/components/ProductionReadinessPanel.svelte:attribute:isLoading:kind=attribute",
+          "src/popup/components/ProductionReadinessPanel.svelte:attribute:isLoading:type=boolean",
+          "src/popup/components/ProductionReadinessPanel.svelte:attribute:onCopyReceipt",
+          "src/popup/components/ProductionReadinessPanel.svelte:attribute:onCopyReceipt:kind=attribute",
+          "src/popup/components/ProductionReadinessPanel.svelte:attribute:onCopyReceipt:type=((snapshot: ReadinessSnapshot) => Promise<void> | void)",
+          "src/popup/components/ProductionReadinessPanel.svelte:attribute:onGenerateHandoff",
+          "src/popup/components/ProductionReadinessPanel.svelte:attribute:onGenerateHandoff:kind=attribute",
+          "src/popup/components/ProductionReadinessPanel.svelte:attribute:onGenerateHandoff:type=((snapshot: ReadinessSnapshot) => Promise<void> | void)",
+          "src/popup/components/ProductionReadinessPanel.svelte:attribute:snapshot",
+          "src/popup/components/ProductionReadinessPanel.svelte:attribute:snapshot:kind=attribute",
+          "src/popup/components/ProductionReadinessPanel.svelte:attribute:snapshot:type=ReadinessSnapshot | null"
+        ],
+        "artifacts_removed": [
+          "src/popup/components/ProductionReadinessPanel.svelte:attribute:ProductionReadinessPanel.error",
+          "src/popup/components/ProductionReadinessPanel.svelte:attribute:ProductionReadinessPanel.error:kind=attribute",
+          "src/popup/components/ProductionReadinessPanel.svelte:attribute:ProductionReadinessPanel.error:of=ProductionReadinessPanel",
+          "src/popup/components/ProductionReadinessPanel.svelte:attribute:ProductionReadinessPanel.error:type=string | null",
+          "src/popup/components/ProductionReadinessPanel.svelte:attribute:ProductionReadinessPanel.isLoading",
+          "src/popup/components/ProductionReadinessPanel.svelte:attribute:ProductionReadinessPanel.isLoading:kind=attribute",
+          "src/popup/components/ProductionReadinessPanel.svelte:attribute:ProductionReadinessPanel.isLoading:of=ProductionReadinessPanel",
+          "src/popup/components/ProductionReadinessPanel.svelte:attribute:ProductionReadinessPanel.isLoading:type=boolean",
+          "src/popup/components/ProductionReadinessPanel.svelte:attribute:ProductionReadinessPanel.onCopyReceipt",
+          "src/popup/components/ProductionReadinessPanel.svelte:attribute:ProductionReadinessPanel.onCopyReceipt:kind=attribute",
+          "src/popup/components/ProductionReadinessPanel.svelte:attribute:ProductionReadinessPanel.onCopyReceipt:of=ProductionReadinessPanel",
+          "src/popup/components/ProductionReadinessPanel.svelte:attribute:ProductionReadinessPanel.onCopyReceipt:type=((snapshot: ReadinessSnapshot) => Promise<void> | void)",
+          "src/popup/components/ProductionReadinessPanel.svelte:attribute:ProductionReadinessPanel.onGenerateHandoff",
+          "src/popup/components/ProductionReadinessPanel.svelte:attribute:ProductionReadinessPanel.onGenerateHandoff:kind=attribute",
+          "src/popup/components/ProductionReadinessPanel.svelte:attribute:ProductionReadinessPanel.onGenerateHandoff:of=ProductionReadinessPanel",
+          "src/popup/components/ProductionReadinessPanel.svelte:attribute:ProductionReadinessPanel.onGenerateHandoff:type=((snapshot: ReadinessSnapshot) => Promise<void> | void)",
+          "src/popup/components/ProductionReadinessPanel.svelte:attribute:ProductionReadinessPanel.snapshot",
+          "src/popup/components/ProductionReadinessPanel.svelte:attribute:ProductionReadinessPanel.snapshot:kind=attribute",
+          "src/popup/components/ProductionReadinessPanel.svelte:attribute:ProductionReadinessPanel.snapshot:of=ProductionReadinessPanel",
+          "src/popup/components/ProductionReadinessPanel.svelte:attribute:ProductionReadinessPanel.snapshot:type=ReadinessSnapshot | null"
+        ],
+        "files_added": [],
+        "files_removed": [],
+        "validate_commands_added": [],
+        "validate_commands_removed": []
+      }
+    },
+    {
+      "prior_manifest_hash": "sha256-contract:a0ad168077a46781f4b18361e377ad1d726676869da6ce2cf0d85f26288d11a6",
+      "prior_test_hashes": {
+        "src/popup/components/__tests__/ProductionReadinessPanel.component.test.ts": "sha256:17cb6ce921dd23b414b91da9e8ff852a17568c5e96e0b386bf6219c02c240f52"
+      },
+      "revised_at": "2026-07-31T08:17:59.856939+00:00",
+      "reason": "Address independent review with safe callback failures, stale async cancellation, and accessible busy state regressions",
+      "agent": null,
+      "contract_delta": {
+        "artifacts_added": [],
+        "artifacts_removed": [],
+        "files_added": [],
+        "files_removed": [],
+        "validate_commands_added": [],
+        "validate_commands_removed": []
+      }
+    },
+    {
+      "prior_manifest_hash": "sha256-contract:a0ad168077a46781f4b18361e377ad1d726676869da6ce2cf0d85f26288d11a6",
+      "prior_test_hashes": {
+        "src/popup/components/__tests__/ProductionReadinessPanel.component.test.ts": "sha256:9ad7aae84bce6a9e63f97ebb5d7fdfc38cb0bdbdf29e30825ab1cad08cb88bb7"
+      },
+      "revised_at": "2026-07-31T08:21:19.651170+00:00",
+      "reason": "Refresh the plan lock after formatting the reviewer-driven behavioral test without changing its assertions",
+      "agent": null,
+      "contract_delta": {
+        "artifacts_added": [],
+        "artifacts_removed": [],
+        "files_added": [],
+        "files_removed": [],
+        "validate_commands_added": [],
+        "validate_commands_removed": []
+      }
+    }
+  ],
+  "red_evidence": {
+    "red": true,
+    "captured_at": "2026-07-31T08:21:33.909357+00:00",
+    "commands": [
+      {
+        "command": "pnpm exec vitest run src/popup/components/__tests__/ProductionReadinessPanel.component.test.ts",
+        "exit_code": 1,
+        "output_tail": " Test Files  1 failed (1)\n      Tests  no tests\n   Start at  16:21:20\n   Duration  595ms (transform 36ms, setup 57ms, collect 0ms, tests 0ms, environment 194ms, prepare 40ms)\n\n\n\u23af\u23af\u23af\u23af\u23af\u23af Failed Suites 1 \u23af\u23af\u23af\u23af\u23af\u23af\u23af\n\n FAIL  src/popup/components/__tests__/ProductionReadinessPanel.component.test.ts [ src/popup/components/__tests__/ProductionReadinessPanel.component.test.ts ]\nError: Failed to resolve import \"../ProductionReadinessPanel.svelte\" from \"src/popup/components/__tests__/ProductionReadinessPanel.component.test.ts\". Does the file exist?\n \u276f TransformPluginContext._formatError node_modules/.pnpm/vite@5.4.21_@types+node@22.19.18/node_modules/vite/dist/node/chunks/dep-BK3b2jBa.js:49258:41\n \u276f TransformPluginContext.error node_modules/.pnpm/vite@5.4.21_@types+node@22.19.18/node_modules/vite/dist/node/chunks/dep-BK3b2jBa.js:49253:16\n \u276f normalizeUrl node_modules/.pnpm/vite@5.4.21_@types+node@22.19.18/node_modules/vite/dist/node/chunks/dep-BK3b2jBa.js:64307:23\n \u276f async file:/home/atomrem/projects/codefrost-dev/bolt-to-github/node_modules/.pnpm/vite@5.4.21_@types+node@22.19.18/node_modules/vite/dist/node/chunks/dep-BK3b2jBa.js:64439:39\n \u276f TransformPluginContext.transform node_modules/.pnpm/vite@5.4.21_@types+node@22.19.18/node_modules/vite/dist/node/chunks/dep-BK3b2jBa.js:64366:7\n \u276f PluginContainer.transform node_modules/.pnpm/vite@5.4.21_@types+node@22.19.18/node_modules/vite/dist/node/chunks/dep-BK3b2jBa.js:49099:18\n \u276f loadAndTransform node_modules/.pnpm/vite@5.4.21_@types+node@22.19.18/node_modules/vite/dist/node/chunks/dep-BK3b2jBa.js:51978:27\n\n\u23af\u23af\u23af\u23af\u23af\u23af\u23af\u23af\u23af\u23af\u23af\u23af\u23af\u23af\u23af\u23af\u23af\u23af\u23af\u23af\u23af\u23af\u23af\u23af[1/1]\u23af\n",
+        "classification": "red"
+      },
+      {
+        "command": "./scripts/maid validate manifests/10-b2g-prs-extension-ui-panel.manifest.yaml --mode behavioral",
+        "exit_code": 0,
+        "output_tail": "PASS 10-b2g-prs-extension-ui-panel\n  Mode: behavioral\n  Duration: 167ms\n  Warnings (3):\n    E110 Manifest 'prepare-v2-0-0-github-app-release' supersedes 'release-v1-3-21' but drops artifact 'PackageVersion_1_3_21' (namespace) at package.json\n      Location: /home/atomrem/projects/codefrost-dev/bolt-to-github/manifests/prepare-v2-0-0-github-app-release.manifest.yaml\n      Suggestion: Re-declare the artifact in the replacement manifest, list its file under files.delete, or list the symbol under removed_artifacts.\n    E110 Manifest 'prepare-v2-0-0-github-app-release' supersedes 'release-v1-3-21' but drops artifact 'ChromeManifestVersion_1_3_21' (namespace) at manifest.json\n      Location: /home/atomrem/projects/codefrost-dev/bolt-to-github/manifests/prepare-v2-0-0-github-app-release.manifest.yaml\n      Suggestion: Re-declare the artifact in the replacement manifest, list its file under files.delete, or list the symbol under removed_artifacts.\n    E110 Manifest 'prepare-v2-0-0-github-app-release' supersedes 'release-v1-3-21' but drops artifact 'DevelopmentGuideVersion_1_3_21' (namespace) at CLAUDE.md\n      Location: /home/atomrem/projects/codefrost-dev/bolt-to-github/manifests/prepare-v2-0-0-github-app-release.manifest.yaml\n      Suggestion: Re-declare the artifact in the replacement manifest, list its file under files.delete, or list the symbol under removed_artifacts.",
+        "classification": "not_red"
+      },
+      {
+        "command": "pnpm lint",
+        "exit_code": 0,
+        "output_tail": "\n> bolt-to-github@2.0.0 lint /home/atomrem/projects/codefrost-dev/bolt-to-github\n> eslint \"src/**/*.{js,ts,svelte}\"\n",
+        "classification": "not_red"
+      },
+      {
+        "command": "pnpm check",
+        "exit_code": 1,
+        "output_tail": "\n> bolt-to-github@2.0.0 check /home/atomrem/projects/codefrost-dev/bolt-to-github\n> svelte-check --tsconfig ./tsconfig.json\n\n\n====================================\nLoading svelte-check in workspace: /home/atomrem/projects/codefrost-dev/bolt-to-github\nGetting Svelte diagnostics...\n\n/home/atomrem/projects/codefrost-dev/bolt-to-github/src/popup/components/__tests__/ProductionReadinessPanel.component.test.ts:13:8\nError: Cannot find module '../ProductionReadinessPanel.svelte' or its corresponding type declarations. \n  type ProductionReadinessPanelProps,\n} from '../ProductionReadinessPanel.svelte';\nimport productionReadinessPanelSource from '../ProductionReadinessPanel.svelte?raw';\n\n\n====================================\nsvelte-check found 1 error and 0 warnings in 1 file\n\u2009ELIFECYCLE\u2009 Command failed with exit code 1.",
+        "classification": "red"
+      }
+    ]
+  },
+  "legacy_baseline": null,
+  "agent": null,
+  "_manifest_contract": {
+    "artifacts": [
+      "src/popup/components/ProductionReadinessPanel.svelte:attribute:ProductionReadinessPanelProps.error",
+      "src/popup/components/ProductionReadinessPanel.svelte:attribute:ProductionReadinessPanelProps.error:kind=attribute",
+      "src/popup/components/ProductionReadinessPanel.svelte:attribute:ProductionReadinessPanelProps.error:of=ProductionReadinessPanelProps",
+      "src/popup/components/ProductionReadinessPanel.svelte:attribute:ProductionReadinessPanelProps.error:type=string | null | undefined",
+      "src/popup/components/ProductionReadinessPanel.svelte:attribute:ProductionReadinessPanelProps.isLoading",
+      "src/popup/components/ProductionReadinessPanel.svelte:attribute:ProductionReadinessPanelProps.isLoading:kind=attribute",
+      "src/popup/components/ProductionReadinessPanel.svelte:attribute:ProductionReadinessPanelProps.isLoading:of=ProductionReadinessPanelProps",
+      "src/popup/components/ProductionReadinessPanel.svelte:attribute:ProductionReadinessPanelProps.isLoading:type=boolean | undefined",
+      "src/popup/components/ProductionReadinessPanel.svelte:attribute:ProductionReadinessPanelProps.onCopyReceipt",
+      "src/popup/components/ProductionReadinessPanel.svelte:attribute:ProductionReadinessPanelProps.onCopyReceipt:kind=attribute",
+      "src/popup/components/ProductionReadinessPanel.svelte:attribute:ProductionReadinessPanelProps.onCopyReceipt:of=ProductionReadinessPanelProps",
+      "src/popup/components/ProductionReadinessPanel.svelte:attribute:ProductionReadinessPanelProps.onCopyReceipt:type=((snapshot: ReadinessSnapshot) => Promise<void> | void)",
+      "src/popup/components/ProductionReadinessPanel.svelte:attribute:ProductionReadinessPanelProps.onGenerateHandoff",
+      "src/popup/components/ProductionReadinessPanel.svelte:attribute:ProductionReadinessPanelProps.onGenerateHandoff:kind=attribute",
+      "src/popup/components/ProductionReadinessPanel.svelte:attribute:ProductionReadinessPanelProps.onGenerateHandoff:of=ProductionReadinessPanelProps",
+      "src/popup/components/ProductionReadinessPanel.svelte:attribute:ProductionReadinessPanelProps.onGenerateHandoff:type=((snapshot: ReadinessSnapshot) => Promise<void> | void)",
+      "src/popup/components/ProductionReadinessPanel.svelte:attribute:ProductionReadinessPanelProps.snapshot",
+      "src/popup/components/ProductionReadinessPanel.svelte:attribute:ProductionReadinessPanelProps.snapshot:kind=attribute",
+      "src/popup/components/ProductionReadinessPanel.svelte:attribute:ProductionReadinessPanelProps.snapshot:of=ProductionReadinessPanelProps",
+      "src/popup/components/ProductionReadinessPanel.svelte:attribute:ProductionReadinessPanelProps.snapshot:type=ReadinessSnapshot | null",
+      "src/popup/components/ProductionReadinessPanel.svelte:attribute:error",
+      "src/popup/components/ProductionReadinessPanel.svelte:attribute:error:kind=attribute",
+      "src/popup/components/ProductionReadinessPanel.svelte:attribute:error:type=string | null",
+      "src/popup/components/ProductionReadinessPanel.svelte:attribute:isLoading",
+      "src/popup/components/ProductionReadinessPanel.svelte:attribute:isLoading:kind=attribute",
+      "src/popup/components/ProductionReadinessPanel.svelte:attribute:isLoading:type=boolean",
+      "src/popup/components/ProductionReadinessPanel.svelte:attribute:onCopyReceipt",
+      "src/popup/components/ProductionReadinessPanel.svelte:attribute:onCopyReceipt:kind=attribute",
+      "src/popup/components/ProductionReadinessPanel.svelte:attribute:onCopyReceipt:type=((snapshot: ReadinessSnapshot) => Promise<void> | void)",
+      "src/popup/components/ProductionReadinessPanel.svelte:attribute:onGenerateHandoff",
+      "src/popup/components/ProductionReadinessPanel.svelte:attribute:onGenerateHandoff:kind=attribute",
+      "src/popup/components/ProductionReadinessPanel.svelte:attribute:onGenerateHandoff:type=((snapshot: ReadinessSnapshot) => Promise<void> | void)",
+      "src/popup/components/ProductionReadinessPanel.svelte:attribute:snapshot",
+      "src/popup/components/ProductionReadinessPanel.svelte:attribute:snapshot:kind=attribute",
+      "src/popup/components/ProductionReadinessPanel.svelte:attribute:snapshot:type=ReadinessSnapshot | null",
+      "src/popup/components/ProductionReadinessPanel.svelte:function:ProductionReadinessPanel",
+      "src/popup/components/ProductionReadinessPanel.svelte:function:ProductionReadinessPanel:arg=props:type=ProductionReadinessPanelProps:default=None",
+      "src/popup/components/ProductionReadinessPanel.svelte:function:ProductionReadinessPanel:kind=function",
+      "src/popup/components/ProductionReadinessPanel.svelte:function:ProductionReadinessPanel:returns=Svelte component instance",
+      "src/popup/components/ProductionReadinessPanel.svelte:interface:ProductionReadinessPanelProps",
+      "src/popup/components/ProductionReadinessPanel.svelte:interface:ProductionReadinessPanelProps:kind=interface",
+      "src/popup/components/__tests__/ProductionReadinessPanel.component.test.ts:does not block existing export flow by default",
+      "src/popup/components/__tests__/ProductionReadinessPanel.component.test.ts:does not block existing export flow by default:kind=test_function",
+      "src/popup/components/__tests__/ProductionReadinessPanel.component.test.ts:invokes copy receipt and generate handoff actions",
+      "src/popup/components/__tests__/ProductionReadinessPanel.component.test.ts:invokes copy receipt and generate handoff actions:kind=test_function",
+      "src/popup/components/__tests__/ProductionReadinessPanel.component.test.ts:renders Green Yellow and Red readiness states with confidence",
+      "src/popup/components/__tests__/ProductionReadinessPanel.component.test.ts:renders Green Yellow and Red readiness states with confidence:kind=test_function",
+      "src/popup/components/__tests__/ProductionReadinessPanel.component.test.ts:renders loading and error states without native dialogs",
+      "src/popup/components/__tests__/ProductionReadinessPanel.component.test.ts:renders loading and error states without native dialogs:kind=test_function",
+      "src/popup/components/__tests__/ProductionReadinessPanel.component.test.ts:renders partial snapshots with visible limitations",
+      "src/popup/components/__tests__/ProductionReadinessPanel.component.test.ts:renders partial snapshots with visible limitations:kind=test_function"
+    ],
+    "files": {
+      "create": [
+        "src/popup/components/ProductionReadinessPanel.svelte",
+        "src/popup/components/__tests__/ProductionReadinessPanel.component.test.ts"
+      ],
+      "edit": [],
+      "read": [
+        "docs/b2g_production_readiness_snapshot_reference.md",
+        "manifests/08-b2g-prs-readiness-composer.manifest.yaml",
+        "manifests/09-b2g-prs-report-generators.manifest.yaml",
+        "manifests/drafts/b2g-production-readiness-snapshot.manifest.yaml",
+        "src/lib/components/ui/button.svelte",
+        "src/popup/App.svelte",
+        "src/popup/components/FileChangesModal.svelte",
+        "src/popup/components/HomeTabContent.svelte",
+        "src/popup/components/TabsView.svelte",
+        "src/popup/types.ts",
+        "src/production-readiness/domain.ts",
+        "src/production-readiness/reports/reportGenerators.ts",
+        "src/production-readiness/test-fixtures/prsFixtures.ts"
+      ],
+      "scope": [],
+      "delete": [],
+      "snapshot": []
+    },
+    "file_contract": {
+      "create": [
+        {
+          "path": "src/popup/components/ProductionReadinessPanel.svelte",
+          "artifacts": [
+            {
+              "kind": "function",
+              "name": "ProductionReadinessPanel",
+              "description": "Renders the latest readiness snapshot with state badge, confidence,\nkey metrics, top concerns, safe-looking areas, limitations, evidence\ndetails, and actions for copying receipts and generating ADC Fix\nhandoff reports.\n",
+              "args": [
+                {
+                  "name": "props",
+                  "type": "ProductionReadinessPanelProps"
+                }
+              ],
+              "returns": "Svelte component instance"
+            },
+            {
+              "kind": "interface",
+              "name": "ProductionReadinessPanelProps",
+              "description": "Snapshot, degraded state, and deliberate report actions accepted by the presentational panel."
+            },
+            {
+              "kind": "attribute",
+              "name": "snapshot",
+              "of": "ProductionReadinessPanelProps",
+              "type": "ReadinessSnapshot | null"
+            },
+            {
+              "kind": "attribute",
+              "name": "isLoading",
+              "of": "ProductionReadinessPanelProps",
+              "type": "boolean | undefined"
+            },
+            {
+              "kind": "attribute",
+              "name": "error",
+              "of": "ProductionReadinessPanelProps",
+              "type": "string | null | undefined"
+            },
+            {
+              "kind": "attribute",
+              "name": "onCopyReceipt",
+              "of": "ProductionReadinessPanelProps",
+              "type": "((snapshot: ReadinessSnapshot) => Promise<void> | void)"
+            },
+            {
+              "kind": "attribute",
+              "name": "onGenerateHandoff",
+              "of": "ProductionReadinessPanelProps",
+              "type": "((snapshot: ReadinessSnapshot) => Promise<void> | void)"
+            },
+            {
+              "kind": "attribute",
+              "name": "snapshot",
+              "type": "ReadinessSnapshot | null"
+            },
+            {
+              "kind": "attribute",
+              "name": "isLoading",
+              "type": "boolean"
+            },
+            {
+              "kind": "attribute",
+              "name": "error",
+              "type": "string | null"
+            },
+            {
+              "kind": "attribute",
+              "name": "onCopyReceipt",
+              "type": "((snapshot: ReadinessSnapshot) => Promise<void> | void)"
+            },
+            {
+              "kind": "attribute",
+              "name": "onGenerateHandoff",
+              "type": "((snapshot: ReadinessSnapshot) => Promise<void> | void)"
+            }
+          ]
+        },
+        {
+          "path": "src/popup/components/__tests__/ProductionReadinessPanel.component.test.ts",
+          "artifacts": [
+            {
+              "kind": "test_function",
+              "name": "renders Green Yellow and Red readiness states with confidence",
+              "description": "Planned component test asserting state, confidence, headline, and\nrecommended action render for the three fixture snapshots.\n"
+            },
+            {
+              "kind": "test_function",
+              "name": "renders partial snapshots with visible limitations",
+              "description": "Planned component test proving low confidence and missing-data\nlimitations are visible, not hidden in developer-only output.\n"
+            },
+            {
+              "kind": "test_function",
+              "name": "invokes copy receipt and generate handoff actions",
+              "description": "Planned component test clicking the receipt and handoff controls and\nverifying callbacks receive the current snapshot.\n"
+            },
+            {
+              "kind": "test_function",
+              "name": "does not block existing export flow by default",
+              "description": "Planned component or integration test verifying Red state displays a\nwarning but does not disable existing export controls unless\nallowBlockingExport is explicitly true.\n"
+            },
+            {
+              "kind": "test_function",
+              "name": "renders loading and error states without native dialogs",
+              "description": "Planned component test ensuring degraded UI states are visible and\nno window.alert, window.confirm, or window.prompt behavior is used.\n"
+            }
+          ]
+        }
+      ],
+      "read": [
+        "docs/b2g_production_readiness_snapshot_reference.md",
+        "manifests/drafts/b2g-production-readiness-snapshot.manifest.yaml",
+        "manifests/08-b2g-prs-readiness-composer.manifest.yaml",
+        "manifests/09-b2g-prs-report-generators.manifest.yaml",
+        "src/production-readiness/domain.ts",
+        "src/production-readiness/test-fixtures/prsFixtures.ts",
+        "src/production-readiness/reports/reportGenerators.ts",
+        "src/popup/App.svelte",
+        "src/popup/components/HomeTabContent.svelte",
+        "src/popup/components/FileChangesModal.svelte",
+        "src/popup/components/TabsView.svelte",
+        "src/popup/types.ts",
+        "src/lib/components/ui/button.svelte"
+      ]
+    },
+    "test_files": ["src/popup/components/__tests__/ProductionReadinessPanel.component.test.ts"],
+    "validate_commands": [
+      "pnpm exec vitest run src/popup/components/__tests__/ProductionReadinessPanel.component.test.ts",
+      "./scripts/maid validate manifests/10-b2g-prs-extension-ui-panel.manifest.yaml --mode behavioral",
+      "pnpm lint",
+      "pnpm check"
+    ]
+  }
+}

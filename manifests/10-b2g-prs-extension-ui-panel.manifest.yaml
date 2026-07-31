@@ -1,0 +1,268 @@
+# draft-kind: child-planning-inventory
+# MAID manifest - a machine-checked contract for one change.
+# Declares the intent, the files it may touch, and the commands that verify it.
+# Nothing here is needed to build or run this project; safe to ignore.
+# What it is: https://github.com/mamertofabian/maid-runner
+schema: '2'
+goal: |
+  Display PRS readiness state, top metrics, top concerns, safe-looking areas,
+  evidence details, limitations, and report actions in the extension UI.
+description: |
+  Child draft for the b2g-production-readiness-snapshot parent epic, derived
+  from docs/b2g_production_readiness_snapshot_reference.md sections 4, 5, 10,
+  14, 15, 16, 17, and 19.3 Child 13.
+
+  Promoted after the composer and report generator contracts established the
+  snapshot and user-initiated action boundaries. This slice creates the
+  reusable popup panel and its complete component contract. Mounting it into
+  App.svelte remains deferred until a later orchestration slice provides live
+  snapshot state; this component does not invent storage, analysis triggers, or
+  export-flow blocking.
+
+  Rationale:
+  - The panel should make Green, Yellow, Red, confidence, and limitations clear
+    without claiming to be a security audit or code review.
+  - The default MVP should warn, not block export, unless a separate settings
+    draft explicitly adds blocking behavior.
+  - Copy receipt and generate handoff are deliberate user actions. External
+    ADC Fix navigation must be explicit.
+type: feature
+files:
+  create:
+    - path: src/popup/components/ProductionReadinessPanel.svelte
+      artifacts:
+        - kind: function
+          name: ProductionReadinessPanel
+          args:
+            - name: props
+              type: ProductionReadinessPanelProps
+          returns: Svelte component instance
+          description: |
+            Renders the latest readiness snapshot with state badge, confidence,
+            key metrics, top concerns, safe-looking areas, limitations, evidence
+            details, and actions for copying receipts and generating ADC Fix
+            handoff reports.
+        - kind: interface
+          name: ProductionReadinessPanelProps
+          description: Snapshot, degraded state, and deliberate report actions
+            accepted by the presentational panel.
+        - kind: attribute
+          of: ProductionReadinessPanelProps
+          name: snapshot
+          type: ReadinessSnapshot | null
+        - kind: attribute
+          of: ProductionReadinessPanelProps
+          name: isLoading
+          type: boolean | undefined
+        - kind: attribute
+          of: ProductionReadinessPanelProps
+          name: error
+          type: string | null | undefined
+        - kind: attribute
+          of: ProductionReadinessPanelProps
+          name: onCopyReceipt
+          type: '((snapshot: ReadinessSnapshot) => Promise<void> | void)'
+        - kind: attribute
+          of: ProductionReadinessPanelProps
+          name: onGenerateHandoff
+          type: '((snapshot: ReadinessSnapshot) => Promise<void> | void)'
+        - kind: attribute
+          name: snapshot
+          type: ReadinessSnapshot | null
+        - kind: attribute
+          name: isLoading
+          type: boolean
+        - kind: attribute
+          name: error
+          type: string | null
+        - kind: attribute
+          name: onCopyReceipt
+          type: '((snapshot: ReadinessSnapshot) => Promise<void> | void)'
+        - kind: attribute
+          name: onGenerateHandoff
+          type: '((snapshot: ReadinessSnapshot) => Promise<void> | void)'
+    - path: src/popup/components/__tests__/ProductionReadinessPanel.component.test.ts
+      artifacts:
+        - kind: test_function
+          name: renders Green Yellow and Red readiness states with confidence
+          description: |
+            Planned component test asserting state, confidence, headline, and
+            recommended action render for the three fixture snapshots.
+        - kind: test_function
+          name: renders partial snapshots with visible limitations
+          description: |
+            Planned component test proving low confidence and missing-data
+            limitations are visible, not hidden in developer-only output.
+        - kind: test_function
+          name: invokes copy receipt and generate handoff actions
+          description: |
+            Planned component test clicking the receipt and handoff controls and
+            verifying callbacks receive the current snapshot.
+        - kind: test_function
+          name: does not block existing export flow by default
+          description: |
+            Planned component or integration test verifying Red state displays a
+            warning but does not disable existing export controls unless
+            allowBlockingExport is explicitly true.
+        - kind: test_function
+          name: renders loading and error states without native dialogs
+          description: |
+            Planned component test ensuring degraded UI states are visible and
+            no window.alert, window.confirm, or window.prompt behavior is used.
+  read:
+    - docs/b2g_production_readiness_snapshot_reference.md
+    - manifests/drafts/b2g-production-readiness-snapshot.manifest.yaml
+    - manifests/08-b2g-prs-readiness-composer.manifest.yaml
+    - manifests/09-b2g-prs-report-generators.manifest.yaml
+    - src/production-readiness/domain.ts
+    - src/production-readiness/test-fixtures/prsFixtures.ts
+    - src/production-readiness/reports/reportGenerators.ts
+    - src/popup/App.svelte
+    - src/popup/components/HomeTabContent.svelte
+    - src/popup/components/FileChangesModal.svelte
+    - src/popup/components/TabsView.svelte
+    - src/popup/types.ts
+    - src/lib/components/ui/button.svelte
+validate:
+  - pnpm exec vitest run
+    src/popup/components/__tests__/ProductionReadinessPanel.component.test.ts
+  - ./scripts/maid validate manifests/10-b2g-prs-extension-ui-panel.manifest.yaml
+    --mode behavioral
+  - pnpm lint
+  - pnpm check
+created: '2026-07-31T08:04:51Z'
+metadata:
+  tags:
+    - production-readiness
+    - popup-ui
+    - adc-fix-handoff
+    - degraded-states
+  priority: high
+  status: implementation
+  promotable: true
+  parent_epic: b2g-production-readiness-snapshot
+  source_document: docs/b2g_production_readiness_snapshot_reference.md
+  child_slug: 10-b2g-prs-extension-ui-panel
+  sequence: 10
+  depends_on:
+    - 08-b2g-prs-readiness-composer
+    - 09-b2g-prs-report-generators
+  integration_decision: reusable component only; mounting waits for live
+    snapshot orchestration
+temptations:
+  - risk: Do not present the snapshot as a security audit, AI review, or
+      production guarantee.
+    instead: Render evidence-based language, confidence, and static-analysis
+      limitations from the snapshot/report contracts.
+  - risk: Do not block export by default when the snapshot is Red.
+    instead: Show a clear warning while keeping report actions available; this
+      component must not own, call, or disable existing export controls.
+  - risk: Do not use native alert, confirm, or prompt dialogs for copy, handoff,
+      error, or degraded states.
+    instead: Use visible Svelte UI states, existing button patterns, and
+      callback-driven actions.
+  - risk: Do not hide critical safety facts behind Pro gating.
+    instead: Always render critical state, top concerns, and redaction-safe
+      limitations; gate only deeper artifacts if a separate monetization draft
+      requires it.
+outcome:
+  status: completed
+  completed_at: '2026-07-31T08:24:29Z'
+  summary: |
+    PRS now has a reusable popup panel that renders Green, Yellow, and Red
+    readiness states, confidence, comparison metrics, top concerns,
+    safe-looking areas, redaction-safe evidence, and visible limitations.
+    Loading, error, and empty states remain explicit, while Red recommendations
+    do not block the existing export flow.
+
+    Copy-receipt and ADC Fix handoff controls use deliberate callbacks with
+    accessible busy states and visible success or safe fixed-error feedback.
+    Async completions are tied to the current panel inputs so a result from an
+    older snapshot cannot appear beneath a replacement snapshot.
+  rationale: |
+    The slice stays presentational because live snapshot orchestration is not
+    yet available in the popup. A typed component boundary lets a later slice
+    mount the panel without inventing storage, analysis triggers, or export
+    ownership here, while keeping privacy and degraded-state behavior testable.
+  lessons:
+    - lesson_type: discard-stale-ui-action-results
+      summary: |
+        Snapshot-scoped async actions need a generation guard and input-change
+        reset so completions cannot attach success or failure feedback to a
+        newer readiness result.
+      tags: [svelte, async, correctness]
+      paths:
+        - src/popup/components/ProductionReadinessPanel.svelte
+        - src/popup/components/__tests__/ProductionReadinessPanel.component.test.ts
+    - lesson_type: keep-callback-errors-user-safe
+      summary: |
+        UI callbacks may reject with internal or sensitive context, so the
+        panel displays fixed action-specific failure copy instead of raw error
+        messages.
+      tags: [privacy, errors, ui]
+      paths:
+        - src/popup/components/ProductionReadinessPanel.svelte
+    - lesson_type: defer-mounting-until-orchestration-exists
+      summary: |
+        A reusable typed panel can establish the UI contract without creating
+        speculative persistence, analysis triggers, or export coupling before
+        the live snapshot orchestration slice exists.
+      tags: [architecture, popup-ui, scope]
+      paths:
+        - src/popup/components/ProductionReadinessPanel.svelte
+  review_notes:
+    - source: independent reviewer /root/slice10_implementation_reviewer
+      severity: needs-changes
+      summary: |
+        Revision 3 exposed raw callback error messages, allowed stale async
+        feedback after snapshot replacement, and hid busy progress behind fixed
+        accessible names.
+    - source: independent reviewer /root/slice10_revision4_reviewer
+      severity: ready
+      summary: |
+        Revision 5 had no findings. The reviewer confirmed safe callback
+        failures, generation-guarded async results, accessible busy controls,
+        focused regression coverage, and the intentional component-only scope.
+  validation:
+    - command:
+        [
+          pnpm,
+          exec,
+          vitest,
+          run,
+          src/popup/components/__tests__/ProductionReadinessPanel.component.test.ts,
+        ]
+      status: passed
+      summary: All five panel state, action, degraded-state, and safety behaviors passed.
+    - command:
+        [./scripts/maid, test, --manifest, manifests/10-b2g-prs-extension-ui-panel.manifest.yaml]
+      status: passed
+      summary: All four manifest-declared commands passed.
+    - command: [pnpm, test:ci]
+      status: passed
+      summary: The complete Vitest suite passed 207 files and 4,041 tests.
+    - command: [pnpm, build]
+      status: passed
+      summary: The production extension build completed with only two known
+        Vite dynamic/static import warnings.
+    - command:
+        [
+          ./scripts/maid,
+          verify,
+          --manifest-dir,
+          manifests,
+          --require-plan-lock,
+          --require-red-evidence,
+          --plan-lock-scope,
+          task,
+          --file-tracking-scope,
+          task,
+          --include-tests,
+          --since,
+          26fdb40,
+          --advisory,
+          --summary,
+        ]
+      status: passed
+      summary: All nine task-scoped verification gates passed with only three
+        unrelated pre-existing release-chain E110 warnings.
