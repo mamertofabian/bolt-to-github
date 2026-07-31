@@ -1,0 +1,447 @@
+{
+  "manifest_path": "manifests/08-b2g-prs-readiness-composer.manifest.yaml",
+  "manifest_hash": "sha256-contract:46397b2afd0c7f6a83fe094fa2067fe74cb15ed0de9a9422ea4006c75b39d0b9",
+  "test_hashes": {
+    "src/production-readiness/composer/__tests__/readinessComposer.test.ts": "sha256:f617ca1a00db4f7ab1104d65de4adc33646cf811b934446e5d8b029b291b5387"
+  },
+  "created_at": "2026-07-31T06:57:03.127155+00:00",
+  "revision": 5,
+  "revisions": [
+    {
+      "prior_manifest_hash": "sha256-contract:4bdc1aa5b56858fd9ea559493b4f84cca07b1103f1c9f37d94960ccbadd0167d",
+      "prior_test_hashes": {
+        "src/production-readiness/composer/__tests__/readinessComposer.test.ts": "sha256:bccc83aeaadb375fe462d044d141cc51dfec9c8fab14e0d37925dd0653ac7bf6"
+      },
+      "revised_at": "2026-07-31T06:59:26.562954+00:00",
+      "reason": "Add a locked zero-limit concern-selection boundary so callers can intentionally suppress the concern list without receiving one item",
+      "agent": null,
+      "contract_delta": {
+        "artifacts_added": [],
+        "artifacts_removed": [],
+        "files_added": [],
+        "files_removed": [],
+        "validate_commands_added": [],
+        "validate_commands_removed": []
+      }
+    },
+    {
+      "prior_manifest_hash": "sha256-contract:4bdc1aa5b56858fd9ea559493b4f84cca07b1103f1c9f37d94960ccbadd0167d",
+      "prior_test_hashes": {
+        "src/production-readiness/composer/__tests__/readinessComposer.test.ts": "sha256:3d0e9b3add528571209b43d9a72040709763efd869af6a5134656725c5894f6a"
+      },
+      "revised_at": "2026-07-31T07:00:28.061731+00:00",
+      "reason": "Align the selectTopConcerns options parameter declaration with MAID optional-parameter introspection while preserving the locked behavioral contract",
+      "agent": null,
+      "contract_delta": {
+        "artifacts_added": [
+          "src/production-readiness/composer/readinessComposer.ts:function:selectTopConcerns:arg=options:type={ limit?: number }:default=None"
+        ],
+        "artifacts_removed": [
+          "src/production-readiness/composer/readinessComposer.ts:function:selectTopConcerns:arg=options:type={ limit?: number } | undefined:default=None"
+        ],
+        "files_added": [],
+        "files_removed": [],
+        "validate_commands_added": [],
+        "validate_commands_removed": []
+      }
+    },
+    {
+      "prior_manifest_hash": "sha256-contract:46397b2afd0c7f6a83fe094fa2067fe74cb15ed0de9a9422ea4006c75b39d0b9",
+      "prior_test_hashes": {
+        "src/production-readiness/composer/__tests__/readinessComposer.test.ts": "sha256:3d0e9b3add528571209b43d9a72040709763efd869af6a5134656725c5894f6a"
+      },
+      "revised_at": "2026-07-31T07:09:03.655527+00:00",
+      "reason": "Address independent implementation review: account for missing detectors, gate comparison-derived safe claims, and make concern and evidence ordering deterministic",
+      "agent": null,
+      "contract_delta": {
+        "artifacts_added": [],
+        "artifacts_removed": [],
+        "files_added": [],
+        "files_removed": [],
+        "validate_commands_added": [],
+        "validate_commands_removed": []
+      }
+    },
+    {
+      "prior_manifest_hash": "sha256-contract:46397b2afd0c7f6a83fe094fa2067fe74cb15ed0de9a9422ea4006c75b39d0b9",
+      "prior_test_hashes": {
+        "src/production-readiness/composer/__tests__/readinessComposer.test.ts": "sha256:07446152226c6eee14225125db736a925f5902f8018dd4423908f769696780e3"
+      },
+      "revised_at": "2026-07-31T07:13:49.005477+00:00",
+      "reason": "Address revision-4 review by suppressing safe-looking claims when relevant history, zip scan, large-file, detector, GitHub, or rate-limit data is incomplete",
+      "agent": null,
+      "contract_delta": {
+        "artifacts_added": [],
+        "artifacts_removed": [],
+        "files_added": [],
+        "files_removed": [],
+        "validate_commands_added": [],
+        "validate_commands_removed": []
+      }
+    }
+  ],
+  "red_evidence": {
+    "red": true,
+    "captured_at": "2026-07-31T07:14:04.022015+00:00",
+    "commands": [
+      {
+        "command": "pnpm exec vitest run src/production-readiness/composer/__tests__/readinessComposer.test.ts",
+        "exit_code": 1,
+        "output_tail": " Test Files  1 failed (1)\n      Tests  no tests\n   Start at  15:13:49\n   Duration  644ms (transform 33ms, setup 53ms, collect 0ms, tests 0ms, environment 192ms, prepare 37ms)\n\n\n\u23af\u23af\u23af\u23af\u23af\u23af Failed Suites 1 \u23af\u23af\u23af\u23af\u23af\u23af\u23af\n\n FAIL  src/production-readiness/composer/__tests__/readinessComposer.test.ts [ src/production-readiness/composer/__tests__/readinessComposer.test.ts ]\nError: Failed to resolve import \"../readinessComposer\" from \"src/production-readiness/composer/__tests__/readinessComposer.test.ts\". Does the file exist?\n \u276f TransformPluginContext._formatError node_modules/.pnpm/vite@5.4.21_@types+node@22.19.18/node_modules/vite/dist/node/chunks/dep-BK3b2jBa.js:49258:41\n \u276f TransformPluginContext.error node_modules/.pnpm/vite@5.4.21_@types+node@22.19.18/node_modules/vite/dist/node/chunks/dep-BK3b2jBa.js:49253:16\n \u276f normalizeUrl node_modules/.pnpm/vite@5.4.21_@types+node@22.19.18/node_modules/vite/dist/node/chunks/dep-BK3b2jBa.js:64307:23\n \u276f async file:/home/atomrem/projects/codefrost-dev/bolt-to-github/node_modules/.pnpm/vite@5.4.21_@types+node@22.19.18/node_modules/vite/dist/node/chunks/dep-BK3b2jBa.js:64439:39\n \u276f TransformPluginContext.transform node_modules/.pnpm/vite@5.4.21_@types+node@22.19.18/node_modules/vite/dist/node/chunks/dep-BK3b2jBa.js:64366:7\n \u276f PluginContainer.transform node_modules/.pnpm/vite@5.4.21_@types+node@22.19.18/node_modules/vite/dist/node/chunks/dep-BK3b2jBa.js:49099:18\n \u276f loadAndTransform node_modules/.pnpm/vite@5.4.21_@types+node@22.19.18/node_modules/vite/dist/node/chunks/dep-BK3b2jBa.js:51978:27\n\n\u23af\u23af\u23af\u23af\u23af\u23af\u23af\u23af\u23af\u23af\u23af\u23af\u23af\u23af\u23af\u23af\u23af\u23af\u23af\u23af\u23af\u23af\u23af\u23af[1/1]\u23af\n",
+        "classification": "red"
+      },
+      {
+        "command": "./scripts/maid validate manifests/08-b2g-prs-readiness-composer.manifest.yaml --mode behavioral",
+        "exit_code": 0,
+        "output_tail": "PASS 08-b2g-prs-readiness-composer\n  Mode: behavioral\n  Duration: 184ms\n  Warnings (3):\n    E110 Manifest 'prepare-v2-0-0-github-app-release' supersedes 'release-v1-3-21' but drops artifact 'PackageVersion_1_3_21' (namespace) at package.json\n      Location: /home/atomrem/projects/codefrost-dev/bolt-to-github/manifests/prepare-v2-0-0-github-app-release.manifest.yaml\n      Suggestion: Re-declare the artifact in the replacement manifest, list its file under files.delete, or list the symbol under removed_artifacts.\n    E110 Manifest 'prepare-v2-0-0-github-app-release' supersedes 'release-v1-3-21' but drops artifact 'ChromeManifestVersion_1_3_21' (namespace) at manifest.json\n      Location: /home/atomrem/projects/codefrost-dev/bolt-to-github/manifests/prepare-v2-0-0-github-app-release.manifest.yaml\n      Suggestion: Re-declare the artifact in the replacement manifest, list its file under files.delete, or list the symbol under removed_artifacts.\n    E110 Manifest 'prepare-v2-0-0-github-app-release' supersedes 'release-v1-3-21' but drops artifact 'DevelopmentGuideVersion_1_3_21' (namespace) at CLAUDE.md\n      Location: /home/atomrem/projects/codefrost-dev/bolt-to-github/manifests/prepare-v2-0-0-github-app-release.manifest.yaml\n      Suggestion: Re-declare the artifact in the replacement manifest, list its file under files.delete, or list the symbol under removed_artifacts.",
+        "classification": "not_red"
+      },
+      {
+        "command": "pnpm lint",
+        "exit_code": 0,
+        "output_tail": "\n> bolt-to-github@2.0.0 lint /home/atomrem/projects/codefrost-dev/bolt-to-github\n> eslint \"src/**/*.{js,ts,svelte}\"\n",
+        "classification": "not_red"
+      },
+      {
+        "command": "pnpm check",
+        "exit_code": 1,
+        "output_tail": "\n\n\n/home/atomrem/projects/codefrost-dev/bolt-to-github/src/production-readiness/composer/__tests__/readinessComposer.test.ts:216:34\nError: Parameter 'candidate' implicitly has an 'any' type. \n    const snapshot = composeReadinessSnapshot(input({ signals: [...signals].reverse() }));\n    expect(snapshot.signals.map((candidate) => candidate.id)).toEqual([\n      'critical-ops',\n\n\n/home/atomrem/projects/codefrost-dev/bolt-to-github/src/production-readiness/composer/__tests__/readinessComposer.test.ts:236:48\nError: Parameter 'evidence' implicitly has an 'any' type. \n    expect(forward.categories).toEqual(reverse.categories);\n    expect(forward.categories[0].evidence.map((evidence) => evidence.redacted)).toEqual([\n      undefined,\n\n\n====================================\nsvelte-check found 3 errors and 0 warnings in 1 file\n\u2009ELIFECYCLE\u2009 Command failed with exit code 1.",
+        "classification": "red"
+      }
+    ]
+  },
+  "legacy_baseline": null,
+  "agent": null,
+  "_manifest_contract": {
+    "artifacts": [
+      "src/production-readiness/composer/__tests__/readinessComposer.test.ts:composeReadinessSnapshot returns Green for low-score fixture with complete data",
+      "src/production-readiness/composer/__tests__/readinessComposer.test.ts:composeReadinessSnapshot returns Green for low-score fixture with complete data:kind=test_function",
+      "src/production-readiness/composer/__tests__/readinessComposer.test.ts:composeReadinessSnapshot returns Red when a critical signal is present",
+      "src/production-readiness/composer/__tests__/readinessComposer.test.ts:composeReadinessSnapshot returns Red when a critical signal is present:kind=test_function",
+      "src/production-readiness/composer/__tests__/readinessComposer.test.ts:composeReadinessSnapshot returns Yellow for medium score or one high signal",
+      "src/production-readiness/composer/__tests__/readinessComposer.test.ts:composeReadinessSnapshot returns Yellow for medium score or one high signal:kind=test_function",
+      "src/production-readiness/composer/__tests__/readinessComposer.test.ts:selectSafeLookingAreas suppresses claims when supporting data is unavailable",
+      "src/production-readiness/composer/__tests__/readinessComposer.test.ts:selectSafeLookingAreas suppresses claims when supporting data is unavailable:kind=test_function",
+      "src/production-readiness/composer/__tests__/readinessComposer.test.ts:selectTopConcerns orders critical and sensitive evidence first",
+      "src/production-readiness/composer/__tests__/readinessComposer.test.ts:selectTopConcerns orders critical and sensitive evidence first:kind=test_function",
+      "src/production-readiness/composer/readinessComposer.ts:attribute:ComposeReadinessSnapshotInput.availableDetectors",
+      "src/production-readiness/composer/readinessComposer.ts:attribute:ComposeReadinessSnapshotInput.availableDetectors:kind=attribute",
+      "src/production-readiness/composer/readinessComposer.ts:attribute:ComposeReadinessSnapshotInput.availableDetectors:of=ComposeReadinessSnapshotInput",
+      "src/production-readiness/composer/readinessComposer.ts:attribute:ComposeReadinessSnapshotInput.availableDetectors:type=ReadinessDetectorId[]",
+      "src/production-readiness/composer/readinessComposer.ts:attribute:ComposeReadinessSnapshotInput.base",
+      "src/production-readiness/composer/readinessComposer.ts:attribute:ComposeReadinessSnapshotInput.base:kind=attribute",
+      "src/production-readiness/composer/readinessComposer.ts:attribute:ComposeReadinessSnapshotInput.base:of=ComposeReadinessSnapshotInput",
+      "src/production-readiness/composer/readinessComposer.ts:attribute:ComposeReadinessSnapshotInput.base:type=GitRefSummary",
+      "src/production-readiness/composer/readinessComposer.ts:attribute:ComposeReadinessSnapshotInput.candidate",
+      "src/production-readiness/composer/readinessComposer.ts:attribute:ComposeReadinessSnapshotInput.candidate:kind=attribute",
+      "src/production-readiness/composer/readinessComposer.ts:attribute:ComposeReadinessSnapshotInput.candidate:of=ComposeReadinessSnapshotInput",
+      "src/production-readiness/composer/readinessComposer.ts:attribute:ComposeReadinessSnapshotInput.candidate:type=CandidateExportSummary",
+      "src/production-readiness/composer/readinessComposer.ts:attribute:ComposeReadinessSnapshotInput.comparison",
+      "src/production-readiness/composer/readinessComposer.ts:attribute:ComposeReadinessSnapshotInput.comparison:kind=attribute",
+      "src/production-readiness/composer/readinessComposer.ts:attribute:ComposeReadinessSnapshotInput.comparison:of=ComposeReadinessSnapshotInput",
+      "src/production-readiness/composer/readinessComposer.ts:attribute:ComposeReadinessSnapshotInput.comparison:type=ComparisonSummary",
+      "src/production-readiness/composer/readinessComposer.ts:attribute:ComposeReadinessSnapshotInput.generatedAt",
+      "src/production-readiness/composer/readinessComposer.ts:attribute:ComposeReadinessSnapshotInput.generatedAt:kind=attribute",
+      "src/production-readiness/composer/readinessComposer.ts:attribute:ComposeReadinessSnapshotInput.generatedAt:of=ComposeReadinessSnapshotInput",
+      "src/production-readiness/composer/readinessComposer.ts:attribute:ComposeReadinessSnapshotInput.generatedAt:type=string",
+      "src/production-readiness/composer/readinessComposer.ts:attribute:ComposeReadinessSnapshotInput.githubComparisonAvailable",
+      "src/production-readiness/composer/readinessComposer.ts:attribute:ComposeReadinessSnapshotInput.githubComparisonAvailable:kind=attribute",
+      "src/production-readiness/composer/readinessComposer.ts:attribute:ComposeReadinessSnapshotInput.githubComparisonAvailable:of=ComposeReadinessSnapshotInput",
+      "src/production-readiness/composer/readinessComposer.ts:attribute:ComposeReadinessSnapshotInput.githubComparisonAvailable:type=boolean",
+      "src/production-readiness/composer/readinessComposer.ts:attribute:ComposeReadinessSnapshotInput.outputs",
+      "src/production-readiness/composer/readinessComposer.ts:attribute:ComposeReadinessSnapshotInput.outputs:kind=attribute",
+      "src/production-readiness/composer/readinessComposer.ts:attribute:ComposeReadinessSnapshotInput.outputs:of=ComposeReadinessSnapshotInput",
+      "src/production-readiness/composer/readinessComposer.ts:attribute:ComposeReadinessSnapshotInput.outputs:type=Partial<SnapshotOutputRefs> | undefined",
+      "src/production-readiness/composer/readinessComposer.ts:attribute:ComposeReadinessSnapshotInput.repository",
+      "src/production-readiness/composer/readinessComposer.ts:attribute:ComposeReadinessSnapshotInput.repository:kind=attribute",
+      "src/production-readiness/composer/readinessComposer.ts:attribute:ComposeReadinessSnapshotInput.repository:of=ComposeReadinessSnapshotInput",
+      "src/production-readiness/composer/readinessComposer.ts:attribute:ComposeReadinessSnapshotInput.repository:type=RepositoryRef",
+      "src/production-readiness/composer/readinessComposer.ts:attribute:ComposeReadinessSnapshotInput.signals",
+      "src/production-readiness/composer/readinessComposer.ts:attribute:ComposeReadinessSnapshotInput.signals:kind=attribute",
+      "src/production-readiness/composer/readinessComposer.ts:attribute:ComposeReadinessSnapshotInput.signals:of=ComposeReadinessSnapshotInput",
+      "src/production-readiness/composer/readinessComposer.ts:attribute:ComposeReadinessSnapshotInput.signals:type=ReadinessSignal[]",
+      "src/production-readiness/composer/readinessComposer.ts:attribute:ComposeReadinessSnapshotInput.trends",
+      "src/production-readiness/composer/readinessComposer.ts:attribute:ComposeReadinessSnapshotInput.trends:kind=attribute",
+      "src/production-readiness/composer/readinessComposer.ts:attribute:ComposeReadinessSnapshotInput.trends:of=ComposeReadinessSnapshotInput",
+      "src/production-readiness/composer/readinessComposer.ts:attribute:ComposeReadinessSnapshotInput.trends:type=TrendSummary[] | undefined",
+      "src/production-readiness/composer/readinessComposer.ts:attribute:ComposeReadinessSnapshotInput.unavailableData",
+      "src/production-readiness/composer/readinessComposer.ts:attribute:ComposeReadinessSnapshotInput.unavailableData:kind=attribute",
+      "src/production-readiness/composer/readinessComposer.ts:attribute:ComposeReadinessSnapshotInput.unavailableData:of=ComposeReadinessSnapshotInput",
+      "src/production-readiness/composer/readinessComposer.ts:attribute:ComposeReadinessSnapshotInput.unavailableData:type=PartialDataNotice[] | undefined",
+      "src/production-readiness/composer/readinessComposer.ts:attribute:ReadinessScoreSummary.criticalSignalCount",
+      "src/production-readiness/composer/readinessComposer.ts:attribute:ReadinessScoreSummary.criticalSignalCount:kind=attribute",
+      "src/production-readiness/composer/readinessComposer.ts:attribute:ReadinessScoreSummary.criticalSignalCount:of=ReadinessScoreSummary",
+      "src/production-readiness/composer/readinessComposer.ts:attribute:ReadinessScoreSummary.criticalSignalCount:type=number",
+      "src/production-readiness/composer/readinessComposer.ts:attribute:ReadinessScoreSummary.highSignalCount",
+      "src/production-readiness/composer/readinessComposer.ts:attribute:ReadinessScoreSummary.highSignalCount:kind=attribute",
+      "src/production-readiness/composer/readinessComposer.ts:attribute:ReadinessScoreSummary.highSignalCount:of=ReadinessScoreSummary",
+      "src/production-readiness/composer/readinessComposer.ts:attribute:ReadinessScoreSummary.highSignalCount:type=number",
+      "src/production-readiness/composer/readinessComposer.ts:attribute:ReadinessScoreSummary.highestSeverity",
+      "src/production-readiness/composer/readinessComposer.ts:attribute:ReadinessScoreSummary.highestSeverity:kind=attribute",
+      "src/production-readiness/composer/readinessComposer.ts:attribute:ReadinessScoreSummary.highestSeverity:of=ReadinessScoreSummary",
+      "src/production-readiness/composer/readinessComposer.ts:attribute:ReadinessScoreSummary.highestSeverity:type=SignalSeverity",
+      "src/production-readiness/composer/readinessComposer.ts:attribute:ReadinessScoreSummary.internalScore",
+      "src/production-readiness/composer/readinessComposer.ts:attribute:ReadinessScoreSummary.internalScore:kind=attribute",
+      "src/production-readiness/composer/readinessComposer.ts:attribute:ReadinessScoreSummary.internalScore:of=ReadinessScoreSummary",
+      "src/production-readiness/composer/readinessComposer.ts:attribute:ReadinessScoreSummary.internalScore:type=number",
+      "src/production-readiness/composer/readinessComposer.ts:function:composeReadinessSnapshot",
+      "src/production-readiness/composer/readinessComposer.ts:function:composeReadinessSnapshot:arg=input:type=ComposeReadinessSnapshotInput:default=None",
+      "src/production-readiness/composer/readinessComposer.ts:function:composeReadinessSnapshot:kind=function",
+      "src/production-readiness/composer/readinessComposer.ts:function:composeReadinessSnapshot:returns=ReadinessSnapshot",
+      "src/production-readiness/composer/readinessComposer.ts:function:scoreReadinessSignals",
+      "src/production-readiness/composer/readinessComposer.ts:function:scoreReadinessSignals:arg=signals:type=ReadinessSignal[]:default=None",
+      "src/production-readiness/composer/readinessComposer.ts:function:scoreReadinessSignals:kind=function",
+      "src/production-readiness/composer/readinessComposer.ts:function:scoreReadinessSignals:returns=ReadinessScoreSummary",
+      "src/production-readiness/composer/readinessComposer.ts:function:selectSafeLookingAreas",
+      "src/production-readiness/composer/readinessComposer.ts:function:selectSafeLookingAreas:arg=input:type=ComposeReadinessSnapshotInput:default=None",
+      "src/production-readiness/composer/readinessComposer.ts:function:selectSafeLookingAreas:kind=function",
+      "src/production-readiness/composer/readinessComposer.ts:function:selectSafeLookingAreas:returns=string[]",
+      "src/production-readiness/composer/readinessComposer.ts:function:selectTopConcerns",
+      "src/production-readiness/composer/readinessComposer.ts:function:selectTopConcerns:arg=options:type={ limit?: number }:default=None",
+      "src/production-readiness/composer/readinessComposer.ts:function:selectTopConcerns:arg=signals:type=ReadinessSignal[]:default=None",
+      "src/production-readiness/composer/readinessComposer.ts:function:selectTopConcerns:kind=function",
+      "src/production-readiness/composer/readinessComposer.ts:function:selectTopConcerns:returns=string[]",
+      "src/production-readiness/composer/readinessComposer.ts:interface:ComposeReadinessSnapshotInput",
+      "src/production-readiness/composer/readinessComposer.ts:interface:ComposeReadinessSnapshotInput:kind=interface",
+      "src/production-readiness/composer/readinessComposer.ts:interface:ReadinessScoreSummary",
+      "src/production-readiness/composer/readinessComposer.ts:interface:ReadinessScoreSummary:kind=interface",
+      "src/production-readiness/composer/readinessComposer.ts:type:ReadinessDetectorId",
+      "src/production-readiness/composer/readinessComposer.ts:type:ReadinessDetectorId:kind=type",
+      "src/production-readiness/composer/readinessComposer.ts:type:ReadinessDetectorId:type='sensitive_paths' | 'dependencies' | 'env_secrets' | 'public_surface' | 'tests_ci' | 'maintainability' | 'history'"
+    ],
+    "files": {
+      "create": [
+        "src/production-readiness/composer/__tests__/readinessComposer.test.ts",
+        "src/production-readiness/composer/readinessComposer.ts"
+      ],
+      "edit": [],
+      "read": [
+        "docs/b2g_production_readiness_snapshot_reference.md",
+        "manifests/01-b2g-prs-domain-models-fixtures.manifest.yaml",
+        "manifests/04-b2g-prs-diff-engine.manifest.yaml",
+        "manifests/05-b2g-prs-sensitive-path-classifier.manifest.yaml",
+        "manifests/06-b2g-prs-dependency-detector.manifest.yaml",
+        "manifests/07-b2g-prs-env-secret-detector.manifest.yaml",
+        "manifests/drafts/b2g-production-readiness-snapshot.manifest.yaml",
+        "src/production-readiness/domain.ts"
+      ],
+      "scope": [],
+      "delete": [],
+      "snapshot": []
+    },
+    "file_contract": {
+      "create": [
+        {
+          "path": "src/production-readiness/composer/readinessComposer.ts",
+          "artifacts": [
+            {
+              "kind": "function",
+              "name": "composeReadinessSnapshot",
+              "description": "Builds the final ReadinessSnapshot from repository context,\ncomparison metrics, detector signals, trend summaries, output refs,\nand partial-data notices. Computes state, confidence, internal\nscore, headline, recommended action, ordered top concerns,\nsafe-looking areas, categories, and limitations without mutating\ninputs.\n",
+              "args": [
+                {
+                  "name": "input",
+                  "type": "ComposeReadinessSnapshotInput"
+                }
+              ],
+              "returns": "ReadinessSnapshot"
+            },
+            {
+              "kind": "function",
+              "name": "scoreReadinessSignals",
+              "description": "Converts signal severities into deterministic point totals and\nseverity counts using the parent reference scoring table.\n",
+              "args": [
+                {
+                  "name": "signals",
+                  "type": "ReadinessSignal[]"
+                }
+              ],
+              "returns": "ReadinessScoreSummary"
+            },
+            {
+              "kind": "function",
+              "name": "selectTopConcerns",
+              "description": "Orders concerns by criticality, production-sensitive category,\nunusual-change context, env/config risk, deleted tests/config, and\nmaintainability trends. Defaults to three to five user-facing\nconcerns.\n",
+              "args": [
+                {
+                  "name": "signals",
+                  "type": "ReadinessSignal[]"
+                },
+                {
+                  "name": "options",
+                  "type": "{ limit?: number }"
+                }
+              ],
+              "returns": "string[]"
+            },
+            {
+              "kind": "function",
+              "name": "selectSafeLookingAreas",
+              "description": "Returns safe-looking areas only when the relevant detector data is\navailable and contains affirmative absence evidence.\n",
+              "args": [
+                {
+                  "name": "input",
+                  "type": "ComposeReadinessSnapshotInput"
+                }
+              ],
+              "returns": "string[]"
+            },
+            {
+              "kind": "type",
+              "name": "ReadinessDetectorId",
+              "description": "Explicit detector availability keys used to gate safe-looking claims and confidence.",
+              "type": "'sensitive_paths' | 'dependencies' | 'env_secrets' | 'public_surface' | 'tests_ci' | 'maintainability' | 'history'"
+            },
+            {
+              "kind": "interface",
+              "name": "ComposeReadinessSnapshotInput",
+              "description": "Repository context, comparison metrics, detector availability and outputs, and partial-data notices required to compose a snapshot."
+            },
+            {
+              "kind": "attribute",
+              "name": "generatedAt",
+              "of": "ComposeReadinessSnapshotInput",
+              "type": "string"
+            },
+            {
+              "kind": "attribute",
+              "name": "repository",
+              "of": "ComposeReadinessSnapshotInput",
+              "type": "RepositoryRef"
+            },
+            {
+              "kind": "attribute",
+              "name": "base",
+              "of": "ComposeReadinessSnapshotInput",
+              "type": "GitRefSummary"
+            },
+            {
+              "kind": "attribute",
+              "name": "candidate",
+              "of": "ComposeReadinessSnapshotInput",
+              "type": "CandidateExportSummary"
+            },
+            {
+              "kind": "attribute",
+              "name": "comparison",
+              "of": "ComposeReadinessSnapshotInput",
+              "type": "ComparisonSummary"
+            },
+            {
+              "kind": "attribute",
+              "name": "githubComparisonAvailable",
+              "of": "ComposeReadinessSnapshotInput",
+              "type": "boolean"
+            },
+            {
+              "kind": "attribute",
+              "name": "availableDetectors",
+              "of": "ComposeReadinessSnapshotInput",
+              "type": "ReadinessDetectorId[]"
+            },
+            {
+              "kind": "attribute",
+              "name": "signals",
+              "of": "ComposeReadinessSnapshotInput",
+              "type": "ReadinessSignal[]"
+            },
+            {
+              "kind": "attribute",
+              "name": "trends",
+              "of": "ComposeReadinessSnapshotInput",
+              "type": "TrendSummary[] | undefined"
+            },
+            {
+              "kind": "attribute",
+              "name": "outputs",
+              "of": "ComposeReadinessSnapshotInput",
+              "type": "Partial<SnapshotOutputRefs> | undefined"
+            },
+            {
+              "kind": "attribute",
+              "name": "unavailableData",
+              "of": "ComposeReadinessSnapshotInput",
+              "type": "PartialDataNotice[] | undefined"
+            },
+            {
+              "kind": "interface",
+              "name": "ReadinessScoreSummary",
+              "description": "Deterministic point total and severity counts used to derive readiness state."
+            },
+            {
+              "kind": "attribute",
+              "name": "internalScore",
+              "of": "ReadinessScoreSummary",
+              "type": "number"
+            },
+            {
+              "kind": "attribute",
+              "name": "highestSeverity",
+              "of": "ReadinessScoreSummary",
+              "type": "SignalSeverity"
+            },
+            {
+              "kind": "attribute",
+              "name": "highSignalCount",
+              "of": "ReadinessScoreSummary",
+              "type": "number"
+            },
+            {
+              "kind": "attribute",
+              "name": "criticalSignalCount",
+              "of": "ReadinessScoreSummary",
+              "type": "number"
+            }
+          ]
+        },
+        {
+          "path": "src/production-readiness/composer/__tests__/readinessComposer.test.ts",
+          "artifacts": [
+            {
+              "kind": "test_function",
+              "name": "composeReadinessSnapshot returns Green for low-score fixture with complete data",
+              "description": "Planned behavioral test proving low-scoring signals with no high or\ncritical evidence produce Green and retain safe-looking areas.\n"
+            },
+            {
+              "kind": "test_function",
+              "name": "composeReadinessSnapshot returns Yellow for medium score or one high signal",
+              "description": "Planned behavioral test covering both Yellow paths from the\nreference scoring rules.\n"
+            },
+            {
+              "kind": "test_function",
+              "name": "composeReadinessSnapshot returns Red when a critical signal is present",
+              "description": "Planned behavioral test proving critical evidence, such as a .env\nfile in the export, forces Red regardless of total score.\n"
+            },
+            {
+              "kind": "test_function",
+              "name": "selectTopConcerns orders critical and sensitive evidence first",
+              "description": "Planned behavioral test using mixed detector signals to verify the\nfirst concerns match severity and production-sensitive priorities.\n"
+            },
+            {
+              "kind": "test_function",
+              "name": "selectSafeLookingAreas suppresses claims when supporting data is unavailable",
+              "description": "Planned behavioral test proving missing GitHub, detector, or\nhistory data becomes a limitation instead of a safe-looking area.\n"
+            }
+          ]
+        }
+      ],
+      "read": [
+        "docs/b2g_production_readiness_snapshot_reference.md",
+        "manifests/drafts/b2g-production-readiness-snapshot.manifest.yaml",
+        "manifests/01-b2g-prs-domain-models-fixtures.manifest.yaml",
+        "manifests/04-b2g-prs-diff-engine.manifest.yaml",
+        "manifests/05-b2g-prs-sensitive-path-classifier.manifest.yaml",
+        "manifests/06-b2g-prs-dependency-detector.manifest.yaml",
+        "manifests/07-b2g-prs-env-secret-detector.manifest.yaml",
+        "src/production-readiness/domain.ts"
+      ]
+    },
+    "test_files": ["src/production-readiness/composer/__tests__/readinessComposer.test.ts"],
+    "validate_commands": [
+      "pnpm exec vitest run src/production-readiness/composer/__tests__/readinessComposer.test.ts",
+      "./scripts/maid validate manifests/08-b2g-prs-readiness-composer.manifest.yaml --mode behavioral",
+      "pnpm lint",
+      "pnpm check"
+    ]
+  }
+}
