@@ -1,0 +1,293 @@
+# manifest-kind: active-contract
+# MAID manifest - a machine-checked contract for one change.
+# Declares the intent, the files it may touch, and the commands that verify it.
+# Nothing here is needed to build or run this project; safe to ignore.
+# What it is: https://github.com/mamertofabian/maid-runner
+schema: '2'
+goal: |
+  Classify changed files into PRS readiness categories using deterministic,
+  data-driven sensitive path rules.
+description: |
+  Promoted child contract for the b2g-production-readiness-snapshot parent
+  epic. Fixture-backed tests define the deterministic classifier boundary.
+
+  This slice owns deterministic path-based classification for changed files. It
+  should convert diff entries into category evidence for identity/access,
+  data/persistence, secrets/config, deployment/ops, external integrations,
+  public surface, testing/recovery, and maintainability signals. It must not
+  perform env secret scanning, dependency diffing, readiness composition, UI, or
+  report generation.
+temptations:
+  - risk: 'Do not scatter sensitive path regexes across detector code.'
+    instead: 'Store rules in a data-driven path-rules module and test categories through
+      public classifier behavior.'
+  - risk: 'Do not let broad ignore rules hide lockfiles, config files, routes, or
+      deployment metadata.'
+    instead: 'Classify from normalized diff entries and explicitly test retained metadata
+      paths.'
+  - risk: 'Do not emit vague category signals without file evidence.'
+    instead: 'Return category evidence with the matched path, rule, and readiness
+      category.'
+type: feature
+files:
+  create:
+    - path: src/production-readiness/rules/path-rules.ts
+      artifacts:
+        - kind: interface
+          name: SensitivePathRule
+          description: Planned data-driven rule with category, glob or regex
+            pattern, severity hint, and explanation.
+        - kind: attribute
+          name: id
+          of: SensitivePathRule
+          type: string
+        - kind: attribute
+          name: category
+          of: SensitivePathRule
+          type: ReadinessCategory
+        - kind: attribute
+          name: pattern
+          of: SensitivePathRule
+          type: string
+        - kind: attribute
+          name: patternKind
+          of: SensitivePathRule
+          type: "'glob' | 'regex'"
+        - kind: attribute
+          name: severity
+          of: SensitivePathRule
+          type: SignalSeverity
+        - kind: attribute
+          name: explanation
+          of: SensitivePathRule
+          type: string
+        - kind: function
+          name: getSensitivePathRules
+          args: []
+          returns: SensitivePathRule[]
+          description: Planned source of initial PRS sensitive path rules from
+            the reference document.
+    - path: src/production-readiness/detectors/sensitivePathClassifier.ts
+      artifacts:
+        - kind: interface
+          name: SensitivePathClassification
+          description: Planned category, path, matched rule, and evidence object
+            for a classified changed file.
+        - kind: attribute
+          name: category
+          of: SensitivePathClassification
+          type: ReadinessCategory
+        - kind: attribute
+          name: path
+          of: SensitivePathClassification
+          type: string
+        - kind: attribute
+          name: status
+          of: SensitivePathClassification
+          type: "'added' | 'changed' | 'deleted' | 'renamed'"
+        - kind: attribute
+          name: rule
+          of: SensitivePathClassification
+          type: SensitivePathRule
+        - kind: attribute
+          name: evidence
+          of: SensitivePathClassification
+          type: EvidenceRef
+        - kind: function
+          name: classifySensitivePaths
+          args:
+            - name: diff
+              type: InventoryDiffResult
+            - name: rules
+              type: SensitivePathRule[] | undefined
+          returns: SensitivePathClassification[]
+          description: Planned pure classifier that maps changed files to PRS
+            readiness categories and evidence.
+    - path: src/production-readiness/__tests__/sensitive-path-classifier.test.ts
+      artifacts:
+        - kind: test_function
+          name: auth data config deployment integration route and test paths
+            classify correctly
+          description: Required planned behavioral test before promotion.
+        - kind: test_function
+          name: ignore rules do not hide lockfiles or relevant config
+          description: Required planned behavioral test before promotion.
+        - kind: test_function
+          name: classifier evidence includes category and path
+          description: Required planned behavioral test before promotion.
+    - path: src/production-readiness/test-fixtures/prs/sensitive-paths.ts
+      artifacts:
+        - kind: type
+          name: SensitivePathFixtureName
+          type: "'category-matrix' | 'retained-metadata'"
+        - kind: interface
+          name: SensitivePathFixture
+          description: Deterministic diff input and expected path/category pairs.
+        - kind: attribute
+          name: name
+          of: SensitivePathFixture
+          type: SensitivePathFixtureName
+        - kind: attribute
+          name: diff
+          of: SensitivePathFixture
+          type: InventoryDiffResult
+        - kind: attribute
+          name: expected
+          of: SensitivePathFixture
+          type: Readonly<Record<string, ReadinessCategory[]>>
+        - kind: function
+          name: createSensitivePathFixture
+          args:
+            - name: name
+              type: string
+          returns: SensitivePathFixture
+          description: Planned deterministic changed-file fixture factory for
+            path classifier tests.
+  read:
+    - docs/b2g_production_readiness_snapshot_reference.md
+    - manifests/drafts/b2g-production-readiness-snapshot.manifest.yaml
+    - manifests/01-b2g-prs-domain-models-fixtures.manifest.yaml
+    - manifests/02-b2g-prs-zip-inventory-normalization.manifest.yaml
+    - manifests/04-b2g-prs-diff-engine.manifest.yaml
+    - src/production-readiness/domain.ts
+    - src/production-readiness/diff/diffEngine.ts
+    - src/production-readiness/rules/ignore-rules.ts
+validate:
+  - pnpm exec vitest run
+    src/production-readiness/__tests__/sensitive-path-classifier.test.ts
+  - ./scripts/maid validate
+    manifests/05-b2g-prs-sensitive-path-classifier.manifest.yaml --mode
+    behavioral
+  - pnpm lint
+  - pnpm check
+created: '2026-07-31T05:01:45Z'
+metadata:
+  tags:
+    - production-readiness
+    - sensitive-paths
+    - classifier
+    - deterministic-analysis
+  priority: high
+  status: implementation
+  promotable: true
+  parent_epic: b2g-production-readiness-snapshot
+  depends_on:
+    - 01-b2g-prs-domain-models-fixtures
+    - 02-b2g-prs-zip-inventory-normalization
+    - 04-b2g-prs-diff-engine
+  source_document: docs/b2g_production_readiness_snapshot_reference.md
+outcome:
+  status: completed
+  completed_at: '2026-07-31T05:14:48Z'
+  summary: |
+    PRS now classifies confirmed file changes into eight production-readiness
+    categories through one deterministic, data-driven rule catalog. Results
+    include the matched path, selected rule, diff status, severity hint, and
+    exact file evidence for downstream signal composition.
+
+    The classifier covers identity/access, persistence, configuration,
+    deployment, integrations, public surfaces, testing/recovery, and
+    maintainability paths. It retains relevant lock/config metadata, preserves
+    both sides of rename evidence, excludes indeterminate changes, and
+    deterministically selects the strongest rule per path and category.
+  rationale: |
+    Centralized rule data keeps sensitive-area policy inspectable and
+    extensible without scattering regexes through detector code. Consuming the
+    normalized diff boundary avoids reinterpreting raw paths, while explicit
+    path/category deduplication prevents overlapping rules from inflating
+    downstream counts.
+  lessons:
+    - lesson_type: preserve-rename-evidence
+      summary: |
+        Sensitive path classification must inspect both the old and new path of
+        a rename. Looking only at the destination hides removals or moves out of
+        production-sensitive areas.
+      tags: [renames, evidence, sensitive-paths]
+      paths:
+        - src/production-readiness/detectors/sensitivePathClassifier.ts
+        - src/production-readiness/__tests__/sensitive-path-classifier.test.ts
+    - lesson_type: separate-template-severity
+      summary: |
+        Example environment configuration is useful readiness evidence but
+        should not inherit the critical severity reserved for real `.env`
+        files that may contain secrets.
+      tags: [configuration, severity, false-positives]
+      paths:
+        - src/production-readiness/rules/path-rules.ts
+    - lesson_type: fixture-canonical-path-shapes
+      summary: |
+        Path-rule fixtures need both directory-style and filename-style
+        examples, plus framework exclusions, to prevent favorable examples
+        from hiding common false negatives and false positives.
+      tags: [fixtures, rules, regression-testing]
+      paths:
+        - src/production-readiness/test-fixtures/prs/sensitive-paths.ts
+  review_notes:
+    - source: independent reviewer /root/slice05_implementation_reviewer
+      severity: needs-changes
+      summary: |
+        The first review found missing previous-path rename evidence,
+        over-severe `.env.example` classification, and gaps around canonical
+        route, integration filename, and Next.js special-page patterns.
+    - source: independent reviewer /root/slice05_implementation_reviewer
+      severity: ready
+      summary: |
+        Revision 3 resolved every finding. The fresh review reported no scope
+        drift, temptation violations, undeclared API, or remaining findings.
+  validation:
+    - command:
+        [
+          pnpm,
+          exec,
+          vitest,
+          run,
+          src/production-readiness/__tests__/sensitive-path-classifier.test.ts,
+        ]
+      status: passed
+      summary: Three focused scenario groups passed across all eight categories,
+        rename evidence, retained metadata, severity distinctions, framework
+        exclusions, custom rules, and deterministic evidence.
+    - command:
+        [
+          ./scripts/maid,
+          test,
+          --manifest,
+          manifests/05-b2g-prs-sensitive-path-classifier.manifest.yaml,
+        ]
+      status: passed
+      summary: All four declared manifest commands passed.
+    - command: [pnpm, test:ci]
+      status: passed
+      summary: The complete Vitest suite passed 202 files and 4,019 tests.
+    - command: [pnpm, check]
+      status: passed
+      summary: Svelte and TypeScript validation completed with zero errors or
+        warnings.
+    - command: [pnpm, lint]
+      status: passed
+      summary: ESLint passed for all JavaScript, TypeScript, and Svelte sources.
+    - command: [pnpm, build]
+      status: passed
+      summary: The production extension build completed successfully; only two
+        pre-existing Vite dynamic/static import warnings remained.
+    - command:
+        [
+          ./scripts/maid,
+          verify,
+          --manifest-dir,
+          manifests,
+          --require-plan-lock,
+          --require-red-evidence,
+          --plan-lock-scope,
+          task,
+          --file-tracking-scope,
+          task,
+          --include-tests,
+          --since,
+          '70ff047',
+          --advisory,
+          --summary,
+        ]
+      status: passed
+      summary: All nine task-scoped verification gates passed with only three
+        unrelated pre-existing release-chain E110 warnings.
