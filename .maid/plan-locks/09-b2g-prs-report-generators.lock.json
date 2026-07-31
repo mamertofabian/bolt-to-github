@@ -1,0 +1,357 @@
+{
+  "manifest_path": "manifests/09-b2g-prs-report-generators.manifest.yaml",
+  "manifest_hash": "sha256-contract:a01dfdbc319f0f56fe46d1667b961cd31fdfb02ecc544e327357f74071767fba",
+  "test_hashes": {
+    "src/production-readiness/reports/__tests__/reportGenerators.test.ts": "sha256:7f75a91312a2a059d29828468733e3f2e7deb822faccb704429cb308d16b5ba4"
+  },
+  "created_at": "2026-07-31T07:22:44.153355+00:00",
+  "revision": 5,
+  "revisions": [
+    {
+      "prior_manifest_hash": "sha256-contract:4119e7513462293f43967744319e53675dcd640e0d9288f13af320ed035aac26",
+      "prior_test_hashes": {
+        "src/production-readiness/reports/__tests__/reportGenerators.test.ts": "sha256:16670edb14574a633d19a84dc614c83b70f0b383dec53f07804845140bb3d925"
+      },
+      "revised_at": "2026-07-31T07:24:53.415380+00:00",
+      "reason": "Correct golden fixture path resolution and align the non-coercive language assertion with the declared ADC Fix heading",
+      "agent": null,
+      "contract_delta": {
+        "artifacts_added": [],
+        "artifacts_removed": [],
+        "files_added": [],
+        "files_removed": [],
+        "validate_commands_added": [],
+        "validate_commands_removed": []
+      }
+    },
+    {
+      "prior_manifest_hash": "sha256-contract:4119e7513462293f43967744319e53675dcd640e0d9288f13af320ed035aac26",
+      "prior_test_hashes": {
+        "src/production-readiness/reports/__tests__/reportGenerators.test.ts": "sha256:979d64cb66fa93f28d9572190af75356466de7aa04a8b8bc7a8c71f055b5b158"
+      },
+      "revised_at": "2026-07-31T07:26:08.798019+00:00",
+      "reason": "Name the handoff options and golden Markdown artifacts explicitly in behavioral tests, and normalize manifest formatting",
+      "agent": null,
+      "contract_delta": {
+        "artifacts_added": [],
+        "artifacts_removed": [],
+        "files_added": [],
+        "files_removed": [],
+        "validate_commands_added": [],
+        "validate_commands_removed": []
+      }
+    },
+    {
+      "prior_manifest_hash": "sha256-contract:4119e7513462293f43967744319e53675dcd640e0d9288f13af320ed035aac26",
+      "prior_test_hashes": {
+        "src/production-readiness/reports/__tests__/reportGenerators.test.ts": "sha256:5f4eba3a618b21b1d6f873bede143017e5dca9967e71b7c88653e6fd23399df1"
+      },
+      "revised_at": "2026-07-31T07:27:09.564412+00:00",
+      "reason": "Declare Markdown golden files as non-code namespace artifacts so behavioral coverage is supplied by the golden-reading tests without pretending they are TypeScript types",
+      "agent": null,
+      "contract_delta": {
+        "artifacts_added": [
+          "test/golden/prs/auth-env-change.receipt.md:namespace:AuthEnvChangeReceiptGoldenMarkdown",
+          "test/golden/prs/auth-env-change.receipt.md:namespace:AuthEnvChangeReceiptGoldenMarkdown:kind=namespace",
+          "test/golden/prs/secret-file.handoff.md:namespace:SecretFileHandoffGoldenMarkdown",
+          "test/golden/prs/secret-file.handoff.md:namespace:SecretFileHandoffGoldenMarkdown:kind=namespace",
+          "test/golden/prs/ui-only.receipt.md:namespace:UiOnlyReceiptGoldenMarkdown",
+          "test/golden/prs/ui-only.receipt.md:namespace:UiOnlyReceiptGoldenMarkdown:kind=namespace"
+        ],
+        "artifacts_removed": [
+          "test/golden/prs/auth-env-change.receipt.md:type:AuthEnvChangeReceiptGoldenMarkdown",
+          "test/golden/prs/auth-env-change.receipt.md:type:AuthEnvChangeReceiptGoldenMarkdown:kind=type",
+          "test/golden/prs/auth-env-change.receipt.md:type:AuthEnvChangeReceiptGoldenMarkdown:type=Markdown fixture",
+          "test/golden/prs/secret-file.handoff.md:type:SecretFileHandoffGoldenMarkdown",
+          "test/golden/prs/secret-file.handoff.md:type:SecretFileHandoffGoldenMarkdown:kind=type",
+          "test/golden/prs/secret-file.handoff.md:type:SecretFileHandoffGoldenMarkdown:type=Markdown fixture",
+          "test/golden/prs/ui-only.receipt.md:type:UiOnlyReceiptGoldenMarkdown",
+          "test/golden/prs/ui-only.receipt.md:type:UiOnlyReceiptGoldenMarkdown:kind=type",
+          "test/golden/prs/ui-only.receipt.md:type:UiOnlyReceiptGoldenMarkdown:type=Markdown fixture"
+        ],
+        "files_added": [],
+        "files_removed": [],
+        "validate_commands_added": [],
+        "validate_commands_removed": []
+      }
+    },
+    {
+      "prior_manifest_hash": "sha256-contract:a01dfdbc319f0f56fe46d1667b961cd31fdfb02ecc544e327357f74071767fba",
+      "prior_test_hashes": {
+        "src/production-readiness/reports/__tests__/reportGenerators.test.ts": "sha256:5f4eba3a618b21b1d6f873bede143017e5dca9967e71b7c88653e6fd23399df1"
+      },
+      "revised_at": "2026-07-31T07:31:44.298501+00:00",
+      "reason": "Address independent review with adversarial path-label redaction and trailing-backtick CommonMark code-span regressions",
+      "agent": null,
+      "contract_delta": {
+        "artifacts_added": [],
+        "artifacts_removed": [],
+        "files_added": [],
+        "files_removed": [],
+        "validate_commands_added": [],
+        "validate_commands_removed": []
+      }
+    }
+  ],
+  "red_evidence": {
+    "red": true,
+    "captured_at": "2026-07-31T07:31:59.033246+00:00",
+    "commands": [
+      {
+        "command": "pnpm exec vitest run src/production-readiness/reports/__tests__/reportGenerators.test.ts",
+        "exit_code": 1,
+        "output_tail": " Test Files  1 failed (1)\n      Tests  no tests\n   Start at  15:31:44\n   Duration  623ms (transform 35ms, setup 55ms, collect 0ms, tests 0ms, environment 195ms, prepare 40ms)\n\n\n\u23af\u23af\u23af\u23af\u23af\u23af Failed Suites 1 \u23af\u23af\u23af\u23af\u23af\u23af\u23af\n\n FAIL  src/production-readiness/reports/__tests__/reportGenerators.test.ts [ src/production-readiness/reports/__tests__/reportGenerators.test.ts ]\nError: Failed to resolve import \"../reportGenerators\" from \"src/production-readiness/reports/__tests__/reportGenerators.test.ts\". Does the file exist?\n \u276f TransformPluginContext._formatError node_modules/.pnpm/vite@5.4.21_@types+node@22.19.18/node_modules/vite/dist/node/chunks/dep-BK3b2jBa.js:49258:41\n \u276f TransformPluginContext.error node_modules/.pnpm/vite@5.4.21_@types+node@22.19.18/node_modules/vite/dist/node/chunks/dep-BK3b2jBa.js:49253:16\n \u276f normalizeUrl node_modules/.pnpm/vite@5.4.21_@types+node@22.19.18/node_modules/vite/dist/node/chunks/dep-BK3b2jBa.js:64307:23\n \u276f async file:/home/atomrem/projects/codefrost-dev/bolt-to-github/node_modules/.pnpm/vite@5.4.21_@types+node@22.19.18/node_modules/vite/dist/node/chunks/dep-BK3b2jBa.js:64439:39\n \u276f TransformPluginContext.transform node_modules/.pnpm/vite@5.4.21_@types+node@22.19.18/node_modules/vite/dist/node/chunks/dep-BK3b2jBa.js:64366:7\n \u276f PluginContainer.transform node_modules/.pnpm/vite@5.4.21_@types+node@22.19.18/node_modules/vite/dist/node/chunks/dep-BK3b2jBa.js:49099:18\n \u276f loadAndTransform node_modules/.pnpm/vite@5.4.21_@types+node@22.19.18/node_modules/vite/dist/node/chunks/dep-BK3b2jBa.js:51978:27\n\n\u23af\u23af\u23af\u23af\u23af\u23af\u23af\u23af\u23af\u23af\u23af\u23af\u23af\u23af\u23af\u23af\u23af\u23af\u23af\u23af\u23af\u23af\u23af\u23af[1/1]\u23af\n",
+        "classification": "red"
+      },
+      {
+        "command": "./scripts/maid validate manifests/09-b2g-prs-report-generators.manifest.yaml --mode behavioral",
+        "exit_code": 0,
+        "output_tail": "PASS 09-b2g-prs-report-generators\n  Mode: behavioral\n  Duration: 185ms\n  Warnings (3):\n    E110 Manifest 'prepare-v2-0-0-github-app-release' supersedes 'release-v1-3-21' but drops artifact 'PackageVersion_1_3_21' (namespace) at package.json\n      Location: /home/atomrem/projects/codefrost-dev/bolt-to-github/manifests/prepare-v2-0-0-github-app-release.manifest.yaml\n      Suggestion: Re-declare the artifact in the replacement manifest, list its file under files.delete, or list the symbol under removed_artifacts.\n    E110 Manifest 'prepare-v2-0-0-github-app-release' supersedes 'release-v1-3-21' but drops artifact 'ChromeManifestVersion_1_3_21' (namespace) at manifest.json\n      Location: /home/atomrem/projects/codefrost-dev/bolt-to-github/manifests/prepare-v2-0-0-github-app-release.manifest.yaml\n      Suggestion: Re-declare the artifact in the replacement manifest, list its file under files.delete, or list the symbol under removed_artifacts.\n    E110 Manifest 'prepare-v2-0-0-github-app-release' supersedes 'release-v1-3-21' but drops artifact 'DevelopmentGuideVersion_1_3_21' (namespace) at CLAUDE.md\n      Location: /home/atomrem/projects/codefrost-dev/bolt-to-github/manifests/prepare-v2-0-0-github-app-release.manifest.yaml\n      Suggestion: Re-declare the artifact in the replacement manifest, list its file under files.delete, or list the symbol under removed_artifacts.",
+        "classification": "not_red"
+      },
+      {
+        "command": "pnpm lint",
+        "exit_code": 0,
+        "output_tail": "\n> bolt-to-github@2.0.0 lint /home/atomrem/projects/codefrost-dev/bolt-to-github\n> eslint \"src/**/*.{js,ts,svelte}\"\n",
+        "classification": "not_red"
+      },
+      {
+        "command": "pnpm check",
+        "exit_code": 1,
+        "output_tail": "\n> bolt-to-github@2.0.0 check /home/atomrem/projects/codefrost-dev/bolt-to-github\n> svelte-check --tsconfig ./tsconfig.json\n\n\n====================================\nLoading svelte-check in workspace: /home/atomrem/projects/codefrost-dev/bolt-to-github\nGetting Svelte diagnostics...\n\n/home/atomrem/projects/codefrost-dev/bolt-to-github/src/production-readiness/reports/__tests__/reportGenerators.test.ts:13:8\nError: Cannot find module '../reportGenerators' or its corresponding type declarations. \n  type AdcFixHandoffOptions,\n} from '../reportGenerators';\n\n\n\n====================================\nsvelte-check found 1 error and 0 warnings in 1 file\n\u2009ELIFECYCLE\u2009 Command failed with exit code 1.",
+        "classification": "red"
+      }
+    ]
+  },
+  "legacy_baseline": null,
+  "agent": null,
+  "_manifest_contract": {
+    "artifacts": [
+      "src/production-readiness/reports/__tests__/reportGenerators.test.ts:generateAdcFixHandoffMarkdown matches the Red golden handoff",
+      "src/production-readiness/reports/__tests__/reportGenerators.test.ts:generateAdcFixHandoffMarkdown matches the Red golden handoff:kind=test_function",
+      "src/production-readiness/reports/__tests__/reportGenerators.test.ts:generateExportReceiptMarkdown matches the Yellow golden receipt",
+      "src/production-readiness/reports/__tests__/reportGenerators.test.ts:generateExportReceiptMarkdown matches the Yellow golden receipt:kind=test_function",
+      "src/production-readiness/reports/__tests__/reportGenerators.test.ts:handoff language is helpful and non coercive",
+      "src/production-readiness/reports/__tests__/reportGenerators.test.ts:handoff language is helpful and non coercive:kind=test_function",
+      "src/production-readiness/reports/__tests__/reportGenerators.test.ts:reports include limitations for partial snapshots",
+      "src/production-readiness/reports/__tests__/reportGenerators.test.ts:reports include limitations for partial snapshots:kind=test_function",
+      "src/production-readiness/reports/__tests__/reportGenerators.test.ts:reports never expose secret-looking values",
+      "src/production-readiness/reports/__tests__/reportGenerators.test.ts:reports never expose secret-looking values:kind=test_function",
+      "src/production-readiness/reports/reportGenerators.ts:attribute:AdcFixHandoffOptions.includeAdcFixLink",
+      "src/production-readiness/reports/reportGenerators.ts:attribute:AdcFixHandoffOptions.includeAdcFixLink:kind=attribute",
+      "src/production-readiness/reports/reportGenerators.ts:attribute:AdcFixHandoffOptions.includeAdcFixLink:of=AdcFixHandoffOptions",
+      "src/production-readiness/reports/reportGenerators.ts:attribute:AdcFixHandoffOptions.includeAdcFixLink:type=boolean | undefined",
+      "src/production-readiness/reports/reportGenerators.ts:attribute:AdcFixHandoffOptions.includeCompareUrl",
+      "src/production-readiness/reports/reportGenerators.ts:attribute:AdcFixHandoffOptions.includeCompareUrl:kind=attribute",
+      "src/production-readiness/reports/reportGenerators.ts:attribute:AdcFixHandoffOptions.includeCompareUrl:of=AdcFixHandoffOptions",
+      "src/production-readiness/reports/reportGenerators.ts:attribute:AdcFixHandoffOptions.includeCompareUrl:type=boolean | undefined",
+      "src/production-readiness/reports/reportGenerators.ts:attribute:AdcFixHandoffOptions.includeHistory",
+      "src/production-readiness/reports/reportGenerators.ts:attribute:AdcFixHandoffOptions.includeHistory:kind=attribute",
+      "src/production-readiness/reports/reportGenerators.ts:attribute:AdcFixHandoffOptions.includeHistory:of=AdcFixHandoffOptions",
+      "src/production-readiness/reports/reportGenerators.ts:attribute:AdcFixHandoffOptions.includeHistory:type=boolean | undefined",
+      "src/production-readiness/reports/reportGenerators.ts:attribute:AdcFixHandoffOptions.redactPathNames",
+      "src/production-readiness/reports/reportGenerators.ts:attribute:AdcFixHandoffOptions.redactPathNames:kind=attribute",
+      "src/production-readiness/reports/reportGenerators.ts:attribute:AdcFixHandoffOptions.redactPathNames:of=AdcFixHandoffOptions",
+      "src/production-readiness/reports/reportGenerators.ts:attribute:AdcFixHandoffOptions.redactPathNames:type=boolean | undefined",
+      "src/production-readiness/reports/reportGenerators.ts:function:generateAdcFixHandoffMarkdown",
+      "src/production-readiness/reports/reportGenerators.ts:function:generateAdcFixHandoffMarkdown:arg=options:type=AdcFixHandoffOptions:default=None",
+      "src/production-readiness/reports/reportGenerators.ts:function:generateAdcFixHandoffMarkdown:arg=snapshot:type=ReadinessSnapshot:default=None",
+      "src/production-readiness/reports/reportGenerators.ts:function:generateAdcFixHandoffMarkdown:kind=function",
+      "src/production-readiness/reports/reportGenerators.ts:function:generateAdcFixHandoffMarkdown:returns=string",
+      "src/production-readiness/reports/reportGenerators.ts:function:generateExportReceiptMarkdown",
+      "src/production-readiness/reports/reportGenerators.ts:function:generateExportReceiptMarkdown:arg=snapshot:type=ReadinessSnapshot:default=None",
+      "src/production-readiness/reports/reportGenerators.ts:function:generateExportReceiptMarkdown:kind=function",
+      "src/production-readiness/reports/reportGenerators.ts:function:generateExportReceiptMarkdown:returns=string",
+      "src/production-readiness/reports/reportGenerators.ts:function:sanitizeMarkdownEvidence",
+      "src/production-readiness/reports/reportGenerators.ts:function:sanitizeMarkdownEvidence:arg=snapshot:type=ReadinessSnapshot:default=None",
+      "src/production-readiness/reports/reportGenerators.ts:function:sanitizeMarkdownEvidence:kind=function",
+      "src/production-readiness/reports/reportGenerators.ts:function:sanitizeMarkdownEvidence:returns=ReadinessSnapshot",
+      "src/production-readiness/reports/reportGenerators.ts:interface:AdcFixHandoffOptions",
+      "src/production-readiness/reports/reportGenerators.ts:interface:AdcFixHandoffOptions:kind=interface",
+      "test/golden/prs/auth-env-change.receipt.md:namespace:AuthEnvChangeReceiptGoldenMarkdown",
+      "test/golden/prs/auth-env-change.receipt.md:namespace:AuthEnvChangeReceiptGoldenMarkdown:kind=namespace",
+      "test/golden/prs/secret-file.handoff.md:namespace:SecretFileHandoffGoldenMarkdown",
+      "test/golden/prs/secret-file.handoff.md:namespace:SecretFileHandoffGoldenMarkdown:kind=namespace",
+      "test/golden/prs/ui-only.receipt.md:namespace:UiOnlyReceiptGoldenMarkdown",
+      "test/golden/prs/ui-only.receipt.md:namespace:UiOnlyReceiptGoldenMarkdown:kind=namespace"
+    ],
+    "files": {
+      "create": [
+        "src/production-readiness/reports/__tests__/reportGenerators.test.ts",
+        "src/production-readiness/reports/reportGenerators.ts",
+        "test/golden/prs/auth-env-change.receipt.md",
+        "test/golden/prs/secret-file.handoff.md",
+        "test/golden/prs/ui-only.receipt.md"
+      ],
+      "edit": [],
+      "read": [
+        "docs/b2g_production_readiness_snapshot_reference.md",
+        "manifests/01-b2g-prs-domain-models-fixtures.manifest.yaml",
+        "manifests/07-b2g-prs-env-secret-detector.manifest.yaml",
+        "manifests/08-b2g-prs-readiness-composer.manifest.yaml",
+        "manifests/drafts/b2g-production-readiness-snapshot.manifest.yaml",
+        "src/production-readiness/domain.ts",
+        "src/production-readiness/redaction.ts",
+        "src/production-readiness/test-fixtures/prsFixtures.ts"
+      ],
+      "scope": [],
+      "delete": [],
+      "snapshot": []
+    },
+    "file_contract": {
+      "create": [
+        {
+          "path": "src/production-readiness/reports/reportGenerators.ts",
+          "artifacts": [
+            {
+              "kind": "function",
+              "name": "generateExportReceiptMarkdown",
+              "description": "Renders a concise Bolt Export Receipt Markdown document containing\nreadiness state, generated time, repository context, comparison\nmetrics, top concerns, safe-looking areas, and limitations.\n",
+              "args": [
+                {
+                  "name": "snapshot",
+                  "type": "ReadinessSnapshot"
+                }
+              ],
+              "returns": "string"
+            },
+            {
+              "kind": "function",
+              "name": "generateAdcFixHandoffMarkdown",
+              "description": "Renders a structured ADC Fix Handoff Report Markdown document with\nrepository context, readiness summary, changed areas, historical\ncontext, suggested review areas, and limitations. Output must use\nhelpful non-coercive language and must not imply ADC Fix is\nrequired to continue.\n",
+              "args": [
+                {
+                  "name": "snapshot",
+                  "type": "ReadinessSnapshot"
+                },
+                {
+                  "name": "options",
+                  "type": "AdcFixHandoffOptions"
+                }
+              ],
+              "returns": "string"
+            },
+            {
+              "kind": "function",
+              "name": "sanitizeMarkdownEvidence",
+              "description": "Returns a rendered-output-safe snapshot copy where secret-looking\nevidence values remain redacted before Markdown generation.\n",
+              "args": [
+                {
+                  "name": "snapshot",
+                  "type": "ReadinessSnapshot"
+                }
+              ],
+              "returns": "ReadinessSnapshot"
+            },
+            {
+              "kind": "interface",
+              "name": "AdcFixHandoffOptions",
+              "description": "Optional handoff sections and privacy controls."
+            },
+            {
+              "kind": "attribute",
+              "name": "includeCompareUrl",
+              "of": "AdcFixHandoffOptions",
+              "type": "boolean | undefined"
+            },
+            {
+              "kind": "attribute",
+              "name": "includeHistory",
+              "of": "AdcFixHandoffOptions",
+              "type": "boolean | undefined"
+            },
+            {
+              "kind": "attribute",
+              "name": "includeAdcFixLink",
+              "of": "AdcFixHandoffOptions",
+              "type": "boolean | undefined"
+            },
+            {
+              "kind": "attribute",
+              "name": "redactPathNames",
+              "of": "AdcFixHandoffOptions",
+              "type": "boolean | undefined"
+            }
+          ]
+        },
+        {
+          "path": "src/production-readiness/reports/__tests__/reportGenerators.test.ts",
+          "artifacts": [
+            {
+              "kind": "test_function",
+              "name": "generateExportReceiptMarkdown matches the Yellow golden receipt",
+              "description": "Planned behavioral test comparing a composed fixture snapshot to\ntest/golden/prs/auth-env-change.receipt.md.\n"
+            },
+            {
+              "kind": "test_function",
+              "name": "generateAdcFixHandoffMarkdown matches the Red golden handoff",
+              "description": "Planned behavioral test comparing a composed fixture snapshot to\ntest/golden/prs/secret-file.handoff.md.\n"
+            },
+            {
+              "kind": "test_function",
+              "name": "reports include limitations for partial snapshots",
+              "description": "Planned behavioral test proving low-confidence and partial-data\nlimitations render in both receipt and handoff output.\n"
+            },
+            {
+              "kind": "test_function",
+              "name": "reports never expose secret-looking values",
+              "description": "Planned behavioral test using env and secret fixtures to assert raw\nsecret strings are absent from every generated Markdown report.\n"
+            },
+            {
+              "kind": "test_function",
+              "name": "handoff language is helpful and non coercive",
+              "description": "Planned behavioral test asserting forbidden phrases such as ADC Fix\nis required or your app is broken do not appear.\n"
+            }
+          ]
+        },
+        {
+          "path": "test/golden/prs/ui-only.receipt.md",
+          "artifacts": [
+            {
+              "kind": "namespace",
+              "name": "UiOnlyReceiptGoldenMarkdown",
+              "description": "Planned golden receipt for a Green UI-only export."
+            }
+          ]
+        },
+        {
+          "path": "test/golden/prs/auth-env-change.receipt.md",
+          "artifacts": [
+            {
+              "kind": "namespace",
+              "name": "AuthEnvChangeReceiptGoldenMarkdown",
+              "description": "Planned golden receipt for a Yellow auth plus env export."
+            }
+          ]
+        },
+        {
+          "path": "test/golden/prs/secret-file.handoff.md",
+          "artifacts": [
+            {
+              "kind": "namespace",
+              "name": "SecretFileHandoffGoldenMarkdown",
+              "description": "Planned golden handoff report proving redaction in a Red export."
+            }
+          ]
+        }
+      ],
+      "read": [
+        "docs/b2g_production_readiness_snapshot_reference.md",
+        "manifests/drafts/b2g-production-readiness-snapshot.manifest.yaml",
+        "manifests/01-b2g-prs-domain-models-fixtures.manifest.yaml",
+        "manifests/07-b2g-prs-env-secret-detector.manifest.yaml",
+        "manifests/08-b2g-prs-readiness-composer.manifest.yaml",
+        "src/production-readiness/domain.ts",
+        "src/production-readiness/redaction.ts",
+        "src/production-readiness/test-fixtures/prsFixtures.ts"
+      ]
+    },
+    "test_files": ["src/production-readiness/reports/__tests__/reportGenerators.test.ts"],
+    "validate_commands": [
+      "pnpm exec vitest run src/production-readiness/reports/__tests__/reportGenerators.test.ts",
+      "./scripts/maid validate manifests/09-b2g-prs-report-generators.manifest.yaml --mode behavioral",
+      "pnpm lint",
+      "pnpm check"
+    ]
+  }
+}

@@ -1,0 +1,277 @@
+# draft-kind: child-planning-inventory
+# MAID manifest - a machine-checked contract for one change.
+# Declares the intent, the files it may touch, and the commands that verify it.
+# Nothing here is needed to build or run this project; safe to ignore.
+# What it is: https://github.com/mamertofabian/maid-runner
+schema: '2'
+goal: |
+  Generate deterministic Markdown export receipts and ADC Fix handoff reports
+  from a ReadinessSnapshot without exposing secret-looking values.
+description: |
+  Child draft for the b2g-production-readiness-snapshot parent epic, derived
+  from docs/b2g_production_readiness_snapshot_reference.md sections 14, 15, 18,
+  and 19.3 Child 12.
+
+  Promoted after the ReadinessSnapshot domain, redaction helpers, env/secret
+  detector, and readiness composer established their concrete contracts.
+  Golden Markdown fixtures are created in this slice and pin exact renderer
+  output, limitation visibility, and redaction behavior.
+
+  Rationale:
+  - Keep report rendering in a pure output layer so receipt and handoff content
+    can be golden-tested without browser, clipboard, GitHub, or ADC Fix network
+    dependencies.
+  - Receipts are concise export artifacts suitable for copying or optionally
+    adding to commit bodies later.
+  - ADC Fix handoff reports are explicit, user-initiated documents. B2G must
+    never auto-upload source code, zips, secrets, or report content to ADC Fix.
+type: feature
+files:
+  create:
+    - path: src/production-readiness/reports/reportGenerators.ts
+      artifacts:
+        - kind: function
+          name: generateExportReceiptMarkdown
+          args:
+            - name: snapshot
+              type: ReadinessSnapshot
+          returns: string
+          description: |
+            Renders a concise Bolt Export Receipt Markdown document containing
+            readiness state, generated time, repository context, comparison
+            metrics, top concerns, safe-looking areas, and limitations.
+        - kind: function
+          name: generateAdcFixHandoffMarkdown
+          args:
+            - name: snapshot
+              type: ReadinessSnapshot
+            - name: options
+              type: AdcFixHandoffOptions
+          returns: string
+          description: |
+            Renders a structured ADC Fix Handoff Report Markdown document with
+            repository context, readiness summary, changed areas, historical
+            context, suggested review areas, and limitations. Output must use
+            helpful non-coercive language and must not imply ADC Fix is
+            required to continue.
+        - kind: function
+          name: sanitizeMarkdownEvidence
+          args:
+            - name: snapshot
+              type: ReadinessSnapshot
+          returns: ReadinessSnapshot
+          description: |
+            Returns a rendered-output-safe snapshot copy where secret-looking
+            evidence values remain redacted before Markdown generation.
+        - kind: interface
+          name: AdcFixHandoffOptions
+          description: Optional handoff sections and privacy controls.
+        - kind: attribute
+          of: AdcFixHandoffOptions
+          name: includeCompareUrl
+          type: boolean | undefined
+        - kind: attribute
+          of: AdcFixHandoffOptions
+          name: includeHistory
+          type: boolean | undefined
+        - kind: attribute
+          of: AdcFixHandoffOptions
+          name: includeAdcFixLink
+          type: boolean | undefined
+        - kind: attribute
+          of: AdcFixHandoffOptions
+          name: redactPathNames
+          type: boolean | undefined
+    - path: src/production-readiness/reports/__tests__/reportGenerators.test.ts
+      artifacts:
+        - kind: test_function
+          name: generateExportReceiptMarkdown matches the Yellow golden receipt
+          description: |
+            Planned behavioral test comparing a composed fixture snapshot to
+            test/golden/prs/auth-env-change.receipt.md.
+        - kind: test_function
+          name: generateAdcFixHandoffMarkdown matches the Red golden handoff
+          description: |
+            Planned behavioral test comparing a composed fixture snapshot to
+            test/golden/prs/secret-file.handoff.md.
+        - kind: test_function
+          name: reports include limitations for partial snapshots
+          description: |
+            Planned behavioral test proving low-confidence and partial-data
+            limitations render in both receipt and handoff output.
+        - kind: test_function
+          name: reports never expose secret-looking values
+          description: |
+            Planned behavioral test using env and secret fixtures to assert raw
+            secret strings are absent from every generated Markdown report.
+        - kind: test_function
+          name: handoff language is helpful and non coercive
+          description: |
+            Planned behavioral test asserting forbidden phrases such as ADC Fix
+            is required or your app is broken do not appear.
+    - path: test/golden/prs/ui-only.receipt.md
+      artifacts:
+        - kind: namespace
+          name: UiOnlyReceiptGoldenMarkdown
+          description: Planned golden receipt for a Green UI-only export.
+    - path: test/golden/prs/auth-env-change.receipt.md
+      artifacts:
+        - kind: namespace
+          name: AuthEnvChangeReceiptGoldenMarkdown
+          description: Planned golden receipt for a Yellow auth plus env export.
+    - path: test/golden/prs/secret-file.handoff.md
+      artifacts:
+        - kind: namespace
+          name: SecretFileHandoffGoldenMarkdown
+          description: Planned golden handoff report proving redaction in a Red
+            export.
+  read:
+    - docs/b2g_production_readiness_snapshot_reference.md
+    - manifests/drafts/b2g-production-readiness-snapshot.manifest.yaml
+    - manifests/01-b2g-prs-domain-models-fixtures.manifest.yaml
+    - manifests/07-b2g-prs-env-secret-detector.manifest.yaml
+    - manifests/08-b2g-prs-readiness-composer.manifest.yaml
+    - src/production-readiness/domain.ts
+    - src/production-readiness/redaction.ts
+    - src/production-readiness/test-fixtures/prsFixtures.ts
+validate:
+  - pnpm exec vitest run
+    src/production-readiness/reports/__tests__/reportGenerators.test.ts
+  - ./scripts/maid validate manifests/09-b2g-prs-report-generators.manifest.yaml
+    --mode behavioral
+  - pnpm lint
+  - pnpm check
+created: '2026-07-31T07:20:46Z'
+metadata:
+  tags:
+    - production-readiness
+    - markdown-reports
+    - adc-fix-handoff
+    - redaction
+  priority: high
+  status: implementation
+  promotable: true
+  parent_epic: b2g-production-readiness-snapshot
+  source_document: docs/b2g_production_readiness_snapshot_reference.md
+  child_slug: 09-b2g-prs-report-generators
+  sequence: 9
+  depends_on:
+    - 01-b2g-prs-domain-models-fixtures
+    - 07-b2g-prs-env-secret-detector
+    - 08-b2g-prs-readiness-composer
+temptations:
+  - risk: Do not render raw before or after evidence values into Markdown.
+    instead: Sanitize the snapshot at the report boundary and assert known fixture
+      secrets are absent from every output string.
+  - risk: Do not make the ADC Fix report generator open tabs, call APIs, or upload
+      content.
+    instead: Return Markdown only; UI actions for copying, downloading, or
+      navigating belong to later integration code.
+  - risk: Do not use coercive or audit-like claims in receipt or handoff text.
+    instead: 'Use the reference language: static snapshot, production-sensitive areas,
+      suggested review, and explicit limitations.'
+  - risk: Do not hide limitations from short receipts.
+    instead: Include limitations in every generated report, even when the snapshot
+      state is Green.
+outcome:
+  status: completed
+  completed_at: '2026-07-31T07:38:55Z'
+  summary: |
+    PRS now generates deterministic Markdown receipts and optional ADC Fix
+    handoff reports from a ReadinessSnapshot. Golden fixtures cover Green and
+    Yellow receipts plus a Red handoff, while every report retains visible
+    static-analysis and partial-data limitations.
+
+    The report boundary deep-redacts string evidence values without mutating
+    its input. Optional path privacy removes evidence paths even when repeated
+    in labels or historical text, and Markdown escaping handles adversarial
+    filenames without corrupting report structure.
+  rationale: |
+    Keeping rendering pure and side-effect free makes the output suitable for
+    explicit copy or download actions in later UI slices without uploading
+    source, ZIPs, or report content. Golden Markdown provides a stable product
+    contract while boundary redaction and conservative language preserve
+    privacy and avoid coercive audit claims.
+  lessons:
+    - lesson_type: redact-paths-across-rendered-context
+      summary: |
+        A path-privacy option must remove structured path fields and the same
+        path when detectors repeat it in evidence labels, trend text, or other
+        rendered context.
+      tags: [privacy, redaction, reports]
+      paths:
+        - src/production-readiness/reports/reportGenerators.ts
+        - src/production-readiness/reports/__tests__/reportGenerators.test.ts
+    - lesson_type: render-arbitrary-paths-with-commonmark-rules
+      summary: |
+        Inline-code fences must be longer than any content backtick run and
+        padded when content starts or ends with a backtick so valid filenames
+        cannot break the surrounding Markdown structure.
+      tags: [markdown, determinism, escaping]
+      paths:
+        - src/production-readiness/reports/reportGenerators.ts
+        - src/production-readiness/reports/__tests__/reportGenerators.test.ts
+    - lesson_type: keep-handoff-generation-side-effect-free
+      summary: |
+        The ADC Fix crossover returns Markdown only. Copying, downloading,
+        external navigation, and deliberate sharing remain responsibilities of
+        later user-initiated integration code.
+      tags: [privacy, adc-fix, architecture]
+      paths:
+        - src/production-readiness/reports/reportGenerators.ts
+  review_notes:
+    - source: independent reviewer /root/slice09_implementation_reviewer
+      severity: needs-changes
+      summary: |
+        Revision 4 exposed path leakage through evidence and trend labels plus
+        malformed CommonMark spans for filenames ending in backticks.
+    - source: independent reviewer /root/slice09_revision5_reviewer
+      severity: ready
+      summary: |
+        Revision 5 had no blocking or should-fix findings. The reviewer
+        confirmed complete path redaction, valid adversarial code spans,
+        non-mutating secret redaction, deterministic output, optional language,
+        and the absence of network, browser, or upload side effects.
+  validation:
+    - command:
+        [
+          pnpm,
+          exec,
+          vitest,
+          run,
+          src/production-readiness/reports/__tests__/reportGenerators.test.ts,
+        ]
+      status: passed
+      summary: Five golden, privacy, limitation, and language behaviors passed.
+    - command:
+        [./scripts/maid, test, --manifest, manifests/09-b2g-prs-report-generators.manifest.yaml]
+      status: passed
+      summary: All four manifest-declared commands passed.
+    - command: [pnpm, test:ci]
+      status: passed
+      summary: The complete Vitest suite passed 206 files and 4,036 tests.
+    - command: [pnpm, build]
+      status: passed
+      summary: The production extension build completed with only two known
+        Vite dynamic/static import warnings.
+    - command:
+        [
+          ./scripts/maid,
+          verify,
+          --manifest-dir,
+          manifests,
+          --require-plan-lock,
+          --require-red-evidence,
+          --plan-lock-scope,
+          task,
+          --file-tracking-scope,
+          task,
+          --include-tests,
+          --since,
+          334d9fe,
+          --advisory,
+          --summary,
+        ]
+      status: passed
+      summary: All nine task-scoped verification gates passed with only three
+        unrelated pre-existing release-chain E110 warnings.
