@@ -1,0 +1,22 @@
+{
+  "name": "history-large-export",
+  "label": "Large export against history",
+  "generatedChangedFiles": 35,
+  "historySamples": [4, 5, 4, 6, 5],
+  "baseFiles": [
+    {
+      "path": "package.json",
+      "content": "{\"scripts\":{\"test\":\"vitest run\",\"lint\":\"eslint .\",\"check\":\"svelte-check\"},\"devDependencies\":{\"vitest\":\"1.6.1\"}}"
+    }
+  ],
+  "candidateFiles": [
+    {
+      "path": "package.json",
+      "content": "{\"scripts\":{\"test\":\"vitest run\",\"lint\":\"eslint .\",\"check\":\"svelte-check\"},\"devDependencies\":{\"vitest\":\"1.6.1\"}}"
+    },
+    {
+      "path": "src/auth/session.ts",
+      "content": "export const sessionMode = 'authenticated';"
+    }
+  ]
+}

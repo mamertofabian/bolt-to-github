@@ -1,0 +1,28 @@
+{
+  "name": "auth-env-change",
+  "label": "Authentication environment change",
+  "baseFiles": [
+    {
+      "path": "package.json",
+      "content": "{\"scripts\":{\"test\":\"vitest run\",\"lint\":\"eslint .\",\"check\":\"svelte-check\"},\"devDependencies\":{\"vitest\":\"1.6.1\"}}"
+    },
+    {
+      "path": "src/auth/session.ts",
+      "content": "export const sessionMode = 'anonymous';"
+    }
+  ],
+  "candidateFiles": [
+    {
+      "path": "package.json",
+      "content": "{\"scripts\":{\"test\":\"vitest run\",\"lint\":\"eslint .\",\"check\":\"svelte-check\"},\"devDependencies\":{\"vitest\":\"1.6.1\"}}"
+    },
+    {
+      "path": "src/auth/session.ts",
+      "content": "export const sessionMode = process.env.AUTH_SECRET ? 'authenticated' : 'anonymous';"
+    },
+    {
+      "path": ".env.example",
+      "content": "AUTH_SECRET=\n"
+    }
+  ]
+}

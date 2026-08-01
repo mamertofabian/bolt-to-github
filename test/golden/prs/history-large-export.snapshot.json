@@ -1,0 +1,57 @@
+{
+  "summary": {
+    "schemaVersion": "b2g.prs.snapshot.v1",
+    "state": {
+      "state": "red",
+      "confidence": "high",
+      "headline": "Deeper production readiness review recommended.",
+      "topConcerns": [
+        "Unusually large production-sensitive change",
+        "Authentication surface changed",
+        "Broad source change has no added or updated tests",
+        "Test and quality readiness evidence detected",
+        "Largest change in available history"
+      ],
+      "safeLookingAreas": [
+        "No dependency manifest changes detected.",
+        "No environment or secret concerns detected.",
+        "No maintainability concerns detected."
+      ],
+      "recommendedAction": "Resolve or review critical concerns before deploying.",
+      "internalScore": 16
+    },
+    "comparison": {
+      "changedFiles": 35,
+      "addedFiles": 1,
+      "deletedFiles": 0,
+      "renamedFiles": 0,
+      "addedLines": 36,
+      "deletedLines": 35,
+      "binaryFilesChanged": 0,
+      "sensitiveFilesChanged": 1,
+      "packageManifestChanged": false,
+      "lockfileChanged": false,
+      "envExampleChanged": false,
+      "routeSurfaceChanged": false
+    },
+    "categories": [
+      { "category": "public_surface", "signalCount": 1, "highestSeverity": "high" },
+      { "category": "testing_recovery", "signalCount": 2, "highestSeverity": "medium" },
+      { "category": "change_history", "signalCount": 2, "highestSeverity": "critical" }
+    ],
+    "signalIds": [
+      "history-unusually-large-change",
+      "public-surface-auth-changed",
+      "source-changes-without-tests",
+      "test-readiness-detected",
+      "history-largest-recent-export"
+    ],
+    "limitations": []
+  },
+  "digests": {
+    "snapshot": "a16aa77fc759e68e6db3da11ee7276fbd21ddd69e9846f26400d418b4f5a9c4b",
+    "receipt": "790170d03d8fc3a31a6c1ca4077b66cb04da06af81e25a3a76ec3a3d5a21cb95",
+    "handoff": "023f14e552f2f1ec228e9945378b6e76b8be8e6cadba8d8ea8993514b5975396",
+    "marker": "5a0ecdd6d7810db9e37cb7fb7169f57ae471b73722ca4f50230582a1a7ae2f3f"
+  }
+}

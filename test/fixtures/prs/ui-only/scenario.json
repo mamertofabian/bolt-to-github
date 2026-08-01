@@ -1,0 +1,24 @@
+{
+  "name": "ui-only",
+  "label": "UI-only export",
+  "baseFiles": [
+    {
+      "path": "package.json",
+      "content": "{\"scripts\":{\"test\":\"vitest run\",\"lint\":\"eslint .\",\"check\":\"svelte-check\"},\"devDependencies\":{\"vitest\":\"1.6.1\"}}"
+    },
+    {
+      "path": "src/components/Button.svelte",
+      "content": "<button class=\"primary\">Save</button>"
+    }
+  ],
+  "candidateFiles": [
+    {
+      "path": "package.json",
+      "content": "{\"scripts\":{\"test\":\"vitest run\",\"lint\":\"eslint .\",\"check\":\"svelte-check\"},\"devDependencies\":{\"vitest\":\"1.6.1\"}}"
+    },
+    {
+      "path": "src/components/Button.svelte",
+      "content": "<button class=\"primary rounded\">Save changes</button>"
+    }
+  ]
+}

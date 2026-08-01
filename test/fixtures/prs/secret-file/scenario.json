@@ -1,0 +1,28 @@
+{
+  "name": "secret-file",
+  "label": "Secret file export",
+  "baseFiles": [
+    {
+      "path": "package.json",
+      "content": "{\"scripts\":{\"test\":\"vitest run\",\"lint\":\"eslint .\",\"check\":\"svelte-check\"},\"devDependencies\":{\"vitest\":\"1.6.1\"}}"
+    },
+    {
+      "path": "src/App.svelte",
+      "content": "<main>Fixture app</main>"
+    }
+  ],
+  "candidateFiles": [
+    {
+      "path": "package.json",
+      "content": "{\"scripts\":{\"test\":\"vitest run\",\"lint\":\"eslint .\",\"check\":\"svelte-check\"},\"devDependencies\":{\"vitest\":\"1.6.1\"}}"
+    },
+    {
+      "path": "src/App.svelte",
+      "content": "<main>Fixture app</main>"
+    },
+    {
+      "path": ".env",
+      "content": "API_TOKEN=fixture-super-secret-value\n"
+    }
+  ]
+}

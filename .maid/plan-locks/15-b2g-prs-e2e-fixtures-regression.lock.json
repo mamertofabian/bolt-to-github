@@ -1,0 +1,459 @@
+{
+  "manifest_path": "manifests/15-b2g-prs-e2e-fixtures-regression.manifest.yaml",
+  "manifest_hash": "sha256-contract:1c308dd75e48b4883769ca39ecef94ac37a201ebf4897cc2937123addf730b5f",
+  "test_hashes": {
+    "src/lib/prs/__tests__/prsPipeline.fixtures.test.ts": "sha256:329a9452b11586f0b80e891d2e5204c0c00f9a28f8bd41039c1bf4bb86ae4247"
+  },
+  "created_at": "2026-08-01T04:42:31.238532+00:00",
+  "revision": 12,
+  "revisions": [
+    {
+      "prior_manifest_hash": "sha256-contract:906e4598b92f4a663d371d991529eaace0ebcd3da0df24cf709429b14850b0a1",
+      "prior_test_hashes": {
+        "src/lib/prs/__tests__/prsPipeline.fixtures.test.ts": "sha256:2d59fb6b9809d95d86011aa00ab9cee957305cd9d023cc357b1874419d27a273"
+      },
+      "revised_at": "2026-08-01T04:44:20.519194+00:00",
+      "reason": "Model fixture ZIPs with the root directory stripped by production inventory and assert the report generator's actual readiness line.",
+      "agent": null,
+      "contract_delta": {
+        "artifacts_added": [],
+        "artifacts_removed": [],
+        "files_added": [],
+        "files_removed": [],
+        "validate_commands_added": [],
+        "validate_commands_removed": []
+      }
+    },
+    {
+      "prior_manifest_hash": "sha256-contract:906e4598b92f4a663d371d991529eaace0ebcd3da0df24cf709429b14850b0a1",
+      "prior_test_hashes": {
+        "src/lib/prs/__tests__/prsPipeline.fixtures.test.ts": "sha256:1441c4255d842557285fbcc99ca85a3be7386440324a0c10a95606a06b44c5cd"
+      },
+      "revised_at": "2026-08-01T04:45:20.472271+00:00",
+      "reason": "Use the literal project wrapper recognized by ZIP inventory normalization so synthetic candidate paths align with GitHub base paths.",
+      "agent": null,
+      "contract_delta": {
+        "artifacts_added": [],
+        "artifacts_removed": [],
+        "files_added": [],
+        "files_removed": [],
+        "validate_commands_added": [],
+        "validate_commands_removed": []
+      }
+    },
+    {
+      "prior_manifest_hash": "sha256-contract:906e4598b92f4a663d371d991529eaace0ebcd3da0df24cf709429b14850b0a1",
+      "prior_test_hashes": {
+        "src/lib/prs/__tests__/prsPipeline.fixtures.test.ts": "sha256:33a06e5cdd1edebe294225e9815cac47c60d97045cef0487acd81d9084ff52f2"
+      },
+      "revised_at": "2026-08-01T04:46:14.483089+00:00",
+      "reason": "Assert that each synthetic ZIP inventory preserves the fixture's complete normalized candidate path set.",
+      "agent": null,
+      "contract_delta": {
+        "artifacts_added": [],
+        "artifacts_removed": [],
+        "files_added": [],
+        "files_removed": [],
+        "validate_commands_added": [],
+        "validate_commands_removed": []
+      }
+    },
+    {
+      "prior_manifest_hash": "sha256-contract:906e4598b92f4a663d371d991529eaace0ebcd3da0df24cf709429b14850b0a1",
+      "prior_test_hashes": {
+        "src/lib/prs/__tests__/prsPipeline.fixtures.test.ts": "sha256:02e0ec45841d6f20ec5f16cad65d7008fd44545fe69fd2b81a9827ef0d961655"
+      },
+      "revised_at": "2026-08-01T04:47:15.206990+00:00",
+      "reason": "Use the inventory service's real event-loop yielding so scheduled ZIP decoder work completes as it does in production.",
+      "agent": null,
+      "contract_delta": {
+        "artifacts_added": [],
+        "artifacts_removed": [],
+        "files_added": [],
+        "files_removed": [],
+        "validate_commands_added": [],
+        "validate_commands_removed": []
+      }
+    },
+    {
+      "prior_manifest_hash": "sha256-contract:906e4598b92f4a663d371d991529eaace0ebcd3da0df24cf709429b14850b0a1",
+      "prior_test_hashes": {
+        "src/lib/prs/__tests__/prsPipeline.fixtures.test.ts": "sha256:514910bc018446bf42d7e2feec845fd6351e5bc7a867066f01d76d5baa22f11e"
+      },
+      "revised_at": "2026-08-01T04:47:52.553001+00:00",
+      "reason": "Include sanitized inventory limitations in the path-completeness assertion so fixture extraction failures are diagnosable.",
+      "agent": null,
+      "contract_delta": {
+        "artifacts_added": [],
+        "artifacts_removed": [],
+        "files_added": [],
+        "files_removed": [],
+        "validate_commands_added": [],
+        "validate_commands_removed": []
+      }
+    },
+    {
+      "prior_manifest_hash": "sha256-contract:906e4598b92f4a663d371d991529eaace0ebcd3da0df24cf709429b14850b0a1",
+      "prior_test_hashes": {
+        "src/lib/prs/__tests__/prsPipeline.fixtures.test.ts": "sha256:74a301c8b14edfe31be02ca12cd2fe4e3a666988ae5184ed0c81702e325b805a"
+      },
+      "revised_at": "2026-08-01T04:48:37.181296+00:00",
+      "reason": "Verify the fixture builder creates one ZIP entry per candidate file before exercising streaming inventory.",
+      "agent": null,
+      "contract_delta": {
+        "artifacts_added": [],
+        "artifacts_removed": [],
+        "files_added": [],
+        "files_removed": [],
+        "validate_commands_added": [],
+        "validate_commands_removed": []
+      }
+    },
+    {
+      "prior_manifest_hash": "sha256-contract:906e4598b92f4a663d371d991529eaace0ebcd3da0df24cf709429b14850b0a1",
+      "prior_test_hashes": {
+        "src/lib/prs/__tests__/prsPipeline.fixtures.test.ts": "sha256:7e3d03229d68857bf8378af230d8f6bbeb93ea724d262b2605f5cda892dc3ebe"
+      },
+      "revised_at": "2026-08-01T04:49:13.002505+00:00",
+      "reason": "Normalize jsdom TextEncoder output into a native Uint8Array before passing fixture content to fflate.",
+      "agent": null,
+      "contract_delta": {
+        "artifacts_added": [],
+        "artifacts_removed": [],
+        "files_added": [],
+        "files_removed": [],
+        "validate_commands_added": [],
+        "validate_commands_removed": []
+      }
+    },
+    {
+      "prior_manifest_hash": "sha256-contract:906e4598b92f4a663d371d991529eaace0ebcd3da0df24cf709429b14850b0a1",
+      "prior_test_hashes": {
+        "src/lib/prs/__tests__/prsPipeline.fixtures.test.ts": "sha256:1863abf8111f7170d82a096698357f5b7812d8c98f7b47f878d80d721549d8ee"
+      },
+      "revised_at": "2026-08-01T04:50:13.731851+00:00",
+      "reason": "Match production trailing-newline line counts and assert Yellow for large history plus high-severity auth changes because export size alone does not force Red.",
+      "agent": null,
+      "contract_delta": {
+        "artifacts_added": [],
+        "artifacts_removed": [],
+        "files_added": [],
+        "files_removed": [],
+        "validate_commands_added": [],
+        "validate_commands_removed": []
+      }
+    },
+    {
+      "prior_manifest_hash": "sha256-contract:906e4598b92f4a663d371d991529eaace0ebcd3da0df24cf709429b14850b0a1",
+      "prior_test_hashes": {
+        "src/lib/prs/__tests__/prsPipeline.fixtures.test.ts": "sha256:f7aba2c1babe842cbf47ae911649c402904ef0d87917aed81caeb22f75bd16b5"
+      },
+      "revised_at": "2026-08-01T04:50:56.529621+00:00",
+      "reason": "Place synthetic large-export source files under an analyzed feature path so ignore rules do not exclude them from historical change metrics.",
+      "agent": null,
+      "contract_delta": {
+        "artifacts_added": [],
+        "artifacts_removed": [],
+        "files_added": [],
+        "files_removed": [],
+        "validate_commands_added": [],
+        "validate_commands_removed": []
+      }
+    },
+    {
+      "prior_manifest_hash": "sha256-contract:906e4598b92f4a663d371d991529eaace0ebcd3da0df24cf709429b14850b0a1",
+      "prior_test_hashes": {
+        "src/lib/prs/__tests__/prsPipeline.fixtures.test.ts": "sha256:4bc46cbb76c63fb91e7d25492083d18eeb910a8dd840d6703fb1d032a62890df"
+      },
+      "revised_at": "2026-08-01T04:51:57.731094+00:00",
+      "reason": "Represent the large-history scenario as 35 modified source files, since historical changedFiles deliberately excludes newly added files; retain Red only when that baseline combines with a sensitive change.",
+      "agent": null,
+      "contract_delta": {
+        "artifacts_added": [],
+        "artifacts_removed": [],
+        "files_added": [],
+        "files_removed": [],
+        "validate_commands_added": [],
+        "validate_commands_removed": []
+      }
+    },
+    {
+      "prior_manifest_hash": "sha256-contract:906e4598b92f4a663d371d991529eaace0ebcd3da0df24cf709429b14850b0a1",
+      "prior_test_hashes": {
+        "src/lib/prs/__tests__/prsPipeline.fixtures.test.ts": "sha256:e673d2a42f9ff325220cf5141e2ad448cfee24766e3101e88172684e59bb784f"
+      },
+      "revised_at": "2026-08-01T04:59:24.849281+00:00",
+      "reason": "Address independent review P1 findings by computing replacement-aware line deltas and pinning deterministic digests of every complete composed output in each golden.",
+      "agent": null,
+      "contract_delta": {
+        "artifacts_added": [],
+        "artifacts_removed": [],
+        "files_added": [],
+        "files_removed": [],
+        "validate_commands_added": [],
+        "validate_commands_removed": []
+      }
+    }
+  ],
+  "red_evidence": {
+    "red": true,
+    "captured_at": "2026-08-01T04:59:40.090710+00:00",
+    "commands": [
+      {
+        "command": "pnpm exec vitest run src/lib/prs/__tests__/prsPipeline.fixtures.test.ts",
+        "exit_code": 1,
+        "output_tail": "          \"Unusually large production-sensitive change\",\n          \"Authentication surface changed\",\n          \"Broad source change has no added or updated tests\",\n          \"Test and quality readiness evidence detected\",\n          \"Largest change in available history\",\n        ],\n+     },\n    },\n  }\n\n \u276f src/lib/prs/__tests__/prsPipeline.fixtures.test.ts:424:38\n    422|       'history-unusually-large-change'\n    423|     );\n    424|     expect(goldenProjection(result)).toEqual(golden<unknown>(HistoryLa\u2026\n       |                                      ^\n    425|   });\n    426| });\n\n\u23af\u23af\u23af\u23af\u23af\u23af\u23af\u23af\u23af\u23af\u23af\u23af\u23af\u23af\u23af\u23af\u23af\u23af\u23af\u23af\u23af\u23af\u23af\u23af[4/4]\u23af\n",
+        "classification": "red"
+      },
+      {
+        "command": "./scripts/maid validate manifests/15-b2g-prs-e2e-fixtures-regression.manifest.yaml --mode behavioral",
+        "exit_code": 0,
+        "output_tail": "PASS 15-b2g-prs-e2e-fixtures-regression\n  Mode: behavioral\n  Duration: 182ms\n  Warnings (3):\n    E110 Manifest 'prepare-v2-0-0-github-app-release' supersedes 'release-v1-3-21' but drops artifact 'PackageVersion_1_3_21' (namespace) at package.json\n      Location: /home/atomrem/projects/codefrost-dev/bolt-to-github/manifests/prepare-v2-0-0-github-app-release.manifest.yaml\n      Suggestion: Re-declare the artifact in the replacement manifest, list its file under files.delete, or list the symbol under removed_artifacts.\n    E110 Manifest 'prepare-v2-0-0-github-app-release' supersedes 'release-v1-3-21' but drops artifact 'ChromeManifestVersion_1_3_21' (namespace) at manifest.json\n      Location: /home/atomrem/projects/codefrost-dev/bolt-to-github/manifests/prepare-v2-0-0-github-app-release.manifest.yaml\n      Suggestion: Re-declare the artifact in the replacement manifest, list its file under files.delete, or list the symbol under removed_artifacts.\n    E110 Manifest 'prepare-v2-0-0-github-app-release' supersedes 'release-v1-3-21' but drops artifact 'DevelopmentGuideVersion_1_3_21' (namespace) at CLAUDE.md\n      Location: /home/atomrem/projects/codefrost-dev/bolt-to-github/manifests/prepare-v2-0-0-github-app-release.manifest.yaml\n      Suggestion: Re-declare the artifact in the replacement manifest, list its file under files.delete, or list the symbol under removed_artifacts.",
+        "classification": "not_red"
+      },
+      {
+        "command": "pnpm lint",
+        "exit_code": 0,
+        "output_tail": "\n> bolt-to-github@2.0.0 lint /home/atomrem/projects/codefrost-dev/bolt-to-github\n> eslint \"src/**/*.{js,ts,svelte}\"\n",
+        "classification": "not_red"
+      },
+      {
+        "command": "pnpm check",
+        "exit_code": 0,
+        "output_tail": "\n> bolt-to-github@2.0.0 check /home/atomrem/projects/codefrost-dev/bolt-to-github\n> svelte-check --tsconfig ./tsconfig.json\n\n\n====================================\nLoading svelte-check in workspace: /home/atomrem/projects/codefrost-dev/bolt-to-github\nGetting Svelte diagnostics...\n\n====================================\nsvelte-check found 0 errors and 0 warnings",
+        "classification": "not_red"
+      }
+    ]
+  },
+  "legacy_baseline": null,
+  "agent": null,
+  "_manifest_contract": {
+    "artifacts": [
+      "src/lib/prs/__tests__/prsPipeline.fixtures.test.ts:auth env change fixture returns Yellow or Red with env limitations",
+      "src/lib/prs/__tests__/prsPipeline.fixtures.test.ts:auth env change fixture returns Yellow or Red with env limitations:kind=test_function",
+      "src/lib/prs/__tests__/prsPipeline.fixtures.test.ts:history large export fixture applies baseline thresholds",
+      "src/lib/prs/__tests__/prsPipeline.fixtures.test.ts:history large export fixture applies baseline thresholds:kind=test_function",
+      "src/lib/prs/__tests__/prsPipeline.fixtures.test.ts:secret file fixture returns Red and redacts every output",
+      "src/lib/prs/__tests__/prsPipeline.fixtures.test.ts:secret file fixture returns Red and redacts every output:kind=test_function",
+      "src/lib/prs/__tests__/prsPipeline.fixtures.test.ts:ui only export fixture returns Green snapshot and matching receipt",
+      "src/lib/prs/__tests__/prsPipeline.fixtures.test.ts:ui only export fixture returns Green snapshot and matching receipt:kind=test_function",
+      "test/fixtures/prs/auth-env-change/scenario.json:namespace:AuthEnvChangePrsFixtureProject",
+      "test/fixtures/prs/auth-env-change/scenario.json:namespace:AuthEnvChangePrsFixtureProject:kind=namespace",
+      "test/fixtures/prs/history-large-export/scenario.json:namespace:HistoryLargeExportPrsFixtureProject",
+      "test/fixtures/prs/history-large-export/scenario.json:namespace:HistoryLargeExportPrsFixtureProject:kind=namespace",
+      "test/fixtures/prs/secret-file/scenario.json:namespace:SecretFilePrsFixtureProject",
+      "test/fixtures/prs/secret-file/scenario.json:namespace:SecretFilePrsFixtureProject:kind=namespace",
+      "test/fixtures/prs/ui-only/scenario.json:namespace:UiOnlyPrsFixtureProject",
+      "test/fixtures/prs/ui-only/scenario.json:namespace:UiOnlyPrsFixtureProject:kind=namespace",
+      "test/golden/prs/auth-env-change.snapshot.json:namespace:AuthEnvChangeSnapshotGoldenJson",
+      "test/golden/prs/auth-env-change.snapshot.json:namespace:AuthEnvChangeSnapshotGoldenJson:kind=namespace",
+      "test/golden/prs/auth-env-change.snapshot.json:namespace:AuthEnvChangeSnapshotGoldenJson:type=JSON fixture",
+      "test/golden/prs/history-large-export.snapshot.json:namespace:HistoryLargeExportSnapshotGoldenJson",
+      "test/golden/prs/history-large-export.snapshot.json:namespace:HistoryLargeExportSnapshotGoldenJson:kind=namespace",
+      "test/golden/prs/history-large-export.snapshot.json:namespace:HistoryLargeExportSnapshotGoldenJson:type=JSON fixture",
+      "test/golden/prs/secret-file.snapshot.json:namespace:SecretFileSnapshotGoldenJson",
+      "test/golden/prs/secret-file.snapshot.json:namespace:SecretFileSnapshotGoldenJson:kind=namespace",
+      "test/golden/prs/secret-file.snapshot.json:namespace:SecretFileSnapshotGoldenJson:type=JSON fixture",
+      "test/golden/prs/ui-only.snapshot.json:namespace:UiOnlySnapshotGoldenJson",
+      "test/golden/prs/ui-only.snapshot.json:namespace:UiOnlySnapshotGoldenJson:kind=namespace",
+      "test/golden/prs/ui-only.snapshot.json:namespace:UiOnlySnapshotGoldenJson:type=JSON fixture"
+    ],
+    "files": {
+      "create": [
+        "src/lib/prs/__tests__/prsPipeline.fixtures.test.ts",
+        "test/fixtures/prs/auth-env-change/scenario.json",
+        "test/fixtures/prs/history-large-export/scenario.json",
+        "test/fixtures/prs/secret-file/scenario.json",
+        "test/fixtures/prs/ui-only/scenario.json",
+        "test/golden/prs/auth-env-change.snapshot.json",
+        "test/golden/prs/history-large-export.snapshot.json",
+        "test/golden/prs/secret-file.snapshot.json",
+        "test/golden/prs/ui-only.snapshot.json"
+      ],
+      "edit": [],
+      "read": [
+        "docs/b2g_production_readiness_snapshot_reference.md",
+        "manifests/01-b2g-prs-domain-models-fixtures.manifest.yaml",
+        "manifests/02-b2g-prs-zip-inventory-normalization.manifest.yaml",
+        "manifests/03-b2g-prs-github-base-inventory.manifest.yaml",
+        "manifests/04-b2g-prs-diff-engine.manifest.yaml",
+        "manifests/05-b2g-prs-sensitive-path-classifier.manifest.yaml",
+        "manifests/06-b2g-prs-dependency-detector.manifest.yaml",
+        "manifests/07-b2g-prs-env-secret-detector.manifest.yaml",
+        "manifests/08-b2g-prs-readiness-composer.manifest.yaml",
+        "manifests/09-b2g-prs-report-generators.manifest.yaml",
+        "manifests/11-b2g-prs-public-surface-detector.manifest.yaml",
+        "manifests/12-b2g-prs-test-ci-maintainability-detector.manifest.yaml",
+        "manifests/13-b2g-prs-history-baseline-engine.manifest.yaml",
+        "manifests/14-b2g-prs-commit-marker-integration.manifest.yaml",
+        "manifests/drafts/b2g-production-readiness-snapshot.manifest.yaml",
+        "src/lib/prs/commitMarkers.ts",
+        "src/production-readiness/composer/readinessComposer.ts",
+        "src/production-readiness/detectors/dependencyDetector.ts",
+        "src/production-readiness/detectors/envSecretDetector.ts",
+        "src/production-readiness/detectors/publicSurfaceDetector.ts",
+        "src/production-readiness/detectors/sensitivePathClassifier.ts",
+        "src/production-readiness/detectors/testCiMaintainabilityDetector.ts",
+        "src/production-readiness/diff/diffEngine.ts",
+        "src/production-readiness/domain.ts",
+        "src/production-readiness/history/historyBaselineEngine.ts",
+        "src/production-readiness/inventory/githubBaseInventory.ts",
+        "src/production-readiness/inventory/zipInventory.ts",
+        "src/production-readiness/reports/reportGenerators.ts"
+      ],
+      "scope": [],
+      "delete": [],
+      "snapshot": []
+    },
+    "file_contract": {
+      "create": [
+        {
+          "path": "src/lib/prs/__tests__/prsPipeline.fixtures.test.ts",
+          "artifacts": [
+            {
+              "kind": "test_function",
+              "name": "ui only export fixture returns Green snapshot and matching receipt",
+              "description": "Planned end-to-end fixture test running candidate inventory, base\ninventory, diff, detectors, composer, and receipt generation for the\nUI-only project fixture.\n"
+            },
+            {
+              "kind": "test_function",
+              "name": "auth env change fixture returns Yellow or Red with env limitations",
+              "description": "Planned end-to-end fixture test proving auth and env changes produce\nthe expected readiness state, top concerns, and limitations.\n"
+            },
+            {
+              "kind": "test_function",
+              "name": "secret file fixture returns Red and redacts every output",
+              "description": "Planned end-to-end fixture test asserting raw secret strings are\nabsent from snapshot JSON, receipt Markdown, and handoff Markdown.\n"
+            },
+            {
+              "kind": "test_function",
+              "name": "history large export fixture applies baseline thresholds",
+              "description": "Planned end-to-end fixture test proving large historical exports\nproduce Yellow or Red based on category combinations, not size alone.\n"
+            }
+          ]
+        },
+        {
+          "path": "test/fixtures/prs/ui-only/scenario.json",
+          "artifacts": [
+            {
+              "kind": "namespace",
+              "name": "UiOnlyPrsFixtureProject",
+              "description": "Minimal in-memory ZIP/base project scenario representing UI-only changes with no sensitive signals."
+            }
+          ]
+        },
+        {
+          "path": "test/fixtures/prs/auth-env-change/scenario.json",
+          "artifacts": [
+            {
+              "kind": "namespace",
+              "name": "AuthEnvChangePrsFixtureProject",
+              "description": "Fixture scenario representing auth changes plus new env var references."
+            }
+          ]
+        },
+        {
+          "path": "test/fixtures/prs/secret-file/scenario.json",
+          "artifacts": [
+            {
+              "kind": "namespace",
+              "name": "SecretFilePrsFixtureProject",
+              "description": "Fixture scenario containing sentinel secret-looking values that must be redacted."
+            }
+          ]
+        },
+        {
+          "path": "test/fixtures/prs/history-large-export/scenario.json",
+          "artifacts": [
+            {
+              "kind": "namespace",
+              "name": "HistoryLargeExportPrsFixtureProject",
+              "description": "Fixture scenario representing unusual export size, sensitive changes, and bounded history."
+            }
+          ]
+        },
+        {
+          "path": "test/golden/prs/ui-only.snapshot.json",
+          "artifacts": [
+            {
+              "kind": "namespace",
+              "name": "UiOnlySnapshotGoldenJson",
+              "description": "Planned golden ReadinessSnapshot for the Green UI-only export.",
+              "type": "JSON fixture"
+            }
+          ]
+        },
+        {
+          "path": "test/golden/prs/auth-env-change.snapshot.json",
+          "artifacts": [
+            {
+              "kind": "namespace",
+              "name": "AuthEnvChangeSnapshotGoldenJson",
+              "description": "Planned golden ReadinessSnapshot for auth plus env changes.",
+              "type": "JSON fixture"
+            }
+          ]
+        },
+        {
+          "path": "test/golden/prs/secret-file.snapshot.json",
+          "artifacts": [
+            {
+              "kind": "namespace",
+              "name": "SecretFileSnapshotGoldenJson",
+              "description": "Planned golden ReadinessSnapshot proving Red state and redaction.",
+              "type": "JSON fixture"
+            }
+          ]
+        },
+        {
+          "path": "test/golden/prs/history-large-export.snapshot.json",
+          "artifacts": [
+            {
+              "kind": "namespace",
+              "name": "HistoryLargeExportSnapshotGoldenJson",
+              "description": "Planned golden ReadinessSnapshot for history baseline thresholds.",
+              "type": "JSON fixture"
+            }
+          ]
+        }
+      ],
+      "read": [
+        "docs/b2g_production_readiness_snapshot_reference.md",
+        "manifests/drafts/b2g-production-readiness-snapshot.manifest.yaml",
+        "manifests/01-b2g-prs-domain-models-fixtures.manifest.yaml",
+        "manifests/02-b2g-prs-zip-inventory-normalization.manifest.yaml",
+        "manifests/03-b2g-prs-github-base-inventory.manifest.yaml",
+        "manifests/04-b2g-prs-diff-engine.manifest.yaml",
+        "manifests/05-b2g-prs-sensitive-path-classifier.manifest.yaml",
+        "manifests/06-b2g-prs-dependency-detector.manifest.yaml",
+        "manifests/07-b2g-prs-env-secret-detector.manifest.yaml",
+        "manifests/08-b2g-prs-readiness-composer.manifest.yaml",
+        "manifests/09-b2g-prs-report-generators.manifest.yaml",
+        "manifests/11-b2g-prs-public-surface-detector.manifest.yaml",
+        "manifests/12-b2g-prs-test-ci-maintainability-detector.manifest.yaml",
+        "manifests/13-b2g-prs-history-baseline-engine.manifest.yaml",
+        "manifests/14-b2g-prs-commit-marker-integration.manifest.yaml",
+        "src/production-readiness/domain.ts",
+        "src/production-readiness/inventory/zipInventory.ts",
+        "src/production-readiness/inventory/githubBaseInventory.ts",
+        "src/production-readiness/diff/diffEngine.ts",
+        "src/production-readiness/detectors/sensitivePathClassifier.ts",
+        "src/production-readiness/detectors/dependencyDetector.ts",
+        "src/production-readiness/detectors/envSecretDetector.ts",
+        "src/production-readiness/detectors/publicSurfaceDetector.ts",
+        "src/production-readiness/detectors/testCiMaintainabilityDetector.ts",
+        "src/production-readiness/history/historyBaselineEngine.ts",
+        "src/production-readiness/composer/readinessComposer.ts",
+        "src/production-readiness/reports/reportGenerators.ts",
+        "src/lib/prs/commitMarkers.ts"
+      ]
+    },
+    "test_files": ["src/lib/prs/__tests__/prsPipeline.fixtures.test.ts"],
+    "validate_commands": [
+      "pnpm exec vitest run src/lib/prs/__tests__/prsPipeline.fixtures.test.ts",
+      "./scripts/maid validate manifests/15-b2g-prs-e2e-fixtures-regression.manifest.yaml --mode behavioral",
+      "pnpm lint",
+      "pnpm check"
+    ]
+  }
+}

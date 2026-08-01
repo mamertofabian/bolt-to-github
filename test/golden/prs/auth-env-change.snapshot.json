@@ -1,0 +1,52 @@
+{
+  "summary": {
+    "schemaVersion": "b2g.prs.snapshot.v1",
+    "state": {
+      "state": "yellow",
+      "confidence": "medium",
+      "headline": "Review production-sensitive changes before deploying.",
+      "topConcerns": [
+        "Authentication surface changed",
+        "New environment variables referenced",
+        "Test and quality readiness evidence detected"
+      ],
+      "safeLookingAreas": [
+        "No dependency manifest changes detected.",
+        "No maintainability concerns detected."
+      ],
+      "recommendedAction": "Review the top concerns and supporting evidence before deploying.",
+      "internalScore": 8
+    },
+    "comparison": {
+      "changedFiles": 1,
+      "addedFiles": 1,
+      "deletedFiles": 0,
+      "renamedFiles": 0,
+      "addedLines": 2,
+      "deletedLines": 1,
+      "binaryFilesChanged": 0,
+      "sensitiveFilesChanged": 2,
+      "packageManifestChanged": false,
+      "lockfileChanged": false,
+      "envExampleChanged": true,
+      "routeSurfaceChanged": false
+    },
+    "categories": [
+      { "category": "secrets_config", "signalCount": 1, "highestSeverity": "medium" },
+      { "category": "public_surface", "signalCount": 1, "highestSeverity": "high" },
+      { "category": "testing_recovery", "signalCount": 1, "highestSeverity": "info" }
+    ],
+    "signalIds": [
+      "public-surface-auth-changed",
+      "env-variable-introduced",
+      "test-readiness-detected"
+    ],
+    "limitations": ["Not enough export history yet to judge whether this change is unusual."]
+  },
+  "digests": {
+    "snapshot": "1873f49ac00accf656a9b1f5f9006945f735cb8c77ac018cdc874e7579e29b1d",
+    "receipt": "b00a51afd19f0b9d8032815b2d860cd4df182e468e8d1dac8314c69c559ab8d8",
+    "handoff": "873bfc41ef085a4ac15f20d975bb314725c01a2cc0fc9e26cee4390481788224",
+    "marker": "10fba04911b4d5011e70d38585eff3535ba1f3ae086ae3024ac15612cd512914"
+  }
+}

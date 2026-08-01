@@ -1,0 +1,43 @@
+{
+  "summary": {
+    "schemaVersion": "b2g.prs.snapshot.v1",
+    "state": {
+      "state": "green",
+      "confidence": "medium",
+      "headline": "No high-priority readiness concerns detected.",
+      "topConcerns": ["Test and quality readiness evidence detected"],
+      "safeLookingAreas": [
+        "No sensitive file changes detected.",
+        "No dependency manifest changes detected.",
+        "No environment or secret concerns detected.",
+        "No public surface changes detected.",
+        "No maintainability concerns detected."
+      ],
+      "recommendedAction": "Continue with normal review before deploying.",
+      "internalScore": 0
+    },
+    "comparison": {
+      "changedFiles": 1,
+      "addedFiles": 0,
+      "deletedFiles": 0,
+      "renamedFiles": 0,
+      "addedLines": 1,
+      "deletedLines": 1,
+      "binaryFilesChanged": 0,
+      "sensitiveFilesChanged": 0,
+      "packageManifestChanged": false,
+      "lockfileChanged": false,
+      "envExampleChanged": false,
+      "routeSurfaceChanged": false
+    },
+    "categories": [{ "category": "testing_recovery", "signalCount": 1, "highestSeverity": "info" }],
+    "signalIds": ["test-readiness-detected"],
+    "limitations": ["Not enough export history yet to judge whether this change is unusual."]
+  },
+  "digests": {
+    "snapshot": "19950c6b4f209c7105cdf721a192cc195529d82aa040fb615ce6413c59d4770c",
+    "receipt": "cc14c52e05d4bfb9da61ac388110bf2cdcbf97f577c1e22b6563a82c0f81a1d9",
+    "handoff": "0820a8c89540708ec49ad45ef3e0bc8714667ec75073b6c5b1d26e0ca3aa43f7",
+    "marker": "744e00de8f795e99932a0f0c3be96a41207e9180e07cd4bc232ed8cb3a4133be"
+  }
+}
