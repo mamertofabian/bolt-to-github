@@ -1,0 +1,525 @@
+# draft-kind: child-planning-inventory
+# MAID manifest - a machine-checked contract for one change.
+# Declares the intent, the files it may touch, and the commands that verify it.
+# Nothing here is needed to build or run this project; safe to ignore.
+# What it is: https://github.com/mamertofabian/maid-runner
+schema: '2'
+goal: |
+  Analyze prior PRS snapshots or recent GitHub commits to detect unusual change
+  size, hotspots, dependency drift, and repeated sensitive-area churn without
+  fabricating trends when history is unavailable.
+description: |
+  Child draft for the b2g-production-readiness-snapshot parent epic, derived
+  from docs/b2g_production_readiness_snapshot_reference.md sections 8.1, 8.8,
+  9, 11, 12, 17, 18, and 19.3 Child 10.
+
+  The domain and comparison contracts now exist. This slice owns a pure robust
+  baseline engine plus injected, read-only GitHub history and local snapshot
+  storage ports. History source priority is prior snapshots, identifiable B2G
+  commits, then recent GitHub commits. Fewer than five usable samples produces
+  explicit limitations and only documented static fallback signals, never an
+  unusual-history claim.
+
+  GitHub responses and persisted snapshot summaries contain metadata only. Raw
+  source, file contents, secret values, author email addresses, and commit-body
+  marker parsing are outside this slice. Rich commit-marker parsing remains
+  owned by slice 14.
+type: feature
+files:
+  create:
+    - path: src/production-readiness/history/historyBaselineEngine.ts
+      artifacts:
+        - kind: function
+          name: buildHistoryBaseline
+          args:
+            - name: input
+              type: HistoryBaselineInput
+          returns: HistoryBaselineResult
+          description: Builds a robust source-prioritized history baseline and
+            deterministic change-history signals.
+        - kind: interface
+          name: HistoryBaselineInput
+        - kind: attribute
+          of: HistoryBaselineInput
+          name: current
+          type: ComparisonSummary
+        - kind: attribute
+          of: HistoryBaselineInput
+          name: currentChangedPaths
+          type: string[]
+        - kind: attribute
+          of: HistoryBaselineInput
+          name: currentSensitivePaths
+          type: string[]
+        - kind: attribute
+          of: HistoryBaselineInput
+          name: currentSourceFilesChanged
+          type: number | undefined
+        - kind: attribute
+          of: HistoryBaselineInput
+          name: currentSourceLinesChanged
+          type: number | undefined
+        - kind: attribute
+          of: HistoryBaselineInput
+          name: currentDependencyCount
+          type: number | undefined
+        - kind: attribute
+          of: HistoryBaselineInput
+          name: priorSnapshots
+          type: PrsHistorySample[]
+        - kind: attribute
+          of: HistoryBaselineInput
+          name: githubCommits
+          type: PrsCommitHistoryRecord[]
+        - kind: interface
+          name: HistoryBaselineResult
+        - kind: attribute
+          of: HistoryBaselineResult
+          name: signals
+          type: ReadinessSignal[]
+        - kind: attribute
+          of: HistoryBaselineResult
+          name: baseline
+          type: PrsHistoryBaseline | null
+        - kind: attribute
+          of: HistoryBaselineResult
+          name: limitations
+          type: string[]
+        - kind: interface
+          name: PrsHistorySample
+        - kind: attribute
+          of: PrsHistorySample
+          name: id
+          type: string
+        - kind: attribute
+          of: PrsHistorySample
+          name: source
+          type: HistorySource
+        - kind: attribute
+          of: PrsHistorySample
+          name: recordedAt
+          type: string
+        - kind: attribute
+          of: PrsHistorySample
+          name: changedFiles
+          type: number
+        - kind: attribute
+          of: PrsHistorySample
+          name: addedFiles
+          type: number
+        - kind: attribute
+          of: PrsHistorySample
+          name: deletedFiles
+          type: number
+        - kind: attribute
+          of: PrsHistorySample
+          name: addedLines
+          type: number | undefined
+        - kind: attribute
+          of: PrsHistorySample
+          name: deletedLines
+          type: number | undefined
+        - kind: attribute
+          of: PrsHistorySample
+          name: sensitiveFilesChanged
+          type: number
+        - kind: attribute
+          of: PrsHistorySample
+          name: dependencyCount
+          type: number | undefined
+        - kind: attribute
+          of: PrsHistorySample
+          name: changedPaths
+          type: string[]
+        - kind: attribute
+          of: PrsHistorySample
+          name: sensitivePaths
+          type: string[]
+        - kind: interface
+          name: PrsCommitHistoryRecord
+        - kind: attribute
+          of: PrsCommitHistoryRecord
+          name: sha
+          type: string
+        - kind: attribute
+          of: PrsCommitHistoryRecord
+          name: subject
+          type: string
+        - kind: attribute
+          of: PrsCommitHistoryRecord
+          name: isB2gCommit
+          type: boolean
+        - kind: interface
+          name: PrsHistoryBaseline
+        - kind: attribute
+          of: PrsHistoryBaseline
+          name: source
+          type: HistorySource
+        - kind: attribute
+          of: PrsHistoryBaseline
+          name: sampleCount
+          type: number
+        - kind: attribute
+          of: PrsHistoryBaseline
+          name: medianChangedFiles
+          type: number
+        - kind: attribute
+          of: PrsHistoryBaseline
+          name: medianLineChanges
+          type: number | null
+        - kind: attribute
+          of: PrsHistoryBaseline
+          name: changedFilesPercentile
+          type: number
+        - kind: attribute
+          of: PrsHistoryBaseline
+          name: lineChangesPercentile
+          type: number | null
+        - kind: attribute
+          of: PrsHistoryBaseline
+          name: hotspots
+          type: PrsHotspotFile[]
+        - kind: attribute
+          of: PrsHistoryBaseline
+          name: label
+          type: HistoryBaselineLabel
+        - kind: interface
+          name: PrsHotspotFile
+        - kind: attribute
+          of: PrsHotspotFile
+          name: path
+          type: string
+        - kind: attribute
+          of: PrsHotspotFile
+          name: changeCount
+          type: number
+        - kind: attribute
+          of: PrsHotspotFile
+          name: sensitiveChangeCount
+          type: number
+        - kind: type
+          name: HistorySource
+          type: "'prior_snapshot' | 'b2g_commit' | 'github_commit'"
+        - kind: type
+          name: HistoryBaselineLabel
+          type: "'normal_range' | 'larger_than_usual' | 'unusually_large' | 'largest_recent_export'
+            | 'repeated_churn' | 'accelerating_dependency_growth' | 'insufficient_history'"
+    - path: src/production-readiness/history/historyStats.ts
+      artifacts:
+        - kind: function
+          name: calculateMedian
+          args:
+            - name: values
+              type: number[]
+          returns: number | null
+          description: Calculates a deterministic median and returns null for no
+            samples.
+        - kind: function
+          name: calculatePercentileRank
+          args:
+            - name: value
+              type: number
+            - name: samples
+              type: number[]
+          returns: number | null
+          description: Calculates the percentage of samples less than or equal
+            to the value.
+        - kind: function
+          name: detectHistoryHotspots
+          args:
+            - name: samples
+              type: PrsHistorySample[]
+          returns: PrsHotspotFile[]
+          description: Returns paths changed in at least three distinct samples
+            with sensitive churn counts.
+    - path: src/production-readiness/github/githubHistoryAdapter.ts
+      artifacts:
+        - kind: function
+          name: fetchPrsCommitHistory
+          args:
+            - name: request
+              type: GitHubHistoryRequest
+          returns: Promise<GitHubHistoryResult>
+          description: Fetches bounded commit metadata and detail records
+            through an injected GitHub reader.
+        - kind: type
+          name: GitHubHistoryReader
+          type: '<T>(endpoint: string, signal?: AbortSignal) => Promise<T>'
+        - kind: interface
+          name: GitHubHistoryRequest
+        - kind: attribute
+          of: GitHubHistoryRequest
+          name: owner
+          type: string
+        - kind: attribute
+          of: GitHubHistoryRequest
+          name: repo
+          type: string
+        - kind: attribute
+          of: GitHubHistoryRequest
+          name: baseRef
+          type: string
+        - kind: attribute
+          of: GitHubHistoryRequest
+          name: maxCommits
+          type: number
+        - kind: attribute
+          of: GitHubHistoryRequest
+          name: readGitHub
+          type: GitHubHistoryReader
+        - kind: attribute
+          of: GitHubHistoryRequest
+          name: isSensitivePath
+          type: '((path: string) => boolean) | undefined'
+        - kind: attribute
+          of: GitHubHistoryRequest
+          name: signal
+          type: AbortSignal | undefined
+        - kind: interface
+          name: GitHubHistoryResult
+        - kind: attribute
+          of: GitHubHistoryResult
+          name: records
+          type: PrsCommitHistoryRecord[]
+        - kind: attribute
+          of: GitHubHistoryResult
+          name: limitations
+          type: PartialDataNotice[]
+    - path: src/production-readiness/snapshots/priorSnapshotStore.ts
+      artifacts:
+        - kind: function
+          name: loadPriorPrsSnapshots
+          args:
+            - name: repository
+              type: RepositoryRef
+            - name: storage
+              type: PrsSnapshotStorage
+          returns: Promise<PriorSnapshotLoadResult>
+          description: Loads validated metadata-only PRS summaries through an
+            injected local storage port.
+        - kind: function
+          name: savePrsSnapshotSummary
+          args:
+            - name: snapshot
+              type: ReadinessSnapshot
+            - name: storage
+              type: PrsSnapshotStorage
+          returns: Promise<void>
+          description: Stores a bounded redaction-safe snapshot summary without
+            raw source or secret values.
+        - kind: interface
+          name: PrsSnapshotStorage
+        - kind: method
+          of: PrsSnapshotStorage
+          name: get
+          args:
+            - name: key
+              type: string
+          returns: Promise<unknown>
+        - kind: method
+          of: PrsSnapshotStorage
+          name: set
+          args:
+            - name: key
+              type: string
+            - name: value
+              type: unknown
+          returns: Promise<void>
+        - kind: interface
+          name: PriorSnapshotLoadResult
+        - kind: attribute
+          of: PriorSnapshotLoadResult
+          name: samples
+          type: PrsHistorySample[]
+        - kind: attribute
+          of: PriorSnapshotLoadResult
+          name: limitations
+          type: string[]
+    - path: src/production-readiness/history/__tests__/historyBaselineEngine.test.ts
+      artifacts:
+        - kind: test_function
+          name: calculates median percentile and source-prioritized baselines
+          description: Covers robust metrics and prior-snapshot/B2G/recent
+            source priority.
+        - kind: test_function
+          name: reports insufficient history as limitations not trend claims
+          description: Covers unknown history and documented static fallback
+            thresholds.
+        - kind: test_function
+          name: identifies hotspot files and repeated sensitive churn
+          description: Covers unique-per-sample hotspot counts and current
+            hotspot evidence.
+        - kind: test_function
+          name: emits large export and dependency drift signals only at
+            documented boundaries
+          description: Covers strict 3x/6x thresholds and repeated dependency
+            growth.
+        - kind: test_function
+          name: fetches bounded GitHub history and exposes unavailable history
+            limitations
+          description: Covers injected reads, metadata normalization,
+            cancellation, and rate-limit handling.
+        - kind: test_function
+          name: stores bounded metadata-only prior snapshot summaries
+          description: Covers injected storage, validation, retention, and
+            secret-value exclusion.
+  read:
+    - manifests/drafts/b2g-production-readiness-snapshot.manifest.yaml
+    - manifests/01-b2g-prs-domain-models-fixtures.manifest.yaml
+    - manifests/04-b2g-prs-diff-engine.manifest.yaml
+    - manifests/12-b2g-prs-test-ci-maintainability-detector.manifest.yaml
+    - docs/b2g_production_readiness_snapshot_reference.md
+    - src/production-readiness/domain.ts
+    - src/production-readiness/diff/diffEngine.ts
+    - src/production-readiness/test-fixtures/prsFixtures.ts
+    - src/production-readiness/inventory/githubBaseInventory.ts
+validate:
+  - pnpm exec vitest run
+    src/production-readiness/history/__tests__/historyBaselineEngine.test.ts
+  - ./scripts/maid validate
+    manifests/13-b2g-prs-history-baseline-engine.manifest.yaml --mode behavioral
+  - pnpm lint
+  - pnpm check
+created: '2026-07-31T10:49:53Z'
+metadata:
+  parent_epic: b2g-production-readiness-snapshot
+  child_slug: 13-b2g-prs-history-baseline-engine
+  tags:
+    - production-readiness
+    - history
+    - baseline
+    - hotspots
+    - planning-inventory
+  priority: high
+  promotable: true
+  source_document: docs/b2g_production_readiness_snapshot_reference.md
+  depends_on:
+    - 01-b2g-prs-domain-models-fixtures
+    - 04-b2g-prs-diff-engine
+    - 12-b2g-prs-test-ci-maintainability-detector
+temptations:
+  - risk: Do not fabricate a history baseline when GitHub history or prior PRS
+      snapshots are missing.
+    instead: Return insufficient-history limitations and allow the composer to
+      lower confidence.
+  - risk: Do not use simple averages that are distorted by one large export.
+    instead: Prefer median and percentile rank with fixture-backed strict
+      thresholds.
+  - risk: Do not require perfect B2G commit identification for MVP.
+    instead: Prefer prior snapshots, then simple identifiable B2G commits, then
+      recent commits with explicit source labels.
+  - risk: Do not turn large-change metrics into user blame language.
+    instead: Emit neutral deterministic evidence such as larger-than-usual,
+      largest recent export, repeated churn, or accelerating dependency growth.
+  - risk: Do not retain raw source, secret values, author email addresses, or
+      unbounded commit data.
+    instead: Persist and return bounded redaction-safe metrics, paths, commit
+      SHAs, timestamps, and first-line subjects only.
+outcome:
+  status: completed
+  completed_at: '2026-07-31T11:23:21Z'
+  summary: |
+    PRS now builds deterministic history baselines from prior local snapshots,
+    identifiable Bolt-to-GitHub commits, or recent GitHub commits in that
+    priority order. It uses median and percentile comparisons, reports repeated
+    hotspots and sensitive churn, and emits dependency-growth evidence only
+    when every compared count is authoritative.
+
+    Missing or insufficient history remains an explicit limitation. Static
+    fallback signals use caller-provided source-file and source-line counts,
+    while GitHub and local persistence adapters retain only bounded,
+    metadata-only summaries and expose partial or unavailable history.
+  rationale: |
+    Robust statistics and strict source priority keep one large export or a
+    malformed lower-priority source from distorting the baseline. Injected I/O,
+    bounded pagination and retention, duplicate rejection, and projected
+    records keep collection testable and prevent raw source, secret values, or
+    unbounded third-party data from entering stored history.
+  lessons:
+    - lesson_type: validate-only-the-selected-history-source
+      summary: |
+        Source priority must be lazy: a valid higher-priority baseline should
+        not fail because unused lower-priority history is malformed. B2G
+        candidates must likewise be filtered before regular commits are
+        validated.
+      tags: [history, source-priority, validation]
+      paths:
+        - src/production-readiness/history/historyBaselineEngine.ts
+    - lesson_type: distinct-samples-before-baseline-sufficiency
+      summary: |
+        Duplicate snapshot IDs or commit SHAs cannot count as independent
+        history. Reject or skip duplicate identities before applying the
+        minimum-sample threshold.
+      tags: [history, deduplication, determinism]
+      paths:
+        - src/production-readiness/history/historyBaselineEngine.ts
+        - src/production-readiness/github/githubHistoryAdapter.ts
+        - src/production-readiness/snapshots/priorSnapshotStore.ts
+    - lesson_type: bound-and-project-history-at-io-boundaries
+      summary: |
+        History adapters should reject oversized collections before parsing and
+        project accepted records into fresh metadata-only objects. Bound path,
+        identifier, timestamp, subject, pagination, and retention dimensions at
+        the boundary rather than relying on downstream consumers.
+      tags: [privacy, storage, github, bounded-data]
+      paths:
+        - src/production-readiness/github/githubHistoryAdapter.ts
+        - src/production-readiness/snapshots/priorSnapshotStore.ts
+  review_notes:
+    - source: independent reviewers revisions 5, 7, and 8
+      severity: findings-fixed
+      summary: |
+        Read-only reviews identified fabricated dependency counts, incomplete
+        GitHub pagination and partial-rate-limit behavior, invalid dotted-repo
+        keys, misleading line-only evidence, unprojected persisted objects,
+        eager lower-priority validation, repeated opaque 403 requests,
+        duplicate identities, unbounded metadata, and post-parse retention
+        bounds. Each valid finding received focused behavioral coverage and a
+        locked plan revision before implementation.
+    - source: independent reviewer /root/slice13_revision9_reviewer
+      severity: ready
+      summary: |
+        The final review found no P0, P1, or P2 issues and confirmed revision-9
+        lock integrity, declared scope and artifacts, lazy source priority,
+        duplicate protection, bounded metadata and storage, partial-data
+        handling, privacy projection, and all earlier review fixes.
+  validation:
+    - command:
+        - ./scripts/maid
+        - test
+        - --manifest-dir
+        - manifests
+        - --manifest
+        - manifests/13-b2g-prs-history-baseline-engine.manifest.yaml
+      status: passed
+      summary: All four declared commands passed, including six focused scenarios, behavioral validation, lint, and type checking.
+    - command:
+        - pnpm
+        - test:ci
+      status: passed
+      summary: The complete repository suite passed with 210 files and 4,056 tests.
+    - command:
+        - pnpm
+        - build
+      status: passed
+      summary: The production extension build passed; only two pre-existing Vite chunking warnings were reported.
+    - command:
+        - ./scripts/maid
+        - validate
+        - manifests/13-b2g-prs-history-baseline-engine.manifest.yaml
+        - --mode
+        - implementation
+      status: passed
+      summary: Declared implementation artifacts passed validation; three unrelated pre-existing E110 warnings remained.
+    - command:
+        - ./scripts/maid
+        - verify
+        - --advisory
+        - --since
+        - 2eb03ab
+        - --file-tracking-scope
+        - task
+        - --plan-lock-scope
+        - task
+      status: passed
+      summary: Schema, behavioral, implementation, coherence, scope, file tracking, tests, and plan-lock checks passed.

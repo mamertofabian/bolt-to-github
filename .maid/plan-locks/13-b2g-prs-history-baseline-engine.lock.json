@@ -1,0 +1,1195 @@
+{
+  "manifest_path": "manifests/13-b2g-prs-history-baseline-engine.manifest.yaml",
+  "manifest_hash": "sha256-contract:ddef55415019ffc55b5f5dec11aaca6f5172cd777d2acdddd54b440ffcd8b9e0",
+  "test_hashes": {
+    "src/production-readiness/history/__tests__/historyBaselineEngine.test.ts": "sha256:f6629b1647a1d3b94e75be6de804275a09d5bbc1bbaa5230f474ae9c6b9ec395"
+  },
+  "created_at": "2026-07-31T10:49:54.094764+00:00",
+  "revision": 9,
+  "revisions": [
+    {
+      "prior_manifest_hash": "sha256-contract:d18d97c1ab8e5be532ea9afbcb253d0d5d2964518237bf9f3555563e7cd9f54b",
+      "prior_test_hashes": {
+        "src/production-readiness/history/__tests__/historyBaselineEngine.test.ts": "sha256:2bb0c9f16a5e9a3c3cd74c77d8b7f53695c3add94a7562b10531bcbaad411327"
+      },
+      "revised_at": "2026-07-31T10:53:45.895355+00:00",
+      "reason": "Preserve largest-recent-export evidence independently from strict 3x unusual-change boundaries",
+      "agent": null,
+      "contract_delta": {
+        "artifacts_added": [],
+        "artifacts_removed": [],
+        "files_added": [],
+        "files_removed": [],
+        "validate_commands_added": [],
+        "validate_commands_removed": []
+      }
+    },
+    {
+      "prior_manifest_hash": "sha256-contract:d18d97c1ab8e5be532ea9afbcb253d0d5d2964518237bf9f3555563e7cd9f54b",
+      "prior_test_hashes": {
+        "src/production-readiness/history/__tests__/historyBaselineEngine.test.ts": "sha256:2f03466b2a15971e637398376651e8eb0a997d47f4a475c93ceed5fb4e4998f2"
+      },
+      "revised_at": "2026-07-31T10:55:02.700912+00:00",
+      "reason": "Correct the generic injected GitHub reader mock typing without changing the behavioral contract",
+      "agent": null,
+      "contract_delta": {
+        "artifacts_added": [],
+        "artifacts_removed": [],
+        "files_added": [],
+        "files_removed": [],
+        "validate_commands_added": [],
+        "validate_commands_removed": []
+      }
+    },
+    {
+      "prior_manifest_hash": "sha256-contract:d18d97c1ab8e5be532ea9afbcb253d0d5d2964518237bf9f3555563e7cd9f54b",
+      "prior_test_hashes": {
+        "src/production-readiness/history/__tests__/historyBaselineEngine.test.ts": "sha256:03168f6c723f5c630c3184c849d683684d52585866aef39c459b98e4f5c2ecb0"
+      },
+      "revised_at": "2026-07-31T10:56:35.175528+00:00",
+      "reason": "Declare every public history metadata field and injected storage/GitHub port method found by implementation validation",
+      "agent": null,
+      "contract_delta": {
+        "artifacts_added": [
+          "src/production-readiness/github/githubHistoryAdapter.ts:attribute:GitHubHistoryRequest.baseRef",
+          "src/production-readiness/github/githubHistoryAdapter.ts:attribute:GitHubHistoryRequest.baseRef:kind=attribute",
+          "src/production-readiness/github/githubHistoryAdapter.ts:attribute:GitHubHistoryRequest.baseRef:of=GitHubHistoryRequest",
+          "src/production-readiness/github/githubHistoryAdapter.ts:attribute:GitHubHistoryRequest.baseRef:type=string",
+          "src/production-readiness/github/githubHistoryAdapter.ts:attribute:GitHubHistoryRequest.isSensitivePath",
+          "src/production-readiness/github/githubHistoryAdapter.ts:attribute:GitHubHistoryRequest.isSensitivePath:kind=attribute",
+          "src/production-readiness/github/githubHistoryAdapter.ts:attribute:GitHubHistoryRequest.isSensitivePath:of=GitHubHistoryRequest",
+          "src/production-readiness/github/githubHistoryAdapter.ts:attribute:GitHubHistoryRequest.isSensitivePath:type=((path: string) => boolean) | undefined",
+          "src/production-readiness/github/githubHistoryAdapter.ts:attribute:GitHubHistoryRequest.maxCommits",
+          "src/production-readiness/github/githubHistoryAdapter.ts:attribute:GitHubHistoryRequest.maxCommits:kind=attribute",
+          "src/production-readiness/github/githubHistoryAdapter.ts:attribute:GitHubHistoryRequest.maxCommits:of=GitHubHistoryRequest",
+          "src/production-readiness/github/githubHistoryAdapter.ts:attribute:GitHubHistoryRequest.maxCommits:type=number",
+          "src/production-readiness/github/githubHistoryAdapter.ts:attribute:GitHubHistoryRequest.owner",
+          "src/production-readiness/github/githubHistoryAdapter.ts:attribute:GitHubHistoryRequest.owner:kind=attribute",
+          "src/production-readiness/github/githubHistoryAdapter.ts:attribute:GitHubHistoryRequest.owner:of=GitHubHistoryRequest",
+          "src/production-readiness/github/githubHistoryAdapter.ts:attribute:GitHubHistoryRequest.owner:type=string",
+          "src/production-readiness/github/githubHistoryAdapter.ts:attribute:GitHubHistoryRequest.readGitHub",
+          "src/production-readiness/github/githubHistoryAdapter.ts:attribute:GitHubHistoryRequest.readGitHub:kind=attribute",
+          "src/production-readiness/github/githubHistoryAdapter.ts:attribute:GitHubHistoryRequest.readGitHub:of=GitHubHistoryRequest",
+          "src/production-readiness/github/githubHistoryAdapter.ts:attribute:GitHubHistoryRequest.readGitHub:type=GitHubHistoryReader",
+          "src/production-readiness/github/githubHistoryAdapter.ts:attribute:GitHubHistoryRequest.repo",
+          "src/production-readiness/github/githubHistoryAdapter.ts:attribute:GitHubHistoryRequest.repo:kind=attribute",
+          "src/production-readiness/github/githubHistoryAdapter.ts:attribute:GitHubHistoryRequest.repo:of=GitHubHistoryRequest",
+          "src/production-readiness/github/githubHistoryAdapter.ts:attribute:GitHubHistoryRequest.repo:type=string",
+          "src/production-readiness/github/githubHistoryAdapter.ts:attribute:GitHubHistoryRequest.signal",
+          "src/production-readiness/github/githubHistoryAdapter.ts:attribute:GitHubHistoryRequest.signal:kind=attribute",
+          "src/production-readiness/github/githubHistoryAdapter.ts:attribute:GitHubHistoryRequest.signal:of=GitHubHistoryRequest",
+          "src/production-readiness/github/githubHistoryAdapter.ts:attribute:GitHubHistoryRequest.signal:type=AbortSignal | undefined",
+          "src/production-readiness/github/githubHistoryAdapter.ts:attribute:GitHubHistoryResult.limitations",
+          "src/production-readiness/github/githubHistoryAdapter.ts:attribute:GitHubHistoryResult.limitations:kind=attribute",
+          "src/production-readiness/github/githubHistoryAdapter.ts:attribute:GitHubHistoryResult.limitations:of=GitHubHistoryResult",
+          "src/production-readiness/github/githubHistoryAdapter.ts:attribute:GitHubHistoryResult.limitations:type=PartialDataNotice[]",
+          "src/production-readiness/github/githubHistoryAdapter.ts:attribute:GitHubHistoryResult.records",
+          "src/production-readiness/github/githubHistoryAdapter.ts:attribute:GitHubHistoryResult.records:kind=attribute",
+          "src/production-readiness/github/githubHistoryAdapter.ts:attribute:GitHubHistoryResult.records:of=GitHubHistoryResult",
+          "src/production-readiness/github/githubHistoryAdapter.ts:attribute:GitHubHistoryResult.records:type=PrsCommitHistoryRecord[]",
+          "src/production-readiness/history/historyBaselineEngine.ts:attribute:PrsCommitHistoryRecord.isB2gCommit",
+          "src/production-readiness/history/historyBaselineEngine.ts:attribute:PrsCommitHistoryRecord.isB2gCommit:kind=attribute",
+          "src/production-readiness/history/historyBaselineEngine.ts:attribute:PrsCommitHistoryRecord.isB2gCommit:of=PrsCommitHistoryRecord",
+          "src/production-readiness/history/historyBaselineEngine.ts:attribute:PrsCommitHistoryRecord.isB2gCommit:type=boolean",
+          "src/production-readiness/history/historyBaselineEngine.ts:attribute:PrsCommitHistoryRecord.sha",
+          "src/production-readiness/history/historyBaselineEngine.ts:attribute:PrsCommitHistoryRecord.sha:kind=attribute",
+          "src/production-readiness/history/historyBaselineEngine.ts:attribute:PrsCommitHistoryRecord.sha:of=PrsCommitHistoryRecord",
+          "src/production-readiness/history/historyBaselineEngine.ts:attribute:PrsCommitHistoryRecord.sha:type=string",
+          "src/production-readiness/history/historyBaselineEngine.ts:attribute:PrsCommitHistoryRecord.subject",
+          "src/production-readiness/history/historyBaselineEngine.ts:attribute:PrsCommitHistoryRecord.subject:kind=attribute",
+          "src/production-readiness/history/historyBaselineEngine.ts:attribute:PrsCommitHistoryRecord.subject:of=PrsCommitHistoryRecord",
+          "src/production-readiness/history/historyBaselineEngine.ts:attribute:PrsCommitHistoryRecord.subject:type=string",
+          "src/production-readiness/history/historyBaselineEngine.ts:attribute:PrsHistoryBaseline.changedFilesPercentile",
+          "src/production-readiness/history/historyBaselineEngine.ts:attribute:PrsHistoryBaseline.changedFilesPercentile:kind=attribute",
+          "src/production-readiness/history/historyBaselineEngine.ts:attribute:PrsHistoryBaseline.changedFilesPercentile:of=PrsHistoryBaseline",
+          "src/production-readiness/history/historyBaselineEngine.ts:attribute:PrsHistoryBaseline.changedFilesPercentile:type=number",
+          "src/production-readiness/history/historyBaselineEngine.ts:attribute:PrsHistoryBaseline.hotspots",
+          "src/production-readiness/history/historyBaselineEngine.ts:attribute:PrsHistoryBaseline.hotspots:kind=attribute",
+          "src/production-readiness/history/historyBaselineEngine.ts:attribute:PrsHistoryBaseline.hotspots:of=PrsHistoryBaseline",
+          "src/production-readiness/history/historyBaselineEngine.ts:attribute:PrsHistoryBaseline.hotspots:type=PrsHotspotFile[]",
+          "src/production-readiness/history/historyBaselineEngine.ts:attribute:PrsHistoryBaseline.label",
+          "src/production-readiness/history/historyBaselineEngine.ts:attribute:PrsHistoryBaseline.label:kind=attribute",
+          "src/production-readiness/history/historyBaselineEngine.ts:attribute:PrsHistoryBaseline.label:of=PrsHistoryBaseline",
+          "src/production-readiness/history/historyBaselineEngine.ts:attribute:PrsHistoryBaseline.label:type=HistoryBaselineLabel",
+          "src/production-readiness/history/historyBaselineEngine.ts:attribute:PrsHistoryBaseline.lineChangesPercentile",
+          "src/production-readiness/history/historyBaselineEngine.ts:attribute:PrsHistoryBaseline.lineChangesPercentile:kind=attribute",
+          "src/production-readiness/history/historyBaselineEngine.ts:attribute:PrsHistoryBaseline.lineChangesPercentile:of=PrsHistoryBaseline",
+          "src/production-readiness/history/historyBaselineEngine.ts:attribute:PrsHistoryBaseline.lineChangesPercentile:type=number | null",
+          "src/production-readiness/history/historyBaselineEngine.ts:attribute:PrsHistoryBaseline.medianChangedFiles",
+          "src/production-readiness/history/historyBaselineEngine.ts:attribute:PrsHistoryBaseline.medianChangedFiles:kind=attribute",
+          "src/production-readiness/history/historyBaselineEngine.ts:attribute:PrsHistoryBaseline.medianChangedFiles:of=PrsHistoryBaseline",
+          "src/production-readiness/history/historyBaselineEngine.ts:attribute:PrsHistoryBaseline.medianChangedFiles:type=number",
+          "src/production-readiness/history/historyBaselineEngine.ts:attribute:PrsHistoryBaseline.medianLineChanges",
+          "src/production-readiness/history/historyBaselineEngine.ts:attribute:PrsHistoryBaseline.medianLineChanges:kind=attribute",
+          "src/production-readiness/history/historyBaselineEngine.ts:attribute:PrsHistoryBaseline.medianLineChanges:of=PrsHistoryBaseline",
+          "src/production-readiness/history/historyBaselineEngine.ts:attribute:PrsHistoryBaseline.medianLineChanges:type=number | null",
+          "src/production-readiness/history/historyBaselineEngine.ts:attribute:PrsHistoryBaseline.sampleCount",
+          "src/production-readiness/history/historyBaselineEngine.ts:attribute:PrsHistoryBaseline.sampleCount:kind=attribute",
+          "src/production-readiness/history/historyBaselineEngine.ts:attribute:PrsHistoryBaseline.sampleCount:of=PrsHistoryBaseline",
+          "src/production-readiness/history/historyBaselineEngine.ts:attribute:PrsHistoryBaseline.sampleCount:type=number",
+          "src/production-readiness/history/historyBaselineEngine.ts:attribute:PrsHistoryBaseline.source",
+          "src/production-readiness/history/historyBaselineEngine.ts:attribute:PrsHistoryBaseline.source:kind=attribute",
+          "src/production-readiness/history/historyBaselineEngine.ts:attribute:PrsHistoryBaseline.source:of=PrsHistoryBaseline",
+          "src/production-readiness/history/historyBaselineEngine.ts:attribute:PrsHistoryBaseline.source:type=HistorySource",
+          "src/production-readiness/history/historyBaselineEngine.ts:attribute:PrsHistorySample.addedFiles",
+          "src/production-readiness/history/historyBaselineEngine.ts:attribute:PrsHistorySample.addedFiles:kind=attribute",
+          "src/production-readiness/history/historyBaselineEngine.ts:attribute:PrsHistorySample.addedFiles:of=PrsHistorySample",
+          "src/production-readiness/history/historyBaselineEngine.ts:attribute:PrsHistorySample.addedFiles:type=number",
+          "src/production-readiness/history/historyBaselineEngine.ts:attribute:PrsHistorySample.addedLines",
+          "src/production-readiness/history/historyBaselineEngine.ts:attribute:PrsHistorySample.addedLines:kind=attribute",
+          "src/production-readiness/history/historyBaselineEngine.ts:attribute:PrsHistorySample.addedLines:of=PrsHistorySample",
+          "src/production-readiness/history/historyBaselineEngine.ts:attribute:PrsHistorySample.addedLines:type=number | undefined",
+          "src/production-readiness/history/historyBaselineEngine.ts:attribute:PrsHistorySample.changedFiles",
+          "src/production-readiness/history/historyBaselineEngine.ts:attribute:PrsHistorySample.changedFiles:kind=attribute",
+          "src/production-readiness/history/historyBaselineEngine.ts:attribute:PrsHistorySample.changedFiles:of=PrsHistorySample",
+          "src/production-readiness/history/historyBaselineEngine.ts:attribute:PrsHistorySample.changedFiles:type=number",
+          "src/production-readiness/history/historyBaselineEngine.ts:attribute:PrsHistorySample.changedPaths",
+          "src/production-readiness/history/historyBaselineEngine.ts:attribute:PrsHistorySample.changedPaths:kind=attribute",
+          "src/production-readiness/history/historyBaselineEngine.ts:attribute:PrsHistorySample.changedPaths:of=PrsHistorySample",
+          "src/production-readiness/history/historyBaselineEngine.ts:attribute:PrsHistorySample.changedPaths:type=string[]",
+          "src/production-readiness/history/historyBaselineEngine.ts:attribute:PrsHistorySample.deletedFiles",
+          "src/production-readiness/history/historyBaselineEngine.ts:attribute:PrsHistorySample.deletedFiles:kind=attribute",
+          "src/production-readiness/history/historyBaselineEngine.ts:attribute:PrsHistorySample.deletedFiles:of=PrsHistorySample",
+          "src/production-readiness/history/historyBaselineEngine.ts:attribute:PrsHistorySample.deletedFiles:type=number",
+          "src/production-readiness/history/historyBaselineEngine.ts:attribute:PrsHistorySample.deletedLines",
+          "src/production-readiness/history/historyBaselineEngine.ts:attribute:PrsHistorySample.deletedLines:kind=attribute",
+          "src/production-readiness/history/historyBaselineEngine.ts:attribute:PrsHistorySample.deletedLines:of=PrsHistorySample",
+          "src/production-readiness/history/historyBaselineEngine.ts:attribute:PrsHistorySample.deletedLines:type=number | undefined",
+          "src/production-readiness/history/historyBaselineEngine.ts:attribute:PrsHistorySample.dependencyCount",
+          "src/production-readiness/history/historyBaselineEngine.ts:attribute:PrsHistorySample.dependencyCount:kind=attribute",
+          "src/production-readiness/history/historyBaselineEngine.ts:attribute:PrsHistorySample.dependencyCount:of=PrsHistorySample",
+          "src/production-readiness/history/historyBaselineEngine.ts:attribute:PrsHistorySample.dependencyCount:type=number | undefined",
+          "src/production-readiness/history/historyBaselineEngine.ts:attribute:PrsHistorySample.id",
+          "src/production-readiness/history/historyBaselineEngine.ts:attribute:PrsHistorySample.id:kind=attribute",
+          "src/production-readiness/history/historyBaselineEngine.ts:attribute:PrsHistorySample.id:of=PrsHistorySample",
+          "src/production-readiness/history/historyBaselineEngine.ts:attribute:PrsHistorySample.id:type=string",
+          "src/production-readiness/history/historyBaselineEngine.ts:attribute:PrsHistorySample.recordedAt",
+          "src/production-readiness/history/historyBaselineEngine.ts:attribute:PrsHistorySample.recordedAt:kind=attribute",
+          "src/production-readiness/history/historyBaselineEngine.ts:attribute:PrsHistorySample.recordedAt:of=PrsHistorySample",
+          "src/production-readiness/history/historyBaselineEngine.ts:attribute:PrsHistorySample.recordedAt:type=string",
+          "src/production-readiness/history/historyBaselineEngine.ts:attribute:PrsHistorySample.sensitiveFilesChanged",
+          "src/production-readiness/history/historyBaselineEngine.ts:attribute:PrsHistorySample.sensitiveFilesChanged:kind=attribute",
+          "src/production-readiness/history/historyBaselineEngine.ts:attribute:PrsHistorySample.sensitiveFilesChanged:of=PrsHistorySample",
+          "src/production-readiness/history/historyBaselineEngine.ts:attribute:PrsHistorySample.sensitiveFilesChanged:type=number",
+          "src/production-readiness/history/historyBaselineEngine.ts:attribute:PrsHistorySample.sensitivePaths",
+          "src/production-readiness/history/historyBaselineEngine.ts:attribute:PrsHistorySample.sensitivePaths:kind=attribute",
+          "src/production-readiness/history/historyBaselineEngine.ts:attribute:PrsHistorySample.sensitivePaths:of=PrsHistorySample",
+          "src/production-readiness/history/historyBaselineEngine.ts:attribute:PrsHistorySample.sensitivePaths:type=string[]",
+          "src/production-readiness/history/historyBaselineEngine.ts:attribute:PrsHistorySample.source",
+          "src/production-readiness/history/historyBaselineEngine.ts:attribute:PrsHistorySample.source:kind=attribute",
+          "src/production-readiness/history/historyBaselineEngine.ts:attribute:PrsHistorySample.source:of=PrsHistorySample",
+          "src/production-readiness/history/historyBaselineEngine.ts:attribute:PrsHistorySample.source:type=HistorySource",
+          "src/production-readiness/history/historyBaselineEngine.ts:attribute:PrsHotspotFile.changeCount",
+          "src/production-readiness/history/historyBaselineEngine.ts:attribute:PrsHotspotFile.changeCount:kind=attribute",
+          "src/production-readiness/history/historyBaselineEngine.ts:attribute:PrsHotspotFile.changeCount:of=PrsHotspotFile",
+          "src/production-readiness/history/historyBaselineEngine.ts:attribute:PrsHotspotFile.changeCount:type=number",
+          "src/production-readiness/history/historyBaselineEngine.ts:attribute:PrsHotspotFile.path",
+          "src/production-readiness/history/historyBaselineEngine.ts:attribute:PrsHotspotFile.path:kind=attribute",
+          "src/production-readiness/history/historyBaselineEngine.ts:attribute:PrsHotspotFile.path:of=PrsHotspotFile",
+          "src/production-readiness/history/historyBaselineEngine.ts:attribute:PrsHotspotFile.path:type=string",
+          "src/production-readiness/history/historyBaselineEngine.ts:attribute:PrsHotspotFile.sensitiveChangeCount",
+          "src/production-readiness/history/historyBaselineEngine.ts:attribute:PrsHotspotFile.sensitiveChangeCount:kind=attribute",
+          "src/production-readiness/history/historyBaselineEngine.ts:attribute:PrsHotspotFile.sensitiveChangeCount:of=PrsHotspotFile",
+          "src/production-readiness/history/historyBaselineEngine.ts:attribute:PrsHotspotFile.sensitiveChangeCount:type=number",
+          "src/production-readiness/snapshots/priorSnapshotStore.ts:attribute:PriorSnapshotLoadResult.limitations",
+          "src/production-readiness/snapshots/priorSnapshotStore.ts:attribute:PriorSnapshotLoadResult.limitations:kind=attribute",
+          "src/production-readiness/snapshots/priorSnapshotStore.ts:attribute:PriorSnapshotLoadResult.limitations:of=PriorSnapshotLoadResult",
+          "src/production-readiness/snapshots/priorSnapshotStore.ts:attribute:PriorSnapshotLoadResult.limitations:type=string[]",
+          "src/production-readiness/snapshots/priorSnapshotStore.ts:attribute:PriorSnapshotLoadResult.samples",
+          "src/production-readiness/snapshots/priorSnapshotStore.ts:attribute:PriorSnapshotLoadResult.samples:kind=attribute",
+          "src/production-readiness/snapshots/priorSnapshotStore.ts:attribute:PriorSnapshotLoadResult.samples:of=PriorSnapshotLoadResult",
+          "src/production-readiness/snapshots/priorSnapshotStore.ts:attribute:PriorSnapshotLoadResult.samples:type=PrsHistorySample[]",
+          "src/production-readiness/snapshots/priorSnapshotStore.ts:method:PrsSnapshotStorage.get",
+          "src/production-readiness/snapshots/priorSnapshotStore.ts:method:PrsSnapshotStorage.get:arg=key:type=string:default=None",
+          "src/production-readiness/snapshots/priorSnapshotStore.ts:method:PrsSnapshotStorage.get:kind=method",
+          "src/production-readiness/snapshots/priorSnapshotStore.ts:method:PrsSnapshotStorage.get:of=PrsSnapshotStorage",
+          "src/production-readiness/snapshots/priorSnapshotStore.ts:method:PrsSnapshotStorage.get:returns=Promise<unknown>",
+          "src/production-readiness/snapshots/priorSnapshotStore.ts:method:PrsSnapshotStorage.set",
+          "src/production-readiness/snapshots/priorSnapshotStore.ts:method:PrsSnapshotStorage.set:arg=key:type=string:default=None",
+          "src/production-readiness/snapshots/priorSnapshotStore.ts:method:PrsSnapshotStorage.set:arg=value:type=unknown:default=None",
+          "src/production-readiness/snapshots/priorSnapshotStore.ts:method:PrsSnapshotStorage.set:kind=method",
+          "src/production-readiness/snapshots/priorSnapshotStore.ts:method:PrsSnapshotStorage.set:of=PrsSnapshotStorage",
+          "src/production-readiness/snapshots/priorSnapshotStore.ts:method:PrsSnapshotStorage.set:returns=Promise<void>"
+        ],
+        "artifacts_removed": [],
+        "files_added": [],
+        "files_removed": [],
+        "validate_commands_added": [],
+        "validate_commands_removed": []
+      }
+    },
+    {
+      "prior_manifest_hash": "sha256-contract:a18edbaa235ebc73cef9b61b321feb609900b4e4d609166118c1b5ed4e2881f5",
+      "prior_test_hashes": {
+        "src/production-readiness/history/__tests__/historyBaselineEngine.test.ts": "sha256:03168f6c723f5c630c3184c849d683684d52585866aef39c459b98e4f5c2ecb0"
+      },
+      "revised_at": "2026-07-31T10:57:10.623311+00:00",
+      "reason": "Add exact behavioral assertions for median line-change and percentile baseline outputs",
+      "agent": null,
+      "contract_delta": {
+        "artifacts_added": [],
+        "artifacts_removed": [],
+        "files_added": [],
+        "files_removed": [],
+        "validate_commands_added": [],
+        "validate_commands_removed": []
+      }
+    },
+    {
+      "prior_manifest_hash": "sha256-contract:a18edbaa235ebc73cef9b61b321feb609900b4e4d609166118c1b5ed4e2881f5",
+      "prior_test_hashes": {
+        "src/production-readiness/history/__tests__/historyBaselineEngine.test.ts": "sha256:68f45869cbb72e9acac04812bf2965bb17e54b1a54fb58933208fdf00758c618"
+      },
+      "revised_at": "2026-07-31T11:01:53.333585+00:00",
+      "reason": "Add independent-review regressions for authoritative dependency counts, paginated commit files, partial rate limits, dotted repositories, and line-trigger evidence",
+      "agent": null,
+      "contract_delta": {
+        "artifacts_added": [],
+        "artifacts_removed": [],
+        "files_added": [],
+        "files_removed": [],
+        "validate_commands_added": [],
+        "validate_commands_removed": []
+      }
+    },
+    {
+      "prior_manifest_hash": "sha256-contract:a18edbaa235ebc73cef9b61b321feb609900b4e4d609166118c1b5ed4e2881f5",
+      "prior_test_hashes": {
+        "src/production-readiness/history/__tests__/historyBaselineEngine.test.ts": "sha256:785d287e6928e9528ad3b4d15de8817f06eae1950d4e1d2494235c6ac411091f"
+      },
+      "revised_at": "2026-07-31T11:02:31.230247+00:00",
+      "reason": "Align the existing GitHub detail fixture with explicit bounded file-page query parameters",
+      "agent": null,
+      "contract_delta": {
+        "artifacts_added": [],
+        "artifacts_removed": [],
+        "files_added": [],
+        "files_removed": [],
+        "validate_commands_added": [],
+        "validate_commands_removed": []
+      }
+    },
+    {
+      "prior_manifest_hash": "sha256-contract:a18edbaa235ebc73cef9b61b321feb609900b4e4d609166118c1b5ed4e2881f5",
+      "prior_test_hashes": {
+        "src/production-readiness/history/__tests__/historyBaselineEngine.test.ts": "sha256:7d6a759a6fb405f9925373113e1449a72c01f81e517d8b88aa6d1d9e60ede83c"
+      },
+      "revised_at": "2026-07-31T11:09:17.018354+00:00",
+      "reason": "Add review-driven schema projection, lazy source validation, terminal 403, source-only fallback, and unavailable-storage contracts",
+      "agent": null,
+      "contract_delta": {
+        "artifacts_added": [
+          "src/production-readiness/history/historyBaselineEngine.ts:attribute:HistoryBaselineInput.currentSourceFilesChanged",
+          "src/production-readiness/history/historyBaselineEngine.ts:attribute:HistoryBaselineInput.currentSourceFilesChanged:kind=attribute",
+          "src/production-readiness/history/historyBaselineEngine.ts:attribute:HistoryBaselineInput.currentSourceFilesChanged:of=HistoryBaselineInput",
+          "src/production-readiness/history/historyBaselineEngine.ts:attribute:HistoryBaselineInput.currentSourceFilesChanged:type=number | undefined",
+          "src/production-readiness/history/historyBaselineEngine.ts:attribute:HistoryBaselineInput.currentSourceLinesChanged",
+          "src/production-readiness/history/historyBaselineEngine.ts:attribute:HistoryBaselineInput.currentSourceLinesChanged:kind=attribute",
+          "src/production-readiness/history/historyBaselineEngine.ts:attribute:HistoryBaselineInput.currentSourceLinesChanged:of=HistoryBaselineInput",
+          "src/production-readiness/history/historyBaselineEngine.ts:attribute:HistoryBaselineInput.currentSourceLinesChanged:type=number | undefined"
+        ],
+        "artifacts_removed": [],
+        "files_added": [],
+        "files_removed": [],
+        "validate_commands_added": [],
+        "validate_commands_removed": []
+      }
+    },
+    {
+      "prior_manifest_hash": "sha256-contract:ddef55415019ffc55b5f5dec11aaca6f5172cd777d2acdddd54b440ffcd8b9e0",
+      "prior_test_hashes": {
+        "src/production-readiness/history/__tests__/historyBaselineEngine.test.ts": "sha256:151d55d2a700ad52bfecacb9e053aff3e559de9cf477ddec53f77f8c3fb66b91"
+      },
+      "revised_at": "2026-07-31T11:18:05.451062+00:00",
+      "reason": "Add final review regressions for B2G-first validation, duplicate identities, bounded GitHub strings, and pre-parse storage caps",
+      "agent": null,
+      "contract_delta": {
+        "artifacts_added": [],
+        "artifacts_removed": [],
+        "files_added": [],
+        "files_removed": [],
+        "validate_commands_added": [],
+        "validate_commands_removed": []
+      }
+    }
+  ],
+  "red_evidence": {
+    "red": true,
+    "captured_at": "2026-07-31T11:18:20.642625+00:00",
+    "commands": [
+      {
+        "command": "pnpm exec vitest run src/production-readiness/history/__tests__/historyBaselineEngine.test.ts",
+        "exit_code": 1,
+        "output_tail": " Test Files  1 failed (1)\n      Tests  no tests\n   Start at  19:18:06\n   Duration  485ms (transform 35ms, setup 53ms, collect 0ms, tests 0ms, environment 187ms, prepare 37ms)\n\n\n\u23af\u23af\u23af\u23af\u23af\u23af Failed Suites 1 \u23af\u23af\u23af\u23af\u23af\u23af\u23af\n\n FAIL  src/production-readiness/history/__tests__/historyBaselineEngine.test.ts [ src/production-readiness/history/__tests__/historyBaselineEngine.test.ts ]\nError: Failed to resolve import \"../historyBaselineEngine\" from \"src/production-readiness/history/__tests__/historyBaselineEngine.test.ts\". Does the file exist?\n \u276f TransformPluginContext._formatError node_modules/.pnpm/vite@5.4.21_@types+node@22.19.18/node_modules/vite/dist/node/chunks/dep-BK3b2jBa.js:49258:41\n \u276f TransformPluginContext.error node_modules/.pnpm/vite@5.4.21_@types+node@22.19.18/node_modules/vite/dist/node/chunks/dep-BK3b2jBa.js:49253:16\n \u276f normalizeUrl node_modules/.pnpm/vite@5.4.21_@types+node@22.19.18/node_modules/vite/dist/node/chunks/dep-BK3b2jBa.js:64307:23\n \u276f async file:/home/atomrem/projects/codefrost-dev/bolt-to-github/node_modules/.pnpm/vite@5.4.21_@types+node@22.19.18/node_modules/vite/dist/node/chunks/dep-BK3b2jBa.js:64439:39\n \u276f TransformPluginContext.transform node_modules/.pnpm/vite@5.4.21_@types+node@22.19.18/node_modules/vite/dist/node/chunks/dep-BK3b2jBa.js:64366:7\n \u276f PluginContainer.transform node_modules/.pnpm/vite@5.4.21_@types+node@22.19.18/node_modules/vite/dist/node/chunks/dep-BK3b2jBa.js:49099:18\n \u276f loadAndTransform node_modules/.pnpm/vite@5.4.21_@types+node@22.19.18/node_modules/vite/dist/node/chunks/dep-BK3b2jBa.js:51978:27\n\n\u23af\u23af\u23af\u23af\u23af\u23af\u23af\u23af\u23af\u23af\u23af\u23af\u23af\u23af\u23af\u23af\u23af\u23af\u23af\u23af\u23af\u23af\u23af\u23af[1/1]\u23af\n",
+        "classification": "red"
+      },
+      {
+        "command": "./scripts/maid validate manifests/13-b2g-prs-history-baseline-engine.manifest.yaml --mode behavioral",
+        "exit_code": 0,
+        "output_tail": "PASS 13-b2g-prs-history-baseline-engine\n  Mode: behavioral\n  Duration: 399ms\n  Warnings (3):\n    E110 Manifest 'prepare-v2-0-0-github-app-release' supersedes 'release-v1-3-21' but drops artifact 'PackageVersion_1_3_21' (namespace) at package.json\n      Location: /home/atomrem/projects/codefrost-dev/bolt-to-github/manifests/prepare-v2-0-0-github-app-release.manifest.yaml\n      Suggestion: Re-declare the artifact in the replacement manifest, list its file under files.delete, or list the symbol under removed_artifacts.\n    E110 Manifest 'prepare-v2-0-0-github-app-release' supersedes 'release-v1-3-21' but drops artifact 'ChromeManifestVersion_1_3_21' (namespace) at manifest.json\n      Location: /home/atomrem/projects/codefrost-dev/bolt-to-github/manifests/prepare-v2-0-0-github-app-release.manifest.yaml\n      Suggestion: Re-declare the artifact in the replacement manifest, list its file under files.delete, or list the symbol under removed_artifacts.\n    E110 Manifest 'prepare-v2-0-0-github-app-release' supersedes 'release-v1-3-21' but drops artifact 'DevelopmentGuideVersion_1_3_21' (namespace) at CLAUDE.md\n      Location: /home/atomrem/projects/codefrost-dev/bolt-to-github/manifests/prepare-v2-0-0-github-app-release.manifest.yaml\n      Suggestion: Re-declare the artifact in the replacement manifest, list its file under files.delete, or list the symbol under removed_artifacts.",
+        "classification": "not_red"
+      },
+      {
+        "command": "pnpm lint",
+        "exit_code": 0,
+        "output_tail": "\n> bolt-to-github@2.0.0 lint /home/atomrem/projects/codefrost-dev/bolt-to-github\n> eslint \"src/**/*.{js,ts,svelte}\"\n",
+        "classification": "not_red"
+      },
+      {
+        "command": "pnpm check",
+        "exit_code": 1,
+        "output_tail": "        values.set(key, value);\n\n\n/home/atomrem/projects/codefrost-dev/bolt-to-github/src/production-readiness/history/__tests__/historyBaselineEngine.test.ts:610:24\nError: Parameter 'value' implicitly has an 'any' type. \n      get: async (key) => values.get(key),\n      set: async (key, value) => {\n        values.set(key, value);\n\n\n/home/atomrem/projects/codefrost-dev/bolt-to-github/src/production-readiness/history/__tests__/historyBaselineEngine.test.ts:652:37\nError: Parameter 'signal' implicitly has an 'any' type. \n    );\n    expect(storedTrend.signals.map((signal) => signal.id)).not.toContain(\n      'history-dependency-growth'\n\n\n====================================\nsvelte-check found 24 errors and 0 warnings in 1 file\n\u2009ELIFECYCLE\u2009 Command failed with exit code 1.",
+        "classification": "red"
+      }
+    ]
+  },
+  "legacy_baseline": null,
+  "agent": null,
+  "_manifest_contract": {
+    "artifacts": [
+      "src/production-readiness/github/githubHistoryAdapter.ts:attribute:GitHubHistoryRequest.baseRef",
+      "src/production-readiness/github/githubHistoryAdapter.ts:attribute:GitHubHistoryRequest.baseRef:kind=attribute",
+      "src/production-readiness/github/githubHistoryAdapter.ts:attribute:GitHubHistoryRequest.baseRef:of=GitHubHistoryRequest",
+      "src/production-readiness/github/githubHistoryAdapter.ts:attribute:GitHubHistoryRequest.baseRef:type=string",
+      "src/production-readiness/github/githubHistoryAdapter.ts:attribute:GitHubHistoryRequest.isSensitivePath",
+      "src/production-readiness/github/githubHistoryAdapter.ts:attribute:GitHubHistoryRequest.isSensitivePath:kind=attribute",
+      "src/production-readiness/github/githubHistoryAdapter.ts:attribute:GitHubHistoryRequest.isSensitivePath:of=GitHubHistoryRequest",
+      "src/production-readiness/github/githubHistoryAdapter.ts:attribute:GitHubHistoryRequest.isSensitivePath:type=((path: string) => boolean) | undefined",
+      "src/production-readiness/github/githubHistoryAdapter.ts:attribute:GitHubHistoryRequest.maxCommits",
+      "src/production-readiness/github/githubHistoryAdapter.ts:attribute:GitHubHistoryRequest.maxCommits:kind=attribute",
+      "src/production-readiness/github/githubHistoryAdapter.ts:attribute:GitHubHistoryRequest.maxCommits:of=GitHubHistoryRequest",
+      "src/production-readiness/github/githubHistoryAdapter.ts:attribute:GitHubHistoryRequest.maxCommits:type=number",
+      "src/production-readiness/github/githubHistoryAdapter.ts:attribute:GitHubHistoryRequest.owner",
+      "src/production-readiness/github/githubHistoryAdapter.ts:attribute:GitHubHistoryRequest.owner:kind=attribute",
+      "src/production-readiness/github/githubHistoryAdapter.ts:attribute:GitHubHistoryRequest.owner:of=GitHubHistoryRequest",
+      "src/production-readiness/github/githubHistoryAdapter.ts:attribute:GitHubHistoryRequest.owner:type=string",
+      "src/production-readiness/github/githubHistoryAdapter.ts:attribute:GitHubHistoryRequest.readGitHub",
+      "src/production-readiness/github/githubHistoryAdapter.ts:attribute:GitHubHistoryRequest.readGitHub:kind=attribute",
+      "src/production-readiness/github/githubHistoryAdapter.ts:attribute:GitHubHistoryRequest.readGitHub:of=GitHubHistoryRequest",
+      "src/production-readiness/github/githubHistoryAdapter.ts:attribute:GitHubHistoryRequest.readGitHub:type=GitHubHistoryReader",
+      "src/production-readiness/github/githubHistoryAdapter.ts:attribute:GitHubHistoryRequest.repo",
+      "src/production-readiness/github/githubHistoryAdapter.ts:attribute:GitHubHistoryRequest.repo:kind=attribute",
+      "src/production-readiness/github/githubHistoryAdapter.ts:attribute:GitHubHistoryRequest.repo:of=GitHubHistoryRequest",
+      "src/production-readiness/github/githubHistoryAdapter.ts:attribute:GitHubHistoryRequest.repo:type=string",
+      "src/production-readiness/github/githubHistoryAdapter.ts:attribute:GitHubHistoryRequest.signal",
+      "src/production-readiness/github/githubHistoryAdapter.ts:attribute:GitHubHistoryRequest.signal:kind=attribute",
+      "src/production-readiness/github/githubHistoryAdapter.ts:attribute:GitHubHistoryRequest.signal:of=GitHubHistoryRequest",
+      "src/production-readiness/github/githubHistoryAdapter.ts:attribute:GitHubHistoryRequest.signal:type=AbortSignal | undefined",
+      "src/production-readiness/github/githubHistoryAdapter.ts:attribute:GitHubHistoryResult.limitations",
+      "src/production-readiness/github/githubHistoryAdapter.ts:attribute:GitHubHistoryResult.limitations:kind=attribute",
+      "src/production-readiness/github/githubHistoryAdapter.ts:attribute:GitHubHistoryResult.limitations:of=GitHubHistoryResult",
+      "src/production-readiness/github/githubHistoryAdapter.ts:attribute:GitHubHistoryResult.limitations:type=PartialDataNotice[]",
+      "src/production-readiness/github/githubHistoryAdapter.ts:attribute:GitHubHistoryResult.records",
+      "src/production-readiness/github/githubHistoryAdapter.ts:attribute:GitHubHistoryResult.records:kind=attribute",
+      "src/production-readiness/github/githubHistoryAdapter.ts:attribute:GitHubHistoryResult.records:of=GitHubHistoryResult",
+      "src/production-readiness/github/githubHistoryAdapter.ts:attribute:GitHubHistoryResult.records:type=PrsCommitHistoryRecord[]",
+      "src/production-readiness/github/githubHistoryAdapter.ts:function:fetchPrsCommitHistory",
+      "src/production-readiness/github/githubHistoryAdapter.ts:function:fetchPrsCommitHistory:arg=request:type=GitHubHistoryRequest:default=None",
+      "src/production-readiness/github/githubHistoryAdapter.ts:function:fetchPrsCommitHistory:kind=function",
+      "src/production-readiness/github/githubHistoryAdapter.ts:function:fetchPrsCommitHistory:returns=Promise<GitHubHistoryResult>",
+      "src/production-readiness/github/githubHistoryAdapter.ts:interface:GitHubHistoryRequest",
+      "src/production-readiness/github/githubHistoryAdapter.ts:interface:GitHubHistoryRequest:kind=interface",
+      "src/production-readiness/github/githubHistoryAdapter.ts:interface:GitHubHistoryResult",
+      "src/production-readiness/github/githubHistoryAdapter.ts:interface:GitHubHistoryResult:kind=interface",
+      "src/production-readiness/github/githubHistoryAdapter.ts:type:GitHubHistoryReader",
+      "src/production-readiness/github/githubHistoryAdapter.ts:type:GitHubHistoryReader:kind=type",
+      "src/production-readiness/github/githubHistoryAdapter.ts:type:GitHubHistoryReader:type=<T>(endpoint: string, signal?: AbortSignal) => Promise<T>",
+      "src/production-readiness/history/__tests__/historyBaselineEngine.test.ts:calculates median percentile and source-prioritized baselines",
+      "src/production-readiness/history/__tests__/historyBaselineEngine.test.ts:calculates median percentile and source-prioritized baselines:kind=test_function",
+      "src/production-readiness/history/__tests__/historyBaselineEngine.test.ts:emits large export and dependency drift signals only at documented boundaries",
+      "src/production-readiness/history/__tests__/historyBaselineEngine.test.ts:emits large export and dependency drift signals only at documented boundaries:kind=test_function",
+      "src/production-readiness/history/__tests__/historyBaselineEngine.test.ts:fetches bounded GitHub history and exposes unavailable history limitations",
+      "src/production-readiness/history/__tests__/historyBaselineEngine.test.ts:fetches bounded GitHub history and exposes unavailable history limitations:kind=test_function",
+      "src/production-readiness/history/__tests__/historyBaselineEngine.test.ts:identifies hotspot files and repeated sensitive churn",
+      "src/production-readiness/history/__tests__/historyBaselineEngine.test.ts:identifies hotspot files and repeated sensitive churn:kind=test_function",
+      "src/production-readiness/history/__tests__/historyBaselineEngine.test.ts:reports insufficient history as limitations not trend claims",
+      "src/production-readiness/history/__tests__/historyBaselineEngine.test.ts:reports insufficient history as limitations not trend claims:kind=test_function",
+      "src/production-readiness/history/__tests__/historyBaselineEngine.test.ts:stores bounded metadata-only prior snapshot summaries",
+      "src/production-readiness/history/__tests__/historyBaselineEngine.test.ts:stores bounded metadata-only prior snapshot summaries:kind=test_function",
+      "src/production-readiness/history/historyBaselineEngine.ts:attribute:HistoryBaselineInput.current",
+      "src/production-readiness/history/historyBaselineEngine.ts:attribute:HistoryBaselineInput.current:kind=attribute",
+      "src/production-readiness/history/historyBaselineEngine.ts:attribute:HistoryBaselineInput.current:of=HistoryBaselineInput",
+      "src/production-readiness/history/historyBaselineEngine.ts:attribute:HistoryBaselineInput.current:type=ComparisonSummary",
+      "src/production-readiness/history/historyBaselineEngine.ts:attribute:HistoryBaselineInput.currentChangedPaths",
+      "src/production-readiness/history/historyBaselineEngine.ts:attribute:HistoryBaselineInput.currentChangedPaths:kind=attribute",
+      "src/production-readiness/history/historyBaselineEngine.ts:attribute:HistoryBaselineInput.currentChangedPaths:of=HistoryBaselineInput",
+      "src/production-readiness/history/historyBaselineEngine.ts:attribute:HistoryBaselineInput.currentChangedPaths:type=string[]",
+      "src/production-readiness/history/historyBaselineEngine.ts:attribute:HistoryBaselineInput.currentDependencyCount",
+      "src/production-readiness/history/historyBaselineEngine.ts:attribute:HistoryBaselineInput.currentDependencyCount:kind=attribute",
+      "src/production-readiness/history/historyBaselineEngine.ts:attribute:HistoryBaselineInput.currentDependencyCount:of=HistoryBaselineInput",
+      "src/production-readiness/history/historyBaselineEngine.ts:attribute:HistoryBaselineInput.currentDependencyCount:type=number | undefined",
+      "src/production-readiness/history/historyBaselineEngine.ts:attribute:HistoryBaselineInput.currentSensitivePaths",
+      "src/production-readiness/history/historyBaselineEngine.ts:attribute:HistoryBaselineInput.currentSensitivePaths:kind=attribute",
+      "src/production-readiness/history/historyBaselineEngine.ts:attribute:HistoryBaselineInput.currentSensitivePaths:of=HistoryBaselineInput",
+      "src/production-readiness/history/historyBaselineEngine.ts:attribute:HistoryBaselineInput.currentSensitivePaths:type=string[]",
+      "src/production-readiness/history/historyBaselineEngine.ts:attribute:HistoryBaselineInput.currentSourceFilesChanged",
+      "src/production-readiness/history/historyBaselineEngine.ts:attribute:HistoryBaselineInput.currentSourceFilesChanged:kind=attribute",
+      "src/production-readiness/history/historyBaselineEngine.ts:attribute:HistoryBaselineInput.currentSourceFilesChanged:of=HistoryBaselineInput",
+      "src/production-readiness/history/historyBaselineEngine.ts:attribute:HistoryBaselineInput.currentSourceFilesChanged:type=number | undefined",
+      "src/production-readiness/history/historyBaselineEngine.ts:attribute:HistoryBaselineInput.currentSourceLinesChanged",
+      "src/production-readiness/history/historyBaselineEngine.ts:attribute:HistoryBaselineInput.currentSourceLinesChanged:kind=attribute",
+      "src/production-readiness/history/historyBaselineEngine.ts:attribute:HistoryBaselineInput.currentSourceLinesChanged:of=HistoryBaselineInput",
+      "src/production-readiness/history/historyBaselineEngine.ts:attribute:HistoryBaselineInput.currentSourceLinesChanged:type=number | undefined",
+      "src/production-readiness/history/historyBaselineEngine.ts:attribute:HistoryBaselineInput.githubCommits",
+      "src/production-readiness/history/historyBaselineEngine.ts:attribute:HistoryBaselineInput.githubCommits:kind=attribute",
+      "src/production-readiness/history/historyBaselineEngine.ts:attribute:HistoryBaselineInput.githubCommits:of=HistoryBaselineInput",
+      "src/production-readiness/history/historyBaselineEngine.ts:attribute:HistoryBaselineInput.githubCommits:type=PrsCommitHistoryRecord[]",
+      "src/production-readiness/history/historyBaselineEngine.ts:attribute:HistoryBaselineInput.priorSnapshots",
+      "src/production-readiness/history/historyBaselineEngine.ts:attribute:HistoryBaselineInput.priorSnapshots:kind=attribute",
+      "src/production-readiness/history/historyBaselineEngine.ts:attribute:HistoryBaselineInput.priorSnapshots:of=HistoryBaselineInput",
+      "src/production-readiness/history/historyBaselineEngine.ts:attribute:HistoryBaselineInput.priorSnapshots:type=PrsHistorySample[]",
+      "src/production-readiness/history/historyBaselineEngine.ts:attribute:HistoryBaselineResult.baseline",
+      "src/production-readiness/history/historyBaselineEngine.ts:attribute:HistoryBaselineResult.baseline:kind=attribute",
+      "src/production-readiness/history/historyBaselineEngine.ts:attribute:HistoryBaselineResult.baseline:of=HistoryBaselineResult",
+      "src/production-readiness/history/historyBaselineEngine.ts:attribute:HistoryBaselineResult.baseline:type=PrsHistoryBaseline | null",
+      "src/production-readiness/history/historyBaselineEngine.ts:attribute:HistoryBaselineResult.limitations",
+      "src/production-readiness/history/historyBaselineEngine.ts:attribute:HistoryBaselineResult.limitations:kind=attribute",
+      "src/production-readiness/history/historyBaselineEngine.ts:attribute:HistoryBaselineResult.limitations:of=HistoryBaselineResult",
+      "src/production-readiness/history/historyBaselineEngine.ts:attribute:HistoryBaselineResult.limitations:type=string[]",
+      "src/production-readiness/history/historyBaselineEngine.ts:attribute:HistoryBaselineResult.signals",
+      "src/production-readiness/history/historyBaselineEngine.ts:attribute:HistoryBaselineResult.signals:kind=attribute",
+      "src/production-readiness/history/historyBaselineEngine.ts:attribute:HistoryBaselineResult.signals:of=HistoryBaselineResult",
+      "src/production-readiness/history/historyBaselineEngine.ts:attribute:HistoryBaselineResult.signals:type=ReadinessSignal[]",
+      "src/production-readiness/history/historyBaselineEngine.ts:attribute:PrsCommitHistoryRecord.isB2gCommit",
+      "src/production-readiness/history/historyBaselineEngine.ts:attribute:PrsCommitHistoryRecord.isB2gCommit:kind=attribute",
+      "src/production-readiness/history/historyBaselineEngine.ts:attribute:PrsCommitHistoryRecord.isB2gCommit:of=PrsCommitHistoryRecord",
+      "src/production-readiness/history/historyBaselineEngine.ts:attribute:PrsCommitHistoryRecord.isB2gCommit:type=boolean",
+      "src/production-readiness/history/historyBaselineEngine.ts:attribute:PrsCommitHistoryRecord.sha",
+      "src/production-readiness/history/historyBaselineEngine.ts:attribute:PrsCommitHistoryRecord.sha:kind=attribute",
+      "src/production-readiness/history/historyBaselineEngine.ts:attribute:PrsCommitHistoryRecord.sha:of=PrsCommitHistoryRecord",
+      "src/production-readiness/history/historyBaselineEngine.ts:attribute:PrsCommitHistoryRecord.sha:type=string",
+      "src/production-readiness/history/historyBaselineEngine.ts:attribute:PrsCommitHistoryRecord.subject",
+      "src/production-readiness/history/historyBaselineEngine.ts:attribute:PrsCommitHistoryRecord.subject:kind=attribute",
+      "src/production-readiness/history/historyBaselineEngine.ts:attribute:PrsCommitHistoryRecord.subject:of=PrsCommitHistoryRecord",
+      "src/production-readiness/history/historyBaselineEngine.ts:attribute:PrsCommitHistoryRecord.subject:type=string",
+      "src/production-readiness/history/historyBaselineEngine.ts:attribute:PrsHistoryBaseline.changedFilesPercentile",
+      "src/production-readiness/history/historyBaselineEngine.ts:attribute:PrsHistoryBaseline.changedFilesPercentile:kind=attribute",
+      "src/production-readiness/history/historyBaselineEngine.ts:attribute:PrsHistoryBaseline.changedFilesPercentile:of=PrsHistoryBaseline",
+      "src/production-readiness/history/historyBaselineEngine.ts:attribute:PrsHistoryBaseline.changedFilesPercentile:type=number",
+      "src/production-readiness/history/historyBaselineEngine.ts:attribute:PrsHistoryBaseline.hotspots",
+      "src/production-readiness/history/historyBaselineEngine.ts:attribute:PrsHistoryBaseline.hotspots:kind=attribute",
+      "src/production-readiness/history/historyBaselineEngine.ts:attribute:PrsHistoryBaseline.hotspots:of=PrsHistoryBaseline",
+      "src/production-readiness/history/historyBaselineEngine.ts:attribute:PrsHistoryBaseline.hotspots:type=PrsHotspotFile[]",
+      "src/production-readiness/history/historyBaselineEngine.ts:attribute:PrsHistoryBaseline.label",
+      "src/production-readiness/history/historyBaselineEngine.ts:attribute:PrsHistoryBaseline.label:kind=attribute",
+      "src/production-readiness/history/historyBaselineEngine.ts:attribute:PrsHistoryBaseline.label:of=PrsHistoryBaseline",
+      "src/production-readiness/history/historyBaselineEngine.ts:attribute:PrsHistoryBaseline.label:type=HistoryBaselineLabel",
+      "src/production-readiness/history/historyBaselineEngine.ts:attribute:PrsHistoryBaseline.lineChangesPercentile",
+      "src/production-readiness/history/historyBaselineEngine.ts:attribute:PrsHistoryBaseline.lineChangesPercentile:kind=attribute",
+      "src/production-readiness/history/historyBaselineEngine.ts:attribute:PrsHistoryBaseline.lineChangesPercentile:of=PrsHistoryBaseline",
+      "src/production-readiness/history/historyBaselineEngine.ts:attribute:PrsHistoryBaseline.lineChangesPercentile:type=number | null",
+      "src/production-readiness/history/historyBaselineEngine.ts:attribute:PrsHistoryBaseline.medianChangedFiles",
+      "src/production-readiness/history/historyBaselineEngine.ts:attribute:PrsHistoryBaseline.medianChangedFiles:kind=attribute",
+      "src/production-readiness/history/historyBaselineEngine.ts:attribute:PrsHistoryBaseline.medianChangedFiles:of=PrsHistoryBaseline",
+      "src/production-readiness/history/historyBaselineEngine.ts:attribute:PrsHistoryBaseline.medianChangedFiles:type=number",
+      "src/production-readiness/history/historyBaselineEngine.ts:attribute:PrsHistoryBaseline.medianLineChanges",
+      "src/production-readiness/history/historyBaselineEngine.ts:attribute:PrsHistoryBaseline.medianLineChanges:kind=attribute",
+      "src/production-readiness/history/historyBaselineEngine.ts:attribute:PrsHistoryBaseline.medianLineChanges:of=PrsHistoryBaseline",
+      "src/production-readiness/history/historyBaselineEngine.ts:attribute:PrsHistoryBaseline.medianLineChanges:type=number | null",
+      "src/production-readiness/history/historyBaselineEngine.ts:attribute:PrsHistoryBaseline.sampleCount",
+      "src/production-readiness/history/historyBaselineEngine.ts:attribute:PrsHistoryBaseline.sampleCount:kind=attribute",
+      "src/production-readiness/history/historyBaselineEngine.ts:attribute:PrsHistoryBaseline.sampleCount:of=PrsHistoryBaseline",
+      "src/production-readiness/history/historyBaselineEngine.ts:attribute:PrsHistoryBaseline.sampleCount:type=number",
+      "src/production-readiness/history/historyBaselineEngine.ts:attribute:PrsHistoryBaseline.source",
+      "src/production-readiness/history/historyBaselineEngine.ts:attribute:PrsHistoryBaseline.source:kind=attribute",
+      "src/production-readiness/history/historyBaselineEngine.ts:attribute:PrsHistoryBaseline.source:of=PrsHistoryBaseline",
+      "src/production-readiness/history/historyBaselineEngine.ts:attribute:PrsHistoryBaseline.source:type=HistorySource",
+      "src/production-readiness/history/historyBaselineEngine.ts:attribute:PrsHistorySample.addedFiles",
+      "src/production-readiness/history/historyBaselineEngine.ts:attribute:PrsHistorySample.addedFiles:kind=attribute",
+      "src/production-readiness/history/historyBaselineEngine.ts:attribute:PrsHistorySample.addedFiles:of=PrsHistorySample",
+      "src/production-readiness/history/historyBaselineEngine.ts:attribute:PrsHistorySample.addedFiles:type=number",
+      "src/production-readiness/history/historyBaselineEngine.ts:attribute:PrsHistorySample.addedLines",
+      "src/production-readiness/history/historyBaselineEngine.ts:attribute:PrsHistorySample.addedLines:kind=attribute",
+      "src/production-readiness/history/historyBaselineEngine.ts:attribute:PrsHistorySample.addedLines:of=PrsHistorySample",
+      "src/production-readiness/history/historyBaselineEngine.ts:attribute:PrsHistorySample.addedLines:type=number | undefined",
+      "src/production-readiness/history/historyBaselineEngine.ts:attribute:PrsHistorySample.changedFiles",
+      "src/production-readiness/history/historyBaselineEngine.ts:attribute:PrsHistorySample.changedFiles:kind=attribute",
+      "src/production-readiness/history/historyBaselineEngine.ts:attribute:PrsHistorySample.changedFiles:of=PrsHistorySample",
+      "src/production-readiness/history/historyBaselineEngine.ts:attribute:PrsHistorySample.changedFiles:type=number",
+      "src/production-readiness/history/historyBaselineEngine.ts:attribute:PrsHistorySample.changedPaths",
+      "src/production-readiness/history/historyBaselineEngine.ts:attribute:PrsHistorySample.changedPaths:kind=attribute",
+      "src/production-readiness/history/historyBaselineEngine.ts:attribute:PrsHistorySample.changedPaths:of=PrsHistorySample",
+      "src/production-readiness/history/historyBaselineEngine.ts:attribute:PrsHistorySample.changedPaths:type=string[]",
+      "src/production-readiness/history/historyBaselineEngine.ts:attribute:PrsHistorySample.deletedFiles",
+      "src/production-readiness/history/historyBaselineEngine.ts:attribute:PrsHistorySample.deletedFiles:kind=attribute",
+      "src/production-readiness/history/historyBaselineEngine.ts:attribute:PrsHistorySample.deletedFiles:of=PrsHistorySample",
+      "src/production-readiness/history/historyBaselineEngine.ts:attribute:PrsHistorySample.deletedFiles:type=number",
+      "src/production-readiness/history/historyBaselineEngine.ts:attribute:PrsHistorySample.deletedLines",
+      "src/production-readiness/history/historyBaselineEngine.ts:attribute:PrsHistorySample.deletedLines:kind=attribute",
+      "src/production-readiness/history/historyBaselineEngine.ts:attribute:PrsHistorySample.deletedLines:of=PrsHistorySample",
+      "src/production-readiness/history/historyBaselineEngine.ts:attribute:PrsHistorySample.deletedLines:type=number | undefined",
+      "src/production-readiness/history/historyBaselineEngine.ts:attribute:PrsHistorySample.dependencyCount",
+      "src/production-readiness/history/historyBaselineEngine.ts:attribute:PrsHistorySample.dependencyCount:kind=attribute",
+      "src/production-readiness/history/historyBaselineEngine.ts:attribute:PrsHistorySample.dependencyCount:of=PrsHistorySample",
+      "src/production-readiness/history/historyBaselineEngine.ts:attribute:PrsHistorySample.dependencyCount:type=number | undefined",
+      "src/production-readiness/history/historyBaselineEngine.ts:attribute:PrsHistorySample.id",
+      "src/production-readiness/history/historyBaselineEngine.ts:attribute:PrsHistorySample.id:kind=attribute",
+      "src/production-readiness/history/historyBaselineEngine.ts:attribute:PrsHistorySample.id:of=PrsHistorySample",
+      "src/production-readiness/history/historyBaselineEngine.ts:attribute:PrsHistorySample.id:type=string",
+      "src/production-readiness/history/historyBaselineEngine.ts:attribute:PrsHistorySample.recordedAt",
+      "src/production-readiness/history/historyBaselineEngine.ts:attribute:PrsHistorySample.recordedAt:kind=attribute",
+      "src/production-readiness/history/historyBaselineEngine.ts:attribute:PrsHistorySample.recordedAt:of=PrsHistorySample",
+      "src/production-readiness/history/historyBaselineEngine.ts:attribute:PrsHistorySample.recordedAt:type=string",
+      "src/production-readiness/history/historyBaselineEngine.ts:attribute:PrsHistorySample.sensitiveFilesChanged",
+      "src/production-readiness/history/historyBaselineEngine.ts:attribute:PrsHistorySample.sensitiveFilesChanged:kind=attribute",
+      "src/production-readiness/history/historyBaselineEngine.ts:attribute:PrsHistorySample.sensitiveFilesChanged:of=PrsHistorySample",
+      "src/production-readiness/history/historyBaselineEngine.ts:attribute:PrsHistorySample.sensitiveFilesChanged:type=number",
+      "src/production-readiness/history/historyBaselineEngine.ts:attribute:PrsHistorySample.sensitivePaths",
+      "src/production-readiness/history/historyBaselineEngine.ts:attribute:PrsHistorySample.sensitivePaths:kind=attribute",
+      "src/production-readiness/history/historyBaselineEngine.ts:attribute:PrsHistorySample.sensitivePaths:of=PrsHistorySample",
+      "src/production-readiness/history/historyBaselineEngine.ts:attribute:PrsHistorySample.sensitivePaths:type=string[]",
+      "src/production-readiness/history/historyBaselineEngine.ts:attribute:PrsHistorySample.source",
+      "src/production-readiness/history/historyBaselineEngine.ts:attribute:PrsHistorySample.source:kind=attribute",
+      "src/production-readiness/history/historyBaselineEngine.ts:attribute:PrsHistorySample.source:of=PrsHistorySample",
+      "src/production-readiness/history/historyBaselineEngine.ts:attribute:PrsHistorySample.source:type=HistorySource",
+      "src/production-readiness/history/historyBaselineEngine.ts:attribute:PrsHotspotFile.changeCount",
+      "src/production-readiness/history/historyBaselineEngine.ts:attribute:PrsHotspotFile.changeCount:kind=attribute",
+      "src/production-readiness/history/historyBaselineEngine.ts:attribute:PrsHotspotFile.changeCount:of=PrsHotspotFile",
+      "src/production-readiness/history/historyBaselineEngine.ts:attribute:PrsHotspotFile.changeCount:type=number",
+      "src/production-readiness/history/historyBaselineEngine.ts:attribute:PrsHotspotFile.path",
+      "src/production-readiness/history/historyBaselineEngine.ts:attribute:PrsHotspotFile.path:kind=attribute",
+      "src/production-readiness/history/historyBaselineEngine.ts:attribute:PrsHotspotFile.path:of=PrsHotspotFile",
+      "src/production-readiness/history/historyBaselineEngine.ts:attribute:PrsHotspotFile.path:type=string",
+      "src/production-readiness/history/historyBaselineEngine.ts:attribute:PrsHotspotFile.sensitiveChangeCount",
+      "src/production-readiness/history/historyBaselineEngine.ts:attribute:PrsHotspotFile.sensitiveChangeCount:kind=attribute",
+      "src/production-readiness/history/historyBaselineEngine.ts:attribute:PrsHotspotFile.sensitiveChangeCount:of=PrsHotspotFile",
+      "src/production-readiness/history/historyBaselineEngine.ts:attribute:PrsHotspotFile.sensitiveChangeCount:type=number",
+      "src/production-readiness/history/historyBaselineEngine.ts:function:buildHistoryBaseline",
+      "src/production-readiness/history/historyBaselineEngine.ts:function:buildHistoryBaseline:arg=input:type=HistoryBaselineInput:default=None",
+      "src/production-readiness/history/historyBaselineEngine.ts:function:buildHistoryBaseline:kind=function",
+      "src/production-readiness/history/historyBaselineEngine.ts:function:buildHistoryBaseline:returns=HistoryBaselineResult",
+      "src/production-readiness/history/historyBaselineEngine.ts:interface:HistoryBaselineInput",
+      "src/production-readiness/history/historyBaselineEngine.ts:interface:HistoryBaselineInput:kind=interface",
+      "src/production-readiness/history/historyBaselineEngine.ts:interface:HistoryBaselineResult",
+      "src/production-readiness/history/historyBaselineEngine.ts:interface:HistoryBaselineResult:kind=interface",
+      "src/production-readiness/history/historyBaselineEngine.ts:interface:PrsCommitHistoryRecord",
+      "src/production-readiness/history/historyBaselineEngine.ts:interface:PrsCommitHistoryRecord:kind=interface",
+      "src/production-readiness/history/historyBaselineEngine.ts:interface:PrsHistoryBaseline",
+      "src/production-readiness/history/historyBaselineEngine.ts:interface:PrsHistoryBaseline:kind=interface",
+      "src/production-readiness/history/historyBaselineEngine.ts:interface:PrsHistorySample",
+      "src/production-readiness/history/historyBaselineEngine.ts:interface:PrsHistorySample:kind=interface",
+      "src/production-readiness/history/historyBaselineEngine.ts:interface:PrsHotspotFile",
+      "src/production-readiness/history/historyBaselineEngine.ts:interface:PrsHotspotFile:kind=interface",
+      "src/production-readiness/history/historyBaselineEngine.ts:type:HistoryBaselineLabel",
+      "src/production-readiness/history/historyBaselineEngine.ts:type:HistoryBaselineLabel:kind=type",
+      "src/production-readiness/history/historyBaselineEngine.ts:type:HistoryBaselineLabel:type='normal_range' | 'larger_than_usual' | 'unusually_large' | 'largest_recent_export' | 'repeated_churn' | 'accelerating_dependency_growth' | 'insufficient_history'",
+      "src/production-readiness/history/historyBaselineEngine.ts:type:HistorySource",
+      "src/production-readiness/history/historyBaselineEngine.ts:type:HistorySource:kind=type",
+      "src/production-readiness/history/historyBaselineEngine.ts:type:HistorySource:type='prior_snapshot' | 'b2g_commit' | 'github_commit'",
+      "src/production-readiness/history/historyStats.ts:function:calculateMedian",
+      "src/production-readiness/history/historyStats.ts:function:calculateMedian:arg=values:type=number[]:default=None",
+      "src/production-readiness/history/historyStats.ts:function:calculateMedian:kind=function",
+      "src/production-readiness/history/historyStats.ts:function:calculateMedian:returns=number | null",
+      "src/production-readiness/history/historyStats.ts:function:calculatePercentileRank",
+      "src/production-readiness/history/historyStats.ts:function:calculatePercentileRank:arg=samples:type=number[]:default=None",
+      "src/production-readiness/history/historyStats.ts:function:calculatePercentileRank:arg=value:type=number:default=None",
+      "src/production-readiness/history/historyStats.ts:function:calculatePercentileRank:kind=function",
+      "src/production-readiness/history/historyStats.ts:function:calculatePercentileRank:returns=number | null",
+      "src/production-readiness/history/historyStats.ts:function:detectHistoryHotspots",
+      "src/production-readiness/history/historyStats.ts:function:detectHistoryHotspots:arg=samples:type=PrsHistorySample[]:default=None",
+      "src/production-readiness/history/historyStats.ts:function:detectHistoryHotspots:kind=function",
+      "src/production-readiness/history/historyStats.ts:function:detectHistoryHotspots:returns=PrsHotspotFile[]",
+      "src/production-readiness/snapshots/priorSnapshotStore.ts:attribute:PriorSnapshotLoadResult.limitations",
+      "src/production-readiness/snapshots/priorSnapshotStore.ts:attribute:PriorSnapshotLoadResult.limitations:kind=attribute",
+      "src/production-readiness/snapshots/priorSnapshotStore.ts:attribute:PriorSnapshotLoadResult.limitations:of=PriorSnapshotLoadResult",
+      "src/production-readiness/snapshots/priorSnapshotStore.ts:attribute:PriorSnapshotLoadResult.limitations:type=string[]",
+      "src/production-readiness/snapshots/priorSnapshotStore.ts:attribute:PriorSnapshotLoadResult.samples",
+      "src/production-readiness/snapshots/priorSnapshotStore.ts:attribute:PriorSnapshotLoadResult.samples:kind=attribute",
+      "src/production-readiness/snapshots/priorSnapshotStore.ts:attribute:PriorSnapshotLoadResult.samples:of=PriorSnapshotLoadResult",
+      "src/production-readiness/snapshots/priorSnapshotStore.ts:attribute:PriorSnapshotLoadResult.samples:type=PrsHistorySample[]",
+      "src/production-readiness/snapshots/priorSnapshotStore.ts:function:loadPriorPrsSnapshots",
+      "src/production-readiness/snapshots/priorSnapshotStore.ts:function:loadPriorPrsSnapshots:arg=repository:type=RepositoryRef:default=None",
+      "src/production-readiness/snapshots/priorSnapshotStore.ts:function:loadPriorPrsSnapshots:arg=storage:type=PrsSnapshotStorage:default=None",
+      "src/production-readiness/snapshots/priorSnapshotStore.ts:function:loadPriorPrsSnapshots:kind=function",
+      "src/production-readiness/snapshots/priorSnapshotStore.ts:function:loadPriorPrsSnapshots:returns=Promise<PriorSnapshotLoadResult>",
+      "src/production-readiness/snapshots/priorSnapshotStore.ts:function:savePrsSnapshotSummary",
+      "src/production-readiness/snapshots/priorSnapshotStore.ts:function:savePrsSnapshotSummary:arg=snapshot:type=ReadinessSnapshot:default=None",
+      "src/production-readiness/snapshots/priorSnapshotStore.ts:function:savePrsSnapshotSummary:arg=storage:type=PrsSnapshotStorage:default=None",
+      "src/production-readiness/snapshots/priorSnapshotStore.ts:function:savePrsSnapshotSummary:kind=function",
+      "src/production-readiness/snapshots/priorSnapshotStore.ts:function:savePrsSnapshotSummary:returns=Promise<void>",
+      "src/production-readiness/snapshots/priorSnapshotStore.ts:interface:PriorSnapshotLoadResult",
+      "src/production-readiness/snapshots/priorSnapshotStore.ts:interface:PriorSnapshotLoadResult:kind=interface",
+      "src/production-readiness/snapshots/priorSnapshotStore.ts:interface:PrsSnapshotStorage",
+      "src/production-readiness/snapshots/priorSnapshotStore.ts:interface:PrsSnapshotStorage:kind=interface",
+      "src/production-readiness/snapshots/priorSnapshotStore.ts:method:PrsSnapshotStorage.get",
+      "src/production-readiness/snapshots/priorSnapshotStore.ts:method:PrsSnapshotStorage.get:arg=key:type=string:default=None",
+      "src/production-readiness/snapshots/priorSnapshotStore.ts:method:PrsSnapshotStorage.get:kind=method",
+      "src/production-readiness/snapshots/priorSnapshotStore.ts:method:PrsSnapshotStorage.get:of=PrsSnapshotStorage",
+      "src/production-readiness/snapshots/priorSnapshotStore.ts:method:PrsSnapshotStorage.get:returns=Promise<unknown>",
+      "src/production-readiness/snapshots/priorSnapshotStore.ts:method:PrsSnapshotStorage.set",
+      "src/production-readiness/snapshots/priorSnapshotStore.ts:method:PrsSnapshotStorage.set:arg=key:type=string:default=None",
+      "src/production-readiness/snapshots/priorSnapshotStore.ts:method:PrsSnapshotStorage.set:arg=value:type=unknown:default=None",
+      "src/production-readiness/snapshots/priorSnapshotStore.ts:method:PrsSnapshotStorage.set:kind=method",
+      "src/production-readiness/snapshots/priorSnapshotStore.ts:method:PrsSnapshotStorage.set:of=PrsSnapshotStorage",
+      "src/production-readiness/snapshots/priorSnapshotStore.ts:method:PrsSnapshotStorage.set:returns=Promise<void>"
+    ],
+    "files": {
+      "create": [
+        "src/production-readiness/github/githubHistoryAdapter.ts",
+        "src/production-readiness/history/__tests__/historyBaselineEngine.test.ts",
+        "src/production-readiness/history/historyBaselineEngine.ts",
+        "src/production-readiness/history/historyStats.ts",
+        "src/production-readiness/snapshots/priorSnapshotStore.ts"
+      ],
+      "edit": [],
+      "read": [
+        "docs/b2g_production_readiness_snapshot_reference.md",
+        "manifests/01-b2g-prs-domain-models-fixtures.manifest.yaml",
+        "manifests/04-b2g-prs-diff-engine.manifest.yaml",
+        "manifests/12-b2g-prs-test-ci-maintainability-detector.manifest.yaml",
+        "manifests/drafts/b2g-production-readiness-snapshot.manifest.yaml",
+        "src/production-readiness/diff/diffEngine.ts",
+        "src/production-readiness/domain.ts",
+        "src/production-readiness/inventory/githubBaseInventory.ts",
+        "src/production-readiness/test-fixtures/prsFixtures.ts"
+      ],
+      "scope": [],
+      "delete": [],
+      "snapshot": []
+    },
+    "file_contract": {
+      "create": [
+        {
+          "path": "src/production-readiness/history/historyBaselineEngine.ts",
+          "artifacts": [
+            {
+              "kind": "function",
+              "name": "buildHistoryBaseline",
+              "description": "Builds a robust source-prioritized history baseline and deterministic change-history signals.",
+              "args": [
+                {
+                  "name": "input",
+                  "type": "HistoryBaselineInput"
+                }
+              ],
+              "returns": "HistoryBaselineResult"
+            },
+            {
+              "kind": "interface",
+              "name": "HistoryBaselineInput"
+            },
+            {
+              "kind": "attribute",
+              "name": "current",
+              "of": "HistoryBaselineInput",
+              "type": "ComparisonSummary"
+            },
+            {
+              "kind": "attribute",
+              "name": "currentChangedPaths",
+              "of": "HistoryBaselineInput",
+              "type": "string[]"
+            },
+            {
+              "kind": "attribute",
+              "name": "currentSensitivePaths",
+              "of": "HistoryBaselineInput",
+              "type": "string[]"
+            },
+            {
+              "kind": "attribute",
+              "name": "currentSourceFilesChanged",
+              "of": "HistoryBaselineInput",
+              "type": "number | undefined"
+            },
+            {
+              "kind": "attribute",
+              "name": "currentSourceLinesChanged",
+              "of": "HistoryBaselineInput",
+              "type": "number | undefined"
+            },
+            {
+              "kind": "attribute",
+              "name": "currentDependencyCount",
+              "of": "HistoryBaselineInput",
+              "type": "number | undefined"
+            },
+            {
+              "kind": "attribute",
+              "name": "priorSnapshots",
+              "of": "HistoryBaselineInput",
+              "type": "PrsHistorySample[]"
+            },
+            {
+              "kind": "attribute",
+              "name": "githubCommits",
+              "of": "HistoryBaselineInput",
+              "type": "PrsCommitHistoryRecord[]"
+            },
+            {
+              "kind": "interface",
+              "name": "HistoryBaselineResult"
+            },
+            {
+              "kind": "attribute",
+              "name": "signals",
+              "of": "HistoryBaselineResult",
+              "type": "ReadinessSignal[]"
+            },
+            {
+              "kind": "attribute",
+              "name": "baseline",
+              "of": "HistoryBaselineResult",
+              "type": "PrsHistoryBaseline | null"
+            },
+            {
+              "kind": "attribute",
+              "name": "limitations",
+              "of": "HistoryBaselineResult",
+              "type": "string[]"
+            },
+            {
+              "kind": "interface",
+              "name": "PrsHistorySample"
+            },
+            {
+              "kind": "attribute",
+              "name": "id",
+              "of": "PrsHistorySample",
+              "type": "string"
+            },
+            {
+              "kind": "attribute",
+              "name": "source",
+              "of": "PrsHistorySample",
+              "type": "HistorySource"
+            },
+            {
+              "kind": "attribute",
+              "name": "recordedAt",
+              "of": "PrsHistorySample",
+              "type": "string"
+            },
+            {
+              "kind": "attribute",
+              "name": "changedFiles",
+              "of": "PrsHistorySample",
+              "type": "number"
+            },
+            {
+              "kind": "attribute",
+              "name": "addedFiles",
+              "of": "PrsHistorySample",
+              "type": "number"
+            },
+            {
+              "kind": "attribute",
+              "name": "deletedFiles",
+              "of": "PrsHistorySample",
+              "type": "number"
+            },
+            {
+              "kind": "attribute",
+              "name": "addedLines",
+              "of": "PrsHistorySample",
+              "type": "number | undefined"
+            },
+            {
+              "kind": "attribute",
+              "name": "deletedLines",
+              "of": "PrsHistorySample",
+              "type": "number | undefined"
+            },
+            {
+              "kind": "attribute",
+              "name": "sensitiveFilesChanged",
+              "of": "PrsHistorySample",
+              "type": "number"
+            },
+            {
+              "kind": "attribute",
+              "name": "dependencyCount",
+              "of": "PrsHistorySample",
+              "type": "number | undefined"
+            },
+            {
+              "kind": "attribute",
+              "name": "changedPaths",
+              "of": "PrsHistorySample",
+              "type": "string[]"
+            },
+            {
+              "kind": "attribute",
+              "name": "sensitivePaths",
+              "of": "PrsHistorySample",
+              "type": "string[]"
+            },
+            {
+              "kind": "interface",
+              "name": "PrsCommitHistoryRecord"
+            },
+            {
+              "kind": "attribute",
+              "name": "sha",
+              "of": "PrsCommitHistoryRecord",
+              "type": "string"
+            },
+            {
+              "kind": "attribute",
+              "name": "subject",
+              "of": "PrsCommitHistoryRecord",
+              "type": "string"
+            },
+            {
+              "kind": "attribute",
+              "name": "isB2gCommit",
+              "of": "PrsCommitHistoryRecord",
+              "type": "boolean"
+            },
+            {
+              "kind": "interface",
+              "name": "PrsHistoryBaseline"
+            },
+            {
+              "kind": "attribute",
+              "name": "source",
+              "of": "PrsHistoryBaseline",
+              "type": "HistorySource"
+            },
+            {
+              "kind": "attribute",
+              "name": "sampleCount",
+              "of": "PrsHistoryBaseline",
+              "type": "number"
+            },
+            {
+              "kind": "attribute",
+              "name": "medianChangedFiles",
+              "of": "PrsHistoryBaseline",
+              "type": "number"
+            },
+            {
+              "kind": "attribute",
+              "name": "medianLineChanges",
+              "of": "PrsHistoryBaseline",
+              "type": "number | null"
+            },
+            {
+              "kind": "attribute",
+              "name": "changedFilesPercentile",
+              "of": "PrsHistoryBaseline",
+              "type": "number"
+            },
+            {
+              "kind": "attribute",
+              "name": "lineChangesPercentile",
+              "of": "PrsHistoryBaseline",
+              "type": "number | null"
+            },
+            {
+              "kind": "attribute",
+              "name": "hotspots",
+              "of": "PrsHistoryBaseline",
+              "type": "PrsHotspotFile[]"
+            },
+            {
+              "kind": "attribute",
+              "name": "label",
+              "of": "PrsHistoryBaseline",
+              "type": "HistoryBaselineLabel"
+            },
+            {
+              "kind": "interface",
+              "name": "PrsHotspotFile"
+            },
+            {
+              "kind": "attribute",
+              "name": "path",
+              "of": "PrsHotspotFile",
+              "type": "string"
+            },
+            {
+              "kind": "attribute",
+              "name": "changeCount",
+              "of": "PrsHotspotFile",
+              "type": "number"
+            },
+            {
+              "kind": "attribute",
+              "name": "sensitiveChangeCount",
+              "of": "PrsHotspotFile",
+              "type": "number"
+            },
+            {
+              "kind": "type",
+              "name": "HistorySource",
+              "type": "'prior_snapshot' | 'b2g_commit' | 'github_commit'"
+            },
+            {
+              "kind": "type",
+              "name": "HistoryBaselineLabel",
+              "type": "'normal_range' | 'larger_than_usual' | 'unusually_large' | 'largest_recent_export' | 'repeated_churn' | 'accelerating_dependency_growth' | 'insufficient_history'"
+            }
+          ]
+        },
+        {
+          "path": "src/production-readiness/history/historyStats.ts",
+          "artifacts": [
+            {
+              "kind": "function",
+              "name": "calculateMedian",
+              "description": "Calculates a deterministic median and returns null for no samples.",
+              "args": [
+                {
+                  "name": "values",
+                  "type": "number[]"
+                }
+              ],
+              "returns": "number | null"
+            },
+            {
+              "kind": "function",
+              "name": "calculatePercentileRank",
+              "description": "Calculates the percentage of samples less than or equal to the value.",
+              "args": [
+                {
+                  "name": "value",
+                  "type": "number"
+                },
+                {
+                  "name": "samples",
+                  "type": "number[]"
+                }
+              ],
+              "returns": "number | null"
+            },
+            {
+              "kind": "function",
+              "name": "detectHistoryHotspots",
+              "description": "Returns paths changed in at least three distinct samples with sensitive churn counts.",
+              "args": [
+                {
+                  "name": "samples",
+                  "type": "PrsHistorySample[]"
+                }
+              ],
+              "returns": "PrsHotspotFile[]"
+            }
+          ]
+        },
+        {
+          "path": "src/production-readiness/github/githubHistoryAdapter.ts",
+          "artifacts": [
+            {
+              "kind": "function",
+              "name": "fetchPrsCommitHistory",
+              "description": "Fetches bounded commit metadata and detail records through an injected GitHub reader.",
+              "args": [
+                {
+                  "name": "request",
+                  "type": "GitHubHistoryRequest"
+                }
+              ],
+              "returns": "Promise<GitHubHistoryResult>"
+            },
+            {
+              "kind": "type",
+              "name": "GitHubHistoryReader",
+              "type": "<T>(endpoint: string, signal?: AbortSignal) => Promise<T>"
+            },
+            {
+              "kind": "interface",
+              "name": "GitHubHistoryRequest"
+            },
+            {
+              "kind": "attribute",
+              "name": "owner",
+              "of": "GitHubHistoryRequest",
+              "type": "string"
+            },
+            {
+              "kind": "attribute",
+              "name": "repo",
+              "of": "GitHubHistoryRequest",
+              "type": "string"
+            },
+            {
+              "kind": "attribute",
+              "name": "baseRef",
+              "of": "GitHubHistoryRequest",
+              "type": "string"
+            },
+            {
+              "kind": "attribute",
+              "name": "maxCommits",
+              "of": "GitHubHistoryRequest",
+              "type": "number"
+            },
+            {
+              "kind": "attribute",
+              "name": "readGitHub",
+              "of": "GitHubHistoryRequest",
+              "type": "GitHubHistoryReader"
+            },
+            {
+              "kind": "attribute",
+              "name": "isSensitivePath",
+              "of": "GitHubHistoryRequest",
+              "type": "((path: string) => boolean) | undefined"
+            },
+            {
+              "kind": "attribute",
+              "name": "signal",
+              "of": "GitHubHistoryRequest",
+              "type": "AbortSignal | undefined"
+            },
+            {
+              "kind": "interface",
+              "name": "GitHubHistoryResult"
+            },
+            {
+              "kind": "attribute",
+              "name": "records",
+              "of": "GitHubHistoryResult",
+              "type": "PrsCommitHistoryRecord[]"
+            },
+            {
+              "kind": "attribute",
+              "name": "limitations",
+              "of": "GitHubHistoryResult",
+              "type": "PartialDataNotice[]"
+            }
+          ]
+        },
+        {
+          "path": "src/production-readiness/snapshots/priorSnapshotStore.ts",
+          "artifacts": [
+            {
+              "kind": "function",
+              "name": "loadPriorPrsSnapshots",
+              "description": "Loads validated metadata-only PRS summaries through an injected local storage port.",
+              "args": [
+                {
+                  "name": "repository",
+                  "type": "RepositoryRef"
+                },
+                {
+                  "name": "storage",
+                  "type": "PrsSnapshotStorage"
+                }
+              ],
+              "returns": "Promise<PriorSnapshotLoadResult>"
+            },
+            {
+              "kind": "function",
+              "name": "savePrsSnapshotSummary",
+              "description": "Stores a bounded redaction-safe snapshot summary without raw source or secret values.",
+              "args": [
+                {
+                  "name": "snapshot",
+                  "type": "ReadinessSnapshot"
+                },
+                {
+                  "name": "storage",
+                  "type": "PrsSnapshotStorage"
+                }
+              ],
+              "returns": "Promise<void>"
+            },
+            {
+              "kind": "interface",
+              "name": "PrsSnapshotStorage"
+            },
+            {
+              "kind": "method",
+              "name": "get",
+              "of": "PrsSnapshotStorage",
+              "args": [
+                {
+                  "name": "key",
+                  "type": "string"
+                }
+              ],
+              "returns": "Promise<unknown>"
+            },
+            {
+              "kind": "method",
+              "name": "set",
+              "of": "PrsSnapshotStorage",
+              "args": [
+                {
+                  "name": "key",
+                  "type": "string"
+                },
+                {
+                  "name": "value",
+                  "type": "unknown"
+                }
+              ],
+              "returns": "Promise<void>"
+            },
+            {
+              "kind": "interface",
+              "name": "PriorSnapshotLoadResult"
+            },
+            {
+              "kind": "attribute",
+              "name": "samples",
+              "of": "PriorSnapshotLoadResult",
+              "type": "PrsHistorySample[]"
+            },
+            {
+              "kind": "attribute",
+              "name": "limitations",
+              "of": "PriorSnapshotLoadResult",
+              "type": "string[]"
+            }
+          ]
+        },
+        {
+          "path": "src/production-readiness/history/__tests__/historyBaselineEngine.test.ts",
+          "artifacts": [
+            {
+              "kind": "test_function",
+              "name": "calculates median percentile and source-prioritized baselines",
+              "description": "Covers robust metrics and prior-snapshot/B2G/recent source priority."
+            },
+            {
+              "kind": "test_function",
+              "name": "reports insufficient history as limitations not trend claims",
+              "description": "Covers unknown history and documented static fallback thresholds."
+            },
+            {
+              "kind": "test_function",
+              "name": "identifies hotspot files and repeated sensitive churn",
+              "description": "Covers unique-per-sample hotspot counts and current hotspot evidence."
+            },
+            {
+              "kind": "test_function",
+              "name": "emits large export and dependency drift signals only at documented boundaries",
+              "description": "Covers strict 3x/6x thresholds and repeated dependency growth."
+            },
+            {
+              "kind": "test_function",
+              "name": "fetches bounded GitHub history and exposes unavailable history limitations",
+              "description": "Covers injected reads, metadata normalization, cancellation, and rate-limit handling."
+            },
+            {
+              "kind": "test_function",
+              "name": "stores bounded metadata-only prior snapshot summaries",
+              "description": "Covers injected storage, validation, retention, and secret-value exclusion."
+            }
+          ]
+        }
+      ],
+      "read": [
+        "manifests/drafts/b2g-production-readiness-snapshot.manifest.yaml",
+        "manifests/01-b2g-prs-domain-models-fixtures.manifest.yaml",
+        "manifests/04-b2g-prs-diff-engine.manifest.yaml",
+        "manifests/12-b2g-prs-test-ci-maintainability-detector.manifest.yaml",
+        "docs/b2g_production_readiness_snapshot_reference.md",
+        "src/production-readiness/domain.ts",
+        "src/production-readiness/diff/diffEngine.ts",
+        "src/production-readiness/test-fixtures/prsFixtures.ts",
+        "src/production-readiness/inventory/githubBaseInventory.ts"
+      ]
+    },
+    "test_files": ["src/production-readiness/history/__tests__/historyBaselineEngine.test.ts"],
+    "validate_commands": [
+      "pnpm exec vitest run src/production-readiness/history/__tests__/historyBaselineEngine.test.ts",
+      "./scripts/maid validate manifests/13-b2g-prs-history-baseline-engine.manifest.yaml --mode behavioral",
+      "pnpm lint",
+      "pnpm check"
+    ]
+  }
+}
