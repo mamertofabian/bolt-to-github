@@ -1,0 +1,438 @@
+{
+  "manifest_path": "manifests/14-b2g-prs-commit-marker-integration.manifest.yaml",
+  "manifest_hash": "sha256-contract:df0c2ec0963dd1f797610dba91e8ad4498087f61587fb87863e0d3095ad4fece",
+  "test_hashes": {
+    "src/lib/prs/__tests__/commitMarkers.test.ts": "sha256:96e244dae9cecf8fe7fe515bda3c13d5e9242ad41494de4d15c9e11a174656fc"
+  },
+  "created_at": "2026-08-01T03:49:26.109989+00:00",
+  "revision": 9,
+  "revisions": [
+    {
+      "prior_manifest_hash": "sha256-contract:df609719d9687519ddc48c7194373efc8931bdb9de201d5553f2d38bb89d2eb1",
+      "prior_test_hashes": {
+        "src/lib/prs/__tests__/commitMarkers.test.ts": "sha256:6f6931ccf0d16461685d4d8471cd4d72598545cbc2500924796f63410df1605e"
+      },
+      "revised_at": "2026-08-01T03:58:12.998334+00:00",
+      "reason": "Add independent-review regressions for generic credential redaction and duplicate concern-section ambiguity",
+      "agent": null,
+      "contract_delta": {
+        "artifacts_added": [],
+        "artifacts_removed": [],
+        "files_added": [],
+        "files_removed": [],
+        "validate_commands_added": [],
+        "validate_commands_removed": []
+      }
+    },
+    {
+      "prior_manifest_hash": "sha256-contract:df609719d9687519ddc48c7194373efc8931bdb9de201d5553f2d38bb89d2eb1",
+      "prior_test_hashes": {
+        "src/lib/prs/__tests__/commitMarkers.test.ts": "sha256:e2f0ed9ecc0cab8cb9e403811b9db013625c6a85f091cb7c74d06689d1dd978d"
+      },
+      "revised_at": "2026-08-01T04:04:12.175412+00:00",
+      "reason": "Add fresh-review regressions for canonical timestamps and complete quoted-secret redaction",
+      "agent": null,
+      "contract_delta": {
+        "artifacts_added": [],
+        "artifacts_removed": [],
+        "files_added": [],
+        "files_removed": [],
+        "validate_commands_added": [],
+        "validate_commands_removed": []
+      }
+    },
+    {
+      "prior_manifest_hash": "sha256-contract:df609719d9687519ddc48c7194373efc8931bdb9de201d5553f2d38bb89d2eb1",
+      "prior_test_hashes": {
+        "src/lib/prs/__tests__/commitMarkers.test.ts": "sha256:81f3e578d258de281292eb32e02ab3bb07482fc531c4817a83efd0c4373f8e29"
+      },
+      "revised_at": "2026-08-01T04:11:17.205367+00:00",
+      "reason": "Align marker redaction with shared secret detection, cover credential phrasing/provider tokens, and reject inherited readiness keys",
+      "agent": null,
+      "contract_delta": {
+        "artifacts_added": [],
+        "artifacts_removed": [],
+        "files_added": [
+          "read:src/production-readiness/domain.ts - src/production-readiness/redaction.ts - src/production-readiness/rules/secret-patterns.ts - src/production-readiness/test-fixtures/prsFixtures.ts"
+        ],
+        "files_removed": [
+          "read:src/production-readiness/domain.ts",
+          "read:src/production-readiness/redaction.ts",
+          "read:src/production-readiness/test-fixtures/prsFixtures.ts"
+        ],
+        "validate_commands_added": [],
+        "validate_commands_removed": []
+      }
+    },
+    {
+      "prior_manifest_hash": "sha256-contract:0001db4646897e880c0f396e9f9470f110180ebbb03a2de7cd87aa9bc5fdb30b",
+      "prior_test_hashes": {
+        "src/lib/prs/__tests__/commitMarkers.test.ts": "sha256:18ead50478a06adf4c0bfd3e0a2b268cbf2995d3b90455654966cccb2e8c665b"
+      },
+      "revised_at": "2026-08-01T04:12:03.062441+00:00",
+      "reason": "Correct the shared secret-rule read dependency list without changing behavior",
+      "agent": null,
+      "contract_delta": {
+        "artifacts_added": [],
+        "artifacts_removed": [],
+        "files_added": [
+          "read:src/production-readiness/domain.ts",
+          "read:src/production-readiness/redaction.ts",
+          "read:src/production-readiness/rules/secret-patterns.ts",
+          "read:src/production-readiness/test-fixtures/prsFixtures.ts"
+        ],
+        "files_removed": [
+          "read:src/production-readiness/domain.ts - src/production-readiness/redaction.ts - src/production-readiness/rules/secret-patterns.ts - src/production-readiness/test-fixtures/prsFixtures.ts"
+        ],
+        "validate_commands_added": [],
+        "validate_commands_removed": []
+      }
+    },
+    {
+      "prior_manifest_hash": "sha256-contract:df0c2ec0963dd1f797610dba91e8ad4498087f61587fb87863e0d3095ad4fece",
+      "prior_test_hashes": {
+        "src/lib/prs/__tests__/commitMarkers.test.ts": "sha256:18ead50478a06adf4c0bfd3e0a2b268cbf2995d3b90455654966cccb2e8c665b"
+      },
+      "revised_at": "2026-08-01T04:16:07.296848+00:00",
+      "reason": "Redact any concern containing credential vocabulary, including intervening prose",
+      "agent": null,
+      "contract_delta": {
+        "artifacts_added": [],
+        "artifacts_removed": [],
+        "files_added": [],
+        "files_removed": [],
+        "validate_commands_added": [],
+        "validate_commands_removed": []
+      }
+    },
+    {
+      "prior_manifest_hash": "sha256-contract:df0c2ec0963dd1f797610dba91e8ad4498087f61587fb87863e0d3095ad4fece",
+      "prior_test_hashes": {
+        "src/lib/prs/__tests__/commitMarkers.test.ts": "sha256:4d8bc68d17bea99ef95255a39c904ab350cef190d4229efa4a95ae715bade999"
+      },
+      "revised_at": "2026-08-01T04:21:18.434892+00:00",
+      "reason": "Redact bare bearer credentials and credential-bearing camelCase assignments",
+      "agent": null,
+      "contract_delta": {
+        "artifacts_added": [],
+        "artifacts_removed": [],
+        "files_added": [],
+        "files_removed": [],
+        "validate_commands_added": [],
+        "validate_commands_removed": []
+      }
+    },
+    {
+      "prior_manifest_hash": "sha256-contract:df0c2ec0963dd1f797610dba91e8ad4498087f61587fb87863e0d3095ad4fece",
+      "prior_test_hashes": {
+        "src/lib/prs/__tests__/commitMarkers.test.ts": "sha256:02c92e6aafc9a3b095dfa5e5ea8856abd8c72c44e455e74445c7073ff8f525ed"
+      },
+      "revised_at": "2026-08-01T04:26:21.806635+00:00",
+      "reason": "Redact bare HTTP authorization scheme credentials including Basic auth",
+      "agent": null,
+      "contract_delta": {
+        "artifacts_added": [],
+        "artifacts_removed": [],
+        "files_added": [],
+        "files_removed": [],
+        "validate_commands_added": [],
+        "validate_commands_removed": []
+      }
+    },
+    {
+      "prior_manifest_hash": "sha256-contract:df0c2ec0963dd1f797610dba91e8ad4498087f61587fb87863e0d3095ad4fece",
+      "prior_test_hashes": {
+        "src/lib/prs/__tests__/commitMarkers.test.ts": "sha256:663c5b7fcf0d142e1405e9b2c8069d5be213b0adccfe81907be249aa6ba9b67a"
+      },
+      "revised_at": "2026-08-01T06:25:11.757422+00:00",
+      "reason": "Represent push-protection redaction fixtures from harmless source fragments while preserving their runtime token shapes and behavioral contract.",
+      "agent": null,
+      "contract_delta": {
+        "artifacts_added": [],
+        "artifacts_removed": [],
+        "files_added": [],
+        "files_removed": [],
+        "validate_commands_added": [],
+        "validate_commands_removed": []
+      }
+    }
+  ],
+  "red_evidence": {
+    "red": true,
+    "captured_at": "2026-08-01T04:26:36.935531+00:00",
+    "commands": [
+      {
+        "command": "pnpm exec vitest run src/lib/prs/__tests__/commitMarkers.test.ts",
+        "exit_code": 1,
+        "output_tail": "+ [B2G-PRS]\n+ Version: 1\n+ Readiness: Yellow\n+ Generated: 2026-07-07T00:00:00.000Z\n+ Changed-Files: 1\n+ Sensitive-Files: 2\n+ Top-Concerns:\n+ - Basic dXNlcjpwYXNzd29yZA==\n+ [/B2G-PRS]\n\n \u276f src/lib/prs/__tests__/commitMarkers.test.ts:90:25\n     88|       generatedSnapshot.state.topConcerns = [secretConcern];\n     89|       const generated = generatePrsCommitMarker(generatedSnapshot, { m\u2026\n     90|       expect(generated).toContain('- [REDACTED]');\n       |                         ^\n     91|       expect(generated).not.toContain(secretConcern);\n     92| \n\n\u23af\u23af\u23af\u23af\u23af\u23af\u23af\u23af\u23af\u23af\u23af\u23af\u23af\u23af\u23af\u23af\u23af\u23af\u23af\u23af\u23af\u23af\u23af\u23af[1/1]\u23af\n",
+        "classification": "red"
+      },
+      {
+        "command": "./scripts/maid validate manifests/14-b2g-prs-commit-marker-integration.manifest.yaml --mode behavioral",
+        "exit_code": 0,
+        "output_tail": "PASS 14-b2g-prs-commit-marker-integration\n  Mode: behavioral\n  Duration: 191ms\n  Warnings (3):\n    E110 Manifest 'prepare-v2-0-0-github-app-release' supersedes 'release-v1-3-21' but drops artifact 'PackageVersion_1_3_21' (namespace) at package.json\n      Location: /home/atomrem/projects/codefrost-dev/bolt-to-github/manifests/prepare-v2-0-0-github-app-release.manifest.yaml\n      Suggestion: Re-declare the artifact in the replacement manifest, list its file under files.delete, or list the symbol under removed_artifacts.\n    E110 Manifest 'prepare-v2-0-0-github-app-release' supersedes 'release-v1-3-21' but drops artifact 'ChromeManifestVersion_1_3_21' (namespace) at manifest.json\n      Location: /home/atomrem/projects/codefrost-dev/bolt-to-github/manifests/prepare-v2-0-0-github-app-release.manifest.yaml\n      Suggestion: Re-declare the artifact in the replacement manifest, list its file under files.delete, or list the symbol under removed_artifacts.\n    E110 Manifest 'prepare-v2-0-0-github-app-release' supersedes 'release-v1-3-21' but drops artifact 'DevelopmentGuideVersion_1_3_21' (namespace) at CLAUDE.md\n      Location: /home/atomrem/projects/codefrost-dev/bolt-to-github/manifests/prepare-v2-0-0-github-app-release.manifest.yaml\n      Suggestion: Re-declare the artifact in the replacement manifest, list its file under files.delete, or list the symbol under removed_artifacts.",
+        "classification": "not_red"
+      },
+      {
+        "command": "pnpm lint",
+        "exit_code": 0,
+        "output_tail": "\n> bolt-to-github@2.0.0 lint /home/atomrem/projects/codefrost-dev/bolt-to-github\n> eslint \"src/**/*.{js,ts,svelte}\"\n",
+        "classification": "not_red"
+      },
+      {
+        "command": "pnpm check",
+        "exit_code": 0,
+        "output_tail": "\n> bolt-to-github@2.0.0 check /home/atomrem/projects/codefrost-dev/bolt-to-github\n> svelte-check --tsconfig ./tsconfig.json\n\n\n====================================\nLoading svelte-check in workspace: /home/atomrem/projects/codefrost-dev/bolt-to-github\nGetting Svelte diagnostics...\n\n====================================\nsvelte-check found 0 errors and 0 warnings",
+        "classification": "not_red"
+      }
+    ]
+  },
+  "legacy_baseline": null,
+  "agent": null,
+  "_manifest_contract": {
+    "artifacts": [
+      "src/lib/prs/__tests__/commitMarkers.test.ts:appendPrsCommitMarker does not duplicate an existing marker",
+      "src/lib/prs/__tests__/commitMarkers.test.ts:appendPrsCommitMarker does not duplicate an existing marker:kind=test_function",
+      "src/lib/prs/__tests__/commitMarkers.test.ts:generatePrsCommitMarker formats the compact marker",
+      "src/lib/prs/__tests__/commitMarkers.test.ts:generatePrsCommitMarker formats the compact marker:kind=test_function",
+      "src/lib/prs/__tests__/commitMarkers.test.ts:generatePrsCommitMarker redacts secret-looking evidence",
+      "src/lib/prs/__tests__/commitMarkers.test.ts:generatePrsCommitMarker redacts secret-looking evidence:kind=test_function",
+      "src/lib/prs/__tests__/commitMarkers.test.ts:marker inclusion is controlled by explicit user settings",
+      "src/lib/prs/__tests__/commitMarkers.test.ts:marker inclusion is controlled by explicit user settings:kind=test_function",
+      "src/lib/prs/__tests__/commitMarkers.test.ts:parsePrsCommitMarkers returns history records for valid markers only",
+      "src/lib/prs/__tests__/commitMarkers.test.ts:parsePrsCommitMarkers returns history records for valid markers only:kind=test_function",
+      "src/lib/prs/commitMarkers.ts:attribute:GitCommitSummary.committedAt",
+      "src/lib/prs/commitMarkers.ts:attribute:GitCommitSummary.committedAt:kind=attribute",
+      "src/lib/prs/commitMarkers.ts:attribute:GitCommitSummary.committedAt:of=GitCommitSummary",
+      "src/lib/prs/commitMarkers.ts:attribute:GitCommitSummary.committedAt:type=string | undefined",
+      "src/lib/prs/commitMarkers.ts:attribute:GitCommitSummary.message",
+      "src/lib/prs/commitMarkers.ts:attribute:GitCommitSummary.message:kind=attribute",
+      "src/lib/prs/commitMarkers.ts:attribute:GitCommitSummary.message:of=GitCommitSummary",
+      "src/lib/prs/commitMarkers.ts:attribute:GitCommitSummary.message:type=string",
+      "src/lib/prs/commitMarkers.ts:attribute:GitCommitSummary.sha",
+      "src/lib/prs/commitMarkers.ts:attribute:GitCommitSummary.sha:kind=attribute",
+      "src/lib/prs/commitMarkers.ts:attribute:GitCommitSummary.sha:of=GitCommitSummary",
+      "src/lib/prs/commitMarkers.ts:attribute:GitCommitSummary.sha:type=string",
+      "src/lib/prs/commitMarkers.ts:attribute:PrsCommitMarkerSettings.includeInCommitBody",
+      "src/lib/prs/commitMarkers.ts:attribute:PrsCommitMarkerSettings.includeInCommitBody:kind=attribute",
+      "src/lib/prs/commitMarkers.ts:attribute:PrsCommitMarkerSettings.includeInCommitBody:of=PrsCommitMarkerSettings",
+      "src/lib/prs/commitMarkers.ts:attribute:PrsCommitMarkerSettings.includeInCommitBody:type=boolean",
+      "src/lib/prs/commitMarkers.ts:function:appendPrsCommitMarker",
+      "src/lib/prs/commitMarkers.ts:function:appendPrsCommitMarker:arg=commitBody:type=string:default=None",
+      "src/lib/prs/commitMarkers.ts:function:appendPrsCommitMarker:arg=marker:type=string:default=None",
+      "src/lib/prs/commitMarkers.ts:function:appendPrsCommitMarker:kind=function",
+      "src/lib/prs/commitMarkers.ts:function:appendPrsCommitMarker:returns=string",
+      "src/lib/prs/commitMarkers.ts:function:buildPrsCommitBody",
+      "src/lib/prs/commitMarkers.ts:function:buildPrsCommitBody:arg=commitBody:type=string:default=None",
+      "src/lib/prs/commitMarkers.ts:function:buildPrsCommitBody:arg=options:type=PrsCommitMarkerOptions | undefined:default=None",
+      "src/lib/prs/commitMarkers.ts:function:buildPrsCommitBody:arg=settings:type=PrsCommitMarkerSettings:default=None",
+      "src/lib/prs/commitMarkers.ts:function:buildPrsCommitBody:arg=snapshot:type=ReadinessSnapshot:default=None",
+      "src/lib/prs/commitMarkers.ts:function:buildPrsCommitBody:kind=function",
+      "src/lib/prs/commitMarkers.ts:function:buildPrsCommitBody:returns=string",
+      "src/lib/prs/commitMarkers.ts:function:generatePrsCommitMarker",
+      "src/lib/prs/commitMarkers.ts:function:generatePrsCommitMarker:arg=options:type=PrsCommitMarkerOptions:default=None",
+      "src/lib/prs/commitMarkers.ts:function:generatePrsCommitMarker:arg=snapshot:type=ReadinessSnapshot:default=None",
+      "src/lib/prs/commitMarkers.ts:function:generatePrsCommitMarker:kind=function",
+      "src/lib/prs/commitMarkers.ts:function:generatePrsCommitMarker:returns=string",
+      "src/lib/prs/commitMarkers.ts:function:parsePrsCommitMarkers",
+      "src/lib/prs/commitMarkers.ts:function:parsePrsCommitMarkers:arg=commits:type=GitCommitSummary[]:default=None",
+      "src/lib/prs/commitMarkers.ts:function:parsePrsCommitMarkers:kind=function",
+      "src/lib/prs/commitMarkers.ts:function:parsePrsCommitMarkers:returns=PrsHistoryMarker[]",
+      "src/lib/prs/commitMarkers.ts:interface:GitCommitSummary",
+      "src/lib/prs/commitMarkers.ts:interface:GitCommitSummary:kind=interface",
+      "src/lib/prs/commitMarkers.ts:interface:PrsCommitMarkerSettings",
+      "src/lib/prs/commitMarkers.ts:interface:PrsCommitMarkerSettings:kind=interface",
+      "src/lib/prs/commitMarkers.ts:type:PrsCommitMarkerOptions",
+      "src/lib/prs/commitMarkers.ts:type:PrsCommitMarkerOptions:kind=type",
+      "src/lib/prs/commitMarkers.ts:type:PrsCommitMarkerOptions:type={\n  includeTopConcerns?: boolean;\n  includeOutputRefs?: boolean;\n  maxConcerns?: number;\n}\n",
+      "src/lib/prs/commitMarkers.ts:type:PrsHistoryMarker",
+      "src/lib/prs/commitMarkers.ts:type:PrsHistoryMarker:kind=type",
+      "src/lib/prs/commitMarkers.ts:type:PrsHistoryMarker:type={\n  commitSha: string;\n  committedAt?: string;\n  state: ReadinessState;\n  changedFiles: number;\n  sensitiveFilesChanged: number;\n  topConcerns: string[];\n  source: 'b2g-prs-commit-marker';\n}\n"
+    ],
+    "files": {
+      "create": ["src/lib/prs/__tests__/commitMarkers.test.ts", "src/lib/prs/commitMarkers.ts"],
+      "edit": [],
+      "read": [
+        "docs/b2g_production_readiness_snapshot_reference.md",
+        "manifests/08-b2g-prs-readiness-composer.manifest.yaml",
+        "manifests/09-b2g-prs-report-generators.manifest.yaml",
+        "manifests/13-b2g-prs-history-baseline-engine.manifest.yaml",
+        "manifests/drafts/b2g-production-readiness-snapshot.manifest.yaml",
+        "src/production-readiness/domain.ts",
+        "src/production-readiness/redaction.ts",
+        "src/production-readiness/rules/secret-patterns.ts",
+        "src/production-readiness/test-fixtures/prsFixtures.ts"
+      ],
+      "scope": [],
+      "delete": [],
+      "snapshot": []
+    },
+    "file_contract": {
+      "create": [
+        {
+          "path": "src/lib/prs/commitMarkers.ts",
+          "artifacts": [
+            {
+              "kind": "function",
+              "name": "generatePrsCommitMarker",
+              "description": "Generates a bounded versioned [B2G-PRS] commit-body marker\ncontaining readiness state, safe summary metrics, selected top\nconcerns, optional output-presence labels, and no raw\nsecret-looking values.\n",
+              "args": [
+                {
+                  "name": "snapshot",
+                  "type": "ReadinessSnapshot"
+                },
+                {
+                  "name": "options",
+                  "type": "PrsCommitMarkerOptions"
+                }
+              ],
+              "returns": "string"
+            },
+            {
+              "kind": "function",
+              "name": "appendPrsCommitMarker",
+              "description": "Appends a PRS marker to a commit body without duplicating an\nexisting marker block.\n",
+              "args": [
+                {
+                  "name": "commitBody",
+                  "type": "string"
+                },
+                {
+                  "name": "marker",
+                  "type": "string"
+                }
+              ],
+              "returns": "string"
+            },
+            {
+              "kind": "function",
+              "name": "parsePrsCommitMarkers",
+              "description": "Parses prior [B2G-PRS] marker blocks from commit messages into\nbounded provenance records suitable for identifying trusted PRS\nhistory. Missing, malformed, duplicate, or manually ambiguous\nmarkers are ignored without failing current exports.\n",
+              "args": [
+                {
+                  "name": "commits",
+                  "type": "GitCommitSummary[]"
+                }
+              ],
+              "returns": "PrsHistoryMarker[]"
+            },
+            {
+              "kind": "function",
+              "name": "buildPrsCommitBody",
+              "description": "Returns the original commit body unchanged unless the explicit\nincludeInCommitBody setting is true, then generates and appends one\nbounded marker.\n",
+              "args": [
+                {
+                  "name": "commitBody",
+                  "type": "string"
+                },
+                {
+                  "name": "snapshot",
+                  "type": "ReadinessSnapshot"
+                },
+                {
+                  "name": "settings",
+                  "type": "PrsCommitMarkerSettings"
+                },
+                {
+                  "name": "options",
+                  "type": "PrsCommitMarkerOptions | undefined"
+                }
+              ],
+              "returns": "string"
+            },
+            {
+              "kind": "type",
+              "name": "PrsCommitMarkerOptions",
+              "type": "{\n  includeTopConcerns?: boolean;\n  includeOutputRefs?: boolean;\n  maxConcerns?: number;\n}\n"
+            },
+            {
+              "kind": "type",
+              "name": "PrsHistoryMarker",
+              "type": "{\n  commitSha: string;\n  committedAt?: string;\n  state: ReadinessState;\n  changedFiles: number;\n  sensitiveFilesChanged: number;\n  topConcerns: string[];\n  source: 'b2g-prs-commit-marker';\n}\n"
+            },
+            {
+              "kind": "interface",
+              "name": "GitCommitSummary"
+            },
+            {
+              "kind": "attribute",
+              "name": "sha",
+              "of": "GitCommitSummary",
+              "type": "string"
+            },
+            {
+              "kind": "attribute",
+              "name": "message",
+              "of": "GitCommitSummary",
+              "type": "string"
+            },
+            {
+              "kind": "attribute",
+              "name": "committedAt",
+              "of": "GitCommitSummary",
+              "type": "string | undefined"
+            },
+            {
+              "kind": "interface",
+              "name": "PrsCommitMarkerSettings"
+            },
+            {
+              "kind": "attribute",
+              "name": "includeInCommitBody",
+              "of": "PrsCommitMarkerSettings",
+              "type": "boolean"
+            }
+          ]
+        },
+        {
+          "path": "src/lib/prs/__tests__/commitMarkers.test.ts",
+          "artifacts": [
+            {
+              "kind": "test_function",
+              "name": "generatePrsCommitMarker formats the compact marker",
+              "description": "Planned behavioral test covering the exact [B2G-PRS] block for a\nYellow snapshot and limiting top concerns.\n"
+            },
+            {
+              "kind": "test_function",
+              "name": "generatePrsCommitMarker redacts secret-looking evidence",
+              "description": "Planned behavioral test proving marker output never includes raw\nenv values or secret fixture strings.\n"
+            },
+            {
+              "kind": "test_function",
+              "name": "appendPrsCommitMarker does not duplicate an existing marker",
+              "description": "Planned behavioral test covering repeated append attempts against a\ncustom commit body.\n"
+            },
+            {
+              "kind": "test_function",
+              "name": "parsePrsCommitMarkers returns history records for valid markers only",
+              "description": "Planned behavioral test with valid, absent, malformed, and duplicate\nmarker blocks in fixture commit history.\n"
+            },
+            {
+              "kind": "test_function",
+              "name": "marker inclusion is controlled by explicit user settings",
+              "description": "Behavioral test proving disabled settings preserve the exact body\nand enabled settings append one marker without mutating the input.\n"
+            }
+          ]
+        }
+      ],
+      "read": [
+        "docs/b2g_production_readiness_snapshot_reference.md",
+        "manifests/drafts/b2g-production-readiness-snapshot.manifest.yaml",
+        "manifests/08-b2g-prs-readiness-composer.manifest.yaml",
+        "manifests/09-b2g-prs-report-generators.manifest.yaml",
+        "manifests/13-b2g-prs-history-baseline-engine.manifest.yaml",
+        "src/production-readiness/domain.ts",
+        "src/production-readiness/redaction.ts",
+        "src/production-readiness/rules/secret-patterns.ts",
+        "src/production-readiness/test-fixtures/prsFixtures.ts"
+      ]
+    },
+    "test_files": ["src/lib/prs/__tests__/commitMarkers.test.ts"],
+    "validate_commands": [
+      "pnpm exec vitest run src/lib/prs/__tests__/commitMarkers.test.ts",
+      "./scripts/maid validate manifests/14-b2g-prs-commit-marker-integration.manifest.yaml --mode behavioral",
+      "pnpm lint",
+      "pnpm check"
+    ]
+  }
+}

@@ -1,0 +1,312 @@
+# draft-kind: child-planning-inventory
+# MAID manifest - a machine-checked contract for one change.
+# Declares the intent, the files it may touch, and the commands that verify it.
+# Nothing here is needed to build or run this project; safe to ignore.
+# What it is: https://github.com/mamertofabian/maid-runner
+schema: '2'
+goal: |
+  Optionally append compact PRS metadata to commit bodies and parse prior PRS
+  markers from repository history for later baseline analysis.
+description: |
+  Child draft for the b2g-production-readiness-snapshot parent epic, derived
+  from docs/b2g_production_readiness_snapshot_reference.md sections 9, 14.4,
+  16, and 19.3 Child 14.
+
+  The existing export flow accepts a commit message but does not yet have a
+  completed PRS composition root that can supply a ReadinessSnapshot. This
+  slice therefore chooses a smaller pure commit-body adapter with an explicit
+  settings input. It leaves BackgroundService, FileService, UI, and persistent
+  settings wiring unchanged until the end-to-end integration slice can provide
+  the snapshot at the correct boundary.
+
+  Rationale:
+  - Commit markers provide a low-cost way to discover prior B2G PRS snapshots
+    without requiring an external datastore.
+  - Marker inclusion should be opt-in or explicitly settings-controlled, not an
+    automatic mutation of every commit body.
+  - Marker parsing must be tolerant of missing, malformed, duplicate, or
+    manually edited markers and must not treat generic repository commits as
+    equally trustworthy history.
+type: feature
+files:
+  create:
+    - path: src/lib/prs/commitMarkers.ts
+      artifacts:
+        - kind: function
+          name: generatePrsCommitMarker
+          args:
+            - name: snapshot
+              type: ReadinessSnapshot
+            - name: options
+              type: PrsCommitMarkerOptions
+          returns: string
+          description: |
+            Generates a bounded versioned [B2G-PRS] commit-body marker
+            containing readiness state, safe summary metrics, selected top
+            concerns, optional output-presence labels, and no raw
+            secret-looking values.
+        - kind: function
+          name: appendPrsCommitMarker
+          args:
+            - name: commitBody
+              type: string
+            - name: marker
+              type: string
+          returns: string
+          description: |
+            Appends a PRS marker to a commit body without duplicating an
+            existing marker block.
+        - kind: function
+          name: parsePrsCommitMarkers
+          args:
+            - name: commits
+              type: GitCommitSummary[]
+          returns: PrsHistoryMarker[]
+          description: |
+            Parses prior [B2G-PRS] marker blocks from commit messages into
+            bounded provenance records suitable for identifying trusted PRS
+            history. Missing, malformed, duplicate, or manually ambiguous
+            markers are ignored without failing current exports.
+        - kind: function
+          name: buildPrsCommitBody
+          args:
+            - name: commitBody
+              type: string
+            - name: snapshot
+              type: ReadinessSnapshot
+            - name: settings
+              type: PrsCommitMarkerSettings
+            - name: options
+              type: PrsCommitMarkerOptions | undefined
+          returns: string
+          description: |
+            Returns the original commit body unchanged unless the explicit
+            includeInCommitBody setting is true, then generates and appends one
+            bounded marker.
+        - kind: type
+          name: PrsCommitMarkerOptions
+          type: |
+            {
+              includeTopConcerns?: boolean;
+              includeOutputRefs?: boolean;
+              maxConcerns?: number;
+            }
+        - kind: type
+          name: PrsHistoryMarker
+          type: |
+            {
+              commitSha: string;
+              committedAt?: string;
+              state: ReadinessState;
+              changedFiles: number;
+              sensitiveFilesChanged: number;
+              topConcerns: string[];
+              source: 'b2g-prs-commit-marker';
+            }
+        - kind: interface
+          name: GitCommitSummary
+        - kind: attribute
+          of: GitCommitSummary
+          name: sha
+          type: string
+        - kind: attribute
+          of: GitCommitSummary
+          name: message
+          type: string
+        - kind: attribute
+          of: GitCommitSummary
+          name: committedAt
+          type: string | undefined
+        - kind: interface
+          name: PrsCommitMarkerSettings
+        - kind: attribute
+          of: PrsCommitMarkerSettings
+          name: includeInCommitBody
+          type: boolean
+    - path: src/lib/prs/__tests__/commitMarkers.test.ts
+      artifacts:
+        - kind: test_function
+          name: generatePrsCommitMarker formats the compact marker
+          description: |
+            Planned behavioral test covering the exact [B2G-PRS] block for a
+            Yellow snapshot and limiting top concerns.
+        - kind: test_function
+          name: generatePrsCommitMarker redacts secret-looking evidence
+          description: |
+            Planned behavioral test proving marker output never includes raw
+            env values or secret fixture strings.
+        - kind: test_function
+          name: appendPrsCommitMarker does not duplicate an existing marker
+          description: |
+            Planned behavioral test covering repeated append attempts against a
+            custom commit body.
+        - kind: test_function
+          name: parsePrsCommitMarkers returns history records for valid markers only
+          description: |
+            Planned behavioral test with valid, absent, malformed, and duplicate
+            marker blocks in fixture commit history.
+        - kind: test_function
+          name: marker inclusion is controlled by explicit user settings
+          description: |
+            Behavioral test proving disabled settings preserve the exact body
+            and enabled settings append one marker without mutating the input.
+  read:
+    - docs/b2g_production_readiness_snapshot_reference.md
+    - manifests/drafts/b2g-production-readiness-snapshot.manifest.yaml
+    - manifests/08-b2g-prs-readiness-composer.manifest.yaml
+    - manifests/09-b2g-prs-report-generators.manifest.yaml
+    - manifests/13-b2g-prs-history-baseline-engine.manifest.yaml
+    - src/production-readiness/domain.ts
+    - src/production-readiness/redaction.ts
+    - src/production-readiness/rules/secret-patterns.ts
+    - src/production-readiness/test-fixtures/prsFixtures.ts
+validate:
+  - pnpm exec vitest run src/lib/prs/__tests__/commitMarkers.test.ts
+  - ./scripts/maid validate
+    manifests/14-b2g-prs-commit-marker-integration.manifest.yaml --mode behavioral
+  - pnpm lint
+  - pnpm check
+created: '2026-08-01T03:49:25Z'
+metadata:
+  tags:
+    - production-readiness
+    - commit-body
+    - history-baseline
+    - settings
+  priority: medium
+  promotable: true
+  parent_epic: b2g-production-readiness-snapshot
+  source_document: docs/b2g_production_readiness_snapshot_reference.md
+  child_slug: 14-b2g-prs-commit-marker-integration
+  sequence: 14
+  planned_after:
+    - 08-b2g-prs-readiness-composer
+    - 09-b2g-prs-report-generators
+    - 13-b2g-prs-history-baseline-engine
+  depends_on:
+    - 08-b2g-prs-readiness-composer
+    - 09-b2g-prs-report-generators
+    - 13-b2g-prs-history-baseline-engine
+  deferred_integration:
+    - src/background/BackgroundService.ts
+    - persistent settings UI and storage
+temptations:
+  - risk: Do not silently append PRS metadata to every commit.
+    instead: Gate marker insertion behind an explicit user setting or export-flow
+      action and test both enabled and disabled paths.
+  - risk: Do not include full reports, raw evidence dumps, or secret-looking
+      values in commit bodies.
+    instead: Generate only compact state and top-concern metadata after the same
+      redaction boundary used by reports.
+  - risk: Do not treat fallback generic GitHub commits as equivalent to B2G PRS
+      markers.
+    instead: Parse marker provenance explicitly and let the history engine label
+      fallback history with lower confidence.
+  - risk: Do not make malformed historical markers fail current exports.
+    instead: Ignore malformed marker blocks, record a limitation where useful, and
+      keep current commit generation deterministic.
+outcome:
+  status: completed
+  completed_at: '2026-08-01T04:30:40Z'
+  summary: |
+    PRS now has a pure commit-body adapter that generates compact versioned
+    markers, appends at most one marker only when an explicit setting enables
+    it, and parses bounded historical markers into provenance records.
+
+    Existing export behavior remains unchanged because runtime UI and storage
+    wiring is deferred until a PRS composition root can supply a snapshot. The
+    marker contains only readiness state, canonical time, safe metrics,
+    redacted concern summaries, and output-presence labels rather than report
+    bodies or source evidence.
+  rationale: |
+    Keeping marker composition pure makes opt-in behavior deterministic and
+    testable without coupling the slice to BackgroundService or FileService
+    before snapshot orchestration exists. Whole-concern redaction, shared
+    secret-pattern rules, strict bounds, canonical timestamps, explicit state
+    validation, and ambiguity rejection prevent durable Git history from
+    becoming an accidental credential or unbounded-data sink.
+  lessons:
+    - lesson_type: redact-durable-metadata-conservatively
+      summary: |
+        Commit history is durable and broadly visible. When arbitrary concern
+        text contains provider tokens, auth schemes, credential-bearing
+        identifiers, or credential vocabulary, redact the entire concern
+        rather than attempting partial value replacement.
+      tags: [privacy, git-history, redaction]
+      paths:
+        - src/lib/prs/commitMarkers.ts
+        - src/lib/prs/__tests__/commitMarkers.test.ts
+    - lesson_type: reuse-secret-rules-at-output-boundaries
+      summary: |
+        Marker generation and historical parsing should share the repository's
+        established secret-pattern detector, supplemented by a conservative
+        prose boundary, so provider formats and manually edited markers receive
+        equivalent protection.
+      tags: [privacy, secret-detection, consistency]
+      paths:
+        - src/lib/prs/commitMarkers.ts
+        - src/production-readiness/rules/secret-patterns.ts
+    - lesson_type: defer-runtime-wiring-until-data-exists
+      summary: |
+        A commit-message integration should remain a pure explicit adapter when
+        the runtime export flow cannot yet supply its required snapshot. This
+        preserves current pushes and gives the later composition slice a narrow
+        tested boundary to call.
+      tags: [architecture, integration, settings]
+      paths:
+        - src/lib/prs/commitMarkers.ts
+  review_notes:
+    - source: independent reviewers revisions 1 through 7
+      severity: findings-fixed
+      summary: |
+        Read-only reviews identified generic and quoted credential leakage,
+        provider-token and free-form prose bypasses, noncanonical timestamp
+        injection, ambiguous concern sections, inherited readiness keys, weak
+        revised red evidence, mixed-case credential identifiers, and bare HTTP
+        authorization schemes. Each valid finding received assertion-level
+        regression coverage and a locked plan revision before implementation.
+    - source: independent reviewer /root/slice14_revision8_reviewer
+      severity: ready
+      summary: |
+        The final review found no P0, P1, or P2 issues and confirmed privacy
+        handling, settings gating, idempotency, parser ambiguity rejection,
+        bounds, deferred integration, declared scope, and revision-8 plan-lock
+        integrity.
+  validation:
+    - command:
+        - ./scripts/maid
+        - test
+        - --manifest
+        - manifests/14-b2g-prs-commit-marker-integration.manifest.yaml
+      status: passed
+      summary: All four declared commands passed, including five focused scenarios, behavioral validation, lint, and type checking.
+    - command:
+        - pnpm
+        - test:ci
+      status: passed
+      summary: The final complete repository suite passed with 211 files and 4,061 tests.
+    - command:
+        - pnpm
+        - build
+      status: passed
+      summary: The production extension build passed; only two pre-existing Vite chunking warnings were reported.
+    - command:
+        - ./scripts/maid
+        - validate
+        - manifests/14-b2g-prs-commit-marker-integration.manifest.yaml
+        - --mode
+        - implementation
+      status: passed
+      summary: Declared implementation artifacts passed validation; three unrelated pre-existing E110 warnings remained.
+    - command:
+        - ./scripts/maid
+        - verify
+        - --advisory
+        - --since
+        - 7efe858
+        - --file-tracking-scope
+        - task
+        - --plan-lock-scope
+        - task
+      status: passed
+      summary: Schema, behavioral, implementation, coherence, scope, file tracking, tests, and plan-lock checks passed.
