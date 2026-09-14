@@ -2,11 +2,11 @@
   "manifest_path": "manifests/pause-extension-ga4-v2.manifest.yaml",
   "manifest_hash": "sha256-contract:808a115cf74d0c0653a24b9cd5354f277827c3eceaa6cc4f090417d3a1fa07c1",
   "test_hashes": {
-    "src/lib/components/ui/__tests__/AnalyticsToggle.component.test.ts": "sha256:652c6998b5522eb32cf57d9474ce7b139b7f931d0f899bfa024c471d00e00ce9",
+    "src/lib/components/ui/__tests__/AnalyticsToggle.component.test.ts": "sha256:93c122f91f22d8131f2f4906ba988bfee97f9b728241475ee9d446b8463a1319",
     "src/test/release/analyticsSecretPackaging.test.ts": "sha256:852c7f317fb2d2b3d5dc9b1235aa399f0d12680e009d58e63bb285cd64bee942"
   },
   "created_at": "2026-09-14T13:20:18.146945+00:00",
-  "revision": 10,
+  "revision": 11,
   "revisions": [
     {
       "prior_manifest_hash": "sha256-contract:a7fc3d455afe5a5043e45513b5438c60a3c8a9b5ba1154a20aceca9acb61f8c8",
@@ -195,6 +195,24 @@
       },
       "revised_at": "2026-09-14T13:35:40.894387+00:00",
       "reason": "Align manifest description with reviewed GA4 pause and retained uninstall feedback opt-out",
+      "agent": null,
+      "contract_delta": {
+        "artifacts_added": [],
+        "artifacts_removed": [],
+        "files_added": [],
+        "files_removed": [],
+        "validate_commands_added": [],
+        "validate_commands_removed": []
+      }
+    },
+    {
+      "prior_manifest_hash": "sha256-contract:808a115cf74d0c0653a24b9cd5354f277827c3eceaa6cc4f090417d3a1fa07c1",
+      "prior_test_hashes": {
+        "src/lib/components/ui/__tests__/AnalyticsToggle.component.test.ts": "sha256:652c6998b5522eb32cf57d9474ce7b139b7f931d0f899bfa024c471d00e00ce9",
+        "src/test/release/analyticsSecretPackaging.test.ts": "sha256:852c7f317fb2d2b3d5dc9b1235aa399f0d12680e009d58e63bb285cd64bee942"
+      },
+      "revised_at": "2026-09-14T13:46:01.514138+00:00",
+      "reason": "Refresh behavioral test hash after pre-commit Prettier formatting changed only presentation",
       "agent": null,
       "contract_delta": {
         "artifacts_added": [],

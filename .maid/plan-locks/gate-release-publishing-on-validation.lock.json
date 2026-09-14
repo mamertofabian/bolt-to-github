@@ -1,0 +1,271 @@
+{
+  "manifest_path": "manifests/gate-release-publishing-on-validation.manifest.yaml",
+  "manifest_hash": "sha256-contract:dc7d8485dd9662da77d55d99eb83e135038652cf104b32f2968828cbae189269",
+  "test_hashes": {
+    "scripts/__tests__/verify-release-tag.test.ts": "sha256:6608787c12fcbe43f326678232795103935fd1c36637a9680806d91a838eb5d8",
+    "src/test/release/releaseWorkflowGate.test.ts": "sha256:38c3ab13fae89a20be5c6c94996fa3e4c078500839f2010dbd99c521326b0f9a"
+  },
+  "created_at": "2026-09-14T13:47:50.551537+00:00",
+  "revision": 5,
+  "revisions": [
+    {
+      "prior_manifest_hash": "sha256-contract:23fb8d6f39b31216b973cc7527aaf3f84e55a2993be768f4c4da65f49c83db1f",
+      "prior_test_hashes": {
+        "src/test/release/releaseWorkflowGate.test.ts": "sha256:5994f6d6ab368e70698d7eea0d71cb4703146c718e8bf9200fbb9b27bcdb2c6b"
+      },
+      "revised_at": "2026-09-14T13:48:14.777485+00:00",
+      "reason": "Require Chromium setup ordering and both version equalities before release",
+      "agent": null,
+      "contract_delta": {
+        "artifacts_added": [],
+        "artifacts_removed": [],
+        "files_added": [],
+        "files_removed": [],
+        "validate_commands_added": [],
+        "validate_commands_removed": []
+      }
+    },
+    {
+      "prior_manifest_hash": "sha256-contract:23fb8d6f39b31216b973cc7527aaf3f84e55a2993be768f4c4da65f49c83db1f",
+      "prior_test_hashes": {
+        "src/test/release/releaseWorkflowGate.test.ts": "sha256:b8018900651da0f6c2e620d00d9dcb411e40ee8c613e3a1df2d11cbd20a9a665"
+      },
+      "revised_at": "2026-09-14T13:48:24.222484+00:00",
+      "reason": "Migrated by maid manifest promote: manifests/drafts/gate-release-publishing-on-validation.manifest.yaml -> manifests/gate-release-publishing-on-validation.manifest.yaml",
+      "agent": null,
+      "contract_delta": {
+        "artifacts_added": [],
+        "artifacts_removed": [],
+        "files_added": [],
+        "files_removed": [],
+        "validate_commands_added": [],
+        "validate_commands_removed": []
+      }
+    },
+    {
+      "prior_manifest_hash": "sha256-contract:414a6645788e6b090fe58eeea7c259a95f59b4625a6f36e191da45b26a17dda7",
+      "prior_test_hashes": {
+        "src/test/release/releaseWorkflowGate.test.ts": "sha256:b8018900651da0f6c2e620d00d9dcb411e40ee8c613e3a1df2d11cbd20a9a665"
+      },
+      "revised_at": "2026-09-14T13:50:59.221539+00:00",
+      "reason": "Bind publication to the validated VERSION environment value rather than re-reading dispatch input",
+      "agent": null,
+      "contract_delta": {
+        "artifacts_added": [],
+        "artifacts_removed": [],
+        "files_added": [],
+        "files_removed": [],
+        "validate_commands_added": [],
+        "validate_commands_removed": []
+      }
+    },
+    {
+      "prior_manifest_hash": "sha256-contract:414a6645788e6b090fe58eeea7c259a95f59b4625a6f36e191da45b26a17dda7",
+      "prior_test_hashes": {
+        "src/test/release/releaseWorkflowGate.test.ts": "sha256:c6be73de09591fdc0b81bf1cf536541c9b3cd48b55a2b399e7fcbb8f0f181fc2"
+      },
+      "revised_at": "2026-09-14T13:56:09.590463+00:00",
+      "reason": "Cover tag-to-build commit integrity and explicit uv setup after reviewer findings",
+      "agent": null,
+      "contract_delta": {
+        "artifacts_added": [
+          "scripts/__tests__/verify-release-tag.test.ts:accepts matching lightweight and annotated tags",
+          "scripts/__tests__/verify-release-tag.test.ts:accepts matching lightweight and annotated tags:kind=test_function",
+          "scripts/__tests__/verify-release-tag.test.ts:allows a missing tag for creation at the built commit",
+          "scripts/__tests__/verify-release-tag.test.ts:allows a missing tag for creation at the built commit:kind=test_function",
+          "scripts/__tests__/verify-release-tag.test.ts:fails closed when the tag remote is unavailable",
+          "scripts/__tests__/verify-release-tag.test.ts:fails closed when the tag remote is unavailable:kind=test_function",
+          "scripts/__tests__/verify-release-tag.test.ts:rejects an existing tag pointing to another commit",
+          "scripts/__tests__/verify-release-tag.test.ts:rejects an existing tag pointing to another commit:kind=test_function",
+          "scripts/verify-release-tag.sh:namespace:VerifyReleaseTag",
+          "scripts/verify-release-tag.sh:namespace:VerifyReleaseTag:kind=namespace",
+          "src/test/release/releaseWorkflowGate.test.ts:CI installs and pins MAID Runner before validation",
+          "src/test/release/releaseWorkflowGate.test.ts:CI installs and pins MAID Runner before validation:kind=test_function",
+          "src/test/release/releaseWorkflowGate.test.ts:release tag is bound to the packaged commit",
+          "src/test/release/releaseWorkflowGate.test.ts:release tag is bound to the packaged commit:kind=test_function"
+        ],
+        "artifacts_removed": [],
+        "files_added": [
+          "create:scripts/__tests__/verify-release-tag.test.ts",
+          "create:scripts/verify-release-tag.sh"
+        ],
+        "files_removed": [],
+        "validate_commands_added": [
+          "pnpm exec vitest run src/test/release/releaseWorkflowGate.test.ts scripts/__tests__/verify-release-tag.test.ts"
+        ],
+        "validate_commands_removed": [
+          "pnpm exec vitest run src/test/release/releaseWorkflowGate.test.ts"
+        ]
+      }
+    }
+  ],
+  "red_evidence": {
+    "red": true,
+    "captured_at": "2026-09-14T13:56:11.853832+00:00",
+    "commands": [
+      {
+        "command": "pnpm exec vitest run src/test/release/releaseWorkflowGate.test.ts scripts/__tests__/verify-release-tag.test.ts",
+        "exit_code": 1,
+        "output_tail": " FAIL  scripts/__tests__/verify-release-tag.test.ts > release tag target verification > fails closed when the tag remote is unavailable\nAssertionError: expected 'bash: /home/atomrem/projects/codefros\u2026' to match /could not read remote release tags/i\n\n- Expected: \n/could not read remote release tags/i\n\n+ Received: \n\"bash: /home/atomrem/projects/codefrost-dev/bolt-to-github/scripts/verify-release-tag.sh: No such file or directory\n\"\n\n \u276f scripts/__tests__/verify-release-tag.test.ts:69:29\n     67|       const result = verify('v2.0.0', taggedCommit);\n     68|       expect(result.status).not.toBe(0);\n     69|       expect(result.stderr).toMatch(/could not read remote release tag\u2026\n       |                             ^\n     70|     } finally {\n     71|       git('remote', 'set-url', 'origin', remote);\n\n\u23af\u23af\u23af\u23af\u23af\u23af\u23af\u23af\u23af\u23af\u23af\u23af\u23af\u23af\u23af\u23af\u23af\u23af\u23af\u23af\u23af\u23af[10/10]\u23af\n",
+        "classification": "red"
+      },
+      {
+        "command": "pnpm exec prettier --check .github/workflows/release.yml",
+        "exit_code": 0,
+        "output_tail": "Checking formatting...\nAll matched files use Prettier code style!",
+        "classification": "not_red"
+      },
+      {
+        "command": "./scripts/maid validate manifests/gate-release-publishing-on-validation.manifest.yaml --mode behavioral",
+        "exit_code": 0,
+        "output_tail": "PASS gate-release-publishing-on-validation\n  Mode: behavioral\n  Duration: 127ms",
+        "classification": "not_red"
+      }
+    ],
+    "sibling_dirty_paths": [".maid/plan-locks/pause-extension-ga4-v2.lock.json"]
+  },
+  "legacy_baseline": null,
+  "agent": null,
+  "_manifest_contract": {
+    "artifacts": [
+      ".github/workflows/release.yml:namespace:ReleaseQualityGate",
+      ".github/workflows/release.yml:namespace:ReleaseQualityGate:kind=namespace",
+      ".github/workflows/release.yml:namespace:ReleaseVersionGate",
+      ".github/workflows/release.yml:namespace:ReleaseVersionGate:kind=namespace",
+      "scripts/__tests__/verify-release-tag.test.ts:accepts matching lightweight and annotated tags",
+      "scripts/__tests__/verify-release-tag.test.ts:accepts matching lightweight and annotated tags:kind=test_function",
+      "scripts/__tests__/verify-release-tag.test.ts:allows a missing tag for creation at the built commit",
+      "scripts/__tests__/verify-release-tag.test.ts:allows a missing tag for creation at the built commit:kind=test_function",
+      "scripts/__tests__/verify-release-tag.test.ts:fails closed when the tag remote is unavailable",
+      "scripts/__tests__/verify-release-tag.test.ts:fails closed when the tag remote is unavailable:kind=test_function",
+      "scripts/__tests__/verify-release-tag.test.ts:rejects an existing tag pointing to another commit",
+      "scripts/__tests__/verify-release-tag.test.ts:rejects an existing tag pointing to another commit:kind=test_function",
+      "scripts/verify-release-tag.sh:namespace:VerifyReleaseTag",
+      "scripts/verify-release-tag.sh:namespace:VerifyReleaseTag:kind=namespace",
+      "src/test/release/releaseWorkflowGate.test.ts:CI installs and pins MAID Runner before validation",
+      "src/test/release/releaseWorkflowGate.test.ts:CI installs and pins MAID Runner before validation:kind=test_function",
+      "src/test/release/releaseWorkflowGate.test.ts:browser release slice runs under Xvfb after the production build",
+      "src/test/release/releaseWorkflowGate.test.ts:browser release slice runs under Xvfb after the production build:kind=test_function",
+      "src/test/release/releaseWorkflowGate.test.ts:no release step bypasses failed gates",
+      "src/test/release/releaseWorkflowGate.test.ts:no release step bypasses failed gates:kind=test_function",
+      "src/test/release/releaseWorkflowGate.test.ts:publishing follows lint type unit and MAID validation gates",
+      "src/test/release/releaseWorkflowGate.test.ts:publishing follows lint type unit and MAID validation gates:kind=test_function",
+      "src/test/release/releaseWorkflowGate.test.ts:release tag is bound to the packaged commit",
+      "src/test/release/releaseWorkflowGate.test.ts:release tag is bound to the packaged commit:kind=test_function",
+      "src/test/release/releaseWorkflowGate.test.ts:version gate rejects mismatched release tags before publication",
+      "src/test/release/releaseWorkflowGate.test.ts:version gate rejects mismatched release tags before publication:kind=test_function"
+    ],
+    "files": {
+      "create": ["scripts/__tests__/verify-release-tag.test.ts", "scripts/verify-release-tag.sh"],
+      "edit": [".github/workflows/release.yml", "src/test/release/releaseWorkflowGate.test.ts"],
+      "read": [
+        "manifest.json",
+        "manifests/pause-extension-ga4-v2.manifest.yaml",
+        "manifests/prepare-v2-0-0-github-app-release.manifest.yaml",
+        "package.json",
+        "playwright.config.ts"
+      ],
+      "scope": [],
+      "delete": [],
+      "snapshot": []
+    },
+    "file_contract": {
+      "create": [
+        {
+          "path": "scripts/verify-release-tag.sh",
+          "artifacts": [
+            {
+              "kind": "namespace",
+              "name": "VerifyReleaseTag",
+              "description": "Fails closed when an existing remote release tag does not target the commit being packaged."
+            }
+          ]
+        },
+        {
+          "path": "scripts/__tests__/verify-release-tag.test.ts",
+          "artifacts": [
+            {
+              "kind": "test_function",
+              "name": "allows a missing tag for creation at the built commit"
+            },
+            {
+              "kind": "test_function",
+              "name": "accepts matching lightweight and annotated tags"
+            },
+            {
+              "kind": "test_function",
+              "name": "rejects an existing tag pointing to another commit"
+            },
+            {
+              "kind": "test_function",
+              "name": "fails closed when the tag remote is unavailable"
+            }
+          ]
+        }
+      ],
+      "edit": [
+        {
+          "path": ".github/workflows/release.yml",
+          "artifacts": [
+            {
+              "kind": "namespace",
+              "name": "ReleaseQualityGate",
+              "description": "Lint, type, unit, MAID, build, and browser checks precede packaging and publication."
+            },
+            {
+              "kind": "namespace",
+              "name": "ReleaseVersionGate",
+              "description": "The requested tag matches package and extension manifest versions before release."
+            }
+          ]
+        },
+        {
+          "path": "src/test/release/releaseWorkflowGate.test.ts",
+          "artifacts": [
+            {
+              "kind": "test_function",
+              "name": "publishing follows lint type unit and MAID validation gates"
+            },
+            {
+              "kind": "test_function",
+              "name": "browser release slice runs under Xvfb after the production build"
+            },
+            {
+              "kind": "test_function",
+              "name": "version gate rejects mismatched release tags before publication"
+            },
+            {
+              "kind": "test_function",
+              "name": "no release step bypasses failed gates"
+            },
+            {
+              "kind": "test_function",
+              "name": "CI installs and pins MAID Runner before validation"
+            },
+            {
+              "kind": "test_function",
+              "name": "release tag is bound to the packaged commit"
+            }
+          ]
+        }
+      ],
+      "read": [
+        "package.json",
+        "manifest.json",
+        "playwright.config.ts",
+        "manifests/prepare-v2-0-0-github-app-release.manifest.yaml",
+        "manifests/pause-extension-ga4-v2.manifest.yaml"
+      ]
+    },
+    "test_files": [
+      "scripts/__tests__/verify-release-tag.test.ts",
+      "src/test/release/releaseWorkflowGate.test.ts"
+    ],
+    "validate_commands": [
+      "pnpm exec vitest run src/test/release/releaseWorkflowGate.test.ts scripts/__tests__/verify-release-tag.test.ts",
+      "pnpm exec prettier --check .github/workflows/release.yml",
+      "./scripts/maid validate manifests/gate-release-publishing-on-validation.manifest.yaml --mode behavioral"
+    ],
+    "acceptance_commands": []
+  }
+}
