@@ -1,3 +1,7 @@
+# MAID manifest - a machine-checked contract for one change.
+# Declares the intent, the files it may touch, and the commands that verify it.
+# Nothing here is needed to build or run this project; safe to ignore.
+# What it is: https://github.com/mamertofabian/maid-runner
 schema: '2'
 goal: Instrument the popup's existing ADC Fix help button with an analytics event and UTM-tagged destination so extension-driven ADC Fix engagement becomes measurable.
 description: |
@@ -30,9 +34,6 @@ files:
     artifacts:
     - kind: function
       name: SocialLinks
-      args:
-      - name: props
-        type: SocialLinks component props
       returns: Svelte component instance
       description: |
         Social action buttons for the popup. Clicking the expert-help button

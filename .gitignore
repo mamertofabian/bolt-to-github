@@ -10,6 +10,7 @@ bolt-to-github*.zip
 *.log
 *.lock
 !pnpm-lock.yaml
+!.maid/legacy-grandfathered.lock
 .env.local
 .env.*.local
 npm-debug.log*
@@ -37,3 +38,14 @@ playwright/.cache/
 .maid/outcomes-digest.json
 .maid/outcomes-digest.md
 .maid/outcomes-enrichment-prompt.json
+
+# BEGIN MAID RUNNER GENERATED FILES
+.maid/outcomes.json
+.maid/outcomes-digest.json
+.maid/outcomes-digest.md
+.maid/outcomes-enrichment-prompt.json
+.maid/run-review-request.json
+.maid/run-review.json
+.maid/run-reviews/
+.maid/cache/
+# END MAID RUNNER GENERATED FILES

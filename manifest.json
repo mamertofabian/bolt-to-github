@@ -13,7 +13,6 @@
     "https://bolt.new/*",
     "https://api.github.com/*",
     "https://bolt2github.com/*",
-    "https://www.google-analytics.com/*",
     "https://gapvjcqybzabnrjnxzhg.supabase.co/*"
   ],
   "background": {

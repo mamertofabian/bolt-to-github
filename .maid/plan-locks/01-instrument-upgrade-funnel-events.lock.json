@@ -1,6 +1,6 @@
 {
   "manifest_path": "manifests/01-instrument-upgrade-funnel-events.manifest.yaml",
-  "manifest_hash": "sha256:26e00cf467a4729a911369e60d37a3c6d7321d564de1fd3b4882f4b683d91f0f",
+  "manifest_hash": "sha256-contract:0df3c8966a2846f9628c90f4a53c708eb7764a411dda802953d7eb6c116a6afb",
   "test_hashes": {
     "src/lib/utils/__tests__/upgradeModal.test.ts": "sha256:c6a93b05f596d79496b75a0a58c8595d2c58065bf7de8a97a1093c62d1eff0ed",
     "src/popup/components/__tests__/UpgradeModal.component.test.ts": "sha256:f95b1516be05942e53064eb8623413d14e3ca976d87309f90b72eb377de2f527",
@@ -8,7 +8,7 @@
     "src/lib/utils/__tests__/analytics.test.ts": "sha256:fb78988a9299593e04ab48be674f78050fe49a34cf48111f89e19f319c4c4002"
   },
   "created_at": "2026-07-07T05:54:23.513352+00:00",
-  "revision": 7,
+  "revision": 8,
   "revisions": [
     {
       "prior_manifest_hash": "sha256:8e1a51338f237971792141bf5f30d4d13cc987e77c016b49ec224285b2e15480",
@@ -114,6 +114,28 @@
         "validate_commands_added": [],
         "validate_commands_removed": []
       }
+    },
+    {
+      "prior_manifest_hash": "sha256:26e00cf467a4729a911369e60d37a3c6d7321d564de1fd3b4882f4b683d91f0f",
+      "prior_test_hashes": {
+        "src/lib/utils/__tests__/upgradeModal.test.ts": "sha256:c6a93b05f596d79496b75a0a58c8595d2c58065bf7de8a97a1093c62d1eff0ed",
+        "src/popup/components/__tests__/UpgradeModal.component.test.ts": "sha256:f95b1516be05942e53064eb8623413d14e3ca976d87309f90b72eb377de2f527",
+        "src/popup/__tests__/App.component.test.ts": "sha256:08318955987b75e1bd79fe35ae092a2d578e47390bd1f27647a2282a7beeb317",
+        "src/lib/utils/__tests__/analytics.test.ts": "sha256:fb78988a9299593e04ab48be674f78050fe49a34cf48111f89e19f319c4c4002"
+      },
+      "revised_at": "2026-09-14T13:07:32.244793+00:00",
+      "reason": "Align Svelte component artifact with the 2.27.5 validator; behavior and tests are unchanged",
+      "agent": null,
+      "contract_delta": {
+        "artifacts_added": [],
+        "artifacts_removed": [
+          "src/popup/components/UpgradeModal.svelte:function:UpgradeModal:arg=props:type=UpgradeModal component props:default=None"
+        ],
+        "files_added": [],
+        "files_removed": [],
+        "validate_commands_added": [],
+        "validate_commands_removed": []
+      }
     }
   ],
   "red_evidence": {
@@ -140,6 +162,7 @@
       }
     ]
   },
+  "legacy_baseline": null,
   "agent": null,
   "_manifest_contract": {
     "artifacts": [
@@ -174,7 +197,6 @@
       "src/popup/__tests__/App.component.test.ts:openTrackedUpgradeModalFromPopupContext preserves commits context and defaults unknown values",
       "src/popup/__tests__/App.component.test.ts:openTrackedUpgradeModalFromPopupContext preserves commits context and defaults unknown values:kind=test_function",
       "src/popup/components/UpgradeModal.svelte:function:UpgradeModal",
-      "src/popup/components/UpgradeModal.svelte:function:UpgradeModal:arg=props:type=UpgradeModal component props:default=None",
       "src/popup/components/UpgradeModal.svelte:function:UpgradeModal:kind=function",
       "src/popup/components/UpgradeModal.svelte:function:UpgradeModal:returns=Svelte component instance",
       "src/popup/components/__tests__/UpgradeModal.component.test.ts:upgrade CTA records a cta_clicked event and opens the UTM-tagged upgrade URL",
@@ -199,6 +221,160 @@
         "src/content/handlers/FileChangeHandler.ts",
         "src/content/managers/NotificationManager.ts",
         "src/lib/constants/premiumFeatures.ts"
+      ],
+      "scope": [],
+      "delete": [],
+      "snapshot": []
+    },
+    "file_contract": {
+      "edit": [
+        {
+          "path": "src/lib/utils/analytics.ts",
+          "artifacts": [
+            {
+              "kind": "function",
+              "name": "trackUpgradeFunnelEvent",
+              "description": "Sends an upgrade_modal_shown or upgrade_cta_clicked\nextension_event through sendAnalyticsToBackground with the\ntriggering context (UpgradeModalType or content feature) and\nsurface medium. Guarded fire-and-forget: a missing or failing\nchrome.runtime must never affect the upgrade UX.\n",
+              "args": [
+                {
+                  "name": "stage",
+                  "type": "'modal_shown' | 'cta_clicked'"
+                },
+                {
+                  "name": "metadata",
+                  "type": "{ context: string; medium: 'popup' | 'content' }"
+                }
+              ],
+              "returns": "void"
+            }
+          ]
+        },
+        {
+          "path": "src/lib/utils/upgradeModal.ts",
+          "artifacts": [
+            {
+              "kind": "function",
+              "name": "triggerUpgradeModal",
+              "description": "Existing behavior unchanged (dispatches the showUpgrade\nCustomEvent with the resolved config); now also records a\nmodal_shown funnel event with the modal type as context before\ndispatching.\n",
+              "args": [
+                {
+                  "name": "type",
+                  "type": "UpgradeModalType"
+                }
+              ],
+              "returns": "void"
+            },
+            {
+              "kind": "function",
+              "name": "setUpgradeModalState",
+              "description": "Existing behavior unchanged (resolves config and applies it via\nsetState); now also records a modal_shown funnel event with the\nmodal type as context.\n",
+              "args": [
+                {
+                  "name": "type",
+                  "type": "UpgradeModalType"
+                },
+                {
+                  "name": "setState",
+                  "type": "(feature: string, reason: string, features: PremiumFeature[]) => void"
+                }
+              ],
+              "returns": "void"
+            }
+          ]
+        },
+        {
+          "path": "src/popup/components/UpgradeModal.svelte",
+          "artifacts": [
+            {
+              "kind": "function",
+              "name": "UpgradeModal",
+              "description": "Upgrade modal for the popup. Clicking the upgrade CTA records a\ncta_clicked funnel event (with the modal's feature as context)\nand opens the bolt2github upgrade URL tagged with\nutm_source=extension&utm_medium=popup&utm_campaign=upgrade and\nutm_content set to the feature. Close, refresh-subscription, and\nsign-in behaviors are unchanged; analytics failures never block\nthe tab from opening.\n",
+              "returns": "Svelte component instance"
+            }
+          ]
+        },
+        {
+          "path": "src/popup/App.svelte",
+          "artifacts": [
+            {
+              "kind": "function",
+              "name": "openTrackedUpgradeModalFromPopupContext",
+              "description": "Routes a popupContext=upgrade upgradeModalFeature value through\nsetUpgradeModalState, defaulting unknown feature keys to general, so\ncontent-triggered popup upgrade impressions use the same modal_shown\ntracking seam as direct popup upgrade triggers.\n",
+              "args": [
+                {
+                  "name": "upgradeFeature",
+                  "type": "string"
+                },
+                {
+                  "name": "setUpgradeState",
+                  "type": "PopupContextUpgradeModalStateSetter"
+                },
+                {
+                  "name": "applyState",
+                  "type": "PopupContextApplyUpgradeModalState"
+                }
+              ],
+              "returns": "void"
+            }
+          ]
+        },
+        {
+          "path": "src/lib/utils/__tests__/upgradeModal.test.ts",
+          "artifacts": [
+            {
+              "kind": "test_function",
+              "name": "triggerUpgradeModal records a modal_shown event with the modal type context",
+              "description": "Verifies the funnel event fires with context matching the requested UpgradeModalType and that the showUpgrade CustomEvent still dispatches with the resolved config."
+            },
+            {
+              "kind": "test_function",
+              "name": "setUpgradeModalState records a modal_shown event and still applies the config",
+              "description": "Verifies tracking fires and setState receives the unchanged feature, reason, and features."
+            },
+            {
+              "kind": "test_function",
+              "name": "upgrade modal triggers still work when analytics messaging is unavailable",
+              "description": "Verifies a missing chrome.runtime cannot prevent the modal from being triggered or the state from being set."
+            }
+          ]
+        },
+        {
+          "path": "src/popup/components/__tests__/UpgradeModal.component.test.ts",
+          "artifacts": [
+            {
+              "kind": "test_function",
+              "name": "upgrade CTA records a cta_clicked event and opens the UTM-tagged upgrade URL",
+              "description": "Verifies the click sends upgrade_cta_clicked with the feature context and chrome.tabs.create receives the upgrade URL carrying extension/popup/upgrade UTM parameters plus the feature as utm_content."
+            },
+            {
+              "kind": "test_function",
+              "name": "upgrade CTA still opens the upgrade page when analytics fails",
+              "description": "Verifies a throwing analytics path cannot block the upgrade tab from opening."
+            }
+          ]
+        },
+        {
+          "path": "src/popup/__tests__/App.component.test.ts",
+          "artifacts": [
+            {
+              "kind": "test_function",
+              "name": "openTrackedUpgradeModalFromPopupContext opens pending upgrade context through the tracked upgrade state seam",
+              "description": "Verifies a popup opened from a content-script upgrade request delegates to setUpgradeModalState with the stored upgrade feature, preserving the shared modal_shown tracking seam."
+            },
+            {
+              "kind": "test_function",
+              "name": "openTrackedUpgradeModalFromPopupContext preserves commits context and defaults unknown values",
+              "description": "Verifies the helper preserves the valid commits context and falls back to the general modal for unknown stored upgrade feature values."
+            }
+          ]
+        }
+      ],
+      "read": [
+        "src/lib/constants/premiumFeatures.ts",
+        "src/content/UIManager.ts",
+        "src/content/handlers/FileChangeHandler.ts",
+        "src/content/managers/NotificationManager.ts",
+        "src/background/BackgroundService.ts"
       ]
     },
     "test_files": [
@@ -211,6 +387,7 @@
       "pnpm exec vitest run src/lib/utils/__tests__/upgradeModal.test.ts src/popup/components/__tests__/UpgradeModal.component.test.ts src/lib/utils/__tests__/analytics.test.ts src/popup/__tests__/App.component.test.ts",
       "pnpm lint",
       "pnpm check"
-    ]
+    ],
+    "acceptance_commands": []
   }
 }

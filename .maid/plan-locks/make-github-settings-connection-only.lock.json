@@ -1,26 +1,26 @@
 {
   "manifest_path": "manifests/make-github-settings-connection-only.manifest.yaml",
-  "manifest_hash": "sha256:ad2e8b095275e73230dbea86495a8389c3059fe4ba5105c9f710046de33f4110",
+  "manifest_hash": "sha256-contract:e85901beb5fe0273ee475cc6db9ddd84201e02d8a8b3b802d1b34faa5d910d4d",
   "test_hashes": {
     "src/lib/components/__tests__/RepoSettings.component.test.ts": "sha256:e4e969bc43790c4de283356eb09438622ad303a1802581cb917657c38349d9a2",
     "src/popup/__tests__/App.svelte/App.settings.component.test.ts": "sha256:67a3861d42b72c8491071c99e393243807144630941510c555b18385a71a85ac",
     "src/lib/components/__tests__/GitHubSettings.connection.component.test.ts": "sha256:56fcd545ec99dff7d978bb492b14bcd6213e6de2b9dcd37901a56a395795d667",
     "src/popup/components/__tests__/SettingsTabContent.component.test.ts": "sha256:38ee28c146a2f5379019c59f8ba2d4292c6939fd9399b91357d233233138926a",
-    "src/popup/components/__tests__/TabsView.component.test.ts": "sha256:c8759bcb33931e8e5245679f8931584635bda2f8559827b24c0fd6cd6965aabb",
-    "src/lib/components/__tests__/ProjectStatus.component.test.ts": "sha256:ab00fc4fab119b6aa5b469349ec5a9573da181437bd96e47923b75600e22dd8f",
+    "src/popup/components/__tests__/TabsView.component.test.ts": "sha256:2692afb5f3f78a876437736b3d4175b31d85ea0995ab44525e51062725a02c7b",
+    "src/lib/components/__tests__/ProjectStatus.component.test.ts": "sha256:edd53cda934cf8d93e57ac845014ff88e9c585638dcb550c9653d795bb184ad5",
     "src/lib/components/__tests__/OnboardingSetup.component.test.ts": "sha256:3a31644af70935005653f97d13aea308de5a9349b05de1d695068f27f7db681b",
     "src/lib/components/__tests__/Help.component.test.ts": "sha256:4925f9a09bd447ae8268788bb30a61a0b06c75ec71a40c01f78c8a409a3bde77",
     "src/popup/components/__tests__/OnboardingView.component.test.ts": "sha256:fb931d56bf7c83f36a715373ab41402014524a9a1e3c0e4ad8816563dcb17639",
     "src/popup/__tests__/App.component.test.ts": "sha256:08318955987b75e1bd79fe35ae092a2d578e47390bd1f27647a2282a7beeb317",
     "src/popup/__tests__/App.svelte/App.user-interactions.component.test.ts": "sha256:dae5882526d2097263e5ebabaea1f160812d04ce817767b4dc881cf6e80cf621",
-    "src/test/auth/githubAppOnlySourceGuard.test.ts": "sha256:2ea7ab452ec9b52cac51cd90315dae8aa51cb66a98493892709df212079756f7",
-    "src/test/e2e-helpers/popup-helpers.test.ts": "sha256:eeb0742efbc57aeab96856e5e9d6ad1eee0ff136125a062ecec3fcfb2f5d4e75",
+    "src/test/auth/githubAppOnlySourceGuard.test.ts": "sha256:b95ee987a31196c6c891e5888e182d58f2719fb6bc9491f014c5fc4d164c2608",
+    "src/test/e2e-helpers/popup-helpers.test.ts": "sha256:a8033f04fba98d3932e542df2c993612b8ad251a8989f211d0e25fb0c117b93d",
     "src/lib/components/__tests__/RepoSettings.logic.test.ts": "sha256:074da50071698a1c6e64c4d6e6e5cb4229afdc9e92d7bcf64b1f4f07aaf3785c",
     "src/popup/components/__tests__/FileChangesModal.component.test.ts": "sha256:590542cb4026b4145123b9ffe6f0ae56762b8fa6fb33fa4fddfcc846b4c36bc1",
     "src/background/__tests__/BackgroundService.reload.test.ts": "sha256:816e0cdd4e560653b4335c92741e4bab4f14d5d6acf46dc4fc738836944cb124"
   },
   "created_at": "2026-07-13T23:40:20.242298+00:00",
-  "revision": 7,
+  "revision": 8,
   "revisions": [
     {
       "prior_manifest_hash": "sha256:ca8e2823d903bd07d3da2c567757d0eb41b399debff04b7e131d0753966925c7",
@@ -295,6 +295,51 @@
         "validate_commands_added": [],
         "validate_commands_removed": []
       }
+    },
+    {
+      "prior_manifest_hash": "sha256:ad2e8b095275e73230dbea86495a8389c3059fe4ba5105c9f710046de33f4110",
+      "prior_test_hashes": {
+        "src/lib/components/__tests__/RepoSettings.component.test.ts": "sha256:e4e969bc43790c4de283356eb09438622ad303a1802581cb917657c38349d9a2",
+        "src/popup/__tests__/App.svelte/App.settings.component.test.ts": "sha256:67a3861d42b72c8491071c99e393243807144630941510c555b18385a71a85ac",
+        "src/lib/components/__tests__/GitHubSettings.connection.component.test.ts": "sha256:56fcd545ec99dff7d978bb492b14bcd6213e6de2b9dcd37901a56a395795d667",
+        "src/popup/components/__tests__/SettingsTabContent.component.test.ts": "sha256:38ee28c146a2f5379019c59f8ba2d4292c6939fd9399b91357d233233138926a",
+        "src/popup/components/__tests__/TabsView.component.test.ts": "sha256:c8759bcb33931e8e5245679f8931584635bda2f8559827b24c0fd6cd6965aabb",
+        "src/lib/components/__tests__/ProjectStatus.component.test.ts": "sha256:ab00fc4fab119b6aa5b469349ec5a9573da181437bd96e47923b75600e22dd8f",
+        "src/lib/components/__tests__/OnboardingSetup.component.test.ts": "sha256:3a31644af70935005653f97d13aea308de5a9349b05de1d695068f27f7db681b",
+        "src/lib/components/__tests__/Help.component.test.ts": "sha256:4925f9a09bd447ae8268788bb30a61a0b06c75ec71a40c01f78c8a409a3bde77",
+        "src/popup/components/__tests__/OnboardingView.component.test.ts": "sha256:fb931d56bf7c83f36a715373ab41402014524a9a1e3c0e4ad8816563dcb17639",
+        "src/popup/__tests__/App.component.test.ts": "sha256:08318955987b75e1bd79fe35ae092a2d578e47390bd1f27647a2282a7beeb317",
+        "src/popup/__tests__/App.svelte/App.user-interactions.component.test.ts": "sha256:dae5882526d2097263e5ebabaea1f160812d04ce817767b4dc881cf6e80cf621",
+        "src/test/auth/githubAppOnlySourceGuard.test.ts": "sha256:2ea7ab452ec9b52cac51cd90315dae8aa51cb66a98493892709df212079756f7",
+        "src/test/e2e-helpers/popup-helpers.test.ts": "sha256:eeb0742efbc57aeab96856e5e9d6ad1eee0ff136125a062ecec3fcfb2f5d4e75",
+        "src/lib/components/__tests__/RepoSettings.logic.test.ts": "sha256:074da50071698a1c6e64c4d6e6e5cb4229afdc9e92d7bcf64b1f4f07aaf3785c",
+        "src/popup/components/__tests__/FileChangesModal.component.test.ts": "sha256:590542cb4026b4145123b9ffe6f0ae56762b8fa6fb33fa4fddfcc846b4c36bc1",
+        "src/background/__tests__/BackgroundService.reload.test.ts": "sha256:816e0cdd4e560653b4335c92741e4bab4f14d5d6acf46dc4fc738836944cb124"
+      },
+      "revised_at": "2026-09-14T13:07:33.362614+00:00",
+      "reason": "Align Svelte component artifact with the 2.27.5 validator; behavior and tests are unchanged",
+      "agent": null,
+      "contract_delta": {
+        "artifacts_added": [],
+        "artifacts_removed": [
+          "src/lib/components/GitHubSettings.svelte:function:GitHubSettings:arg=props:type={ repoOwner: string; githubAppInstallationId?: number | null; githubAppUsername?: string | null; githubAppAvatarUrl?: string | null; migrationRequired?: boolean }:default=None",
+          "src/lib/components/OnboardingSetup.svelte:function:OnboardingSetup:arg=props:type=OnboardingSetup component props:default=None",
+          "src/lib/components/ProjectStatus.svelte:function:ProjectStatus:arg=props:type=ProjectStatus component props:default=None",
+          "src/lib/components/RepoSettings.svelte:function:RepoSettings:arg=props:type=RepoSettings component props:default=None",
+          "src/popup/components/FileChangesModal.svelte:function:FileChangesModal:arg=props:type=FileChangesModal component props:default=None",
+          "src/popup/components/OnboardingView.svelte:function:OnboardingView:arg=props:type=OnboardingView component props:default=None",
+          "src/popup/components/SettingsTabContent.svelte:function:SettingsTabContent:arg=props:type={ githubSettings: GitHubSettingsState; isUserPremium: boolean }:default=None"
+        ],
+        "files_added": [
+          "delete:src/lib/components/__tests__/GitHubSettings.component.test.ts",
+          "scope:src/popup/App.svelte",
+          "scope:src/popup/components/TabsView.svelte",
+          "scope:src/test/auth/githubAppOnlySourceGuard.test.ts"
+        ],
+        "files_removed": [],
+        "validate_commands_added": [],
+        "validate_commands_removed": []
+      }
     }
   ],
   "red_evidence": {
@@ -339,6 +384,7 @@
       }
     ]
   },
+  "legacy_baseline": null,
   "agent": null,
   "_manifest_contract": {
     "artifacts": [
@@ -366,19 +412,15 @@
       "src/background/BackgroundService.ts:class:BackgroundService",
       "src/background/BackgroundService.ts:class:BackgroundService:kind=class",
       "src/lib/components/GitHubSettings.svelte:function:GitHubSettings",
-      "src/lib/components/GitHubSettings.svelte:function:GitHubSettings:arg=props:type={ repoOwner: string; githubAppInstallationId?: number | null; githubAppUsername?: string | null; githubAppAvatarUrl?: string | null; migrationRequired?: boolean }:default=None",
       "src/lib/components/GitHubSettings.svelte:function:GitHubSettings:kind=function",
       "src/lib/components/GitHubSettings.svelte:function:GitHubSettings:returns=Svelte component instance",
       "src/lib/components/OnboardingSetup.svelte:function:OnboardingSetup",
-      "src/lib/components/OnboardingSetup.svelte:function:OnboardingSetup:arg=props:type=OnboardingSetup component props:default=None",
       "src/lib/components/OnboardingSetup.svelte:function:OnboardingSetup:kind=function",
       "src/lib/components/OnboardingSetup.svelte:function:OnboardingSetup:returns=Svelte component instance",
       "src/lib/components/ProjectStatus.svelte:function:ProjectStatus",
-      "src/lib/components/ProjectStatus.svelte:function:ProjectStatus:arg=props:type=ProjectStatus component props:default=None",
       "src/lib/components/ProjectStatus.svelte:function:ProjectStatus:kind=function",
       "src/lib/components/ProjectStatus.svelte:function:ProjectStatus:returns=Svelte component instance",
       "src/lib/components/RepoSettings.svelte:function:RepoSettings",
-      "src/lib/components/RepoSettings.svelte:function:RepoSettings:arg=props:type=RepoSettings component props:default=None",
       "src/lib/components/RepoSettings.svelte:function:RepoSettings:kind=function",
       "src/lib/components/RepoSettings.svelte:function:RepoSettings:returns=Svelte component instance",
       "src/lib/components/__tests__/GitHubSettings.connection.component.test.ts:connected settings show GitHub App identity without project repository controls",
@@ -404,15 +446,12 @@
       "src/lib/utils/repo-settings.ts:function:validateRepositoryName:kind=function",
       "src/lib/utils/repo-settings.ts:function:validateRepositoryName:returns=RepositoryNameValidationResult",
       "src/popup/components/FileChangesModal.svelte:function:FileChangesModal",
-      "src/popup/components/FileChangesModal.svelte:function:FileChangesModal:arg=props:type=FileChangesModal component props:default=None",
       "src/popup/components/FileChangesModal.svelte:function:FileChangesModal:kind=function",
       "src/popup/components/FileChangesModal.svelte:function:FileChangesModal:returns=Svelte component instance",
       "src/popup/components/OnboardingView.svelte:function:OnboardingView",
-      "src/popup/components/OnboardingView.svelte:function:OnboardingView:arg=props:type=OnboardingView component props:default=None",
       "src/popup/components/OnboardingView.svelte:function:OnboardingView:kind=function",
       "src/popup/components/OnboardingView.svelte:function:OnboardingView:returns=Svelte component instance",
       "src/popup/components/SettingsTabContent.svelte:function:SettingsTabContent",
-      "src/popup/components/SettingsTabContent.svelte:function:SettingsTabContent:arg=props:type={ githubSettings: GitHubSettingsState; isUserPremium: boolean }:default=None",
       "src/popup/components/SettingsTabContent.svelte:function:SettingsTabContent:kind=function",
       "src/popup/components/SettingsTabContent.svelte:function:SettingsTabContent:returns=Svelte component instance",
       "src/popup/components/__tests__/SettingsTabContent.component.test.ts:settings tab forwards GitHub App state without PAT bindings",
@@ -449,6 +488,310 @@
         "src/lib/stores/githubSettings.ts",
         "src/popup/__tests__/App.svelte/App.settings.component.test.ts",
         "src/popup/components/HomeTabContent.svelte"
+      ],
+      "scope": [
+        "src/popup/App.svelte",
+        "src/popup/components/TabsView.svelte",
+        "src/test/auth/githubAppOnlySourceGuard.test.ts"
+      ],
+      "delete": ["src/lib/components/__tests__/GitHubSettings.component.test.ts"],
+      "snapshot": []
+    },
+    "file_contract": {
+      "create": [
+        {
+          "path": "src/lib/components/__tests__/GitHubSettings.connection.component.test.ts",
+          "artifacts": [
+            {
+              "kind": "test_function",
+              "name": "settings contain no PAT selector token field or token validation action",
+              "description": "Carries forward the GitHub App-only primary setup guard."
+            },
+            {
+              "kind": "test_function",
+              "name": "connected settings show GitHub App identity without project repository controls",
+              "description": "Planned failing behavioral test required before promotion."
+            },
+            {
+              "kind": "test_function",
+              "name": "disconnected settings offer an explicit GitHub App connection without project repository controls",
+              "description": "Planned failing behavioral test required before promotion."
+            },
+            {
+              "kind": "test_function",
+              "name": "migration guidance directs repository changes to project surfaces without restoring the duplicate editor",
+              "description": "Planned failing behavioral test required before promotion."
+            },
+            {
+              "kind": "test_function",
+              "name": "rendering connection settings performs no repository discovery request",
+              "description": "Planned failing behavioral test required before promotion."
+            }
+          ]
+        }
+      ],
+      "edit": [
+        {
+          "path": "src/lib/components/GitHubSettings.svelte",
+          "artifacts": [
+            {
+              "kind": "function",
+              "name": "GitHubSettings",
+              "description": "Renders GitHub App connection identity, disconnected and migration\nguidance, and an explicit user-click connection action. It performs\nno repository discovery and renders no project repository controls,\nvalidation errors, or save action. Repository owner may be used as\nan identity fallback but is not rendered as an editable or read-only\nform field.\n",
+              "returns": "Svelte component instance"
+            }
+          ]
+        },
+        {
+          "path": "src/popup/components/SettingsTabContent.svelte",
+          "artifacts": [
+            {
+              "kind": "function",
+              "name": "SettingsTabContent",
+              "description": "Renders account-level GitHub App connection state and global popup\npreferences without accepting a project ID, rendering project\nrepository controls, or emitting repository save/error events.\n",
+              "returns": "Svelte component instance"
+            }
+          ]
+        },
+        {
+          "path": "src/lib/components/OnboardingSetup.svelte",
+          "artifacts": [
+            {
+              "kind": "function",
+              "name": "OnboardingSetup",
+              "description": "Carries forward the complete GitHub App-only setup, signed-out recovery, and legacy PAT migration contract without automatic navigation.",
+              "returns": "Svelte component instance"
+            }
+          ]
+        },
+        {
+          "path": "src/popup/components/OnboardingView.svelte",
+          "artifacts": [
+            {
+              "kind": "function",
+              "name": "OnboardingView",
+              "description": "Carries forward live-session and durable migration-required state forwarding to the GitHub App-only setup component.",
+              "returns": "Svelte component instance"
+            }
+          ]
+        },
+        {
+          "path": "src/lib/utils/repo-settings.ts",
+          "artifacts": [
+            {
+              "kind": "function",
+              "name": "validateRepositoryName",
+              "description": "Carries forward the product repository-name policy used by the authoritative RepoSettings surface.",
+              "args": [
+                {
+                  "name": "repoName",
+                  "type": "string"
+                }
+              ],
+              "returns": "RepositoryNameValidationResult"
+            },
+            {
+              "kind": "function",
+              "name": "canSaveForm",
+              "description": "Carries forward the RepoSettings save gate, including repository-name validation.",
+              "args": [
+                {
+                  "name": "repoName",
+                  "type": "string"
+                },
+                {
+                  "name": "branch",
+                  "type": "string"
+                },
+                {
+                  "name": "isSaving",
+                  "type": "boolean"
+                }
+              ],
+              "returns": "boolean"
+            }
+          ]
+        },
+        {
+          "path": "src/lib/components/RepoSettings.svelte",
+          "artifacts": [
+            {
+              "kind": "function",
+              "name": "RepoSettings",
+              "description": "Carries forward repository validation, project-scoped saving, and visible recovery behavior in the authoritative editor.",
+              "returns": "Svelte component instance"
+            }
+          ]
+        },
+        {
+          "path": "src/background/BackgroundService.ts",
+          "artifacts": [
+            {
+              "kind": "class",
+              "name": "BackgroundService",
+              "description": "Carries forward push dispatch success only after an active Bolt tab and content-script port are available, with visible failure responses otherwise."
+            }
+          ]
+        },
+        {
+          "path": "src/lib/components/ProjectStatus.svelte",
+          "artifacts": [
+            {
+              "kind": "function",
+              "name": "ProjectStatus",
+              "description": "Carries forward visible, retry-safe push failures and the project-scoped RepoSettings entry point.",
+              "returns": "Svelte component instance"
+            }
+          ]
+        },
+        {
+          "path": "src/popup/components/FileChangesModal.svelte",
+          "artifacts": [
+            {
+              "kind": "function",
+              "name": "FileChangesModal",
+              "description": "Carries forward visible modal push failures while preserving retry and confirmation flows.",
+              "returns": "Svelte component instance"
+            }
+          ]
+        },
+        {
+          "path": "e2e/helpers/popup.ts",
+          "artifacts": [
+            {
+              "kind": "function",
+              "name": "fillRepositorySettings",
+              "description": "Carries forward structured repository settings input targeting only visible controls.",
+              "args": [
+                {
+                  "name": "page",
+                  "type": "Page"
+                },
+                {
+                  "name": "settings",
+                  "type": "RepositorySettingsInput"
+                }
+              ],
+              "returns": "Promise<void>"
+            },
+            {
+              "kind": "function",
+              "name": "clickPushButton",
+              "description": "Carries forward visible push control interaction and retry support.",
+              "args": [
+                {
+                  "name": "page",
+                  "type": "Page"
+                },
+                {
+                  "name": "beforeClick",
+                  "type": "(() => Promise<void>) | undefined"
+                }
+              ],
+              "returns": "Promise<void>"
+            },
+            {
+              "kind": "function",
+              "name": "getValidationError",
+              "description": "Carries forward visible validation and alert text reads.",
+              "args": [
+                {
+                  "name": "page",
+                  "type": "Page"
+                }
+              ],
+              "returns": "Promise<string | null>"
+            },
+            {
+              "kind": "function",
+              "name": "waitForErrorNotification",
+              "description": "Carries forward waiting for and reading active popup error alerts.",
+              "args": [
+                {
+                  "name": "page",
+                  "type": "Page"
+                }
+              ],
+              "returns": "Promise<string>"
+            }
+          ]
+        },
+        {
+          "path": "e2e/fixtures/extension.ts",
+          "artifacts": [
+            {
+              "kind": "attribute",
+              "name": "test",
+              "description": "Carries forward the extension-loaded Playwright fixture and its MV3 service-worker extension ID discovery.",
+              "type": "Playwright test fixture"
+            }
+          ]
+        },
+        {
+          "path": "src/popup/components/__tests__/SettingsTabContent.component.test.ts",
+          "artifacts": [
+            {
+              "kind": "test_function",
+              "name": "settings tab forwards GitHub App state without PAT bindings",
+              "description": "Carries forward the GitHub App-only settings boundary guard."
+            },
+            {
+              "kind": "test_function",
+              "name": "settings tab keeps account and global preferences without project repository controls",
+              "description": "Planned failing behavioral test required before promotion."
+            }
+          ]
+        },
+        {
+          "path": "src/popup/components/__tests__/TabsView.component.test.ts",
+          "artifacts": [
+            {
+              "kind": "test_function",
+              "name": "settings tab does not forward removed repository save or error events",
+              "description": "Planned failing behavioral test required before promotion."
+            }
+          ]
+        },
+        {
+          "path": "src/lib/components/__tests__/ProjectStatus.component.test.ts",
+          "artifacts": [
+            {
+              "kind": "test_function",
+              "name": "project details open the authoritative repository settings modal",
+              "description": "Planned characterization coverage for the retained project-scoped editor."
+            }
+          ]
+        }
+      ],
+      "read": [
+        "manifests/02-github-app-only-primary-setup.manifest.yaml",
+        "manifests/repair-e2e-error-flow-fast-gate.manifest.yaml",
+        "manifests/04-github-app-only-repository-surfaces.manifest.yaml",
+        "src/lib/components/__tests__/RepoSettings.component.test.ts",
+        "src/lib/stores/githubSettings.ts",
+        "src/lib/services/chromeStorage.ts",
+        "src/popup/components/HomeTabContent.svelte",
+        "src/popup/__tests__/App.svelte/App.settings.component.test.ts"
+      ],
+      "scope": [
+        {
+          "path": "src/popup/components/TabsView.svelte",
+          "reason": "Stop passing project-only props and forwarding repository save/error events through the Settings tab."
+        },
+        {
+          "path": "src/popup/App.svelte",
+          "reason": "Remove only the TabsView listeners made unreachable by the connection-only Settings tab while retaining onboarding save/error handling."
+        },
+        {
+          "path": "src/test/auth/githubAppOnlySourceGuard.test.ts",
+          "reason": "Replace the retired duplicate-editor test path in the explicit legacy-language test allowlist."
+        }
+      ],
+      "delete": [
+        {
+          "path": "src/lib/components/__tests__/GitHubSettings.component.test.ts",
+          "reason": "Retire the superseded duplicate-editor behavioral contract as a whole because MAID removed_artifacts cannot represent test_function artifacts."
+        }
       ]
     },
     "test_files": [
@@ -476,6 +819,7 @@
       "pnpm lint",
       "pnpm check",
       "pnpm build"
-    ]
+    ],
+    "acceptance_commands": []
   }
 }

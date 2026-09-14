@@ -552,12 +552,10 @@ If you want to modify the extension or contribute to its development:
 
 #### Environment Variables
 
-The extension uses environment variables for sensitive configuration:
-
-- `VITE_GA4_API_SECRET`: Google Analytics 4 API secret for analytics tracking
-  - Required for analytics functionality
-  - Analytics will be disabled if not provided
-  - Never commit this value to the repository
+Google Analytics event tracking is paused for v2.0.0. Do not set `VITE_GA4_API_SECRET` when
+building the extension: Vite rejects builds that would embed this server credential in a public
+Chrome package. Remove it from local `.env` files before building. The separate optional uninstall
+feedback usage setting remains available in the extension.
 
 #### Adding UI Components (shadcn-svelte)
 

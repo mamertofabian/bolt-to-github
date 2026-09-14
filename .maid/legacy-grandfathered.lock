@@ -1,0 +1,16 @@
+{
+  "version": "2",
+  "sealed_at": "2026-09-14T13:09:30.328766+00:00",
+  "entries": [
+    {
+      "superseding_slug": "prepare-v2-0-0-github-app-release",
+      "content_hash": "sha256:48c2cb7bc00e88aa598b1ffe94548297a72915178e31ec01839efb3e66e7ec63",
+      "dropped_artifact_keys": [
+        "release-v1-3-21|package.json|namespace:PackageVersion_1_3_21",
+        "release-v1-3-21|manifest.json|namespace:ChromeManifestVersion_1_3_21",
+        "release-v1-3-21|CLAUDE.md|namespace:DevelopmentGuideVersion_1_3_21"
+      ],
+      "reason": "Legacy migration: grandfathered at seal time"
+    }
+  ]
+}

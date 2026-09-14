@@ -1,0 +1,461 @@
+{
+  "manifest_path": "manifests/pause-extension-ga4-v2.manifest.yaml",
+  "manifest_hash": "sha256-contract:808a115cf74d0c0653a24b9cd5354f277827c3eceaa6cc4f090417d3a1fa07c1",
+  "test_hashes": {
+    "src/lib/components/ui/__tests__/AnalyticsToggle.component.test.ts": "sha256:652c6998b5522eb32cf57d9474ce7b139b7f931d0f899bfa024c471d00e00ce9",
+    "src/test/release/analyticsSecretPackaging.test.ts": "sha256:852c7f317fb2d2b3d5dc9b1235aa399f0d12680e009d58e63bb285cd64bee942"
+  },
+  "created_at": "2026-09-14T13:20:18.146945+00:00",
+  "revision": 10,
+  "revisions": [
+    {
+      "prior_manifest_hash": "sha256-contract:a7fc3d455afe5a5043e45513b5438c60a3c8a9b5ba1154a20aceca9acb61f8c8",
+      "prior_test_hashes": {
+        "src/services/__tests__/AnalyticsService.enhanced.test.ts": "sha256:8300f87d74afd2ba43614f77f3082f2baff9d249d1ec74fc80f9c8640c4624fe",
+        "src/lib/components/ui/__tests__/AnalyticsToggle.component.test.ts": "sha256:8782208c9edb31903b251d5f5e0c8cd547945b7fca3d50d2ce56de5aadd26dda",
+        "src/test/release/analyticsSecretPackaging.test.ts": "sha256:3f045816ff72ce69f0ec3251c082dead6453b7a345efd2ae9028a0e533520f40"
+      },
+      "revised_at": "2026-09-14T13:21:21.164010+00:00",
+      "reason": "Add direct Vite entry-point test so a helper-only guard cannot satisfy the release contract",
+      "agent": null,
+      "contract_delta": {
+        "artifacts_added": [
+          "src/test/release/analyticsSecretPackaging.test.ts:Vite config refuses a secret-bearing production build",
+          "src/test/release/analyticsSecretPackaging.test.ts:Vite config refuses a secret-bearing production build:kind=test_function"
+        ],
+        "artifacts_removed": [],
+        "files_added": [],
+        "files_removed": [],
+        "validate_commands_added": [],
+        "validate_commands_removed": []
+      }
+    },
+    {
+      "prior_manifest_hash": "sha256-contract:4d99ba07c09dd03636bfcaf5dc26b3c06cfd58f79a7aceb54c6bd63798938678",
+      "prior_test_hashes": {
+        "src/services/__tests__/AnalyticsService.enhanced.test.ts": "sha256:8300f87d74afd2ba43614f77f3082f2baff9d249d1ec74fc80f9c8640c4624fe",
+        "src/lib/components/ui/__tests__/AnalyticsToggle.component.test.ts": "sha256:8782208c9edb31903b251d5f5e0c8cd547945b7fca3d50d2ce56de5aadd26dda",
+        "src/test/release/analyticsSecretPackaging.test.ts": "sha256:dca936bffe0ba830a305657426ab5573fe75b9d1fe78a7786993e704cfbe763c"
+      },
+      "revised_at": "2026-09-14T13:21:58.510902+00:00",
+      "reason": "Record draft creation metadata after plan review; behavioral contract unchanged",
+      "agent": null,
+      "contract_delta": {
+        "artifacts_added": [],
+        "artifacts_removed": [],
+        "files_added": [],
+        "files_removed": [],
+        "validate_commands_added": [],
+        "validate_commands_removed": []
+      }
+    },
+    {
+      "prior_manifest_hash": "sha256-contract:200003dfb414b61d795579d3a1c99ea7aee15738a1674c3183079f4dfbedaa0c",
+      "prior_test_hashes": {
+        "src/services/__tests__/AnalyticsService.enhanced.test.ts": "sha256:8300f87d74afd2ba43614f77f3082f2baff9d249d1ec74fc80f9c8640c4624fe",
+        "src/lib/components/ui/__tests__/AnalyticsToggle.component.test.ts": "sha256:8782208c9edb31903b251d5f5e0c8cd547945b7fca3d50d2ce56de5aadd26dda",
+        "src/test/release/analyticsSecretPackaging.test.ts": "sha256:dca936bffe0ba830a305657426ab5573fe75b9d1fe78a7786993e704cfbe763c"
+      },
+      "revised_at": "2026-09-14T13:21:58.915906+00:00",
+      "reason": "Migrated by maid manifest promote: manifests/drafts/pause-extension-ga4-v2.manifest.yaml -> manifests/pause-extension-ga4-v2.manifest.yaml",
+      "agent": null,
+      "contract_delta": {
+        "artifacts_added": [],
+        "artifacts_removed": [],
+        "files_added": [],
+        "files_removed": [],
+        "validate_commands_added": [],
+        "validate_commands_removed": []
+      }
+    },
+    {
+      "prior_manifest_hash": "sha256-contract:bdcee4d91c9da870cb355d61e9282ce26ca9460540eab4ab3e01c5a945fde0b7",
+      "prior_test_hashes": {
+        "src/services/__tests__/AnalyticsService.enhanced.test.ts": "sha256:8300f87d74afd2ba43614f77f3082f2baff9d249d1ec74fc80f9c8640c4624fe",
+        "src/lib/components/ui/__tests__/AnalyticsToggle.component.test.ts": "sha256:8782208c9edb31903b251d5f5e0c8cd547945b7fca3d50d2ce56de5aadd26dda",
+        "src/test/release/analyticsSecretPackaging.test.ts": "sha256:dca936bffe0ba830a305657426ab5573fe75b9d1fe78a7786993e704cfbe763c"
+      },
+      "revised_at": "2026-09-14T13:23:43.491402+00:00",
+      "reason": "Isolate secret-rejection policy from Vite for deterministic tests and verify the actual production build rejects secrets",
+      "agent": null,
+      "contract_delta": {
+        "artifacts_added": [
+          "src/lib/utils/analyticsReleasePolicy.ts:function:assertAnalyticsSecretNotBundled",
+          "src/lib/utils/analyticsReleasePolicy.ts:function:assertAnalyticsSecretNotBundled:arg=secret:type=string | undefined:default=None",
+          "src/lib/utils/analyticsReleasePolicy.ts:function:assertAnalyticsSecretNotBundled:kind=function",
+          "src/lib/utils/analyticsReleasePolicy.ts:function:assertAnalyticsSecretNotBundled:returns=void"
+        ],
+        "artifacts_removed": [
+          "vite.config.ts:function:assertAnalyticsSecretNotBundled",
+          "vite.config.ts:function:assertAnalyticsSecretNotBundled:arg=secret:type=string | undefined:default=None",
+          "vite.config.ts:function:assertAnalyticsSecretNotBundled:kind=function",
+          "vite.config.ts:function:assertAnalyticsSecretNotBundled:returns=void"
+        ],
+        "files_added": ["create:src/lib/utils/analyticsReleasePolicy.ts", "scope:vite.config.ts"],
+        "files_removed": ["edit:vite.config.ts"],
+        "validate_commands_added": [],
+        "validate_commands_removed": []
+      }
+    },
+    {
+      "prior_manifest_hash": "sha256-contract:f5fdd8163d49d449822e865d61fa2fb8a902b4e4ffe406843d9faff5b2235a16",
+      "prior_test_hashes": {
+        "src/services/__tests__/AnalyticsService.enhanced.test.ts": "sha256:8300f87d74afd2ba43614f77f3082f2baff9d249d1ec74fc80f9c8640c4624fe",
+        "src/lib/components/ui/__tests__/AnalyticsToggle.component.test.ts": "sha256:8782208c9edb31903b251d5f5e0c8cd547945b7fca3d50d2ce56de5aadd26dda",
+        "src/test/release/analyticsSecretPackaging.test.ts": "sha256:25b145141747f597831661b8ee677a65e4333a6a030c0df3b4c7b85f6ad94e90"
+      },
+      "revised_at": "2026-09-14T13:24:57.729877+00:00",
+      "reason": "Apply the same secret rejection to development and watch builds so no extension build can embed the credential",
+      "agent": null,
+      "contract_delta": {
+        "artifacts_added": [],
+        "artifacts_removed": [],
+        "files_added": [],
+        "files_removed": [],
+        "validate_commands_added": [],
+        "validate_commands_removed": []
+      }
+    },
+    {
+      "prior_manifest_hash": "sha256-contract:3a1c75335123819e2708c7fd3bbeb858f0395d86b9ecca8ba876455bb6d93176",
+      "prior_test_hashes": {
+        "src/services/__tests__/AnalyticsService.enhanced.test.ts": "sha256:8300f87d74afd2ba43614f77f3082f2baff9d249d1ec74fc80f9c8640c4624fe",
+        "src/lib/components/ui/__tests__/AnalyticsToggle.component.test.ts": "sha256:8782208c9edb31903b251d5f5e0c8cd547945b7fca3d50d2ce56de5aadd26dda",
+        "src/test/release/analyticsSecretPackaging.test.ts": "sha256:25b145141747f597831661b8ee677a65e4333a6a030c0df3b4c7b85f6ad94e90"
+      },
+      "revised_at": "2026-09-14T13:27:11.897903+00:00",
+      "reason": "Keep existing analytics service tests as review context rather than declaring them as this narrow pause contract",
+      "agent": null,
+      "contract_delta": {
+        "artifacts_added": [],
+        "artifacts_removed": [],
+        "files_added": [],
+        "files_removed": ["read:src/services/__tests__/AnalyticsService.enhanced.test.ts"],
+        "validate_commands_added": [],
+        "validate_commands_removed": []
+      }
+    },
+    {
+      "prior_manifest_hash": "sha256-contract:688faf9b44df776c2a62349b97c72a06aefb26858a4e84adfd69bf98bdba10aa",
+      "prior_test_hashes": {
+        "src/lib/components/ui/__tests__/AnalyticsToggle.component.test.ts": "sha256:8782208c9edb31903b251d5f5e0c8cd547945b7fca3d50d2ce56de5aadd26dda",
+        "src/test/release/analyticsSecretPackaging.test.ts": "sha256:25b145141747f597831661b8ee677a65e4333a6a030c0df3b4c7b85f6ad94e90"
+      },
+      "revised_at": "2026-09-14T13:29:30.882501+00:00",
+      "reason": "Preserve uninstall feedback opt-out and verify the packaged permission set after independent review",
+      "agent": null,
+      "contract_delta": {
+        "artifacts_added": [
+          "src/lib/components/ui/__tests__/AnalyticsToggle.component.test.ts:offers a separate uninstall feedback usage opt-out",
+          "src/lib/components/ui/__tests__/AnalyticsToggle.component.test.ts:offers a separate uninstall feedback usage opt-out:kind=test_function",
+          "src/lib/components/ui/__tests__/AnalyticsToggle.component.test.ts:shows GA4 is paused and discloses uninstall feedback usage",
+          "src/lib/components/ui/__tests__/AnalyticsToggle.component.test.ts:shows GA4 is paused and discloses uninstall feedback usage:kind=test_function",
+          "src/lib/components/ui/__tests__/AnalyticsToggle.component.test.ts:turning off uninstall feedback clears its URL and saves the preference",
+          "src/lib/components/ui/__tests__/AnalyticsToggle.component.test.ts:turning off uninstall feedback clears its URL and saves the preference:kind=test_function",
+          "src/test/release/analyticsSecretPackaging.test.ts:clean production package omits the GA4 collection permission",
+          "src/test/release/analyticsSecretPackaging.test.ts:clean production package omits the GA4 collection permission:kind=test_function"
+        ],
+        "artifacts_removed": [
+          "src/lib/components/ui/__tests__/AnalyticsToggle.component.test.ts:does not change the saved analytics preference on render",
+          "src/lib/components/ui/__tests__/AnalyticsToggle.component.test.ts:does not change the saved analytics preference on render:kind=test_function",
+          "src/lib/components/ui/__tests__/AnalyticsToggle.component.test.ts:does not offer an analytics switch while collection is paused",
+          "src/lib/components/ui/__tests__/AnalyticsToggle.component.test.ts:does not offer an analytics switch while collection is paused:kind=test_function",
+          "src/lib/components/ui/__tests__/AnalyticsToggle.component.test.ts:shows outbound analytics are paused for v2.0.0",
+          "src/lib/components/ui/__tests__/AnalyticsToggle.component.test.ts:shows outbound analytics are paused for v2.0.0:kind=test_function"
+        ],
+        "files_added": ["scope:README.md"],
+        "files_removed": [],
+        "validate_commands_added": [],
+        "validate_commands_removed": []
+      }
+    },
+    {
+      "prior_manifest_hash": "sha256-contract:3b0b390d5078ebe2cee0d9568c1ca7c14dfa5edf45d7c65379ce6960f8985152",
+      "prior_test_hashes": {
+        "src/lib/components/ui/__tests__/AnalyticsToggle.component.test.ts": "sha256:b128c07f6c627c679eb561410a549b4a9daec408b3d60525cbce80d4344f95c5",
+        "src/test/release/analyticsSecretPackaging.test.ts": "sha256:852c7f317fb2d2b3d5dc9b1235aa399f0d12680e009d58e63bb285cd64bee942"
+      },
+      "revised_at": "2026-09-14T13:33:00.583215+00:00",
+      "reason": "Exercise Svelte onMount preference loading in component tests under the repository test harness",
+      "agent": null,
+      "contract_delta": {
+        "artifacts_added": [],
+        "artifacts_removed": [],
+        "files_added": [],
+        "files_removed": [],
+        "validate_commands_added": [],
+        "validate_commands_removed": []
+      }
+    },
+    {
+      "prior_manifest_hash": "sha256-contract:3b0b390d5078ebe2cee0d9568c1ca7c14dfa5edf45d7c65379ce6960f8985152",
+      "prior_test_hashes": {
+        "src/lib/components/ui/__tests__/AnalyticsToggle.component.test.ts": "sha256:652c6998b5522eb32cf57d9474ce7b139b7f931d0f899bfa024c471d00e00ce9",
+        "src/test/release/analyticsSecretPackaging.test.ts": "sha256:852c7f317fb2d2b3d5dc9b1235aa399f0d12680e009d58e63bb285cd64bee942"
+      },
+      "revised_at": "2026-09-14T13:35:40.894387+00:00",
+      "reason": "Align manifest description with reviewed GA4 pause and retained uninstall feedback opt-out",
+      "agent": null,
+      "contract_delta": {
+        "artifacts_added": [],
+        "artifacts_removed": [],
+        "files_added": [],
+        "files_removed": [],
+        "validate_commands_added": [],
+        "validate_commands_removed": []
+      }
+    }
+  ],
+  "red_evidence": {
+    "red": true,
+    "captured_at": "2026-09-14T13:33:29.224701+00:00",
+    "commands": [
+      {
+        "command": "pnpm exec vitest run src/test/release/analyticsSecretPackaging.test.ts src/lib/components/ui/__tests__/AnalyticsToggle.component.test.ts",
+        "exit_code": 1,
+        "output_tail": "              \u001b[36m</div>\u001b[39m\n            \u001b[36m</div>\u001b[39m\n          \u001b[36m</details>\u001b[39m\n        \u001b[36m</div>\u001b[39m\n      \u001b[36m</div>\u001b[39m\n    \u001b[36m</div>\u001b[39m\n  \u001b[36m</div>\u001b[39m\n\u001b[36m</body>\u001b[39m\n \u276f waitForWrapper node_modules/.pnpm/@testing-library+dom@9.3.4/node_modules/@testing-library/dom/dist/@testing-library/dom.esm.js:1126:27\n    1128| /*\n    1129| eslint\n    1130|   max-lines-per-function: [\"error\", {\"max\": 200}],\n       |              ^\n    1131| */\n    1132| \n \u276f node_modules/.pnpm/@testing-library+dom@9.3.4/node_modules/@testing-library/dom/dist/@testing-library/dom.esm.js:1206:12\n \u276f src/lib/components/ui/__tests__/AnalyticsToggle.component.test.ts:49:35\n\n\u23af\u23af\u23af\u23af\u23af\u23af\u23af\u23af\u23af\u23af\u23af\u23af\u23af\u23af\u23af\u23af\u23af\u23af\u23af\u23af\u23af\u23af\u23af\u23af[4/4]\u23af\n",
+        "classification": "red"
+      },
+      {
+        "command": "pnpm lint",
+        "exit_code": 0,
+        "output_tail": "\n> bolt-to-github@2.0.0 lint /home/atomrem/projects/codefrost-dev/bolt-to-github\n> eslint \"src/**/*.{js,ts,svelte}\"\n",
+        "classification": "not_red"
+      },
+      {
+        "command": "pnpm check",
+        "exit_code": 1,
+        "output_tail": "\n> bolt-to-github@2.0.0 check /home/atomrem/projects/codefrost-dev/bolt-to-github\n> svelte-check --tsconfig ./tsconfig.json\n\n\n====================================\nLoading svelte-check in workspace: /home/atomrem/projects/codefrost-dev/bolt-to-github\nGetting Svelte diagnostics...\n\n/home/atomrem/projects/codefrost-dev/bolt-to-github/src/test/release/analyticsSecretPackaging.test.ts:5:49\nError: Cannot find module '../../lib/utils/analyticsReleasePolicy' or its corresponding type declarations. \nimport { describe, expect, it } from 'vitest';\nimport { assertAnalyticsSecretNotBundled } from '../../lib/utils/analyticsReleasePolicy';\n\n\n\n====================================\nsvelte-check found 1 error and 0 warnings in 1 file\n\u2009ELIFECYCLE\u2009 Command failed with exit code 1.",
+        "classification": "red"
+      },
+      {
+        "command": "pnpm build",
+        "exit_code": 0,
+        "output_tail": "dist/assets/WelcomePageContentScript.ts-D1t7FgTm.js           2.66 kB \u2502 gzip:   0.79 kB\ndist/assets/GitHubCacheService-Bcgnv6OU.js                    3.68 kB \u2502 gzip:   1.30 kB\ndist/assets/TempRepoManager-Bp4BKaZ-.js                       4.65 kB \u2502 gzip:   1.78 kB\ndist/assets/gb-DkmPFscs.js                                    6.71 kB \u2502 gzip:   2.72 kB\ndist/assets/logger-CcH-GVeY.js                                8.19 kB \u2502 gzip:   2.69 kB\ndist/pages/logs.js                                           18.05 kB \u2502 gzip:   6.65 kB\ndist/assets/debounce-aGqGm1xA.js                             22.12 kB \u2502 gzip:   6.78 kB\ndist/assets/input-D7ph95_L.js                                72.30 kB \u2502 gzip:  25.10 kB\ndist/assets/GitHubComparisonService-DQensiPm.js              80.42 kB \u2502 gzip:  23.34 kB\ndist/background/background.js                               110.93 kB \u2502 gzip:  29.62 kB\ndist/content/content.js                                     246.68 kB \u2502 gzip:  72.54 kB\ndist/assets/index.html-Bpo564dK.js                          447.66 kB \u2502 gzip: 114.75 kB\n\u2713 built in 9.98s\n\n[plugin:vite:reporter] [plugin vite:reporter] \n(!) /home/atomrem/projects/codefrost-dev/bolt-to-github/src/lib/constants/supabase.ts is dynamically imported by /home/atomrem/projects/codefrost-dev/bolt-to-github/src/services/UnifiedGitHubService.ts but also statically imported by /home/atomrem/projects/codefrost-dev/bolt-to-github/src/content/services/SupabaseAuthService.ts, /home/atomrem/projects/codefrost-dev/bolt-to-github/src/services/BoltProjectSyncService.ts, /home/atomrem/projects/codefrost-dev/bolt-to-github/src/services/GitHubAppService.ts, /home/atomrem/projects/codefrost-dev/bolt-to-github/src/services/SubscriptionService.ts, dynamic import will not move module into another chunk.\n\n[plugin:vite:reporter] [plugin vite:reporter] \n(!) /home/atomrem/projects/codefrost-dev/bolt-to-github/src/content/handlers/FileChangeHandler.ts is dynamically imported by /home/atomrem/projects/codefrost-dev/bolt-to-github/src/content/handlers/GitHubUploadHandler.ts, /home/atomrem/projects/codefrost-dev/bolt-to-github/src/content/services/PushReminderService.ts, /home/atomrem/projects/codefrost-dev/bolt-to-github/src/content/services/PushReminderService.ts but also statically imported by /home/atomrem/projects/codefrost-dev/bolt-to-github/src/content/UIManager.ts, dynamic import will not move module into another chunk.\n",
+        "classification": "not_red"
+      }
+    ],
+    "sibling_dirty_paths": [
+      ".claude/agents/maid-implementation-reviewer.md",
+      ".claude/manifest.json",
+      ".claude/settings.json",
+      ".claude/skills/maid-auditor/SKILL.md",
+      ".claude/skills/maid-evolver/SKILL.md",
+      ".claude/skills/maid-implement-draft/SKILL.md",
+      ".claude/skills/maid-implementation-review/SKILL.md",
+      ".claude/skills/maid-implementer/SKILL.md",
+      ".claude/skills/maid-incident-logger/SKILL.md",
+      ".claude/skills/maid-outcome-enrich/SKILL.md",
+      ".claude/skills/maid-plan-review/SKILL.md",
+      ".claude/skills/maid-planner/SKILL.md",
+      ".claude/skills/maid-run-review/SKILL.md",
+      ".codex/manifest.json",
+      ".codex/skills/maid-auditor/SKILL.md",
+      ".codex/skills/maid-auditor/agents/openai.yaml",
+      ".codex/skills/maid-evolver/SKILL.md",
+      ".codex/skills/maid-evolver/agents/openai.yaml",
+      ".codex/skills/maid-implement-draft/SKILL.md",
+      ".codex/skills/maid-implement-draft/agents/openai.yaml",
+      ".codex/skills/maid-implementation-review/SKILL.md",
+      ".codex/skills/maid-implementation-review/agents/openai.yaml",
+      ".codex/skills/maid-implementer/SKILL.md",
+      ".codex/skills/maid-implementer/agents/openai.yaml",
+      ".codex/skills/maid-incident-logger/SKILL.md",
+      ".codex/skills/maid-incident-logger/agents/openai.yaml",
+      ".codex/skills/maid-outcome-enrich/SKILL.md",
+      ".codex/skills/maid-outcome-enrich/agents/openai.yaml",
+      ".codex/skills/maid-plan-review/SKILL.md",
+      ".codex/skills/maid-plan-review/agents/openai.yaml",
+      ".codex/skills/maid-planner/SKILL.md",
+      ".codex/skills/maid-planner/agents/openai.yaml",
+      ".codex/skills/maid-run-review/SKILL.md",
+      ".codex/skills/maid-run-review/agents/openai.yaml",
+      ".gitignore",
+      ".maid/legacy-grandfathered.lock",
+      ".maid/plan-locks/01-instrument-upgrade-funnel-events.lock.json",
+      ".maid/plan-locks/04-github-app-only-repository-surfaces.lock.json",
+      ".maid/plan-locks/05-github-app-only-issue-feedback-surfaces.lock.json",
+      ".maid/plan-locks/make-github-settings-connection-only.lock.json",
+      ".maid/plan-locks/prepare-v2-0-0-github-app-release.lock.json",
+      ".maid/plan-locks/track-popup-adc-fix-help-clicks.lock.json",
+      ".maidrc.yaml",
+      ".pre-commit-config.yaml",
+      "AGENTS.md",
+      "CLAUDE.md",
+      "docs/draft-manifest-workflow.md",
+      "docs/manifest-outcome-records.md",
+      "manifests/01-instrument-upgrade-funnel-events.manifest.yaml",
+      "manifests/04-github-app-only-repository-surfaces.manifest.yaml",
+      "manifests/05-github-app-only-issue-feedback-surfaces.manifest.yaml",
+      "manifests/drafts/README.md",
+      "manifests/make-github-settings-connection-only.manifest.yaml",
+      "manifests/prepare-v2-0-0-github-app-release.manifest.yaml",
+      "manifests/track-popup-adc-fix-help-clicks.manifest.yaml"
+    ]
+  },
+  "legacy_baseline": null,
+  "agent": null,
+  "_manifest_contract": {
+    "artifacts": [
+      ".github/workflows/release.yml:namespace:VITE_GA4_API_SECRET",
+      ".github/workflows/release.yml:namespace:VITE_GA4_API_SECRET:kind=namespace",
+      "manifest.json:namespace:Ga4CollectionHost",
+      "manifest.json:namespace:Ga4CollectionHost:kind=namespace",
+      "src/lib/components/ui/AnalyticsToggle.svelte:function:AnalyticsToggle",
+      "src/lib/components/ui/AnalyticsToggle.svelte:function:AnalyticsToggle:kind=function",
+      "src/lib/components/ui/AnalyticsToggle.svelte:function:AnalyticsToggle:returns=Svelte component instance",
+      "src/lib/components/ui/__tests__/AnalyticsToggle.component.test.ts:offers a separate uninstall feedback usage opt-out",
+      "src/lib/components/ui/__tests__/AnalyticsToggle.component.test.ts:offers a separate uninstall feedback usage opt-out:kind=test_function",
+      "src/lib/components/ui/__tests__/AnalyticsToggle.component.test.ts:shows GA4 is paused and discloses uninstall feedback usage",
+      "src/lib/components/ui/__tests__/AnalyticsToggle.component.test.ts:shows GA4 is paused and discloses uninstall feedback usage:kind=test_function",
+      "src/lib/components/ui/__tests__/AnalyticsToggle.component.test.ts:turning off uninstall feedback clears its URL and saves the preference",
+      "src/lib/components/ui/__tests__/AnalyticsToggle.component.test.ts:turning off uninstall feedback clears its URL and saves the preference:kind=test_function",
+      "src/lib/utils/analyticsReleasePolicy.ts:function:assertAnalyticsSecretNotBundled",
+      "src/lib/utils/analyticsReleasePolicy.ts:function:assertAnalyticsSecretNotBundled:arg=secret:type=string | undefined:default=None",
+      "src/lib/utils/analyticsReleasePolicy.ts:function:assertAnalyticsSecretNotBundled:kind=function",
+      "src/lib/utils/analyticsReleasePolicy.ts:function:assertAnalyticsSecretNotBundled:returns=void",
+      "src/test/release/analyticsSecretPackaging.test.ts:Vite config refuses a secret-bearing production build",
+      "src/test/release/analyticsSecretPackaging.test.ts:Vite config refuses a secret-bearing production build:kind=test_function",
+      "src/test/release/analyticsSecretPackaging.test.ts:clean production package omits the GA4 collection permission",
+      "src/test/release/analyticsSecretPackaging.test.ts:clean production package omits the GA4 collection permission:kind=test_function",
+      "src/test/release/analyticsSecretPackaging.test.ts:packaged extension does not request the GA4 collection host",
+      "src/test/release/analyticsSecretPackaging.test.ts:packaged extension does not request the GA4 collection host:kind=test_function",
+      "src/test/release/analyticsSecretPackaging.test.ts:rejects a configured GA4 API secret before Vite builds",
+      "src/test/release/analyticsSecretPackaging.test.ts:rejects a configured GA4 API secret before Vite builds:kind=test_function",
+      "src/test/release/analyticsSecretPackaging.test.ts:release workflow never supplies a GA4 API secret",
+      "src/test/release/analyticsSecretPackaging.test.ts:release workflow never supplies a GA4 API secret:kind=test_function"
+    ],
+    "files": {
+      "create": ["src/lib/utils/analyticsReleasePolicy.ts"],
+      "edit": [
+        ".github/workflows/release.yml",
+        "manifest.json",
+        "src/lib/components/ui/AnalyticsToggle.svelte",
+        "src/lib/components/ui/__tests__/AnalyticsToggle.component.test.ts",
+        "src/test/release/analyticsSecretPackaging.test.ts"
+      ],
+      "read": ["src/background/UsageTracker.ts", "src/services/AnalyticsService.ts"],
+      "scope": ["README.md", "vite.config.ts"],
+      "delete": [],
+      "snapshot": []
+    },
+    "file_contract": {
+      "create": [
+        {
+          "path": "src/lib/utils/analyticsReleasePolicy.ts",
+          "artifacts": [
+            {
+              "kind": "function",
+              "name": "assertAnalyticsSecretNotBundled",
+              "description": "Rejects builds when a GA4 API secret is supplied through the process or Vite env files.",
+              "args": [
+                {
+                  "name": "secret",
+                  "type": "string | undefined"
+                }
+              ],
+              "returns": "void"
+            }
+          ]
+        }
+      ],
+      "edit": [
+        {
+          "path": ".github/workflows/release.yml",
+          "artifacts": [
+            {
+              "kind": "namespace",
+              "name": "VITE_GA4_API_SECRET",
+              "description": "The release build does not inject a GA4 API secret into Vite."
+            }
+          ]
+        },
+        {
+          "path": "manifest.json",
+          "artifacts": [
+            {
+              "kind": "namespace",
+              "name": "Ga4CollectionHost",
+              "description": "The extension no longer requests access to the GA collection host while analytics are paused."
+            }
+          ]
+        },
+        {
+          "path": "src/lib/components/ui/AnalyticsToggle.svelte",
+          "artifacts": [
+            {
+              "kind": "function",
+              "name": "AnalyticsToggle",
+              "description": "Displays the GA4 pause and preserves the uninstall-feedback usage opt-out.",
+              "returns": "Svelte component instance"
+            }
+          ]
+        },
+        {
+          "path": "src/lib/components/ui/__tests__/AnalyticsToggle.component.test.ts",
+          "artifacts": [
+            {
+              "kind": "test_function",
+              "name": "shows GA4 is paused and discloses uninstall feedback usage"
+            },
+            {
+              "kind": "test_function",
+              "name": "offers a separate uninstall feedback usage opt-out"
+            },
+            {
+              "kind": "test_function",
+              "name": "turning off uninstall feedback clears its URL and saves the preference"
+            }
+          ]
+        },
+        {
+          "path": "src/test/release/analyticsSecretPackaging.test.ts",
+          "artifacts": [
+            {
+              "kind": "test_function",
+              "name": "rejects a configured GA4 API secret before Vite builds"
+            },
+            {
+              "kind": "test_function",
+              "name": "Vite config refuses a secret-bearing production build"
+            },
+            {
+              "kind": "test_function",
+              "name": "release workflow never supplies a GA4 API secret"
+            },
+            {
+              "kind": "test_function",
+              "name": "packaged extension does not request the GA4 collection host"
+            },
+            {
+              "kind": "test_function",
+              "name": "clean production package omits the GA4 collection permission"
+            }
+          ]
+        }
+      ],
+      "read": ["src/services/AnalyticsService.ts", "src/background/UsageTracker.ts"],
+      "scope": [
+        {
+          "path": "vite.config.ts",
+          "reason": "Invoke the release policy for all Vite modes using process and Vite environment values."
+        },
+        {
+          "path": "README.md",
+          "reason": "Replace obsolete instructions for bundling the GA4 secret with the v2.0.0 pause and build guard."
+        }
+      ]
+    },
+    "test_files": [
+      "src/lib/components/ui/__tests__/AnalyticsToggle.component.test.ts",
+      "src/test/release/analyticsSecretPackaging.test.ts"
+    ],
+    "validate_commands": [
+      "pnpm exec vitest run src/test/release/analyticsSecretPackaging.test.ts src/lib/components/ui/__tests__/AnalyticsToggle.component.test.ts",
+      "pnpm lint",
+      "pnpm check",
+      "pnpm build"
+    ],
+    "acceptance_commands": []
+  }
+}

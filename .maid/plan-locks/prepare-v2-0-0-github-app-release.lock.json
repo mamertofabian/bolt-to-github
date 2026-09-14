@@ -1,14 +1,14 @@
 {
   "manifest_path": "manifests/prepare-v2-0-0-github-app-release.manifest.yaml",
-  "manifest_hash": "sha256:af06b3c0f25bb0ec43d208229ebbccfaeb679d9e5192e96e644c2aaa84ff651d",
+  "manifest_hash": "sha256-contract:fd90a0fccfe1729034fdf96dfda20e7606cd27086b64a7671b9a37de54985765",
   "test_hashes": {
-    "src/test/e2e-helpers/popup-helpers.test.ts": "sha256:eeb0742efbc57aeab96856e5e9d6ad1eee0ff136125a062ecec3fcfb2f5d4e75",
+    "src/test/e2e-helpers/popup-helpers.test.ts": "sha256:a8033f04fba98d3932e542df2c993612b8ad251a8989f211d0e25fb0c117b93d",
     "src/lib/constants/__tests__/whatsNewContent.test.ts": "sha256:1bf261d07283e09b866484955729c208ac6ede42cb11ed38b3bf6cf6fd47c2d3",
     "src/lib/components/__tests__/WelcomeHero.component.test.ts": "sha256:21d15970e5c137bb754ca3bb0617f41fc8f1f9f6537e2300902bfd0ed5a2c04e",
-    "src/test/auth/githubAppOnlySourceGuard.test.ts": "sha256:2ea7ab452ec9b52cac51cd90315dae8aa51cb66a98493892709df212079756f7"
+    "src/test/auth/githubAppOnlySourceGuard.test.ts": "sha256:b95ee987a31196c6c891e5888e182d58f2719fb6bc9491f014c5fc4d164c2608"
   },
   "created_at": "2026-07-13T22:38:26.375532+00:00",
-  "revision": 8,
+  "revision": 10,
   "revisions": [
     {
       "prior_manifest_hash": "sha256:0cf3ba53a406b9fc62f9d7d11a0bcafd40ff2b68b9c50c2cf5b1b4cf5e2140fe",
@@ -178,6 +178,46 @@
         "validate_commands_added": [],
         "validate_commands_removed": []
       }
+    },
+    {
+      "prior_manifest_hash": "sha256:af06b3c0f25bb0ec43d208229ebbccfaeb679d9e5192e96e644c2aaa84ff651d",
+      "prior_test_hashes": {
+        "src/test/e2e-helpers/popup-helpers.test.ts": "sha256:eeb0742efbc57aeab96856e5e9d6ad1eee0ff136125a062ecec3fcfb2f5d4e75",
+        "src/lib/constants/__tests__/whatsNewContent.test.ts": "sha256:1bf261d07283e09b866484955729c208ac6ede42cb11ed38b3bf6cf6fd47c2d3",
+        "src/lib/components/__tests__/WelcomeHero.component.test.ts": "sha256:21d15970e5c137bb754ca3bb0617f41fc8f1f9f6537e2300902bfd0ed5a2c04e",
+        "src/test/auth/githubAppOnlySourceGuard.test.ts": "sha256:2ea7ab452ec9b52cac51cd90315dae8aa51cb66a98493892709df212079756f7"
+      },
+      "revised_at": "2026-09-14T13:07:33.721364+00:00",
+      "reason": "Preserve the published v1.3.21 release contract while superseding only unreleased v1.3.22 metadata",
+      "agent": null,
+      "contract_delta": {
+        "artifacts_added": [],
+        "artifacts_removed": [],
+        "files_added": [],
+        "files_removed": [],
+        "validate_commands_added": [],
+        "validate_commands_removed": []
+      }
+    },
+    {
+      "prior_manifest_hash": "sha256-contract:403553ccd44682c9964de3f778d615f9943b686667aa31feef51cd51ebe588e4",
+      "prior_test_hashes": {
+        "src/test/e2e-helpers/popup-helpers.test.ts": "sha256:a8033f04fba98d3932e542df2c993612b8ad251a8989f211d0e25fb0c117b93d",
+        "src/lib/constants/__tests__/whatsNewContent.test.ts": "sha256:1bf261d07283e09b866484955729c208ac6ede42cb11ed38b3bf6cf6fd47c2d3",
+        "src/lib/components/__tests__/WelcomeHero.component.test.ts": "sha256:21d15970e5c137bb754ca3bb0617f41fc8f1f9f6537e2300902bfd0ed5a2c04e",
+        "src/test/auth/githubAppOnlySourceGuard.test.ts": "sha256:b95ee987a31196c6c891e5888e182d58f2719fb6bc9491f014c5fc4d164c2608"
+      },
+      "revised_at": "2026-09-14T13:08:45.241493+00:00",
+      "reason": "Restore released-version supersession because retaining its obsolete active test contract fails MAID validation; document unsupported non-code artifact drops separately",
+      "agent": null,
+      "contract_delta": {
+        "artifacts_added": [],
+        "artifacts_removed": [],
+        "files_added": [],
+        "files_removed": [],
+        "validate_commands_added": [],
+        "validate_commands_removed": []
+      }
     }
   ],
   "red_evidence": {
@@ -216,6 +256,7 @@
       }
     ]
   },
+  "legacy_baseline": null,
   "agent": {
     "model": "gpt-5",
     "provider": "openai",
@@ -344,6 +385,272 @@
         "manifests/07-remove-legacy-pat-storage-and-types.manifest.yaml",
         "manifests/08-github-app-only-release-regression.manifest.yaml",
         "manifests/release-v1-3-21.manifest.yaml"
+      ],
+      "scope": [],
+      "delete": [],
+      "snapshot": []
+    },
+    "file_contract": {
+      "edit": [
+        {
+          "path": "package.json",
+          "artifacts": [
+            {
+              "kind": "namespace",
+              "name": "PackageVersion_2_0_0",
+              "description": "Package metadata version is exactly 2.0.0."
+            }
+          ]
+        },
+        {
+          "path": "manifest.json",
+          "artifacts": [
+            {
+              "kind": "namespace",
+              "name": "ChromeManifestVersion_2_0_0",
+              "description": "Chrome extension manifest version is exactly 2.0.0."
+            }
+          ]
+        },
+        {
+          "path": "CHANGELOG.md",
+          "artifacts": [
+            {
+              "kind": "namespace",
+              "name": "Version_2_0_0_Changelog",
+              "description": "Upcoming v2.0.0 developer release record focused on GitHub App-only authentication and PAT retirement."
+            },
+            {
+              "kind": "namespace",
+              "name": "Version_1_3_21_Changelog",
+              "description": "Preserved historical v1.3.21 developer release record."
+            }
+          ]
+        },
+        {
+          "path": "README.md",
+          "artifacts": [
+            {
+              "kind": "namespace",
+              "name": "Version_2_0_0_Readme",
+              "description": "Upcoming v2.0.0 user-facing summary and migration steps, with v1.3.21 retained as the previous release."
+            },
+            {
+              "kind": "namespace",
+              "name": "Version_1_3_21_Readme",
+              "description": "Preserved historical v1.3.21 user-facing release summary."
+            }
+          ]
+        },
+        {
+          "path": "CLAUDE.md",
+          "artifacts": [
+            {
+              "kind": "namespace",
+              "name": "DevelopmentGuideVersion_2_0_0",
+              "description": "Repository development guidance identifies v2.0.0 as the current development release."
+            }
+          ]
+        },
+        {
+          "path": "e2e/helpers/storage.ts",
+          "artifacts": [
+            {
+              "kind": "interface",
+              "name": "GitHubAppE2ESettings",
+              "description": "Optional GitHub App identity, session, repository, and project overrides for connected browser fixtures."
+            },
+            {
+              "kind": "attribute",
+              "name": "userId",
+              "of": "GitHubAppE2ESettings",
+              "type": "string | undefined"
+            },
+            {
+              "kind": "attribute",
+              "name": "email",
+              "of": "GitHubAppE2ESettings",
+              "type": "string | undefined"
+            },
+            {
+              "kind": "attribute",
+              "name": "installationId",
+              "of": "GitHubAppE2ESettings",
+              "type": "number | undefined"
+            },
+            {
+              "kind": "attribute",
+              "name": "username",
+              "of": "GitHubAppE2ESettings",
+              "type": "string | undefined"
+            },
+            {
+              "kind": "attribute",
+              "name": "avatarUrl",
+              "of": "GitHubAppE2ESettings",
+              "type": "string | undefined"
+            },
+            {
+              "kind": "attribute",
+              "name": "repoOwner",
+              "of": "GitHubAppE2ESettings",
+              "type": "string | undefined"
+            },
+            {
+              "kind": "attribute",
+              "name": "projectSettings",
+              "of": "GitHubAppE2ESettings",
+              "type": "ProjectSettings | undefined"
+            },
+            {
+              "kind": "interface",
+              "name": "LegacyPatE2ESettings",
+              "description": "Explicit migration-only legacy credential and preserved repository overrides."
+            },
+            {
+              "kind": "attribute",
+              "name": "token",
+              "of": "LegacyPatE2ESettings",
+              "type": "string | undefined"
+            },
+            {
+              "kind": "attribute",
+              "name": "repoOwner",
+              "of": "LegacyPatE2ESettings",
+              "type": "string | undefined"
+            },
+            {
+              "kind": "attribute",
+              "name": "projectSettings",
+              "of": "LegacyPatE2ESettings",
+              "type": "ProjectSettings | undefined"
+            },
+            {
+              "kind": "function",
+              "name": "seedConnectedGitHubApp",
+              "description": "Seeds live session, installation, repository, and project state without PAT credentials.",
+              "args": [
+                {
+                  "name": "context",
+                  "type": "BrowserContext"
+                },
+                {
+                  "name": "extensionId",
+                  "type": "string"
+                },
+                {
+                  "name": "settings",
+                  "type": "GitHubAppE2ESettings | undefined"
+                }
+              ],
+              "returns": "Promise<void>"
+            },
+            {
+              "kind": "function",
+              "name": "seedLegacyPatMigration",
+              "description": "Seeds a legacy PAT plus preserved repository data for migration-only browser coverage.",
+              "args": [
+                {
+                  "name": "context",
+                  "type": "BrowserContext"
+                },
+                {
+                  "name": "extensionId",
+                  "type": "string"
+                },
+                {
+                  "name": "settings",
+                  "type": "LegacyPatE2ESettings | undefined"
+                }
+              ],
+              "returns": "Promise<void>"
+            }
+          ]
+        },
+        {
+          "path": "src/test/e2e-helpers/popup-helpers.test.ts",
+          "artifacts": [
+            {
+              "kind": "test_function",
+              "name": "product auth helper seeds GitHub App session and installation without PAT"
+            },
+            {
+              "kind": "test_function",
+              "name": "migration helper seeds legacy PAT only for the explicit upgrade scenario"
+            }
+          ]
+        },
+        {
+          "path": "src/lib/constants/whatsNewContent.ts",
+          "artifacts": [
+            {
+              "kind": "attribute",
+              "name": "whatsNewContent",
+              "description": "Exposes v2.0.0 as the major GitHub App-only release and retains accurate historical entries without an unreleased v1.3.22 duplicate.",
+              "type": "Record<string, WhatsNewVersion>"
+            }
+          ]
+        },
+        {
+          "path": "src/lib/constants/__tests__/whatsNewContent.test.ts",
+          "artifacts": [
+            {
+              "kind": "test_function",
+              "name": "keeps package and Chrome manifest versions aligned for 2.0.0"
+            },
+            {
+              "kind": "test_function",
+              "name": "keeps the preliminary v2.0.0 release surfaces focused and user-facing"
+            },
+            {
+              "kind": "test_function",
+              "name": "GitHub App-only release notes explain the required account migration without zero-usage claims"
+            },
+            {
+              "kind": "test_function",
+              "name": "accessible release history no longer advertises PAT or dual authentication as a current option"
+            },
+            {
+              "kind": "test_function",
+              "name": "keeps the v1.3.21 release in accessible history"
+            }
+          ]
+        },
+        {
+          "path": "src/lib/components/__tests__/WelcomeHero.component.test.ts",
+          "artifacts": [
+            {
+              "kind": "test_function",
+              "name": "presents Bolt2GitHub sign-in and the GitHub App as required setup"
+            }
+          ]
+        },
+        {
+          "path": "src/test/auth/githubAppOnlySourceGuard.test.ts",
+          "artifacts": [
+            {
+              "kind": "test_function",
+              "name": "production source exposes no PAT strategy selector token constructor creation link or setup guidance",
+              "description": "Rejects PAT execution identifiers and actionable setup phrases outside the explicit migration boundary."
+            },
+            {
+              "kind": "test_function",
+              "name": "legacy PAT identifiers are confined to migration handling third-party error compatibility and negative assertions",
+              "description": "Keeps retired credentials out of steady product and test authentication while allowing explicit migration compatibility."
+            }
+          ]
+        }
+      ],
+      "read": [
+        "manifests/08-github-app-only-release-regression.manifest.yaml",
+        "manifests/release-v1-3-21.manifest.yaml",
+        "manifests/01-github-app-only-migration-policy.manifest.yaml",
+        "manifests/02-github-app-only-primary-setup.manifest.yaml",
+        "manifests/03-github-app-only-runtime-enforcement.manifest.yaml",
+        "manifests/04-github-app-only-repository-surfaces.manifest.yaml",
+        "manifests/05-github-app-only-issue-feedback-surfaces.manifest.yaml",
+        "manifests/06-retire-pat-strategy-and-factory.manifest.yaml",
+        "manifests/07-remove-legacy-pat-storage-and-types.manifest.yaml"
       ]
     },
     "test_files": [
@@ -358,6 +665,7 @@
       "pnpm lint",
       "pnpm check",
       "pnpm build"
-    ]
+    ],
+    "acceptance_commands": []
   }
 }

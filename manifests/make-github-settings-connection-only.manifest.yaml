@@ -1,3 +1,7 @@
+# MAID manifest - a machine-checked contract for one change.
+# Declares the intent, the files it may touch, and the commands that verify it.
+# Nothing here is needed to build or run this project; safe to ignore.
+# What it is: https://github.com/mamertofabian/maid-runner
 schema: '2'
 goal: Make the Settings tab GitHub App connection-only and keep repository configuration project-scoped
 description: |
@@ -77,9 +81,6 @@ files:
       artifacts:
         - kind: function
           name: GitHubSettings
-          args:
-            - name: props
-              type: '{ repoOwner: string; githubAppInstallationId?: number | null; githubAppUsername?: string | null; githubAppAvatarUrl?: string | null; migrationRequired?: boolean }'
           returns: Svelte component instance
           description: |
             Renders GitHub App connection identity, disconnected and migration
@@ -92,9 +93,6 @@ files:
       artifacts:
         - kind: function
           name: SettingsTabContent
-          args:
-            - name: props
-              type: '{ githubSettings: GitHubSettingsState; isUserPremium: boolean }'
           returns: Svelte component instance
           description: |
             Renders account-level GitHub App connection state and global popup
@@ -104,18 +102,12 @@ files:
       artifacts:
         - kind: function
           name: OnboardingSetup
-          args:
-            - name: props
-              type: OnboardingSetup component props
           returns: Svelte component instance
           description: Carries forward the complete GitHub App-only setup, signed-out recovery, and legacy PAT migration contract without automatic navigation.
     - path: src/popup/components/OnboardingView.svelte
       artifacts:
         - kind: function
           name: OnboardingView
-          args:
-            - name: props
-              type: OnboardingView component props
           returns: Svelte component instance
           description: Carries forward live-session and durable migration-required state forwarding to the GitHub App-only setup component.
     - path: src/lib/utils/repo-settings.ts
@@ -142,9 +134,6 @@ files:
       artifacts:
         - kind: function
           name: RepoSettings
-          args:
-            - name: props
-              type: RepoSettings component props
           returns: Svelte component instance
           description: Carries forward repository validation, project-scoped saving, and visible recovery behavior in the authoritative editor.
     - path: src/background/BackgroundService.ts
@@ -156,18 +145,12 @@ files:
       artifacts:
         - kind: function
           name: ProjectStatus
-          args:
-            - name: props
-              type: ProjectStatus component props
           returns: Svelte component instance
           description: Carries forward visible, retry-safe push failures and the project-scoped RepoSettings entry point.
     - path: src/popup/components/FileChangesModal.svelte
       artifacts:
         - kind: function
           name: FileChangesModal
-          args:
-            - name: props
-              type: FileChangesModal component props
           returns: Svelte component instance
           description: Carries forward visible modal push failures while preserving retry and confirmation flows.
     - path: e2e/helpers/popup.ts

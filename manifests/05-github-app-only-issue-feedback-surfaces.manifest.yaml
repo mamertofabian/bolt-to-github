@@ -1,3 +1,7 @@
+# MAID manifest - a machine-checked contract for one change.
+# Declares the intent, the files it may touch, and the commands that verify it.
+# Nothing here is needed to build or run this project; safe to ignore.
+# What it is: https://github.com/mamertofabian/maid-runner
 schema: '2'
 goal: |
   Remove PAT token parameters from GitHub issue management and feedback
@@ -72,49 +76,31 @@ files:
       artifacts:
         - kind: function
           name: IssueManager
-          args:
-            - name: props
-              type: IssueManager component props without githubToken
           returns: Svelte component instance
     - path: src/lib/components/QuickIssueForm.svelte
       artifacts:
         - kind: function
           name: QuickIssueForm
-          args:
-            - name: props
-              type: QuickIssueForm component props without githubToken
           returns: Svelte component instance
     - path: src/lib/components/ProjectStatus.svelte
       artifacts:
         - kind: function
           name: ProjectStatus
-          args:
-            - name: props
-              type: ProjectStatus component props without token
           returns: Svelte component instance
     - path: src/popup/components/FeedbackModal.svelte
       artifacts:
         - kind: function
           name: FeedbackModal
-          args:
-            - name: props
-              type: FeedbackModal component props without githubToken
           returns: Svelte component instance
     - path: src/popup/components/HomeTabContent.svelte
       artifacts:
         - kind: function
           name: HomeTabContent
-          args:
-            - name: props
-              type: HomeTabContent component props
           returns: Svelte component instance
     - path: src/popup/App.svelte
       artifacts:
         - kind: function
           name: App
-          args:
-            - name: props
-              type: popup App component props
           returns: Svelte component instance
     - path: src/lib/stores/__tests__/issuesStore.test.ts
       artifacts:
