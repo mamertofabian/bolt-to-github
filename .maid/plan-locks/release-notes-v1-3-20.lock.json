@@ -1,11 +1,11 @@
 {
   "manifest_path": "manifests/release-notes-v1-3-20.manifest.yaml",
-  "manifest_hash": "sha256:1c5bd792ab5809bb8a868a451aa47fe4dc46387a2280c1a6ba0f878218f7e4fc",
+  "manifest_hash": "sha256-contract:b5035e15a492a9f6b43fa86f165a5fcfa3b1d3b9b72452eac1eaeb75757469c0",
   "test_hashes": {
-    "src/lib/constants/__tests__/whatsNewContent.test.ts": "sha256:f5d4b42fa7ab87ea5887baa8a310f907518fc913fab698b7322f33042edd58cb"
+    "src/lib/constants/__tests__/whatsNewContent.test.ts": "sha256:1aeaad7f5b729d5c3c566e748cafc92d4043db71de92cf07ebe26fe25fb80f57"
   },
   "created_at": "2026-07-12T03:49:28.448519+00:00",
-  "revision": 6,
+  "revision": 7,
   "revisions": [
     {
       "prior_manifest_hash": "sha256:7fd8ccee8f06b6b8af9931535d426ba44a765452d4593a2976dd76318c0f3c43",
@@ -97,6 +97,23 @@
         "validate_commands_added": [],
         "validate_commands_removed": []
       }
+    },
+    {
+      "prior_manifest_hash": "sha256:1c5bd792ab5809bb8a868a451aa47fe4dc46387a2280c1a6ba0f878218f7e4fc",
+      "prior_test_hashes": {
+        "src/lib/constants/__tests__/whatsNewContent.test.ts": "sha256:f5d4b42fa7ab87ea5887baa8a310f907518fc913fab698b7322f33042edd58cb"
+      },
+      "revised_at": "2026-09-15T04:07:07.310337+00:00",
+      "reason": "Accept the final v2.0.0 release assertions added to the shared historical release test file",
+      "agent": null,
+      "contract_delta": {
+        "artifacts_added": [],
+        "artifacts_removed": [],
+        "files_added": ["scope:src/lib/constants/whatsNewContent.ts"],
+        "files_removed": [],
+        "validate_commands_added": [],
+        "validate_commands_removed": []
+      }
     }
   ],
   "red_evidence": {
@@ -123,6 +140,7 @@
       }
     ]
   },
+  "legacy_baseline": null,
   "agent": null,
   "_manifest_contract": {
     "artifacts": [
@@ -144,6 +162,59 @@
         "src/content/services/githubAppIdentity.ts",
         "src/lib/utils/analytics.ts",
         "src/lib/utils/reloadNotification.ts"
+      ],
+      "scope": ["src/lib/constants/whatsNewContent.ts"],
+      "delete": [],
+      "snapshot": []
+    },
+    "file_contract": {
+      "edit": [
+        {
+          "path": "CHANGELOG.md",
+          "artifacts": [
+            {
+              "kind": "namespace",
+              "name": "Version_1_3_20_Changelog",
+              "description": "Developer-facing v1.3.20 release record with concrete engineering and validation details."
+            }
+          ]
+        },
+        {
+          "path": "README.md",
+          "artifacts": [
+            {
+              "kind": "namespace",
+              "name": "Version_1_3_20_Readme",
+              "description": "User-facing current-release summary with no development placeholders."
+            }
+          ]
+        },
+        {
+          "path": "src/lib/constants/__tests__/whatsNewContent.test.ts",
+          "artifacts": [
+            {
+              "kind": "test_function",
+              "name": "keeps the 1.3.20 modal focused on final user-facing release notes"
+            },
+            {
+              "kind": "test_function",
+              "name": "keeps the v1.3.20 changelog and README release-ready"
+            }
+          ]
+        }
+      ],
+      "read": [
+        "manifests/release-notes-v1-3-19-auth-recovery.manifest.yaml",
+        "src/content/services/PostPushTeaserService.ts",
+        "src/content/services/githubAppIdentity.ts",
+        "src/lib/utils/reloadNotification.ts",
+        "src/lib/utils/analytics.ts"
+      ],
+      "scope": [
+        {
+          "path": "src/lib/constants/whatsNewContent.ts",
+          "reason": "Update the existing 1.3.20 data entry without changing the previously declared WhatsNewVersion public interface."
+        }
       ]
     },
     "test_files": ["src/lib/constants/__tests__/whatsNewContent.test.ts"],
@@ -151,6 +222,7 @@
       "pnpm exec vitest run src/lib/constants/__tests__/whatsNewContent.test.ts",
       "pnpm check",
       "pnpm lint"
-    ]
+    ],
+    "acceptance_commands": []
   }
 }

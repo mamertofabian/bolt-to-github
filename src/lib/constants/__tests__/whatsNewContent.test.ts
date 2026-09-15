@@ -32,11 +32,11 @@ describe('whatsNewContent', () => {
     const currentReadme = textBefore(Version_2_0_0_Readme, '### Previous Version: v1.3.21');
 
     expect(release).toBeDefined();
-    expect(release.date).toBe('2026-07-14');
+    expect(release.date).toBe('2026-09-15');
     expect(release.type).toBe('major');
     expect(whatsNewContent['1.3.22']).toBeUndefined();
-    expect(Version_2_0_0_Changelog).toContain('## Unreleased - Version 2.0.0');
-    expect(Version_2_0_0_Readme).toContain('### Upcoming Version: v2.0.0');
+    expect(Version_2_0_0_Changelog).toContain('## 2026-09-15 - Version 2.0.0');
+    expect(Version_2_0_0_Readme).toContain('### Current Version: v2.0.0');
     expect(Version_2_0_0_Readme).toContain('Bolt2GitHub account');
     expect(Version_2_0_0_Readme).toContain('GitHub App');
     expect(
@@ -45,6 +45,30 @@ describe('whatsNewContent', () => {
     expect(
       [release.details, ...release.highlights, currentChangelog, currentReadme].join(' ')
     ).not.toMatch(/\bPRS\b|production[- ]readiness|dependency drift|secret detector|diff engine/i);
+  });
+
+  it('v2.0.0 release notes cover current reliability and privacy changes', () => {
+    const release = whatsNewContent['2.0.0'];
+    const modal = [release.details, ...release.highlights].join(' ');
+    const changelog = textBefore(
+      readFileSync(join(process.cwd(), 'CHANGELOG.md'), 'utf8'),
+      '## 2026-07-13 - Version 1.3.21'
+    );
+    const readme = textBefore(
+      readFileSync(join(process.cwd(), 'README.md'), 'utf8'),
+      '### Previous Version: v1.3.21'
+    );
+
+    for (const userFacingNotes of [modal, readme]) {
+      expect(userFacingNotes).toMatch(/Download[^.]*project (?:dropdown|menu)/i);
+      expect(userFacingNotes).toMatch(/Google Analytics[^.]*paused/i);
+      expect(userFacingNotes).toMatch(/project-scoped|correct project|project mapping/i);
+    }
+
+    expect(changelog).toMatch(/Release Publication Gates/i);
+    expect(changelog).toMatch(/Fail-Closed Local Packaging/i);
+    expect(changelog).toMatch(/Direct Project-Menu Download/i);
+    expect(changelog).not.toMatch(/Production Readiness Snapshot|native GitHub sync/i);
   });
 
   it('GitHub App-only release notes explain the required account migration without zero-usage claims', () => {

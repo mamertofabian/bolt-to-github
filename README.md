@@ -31,9 +31,9 @@ A Chrome extension that automatically captures ZIP file downloads from bolt.new,
   <img src="https://img.shields.io/badge/Install%20from-Chrome%20Web%20Store-blue?style=for-the-badge&logo=google-chrome&logoColor=white" alt="Install from Chrome Web Store" height="40">
 </a>
 
-### Upcoming Version: v2.0.0
+### Current Version: v2.0.0
 
-#### Version 2.0.0 - GitHub App-Only Authentication (July 2026)
+#### Version 2.0.0 - GitHub App Authentication & Reliability (September 2026)
 
 **What's new:**
 
@@ -42,6 +42,10 @@ A Chrome extension that automatically captures ZIP file downloads from bolt.new,
 - Existing repository and project mappings are preserved during the required migration
 - Legacy credentials are removed locally and the extension shows the exact reconnection steps
 - Onboarding now follows the live Bolt2GitHub session before GitHub App connection
+- Download works from Bolt's current project dropdown, where the action now appears directly without an Export submenu
+- Project-scoped repository settings keep the correct project mapping and preserve custom repository names
+- Google Analytics event tracking is paused; no GA4 secret or Google Analytics host permission ships in the extension
+- Release packaging now stops on failed builds and automated publication waits for unit, contract, build, and browser checks
 
 **How to migrate:**
 
