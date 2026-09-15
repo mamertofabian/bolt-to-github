@@ -18,6 +18,8 @@ export class DownloadService {
   private currentDownloadPromise: Promise<Blob> | null = null;
   // Event listener for download interception
   private clickListener: ((e: MouseEvent) => void) | null = null;
+  // Exact direct Download item found in the opened project menu.
+  private pendingDirectDownloadItem: HTMLElement | null = null;
   // Cache service for storing downloaded files
   private cacheService: CacheService = CacheService.getInstance(IdleMonitorService.getInstance());
   // Current project ID (extracted from URL)
@@ -92,7 +94,7 @@ export class DownloadService {
    * @param forceRefresh Whether to force a fresh download even if cache is available
    * @returns Promise resolving to a Map of filenames to file contents
    */
-  public async getProjectFiles(forceRefresh = false): Promise<ProjectFiles> {
+  public async getProjectFiles(forceRefresh: boolean = false): Promise<ProjectFiles> {
     // Get current project ID
     this.currentProjectId = this.getCurrentProjectId();
     if (!this.currentProjectId) {
@@ -186,6 +188,7 @@ export class DownloadService {
       this.clickListener = null;
     }
     this.isDownloading = false;
+    this.pendingDirectDownloadItem = null;
   }
 
   /**
@@ -235,6 +238,9 @@ export class DownloadService {
 
     if (projectNameButton) {
       logger.info('Found project name dropdown button:', projectNameButton);
+      const menusBeforeClick = new Set(
+        document.querySelectorAll<HTMLElement>('[role="menu"], [data-radix-menu-content]')
+      );
       dispatchFullClick(projectNameButton);
 
       // Wait for the dropdown to render
@@ -260,6 +266,30 @@ export class DownloadService {
           `Found ${allMenuItems.length} menu items:`,
           Array.from(allMenuItems).map((el) => el.textContent?.trim())
         );
+
+        // September 2026 Bolt places Download directly in the project menu.
+        // Limit this shortcut to the menu controlled by the project button, or
+        // to menus created by opening it, so unrelated page menus are ignored.
+        const controlledMenuId = projectNameButton.getAttribute('aria-controls');
+        const controlledMenu = controlledMenuId ? document.getElementById(controlledMenuId) : null;
+        const openedProjectMenus = controlledMenu
+          ? [controlledMenu]
+          : Array.from(
+              document.querySelectorAll<HTMLElement>('[role="menu"], [data-radix-menu-content]')
+            ).filter((menu) => !menusBeforeClick.has(menu));
+        const directDownloadItem = openedProjectMenus
+          .flatMap((menu) =>
+            Array.from(
+              menu.querySelectorAll<HTMLElement>('[role="menuitem"],[data-radix-collection-item]')
+            )
+          )
+          .find((item) => item.textContent?.trim().toLowerCase() === 'download');
+
+        if (directDownloadItem) {
+          logger.info('Found Download directly in the project menu');
+          this.pendingDirectDownloadItem = directDownloadItem;
+          return;
+        }
 
         exportMenuItem = Array.from(allMenuItems).find((el) => {
           const txt = el.textContent?.toLowerCase() ?? '';
@@ -371,7 +401,10 @@ export class DownloadService {
   private async findAndClickDownloadButton(): Promise<void> {
     let attempts = 0;
     const maxAttempts = 5;
-    let downloadButton = null;
+    let downloadButton: Element | null = this.pendingDirectDownloadItem?.isConnected
+      ? this.pendingDirectDownloadItem
+      : null;
+    this.pendingDirectDownloadItem = null;
 
     while (attempts < maxAttempts && !downloadButton) {
       // Increase wait time with each attempt
@@ -402,11 +435,12 @@ export class DownloadService {
 
         // Find the download button by looking for the file-archive icon
         // Match across icon libraries (i-lucide:file-archive, i-ph:file-archive, etc.).
-        downloadButton = Array.from(menuItems).find((item) => {
-          const hasFileArchiveIcon = item.querySelector('[class*="file-archive"]');
-          const hasDownloadText = item.textContent?.toLowerCase().includes('download');
-          return hasFileArchiveIcon || hasDownloadText;
-        });
+        downloadButton =
+          Array.from(menuItems).find((item) => {
+            const hasFileArchiveIcon = item.querySelector('[class*="file-archive"]');
+            const hasDownloadText = item.textContent?.toLowerCase().includes('download');
+            return hasFileArchiveIcon || hasDownloadText;
+          }) ?? null;
 
         if (downloadButton) {
           logger.info('Found download button in dropdown:', downloadButton);
@@ -416,13 +450,14 @@ export class DownloadService {
         // Fallback: also check for buttons with download-related content
         // Includes Heroicons "arrow-down-tray" used in the May 2026 Bolt DOM.
         const buttons = dropdown.querySelectorAll('button');
-        downloadButton = Array.from(buttons).find((button) => {
-          const hasDownloadText = button.textContent?.toLowerCase().includes('download');
-          const hasDownloadIcon = button.querySelector(
-            '[class*="download-simple"], [class*="file-archive"], [class*="arrow-down-tray"]'
-          );
-          return hasDownloadText || hasDownloadIcon;
-        });
+        downloadButton =
+          Array.from(buttons).find((button) => {
+            const hasDownloadText = button.textContent?.toLowerCase().includes('download');
+            const hasDownloadIcon = button.querySelector(
+              '[class*="download-simple"], [class*="file-archive"], [class*="arrow-down-tray"]'
+            );
+            return hasDownloadText || hasDownloadIcon;
+          }) ?? null;
 
         if (downloadButton) {
           logger.info('Found download button (fallback) in dropdown:', downloadButton);

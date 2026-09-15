@@ -1,0 +1,217 @@
+{
+  "manifest_path": "manifests/restore-direct-bolt-download.manifest.yaml",
+  "manifest_hash": "sha256-contract:24fee547564166bb1c5439f028d35e71e0a2bb1440140397e63ea1225b64f6e0",
+  "test_hashes": {
+    "src/services/__tests__/DownloadService.test.ts": "sha256:ae2561f5d37a5e55a485ccb27a36e291fb47b84ccfe8bc2fbd5d0264ec788714"
+  },
+  "created_at": "2026-09-15T03:48:11.132212+00:00",
+  "revision": 3,
+  "revisions": [
+    {
+      "prior_manifest_hash": "sha256-contract:527001d39cca0474910f81c985f593d65c0f31548128a09cdcea355f668df811",
+      "prior_test_hashes": {
+        "src/services/__tests__/DownloadService.test.ts": "sha256:092257984c81a715a8505fa7c9c4bb4041cd949cac90b5f824af32ef22452b3c"
+      },
+      "revised_at": "2026-09-15T03:48:32.400880+00:00",
+      "reason": "Migrated by maid manifest promote: manifests/drafts/restore-direct-bolt-download.manifest.yaml -> manifests/restore-direct-bolt-download.manifest.yaml",
+      "agent": null,
+      "contract_delta": {
+        "artifacts_added": [],
+        "artifacts_removed": [],
+        "files_added": [],
+        "files_removed": [],
+        "validate_commands_added": [],
+        "validate_commands_removed": []
+      }
+    },
+    {
+      "prior_manifest_hash": "sha256-contract:24fee547564166bb1c5439f028d35e71e0a2bb1440140397e63ea1225b64f6e0",
+      "prior_test_hashes": {
+        "src/services/__tests__/DownloadService.test.ts": "sha256:092257984c81a715a8505fa7c9c4bb4041cd949cac90b5f824af32ef22452b3c"
+      },
+      "revised_at": "2026-09-15T03:52:05.357692+00:00",
+      "reason": "Carry the captured project-menu Download element through the click and reject competing menu items after review",
+      "agent": null,
+      "contract_delta": {
+        "artifacts_added": [],
+        "artifacts_removed": [],
+        "files_added": [],
+        "files_removed": [],
+        "validate_commands_added": [],
+        "validate_commands_removed": []
+      }
+    }
+  ],
+  "red_evidence": {
+    "red": true,
+    "captured_at": "2026-09-15T03:52:19.468651+00:00",
+    "commands": [
+      {
+        "command": "pnpm exec vitest run src/services/__tests__/DownloadService.test.ts",
+        "exit_code": 1,
+        "output_tail": "   Duration  616ms (transform 57ms, setup 54ms, collect 0ms, tests 0ms, environment 194ms, prepare 40ms)\n\n\n\u23af\u23af\u23af\u23af\u23af\u23af Failed Suites 1 \u23af\u23af\u23af\u23af\u23af\u23af\u23af\n\n FAIL  src/services/__tests__/DownloadService.test.ts [ src/services/__tests__/DownloadService.test.ts ]\nError: ENOENT: no such file or directory, open '/home/atomrem/projects/codefrost-dev/bolt-to-github/bolt-download-button-v4.html'\n \u276f Proxy.readFileSync node:fs:436:20\n \u276f src/services/__tests__/DownloadService.test.ts:6:44\n      4| import { DownloadService } from '../DownloadService';\n      5| \n      6| const September2026DirectDownloadFixture = readFileSync(\n       |                                            ^\n      7|   resolvePath(process.cwd(), 'bolt-download-button-v4.html'),\n      8|   'utf8'\n\n\u23af\u23af\u23af\u23af\u23af\u23af\u23af\u23af\u23af\u23af\u23af\u23af\u23af\u23af\u23af\u23af\u23af\u23af\u23af\u23af\u23af\u23af\u23af\u23af\u23af\u23af\u23af\u23af\u23af\u23af\nSerialized Error: { errno: -2, code: 'ENOENT', syscall: 'open', path: '/home/atomrem/projects/codefrost-dev/bolt-to-github/bolt-download-button-v4.html' }\n\u23af\u23af\u23af\u23af\u23af\u23af\u23af\u23af\u23af\u23af\u23af\u23af\u23af\u23af\u23af\u23af\u23af\u23af\u23af\u23af\u23af\u23af\u23af\u23af[1/1]\u23af\n",
+        "classification": "red"
+      },
+      {
+        "command": "pnpm lint",
+        "exit_code": 0,
+        "output_tail": "\n> bolt-to-github@2.0.0 lint /home/atomrem/projects/codefrost-dev/bolt-to-github\n> eslint \"src/**/*.{js,ts,svelte}\"\n",
+        "classification": "not_red"
+      },
+      {
+        "command": "pnpm check",
+        "exit_code": 0,
+        "output_tail": "\n> bolt-to-github@2.0.0 check /home/atomrem/projects/codefrost-dev/bolt-to-github\n> svelte-check --tsconfig ./tsconfig.json\n\n\n====================================\nLoading svelte-check in workspace: /home/atomrem/projects/codefrost-dev/bolt-to-github\nGetting Svelte diagnostics...\n\n====================================\nsvelte-check found 0 errors and 0 warnings",
+        "classification": "not_red"
+      },
+      {
+        "command": "pnpm build",
+        "exit_code": 1,
+        "output_tail": "\n> bolt-to-github@2.0.0 build /home/atomrem/projects/codefrost-dev/bolt-to-github\n> vite build\n\n\u2009ELIFECYCLE\u2009 Command failed with exit code 1.\n\nfailed to load config from /home/atomrem/projects/codefrost-dev/bolt-to-github/vite.config.ts\nerror during build:\nError: GA4 API secret must not be bundled into the Chrome extension\n    at assertAnalyticsSecretNotBundled (file:///home/atomrem/projects/codefrost-dev/bolt-to-github/vite.config.ts.timestamp-1789444339185-a00fbb03302a9.mjs:70:11)\n    at file:///home/atomrem/projects/codefrost-dev/bolt-to-github/vite.config.ts.timestamp-1789444339185-a00fbb03302a9.mjs:99:3\n    at loadConfigFromFile (file:///home/atomrem/projects/codefrost-dev/bolt-to-github/node_modules/.pnpm/vite@5.4.21_@types+node@22.19.18/node_modules/vite/dist/node/chunks/dep-BK3b2jBa.js:66822:62)\n    at async resolveConfig (file:///home/atomrem/projects/codefrost-dev/bolt-to-github/node_modules/.pnpm/vite@5.4.21_@types+node@22.19.18/node_modules/vite/dist/node/chunks/dep-BK3b2jBa.js:66416:24)\n    at async build (file:///home/atomrem/projects/codefrost-dev/bolt-to-github/node_modules/.pnpm/vite@5.4.21_@types+node@22.19.18/node_modules/vite/dist/node/chunks/dep-BK3b2jBa.js:65503:18)\n    at async CAC.<anonymous> (file:///home/atomrem/projects/codefrost-dev/bolt-to-github/node_modules/.pnpm/vite@5.4.21_@types+node@22.19.18/node_modules/vite/dist/node/cli.js:829:5)",
+        "classification": "red"
+      }
+    ]
+  },
+  "legacy_baseline": null,
+  "agent": null,
+  "_manifest_contract": {
+    "artifacts": [
+      "bolt-download-button-v4.html:namespace:September2026DirectDownloadFixture",
+      "bolt-download-button-v4.html:namespace:September2026DirectDownloadFixture:kind=namespace",
+      "src/services/DownloadService.ts:class:DownloadService",
+      "src/services/DownloadService.ts:class:DownloadService:kind=class",
+      "src/services/DownloadService.ts:method:DownloadService.blobToBase64",
+      "src/services/DownloadService.ts:method:DownloadService.blobToBase64:arg=blob:type=Blob:default=None",
+      "src/services/DownloadService.ts:method:DownloadService.blobToBase64:kind=method",
+      "src/services/DownloadService.ts:method:DownloadService.blobToBase64:of=DownloadService",
+      "src/services/DownloadService.ts:method:DownloadService.blobToBase64:returns=Promise<string | null>",
+      "src/services/DownloadService.ts:method:DownloadService.downloadProjectZip",
+      "src/services/DownloadService.ts:method:DownloadService.downloadProjectZip:kind=method",
+      "src/services/DownloadService.ts:method:DownloadService.downloadProjectZip:of=DownloadService",
+      "src/services/DownloadService.ts:method:DownloadService.downloadProjectZip:returns=Promise<Blob>",
+      "src/services/DownloadService.ts:method:DownloadService.getProjectFiles",
+      "src/services/DownloadService.ts:method:DownloadService.getProjectFiles:arg=forceRefresh:type=boolean:default=false",
+      "src/services/DownloadService.ts:method:DownloadService.getProjectFiles:kind=method",
+      "src/services/DownloadService.ts:method:DownloadService.getProjectFiles:of=DownloadService",
+      "src/services/DownloadService.ts:method:DownloadService.getProjectFiles:returns=Promise<ProjectFiles>",
+      "src/services/DownloadService.ts:method:DownloadService.invalidateCache",
+      "src/services/DownloadService.ts:method:DownloadService.invalidateCache:kind=method",
+      "src/services/DownloadService.ts:method:DownloadService.invalidateCache:of=DownloadService",
+      "src/services/DownloadService.ts:method:DownloadService.invalidateCache:returns=void",
+      "src/services/__tests__/DownloadService.test.ts:blobToBase64 returns the encoded blob contents",
+      "src/services/__tests__/DownloadService.test.ts:blobToBase64 returns the encoded blob contents:kind=test_function",
+      "src/services/__tests__/DownloadService.test.ts:downloadProjectZip reuses an in-flight download and returns the captured blob",
+      "src/services/__tests__/DownloadService.test.ts:downloadProjectZip reuses an in-flight download and returns the captured blob:kind=test_function",
+      "src/services/__tests__/DownloadService.test.ts:getProjectFiles returns cached files unless refresh is forced",
+      "src/services/__tests__/DownloadService.test.ts:getProjectFiles returns cached files unless refresh is forced:kind=test_function",
+      "src/services/__tests__/DownloadService.test.ts:invalidateCache clears the resolved project cache",
+      "src/services/__tests__/DownloadService.test.ts:invalidateCache clears the resolved project cache:kind=test_function",
+      "src/services/__tests__/DownloadService.test.ts:opens the September 2026 project menu and clicks its direct Download item",
+      "src/services/__tests__/DownloadService.test.ts:opens the September 2026 project menu and clicks its direct Download item:kind=test_function"
+    ],
+    "files": {
+      "create": ["bolt-download-button-v4.html"],
+      "edit": ["src/services/DownloadService.ts", "src/services/__tests__/DownloadService.test.ts"],
+      "read": ["bolt-download-button-v3.html", "src/lib/zip.ts", "src/services/CacheService.ts"],
+      "scope": [],
+      "delete": [],
+      "snapshot": []
+    },
+    "file_contract": {
+      "create": [
+        {
+          "path": "bolt-download-button-v4.html",
+          "artifacts": [
+            {
+              "kind": "namespace",
+              "name": "September2026DirectDownloadFixture",
+              "description": "Captured Bolt header showing Download directly in the project menu without Export."
+            }
+          ]
+        }
+      ],
+      "edit": [
+        {
+          "path": "src/services/DownloadService.ts",
+          "artifacts": [
+            {
+              "kind": "class",
+              "name": "DownloadService"
+            },
+            {
+              "kind": "method",
+              "name": "downloadProjectZip",
+              "of": "DownloadService",
+              "returns": "Promise<Blob>"
+            },
+            {
+              "kind": "method",
+              "name": "getProjectFiles",
+              "of": "DownloadService",
+              "args": [
+                {
+                  "name": "forceRefresh",
+                  "type": "boolean",
+                  "default": "false"
+                }
+              ],
+              "returns": "Promise<ProjectFiles>"
+            },
+            {
+              "kind": "method",
+              "name": "invalidateCache",
+              "of": "DownloadService",
+              "returns": "void"
+            },
+            {
+              "kind": "method",
+              "name": "blobToBase64",
+              "of": "DownloadService",
+              "args": [
+                {
+                  "name": "blob",
+                  "type": "Blob"
+                }
+              ],
+              "returns": "Promise<string | null>"
+            }
+          ]
+        },
+        {
+          "path": "src/services/__tests__/DownloadService.test.ts",
+          "artifacts": [
+            {
+              "kind": "test_function",
+              "name": "opens the September 2026 project menu and clicks its direct Download item"
+            },
+            {
+              "kind": "test_function",
+              "name": "downloadProjectZip reuses an in-flight download and returns the captured blob"
+            },
+            {
+              "kind": "test_function",
+              "name": "getProjectFiles returns cached files unless refresh is forced"
+            },
+            {
+              "kind": "test_function",
+              "name": "invalidateCache clears the resolved project cache"
+            },
+            {
+              "kind": "test_function",
+              "name": "blobToBase64 returns the encoded blob contents"
+            }
+          ]
+        }
+      ],
+      "read": ["bolt-download-button-v3.html", "src/lib/zip.ts", "src/services/CacheService.ts"]
+    },
+    "test_files": ["src/services/__tests__/DownloadService.test.ts"],
+    "validate_commands": [
+      "pnpm exec vitest run src/services/__tests__/DownloadService.test.ts",
+      "pnpm lint",
+      "pnpm check",
+      "pnpm build"
+    ],
+    "acceptance_commands": []
+  }
+}
