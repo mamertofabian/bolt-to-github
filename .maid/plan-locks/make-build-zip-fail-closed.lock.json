@@ -1,0 +1,163 @@
+{
+  "manifest_path": "manifests/make-build-zip-fail-closed.manifest.yaml",
+  "manifest_hash": "sha256-contract:8510ae589d967a670d46f55a429a4568c59f0901425973add3b1ded73a6d65d4",
+  "test_hashes": {
+    "scripts/__tests__/build-zip.test.ts": "sha256:06aed33097e5983435b660f7740df5c25e4ed01489f2972ef89c7d804460603f"
+  },
+  "created_at": "2026-09-15T01:41:38.923110+00:00",
+  "revision": 4,
+  "revisions": [
+    {
+      "prior_manifest_hash": "sha256-contract:bb2a7d57ec2ddf0eda474385b52ae406ea2f333608556722d66e5e051e402235",
+      "prior_test_hashes": {
+        "scripts/__tests__/build-zip.test.ts": "sha256:7c24e586239abf6016db5af016ec023664c18c43fabe4db685f68ff21b2a2e51"
+      },
+      "revised_at": "2026-09-15T01:41:41.040477+00:00",
+      "reason": "Migrated by maid manifest promote: manifests/drafts/make-build-zip-fail-closed.manifest.yaml -> manifests/make-build-zip-fail-closed.manifest.yaml",
+      "agent": null,
+      "contract_delta": {
+        "artifacts_added": [],
+        "artifacts_removed": [],
+        "files_added": [],
+        "files_removed": [],
+        "validate_commands_added": [],
+        "validate_commands_removed": []
+      }
+    },
+    {
+      "prior_manifest_hash": "sha256-contract:527786606f5020e914418918f9d1f42b266378da5856d431220635729bcb74ab",
+      "prior_test_hashes": {
+        "scripts/__tests__/build-zip.test.ts": "sha256:7c24e586239abf6016db5af016ec023664c18c43fabe4db685f68ff21b2a2e51"
+      },
+      "revised_at": "2026-09-15T01:46:19.031372+00:00",
+      "reason": "Anchor destructive paths and make archive publication atomic after implementation review",
+      "agent": null,
+      "contract_delta": {
+        "artifacts_added": [
+          "scripts/__tests__/build-zip.test.ts:failed zip leaves no partial final archive",
+          "scripts/__tests__/build-zip.test.ts:failed zip leaves no partial final archive:kind=test_function",
+          "scripts/__tests__/build-zip.test.ts:invocation from another directory only changes the script workspace",
+          "scripts/__tests__/build-zip.test.ts:invocation from another directory only changes the script workspace:kind=test_function"
+        ],
+        "artifacts_removed": [],
+        "files_added": [],
+        "files_removed": [],
+        "validate_commands_added": [],
+        "validate_commands_removed": []
+      }
+    },
+    {
+      "prior_manifest_hash": "sha256-contract:8510ae589d967a670d46f55a429a4568c59f0901425973add3b1ded73a6d65d4",
+      "prior_test_hashes": {
+        "scripts/__tests__/build-zip.test.ts": "sha256:8ce3791d1247b6f0bc6fbf0d4241735caabd100598b39f0b81c2ff88494ea8eb"
+      },
+      "revised_at": "2026-09-15T01:47:45.846850+00:00",
+      "reason": "Remove unused test import after implementation review; behavior unchanged",
+      "agent": null,
+      "contract_delta": {
+        "artifacts_added": [],
+        "artifacts_removed": [],
+        "files_added": [],
+        "files_removed": [],
+        "validate_commands_added": [],
+        "validate_commands_removed": []
+      }
+    }
+  ],
+  "red_evidence": {
+    "red": true,
+    "captured_at": "2026-09-15T01:46:20.801278+00:00",
+    "commands": [
+      {
+        "command": "pnpm exec vitest run scripts/__tests__/build-zip.test.ts",
+        "exit_code": 1,
+        "output_tail": "    104|     expect(existsSync(join(caller, 'bolt-to-github-v9.9.9-build.zip'))\u2026\n    105|     expect(existsSync(join(root, 'bolt-to-github-v2.0.0-build.zip'))).\u2026\n       |                                                                       ^\n    106|   });\n    107| \n\n\u23af\u23af\u23af\u23af\u23af\u23af\u23af\u23af\u23af\u23af\u23af\u23af\u23af\u23af\u23af\u23af\u23af\u23af\u23af\u23af\u23af\u23af\u23af\u23af[3/4]\u23af\n\n FAIL  scripts/__tests__/build-zip.test.ts > build-zip.sh > failed zip leaves no partial final archive\nAssertionError: expected +0 not to be +0 // Object.is equality\n \u276f scripts/__tests__/build-zip.test.ts:113:31\n    111|     const result = run(root, bin);\n    112| \n    113|     expect(result.status).not.toBe(0);\n       |                               ^\n    114|     expect(existsSync(join(root, 'bolt-to-github-v2.0.0-build.zip'))).\u2026\n    115|     expect(existsSync(join(root, 'bolt-to-github-v2.0.0-build.zip.tmp'\u2026\n\n\u23af\u23af\u23af\u23af\u23af\u23af\u23af\u23af\u23af\u23af\u23af\u23af\u23af\u23af\u23af\u23af\u23af\u23af\u23af\u23af\u23af\u23af\u23af\u23af[4/4]\u23af\n",
+        "classification": "red"
+      },
+      {
+        "command": "pnpm exec prettier --check scripts/__tests__/build-zip.test.ts",
+        "exit_code": 0,
+        "output_tail": "Checking formatting...\nAll matched files use Prettier code style!",
+        "classification": "not_red"
+      },
+      {
+        "command": "bash -n build-zip.sh",
+        "exit_code": 0,
+        "output_tail": "",
+        "classification": "not_red"
+      }
+    ]
+  },
+  "legacy_baseline": null,
+  "agent": null,
+  "_manifest_contract": {
+    "artifacts": [
+      "build-zip.sh:namespace:BuildZipFailClosed",
+      "build-zip.sh:namespace:BuildZipFailClosed:kind=namespace",
+      "scripts/__tests__/build-zip.test.ts:cleanup preserves unrelated release archives",
+      "scripts/__tests__/build-zip.test.ts:cleanup preserves unrelated release archives:kind=test_function",
+      "scripts/__tests__/build-zip.test.ts:failed build removes stale output and never invokes zip",
+      "scripts/__tests__/build-zip.test.ts:failed build removes stale output and never invokes zip:kind=test_function",
+      "scripts/__tests__/build-zip.test.ts:failed zip leaves no partial final archive",
+      "scripts/__tests__/build-zip.test.ts:failed zip leaves no partial final archive:kind=test_function",
+      "scripts/__tests__/build-zip.test.ts:invocation from another directory only changes the script workspace",
+      "scripts/__tests__/build-zip.test.ts:invocation from another directory only changes the script workspace:kind=test_function",
+      "scripts/__tests__/build-zip.test.ts:successful packaging disables GA4 and creates a versioned zip from fresh output",
+      "scripts/__tests__/build-zip.test.ts:successful packaging disables GA4 and creates a versioned zip from fresh output:kind=test_function"
+    ],
+    "files": {
+      "create": [],
+      "edit": ["build-zip.sh", "scripts/__tests__/build-zip.test.ts"],
+      "read": [],
+      "scope": [],
+      "delete": [],
+      "snapshot": []
+    },
+    "file_contract": {
+      "edit": [
+        {
+          "path": "build-zip.sh",
+          "artifacts": [
+            {
+              "kind": "namespace",
+              "name": "BuildZipFailClosed",
+              "description": "Local packaging exits on errors, clears stale output, disables GA4 for the build, and zips only fresh dist content."
+            }
+          ]
+        },
+        {
+          "path": "scripts/__tests__/build-zip.test.ts",
+          "artifacts": [
+            {
+              "kind": "test_function",
+              "name": "failed build removes stale output and never invokes zip"
+            },
+            {
+              "kind": "test_function",
+              "name": "successful packaging disables GA4 and creates a versioned zip from fresh output"
+            },
+            {
+              "kind": "test_function",
+              "name": "cleanup preserves unrelated release archives"
+            },
+            {
+              "kind": "test_function",
+              "name": "invocation from another directory only changes the script workspace"
+            },
+            {
+              "kind": "test_function",
+              "name": "failed zip leaves no partial final archive"
+            }
+          ]
+        }
+      ]
+    },
+    "test_files": ["scripts/__tests__/build-zip.test.ts"],
+    "validate_commands": [
+      "pnpm exec vitest run scripts/__tests__/build-zip.test.ts",
+      "pnpm exec prettier --check scripts/__tests__/build-zip.test.ts",
+      "bash -n build-zip.sh"
+    ],
+    "acceptance_commands": []
+  }
+}

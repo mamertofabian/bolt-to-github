@@ -1,0 +1,94 @@
+# manifest-kind: implementation
+# MAID manifest - a machine-checked contract for one change.
+# Declares the intent, the files it may touch, and the commands that verify it.
+# Nothing here is needed to build or run this project; safe to ignore.
+# What it is: https://github.com/mamertofabian/maid-runner
+schema: '2'
+goal: Prevent build-zip.sh from packaging stale extension output after a failed build
+description: |
+  Local v2.0.0 packaging currently continues after Vite rejects the legacy GA4
+  secret and then zips the previous dist directory. Make packaging fail closed:
+  read and validate the version first, remove the exact stale output directory
+  and target ZIP, run the build with GA4 explicitly paused, and create the ZIP
+  only after a successful fresh build. The script must preserve unrelated ZIPs.
+type: fix
+created: '2026-09-15T01:41:40Z'
+files:
+  edit:
+  - path: build-zip.sh
+    artifacts:
+    - kind: namespace
+      name: BuildZipFailClosed
+      description: Local packaging exits on errors, clears stale output, disables GA4 for the build, and zips only fresh dist content.
+  - path: scripts/__tests__/build-zip.test.ts
+    artifacts:
+    - kind: test_function
+      name: failed build removes stale output and never invokes zip
+    - kind: test_function
+      name: successful packaging disables GA4 and creates a versioned zip from fresh output
+    - kind: test_function
+      name: cleanup preserves unrelated release archives
+    - kind: test_function
+      name: invocation from another directory only changes the script workspace
+    - kind: test_function
+      name: failed zip leaves no partial final archive
+validate:
+- pnpm exec vitest run scripts/__tests__/build-zip.test.ts
+- pnpm exec prettier --check scripts/__tests__/build-zip.test.ts
+- bash -n build-zip.sh
+temptations:
+- risk: Do not merely add set -e while leaving stale output and an old same-version ZIP behind.
+  instead: Remove dist and the exact target ZIP before starting the fresh build.
+- risk: Do not delete every ZIP in the repository.
+  instead: Remove only the archive for the manifest version being built.
+- risk: Do not ask local packagers to edit or delete their ignored .env manually.
+  instead: Override the retired GA4 variable to empty only for the build subprocess.
+- risk: Do not resolve destructive cleanup paths from the caller's working directory.
+  instead: Change to the script directory before reading, deleting, building, or packaging.
+- risk: Do not write directly to the final archive path.
+  instead: Remove a temporary archive on exit and atomically rename it only after zip succeeds.
+outcome:
+  status: completed
+  completed_at: '2026-09-15T01:47:54Z'
+  summary: |
+    Local ZIP packaging now removes stale output before building, pauses GA4
+    for the build subprocess, exits on every failed command, and publishes the
+    versioned archive only after a successful fresh build.
+  rationale: |
+    The previous script continued after Vite rejected the local GA4 secret and
+    packaged yesterday's dist directory. All paths now resolve from the script
+    directory, and ZIP output uses a temporary file with exit cleanup and an
+    atomic same-directory rename so failed packaging leaves no plausible
+    release archive.
+  lessons:
+  - lesson_type: stale-release-artifacts
+    summary: Packaging scripts must delete exact stale outputs before building and never package after build failure.
+    tags: [release, shell, fail-closed]
+    paths: [build-zip.sh, scripts/__tests__/build-zip.test.ts]
+  - lesson_type: destructive-path-anchoring
+    summary: Scripts that remove generated directories must anchor paths to their own repository, not the caller working directory.
+    tags: [safety, shell, paths]
+    paths: [build-zip.sh]
+  review_notes:
+  - source: independent reviewer /root/build_zip_review
+    severity: findings-fixed
+    summary: Found caller-directory deletion risk and partial final ZIP risk; both received regression coverage and were fixed.
+  - source: independent reviewer /root/build_zip_review round 2
+    severity: ready
+    summary: Confirmed anchored paths, temporary archive cleanup, atomic publication, focused coverage, and no remaining blockers.
+  validation:
+  - command: [pnpm, exec, vitest, run, scripts/__tests__/build-zip.test.ts]
+    status: passed
+    summary: Five focused packaging behaviors passed.
+  - command: [bash, -n, build-zip.sh]
+    status: passed
+    summary: Shell syntax validation passed.
+  - command: [./scripts/maid, validate, --manifest-dir, manifests, --mode, behavioral]
+    status: passed
+    summary: 41 active manifests passed, zero failed, 13 superseded.
+  - command: [./scripts/maid, validate, --manifest-dir, manifests, --mode, implementation]
+    status: passed
+    summary: 41 active manifests passed, zero failed, 13 superseded; shell validator absence remains advisory.
+  - command: [./build-zip.sh]
+    status: passed
+    summary: Fresh v2.0.0 archive contains 44 entries, excludes the GA host permission and local GA4 secret, and leaves no temporary archive.
