@@ -40,8 +40,8 @@ export const UsagePatterns = {
       // Fresh install scenario
       ScenarioBuilder.freshInstall(env.chromeEnv);
 
-      // User sets up PAT authentication
-      env.chromeEnv.setupValidPATAuth();
+      // User connects the GitHub App through Bolt2GitHub
+      env.chromeEnv.setupValidGitHubAppAuth();
 
       // Extension should initialize and track first install
       // This reveals bugs in:
@@ -52,7 +52,7 @@ export const UsagePatterns = {
 
     expectedBehaviors: [
       'Analytics event "extension_installed" should be sent',
-      'GitHub service should initialize with PAT authentication',
+      'GitHub service should initialize with live GitHub App authentication',
       'Storage should contain install date and version',
       'No errors should occur during initialization',
     ],
@@ -227,56 +227,53 @@ export const UsagePatterns = {
   },
 
   /**
-   * PATTERN: Authentication Method Switching
+   * PATTERN: GitHub App Migration Recovery
    *
    * Reveals bugs in:
    * - Service reinitialization
    * - Storage change handling
-   * - Token management
-   * - Authentication state consistency
+   * - Migration marker handling
+   * - Live connection state consistency
    */
-  authSwitchingFlow: {
-    description: 'User switches from PAT to GitHub App authentication',
+  githubAppMigrationRecoveryFlow: {
+    description: 'A legacy user reconnects through the required GitHub App path',
 
     async simulatePattern(
       testSuite: InstanceType<typeof TestHelpers.BackgroundServiceTestSuiteBuilder>
     ): Promise<void> {
       const env = testSuite.getEnvironment();
 
-      // Start with PAT authentication
-      env.chromeEnv.setupValidPATAuth();
+      // Start in the explicit one-way migration state
+      env.chromeEnv.setupLegacyPATMigration();
       await new Promise((resolve) => setTimeout(resolve, 100));
 
-      // Switch to GitHub App authentication
+      // Complete Bolt2GitHub sign-in and GitHub App installation
       env.chromeEnv.setupValidGitHubAppAuth();
 
-      // Trigger storage change event
-      env.chromeEnv.mockChrome.storage.sync.set({
-        authenticationMethod: 'github_app',
+      // Trigger live auth recovery
+      env.chromeEnv.mockChrome.storage.local.set({
+        githubAppMigrationRequired: false,
       });
 
       // Attempt upload with new auth method
       const port = env.chromeEnv.simulatePortConnection('bolt-content', 123);
       port.simulateMessage(MessageFixtures.zipDataMessage());
 
-      // This reveals bugs in:
-      // - Service not reinitializing with new auth method
-      // - Old tokens being used after switch
-      // - Storage listener not triggering properly
-      // - Authentication state becoming inconsistent
+      // This reveals bugs in migration blocking, storage recovery, and stale
+      // service instances surviving an account/installation transition.
     },
 
     expectedBehaviors: [
-      'GitHub service should reinitialize with new auth method',
-      'Old PAT tokens should be cleared',
+      'GitHub service should stay unavailable while migration is required',
+      'GitHub service should reinitialize only after live GitHub App recovery',
       'Upload should succeed with GitHub App authentication',
       'No authentication errors should occur',
     ],
 
     potentialBugs: [
-      'Storage listener not firing for auth method changes',
+      'Storage listener not firing for migration-state changes',
       'Old GitHub service instance not being replaced',
-      'Authentication credentials cached incorrectly',
+      'Connection authority cached incorrectly',
       'Zip handler not getting updated with new service instance',
     ],
   },
@@ -359,7 +356,7 @@ export const BugDetectionScenarios = {
       const env = testSuite.getEnvironment();
 
       // Setup authentication first
-      env.chromeEnv.setupValidPATAuth();
+      env.chromeEnv.setupValidGitHubAppAuth();
 
       // Setup the services to track operations properly
       env.serviceFactory.setupSuccessfulUploadScenario();
@@ -390,7 +387,7 @@ export const BugDetectionScenarios = {
       const env = testSuite.getEnvironment();
 
       // Setup authentication first
-      env.chromeEnv.setupValidPATAuth();
+      env.chromeEnv.setupValidGitHubAppAuth();
 
       // Setup the services to track operations properly
       env.serviceFactory.setupSuccessfulUploadScenario();
@@ -475,7 +472,7 @@ export const BugDetectionScenarios = {
       const errorInjector = testSuite.getErrorInjector();
 
       // Setup authentication first
-      env.chromeEnv.setupValidPATAuth();
+      env.chromeEnv.setupValidGitHubAppAuth();
 
       // Cause operation to fail
       errorInjector.injectZipProcessingFailure();

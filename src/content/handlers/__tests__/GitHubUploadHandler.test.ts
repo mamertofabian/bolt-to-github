@@ -296,11 +296,12 @@ describe('GitHubUploadHandler', () => {
       expect(mockMessageHandler.sendZipData).toHaveBeenCalledWith('base64data', 'test-project');
     });
 
-    it('disconnected push stops before commit confirmation and ZIP export', async () => {
+    it('PAT migration blocks upload before project files or premium usage', async () => {
       mockCheckGitHubConnection.mockResolvedValue({
         connected: false,
-        reason: 'not_connected',
-        message: 'Connect GitHub at bolt2github.com before using GitHub features.',
+        reason: 'migration_required',
+        message:
+          'GitHub authentication has changed. Sign in to bolt2github.com and connect the GitHub App to continue.',
       });
 
       await handler.handleGitHubPush(true, true);
@@ -308,9 +309,11 @@ describe('GitHubUploadHandler', () => {
       expect(mockNotificationManager.showNotification).toHaveBeenCalledWith(
         expect.objectContaining({
           type: 'error',
-          message: 'Connect GitHub at bolt2github.com before using GitHub features.',
+          message:
+            'GitHub authentication has changed. Sign in to bolt2github.com and connect the GitHub App to continue.',
         })
       );
+      expect(SettingsService.getGitHubSettings).not.toHaveBeenCalled();
       expect(mockNotificationManager.showConfirmationDialog).not.toHaveBeenCalled();
       expect(mockDownloadProjectZip).not.toHaveBeenCalled();
       expect(mockMessageHandler.sendCommitMessage).not.toHaveBeenCalled();

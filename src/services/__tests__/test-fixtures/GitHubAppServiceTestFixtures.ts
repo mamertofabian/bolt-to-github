@@ -253,7 +253,6 @@ export const validAuthStorageData: AuthenticationStorage = {
   githubAppUserId: 1234567,
   githubAppAvatarUrl: 'https://avatars.githubusercontent.com/u/1234567?v=4',
   githubAppScopes: ['repo', 'user:email'],
-  authenticationMethod: 'github_app',
 };
 
 export const expiredAuthStorageData: AuthenticationStorage = {
@@ -263,7 +262,6 @@ export const expiredAuthStorageData: AuthenticationStorage = {
 
 export const minimalAuthStorageData: AuthenticationStorage = {
   githubAppInstallationId: 12345678,
-  authenticationMethod: 'github_app',
 };
 
 export const emptyAuthStorageData: AuthenticationStorage = {};

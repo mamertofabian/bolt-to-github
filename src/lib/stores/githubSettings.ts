@@ -8,7 +8,6 @@ const logger = createLogger('githubSettings');
 
 // GitHub Settings State Interface
 export interface GitHubSettingsState {
-  githubToken: string;
   repoOwner: string;
   repoName: string;
   branch: string;
@@ -17,8 +16,6 @@ export interface GitHubSettingsState {
   isTokenValid: boolean | null;
   validationError: string | null;
   hasInitialSettings: boolean;
-  // New GitHub App fields
-  authenticationMethod: 'pat' | 'github_app';
   githubAppInstallationId: number | null;
   githubAppUsername: string | null;
   githubAppAvatarUrl: string | null;
@@ -26,7 +23,6 @@ export interface GitHubSettingsState {
 
 // Initial state
 const initialState: GitHubSettingsState = {
-  githubToken: '',
   repoOwner: '',
   repoName: '',
   branch: 'main',
@@ -35,8 +31,6 @@ const initialState: GitHubSettingsState = {
   isTokenValid: null,
   validationError: null,
   hasInitialSettings: false,
-  // New GitHub App fields
-  authenticationMethod: 'github_app',
   githubAppInstallationId: null,
   githubAppUsername: null,
   githubAppAvatarUrl: null,
@@ -47,10 +41,9 @@ export const githubSettingsStore: Writable<GitHubSettingsState> = writable(initi
 
 // Derived store for authentication validity (without requiring project-specific settings)
 export const isAuthenticationValid = derived(githubSettingsStore, ($settings) => {
-  const hasValidAuth =
-    $settings.authenticationMethod === 'github_app'
-      ? Boolean($settings.githubAppInstallationId && $settings.repoOwner)
-      : Boolean($settings.githubToken && $settings.isTokenValid === true && $settings.repoOwner);
+  const hasValidAuth = Boolean(
+    $settings.githubAppInstallationId && $settings.repoOwner && $settings.isTokenValid === true
+  );
 
   return hasValidAuth && !$settings.isValidatingToken;
 });
@@ -58,10 +51,9 @@ export const isAuthenticationValid = derived(githubSettingsStore, ($settings) =>
 // Derived store for settings validity (includes project-specific settings)
 export const isSettingsValid = derived(githubSettingsStore, ($settings) => {
   const hasRepoInfo = Boolean($settings.repoOwner && $settings.repoName && $settings.branch);
-  const hasValidAuth =
-    $settings.authenticationMethod === 'github_app'
-      ? Boolean($settings.githubAppInstallationId)
-      : Boolean($settings.githubToken && $settings.isTokenValid === true);
+  const hasValidAuth = Boolean(
+    $settings.githubAppInstallationId && $settings.isTokenValid === true
+  );
 
   return hasRepoInfo && hasValidAuth && !$settings.isValidatingToken;
 });
@@ -74,35 +66,29 @@ export const githubSettingsActions = {
   async initialize(): Promise<void> {
     try {
       const storedSettings = (await chrome.storage.sync.get([
-        'githubToken',
         'repoOwner',
         'projectSettings',
       ])) as GitHubSettingsInterface;
 
       const localSettings = await chrome.storage.local.get([
-        'authenticationMethod',
         'githubAppInstallationId',
         'githubAppUsername',
         'githubAppAvatarUrl',
       ]);
 
-      const authMethod = localSettings.authenticationMethod || 'pat';
-      const hasGitHubApp = authMethod === 'github_app' && localSettings.githubAppInstallationId;
-      const hasPAT = Boolean(storedSettings.githubToken && storedSettings.repoOwner);
+      const hasGitHubApp = Boolean(localSettings.githubAppInstallationId);
 
       // For GitHub App, automatically use the authenticated username as repoOwner
       let repoOwner = storedSettings.repoOwner || '';
-      if (authMethod === 'github_app' && localSettings.githubAppUsername) {
+      if (hasGitHubApp && localSettings.githubAppUsername) {
         repoOwner = localSettings.githubAppUsername;
         // Save the detected repoOwner to sync storage for consistency
         if (repoOwner && repoOwner !== storedSettings.repoOwner) {
           // Use thread-safe method to update settings
           await ChromeStorageService.saveGitHubSettings({
-            githubToken: storedSettings.githubToken || '',
             repoOwner,
             projectSettings: storedSettings.projectSettings || {},
-            authenticationMethod: authMethod,
-            githubAppInstallationId: localSettings.githubAppInstallationId || null,
+            githubAppInstallationId: localSettings.githubAppInstallationId,
             githubAppUsername: localSettings.githubAppUsername,
             githubAppAvatarUrl: localSettings.githubAppAvatarUrl,
           });
@@ -111,41 +97,17 @@ export const githubSettingsActions = {
 
       githubSettingsStore.update((state) => ({
         ...state,
-        githubToken: storedSettings.githubToken || '',
         repoOwner,
         projectSettings: storedSettings.projectSettings || {},
-        authenticationMethod: authMethod,
         githubAppInstallationId: localSettings.githubAppInstallationId || null,
-        githubAppUsername: localSettings.githubAppUsername || null,
-        githubAppAvatarUrl: localSettings.githubAppAvatarUrl || null,
-        hasInitialSettings: hasGitHubApp || hasPAT,
+        githubAppUsername: hasGitHubApp ? localSettings.githubAppUsername || null : null,
+        githubAppAvatarUrl: hasGitHubApp ? localSettings.githubAppAvatarUrl || null : null,
+        hasInitialSettings: hasGitHubApp,
+        isTokenValid: hasGitHubApp ? true : null,
       }));
-
-      // Validate existing token if using PAT
-      if (authMethod === 'pat' && storedSettings.githubToken && storedSettings.repoOwner) {
-        await this.validateToken(storedSettings.githubToken, storedSettings.repoOwner);
-      } else if (authMethod === 'github_app' && hasGitHubApp) {
-        // For GitHub App, we assume it's valid if we have an installation ID
-        githubSettingsStore.update((state) => ({
-          ...state,
-          isTokenValid: true,
-        }));
-      }
     } catch (error) {
       logger.error('Error initializing GitHub settings:', error);
     }
-  },
-
-  /**
-   * Update GitHub token
-   */
-  setGitHubToken(token: string): void {
-    githubSettingsStore.update((state) => ({
-      ...state,
-      githubToken: token,
-      isTokenValid: null,
-      validationError: null,
-    }));
   },
 
   /**
@@ -219,40 +181,22 @@ export const githubSettingsActions = {
     });
   },
 
-  /**
-   * Validate GitHub token and username
-   */
-  async validateToken(token: string, username: string): Promise<boolean> {
-    // Get current authentication method first
+  /** Validate the current GitHub App connection and username. */
+  async validateGitHubApp(username: string): Promise<boolean> {
     let currentState: GitHubSettingsState;
     const unsubscribe = githubSettingsStore.subscribe((state) => {
       currentState = state;
     });
     unsubscribe();
 
-    // For GitHub App authentication, token is not required
-    if (currentState!.authenticationMethod === 'github_app') {
-      // Validate GitHub App authentication instead
-      if (!currentState!.githubAppInstallationId) {
-        githubSettingsStore.update((state) => ({
-          ...state,
-          isTokenValid: false,
-          validationError: 'GitHub App installation not found',
-          isValidatingToken: false,
-        }));
-        return false;
-      }
-    } else {
-      // For PAT authentication, token is required
-      if (!token) {
-        githubSettingsStore.update((state) => ({
-          ...state,
-          isTokenValid: false,
-          validationError: 'GitHub token is required',
-          isValidatingToken: false,
-        }));
-        return false;
-      }
+    if (!currentState!.githubAppInstallationId) {
+      githubSettingsStore.update((state) => ({
+        ...state,
+        isTokenValid: false,
+        validationError: 'GitHub App installation not found',
+        isValidatingToken: false,
+      }));
+      return false;
     }
 
     githubSettingsStore.update((state) => ({
@@ -262,17 +206,7 @@ export const githubSettingsActions = {
     }));
 
     try {
-      let githubService: UnifiedGitHubService;
-
-      if (currentState!.authenticationMethod === 'github_app') {
-        // Use GitHub App authentication
-        githubService = new UnifiedGitHubService({
-          type: 'github_app',
-        });
-      } else {
-        // Use PAT authentication (backward compatible)
-        githubService = new UnifiedGitHubService(token);
-      }
+      const githubService = new UnifiedGitHubService({ type: 'github_app' });
 
       const result = await githubService.validateTokenAndUser(username);
 
@@ -309,42 +243,16 @@ export const githubSettingsActions = {
       });
       unsubscribe();
 
-      // Validate authentication before saving
-      let isValid = false;
-      if (currentState!.authenticationMethod === 'github_app') {
-        // For GitHub App, just check if we have required data
-        isValid = Boolean(currentState!.githubAppInstallationId && currentState!.repoOwner);
-        if (!isValid) {
-          return {
-            success: false,
-            error: 'GitHub App authentication or repository owner missing',
-          };
-        }
-      } else {
-        logger.info(
-          '🚀 Validating token for PAT',
-          currentState!.githubToken,
-          currentState!.repoOwner
-        );
-        // For PAT, validate token and username
-        isValid = await githubSettingsActions.validateToken(
-          currentState!.githubToken,
-          currentState!.repoOwner
-        );
-        logger.info('🚀 Validated token for PAT', isValid);
-        if (!isValid) {
-          return {
-            success: false,
-            error: currentState!.validationError || 'Validation failed',
-          };
-        }
+      if (!currentState!.githubAppInstallationId || !currentState!.repoOwner) {
+        return {
+          success: false,
+          error: 'GitHub App authentication or repository owner missing',
+        };
       }
 
       const settings: GitHubSettingsInterface = {
-        githubToken: currentState!.githubToken,
         repoOwner: currentState!.repoOwner,
         projectSettings: currentState!.projectSettings,
-        authenticationMethod: currentState!.authenticationMethod,
         githubAppInstallationId: currentState!.githubAppInstallationId ?? undefined,
         githubAppUsername: currentState!.githubAppUsername ?? undefined,
         githubAppAvatarUrl: currentState!.githubAppAvatarUrl ?? undefined,
@@ -368,18 +276,6 @@ export const githubSettingsActions = {
   },
 
   /**
-   * Set authentication method
-   */
-  setAuthenticationMethod(method: 'pat' | 'github_app'): void {
-    githubSettingsStore.update((state) => ({
-      ...state,
-      authenticationMethod: method,
-      isTokenValid: null,
-      validationError: null,
-    }));
-  },
-
-  /**
    * Update GitHub App settings
    */
   setGitHubAppSettings(
@@ -392,7 +288,6 @@ export const githubSettingsActions = {
       githubAppInstallationId: installationId,
       githubAppUsername: username,
       githubAppAvatarUrl: avatarUrl,
-      authenticationMethod: 'github_app',
       isTokenValid: installationId ? true : null,
     }));
   },
@@ -406,7 +301,6 @@ export const githubSettingsActions = {
       githubAppInstallationId: null,
       githubAppUsername: null,
       githubAppAvatarUrl: null,
-      authenticationMethod: 'pat',
       isTokenValid: null,
     }));
   },
@@ -417,13 +311,12 @@ export const githubSettingsActions = {
   async syncGitHubAppFromStorage(): Promise<void> {
     try {
       const localSettings = await chrome.storage.local.get([
-        'authenticationMethod',
         'githubAppInstallationId',
         'githubAppUsername',
         'githubAppAvatarUrl',
       ]);
 
-      if (localSettings.authenticationMethod === 'github_app') {
+      if (localSettings.githubAppInstallationId) {
         this.setGitHubAppSettings(
           localSettings.githubAppInstallationId,
           localSettings.githubAppUsername,

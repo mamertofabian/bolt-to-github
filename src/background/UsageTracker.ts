@@ -10,6 +10,10 @@
 
 import type { UsageData, ErrorLogEntry } from '../lib/types';
 
+type StoredUsageData = Omit<UsageData, 'authMethod'> & {
+  authMethod?: UsageData['authMethod'] | 'pat';
+};
+
 export class UsageTracker {
   private readonly UNINSTALL_FEEDBACK_BASE_URL = 'https://bolt2github.com/uninstall-feedback';
 
@@ -22,14 +26,16 @@ export class UsageTracker {
         const now = new Date().toISOString();
         const manifest = chrome.runtime.getManifest();
 
-        const usageData: UsageData = result.usageData || {
-          installDate: now,
-          lastActiveDate: now,
-          totalPushes: 0,
-          authMethod: 'none',
-          extensionVersion: manifest.version,
-          errorCount: 0,
-        };
+        const usageData = result.usageData
+          ? this.normalizeUsageData(result.usageData as StoredUsageData)
+          : {
+              installDate: now,
+              lastActiveDate: now,
+              totalPushes: 0,
+              authMethod: 'none' as const,
+              extensionVersion: manifest.version,
+              errorCount: 0,
+            };
 
         // Update version if it changed
         usageData.extensionVersion = manifest.version;
@@ -51,7 +57,9 @@ export class UsageTracker {
   ): Promise<void> {
     return new Promise((resolve) => {
       chrome.storage.local.get(['usageData'], (result) => {
-        const usageData: UsageData = result.usageData || this.getDefaultUsageData();
+        const usageData = result.usageData
+          ? this.normalizeUsageData(result.usageData as StoredUsageData)
+          : this.getDefaultUsageData();
 
         usageData.lastActiveDate = new Date().toISOString();
 
@@ -61,7 +69,7 @@ export class UsageTracker {
             break;
           case 'auth_method_changed':
             if (data?.authMethod) {
-              usageData.authMethod = data.authMethod;
+              usageData.authMethod = data.authMethod === 'github-app' ? 'github-app' : 'none';
             }
             break;
         }
@@ -82,7 +90,9 @@ export class UsageTracker {
     return new Promise((resolve) => {
       chrome.storage.local.get(['errorLog', 'usageData'], (result) => {
         const errorLog: ErrorLogEntry[] = result.errorLog || [];
-        const usageData: UsageData = result.usageData || this.getDefaultUsageData();
+        const usageData = result.usageData
+          ? this.normalizeUsageData(result.usageData as StoredUsageData)
+          : this.getDefaultUsageData();
 
         const errorEntry: ErrorLogEntry = {
           timestamp: new Date().toISOString(),
@@ -132,7 +142,9 @@ export class UsageTracker {
 
         // Get usage data from local storage
         chrome.storage.local.get(['usageData'], (localResult) => {
-          const usageData: UsageData = localResult.usageData || this.getDefaultUsageData();
+          const usageData = localResult.usageData
+            ? this.normalizeUsageData(localResult.usageData as StoredUsageData)
+            : this.getDefaultUsageData();
           const manifest = chrome.runtime.getManifest();
 
           const params = new URLSearchParams({
@@ -247,6 +259,13 @@ export class UsageTracker {
       authMethod: 'none',
       extensionVersion: manifest.version,
       errorCount: 0,
+    };
+  }
+
+  private normalizeUsageData(data: StoredUsageData): UsageData {
+    return {
+      ...data,
+      authMethod: data.authMethod === 'github-app' ? 'github-app' : 'none',
     };
   }
 }

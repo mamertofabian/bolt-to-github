@@ -1,0 +1,4 @@
+interface:
+  display_name: "MAID Evolver"
+  short_description: "Intentionally evolve existing MAID manifest contracts"
+  default_prompt: "Use $maid-evolver to change something a prior MAID manifest already declared, classify the change as chain merge or supersede, make the supersede cost explicit before proceeding, never edit an approved manifest in place, and validate the new contract structurally, behaviorally, and for coherence."

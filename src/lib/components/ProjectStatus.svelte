@@ -9,7 +9,7 @@
   import type { UpgradeModalType } from '$lib/utils/upgradeModal';
   import type { GitHubCommit } from 'src/services/types/repository';
   import { createEventDispatcher, onMount } from 'svelte';
-  import { UnifiedGitHubService } from '../../services/UnifiedGitHubService';
+  import { createConnectedGitHubAppService } from '$lib/utils/connectedGitHubAppService';
 
   const logger = createLogger('ProjectStatus');
   const dispatch = createEventDispatcher();
@@ -18,7 +18,6 @@
   export let gitHubUsername: string;
   export let repoName: string;
   export let branch: string;
-  export let token: string;
   export let projectTitle: string = 'My Project';
   export let handleUpgradeClick: (upgradeModalType: UpgradeModalType) => void;
 
@@ -27,7 +26,6 @@
   let showIssueManager = false;
   let showQuickIssueForm = false;
   let showCommitsModal = false;
-  let effectiveToken = '';
   let pushError: string | null = null;
   let isPushing = false;
 
@@ -37,26 +35,6 @@
   // Issues count from store
   $: openIssuesCountStore = issuesStore.getOpenIssuesCount(gitHubUsername, repoName);
   $: openIssuesCount = $openIssuesCountStore;
-
-  // Update effective token when component initializes or token changes
-  async function updateEffectiveToken() {
-    // Get authentication method to determine correct token to use
-    const authSettings = await chrome.storage.local.get(['authenticationMethod']);
-    const authMethod = authSettings.authenticationMethod || 'pat';
-
-    if (authMethod === 'github_app') {
-      // For GitHub App, use a placeholder token that the store will recognize
-      effectiveToken = 'github_app_token';
-    } else {
-      // For PAT, use the actual token
-      effectiveToken = token || '';
-    }
-  }
-
-  // Update effective token when token prop changes
-  $: if (token !== undefined) {
-    updateEffectiveToken();
-  }
 
   let isLoading = {
     repoStatus: true,
@@ -140,19 +118,7 @@
       // Step 5: Cache is stale or missing, fall back to API calls
       logger.info('Cache stale or missing, fetching from GitHub API');
 
-      // Get authentication method to determine how to create the service
-      const authSettings = await chrome.storage.local.get(['authenticationMethod']);
-      const authMethod = authSettings.authenticationMethod || 'pat';
-
-      let githubService: UnifiedGitHubService;
-
-      if (authMethod === 'github_app') {
-        // Use GitHub App authentication
-        githubService = new UnifiedGitHubService({ type: 'github_app' });
-      } else {
-        // Use PAT authentication (backward compatible)
-        githubService = new UnifiedGitHubService(token);
-      }
+      const githubService = await createConnectedGitHubAppService();
 
       // Get repo info
       const repoInfo = await githubService.getRepoInfo(gitHubUsername, repoName);
@@ -198,10 +164,8 @@
         }
         isLoading.latestCommit = false;
 
-        // Load issues into store - for GitHub App we pass a placeholder token
-        const tokenToUse = authMethod === 'github_app' ? 'github_app_token' : token;
         try {
-          await issuesStore.loadIssues(gitHubUsername, repoName, tokenToUse, 'all');
+          await issuesStore.loadIssues(gitHubUsername, repoName, 'all');
         } catch (err) {
           logger.error('Error fetching issues:', err);
         }
@@ -477,12 +441,11 @@
   <div class="text-slate-300">
     <div class="space-y-3 px-4 py-4">
       <!-- Project details section -->
-      <div
-        class="grid grid-cols-[4.5rem_1fr] gap-x-2 bg-slate-900/50 p-3 rounded-sm cursor-pointer hover:bg-slate-900/70 transition-colors group"
+      <button
+        type="button"
+        tabindex="0"
+        class="grid w-full grid-cols-[4.5rem_1fr] gap-x-2 bg-slate-900/50 p-3 rounded-sm cursor-pointer text-left hover:bg-slate-900/70 transition-colors group"
         on:click={() => (showSettingsModal = true)}
-        on:keydown={(e) => e.key === 'Enter' && (showSettingsModal = true)}
-        role="button"
-        tabindex={0}
       >
         <span class="text-slate-400">Project:</span>
         <span class="font-mono">{projectTitle}</span>
@@ -525,15 +488,15 @@
           {#if isLoading.latestCommit}
             <span class="text-slate-500">Loading...</span>
           {:else if latestCommit}
-            <div class="text-xs text-slate-400 mt-1">
+            <span class="block text-xs text-slate-400 mt-1">
               {new Date(latestCommit.date).toLocaleString()}
-            </div>
-            <div class="text-xs text-slate-400 mt-1">{latestCommit.message}</div>
+            </span>
+            <span class="block text-xs text-slate-400 mt-1">{latestCommit.message}</span>
           {:else}
             N/A
           {/if}
         </span>
-      </div>
+      </button>
 
       <!-- Icon-only buttons with tooltips -->
       <div class="flex justify-center gap-2">
@@ -768,7 +731,6 @@
   <RepoSettings
     show={showSettingsModal}
     repoOwner={gitHubUsername}
-    githubToken={token}
     {projectId}
     {repoName}
     {branch}
@@ -786,7 +748,6 @@
 {#if showIssueManager}
   <IssueManager
     show={showIssueManager}
-    githubToken={effectiveToken}
     repoOwner={gitHubUsername}
     {repoName}
     on:close={handleIssueManagerClose}
@@ -796,7 +757,6 @@
 {#if showQuickIssueForm}
   <QuickIssueForm
     show={showQuickIssueForm}
-    githubToken={effectiveToken}
     repoOwner={gitHubUsername}
     {repoName}
     on:success={handleIssueSuccess}
@@ -807,7 +767,6 @@
 {#if showCommitsModal}
   <CommitsModal
     show={showCommitsModal}
-    githubToken={effectiveToken}
     repoOwner={gitHubUsername}
     {repoName}
     {branch}

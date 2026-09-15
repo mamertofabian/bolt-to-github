@@ -1,5 +1,19 @@
+import { readFileSync } from 'node:fs';
+import { resolve as resolvePath } from 'node:path';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { DownloadService } from '../DownloadService';
+
+const September2026DirectDownloadFixture = readFileSync(
+  resolvePath(process.cwd(), 'bolt-download-button-v4.html'),
+  'utf8'
+);
+
+const serviceMocks = vi.hoisted(() => ({
+  getCachedProjectFiles: vi.fn(),
+  cacheProjectFiles: vi.fn(),
+  invalidateCache: vi.fn(),
+  processZipBlob: vi.fn(),
+}));
 
 interface DownloadServiceWithPrivateMethods {
   findAndClickDownloadButton: () => Promise<void>;
@@ -25,14 +39,15 @@ vi.mock('../../lib/utils/projectId', () => ({
 }));
 
 vi.mock('../../lib/zip', () => ({
-  ZipProcessor: vi.fn(),
+  ZipProcessor: { processZipBlob: serviceMocks.processZipBlob },
 }));
 
 vi.mock('../CacheService', () => ({
   CacheService: {
     getInstance: vi.fn(() => ({
-      getCachedFiles: vi.fn(),
-      setCachedFiles: vi.fn(),
+      getCachedProjectFiles: serviceMocks.getCachedProjectFiles,
+      cacheProjectFiles: serviceMocks.cacheProjectFiles,
+      invalidateCache: serviceMocks.invalidateCache,
     })),
   },
 }));
@@ -52,6 +67,10 @@ describe('DownloadService', () => {
     downloadService = new DownloadService();
 
     vi.spyOn(document, 'addEventListener').mockImplementation(() => {});
+    serviceMocks.getCachedProjectFiles.mockReset();
+    serviceMocks.cacheProjectFiles.mockReset();
+    serviceMocks.invalidateCache.mockReset();
+    serviceMocks.processZipBlob.mockReset();
   });
 
   afterEach(() => {
@@ -148,6 +167,35 @@ describe('DownloadService', () => {
   });
 
   describe('findAndClickExportButton', () => {
+    it('opens the September 2026 project menu and clicks its direct Download item', async () => {
+      const unrelatedMenu = document.createElement('div');
+      unrelatedMenu.setAttribute('role', 'menu');
+      unrelatedMenu.innerHTML = '<div role="menuitem">Download</div>';
+      const unrelatedDownload = unrelatedMenu.querySelector<HTMLElement>('[role="menuitem"]')!;
+      const unrelatedSpy = vi.spyOn(unrelatedDownload, 'click');
+      document.body.appendChild(unrelatedMenu);
+
+      document.body.insertAdjacentHTML('beforeend', September2026DirectDownloadFixture);
+      const projectNameButton = Array.from(
+        document.querySelectorAll<HTMLButtonElement>('button[aria-haspopup="menu"]')
+      ).find((button) => button.textContent?.includes('VitePress Starter'))!;
+      projectNameButton.setAttribute('data-state', 'closed');
+      const controlledMenu = document.getElementById(
+        projectNameButton.getAttribute('aria-controls')!
+      );
+      const directDownload = Array.from(
+        controlledMenu!.querySelectorAll<HTMLElement>('[role="menuitem"]')
+      ).find((item) => item.textContent?.trim() === 'Download')!;
+      const downloadSpy = vi.spyOn(directDownload, 'click');
+
+      const privateService = downloadService as unknown as DownloadServiceWithPrivateMethods;
+      await privateService.findAndClickExportButton();
+      await privateService.findAndClickDownloadButton();
+
+      expect(downloadSpy).toHaveBeenCalledOnce();
+      expect(unrelatedSpy).not.toHaveBeenCalled();
+    });
+
     it('should find project status dropdown button', async () => {
       const projectStatusButton = document.createElement('button');
       projectStatusButton.setAttribute('aria-haspopup', 'menu');
@@ -209,6 +257,57 @@ describe('DownloadService', () => {
       await findAndClickExportButton();
 
       expect(clickSpy).toHaveBeenCalled();
+    });
+  });
+
+  describe('public contract', () => {
+    it('downloadProjectZip reuses an in-flight download and returns the captured blob', async () => {
+      const capturedBlob = new Blob(['project']);
+      let finishDownload: ((blob: Blob) => void) | undefined;
+      const privateService = downloadService as unknown as {
+        setupDownloadInterception: (resolve: (blob: Blob) => void) => void;
+        findAndClickExportButton: () => Promise<void>;
+        findAndClickDownloadButton: () => Promise<void>;
+      };
+      vi.spyOn(privateService, 'setupDownloadInterception').mockImplementation((resolve) => {
+        finishDownload = resolve;
+      });
+      const openMenu = vi.spyOn(privateService, 'findAndClickExportButton').mockResolvedValue();
+      vi.spyOn(privateService, 'findAndClickDownloadButton').mockResolvedValue();
+
+      const first = downloadService.downloadProjectZip();
+      const second = downloadService.downloadProjectZip();
+      finishDownload?.(capturedBlob);
+
+      await expect(first).resolves.toBe(capturedBlob);
+      await expect(second).resolves.toBe(capturedBlob);
+      expect(openMenu).toHaveBeenCalledOnce();
+    });
+
+    it('getProjectFiles returns cached files unless refresh is forced', async () => {
+      const cached = new Map([['cached.txt', 'cached']]);
+      const refreshed = new Map([['fresh.txt', 'fresh']]);
+      const blob = new Blob(['zip']);
+      serviceMocks.getCachedProjectFiles.mockReturnValue(cached);
+      serviceMocks.processZipBlob.mockResolvedValue(refreshed);
+      vi.spyOn(downloadService, 'downloadProjectZip').mockResolvedValue(blob);
+
+      await expect(downloadService.getProjectFiles()).resolves.toBe(cached);
+      await expect(downloadService.getProjectFiles(true)).resolves.toBe(refreshed);
+      expect(serviceMocks.cacheProjectFiles).toHaveBeenCalledWith('test-project-id', refreshed);
+    });
+
+    it('invalidateCache clears the resolved project cache', async () => {
+      serviceMocks.getCachedProjectFiles.mockReturnValue(new Map([['file.txt', 'content']]));
+      await downloadService.getProjectFiles();
+
+      downloadService.invalidateCache();
+
+      expect(serviceMocks.invalidateCache).toHaveBeenCalledWith('test-project-id');
+    });
+
+    it('blobToBase64 returns the encoded blob contents', async () => {
+      await expect(downloadService.blobToBase64(new Blob(['Bolt']))).resolves.toBe('Qm9sdA==');
     });
   });
 

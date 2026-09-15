@@ -81,6 +81,7 @@ export class TempRepoTestLifecycle {
    * Cleanup test environment after each test
    */
   afterEach(): void {
+    this.tempRepoManager?.destroy();
     this.tempRepoManager = null;
     this.env.teardown();
   }

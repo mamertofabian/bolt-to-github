@@ -199,9 +199,9 @@ private async handleOpenReauthentication(data, sendResponse): Promise<void> {
 ### **3. Seamless Integration**
 
 - Leverages existing Issue #159 aggressive detection infrastructure
-- Works with both GitHub App and PAT authentication
-- Maintains backward compatibility
-- No breaking changes to existing flows
+- Uses the required GitHub App authentication path
+- Keeps account recovery and GitHub App reconnection guidance aligned
+- Fails visibly when the account session or installation must be restored
 
 ### **4. User-Centric Design**
 

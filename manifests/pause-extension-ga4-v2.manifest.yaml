@@ -1,0 +1,133 @@
+# manifest-kind: implementation
+# MAID manifest - a machine-checked contract for one change.
+# Declares the intent, the files it may touch, and the commands that verify it.
+# Nothing here is needed to build or run this project; safe to ignore.
+# What it is: https://github.com/mamertofabian/maid-runner
+schema: '2'
+goal: Pause outbound GA4 analytics in the v2.0.0 Chrome extension without bundling an API secret
+description: |
+  The extension cannot keep a GA4 Measurement Protocol API secret private. For
+  v2.0.0, release builds omit that secret, Vite rejects any build that tries to
+  provide it, the extension drops the GA host permission, and settings clearly
+  state that GA4 analytics are paused. The saved preference continues to
+  control anonymous counts in uninstall feedback, with an explicit opt-out;
+  no hidden GA4 fallback sends data.
+type: fix
+created: '2026-09-14T13:21:58Z'
+files:
+  create:
+  - path: src/lib/utils/analyticsReleasePolicy.ts
+    artifacts:
+    - kind: function
+      name: assertAnalyticsSecretNotBundled
+      args:
+      - name: secret
+        type: string | undefined
+      returns: void
+      description: Rejects builds when a GA4 API secret is supplied through the process or Vite env files.
+  scope:
+  - path: vite.config.ts
+    reason: Invoke the release policy for all Vite modes using process and Vite environment values.
+  - path: README.md
+    reason: Replace obsolete instructions for bundling the GA4 secret with the v2.0.0 pause and build guard.
+  edit:
+  - path: .github/workflows/release.yml
+    artifacts:
+    - kind: namespace
+      name: VITE_GA4_API_SECRET
+      description: The release build does not inject a GA4 API secret into Vite.
+  - path: manifest.json
+    artifacts:
+    - kind: namespace
+      name: Ga4CollectionHost
+      description: The extension no longer requests access to the GA collection host while analytics are paused.
+  - path: src/lib/components/ui/AnalyticsToggle.svelte
+    artifacts:
+    - kind: function
+      name: AnalyticsToggle
+      returns: Svelte component instance
+      description: Displays the GA4 pause and preserves the uninstall-feedback usage opt-out.
+  - path: src/lib/components/ui/__tests__/AnalyticsToggle.component.test.ts
+    artifacts:
+    - kind: test_function
+      name: shows GA4 is paused and discloses uninstall feedback usage
+    - kind: test_function
+      name: offers a separate uninstall feedback usage opt-out
+    - kind: test_function
+      name: turning off uninstall feedback clears its URL and saves the preference
+  - path: src/test/release/analyticsSecretPackaging.test.ts
+    artifacts:
+    - kind: test_function
+      name: rejects a configured GA4 API secret before Vite builds
+    - kind: test_function
+      name: Vite config refuses a secret-bearing production build
+    - kind: test_function
+      name: release workflow never supplies a GA4 API secret
+    - kind: test_function
+      name: packaged extension does not request the GA4 collection host
+    - kind: test_function
+      name: clean production package omits the GA4 collection permission
+  read:
+  - src/services/AnalyticsService.ts
+  - src/background/UsageTracker.ts
+validate:
+- pnpm exec vitest run src/test/release/analyticsSecretPackaging.test.ts src/lib/components/ui/__tests__/AnalyticsToggle.component.test.ts
+- pnpm lint
+- pnpm check
+- pnpm build
+temptations:
+- risk: Do not replace the secret with another static client-side credential.
+  instead: Reject secret-bearing builds and defer collection until a server-side collector exists.
+- risk: Do not present the uninstall feedback choice as an active GA4 switch.
+  instead: Show the GA4 pause separately and keep a clearly labeled uninstall feedback opt-out.
+- risk: Do not silently fall back to another analytics endpoint.
+  instead: Keep outbound collection paused and remove the unused GA host permission.
+outcome:
+  status: completed
+  completed_at: '2026-09-14T13:38:43Z'
+  summary: |
+    Paused GA4 events for the v2.0.0 extension by removing the release secret
+    injection, rejecting secret-bearing Vite builds, and removing the packaged
+    GA host permission. Settings disclose the pause while preserving the
+    separate uninstall-feedback usage opt-out.
+  rationale: |
+    A GA4 Measurement Protocol secret cannot remain private inside a Chrome
+    extension. A server-side collector is separate future work; the release
+    build now fails loudly if local or CI configuration attempts to bundle the
+    secret. The existing local .env was left untouched and validation used an
+    empty override for clean-build checks.
+  lessons:
+  - lesson_type: client-credential-boundary
+    summary: Public extension bundles must reject server credentials at build time and inspect the final package.
+    tags: [security, release, analytics]
+    paths: [vite.config.ts, .github/workflows/release.yml, src/test/release/analyticsSecretPackaging.test.ts]
+  - lesson_type: telemetry-disclosure
+    summary: Pausing one analytics destination must not conceal another telemetry path or remove its opt-out.
+    tags: [privacy, ui, review]
+    paths: [src/lib/components/ui/AnalyticsToggle.svelte, src/background/UsageTracker.ts]
+  review_notes:
+  - source: independent reviewer /root/analytics_pause_review
+    severity: findings-fixed
+    summary: Found the separate uninstall-feedback usage path and a source-only manifest test; both were corrected.
+  - source: independent reviewer /root/analytics_pause_review round 2
+    severity: ready
+    summary: Confirmed GA4 pause, uninstall-feedback disclosure and opt-out, clean packaged manifest, and no blocking findings.
+  validation:
+  - command: [pnpm, test:ci]
+    status: passed
+    summary: Full Vitest suite passed 199 files and 4,002 tests after review fixes.
+  - command: [pnpm, lint]
+    status: passed
+    summary: ESLint passed after review fixes.
+  - command: [pnpm, check]
+    status: passed
+    summary: Svelte and TypeScript checking found zero errors and warnings.
+  - command: [./scripts/maid, validate, --manifest-dir, manifests, --mode, implementation]
+    status: passed
+    summary: 39 active manifests passed, zero failed, 13 superseded.
+  - command: [./scripts/maid, verify, --profile, handoff, --since, HEAD, --file-tracking-scope, task, --plan-lock-scope, task, --summary]
+    status: passed
+    summary: All nine task-scope handoff gates passed with an empty GA4 secret override.
+  - command: [pnpm, exec, playwright, test, 'e2e/auth.spec.ts:41', --reporter=line, --retries=0]
+    status: passed
+    summary: The isolated connected-auth browser case passed against a stable build after concurrent-build interference was removed.

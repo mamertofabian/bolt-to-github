@@ -21,9 +21,9 @@ files:
   - path: src/test/e2e-helpers/popup-helpers.test.ts
     artifacts:
     - kind: test_function
-      name: pins PAT onboarding validation to the current submit control
+      name: pins GitHub App-only onboarding validation to the current submit control
     - kind: test_function
-      name: seeds product error flows through a live PAT connection
+      name: seeds product error flows through a live GitHub App connection
   scope:
   - path: e2e/auth.spec.ts
     reason: Update stale onboarding button locators without changing production behavior.

@@ -1,6 +1,7 @@
-import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { BackgroundServiceTestSuite } from '../test-fixtures';
 import { MessageFixtures } from '../test-fixtures/BackgroundServiceTestFixtures';
+import { BackgroundServiceIntegrationEnvironment } from '../test-fixtures/BackgroundServiceTestHelpers';
 
 describe('BackgroundService Critical Scenarios - Observable Behaviors', () => {
   let testSuite: BackgroundServiceTestSuite;
@@ -123,32 +124,100 @@ describe('BackgroundService Critical Scenarios - Observable Behaviors', () => {
   });
 
   describe('Authentication Strategy Handling', () => {
-    it('should function with PAT authentication configured', async () => {
-      const env = testSuite.getEnvironment();
-      env.chromeEnv.setupValidPATAuth();
-      env.serviceFactory.setupSuccessfulUploadScenario();
+    it('background never initializes a GitHub service from a stored PAT', async () => {
+      await testSuite.teardown();
+      const migrationEnvironment = new BackgroundServiceIntegrationEnvironment();
+      migrationEnvironment.chromeEnv.setupLegacyPATMigration();
+      migrationEnvironment.serviceFactory.stateManager.setMockGitHubSettings({
+        gitHubSettings: {
+          githubToken: 'ghp_legacy',
+          repoOwner: 'testuser',
+          repoName: 'test-repo',
+          branch: 'main',
+        },
+      });
 
-      const port = env.chromeEnv.simulatePortConnection('bolt-content', 123);
-      port.simulateMessage(MessageFixtures.zipDataMessage('pat-project'));
+      try {
+        await migrationEnvironment.setup({ githubAppConnected: false });
 
-      await new Promise((resolve) => setTimeout(resolve, 200));
+        expect(
+          migrationEnvironment.serviceFactory.unifiedGitHubServiceConstructor
+        ).not.toHaveBeenCalled();
 
-      const operations = env.serviceFactory.operationStateManager.getAllOperations();
-      expect(operations.length).toBeGreaterThanOrEqual(0);
+        const port = migrationEnvironment.chromeEnv.simulatePortConnection('bolt-content', 123);
+        port.simulateMessage(MessageFixtures.zipDataMessage('pat-project'));
+        await new Promise((resolve) => setTimeout(resolve, 200));
+
+        expect(
+          migrationEnvironment.serviceFactory.operationStateManager.getAllOperations()
+        ).toHaveLength(0);
+      } finally {
+        await migrationEnvironment.teardown();
+      }
     });
 
-    it('should function with GitHub App authentication configured', async () => {
+    it('background initializes GitHub App service for connected configuration', async () => {
       const env = testSuite.getEnvironment();
-      env.chromeEnv.setupValidGitHubAppAuth();
-      env.serviceFactory.setupSuccessfulUploadScenario();
 
+      expect(env.serviceFactory.unifiedGitHubServiceConstructor).toHaveBeenCalledWith({
+        type: 'github_app',
+      });
+      expect(env.serviceFactory.unifiedGitHubServiceConstructor).not.toHaveBeenCalledWith(
+        expect.any(String)
+      );
+    });
+
+    it('PAT migration blocks private repository import before GitHub work', async () => {
+      const env = testSuite.getEnvironment();
+      env.serviceFactory.supabaseAuthService.setGitHubAppConnected(false);
+      env.chromeEnv.setupLegacyPATMigration();
       const port = env.chromeEnv.simulatePortConnection('bolt-content', 123);
-      port.simulateMessage(MessageFixtures.zipDataMessage('app-project'));
 
-      await new Promise((resolve) => setTimeout(resolve, 200));
+      port.simulateMessage(MessageFixtures.importPrivateRepo('private-repo'));
+      await new Promise((resolve) => setTimeout(resolve, 100));
 
-      const operations = env.serviceFactory.operationStateManager.getAllOperations();
-      expect(operations.length).toBeGreaterThanOrEqual(0);
+      expect(env.serviceFactory.tempRepoManager.handlePrivateRepoImport).not.toHaveBeenCalled();
+    });
+
+    it('PAT migration blocks temporary repository deletion before GitHub work', async () => {
+      await testSuite.teardown();
+      const cleanupEnvironment = new BackgroundServiceIntegrationEnvironment();
+      cleanupEnvironment.serviceFactory.stateManager.setMockGitHubSettings({
+        gitHubSettings: { repoOwner: 'testuser' },
+      });
+
+      try {
+        await cleanupEnvironment.setup();
+        cleanupEnvironment.serviceFactory.supabaseAuthService.setGitHubAppConnected(false);
+        cleanupEnvironment.chromeEnv.setupLegacyPATMigration();
+        const port = cleanupEnvironment.chromeEnv.simulatePortConnection('bolt-content', 123);
+
+        port.simulateMessage({ type: 'DELETE_TEMP_REPO' });
+        await new Promise((resolve) => setTimeout(resolve, 100));
+
+        expect(
+          cleanupEnvironment.serviceFactory.tempRepoManager.cleanupTempRepos
+        ).not.toHaveBeenCalled();
+      } finally {
+        await cleanupEnvironment.teardown();
+      }
+    });
+
+    it('runtime authentication endpoint rejects PAT initiation', async () => {
+      const env = testSuite.getEnvironment();
+      const sendResponse = vi.fn();
+
+      env.chromeEnv.mockChrome.runtime.simulateMessage(
+        { type: 'initiateGitHubAuth', method: 'pat' },
+        { tab: { id: 123 }, url: 'https://bolt2github.com/settings' },
+        sendResponse
+      );
+      await new Promise((resolve) => setTimeout(resolve, 0));
+
+      expect(sendResponse).toHaveBeenCalledWith({
+        success: false,
+        error: 'Invalid authentication method: pat',
+      });
     });
 
     it('should handle authentication failure during upload', async () => {

@@ -111,7 +111,6 @@ export const ANALYTICS_EVENTS = {
 
   // Feature adoption
   GITHUB_APP_AUTH_ADOPTED: 'github_app_auth_adopted',
-  PAT_AUTH_ADOPTED: 'pat_auth_adopted',
   AUTO_PUSH_ENABLED: 'auto_push_enabled',
   BRANCH_PROTECTION_ENABLED: 'branch_protection_enabled',
 } as const;

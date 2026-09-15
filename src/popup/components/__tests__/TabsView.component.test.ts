@@ -8,8 +8,24 @@ import type { UIState } from '$lib/stores/uiState';
 import type { GitHubSettingsState } from '$lib/stores/githubSettings';
 import type { ProjectSettingsState } from '$lib/stores/projectSettings';
 import type { ProjectStatusRef } from '../../types';
+import tabsViewSource from '../TabsView.svelte?raw';
 
 describe('TabsView', () => {
+  it('tabs view no longer forwards PAT credentials into repository surfaces', () => {
+    expect(tabsViewSource).not.toContain('githubToken={githubSettings.githubToken}');
+  });
+
+  it('tabs view exposes no authentication method selection event', () => {
+    expect(tabsViewSource).not.toContain('authMethodChange');
+  });
+
+  it('settings tab does not forward removed repository save or error events', () => {
+    expect(tabsViewSource).not.toContain('save: void');
+    expect(tabsViewSource).not.toContain('error: string');
+    expect(tabsViewSource).not.toContain('on:save={handleSave}');
+    expect(tabsViewSource).not.toContain('on:error=');
+  });
+
   let mockUIState: UIState;
   let mockGitHubSettings: GitHubSettingsState;
   let mockProjectSettings: ProjectSettingsState;
@@ -29,7 +45,6 @@ describe('TabsView', () => {
     };
 
     mockGitHubSettings = {
-      githubToken: 'test-token',
       repoOwner: 'test-owner',
       repoName: 'test-repo',
       branch: 'main',
@@ -44,9 +59,8 @@ describe('TabsView', () => {
       isTokenValid: true,
       validationError: null,
       hasInitialSettings: true,
-      authenticationMethod: 'pat',
-      githubAppInstallationId: null,
-      githubAppUsername: null,
+      githubAppInstallationId: 12345,
+      githubAppUsername: 'test-owner',
       githubAppAvatarUrl: null,
     };
 
@@ -124,9 +138,6 @@ describe('TabsView', () => {
       const feedbackHandler = vi.fn();
       const upgradeClickHandler = vi.fn();
       const newsletterHandler = vi.fn();
-      const saveHandler = vi.fn();
-      const errorHandler = vi.fn();
-      const authMethodChangeHandler = vi.fn();
       const configurePushReminderHandler = vi.fn();
 
       component.$on('switchTab', switchTabHandler);
@@ -134,9 +145,6 @@ describe('TabsView', () => {
       component.$on('feedback', feedbackHandler);
       component.$on('upgradeClick', upgradeClickHandler);
       component.$on('newsletter', newsletterHandler);
-      component.$on('save', saveHandler);
-      component.$on('error', errorHandler);
-      component.$on('authMethodChange', authMethodChangeHandler);
       component.$on('configurePushReminder', configurePushReminderHandler);
 
       expect(document.body).toBeInTheDocument();
@@ -183,7 +191,6 @@ describe('TabsView', () => {
     it('should handle empty GitHub settings', () => {
       const emptyGitHubSettings = {
         ...mockGitHubSettings,
-        githubToken: '',
         repoOwner: '',
         repoName: '',
         branch: '',

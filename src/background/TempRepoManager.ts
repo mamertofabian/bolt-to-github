@@ -19,6 +19,7 @@ export class BackgroundTempRepoManager {
   private static CLEANUP_INTERVAL = 30 * 1000; // 30 seconds
   private static MAX_AGE = 60 * 1000; // 60 seconds
   private cleanupInterval: NodeJS.Timeout | null = null;
+  private destroyed = false;
   private operationStateManager: OperationStateManager;
 
   constructor(
@@ -33,6 +34,8 @@ export class BackgroundTempRepoManager {
 
   private async initializeCleanup(): Promise<void> {
     const tempRepos = await this.getTempRepos();
+    if (this.destroyed) return;
+
     logger.info(
       `🔍 TempRepoManager: Found ${tempRepos.length} temporary repositories on initialization`
     );
@@ -235,8 +238,13 @@ export class BackgroundTempRepoManager {
     }
   }
 
+  destroy(): void {
+    this.destroyed = true;
+    this.stopCleanupInterval();
+  }
+
   private startCleanupInterval(): void {
-    if (this.cleanupInterval) {
+    if (this.destroyed || this.cleanupInterval) {
       logger.info('⚠️  TempRepoManager: Cleanup interval already running');
       return;
     }

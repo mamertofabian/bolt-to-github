@@ -1,0 +1,223 @@
+schema: '2'
+goal: Close repository-settings guidance and route regressions after making GitHub Settings connection-only
+description: |
+  Preserve GitHub Settings as a connection-only account surface while making the
+  project-scoped repository editor discoverable to every connected user. Rename
+  the card to GitHub Connection and show concise, always-visible guidance that
+  repository mappings are configured per project from Home or Projects.
+
+  Update the manual repository and product error-flow browser contracts to open
+  RepoSettings through a real project entry instead of navigating to the removed
+  global form. Add behavioral coverage proving both Home and Projects still open
+  the authoritative modal with the selected repository and branch.
+temptations:
+  - risk: Do not restore repository owner, name, branch, discovery, validation, or save controls to GitHub Settings to satisfy stale E2E selectors.
+    instead: Open the existing project-scoped RepoSettings modal from Home or Projects before exercising repository fields.
+  - risk: Do not show relocation guidance only during PAT migration.
+    instead: Keep one concise repository-mapping sentence visible in connected and disconnected GitHub Connection states.
+  - risk: Do not make browser tests depend on hidden hover styling or an ambiguous global settings button.
+    instead: Locate a specific Bolt project card, hover it, activate its accessible Repository Settings action, and wait for the modal heading.
+  - risk: Do not put Playwright execution into the fast MAID validate gate.
+    instead: Keep fast helper and component tests in validate, then run the two affected browser specs as release evidence.
+type: fix
+files:
+  edit:
+    - path: e2e/helpers/popup.ts
+      artifacts:
+        - kind: function
+          name: openProjectRepositorySettings
+          args:
+            - name: page
+              type: Page
+            - name: repositoryName
+              type: string
+          returns: Promise<void>
+          description: Opens Projects, targets the named Bolt project, reveals its accessible Repository Settings action, and waits for RepoSettings.
+    - path: src/lib/components/__tests__/GitHubSettings.connection.component.test.ts
+      artifacts:
+        - kind: test_function
+          name: connected settings always identify project-scoped repository configuration
+          description: Requires the GitHub Connection heading and always-visible Home-or-Projects mapping guidance outside migration state.
+    - path: src/lib/components/__tests__/ProjectsList.component.test.ts
+      artifacts:
+        - kind: test_function
+          name: repository settings action opens the authoritative project modal
+          description: Proves the Projects route opens RepoSettings with the selected repository and branch.
+    - path: src/test/e2e-helpers/popup-helpers.test.ts
+      artifacts:
+        - kind: test_function
+          name: opens project repository settings through the Projects route
+        - kind: test_function
+          name: repository browser specs target project-scoped settings instead of global Settings
+  scope:
+    - path: src/lib/components/GitHubSettings.svelte
+      reason: Rename the connection card and add always-visible project mapping guidance without changing its connection-only public props.
+    - path: e2e/manual-repo.spec.ts
+      reason: Open RepoSettings for a seeded project before asserting repository validation and branch behavior.
+    - path: e2e/error-flow-product.spec.ts
+      reason: Open RepoSettings for the seeded error-flow project before repository validation scenarios.
+  read:
+    - manifests/make-github-settings-connection-only.manifest.yaml
+    - manifests/04-github-app-only-repository-surfaces.manifest.yaml
+    - manifests/08-github-app-only-release-regression.manifest.yaml
+    - manifests/repair-e2e-error-flow-fast-gate.manifest.yaml
+    - e2e/helpers/storage.ts
+    - e2e/fixtures/extension.ts
+    - src/lib/components/ProjectsList.svelte
+    - src/lib/components/ProjectStatus.svelte
+    - src/lib/components/RepoSettings.svelte
+    - src/lib/components/__tests__/ProjectStatus.component.test.ts
+    - src/lib/components/__tests__/RepoSettings.component.test.ts
+validate:
+  - pnpm exec vitest run src/lib/components/__tests__/GitHubSettings.connection.component.test.ts src/lib/components/__tests__/ProjectsList.component.test.ts src/lib/components/__tests__/ProjectStatus.component.test.ts src/lib/components/__tests__/RepoSettings.component.test.ts src/test/e2e-helpers/popup-helpers.test.ts
+  - ./scripts/maid validate manifests/close-repository-settings-route-gaps.manifest.yaml --mode behavioral
+  - pnpm lint
+  - pnpm check
+  - pnpm build
+created: '2026-07-14T00:00:00Z'
+metadata:
+  tags: [github-app, settings, repository, e2e, ux]
+  priority: high
+  depends_on:
+    - make-github-settings-connection-only
+    - 04-github-app-only-repository-surfaces
+    - 08-github-app-only-release-regression
+  release_validation:
+    - pnpm exec playwright test --project=chromium --reporter=line e2e/manual-repo.spec.ts e2e/error-flow-product.spec.ts
+outcome:
+  status: completed
+  completed_at: '2026-07-14T00:25:04Z'
+  summary: |
+    Closed the repository-settings follow-up gaps without restoring the removed
+    global editor. GitHub Connection now always tells users that repository
+    mappings are configured per project from Home or Projects. Both manual
+    repository and product error-flow browser suites open RepoSettings through
+    a seeded Projects entry, and component coverage now protects the Projects
+    route alongside the existing Home route.
+  rationale: |
+    The original browser contracts and normal-state copy still assumed the old
+    global repository form. Exercising the authoritative per-project modal keeps
+    test behavior aligned with the product architecture and prevents duplicate
+    configuration surfaces from returning solely to satisfy stale selectors.
+  lessons:
+    - lesson_type: browser-route-fidelity
+      summary: |
+        Browser tests for project-owned configuration must seed a project and
+        traverse its real UI entry point before interacting with modal fields.
+      tags: [e2e, repository, settings]
+      paths:
+        - e2e/helpers/popup.ts
+        - e2e/manual-repo.spec.ts
+        - e2e/error-flow-product.spec.ts
+    - lesson_type: scoped-alert-selection
+      summary: |
+        Page-wide first-alert selectors can read unrelated guidance when a modal
+        is opened over a complex page. Repository validation reads should prefer
+        the active RepoSettings container before generic live regions.
+      tags: [playwright, validation, selectors]
+      paths:
+        - e2e/helpers/popup.ts
+        - src/test/e2e-helpers/popup-helpers.test.ts
+    - lesson_type: route-coverage-pairing
+      summary: |
+        When guidance names multiple supported entry points, protect each route
+        independently and assert shared copy in connected and disconnected states.
+      tags: [testing, ux, characterization]
+      paths:
+        - src/lib/components/__tests__/ProjectStatus.component.test.ts
+        - src/lib/components/__tests__/ProjectsList.component.test.ts
+        - src/lib/components/__tests__/GitHubSettings.connection.component.test.ts
+  review_notes:
+    - source: independent reviewer /root/repository_settings_followup_review
+      severity: findings-fixed
+      summary: |
+        No P0 or P1 findings. The reviewer returned Ready to merge and identified
+        one valid P2 coverage gap: disconnected state did not assert the same
+        always-visible mapping guidance. That assertion was added, its shared
+        plan locks were reconciled, and the focused test and implementation
+        validation passed. One pre-existing push-retry scenario needed a retry
+        during the review run, but all repository-route scenarios passed directly.
+  validation:
+    - command:
+        - pnpm
+        - exec
+        - vitest
+        - run
+        - src/lib/components/__tests__/GitHubSettings.connection.component.test.ts
+        - src/lib/components/__tests__/ProjectsList.component.test.ts
+        - src/test/e2e-helpers/popup-helpers.test.ts
+      status: failed-red-phase
+      summary: One normal-state guidance assertion and two project-route helper/spec assertions failed before implementation; the existing Projects modal characterization passed.
+    - command:
+        - pnpm
+        - exec
+        - playwright
+        - test
+        - --project=chromium
+        - --reporter=line
+        - e2e/manual-repo.spec.ts
+        - e2e/error-flow-product.spec.ts
+        - -g
+        - connected users can open repository settings|should show error for invalid repository name
+      status: failed-red-phase
+      summary: Both stale scenarios reproduced against the removed global Settings form before their route updates.
+    - command:
+        - pnpm
+        - exec
+        - vitest
+        - run
+        - src/lib/components/__tests__/GitHubSettings.connection.component.test.ts
+        - src/lib/components/__tests__/ProjectsList.component.test.ts
+        - src/lib/components/__tests__/ProjectStatus.component.test.ts
+        - src/lib/components/__tests__/RepoSettings.component.test.ts
+        - src/test/e2e-helpers/popup-helpers.test.ts
+      status: passed
+      summary: Five focused files passed all 130 component and helper tests.
+    - command:
+        - pnpm
+        - exec
+        - playwright
+        - test
+        - --project=chromium
+        - --reporter=line
+        - e2e/manual-repo.spec.ts
+        - e2e/error-flow-product.spec.ts
+      status: passed
+      summary: Both complete affected browser specs passed all nine scenarios after scoping validation alerts to RepoSettings.
+    - command:
+        - ./scripts/maid
+        - test
+        - --manifest
+        - manifests/close-repository-settings-route-gaps.manifest.yaml
+      status: passed
+      summary: All five declared commands passed, including focused tests, behavioral validation, lint, type checking, and production build.
+    - command:
+        - ./scripts/maid
+        - validate
+        - manifests/close-repository-settings-route-gaps.manifest.yaml
+        - --mode
+        - implementation
+      status: passed
+      summary: All declared artifacts passed implementation validation; only three documented unrelated release-manifest E110 warnings remained.
+    - command: [pnpm, test:ci]
+      status: passed
+      summary: Full Vitest CI passed 198 files and 4,014 tests.
+    - command:
+        - ./scripts/maid
+        - verify
+        - --manifest-dir
+        - manifests
+        - --since
+        - HEAD
+        - --file-tracking-scope
+        - task
+        - --plan-lock-scope
+        - task
+        - --include-tests
+        - --worktree-scope
+        - --require-plan-lock
+        - --require-red-evidence
+        - --summary
+        - --advisory
+      status: passed
+      summary: All nine task-scoped gates passed after reconciling shared behavioral-test hashes; the three known unrelated E110 warnings remained non-blocking.

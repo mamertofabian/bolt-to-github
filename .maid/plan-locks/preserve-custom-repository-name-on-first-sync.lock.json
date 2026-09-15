@@ -1,0 +1,258 @@
+{
+  "manifest_path": "manifests/preserve-custom-repository-name-on-first-sync.manifest.yaml",
+  "manifest_hash": "sha256:987b858c92596967354a3fdcd7bdab12af5c9b0a384adc32ccd64e3417a763ae",
+  "test_hashes": {
+    "src/services/__tests__/BoltProjectSyncService.test.ts": "sha256:d3721f8c140abb9b28cca6790472005e500fa6e9774b19811c44b3bfd571d5ac",
+    "src/services/__tests__/BoltProjectSyncService.directMethod.test.ts": "sha256:688e80141dcb2773287025354c4edd5747b1af5fb7494695238f7e0caa0ce288"
+  },
+  "created_at": "2026-07-15T04:29:24.389990+00:00",
+  "revision": 3,
+  "revisions": [
+    {
+      "prior_manifest_hash": "sha256:270f66cf850ae43dfa01e400a771f45ade49ec9eb44712d0c70ca95f5102cdc7",
+      "prior_test_hashes": {
+        "src/services/__tests__/BoltProjectSyncService.test.ts": "sha256:d3721f8c140abb9b28cca6790472005e500fa6e9774b19811c44b3bfd571d5ac",
+        "src/services/__tests__/BoltProjectSyncService.directMethod.test.ts": "sha256:842e424b9d9b1ae897a0935a717236e6225f23c6f5e65caf1a850cbbcb4e48ea"
+      },
+      "revised_at": "2026-07-15T04:31:02.648242+00:00",
+      "reason": "Make the BoltProject storage fake persist writes so the behavioral test observes public sync output across service reads",
+      "agent": null,
+      "contract_delta": {
+        "artifacts_added": [],
+        "artifacts_removed": [],
+        "files_added": [],
+        "files_removed": [],
+        "validate_commands_added": [],
+        "validate_commands_removed": []
+      }
+    },
+    {
+      "prior_manifest_hash": "sha256:270f66cf850ae43dfa01e400a771f45ade49ec9eb44712d0c70ca95f5102cdc7",
+      "prior_test_hashes": {
+        "src/services/__tests__/BoltProjectSyncService.test.ts": "sha256:d3721f8c140abb9b28cca6790472005e500fa6e9774b19811c44b3bfd571d5ac",
+        "src/services/__tests__/BoltProjectSyncService.directMethod.test.ts": "sha256:688e80141dcb2773287025354c4edd5747b1af5fb7494695238f7e0caa0ce288"
+      },
+      "revised_at": "2026-07-15T04:36:12.655880+00:00",
+      "reason": "Record the required post-review Outcome evidence without changing the approved behavioral contract",
+      "agent": null,
+      "contract_delta": {
+        "artifacts_added": [],
+        "artifacts_removed": [],
+        "files_added": [],
+        "files_removed": [],
+        "validate_commands_added": [],
+        "validate_commands_removed": []
+      }
+    }
+  ],
+  "red_evidence": {
+    "red": true,
+    "captured_at": "2026-07-15T04:31:26.621918+00:00",
+    "commands": [
+      {
+        "command": "pnpm exec vitest run src/services/__tests__/BoltProjectSyncService.directMethod.test.ts src/services/__tests__/BoltProjectSyncService.test.ts",
+        "exit_code": 1,
+        "output_tail": "-   \"github_branch\": \"develop\",\n-   \"github_repo_name\": \"custom-repository\",\n-   \"github_repo_owner\": \"owner\",\n-   \"is_private\": false,\n-   \"project_name\": \"New Project\",\n+   \"github_branch\": \"main\",\n+   \"github_repo_name\": \"project-1\",\n+   \"project_name\": \"project-1\",\n  }\n\n \u276f src/services/__tests__/BoltProjectSyncService.directMethod.test.ts:147:37\n    145|         }>;\n    146|       };\n    147|       expect(body.localProjects[0]).toMatchObject({\n       |                                     ^\n    148|         github_repo_name: customRepoName,\n    149|         github_repo_owner: 'owner',\n\n\u23af\u23af\u23af\u23af\u23af\u23af\u23af\u23af\u23af\u23af\u23af\u23af\u23af\u23af\u23af\u23af\u23af\u23af\u23af\u23af\u23af\u23af\u23af\u23af[1/1]\u23af\n",
+        "classification": "red"
+      },
+      {
+        "command": "./scripts/maid validate manifests/preserve-custom-repository-name-on-first-sync.manifest.yaml --mode behavioral",
+        "exit_code": 0,
+        "output_tail": "PASS preserve-custom-repository-name-on-first-sync\n  Mode: behavioral\n  Duration: 448ms\n  Warnings (3):\n    E110 Manifest 'prepare-v2-0-0-github-app-release' supersedes 'release-v1-3-21' but drops artifact 'PackageVersion_1_3_21' (namespace) at package.json\n      Location: /home/atomrem/projects/codefrost-dev/bolt-to-github/manifests/prepare-v2-0-0-github-app-release.manifest.yaml\n      Suggestion: Re-declare the artifact in the replacement manifest, list its file under files.delete, or list the symbol under removed_artifacts.\n    E110 Manifest 'prepare-v2-0-0-github-app-release' supersedes 'release-v1-3-21' but drops artifact 'ChromeManifestVersion_1_3_21' (namespace) at manifest.json\n      Location: /home/atomrem/projects/codefrost-dev/bolt-to-github/manifests/prepare-v2-0-0-github-app-release.manifest.yaml\n      Suggestion: Re-declare the artifact in the replacement manifest, list its file under files.delete, or list the symbol under removed_artifacts.\n    E110 Manifest 'prepare-v2-0-0-github-app-release' supersedes 'release-v1-3-21' but drops artifact 'DevelopmentGuideVersion_1_3_21' (namespace) at CLAUDE.md\n      Location: /home/atomrem/projects/codefrost-dev/bolt-to-github/manifests/prepare-v2-0-0-github-app-release.manifest.yaml\n      Suggestion: Re-declare the artifact in the replacement manifest, list its file under files.delete, or list the symbol under removed_artifacts.",
+        "classification": "not_red"
+      },
+      {
+        "command": "pnpm lint",
+        "exit_code": 0,
+        "output_tail": "\n> bolt-to-github@2.0.0 lint /home/atomrem/projects/codefrost-dev/bolt-to-github\n> eslint \"src/**/*.{js,ts,svelte}\"\n",
+        "classification": "not_red"
+      },
+      {
+        "command": "pnpm check",
+        "exit_code": 0,
+        "output_tail": "\n> bolt-to-github@2.0.0 check /home/atomrem/projects/codefrost-dev/bolt-to-github\n> svelte-check --tsconfig ./tsconfig.json\n\n\n====================================\nLoading svelte-check in workspace: /home/atomrem/projects/codefrost-dev/bolt-to-github\nGetting Svelte diagnostics...\n\n====================================\nsvelte-check found 0 errors and 0 warnings",
+        "classification": "not_red"
+      },
+      {
+        "command": "pnpm build",
+        "exit_code": 0,
+        "output_tail": "dist/assets/index-BnArqU_7.js                                 2.56 kB \u2502 gzip:   1.25 kB\ndist/assets/WelcomePageContentScript.ts-D1t7FgTm.js           2.66 kB \u2502 gzip:   0.79 kB\ndist/assets/GitHubCacheService-Bcgnv6OU.js                    3.68 kB \u2502 gzip:   1.30 kB\ndist/assets/TempRepoManager-Bp4BKaZ-.js                       4.65 kB \u2502 gzip:   1.78 kB\ndist/assets/logger-CcH-GVeY.js                                8.19 kB \u2502 gzip:   2.69 kB\ndist/pages/logs.js                                           15.32 kB \u2502 gzip:   5.72 kB\ndist/assets/debounce-B9TcZIEU.js                             22.12 kB \u2502 gzip:   6.78 kB\ndist/assets/input-CjMOwtNQ.js                                72.26 kB \u2502 gzip:  25.08 kB\ndist/assets/GitHubComparisonService-DQensiPm.js              80.42 kB \u2502 gzip:  23.34 kB\ndist/background/background.js                               110.94 kB \u2502 gzip:  29.63 kB\ndist/content/content.js                                     246.68 kB \u2502 gzip:  72.54 kB\ndist/assets/index.html-BasQnvtj.js                          453.02 kB \u2502 gzip: 115.94 kB\n\u2713 built in 8.91s\n\n[plugin:vite:reporter] [plugin vite:reporter] \n(!) /home/atomrem/projects/codefrost-dev/bolt-to-github/src/lib/constants/supabase.ts is dynamically imported by /home/atomrem/projects/codefrost-dev/bolt-to-github/src/services/UnifiedGitHubService.ts but also statically imported by /home/atomrem/projects/codefrost-dev/bolt-to-github/src/content/services/SupabaseAuthService.ts, /home/atomrem/projects/codefrost-dev/bolt-to-github/src/services/BoltProjectSyncService.ts, /home/atomrem/projects/codefrost-dev/bolt-to-github/src/services/GitHubAppService.ts, /home/atomrem/projects/codefrost-dev/bolt-to-github/src/services/SubscriptionService.ts, dynamic import will not move module into another chunk.\n\n[plugin:vite:reporter] [plugin vite:reporter] \n(!) /home/atomrem/projects/codefrost-dev/bolt-to-github/src/content/handlers/FileChangeHandler.ts is dynamically imported by /home/atomrem/projects/codefrost-dev/bolt-to-github/src/content/handlers/GitHubUploadHandler.ts, /home/atomrem/projects/codefrost-dev/bolt-to-github/src/content/services/PushReminderService.ts, /home/atomrem/projects/codefrost-dev/bolt-to-github/src/content/services/PushReminderService.ts but also statically imported by /home/atomrem/projects/codefrost-dev/bolt-to-github/src/content/UIManager.ts, dynamic import will not move module into another chunk.\n",
+        "classification": "not_red"
+      }
+    ]
+  },
+  "legacy_baseline": null,
+  "agent": null,
+  "_manifest_contract": {
+    "artifacts": [
+      "src/services/BoltProjectSyncService.ts:class:BoltProjectSyncService",
+      "src/services/BoltProjectSyncService.ts:class:BoltProjectSyncService:kind=class",
+      "src/services/BoltProjectSyncService.ts:method:BoltProjectSyncService.getLastSyncTimestamp",
+      "src/services/BoltProjectSyncService.ts:method:BoltProjectSyncService.getLastSyncTimestamp:kind=method",
+      "src/services/BoltProjectSyncService.ts:method:BoltProjectSyncService.getLastSyncTimestamp:of=BoltProjectSyncService",
+      "src/services/BoltProjectSyncService.ts:method:BoltProjectSyncService.getLastSyncTimestamp:returns=Promise<string | null>",
+      "src/services/BoltProjectSyncService.ts:method:BoltProjectSyncService.getLocalProjects",
+      "src/services/BoltProjectSyncService.ts:method:BoltProjectSyncService.getLocalProjects:kind=method",
+      "src/services/BoltProjectSyncService.ts:method:BoltProjectSyncService.getLocalProjects:of=BoltProjectSyncService",
+      "src/services/BoltProjectSyncService.ts:method:BoltProjectSyncService.getLocalProjects:returns=Promise<BoltProject[]>",
+      "src/services/BoltProjectSyncService.ts:method:BoltProjectSyncService.performInwardSync",
+      "src/services/BoltProjectSyncService.ts:method:BoltProjectSyncService.performInwardSync:kind=method",
+      "src/services/BoltProjectSyncService.ts:method:BoltProjectSyncService.performInwardSync:of=BoltProjectSyncService",
+      "src/services/BoltProjectSyncService.ts:method:BoltProjectSyncService.performInwardSync:returns=Promise<SyncResponse | null>",
+      "src/services/BoltProjectSyncService.ts:method:BoltProjectSyncService.performOutwardSync",
+      "src/services/BoltProjectSyncService.ts:method:BoltProjectSyncService.performOutwardSync:kind=method",
+      "src/services/BoltProjectSyncService.ts:method:BoltProjectSyncService.performOutwardSync:of=BoltProjectSyncService",
+      "src/services/BoltProjectSyncService.ts:method:BoltProjectSyncService.performOutwardSync:returns=Promise<SyncResponse | null>",
+      "src/services/BoltProjectSyncService.ts:method:BoltProjectSyncService.saveLocalProjects",
+      "src/services/BoltProjectSyncService.ts:method:BoltProjectSyncService.saveLocalProjects:arg=projects:type=BoltProject[]:default=None",
+      "src/services/BoltProjectSyncService.ts:method:BoltProjectSyncService.saveLocalProjects:kind=method",
+      "src/services/BoltProjectSyncService.ts:method:BoltProjectSyncService.saveLocalProjects:of=BoltProjectSyncService",
+      "src/services/BoltProjectSyncService.ts:method:BoltProjectSyncService.saveLocalProjects:returns=Promise<void>",
+      "src/services/BoltProjectSyncService.ts:method:BoltProjectSyncService.setLastSyncTimestamp",
+      "src/services/BoltProjectSyncService.ts:method:BoltProjectSyncService.setLastSyncTimestamp:arg=timestamp:type=string:default=None",
+      "src/services/BoltProjectSyncService.ts:method:BoltProjectSyncService.setLastSyncTimestamp:kind=method",
+      "src/services/BoltProjectSyncService.ts:method:BoltProjectSyncService.setLastSyncTimestamp:of=BoltProjectSyncService",
+      "src/services/BoltProjectSyncService.ts:method:BoltProjectSyncService.setLastSyncTimestamp:returns=Promise<void>",
+      "src/services/BoltProjectSyncService.ts:method:BoltProjectSyncService.shouldPerformInwardSync",
+      "src/services/BoltProjectSyncService.ts:method:BoltProjectSyncService.shouldPerformInwardSync:kind=method",
+      "src/services/BoltProjectSyncService.ts:method:BoltProjectSyncService.shouldPerformInwardSync:of=BoltProjectSyncService",
+      "src/services/BoltProjectSyncService.ts:method:BoltProjectSyncService.shouldPerformInwardSync:returns=Promise<boolean>",
+      "src/services/BoltProjectSyncService.ts:method:BoltProjectSyncService.syncWithBackend",
+      "src/services/BoltProjectSyncService.ts:method:BoltProjectSyncService.syncWithBackend:arg=conflictResolution:type='auto-resolve' | 'keep-local' | 'keep-remote':default=None",
+      "src/services/BoltProjectSyncService.ts:method:BoltProjectSyncService.syncWithBackend:arg=updateLocalStorage:type=boolean:default=None",
+      "src/services/BoltProjectSyncService.ts:method:BoltProjectSyncService.syncWithBackend:kind=method",
+      "src/services/BoltProjectSyncService.ts:method:BoltProjectSyncService.syncWithBackend:of=BoltProjectSyncService",
+      "src/services/BoltProjectSyncService.ts:method:BoltProjectSyncService.syncWithBackend:returns=Promise<SyncResponse>",
+      "src/services/__tests__/BoltProjectSyncService.directMethod.test.ts:syncs a custom repository name for a newly created project with incomplete sync metadata",
+      "src/services/__tests__/BoltProjectSyncService.directMethod.test.ts:syncs a custom repository name for a newly created project with incomplete sync metadata:kind=test_function"
+    ],
+    "files": {
+      "create": [],
+      "edit": [
+        "src/services/BoltProjectSyncService.ts",
+        "src/services/__tests__/BoltProjectSyncService.directMethod.test.ts"
+      ],
+      "read": [
+        "src/lib/components/RepoSettings.svelte",
+        "src/lib/services/chromeStorage.ts",
+        "src/lib/types.ts",
+        "src/services/__tests__/BoltProjectSyncService.test.ts"
+      ],
+      "scope": [],
+      "delete": [],
+      "snapshot": []
+    },
+    "file_contract": {
+      "edit": [
+        {
+          "path": "src/services/BoltProjectSyncService.ts",
+          "artifacts": [
+            {
+              "kind": "class",
+              "name": "BoltProjectSyncService",
+              "description": "Synchronizes projectSettings and boltProjects without dropping newly saved repository mappings while repairing incomplete local records."
+            },
+            {
+              "kind": "method",
+              "name": "getLocalProjects",
+              "of": "BoltProjectSyncService",
+              "returns": "Promise<BoltProject[]>"
+            },
+            {
+              "kind": "method",
+              "name": "saveLocalProjects",
+              "of": "BoltProjectSyncService",
+              "args": [
+                {
+                  "name": "projects",
+                  "type": "BoltProject[]"
+                }
+              ],
+              "returns": "Promise<void>"
+            },
+            {
+              "kind": "method",
+              "name": "getLastSyncTimestamp",
+              "of": "BoltProjectSyncService",
+              "returns": "Promise<string | null>"
+            },
+            {
+              "kind": "method",
+              "name": "setLastSyncTimestamp",
+              "of": "BoltProjectSyncService",
+              "args": [
+                {
+                  "name": "timestamp",
+                  "type": "string"
+                }
+              ],
+              "returns": "Promise<void>"
+            },
+            {
+              "kind": "method",
+              "name": "syncWithBackend",
+              "of": "BoltProjectSyncService",
+              "args": [
+                {
+                  "name": "conflictResolution",
+                  "type": "'auto-resolve' | 'keep-local' | 'keep-remote'"
+                },
+                {
+                  "name": "updateLocalStorage",
+                  "type": "boolean"
+                }
+              ],
+              "returns": "Promise<SyncResponse>"
+            },
+            {
+              "kind": "method",
+              "name": "shouldPerformInwardSync",
+              "of": "BoltProjectSyncService",
+              "returns": "Promise<boolean>"
+            },
+            {
+              "kind": "method",
+              "name": "performOutwardSync",
+              "description": "Repairs incomplete local project metadata and still applies current projectSettings values before sending the outward payload.",
+              "of": "BoltProjectSyncService",
+              "returns": "Promise<SyncResponse | null>"
+            },
+            {
+              "kind": "method",
+              "name": "performInwardSync",
+              "of": "BoltProjectSyncService",
+              "returns": "Promise<SyncResponse | null>"
+            }
+          ]
+        },
+        {
+          "path": "src/services/__tests__/BoltProjectSyncService.directMethod.test.ts",
+          "artifacts": [
+            {
+              "kind": "test_function",
+              "name": "syncs a custom repository name for a newly created project with incomplete sync metadata",
+              "description": "The outward request uses the freshly saved custom mapping rather than the project-ID default when its existing BoltProject needs project_name repair."
+            }
+          ]
+        }
+      ],
+      "read": [
+        "src/lib/components/RepoSettings.svelte",
+        "src/lib/services/chromeStorage.ts",
+        "src/lib/types.ts",
+        "src/services/__tests__/BoltProjectSyncService.test.ts"
+      ]
+    },
+    "test_files": [
+      "src/services/__tests__/BoltProjectSyncService.directMethod.test.ts",
+      "src/services/__tests__/BoltProjectSyncService.test.ts"
+    ],
+    "validate_commands": [
+      "pnpm exec vitest run src/services/__tests__/BoltProjectSyncService.directMethod.test.ts src/services/__tests__/BoltProjectSyncService.test.ts",
+      "./scripts/maid validate manifests/preserve-custom-repository-name-on-first-sync.manifest.yaml --mode behavioral",
+      "pnpm lint",
+      "pnpm check",
+      "pnpm build"
+    ]
+  }
+}

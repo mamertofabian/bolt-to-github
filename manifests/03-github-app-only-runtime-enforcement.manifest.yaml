@@ -1,0 +1,479 @@
+schema: '2'
+goal: |
+  Enforce live Bolt2GitHub session and GitHub App readiness at every background
+  and content-script boundary that can start GitHub-backed work.
+description: |
+  Third child of github-app-only-authentication and the promoted runtime
+  enforcement contract.
+
+  The live connection result gains a migration_required reason. Stored PAT
+  state must never produce connected=true. Background initialization always
+  builds the GitHub App service and leaves it unavailable when the live account
+  or installation contract is not satisfied. Push, ZIP upload, file comparison,
+  cached file-change startup, imports, and programmatic entry points must stop
+  before loading data or consuming premium usage when migration or connection
+  is incomplete.
+
+  This child preserves the existing single background-auth authority and its
+  force-fresh checks. It changes authorization policy, not session ownership.
+  User-visible background/ZIP errors must use the same account/GitHub App
+  recovery vocabulary and must never tell users to set or inspect a GitHub
+  token.
+temptations:
+  - risk: 'Do not enforce GitHub App-only behavior only in the popup.'
+    instead: 'Gate background, content, cached startup, and programmatic entry points before GitHub work begins.'
+  - risk: 'Do not collapse migration_required into unavailable or silently return false.'
+    instead: 'Return a stable reason and actionable message so every surface can explain the required migration.'
+  - risk: 'Do not weaken live verification by trusting installation metadata alone.'
+    instead: 'Continue reconciling the account session and installation through BackgroundAuthClient before authorizing work.'
+  - risk: 'Do not leave token-setup errors in lower-level ZIP or message paths after the top-level gate changes.'
+    instead: 'Route missing-service failures to explicit Bolt2GitHub sign-in or GitHub App connection guidance and test the observable status text.'
+type: refactor
+supersedes:
+  - gate-github-actions-on-live-connection
+files:
+  edit:
+    - path: src/lib/utils/githubConnection.ts
+      artifacts:
+        - kind: type
+          name: GitHubConnectionFailureReason
+          type: "'migration_required' | 'not_authenticated' | 'not_connected' | 'unavailable'"
+        - kind: interface
+          name: GitHubConnectionResult
+        - kind: attribute
+          name: connected
+          of: GitHubConnectionResult
+          type: boolean
+        - kind: attribute
+          name: reason
+          of: GitHubConnectionResult
+          type: GitHubConnectionFailureReason | undefined
+        - kind: attribute
+          name: message
+          of: GitHubConnectionResult
+          type: string
+        - kind: interface
+          name: GitHubConnectionAuthClient
+        - kind: attribute
+          name: getAuthState
+          of: GitHubConnectionAuthClient
+          type: () => Promise<AuthState>
+        - kind: attribute
+          name: syncGitHubApp
+          of: GitHubConnectionAuthClient
+          type: () => Promise<boolean>
+        - kind: function
+          name: checkGitHubConnection
+          args:
+            - name: authClient
+              type: GitHubConnectionAuthClient
+          returns: Promise<GitHubConnectionResult>
+          description: Never treats PAT state as connected and reports migration_required when the durable marker is set.
+        - kind: function
+          name: checkPopupGitHubConnection
+          args:
+            - name: authClient
+              type: GitHubConnectionAuthClient
+          returns: Promise<GitHubConnectionResult>
+          description: Keeps popup caching advisory while preserving migration and live-account semantics.
+    - path: src/content/services/githubAppIdentity.ts
+      artifacts:
+        - kind: function
+          name: stableGitHubAppInstallationId
+          args:
+            - name: installationId
+              type: 'number | null | undefined'
+          returns: 'number | undefined'
+          description: Returns only a server-provided finite positive installation ID; never manufactures one.
+    - path: src/content/services/SupabaseAuthService.ts
+      artifacts:
+        - kind: method
+          name: clearExpiredSession
+          of: SupabaseAuthService
+          args: []
+          returns: Promise<void>
+          description: Clears only Supabase session storage keys while preserving server-confirmed GitHub App linkage.
+        - kind: method
+          name: syncGitHubApp
+          of: SupabaseAuthService
+          args: []
+          returns: Promise<boolean>
+          description: Reconciles the current authenticated user with a stable live GitHub App installation.
+    - path: src/content/handlers/GitHubUploadHandler.ts
+      artifacts:
+        - kind: class
+          name: GitHubUploadHandler
+          description: All public push entry points gate live GitHub connection before settings, confirmation, ZIP export, or dispatch.
+        - kind: method
+          name: validateSettings
+          of: GitHubUploadHandler
+          args: []
+          returns: Promise<boolean>
+        - kind: method
+          name: handleGitHubPushWithFreshComparison
+          of: GitHubUploadHandler
+          args: []
+          returns: Promise<void>
+        - kind: method
+          name: handleGitHubPush
+          of: GitHubUploadHandler
+          args:
+            - name: useStoredChanges
+              type: boolean
+            - name: skipChangeDetection
+              type: boolean
+          returns: Promise<void>
+        - kind: method
+          name: getProjectInfo
+          of: GitHubUploadHandler
+          args: []
+          returns: 'Promise<{ repoName?: string; branch?: string } | null>'
+    - path: src/content/handlers/FileChangeHandler.ts
+      artifacts:
+        - kind: class
+          name: FileChangeHandler
+          description: GitHub-backed comparison requires live GitHub App authority before premium usage, loading, or service construction.
+        - kind: method
+          name: setPremiumService
+          of: FileChangeHandler
+          args:
+            - name: premiumService
+              type: PremiumService
+          returns: void
+        - kind: method
+          name: setUploadStatusManager
+          of: FileChangeHandler
+          args:
+            - name: uploadStatusManager
+              type: IUploadStatusManager
+          returns: void
+        - kind: method
+          name: loadProjectFiles
+          of: FileChangeHandler
+          args:
+            - name: forceRefresh
+              type: boolean
+          returns: Promise<void>
+        - kind: method
+          name: showChangedFiles
+          of: FileChangeHandler
+          args: []
+          returns: Promise<void>
+        - kind: method
+          name: getCurrentProjectId
+          of: FileChangeHandler
+          args: []
+          returns: string
+        - kind: method
+          name: getChangedFiles
+          of: FileChangeHandler
+          args:
+            - name: forceRefresh
+              type: boolean
+          returns: Promise<Map<string, FileChange>>
+    - path: src/background/BackgroundService.ts
+      artifacts:
+        - kind: class
+          name: BackgroundService
+          description: Background startup and every GitHub-backed message boundary require live GitHub App authority and never construct a PAT service.
+    - path: src/background/TempRepoManager.ts
+      artifacts:
+        - kind: method
+          name: handlePrivateRepoImport
+          of: BackgroundTempRepoManager
+          args:
+            - name: sourceRepo
+              type: string
+            - name: branch
+              type: string
+          returns: Promise<void>
+        - kind: method
+          name: getTempRepos
+          of: BackgroundTempRepoManager
+          args: []
+          returns: Promise<TempRepoMetadata[]>
+        - kind: method
+          name: cleanupTempRepos
+          of: BackgroundTempRepoManager
+          args:
+            - name: forceCleanUp
+              type: boolean
+          returns: Promise<void>
+        - kind: method
+          name: destroy
+          of: BackgroundTempRepoManager
+          args: []
+          returns: void
+          description: Stops autonomous cleanup so a disconnected account cannot retain a stale GitHub service.
+    - path: src/services/UnifiedGitHubService.ts
+      artifacts:
+        - kind: class
+          name: UnifiedGitHubService
+          description: Explicit GitHub App configuration is authoritative and can never fall back to a PAT strategy, including initialization retries.
+    - path: src/popup/App.svelte
+      artifacts:
+        - kind: function
+          name: reconcilePopupGitHubConnection
+          args:
+            - name: checkConnection
+              type: '() => Promise<GitHubConnectionResult>'
+            - name: refreshSettings
+              type: '() => Promise<void>'
+            - name: showStatus
+              type: '(message: string, duration: number) => void'
+          returns: Promise<GitHubConnectionResult>
+          description: Reconciles popup readiness and surfaces every blocked or unavailable result.
+        - kind: function
+          name: runPopupGitHubAction
+          args:
+            - name: checkConnection
+              type: '() => Promise<GitHubConnectionResult>'
+            - name: refreshSettings
+              type: '() => Promise<void>'
+            - name: showStatus
+              type: '(message: string, duration: number) => void'
+            - name: action
+              type: '() => Promise<void>'
+          returns: Promise<boolean>
+          description: Runs a popup GitHub action only after live reconciliation succeeds.
+        - kind: function
+          name: canOpenPopupGitHubSurface
+          args:
+            - name: connectionReady
+              type: boolean
+            - name: requirementsMet
+              type: boolean
+          returns: boolean
+          description: Keeps GitHub-backed popup surfaces unmounted until live verification succeeds.
+    - path: src/lib/utils/__tests__/githubConnection.test.ts
+      artifacts:
+        - kind: test_function
+          name: legacy PAT state returns migration required and never connected
+        - kind: test_function
+          name: valid PAT cannot bypass the live GitHub App authority
+        - kind: test_function
+          name: connected GitHub App remains connected after PAT retirement
+        - kind: test_function
+          name: migration-required results are not cached as popup success
+    - path: src/background/__tests__/BackgroundService.critical-scenarios.test.ts
+      artifacts:
+        - kind: test_function
+          name: background never initializes a GitHub service from a stored PAT
+        - kind: test_function
+          name: background initializes GitHub App service for connected configuration
+        - kind: test_function
+          name: PAT migration blocks private repository import before GitHub work
+        - kind: test_function
+          name: PAT migration blocks temporary repository deletion before GitHub work
+        - kind: test_function
+          name: runtime authentication endpoint rejects PAT initiation
+    - path: src/background/__tests__/BackgroundService.user-journeys.test.ts
+      artifacts:
+        - kind: test_function
+          name: should guide new user through complete setup and first upload
+        - kind: test_function
+          name: should recover from required migration after the GitHub App is connected
+    - path: src/background/__tests__/BackgroundService.edge-cases.test.ts
+      artifacts:
+        - kind: test_function
+          name: should keep malformed legacy authentication state behind the GitHub App gate
+    - path: src/background/__tests__/BackgroundService.storage-recovery.test.ts
+      artifacts:
+        - kind: test_function
+          name: late GitHub authentication failure remains actionable instead of becoming a ZIP error
+        - kind: test_function
+          name: newer disconnected recovery prevents an older connected recovery from restoring stale dependencies
+    - path: src/background/__tests__/BackgroundService.reload.test.ts
+      artifacts:
+        - kind: test_function
+          name: runtime listener delegates background auth router messages through one listener
+    - path: src/content/handlers/__tests__/GitHubUploadHandler.test.ts
+      artifacts:
+        - kind: test_function
+          name: PAT migration blocks upload before project files or premium usage
+    - path: src/content/handlers/__tests__/FileChangeHandler.test.ts
+      artifacts:
+        - kind: test_function
+          name: PAT migration blocks file comparison before GitHub service creation
+    - path: src/services/__tests__/ZipHandler.test.ts
+      artifacts:
+        - kind: test_function
+          name: missing GitHub service reports GitHub App connection guidance instead of token setup
+    - path: src/services/__tests__/UnifiedGitHubService.auth-selection.test.ts
+      artifacts:
+        - kind: test_function
+          name: explicit GitHub App configuration never falls back to PAT
+    - path: src/background/__tests__/TempRepoManager.test.ts
+      artifacts:
+        - kind: test_function
+          name: destroy stops autonomous cleanup before a stale service can delete repositories
+        - kind: test_function
+          name: destroy prevents deferred cleanup initialization from starting a stale interval
+  scope:
+    - path: manifests/prevent-github-token-request-stampede.manifest.yaml
+      reason: Evolve explicit GitHub App configuration from requiring stored installation state to being authoritative without weakening durable storage auto-detection.
+    - path: src/background/test-fixtures/BackgroundServiceTestFixtures.ts
+      reason: Replace PAT-ready fixtures with connected GitHub App and explicit migration-required fixtures.
+    - path: src/background/test-fixtures/BackgroundServiceTestHelpers.ts
+      reason: Remove PAT as a background scenario-builder authentication option.
+    - path: src/background/test-fixtures/BackgroundServiceMocks.ts
+      reason: Model live account and GitHub App readiness and expose constructor evidence without accepting a PAT service.
+    - path: src/background/test-fixtures/BackgroundServiceTestSpecification.ts
+      reason: Replace PAT scenarios with GitHub App and migration enforcement scenarios.
+    - path: src/background/test-fixtures/index.ts
+      reason: Remove PAT builder branches and exports from shared background test fixtures.
+    - path: src/background/test-fixtures/TempRepoManagerTestHelpers.ts
+      reason: Destroy the active manager during test teardown so lifecycle tests model production cleanup.
+    - path: src/content/test-fixtures/MessageHandlerTestFixtures.ts
+      reason: Replace PAT-valid and invalid-token settings messages with GitHub App connected, migration-required, and disconnected fixtures.
+    - path: src/services/zipHandler.ts
+      reason: Replace user-visible set-your-GitHub-token failures with actionable Bolt2GitHub sign-in or GitHub App connection guidance.
+    - path: src/background/__tests__/README.md
+      reason: Remove documented PAT switching scenarios and describe the GitHub App-only background test model.
+    - path: src/services/__tests__/test-fixtures/ZipHandlerTestSpecification.ts
+      reason: Replace PAT/token prerequisite and invalid-token setup language with GitHub App connection and live-readiness scenarios.
+  read:
+    - .maid/plan-locks/02-notify-tabs-before-direct-self-heal-reload-call-sites.lock.json
+    - .maid/plan-locks/cache-recent-popup-github-verification.lock.json
+    - .maid/plan-locks/prevent-github-token-request-stampede.lock.json
+    - manifests/drafts/github-app-only-authentication.manifest.yaml
+    - manifests/01-github-app-only-migration-policy.manifest.yaml
+    - manifests/02-github-app-only-primary-setup.manifest.yaml
+    - manifests/gate-github-actions-on-live-connection.manifest.yaml
+    - manifests/background-auth-storage-recovery.manifest.yaml
+    - src/lib/services/BackgroundAuthClient.ts
+    - src/services/AuthenticationStrategyFactory.ts
+    - src/services/githubAppRequestPolicy.ts
+validate:
+  - pnpm exec vitest run src/lib/utils/__tests__/githubConnection.test.ts src/content/services/__tests__/SupabaseAuthService.github-connection.test.ts src/content/services/__tests__/SupabaseAuthService.session-cleanup.test.ts src/content/services/__tests__/SupabaseAuthService.independent-session.test.ts src/content/services/__tests__/SupabaseAuthService.edge-function-loop.test.ts src/content/handlers/__tests__/GitHubUploadHandler.test.ts src/content/handlers/__tests__/FileChangeHandler.test.ts src/background/__tests__/BackgroundService.reload.test.ts src/background/__tests__/BackgroundService.storage-recovery.test.ts src/background/__tests__/BackgroundService.critical-scenarios.test.ts src/background/__tests__/BackgroundService.edge-cases.test.ts src/background/__tests__/BackgroundService.user-journeys.test.ts src/background/__tests__/TempRepoManager.test.ts src/popup/__tests__/App.component.test.ts src/lib/utils/__tests__/githubAppSync.test.ts src/services/__tests__/ZipHandler.test.ts src/services/__tests__/UnifiedGitHubService.auth-selection.test.ts
+  - ./scripts/maid validate manifests/03-github-app-only-runtime-enforcement.manifest.yaml --mode behavioral
+  - pnpm lint
+  - pnpm check
+  - pnpm build
+created: '2026-07-13T03:57:50Z'
+metadata:
+  tags: [auth, github-app, pat-retirement, background, content-script]
+  priority: high
+  status: completed
+  promotion_ready: true
+  parent_epic: github-app-only-authentication
+  depends_on: [01-github-app-only-migration-policy, 02-github-app-only-primary-setup]
+  evolves_active_contracts:
+    - gate-github-actions-on-live-connection
+    - background-auth-storage-recovery
+    - prevent-github-token-request-stampede
+  notes: |
+    Behavioral tests were added first and the focused red run failed only at
+    the intended PAT bypass, PAT-backed background construction, and token-era
+    ZIP guidance boundaries before implementation began.
+outcome:
+  status: completed
+  summary: |
+    Every GitHub-backed runtime boundary in the background and content flows
+    now requires a live Bolt2GitHub session and GitHub App connection. Legacy
+    PAT migration state remains actionable until live App verification succeeds,
+    then clears through the production connection check. Explicit GitHub App
+    service construction cannot fall back to PAT, and ZIP failures direct users
+    to sign in or connect the App instead of configuring a token.
+
+    Background GitHub dependencies are replaced with a generation guard so an
+    older connection check cannot restore stale services after a newer logout or
+    disconnected recovery. Temporary-repository managers are destroyed during
+    replacement and cannot resurrect deferred cleanup intervals.
+  rationale: |
+    Removing visible PAT setup is insufficient if cached popup verification,
+    asynchronous background recovery, or compatibility constructors can still
+    authorize legacy behavior. One shared live-connection gate and explicit
+    lifecycle invalidation make GitHub App authority observable at every action
+    boundary while preserving an actionable migration path for legacy users.
+  lessons:
+    - lesson_type: live-authority-over-cached-state
+      summary: |
+        A retirement marker must bypass positive caches and clear only after the
+        live account and GitHub App installation are both verified.
+      tags: [auth, migration, cache-invalidation]
+      paths:
+        - src/lib/utils/githubConnection.ts
+        - src/lib/utils/__tests__/githubConnection.test.ts
+    - lesson_type: generation-guarded-auth-dependencies
+      summary: |
+        Concurrent authentication recovery must publish services only when its
+        generation is still current; otherwise an older successful check can
+        undo a newer disconnected state.
+      tags: [auth, concurrency, mv3, reliability]
+      paths:
+        - src/background/BackgroundService.ts
+        - src/background/__tests__/BackgroundService.storage-recovery.test.ts
+    - lesson_type: asynchronous-lifecycle-shutdown
+      summary: |
+        Destroying an interval owner must also prevent unfinished asynchronous
+        initialization from starting the interval after destruction.
+      tags: [lifecycle, cleanup, concurrency]
+      paths:
+        - src/background/TempRepoManager.ts
+        - src/background/__tests__/TempRepoManager.test.ts
+  review_notes:
+    - source: independent reviewer /root/child03_runtime_review
+      severity: findings-fixed
+      summary: |
+        Initial review found an unreachable migration-completion path, ungated
+        temporary-repository cleanup with a retained service, and an internal
+        PAT fallback for explicit GitHub App construction. Follow-up review
+        found deferred cleanup initialization and overlapping background
+        recovery races plus weak recovery assertions. All findings were fixed
+        with focused red-first regressions.
+    - source: independent reviewer /root/child03_runtime_review final
+      severity: ready
+      summary: |
+        Final read-only review found no remaining P0, P1, or P2 findings and
+        confirmed migration cache bypass, live recovery, generation-guarded
+        dependency replacement, deterministic temporary-repository shutdown,
+        authoritative GitHub App construction, and complete MAID scope.
+  validation:
+    - command:
+        - pnpm
+        - exec
+        - vitest
+        - run
+        - src/background/__tests__/TempRepoManager.test.ts
+        - src/background/__tests__/BackgroundService.storage-recovery.test.ts
+      status: failed-red-phase
+      summary: Both lifecycle tests failed before implementation because deferred cleanup restarted after destroy and an older connected recovery restored stale dependencies.
+    - command:
+        - ./scripts/maid
+        - test
+        - --manifest
+        - manifests/03-github-app-only-runtime-enforcement.manifest.yaml
+      status: passed
+      summary: All five declared commands passed, including 17 focused files with 279 tests, behavioral validation, lint, type checking, and production build.
+    - command:
+        - ./scripts/maid
+        - validate
+        - manifests/03-github-app-only-runtime-enforcement.manifest.yaml
+        - --mode
+        - implementation
+        - --strict
+      status: passed
+      summary: Every declared production and behavioral artifact passed strict implementation validation.
+    - command:
+        - pnpm
+        - test:ci
+      status: passed
+      summary: Full Vitest CI passed 196 files and 4,264 tests.
+    - command:
+        - ./scripts/maid
+        - verify
+        - --manifest-dir
+        - manifests
+        - --strict
+        - --file-tracking-scope
+        - task
+        - --plan-lock-scope
+        - task
+        - --since
+        - HEAD
+        - --include-tests
+        - --require-plan-lock
+        - --require-red-evidence
+      status: passed
+      summary: Final task-scoped strict verification passed all nine gates; only pre-existing non-blocking validator warnings were reported.

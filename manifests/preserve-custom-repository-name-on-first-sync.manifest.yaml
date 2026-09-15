@@ -1,0 +1,180 @@
+schema: '2'
+goal: Preserve a custom repository name when a newly created Bolt project is first synchronized
+description: |
+  A newly created Bolt project can already have a local boltProjects record whose
+  project_name field is incomplete. When RepoSettings saves a custom repository
+  name, its manual outward sync first repairs that incomplete record and then
+  returns early without applying the authoritative projectSettings mapping. The
+  sync request therefore sends the Bolt project ID as github_repo_name, allowing
+  the default name to win again after the save.
+
+  Continue the legacy-to-bolt conversion after repairing incomplete project
+  names so the freshly saved repository name, branch, title, owner, and privacy
+  values are merged into the outgoing BoltProject in the same synchronization.
+  This fixes the new-project path without changing the public
+  BoltProjectSyncService API or the established conflict policy.
+temptations:
+- risk: Do not special-case one project ID or repository name in RepoSettings.
+  instead: Fix the format-bridge sequencing so every newly created project sends its current projectSettings mapping.
+- risk: Do not delete the incomplete-project repair or send an invalid empty project_name to the backend.
+  instead: Repair incomplete records, then continue conversion using the repaired records as the merge input.
+- risk: Do not switch outward synchronization to update local storage from the server response.
+  instead: Preserve the extension-as-source-of-truth policy and correct the local payload before it is sent.
+type: fix
+files:
+  edit:
+  - path: src/services/BoltProjectSyncService.ts
+    artifacts:
+    - kind: class
+      name: BoltProjectSyncService
+      description: Synchronizes projectSettings and boltProjects without dropping newly saved repository mappings while repairing incomplete local records.
+    - kind: method
+      name: getLocalProjects
+      of: BoltProjectSyncService
+      args: []
+      returns: Promise<BoltProject[]>
+    - kind: method
+      name: saveLocalProjects
+      of: BoltProjectSyncService
+      args:
+      - name: projects
+        type: BoltProject[]
+      returns: Promise<void>
+    - kind: method
+      name: getLastSyncTimestamp
+      of: BoltProjectSyncService
+      args: []
+      returns: Promise<string | null>
+    - kind: method
+      name: setLastSyncTimestamp
+      of: BoltProjectSyncService
+      args:
+      - name: timestamp
+        type: string
+      returns: Promise<void>
+    - kind: method
+      name: syncWithBackend
+      of: BoltProjectSyncService
+      args:
+      - name: conflictResolution
+        type: '''auto-resolve'' | ''keep-local'' | ''keep-remote'''
+      - name: updateLocalStorage
+        type: boolean
+      returns: Promise<SyncResponse>
+    - kind: method
+      name: shouldPerformInwardSync
+      of: BoltProjectSyncService
+      args: []
+      returns: Promise<boolean>
+    - kind: method
+      name: performOutwardSync
+      of: BoltProjectSyncService
+      args: []
+      returns: Promise<SyncResponse | null>
+      description: Repairs incomplete local project metadata and still applies current projectSettings values before sending the outward payload.
+    - kind: method
+      name: performInwardSync
+      of: BoltProjectSyncService
+      args: []
+      returns: Promise<SyncResponse | null>
+  - path: src/services/__tests__/BoltProjectSyncService.directMethod.test.ts
+    artifacts:
+    - kind: test_function
+      name: syncs a custom repository name for a newly created project with incomplete sync metadata
+      description: The outward request uses the freshly saved custom mapping rather than the project-ID default when its existing BoltProject needs project_name repair.
+  read:
+  - src/lib/components/RepoSettings.svelte
+  - src/lib/services/chromeStorage.ts
+  - src/lib/types.ts
+  - src/services/__tests__/BoltProjectSyncService.test.ts
+validate:
+- pnpm exec vitest run src/services/__tests__/BoltProjectSyncService.directMethod.test.ts src/services/__tests__/BoltProjectSyncService.test.ts
+- ./scripts/maid validate manifests/preserve-custom-repository-name-on-first-sync.manifest.yaml --mode behavioral
+- pnpm lint
+- pnpm check
+- pnpm build
+created: '2026-07-15T04:29:24Z'
+metadata:
+  tags:
+  - repository
+  - settings
+  - synchronization
+  - new-project
+  - regression
+  priority: high
+outcome:
+  status: completed
+  completed_at: '2026-07-15T04:36:00Z'
+  summary: |
+    Newly created Bolt projects now retain a custom repository mapping during
+    their first outward synchronization. Repairing a missing project_name no
+    longer exits the format bridge before the current projectSettings values
+    are applied, so the backend request carries the saved repository name,
+    owner, branch, project title, and privacy value instead of project-ID
+    defaults.
+  rationale: |
+    The incomplete-record repair remains in place, but now returns its repaired
+    records to the existing authoritative projectSettings conversion pipeline.
+    This preserves the established outward-sync and conflict policies without
+    adding repository-specific UI exceptions or accepting server data as the
+    local source of truth.
+  lessons:
+    - lesson_type: continue-normalization-pipeline-after-repair
+      summary: |
+        A preparatory data repair must feed its normalized result into the rest
+        of the synchronization pipeline; returning early can leave a valid but
+        stale fallback value as the outbound source of truth.
+      tags: [synchronization, migration, state-management]
+      paths:
+        - src/services/BoltProjectSyncService.ts
+        - src/services/__tests__/BoltProjectSyncService.directMethod.test.ts
+  review_notes:
+    - source: independent reviewer maid_implementation_reviewer
+      severity: ready
+      summary: |
+        Read-only review found no behavioral, data, scope, API, test, or MAID
+        contract issues and returned Ready to merge after independently rerunning
+        the 42 focused tests and implementation validation.
+  validation:
+    - command:
+        - pnpm
+        - exec
+        - vitest
+        - run
+        - src/services/__tests__/BoltProjectSyncService.directMethod.test.ts
+        - src/services/__tests__/BoltProjectSyncService.test.ts
+      status: passed
+      summary: Focused synchronization suite passed 42 tests across 2 files.
+    - command: [pnpm, test:ci]
+      status: passed
+      summary: Full Vitest CI suite completed successfully.
+    - command: [pnpm, lint]
+      status: passed
+      summary: ESLint completed successfully.
+    - command: [pnpm, check]
+      status: passed
+      summary: Svelte and TypeScript checks completed with 0 errors and 0 warnings.
+    - command: [pnpm, build]
+      status: passed
+      summary: Production extension build completed with existing chunk warnings only.
+    - command:
+        - ./scripts/maid
+        - test
+        - --manifest
+        - manifests/preserve-custom-repository-name-on-first-sync.manifest.yaml
+      status: passed
+      summary: All five manifest-declared validation commands passed.
+    - command:
+        - ./scripts/maid
+        - verify
+        - --manifest-dir
+        - manifests
+        - --require-plan-lock
+        - --require-red-evidence
+        - --plan-lock-scope
+        - task
+        - --file-tracking-scope
+        - task
+        - --include-tests
+      status: blocked-unrelated
+      summary: Strict verify was blocked only by three pre-existing E110 supersession warnings in the prepare-v2-0-0 contract; the same task-scoped gate completed in advisory mode.

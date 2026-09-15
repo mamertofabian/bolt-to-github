@@ -1,0 +1,131 @@
+schema: '2'
+goal: Render saved project repository settings on Home immediately without requiring a popup refresh
+description: |
+  HomeTabContent currently passes the legacy top-level repoName and branch fields
+  to ProjectStatus. RepoSettings saves the authoritative project-scoped mapping
+  through githubSettingsActions.setProjectSettings, which immediately updates
+  projectSettings[projectId] but intentionally does not rewrite those top-level
+  compatibility fields. The Home card therefore continues showing the Bolt
+  project ID until a popup refresh calls loadProjectSettings.
+
+  Derive the active Home project values from projectSettings[projectId], with
+  the existing top-level values only as a compatibility fallback when no scoped
+  mapping is available. Forward the scoped project title as well so all values
+  saved by the authoritative modal update together. This adds behavior to the
+  existing HomeTabContent contract without changing its public props or events.
+temptations:
+- risk: Do not force a popup reload or reread Chrome storage after every save.
+  instead: Render from the already-reactive projectSettings mapping updated by the save action.
+- risk: Do not make RepoSettings maintain two competing copies of the current project mapping.
+  instead: Keep setProjectSettings authoritative and derive the Home card from that project-scoped state.
+- risk: Do not remove top-level repoName and branch compatibility fallbacks in this narrow fix.
+  instead: Prefer the scoped mapping when present and preserve current fallback behavior for unmigrated state.
+type: fix
+files:
+  scope:
+  - path: src/popup/components/HomeTabContent.svelte
+    reason: Derive ProjectStatus inputs from the active project-scoped mapping without changing HomeTabContent's public API.
+  edit:
+  - path: src/popup/components/__tests__/HomeTabContent.component.test.ts
+    artifacts:
+    - kind: test_function
+      name: renders the current project mapping immediately when top-level repository fields are stale
+      description: The Home card displays the active project's saved repository name, branch, and title from projectSettings without a popup refresh.
+  read:
+  - src/lib/components/ProjectStatus.svelte
+  - src/lib/components/RepoSettings.svelte
+  - src/lib/stores/githubSettings.ts
+  - src/popup/App.svelte
+  - src/popup/components/TabsView.svelte
+  - manifests/05-github-app-only-issue-feedback-surfaces.manifest.yaml
+  - manifests/make-github-settings-connection-only.manifest.yaml
+validate:
+- pnpm exec vitest run src/popup/components/__tests__/HomeTabContent.component.test.ts src/lib/components/__tests__/ProjectStatus.component.test.ts
+- ./scripts/maid validate manifests/render-current-project-mapping-without-refresh.manifest.yaml --mode behavioral
+- pnpm lint
+- pnpm check
+- pnpm build
+created: '2026-07-15T06:06:38Z'
+metadata:
+  tags:
+  - repository
+  - settings
+  - svelte
+  - reactivity
+  - regression
+  priority: high
+outcome:
+  status: completed
+  completed_at: '2026-07-15T06:15:00Z'
+  summary: |
+    The Home dashboard now updates its repository name, branch, and project
+    title immediately after RepoSettings saves the current project mapping.
+    ProjectStatus receives values from projectSettings[projectId] instead of
+    waiting for a popup refresh to copy them into legacy top-level fields.
+  rationale: |
+    The project-scoped mapping is already the authoritative reactive state and
+    is updated synchronously by setProjectSettings. Reading it directly removes
+    the stale display without adding storage reads, reloads, or duplicate save
+    state, while retaining compatibility fallbacks for unmigrated settings.
+  lessons:
+    - lesson_type: render-from-project-scoped-authority
+      summary: |
+        When a store contains both compatibility fields and scoped records,
+        mounted UI for a known entity should derive from the scoped record.
+        Refresh-only correctness signals that rendering is reading the wrong
+        level of otherwise-correct state.
+      tags: [svelte, reactivity, state-management, repository]
+      paths:
+        - src/popup/components/HomeTabContent.svelte
+        - src/popup/components/__tests__/HomeTabContent.component.test.ts
+  review_notes:
+    - source: independent reviewer home_mapping_reviewer
+      severity: finding-fixed
+      summary: Initial review found no blockers and recommended modeling an already-mounted card receiving the scoped store update; the regression was strengthened accordingly.
+    - source: independent rereviewer home_mapping_rereviewer
+      severity: ready
+      summary: Fresh rereview found no blocker or should-fix issue and confirmed mounted-card reactivity, project switching, compatibility fallbacks, and manifest fidelity.
+  validation:
+    - command:
+        - pnpm
+        - exec
+        - vitest
+        - run
+        - src/popup/components/__tests__/HomeTabContent.component.test.ts
+        - src/lib/components/__tests__/ProjectStatus.component.test.ts
+      status: passed
+      summary: Focused Home and ProjectStatus suite passed 43 tests across 2 files.
+    - command: [pnpm, test:ci]
+      status: passed
+      summary: Full Vitest CI suite completed successfully.
+    - command: [pnpm, lint]
+      status: passed
+      summary: ESLint completed successfully.
+    - command: [pnpm, check]
+      status: passed
+      summary: Svelte and TypeScript checks completed with 0 errors and 0 warnings.
+    - command: [pnpm, build]
+      status: passed
+      summary: Production extension build completed with existing chunk warnings only.
+    - command:
+        - ./scripts/maid
+        - test
+        - --manifest
+        - manifests/render-current-project-mapping-without-refresh.manifest.yaml
+      status: passed
+      summary: All five manifest-declared validation commands passed after the review-driven test refinement.
+    - command:
+        - ./scripts/maid
+        - verify
+        - --manifest-dir
+        - manifests
+        - --require-plan-lock
+        - --require-red-evidence
+        - --plan-lock-scope
+        - task
+        - --file-tracking-scope
+        - task
+        - --include-tests
+        - --advisory
+      status: passed
+      summary: Task-scoped advisory verification completed with revision-1 plan lock before the review-driven revision; revision 2 retained valid red evidence.

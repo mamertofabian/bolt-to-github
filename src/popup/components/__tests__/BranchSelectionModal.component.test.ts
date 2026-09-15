@@ -17,20 +17,29 @@ vi.unmock('lucide-svelte');
 vi.unmock('bits-ui');
 
 const mockState = {
+  constructService: vi.fn(),
   listBranches: vi.fn(),
 };
 
 vi.mock('../../../services/UnifiedGitHubService', () => {
   return {
     UnifiedGitHubService: class {
-      // eslint-disable-next-line @typescript-eslint/no-unused-vars
-      constructor(_config?: unknown) {}
+      constructor(config?: unknown) {
+        mockState.constructService(config);
+      }
       async listBranches(owner: string, repo: string) {
         return mockState.listBranches(owner, repo);
       }
     },
   };
 });
+
+vi.mock('$lib/utils/connectedGitHubAppService', () => ({
+  createConnectedGitHubAppService: vi.fn(async () => {
+    mockState.constructService({ type: 'github_app' });
+    return { listBranches: mockState.listBranches };
+  }),
+}));
 
 describe('BranchSelectionModal.svelte', () => {
   let chromeMocks: {
@@ -60,7 +69,7 @@ describe('BranchSelectionModal.svelte', () => {
       },
       storage: {
         local: {
-          get: vi.fn().mockResolvedValue({ authenticationMethod: 'pat' }),
+          get: vi.fn().mockResolvedValue({}),
         },
       },
     };
@@ -77,13 +86,28 @@ describe('BranchSelectionModal.svelte', () => {
   });
 
   describe('Modal Visibility', () => {
+    it('branch selection uses only the GitHub App service contract', async () => {
+      render(BranchSelectionModal, {
+        props: {
+          show: true,
+          owner: 'test-owner',
+          repo: 'test-repo',
+          onBranchSelected: vi.fn(),
+          onCancel: vi.fn(),
+        },
+      });
+
+      await waitFor(() => expect(mockState.listBranches).toHaveBeenCalledOnce());
+      expect(mockState.constructService).toHaveBeenCalledWith({ type: 'github_app' });
+      expect(mockState.constructService).not.toHaveBeenCalledWith(expect.any(String));
+    });
+
     it('should render when show is true', async () => {
       render(BranchSelectionModal, {
         props: {
           show: true,
           owner: 'test-owner',
           repo: 'test-repo',
-          token: 'test-token',
           onBranchSelected: vi.fn(),
           onCancel: vi.fn(),
         },
@@ -100,7 +124,6 @@ describe('BranchSelectionModal.svelte', () => {
           show: false,
           owner: 'test-owner',
           repo: 'test-repo',
-          token: 'test-token',
           onBranchSelected: vi.fn(),
           onCancel: vi.fn(),
         },
@@ -111,13 +134,12 @@ describe('BranchSelectionModal.svelte', () => {
   });
 
   describe('Branch Loading', () => {
-    it('should load and display branches with PAT authentication', async () => {
+    it('should load and display branches through the GitHub App service', async () => {
       render(BranchSelectionModal, {
         props: {
           show: true,
           owner: 'test-owner',
           repo: 'test-repo',
-          token: 'test-token',
           onBranchSelected: vi.fn(),
           onCancel: vi.fn(),
         },
@@ -127,27 +149,6 @@ describe('BranchSelectionModal.svelte', () => {
         expect(screen.getByText('main')).toBeInTheDocument();
         expect(screen.getByText('develop')).toBeInTheDocument();
         expect(screen.getByText('feature-x')).toBeInTheDocument();
-      });
-
-      expect(mockState.listBranches).toHaveBeenCalledWith('test-owner', 'test-repo');
-    });
-
-    it('should load branches with GitHub App authentication', async () => {
-      chromeMocks.storage.local.get.mockResolvedValue({ authenticationMethod: 'github_app' });
-
-      render(BranchSelectionModal, {
-        props: {
-          show: true,
-          owner: 'test-owner',
-          repo: 'test-repo',
-          token: '',
-          onBranchSelected: vi.fn(),
-          onCancel: vi.fn(),
-        },
-      });
-
-      await waitFor(() => {
-        expect(screen.getByText('main')).toBeInTheDocument();
       });
 
       expect(mockState.listBranches).toHaveBeenCalledWith('test-owner', 'test-repo');
@@ -163,7 +164,6 @@ describe('BranchSelectionModal.svelte', () => {
           show: true,
           owner: 'test-owner',
           repo: 'test-repo',
-          token: 'test-token',
           onBranchSelected: vi.fn(),
           onCancel: vi.fn(),
         },
@@ -182,7 +182,6 @@ describe('BranchSelectionModal.svelte', () => {
           show: true,
           owner: 'test-owner',
           repo: 'test-repo',
-          token: 'test-token',
           onBranchSelected: vi.fn(),
           onCancel: vi.fn(),
         },
@@ -201,7 +200,6 @@ describe('BranchSelectionModal.svelte', () => {
           show: true,
           owner: 'test-owner',
           repo: 'test-repo',
-          token: 'test-token',
           onBranchSelected: vi.fn(),
           onCancel: vi.fn(),
         },
@@ -220,7 +218,6 @@ describe('BranchSelectionModal.svelte', () => {
           show: true,
           owner: 'test-owner',
           repo: 'test-repo',
-          token: 'test-token',
           onBranchSelected: vi.fn(),
           onCancel: vi.fn(),
         },
@@ -246,7 +243,6 @@ describe('BranchSelectionModal.svelte', () => {
           show: true,
           owner: 'test-owner',
           repo: 'test-repo',
-          token: 'test-token',
           onBranchSelected: vi.fn(),
           onCancel: vi.fn(),
         },
@@ -275,7 +271,6 @@ describe('BranchSelectionModal.svelte', () => {
           show: true,
           owner: 'test-owner',
           repo: 'test-repo',
-          token: 'test-token',
           onBranchSelected: vi.fn(),
           onCancel: vi.fn(),
         },
@@ -297,7 +292,6 @@ describe('BranchSelectionModal.svelte', () => {
           show: true,
           owner: 'test-owner',
           repo: 'test-repo',
-          token: 'test-token',
           onBranchSelected: vi.fn(),
           onCancel: vi.fn(),
         },
@@ -321,7 +315,6 @@ describe('BranchSelectionModal.svelte', () => {
           show: true,
           owner: 'test-owner',
           repo: 'test-repo',
-          token: 'test-token',
           onBranchSelected: vi.fn(),
           onCancel: vi.fn(),
         },
@@ -342,7 +335,6 @@ describe('BranchSelectionModal.svelte', () => {
           show: true,
           owner: 'test-owner',
           repo: 'test-repo',
-          token: 'test-token',
           onBranchSelected: vi.fn(),
           onCancel: vi.fn(),
         },
@@ -368,7 +360,6 @@ describe('BranchSelectionModal.svelte', () => {
           show: true,
           owner: 'test-owner',
           repo: 'test-repo',
-          token: 'test-token',
           onBranchSelected: vi.fn(),
           onCancel: vi.fn(),
         },
@@ -389,7 +380,6 @@ describe('BranchSelectionModal.svelte', () => {
           show: true,
           owner: 'test-owner',
           repo: 'test-repo',
-          token: 'test-token',
           onBranchSelected: vi.fn(),
           onCancel: vi.fn(),
         },
@@ -410,7 +400,6 @@ describe('BranchSelectionModal.svelte', () => {
           show: true,
           owner: 'test-owner',
           repo: 'test-repo',
-          token: 'test-token',
           onBranchSelected: vi.fn(),
           onCancel: vi.fn(),
         },
@@ -435,7 +424,6 @@ describe('BranchSelectionModal.svelte', () => {
           show: true,
           owner: 'test-owner',
           repo: 'test-repo',
-          token: 'test-token',
           onBranchSelected,
           onCancel: vi.fn(),
         },
@@ -460,7 +448,6 @@ describe('BranchSelectionModal.svelte', () => {
           show: true,
           owner: 'test-owner',
           repo: 'test-repo',
-          token: 'test-token',
           onBranchSelected: vi.fn(),
           onCancel,
         },
@@ -485,7 +472,6 @@ describe('BranchSelectionModal.svelte', () => {
           show: true,
           owner: 'test-owner',
           repo: 'test-repo',
-          token: 'test-token',
           onBranchSelected: vi.fn(),
           onCancel: vi.fn(),
         },

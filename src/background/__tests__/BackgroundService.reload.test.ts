@@ -149,6 +149,8 @@ describe('BackgroundService - Extension Reload Behavior', () => {
       throw new Error('Runtime connect listener not registered');
     }
     runtimeConnectListener = connectListenerCall[0];
+    mockGetAuthState.mockClear();
+    mockSyncGitHubApp.mockClear();
   });
 
   afterEach(() => {

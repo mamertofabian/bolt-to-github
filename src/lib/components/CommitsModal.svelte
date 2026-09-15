@@ -1,10 +1,11 @@
 <script lang="ts">
-  import { onMount, onDestroy, createEventDispatcher } from 'svelte';
+  import { onDestroy, createEventDispatcher } from 'svelte';
   import { Button } from '$lib/components/ui/button';
   import Modal from '$lib/components/ui/modal/Modal.svelte';
   import CommitCard from './CommitCard.svelte';
   import { CommitsService } from '../services/CommitsService';
-  import { UnifiedGitHubService } from '../../services/UnifiedGitHubService';
+  import type { UnifiedGitHubService } from '../../services/UnifiedGitHubService';
+  import { createConnectedGitHubAppService } from '$lib/utils/connectedGitHubAppService';
   import { createLogger } from '$lib/utils/logger';
   import type { CommitListItem, CommitsPagination, CommitsFilter } from '../types/commits';
   import {
@@ -19,7 +20,6 @@
   const logger = createLogger('CommitsModal');
   const dispatch = createEventDispatcher();
 
-  export let githubToken: string;
   export let repoOwner: string;
   export let repoName: string;
   export let branch: string;
@@ -38,13 +38,24 @@
 
   const commitsService = new CommitsService();
   let githubService: UnifiedGitHubService;
-  let authMethod = 'pat';
+  const authMethod = 'github_app';
   let searchTimeout: ReturnType<typeof setTimeout> | null = null;
+  let initialLoad: Promise<void> | null = null;
 
-  onMount(async () => {
-    await initializeService();
-    await loadCommits();
-  });
+  function startInitialLoad(): Promise<void> {
+    if (!initialLoad) {
+      initialLoad = (async () => {
+        const initialized = await initializeService();
+        if (initialized) {
+          await loadCommits();
+        }
+      })();
+    }
+
+    return initialLoad;
+  }
+
+  $: if (show) void startInitialLoad();
 
   onDestroy(() => {
     if (searchTimeout) {
@@ -52,30 +63,25 @@
     }
   });
 
-  async function initializeService() {
+  async function initializeService(): Promise<boolean> {
     try {
-      // Get authentication method
-      const authSettings = await chrome.storage.local.get(['authenticationMethod']);
-      authMethod = authSettings.authenticationMethod || 'pat';
-
-      if (authMethod === 'github_app') {
-        githubService = new UnifiedGitHubService({ type: 'github_app' });
-      } else {
-        githubService = new UnifiedGitHubService(githubToken);
-      }
+      githubService = await createConnectedGitHubAppService();
+      return true;
     } catch (err) {
       logger.error('Error initializing GitHub service:', err);
-      error = 'Failed to initialize GitHub service';
+      error = err instanceof Error ? err.message : 'Failed to initialize GitHub service';
+      return false;
     }
   }
 
   async function loadCommits() {
     if (!githubService) {
-      await initializeService();
+      const initialized = await initializeService();
+      if (!initialized) return;
     }
 
     if (!githubService) {
-      error = 'GitHub service not available';
+      error = 'Failed to initialize GitHub service';
       return;
     }
 

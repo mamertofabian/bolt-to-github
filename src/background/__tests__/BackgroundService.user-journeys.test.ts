@@ -24,6 +24,8 @@ describe('BackgroundService User Journey Integration Tests', () => {
 
       ScenarioBuilder.freshInstall(env.chromeEnv);
 
+      env.serviceFactory.supabaseAuthService.setGitHubAppConnected(false);
+      env.chromeEnv.setupLegacyPATMigration();
       const port = env.chromeEnv.simulatePortConnection('bolt-content', 123);
 
       port.simulateMessage(MessageFixtures.zipDataMessage('first-project'));
@@ -31,53 +33,60 @@ describe('BackgroundService User Journey Integration Tests', () => {
       await new Promise((resolve) => setTimeout(resolve, 200));
 
       const operations = env.serviceFactory.operationStateManager.getAllOperations();
-      const failedOp = operations.find((op) => op.status === 'failed');
-      expect(failedOp).toBeDefined();
-      expect(failedOp?.error?.message).toMatch(/GitHub.*settings|authentication/i);
+      expect(operations).toHaveLength(0);
 
-      env.chromeEnv.setupValidPATAuth();
-
-      env.chromeEnv.mockChrome.storage.sync.set({
-        gitHubSettings: TestData.auth.validPATSettings.gitHubSettings,
-      });
-
-      await new Promise((resolve) => setTimeout(resolve, 300));
+      env.serviceFactory.supabaseAuthService.setGitHubAppConnected(true);
+      env.chromeEnv.mockChrome.storage.setSyncData(TestData.auth.validGitHubAppSettings);
 
       env.serviceFactory.setupSuccessfulUploadScenario();
       port.simulateMessage(MessageFixtures.zipDataMessage('first-project-retry'));
 
       await new Promise((resolve) => setTimeout(resolve, 300));
 
-      const newOperations = env.serviceFactory.operationStateManager.getAllOperations();
+      await expect(
+        env.chromeEnv.mockChrome.storage.local.get('githubAppMigrationRequired')
+      ).resolves.toEqual({ githubAppMigrationRequired: undefined });
 
-      expect(newOperations.length >= 0).toBe(true);
+      expect(env.serviceFactory.zipHandler.processZipFile).toHaveBeenCalledTimes(1);
+      expect(env.serviceFactory.zipHandler.processZipFile).toHaveBeenCalledWith(
+        expect.any(Blob),
+        'first-project-retry',
+        'Commit from Bolt to GitHub'
+      );
     });
 
-    it('should handle user switching authentication methods mid-session', async () => {
+    it('should recover from required migration after the GitHub App is connected', async () => {
       const env = testSuite.getEnvironment();
 
-      env.chromeEnv.setupValidPATAuth();
+      env.serviceFactory.supabaseAuthService.setGitHubAppConnected(false);
+      env.chromeEnv.setupLegacyPATMigration();
       env.serviceFactory.setupSuccessfulUploadScenario();
 
       const port = env.chromeEnv.simulatePortConnection('bolt-content', 123);
 
-      port.simulateMessage(MessageFixtures.zipDataMessage('pat-upload'));
+      port.simulateMessage(MessageFixtures.zipDataMessage('migration-blocked-upload'));
       await new Promise((resolve) => setTimeout(resolve, 200));
 
-      env.chromeEnv.setupValidGitHubAppAuth();
+      expect(env.serviceFactory.operationStateManager.getAllOperations()).toHaveLength(0);
 
-      env.chromeEnv.mockChrome.storage.sync.set({
-        gitHubSettings: TestData.auth.validGitHubAppSettings.gitHubSettings,
-      });
+      env.serviceFactory.supabaseAuthService.setGitHubAppConnected(true);
+      env.chromeEnv.mockChrome.storage.setSyncData(TestData.auth.validGitHubAppSettings);
 
       await new Promise((resolve) => setTimeout(resolve, 300));
 
       port.simulateMessage(MessageFixtures.zipDataMessage('github-app-upload'));
       await new Promise((resolve) => setTimeout(resolve, 200));
 
-      const operations = env.serviceFactory.operationStateManager.getAllOperations();
+      await expect(
+        env.chromeEnv.mockChrome.storage.local.get('githubAppMigrationRequired')
+      ).resolves.toEqual({ githubAppMigrationRequired: undefined });
 
-      expect(operations.length >= 0).toBe(true);
+      expect(env.serviceFactory.zipHandler.processZipFile).toHaveBeenCalledTimes(1);
+      expect(env.serviceFactory.zipHandler.processZipFile).toHaveBeenCalledWith(
+        expect.any(Blob),
+        'github-app-upload',
+        'Commit from Bolt to GitHub'
+      );
     });
   });
 

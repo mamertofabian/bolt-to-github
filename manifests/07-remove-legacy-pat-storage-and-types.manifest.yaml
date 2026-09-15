@@ -1,0 +1,430 @@
+schema: '2'
+goal: |
+  Remove PAT credentials and authentication-choice state from shared storage,
+  settings, types, helpers, and usage contracts after runtime PAT code is gone.
+description: |
+  Seventh child of github-app-only-authentication.
+
+  This cleanup makes the final static model match the product model. Shared
+  settings no longer expose githubToken or a pat/github_app choice. GitHub App
+  installation metadata and the temporary migration-required marker remain in
+  local storage; repoOwner and projectSettings remain in sync storage. Legacy
+  keys are read only inside the idempotent migration module until the marker is
+  retired in a future release.
+
+  Existing usage data may contain historical authMethod='pat'. Runtime parsing
+  must tolerate that old stored value while new events emit only github-app or
+  none; do not reinterpret historical PAT records as current GitHub App usage.
+
+  githubAppSync.ts must also lose its method-switching vocabulary. It currently
+  reads authenticationMethod, exposes authMethod='pat' in getGitHubAppInfo(),
+  returns PAT on error, and exports switchToGitHubApp() even though no production
+  caller uses that function. GitHub App status must derive from installation
+  metadata and live sync results without a legacy method selector.
+
+  The cleanup also removes the transitional method normalization left in popup
+  startup, legacy auth-key recovery triggers in the background service, and the
+  unused authMethodChange event forwarded by TabsView. AuthenticationStorage
+  and TokenValidationResult are narrowed only after child 06 deletes the PAT
+  strategy, so shared authentication types no longer advertise removed PAT
+  credentials or classic/fine-grained token results.
+temptations:
+  - risk: Do not remove the migration module legacy-key reads together with normal settings fields.
+    instead: Keep legacy reads isolated in githubAuthMigration.ts while deleting them from all steady-state storage and settings APIs.
+  - risk: Do not clear repoOwner or projectSettings because they shared an object with githubToken.
+    instead: Write and test field-level storage cleanup that preserves every non-secret repository mapping.
+  - risk: Do not coerce historical PAT analytics records to github-app.
+    instead: Accept legacy persisted values on read if necessary, but emit only the new current-state vocabulary.
+  - risk: Do not leave switchToGitHubApp or authMethod=pat fallbacks in a utility named for GitHub App sync.
+    instead: Remove the unused switch function and make status/info results GitHub App-specific with visible error states.
+type: refactor
+supersedes:
+  - background-auth-storage-recovery
+files:
+  edit:
+    - path: src/background/BackgroundService.ts
+      artifacts:
+        - kind: class
+          name: BackgroundService
+          description: Background recovery watches live session, migration, installation, and App expiry keys while ignoring removed PAT credentials and authentication selectors.
+    - path: src/lib/types.ts
+      artifacts:
+        - kind: interface
+          name: GitHubSettingsInterface
+          description: GitHub App and repository settings with no PAT credential or auth-choice fields.
+        - kind: attribute
+          name: repoOwner
+          of: GitHubSettingsInterface
+          type: string
+        - kind: attribute
+          name: projectSettings
+          of: GitHubSettingsInterface
+          type: ProjectSettings | undefined
+        - kind: attribute
+          name: githubAppInstallationId
+          of: GitHubSettingsInterface
+          type: number | undefined
+        - kind: attribute
+          name: githubAppUsername
+          of: GitHubSettingsInterface
+          type: string | undefined
+        - kind: attribute
+          name: githubAppAvatarUrl
+          of: GitHubSettingsInterface
+          type: string | undefined
+        - kind: attribute
+          name: githubAppMigrationRequired
+          of: GitHubSettingsInterface
+          type: boolean | undefined
+        - kind: interface
+          name: UsageData
+          description: Current usage state emitting only GitHub App or no authentication.
+        - kind: attribute
+          name: authMethod
+          of: UsageData
+          type: "'github-app' | 'none'"
+    - path: src/lib/utils/githubAppSync.ts
+      artifacts:
+        - kind: function
+          name: checkGitHubAppStatus
+          args: []
+          returns: Promise<GitHubAppStatus>
+          description: Determines configuration from GitHub App installation metadata without a legacy auth-method selector.
+        - kind: function
+          name: getGitHubAppInfo
+          args: []
+          returns: Promise<GitHubAppInfo>
+          description: Returns GitHub App-specific information and never emits PAT as a fallback state.
+    - path: src/services/types/authentication.ts
+      artifacts:
+        - kind: interface
+          name: AuthenticationStorage
+          description: GitHub App-only authentication cache metadata with no PAT, repository, auth-choice, or obsolete prompt fields.
+        - kind: interface
+          name: TokenValidationResult
+          description: GitHub App validation result that no longer advertises classic or fine-grained PAT token types.
+        - kind: attribute
+          name: type
+          of: TokenValidationResult
+          type: "'github_app' | undefined"
+    - path: src/services/__tests__/authentication.types.test.ts
+      artifacts:
+        - kind: test_function
+          name: authentication types expose only GitHub App credential contracts
+    - path: src/services/__tests__/settings.test.ts
+      artifacts:
+        - kind: test_function
+          name: returns App metadata without PAT credential or selector fields
+        - kind: test_function
+          name: requires installation metadata
+    - path: src/lib/stores/__tests__/githubSettings.test.ts
+      artifacts:
+        - kind: test_function
+          name: settings initialize from GitHub App metadata without reading a PAT
+        - kind: test_function
+          name: stale App username without installation preserves repository settings
+        - kind: test_function
+          name: settings validity requires installation metadata and live connection state
+        - kind: test_function
+          name: migration-required state preserves repository and project settings
+    - path: src/lib/services/__tests__/chromeStorage.test.ts
+      artifacts:
+        - kind: test_function
+          name: steady-state GitHub settings never read or write githubToken
+        - kind: test_function
+          name: legacy cleanup preserves repoOwner and projectSettings
+    - path: src/lib/utils/__tests__/githubAppSync.test.ts
+      artifacts:
+        - kind: test_function
+          name: GitHub App status derives from installation metadata without reading authenticationMethod
+        - kind: test_function
+          name: GitHub App info never returns PAT on success or failure
+        - kind: test_function
+          name: sync and refresh failures remain visible after method switching is removed
+    - path: src/background/__tests__/UsageTracker.test.ts
+      artifacts:
+        - kind: test_function
+          name: usage tracking emits only github-app or none for current authentication state
+        - kind: test_function
+          name: legacy stored PAT analytics values are tolerated without being relabeled as GitHub App usage
+    - path: src/lib/services/__tests__/chromeStorage.RaceConditions.test.ts
+      artifacts:
+        - kind: test_function
+          name: concurrent GitHub App settings writes never restore PAT method or credential fields
+    - path: src/lib/components/__tests__/RepoSettings.logic.test.ts
+      artifacts:
+        - kind: test_function
+          name: repository settings helpers expose no PAT method or token service configuration
+    - path: src/lib/components/__tests__/GitHubSettings.logic.test.ts
+      artifacts:
+        - kind: test_function
+          name: GitHub settings helpers require installation metadata without PAT branches
+        - kind: test_function
+          name: GitHub settings helpers export no PAT permission-check contract
+    - path: src/content/services/__tests__/SupabaseAuthService.github-connection.test.ts
+      artifacts:
+        - kind: test_function
+          name: GitHub App sync stores installation metadata without an authentication method selector
+    - path: src/content/services/__tests__/SupabaseAuthService.session-cleanup.test.ts
+      artifacts:
+        - kind: test_function
+          name: session cleanup manages GitHub App metadata without an authentication method selector
+    - path: src/background/__tests__/BackgroundService.auth-lifecycle.test.ts
+      artifacts:
+        - kind: test_function
+          name: background auth recovery ignores the removed authentication method key
+    - path: src/background/__tests__/BackgroundService.storage-recovery.test.ts
+      artifacts:
+        - kind: test_function
+          name: reinitializes GitHub service when auth tokens are restored in local storage
+        - kind: test_function
+          name: late GitHub authentication failure remains actionable instead of becoming a ZIP error
+        - kind: test_function
+          name: legacy authenticationMethod writes do not trigger dependency recovery
+        - kind: test_function
+          name: 'authoritative GitHub App recovery keys trigger dependency recovery: %s'
+        - kind: test_function
+          name: ignores unrelated local storage keys such as keepAliveTimestamp
+        - kind: test_function
+          name: does not loop when its own auth check writes token state back to storage
+        - kind: test_function
+          name: debounces rapid successive auth storage changes into one recovery pass
+        - kind: test_function
+          name: newer disconnected recovery prevents an older connected recovery from restoring stale dependencies
+    - path: src/background/__tests__/BackgroundService.edge-cases.test.ts
+      artifacts:
+        - kind: test_function
+          name: background settings recovery no longer watches githubToken changes
+    - path: src/popup/__tests__/App.component.test.ts
+      artifacts:
+        - kind: test_function
+          name: popup startup no longer normalizes a removed authentication method selector
+    - path: src/popup/components/__tests__/TabsView.component.test.ts
+      artifacts:
+        - kind: test_function
+          name: tabs view exposes no authentication method selection event
+  scope:
+    - path: src/lib/services/chromeStorage.ts
+      reason: Remove GITHUB_TOKEN, AUTHENTICATION_METHOD, preference, and old migration-prompt APIs from steady-state storage.
+    - path: src/lib/stores/githubSettings.ts
+      reason: Remove token state, PAT validation, method switching, and dual-auth validity branches.
+    - path: src/services/settings.ts
+      reason: Make settings validity depend on GitHub App connection and repository data only.
+    - path: src/lib/utils/github-settings.ts
+      reason: Remove PAT input and permission-check helpers from shared settings logic.
+    - path: src/lib/utils/repo-settings.ts
+      reason: Remove dual-auth GitHub service config construction.
+    - path: src/background/UsageTracker.ts
+      reason: Emit only github-app or none for current auth-method usage.
+    - path: src/content/services/SupabaseAuthService.ts
+      reason: Stop writing or checking authenticationMethod while preserving installation sync and session cleanup boundaries.
+    - path: src/popup/App.svelte
+      reason: Remove transitional in-memory authenticationMethod normalization after the store field is deleted.
+    - path: src/popup/components/TabsView.svelte
+      reason: Remove the unused authMethodChange event from the final GitHub App-only popup contract.
+    - path: src/popup/__tests__/test-helpers/store-mocks.ts
+      reason: Remove the deleted authentication-method action from popup store mocks.
+    - path: src/popup/__tests__/test-helpers/app-test-utils.ts
+      reason: Remove PAT and selector fields from typed GitHub settings fixtures while preserving migration UI state separately.
+    - path: src/popup/__tests__/App.svelte/App.settings.component.test.ts
+      reason: Remove the obsolete selector-action assertion after the popup settings mock contract becomes GitHub App-only.
+    - path: src/popup/__tests__/App.svelte/App.user-interactions.component.test.ts
+      reason: Remove the obsolete selector-action assertion after popup interactions stop exposing method switching.
+    - path: src/popup/components/__tests__/SettingsTabContent.component.test.ts
+      reason: Align typed GitHub settings fixtures with the App-only store state.
+    - path: src/popup/components/__tests__/HomeTabContent.component.test.ts
+      reason: Align typed GitHub settings fixtures with the App-only store state.
+    - path: src/popup/components/__tests__/OnboardingView.component.test.ts
+      reason: Align typed GitHub settings fixtures with the App-only store state.
+    - path: src/services/__tests__/BoltProjectSyncService.test.ts
+      reason: Align typed shared settings fixtures while preserving repository/project synchronization coverage.
+    - path: src/lib/services/__tests__/ProjectSettingsMigrationService.test.ts
+      reason: Align typed shared settings fixtures while preserving project mapping migration coverage.
+    - path: src/services/__tests__/test-fixtures/GitHubAppServiceTestFixtures.ts
+      reason: Align AuthenticationStorage fixtures with the narrowed GitHub App-only cache contract.
+  read:
+    - manifests/01-github-app-only-migration-policy.manifest.yaml
+    - manifests/06-retire-pat-strategy-and-factory.manifest.yaml
+    - manifests/preserve-github-app-config-on-reauth.manifest.yaml
+    - src/lib/services/githubAuthMigration.ts
+removed_artifacts:
+  - kind: function
+    name: switchToGitHubApp
+    file: src/lib/utils/githubAppSync.ts
+    reason: GitHub App is the only supported method and the switch helper has no production caller.
+  - kind: method
+    name: getAuthenticationMethod
+    of: ChromeStorageService
+    file: src/lib/services/chromeStorage.ts
+    reason: Installation metadata is authoritative; no authentication selector remains.
+  - kind: method
+    name: setAuthenticationMethod
+    of: ChromeStorageService
+    file: src/lib/services/chromeStorage.ts
+    reason: Steady-state code must not recreate the legacy selector key.
+  - kind: method
+    name: hasMultipleAuthMethods
+    of: ChromeStorageService
+    file: src/lib/services/chromeStorage.ts
+    reason: Dual authentication is no longer a supported state.
+  - kind: method
+    name: getMigrationPromptStatus
+    of: ChromeStorageService
+    file: src/lib/services/chromeStorage.ts
+    reason: Obsolete prompt bookkeeping is cleaned only by the dedicated legacy migration module.
+  - kind: method
+    name: markMigrationPromptShown
+    of: ChromeStorageService
+    file: src/lib/services/chromeStorage.ts
+    reason: The product uses the durable GitHub App migration-required marker instead.
+  - kind: method
+    name: resetMigrationPromptStatus
+    of: ChromeStorageService
+    file: src/lib/services/chromeStorage.ts
+    reason: The old prompt state has no steady-state API after migration policy lands.
+  - kind: function
+    name: getAuthenticationMethod
+    file: src/lib/utils/repo-settings.ts
+    reason: Repository helpers no longer choose between PAT and GitHub App.
+  - kind: function
+    name: createGitHubServiceConfig
+    file: src/lib/utils/repo-settings.ts
+    reason: GitHub App service construction is explicit at live connection boundaries.
+  - kind: function
+    name: needsPermissionCheck
+    file: src/lib/utils/github-settings.ts
+    reason: Periodic PAT permission probing is removed with PAT settings.
+validate:
+  - pnpm exec vitest run src/background/__tests__/UsageTracker.test.ts src/background/__tests__/BackgroundService.auth-lifecycle.test.ts src/background/__tests__/BackgroundService.storage-recovery.test.ts src/background/__tests__/BackgroundService.edge-cases.test.ts src/lib/stores/__tests__/githubSettings.test.ts src/lib/services/__tests__/chromeStorage.test.ts src/lib/services/__tests__/chromeStorage.RaceConditions.test.ts src/lib/utils/__tests__/githubAppSync.test.ts src/services/__tests__/settings.test.ts src/services/__tests__/authentication.types.test.ts src/lib/components/__tests__/GitHubSettings.logic.test.ts src/lib/components/__tests__/RepoSettings.logic.test.ts src/content/services/__tests__/SupabaseAuthService.github-connection.test.ts src/content/services/__tests__/SupabaseAuthService.session-cleanup.test.ts src/popup/__tests__/App.component.test.ts src/popup/components/__tests__/TabsView.component.test.ts
+  - ./scripts/maid validate manifests/07-remove-legacy-pat-storage-and-types.manifest.yaml --mode behavioral
+  - pnpm lint
+  - pnpm check
+  - pnpm build
+created: '2026-07-13T14:21:12Z'
+metadata:
+  tags:
+    - auth
+    - github-app
+    - pat-retirement
+    - storage
+    - types
+  priority: high
+  promotable: true
+  status: implementation
+  parent_epic: github-app-only-authentication
+  depends_on:
+    - 06-retire-pat-strategy-and-factory
+  evolves_active_contracts:
+    - preserve-github-app-config-on-reauth
+    - background-auth-storage-recovery
+  notes: Migration marker retirement is explicitly out of scope and requires a later cleanup manifest.
+outcome:
+  status: completed
+  summary: |
+    Steady-state settings, storage, background recovery, popup state, helper,
+    authentication type, and usage contracts are now GitHub App-only. Legacy
+    PAT credentials and authentication selectors remain readable only inside
+    the dedicated one-way migration module, while historical PAT analytics are
+    tolerated and normalized to none rather than GitHub App.
+  rationale: |
+    Removing the dual-auth model from shared state eliminates confusing and
+    unsafe fallback paths after runtime PAT support was retired. Repository
+    owner and project mappings remain preserved, GitHub App installation data
+    stays authoritative, migration-required state remains explicit, and stale
+    usernames cannot overwrite repository settings without an installation.
+  lessons:
+    - lesson_type: auth-state-authority
+      summary: |
+        Treat installation metadata as the authority for GitHub App identity;
+        username or avatar fragments without an installation are stale cache,
+        not permission to rewrite repository ownership.
+      tags:
+        - auth
+        - github-app
+        - storage
+      paths:
+        - src/lib/stores/githubSettings.ts
+        - src/lib/stores/__tests__/githubSettings.test.ts
+    - lesson_type: legacy-data-boundary
+      summary: |
+        Historical credential vocabulary should be isolated at the migration
+        and analytics parsing boundaries. Steady-state types and fixtures must
+        reject retired fields so they cannot quietly return through casts.
+      tags:
+        - migration
+        - types
+        - analytics
+      paths:
+        - src/lib/services/githubAuthMigration.ts
+        - src/services/types/authentication.ts
+        - src/background/UsageTracker.ts
+    - lesson_type: auth-recovery-contract
+      summary: |
+        Superseding a storage-recovery contract requires direct coverage of
+        every authoritative wake-up key and an inverse test for each retired
+        signal, not only broad debounce coverage.
+      tags:
+        - mv3
+        - auth
+        - storage
+      paths:
+        - src/background/BackgroundService.ts
+        - src/background/__tests__/BackgroundService.storage-recovery.test.ts
+  review_notes:
+    - source: independent reviewer subagent child07_storage_types_review
+      severity: changes-requested
+      summary: |
+        Found stale username ownership overwrite risk, remaining PAT-shaped
+        migration fixtures, and missing direct coverage for migration and App
+        expiry recovery keys. All three findings were accepted and fixed.
+    - source: independent reviewer subagent child07_storage_types_review_round2
+      severity: changes-requested
+      summary: |
+        Confirmed the runtime and recovery fixes, then found remaining
+        GitHubSettingsInterface type assertions that bypassed excess-property
+        checks. All nine fixtures now use satisfies contracts.
+    - source: independent reviewer subagent child07_storage_types_review_round3
+      severity: ready
+      summary: |
+        Final read-only review found no findings and confirmed owner authority,
+        checked migration fixtures, exact recovery-key coverage, migration-only
+        legacy reads, analytics normalization, and reconciled plan locks.
+  validation:
+    - command:
+        - pnpm
+        - exec
+        - vitest
+        - run
+        - src/lib/stores/__tests__/githubSettings.test.ts
+        - src/background/__tests__/BackgroundService.storage-recovery.test.ts
+        - src/lib/services/__tests__/ProjectSettingsMigrationService.test.ts
+      status: passed
+      summary: Reviewer-requested regression coverage passed 58 tests across three files before the final cast-only cleanup; the migration fixture file then passed 26 of 26 tests again.
+    - command:
+        - ./scripts/maid
+        - test
+        - --manifest
+        - manifests/07-remove-legacy-pat-storage-and-types.manifest.yaml
+      status: passed
+      summary: All five declared child commands passed, including focused tests, behavioral validation, lint, type checking, and production build.
+    - command:
+        - pnpm
+        - test:ci
+      status: passed
+      summary: Full Vitest CI suite passed 197 test files and 4000 tests.
+    - command:
+        - ./scripts/maid
+        - verify
+        - --manifest-dir
+        - manifests
+        - --strict
+        - --since
+        - HEAD
+        - --file-tracking-scope
+        - task
+        - --plan-lock-scope
+        - task
+        - --require-plan-lock
+        - --require-red-evidence
+      status: passed
+      summary: Strict task-scoped verification passed all nine gates with no blockers or warnings.

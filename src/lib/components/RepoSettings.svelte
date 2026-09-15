@@ -13,7 +13,7 @@
   import { Input } from '$lib/components/ui/input';
   import { Label } from '$lib/components/ui/label';
   import { Search, Loader2 } from 'lucide-svelte';
-  import { UnifiedGitHubService } from '../../services/UnifiedGitHubService';
+  import { createConnectedGitHubAppService } from '$lib/utils/connectedGitHubAppService';
   import { createEventDispatcher, onDestroy } from 'svelte';
   import { githubSettingsActions } from '$lib/stores';
   import Modal from '$lib/components/ui/modal/Modal.svelte';
@@ -28,8 +28,6 @@
     shouldShowDropdown,
     canSaveForm,
     validateRepositoryName,
-    getAuthenticationMethod,
-    createGitHubServiceConfig,
     filterBranches,
     checkBranchExists,
     shouldShowCreateBranch,
@@ -44,7 +42,6 @@
 
   export let show = false;
   export let repoOwner: string = '';
-  export let githubToken: string = '';
   export let projectId: string;
   export let repoName: string;
   export let branch: string = 'main';
@@ -59,6 +56,7 @@
   let isSaving = false;
   let showErrorModal = false;
   let errorMessage = '';
+  let previousShow = false;
   let repoNameTouched = false;
 
   // Branch-related state
@@ -102,7 +100,7 @@
   });
 
   // Trigger debounced load when repository changes
-  $: if (repoName && repoExists && repoOwner) {
+  $: if (show && repoName && repoExists && repoOwner) {
     debouncedLoadBranches(repoOwner, repoName);
   }
 
@@ -110,26 +108,16 @@
     try {
       isLoadingRepos = true;
 
-      // Get authentication method to determine how to create the service
-      const authSettings = await chrome.storage.local.get(['authenticationMethod']);
-      const authMethod = getAuthenticationMethod(authSettings);
-
-      let githubService: UnifiedGitHubService;
-
-      if (authMethod === 'github_app') {
-        // Use GitHub App authentication
-        githubService = new UnifiedGitHubService({ type: 'github_app' });
-      } else {
-        // Use PAT authentication (backward compatible)
-        if (!githubToken || !repoOwner) return;
-        const config = createGitHubServiceConfig(authMethod, githubToken);
-        githubService = new UnifiedGitHubService(config);
-      }
+      const githubService = await createConnectedGitHubAppService();
 
       repositories = await githubService.listRepos();
     } catch (error) {
       logger.error('Error loading repositories:', error);
       repositories = [];
+      if (show) {
+        errorMessage = error instanceof Error ? error.message : 'Unable to load repositories';
+        showErrorModal = true;
+      }
     } finally {
       isLoadingRepos = false;
     }
@@ -196,19 +184,7 @@
     try {
       isLoadingBranches = true;
 
-      // Get authentication method
-      const authSettings = await chrome.storage.local.get(['authenticationMethod']);
-      const authMethod = getAuthenticationMethod(authSettings);
-
-      let githubService: UnifiedGitHubService;
-
-      if (authMethod === 'github_app') {
-        githubService = new UnifiedGitHubService({ type: 'github_app' });
-      } else {
-        if (!githubToken || !owner) return;
-        const config = createGitHubServiceConfig(authMethod, githubToken);
-        githubService = new UnifiedGitHubService(config);
-      }
+      const githubService = await createConnectedGitHubAppService();
 
       const branchData = await githubService.listBranches(owner, repo);
       branches = branchData.map((b) => b.name);
@@ -318,8 +294,14 @@
     projectTitle = initialRepoName;
   }
 
-  // Load repositories when component is mounted
-  loadRepositories();
+  $: if (show !== previousShow) {
+    previousShow = show;
+    if (show) {
+      void loadRepositories();
+    } else {
+      showErrorModal = false;
+    }
+  }
 </script>
 
 {#if show}

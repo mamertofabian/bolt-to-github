@@ -25,7 +25,6 @@ const SESSION_KEYS = [
 ];
 
 const GITHUB_APP_KEYS = [
-  'authenticationMethod',
   'githubAppInstallationId',
   'githubAppUsername',
   'githubAppAccessToken',
@@ -185,7 +184,6 @@ function seedAuthenticatedGitHubAppSession(): void {
     refreshTokenIssuedAt: Date.now(),
     extensionSessionMinted: true,
     extensionSessionMintedAt: Date.now(),
-    authenticationMethod: 'github_app',
     githubAppInstallationId: 12345,
     githubAppUsername: 'octocat',
     githubAppAccessToken: 'github-app-token',
@@ -252,7 +250,7 @@ describe('SupabaseAuthService - session-only cleanup', () => {
     );
   });
 
-  test('clearExpiredSession preserves authenticationMethod and githubApp keys', async () => {
+  test('clearExpiredSession preserves GitHub App keys', async () => {
     const beforeCleanup = Object.fromEntries(
       GITHUB_APP_KEYS.map((key) => [key, localStorageData[key]])
     );
@@ -263,7 +261,6 @@ describe('SupabaseAuthService - session-only cleanup', () => {
       expect(localStorageData[key]).toEqual(value);
     }
 
-    expect(removedKeyCalls()).not.toContain('authenticationMethod');
     expect(removedKeyCalls()).not.toContain('githubAppInstallationId');
     expect(removedKeyCalls()).not.toContain('githubAppAccessToken');
   });
@@ -273,20 +270,15 @@ describe('SupabaseAuthService - session-only cleanup', () => {
 
     expect(localStorageData.supabaseToken).toBeUndefined();
     expect(localStorageData.extensionSessionMinted).toBeUndefined();
-    expect(localStorageData.authenticationMethod).toBe('github_app');
     expect(localStorageData.githubAppInstallationId).toBe(12345);
 
-    const restoredAuthConfig = await chrome.storage.local.get([
-      'authenticationMethod',
-      'githubAppInstallationId',
-    ]);
+    const restoredAuthConfig = await chrome.storage.local.get(['githubAppInstallationId']);
     expect(restoredAuthConfig).toEqual({
-      authenticationMethod: 'github_app',
       githubAppInstallationId: 12345,
     });
   });
 
-  test('explicit logout still clears GitHub App cache and authenticationMethod', async () => {
+  test('explicit logout still clears GitHub App cache', async () => {
     await authService.logout();
 
     for (const key of SESSION_KEYS) {
@@ -296,5 +288,13 @@ describe('SupabaseAuthService - session-only cleanup', () => {
     for (const key of GITHUB_APP_KEYS) {
       expect(localStorageData[key]).toBeUndefined();
     }
+  });
+
+  test('session cleanup manages GitHub App metadata without an authentication method selector', async () => {
+    await authService.clearExpiredSession();
+
+    expect(localStorageData.githubAppInstallationId).toBe(12345);
+    expect(localStorageData).not.toHaveProperty('authenticationMethod');
+    expect(removedKeyCalls()).not.toContain('authenticationMethod');
   });
 });

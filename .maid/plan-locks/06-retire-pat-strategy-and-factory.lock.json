@@ -1,0 +1,430 @@
+{
+  "manifest_path": "manifests/06-retire-pat-strategy-and-factory.manifest.yaml",
+  "manifest_hash": "sha256:28f1ea60387b789e2d16d1ac08f602fcf8b71bc50f537676b25a51d86392a48e",
+  "test_hashes": {
+    "src/services/__tests__/UnifiedGitHubService.auth-selection.test.ts": "sha256:b04dd1d07a4fdb011dedcb535722f6e1536aa5a701bc943109b31bc7388ebe2c",
+    "src/services/__tests__/githubAppRequestPolicy.test.ts": "sha256:39c8c24190a10bba0208d9bfb164d8eadbcb06fae1d157b5aaa0c358fd57f1db",
+    "src/services/__tests__/GitHubAppAuthenticationStrategy.stampede.test.ts": "sha256:cd8b27a9cda224ef454bb99a3505e5be5584e93bec8f21b2cbebd4ed8b831cd6",
+    "src/services/__tests__/GitHubAppService.stampede.test.ts": "sha256:afc2a4559cf10b7b7a9bf8ad5efbf27f584a6f534c02204d8f26e780491ee82a",
+    "src/lib/stores/__tests__/githubSettings.test.ts": "sha256:c32decf4f6f02cef901805c700e928be610be6da0cacd3aff291987459d2eb78",
+    "src/services/__tests__/UnifiedGitHubService.comprehensive.test.ts": "sha256:0b696511bf72aa52937b2ab5191e7a05787af462b66881da08f72e892b7d3390",
+    "src/services/__tests__/UnifiedGitHubService.focused.test.ts": "sha256:fedf5a03519f28a27633d8356a2f7a1a2a729897f390bd95d4cd5e6e0b34e0d8",
+    "src/services/__tests__/UnifiedGitHubService.working.test.ts": "sha256:7d887399e83fc797215460dbcab574db364ed5a6f085b5f542392f57074272cc",
+    "src/services/__tests__/GitHubService.feedback.test.ts": "sha256:537f54848f6fbb630fd1ed5bedf434cc70a3be89456358eaf6c44c1f9d5429a4",
+    "src/services/__tests__/GitHubAppAuthenticationStrategy.test.ts": "sha256:79c13f7ce6ba858d225ae13c69cd193cf4c2eaa05ac93c77b74d972becf1baca"
+  },
+  "created_at": "2026-07-13T13:33:37.677331+00:00",
+  "revision": 9,
+  "revisions": [
+    {
+      "prior_manifest_hash": "sha256:371ad742cd8608037eef8c0922f8976355f015790fa964a78247b418b1db2837",
+      "prior_test_hashes": {
+        "src/services/__tests__/UnifiedGitHubService.auth-selection.test.ts": "sha256:4c063dc325fc78b148f697041a67686d2760a756d948a825085c1c8bed794470",
+        "src/services/__tests__/githubAppRequestPolicy.test.ts": "sha256:d92a74a35a2866733d05827cb27aca8638ecef18c13eaed5e38e6d7fa7d31a11",
+        "src/services/__tests__/GitHubAppAuthenticationStrategy.stampede.test.ts": "sha256:cd8b27a9cda224ef454bb99a3505e5be5584e93bec8f21b2cbebd4ed8b831cd6",
+        "src/services/__tests__/GitHubAppService.stampede.test.ts": "sha256:afc2a4559cf10b7b7a9bf8ad5efbf27f584a6f534c02204d8f26e780491ee82a",
+        "src/lib/stores/__tests__/githubSettings.test.ts": "sha256:2beea170cb0c819103d95842fb867fb978d29a2939f8b6f9cd29b4aced2f899c",
+        "src/services/__tests__/UnifiedGitHubService.comprehensive.test.ts": "sha256:049c477df6df9e5dbd8cba69a6cc79fabaa0498236a61a204b4e02db086a7ed4",
+        "src/services/__tests__/UnifiedGitHubService.focused.test.ts": "sha256:bc1ef33419e6b15a4c67a5a4cb9e141de1307620f8439ece6aaa955919e2dee3",
+        "src/services/__tests__/UnifiedGitHubService.working.test.ts": "sha256:6d7e41d9a0a8f1f0db8931dabbf2da8f9dc8ac7604d3a2da69f76d4794bad728",
+        "src/services/__tests__/GitHubService.feedback.test.ts": "sha256:06966f30be301eeb4377b0e7d77aa540ec22b9e6215821145485718ad3d44368",
+        "src/services/__tests__/GitHubAppAuthenticationStrategy.test.ts": "sha256:79c13f7ce6ba858d225ae13c69cd193cf4c2eaa05ac93c77b74d972becf1baca"
+      },
+      "revised_at": "2026-07-13T13:44:22.233230+00:00",
+      "reason": "Declare the final PAT-specific unified error fixture discovered during compatibility cleanup",
+      "agent": {
+        "model": "gpt-5",
+        "provider": "openai",
+        "client": "codex",
+        "skills": ["maid-implement-draft", "maid-evolver"],
+        "source": "flags"
+      },
+      "contract_delta": {
+        "artifacts_added": [],
+        "artifacts_removed": [],
+        "files_added": [],
+        "files_removed": [],
+        "validate_commands_added": [],
+        "validate_commands_removed": []
+      }
+    },
+    {
+      "prior_manifest_hash": "sha256:8dc39af4b8a9952b67909679d7a15593a53d06d4639365a64566765afeefe152",
+      "prior_test_hashes": {
+        "src/services/__tests__/UnifiedGitHubService.auth-selection.test.ts": "sha256:4c063dc325fc78b148f697041a67686d2760a756d948a825085c1c8bed794470",
+        "src/services/__tests__/githubAppRequestPolicy.test.ts": "sha256:39c8c24190a10bba0208d9bfb164d8eadbcb06fae1d157b5aaa0c358fd57f1db",
+        "src/services/__tests__/GitHubAppAuthenticationStrategy.stampede.test.ts": "sha256:cd8b27a9cda224ef454bb99a3505e5be5584e93bec8f21b2cbebd4ed8b831cd6",
+        "src/services/__tests__/GitHubAppService.stampede.test.ts": "sha256:afc2a4559cf10b7b7a9bf8ad5efbf27f584a6f534c02204d8f26e780491ee82a",
+        "src/lib/stores/__tests__/githubSettings.test.ts": "sha256:2beea170cb0c819103d95842fb867fb978d29a2939f8b6f9cd29b4aced2f899c",
+        "src/services/__tests__/UnifiedGitHubService.comprehensive.test.ts": "sha256:0b696511bf72aa52937b2ab5191e7a05787af462b66881da08f72e892b7d3390",
+        "src/services/__tests__/UnifiedGitHubService.focused.test.ts": "sha256:0e1e2ee85722b42a731fbdfe7e830be0fcd9bbe00f6c998679e12f3af3049017",
+        "src/services/__tests__/UnifiedGitHubService.working.test.ts": "sha256:96a755ff7d79f72ca28fde3a692f9039dea53439d5d227a07df56d74621db34e",
+        "src/services/__tests__/GitHubService.feedback.test.ts": "sha256:537f54848f6fbb630fd1ed5bedf434cc70a3be89456358eaf6c44c1f9d5429a4",
+        "src/services/__tests__/GitHubAppAuthenticationStrategy.test.ts": "sha256:79c13f7ce6ba858d225ae13c69cd193cf4c2eaa05ac93c77b74d972becf1baca"
+      },
+      "revised_at": "2026-07-13T13:45:28.024204+00:00",
+      "reason": "Use files.delete as the verifiable contract for removed modules and retain symbol checks only in surviving files",
+      "agent": {
+        "model": "gpt-5",
+        "provider": "openai",
+        "client": "codex",
+        "skills": ["maid-implement-draft", "maid-evolver"],
+        "source": "flags"
+      },
+      "contract_delta": {
+        "artifacts_added": [],
+        "artifacts_removed": [],
+        "files_added": [],
+        "files_removed": [],
+        "validate_commands_added": [],
+        "validate_commands_removed": []
+      }
+    },
+    {
+      "prior_manifest_hash": "sha256:944bd224957c9c5cb82cc3fec767a71b1d23b5473df089aaa8f2d96027903373",
+      "prior_test_hashes": {
+        "src/services/__tests__/UnifiedGitHubService.auth-selection.test.ts": "sha256:4c063dc325fc78b148f697041a67686d2760a756d948a825085c1c8bed794470",
+        "src/services/__tests__/githubAppRequestPolicy.test.ts": "sha256:39c8c24190a10bba0208d9bfb164d8eadbcb06fae1d157b5aaa0c358fd57f1db",
+        "src/services/__tests__/GitHubAppAuthenticationStrategy.stampede.test.ts": "sha256:cd8b27a9cda224ef454bb99a3505e5be5584e93bec8f21b2cbebd4ed8b831cd6",
+        "src/services/__tests__/GitHubAppService.stampede.test.ts": "sha256:afc2a4559cf10b7b7a9bf8ad5efbf27f584a6f534c02204d8f26e780491ee82a",
+        "src/lib/stores/__tests__/githubSettings.test.ts": "sha256:2beea170cb0c819103d95842fb867fb978d29a2939f8b6f9cd29b4aced2f899c",
+        "src/services/__tests__/UnifiedGitHubService.comprehensive.test.ts": "sha256:0b696511bf72aa52937b2ab5191e7a05787af462b66881da08f72e892b7d3390",
+        "src/services/__tests__/UnifiedGitHubService.focused.test.ts": "sha256:0e1e2ee85722b42a731fbdfe7e830be0fcd9bbe00f6c998679e12f3af3049017",
+        "src/services/__tests__/UnifiedGitHubService.working.test.ts": "sha256:96a755ff7d79f72ca28fde3a692f9039dea53439d5d227a07df56d74621db34e",
+        "src/services/__tests__/GitHubService.feedback.test.ts": "sha256:537f54848f6fbb630fd1ed5bedf434cc70a3be89456358eaf6c44c1f9d5429a4",
+        "src/services/__tests__/GitHubAppAuthenticationStrategy.test.ts": "sha256:79c13f7ce6ba858d225ae13c69cd193cf4c2eaa05ac93c77b74d972becf1baca"
+      },
+      "revised_at": "2026-07-13T13:54:05.544877+00:00",
+      "reason": "Preserve factory-era cross-facade single-flight behavior and reconcile promoted contract metadata after independent review",
+      "agent": {
+        "model": "gpt-5",
+        "provider": "openai",
+        "client": "codex",
+        "skills": ["maid-implement-draft", "maid-evolver"],
+        "source": "flags"
+      },
+      "contract_delta": {
+        "artifacts_added": [
+          "src/services/__tests__/UnifiedGitHubService.auth-selection.test.ts:concurrent facade instances share one GitHub App token acquisition per identity",
+          "src/services/__tests__/UnifiedGitHubService.auth-selection.test.ts:concurrent facade instances share one GitHub App token acquisition per identity:kind=test_function"
+        ],
+        "artifacts_removed": [],
+        "files_added": [],
+        "files_removed": [],
+        "validate_commands_added": [],
+        "validate_commands_removed": []
+      }
+    },
+    {
+      "prior_manifest_hash": "sha256:f670cbeab963ff410796c0cc5866094cc0077ed4b59f3eab1c40d54871ba1b43",
+      "prior_test_hashes": {
+        "src/services/__tests__/UnifiedGitHubService.auth-selection.test.ts": "sha256:72ddbd03bcdaead10b602fddd00f045112e7816689bf02bbf4746f3b1a55b812",
+        "src/services/__tests__/githubAppRequestPolicy.test.ts": "sha256:39c8c24190a10bba0208d9bfb164d8eadbcb06fae1d157b5aaa0c358fd57f1db",
+        "src/services/__tests__/GitHubAppAuthenticationStrategy.stampede.test.ts": "sha256:cd8b27a9cda224ef454bb99a3505e5be5584e93bec8f21b2cbebd4ed8b831cd6",
+        "src/services/__tests__/GitHubAppService.stampede.test.ts": "sha256:afc2a4559cf10b7b7a9bf8ad5efbf27f584a6f534c02204d8f26e780491ee82a",
+        "src/lib/stores/__tests__/githubSettings.test.ts": "sha256:2beea170cb0c819103d95842fb867fb978d29a2939f8b6f9cd29b4aced2f899c",
+        "src/services/__tests__/UnifiedGitHubService.comprehensive.test.ts": "sha256:0b696511bf72aa52937b2ab5191e7a05787af462b66881da08f72e892b7d3390",
+        "src/services/__tests__/UnifiedGitHubService.focused.test.ts": "sha256:0e1e2ee85722b42a731fbdfe7e830be0fcd9bbe00f6c998679e12f3af3049017",
+        "src/services/__tests__/UnifiedGitHubService.working.test.ts": "sha256:96a755ff7d79f72ca28fde3a692f9039dea53439d5d227a07df56d74621db34e",
+        "src/services/__tests__/GitHubService.feedback.test.ts": "sha256:537f54848f6fbb630fd1ed5bedf434cc70a3be89456358eaf6c44c1f9d5429a4",
+        "src/services/__tests__/GitHubAppAuthenticationStrategy.test.ts": "sha256:79c13f7ce6ba858d225ae13c69cd193cf4c2eaa05ac93c77b74d972becf1baca"
+      },
+      "revised_at": "2026-07-13T14:02:36.007873+00:00",
+      "reason": "Bind shared GitHub App strategy state to a facade identity and reject stale or signed-out cache reuse after round-two review",
+      "agent": {
+        "model": "gpt-5",
+        "provider": "openai",
+        "client": "codex",
+        "skills": ["maid-implement-draft", "maid-evolver"],
+        "source": "flags"
+      },
+      "contract_delta": {
+        "artifacts_added": [
+          "src/services/__tests__/UnifiedGitHubService.auth-selection.test.ts:signed-out facade cannot reuse a previously cached account token",
+          "src/services/__tests__/UnifiedGitHubService.auth-selection.test.ts:signed-out facade cannot reuse a previously cached account token:kind=test_function",
+          "src/services/__tests__/UnifiedGitHubService.auth-selection.test.ts:stale facade fails visibly after the Bolt2GitHub identity changes",
+          "src/services/__tests__/UnifiedGitHubService.auth-selection.test.ts:stale facade fails visibly after the Bolt2GitHub identity changes:kind=test_function"
+        ],
+        "artifacts_removed": [],
+        "files_added": [],
+        "files_removed": [],
+        "validate_commands_added": [],
+        "validate_commands_removed": []
+      }
+    },
+    {
+      "prior_manifest_hash": "sha256:e9654fb2b5a122f25ee97847c29c91f6b42bc5fb70c236ad3ad94d4a7b130a57",
+      "prior_test_hashes": {
+        "src/services/__tests__/UnifiedGitHubService.auth-selection.test.ts": "sha256:87a83e9ce9b145c4f36f6f72fcd3699d6e7e8846a369e6d2addc95c4706700cc",
+        "src/services/__tests__/githubAppRequestPolicy.test.ts": "sha256:39c8c24190a10bba0208d9bfb164d8eadbcb06fae1d157b5aaa0c358fd57f1db",
+        "src/services/__tests__/GitHubAppAuthenticationStrategy.stampede.test.ts": "sha256:cd8b27a9cda224ef454bb99a3505e5be5584e93bec8f21b2cbebd4ed8b831cd6",
+        "src/services/__tests__/GitHubAppService.stampede.test.ts": "sha256:afc2a4559cf10b7b7a9bf8ad5efbf27f584a6f534c02204d8f26e780491ee82a",
+        "src/lib/stores/__tests__/githubSettings.test.ts": "sha256:2beea170cb0c819103d95842fb867fb978d29a2939f8b6f9cd29b4aced2f899c",
+        "src/services/__tests__/UnifiedGitHubService.comprehensive.test.ts": "sha256:0b696511bf72aa52937b2ab5191e7a05787af462b66881da08f72e892b7d3390",
+        "src/services/__tests__/UnifiedGitHubService.focused.test.ts": "sha256:0e1e2ee85722b42a731fbdfe7e830be0fcd9bbe00f6c998679e12f3af3049017",
+        "src/services/__tests__/UnifiedGitHubService.working.test.ts": "sha256:96a755ff7d79f72ca28fde3a692f9039dea53439d5d227a07df56d74621db34e",
+        "src/services/__tests__/GitHubService.feedback.test.ts": "sha256:537f54848f6fbb630fd1ed5bedf434cc70a3be89456358eaf6c44c1f9d5429a4",
+        "src/services/__tests__/GitHubAppAuthenticationStrategy.test.ts": "sha256:79c13f7ce6ba858d225ae13c69cd193cf4c2eaa05ac93c77b74d972becf1baca"
+      },
+      "revised_at": "2026-07-13T14:04:37.464430+00:00",
+      "reason": "Reconcile the finalized child-06 behavioral suite after identity-isolation implementation",
+      "agent": {
+        "model": "gpt-5",
+        "provider": "openai",
+        "client": "codex",
+        "skills": ["maid-implement-draft", "maid-evolver"],
+        "source": "flags"
+      },
+      "contract_delta": {
+        "artifacts_added": [],
+        "artifacts_removed": [],
+        "files_added": [],
+        "files_removed": [],
+        "validate_commands_added": [],
+        "validate_commands_removed": []
+      }
+    },
+    {
+      "prior_manifest_hash": "sha256:e9654fb2b5a122f25ee97847c29c91f6b42bc5fb70c236ad3ad94d4a7b130a57",
+      "prior_test_hashes": {
+        "src/services/__tests__/UnifiedGitHubService.auth-selection.test.ts": "sha256:b04dd1d07a4fdb011dedcb535722f6e1536aa5a701bc943109b31bc7388ebe2c",
+        "src/services/__tests__/githubAppRequestPolicy.test.ts": "sha256:39c8c24190a10bba0208d9bfb164d8eadbcb06fae1d157b5aaa0c358fd57f1db",
+        "src/services/__tests__/GitHubAppAuthenticationStrategy.stampede.test.ts": "sha256:cd8b27a9cda224ef454bb99a3505e5be5584e93bec8f21b2cbebd4ed8b831cd6",
+        "src/services/__tests__/GitHubAppService.stampede.test.ts": "sha256:afc2a4559cf10b7b7a9bf8ad5efbf27f584a6f534c02204d8f26e780491ee82a",
+        "src/lib/stores/__tests__/githubSettings.test.ts": "sha256:2beea170cb0c819103d95842fb867fb978d29a2939f8b6f9cd29b4aced2f899c",
+        "src/services/__tests__/UnifiedGitHubService.comprehensive.test.ts": "sha256:0b696511bf72aa52937b2ab5191e7a05787af462b66881da08f72e892b7d3390",
+        "src/services/__tests__/UnifiedGitHubService.focused.test.ts": "sha256:fedf5a03519f28a27633d8356a2f7a1a2a729897f390bd95d4cd5e6e0b34e0d8",
+        "src/services/__tests__/UnifiedGitHubService.working.test.ts": "sha256:7d887399e83fc797215460dbcab574db364ed5a6f085b5f542392f57074272cc",
+        "src/services/__tests__/GitHubService.feedback.test.ts": "sha256:537f54848f6fbb630fd1ed5bedf434cc70a3be89456358eaf6c44c1f9d5429a4",
+        "src/services/__tests__/GitHubAppAuthenticationStrategy.test.ts": "sha256:79c13f7ce6ba858d225ae13c69cd193cf4c2eaa05ac93c77b74d972becf1baca"
+      },
+      "revised_at": "2026-07-13T14:11:14.156663+00:00",
+      "reason": "Capture reviewed child-06 Outcome evidence",
+      "agent": {
+        "model": "gpt-5",
+        "provider": "openai",
+        "client": "codex",
+        "skills": ["maid-implement-draft", "maid-evolver"],
+        "source": "flags"
+      },
+      "contract_delta": {
+        "artifacts_added": [],
+        "artifacts_removed": [],
+        "files_added": [],
+        "files_removed": [],
+        "validate_commands_added": [],
+        "validate_commands_removed": []
+      }
+    },
+    {
+      "prior_manifest_hash": "sha256:28f1ea60387b789e2d16d1ac08f602fcf8b71bc50f537676b25a51d86392a48e",
+      "prior_test_hashes": {
+        "src/services/__tests__/UnifiedGitHubService.auth-selection.test.ts": "sha256:b04dd1d07a4fdb011dedcb535722f6e1536aa5a701bc943109b31bc7388ebe2c",
+        "src/services/__tests__/githubAppRequestPolicy.test.ts": "sha256:39c8c24190a10bba0208d9bfb164d8eadbcb06fae1d157b5aaa0c358fd57f1db",
+        "src/services/__tests__/GitHubAppAuthenticationStrategy.stampede.test.ts": "sha256:cd8b27a9cda224ef454bb99a3505e5be5584e93bec8f21b2cbebd4ed8b831cd6",
+        "src/services/__tests__/GitHubAppService.stampede.test.ts": "sha256:afc2a4559cf10b7b7a9bf8ad5efbf27f584a6f534c02204d8f26e780491ee82a",
+        "src/lib/stores/__tests__/githubSettings.test.ts": "sha256:2beea170cb0c819103d95842fb867fb978d29a2939f8b6f9cd29b4aced2f899c",
+        "src/services/__tests__/UnifiedGitHubService.comprehensive.test.ts": "sha256:0b696511bf72aa52937b2ab5191e7a05787af462b66881da08f72e892b7d3390",
+        "src/services/__tests__/UnifiedGitHubService.focused.test.ts": "sha256:fedf5a03519f28a27633d8356a2f7a1a2a729897f390bd95d4cd5e6e0b34e0d8",
+        "src/services/__tests__/UnifiedGitHubService.working.test.ts": "sha256:7d887399e83fc797215460dbcab574db364ed5a6f085b5f542392f57074272cc",
+        "src/services/__tests__/GitHubService.feedback.test.ts": "sha256:537f54848f6fbb630fd1ed5bedf434cc70a3be89456358eaf6c44c1f9d5429a4",
+        "src/services/__tests__/GitHubAppAuthenticationStrategy.test.ts": "sha256:79c13f7ce6ba858d225ae13c69cd193cf4c2eaa05ac93c77b74d972becf1baca"
+      },
+      "revised_at": "2026-07-13T15:02:09.990170+00:00",
+      "reason": "Reconcile behavioral test hashes after intentional GitHub App-only contract evolution",
+      "agent": {
+        "model": "gpt-5",
+        "provider": "openai",
+        "client": "codex",
+        "skills": ["maid-evolver"],
+        "source": "flags"
+      },
+      "contract_delta": {
+        "artifacts_added": [],
+        "artifacts_removed": [],
+        "files_added": [],
+        "files_removed": [],
+        "validate_commands_added": [],
+        "validate_commands_removed": []
+      }
+    },
+    {
+      "prior_manifest_hash": "sha256:28f1ea60387b789e2d16d1ac08f602fcf8b71bc50f537676b25a51d86392a48e",
+      "prior_test_hashes": {
+        "src/services/__tests__/UnifiedGitHubService.auth-selection.test.ts": "sha256:b04dd1d07a4fdb011dedcb535722f6e1536aa5a701bc943109b31bc7388ebe2c",
+        "src/services/__tests__/githubAppRequestPolicy.test.ts": "sha256:39c8c24190a10bba0208d9bfb164d8eadbcb06fae1d157b5aaa0c358fd57f1db",
+        "src/services/__tests__/GitHubAppAuthenticationStrategy.stampede.test.ts": "sha256:cd8b27a9cda224ef454bb99a3505e5be5584e93bec8f21b2cbebd4ed8b831cd6",
+        "src/services/__tests__/GitHubAppService.stampede.test.ts": "sha256:afc2a4559cf10b7b7a9bf8ad5efbf27f584a6f534c02204d8f26e780491ee82a",
+        "src/lib/stores/__tests__/githubSettings.test.ts": "sha256:6d2ef1dd9b4349e112d6f5324d1c22c9507662fb99f06499a3f0f4f61b532b14",
+        "src/services/__tests__/UnifiedGitHubService.comprehensive.test.ts": "sha256:0b696511bf72aa52937b2ab5191e7a05787af462b66881da08f72e892b7d3390",
+        "src/services/__tests__/UnifiedGitHubService.focused.test.ts": "sha256:fedf5a03519f28a27633d8356a2f7a1a2a729897f390bd95d4cd5e6e0b34e0d8",
+        "src/services/__tests__/UnifiedGitHubService.working.test.ts": "sha256:7d887399e83fc797215460dbcab574db364ed5a6f085b5f542392f57074272cc",
+        "src/services/__tests__/GitHubService.feedback.test.ts": "sha256:537f54848f6fbb630fd1ed5bedf434cc70a3be89456358eaf6c44c1f9d5429a4",
+        "src/services/__tests__/GitHubAppAuthenticationStrategy.test.ts": "sha256:79c13f7ce6ba858d225ae13c69cd193cf4c2eaa05ac93c77b74d972becf1baca"
+      },
+      "revised_at": "2026-07-13T15:13:42.161417+00:00",
+      "reason": "Reconcile reviewer-requested auth-storage regression coverage and App-only fixtures",
+      "agent": {
+        "model": "gpt-5",
+        "provider": "openai",
+        "client": "codex",
+        "skills": ["maid-evolver", "maid-implementation-review"],
+        "source": "flags"
+      },
+      "contract_delta": {
+        "artifacts_added": [],
+        "artifacts_removed": [],
+        "files_added": [],
+        "files_removed": [],
+        "validate_commands_added": [],
+        "validate_commands_removed": []
+      }
+    }
+  ],
+  "red_evidence": {
+    "red": true,
+    "captured_at": "2026-07-13T14:02:59.870018+00:00",
+    "commands": [
+      {
+        "command": "pnpm exec vitest run src/services/__tests__/UnifiedGitHubService.auth-selection.test.ts src/services/__tests__/UnifiedGitHubService.comprehensive.test.ts src/services/__tests__/UnifiedGitHubService.focused.test.ts src/services/__tests__/UnifiedGitHubService.working.test.ts src/services/__tests__/GitHubService.feedback.test.ts src/services/__tests__/githubAppRequestPolicy.test.ts src/services/__tests__/GitHubAppAuthenticationStrategy.test.ts src/services/__tests__/GitHubAppAuthenticationStrategy.stampede.test.ts src/services/__tests__/GitHubAppService.stampede.test.ts src/lib/stores/__tests__/githubSettings.test.ts",
+        "exit_code": 1,
+        "output_tail": "\n FAIL  src/services/__tests__/UnifiedGitHubService.auth-selection.test.ts > UnifiedGitHubService GitHub App-only authentication > signed-out facade cannot reuse a previously cached account token\nAssertionError: promise resolved \"[]\" instead of rejecting\n\n- Expected: \n[Error: rejected promise]\n\n+ Received: \nArray []\n\n \u276f src/services/__tests__/UnifiedGitHubService.auth-selection.test.ts:216:56\n    214|     delete storage.supabaseToken;\n    215| \n    216|     await expect(new UnifiedGitHubService().listRepos()).rejects.toThr\u2026\n       |                                                        ^\n    217|       /No user token available.*authenticate with bolt2github\\.com/i\n    218|     );\n\n\u23af\u23af\u23af\u23af\u23af\u23af\u23af\u23af\u23af\u23af\u23af\u23af\u23af\u23af\u23af\u23af\u23af\u23af\u23af\u23af\u23af\u23af\u23af\u23af[2/2]\u23af\n",
+        "classification": "red"
+      },
+      {
+        "command": "./scripts/maid validate manifests/06-retire-pat-strategy-and-factory.manifest.yaml --mode behavioral",
+        "exit_code": 0,
+        "output_tail": "PASS 06-retire-pat-strategy-and-factory\n  Mode: behavioral\n  Duration: 429ms",
+        "classification": "not_red"
+      },
+      {
+        "command": "pnpm lint",
+        "exit_code": 0,
+        "output_tail": "\n> bolt-to-github@1.3.21 lint /home/atomrem/projects/codefrost-dev/bolt-to-github\n> eslint \"src/**/*.{js,ts,svelte}\"\n",
+        "classification": "not_red"
+      },
+      {
+        "command": "pnpm check",
+        "exit_code": 0,
+        "output_tail": "\n> bolt-to-github@1.3.21 check /home/atomrem/projects/codefrost-dev/bolt-to-github\n> svelte-check --tsconfig ./tsconfig.json\n\n\n====================================\nLoading svelte-check in workspace: /home/atomrem/projects/codefrost-dev/bolt-to-github\nGetting Svelte diagnostics...\n\n====================================\nsvelte-check found 0 errors and 0 warnings",
+        "classification": "not_red"
+      },
+      {
+        "command": "pnpm build",
+        "exit_code": 0,
+        "output_tail": "dist/assets/index-BnArqU_7.js                                 2.56 kB \u2502 gzip:   1.25 kB\ndist/assets/WelcomePageContentScript.ts-D1t7FgTm.js           2.66 kB \u2502 gzip:   0.79 kB\ndist/assets/GitHubCacheService-Bcgnv6OU.js                    3.68 kB \u2502 gzip:   1.30 kB\ndist/assets/TempRepoManager-CboUx7jg.js                       5.70 kB \u2502 gzip:   2.18 kB\ndist/assets/logger-CcH-GVeY.js                                8.19 kB \u2502 gzip:   2.69 kB\ndist/pages/logs.js                                           15.32 kB \u2502 gzip:   5.72 kB\ndist/assets/debounce-CfajDEA6.js                             22.12 kB \u2502 gzip:   6.78 kB\ndist/assets/input-CjMOwtNQ.js                                72.26 kB \u2502 gzip:  25.08 kB\ndist/assets/GitHubComparisonService-FowbDv9R.js              82.73 kB \u2502 gzip:  23.76 kB\ndist/background/background.js                               109.80 kB \u2502 gzip:  29.33 kB\ndist/content/content.js                                     245.40 kB \u2502 gzip:  72.12 kB\ndist/assets/index.html-BXfClQ1T.js                          466.85 kB \u2502 gzip: 120.62 kB\n\u2713 built in 8.58s\n\n[plugin:vite:reporter] [plugin vite:reporter] \n(!) /home/atomrem/projects/codefrost-dev/bolt-to-github/src/lib/constants/supabase.ts is dynamically imported by /home/atomrem/projects/codefrost-dev/bolt-to-github/src/services/UnifiedGitHubService.ts but also statically imported by /home/atomrem/projects/codefrost-dev/bolt-to-github/src/content/services/SupabaseAuthService.ts, /home/atomrem/projects/codefrost-dev/bolt-to-github/src/services/BoltProjectSyncService.ts, /home/atomrem/projects/codefrost-dev/bolt-to-github/src/services/GitHubAppService.ts, /home/atomrem/projects/codefrost-dev/bolt-to-github/src/services/SubscriptionService.ts, dynamic import will not move module into another chunk.\n\n[plugin:vite:reporter] [plugin vite:reporter] \n(!) /home/atomrem/projects/codefrost-dev/bolt-to-github/src/content/handlers/FileChangeHandler.ts is dynamically imported by /home/atomrem/projects/codefrost-dev/bolt-to-github/src/content/handlers/GitHubUploadHandler.ts, /home/atomrem/projects/codefrost-dev/bolt-to-github/src/content/services/PushReminderService.ts, /home/atomrem/projects/codefrost-dev/bolt-to-github/src/content/services/PushReminderService.ts but also statically imported by /home/atomrem/projects/codefrost-dev/bolt-to-github/src/content/UIManager.ts, dynamic import will not move module into another chunk.\n",
+        "classification": "not_red"
+      }
+    ]
+  },
+  "agent": {
+    "model": "gpt-5",
+    "provider": "openai",
+    "client": "codex",
+    "skills": ["maid-implement-draft", "maid-evolver"],
+    "source": "flags"
+  },
+  "_manifest_contract": {
+    "artifacts": [
+      "src/lib/stores/__tests__/githubSettings.test.ts:GitHub App validation constructs only the App-backed unified service",
+      "src/lib/stores/__tests__/githubSettings.test.ts:GitHub App validation constructs only the App-backed unified service:kind=test_function",
+      "src/lib/stores/__tests__/githubSettings.test.ts:legacy PAT initialization never constructs or validates a token-backed GitHub service",
+      "src/lib/stores/__tests__/githubSettings.test.ts:legacy PAT initialization never constructs or validates a token-backed GitHub service:kind=test_function",
+      "src/lib/stores/__tests__/githubSettings.test.ts:legacy PAT settings cannot be saved after GitHub App-only strategy retirement",
+      "src/lib/stores/__tests__/githubSettings.test.ts:legacy PAT settings cannot be saved after GitHub App-only strategy retirement:kind=test_function",
+      "src/services/UnifiedGitHubService.ts:class:UnifiedGitHubService",
+      "src/services/UnifiedGitHubService.ts:class:UnifiedGitHubService:kind=class",
+      "src/services/UnifiedGitHubService.ts:method:UnifiedGitHubService.getAuthenticationType",
+      "src/services/UnifiedGitHubService.ts:method:UnifiedGitHubService.getAuthenticationType:kind=method",
+      "src/services/UnifiedGitHubService.ts:method:UnifiedGitHubService.getAuthenticationType:of=UnifiedGitHubService",
+      "src/services/UnifiedGitHubService.ts:method:UnifiedGitHubService.getAuthenticationType:returns=Promise<'github_app'>",
+      "src/services/__tests__/GitHubAppAuthenticationStrategy.stampede.test.ts:invalidates a cached GitHub token when the Supabase identity changes",
+      "src/services/__tests__/GitHubAppAuthenticationStrategy.stampede.test.ts:invalidates a cached GitHub token when the Supabase identity changes:kind=test_function",
+      "src/services/__tests__/GitHubAppAuthenticationStrategy.stampede.test.ts:prevents an older in-flight identity from overwriting the newer token cache",
+      "src/services/__tests__/GitHubAppAuthenticationStrategy.stampede.test.ts:prevents an older in-flight identity from overwriting the newer token cache:kind=test_function",
+      "src/services/__tests__/GitHubAppService.stampede.test.ts:coalesces token retrieval shared by direct and validation callers",
+      "src/services/__tests__/GitHubAppService.stampede.test.ts:coalesces token retrieval shared by direct and validation callers:kind=test_function",
+      "src/services/__tests__/GitHubAppService.stampede.test.ts:keeps in-flight token requests isolated across Supabase identity changes",
+      "src/services/__tests__/GitHubAppService.stampede.test.ts:keeps in-flight token requests isolated across Supabase identity changes:kind=test_function",
+      "src/services/__tests__/GitHubAppService.stampede.test.ts:turns one hundred direct service token requests into one Edge Function request",
+      "src/services/__tests__/GitHubAppService.stampede.test.ts:turns one hundred direct service token requests into one Edge Function request:kind=test_function",
+      "src/services/__tests__/UnifiedGitHubService.auth-selection.test.ts:UnifiedGitHubService always selects GitHub App authentication",
+      "src/services/__tests__/UnifiedGitHubService.auth-selection.test.ts:UnifiedGitHubService always selects GitHub App authentication:kind=test_function",
+      "src/services/__tests__/UnifiedGitHubService.auth-selection.test.ts:account changes retain identity-isolated GitHub App token acquisition",
+      "src/services/__tests__/UnifiedGitHubService.auth-selection.test.ts:account changes retain identity-isolated GitHub App token acquisition:kind=test_function",
+      "src/services/__tests__/UnifiedGitHubService.auth-selection.test.ts:concurrent facade instances share one GitHub App token acquisition per identity",
+      "src/services/__tests__/UnifiedGitHubService.auth-selection.test.ts:concurrent facade instances share one GitHub App token acquisition per identity:kind=test_function",
+      "src/services/__tests__/UnifiedGitHubService.auth-selection.test.ts:explicit GitHub App configuration never falls back to PAT",
+      "src/services/__tests__/UnifiedGitHubService.auth-selection.test.ts:explicit GitHub App configuration never falls back to PAT:kind=test_function",
+      "src/services/__tests__/UnifiedGitHubService.auth-selection.test.ts:missing live GitHub App credentials fail visibly without PAT fallback",
+      "src/services/__tests__/UnifiedGitHubService.auth-selection.test.ts:missing live GitHub App credentials fail visibly without PAT fallback:kind=test_function",
+      "src/services/__tests__/UnifiedGitHubService.auth-selection.test.ts:signed-out facade cannot reuse a previously cached account token",
+      "src/services/__tests__/UnifiedGitHubService.auth-selection.test.ts:signed-out facade cannot reuse a previously cached account token:kind=test_function",
+      "src/services/__tests__/UnifiedGitHubService.auth-selection.test.ts:stale facade fails visibly after the Bolt2GitHub identity changes",
+      "src/services/__tests__/UnifiedGitHubService.auth-selection.test.ts:stale facade fails visibly after the Bolt2GitHub identity changes:kind=test_function",
+      "src/services/__tests__/githubAppRequestPolicy.test.ts:resets after a shared rejection so a later request can retry",
+      "src/services/__tests__/githubAppRequestPolicy.test.ts:resets after a shared rejection so a later request can retry:kind=test_function",
+      "src/services/__tests__/githubAppRequestPolicy.test.ts:shares one operation across one hundred concurrent callers",
+      "src/services/__tests__/githubAppRequestPolicy.test.ts:shares one operation across one hundred concurrent callers:kind=test_function",
+      "src/services/githubAppRequestPolicy.ts:class:SingleFlight",
+      "src/services/githubAppRequestPolicy.ts:class:SingleFlight:kind=class",
+      "src/services/githubAppRequestPolicy.ts:method:SingleFlight.run",
+      "src/services/githubAppRequestPolicy.ts:method:SingleFlight.run:arg=operation:type=() => Promise<T>:default=None",
+      "src/services/githubAppRequestPolicy.ts:method:SingleFlight.run:kind=method",
+      "src/services/githubAppRequestPolicy.ts:method:SingleFlight.run:of=SingleFlight",
+      "src/services/githubAppRequestPolicy.ts:method:SingleFlight.run:returns=Promise<T>",
+      "src/services/types/authentication.ts:attribute:AuthenticationConfig.githubAppConfig",
+      "src/services/types/authentication.ts:attribute:AuthenticationConfig.githubAppConfig:kind=attribute",
+      "src/services/types/authentication.ts:attribute:AuthenticationConfig.githubAppConfig:of=AuthenticationConfig",
+      "src/services/types/authentication.ts:attribute:AuthenticationConfig.githubAppConfig:type=GitHubAppConfig | undefined",
+      "src/services/types/authentication.ts:attribute:AuthenticationConfig.type",
+      "src/services/types/authentication.ts:attribute:AuthenticationConfig.type:kind=attribute",
+      "src/services/types/authentication.ts:attribute:AuthenticationConfig.type:of=AuthenticationConfig",
+      "src/services/types/authentication.ts:attribute:AuthenticationConfig.type:type='github_app'",
+      "src/services/types/authentication.ts:interface:AuthenticationConfig",
+      "src/services/types/authentication.ts:interface:AuthenticationConfig:kind=interface",
+      "src/services/types/authentication.ts:type:AuthenticationType",
+      "src/services/types/authentication.ts:type:AuthenticationType:kind=type",
+      "src/services/types/authentication.ts:type:AuthenticationType:type='github_app'"
+    ],
+    "files": {
+      "create": [],
+      "edit": [
+        "src/lib/stores/__tests__/githubSettings.test.ts",
+        "src/services/UnifiedGitHubService.ts",
+        "src/services/__tests__/GitHubAppAuthenticationStrategy.stampede.test.ts",
+        "src/services/__tests__/GitHubAppService.stampede.test.ts",
+        "src/services/__tests__/UnifiedGitHubService.auth-selection.test.ts",
+        "src/services/__tests__/githubAppRequestPolicy.test.ts",
+        "src/services/githubAppRequestPolicy.ts",
+        "src/services/types/authentication.ts"
+      ],
+      "read": [
+        "manifests/03-github-app-only-runtime-enforcement.manifest.yaml",
+        "manifests/04-github-app-only-repository-surfaces.manifest.yaml",
+        "manifests/05-github-app-only-issue-feedback-surfaces.manifest.yaml",
+        "manifests/prevent-github-token-request-stampede.manifest.yaml",
+        "src/services/GitHubAppAuthenticationStrategy.ts"
+      ]
+    },
+    "test_files": [
+      "src/lib/stores/__tests__/githubSettings.test.ts",
+      "src/services/__tests__/GitHubAppAuthenticationStrategy.stampede.test.ts",
+      "src/services/__tests__/GitHubAppAuthenticationStrategy.test.ts",
+      "src/services/__tests__/GitHubAppService.stampede.test.ts",
+      "src/services/__tests__/GitHubService.feedback.test.ts",
+      "src/services/__tests__/UnifiedGitHubService.auth-selection.test.ts",
+      "src/services/__tests__/UnifiedGitHubService.comprehensive.test.ts",
+      "src/services/__tests__/UnifiedGitHubService.focused.test.ts",
+      "src/services/__tests__/UnifiedGitHubService.working.test.ts",
+      "src/services/__tests__/githubAppRequestPolicy.test.ts"
+    ],
+    "validate_commands": [
+      "pnpm exec vitest run src/services/__tests__/UnifiedGitHubService.auth-selection.test.ts src/services/__tests__/UnifiedGitHubService.comprehensive.test.ts src/services/__tests__/UnifiedGitHubService.focused.test.ts src/services/__tests__/UnifiedGitHubService.working.test.ts src/services/__tests__/GitHubService.feedback.test.ts src/services/__tests__/githubAppRequestPolicy.test.ts src/services/__tests__/GitHubAppAuthenticationStrategy.test.ts src/services/__tests__/GitHubAppAuthenticationStrategy.stampede.test.ts src/services/__tests__/GitHubAppService.stampede.test.ts src/lib/stores/__tests__/githubSettings.test.ts",
+      "./scripts/maid validate manifests/06-retire-pat-strategy-and-factory.manifest.yaml --mode behavioral",
+      "pnpm lint",
+      "pnpm check",
+      "pnpm build"
+    ]
+  }
+}

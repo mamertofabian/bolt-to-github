@@ -198,6 +198,45 @@ describe('TempRepoManager', () => {
   });
 
   describe('Cleanup Behavior', () => {
+    it('destroy stops autonomous cleanup before a stale service can delete repositories', async () => {
+      const intervalHandle = { hasRef: () => true } as unknown as NodeJS.Timeout;
+      const setIntervalSpy = vi.spyOn(globalThis, 'setInterval').mockReturnValue(intervalHandle);
+      const clearIntervalSpy = vi
+        .spyOn(globalThis, 'clearInterval')
+        .mockImplementation(() => undefined);
+
+      try {
+        manager = lifecycle.createManager('existing');
+        await vi.waitFor(() => expect(setIntervalSpy).toHaveBeenCalled());
+        manager.destroy();
+
+        expect(clearIntervalSpy).toHaveBeenCalledWith(intervalHandle);
+        expect(env.mockGitHubService.deleteRepo).not.toHaveBeenCalled();
+      } finally {
+        setIntervalSpy.mockRestore();
+        clearIntervalSpy.mockRestore();
+      }
+    });
+
+    it('destroy prevents deferred cleanup initialization from starting a stale interval', async () => {
+      let resolveInitialStorage!: (value: Record<string, unknown>) => void;
+      env.mockStorage.local.get.mockImplementationOnce(
+        () =>
+          new Promise<Record<string, unknown>>((resolve) => {
+            resolveInitialStorage = resolve;
+          })
+      );
+      const setIntervalSpy = vi.mocked(globalThis.setInterval);
+
+      manager = lifecycle.createManager('existing');
+      manager.destroy();
+      resolveInitialStorage(env.mockStorage.getLocalData());
+      await new Promise((resolve) => setTimeout(resolve, 0));
+
+      expect(setIntervalSpy).not.toHaveBeenCalled();
+      expect(env.mockGitHubService.deleteRepo).not.toHaveBeenCalled();
+    });
+
     it('should cleanup repos older than MAX_AGE', async () => {
       const oldRepoTimestamp = FIXED_TIME - 61 * 1000;
       const recentRepoTimestamp = FIXED_TIME - 30 * 1000;

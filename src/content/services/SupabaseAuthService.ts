@@ -2002,7 +2002,6 @@ export class SupabaseAuthService {
           githubAppAccessToken: data.access_token,
           githubAppExpiresAt: data.expires_at,
           githubAppScopes: data.scopes,
-          authenticationMethod: 'github_app',
         };
 
         await chrome.storage.local.set(githubAppData);
@@ -2105,11 +2104,8 @@ export class SupabaseAuthService {
    */
   public async hasGitHubApp(): Promise<boolean> {
     try {
-      const storage = await chrome.storage.local.get([
-        'githubAppInstallationId',
-        'authenticationMethod',
-      ]);
-      return storage.authenticationMethod === 'github_app' && !!storage.githubAppInstallationId;
+      const storage = await chrome.storage.local.get(['githubAppInstallationId']);
+      return !!storage.githubAppInstallationId;
     } catch (error) {
       logger.warn('Error checking GitHub App status:', error);
       return false;
@@ -2194,8 +2190,7 @@ export class SupabaseAuthService {
         'githubAppRefreshTokenExpiresAt',
         'githubAppUserId',
         'githubAppAvatarUrl',
-        'githubAppScopes',
-        'authenticationMethod'
+        'githubAppScopes'
       );
 
       if (keysToRemove.length > 0) {

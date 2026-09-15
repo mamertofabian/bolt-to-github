@@ -1,8 +1,8 @@
 <script lang="ts">
   import { createEventDispatcher } from 'svelte';
+  import { createConnectedGitHubAppService } from '$lib/utils/connectedGitHubAppService';
   import { createLogger } from '$lib/utils/logger';
   import { LogStorageManager } from '$lib/utils/logStorage';
-  import { UnifiedGitHubService } from '../../services/UnifiedGitHubService';
   import { Button } from '$lib/components/ui/button';
   import Modal from '$lib/components/ui/modal/Modal.svelte';
   import { Check, AlertCircle, MessageSquare, Send, ExternalLink, Mail } from 'lucide-svelte';
@@ -13,7 +13,6 @@
   const logger = createLogger('FeedbackModal');
 
   export let show = false;
-  export let githubToken = '';
 
   const dispatch = createEventDispatcher();
 
@@ -176,16 +175,7 @@
         logsSection = '\n\n## Recent Logs\n' + (await getFormattedLogs());
       }
 
-      // Submit feedback using GitHub Issues API with authentication method detection
-      const authSettings = await chrome.storage.local.get(['authenticationMethod']);
-      const authMethod = authSettings.authenticationMethod || 'pat';
-
-      let githubService: UnifiedGitHubService;
-      if (authMethod === 'github_app') {
-        githubService = new UnifiedGitHubService({ type: 'github_app' });
-      } else {
-        githubService = new UnifiedGitHubService(githubToken);
-      }
+      const githubService = await createConnectedGitHubAppService();
       await githubService.submitFeedback({
         category: category as 'appreciation' | 'question' | 'bug' | 'feature' | 'other',
         message: message.trim() + logsSection,
@@ -201,7 +191,7 @@
 
       if (err instanceof Error && isAuthenticationError(err)) {
         error =
-          'GitHub authentication required. You can submit feedback directly on GitHub instead.';
+          'GitHub authentication required. Sign in to bolt2github.com and connect the GitHub App before submitting feedback, or submit directly on GitHub.';
         showFallbackOption = true;
       } else {
         error = err instanceof Error ? err.message : 'Failed to submit feedback';

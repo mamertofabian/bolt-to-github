@@ -4,7 +4,7 @@
 
 Bolt to GitHub is a Chrome Extension (Manifest v3) that automatically captures ZIP file downloads from bolt.new, extracts them, and pushes contents to GitHub repositories. Built with Svelte v4.2.x, TypeScript v5.9.x, and TailwindCSS.
 
-**Current Version**: v1.3.21
+**Current Version**: v2.0.0
 **Repository**: mamertofabian/bolt-to-github  
 **Package Manager**: pnpm (required)
 
@@ -333,7 +333,7 @@ src/
 
 - Node.js with pnpm package manager
 - Chrome/Chromium browser for testing
-- GitHub account and personal access token for functionality
+- GitHub account, Bolt2GitHub account, and connected GitHub App for functionality
 - Windows environment with PowerShell (per project rules)
 
 ## Dependencies
@@ -360,3 +360,25 @@ src/
 - Use proper Chrome extension performance patterns
 - Leverage Vite's optimization features
 - Test in both light and dark modes
+
+<!-- BEGIN MAID RUNNER -->
+
+## MAID Runner
+
+Instruction payload version: 2026.09.02.1
+
+### MAID Skills Workflow
+
+Use the installed MAID skills for manifest-driven development: `maid-planner`, `maid-plan-review`, `maid-implement-draft`, `maid-implementer`, `maid-implementation-review`, `maid-evolver`, `maid-auditor`, `maid-incident-logger`, `maid-outcome-enrich`, `maid-run-review`.
+
+For new features, bug fixes, and refactors, plan with `maid-planner`, review with `maid-plan-review`, implement with `maid-implementer`, and review the result with `maid-implementation-review` before handoff. When continuing from `manifests/drafts/*.manifest.yaml`, use `maid-implement-draft` to harden, lock, promote, implement, review, and capture Outcome.
+
+Before treating a file's language as unsupported, run `maid validators` and install a matching validator plugin when available instead of skipping MAID for that file.
+
+Draft manifests under `manifests/drafts/` are planning inventory, not active contracts. Child implementation drafts live at `manifests/drafts/*.manifest.yaml`; epic planning records live at `manifests/drafts/*.epic.yaml` and use split-before-promote before implementation; archived draft records are historical inventory. Before promoting the selected child draft, refresh the Outcome index when needed and run `./scripts/maid recall --for-manifest manifests/drafts/<slug>.manifest.yaml --plan-packet` when completed Outcome records exist. Recall is advisory planning context only: it can inform draft hardening and implementation risks, but it does not expand scope or replace red evidence, behavioral validation, plan lock, implementation validation, or review. Use `./scripts/maid insights` to review recurring Outcome lessons when an index is available. To intentionally include instructive failed or abandoned Outcome lessons, refresh the index with `./scripts/maid learn --include-status completed --include-status abandoned`, then recall from that index; the completed-only default is unchanged. When related Outcome evidence is retrieved, do not dump a raw recall or insights transcript into the task. Digest it visibly: name applicable lessons, reject stale or irrelevant lessons with a reason, and state what changed because of the evidence for the current planning, implementation, or review phase. Recalled, aggregated, and digested Outcomes remain advisory planning context only; they do not create an approval, promotion, done, or review gate. Promote one selected child draft with `./scripts/maid manifest promote manifests/drafts/<slug>.manifest.yaml`. Do not manually move or copy draft manifests. For metadata-only reference cleanup on locked active manifests, use `./scripts/maid plan revise <manifest> --reason "<text>" --preserve-red-evidence`. For review-driven behavioral contract changes after implementation exists, use `./scripts/maid plan revise <manifest> --reason "<text>" --stash-implementation` so MAID temporarily hides declared implementation changes while it captures fresh red evidence.
+
+Always capture an Outcome record after implementation validation and implementation review, before final handoff. Capture Outcome after implementation review so the result records the reviewed evidence. Outcome capture is required for completed, partial, failed, superseded, archived, or abandoned MAID work. The Outcome must cite concrete validation evidence and review notes; it does not replace behavioral tests, declared artifacts, validation commands, or implementation review. After Outcome capture, run `./scripts/maid learn` to refresh the local `.maid/outcomes.json` advisory index for subsequent recall. `.maid/outcomes.json` is generated and ignored; do not commit it. If `maid learn` fails, report the refresh failure as advisory unless recall or insights are required for the current task. See `docs/draft-manifest-workflow.md` and `docs/manifest-outcome-records.md`.
+
+Available MAID agents: `maid-implementation-reviewer`.
+
+<!-- END MAID RUNNER -->

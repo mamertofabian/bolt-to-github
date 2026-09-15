@@ -1,0 +1,386 @@
+schema: '2'
+goal: Make project-scoped repository settings discoverable and keyboard-operable, then retire obsolete global-settings residue
+description: |
+  Follow up the connection-only GitHub Settings refactor by removing its two
+  remaining accessibility barriers. Projects must expose repository actions
+  without relying on mouse hover, and the project cards must not claim button
+  semantics when only their child controls are actionable. Home project details
+  must use native button behavior so click, Enter, and Space all open the same
+  authoritative RepoSettings modal.
+
+  The retired global editor also left a pure helper imported only by its own
+  logic test. Delete both together, remove that test from the legacy-language
+  allowlist, and remove obsolete save, error, and authMethodChange subscriptions
+  from the TabsView event-listener smoke test. This manifest supersedes child 07
+  and carries forward its remaining GitHub App-only contracts because removing
+  an artifact from an approved manifest requires an explicit complete evolution.
+temptations:
+  - risk: Do not reveal Projects actions only on focus while leaving touch users dependent on an invisible target.
+    instead: Keep the real action controls persistently visible for pointer, touch, and keyboard users.
+  - risk: Do not add another manual keydown branch to the Home project-details control.
+    instead: Use a native type=button element and verify Space through user-visible modal behavior.
+  - risk: Do not keep the obsolete GitHub Settings helper merely because its isolated unit tests pass.
+    instead: Delete the unreachable module and its self-only tests, then keep project repository behavior covered at RepoSettings and route boundaries.
+  - risk: Do not restore removed TabsView events or weaken event-source guards to satisfy stale test subscriptions.
+    instead: Remove only the obsolete subscriptions while retaining the active switchTab, file changes, feedback, upgrade, newsletter, and push-reminder listeners.
+type: fix
+supersedes:
+  - 07-remove-legacy-pat-storage-and-types
+files:
+  edit:
+    - path: src/background/BackgroundService.ts
+      artifacts:
+        - kind: class
+          name: BackgroundService
+          description: Background recovery watches live session, migration, installation, and App expiry keys while ignoring removed PAT credentials and authentication selectors.
+    - path: src/lib/types.ts
+      artifacts:
+        - kind: interface
+          name: GitHubSettingsInterface
+          description: GitHub App and repository settings with no PAT credential or auth-choice fields.
+        - kind: attribute
+          name: repoOwner
+          of: GitHubSettingsInterface
+          type: string
+        - kind: attribute
+          name: projectSettings
+          of: GitHubSettingsInterface
+          type: ProjectSettings | undefined
+        - kind: attribute
+          name: githubAppInstallationId
+          of: GitHubSettingsInterface
+          type: number | undefined
+        - kind: attribute
+          name: githubAppUsername
+          of: GitHubSettingsInterface
+          type: string | undefined
+        - kind: attribute
+          name: githubAppAvatarUrl
+          of: GitHubSettingsInterface
+          type: string | undefined
+        - kind: attribute
+          name: githubAppMigrationRequired
+          of: GitHubSettingsInterface
+          type: boolean | undefined
+        - kind: interface
+          name: UsageData
+          description: Current usage state emitting only GitHub App or no authentication.
+        - kind: attribute
+          name: authMethod
+          of: UsageData
+          type: "'github-app' | 'none'"
+    - path: src/lib/utils/githubAppSync.ts
+      artifacts:
+        - kind: function
+          name: checkGitHubAppStatus
+          args: []
+          returns: Promise<GitHubAppStatus>
+          description: Determines configuration from GitHub App installation metadata without a legacy auth-method selector.
+        - kind: function
+          name: getGitHubAppInfo
+          args: []
+          returns: Promise<GitHubAppInfo>
+          description: Returns GitHub App-specific information and never emits PAT as a fallback state.
+    - path: src/services/types/authentication.ts
+      artifacts:
+        - kind: interface
+          name: AuthenticationStorage
+          description: GitHub App-only authentication cache metadata with no PAT, repository, auth-choice, or obsolete prompt fields.
+        - kind: interface
+          name: TokenValidationResult
+          description: GitHub App validation result that no longer advertises classic or fine-grained PAT token types.
+        - kind: attribute
+          name: type
+          of: TokenValidationResult
+          type: "'github_app' | undefined"
+    - path: src/services/__tests__/authentication.types.test.ts
+      artifacts:
+        - kind: test_function
+          name: authentication types expose only GitHub App credential contracts
+    - path: src/services/__tests__/settings.test.ts
+      artifacts:
+        - kind: test_function
+          name: returns App metadata without PAT credential or selector fields
+        - kind: test_function
+          name: requires installation metadata
+    - path: src/lib/stores/__tests__/githubSettings.test.ts
+      artifacts:
+        - kind: test_function
+          name: settings initialize from GitHub App metadata without reading a PAT
+        - kind: test_function
+          name: stale App username without installation preserves repository settings
+        - kind: test_function
+          name: settings validity requires installation metadata and live connection state
+        - kind: test_function
+          name: migration-required state preserves repository and project settings
+    - path: src/lib/services/__tests__/chromeStorage.test.ts
+      artifacts:
+        - kind: test_function
+          name: steady-state GitHub settings never read or write githubToken
+        - kind: test_function
+          name: legacy cleanup preserves repoOwner and projectSettings
+    - path: src/lib/utils/__tests__/githubAppSync.test.ts
+      artifacts:
+        - kind: test_function
+          name: GitHub App status derives from installation metadata without reading authenticationMethod
+        - kind: test_function
+          name: GitHub App info never returns PAT on success or failure
+        - kind: test_function
+          name: sync and refresh failures remain visible after method switching is removed
+    - path: src/background/__tests__/UsageTracker.test.ts
+      artifacts:
+        - kind: test_function
+          name: usage tracking emits only github-app or none for current authentication state
+        - kind: test_function
+          name: legacy stored PAT analytics values are tolerated without being relabeled as GitHub App usage
+    - path: src/lib/services/__tests__/chromeStorage.RaceConditions.test.ts
+      artifacts:
+        - kind: test_function
+          name: concurrent GitHub App settings writes never restore PAT method or credential fields
+    - path: src/lib/components/__tests__/RepoSettings.logic.test.ts
+      artifacts:
+        - kind: test_function
+          name: repository settings helpers expose no PAT method or token service configuration
+    - path: src/content/services/__tests__/SupabaseAuthService.github-connection.test.ts
+      artifacts:
+        - kind: test_function
+          name: GitHub App sync stores installation metadata without an authentication method selector
+    - path: src/content/services/__tests__/SupabaseAuthService.session-cleanup.test.ts
+      artifacts:
+        - kind: test_function
+          name: session cleanup manages GitHub App metadata without an authentication method selector
+    - path: src/background/__tests__/BackgroundService.auth-lifecycle.test.ts
+      artifacts:
+        - kind: test_function
+          name: background auth recovery ignores the removed authentication method key
+    - path: src/background/__tests__/BackgroundService.storage-recovery.test.ts
+      artifacts:
+        - kind: test_function
+          name: reinitializes GitHub service when auth tokens are restored in local storage
+        - kind: test_function
+          name: late GitHub authentication failure remains actionable instead of becoming a ZIP error
+        - kind: test_function
+          name: legacy authenticationMethod writes do not trigger dependency recovery
+        - kind: test_function
+          name: 'authoritative GitHub App recovery keys trigger dependency recovery: %s'
+        - kind: test_function
+          name: ignores unrelated local storage keys such as keepAliveTimestamp
+        - kind: test_function
+          name: does not loop when its own auth check writes token state back to storage
+        - kind: test_function
+          name: debounces rapid successive auth storage changes into one recovery pass
+        - kind: test_function
+          name: newer disconnected recovery prevents an older connected recovery from restoring stale dependencies
+    - path: src/background/__tests__/BackgroundService.edge-cases.test.ts
+      artifacts:
+        - kind: test_function
+          name: background settings recovery no longer watches githubToken changes
+    - path: src/popup/__tests__/App.component.test.ts
+      artifacts:
+        - kind: test_function
+          name: popup startup no longer normalizes a removed authentication method selector
+    - path: src/popup/components/__tests__/TabsView.component.test.ts
+      artifacts:
+        - kind: test_function
+          name: tabs view exposes no authentication method selection event
+    - path: src/lib/components/__tests__/ProjectsList.component.test.ts
+      artifacts:
+        - kind: test_function
+          name: project actions remain discoverable without pointer hover
+    - path: src/lib/components/__tests__/ProjectStatus.component.test.ts
+      artifacts:
+        - kind: test_function
+          name: project details open repository settings with Space
+    - path: src/test/e2e-helpers/popup-helpers.test.ts
+      artifacts:
+        - kind: test_function
+          name: opens project repository settings through the Projects route
+  delete:
+    - path: src/lib/utils/github-settings.ts
+      reason: The retired global repository editor was the only production consumer; keeping a test-only business-logic module preserves obsolete product behavior.
+    - path: src/lib/components/__tests__/GitHubSettings.logic.test.ts
+      reason: This suite exercises only the deleted global repository-editor helper and has no remaining production contract.
+  scope:
+    - path: src/lib/components/ProjectsList.svelte
+      reason: Make project and repository actions persistently visible and remove misleading button semantics from non-actionable cards.
+    - path: src/lib/components/ProjectStatus.svelte
+      reason: Replace the custom keyboard handler with native button activation so both Enter and Space open RepoSettings.
+    - path: e2e/helpers/popup.ts
+      reason: Traverse the Projects settings route without a hover prerequisite and locate the non-actionable project group by its accessible name.
+    - path: src/test/auth/githubAppOnlySourceGuard.test.ts
+      reason: Remove the deleted GitHubSettings logic suite from the legacy-language allowlist.
+    - path: src/lib/services/chromeStorage.ts
+      reason: Remove GITHUB_TOKEN, AUTHENTICATION_METHOD, preference, and old migration-prompt APIs from steady-state storage.
+    - path: src/lib/stores/githubSettings.ts
+      reason: Remove token state, PAT validation, method switching, and dual-auth validity branches.
+    - path: src/services/settings.ts
+      reason: Make settings validity depend on GitHub App connection and repository data only.
+    - path: src/lib/utils/repo-settings.ts
+      reason: Remove dual-auth GitHub service config construction.
+    - path: src/background/UsageTracker.ts
+      reason: Emit only github-app or none for current auth-method usage.
+    - path: src/content/services/SupabaseAuthService.ts
+      reason: Stop writing or checking authenticationMethod while preserving installation sync and session cleanup boundaries.
+    - path: src/popup/App.svelte
+      reason: Remove transitional in-memory authenticationMethod normalization after the store field is deleted.
+    - path: src/popup/components/TabsView.svelte
+      reason: Remove the unused authMethodChange event from the final GitHub App-only popup contract.
+    - path: src/popup/__tests__/test-helpers/store-mocks.ts
+      reason: Remove the deleted authentication-method action from popup store mocks.
+    - path: src/popup/__tests__/test-helpers/app-test-utils.ts
+      reason: Remove PAT and selector fields from typed GitHub settings fixtures while preserving migration UI state separately.
+    - path: src/popup/__tests__/App.svelte/App.settings.component.test.ts
+      reason: Remove the obsolete selector-action assertion after the popup settings mock contract becomes GitHub App-only.
+    - path: src/popup/__tests__/App.svelte/App.user-interactions.component.test.ts
+      reason: Remove the obsolete selector-action assertion after popup interactions stop exposing method switching.
+    - path: src/popup/components/__tests__/SettingsTabContent.component.test.ts
+      reason: Align typed GitHub settings fixtures with the App-only store state.
+    - path: src/popup/components/__tests__/HomeTabContent.component.test.ts
+      reason: Align typed GitHub settings fixtures with the App-only store state.
+    - path: src/popup/components/__tests__/OnboardingView.component.test.ts
+      reason: Align typed GitHub settings fixtures with the App-only store state.
+    - path: src/services/__tests__/BoltProjectSyncService.test.ts
+      reason: Align typed shared settings fixtures while preserving repository/project synchronization coverage.
+    - path: src/lib/services/__tests__/ProjectSettingsMigrationService.test.ts
+      reason: Align typed shared settings fixtures while preserving project mapping migration coverage.
+    - path: src/services/__tests__/test-fixtures/GitHubAppServiceTestFixtures.ts
+      reason: Align AuthenticationStorage fixtures with the narrowed GitHub App-only cache contract.
+  read:
+    - manifests/01-github-app-only-migration-policy.manifest.yaml
+    - manifests/06-retire-pat-strategy-and-factory.manifest.yaml
+    - manifests/preserve-github-app-config-on-reauth.manifest.yaml
+    - src/lib/services/githubAuthMigration.ts
+removed_artifacts:
+  - kind: function
+    name: switchToGitHubApp
+    file: src/lib/utils/githubAppSync.ts
+    reason: GitHub App is the only supported method and the switch helper has no production caller.
+  - kind: method
+    name: getAuthenticationMethod
+    of: ChromeStorageService
+    file: src/lib/services/chromeStorage.ts
+    reason: Installation metadata is authoritative; no authentication selector remains.
+  - kind: method
+    name: setAuthenticationMethod
+    of: ChromeStorageService
+    file: src/lib/services/chromeStorage.ts
+    reason: Steady-state code must not recreate the legacy selector key.
+  - kind: method
+    name: hasMultipleAuthMethods
+    of: ChromeStorageService
+    file: src/lib/services/chromeStorage.ts
+    reason: Dual authentication is no longer a supported state.
+  - kind: method
+    name: getMigrationPromptStatus
+    of: ChromeStorageService
+    file: src/lib/services/chromeStorage.ts
+    reason: Obsolete prompt bookkeeping is cleaned only by the dedicated legacy migration module.
+  - kind: method
+    name: markMigrationPromptShown
+    of: ChromeStorageService
+    file: src/lib/services/chromeStorage.ts
+    reason: The product uses the durable GitHub App migration-required marker instead.
+  - kind: method
+    name: resetMigrationPromptStatus
+    of: ChromeStorageService
+    file: src/lib/services/chromeStorage.ts
+    reason: The old prompt state has no steady-state API after migration policy lands.
+  - kind: function
+    name: getAuthenticationMethod
+    file: src/lib/utils/repo-settings.ts
+    reason: Repository helpers no longer choose between PAT and GitHub App.
+  - kind: function
+    name: createGitHubServiceConfig
+    file: src/lib/utils/repo-settings.ts
+    reason: GitHub App service construction is explicit at live connection boundaries.
+validate:
+  - pnpm exec vitest run src/background/__tests__/UsageTracker.test.ts src/background/__tests__/BackgroundService.auth-lifecycle.test.ts src/background/__tests__/BackgroundService.storage-recovery.test.ts src/background/__tests__/BackgroundService.edge-cases.test.ts src/lib/stores/__tests__/githubSettings.test.ts src/lib/services/__tests__/chromeStorage.test.ts src/lib/services/__tests__/chromeStorage.RaceConditions.test.ts src/lib/utils/__tests__/githubAppSync.test.ts src/services/__tests__/settings.test.ts src/services/__tests__/authentication.types.test.ts src/lib/components/__tests__/RepoSettings.logic.test.ts src/lib/components/__tests__/ProjectsList.component.test.ts src/lib/components/__tests__/ProjectStatus.component.test.ts src/content/services/__tests__/SupabaseAuthService.github-connection.test.ts src/content/services/__tests__/SupabaseAuthService.session-cleanup.test.ts src/popup/__tests__/App.component.test.ts src/popup/components/__tests__/TabsView.component.test.ts src/test/e2e-helpers/popup-helpers.test.ts src/test/auth/githubAppOnlySourceGuard.test.ts
+  - ./scripts/maid validate manifests/address-project-settings-accessibility-cleanup.manifest.yaml --mode behavioral
+  - pnpm lint
+  - pnpm check
+  - pnpm build
+created: '2026-07-14T00:56:45Z'
+metadata:
+  tags: [accessibility, repository, settings, cleanup]
+  priority: high
+  depends_on:
+    - close-repository-settings-route-gaps
+    - make-github-settings-connection-only
+  evolves_active_contracts:
+    - 07-remove-legacy-pat-storage-and-types
+    - 04-github-app-only-repository-surfaces
+    - close-repository-settings-route-gaps
+outcome:
+  status: completed
+  completed_at: '2026-07-14T01:18:19Z'
+  summary: |
+    Project-scoped repository settings are now discoverable without hover and
+    operable through native keyboard behavior. Projects and GitHub repository
+    cards expose persistently visible action controls inside correctly labeled
+    groups, the Home project-details control opens RepoSettings with click,
+    Enter, or Space, and browser coverage traverses the Projects route without
+    pointer setup. The unreachable global GitHub Settings helper and its
+    self-only test were deleted, along with obsolete TabsView event subscriptions.
+  rationale: |
+    RepoSettings remains the authoritative editor after the global repository
+    form was retired, so both retained entry points must work for pointer,
+    touch, and keyboard users. Native semantics avoid incomplete manual key
+    handling, while deleting test-only business logic prevents the obsolete
+    global editor contract from surviving as misleading dead code.
+  lessons:
+    - lesson_type: accessible-route-discoverability
+      summary: |
+        An accessible name and focusable descendant do not make a hover-hidden
+        action discoverable to touch users; authoritative routes need visible
+        controls independent of pointer hover.
+      tags: [accessibility, touch, keyboard, repository]
+      paths:
+        - src/lib/components/ProjectsList.svelte
+        - e2e/helpers/popup.ts
+    - lesson_type: native-control-semantics
+      summary: |
+        A native button is safer than a role=button container with a partial
+        keydown handler because click, Enter, and Space behavior stay aligned.
+      tags: [accessibility, svelte, keyboard]
+      paths:
+        - src/lib/components/ProjectStatus.svelte
+        - src/lib/components/__tests__/ProjectStatus.component.test.ts
+    - lesson_type: retired-surface-cleanup
+      summary: |
+        Pure helpers imported only by their own tests can preserve obsolete
+        product concepts after a UI surface is removed; reachability checks
+        should pair deletion of the helper, self-only test, and stale allowlist.
+      tags: [cleanup, dead-code, settings]
+      paths:
+        - src/lib/utils/github-settings.ts
+        - src/lib/components/__tests__/GitHubSettings.logic.test.ts
+  review_notes:
+    - source: independent reviewer /root/maid_accessibility_review
+      severity: ready
+      summary: |
+        No blocking or should-fix findings. The reviewer confirmed manifest
+        scope, native button and group semantics, persistent touch-visible
+        actions, deleted-helper reachability, temptation compliance, revision-2
+        plan-lock integrity, 76 focused tests, and implementation validation.
+  validation:
+    - command: [pnpm, exec, vitest, run, src/lib/components/__tests__/ProjectsList.component.test.ts, src/lib/components/__tests__/ProjectStatus.component.test.ts, src/test/e2e-helpers/popup-helpers.test.ts]
+      status: failed-red-phase
+      summary: Three intended failures reproduced hover-dependent actions, missing Space activation, and the browser helper's hover call; the remaining 53 tests passed.
+    - command: [./scripts/maid, test, --manifest, manifests/address-project-settings-accessibility-cleanup.manifest.yaml]
+      status: passed
+      summary: All five declared commands passed, including carried-forward and accessibility tests, behavioral validation, lint, type checking, and production build.
+    - command: [./scripts/maid, validate, manifests/address-project-settings-accessibility-cleanup.manifest.yaml, --mode, implementation]
+      status: passed
+      summary: The revised complete contract passed implementation validation; only three pre-existing release-chain E110 warnings remained.
+    - command: [pnpm, test:ci]
+      status: passed
+      summary: The full Vitest suite passed 197 files and 3,999 tests after removing the obsolete 15-test GitHub Settings logic suite.
+    - command: [pnpm, exec, playwright, test, --project=chromium, --reporter=line, e2e/manual-repo.spec.ts, e2e/error-flow-product.spec.ts]
+      status: passed
+      summary: Both affected browser suites passed all nine scenarios through the pointer-independent Projects route.
+    - command: [./scripts/maid, validate, --manifest-dir, manifests, --mode, implementation]
+      status: passed
+      summary: Repository-wide implementation validation passed 35 active manifests with 13 superseded and no failures; only the three pre-existing release-chain warnings remained.
+    - command: [./scripts/maid, test, --manifest-dir, manifests]
+      status: passed
+      summary: All 15 deduplicated repository-wide MAID commands passed with the same three pre-existing release-chain warnings.

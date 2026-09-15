@@ -1,0 +1,146 @@
+# draft-kind: hardening-plan
+# MAID manifest - a machine-checked contract for one change.
+# Declares the intent, the files it may touch, and the commands that verify it.
+# Nothing here is needed to build or run this project; safe to ignore.
+# What it is: https://github.com/mamertofabian/maid-runner
+schema: '2'
+goal: 'Replace native LogViewer confirmations'
+description: |
+  Replace LogViewer's native confirm dialogs with application-native confirmation UI for
+  normal and emergency log clearing, preserving destructive-action safeguards and visible
+  loading states.
+type: fix
+files:
+  create:
+    - path: src/lib/components/__tests__/LogViewer.component.test.ts
+      artifacts:
+        - kind: test_function
+          name: canceling the clear logs dialog leaves logs intact
+          description: Required new behavioral test before promotion.
+        - kind: test_function
+          name: confirming clear logs clears logs and reloads visible entries
+          description: Required new behavioral test before promotion.
+        - kind: test_function
+          name: confirming emergency clear shows loading and clears emergency
+            logs
+          description: Required new behavioral test before promotion.
+        - kind: test_function
+          name: keyboard confirmation is modal and executes clear once
+          description: Keyboard users receive modal focus semantics without duplicate destructive execution.
+  edit:
+    - path: src/lib/components/LogViewer.svelte
+      artifacts:
+        - kind: function
+          name: LogViewer
+          description: |
+            Log viewer component whose normal and emergency destructive actions
+            are covered through user-visible application-native confirmation
+            flows rather than private handler access.
+    - path: src/lib/components/__tests__/LogViewer.logic.test.ts
+      artifacts:
+        - kind: test_function
+          name: log viewer does not depend on native confirm dialogs
+          description: Required new behavioral test before promotion.
+  read:
+    - src/lib/components/ui/dialog/ConfirmationDialog.svelte
+    - src/lib/components/ui/dialog/EnhancedConfirmationDialog.svelte
+    - src/lib/utils/logger.ts
+    - src/lib/utils/logStorage.ts
+validate:
+  - pnpm exec vitest run src/lib/components/__tests__/LogViewer.logic.test.ts
+    src/lib/components/__tests__/LogViewer.component.test.ts
+  - pnpm lint
+  - pnpm check
+created: '2026-08-01T05:31:40Z'
+metadata:
+  tags:
+    - ui
+    - degraded-state
+    - logs
+  priority: high
+  promotable: true
+outcome:
+  status: completed
+  summary: |
+    LogViewer now uses application-native modal confirmation flows for normal
+    and emergency log clearing. Both operations expose visible loading states,
+    reject duplicate keyboard execution, trap focus while open, and restore
+    focus to the invoking action after cancel or completion.
+  rationale: |
+    Native confirm dialogs did not match the extension UI and could not provide
+    controlled loading feedback. The replacement preserves destructive-action
+    safeguards while containing accessibility and re-entry handling within
+    LogViewer, avoiding scope expansion into the shared dialog component.
+  lessons:
+    - lesson_type: nested-dialog-keyboard-boundary
+      summary: |
+        A shared dialog that maps every bubbled Enter key to confirmation can
+        override native Cancel-button activation. Consumers that cannot evolve
+        the shared component should intercept button Enter events before they
+        reach the overlay and cover both Cancel and Confirm keyboard paths.
+      tags:
+        - accessibility
+        - keyboard
+        - destructive-actions
+      paths:
+        - src/lib/components/LogViewer.svelte
+        - src/lib/components/__tests__/LogViewer.component.test.ts
+    - lesson_type: modal-focus-lifecycle
+      summary: |
+        Replacing browser-native confirmation requires explicit initial focus,
+        focus trapping, and focus restoration in addition to dialog semantics.
+      tags:
+        - accessibility
+        - focus-management
+      paths:
+        - src/lib/components/LogViewer.svelte
+  review_notes:
+    - source: logviewer_revision3_reviewer subagent
+      severity: needs-changes
+      summary: |
+        Found that Enter on the initially focused Cancel button bubbled into
+        the shared dialog confirmation handler and could clear logs.
+    - source: logviewer_revision3_reviewer revision-4 re-review
+      severity: no findings
+      summary: |
+        Confirmed capture-phase Enter handling preserves native Cancel and
+        Confirm activation, leaves Escape and Tab behavior intact, and prevents
+        duplicate destructive execution. Final verdict Ready.
+  validation:
+    - command:
+        - ./scripts/maid
+        - test
+        - --manifest
+        - manifests/replace-logviewer-native-confirms.manifest.yaml
+      status: passed
+      summary: All three declared validation commands passed.
+    - command:
+        - ./scripts/maid
+        - validate
+        - --manifest-dir
+        - manifests
+        - --mode
+        - implementation
+      status: passed
+      summary: 53 active manifests passed; 13 superseded manifests skipped.
+    - command:
+        - ./scripts/maid
+        - verify
+        - --manifest-dir
+        - manifests
+        - --since
+        - 4085e54
+        - --advisory
+      status: passed
+      summary: All nine verify gates passed with three unrelated E110 release-chain warnings.
+    - command:
+        - pnpm
+        - test:ci
+      status: passed
+      summary: Vitest passed 213 files and 4070 tests.
+    - command:
+        - pnpm
+        - build
+      status: passed
+      summary: Vite production build completed successfully.
+  completed_at: '2026-08-01T14:04:34+08:00'

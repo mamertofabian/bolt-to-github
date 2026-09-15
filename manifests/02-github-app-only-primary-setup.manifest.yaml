@@ -1,0 +1,272 @@
+schema: '2'
+goal: |
+  Replace dual-auth onboarding and settings with a GitHub App-only setup flow
+  that gives legacy PAT users explicit migration guidance.
+description: |
+  Second child of github-app-only-authentication and the promoted primary
+  setup implementation contract.
+
+  The popup must no longer offer an authentication choice or PAT input. Fresh
+  and disconnected users see the normal GitHub App setup. A stored migration
+  marker changes the explanation to a required upgrade message while using the
+  same explicit sign-in/connect action. The CTA behavior depends on live state:
+  sign in when the session is missing, connect/install when the installation is
+  missing, and finish only when both are confirmed. No mount, startup, timer, or
+  storage event may automatically open an external tab.
+
+  Existing repoOwner and project mappings remain available after connection so
+  users do not need to reconstruct repository setup.
+
+  The Help tab is part of this primary setup contract because it currently
+  contains complete classic and fine-grained PAT instructions, token creation
+  links, token-security guidance, and token-type language for private imports.
+  It must instead explain Bolt2GitHub sign-in, GitHub App installation and
+  repository access, migration recovery, and GitHub App security boundaries.
+
+  The current TUTORIAL_LINK is not verified as GitHub App-only. Remove its CTA
+  and the PAT token-creation constants in this child. A verified replacement
+  tutorial may be introduced later, but the extension must not link users to
+  potentially obsolete PAT instructions during this migration.
+temptations:
+- risk: Do not merely hide the PAT radio while retaining PAT completion or save branches.
+  instead: Remove PAT as a valid UI state and assert setup completion requires live session plus GitHub App installation.
+- risk: Do not render a generic Sign in message for known legacy PAT users.
+  instead: Use the migration marker to explain that GitHub authentication changed and that the GitHub App is now required.
+- risk: Do not open auth pages from onMount or reactive statements.
+  instead: Keep window.open calls exclusively behind labeled user-click handlers and test that rendering causes no navigation.
+- risk: Do not retain the current setup tutorial or token-link constants without checking their post-PAT content.
+  instead: Remove the unverified tutorial CTA and PAT creation URLs now; restore a tutorial only when a GitHub App-specific destination is available and tested.
+type: refactor
+supersedes:
+- align-onboarding-with-bolt2github-session
+files:
+  scope:
+  - path: src/lib/components/GitHubSettings.svelte
+    reason: Remove auth method switching, PAT validation, permission UI, and token input from settings.
+  - path: src/popup/components/SettingsTabContent.svelte
+    reason: Stop binding PAT fields and expose GitHub App-only settings.
+  - path: src/popup/App.svelte
+    reason: Initialize migration policy, select the correct setup state, and stop treating a PAT as valid popup authentication.
+  - path: src/popup/__tests__/test-helpers/app-test-utils.ts
+    reason: Replace default and connected PAT popup fixtures with GitHub App and explicit migration fixtures.
+  - path: src/popup/__tests__/__mocks__/OnboardingView.svelte
+    reason: Expose the forwarded migration-required prop in the existing App component fixture.
+  - path: src/lib/components/Help.svelte
+    reason: Replace classic/fine-grained PAT setup and token-security guidance with GitHub App sign-in, installation, permissions, migration, and security guidance.
+  - path: src/lib/constants.ts
+    reason: Remove PAT token-creation URLs and the unverified PAT-era setup tutorial link after all UI imports are removed.
+  - path: src/popup/__tests__/App.svelte/App.settings.component.test.ts
+    reason: Replace PAT-valid, PAT-default, token-selection, and auth-method switching scenarios with GitHub App-only settings and migration behavior.
+  - path: src/popup/__tests__/App.svelte/App.user-interactions.component.test.ts
+    reason: Remove PAT auth-method events and assert the remaining GitHub App actions.
+  edit:
+  - path: src/lib/components/OnboardingSetup.svelte
+    artifacts:
+    - kind: function
+      name: OnboardingSetup
+      args:
+      - name: props
+        type: OnboardingSetup component props
+      returns: Svelte component instance
+      description: Renders the complete GitHub App-only setup, signed-out recovery, and legacy PAT migration contract without automatic navigation.
+  - path: src/popup/components/OnboardingView.svelte
+    artifacts:
+    - kind: function
+      name: OnboardingView
+      args:
+      - name: props
+        type: OnboardingView component props
+      returns: Svelte component instance
+      description: Forwards live-session and durable migration-required state to the GitHub App-only setup component.
+  - path: src/lib/components/__tests__/OnboardingSetup.component.test.ts
+    artifacts:
+    - kind: test_function
+      name: fresh setup offers only the GitHub App connection path
+    - kind: test_function
+      name: legacy PAT migration explains the required authentication change
+    - kind: test_function
+      name: rendering migration state never opens an external tab
+    - kind: test_function
+      name: setup completion requires live session and GitHub App installation
+    - kind: test_function
+      name: setup contains no PAT creation link or obsolete tutorial CTA
+    - kind: test_function
+      name: should keep a stale GitHub App installation visibly blocked while signed out
+    - kind: test_function
+      name: should open Bolt2GitHub login without saving when the signed-out setup CTA is clicked
+  - path: src/lib/components/__tests__/GitHubSettings.component.test.ts
+    artifacts:
+    - kind: test_function
+      name: settings contain no PAT selector token field or token validation action
+    - kind: test_function
+      name: existing repository settings remain visible during GitHub App migration
+    - kind: test_function
+      name: settings preserve GitHub App repository discovery
+    - kind: test_function
+      name: repository discovery failure stays visible while manual entry remains available
+  - path: src/popup/__tests__/App.component.test.ts
+    artifacts:
+    - kind: test_function
+      name: popup maps legacy PAT storage to the migration-required setup
+    - kind: test_function
+      name: popup does not accept PAT as valid GitHub readiness
+    - kind: test_function
+      name: popup normalizes GitHub App state after legacy selector cleanup
+    - kind: test_function
+      name: signed-out popup forwards the current session state into onboarding
+  - path: src/popup/components/__tests__/OnboardingView.component.test.ts
+    artifacts:
+    - kind: test_function
+      name: onboarding forwards the GitHub App migration-required state
+    - kind: test_function
+      name: should forward signed-out state to the GitHub App setup step
+  - path: src/popup/components/__tests__/SettingsTabContent.component.test.ts
+    artifacts:
+    - kind: test_function
+      name: settings tab forwards GitHub App state without PAT bindings
+  - path: src/lib/components/__tests__/Help.component.test.ts
+    artifacts:
+    - kind: test_function
+      name: What's New preserves the content-script message behavior
+    - kind: test_function
+      name: help replaces PAT setup with Bolt2GitHub sign-in and GitHub App installation guidance
+    - kind: test_function
+      name: help contains no classic fine-grained or token creation instructions
+    - kind: test_function
+      name: private repository and security help describe GitHub App permissions without PAT language
+  read:
+  - manifests/drafts/github-app-only-authentication.manifest.yaml
+  - manifests/01-github-app-only-migration-policy.manifest.yaml
+  - manifests/align-onboarding-with-bolt2github-session.manifest.yaml
+  - src/lib/services/githubAuthMigration.ts
+  - src/lib/stores/githubSettings.ts
+  - src/lib/services/BackgroundAuthClient.ts
+  - src/popup/components/HelpTabContent.svelte
+  - src/popup/__tests__/App.svelte/App.settings.component.test.ts
+  - src/popup/__tests__/App.svelte/App.user-interactions.component.test.ts
+validate:
+- pnpm exec vitest run src/lib/components/__tests__/OnboardingSetup.component.test.ts src/lib/components/__tests__/GitHubSettings.component.test.ts src/lib/components/__tests__/Help.component.test.ts src/popup/components/__tests__/OnboardingView.component.test.ts src/popup/components/__tests__/SettingsTabContent.component.test.ts src/popup/__tests__/App.component.test.ts src/popup/__tests__/App.svelte/App.settings.component.test.ts src/popup/__tests__/App.svelte/App.user-interactions.component.test.ts
+- rg --files-without-match "export const (TUTORIAL_LINK|CREATE_TOKEN_URL|CREATE_FINE_GRAINED_TOKEN_URL)" src/lib/constants.ts
+- ./scripts/maid validate manifests/02-github-app-only-primary-setup.manifest.yaml --mode behavioral
+- pnpm lint
+- pnpm check
+- pnpm build
+created: '2026-07-13T09:51:50Z'
+metadata:
+  tags:
+  - auth
+  - github-app
+  - pat-retirement
+  - onboarding
+  - popup
+  priority: high
+  status: completed
+  parent_epic: github-app-only-authentication
+  depends_on:
+  - 01-github-app-only-migration-policy
+  evolves_active_contracts:
+  - align-onboarding-with-bolt2github-session
+  - gate-github-actions-on-live-connection
+outcome:
+  status: completed
+  summary: |
+    Replaced the popup's dual GitHub authentication setup with an explicit
+    GitHub App-only flow across onboarding, settings, and Help. Legacy PAT
+    state now leads to durable migration guidance, never qualifies as a live
+    connection, and is normalized in memory only after settings initialize.
+    Existing repository owner, repository, branch, project mappings, GitHub
+    App repository discovery, and the Help tab's What's New action remain
+    available without restoring PAT storage or automatic auth navigation.
+  rationale: |
+    A single supported authentication path removes conflicting setup choices
+    while preserving the repository workflows users rely on. Startup orders
+    migration, live connection reconciliation, settings initialization, and
+    GitHub App normalization so removed legacy selector keys cannot make a
+    connected App user appear to be a PAT user. Migration guidance clears only
+    when both a live Bolt2GitHub session and App installation are confirmed.
+  lessons:
+  - lesson_type: preserve-adjacent-ui-behavior-during-auth-simplification
+    summary: |
+      Replacing authentication UI can silently remove adjacent repository
+      discovery and Help actions. Behavioral coverage must protect those
+      workflows separately from assertions that PAT controls disappeared.
+    tags: [auth, ui, regression, github-app]
+    paths:
+    - src/lib/components/GitHubSettings.svelte
+    - src/lib/components/Help.svelte
+  - lesson_type: initialize-before-auth-state-normalization
+    summary: |
+      When a storage migration removes a legacy selector, initialize the store
+      before applying in-memory GitHub App normalization and before exposing
+      readiness. Otherwise store defaults can temporarily select the retired
+      path and break setup or saving for already-connected users.
+    tags: [auth, migration, startup, svelte]
+    paths:
+    - src/popup/App.svelte
+    - src/popup/__tests__/App.component.test.ts
+  review_notes:
+  - source: independent reviewer /root/review_child02_fast
+    severity: findings-fixed
+    summary: |
+      Found that removed selector storage could leave the initialized popup in
+      PAT mode and that the settings rewrite removed GitHub App repository
+      discovery. Startup normalization, discovery, degraded-state UI, and
+      regression tests now cover both findings.
+  - source: independent reviewer /root/review_child02_round2
+    severity: finding-fixed
+    summary: |
+      Found that the Help rewrite changed What's New into an unhandled event.
+      The original active-tab message and popup-close behavior were restored
+      with focused interaction coverage.
+  - source: independent reviewer /root/review_child02_round2 final
+    severity: ready
+    summary: |
+      Final read-only review found no remaining scope, behavioral, or contract
+      issues and returned Ready.
+  validation:
+  - command:
+    - pnpm
+    - exec
+    - vitest
+    - run
+    - src/lib/components/__tests__/Help.component.test.ts
+    status: failed-red-phase
+    summary: The review regression test failed because What's New no longer sent the content-script message.
+  - command:
+    - ./scripts/maid
+    - test
+    - --manifest
+    - manifests/02-github-app-only-primary-setup.manifest.yaml
+    status: passed
+    summary: All six declared commands passed, including 120 focused tests, the negative PAT-link export check, behavioral validation, lint, type checking, and production build.
+  - command:
+    - ./scripts/maid
+    - validate
+    - manifests/02-github-app-only-primary-setup.manifest.yaml
+    - --mode
+    - implementation
+    status: passed
+    summary: Every declared production and behavioral artifact passed implementation validation.
+  - command:
+    - pnpm
+    - test:ci
+    status: passed
+    summary: Full Vitest CI passed 196 files and 4,255 tests.
+  - command:
+    - ./scripts/maid
+    - verify
+    - --manifest-dir
+    - manifests
+    - --since
+    - HEAD
+    - --file-tracking-scope
+    - task
+    - --plan-lock-scope
+    - task
+    - --include-tests
+    - --worktree-scope
+    - --require-plan-lock
+    - --require-red-evidence
+    - --summary
+    status: passed
+    summary: Strict task verification passed all nine gates with zero blocking findings or warnings.

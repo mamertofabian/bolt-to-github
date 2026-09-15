@@ -6,6 +6,21 @@ export interface WhatsNewVersion {
 }
 
 export const whatsNewContent: Record<string, WhatsNewVersion> = {
+  '2.0.0': {
+    date: '2026-09-15',
+    highlights: [
+      '🔐 GitHub App Required - A Bolt2GitHub account and GitHub App connection now protect every GitHub action',
+      '🧭 Clear Migration Guidance - Personal access token support has ended and the extension explains how to reconnect',
+      '💾 Project Mappings Preserved - Existing repository and project mappings are preserved during migration',
+      '👋 Session-Aware Onboarding - Onboarding now follows the live Bolt2GitHub session before GitHub App connection',
+      '🧹 Simpler Setup - One supported GitHub connection removes the confusing dual-integration path',
+      '📦 Download Restored - Download works directly from the current Bolt project dropdown while older Export menus remain supported',
+      '🗂️ Correct Project Settings - Project-scoped repository settings preserve and display the correct project mapping',
+      '🔒 Google Analytics Paused - No GA4 secret or Google Analytics host permission ships in v2.0.0',
+    ],
+    details: `Bolt to GitHub now requires a Bolt2GitHub account and the GitHub App for GitHub features. Personal access token support has ended. If the extension finds retired credentials, it removes them, preserves your repository and project mappings, and shows the sign-in and GitHub App connection steps required to continue. Onboarding follows the live Bolt2GitHub session so signed-in users can continue directly to GitHub App connection. Download is restored in Bolt's current project dropdown, project-scoped settings keep the correct project mapping, and Google Analytics event tracking is paused for v2.0.0. This intentional simplification follows more than a year of recommending the GitHub App; historical standalone usage could not be measured reliably, so this release makes no zero-usage claim.`,
+    type: 'major',
+  },
   '1.3.21': {
     date: '2026-07-13',
     highlights: [
@@ -215,11 +230,11 @@ export const whatsNewContent: Record<string, WhatsNewVersion> = {
   '1.3.2': {
     date: '2025-06-10',
     highlights: [
-      '🔐 GitHub App Authentication support',
-      '🚀 Dual auth - PAT or GitHub App',
-      '♻️ Zero breaking changes',
+      '🔐 GitHub App Authentication Introduced',
+      '🚀 Scoped Repository Access',
+      '⚙️ Automatic Repository Owner Configuration',
     ],
-    details: `Modern authentication with GitHub Apps. More secure with auto-configuration.
+    details: `This version introduced GitHub App authentication with scoped repository access and automatic configuration.
 
 See [README.md](https://github.com/mamertofabian/bolt-to-github#readme) for full changelog.`,
     type: 'minor',

@@ -1,3 +1,6 @@
+import { readFileSync } from 'node:fs';
+import { resolve } from 'node:path';
+
 import { describe, it, expect } from 'vitest';
 import type { LogEntry } from '$lib/utils/logStorage';
 import {
@@ -45,6 +48,14 @@ describe('LogViewer Logic', () => {
       data: { debug: true },
     },
   ];
+
+  it('log viewer does not depend on native confirm dialogs', () => {
+    const source = readFileSync(
+      resolve(process.cwd(), 'src/lib/components/LogViewer.svelte'),
+      'utf8'
+    );
+    expect(source).not.toMatch(/(?:window\.)?confirm\s*\(/u);
+  });
 
   describe('filterLogs', () => {
     it('should return all logs when no filters are applied', () => {

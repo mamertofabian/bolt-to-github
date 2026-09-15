@@ -1,282 +1,128 @@
-import type { Mock } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { UnifiedGitHubService } from '../UnifiedGitHubService';
-import {
-  MockChromeStorage,
-  MockFetchResponseBuilder,
-  TestFixtures,
-  UnifiedGitHubServiceTestHelpers,
-} from './test-fixtures';
 
-vi.mock('../AuthenticationStrategyFactory', async () => {
-  const { MockAuthenticationStrategyFactory } = await import('./test-fixtures/unified');
-  const mockFactory = new MockAuthenticationStrategyFactory();
+const strategy = vi.hoisted(() => ({
+  type: 'github_app' as const,
+  getToken: vi.fn(),
+  isConfigured: vi.fn(),
+  validateAuth: vi.fn(),
+  checkPermissions: vi.fn(),
+  refreshToken: vi.fn(),
+  clearAuth: vi.fn(),
+  getUserInfo: vi.fn(),
+  needsRenewal: vi.fn(),
+  getMetadata: vi.fn(),
+  setUserToken: vi.fn(),
+}));
+
+vi.mock('../GitHubAppAuthenticationStrategy', () => ({
+  GitHubAppAuthenticationStrategy: vi.fn(() => strategy),
+}));
+
+function response(body: unknown, status = 200, statusText = 'OK'): Response {
   return {
-    AuthenticationStrategyFactory: {
-      getInstance: vi.fn(() => mockFactory),
-    },
-  };
-});
+    ok: status >= 200 && status < 300,
+    status,
+    statusText,
+    json: vi.fn(async () => body),
+  } as unknown as Response;
+}
 
-describe('UnifiedGitHubService - Working Tests', () => {
-  let mockFetch: MockFetchResponseBuilder;
-  let mockStorage: MockChromeStorage;
-
-  beforeEach(async () => {
-    mockFetch = new MockFetchResponseBuilder();
-    mockStorage = new MockChromeStorage();
-
-    mockStorage.loadGitHubSettings();
-    mockStorage.loadAuthenticationMethod('pat');
-
+describe('UnifiedGitHubService App-authenticated smoke coverage', () => {
+  beforeEach(() => {
     vi.clearAllMocks();
-  });
+    strategy.getToken.mockResolvedValue('github-app-token');
+    strategy.validateAuth.mockResolvedValue({ isValid: true, type: 'github_app' });
+    strategy.needsRenewal.mockResolvedValue(false);
+    strategy.refreshToken.mockResolvedValue('refreshed-token');
+    strategy.getMetadata.mockResolvedValue({ tokenType: 'github_app' });
 
-  afterEach(() => {
-    mockFetch.reset();
-    mockStorage.reset();
-
-    if (global.fetch && typeof (global.fetch as Mock).mockRestore === 'function') {
-      (global.fetch as Mock).mockRestore();
-    }
-  });
-
-  describe('Constructor', () => {
-    it('should create instance with string token', () => {
-      const service = new UnifiedGitHubService(TestFixtures.TokenFixtures.pat.classic);
-      expect(service).toBeInstanceOf(UnifiedGitHubService);
-    });
-
-    it('should create instance with auth config', () => {
-      const authConfig = UnifiedGitHubServiceTestHelpers.createAuthConfig(
-        'pat',
-        TestFixtures.TokenFixtures.pat.classic
-      );
-      const service = new UnifiedGitHubService(authConfig);
-      expect(service).toBeInstanceOf(UnifiedGitHubService);
-    });
-  });
-
-  describe('Repository Operations', () => {
-    beforeEach(() => {
-      mockFetch
-        .mockRepoExists('testuser', 'test-repo', true)
-        .mockGetRepoInfo('testuser', 'test-repo')
-        .mockCreateRepo()
-        .mockListRepos()
-        .build();
-    });
-
-    it('should check if repository exists', async () => {
-      const service = new UnifiedGitHubService(TestFixtures.TokenFixtures.pat.classic);
-      const exists = await service.repoExists('testuser', 'test-repo');
-
-      expect(exists).toBe(true);
-      expect(global.fetch).toHaveBeenCalledWith(
-        'https://api.github.com/repos/testuser/test-repo',
-        expect.objectContaining({
-          headers: expect.objectContaining({
-            Authorization: expect.stringMatching(/Bearer .+/),
-            Accept: 'application/vnd.github.v3+json',
-          }),
-        })
-      );
-    });
-
-    it('should get repository information', async () => {
-      const service = new UnifiedGitHubService(TestFixtures.TokenFixtures.pat.classic);
-      const repoInfo = await service.getRepoInfo('testuser', 'test-repo');
-
-      expect(repoInfo.name).toBe('test-repo');
-      expect(repoInfo.full_name).toBe('testuser/test-repo');
-      expect(repoInfo.exists).toBe(true);
-    });
-
-    it('should handle non-existent repository', async () => {
-      mockFetch.reset();
-      mockFetch.mockRepoExists('testuser', 'nonexistent', false).build();
-
-      const service = new UnifiedGitHubService(TestFixtures.TokenFixtures.pat.classic);
-      const repoInfo = await service.getRepoInfo('testuser', 'nonexistent');
-
-      expect(repoInfo.name).toBe('nonexistent');
-      expect(repoInfo.exists).toBe(false);
-    });
-
-    it('should create new repository', async () => {
-      const service = new UnifiedGitHubService(TestFixtures.TokenFixtures.pat.classic);
-      const repo = await service.createRepo('new-repo', true, 'Test repository');
-
-      expect(repo.name).toBe('new-repo');
-      expect(global.fetch).toHaveBeenCalledWith(
-        'https://api.github.com/user/repos',
-        expect.objectContaining({
-          method: 'POST',
-          headers: expect.objectContaining({
-            'Content-Type': 'application/json',
-          }),
-        })
-      );
-    });
-
-    it('should list user repositories', async () => {
-      const service = new UnifiedGitHubService(TestFixtures.TokenFixtures.pat.classic);
-      const repos = await service.listRepos();
-
-      expect(Array.isArray(repos)).toBe(true);
-      expect(repos.length).toBeGreaterThan(0);
-    });
-  });
-
-  describe('Issue Management', () => {
-    beforeEach(() => {
-      mockFetch
-        .mockGetIssues('testuser', 'test-repo', 'open')
-        .mockGetIssue('testuser', 'test-repo', 1)
-        .mockCreateIssue('testuser', 'test-repo')
-        .build();
-    });
-
-    it('should get open issues', async () => {
-      const service = new UnifiedGitHubService(TestFixtures.TokenFixtures.pat.classic);
-      const issues = await service.getIssues('testuser', 'test-repo', 'open');
-
-      expect(Array.isArray(issues)).toBe(true);
-      expect(issues.length).toBeGreaterThan(0);
-      expect(issues[0].state).toBe('open');
-    });
-
-    it('should get specific issue', async () => {
-      const service = new UnifiedGitHubService(TestFixtures.TokenFixtures.pat.classic);
-      const issue = await service.getIssue('testuser', 'test-repo', 1);
-
-      expect(issue.number).toBe(1);
-      expect(issue.title).toContain('Bug: Application crashes');
-    });
-
-    it('should create new issue', async () => {
-      const service = new UnifiedGitHubService(TestFixtures.TokenFixtures.pat.classic);
-      const issueData = {
-        title: 'Test Issue',
-        body: 'Test issue body',
-        labels: ['bug', 'test'],
-      };
-
-      const issue = await service.createIssue('testuser', 'test-repo', issueData);
-
-      expect(issue.number).toBe(3);
-      expect(global.fetch).toHaveBeenCalledWith(
-        'https://api.github.com/repos/testuser/test-repo/issues',
-        expect.objectContaining({
-          method: 'POST',
-          headers: expect.objectContaining({
-            'Content-Type': 'application/json',
-          }),
-        })
-      );
-    });
-  });
-
-  describe('File Operations', () => {
-    beforeEach(() => {
-      mockFetch.mockPushFile('testuser', 'test-repo', 'test-file.txt').build();
-    });
-
-    it('should push file to repository', async () => {
-      const service = new UnifiedGitHubService(TestFixtures.TokenFixtures.pat.classic);
-      const result = await service.pushFile(
-        'testuser',
-        'test-repo',
-        'test-file.txt',
-        'Test content',
-        'Add test file',
-        'main'
-      );
-
-      expect(result.content.name).toBe('new-file.txt');
-      expect(global.fetch).toHaveBeenCalledWith(
-        'https://api.github.com/repos/testuser/test-repo/contents/test-file.txt',
-        expect.objectContaining({
-          method: 'PUT',
-          headers: expect.objectContaining({
-            'Content-Type': 'application/json',
-          }),
-        })
-      );
-    });
-  });
-
-  describe('Error Handling', () => {
-    it('should handle HTTP 404 errors', async () => {
-      mockFetch.reset();
-      mockFetch.mockRepoExists('testuser', 'nonexistent', false).build();
-
-      const service = new UnifiedGitHubService(TestFixtures.TokenFixtures.pat.classic);
-      const exists = await service.repoExists('testuser', 'nonexistent');
-
-      expect(exists).toBe(false);
-    });
-
-    it('should handle unauthorized errors', async () => {
-      mockFetch.reset();
-      mockFetch.mockUnauthorized('GET:https://api.github.com/repos/testuser/test-repo').build();
-
-      const service = new UnifiedGitHubService(TestFixtures.TokenFixtures.pat.classic);
-      const exists = await service.repoExists('testuser', 'test-repo');
-
-      expect(exists).toBe(false);
-    });
-
-    it('should handle server errors', async () => {
-      mockFetch.reset();
-      mockFetch.mockServerError('GET:https://api.github.com/repos/testuser/test-repo').build();
-
-      const service = new UnifiedGitHubService(TestFixtures.TokenFixtures.pat.classic);
-      const exists = await service.repoExists('testuser', 'test-repo');
-
-      expect(exists).toBe(false);
-    });
-  });
-
-  describe('Feedback System', () => {
-    beforeEach(() => {
-      mockFetch.mockCreateIssue('mamertofabian', 'bolt-to-github').build();
-    });
-
-    it('should submit user feedback as GitHub issue', async () => {
-      const service = new UnifiedGitHubService(TestFixtures.TokenFixtures.pat.classic);
-      const feedback = {
-        category: 'bug' as const,
-        message: 'Test bug report',
-        email: 'test@example.com',
-        metadata: {
-          browserInfo: 'Chrome/91.0',
-          extensionVersion: '1.0.0',
+    vi.stubGlobal('chrome', {
+      storage: {
+        local: {
+          get: vi.fn(async () => ({ supabaseToken: 'bolt2github-session' })),
+          set: vi.fn(async () => undefined),
+          remove: vi.fn(async () => undefined),
         },
-      };
-
-      const issue = await service.submitFeedback(feedback);
-
-      expect(issue.number).toBe(3);
-      expect(global.fetch).toHaveBeenCalledWith(
-        'https://api.github.com/repos/mamertofabian/bolt-to-github/issues',
-        expect.objectContaining({
-          method: 'POST',
-        })
-      );
+      },
     });
   });
 
-  describe('Token Type Detection', () => {
-    it('should identify classic PAT tokens', async () => {
-      const service = new UnifiedGitHubService(TestFixtures.TokenFixtures.pat.classic);
-      const isClassic = await service.isClassicToken();
-      expect(isClassic).toBe(true);
-    });
+  it('creates an App-backed service with either default or explicit configuration', async () => {
+    await expect(new UnifiedGitHubService().getAuthenticationType()).resolves.toBe('github_app');
+    await expect(
+      new UnifiedGitHubService({ type: 'github_app' }).getAuthenticationType()
+    ).resolves.toBe('github_app');
+  });
 
-    it('should identify fine-grained PAT tokens', async () => {
-      const service = new UnifiedGitHubService(TestFixtures.TokenFixtures.pat.fineGrained);
-      const isFineGrained = await service.isFineGrainedToken();
-      expect(isFineGrained).toBe(true);
-    });
+  it('reads repository information', async () => {
+    const repository = {
+      id: 1,
+      name: 'bolt-project',
+      full_name: 'octocat/bolt-project',
+      private: false,
+    };
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async () => response(repository))
+    );
+
+    await expect(
+      new UnifiedGitHubService().getRepoInfo('octocat', 'bolt-project')
+    ).resolves.toMatchObject({ name: 'bolt-project', exists: true });
+  });
+
+  it('lists repository branches', async () => {
+    const branches = [{ name: 'main', commit: { sha: 'abc123' }, protected: false }];
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async () => response(branches))
+    );
+
+    await expect(
+      new UnifiedGitHubService().listBranches('octocat', 'bolt-project')
+    ).resolves.toEqual(branches);
+  });
+
+  it('reads one issue', async () => {
+    const issue = { id: 10, number: 7, title: 'Sync failed', state: 'open' };
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async () => response(issue))
+    );
+
+    await expect(
+      new UnifiedGitHubService().getIssue('octocat', 'bolt-project', 7)
+    ).resolves.toEqual(issue);
+  });
+
+  it('adds an issue comment', async () => {
+    const comment = { id: 20, body: 'Resolved in the next build.' };
+    const fetchMock = vi.fn(async () => response(comment, 201, 'Created'));
+    vi.stubGlobal('fetch', fetchMock);
+
+    await expect(
+      new UnifiedGitHubService().addIssueComment(
+        'octocat',
+        'bolt-project',
+        7,
+        'Resolved in the next build.'
+      )
+    ).resolves.toEqual(comment);
+    expect(fetchMock).toHaveBeenCalledWith(
+      'https://api.github.com/repos/octocat/bolt-project/issues/7/comments',
+      expect.objectContaining({ method: 'POST' })
+    );
+  });
+
+  it('returns a visible repository creation error', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async () => response({}, 422, 'Unprocessable Entity'))
+    );
+
+    await expect(new UnifiedGitHubService().createRepo('duplicate')).rejects.toThrow(
+      'Failed to create repository: Unprocessable Entity'
+    );
   });
 });

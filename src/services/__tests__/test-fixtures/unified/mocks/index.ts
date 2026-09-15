@@ -11,11 +11,7 @@ export * from './MockFetchBuilder';
 export * from './MockChromeStorage';
 
 // Re-export as organized structure for convenience
-import {
-  MockPATAuthenticationStrategy,
-  MockGitHubAppAuthenticationStrategy,
-  MockAuthenticationStrategyFactory,
-} from './MockAuthStrategies';
+import { MockGitHubAppAuthenticationStrategy } from './MockAuthStrategies';
 import { MockFetchResponseBuilder } from './MockFetchBuilder';
 import { MockChromeStorage } from './MockChromeStorage';
 
@@ -23,9 +19,7 @@ import { MockChromeStorage } from './MockChromeStorage';
  * Organized collection of mock test doubles
  */
 export const TestDoubles = {
-  MockPATAuthenticationStrategy,
   MockGitHubAppAuthenticationStrategy,
-  MockAuthenticationStrategyFactory,
   MockFetchResponseBuilder,
   MockChromeStorage,
 } as const;

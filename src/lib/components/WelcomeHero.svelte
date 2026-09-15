@@ -17,8 +17,8 @@
   <div class="space-y-3">
     <h1 class="text-xl font-semibold text-slate-200">Welcome to Bolt to GitHub</h1>
     <p class="text-sm text-slate-400 leading-relaxed">
-      To get started with Bolt to GitHub, we need to connect to GitHub first. In the next step,
-      you'll choose between two authentication options.
+      A Bolt2GitHub account and the GitHub App are required to push your Bolt projects to GitHub.
+      The next step guides you through both connections.
     </p>
   </div>
 
@@ -32,11 +32,10 @@
           <span class="text-white text-xs font-bold">✓</span>
         </div>
         <div class="text-sm">
-          <p class="text-green-200 font-medium mb-1">GitHub App Recommended</p>
+          <p class="text-green-200 font-medium mb-1">GitHub App Required</p>
           <p class="text-green-300 text-xs leading-relaxed">
-            While it involves creating a bolt2github.com account, the GitHub App provides enhanced
-            security, automatic token management, and access to premium features on our companion
-            web app.
+            Sign in to your Bolt2GitHub account, then install the GitHub App for scoped repository
+            access and automatic credential renewal.
           </p>
         </div>
       </div>

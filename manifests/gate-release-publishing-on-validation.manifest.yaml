@@ -1,0 +1,128 @@
+# manifest-kind: implementation
+# MAID manifest - a machine-checked contract for one change.
+# Declares the intent, the files it may touch, and the commands that verify it.
+# Nothing here is needed to build or run this project; safe to ignore.
+# What it is: https://github.com/mamertofabian/maid-runner
+schema: '2'
+goal: Block v2.0.0 release publication until automated validation and browser smoke tests pass
+description: |
+  The tag-triggered and manually dispatched release workflow currently builds
+  and publishes without tests. Run the repository's lint, Svelte/TypeScript,
+  unit, MAID behavioral/implementation, and selected GitHub App browser gates
+  before zipping or creating a release. A version check must reject a tag that
+  differs from package.json or manifest.json. Every gate fails the job normally;
+  no continue-on-error or always-run publication path is allowed.
+type: fix
+created: '2026-09-14T13:48:24Z'
+files:
+  create:
+  - path: scripts/verify-release-tag.sh
+    artifacts:
+    - kind: namespace
+      name: VerifyReleaseTag
+      description: Fails closed when an existing remote release tag does not target the commit being packaged.
+  - path: scripts/__tests__/verify-release-tag.test.ts
+    artifacts:
+    - kind: test_function
+      name: allows a missing tag for creation at the built commit
+    - kind: test_function
+      name: accepts matching lightweight and annotated tags
+    - kind: test_function
+      name: rejects an existing tag pointing to another commit
+    - kind: test_function
+      name: fails closed when the tag remote is unavailable
+  edit:
+  - path: .github/workflows/release.yml
+    artifacts:
+    - kind: namespace
+      name: ReleaseQualityGate
+      description: Lint, type, unit, MAID, build, and browser checks precede packaging and publication.
+    - kind: namespace
+      name: ReleaseVersionGate
+      description: The requested tag matches package and extension manifest versions before release.
+  - path: src/test/release/releaseWorkflowGate.test.ts
+    artifacts:
+    - kind: test_function
+      name: publishing follows lint type unit and MAID validation gates
+    - kind: test_function
+      name: browser release slice runs under Xvfb after the production build
+    - kind: test_function
+      name: version gate rejects mismatched release tags before publication
+    - kind: test_function
+      name: no release step bypasses failed gates
+    - kind: test_function
+      name: CI installs and pins MAID Runner before validation
+    - kind: test_function
+      name: release tag is bound to the packaged commit
+  read:
+  - package.json
+  - manifest.json
+  - playwright.config.ts
+  - manifests/prepare-v2-0-0-github-app-release.manifest.yaml
+  - manifests/pause-extension-ga4-v2.manifest.yaml
+validate:
+- pnpm exec vitest run src/test/release/releaseWorkflowGate.test.ts scripts/__tests__/verify-release-tag.test.ts
+- pnpm exec prettier --check .github/workflows/release.yml
+- ./scripts/maid validate manifests/gate-release-publishing-on-validation.manifest.yaml --mode behavioral
+temptations:
+- risk: Do not run tests in a separate job without making publication depend on its success.
+  instead: Keep checks in the publishing job before ZIP and release creation.
+- risk: Do not mark browser or MAID failures non-blocking to keep releases flowing.
+  instead: Use normal failing steps and no always-run publication condition.
+- risk: Do not invoke headed extension tests without a display on Ubuntu runners.
+  instead: Install Chromium dependencies and run the selected Playwright specs through Xvfb.
+outcome:
+  status: completed
+  completed_at: '2026-09-14T13:59:01Z'
+  summary: |
+    Release publication now follows version, lint, type, unit, MAID, build,
+    and selected browser gates in the same job. CI installs uv for the pinned
+    MAID Runner 2.27.5 and Chromium/Xvfb for headed extension tests. New tags
+    target the built commit, while existing mismatched tags fail closed.
+  rationale: |
+    The prior workflow could publish a ZIP after only a successful build and
+    could create a manual-release tag at a commit other than the one packaged.
+    Keeping verification before ZIP and release creation makes ordinary step
+    failure block publication. A standalone tag check covers lightweight and
+    annotated tags without changing remote refs.
+  lessons:
+  - lesson_type: release-artifact-integrity
+    summary: A release gate must bind the published tag to the exact commit used to build its artifact.
+    tags: [release, github-actions, tags]
+    paths: [.github/workflows/release.yml, scripts/verify-release-tag.sh]
+  - lesson_type: browser-release-gate
+    summary: Headed Chrome extension tests on Linux CI need a display and their browser dependencies installed before publication.
+    tags: [release, playwright, chrome-extension]
+    paths: [.github/workflows/release.yml, playwright.config.ts]
+  review_notes:
+  - source: independent reviewer /root/release_gate_review
+    severity: findings-fixed
+    summary: Found missing tag-to-build binding, missing uv setup, and conditional-step test gaps; all were corrected.
+  - source: independent reviewer /root/release_gate_review round 2
+    severity: ready
+    summary: Confirmed tag integrity, fail-closed remote behavior, pinned MAID setup, Xvfb viability, and focused behavioral coverage.
+  validation:
+  - command: [pnpm, test:ci]
+    status: passed
+    summary: Full Vitest suite passed 201 files and 4,012 tests.
+  - command: [pnpm, lint]
+    status: passed
+    summary: ESLint passed.
+  - command: [pnpm, check]
+    status: passed
+    summary: Svelte and TypeScript checks reported zero errors and warnings.
+  - command: [./scripts/maid, validate, --manifest-dir, manifests, --mode, behavioral]
+    status: passed
+    summary: 40 active manifests passed, zero failed, 13 superseded.
+  - command: [./scripts/maid, validate, --manifest-dir, manifests, --mode, implementation]
+    status: passed
+    summary: 40 active manifests passed, zero failed, 13 superseded; shell/YAML validator notices remain advisory.
+  - command: [./scripts/maid, verify, --profile, handoff, --since, HEAD, --file-tracking-scope, task, --plan-lock-scope, task, --summary]
+    status: passed
+    summary: All nine task-scope handoff gates passed with an empty local GA4 secret override; one non-blocking shell-validator warning.
+  - command: [pnpm, exec, playwright, test, e2e/auth.spec.ts, e2e/lifecycle.spec.ts, e2e/error-flow-product.spec.ts, e2e/manual-repo.spec.ts, --reporter=line]
+    status: passed
+    summary: Browser release slice passed 16 cases directly and one auth persistence case on retry; the flake remains visible.
+  - command: [pnpm, build]
+    status: passed
+    summary: Production extension build passed with the local GA4 secret overridden to empty.

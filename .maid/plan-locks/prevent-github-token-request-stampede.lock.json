@@ -1,17 +1,17 @@
 {
   "manifest_path": "manifests/prevent-github-token-request-stampede.manifest.yaml",
-  "manifest_hash": "sha256:8c5c53ec16e529bbe5379250fb001045b271f6ef48cba6c83ecb4eb24beed588",
+  "manifest_hash": "sha256:a66f3dbdb9b16aff0d54bb4a72069e02f98139494fadb8db8aede5e9cdee94df",
   "test_hashes": {
     "src/services/__tests__/GitHubAppAuthenticationStrategy.test.ts": "sha256:79c13f7ce6ba858d225ae13c69cd193cf4c2eaa05ac93c77b74d972becf1baca",
     "src/services/__tests__/UnifiedGitHubService.comprehensive.test.ts": "sha256:049c477df6df9e5dbd8cba69a6cc79fabaa0498236a61a204b4e02db086a7ed4",
-    "src/services/__tests__/githubAppRequestPolicy.test.ts": "sha256:d9f4f9710fe6684ece0285ce2d35211f3cb22a27bd1b1cbbc7a3d414bd488fd7",
+    "src/services/__tests__/githubAppRequestPolicy.test.ts": "sha256:d92a74a35a2866733d05827cb27aca8638ecef18c13eaed5e38e6d7fa7d31a11",
     "src/services/__tests__/GitHubAppAuthenticationStrategy.stampede.test.ts": "sha256:cd8b27a9cda224ef454bb99a3505e5be5584e93bec8f21b2cbebd4ed8b831cd6",
     "src/services/__tests__/GitHubAppService.stampede.test.ts": "sha256:afc2a4559cf10b7b7a9bf8ad5efbf27f584a6f534c02204d8f26e780491ee82a",
-    "src/services/__tests__/UnifiedGitHubService.auth-selection.test.ts": "sha256:c27ea7d8f73dae8156606861ec0ae38b6f3502f428f2ac2afbb23befaf18a065",
+    "src/services/__tests__/UnifiedGitHubService.auth-selection.test.ts": "sha256:0efa4d3ce1bee73d994b863c33ba2dfa223215d3472c1c05776539d9025180fa",
     "src/services/__tests__/GitHubAppService.critical-business-logic.test.ts": "sha256:5e98cb781e178906603405bef89dbc3425fb8e98576f6c6aa4ece662f3ead0ec"
   },
   "created_at": "2026-07-12T04:29:44.630621+00:00",
-  "revision": 6,
+  "revision": 7,
   "revisions": [
     {
       "prior_manifest_hash": "sha256:a4a90ffb203f78db7018582731b2633b6f37069fa798455e83c02f52abc4ca40",
@@ -153,6 +153,41 @@
         "validate_commands_added": [],
         "validate_commands_removed": []
       }
+    },
+    {
+      "prior_manifest_hash": "sha256:8c5c53ec16e529bbe5379250fb001045b271f6ef48cba6c83ecb4eb24beed588",
+      "prior_test_hashes": {
+        "src/services/__tests__/GitHubAppAuthenticationStrategy.test.ts": "sha256:79c13f7ce6ba858d225ae13c69cd193cf4c2eaa05ac93c77b74d972becf1baca",
+        "src/services/__tests__/UnifiedGitHubService.comprehensive.test.ts": "sha256:049c477df6df9e5dbd8cba69a6cc79fabaa0498236a61a204b4e02db086a7ed4",
+        "src/services/__tests__/githubAppRequestPolicy.test.ts": "sha256:d9f4f9710fe6684ece0285ce2d35211f3cb22a27bd1b1cbbc7a3d414bd488fd7",
+        "src/services/__tests__/GitHubAppAuthenticationStrategy.stampede.test.ts": "sha256:cd8b27a9cda224ef454bb99a3505e5be5584e93bec8f21b2cbebd4ed8b831cd6",
+        "src/services/__tests__/GitHubAppService.stampede.test.ts": "sha256:afc2a4559cf10b7b7a9bf8ad5efbf27f584a6f534c02204d8f26e780491ee82a",
+        "src/services/__tests__/UnifiedGitHubService.auth-selection.test.ts": "sha256:c27ea7d8f73dae8156606861ec0ae38b6f3502f428f2ac2afbb23befaf18a065",
+        "src/services/__tests__/GitHubAppService.critical-business-logic.test.ts": "sha256:5e98cb781e178906603405bef89dbc3425fb8e98576f6c6aa4ece662f3ead0ec"
+      },
+      "revised_at": "2026-07-13T11:30:40.679289+00:00",
+      "reason": "Evolve explicit GitHub App configuration so App-only callers cannot fall back to PAT while storage auto-detection still requires durable installation state",
+      "agent": {
+        "model": "gpt-5",
+        "provider": "openai",
+        "client": "codex",
+        "skills": ["maid-evolver"],
+        "source": "flags"
+      },
+      "contract_delta": {
+        "artifacts_added": [
+          "src/services/__tests__/UnifiedGitHubService.auth-selection.test.ts:explicit GitHub App configuration never falls back to PAT",
+          "src/services/__tests__/UnifiedGitHubService.auth-selection.test.ts:explicit GitHub App configuration never falls back to PAT:kind=test_function"
+        ],
+        "artifacts_removed": [
+          "src/services/__tests__/UnifiedGitHubService.auth-selection.test.ts:rejects explicit GitHub App initialization without a stable installation",
+          "src/services/__tests__/UnifiedGitHubService.auth-selection.test.ts:rejects explicit GitHub App initialization without a stable installation:kind=test_function"
+        ],
+        "files_added": [],
+        "files_removed": [],
+        "validate_commands_added": [],
+        "validate_commands_removed": []
+      }
     }
   ],
   "red_evidence": {
@@ -192,12 +227,12 @@
       "src/services/__tests__/GitHubAppService.stampede.test.ts:keeps in-flight token requests isolated across Supabase identity changes:kind=test_function",
       "src/services/__tests__/GitHubAppService.stampede.test.ts:turns one hundred direct service token requests into one Edge Function request",
       "src/services/__tests__/GitHubAppService.stampede.test.ts:turns one hundred direct service token requests into one Edge Function request:kind=test_function",
+      "src/services/__tests__/UnifiedGitHubService.auth-selection.test.ts:explicit GitHub App configuration never falls back to PAT",
+      "src/services/__tests__/UnifiedGitHubService.auth-selection.test.ts:explicit GitHub App configuration never falls back to PAT:kind=test_function",
       "src/services/__tests__/UnifiedGitHubService.auth-selection.test.ts:keeps PAT selected when a Supabase session exists without a GitHub App installation",
       "src/services/__tests__/UnifiedGitHubService.auth-selection.test.ts:keeps PAT selected when a Supabase session exists without a GitHub App installation:kind=test_function",
       "src/services/__tests__/UnifiedGitHubService.auth-selection.test.ts:keeps explicit PAT selected when a GitHub App installation also exists",
       "src/services/__tests__/UnifiedGitHubService.auth-selection.test.ts:keeps explicit PAT selected when a GitHub App installation also exists:kind=test_function",
-      "src/services/__tests__/UnifiedGitHubService.auth-selection.test.ts:rejects explicit GitHub App initialization without a stable installation",
-      "src/services/__tests__/UnifiedGitHubService.auth-selection.test.ts:rejects explicit GitHub App initialization without a stable installation:kind=test_function",
       "src/services/__tests__/UnifiedGitHubService.auth-selection.test.ts:selects GitHub App only when method and installation configuration agree",
       "src/services/__tests__/UnifiedGitHubService.auth-selection.test.ts:selects GitHub App only when method and installation configuration agree:kind=test_function",
       "src/services/__tests__/githubAppRequestPolicy.test.ts:preserves explicit PAT selection even when an installation ID exists",

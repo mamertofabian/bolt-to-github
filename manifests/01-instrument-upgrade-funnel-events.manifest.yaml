@@ -1,3 +1,7 @@
+# MAID manifest - a machine-checked contract for one change.
+# Declares the intent, the files it may touch, and the commands that verify it.
+# Nothing here is needed to build or run this project; safe to ignore.
+# What it is: https://github.com/mamertofabian/maid-runner
 schema: '2'
 goal: Instrument the extension's upgrade funnel so every upgrade-modal impression and upgrade CTA click is measurable per trigger context, and upgrade URLs carry UTM attribution.
 description: |
@@ -77,9 +81,6 @@ files:
       artifacts:
         - kind: function
           name: UpgradeModal
-          args:
-            - name: props
-              type: UpgradeModal component props
           returns: Svelte component instance
           description: |
             Upgrade modal for the popup. Clicking the upgrade CTA records a

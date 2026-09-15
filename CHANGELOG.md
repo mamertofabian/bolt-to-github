@@ -1,5 +1,37 @@
 # Changelog
 
+## 2026-09-15 - Version 2.0.0
+
+### 🔐 Authentication
+
+- **GitHub App-Only Connection** - A Bolt2GitHub account and GitHub App installation are now required for GitHub features; personal access token support has ended
+- **Visible Legacy Migration** - Users with retired credentials receive explicit sign-in and GitHub App connection guidance instead of a silent failure or automatic navigation
+- **Preserved Project State** - Existing repository and project mappings are preserved while legacy credential and authentication-selector fields are removed
+- **Session-Aware Onboarding** - Onboarding now follows the live Bolt2GitHub session so signed-in users can continue to GitHub App connection without repeating sign-in
+
+### 📚 Documentation
+
+- **Current Setup Guidance** - README setup, security, FAQ, troubleshooting, onboarding, and in-app release history now describe the required account plus GitHub App flow
+- **Intentional Product Simplification** - Release notes document the retirement decision without claiming that standalone historical usage could be measured
+
+### 🐛 Bug Fixes
+
+- **Direct Project-Menu Download** - Restored exports after Bolt moved Download out of the Export submenu and placed it directly in the project dropdown; older Export layouts remain supported
+- **Project-Scoped Repository Settings** - Repository settings and saved mappings now follow the active Bolt project, preserve custom repository names on first sync, and render saved mappings immediately
+- **Accessible Settings and Log Actions** - Improved project settings controls and replaced native log confirmation dialogs with extension-native, keyboard-safe confirmation flows
+
+### 🔒 Privacy & Release Safety
+
+- **Google Analytics Paused** - Removed the client-side GA4 secret and Google Analytics host permission; v2.0.0 sends no extension events to Google Analytics while preserving the separately disclosed uninstall-feedback opt-out
+- **Release Publication Gates** - GitHub releases now require matching versions and commit-bound tags, lint, type checks, unit tests, contract validation, production build, and the GitHub App browser release suite
+- **Fail-Closed Local Packaging** - Local ZIP creation now removes stale output first, stops on build or compression failure, and publishes the archive atomically only after a successful fresh build
+
+### 🧪 Testing & Quality
+
+- **GitHub App Browser Fixtures** - End-to-end happy paths now establish a Bolt2GitHub session and verified GitHub App installation instead of bypassing readiness with a legacy credential
+- **Retirement Guard** - Source checks prevent retired strategy, selector, setup link, analytics, and user-guidance surfaces from returning outside the explicit migration boundary
+- **Bolt DOM Regression Coverage** - Captured September 2026 project-menu markup protects the direct Download flow and prevents clicks on unrelated open menus
+
 ## 2026-07-13 - Version 1.3.21
 
 ### 🐛 Bug Fixes

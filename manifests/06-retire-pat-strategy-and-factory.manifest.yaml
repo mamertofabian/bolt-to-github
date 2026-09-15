@@ -1,0 +1,381 @@
+schema: '2'
+goal: |
+  Delete the PAT authentication strategy and collapse UnifiedGitHubService to
+  the GitHub App authentication contract after all runtime callers are migrated.
+description: |
+  Sixth implementation child of github-app-only-authentication.
+
+  Once background, content, repository, issue, and feedback callers use the
+  GitHub App configuration, the legacy strategy is removed rather than left as
+  unreachable fallback code. AuthenticationStrategyFactory is also removed:
+  with one supported strategy, a dual-strategy selector adds no value and can
+  reintroduce fallback behavior. UnifiedGitHubService directly owns the GitHub
+  App strategy lifecycle and no longer accepts a token string or PAT config.
+
+  GitHub App request coalescing, identity isolation, token renewal, and visible
+  errors remain unchanged. This child must evolve the existing request-stampede
+  contract instead of silently invalidating it.
+
+  TokenService and ITokenService are also deleted in this slice. Repository
+  inspection shows they are PAT-format and PAT-permission validation code used
+  only by their own unit test, with no production importer. Keeping them would
+  preserve an orphaned PAT implementation after the advertised retirement.
+
+  UnifiedGitHubService also loses its unused backward-compatibility methods for
+  simple token validation, classic/fine-grained PAT detection, and destructive
+  PAT permission probing. The settings store still contains the final live
+  string-token constructor caller, so this child first makes that narrow
+  validation/save boundary reject PAT state and use only GitHub App auth. Child
+  07 still owns deleting the remaining token-shaped settings fields and legacy
+  storage vocabulary. Retaining either runtime caller or service methods here
+  would leave a callable PAT-era surface despite deleting the strategy.
+temptations:
+- risk: Do not leave PATAuthenticationStrategy or createPATStrategy as dead compatibility code.
+  instead: Delete the files/symbols and use removed_artifacts plus TypeScript checks to prove no production reference remains.
+- risk: Do not replace PAT fallback with a hidden unauthenticated placeholder strategy.
+  instead: Fail visibly when GitHub App auth is unavailable and keep the live connection gate responsible for user guidance.
+- risk: Do not weaken GitHub App single-flight or account-isolation behavior while simplifying construction.
+  instead: Retain the request-policy tests and add GitHub App-only constructor/authentication assertions before removal.
+- risk: Do not keep the unused classic/fine-grained TokenService as a supposedly generic helper.
+  instead: Delete TokenService, ITokenService, and their isolated unit test after confirming no production import remains.
+- risk: Do not make the remaining settings PAT branch call the GitHub App service as if that were a successful migration.
+  instead: Reject legacy PAT settings with actionable GitHub App-required state and reserve structural field/storage deletion for child 07.
+type: refactor
+supersedes:
+- prevent-github-token-request-stampede
+files:
+  edit:
+  - path: src/services/UnifiedGitHubService.ts
+    artifacts:
+    - kind: class
+      name: UnifiedGitHubService
+      description: GitHub API facade backed exclusively by GitHubAppAuthenticationStrategy.
+    - kind: method
+      name: getAuthenticationType
+      of: UnifiedGitHubService
+      args: []
+      returns: Promise<'github_app'>
+  - path: src/services/types/authentication.ts
+    artifacts:
+    - kind: type
+      name: AuthenticationType
+      type: '''github_app'''
+    - kind: interface
+      name: AuthenticationConfig
+      description: GitHub App-only construction input with no PAT token field.
+    - kind: attribute
+      name: type
+      of: AuthenticationConfig
+      type: '''github_app'''
+    - kind: attribute
+      name: githubAppConfig
+      of: AuthenticationConfig
+      type: GitHubAppConfig | undefined
+  - path: src/services/__tests__/UnifiedGitHubService.auth-selection.test.ts
+    artifacts:
+    - kind: test_function
+      name: UnifiedGitHubService always selects GitHub App authentication
+    - kind: test_function
+      name: missing live GitHub App credentials fail visibly without PAT fallback
+    - kind: test_function
+      name: account changes retain identity-isolated GitHub App token acquisition
+    - kind: test_function
+      name: concurrent facade instances share one GitHub App token acquisition per identity
+    - kind: test_function
+      name: stale facade fails visibly after the Bolt2GitHub identity changes
+    - kind: test_function
+      name: signed-out facade cannot reuse a previously cached account token
+    - kind: test_function
+      name: explicit GitHub App configuration never falls back to PAT
+  - path: src/services/githubAppRequestPolicy.ts
+    artifacts:
+    - kind: class
+      name: SingleFlight
+      description: Shares one in-flight asynchronous operation among concurrent callers and resets after settlement.
+    - kind: method
+      name: run
+      of: SingleFlight
+      args:
+      - name: operation
+        type: '() => Promise<T>'
+      returns: Promise<T>
+      description: Returns the current in-flight operation or starts exactly one new operation.
+  - path: src/services/__tests__/githubAppRequestPolicy.test.ts
+    artifacts:
+    - kind: test_function
+      name: shares one operation across one hundred concurrent callers
+    - kind: test_function
+      name: resets after a shared rejection so a later request can retry
+  - path: src/services/__tests__/GitHubAppAuthenticationStrategy.stampede.test.ts
+    artifacts:
+    - kind: test_function
+      name: invalidates a cached GitHub token when the Supabase identity changes
+    - kind: test_function
+      name: prevents an older in-flight identity from overwriting the newer token cache
+  - path: src/services/__tests__/GitHubAppService.stampede.test.ts
+    artifacts:
+    - kind: test_function
+      name: turns one hundred direct service token requests into one Edge Function request
+    - kind: test_function
+      name: coalesces token retrieval shared by direct and validation callers
+    - kind: test_function
+      name: keeps in-flight token requests isolated across Supabase identity changes
+  - path: src/lib/stores/__tests__/githubSettings.test.ts
+    artifacts:
+    - kind: test_function
+      name: legacy PAT initialization never constructs or validates a token-backed GitHub service
+    - kind: test_function
+      name: legacy PAT settings cannot be saved after GitHub App-only strategy retirement
+    - kind: test_function
+      name: GitHub App validation constructs only the App-backed unified service
+  delete:
+  - path: src/services/PATAuthenticationStrategy.ts
+    reason: PAT authentication is no longer supported.
+  - path: src/services/__tests__/PATAuthenticationStrategy.test.ts
+    reason: PAT-only behavioral coverage is obsolete after strategy removal.
+  - path: src/services/AuthenticationStrategyFactory.ts
+    reason: A multi-strategy factory is unnecessary when GitHub App is the sole strategy.
+  - path: src/services/__tests__/AuthenticationStrategyFactory.test.ts
+    reason: Dual-strategy factory behavior is intentionally removed.
+  - path: src/services/TokenService.ts
+    reason: Unused classic/fine-grained PAT validation and destructive permission probing are obsolete.
+  - path: src/services/interfaces/ITokenService.ts
+    reason: The interface exists only for the removed PAT validation service.
+  - path: src/services/__tests__/TokenService.test.ts
+    reason: The test covers only the orphaned PAT validation service being deleted.
+  scope:
+  - path: src/services/interfaces/IAuthenticationStrategy.ts
+    reason: Remove IAuthenticationStrategyFactory while preserving the GitHub App strategy interface.
+  - path: src/services/__tests__/UnifiedGitHubService.comprehensive.test.ts
+    reason: Replace PAT/string-constructor scenarios with GitHub App-only facade behavior.
+  - path: src/services/__tests__/UnifiedGitHubService.working.test.ts
+    reason: Remove PAT fixtures and retain representative GitHub App operations.
+  - path: src/services/__tests__/UnifiedGitHubService.focused.test.ts
+    reason: Remove direct PAT constructor, format-detection, and PAT-operation scenarios while retaining focused GitHub App behavior.
+  - path: src/services/__tests__/test-fixtures/README.md
+    reason: Remove PAT strategy, token fixture, and dual-auth factory documentation.
+  - path: src/services/__tests__/test-fixtures/unified/helpers/TestHelpers.ts
+    reason: Remove PAT auth-config and token-generation helpers.
+  - path: src/services/__tests__/test-fixtures/unified/index.ts
+    reason: Remove PAT examples and exports from the unified fixture entry point.
+  - path: src/services/__tests__/test-fixtures/unified/mocks/MockAuthStrategies.ts
+    reason: Delete MockPATAuthenticationStrategy and the obsolete dual-strategy mock factory while retaining the GitHub App strategy fake.
+  - path: src/services/__tests__/test-fixtures/unified/mocks/MockChromeStorage.ts
+    reason: Remove authenticationMethod PAT defaults and loaders from storage fixtures.
+  - path: src/services/__tests__/test-fixtures/unified/scenarios/TestScenarios.ts
+    reason: Replace PAT success and failure scenarios with GitHub App-only scenarios.
+  - path: src/services/__tests__/test-fixtures/unified/storage/StorageFixtures.ts
+    reason: Remove PAT token and authenticationMethod fixtures while preserving GitHub App storage fixtures.
+  - path: src/services/__tests__/test-fixtures/unified/tokens/TestTokens.ts
+    reason: Remove classic/fine-grained PAT fixture families and keep only fake values required for GitHub App and invalid-token safety tests.
+  - path: src/services/__tests__/test-fixtures/unified/errors/ErrorFixtures.ts
+    reason: Replace the remaining PAT-specific API error payload with the equivalent GitHub App integration error fixture.
+  - path: src/services/__tests__/test-fixtures/index.ts
+    reason: Remove PAT strategy and dual-strategy factory exports from the shared service fixture barrel.
+  - path: src/services/__tests__/test-fixtures/unified/mocks/index.ts
+    reason: Remove PAT strategy and dual-strategy factory exports from the unified mock barrel.
+  - path: src/services/__tests__/GitHubService.feedback.test.ts
+    reason: Replace the final service-test string constructor with GitHub App-only construction while preserving feedback API coverage.
+  - path: src/lib/stores/githubSettings.ts
+    reason: Remove the final production string-token constructor and reject PAT initialization/save attempts before child 07 removes legacy state fields.
+  read:
+  - manifests/03-github-app-only-runtime-enforcement.manifest.yaml
+  - manifests/04-github-app-only-repository-surfaces.manifest.yaml
+  - manifests/05-github-app-only-issue-feedback-surfaces.manifest.yaml
+  - manifests/prevent-github-token-request-stampede.manifest.yaml
+  - src/services/GitHubAppAuthenticationStrategy.ts
+removed_artifacts:
+- kind: interface
+  name: IAuthenticationStrategyFactory
+  file: src/services/interfaces/IAuthenticationStrategy.ts
+  reason: There is no longer a strategy factory abstraction.
+- kind: function
+  name: resolveStoredGitHubAuthenticationMethod
+  file: src/services/githubAppRequestPolicy.ts
+  reason: Stored auth method selection is obsolete under GitHub App-only policy.
+- kind: class
+  name: MockPATAuthenticationStrategy
+  file: src/services/__tests__/test-fixtures/unified/mocks/MockAuthStrategies.ts
+  reason: PAT strategy behavior is no longer part of the unified service fixture contract.
+- kind: class
+  name: MockAuthenticationStrategyFactory
+  file: src/services/__tests__/test-fixtures/unified/mocks/MockAuthStrategies.ts
+  reason: The production dual-strategy factory is removed.
+- kind: method
+  name: validateToken
+  of: UnifiedGitHubService
+  file: src/services/UnifiedGitHubService.ts
+  reason: Unused backward-compatible token validation is removed with PAT settings.
+- kind: method
+  name: isClassicToken
+  of: UnifiedGitHubService
+  file: src/services/UnifiedGitHubService.ts
+  reason: Classic PAT format detection has no GitHub App-only behavior.
+- kind: method
+  name: isFineGrainedToken
+  of: UnifiedGitHubService
+  file: src/services/UnifiedGitHubService.ts
+  reason: Fine-grained PAT format detection has no GitHub App-only behavior.
+- kind: method
+  name: verifyTokenPermissions
+  of: UnifiedGitHubService
+  file: src/services/UnifiedGitHubService.ts
+  reason: PAT permission probing and temporary repository mutation are no longer part of setup.
+validate:
+- pnpm exec vitest run src/services/__tests__/UnifiedGitHubService.auth-selection.test.ts src/services/__tests__/UnifiedGitHubService.comprehensive.test.ts src/services/__tests__/UnifiedGitHubService.focused.test.ts src/services/__tests__/UnifiedGitHubService.working.test.ts src/services/__tests__/GitHubService.feedback.test.ts src/services/__tests__/githubAppRequestPolicy.test.ts src/services/__tests__/GitHubAppAuthenticationStrategy.test.ts src/services/__tests__/GitHubAppAuthenticationStrategy.stampede.test.ts src/services/__tests__/GitHubAppService.stampede.test.ts src/lib/stores/__tests__/githubSettings.test.ts
+- ./scripts/maid validate manifests/06-retire-pat-strategy-and-factory.manifest.yaml --mode behavioral
+- pnpm lint
+- pnpm check
+- pnpm build
+created: '2026-07-13T13:27:16Z'
+metadata:
+  tags:
+  - auth
+  - github-app
+  - pat-retirement
+  - strategy
+  - service
+  priority: high
+  status: approved
+  promotion_ready: true
+  parent_epic: github-app-only-authentication
+  depends_on:
+  - 03-github-app-only-runtime-enforcement
+  - 04-github-app-only-repository-surfaces
+  - 05-github-app-only-issue-feedback-surfaces
+  evolves_active_contracts:
+  - prevent-github-token-request-stampede
+  - 03-github-app-only-runtime-enforcement
+  notes: Promotion includes the final settings-store string constructor caller so implementation can prove no production token constructor remains before deleting the strategy and factory.
+outcome:
+  status: completed
+  summary: |
+    The PAT authentication strategy, multi-strategy factory, orphaned PAT token
+    service/interface, and their dedicated tests are deleted. The unified
+    GitHub facade now accepts only GitHub App configuration, while the final
+    settings-store PAT validation and save paths fail visibly with GitHub App
+    connection guidance instead of constructing a token-backed service.
+
+    GitHub App token acquisition remains coalesced across concurrent facades
+    for one Bolt2GitHub identity. Strategy sharing is identity-scoped: an
+    in-flight request retains its original account, a stale facade cannot use a
+    newer account's credentials, and a signed-out facade cannot inherit a
+    previously cached GitHub or Supabase token.
+  rationale: |
+    A single supported authentication mechanism does not need a strategy
+    selector or PAT-format validation layer. Direct GitHub App ownership makes
+    the supported contract explicit, but preserving the former factory's
+    cross-facade cache boundary required identity-scoped sharing rather than a
+    fresh strategy per facade or one globally mutable strategy.
+  lessons:
+    - lesson_type: identity-scoped-shared-auth-state
+      summary: |
+        Shared token acquisition must be keyed to the caller identity and old
+        facades must retain an isolated strategy reference. A process-global
+        mutable strategy can coalesce requests but will leak the newest
+        account's credentials into older callers.
+      tags: [auth, github-app, concurrency, security]
+      paths:
+        - src/services/UnifiedGitHubService.ts
+        - src/services/__tests__/UnifiedGitHubService.auth-selection.test.ts
+    - lesson_type: logout-invalidates-memory-caches
+      summary: |
+        Clearing browser storage is insufficient when a long-lived extension
+        process can retain an authenticated strategy. A newly signed-out
+        facade must clear the shared slot and receive a fresh unauthenticated
+        strategy so cached credentials cannot survive logout.
+      tags: [auth, cache, logout, mv3]
+      paths:
+        - src/services/UnifiedGitHubService.ts
+    - lesson_type: retirement-requires-callable-surface-removal
+      summary: |
+        Retiring PAT support requires deleting its strategy, selector, token
+        validators, fixtures, and compatibility methods, while making the last
+        transitional settings boundary reject PAT state visibly until its
+        stored fields are removed by the next child.
+      tags: [auth, pat-retirement, cleanup]
+      paths:
+        - src/services/UnifiedGitHubService.ts
+        - src/lib/stores/githubSettings.ts
+  review_notes:
+    - source: independent reviewer /root/child06_strategy_retirement_review
+      severity: findings-fixed
+      summary: |
+        Review found that a fresh strategy per facade lost the factory's
+        cross-facade request coalescing, and identified premature child-07 type
+        and storage cleanup plus stale promotion metadata. Same-identity facade
+        coverage was added, transitional fields were restored, and active
+        metadata was reconciled.
+    - source: independent reviewer /root/child06_strategy_retirement_review_round2
+      severity: finding-fixed
+      summary: |
+        Review found that one mutable class-static strategy let an old account-A
+        facade use account B and let a signed-out facade reuse the previous
+        cached token. Both sequences were captured as failing regressions and
+        fixed with identity-scoped strategy sharing and logout invalidation.
+    - source: independent reviewer /root/child06_strategy_retirement_review_round3
+      severity: ready
+      summary: |
+        Final read-only review reported no findings and verified same-account
+        coalescing, in-flight A/B isolation, stale-facade rejection, signed-out
+        cache rejection, PAT artifact removal, child-07 scope preservation,
+        plan-lock integrity, and strict MAID coherence.
+  validation:
+    - command:
+        - pnpm
+        - vitest
+        - run
+        - src/services/__tests__/UnifiedGitHubService.auth-selection.test.ts
+      status: failed-red-phase
+      summary: Initial App-only construction and settings tests failed seven assertions because token-string construction and PAT validation/save behavior still existed.
+    - command:
+        - pnpm
+        - vitest
+        - run
+        - src/services/__tests__/UnifiedGitHubService.auth-selection.test.ts
+      status: failed-red-phase
+      summary: The first review regression showed 100 concurrent same-account facades made 100 Edge Function token requests instead of one.
+    - command:
+        - pnpm
+        - vitest
+        - run
+        - src/services/__tests__/UnifiedGitHubService.auth-selection.test.ts
+      status: failed-red-phase
+      summary: The second review regressions both failed because an old facade silently used the newer account and a signed-out facade reused the prior cached token.
+    - command:
+        - ./scripts/maid
+        - test
+        - --manifest
+        - manifests/06-retire-pat-strategy-and-factory.manifest.yaml
+      status: passed
+      summary: All five declared commands passed, including 10 focused files with 188 tests, behavioral validation, lint, type checking, and a production build.
+    - command:
+        - ./scripts/maid
+        - validate
+        - manifests/06-retire-pat-strategy-and-factory.manifest.yaml
+        - --mode
+        - implementation
+      status: passed
+      summary: Every declared production, deletion, removed-symbol, and behavioral artifact passed implementation validation.
+    - command:
+        - pnpm
+        - test:ci
+      status: passed
+      summary: Full Vitest CI passed 196 files and 4,135 tests after the final identity-isolation fix.
+    - command:
+        - ./scripts/maid
+        - verify
+        - --manifest-dir
+        - manifests
+        - --strict
+        - --file-tracking-scope
+        - task
+        - --plan-lock-scope
+        - task
+        - --since
+        - HEAD
+        - --include-tests
+        - --require-plan-lock
+        - --require-red-evidence
+      status: passed
+      summary: Task-scoped strict verification passed schema, behavioral, implementation, coherence, file tracking, plan-lock, and red-evidence gates.

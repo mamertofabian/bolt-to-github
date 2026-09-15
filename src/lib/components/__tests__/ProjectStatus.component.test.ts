@@ -6,6 +6,7 @@ import { describe, it, expect, beforeEach, vi, afterEach } from 'vitest';
 import { render, screen, waitFor } from '@testing-library/svelte';
 import userEvent from '@testing-library/user-event';
 import ProjectStatus from '../ProjectStatus.svelte';
+import projectStatusSource from '../ProjectStatus.svelte?raw';
 
 const mockChromeStorageService = vi.hoisted(() => ({
   getProjectSettingsWithMetadata: vi.fn(),
@@ -18,38 +19,10 @@ const mockGitHubCacheService = vi.hoisted(() => ({
   createEnhancedRepo: vi.fn(),
   cacheRepoMetadata: vi.fn(),
 }));
+const mockLoadIssues = vi.hoisted(() => vi.fn());
 
-vi.mock('$lib/stores/issuesStore', () => ({
-  issuesStore: {
-    getOpenIssuesCount: vi.fn(() => ({
-      subscribe: vi.fn((callback) => {
-        callback(5);
-        return () => {};
-      }),
-    })),
-    loadIssues: vi.fn(),
-  },
-}));
-
-vi.mock('$lib/stores/premiumStore', () => ({
-  isPremium: {
-    subscribe: vi.fn((callback) => {
-      callback(false);
-      return () => {};
-    }),
-  },
-}));
-
-vi.mock('$lib/utils/logger', () => ({
-  createLogger: vi.fn(() => ({
-    info: vi.fn(),
-    error: vi.fn(),
-    warn: vi.fn(),
-  })),
-}));
-
-vi.mock('../../services/UnifiedGitHubService', () => ({
-  UnifiedGitHubService: vi.fn().mockImplementation(() => ({
+const mockServiceConstructor = vi.hoisted(() =>
+  vi.fn().mockImplementation(() => ({
     getRepoInfo: vi.fn().mockResolvedValue({
       exists: true,
       private: false,
@@ -72,7 +45,46 @@ vi.mock('../../services/UnifiedGitHubService', () => ({
       },
     ]),
     getCommitCount: vi.fn().mockResolvedValue(10),
+  }))
+);
+
+vi.mock('$lib/stores/issuesStore', () => ({
+  issuesStore: {
+    getOpenIssuesCount: vi.fn(() => ({
+      subscribe: vi.fn((callback) => {
+        callback(5);
+        return () => {};
+      }),
+    })),
+    loadIssues: mockLoadIssues,
+  },
+}));
+
+vi.mock('$lib/stores/premiumStore', () => ({
+  isPremium: {
+    subscribe: vi.fn((callback) => {
+      callback(false);
+      return () => {};
+    }),
+  },
+}));
+
+vi.mock('$lib/utils/logger', () => ({
+  createLogger: vi.fn(() => ({
+    info: vi.fn(),
+    error: vi.fn(),
+    warn: vi.fn(),
   })),
+}));
+
+vi.mock('../../services/UnifiedGitHubService', () => ({
+  UnifiedGitHubService: mockServiceConstructor,
+}));
+
+vi.mock('$lib/utils/connectedGitHubAppService', () => ({
+  createConnectedGitHubAppService: vi.fn(async () =>
+    mockServiceConstructor({ type: 'github_app' })
+  ),
 }));
 
 vi.mock('../../services/chromeStorage', () => ({
@@ -86,6 +98,13 @@ vi.mock('../services/chromeStorage', () => ({
 vi.mock('$lib/services/chromeStorage', () => ({
   ChromeStorageService: mockChromeStorageService,
 }));
+
+it('project status issue surfaces no longer accept or forward token placeholders', () => {
+  expect(projectStatusSource).not.toContain('export let token');
+  expect(projectStatusSource).not.toContain('github_app_token');
+  expect(projectStatusSource).not.toContain('authenticationMethod');
+  expect(projectStatusSource).not.toContain('githubToken=');
+});
 
 vi.mock('../../services/GitHubCacheService', () => ({
   GitHubCacheService: mockGitHubCacheService,
@@ -103,7 +122,6 @@ const mockChrome = {
   storage: {
     local: {
       get: vi.fn().mockResolvedValue({
-        authenticationMethod: 'pat',
         storedFileChanges: null,
         pendingFileChanges: null,
       }),
@@ -139,7 +157,6 @@ describe('ProjectStatus.svelte - Component Tests', () => {
     gitHubUsername: 'testuser',
     repoName: 'test-repo',
     branch: 'main',
-    token: 'test-token',
     projectTitle: 'Test Project',
     handleUpgradeClick: vi.fn(),
   };
@@ -153,7 +170,6 @@ describe('ProjectStatus.svelte - Component Tests', () => {
     mockGitHubCacheService.createEnhancedRepo.mockReturnValue({});
     mockGitHubCacheService.cacheRepoMetadata.mockResolvedValue(undefined);
     mockChrome.storage.local.get.mockResolvedValue({
-      authenticationMethod: 'pat',
       storedFileChanges: null,
       pendingFileChanges: null,
     });
@@ -211,6 +227,27 @@ describe('ProjectStatus.svelte - Component Tests', () => {
       const projectDetailsButton = screen.getByRole('button', { name: /project:/i });
       expect(projectDetailsButton).toBeInTheDocument();
       expect(projectDetailsButton).toHaveAttribute('tabindex', '0');
+    });
+
+    it('project details open the authoritative repository settings modal', async () => {
+      const user = userEvent.setup();
+      render(ProjectStatus, { props: defaultProps });
+
+      await user.click(screen.getByRole('button', { name: /project:/i }));
+
+      expect(screen.getByRole('heading', { name: /repository settings/i })).toBeInTheDocument();
+      expect(screen.getByLabelText(/repository name/i)).toHaveValue('test-repo');
+      expect(screen.getByLabelText(/^branch/i)).toHaveValue('main');
+    });
+
+    it('project details open repository settings with Space', async () => {
+      const user = userEvent.setup();
+      render(ProjectStatus, { props: defaultProps });
+
+      screen.getByRole('button', { name: /project:/i }).focus();
+      await user.keyboard(' ');
+
+      expect(screen.getByRole('heading', { name: /repository settings/i })).toBeInTheDocument();
     });
   });
 
@@ -364,6 +401,22 @@ describe('ProjectStatus.svelte - Component Tests', () => {
   });
 
   describe('Error Handling', () => {
+    it('project status repository work uses the live GitHub App service without PAT fallback', async () => {
+      const { component } = render(ProjectStatus, { props: defaultProps });
+      await loadReadyProjectStatus(component);
+
+      expect(mockServiceConstructor).toHaveBeenCalledWith({ type: 'github_app' });
+      expect(mockServiceConstructor).not.toHaveBeenCalledWith(expect.any(String));
+    });
+
+    // Historical artifact name retained for the evolved child-04 contract.
+    it('project status leaves issue credential selection unchanged until child 05', async () => {
+      const { component } = render(ProjectStatus, { props: defaultProps });
+      await loadReadyProjectStatus(component);
+
+      expect(mockLoadIssues).toHaveBeenCalledWith('testuser', 'test-repo', 'all');
+    });
+
     it('should render without crashing when provided with valid props', () => {
       render(ProjectStatus, { props: defaultProps });
 

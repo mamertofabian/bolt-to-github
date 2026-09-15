@@ -1,240 +1,149 @@
 import { test, expect } from './fixtures/extension';
 import {
   clearStorage,
-  setupPATAuth,
-  setupGitHubAppAuth,
   getGitHubSettings,
+  seedConnectedGitHubApp,
+  seedLegacyPatMigration,
 } from './helpers/storage';
 import {
-  openPopup,
-  fillOnboardingPAT,
-  clickSaveButton,
-  waitForOnboardingComplete,
   isOnboardingVisible,
-  getValidationError,
+  openGitHubAppSetup,
+  openPopup,
+  waitForMigrationGuidance,
+  waitForOnboardingComplete,
 } from './helpers/popup';
 
-/**
- * Authentication Flow Tests
- *
- * These tests verify the authentication mechanisms:
- * - Personal Access Token (PAT) authentication
- * - GitHub App authentication
- * - Token validation
- * - Persistent authentication across sessions
- */
+const MIGRATION_PROJECT_ID = 'legacy-bolt-project';
 
-test.describe('Authentication Flow', () => {
+test.describe('GitHub App-only authentication flow', () => {
   test.beforeEach(async ({ context, extensionId }) => {
-    // Clear storage before each test for a clean state
     await clearStorage(context, extensionId);
   });
 
-  test.describe('Onboarding', () => {
-    test('should show onboarding on first launch', async ({ context, extensionId }) => {
-      const page = await openPopup(context, extensionId);
+  test('first launch requires Bolt2GitHub sign-in and the GitHub App', async ({
+    context,
+    extensionId,
+  }) => {
+    const page = await openPopup(context, extensionId);
 
-      // Verify onboarding is visible
-      const onboardingShowing = await isOnboardingVisible(page);
-      expect(onboardingShowing).toBe(true);
+    expect(await isOnboardingVisible(page)).toBe(true);
+    await expect(page.getByRole('heading', { name: /welcome to bolt to github/i })).toBeVisible();
+    await expect(page.getByRole('tablist')).toBeHidden();
 
-      // Verify welcome text is present
-      const welcomeText = page.locator('text=/Welcome|Get Started/i').first();
-      await expect(welcomeText).toBeVisible();
+    await openGitHubAppSetup(page);
+    await expect(page.getByText('GitHub App Required')).toBeVisible();
+    await expect(page.getByRole('button', { name: /sign in to bolt2github/i })).toBeVisible();
+    await expect(page.locator('input[type="password"]')).toHaveCount(0);
 
-      await page.close();
-    });
-
-    test('should not show onboarding when settings exist', async ({ context, extensionId }) => {
-      // Set up existing authentication
-      await setupPATAuth(context, extensionId, 'ghp_test_token', 'testuser');
-
-      const page = await openPopup(context, extensionId);
-
-      // Wait a moment for the page to load
-      await page.waitForTimeout(1000);
-
-      // Verify onboarding is NOT visible
-      const onboardingShowing = await isOnboardingVisible(page);
-      expect(onboardingShowing).toBe(false);
-
-      await page.close();
-    });
+    await page.close();
   });
 
-  test.describe('Personal Access Token (PAT) Authentication', () => {
-    test('should accept valid token and username', async ({ context, extensionId }) => {
-      const page = await openPopup(context, extensionId);
-
-      // Fill in onboarding form
-      // Note: This will fail validation since we're using a test token
-      // In a real test environment, you would use a valid test token or mock the API
-      await fillOnboardingPAT(page, 'ghp_test_token_1234567890abcdef', 'testuser');
-
-      // Verify the form fields are filled
-      const tokenInput = page.locator('input[type="password"]').first();
-      await expect(tokenInput).toHaveValue('ghp_test_token_1234567890abcdef');
-
-      const usernameInput = page
-        .locator('input[placeholder*="username" i], input[placeholder*="owner" i]')
-        .first();
-      await expect(usernameInput).toHaveValue('testuser');
-
-      await page.close();
+  test('connected GitHub App state persists without legacy authentication fields', async ({
+    context,
+    extensionId,
+  }) => {
+    await seedConnectedGitHubApp(context, extensionId, {
+      installationId: 67890,
+      username: 'connected-user',
+      repoOwner: 'connected-user',
+      avatarUrl: 'https://avatars.githubusercontent.com/u/67890',
     });
 
-    test('should show error for empty token', async ({ context, extensionId }) => {
-      const page = await openPopup(context, extensionId);
+    let page = await openPopup(context, extensionId);
+    await waitForOnboardingComplete(page);
+    await page.close();
 
-      // Fill only username, leave token empty
-      await fillOnboardingPAT(page, '', 'testuser');
+    page = await openPopup(context, extensionId);
+    await waitForOnboardingComplete(page);
 
-      // Wait a moment for validation
-      await page.waitForTimeout(500);
+    const settings = await getGitHubSettings(context, extensionId);
+    expect(settings.githubAppInstallationId).toBe(67890);
+    expect(settings.githubAppUsername).toBe('connected-user');
+    expect(settings.repoOwner).toBe('connected-user');
+    expect(settings.supabaseAuthState?.isAuthenticated).toBe(true);
 
-      // The current onboarding surface labels this action "Get Started";
-      // retain the legacy label as a compatibility fallback.
-      const saveButton = page.getByRole('button', { name: /get started|complete setup/i });
-      await expect(saveButton).toBeVisible();
-      await expect(saveButton).toBeDisabled();
-
-      await page.close();
+    const legacyStorage = await page.evaluate(async () => {
+      const [sync, local] = await Promise.all([
+        chrome.storage.sync.get('githubToken'),
+        chrome.storage.local.get('authenticationMethod'),
+      ]);
+      return { sync, local };
     });
+    expect(legacyStorage).toEqual({ sync: {}, local: {} });
 
-    test('should show error for empty username', async ({ context, extensionId }) => {
-      const page = await openPopup(context, extensionId);
-
-      // Fill only token, leave username empty
-      await fillOnboardingPAT(page, 'ghp_test_token', '');
-
-      // Wait a moment for validation
-      await page.waitForTimeout(500);
-
-      const saveButton = page.getByRole('button', { name: /get started|complete setup/i });
-      await expect(saveButton).toBeVisible();
-      await expect(saveButton).toBeDisabled();
-
-      await page.close();
-    });
-
-    test('should persist token after saving', async ({ context, extensionId }) => {
-      // Manually set up authentication
-      await setupPATAuth(context, extensionId, 'ghp_test_token_persist', 'testuser');
-
-      // Verify settings were saved
-      const settings = await getGitHubSettings(context, extensionId);
-      expect(settings.githubToken).toBe('ghp_test_token_persist');
-      expect(settings.repoOwner).toBe('testuser');
-      expect(settings.authenticationMethod).toBe('pat');
-    });
+    await page.close();
   });
 
-  test.describe('GitHub App Authentication', () => {
-    test('should persist GitHub App authentication', async ({ context, extensionId }) => {
-      // Set up GitHub App authentication
-      await setupGitHubAppAuth(
-        context,
-        extensionId,
-        12345,
-        'testuser',
-        'https://avatars.githubusercontent.com/u/1234567'
-      );
-
-      // Verify settings were saved
-      const settings = await getGitHubSettings(context, extensionId);
-      expect(settings.authenticationMethod).toBe('github_app');
-      expect(settings.githubAppInstallationId).toBe(12345);
-      expect(settings.githubAppUsername).toBe('testuser');
-      expect(settings.githubAppAvatarUrl).toBe('https://avatars.githubusercontent.com/u/1234567');
-      expect(settings.repoOwner).toBe('testuser');
+  test('legacy PAT migration preserves project settings and blocks GitHub until App connection', async ({
+    context,
+    extensionId,
+  }) => {
+    await seedLegacyPatMigration(context, extensionId, {
+      repoOwner: 'legacy-owner',
+      projectSettings: {
+        [MIGRATION_PROJECT_ID]: {
+          repoName: 'preserved-repository',
+          branch: 'develop',
+          projectTitle: 'Preserved Project',
+        },
+      },
     });
 
-    test('should show GitHub App as connected in onboarding', async ({ context, extensionId }) => {
-      // Set up GitHub App authentication
-      await setupGitHubAppAuth(context, extensionId, 12345, 'testuser');
-
-      const page = await openPopup(context, extensionId);
-
-      // Wait for page to load
-      await page.waitForTimeout(1000);
-
-      // May show onboarding or main view depending on state
-      // Check if GitHub App connection is visible
-      const connectedText = page.locator('text=/Connected as|testuser/i');
-      const hasConnection = await connectedText.isVisible({ timeout: 3000 }).catch(() => false);
-
-      // Either we see the connection status, or we're in the main view
-      expect(hasConnection || true).toBe(true);
-
-      await page.close();
-    });
-  });
-
-  test.describe('Persistent Authentication', () => {
-    test('should maintain PAT authentication across popup reopens', async ({
-      context,
-      extensionId,
-    }) => {
-      // Set up authentication
-      await setupPATAuth(context, extensionId, 'ghp_persistent_token', 'testuser');
-
-      // Open popup first time
-      let page = await openPopup(context, extensionId);
-      await page.waitForTimeout(1000);
-      await page.close();
-
-      // Open popup second time
-      page = await openPopup(context, extensionId);
-      await page.waitForTimeout(1000);
-
-      // Verify settings are still present
-      const settings = await getGitHubSettings(context, extensionId);
-      expect(settings.githubToken).toBe('ghp_persistent_token');
-      expect(settings.repoOwner).toBe('testuser');
-
-      await page.close();
+    const automaticAuthNavigations: string[] = [];
+    context.on('page', (openedPage) => {
+      openedPage.on('framenavigated', (frame) => {
+        if (
+          frame === openedPage.mainFrame() &&
+          /bolt2github\.com\/(?:login|onboarding)/.test(frame.url())
+        ) {
+          automaticAuthNavigations.push(frame.url());
+        }
+      });
     });
 
-    test('should maintain GitHub App authentication across popup reopens', async ({
-      context,
-      extensionId,
-    }) => {
-      // Set up GitHub App authentication
-      await setupGitHubAppAuth(context, extensionId, 12345, 'testuser');
+    const page = await openPopup(context, extensionId);
+    const migrationGuidance = await waitForMigrationGuidance(page);
+    const normalizedMigrationGuidance = migrationGuidance.replace(/\s+/g, ' ');
 
-      // Open popup first time
-      let page = await openPopup(context, extensionId);
-      await page.waitForTimeout(1000);
-      await page.close();
+    expect(normalizedMigrationGuidance).toContain('Personal access token support has ended');
+    expect(normalizedMigrationGuidance).toContain(
+      'Your repository and project settings have been preserved'
+    );
+    await expect(page.getByRole('tablist')).toBeHidden();
+    expect(automaticAuthNavigations).toEqual([]);
 
-      // Open popup second time
-      page = await openPopup(context, extensionId);
-      await page.waitForTimeout(1000);
-
-      // Verify settings are still present
-      const settings = await getGitHubSettings(context, extensionId);
-      expect(settings.authenticationMethod).toBe('github_app');
-      expect(settings.githubAppInstallationId).toBe(12345);
-      expect(settings.githubAppUsername).toBe('testuser');
-
-      await page.close();
+    const migratedStorage = await page.evaluate(async () => {
+      const [sync, local] = await Promise.all([
+        chrome.storage.sync.get(['githubToken', 'repoOwner', 'projectSettings']),
+        chrome.storage.local.get(['authenticationMethod', 'githubAppMigrationRequired']),
+      ]);
+      return { sync, local };
     });
-  });
-
-  test.describe('Unauthenticated State', () => {
-    test('should handle no authentication gracefully', async ({ context, extensionId }) => {
-      const page = await openPopup(context, extensionId);
-
-      // Should show onboarding
-      const onboardingShowing = await isOnboardingVisible(page);
-      expect(onboardingShowing).toBe(true);
-
-      // Should not show main tabs
-      const tabs = page.locator('[role="tablist"]');
-      const tabsVisible = await tabs.isVisible({ timeout: 2000 }).catch(() => false);
-      expect(tabsVisible).toBe(false);
-
-      await page.close();
+    expect(migratedStorage.sync.githubToken).toBeUndefined();
+    expect(migratedStorage.local.authenticationMethod).toBeUndefined();
+    expect(migratedStorage.local.githubAppMigrationRequired).toBe(true);
+    expect(migratedStorage.sync.repoOwner).toBe('legacy-owner');
+    expect(migratedStorage.sync.projectSettings[MIGRATION_PROJECT_ID]).toEqual({
+      repoName: 'preserved-repository',
+      branch: 'develop',
+      projectTitle: 'Preserved Project',
     });
+
+    await seedConnectedGitHubApp(context, extensionId, {
+      repoOwner: 'legacy-owner',
+      projectSettings: migratedStorage.sync.projectSettings,
+    });
+    await page.reload({ waitUntil: 'domcontentloaded' });
+    await waitForOnboardingComplete(page);
+
+    const completedSettings = await getGitHubSettings(context, extensionId);
+    expect(completedSettings.githubAppMigrationRequired).toBeUndefined();
+    expect(completedSettings.projectSettings?.[MIGRATION_PROJECT_ID]).toEqual({
+      repoName: 'preserved-repository',
+      branch: 'develop',
+      projectTitle: 'Preserved Project',
+    });
+
+    await page.close();
   });
 });

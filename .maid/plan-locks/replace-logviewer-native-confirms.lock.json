@@ -1,0 +1,193 @@
+{
+  "manifest_path": "manifests/replace-logviewer-native-confirms.manifest.yaml",
+  "manifest_hash": "sha256-contract:15fd7d700990ac35bbea9b3ef2bd6f211755f937e630fddc44c88cab4bec498d",
+  "test_hashes": {
+    "src/lib/components/__tests__/LogViewer.component.test.ts": "sha256:ea03b0cb108c1e0e7661984fab8e62457b4aef0837640ee3fc86042bed3a36f8",
+    "src/lib/components/__tests__/LogViewer.logic.test.ts": "sha256:d44cc0a6c05766403c1739e92beb0e779394caa5f833294e39aa1ac108ca4b28"
+  },
+  "created_at": "2026-08-01T05:32:20.064361+00:00",
+  "revision": 4,
+  "revisions": [
+    {
+      "prior_manifest_hash": "sha256-contract:f075855773ed0d4cdb55edb25d57441923d3741e935200e630ccc4164bef4d2a",
+      "prior_test_hashes": {
+        "src/lib/components/__tests__/LogViewer.component.test.ts": "sha256:5e794dc2668691b762c8227c03703324971097127644da0e485f84e265996135",
+        "src/lib/components/__tests__/LogViewer.logic.test.ts": "sha256:d44cc0a6c05766403c1739e92beb0e779394caa5f833294e39aa1ac108ca4b28"
+      },
+      "revised_at": "2026-08-01T05:42:38.182705+00:00",
+      "reason": "Address independent review findings with modal semantics, safe initial focus, focus trapping, and duplicate keyboard-submit protection.",
+      "agent": null,
+      "contract_delta": {
+        "artifacts_added": [
+          "src/lib/components/__tests__/LogViewer.component.test.ts:keyboard confirmation is modal and executes clear once",
+          "src/lib/components/__tests__/LogViewer.component.test.ts:keyboard confirmation is modal and executes clear once:kind=test_function"
+        ],
+        "artifacts_removed": [],
+        "files_added": [],
+        "files_removed": [],
+        "validate_commands_added": [],
+        "validate_commands_removed": []
+      }
+    },
+    {
+      "prior_manifest_hash": "sha256-contract:15fd7d700990ac35bbea9b3ef2bd6f211755f937e630fddc44c88cab4bec498d",
+      "prior_test_hashes": {
+        "src/lib/components/__tests__/LogViewer.component.test.ts": "sha256:20e0f24c9b895b7fb30856d1ac556e6b43e7ad65f89c25df8e48020780bbe6e1",
+        "src/lib/components/__tests__/LogViewer.logic.test.ts": "sha256:d44cc0a6c05766403c1739e92beb0e779394caa5f833294e39aa1ac108ca4b28"
+      },
+      "revised_at": "2026-08-01T05:51:35.445408+00:00",
+      "reason": "Close the revision-2 accessibility follow-up by restoring focus to the invoking clear action after cancel and confirmed completion.",
+      "agent": null,
+      "contract_delta": {
+        "artifacts_added": [],
+        "artifacts_removed": [],
+        "files_added": [],
+        "files_removed": [],
+        "validate_commands_added": [],
+        "validate_commands_removed": []
+      }
+    },
+    {
+      "prior_manifest_hash": "sha256-contract:15fd7d700990ac35bbea9b3ef2bd6f211755f937e630fddc44c88cab4bec498d",
+      "prior_test_hashes": {
+        "src/lib/components/__tests__/LogViewer.component.test.ts": "sha256:a6e3ef57b1503fc81c8b35844fbe774c13e5c64b36aa27eae4491460b3af3743",
+        "src/lib/components/__tests__/LogViewer.logic.test.ts": "sha256:d44cc0a6c05766403c1739e92beb0e779394caa5f833294e39aa1ac108ca4b28"
+      },
+      "revised_at": "2026-08-01T06:00:47.337225+00:00",
+      "reason": "Prevent Enter on the initially focused Cancel action from bubbling into the shared dialog confirmation handler and destructively clearing logs.",
+      "agent": null,
+      "contract_delta": {
+        "artifacts_added": [],
+        "artifacts_removed": [],
+        "files_added": [],
+        "files_removed": [],
+        "validate_commands_added": [],
+        "validate_commands_removed": []
+      }
+    }
+  ],
+  "red_evidence": {
+    "red": true,
+    "captured_at": "2026-08-01T06:01:13.121117+00:00",
+    "commands": [
+      {
+        "command": "pnpm exec vitest run src/lib/components/__tests__/LogViewer.logic.test.ts src/lib/components/__tests__/LogViewer.component.test.ts",
+        "exit_code": 1,
+        "output_tail": "    background: #475569;\n    border-radius: 4px;\n  }\n\n  .logs-container::-webkit-scrollbar-thumb:hover {\n    background: #64748b;\n  }\n</style>\n\"\n\n \u276f src/lib/components/__tests__/LogViewer.logic.test.ts:57:24\n     55|       'utf8'\n     56|     );\n     57|     expect(source).not.toMatch(/(?:window\\.)?confirm\\s*\\(/u);\n       |                        ^\n     58|   });\n     59| \n\n\u23af\u23af\u23af\u23af\u23af\u23af\u23af\u23af\u23af\u23af\u23af\u23af\u23af\u23af\u23af\u23af\u23af\u23af\u23af\u23af\u23af\u23af\u23af\u23af[5/5]\u23af\n",
+        "classification": "red"
+      },
+      {
+        "command": "pnpm lint",
+        "exit_code": 0,
+        "output_tail": "\n> bolt-to-github@2.0.0 lint /home/atomrem/projects/codefrost-dev/bolt-to-github\n> eslint \"src/**/*.{js,ts,svelte}\"\n",
+        "classification": "not_red"
+      },
+      {
+        "command": "pnpm check",
+        "exit_code": 0,
+        "output_tail": "\n> bolt-to-github@2.0.0 check /home/atomrem/projects/codefrost-dev/bolt-to-github\n> svelte-check --tsconfig ./tsconfig.json\n\n\n====================================\nLoading svelte-check in workspace: /home/atomrem/projects/codefrost-dev/bolt-to-github\nGetting Svelte diagnostics...\n\n====================================\nsvelte-check found 0 errors and 0 warnings",
+        "classification": "not_red"
+      }
+    ]
+  },
+  "legacy_baseline": null,
+  "agent": null,
+  "_manifest_contract": {
+    "artifacts": [
+      "src/lib/components/LogViewer.svelte:function:LogViewer",
+      "src/lib/components/LogViewer.svelte:function:LogViewer:kind=function",
+      "src/lib/components/__tests__/LogViewer.component.test.ts:canceling the clear logs dialog leaves logs intact",
+      "src/lib/components/__tests__/LogViewer.component.test.ts:canceling the clear logs dialog leaves logs intact:kind=test_function",
+      "src/lib/components/__tests__/LogViewer.component.test.ts:confirming clear logs clears logs and reloads visible entries",
+      "src/lib/components/__tests__/LogViewer.component.test.ts:confirming clear logs clears logs and reloads visible entries:kind=test_function",
+      "src/lib/components/__tests__/LogViewer.component.test.ts:confirming emergency clear shows loading and clears emergency logs",
+      "src/lib/components/__tests__/LogViewer.component.test.ts:confirming emergency clear shows loading and clears emergency logs:kind=test_function",
+      "src/lib/components/__tests__/LogViewer.component.test.ts:keyboard confirmation is modal and executes clear once",
+      "src/lib/components/__tests__/LogViewer.component.test.ts:keyboard confirmation is modal and executes clear once:kind=test_function",
+      "src/lib/components/__tests__/LogViewer.logic.test.ts:log viewer does not depend on native confirm dialogs",
+      "src/lib/components/__tests__/LogViewer.logic.test.ts:log viewer does not depend on native confirm dialogs:kind=test_function"
+    ],
+    "files": {
+      "create": ["src/lib/components/__tests__/LogViewer.component.test.ts"],
+      "edit": [
+        "src/lib/components/LogViewer.svelte",
+        "src/lib/components/__tests__/LogViewer.logic.test.ts"
+      ],
+      "read": [
+        "src/lib/components/ui/dialog/ConfirmationDialog.svelte",
+        "src/lib/components/ui/dialog/EnhancedConfirmationDialog.svelte",
+        "src/lib/utils/logStorage.ts",
+        "src/lib/utils/logger.ts"
+      ],
+      "scope": [],
+      "delete": [],
+      "snapshot": []
+    },
+    "file_contract": {
+      "create": [
+        {
+          "path": "src/lib/components/__tests__/LogViewer.component.test.ts",
+          "artifacts": [
+            {
+              "kind": "test_function",
+              "name": "canceling the clear logs dialog leaves logs intact",
+              "description": "Required new behavioral test before promotion."
+            },
+            {
+              "kind": "test_function",
+              "name": "confirming clear logs clears logs and reloads visible entries",
+              "description": "Required new behavioral test before promotion."
+            },
+            {
+              "kind": "test_function",
+              "name": "confirming emergency clear shows loading and clears emergency logs",
+              "description": "Required new behavioral test before promotion."
+            },
+            {
+              "kind": "test_function",
+              "name": "keyboard confirmation is modal and executes clear once",
+              "description": "Keyboard users receive modal focus semantics without duplicate destructive execution."
+            }
+          ]
+        }
+      ],
+      "edit": [
+        {
+          "path": "src/lib/components/LogViewer.svelte",
+          "artifacts": [
+            {
+              "kind": "function",
+              "name": "LogViewer",
+              "description": "Log viewer component whose normal and emergency destructive actions\nare covered through user-visible application-native confirmation\nflows rather than private handler access.\n"
+            }
+          ]
+        },
+        {
+          "path": "src/lib/components/__tests__/LogViewer.logic.test.ts",
+          "artifacts": [
+            {
+              "kind": "test_function",
+              "name": "log viewer does not depend on native confirm dialogs",
+              "description": "Required new behavioral test before promotion."
+            }
+          ]
+        }
+      ],
+      "read": [
+        "src/lib/components/ui/dialog/ConfirmationDialog.svelte",
+        "src/lib/components/ui/dialog/EnhancedConfirmationDialog.svelte",
+        "src/lib/utils/logger.ts",
+        "src/lib/utils/logStorage.ts"
+      ]
+    },
+    "test_files": [
+      "src/lib/components/__tests__/LogViewer.component.test.ts",
+      "src/lib/components/__tests__/LogViewer.logic.test.ts"
+    ],
+    "validate_commands": [
+      "pnpm exec vitest run src/lib/components/__tests__/LogViewer.logic.test.ts src/lib/components/__tests__/LogViewer.component.test.ts",
+      "pnpm lint",
+      "pnpm check"
+    ]
+  }
+}

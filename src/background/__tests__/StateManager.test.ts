@@ -35,7 +35,6 @@ describe('StateManager', () => {
       const mockSettings = {
         isSettingsValid: true,
         gitHubSettings: {
-          githubToken: 'test-token',
           repoOwner: 'test-owner',
           projectSettings: {},
         },

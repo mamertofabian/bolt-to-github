@@ -1,0 +1,130 @@
+# manifest-kind: implementation
+# MAID manifest - a machine-checked contract for one change.
+# Declares the intent, the files it may touch, and the commands that verify it.
+# Nothing here is needed to build or run this project; safe to ignore.
+# What it is: https://github.com/mamertofabian/maid-runner
+schema: '2'
+goal: Restore Bolt project downloads when Download is a direct project-menu item
+description: |
+  Characterize the full public DownloadService contract and preserve its older
+  export submenu strategies while accepting Bolt's September 2026 project menu,
+  where Download appears directly beside Duplicate and Delete. The captured DOM
+  is retained as a fixture. Toolbar selectors are unchanged because their current
+  anchors remain present in the fresh capture.
+type: fix
+created: '2026-09-15T03:48:32Z'
+files:
+  edit:
+    - path: src/services/DownloadService.ts
+      artifacts:
+        - kind: class
+          name: DownloadService
+        - kind: method
+          name: downloadProjectZip
+          of: DownloadService
+          args: []
+          returns: Promise<Blob>
+        - kind: method
+          name: getProjectFiles
+          of: DownloadService
+          args:
+            - name: forceRefresh
+              type: boolean
+              default: 'false'
+          returns: Promise<ProjectFiles>
+        - kind: method
+          name: invalidateCache
+          of: DownloadService
+          args: []
+          returns: void
+        - kind: method
+          name: blobToBase64
+          of: DownloadService
+          args:
+            - name: blob
+              type: Blob
+          returns: Promise<string | null>
+    - path: src/services/__tests__/DownloadService.test.ts
+      artifacts:
+        - kind: test_function
+          name: opens the September 2026 project menu and clicks its direct Download item
+        - kind: test_function
+          name: downloadProjectZip reuses an in-flight download and returns the captured blob
+        - kind: test_function
+          name: getProjectFiles returns cached files unless refresh is forced
+        - kind: test_function
+          name: invalidateCache clears the resolved project cache
+        - kind: test_function
+          name: blobToBase64 returns the encoded blob contents
+  create:
+    - path: bolt-download-button-v4.html
+      artifacts:
+        - kind: namespace
+          name: September2026DirectDownloadFixture
+          description: Captured Bolt header showing Download directly in the project menu without Export.
+  read:
+    - bolt-download-button-v3.html
+    - src/lib/zip.ts
+    - src/services/CacheService.ts
+validate:
+  - pnpm exec vitest run src/services/__tests__/DownloadService.test.ts
+  - pnpm lint
+  - pnpm check
+  - pnpm build
+temptations:
+  - risk: Do not remove legacy Export submenu handling.
+    instead: Treat direct Download as an additional project-menu shape and retain every older strategy.
+  - risk: Do not match a generic menu item outside the opened project menu.
+    instead: Require the direct Download item to appear in the rendered project dropdown after its trigger is clicked.
+  - risk: Do not edit toolbar injection selectors when their current anchors still match.
+    instead: Retain the toolbar implementation and document only the adjacent native control and wrapper risks.
+outcome:
+  status: completed
+  completed_at: '2026-09-15T03:54:27Z'
+  summary: |
+    Restored Bolt downloads for the September 2026 project menu, where Download
+    is directly available without an Export submenu. The exact scoped menu item
+    is retained through the click step, while all legacy Export paths remain.
+  rationale: |
+    The project dropdown trigger and Download item selectors still matched, but
+    the service threw while requiring the removed Export item. Direct Download
+    is an additive layout strategy. Scoping the stored element prevents another
+    open menu's Download action from being selected.
+  lessons:
+  - lesson_type: dom-flow-shape
+    summary: Selector compatibility includes interaction topology; matching elements are insufficient when an intermediate menu disappears.
+    tags: [bolt, dom, download]
+    paths: [src/services/DownloadService.ts, bolt-download-button-v4.html]
+  - lesson_type: scoped-dom-action
+    summary: Carry the exact element found in the intended menu into the action step instead of repeating a global search.
+    tags: [dom, false-positive, testing]
+    paths: [src/services/DownloadService.ts, src/services/__tests__/DownloadService.test.ts]
+  review_notes:
+  - source: independent reviewer /root/direct_download_review
+    severity: findings-fixed
+    summary: Found that the final click could select an unrelated Download and that the capture was only string-checked; both were corrected.
+  - source: independent reviewer /root/direct_download_review round 2
+    severity: ready
+    summary: Confirmed scoped click continuity, capture-driven regression coverage, legacy fallback preservation, and no remaining blockers.
+  validation:
+  - command: [pnpm, exec, vitest, run, src/services/__tests__/DownloadService.test.ts]
+    status: passed
+    summary: All 12 focused selector and public-contract tests passed.
+  - command: [pnpm, test:ci]
+    status: passed
+    summary: Full Vitest suite passed 202 files and 4,022 tests.
+  - command: [pnpm, lint]
+    status: passed
+    summary: ESLint passed.
+  - command: [pnpm, check]
+    status: passed
+    summary: Svelte and TypeScript checks reported zero errors and warnings.
+  - command: [pnpm, build]
+    status: passed
+    summary: Production extension build passed with GA4 paused.
+  - command: [./scripts/maid, validate, --manifest-dir, manifests, --mode, behavioral]
+    status: passed
+    summary: 42 active manifests passed, zero failed, 13 superseded.
+  - command: [./scripts/maid, validate, --manifest-dir, manifests, --mode, implementation]
+    status: passed
+    summary: 42 active manifests passed, zero failed, 13 superseded; HTML validator absence remains advisory.

@@ -2,6 +2,7 @@
   import { Badge } from '$lib/components/ui/badge';
   import { Button } from '$lib/components/ui/button';
   import { Input } from '$lib/components/ui/input';
+  import ConfirmationDialog from '$lib/components/ui/dialog/ConfirmationDialog.svelte';
   import { clearLogs, getLogStorage } from '$lib/utils/logger';
   import type { LogEntry } from '$lib/utils/logStorage';
   import { clearLogsEmergency } from '$lib/utils/logStorage';
@@ -14,7 +15,7 @@
     isAtScrollBottom,
   } from '$lib/utils/log-filtering';
   import { X } from 'lucide-svelte';
-  import { onDestroy, onMount } from 'svelte';
+  import { onDestroy, onMount, tick } from 'svelte';
 
   let logs: LogEntry[] = [];
   let filteredLogs: LogEntry[] = [];
@@ -26,7 +27,11 @@
   let autoRefresh = true;
   let refreshInterval: number | null = null;
   let isExporting = false;
+  let isClearingLogs = false;
   let isClearingEmergency = false;
+  let pendingClear: 'normal' | 'emergency' | null = null;
+  let clearDialogElement: HTMLDivElement | null = null;
+  let clearTriggerElement: HTMLElement | null = null;
   let autoScroll = true;
   let logsContainer: HTMLDivElement;
   let isUserScrolling = false;
@@ -68,21 +73,69 @@
   }
 
   async function handleClearLogs() {
-    if (confirm('Are you sure you want to clear all logs?')) {
+    if (isClearingLogs) return;
+    pendingClear = null;
+    isClearingLogs = true;
+    try {
       await clearLogs();
       await loadLogs();
+    } finally {
+      isClearingLogs = false;
+      await restoreClearTrigger();
     }
   }
 
   async function handleClearLogsEmergency() {
-    if (confirm('Are you REALLY sure you want to clear ALL logs? This action cannot be undone.')) {
-      isClearingEmergency = true;
-      try {
-        await clearLogsEmergency();
-        await loadLogs();
-      } finally {
-        isClearingEmergency = false;
-      }
+    if (isClearingEmergency) return;
+    pendingClear = null;
+    isClearingEmergency = true;
+    try {
+      await clearLogsEmergency();
+      await loadLogs();
+    } finally {
+      isClearingEmergency = false;
+      await restoreClearTrigger();
+    }
+  }
+
+  function cancelClearLogs() {
+    pendingClear = null;
+    void restoreClearTrigger();
+  }
+
+  async function restoreClearTrigger() {
+    await tick();
+    clearTriggerElement?.focus();
+    clearTriggerElement = null;
+  }
+
+  async function openClearDialog(kind: 'normal' | 'emergency') {
+    if (isClearingLogs || isClearingEmergency) return;
+    clearTriggerElement =
+      document.activeElement instanceof HTMLElement ? document.activeElement : null;
+    pendingClear = kind;
+    await tick();
+    clearDialogElement?.querySelector<HTMLButtonElement>('button')?.focus();
+  }
+
+  function trapClearDialogFocus(event: KeyboardEvent) {
+    if (event.key === 'Enter' && event.target instanceof HTMLButtonElement) {
+      event.stopPropagation();
+      return;
+    }
+    if (event.key !== 'Tab' || !clearDialogElement) return;
+    const buttons = [
+      ...clearDialogElement.querySelectorAll<HTMLButtonElement>('button:not(:disabled)'),
+    ];
+    if (buttons.length === 0) return;
+    const first = buttons[0];
+    const last = buttons.at(-1)!;
+    if (event.shiftKey && document.activeElement === first) {
+      event.preventDefault();
+      last.focus();
+    } else if (!event.shiftKey && document.activeElement === last) {
+      event.preventDefault();
+      first.focus();
     }
   }
 
@@ -305,9 +358,15 @@
 
       <Button on:click={handleDownloadText} variant="outline">Download as Text</Button>
 
-      <Button on:click={handleClearLogs} variant="destructive">Clear All Logs</Button>
       <Button
-        on:click={handleClearLogsEmergency}
+        on:click={() => openClearDialog('normal')}
+        variant="destructive"
+        disabled={isClearingLogs}
+      >
+        {isClearingLogs ? 'Clearing...' : 'Clear All Logs'}
+      </Button>
+      <Button
+        on:click={() => openClearDialog('emergency')}
         variant="destructive"
         disabled={isClearingEmergency}
       >
@@ -368,6 +427,42 @@
     {/if}
   </div>
 </div>
+
+{#if pendingClear}
+  <!-- svelte-ignore a11y-no-noninteractive-element-interactions -->
+  <div
+    bind:this={clearDialogElement}
+    role="dialog"
+    aria-modal="true"
+    aria-label={pendingClear === 'normal' ? 'Clear stored logs?' : 'Emergency log clear?'}
+    tabindex="-1"
+    on:keydown|capture={trapClearDialogFocus}
+  >
+    {#if pendingClear === 'normal'}
+      <ConfirmationDialog
+        show
+        title="Clear stored logs?"
+        message="This removes all stored extension logs. This action cannot be undone."
+        type="danger"
+        confirmText="Clear logs"
+        cancelText="Cancel"
+        onConfirm={handleClearLogs}
+        onCancel={cancelClearLogs}
+      />
+    {:else}
+      <ConfirmationDialog
+        show
+        title="Emergency log clear?"
+        message="This permanently removes every stored log using the emergency cleanup path. This action cannot be undone."
+        type="danger"
+        confirmText="Clear everything"
+        cancelText="Cancel"
+        onConfirm={handleClearLogsEmergency}
+        onCancel={cancelClearLogs}
+      />
+    {/if}
+  </div>
+{/if}
 
 <style>
   .log-viewer {

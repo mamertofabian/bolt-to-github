@@ -1,9 +1,10 @@
-import { defineConfig } from 'vite';
+import { defineConfig, loadEnv } from 'vite';
 import { svelte } from '@sveltejs/vite-plugin-svelte';
 import { crx } from '@crxjs/vite-plugin';
 import manifest from './manifest.json' with { type: 'json' };
 import { resolve } from 'path';
 import preprocess from 'svelte-preprocess';
+import { assertAnalyticsSecretNotBundled } from './src/lib/utils/analyticsReleasePolicy';
 
 export function manifestWithAssets() {
   return {
@@ -29,6 +30,8 @@ export namespace manifestWithAssets {
 }
 
 export default defineConfig(({ mode }) => {
+  const env = loadEnv(mode, process.cwd(), 'VITE_GA4_API_SECRET');
+  assertAnalyticsSecretNotBundled(process.env.VITE_GA4_API_SECRET || env.VITE_GA4_API_SECRET);
   return {
     plugins: [
       svelte({

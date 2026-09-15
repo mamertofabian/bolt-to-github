@@ -18,39 +18,27 @@ export async function openPopup(context: BrowserContext, extensionId: string): P
   return page;
 }
 
-/**
- * Fill in the onboarding form with PAT authentication
- */
-export async function fillOnboardingPAT(
-  page: Page,
-  token: string,
-  username: string
-): Promise<void> {
-  // Click "Connect GitHub Account" button if on welcome screen
-  const connectButton = page.locator('button:has-text("Connect GitHub Account")');
-  if (await connectButton.isVisible({ timeout: 3000 }).catch(() => false)) {
-    await connectButton.click();
-    await page.waitForTimeout(1000);
-  }
+export async function openGitHubAppSetup(page: Page): Promise<void> {
+  const setupHeading = page.getByRole('heading', { name: /connect your github account/i });
+  if (await setupHeading.isVisible().catch(() => false)) return;
 
-  // Select PAT radio button - the fields only appear when this is selected
-  // Wait for the authentication method selection screen to load
-  const patRadio = page.locator('input[type="radio"][value="pat"]');
-  await patRadio.waitFor({ state: 'visible', timeout: 10000 });
-  await patRadio.click();
+  const connectButton = page.getByRole('button', { name: /connect github account/i });
+  await connectButton.waitFor({ state: 'visible', timeout: 10_000 });
+  await connectButton.click();
 
-  // Wait for PAT fields to appear
-  await page.waitForTimeout(500);
+  await setupHeading.waitFor({
+    state: 'visible',
+    timeout: 10_000,
+  });
+}
 
-  // Fill in the token field (ID is 'githubToken')
-  const tokenInput = page.locator('#githubToken');
-  await tokenInput.waitFor({ state: 'visible', timeout: 5000 });
-  await tokenInput.fill(token);
-
-  // Fill in the username field (ID is 'repoOwner')
-  const usernameInput = page.locator('#repoOwner');
-  await usernameInput.waitFor({ state: 'visible', timeout: 5000 });
-  await usernameInput.fill(username);
+export async function waitForMigrationGuidance(page: Page): Promise<string> {
+  await openGitHubAppSetup(page);
+  const migrationAlert = page.getByRole('alert').filter({
+    hasText: /personal access token support has ended/i,
+  });
+  await migrationAlert.waitFor({ state: 'visible', timeout: 10_000 });
+  return (await migrationAlert.textContent()) ?? '';
 }
 
 /**
@@ -98,6 +86,36 @@ export async function navigateToTab(
   await tab.waitFor({ state: 'visible', timeout: 5000 });
   await tab.click();
   await page.waitForTimeout(300);
+}
+
+/**
+ * Open the authoritative repository settings modal for a mapped Bolt project.
+ */
+export async function openProjectRepositorySettings(
+  page: Page,
+  repositoryName: string
+): Promise<void> {
+  const projectsTab = page
+    .locator('[role="tab"]:has-text("Projects"), button:has-text("Projects")')
+    .first();
+  await projectsTab.waitFor({ state: 'visible', timeout: 5000 });
+  await projectsTab.click();
+  await page.waitForTimeout(300);
+
+  const projectCard = page
+    .getByRole('group', { name: `Bolt project ${repositoryName}`, exact: true })
+    .first();
+  await projectCard.waitFor({ state: 'visible', timeout: 10_000 });
+
+  const settingsAction = projectCard.getByRole('button', {
+    name: /repository settings/i,
+  });
+  await settingsAction.waitFor({ state: 'visible', timeout: 5000 });
+  await settingsAction.click();
+
+  await page
+    .getByRole('heading', { name: /repository settings/i })
+    .waitFor({ state: 'visible', timeout: 5000 });
 }
 
 /**
@@ -204,7 +222,7 @@ export async function waitForErrorNotification(page: Page): Promise<string> {
 export async function getValidationError(page: Page): Promise<string | null> {
   const errorMessage = page
     .locator(
-      '[role="alert"]:visible, [aria-live="assertive"]:visible, [aria-live="polite"]:visible'
+      'div:has(> h2:text-is("Repository Settings")) [role="alert"]:visible, [aria-live="assertive"]:visible, [aria-live="polite"]:visible'
     )
     .first();
   if (await errorMessage.isVisible({ timeout: 2000 }).catch(() => false)) {

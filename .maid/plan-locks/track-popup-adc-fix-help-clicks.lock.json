@@ -1,11 +1,11 @@
 {
   "manifest_path": "manifests/track-popup-adc-fix-help-clicks.manifest.yaml",
-  "manifest_hash": "sha256:783105f2f7e93f6868b404c2567bbea3cfdcebce978dc9e90d94a1113df5dbc0",
+  "manifest_hash": "sha256-contract:d8925af8f6c709013462f6bf83f02489adf7c8d222b9d7dc3854da1ea6b7c8fc",
   "test_hashes": {
     "src/lib/components/__tests__/SocialLinks.component.test.ts": "sha256:cbf3f720263dd4a08f30177e54dc9f3269a43e6d139aaf4885fc0fde25813ad7"
   },
   "created_at": "2026-07-03T07:54:13.166121+00:00",
-  "revision": 3,
+  "revision": 4,
   "revisions": [
     {
       "prior_manifest_hash": "sha256:ec7bc09320df0b082aac4187274293a5e3c5c5cf6864de96d70b3f85fc9bb7f2",
@@ -13,7 +13,9 @@
         "src/lib/components/__tests__/SocialLinks.component.test.ts": "sha256:4960e08068240c16d537a60428bed9a1bcb44915223ccdcad4faad58fe6da370"
       },
       "revised_at": "2026-07-03T09:50:10.754144+00:00",
-      "reason": "Migrated by maid manifest promote: manifests/drafts/track-popup-adc-fix-help-clicks.manifest.yaml -> manifests/track-popup-adc-fix-help-clicks.manifest.yaml"
+      "reason": "Migrated by maid manifest promote: manifests/drafts/track-popup-adc-fix-help-clicks.manifest.yaml -> manifests/track-popup-adc-fix-help-clicks.manifest.yaml",
+      "agent": null,
+      "contract_delta": null
     },
     {
       "prior_manifest_hash": "sha256:dc887b4b7e32a7c2edadb25709deefbd03c6c39763b973fc4616cc984a43a946",
@@ -21,7 +23,35 @@
         "src/lib/components/__tests__/SocialLinks.component.test.ts": "sha256:4960e08068240c16d537a60428bed9a1bcb44915223ccdcad4faad58fe6da370"
       },
       "revised_at": "2026-07-03T10:03:53.280273+00:00",
-      "reason": "Record Outcome after implementation review; add arrange-step comment to degraded-runtime test per review nitpick"
+      "reason": "Record Outcome after implementation review; add arrange-step comment to degraded-runtime test per review nitpick",
+      "agent": null,
+      "contract_delta": null
+    },
+    {
+      "prior_manifest_hash": "sha256:783105f2f7e93f6868b404c2567bbea3cfdcebce978dc9e90d94a1113df5dbc0",
+      "prior_test_hashes": {
+        "src/lib/components/__tests__/SocialLinks.component.test.ts": "sha256:cbf3f720263dd4a08f30177e54dc9f3269a43e6d139aaf4885fc0fde25813ad7"
+      },
+      "revised_at": "2026-09-14T13:07:25.805668+00:00",
+      "reason": "Align Svelte component artifact with the 2.27.5 validator; behavior and tests are unchanged",
+      "agent": null,
+      "contract_delta": {
+        "artifacts_added": [],
+        "artifacts_removed": [
+          "src/lib/components/SocialLinks.svelte:function:SocialLinks:arg=props:type=SocialLinks component props:default=None"
+        ],
+        "files_added": [
+          "edit:src/lib/components/SocialLinks.svelte",
+          "edit:src/lib/components/__tests__/SocialLinks.component.test.ts",
+          "read:src/background/BackgroundService.ts",
+          "read:src/lib/components/Help.svelte",
+          "read:src/lib/utils/analytics.ts",
+          "read:src/popup/components/HomeTabContent.svelte"
+        ],
+        "files_removed": [],
+        "validate_commands_added": [],
+        "validate_commands_removed": []
+      }
     }
   ],
   "red_evidence": {
@@ -36,10 +66,11 @@
       }
     ]
   },
+  "legacy_baseline": null,
+  "agent": null,
   "_manifest_contract": {
     "artifacts": [
       "src/lib/components/SocialLinks.svelte:function:SocialLinks",
-      "src/lib/components/SocialLinks.svelte:function:SocialLinks:arg=props:type=SocialLinks component props:default=None",
       "src/lib/components/SocialLinks.svelte:function:SocialLinks:kind=function",
       "src/lib/components/SocialLinks.svelte:function:SocialLinks:returns=Svelte component instance",
       "src/lib/components/__tests__/SocialLinks.component.test.ts:should default the help link to the UTM-tagged ADC Fix URL",
@@ -49,9 +80,67 @@
       "src/lib/components/__tests__/SocialLinks.component.test.ts:should still open the help link when analytics messaging is unavailable",
       "src/lib/components/__tests__/SocialLinks.component.test.ts:should still open the help link when analytics messaging is unavailable:kind=test_function"
     ],
+    "files": {
+      "create": [],
+      "edit": [
+        "src/lib/components/SocialLinks.svelte",
+        "src/lib/components/__tests__/SocialLinks.component.test.ts"
+      ],
+      "read": [
+        "src/background/BackgroundService.ts",
+        "src/lib/components/Help.svelte",
+        "src/lib/utils/analytics.ts",
+        "src/popup/components/HomeTabContent.svelte"
+      ],
+      "scope": [],
+      "delete": [],
+      "snapshot": []
+    },
+    "file_contract": {
+      "edit": [
+        {
+          "path": "src/lib/components/SocialLinks.svelte",
+          "artifacts": [
+            {
+              "kind": "function",
+              "name": "SocialLinks",
+              "description": "Social action buttons for the popup. Clicking the expert-help button\nsends a guarded fire-and-forget ANALYTICS_EVENT extension_event\nruntime message (nested eventType adc_fix_link_clicked with\nlink_location popup_home and the resolved link_url) and then opens\nHELP_LINK in a new tab. The HELP_LINK default is the UTM-tagged ADC\nFix URL; explicit HELP_LINK props are opened unchanged. All other\nbuttons keep their existing behavior.\n",
+              "returns": "Svelte component instance"
+            }
+          ]
+        },
+        {
+          "path": "src/lib/components/__tests__/SocialLinks.component.test.ts",
+          "artifacts": [
+            {
+              "kind": "test_function",
+              "name": "should send an adc_fix_link_clicked analytics event when help is clicked",
+              "description": "Verifies the help click sends the ANALYTICS_EVENT extension_event message with adc_fix_link_clicked details and still opens the link."
+            },
+            {
+              "kind": "test_function",
+              "name": "should default the help link to the UTM-tagged ADC Fix URL",
+              "description": "Verifies that without a HELP_LINK prop the opened URL is the ADC Fix URL with extension/popup/expert_help UTM parameters."
+            },
+            {
+              "kind": "test_function",
+              "name": "should still open the help link when analytics messaging is unavailable",
+              "description": "Verifies the help tab opens even when chrome.runtime is missing so analytics can never block the CTA."
+            }
+          ]
+        }
+      ],
+      "read": [
+        "src/popup/components/HomeTabContent.svelte",
+        "src/lib/components/Help.svelte",
+        "src/background/BackgroundService.ts",
+        "src/lib/utils/analytics.ts"
+      ]
+    },
     "test_files": ["src/lib/components/__tests__/SocialLinks.component.test.ts"],
     "validate_commands": [
       "pnpm exec vitest run src/lib/components/__tests__/SocialLinks.component.test.ts"
-    ]
+    ],
+    "acceptance_commands": []
   }
 }

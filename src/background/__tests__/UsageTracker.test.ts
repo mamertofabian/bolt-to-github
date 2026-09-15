@@ -99,12 +99,63 @@ describe('UsageTracker', () => {
   });
 
   describe('updateUsageStats', () => {
+    it('usage tracking emits only github-app or none for current authentication state', async () => {
+      mockChromeStorage.local.get.mockImplementation((_keys, callback) => {
+        callback({
+          usageData: {
+            installDate: '2024-01-01T00:00:00.000Z',
+            lastActiveDate: '2024-01-15T00:00:00.000Z',
+            totalPushes: 0,
+            authMethod: 'none',
+            extensionVersion: '1.3.5',
+            errorCount: 0,
+          },
+        });
+      });
+      let savedData: Record<string, unknown> = {};
+      mockChromeStorage.local.set.mockImplementation((data, callback) => {
+        savedData = data;
+        callback?.();
+      });
+
+      await usageTracker.updateUsageStats('auth_method_changed', {
+        authMethod: 'pat' as never,
+      });
+
+      expect((savedData.usageData as UsageData).authMethod).toBe('none');
+    });
+
+    it('legacy stored PAT analytics values are tolerated without being relabeled as GitHub App usage', async () => {
+      mockChromeStorage.local.get.mockImplementation((_keys, callback) => {
+        callback({
+          usageData: {
+            installDate: '2024-01-01T00:00:00.000Z',
+            lastActiveDate: '2024-01-15T00:00:00.000Z',
+            totalPushes: 3,
+            authMethod: 'pat',
+            extensionVersion: '1.3.4',
+            errorCount: 0,
+          },
+        });
+      });
+      let savedData: Record<string, unknown> = {};
+      mockChromeStorage.local.set.mockImplementation((data, callback) => {
+        savedData = data;
+        callback?.();
+      });
+
+      await usageTracker.initializeUsageData();
+
+      expect((savedData.usageData as UsageData).authMethod).toBe('none');
+      expect((savedData.usageData as UsageData).authMethod).not.toBe('github-app');
+    });
+
     it('should increment push count and update last active date', async () => {
       const existingData: UsageData = {
         installDate: '2024-01-01T00:00:00.000Z',
         lastActiveDate: '2024-01-15T00:00:00.000Z',
         totalPushes: 5,
-        authMethod: 'pat',
+        authMethod: 'none',
         extensionVersion: '1.3.5',
         errorCount: 0,
       };
@@ -161,7 +212,7 @@ describe('UsageTracker', () => {
         installDate: '2024-01-01T00:00:00.000Z',
         lastActiveDate: '2024-01-15T00:00:00.000Z',
         totalPushes: 5,
-        authMethod: 'pat',
+        authMethod: 'none',
         extensionVersion: '1.3.5',
         errorCount: 1,
       };

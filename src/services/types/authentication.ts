@@ -1,14 +1,13 @@
 /**
  * Authentication types and interfaces for unified GitHub authentication
- * Supports both Personal Access Tokens (PAT) and GitHub Apps
+ * GitHub App is the sole supported authentication method.
  */
 
-export type AuthenticationType = 'pat' | 'github_app';
+export type AuthenticationType = 'github_app';
 
 export interface AuthenticationConfig {
   type: AuthenticationType;
-  token?: string; // For PAT authentication
-  githubAppConfig?: GitHubAppConfig; // For GitHub App authentication
+  githubAppConfig?: GitHubAppConfig;
 }
 
 export interface GitHubAppConfig {
@@ -88,7 +87,7 @@ export interface TokenValidationResult {
     avatar_url: string;
   };
   scopes?: string[];
-  type?: 'classic' | 'fine-grained' | 'github_app';
+  type?: 'github_app';
 }
 
 export interface PermissionCheckResult {
@@ -105,11 +104,6 @@ export interface PermissionCheckResult {
  * Storage interface for authentication data
  */
 export interface AuthenticationStorage {
-  // PAT Storage (existing)
-  githubToken?: string;
-  repoOwner?: string;
-
-  // GitHub App Storage (new)
   githubAppInstallationId?: number;
   githubAppAccessToken?: string;
   githubAppRefreshToken?: string;
@@ -119,11 +113,4 @@ export interface AuthenticationStorage {
   githubAppUserId?: number;
   githubAppAvatarUrl?: string;
   githubAppScopes?: string[];
-
-  // Authentication Method Selection
-  authenticationMethod?: AuthenticationType;
-
-  // Migration Status
-  migrationPromptShown?: boolean;
-  lastMigrationPrompt?: string;
 }

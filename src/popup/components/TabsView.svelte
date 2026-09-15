@@ -26,9 +26,6 @@
     feedback: void;
     upgradeClick: UpgradeModalType;
     newsletter: void;
-    save: void;
-    error: string;
-    authMethodChange: string;
     configurePushReminder: void;
   }>();
 
@@ -51,18 +48,6 @@
 
   function handleNewsletter() {
     dispatch('newsletter');
-  }
-
-  function handleSave() {
-    dispatch('save');
-  }
-
-  function handleError(error: string) {
-    dispatch('error', error);
-  }
-
-  function handleAuthMethodChange(method: string) {
-    dispatch('authMethodChange', method);
   }
 
   function handleConfigurePushReminder() {
@@ -90,7 +75,6 @@
   <TabsContent value="projects">
     <ProjectsList
       repoOwner={githubSettings.repoOwner}
-      githubToken={githubSettings.githubToken}
       currentlyLoadedProjectId={projectId}
       isBoltSite={projectSettings.isBoltSite}
     />
@@ -99,12 +83,7 @@
   <TabsContent value="settings">
     <SettingsTabContent
       {githubSettings}
-      {projectId}
-      {uiState}
       {isUserPremium}
-      on:save={handleSave}
-      on:error={(e) => handleError(e.detail)}
-      on:authMethodChange={(e) => handleAuthMethodChange(e.detail)}
       on:upgradeClick={handleUpgradeClick}
       on:configurePushReminder={handleConfigurePushReminder}
     />

@@ -24,9 +24,7 @@ export {
 
 // Export specific commonly used classes for direct import
 export {
-  MockPATAuthenticationStrategy,
   MockGitHubAppAuthenticationStrategy,
-  MockAuthenticationStrategyFactory,
   MockFetchResponseBuilder,
   MockChromeStorage,
   UnifiedGitHubServiceTestScenarios,

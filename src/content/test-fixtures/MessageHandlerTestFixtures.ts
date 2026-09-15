@@ -107,14 +107,14 @@ export const TestData = {
       type: 'GITHUB_SETTINGS_CHANGED' as MessageType,
       data: {
         isValid: true,
-        authMethod: 'pat',
+        authMethod: 'github_app',
       },
     },
     githubSettingsInvalid: {
       type: 'GITHUB_SETTINGS_CHANGED' as MessageType,
       data: {
         isValid: false,
-        error: 'Invalid GitHub token',
+        error: 'GitHub App connection is unavailable',
       },
     },
     openHome: {

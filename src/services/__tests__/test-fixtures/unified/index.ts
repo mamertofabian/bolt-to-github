@@ -2,8 +2,7 @@
  * Unified GitHub Service Test Fixtures - Main Index
  *
  * Centralized export point for all test fixtures, mocks, scenarios, and helpers.
- * This module provides backward compatibility with the original monolithic fixture file
- * while also enabling modular imports for better performance.
+ * All authentication helpers model the supported GitHub App path.
  *
  * ## Quick Start
  *
@@ -14,7 +13,7 @@
  * // Import specific modules for better performance
  * import { TokenFixtures } from './test-fixtures/unified/tokens';
  * import { GitHubUserResponses } from './test-fixtures/unified/api-responses';
- * import { MockPATAuthenticationStrategy } from './test-fixtures/unified/mocks';
+ * import { MockGitHubAppAuthenticationStrategy } from './test-fixtures/unified/mocks';
  * ```
  *
  * ## Module Organization
@@ -53,9 +52,7 @@ import { StorageFixtures } from './storage';
 import { TokenFixtures } from './tokens';
 
 import {
-  MockPATAuthenticationStrategy,
   MockGitHubAppAuthenticationStrategy,
-  MockAuthenticationStrategyFactory,
   MockFetchResponseBuilder,
   MockChromeStorage,
 } from './mocks';
@@ -72,7 +69,7 @@ import { UnifiedGitHubServiceTestHelpers } from './helpers';
  * @example
  * ```typescript
  * const repo = TestFixtures.GitHubAPIResponses.repository.existing;
- * const token = TestFixtures.TokenFixtures.pat.classic;
+ * const token = TestFixtures.TokenFixtures.githubApp.valid;
  * const error = TestFixtures.ErrorFixtures.unauthorized;
  * ```
  */
@@ -92,16 +89,14 @@ export const TestFixtures = {
  *
  * @example
  * ```typescript
- * const mockStrategy = new TestDoubles.MockPATAuthenticationStrategy('TEST_token');
+ * const mockStrategy = new TestDoubles.MockGitHubAppAuthenticationStrategy('TEST_token');
  * const mockFetch = new TestDoubles.MockFetchResponseBuilder()
  *   .mockRepoExists('owner', 'repo', true)
  *   .build();
  * ```
  */
 export const TestDoubles = {
-  MockPATAuthenticationStrategy,
   MockGitHubAppAuthenticationStrategy,
-  MockAuthenticationStrategyFactory,
   MockFetchResponseBuilder,
   MockChromeStorage,
 } as const;
@@ -115,7 +110,7 @@ export const TestDoubles = {
  * @example
  * ```typescript
  * const scenario = new TestScenarios.UnifiedGitHubServiceTestScenarios()
- *   .setupSuccessfulPATAuthentication()
+ *   .setupSuccessfulGitHubAppAuthentication()
  *   .setupRepositoryOperations()
  *   .build();
  * ```
@@ -132,7 +127,7 @@ export const TestScenarios = {
  *
  * @example
  * ```typescript
- * const authConfig = TestHelpers.UnifiedGitHubServiceTestHelpers.createAuthConfig('pat');
+ * const authConfig = TestHelpers.UnifiedGitHubServiceTestHelpers.createAuthConfig();
  * await TestHelpers.UnifiedGitHubServiceTestHelpers.expectAsyncError(
  *   service.someMethod(),
  *   'Expected error message'
@@ -153,7 +148,7 @@ export const TestHelpers = {
  * import testFixtures from './test-fixtures/unified';
  *
  * const repo = testFixtures.fixtures.GitHubAPIResponses.repository.existing;
- * const mockStrategy = new testFixtures.doubles.MockPATAuthenticationStrategy('TEST_token');
+ * const mockStrategy = new testFixtures.doubles.MockGitHubAppAuthenticationStrategy('TEST_token');
  * ```
  */
 export default {

@@ -24,7 +24,7 @@ export const ErrorFixtures = {
     status: 403,
     statusText: 'Forbidden',
     error: {
-      message: 'Resource not accessible by personal access token',
+      message: 'Resource not accessible by integration',
       documentation_url:
         'https://docs.github.com/rest/overview/permissions-required-for-github-apps',
     },

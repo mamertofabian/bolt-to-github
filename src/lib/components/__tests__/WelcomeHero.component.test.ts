@@ -24,22 +24,33 @@ describe('WelcomeHero', () => {
       render(WelcomeHero);
 
       expect(
-        screen.getByText(/to get started with bolt to github, we need to connect to github first/i)
+        screen.getByText(/bolt2github account and the github app are required/i)
       ).toBeInTheDocument();
     });
 
     it('should render GitHub App recommendation', () => {
       render(WelcomeHero);
 
-      expect(screen.getByText('GitHub App Recommended')).toBeInTheDocument();
+      expect(screen.getByText('GitHub App Required')).toBeInTheDocument();
     });
 
     it('should render recommendation details', () => {
       render(WelcomeHero);
 
       expect(
-        screen.getByText(/while it involves creating a bolt2github.com account/i)
+        screen.getByText(/sign in to your bolt2github account, then install the github app/i)
       ).toBeInTheDocument();
+    });
+
+    it('presents Bolt2GitHub sign-in and the GitHub App as required setup', () => {
+      render(WelcomeHero);
+
+      expect(
+        screen.getByText(/bolt2github account and the github app are required/i)
+      ).toBeVisible();
+      expect(screen.getByText('GitHub App Required')).toBeVisible();
+      expect(screen.queryByText(/two authentication options/i)).not.toBeInTheDocument();
+      expect(screen.queryByText('GitHub App Recommended')).not.toBeInTheDocument();
     });
 
     it('should render reassurance text', () => {
@@ -109,7 +120,7 @@ describe('WelcomeHero', () => {
     it('should have proper visual hierarchy with recommendation section', () => {
       render(WelcomeHero);
 
-      const recommendation = screen.getByText('GitHub App Recommended');
+      const recommendation = screen.getByText('GitHub App Required');
       expect(recommendation).toBeInTheDocument();
 
       const checkmark = screen.getByText('✓');

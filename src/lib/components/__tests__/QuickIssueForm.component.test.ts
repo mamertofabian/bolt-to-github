@@ -16,7 +16,6 @@ vi.mock('$lib/stores/issuesStore', () => ({
 describe('QuickIssueForm Component', () => {
   const defaultProps = {
     show: true,
-    githubToken: 'test-token',
     repoOwner: 'test-owner',
     repoName: 'test-repo',
   };
@@ -130,7 +129,7 @@ describe('QuickIssueForm Component', () => {
   });
 
   describe('Form Submission', () => {
-    it('should call issuesStore.createIssue with correct parameters on submission', async () => {
+    it('quick issue form submits without a PAT prop', async () => {
       const user = userEvent.setup();
       render(QuickIssueForm, { props: defaultProps });
 
@@ -143,7 +142,7 @@ describe('QuickIssueForm Component', () => {
       const submitButton = screen.getByRole('button', { name: /create issue/i });
       await user.click(submitButton);
 
-      expect(mockCreateIssue).toHaveBeenCalledWith('test-owner', 'test-repo', 'test-token', {
+      expect(mockCreateIssue).toHaveBeenCalledWith('test-owner', 'test-repo', {
         title: 'Test Issue',
         body: 'Test Description',
       });
@@ -162,7 +161,7 @@ describe('QuickIssueForm Component', () => {
       const submitButton = screen.getByRole('button', { name: /create issue/i });
       await user.click(submitButton);
 
-      expect(mockCreateIssue).toHaveBeenCalledWith('test-owner', 'test-repo', 'test-token', {
+      expect(mockCreateIssue).toHaveBeenCalledWith('test-owner', 'test-repo', {
         title: 'Test Issue',
         body: 'Test Description',
       });
@@ -408,7 +407,7 @@ describe('QuickIssueForm Component', () => {
       const submitButton = screen.getByRole('button', { name: /create issue/i });
       await user.click(submitButton);
 
-      expect(mockCreateIssue).toHaveBeenCalledWith('test-owner', 'test-repo', 'test-token', {
+      expect(mockCreateIssue).toHaveBeenCalledWith('test-owner', 'test-repo', {
         title: longTitle,
         body: '',
       });
@@ -429,7 +428,7 @@ describe('QuickIssueForm Component', () => {
       const submitButton = screen.getByRole('button', { name: /create issue/i });
       await user.click(submitButton);
 
-      expect(mockCreateIssue).toHaveBeenCalledWith('test-owner', 'test-repo', 'test-token', {
+      expect(mockCreateIssue).toHaveBeenCalledWith('test-owner', 'test-repo', {
         title: specialTitle,
         body: specialDescription,
       });
